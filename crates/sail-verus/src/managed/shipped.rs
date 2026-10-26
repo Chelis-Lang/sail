@@ -253,9 +253,31 @@ impl CompilerSource {
     }
 
     fn current(&self, plan: &Plan) -> Option<()> {
-        let sysroot =
-            super::runner::verifier_sysroot(&plan.native_launcher, Path::new(".")).ok()?;
-        self.current_at(&sysroot, plan)
+        // The launcher's sysroot query starts two short-lived processes. The
+        // recorded sysroot's tree is captured meanwhile, and that capture is
+        // used only when the query names exactly that sysroot; any other
+        // answer is captured afresh, as before.
+        let recorded = self.root.ancestors().nth(4).map(Path::to_path_buf);
+        let (sysroot, early) = std::thread::scope(|scope| {
+            let early = recorded.as_ref().and_then(|recorded| {
+                std::thread::Builder::new()
+                    .name("sail-compiler-source".to_owned())
+                    .spawn_scoped(scope, || {
+                        Self::capture(recorded, &plan.virtual_base, &plan.registry, &plan.target)
+                    })
+                    .ok()
+            });
+            let sysroot =
+                super::runner::verifier_sysroot(&plan.native_launcher, Path::new(".")).ok();
+            (sysroot, early.and_then(|thread| thread.join().ok()))
+        });
+        let sysroot = sysroot?;
+        match early {
+            Some(current) if recorded.as_deref() == Some(sysroot.as_path()) => {
+                (current? == *self).then_some(())
+            }
+            _ => self.current_at(&sysroot, plan),
+        }
     }
 
     fn current_at(&self, sysroot: &Path, plan: &Plan) -> Option<()> {
@@ -888,7 +910,36 @@ pub(crate) fn plan(
     {
         return None;
     }
-    let identity = identity_at(&root, &sysroot, &virtual_base, digests)?;
+    // The plan's remaining complete reads are independent of the identity and
+    // of each other: they run while the identity hashes the runtime and
+    // sysroot. Every one is still required, exactly as before.
+    let portable = local.is_none();
+    let release_dir = root.join("verus/source/target-verus/release");
+    let (identity, reads) = std::thread::scope(|scope| {
+        let read =
+            |path: PathBuf| scope.spawn(move || sha256_file(&path).map(|(sha256, _)| sha256));
+        let solver_sha256 = read(solver.to_owned());
+        let compiler_sha256 = read(release_dir.join("rust_verify"));
+        let launcher_sha256 = read(release_dir.join("verus"));
+        let adapter_sha256 = portable.then(|| read(shim.to_owned()));
+        let compiler_source = portable.then(|| {
+            scope.spawn(|| CompilerSource::capture(&sysroot, &virtual_base, registry, target))
+        });
+        let identity = identity_at(&root, &sysroot, &virtual_base, digests);
+        let joined = |thread: std::thread::ScopedJoinHandle<'_, Option<String>>| {
+            thread.join().ok().flatten()
+        };
+        let reads = (
+            joined(solver_sha256),
+            joined(compiler_sha256),
+            joined(launcher_sha256),
+            adapter_sha256.map(joined),
+            compiler_source.map(|thread| thread.join().ok().flatten()),
+        );
+        (identity, reads)
+    });
+    let identity = identity?;
+    let (solver_sha256, compiler_sha256, launcher_sha256, adapter_sha256, compiler_source) = reads;
     let (mode, release) = if let Some(out) = local {
         (
             Mode::MachineLocal {
@@ -912,18 +963,13 @@ pub(crate) fn plan(
     } else {
         Some(SolverAdapter {
             path: shim.to_owned(),
-            sha256: sha256_file(shim)?.0,
+            sha256: adapter_sha256??,
         })
     };
     let compiler_source = if matches!(mode, Mode::MachineLocal { .. }) {
         None
     } else {
-        Some(CompilerSource::capture(
-            &sysroot,
-            &virtual_base,
-            registry,
-            target,
-        )?)
+        Some(compiler_source??)
     };
     Some(Plan {
         mode,
@@ -932,18 +978,14 @@ pub(crate) fn plan(
         registry: registry.to_owned(),
         target: target.to_owned(),
         virtual_base,
-        solver_sha256: sha256_file(solver)?.0,
+        solver_sha256: solver_sha256?,
         solver_adapter,
         run_id: run_id.to_owned(),
         closure: Some(admission::Closure::resolve(metadata, registry)?),
         native_records: target.join(".sail-boundary-native").join(run_id),
-        native_compiler_sha256: sha256_file(
-            &root.join("verus/source/target-verus/release/rust_verify"),
-        )?
-        .0,
-        native_launcher: root.join("verus/source/target-verus/release/verus"),
-        native_launcher_sha256: sha256_file(&root.join("verus/source/target-verus/release/verus"))?
-            .0,
+        native_compiler_sha256: compiler_sha256?,
+        native_launcher: release_dir.join("verus"),
+        native_launcher_sha256: launcher_sha256?,
         compiler_source,
     })
 }

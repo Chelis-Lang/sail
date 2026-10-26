@@ -111,24 +111,44 @@ impl<'a> Observation<'a> {
         if !closure.native_unit(&call.vars, args) {
             return Err("foreign native source, version or compiler feature");
         }
-        if !compiler_matches(&call) {
+        // The compiler check reads the launcher and compiler in full. It runs
+        // beside the read-only checks that follow; its refusal still comes
+        // first, as when the checks ran one after another.
+        let vars = call.vars.clone();
+        let (compiler, checked) = std::thread::scope(|scope| {
+            let compiler = std::thread::Builder::new()
+                .name("sail-native-compiler".to_owned())
+                .spawn_scoped(scope, || compiler_matches_in(&vars, plan))
+                .ok();
+            let checked = (|| {
+                // Cargo pipelines dependents after metadata emission, before the
+                // producer exits. Native units always compile; require successful
+                // dependency provenance when completing their observation instead.
+                let generated = generated(&call)?;
+                let outputs =
+                    emitted_outputs(&call).ok_or("unsupported native Cargo library invocation")?;
+                if !matches!(plan.mode, super::Mode::MachineLocal { .. })
+                    && !native_shape::admitted(&call)
+                {
+                    return Err("unsupported portable native compiler tuple");
+                }
+                if outputs.iter().any(|path| path.try_exists().unwrap_or(true)) {
+                    return Err("native output already exists before this compiler invocation");
+                }
+                let compiler_options = bind_compiler_options(&mut call)
+                    .ok_or("native compiler options could not be bound")?;
+                Ok((generated, outputs, compiler_options))
+            })();
+            let compiler = match compiler {
+                Some(thread) => thread.join().unwrap_or(false),
+                None => compiler_matches_in(&vars, plan),
+            };
+            (compiler, checked)
+        });
+        if !compiler {
             return Err("native compiler is not the admitted sysroot compiler");
         }
-        // Cargo pipelines dependents after metadata emission, before the
-        // producer exits. Native units always compile; require successful
-        // dependency provenance when completing their observation instead.
-        let generated = generated(&call)?;
-        let outputs =
-            emitted_outputs(&call).ok_or("unsupported native Cargo library invocation")?;
-        if !matches!(plan.mode, super::Mode::MachineLocal { .. }) && !native_shape::admitted(&call)
-        {
-            return Err("unsupported portable native compiler tuple");
-        }
-        if outputs.iter().any(|path| path.try_exists().unwrap_or(true)) {
-            return Err("native output already exists before this compiler invocation");
-        }
-        let compiler_options =
-            bind_compiler_options(&mut call).ok_or("native compiler options could not be bound")?;
+        let (generated, outputs, compiler_options) = checked?;
         let base = plan
             .target
             .join(".sail-boundary-native-reads")
@@ -220,26 +240,43 @@ impl<'a> Observation<'a> {
             .closure
             .as_ref()?
             .native_unit(&self.call.vars, self.call.arguments)
-            || !compiler_matches(&self.call)
-            || generated(&self.call).ok()? != self.generated
-            || !externs_are_fresh(&self.call)
         {
             return None;
         }
-        let mut current = Call::new(
-            plan,
-            self.call.arguments,
-            false,
-            self.call
-                .vars
-                .iter()
-                .map(|(key, value)| (key.into(), value.into())),
-        )?;
-        if bind_compiler_options(&mut current)? != self.compiler_options
-            || current.key != self.call.key
-        {
+        // As at the start: the full compiler read runs beside the remaining
+        // read-only checks, and all of them must hold.
+        let (compiler, rebound) = std::thread::scope(|scope| {
+            let compiler = std::thread::Builder::new()
+                .name("sail-native-compiler".to_owned())
+                .spawn_scoped(scope, || compiler_matches_in(&self.call.vars, plan))
+                .ok();
+            let rebound = (|| {
+                if generated(&self.call).ok()? != self.generated || !externs_are_fresh(&self.call) {
+                    return None;
+                }
+                let mut current = Call::new(
+                    plan,
+                    self.call.arguments,
+                    false,
+                    self.call
+                        .vars
+                        .iter()
+                        .map(|(key, value)| (key.into(), value.into())),
+                )?;
+                (bind_compiler_options(&mut current)? == self.compiler_options
+                    && current.key == self.call.key)
+                    .then_some(())
+            })();
+            let compiler = match compiler {
+                Some(thread) => thread.join().unwrap_or(false),
+                None => compiler_matches_in(&self.call.vars, plan),
+            };
+            (compiler, rebound)
+        });
+        if !compiler {
             return None;
         }
+        rebound?;
         std::fs::create_dir_all(&plan.native_records).ok()?;
         for output in &self.outputs {
             if !output.is_file() {
@@ -678,17 +715,16 @@ fn generated(call: &Call<'_>) -> Result<Option<BTreeMap<String, String>>, &'stat
 }
 
 pub(super) fn compiler_matches(call: &Call<'_>) -> bool {
-    if call
-        .vars
-        .get("__VERUS_DRIVER_VIA_CARGO__")
-        .map(String::as_str)
-        != Some("1")
-    {
+    compiler_matches_in(&call.vars, call.plan)
+}
+
+/// [`compiler_matches`] for an invocation's environment `vars` under `plan`.
+fn compiler_matches_in(vars: &BTreeMap<String, String>, plan: &Plan) -> bool {
+    if vars.get("__VERUS_DRIVER_VIA_CARGO__").map(String::as_str) != Some("1") {
         return false;
     }
-    call.vars
-        .get("SAIL_MANAGED_WRAPPER")
-        .is_some_and(|wrapper| launcher_matches(call.plan, Path::new(wrapper)))
+    vars.get("SAIL_MANAGED_WRAPPER")
+        .is_some_and(|wrapper| launcher_matches(plan, Path::new(wrapper)))
 }
 
 pub(super) fn launcher_matches(plan: &Plan, wrapper: &Path) -> bool {
