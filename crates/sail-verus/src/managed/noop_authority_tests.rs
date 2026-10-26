@@ -421,7 +421,7 @@ fn exact_partial_replay_refuses_scope_flags_and_missing_original_history()
             "original-scope" => record.original_request.args[2] = "another-module".into(),
             "retained-scope" => {
                 record.result.targets[0].scope_reuse =
-                    Some(vec!["--".into(), "--verify-root".into()])
+                    Some(vec!["--".into(), "--verify-root".into()]);
             }
             "whole-complete" => record.result.targets[0].complete = true,
             "whole-reuse" => record.result.targets[0].reused = true,

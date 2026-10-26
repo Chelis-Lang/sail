@@ -582,6 +582,7 @@ impl ConfigureCommand for std::process::Command {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sail_acceptance::phase_inputs::owned_identity_matches;
 
     #[test]
     fn identical_pid_and_descriptor_do_not_replace_original_owned_child() {
@@ -598,7 +599,6 @@ mod tests {
             directory: None,
             overrides: Vec::new(),
         };
-        use sail_acceptance::phase_inputs::owned_identity_matches;
         assert!(owned_identity_matches(
             &NativeOwnerIdentity,
             &original,
