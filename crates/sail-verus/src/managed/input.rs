@@ -1246,22 +1246,33 @@ pub(super) fn bind_paths(hasher: &mut Sha256, bindings: &BTreeMap<PathBuf, PathB
 // edit between completed runs may reuse a proof, reverting during a run may not.
 pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
     let mut paths = snapshot.observation_paths.clone();
+    // Compiler declarations may add an alternate spelling (src/../file) of a
+    // file already observed. Stamp the resolved file once; actual aliases
+    // remain separately stamped below and bound in the snapshot.
+    let roots: Vec<&Path> = snapshot.roots.iter().map(PathBuf::as_path).collect();
+    paths.extend(crate::parallel::in_order(&roots, |&path| {
+        path.canonicalize().unwrap_or_else(|_| path.to_owned())
+    }));
     // Package roots share most ancestors (the registry source directory, the
-    // home directory): each ancestor is examined once.
+    // home directory): each ancestor is examined once. The resolutions and
+    // link checks are independent, so they overlap; the stamped set is the
+    // same as examining them one by one.
     let mut examined = HashSet::new();
-    for path in &snapshot.roots {
-        // Compiler declarations may add an alternate spelling (src/../file)
-        // of a file already observed. Stamp the resolved file once; actual
-        // aliases remain separately stamped below and bound in the snapshot.
-        paths.insert(path.canonicalize().unwrap_or_else(|_| path.clone()));
-        for alias in path.ancestors() {
-            if examined.insert(alias)
-                && std::fs::symlink_metadata(alias).is_ok_and(|m| m.file_type().is_symlink())
-            {
-                paths.insert(alias.to_owned());
-            }
-        }
-    }
+    let ancestors: Vec<&Path> = roots
+        .iter()
+        .flat_map(|path| path.ancestors())
+        .filter(|alias| examined.insert(*alias))
+        .collect();
+    let links = crate::parallel::in_order(&ancestors, |&alias| {
+        std::fs::symlink_metadata(alias).is_ok_and(|m| m.file_type().is_symlink())
+    });
+    paths.extend(
+        ancestors
+            .iter()
+            .zip(links)
+            .filter(|(_, link)| *link)
+            .map(|(alias, _)| (*alias).to_owned()),
+    );
     stamp_paths(&paths)
 }
 
@@ -1384,6 +1395,41 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    #[test]
+    fn mutation_stamps_cover_resolved_roots_and_linked_ancestors() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-stamp-roots-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("real/src"))?;
+        std::fs::write(root.join("real/src/lib.rs"), "x")?;
+        std::os::unix::fs::symlink(root.join("real"), root.join("link"))?;
+        let root = root.canonicalize()?;
+        let snapshot = |roots: Vec<std::path::PathBuf>| super::InputSnapshot {
+            workspace: root.clone(),
+            revision: String::new(),
+            roots,
+            excluded: Vec::new(),
+            complete: true,
+            observation_paths: std::collections::BTreeSet::new(),
+            digests: std::collections::BTreeMap::new(),
+            bindings: std::collections::BTreeMap::new(),
+            capture: None,
+        };
+        let linked = snapshot(vec![root.join("link/src/../src/lib.rs")]);
+        let explicit = super::InputSnapshot {
+            observation_paths: [root.join("real/src/lib.rs"), root.join("link")]
+                .into_iter()
+                .collect(),
+            ..snapshot(Vec::new())
+        };
+        assert!(super::mutation_stamp(&linked).is_some());
+        assert_eq!(
+            super::mutation_stamp(&linked),
+            super::mutation_stamp(&explicit)
+        );
+        std::fs::remove_dir_all(root)
+    }
+
     #[test]
     fn only_managed_metadata_ignores_the_callers_target_override() {
         let workspace = std::path::Path::new("workspace");
