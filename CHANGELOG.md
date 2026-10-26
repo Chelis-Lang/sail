@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep fresh per-target input revisions independent: a target whose revision
+  cannot be read again now marks only its own receipt changed, instead of every
+  receipt package in the run.
+- Make native temporal jobs an optional `temporal` build feature (default on).
+  `cargo build -p sail-cli --no-default-features` builds a complete
+  `sail verify` that compiles no D.I.V.E. code. A malformed or unreadable
+  `sail-runtime-worker.json` now only makes temporal jobs unavailable instead
+  of preventing `sail serve` from starting.
 - Report a stored managed result as Unknown, not Current, in job status, MCP
   and repair acceptance once the Sail, Verus, Cargo or rustc installation it was
   recorded against has changed.

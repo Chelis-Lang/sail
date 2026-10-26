@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     io::Read as _,
     path::{Path, PathBuf},
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 /// Trusted installation choice; callers cannot supply it in a wire request.
@@ -122,10 +122,43 @@ pub fn platform() -> String {
     format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
 }
 
-pub(crate) fn capability(worker: Option<&Worker>) -> Capability {
-    let authenticated = worker
-        .ok_or_else(|| execution("unavailable", "native temporal worker is not installed"))
-        .and_then(Worker::authenticate);
+/// Resolve the sibling worker for a service that must start regardless.
+///
+/// Any manifest problem leaves temporal jobs unavailable with the reason; it
+/// never prevents the service, and SMT execution, from starting.
+#[must_use]
+pub fn locate(sail: &Path) -> (Option<Worker>, Option<sail_api::runtime::Error>) {
+    match Worker::discover(sail) {
+        Ok(worker) => (worker, None),
+        Err(error) => (
+            None,
+            Some(execution(
+                "unavailable",
+                format!("native temporal worker unavailable: {}", error.message),
+            )),
+        ),
+    }
+}
+
+pub(crate) fn capability(
+    worker: Option<&Worker>,
+    problem: Option<&sail_api::runtime::Error>,
+) -> Capability {
+    let authenticated = if cfg!(feature = "temporal") {
+        match (worker, problem) {
+            (Some(worker), _) => worker.authenticate(),
+            (None, Some(problem)) => Err(problem.clone()),
+            (None, None) => Err(execution(
+                "unavailable",
+                "native temporal worker is not installed",
+            )),
+        }
+    } else {
+        Err(execution(
+            "unavailable",
+            "this sail build has no native temporal support (built without the `temporal` feature)",
+        ))
+    };
     Capability {
         implemented: true,
         installed: authenticated.is_ok(),
@@ -141,6 +174,7 @@ pub(crate) fn capability(worker: Option<&Worker>) -> Capability {
 pub(crate) fn execute(
     job: &Job,
     worker: Option<&Worker>,
+    problem: Option<&sail_api::runtime::Error>,
     cancellation: &Cancellation,
 ) -> std::result::Result<Result, sail_api::runtime::Error> {
     let started = Instant::now();
@@ -182,7 +216,7 @@ pub(crate) fn execute(
         error: None,
         cache_hit: false,
     };
-    let ready = capability(worker);
+    let ready = capability(worker, problem);
     if !ready.installed {
         result.error = ready.error;
         return Ok(result);
@@ -194,11 +228,23 @@ pub(crate) fn execute(
         ));
     };
     result.worker_sha256 = Some(worker.sha256.clone());
+    dispatch(job, worker, started, cancellation, &mut result);
+    Ok(result)
+}
+
+#[cfg(feature = "temporal")]
+fn dispatch(
+    job: &Job,
+    worker: &Worker,
+    started: Instant,
+    cancellation: &Cancellation,
+    result: &mut Result,
+) {
     match sail_dive::client::run(
         &worker.executable,
         &worker.sha256,
         &job.request,
-        Duration::from_millis(job.wall_time_ms).saturating_sub(started.elapsed()),
+        std::time::Duration::from_millis(job.wall_time_ms).saturating_sub(started.elapsed()),
         &cancellation.0,
     ) {
         sail_dive::client::RunResult::Completed(response) => {
@@ -221,7 +267,16 @@ pub(crate) fn execute(
             result.error = Some(execution("infrastructure", message));
         }
     }
-    Ok(result)
+}
+
+/// Unreachable: `capability` never reports this build installed.
+#[cfg(not(feature = "temporal"))]
+fn dispatch(_: &Job, _: &Worker, _: Instant, _: &Cancellation, result: &mut Result) {
+    result.worker_sha256 = None;
+    result.error = Some(execution(
+        "unavailable",
+        "this sail build has no native temporal support",
+    ));
 }
 
 #[cfg(test)]
@@ -249,9 +304,46 @@ mod tests {
             })?,
         )?;
         let worker = Worker::discover(&path)?.ok_or("missing worker configuration")?;
-        assert!(!capability(Some(&worker)).installed);
+        assert!(!capability(Some(&worker), None).installed);
         std::fs::write(&worker.executable, "changed")?;
-        assert!(!capability(Some(&worker)).installed);
+        assert!(!capability(Some(&worker), None).installed);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn malformed_or_unreadable_manifest_only_makes_temporal_unavailable()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-worker-manifest-bad-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let path = root.join("sail");
+        let manifest = root.join("sail-runtime-worker.json");
+        for broken in [&b"not json"[..], &[b' '; 5000][..]] {
+            std::fs::write(&manifest, broken)?;
+            let (worker, problem) = locate(&path);
+            assert!(worker.is_none());
+            let runtime = crate::Runtime::new(crate::Config {
+                temporal_worker: worker,
+                temporal_unavailable: problem,
+                ..crate::Config::default()
+            })?;
+            let temporal = runtime.capabilities().temporal.ok_or("no capability")?;
+            assert!(!temporal.installed);
+            let error = temporal.error.ok_or("no reason")?;
+            assert_eq!(error.kind, "unavailable");
+            let expected = if cfg!(feature = "temporal") {
+                "manifest"
+            } else {
+                "`temporal` feature"
+            };
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+        // A directory in place of the manifest cannot be read as a file.
+        std::fs::remove_file(&manifest)?;
+        std::fs::create_dir(&manifest)?;
+        let (worker, problem) = locate(&path);
+        assert!(worker.is_none() && problem.is_some());
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
