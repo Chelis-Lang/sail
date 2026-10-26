@@ -123,6 +123,11 @@ sail_code! {
                         && exists|start: int, end: int| crate::query::head_span(command@,start,end)
                             && out.unwrap().head_view() == command@.subrange(start,end),
                     out.is_none() ==> !final(self).active() && final(self).fed() == old(self).fed(),
+                    old(self).active() && (exists|start: int,end: int| crate::query::head_span(command@,start,end))
+                        && old(self).fed() <= offset && offset as nat + command@.len() <= old(self).view().len()
+                        && old(self).view().subrange(offset as int,offset as int + command@.len() as int) == command@
+                        && crate::query::trivia_after(old(self).view().subrange(old(self).fed() as int,offset as int),false) == Some(false)
+                        ==> out.is_some(),
                     old(self).active() && crate::query::single_list(command@,true) && crate::query::symbol_first(command@[1])
                         && old(self).fed() <= offset && offset as nat + command@.len() <= old(self).view().len()
                         && old(self).view().subrange(offset as int,offset as int + command@.len() as int) == command@
