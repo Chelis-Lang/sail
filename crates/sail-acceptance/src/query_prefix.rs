@@ -83,6 +83,14 @@ sail_code! {
                 let mut head=Vec::new(); head.extend_from_slice(self.head);
                 let mut command=Vec::new(); command.extend_from_slice(self.command);
                 let prefix=self.prefix.duplicate(); let key=self.prefix.key();
+                sail_proof! {
+                    assert(head@ =~= self.head@);
+                    assert(command@ =~= self.command@);
+                    assert(prefix.length() == self.endpoint());
+                    assert(key == Host::digest(crate::key_prefix::end(prefix.material(),self.endpoint as u64)));
+                    assert(exists|start:int,end:int| crate::query::head_span(command@,start,end)
+                        && head@ == command@.subrange(start,end));
+                }
                 FrozenCommand { head,command,offset:self.offset,endpoint:self.endpoint,prefix,key }
             }
         }

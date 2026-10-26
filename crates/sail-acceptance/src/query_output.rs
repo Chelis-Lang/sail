@@ -172,7 +172,8 @@ sail_code! {
             pub fn refuse(&mut self) -> (out: ())
                 requires (true)
                 ensures (!final(self).healthy(),final(self).view()==old(self).view(),
-                    final(self).endpoints()==old(self).endpoints(),final(self).eof()==old(self).eof())
+                    final(self).endpoints()==old(self).endpoints(),final(self).eof()==old(self).eof(),
+                    final(self).well_formed()==old(self).well_formed())
             { self.healthy=false; }
         }
         sail_method! {
@@ -180,7 +181,8 @@ sail_code! {
             pub fn end(&mut self) -> (out: ())
                 requires (true)
                 ensures (final(self).eof(),final(self).healthy()==(old(self).healthy() && !old(self).eof()),
-                    final(self).view()==old(self).view(),final(self).endpoints()==old(self).endpoints())
+                    final(self).view()==old(self).view(),final(self).endpoints()==old(self).endpoints(),
+                    final(self).well_formed()==old(self).well_formed())
             { if self.eof { self.healthy=false; } self.eof=true; }
         }
         sail_method! {
