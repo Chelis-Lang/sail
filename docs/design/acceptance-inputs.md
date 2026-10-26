@@ -269,6 +269,14 @@ uncovered rather than acquiring coverage from a later empty stream. Establishing
 a replacement complete source inventory after such a refusal remains a separate
 recovery policy; this slice does not invent one.
 
+The standalone [undeclared build-script input fixture](../../corpus/repros/undeclared-build-input/README.md)
+records an ordinary Cargo control in which an undeclared external read generates
+an included Rust constant. Cargo keeps the previous constant until an explicit
+declaration or a clean build makes the generator run again. Its Sail sequence is
+an unqualified qualification plan, not observed proof-reuse acceptance. The
+fixture specifies the opaque generator I/O boundary that declaration journals
+alone cannot close.
+
 These are **declaration-provider** proofs. The following boundaries remain:
 
 - The native JSON/make parsers, package attribution, path encoding and conversion
