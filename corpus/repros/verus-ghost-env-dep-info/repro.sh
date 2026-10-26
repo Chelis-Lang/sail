@@ -7,8 +7,9 @@ set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 cargo_verus=${1:?CARGO_VERUS}
 work=${2:-$(mktemp -d)}
+mkdir -p "$work"
 rm -rf "$work/ghost_env" "$work/target" "$work/fresh"
-(cd "$work" && "$cargo_verus" verus new --lib ghost_env >/dev/null) || exit 1
+(cd "$work" && "$cargo_verus" verus new --lib ghost_env >/dev/null 2>&1) || exit 1
 cp "$here/lib.rs" "$work/ghost_env/src/lib.rs"
 cd "$work/ghost_env" || exit 1
 

@@ -34,6 +34,10 @@ proof fn ordinary_flag_is_present() {
    `Finished` and exits 0: Cargo finds the crate fresh.
 3. With the variable removed, a new target fails the assertion (exit 101).
 
+Observed with the pinned stock release on native x86-64 Linux (the
+reproduction's README has the output); the final dep-info declares only
+`VERUSDOC`.
+
 Issue #386 records the same split from the fork's compiler-input report: the
 verification phase tracks `ORDINARY_PROOF_FLAG=7`, the compilation phase only
 `VERUSDOC`.
