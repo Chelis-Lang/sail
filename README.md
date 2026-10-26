@@ -311,25 +311,46 @@ See [workspace verification](docs/workspace-verification.md#evidence-from-comple
 - **Cargo library and binary targets only.** `sail verify`, `watch` and MCP
   run `cargo verus`. Projects verified with `verus file.rs` directly are not
   supported.
-  Tests, benches, examples, `--target-dir`, Verus's `--log` options, Cargo
-  `--config` overrides and `LD_LIBRARY_PATH` or another loader variable
-  work, verified as `cargo verus verify` does, but get no proof reuse ([details](docs/workspace-verification.md#setups-verified-without-proof-reuse)).
+- **Some setups get no proof reuse.** They are verified exactly as
+  `cargo verus verify` verifies them, with the solver cache, but no proof
+  receipts are recorded or reused (`SAIL3112`, shown with `SAIL_EXPLAIN=1`
+  and in `--output json`):
+  - a Cargo other than the pinned 1.99.1, for example one chosen by the
+    project's `rust-toolchain.toml`, `RUSTUP_TOOLCHAIN` or `CARGO`
+    (`SAIL3139`);
+  - tests, benches and examples, `--target-dir`, Verus's `--log` options,
+    `--no-verify`, Cargo `-v`/`--message-format` and `--config` overrides;
+  - `LD_LIBRARY_PATH` or another loader variable.
+
+  See [details](docs/workspace-verification.md#setups-verified-without-proof-reuse).
 - **Speed is bounded by the solver's share of the work.** Sail caches solver
-  answers; Rust compilation and Verus's own frontend still run every time.
-  Small projects can cost more per run than plain Verus, for Sail's input
-  checks, receipts and complete reports. Current measurements, where Sail
-  is faster and where it is not, and how to reproduce each number are in
-  [performance](docs/performance.md).
+  answers; on an edit, Rust compilation and Verus's own frontend still run.
+  An unchanged call replays its recorded result in milliseconds when nothing
+  it read has changed; otherwise Sail's input checks, receipts and complete
+  reports make small edits and unchanged calls slower than plain Verus.
+  Current measurements, where Sail is faster and where it is not, and how to
+  reproduce each number are in [performance](docs/performance.md).
+- **Instant revert applies to qualified dependency profiles only.** With
+  `SAIL_EXPLAIN=1`, `SAIL3146` says why it did not apply; see
+  [instant revert](docs/instant-revert.md).
 - **macOS.** Receipt reuse works on Linux and macOS. On macOS a Cargo
   configuration file created and deleted again during a single run is not
   detected; see [freshness](docs/freshness.md#what-these-checks-do-not-catch).
 - **The shipped vstd proof applies to one exact setup:** the vstd version
   `sail new` writes, its default dependency resolution, the pinned Cargo and
-  toolchain with `rust-src`, and no extra Verus arguments. Anything else, for
-  example `-- --rlimit 100` or a project-chosen toolchain, verifies vstd in that
-  project (about 15 s more on Linux), with the same results.
-- **Fragility, the portfolio and team caching are experimental** (see
-  [Experimental commands](#experimental-commands)).
+  toolchain with `rust-src`, and no extra Verus arguments beyond a supported
+  `--rlimit`. Anything else, for example another forwarded Verus flag or a
+  project-chosen toolchain, verifies vstd in that project (about 15 s more on
+  Linux), with the same results.
+- **Open verdict differences.** In rare cases a proof that reads environment
+  variables (`option_env!`) or a procedural macro that reads its process
+  arguments can get a different verdict from plain Cargo-Verus
+  ([#385](https://github.com/Chelis-Lang/sail/issues/385),
+  [#386](https://github.com/Chelis-Lang/sail/issues/386),
+  [#393](https://github.com/Chelis-Lang/sail/issues/393)).
+- **Fragility, the portfolio, team caching and the integration APIs are
+  experimental** (see [Experimental commands](#experimental-commands) and
+  [Integration APIs](#integration-apis-experimental)).
 
 See [known issues](docs/known-issues.md) for the full list.
 
