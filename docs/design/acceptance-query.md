@@ -293,6 +293,35 @@ retain separate open contracts. The [source trace on #372](https://github.com/Ch
 records these actual paths without claiming a false-proof reproduction or
 changing production's admitted cache policy.
 
+The native candidate preserves `DeliveredInput` during
+`Pairer::finish_observed` beside the existing silence entry, rather than keeping
+only its key. The ordinary pairer test wrapper delegates to the same operation;
+existing assertions remain unchanged. After actual stdout EOF/coverage sealing,
+the existing wait, stderr, input, pairing and forwarding observations feed the
+same closure gate. `DeliveredInput::observe_publication` forwards those owned
+values to the shared constructor and wraps its result in private-field
+`ObservedPublication`. It supplies no additional truth or physical-origin
+assertion.
+
+`Storing::close` sends that owned optional observation through a dedicated
+completion channel. The storer drains its original entry channel, receives the
+observation, then calls the checked typed release before the unchanged PUT
+conversion. Missing completion or any disconnected channel withholds stores;
+there is no Boolean publication flag for that consumer to trust. Neither
+channel reception nor the token authorizes arbitrary daemon PUT or disk
+recovery. The shared generic batch still needs its exact entry/frame/key
+association join before a solver-origin theorem applies.
+
+Forwarding, replay comparison, direct pinned-solver fallback, gate fields,
+buffer bounds, effort annotation and daemon/store policies stay on their
+existing paths. Original typed stream/gate/batch controllers and their required
+controls remain in scope. New source tests exercise actual SHA-backed input
+accounting, complete output, every missing closure condition, exact pair/batch
+preservation and one-time terminal transfer; their pipe/closure observations
+are scripted, not a trusted solver or native I/O qualification. The shared and
+native additions, normal controls, macOS/Linux gates, unchanged conformance and
+validation-cost measurement are unrun/unqualified.
+
 The component uses `ModelContext`, `Mode` and `SolverId` from the captured
 [shared context](../../proofs/acceptance/context.rs). A current session retains
 the exact request, scope, runtime, solver, mode and effective input map throughout

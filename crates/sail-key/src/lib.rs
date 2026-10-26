@@ -374,4 +374,34 @@ impl DeliveredInput {
     pub fn key(&self) -> QueryKey {
         QueryKey(self.delivered.key())
     }
+
+    /// Retains this actual frozen delivery and complete stdout through the
+    /// supplied closure gate. This is not truthful cache-origin authority.
+    #[must_use]
+    pub fn observe_publication(
+        self,
+        output: Option<sail_acceptance::query_output::CompleteOutput>,
+        gate: sail_acceptance::query::PublicationGate,
+    ) -> Option<ObservedPublication> {
+        sail_acceptance::query_publication::observe_publication(Some(self.delivered), output, gate)
+            .map(|observation| ObservedPublication { observation })
+    }
+}
+
+/// Owned joint input/output/closure observations for the local publication
+/// transition. Arbitrary writers, restart and physical origin remain separate.
+pub struct ObservedPublication {
+    observation: sail_acceptance::query_publication::PublicationObservation<Sha256Host>,
+}
+
+impl ObservedPublication {
+    /// Releases the exact original pending batch while consuming its retained
+    /// stream observations. This does not prove each entry's solver origin.
+    #[must_use]
+    pub fn release<T>(
+        self,
+        pending: sail_acceptance::query::PublicationBatch<T>,
+    ) -> Option<Vec<T>> {
+        sail_acceptance::query_publication::release_observed(pending, Some(self.observation))
+    }
 }
