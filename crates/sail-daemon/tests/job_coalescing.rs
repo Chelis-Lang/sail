@@ -98,7 +98,7 @@ fn await_coalescing(
     }
 }
 /// The record a Current run leaves: the digest of each input it depends on.
-fn record(context: &Path, project: &Path) -> String {
+fn record(context: &Path, project: &Path, version: u32) -> String {
     let files: Vec<(PathBuf, Option<String>)> = ["Cargo.toml", "source.rs"]
         .iter()
         .map(|name| {
@@ -114,7 +114,7 @@ fn record(context: &Path, project: &Path) -> String {
     let revision = "fixture-revision".to_owned();
     write(
         &context.join("read-check.json"),
-        &serde_json::json!({"version":2,"revision":revision,"files":files,"bindings":{}}),
+        &serde_json::json!({"version":version,"revision":revision,"files":files,"bindings":{}}),
     );
     revision
 }
@@ -151,7 +151,18 @@ fn remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edit
     );
     cancel(&client, &cold.id);
     cancel(&client, &duplicate.id);
-    let revision = record(&context, &project);
+    // Older observations cannot establish coverage under the current policy.
+    record(&context, &project, 2);
+    let legacy = submit(&client, &root, &environment);
+    ready(&client, &root, &legacy.id);
+    let legacy_duplicate = submit(&client, &root, &environment);
+    assert_ne!(
+        legacy.id, legacy_duplicate.id,
+        "legacy inputs never coalesce"
+    );
+    cancel(&client, &legacy.id);
+    cancel(&client, &legacy_duplicate.id);
+    let revision = record(&context, &project, 3);
     let warm = submit(&client, &root, &environment);
     ready(&client, &root, &warm.id);
     await_coalescing(&client, &root, &environment, &warm.id);
@@ -161,7 +172,7 @@ fn remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edit
     let lost = submit(&client, &root, &environment);
     assert_ne!(warm.id, lost.id);
     cancel(&client, &lost.id);
-    assert_eq!(record(&context, &project), revision);
+    assert_eq!(record(&context, &project, 3), revision);
     await_coalescing(&client, &root, &environment, &warm.id);
     // A newly created configuration file is an input change.
     assert!(std::fs::create_dir_all(project.join(".cargo")).is_ok());

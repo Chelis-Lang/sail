@@ -1,9 +1,10 @@
 # Acceptance boundary refinement qualification
 
-Status: combined captured-source stock checks pass on macOS and Linux at
-`e7f13656`. Native end-to-end qualification fails; publication of the
-executable changes remains pending. Draft
-[PR #378](https://github.com/Chelis-Lang/sail/pull/378) is stacked on #362.
+Status: the expanded captured-source stock matrix passes all 64 cases on
+macOS at `48f0e1d2`. The combined macOS host gate finds two outdated test
+fixtures; their corrected focused tests pass. The final combined macOS/Linux
+gates and publication of executable changes remain pending. Draft
+[PR #378](https://github.com/Chelis-Lang/sail/pull/378) targets main after #362 merged.
 No service-wide theorem, complete compiler closure or authenticated physical
 observation is claimed. The [obligation ledger](../design/acceptance-boundary-refinements.md)
 tracks the six remaining deliverables separately.
@@ -43,11 +44,11 @@ with declared environment-read accounting.
 | Gate | Current evidence | Remaining |
 |---|---|---|
 | Initial documentation draft | Native Linux full workspace gate at `d4bb18a3`; 1,098 tests and all workspace checks pass. Implementation bytes equal parent `c6270f75`, whose pre-push proof, solver, full e2e and PR conformance gates pass | Does not qualify the later executable changes |
-| Combined production proofs | All 42 canonical cases pass on macOS and native Linux at `e7f13656`: three positive roots (172/0, 69/0, 199/0) and 39 ordinary failing controls; every prior function remains inventoried | Final expanded source requires fresh checking |
+| Combined production proofs | All 42 canonical cases pass on macOS and native Linux at `e7f13656`. The expanded `48f0e1d2` matrix passes all 64 cases on macOS: three positive roots (216/0, 91/0, 244/0) and 61 ordinary failing controls; every prior function remains inventoried | Final expanded source requires fresh combined macOS/Linux checking |
 | Combined workspace/solver/e2e | `e7f13656`: macOS strict clippy and 1,107/1,107 tests pass; native Linux workspace (1,118 tests), all 29 model cases, 42 production cases and 44 solver tests pass | Neutral-contract end-to-end phase fails; remaining end-to-end phases and PR conformance are unrun |
 | Differential conformance | Corpus, comparator and deadlines unchanged | PR tier before publication; full fast and standard before merge |
 | Cost | Additional byte/header scans, request validation and provider accounting are implemented; no measured delta or gain claimed | Bounded native cost measurement before selection; retain every sample |
-| Hosted checks | Normal workflow selects main/release PR bases | Explicit hosted run for the stacked implementation, or retarget after #362 merges; final-head required checks before any merge |
+| Hosted checks | The draft targets main; its published head is the initial documentation checkpoint | Publish qualified executable changes and require final-head checks before any merge |
 
 ## Failed and interrupted attempts
 
@@ -59,6 +60,7 @@ with declared environment-read accounting.
 | 2026-10-26 | Combined source before `e3b37022` | macOS workspace tests | 1,104/1,105 pass; stable error registry rejects unlisted SAIL3115. Registered in the integration; no test weakened |
 | 2026-10-26 | `2d3492d0` | Full captured query proof root | 171 verified/1 ordinary loop-invariant error in the strengthened input read ledger. Explicit prefix induction in `3d78be9e` makes all three full positive roots pass; runtime checks, contract, invariant and resource settings unchanged |
 | 2026-10-26 | `e7f13656` | Native Linux full end-to-end | Stops at neutral-contract proof/source identity assertion because authenticated output-completion markers poisoned input accounting. Fix `946c625e`, integrated as `1551dff2`, passes the unchanged actual pinned-fork witness on macOS and native Linux. Full draft integration remains pending. No assertion or coverage check weakened |
+| 2026-10-26 | `48f0e1d2` | macOS combined host and source-checker self-tests | Strict clippy passes; host tests pass 1,120/1,122. Coalescing fixture still writes legacy version 2; target collision fixture builds outside the directory scanned by Sail. Corrected fixtures retain all assertions and add legacy-record refusal; all four focused cases pass. The source-checker mutation fixture also needs the actual optional-where syntax; its refusal assertion remains required |
 
 Legacy updater-body SHA-256:
 `94d497cbcd16f4f6f0b94b6d4166d07f3d26abf54b9b05abc9c78eb433a65ef4`.

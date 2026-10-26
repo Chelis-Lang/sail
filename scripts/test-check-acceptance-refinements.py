@@ -164,7 +164,10 @@ class SourceCaptureTests(unittest.TestCase):
     def test_syntax_runtime_branch_cannot_differ_from_reviewed_erasure(self):
         original = (ROOT / CHECKER.SYNTAX).read_bytes()
         CHECKER.compiled_subset(CHECKER.SYNTAX, original)
-        changed = original.replace(b"-> $return_type $body", b"-> $return_type { true }")
+        changed = original.replace(
+            b"-> $return_type $(where $($bounds)*)? $body",
+            b"-> $return_type $(where $($bounds)*)? { true }",
+        )
         self.assertNotEqual(changed, original)
         with self.assertRaises(CHECKER.Refusal):
             CHECKER.compiled_subset(CHECKER.SYNTAX, changed)
