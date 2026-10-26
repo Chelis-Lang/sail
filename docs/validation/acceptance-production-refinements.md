@@ -10,6 +10,26 @@ the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
+## Owned query publication candidate
+
+Whole positive discovery at `f8d61408` passes all three complete stock roots
+with final source and runtime rechecks on native x86-64 EC2 `c7i.4xlarge` in
+`us-east-1`. Query checks 431 obligations and 759 function entries, inputs
+308 and 538, authority 498 and 878; every earlier function remains present.
+Root durations are 28.168 s, 31.548 s and 21.467 s respectively. Counts overlap
+across roots and do not represent a service theorem or product performance.
+The positive-only report SHA-256 is
+`30822d09dcc90b76c315fd3ec8fa392af478b7b20def6d9e56e7d5e60cc36876`.
+
+The capture retains 115 query, 115 input and 107 authority ordinary-Verus
+controls. Query control qualification, native workspace/solver checks and
+independent artifact review remain pending. Source-control selftests pass
+43/43 at `0247a13e`, retaining all 41 original tests plus two new tests; the
+final combined gate must rerun them. Development refusals below remain visible.
+Native Rust mutation results are separate from ordinary-Verus negative credit.
+Parser semantics, physical origin, protected writers/recovery and full service
+composition remain open. This candidate precedes the lead's main reconciliation.
+
 ## Checked source and runtime
 
 The frozen checkpoint is `3b1cb3623ef17a2c4a99bc8bd3e12e88f1ef63fb`.
