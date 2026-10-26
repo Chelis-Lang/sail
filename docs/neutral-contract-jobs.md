@@ -1,7 +1,7 @@
 # Verify neutral Rust source through Sail
 
 A client submits a complete supported Rust source snapshot to Sail's existing
-private job service. Sail admits the source, creates its own Verus shadow and
+local job service. Sail admits the source, creates its own Verus shadow and
 executes its pinned verifier. The client provides source bytes, their SHA-256
 and a Rust crate name. Executable paths, Cargo arguments, environment settings
 and generated proof code are not submission fields.
