@@ -225,6 +225,17 @@ to Cargo's generated values, not the parent process values. A private Cargo
 unit graph supplies exact unit features. Native compiler cfg queries supply
 target values. Each unit's profile supplies its debug-assertion setting.
 
+A Current run keeps its unit graph and cfg queries for the next run of the
+same proof context. The next run restores them instead of asking Cargo again
+when their key is unchanged. The key binds the proof context (arguments,
+environment, tool identities, Cargo configuration and named target
+specifications), the complete Cargo metadata, the bytes of every manifest and
+the lockfile, the invoking directory and the owned target directory. Source
+edits keep the key. Every restored unit must name a target the current
+metadata lists exactly. A configuration that may include another file, a
+custom target specification, or a key that changed during the run keeps
+nothing.
+
 This model uses Cargo source `5f94df4789f005f9a352888e8355ffc645b7ed0e`.
 Unknown Cargo versions, missing observations, and conflicting unit values
 refuse reuse. A declared name with an inherited parent value also refuses

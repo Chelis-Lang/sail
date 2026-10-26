@@ -916,12 +916,20 @@ fn invocation_command(config: &Config, paths: &Paths, show_output: bool) -> Resu
     Ok(cmd)
 }
 
+/// The execution-unit authority, its unit plan, and the key under which this
+/// run's fresh query may be retained once the run is Current. A query retained
+/// under the same key ([`super::build_environment::cache_key`]) is restored
+/// instead of running Cargo again; it is then loaded and checked exactly as a
+/// fresh query.
+type UnitEnvironment = (Value, Option<super::build_unit_plan::Plan>, Option<String>);
+
 fn build_environment(
     config: &Config,
     paths: &Paths,
     data: &Value,
     expected: &BTreeSet<(String, String, String)>,
-) -> Option<(Value, Option<super::build_unit_plan::Plan>)> {
+    context: &str,
+) -> Option<UnitEnvironment> {
     if !data["packages"].as_array()?.iter().any(|package| {
         package["targets"].as_array().is_some_and(|targets| {
             targets.iter().any(|target| {
@@ -935,6 +943,19 @@ fn build_environment(
     }
     let directory = paths.run.join("build-environment");
     std::fs::create_dir(&directory).ok()?;
+    let key = build_environment_key(config, paths, data, context);
+    if let (Some(key), Some(context)) = (&key, paths.input_state.parent())
+        && super::build_environment::restore(context, key, &directory, data)
+    {
+        if let Some(environment) = super::build_environment::load(&directory, data) {
+            event(&serde_json::json!({"kind":"build-environment", "retained":true}));
+            let plan = super::build_unit_plan::Plan::load(&directory, data, expected);
+            return Some((environment, plan, None));
+        }
+        // A restored query that does not load is discarded; Cargo runs it.
+        let _ = std::fs::remove_dir_all(&directory);
+        std::fs::create_dir(&directory).ok()?;
+    }
     let output = invocation_command(config, paths, false)
         .ok()?
         .env(super::build_environment::REQUEST, &directory)
@@ -945,7 +966,26 @@ fn build_environment(
     output.status.success().then_some(())?;
     let environment = super::build_environment::load(&directory, data)?;
     let plan = super::build_unit_plan::Plan::load(&directory, data, expected);
-    Some((environment, plan))
+    Some((environment, plan, key))
+}
+
+fn build_environment_key(
+    config: &Config,
+    paths: &Paths,
+    data: &Value,
+    context: &str,
+) -> Option<String> {
+    let invocation = std::path::absolute(&config.workspace).ok()?;
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    super::build_environment::cache_key(
+        context,
+        data,
+        &invocation,
+        &paths.target,
+        &super::input::configuration_paths(&invocation, home.as_deref()),
+    )
 }
 
 fn selected_scripts(data: &Value, expected: &BTreeSet<(String, String, String)>) -> bool {
@@ -2780,6 +2820,7 @@ fn run_recorded(
     }
     let started = Instant::now();
     let started_wall = SystemTime::now();
+    let _path_snapshots = super::input::PathSnapshotScope::enter();
     let diagnostics = Diagnostics::new();
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
@@ -2811,6 +2852,11 @@ fn run_recorded(
             })
             .ok()
     };
+    // Stamped before Cargo reads the metadata, from the previous run's
+    // selection: when this run's metadata selects the same inputs and they
+    // keep this stamp after the run, the after-run metadata is this one.
+    let metadata_guard = read::<super::input::SnapshotHint>(&hint_path)
+        .and_then(|hint| super::input::MetadataGuard::begin(&hint.projection));
     // Cargo metadata and the runtime context are independent: neither reads
     // the other's result. They overlap, and their results are consumed in the
     // original order, so the first reported error is unchanged.
@@ -2921,7 +2967,7 @@ fn run_recorded(
                 .name("sail-build-environment".to_owned())
                 .spawn_scoped(scope, || {
                     if query_paths.reuse {
-                        build_environment(config, &query_paths, &data, &expected)
+                        build_environment(config, &query_paths, &data, &expected, &hash)
                     } else {
                         None
                     }
@@ -2986,7 +3032,7 @@ fn run_recorded(
             let unit_environment = match query {
                 Some(query) => query.join().ok().flatten(),
                 None if query_paths.reuse => {
-                    build_environment(config, &query_paths, &data, &expected)
+                    build_environment(config, &query_paths, &data, &expected, &hash)
                 }
                 None => None,
             };
@@ -2998,7 +3044,8 @@ fn run_recorded(
                 shipped_plan,
             )
         });
-    let (environment, unit_plan) = unit_environment.unwrap_or((Value::Null, None));
+    let (environment, unit_plan, environment_key) =
+        unit_environment.unwrap_or((Value::Null, None, None));
     if paths.reuse
         && selected_scripts(&data, &expected)
         && let Some(version) =
@@ -3478,7 +3525,14 @@ fn run_recorded(
     // a retry discards the observation and rereads all inputs after its own
     // invocation. No snapshot or receipt is committed as Current until then.
     let (records, after_thread) = std::thread::scope(|threads| {
-        let after = threads.spawn(|| after_inputs(None, Some(observation)));
+        let after = threads.spawn(|| {
+            // Cargo would read exactly the inputs it read before the run.
+            let unchanged = metadata_guard
+                .as_ref()
+                .filter(|guard| guard.unchanged_for(&data))
+                .map(|_| Ok(data.clone()));
+            after_inputs(unchanged, Some(observation))
+        });
         let records = target_records_in(
             &paths,
             &data,
@@ -3777,6 +3831,20 @@ fn run_recorded(
             json(&path, &receipt)?;
         }
         super::receipts::publish(&paths.run, &paths.receipts, &result.context_sha256)?;
+        // The fresh unit query is retained only when this run is Current and
+        // its key, read again from the metadata and manifests after the run,
+        // is the one the query ran under: nothing it depends on moved.
+        if let (Some(key), Some(context)) = (&environment_key, paths.input_state.parent())
+            && build_environment_key(config, &paths, &after_data, &result.context_sha256).as_ref()
+                == Some(key)
+        {
+            super::build_environment::retain(
+                context,
+                key,
+                &paths.run.join("build-environment"),
+                &after_data,
+            );
+        }
         // Dependencies reused through the store become this context's own
         // receipts, with every ordinary receipt check on later runs.
         for target in result.targets.iter().filter(|t| t.reused) {
