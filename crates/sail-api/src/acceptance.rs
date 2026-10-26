@@ -17,14 +17,14 @@ use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verifi
 
 /// Builds untrusted order candidates and invokes the checked authority factory.
 pub use crate::acceptance_sort::{
-    complete_report, complete_selection, complete_target, complete_whole_report,
+    complete_report, complete_request, complete_selection, complete_target, complete_whole_report,
 };
 
 use crate::output::{
     CrateReport, EngineEstablishment, EstablishmentName, FunctionReport, Report, SourceSummaryName,
     VerdictName,
 };
-use crate::project::{Currentness, ProjectResult, TargetResult};
+use crate::project::{Currentness, EngineIdentity, ProjectResult, ResolvedRequest, TargetResult};
 
 #[cfg(sail_verus)]
 use vstd::prelude::*;
@@ -51,6 +51,31 @@ sail_code! {
     /// This does not invent an independently resolved request after storage.
     pub struct CompleteSelection<'a> {
         project: &'a ProjectResult,
+    }
+
+    /// Current whole-request authority bound to independently retained scope.
+    pub struct CompleteRequest<'a> {
+        request: &'a ResolvedRequest,
+        project: &'a ProjectResult,
+    }
+
+    impl CompleteRequest<'_> {
+        sail_method! {
+            /// Original independently retained request checked by the factory.
+            #[must_use]
+            pub fn request(&self) -> (out: &ResolvedRequest)
+                requires(true)
+                ensures(out == request_authority_request(self))
+            { self.request }
+        }
+        sail_method! {
+            /// Actual project whose complete requested scope was checked.
+            #[must_use]
+            pub fn project(&self) -> (out: &ProjectResult)
+                requires(true)
+                ensures(out == request_authority_project(self))
+            { self.project }
+        }
     }
 
     impl CompleteSelection<'_> {
@@ -88,6 +113,53 @@ sail_code! {
 sail_spec! {
     broadcast use {vstd::seq_lib::group_seq_properties, vstd::seq::Seq::lemma_push_map_commute};
     pub open spec fn string_bytes(s: &String) -> Seq<u8> { vstd::utf8::encode_utf8(s@) }
+
+    pub closed spec fn request_authority_request<'a>(a: &CompleteRequest<'a>) -> &'a ResolvedRequest { a.request }
+    pub closed spec fn request_authority_project<'a>(a: &CompleteRequest<'a>) -> &'a ProjectResult { a.project }
+
+    pub open spec fn engine_identity_matches(a: &Option<EngineIdentity>, b: &Option<EngineIdentity>) -> bool {
+        match (a, b) {
+            (None, None) => true,
+            (Some(x), Some(y)) => string_bytes(&x.name) == string_bytes(&y.name)
+                && string_bytes(&x.manifest_sha256) == string_bytes(&y.manifest_sha256),
+            _ => false,
+        }
+    }
+
+    pub open spec fn request_header_matches(r: &ResolvedRequest, p: &ProjectResult) -> bool {
+        string_bytes(&p.kind) == b"sail-project-result"@
+            && p.schema_version == crate::project::SCHEMA_VERSION
+            && string_bytes(&r.run_id).len() > 0
+            && string_bytes(&r.context_sha256).len() > 0
+            && string_bytes(&r.input_revision).len() > 0
+            && string_bytes(&r.run_id) == string_bytes(&p.run_id)
+            && string_bytes(&r.workspace) == string_bytes(&p.workspace)
+            && string_bytes(&r.context_sha256) == string_bytes(&p.context_sha256)
+            && string_bytes(&r.input_revision) == string_bytes(&p.input_revision)
+            && engine_identity_matches(&r.engine, &p.engine)
+    }
+
+    pub open spec fn resolved_expected(r: &ResolvedRequest, es: Seq<RequestedTarget>) -> bool {
+        es.len() == r.targets@.len() && forall |i: int| 0 <= i < es.len() ==>
+            es[i].package@ == string_bytes(&r.targets@[i].package_id)
+                && es[i].name@ == string_bytes(&r.targets@[i].target)
+                && es[i].kind@ == string_bytes(&r.targets@[i].kind)
+    }
+
+    pub open spec fn resolved_coverage(r: &ResolvedRequest, p: &ProjectResult) -> bool {
+        exists |es: Seq<RequestedTarget>| resolved_expected(r, es)
+            && exact_requested_coverage(es, p.targets@)
+    }
+
+    pub open spec fn request_authorized(r: &ResolvedRequest, p: &ProjectResult) -> bool {
+        request_header_matches(r, p) && resolved_coverage(r, p)
+            && !partial_command(r.args@) && !verification_disabled(r.args@)
+            && p.currentness is Current && p.exit_code == Some(0i32) && p.error.is_none()
+            && (forall |i: int| 0 <= i < p.targets@.len() && p.targets@[i].requested ==>
+                p.targets@[i].complete && p.targets@[i].scope_reuse.is_none()
+                    && !partial_command(p.targets@[i].report.command@)
+                    && successful_report(&p.targets@[i].report, CompletionPolicy::Whole))
+    }
 
     pub open spec fn focused_argument(bytes: Seq<u8>) -> bool {
         sail_acceptance::authority::flag_matches(bytes, b"--verify-module"@)
@@ -368,6 +440,93 @@ sail_verified! {
                 b.kind@.map_values(|s: String| string_bytes(&s)));
         }
         true
+    }
+}
+
+sail_verified! {
+    /// Compares actual selected engine identities without a caller validity flag.
+    pub fn same_engine(a: &Option<EngineIdentity>, b: &Option<EngineIdentity>) -> (out: bool)
+        requires(true)
+        ensures(out == engine_identity_matches(a, b))
+    {
+        match (a, b) {
+            (None, None) => true,
+            (Some(x), Some(y)) => exact_bytes(x.name.as_str().as_bytes(), y.name.as_str().as_bytes())
+                && exact_bytes(x.manifest_sha256.as_str().as_bytes(), y.manifest_sha256.as_str().as_bytes()),
+            _ => false,
+        }
+    }
+}
+
+sail_verified! {
+    /// Checks the retained pre-execution identity and independently resolved scope.
+    /// A matching failed or compile-only observation is not positive proof authority.
+    pub fn request_corresponds(request: &ResolvedRequest, project: &ProjectResult) -> (out: bool)
+        requires(true)
+        ensures(out ==> request_header_matches(request, project) && resolved_coverage(request, project))
+    {
+        if !exact_bytes(project.kind.as_str().as_bytes(), b"sail-project-result")
+            || project.schema_version != crate::project::SCHEMA_VERSION
+            || request.run_id.is_empty() || request.context_sha256.is_empty() || request.input_revision.is_empty()
+            || !exact_bytes(request.run_id.as_str().as_bytes(), project.run_id.as_str().as_bytes())
+            || !exact_bytes(request.workspace.as_str().as_bytes(), project.workspace.as_str().as_bytes())
+            || !exact_bytes(request.context_sha256.as_str().as_bytes(), project.context_sha256.as_str().as_bytes())
+            || !exact_bytes(request.input_revision.as_str().as_bytes(), project.input_revision.as_str().as_bytes())
+            || !same_engine(&request.engine, &project.engine) { return false; }
+        let mut expected: Vec<RequestedTarget> = Vec::new();
+        let mut i = 0usize;
+        sail_while! { (i < request.targets.len())
+            invariant(i <= request.targets.len(), expected.len() == i,
+                forall |j: int| 0 <= j < i ==>
+                    expected@[j].package@ == string_bytes(&request.targets@[j].package_id)
+                        && expected@[j].name@ == string_bytes(&request.targets@[j].target)
+                        && expected@[j].kind@ == string_bytes(&request.targets@[j].kind))
+            decreases(request.targets.len() - i)
+            {
+                let target = &request.targets[i];
+                expected.push(requested_target(&target.package_id, &target.target, &target.kind));
+                i += 1;
+            }
+        }
+        if !requested_coverage(&expected, &project.targets) { return false; }
+        sail_proof! {
+            assert(resolved_expected(request, expected@));
+            assert(exact_requested_coverage(expected@, project.targets@));
+            assert(resolved_coverage(request, project));
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Mints Current whole-request authority from an independent request and actual reports.
+    pub fn complete_request_ordered<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,
+        orders: &[ReportOrder]) -> (out: Option<CompleteRequest<'a>>)
+        requires(true)
+        ensures(out.is_some() ==> request_authorized(request, project),
+            out.is_some() ==> request_authority_request(&out.unwrap()) == request,
+            out.is_some() ==> request_authority_project(&out.unwrap()) == project)
+    {
+        if !request_corresponds(request, project) || focused_command(&request.args)
+            || !verification_enabled_command(&request.args)
+            || !matches!(project.currentness, Currentness::Current)
+            || project.exit_code != Some(0) || project.error.is_some()
+            || orders.len() != project.targets.len() { return None; }
+        let mut i = 0usize;
+        sail_while! { (i < project.targets.len())
+            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),
+                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>
+                    project.targets@[j].complete && project.targets@[j].scope_reuse.is_none()
+                        && !partial_command(project.targets@[j].report.command@)
+                        && successful_report(&project.targets@[j].report, CompletionPolicy::Whole))
+            decreases(project.targets.len() - i)
+            {
+                if project.targets[i].requested && complete_target_ordered(&project.targets[i],
+                    &orders[i].forward, &orders[i].inverse).is_none() { return None; }
+                i += 1;
+            }
+        }
+        Some(CompleteRequest { request, project })
     }
 }
 
