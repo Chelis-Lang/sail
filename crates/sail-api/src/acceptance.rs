@@ -17,8 +17,9 @@ use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verifi
 
 /// Builds untrusted order candidates and invokes the checked authority factory.
 pub use crate::acceptance_sort::{
-    bind_replayed_project, complete_exact_scope_report, complete_report, complete_request,
-    complete_selection, complete_submitted_request, complete_target, complete_whole_report,
+    bind_replayed_exact_partial_project, bind_replayed_project, complete_exact_partial_request,
+    complete_exact_scope_report, complete_report, complete_request, complete_selection,
+    complete_submitted_request, complete_target, complete_whole_report,
     withhold_unbound_request_authority,
 };
 
@@ -47,6 +48,26 @@ sail_code! {
     pub struct ExactScopeReport<'a> {
         report: &'a Report,
         arguments: &'a [String],
+    }
+
+    /// Exact retained partial evidence for an independently resolved request.
+    /// It supplies no whole-target or whole-request completion authority.
+    pub struct ExactPartialRequest<'a> {
+        request: &'a ResolvedRequest,
+        project: &'a ProjectResult,
+    }
+
+    impl<'a> ExactPartialRequest<'a> {
+        sail_method! {
+            /// Borrows the original independently supplied partial request.
+            pub fn request(&self) -> (out: &'a ResolvedRequest)
+                requires(true) ensures(out == exact_partial_request(self)) { self.request }
+        }
+        sail_method! {
+            /// Borrows the original project without changing scope or reports.
+            pub fn project(&self) -> (out: &'a ProjectResult)
+                requires(true) ensures(out == exact_partial_project(self)) { self.project }
+        }
     }
 
     impl<'a> ExactScopeReport<'a> {
@@ -2146,5 +2167,271 @@ sail_verified! {
             return None;
         }
         Some(ExactScopeReport { report, arguments })
+    }
+}
+
+sail_spec! {
+    pub open spec fn exact_partial_arguments(a: Seq<String>, b: Seq<String>) -> bool {
+        a.len() == b.len() && a.map_values(|s: String| string_bytes(&s))
+            == b.map_values(|s: String| string_bytes(&s))
+    }
+
+    /// This partial transfer covers plain stock invocations, not repair or
+    /// source-engine selections with their own execution/acceptance rules.
+    pub open spec fn plain_partial_request(request: &ResolvedRequest) -> bool {
+        partial_command(request.args@) && !verification_disabled(request.args@)
+            && request.engine.is_none() && request.function.is_none()
+            && string_bytes(&request.repair_package).len() == 0 && request.repair_target.is_none()
+            && string_bytes(&request.repair_kind).len() == 0
+    }
+
+    /// Retained exact-scope reuse, never a claim about complete-target reuse.
+    pub open spec fn exact_partial_target(target: &TargetResult, arguments: Seq<String>) -> bool {
+        target.requested && !target.complete && !target.reused
+            && string_bytes(&target.establishing_run).len() > 0 && target.scope_reuse.is_some()
+            && exact_partial_arguments(target.scope_reuse.unwrap()@, arguments)
+            && exact_scope_evidence(&target.report, arguments)
+    }
+
+    pub open spec fn exact_partial_request_authorized(request: &ResolvedRequest, project: &ProjectResult) -> bool {
+        request_header_matches(request, project) && resolved_coverage(request, project)
+            && plain_partial_request(request) && project.currentness is Current
+            && project.exit_code == Some(0i32) && project.error.is_none()
+            && forall |i: int| 0 <= i < project.targets@.len() && project.targets@[i].requested ==>
+                exact_partial_target(&project.targets@[i], request.args@)
+    }
+
+    pub closed spec fn exact_partial_request<'a>(scope: &ExactPartialRequest<'a>) -> &'a ResolvedRequest { scope.request }
+    pub closed spec fn exact_partial_project<'a>(scope: &ExactPartialRequest<'a>) -> &'a ProjectResult { scope.project }
+    pub open spec fn exact_partial_request_valid(scope: &ExactPartialRequest) -> bool {
+        exact_partial_request_authorized(exact_partial_request(scope), exact_partial_project(scope))
+    }
+
+    #[verifier::opaque]
+    pub open spec fn small_exact_partial_target(target: &TargetResult, arguments: Seq<String>,
+        forward: Seq<usize>, inverse: Seq<usize>) -> bool {
+        target.requested && !target.complete && !target.reused
+            && string_bytes(&target.establishing_run).len() > 0 && target.scope_reuse.is_some()
+            && exact_partial_arguments(target.scope_reuse.unwrap()@, arguments)
+            && small_exact_scope_candidate(&target.report, arguments, forward, inverse)
+    }
+
+    pub proof fn small_exact_partial_target_definition(target: &TargetResult, arguments: Seq<String>,
+        forward: Seq<usize>, inverse: Seq<usize>)
+        ensures small_exact_partial_target(target, arguments, forward, inverse)
+            == (target.requested && !target.complete && !target.reused
+                && string_bytes(&target.establishing_run).len() > 0 && target.scope_reuse.is_some()
+                && exact_partial_arguments(target.scope_reuse.unwrap()@, arguments)
+                && small_exact_scope_candidate(&target.report, arguments, forward, inverse)),
+    { reveal(small_exact_partial_target); }
+
+    #[verifier::opaque]
+    pub open spec fn small_exact_partial_request(request: &ResolvedRequest, project: &ProjectResult,
+        orders: Seq<ReportOrder>) -> bool {
+        small_request_match(request, project) && plain_partial_request(request)
+            && project.currentness is Current && project.exit_code == Some(0i32) && project.error.is_none()
+            && orders.len() == 1
+            && small_exact_partial_target(&project.targets@[0], request.args@, orders[0].forward@, orders[0].inverse@)
+    }
+
+    pub proof fn small_exact_partial_request_definition(request: &ResolvedRequest, project: &ProjectResult,
+        orders: Seq<ReportOrder>)
+        ensures small_exact_partial_request(request, project, orders)
+            == (small_request_match(request, project) && plain_partial_request(request)
+                && project.currentness is Current && project.exit_code == Some(0i32) && project.error.is_none()
+                && orders.len() == 1
+                && small_exact_partial_target(&project.targets@[0], request.args@, orders[0].forward@, orders[0].inverse@)),
+    { reveal(small_exact_partial_request); }
+
+    /// Partial request evidence cannot satisfy the existing whole-request contract.
+    pub proof fn exact_partial_request_excludes_whole(request: &ResolvedRequest, project: &ProjectResult)
+        requires exact_partial_request_authorized(request, project),
+        ensures !request_authorized(request, project), !supplied_selection_authorized(project),
+            forall |i: int| 0 <= i < project.targets@.len() && project.targets@[i].requested ==>
+                !project.targets@[i].complete && !project.targets@[i].reused && project.targets@[i].scope_reuse.is_some(),
+    {
+        if supplied_selection_authorized(project) {
+            let i = choose |i: int| 0 <= i < project.targets@.len() && project.targets@[i].requested;
+            assert(exact_partial_target(&project.targets@[i], request.args@));
+            assert(!project.targets@[i].complete);
+        }
+    }
+}
+
+sail_verified! {
+    /// Recognizes the exact plain partial request domain of this transfer.
+    pub fn plain_partial_request_matches(request: &ResolvedRequest) -> (out: bool)
+        requires(true) ensures(out == plain_partial_request(request))
+    {
+        focused_command(&request.args) && verification_enabled_command(&request.args)
+            && request.engine.is_none() && request.function.is_none()
+            && request.repair_package.is_empty() && request.repair_target.is_none() && request.repair_kind.is_empty()
+    }
+}
+
+sail_verified! {
+    /// Validates a retained requested target's exact partial-scope fields and
+    /// original report without minting complete-target authority.
+    #[allow(clippy::question_mark, reason = "Keep explicit checked refusal branches in the source shared with stock Verus.")]
+    pub fn complete_exact_partial_target_ordered<'a>(target: &'a TargetResult, arguments: &'a [String],
+        forward: &[usize], inverse: &[usize]) -> (out: Option<ExactScopeReport<'a>>)
+        requires(true)
+        ensures(out.is_some() ==> exact_partial_target(target, arguments@),
+            out.is_some() ==> exact_scope_authority_valid(&out.unwrap()),
+            out.is_some() ==> exact_scope_report(&out.unwrap()) == &target.report,
+            out.is_some() ==> exact_scope_arguments(&out.unwrap()) == arguments,
+            small_exact_partial_target(target, arguments@, forward@, inverse@) ==> out.is_some())
+    {
+        sail_proof! { reveal(small_exact_partial_target); }
+        if !target.requested || target.complete || target.reused || target.establishing_run.is_empty() {
+            return None;
+        }
+        let Some(scope) = &target.scope_reuse else { return None; };
+        if !same_replay_arguments(scope, arguments) { return None; }
+        complete_exact_scope_report_ordered(&target.report, arguments, forward, inverse)
+    }
+}
+
+sail_verified! {
+    /// Checks independent original target coverage and each retained partial
+    /// report. Original process/history admission remains a native obligation.
+    pub fn complete_exact_partial_request_ordered<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,
+        orders: &[ReportOrder]) -> (out: Option<ExactPartialRequest<'a>>)
+        requires(true)
+        ensures(out.is_some() ==> exact_partial_request_authorized(request, project),
+            out.is_some() ==> exact_partial_request_valid(&out.unwrap()),
+            out.is_some() ==> exact_partial_request(&out.unwrap()) == request,
+            out.is_some() ==> exact_partial_project(&out.unwrap()) == project,
+            small_exact_partial_request(request, project, orders@) ==> out.is_some())
+    {
+        sail_proof! { reveal(small_exact_partial_request); }
+        if !request_corresponds(request, project) || !plain_partial_request_matches(request)
+            || !matches!(project.currentness, Currentness::Current) || project.exit_code != Some(0)
+            || project.error.is_some() || orders.len() != project.targets.len() { return None; }
+        let mut i = 0usize;
+        sail_while! { (i < project.targets.len())
+            invariant(i <= project.targets.len(), orders.len() == project.targets.len(),
+                forall |j: int| 0 <= j < i && project.targets@[j].requested ==>
+                    exact_partial_target(&project.targets@[j], request.args@))
+            decreases(project.targets.len() - i)
+            {
+                sail_proof! {
+                    if small_exact_partial_request(request, project, orders@) {
+                        assert(i == 0);
+                    }
+                }
+                if project.targets[i].requested && complete_exact_partial_target_ordered(&project.targets[i],
+                    &request.args, &orders[i].forward, &orders[i].inverse).is_none() { return None; }
+                i += 1;
+            }
+        }
+        Some(ExactPartialRequest { request, project })
+    }
+}
+
+sail_spec! {
+    pub proof fn replay_preserves_plain_partial_request(current: &ResolvedRequest, original: &ResolvedRequest)
+        requires replay_request_payload(current, original), plain_partial_request(original),
+        ensures plain_partial_request(current),
+    { replay_request_preserves_modes(current, original); }
+
+    pub proof fn replay_preserves_partial_target(current: &ResolvedRequest, original: &ResolvedRequest, target: &TargetResult)
+        requires replay_request_payload(current, original), exact_partial_target(target, original.args@),
+        ensures exact_partial_target(target, current.args@),
+    { replay_request_preserves_modes(current, original); }
+
+    pub proof fn replay_preserves_partial_coverage(current: &ResolvedRequest, original: &ResolvedRequest, project: &ProjectResult)
+        requires replay_request_payload(current, original), exact_partial_request_authorized(original, project),
+        ensures plain_partial_request(current), resolved_coverage(current, project),
+            forall |i: int| 0 <= i < project.targets@.len() && project.targets@[i].requested ==>
+                exact_partial_target(&project.targets@[i], current.args@),
+    {
+        replay_preserves_plain_partial_request(current, original);
+        replay_request_preserves_coverage(current, original, project);
+        assert forall |i: int| 0 <= i < project.targets@.len() && project.targets@[i].requested implies
+            exact_partial_target(&project.targets@[i], current.args@) by {
+            replay_preserves_partial_target(current, original, &project.targets@[i]);
+        }
+    }
+
+    #[verifier::opaque]
+    pub open spec fn small_exact_partial_transfer(original: &ResolvedRequest, project: &ProjectResult,
+        current: &ResolvedRequest, orders: Seq<ReportOrder>, readback: &sail_acceptance::inputs::GuardedReadback) -> bool {
+        small_exact_partial_request(original, project, orders) && replay_request_payload(current, original)
+            && readback.unchanged_view() && readback.guard_view().is_some()
+            && readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision)
+    }
+
+    pub proof fn small_exact_partial_transfer_definition(original: &ResolvedRequest, project: &ProjectResult,
+        current: &ResolvedRequest, orders: Seq<ReportOrder>, readback: &sail_acceptance::inputs::GuardedReadback)
+        ensures small_exact_partial_transfer(original, project, current, orders, readback)
+            == (small_exact_partial_request(original, project, orders) && replay_request_payload(current, original)
+                && readback.unchanged_view() && readback.guard_view().is_some()
+                && readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision)),
+    { reveal(small_exact_partial_transfer); }
+
+    /// Concrete one-target premises used by the constructive refinement
+    /// witnesses. They expose the complete premise rather than assuming an
+    /// opaque positive-authority flag; zero or one confirmed function is valid.
+    pub open spec fn single_exact_partial_request_example(request: &ResolvedRequest, project: &ProjectResult) -> bool {
+        small_request_match(request, project) && plain_partial_request(request)
+            && project.currentness is Current && project.exit_code == Some(0i32) && project.error.is_none()
+            && project.targets@[0].requested && !project.targets@[0].complete && !project.targets@[0].reused
+            && string_bytes(&project.targets@[0].establishing_run).len() > 0 && project.targets@[0].scope_reuse.is_some()
+            && exact_partial_arguments(project.targets@[0].scope_reuse.unwrap()@, request.args@)
+            && exact_partial_arguments(request.args@, project.targets@[0].report.command@)
+            && project.targets@[0].report.engine.is_none()
+            && small_positive_report(&project.targets@[0].report, CompletionPolicy::Receipt)
+    }
+
+    pub proof fn single_exact_partial_request_reaches_factory(request: &ResolvedRequest, project: &ProjectResult,
+        orders: Seq<ReportOrder>)
+        requires single_exact_partial_request_example(request, project), orders.len() == 1,
+            orders[0].forward@.len() == 0, orders[0].inverse@.len() == 0,
+        ensures small_exact_partial_request(request, project, orders),
+    {
+        small_exact_scope_candidate_definition(&project.targets@[0].report, request.args@,
+            orders[0].forward@, orders[0].inverse@);
+        small_exact_partial_target_definition(&project.targets@[0], request.args@,
+            orders[0].forward@, orders[0].inverse@);
+        small_exact_partial_request_definition(request, project, orders);
+    }
+}
+
+sail_verified! {
+    /// Transfers an exact retained partial request to an independently supplied
+    /// current request and guarded readback, preserving original scope/history
+    /// fields. This is not wired into unchanged-call replay.
+    pub fn bind_replayed_exact_partial_project_ordered(project: &mut ProjectResult, original: &ResolvedRequest,
+        current: &ResolvedRequest, orders: &[ReportOrder], readback: &sail_acceptance::inputs::GuardedReadback)
+        -> (accepted: bool)
+        requires(true)
+        ensures(same_replay_evidence(old(project), final(project)),
+            accepted ==> replay_request_payload(current, original),
+            accepted ==> exact_partial_request_authorized(original, old(project)),
+            accepted ==> exact_partial_request_authorized(current, final(project)),
+            accepted ==> !request_authorized(current, final(project)),
+            accepted ==> !supplied_selection_authorized(final(project)),
+            accepted ==> readback.unchanged_view() && readback.guard_view().is_some()
+                && readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision),
+            accepted ==> string_bytes(&final(project).run_id) == string_bytes(&current.run_id),
+            !accepted ==> *final(project) == *old(project),
+            small_exact_partial_transfer(original, old(project), current, orders@, readback) ==> accepted)
+    {
+        sail_proof! { reveal(small_exact_partial_transfer); }
+        if !replay_requests_match(current, original) { return false; }
+        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };
+        let current = sealed.request();
+        if complete_exact_partial_request_ordered(original, project, orders).is_none() { return false; }
+        sail_proof! { replay_preserves_partial_coverage(current, original, project); }
+        if !plain_partial_request_matches(current) { return false; }
+        let current_run = current.run_id.clone();
+        project.run_id = current_run;
+        sail_proof! {
+            assert(request_header_matches(current, project));
+            assert(exact_partial_request_authorized(current, project));
+            exact_partial_request_excludes_whole(current, project);
+        }
+        true
     }
 }

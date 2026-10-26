@@ -169,19 +169,46 @@ arguments, engine and compile-only cases, and the whole-report factory's refusal
 of an admitted partial report. This new slice is source-only and unqualified;
 no compilation, stock proof or mutation-matrix result is claimed for it.
 
-Re-enabling exact-partial unchanged-call replay still needs the separate
-request-level contract tracked under [public-path composition](https://github.com/Chelis-Lang/sail/issues/376).
-It must bind independently resolved original/current
-requests and guarded revisions, cover every requested target exactly once,
-match each retained target's exact partial arguments and original producer,
-and preserve reports, establishing IDs and scope metadata without granting
-whole-target completion. It must retain `complete == false`, avoid counting
-scope reuse as complete-target reuse, and preserve partial reporting through
-CLI, JSON and retained service views. The actual compiler/metadata-to-request
-and selector-to-verifier relations, complete input closure and physical
-observation remain independent joins. The report token alone does not prove
-that every requested target or function selection was executed. Partial no-op
-replay therefore continues to take the ordinary managed path.
+The next source candidate adds the distinct private `ExactPartialRequest`
+token. `complete_exact_partial_request_ordered` checks the independently
+supplied original request's header and exact one-to-one requested target
+coverage. It requires Current inputs, normal zero exit, no setup error and
+a plain partial invocation with no engine or repair selection. Every requested
+target must retain a nonempty original establishing identity, exact
+`scope_reuse` arguments matching that request, the partial report evidence,
+`complete == false` and `reused == false`. This contract covers retained
+partial reuse; a newly executed partial target without `scope_reuse` is a
+separate observation. Complete dependency targets outside requested scope
+remain intact.
+
+`bind_replayed_exact_partial_project_ordered` checks independent original and
+current requests and an actual typed guarded readback of the original revision.
+It preserves the complete captured target records and reports, changes only
+the project view ID, and retains exact partial authority for the current
+request. Partial request authority explicitly excludes the whole-request
+predicate; requested targets cannot acquire whole-completion or complete-reuse
+labels. Candidate sorting supplies no authority. The source refinement includes
+nonempty request/report/readback-domain admission, a legitimate zero-function
+request, missing-target and whole-label refusals, bad-readback refusal, and
+the existing whole-request factory's refusal of a partial token. These new
+operations and lemmas remain source-only and unqualified. Their full-function
+always-refuse and guard-removal mutations still require ordinary stock-Verus
+failures with unchanged inventories and limits.
+
+Re-enabling exact-partial unchanged-call replay still needs native integration
+and qualification under [public-path composition](https://github.com/Chelis-Lang/sail/issues/376).
+Its producer must retain the independent original partial request, revalidate
+every ordinary partial receipt and selected/archive history, resolve the current
+request before reading saved reports, and supply the actual scoped readback to
+this separate transfer. Scope labels, original reports and establishment IDs
+must survive publication and CLI/JSON/retained service views. The requested
+targets' `reused == false` fields preserve their exclusion from ordinary
+complete-target reuse counting; complete dependency counts are independent.
+The actual compiler/metadata-to-request and selector-to-verifier relations,
+complete input closure, physical observation and full service composition
+remain independent joins. Record correspondence alone does not establish that
+every requested target or function selection was executed. Partial no-op replay
+therefore continues to take the ordinary managed path.
 
 Private `CompleteReport` and `CompleteSelection` tokens immutably borrow the
 checked actual records. Only checked factories construct them. The sibling

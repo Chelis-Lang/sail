@@ -725,4 +725,109 @@ pub fn exact_partial_scope_refuses_compile_only(report: &Report, arguments: &[St
     acceptance::complete_exact_scope_report_ordered(report, arguments, forward, inverse).is_none()
 }
 
+/// The independently supplied original request and a nonempty confirmed
+/// partial report reach the actual request factory with one requested target.
+pub fn positive_nonempty_exact_partial_request(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult) -> (accepted: bool)
+    requires acceptance::single_exact_partial_request_example(request, project),
+        project.targets@[0].report.crates@[0].functions@.len() == 1,
+    ensures accepted,
+{
+    let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
+    orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
+    proof { acceptance::single_exact_partial_request_reaches_factory(request, project, orders@); }
+    acceptance::complete_exact_partial_request_ordered(request, project, &orders).is_some()
+}
+
+/// Enabled zero-function partial reports remain valid under the same exact
+/// scope contract; they cannot obtain whole-request authority.
+pub fn positive_zero_function_exact_partial_request(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult) -> (accepted: bool)
+    requires acceptance::single_exact_partial_request_example(request, project),
+        project.targets@[0].report.crates@[0].functions@.len() == 0,
+    ensures accepted,
+{
+    let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
+    orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
+    proof { acceptance::single_exact_partial_request_reaches_factory(request, project, orders@); }
+    acceptance::complete_exact_partial_request_ordered(request, project, &orders).is_some()
+}
+
+/// This constructive transfer uses a genuinely nonempty report and declared
+/// input domain. The domain's physical completeness remains a separate join.
+pub fn positive_nonempty_exact_partial_transfer(project: &mut crate::project::ProjectResult,
+    original: &crate::project::ResolvedRequest, current: &crate::project::ResolvedRequest,
+    readback: &crate::inputs::GuardedReadback) -> (accepted: bool)
+    requires acceptance::single_exact_partial_request_example(original, old(project)),
+        old(project).targets@[0].report.crates@[0].functions@.len() == 1,
+        acceptance::replay_request_payload(current, original),
+        readback.unchanged_view(), readback.guard_view().is_some(),
+        readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision),
+        readback.comparison_view().expected_view().len() > 0,
+    ensures accepted, acceptance::same_replay_evidence(old(project), final(project)),
+        acceptance::exact_partial_request_authorized(current, final(project)),
+        !acceptance::request_authorized(current, final(project)),
+{
+    let mut orders: Vec<acceptance::ReportOrder> = Vec::new();
+    orders.push(acceptance::ReportOrder { forward: Vec::new(), inverse: Vec::new() });
+    proof {
+        acceptance::single_exact_partial_request_reaches_factory(original, project, orders@);
+        acceptance::small_exact_partial_transfer_definition(original, project, current, orders@, readback);
+    }
+    acceptance::bind_replayed_exact_partial_project_ordered(project, original, current, &orders, readback)
+}
+
+/// Exact partial request tokens cannot call through to whole-request authority.
+pub fn exact_partial_request_cannot_complete_whole(scope: &acceptance::ExactPartialRequest,
+    orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires acceptance::exact_partial_request_valid(scope),
+    ensures refused,
+{
+    let request = scope.request();
+    let project = scope.project();
+    proof { acceptance::exact_partial_request_excludes_whole(request, project); }
+    acceptance::complete_request_ordered(request, project, orders).is_none()
+}
+
+/// Partial request evidence also refuses the actual whole-selection consumer.
+pub fn exact_partial_request_cannot_complete_selection(scope: &acceptance::ExactPartialRequest,
+    orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires acceptance::exact_partial_request_valid(scope),
+    ensures refused,
+{
+    let request = scope.request();
+    let project = scope.project();
+    proof { acceptance::exact_partial_request_excludes_whole(request, project); }
+    acceptance::complete_selection_ordered(project, orders).is_none()
+}
+
+/// A correct partial report does not cover an omitted independently requested target.
+pub fn exact_partial_request_refuses_missing_coverage(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult, orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires !acceptance::resolved_coverage(request, project),
+    ensures refused,
+{
+    acceptance::complete_exact_partial_request_ordered(request, project, orders).is_none()
+}
+
+/// Partial-scope reuse never accepts complete-target reuse/completion labels.
+pub fn exact_partial_target_refuses_whole_labels(target: &crate::project::TargetResult,
+    arguments: &[String], forward: &[usize], inverse: &[usize]) -> (refused: bool)
+    requires target.complete || target.reused,
+    ensures refused,
+{
+    acceptance::complete_exact_partial_target_ordered(target, arguments, forward, inverse).is_none()
+}
+
+/// Transfer cannot accept a changed/missing guard or a different bound revision.
+pub fn exact_partial_transfer_refuses_bad_readback(project: &mut crate::project::ProjectResult,
+    original: &crate::project::ResolvedRequest, current: &crate::project::ResolvedRequest,
+    orders: &[acceptance::ReportOrder], readback: &crate::inputs::GuardedReadback) -> (refused: bool)
+    requires !readback.unchanged_view() || readback.guard_view().is_none()
+        || readback.guard_view().unwrap().revision_view() != string_bytes(&current.input_revision),
+    ensures refused, *final(project) == *old(project),
+{
+    !acceptance::bind_replayed_exact_partial_project_ordered(project, original, current, orders, readback)
+}
+
 }

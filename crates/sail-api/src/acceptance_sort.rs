@@ -7,11 +7,12 @@
 use sail_acceptance::authority::CompletionPolicy;
 
 use crate::acceptance::{
-    CompleteReport, CompleteRequest, CompleteSelection, ExactScopeReport, ReportOrder,
-    SubmittedAuthority, bind_replayed_project_ordered, complete_exact_scope_report_ordered,
-    complete_report_ordered, complete_request_ordered, complete_selection_ordered,
-    complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered,
-    withhold_unbound_request_authority_ordered,
+    CompleteReport, CompleteRequest, CompleteSelection, ExactPartialRequest, ExactScopeReport,
+    ReportOrder, SubmittedAuthority, bind_replayed_exact_partial_project_ordered,
+    bind_replayed_project_ordered, complete_exact_partial_request_ordered,
+    complete_exact_scope_report_ordered, complete_report_ordered, complete_request_ordered,
+    complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered,
+    complete_whole_report_ordered, withhold_unbound_request_authority_ordered,
 };
 use crate::jobs::Mode;
 use crate::output::Report;
@@ -84,6 +85,37 @@ pub fn complete_exact_scope_report<'a>(
 ) -> Option<ExactScopeReport<'a>> {
     let order = candidate_order(report);
     complete_exact_scope_report_ordered(report, arguments, &order.forward, &order.inverse)
+}
+
+/// Checks exact retained partial coverage against an independent original request.
+#[must_use]
+pub fn complete_exact_partial_request<'a>(
+    request: &'a ResolvedRequest,
+    project: &'a ProjectResult,
+) -> Option<ExactPartialRequest<'a>> {
+    let orders = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect::<Vec<_>>();
+    complete_exact_partial_request_ordered(request, project, &orders)
+}
+
+/// Transfers exact partial evidence without enabling unchanged-call replay or
+/// minting whole-target authority. Every order candidate is independently checked.
+#[must_use]
+pub fn bind_replayed_exact_partial_project(
+    project: &mut ProjectResult,
+    original: &ResolvedRequest,
+    current: &ResolvedRequest,
+    readback: &sail_acceptance::inputs::GuardedReadback<'_>,
+) -> bool {
+    let orders = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect::<Vec<_>>();
+    bind_replayed_exact_partial_project_ordered(project, original, current, &orders, readback)
 }
 
 /// Checks complete whole-target scope through the same checked factory.
