@@ -290,6 +290,29 @@ through `PATH` (`cc`, `cmake`, `pkg-config`), is invisible: Cargo does not
 rebuild for it, and Sail does not re-verify for it. Declare such reads with
 `cargo:rerun-if-env-changed` in the build script.
 
+## What a proof receipt binds
+
+Currentness compares every file of the selection's packages. A proof receipt
+is narrower: it is reused while the files that can change its target are
+unchanged. In a path package without a build script, after Sail has recorded
+the compiler's declarations of that package's targets, these are the files the
+target's own compilation read (its dep-info, which includes `include_str!`
+files), the files of the library it links, every other package's files that
+the compiler declared, the manifests, lockfile and toolchain files, anything
+in a `.cargo` directory, and the other spelling of a declared module file
+(`src/m/mod.rs` next to `src/m.rs`). So, as with plain Cargo-Verus:
+
+- a new or removed file that no `mod` names verifies nothing;
+- adding a `src/bin` file verifies only that binary, and removing it again
+  verifies nothing;
+- editing a binary's source re-verifies that binary and its package.
+
+Registry and git packages, packages with build scripts, and packages whose
+declarations are not yet recorded bind every file. A declared file that no
+longer exists drops out of the record, and its removal still counts as a
+change ([ADR 0046](decisions/0046-managed-verification-by-default.md),
+2026-10-26 amendment).
+
 ## Unchanged-call replay
 
 A `sail verify` identical to an earlier call that ended Current without

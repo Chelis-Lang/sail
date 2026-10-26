@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Stop `sail verify` rebuilding where `cargo verus verify` is a no-op. After a
+  `src/bin` file was added and removed, every call rebuilt the build-script
+  packages and re-verified vstd (about 26 s); it is a no-op again (#401). A new
+  or removed file that no `mod` names no longer re-verifies the crate, and
+  adding a binary verifies only that binary (#398). The call after a newly
+  discovered `include_str!` file outside the workspace no longer rebuilds the
+  build-script packages and vstd (#399).
 - Build Sail without any private dependency. Native temporal jobs, which link
   the private D.I.V.E. library, moved to a separate extension workspace
   (`extensions/temporal`) that builds the temporal-enabled `sail` and
