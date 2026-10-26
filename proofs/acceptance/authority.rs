@@ -77,10 +77,94 @@ pub enum VerifierEnd { Finished(u64), VirError, Malformed }
 pub enum ProcessEnd { Exit(i32), Interrupted, Malformed }
 
 #[derive(Structural, PartialEq, Eq, Copy, Clone)]
-pub enum Origin { Direct, Engine, Fallback(u64) }
+pub enum Origin { Direct, Engine, Fallback(u64), RestartAfterDecline(u64) }
 
 #[derive(Structural, PartialEq, Eq, Copy, Clone)]
 pub enum VerificationSetting { Enabled, CompileOnly }
+
+
+/// Typed fields observed on the engine side channel, retaining original values.
+pub struct EngineTerminalObservation {
+    pub version: u64,
+    pub event: Seq<u8>,
+    pub phase: Seq<u8>,
+    pub normal: Option<bool>,
+    pub success: Option<bool>,
+}
+
+pub enum EngineFieldShape { Object, Other }
+pub enum EngineSuccessField { Missing, Boolean(bool), Other }
+
+/// Original verifier header/result field candidates, not a completion flag.
+pub struct EngineDocumentObservation {
+    pub functions: EngineFieldShape,
+    pub version: Option<Seq<u8>>,
+    pub profile: Option<Seq<u8>>,
+    pub toolchain: Option<Seq<u8>>,
+    pub commit: Option<Seq<u8>>,
+    pub os: Option<Seq<u8>>,
+    pub arch: Option<Seq<u8>>,
+    pub error: Option<bool>,
+    pub vir_error: Option<bool>,
+    pub success: EngineSuccessField,
+    pub verified: Option<u64>,
+    pub errors: Option<u64>,
+    pub whole: Option<bool>,
+}
+
+pub struct EngineProtocolObservation {
+    pub raw: Seq<u8>,
+    pub versions: Seq<Option<u64>>,
+    pub terminal: Option<EngineTerminalObservation>,
+}
+
+/// One EOF-time observation of the original protocol/result candidates.
+pub struct EngineCompletionObservation {
+    pub protocol: Option<EngineProtocolObservation>,
+    pub documents: Seq<EngineDocumentObservation>,
+    pub stdout: Seq<u8>,
+    pub remainder: Seq<u8>,
+}
+
+pub open spec fn engine_text_present(value: Option<Seq<u8>>) -> bool {
+    value.is_some() && value.unwrap().len() > 0
+}
+
+pub open spec fn engine_document_complete(d: &EngineDocumentObservation, success: bool) -> bool {
+    matches!(d.functions, EngineFieldShape::Object)
+        && engine_text_present(d.version) && engine_text_present(d.profile)
+        && engine_text_present(d.toolchain) && engine_text_present(d.commit)
+        && engine_text_present(d.os) && engine_text_present(d.arch)
+        && d.error.is_some() && d.vir_error.is_some()
+        && (match d.success { EngineSuccessField::Boolean(value) => value == success,
+            EngineSuccessField::Missing => true, EngineSuccessField::Other => false })
+        && !(d.vir_error.unwrap() && success)
+        && (success ==> d.error == Some(false) && d.errors == Some(0u64))
+        && (d.vir_error.unwrap() || (d.verified.is_some() && d.errors.is_some() && d.whole.is_some()
+            && (d.whole != Some(true) || matches!(d.success, EngineSuccessField::Boolean(_)))))
+}
+
+pub open spec fn engine_protocol_complete(o: &EngineCompletionObservation, end: ProcessEnd) -> bool {
+    (end == ProcessEnd::Exit(0) || end == ProcessEnd::Exit(1)) && o.stdout.len() <= 33_554_432
+        && o.protocol.is_some()
+        && o.protocol.unwrap().raw.len() > 0 && o.protocol.unwrap().raw.len() <= 16_777_216
+        && o.protocol.unwrap().raw[o.protocol.unwrap().raw.len() - 1] == 10u8
+        && o.protocol.unwrap().versions.len() > 0
+        && (forall |i: int| 0 <= i < o.protocol.unwrap().versions.len()
+            ==> o.protocol.unwrap().versions[i] == Some(1u64))
+        && o.protocol.unwrap().terminal.is_some()
+        && o.protocol.unwrap().terminal.unwrap().version == 1
+        && o.protocol.unwrap().terminal.unwrap().event == b"compiler-sealed"@
+        && o.protocol.unwrap().terminal.unwrap().phase == b"full"@
+        && o.protocol.unwrap().terminal.unwrap().normal == Some(true)
+        && o.protocol.unwrap().terminal.unwrap().success.is_some()
+        && (end == ProcessEnd::Exit(0)) == o.protocol.unwrap().terminal.unwrap().success.unwrap()
+        && o.documents.len() == 1
+        && engine_document_complete(&o.documents[0], o.protocol.unwrap().terminal.unwrap().success.unwrap())
+        && forall |i: int| 0 <= i < o.remainder.len() ==>
+            o.remainder[i] == 9 || o.remainder[i] == 10 || o.remainder[i] == 12
+                || o.remainder[i] == 13 || o.remainder[i] == 32
+}
 
 /// Metadata captured when this particular modeled verifier process starts.
 pub struct Invocation {
@@ -209,6 +293,8 @@ pub struct RunningInvocation {
     documents: Seq<VerifierDocument>,
     stream: StreamState,
     fallback_from: Option<EngineFailure>,
+    declined_from: Option<EngineDecline>,
+    completion: Option<EngineCompletionObservation>,
     children: Seq<ChildStream>,
 }
 
@@ -219,11 +305,33 @@ pub struct EngineFailure {
     failed_at: u64,
 }
 
+/// A normally terminated engine with concretely unusable protocol evidence.
+/// Its terminal status remains Exit(0); this is not an EngineFailure.
+pub struct EngineDecline {
+    invocation: Invocation,
+    end: ProcessEnd,
+    observed_at: u64,
+    completion: EngineCompletionObservation,
+}
+
+impl EngineDecline {
+    pub closed spec fn invocation(&self) -> Invocation { self.invocation }
+    pub closed spec fn end(&self) -> ProcessEnd { self.end }
+    pub closed spec fn point(&self) -> u64 { self.observed_at }
+    pub closed spec fn completion(&self) -> EngineCompletionObservation { self.completion }
+    pub closed spec fn valid(&self) -> bool {
+        invocation_wf(&self.invocation) && self.invocation.origin == Origin::Engine
+            && self.end == ProcessEnd::Exit(0) && self.observed_at >= self.invocation.started_at
+            && !engine_protocol_complete(&self.completion, self.end)
+    }
+}
+
 impl RunningInvocation {
     pub closed spec fn invocation(&self) -> Invocation { self.invocation }
     pub closed spec fn documents(&self) -> Seq<VerifierDocument> { self.documents }
     pub closed spec fn stream(&self) -> StreamState { self.stream }
     pub closed spec fn children(&self) -> Seq<ChildStream> { self.children }
+    pub closed spec fn completion(&self) -> Option<EngineCompletionObservation> { self.completion }
 }
 impl EngineFailure {
     pub closed spec fn invocation(&self) -> Invocation { self.invocation }
@@ -250,14 +358,21 @@ pub open spec fn fallback_subject_matches(failed: &Invocation, fresh: &Invocatio
 
 pub closed spec fn origin_valid(run: &RunningInvocation) -> bool {
     match run.invocation.origin {
-        Origin::Direct => run.fallback_from.is_none(),
-        Origin::Engine => run.fallback_from.is_none(),
+        Origin::Direct => run.fallback_from.is_none() && run.declined_from.is_none(),
+        Origin::Engine => run.fallback_from.is_none() && run.declined_from.is_none(),
         Origin::Fallback(id) => run.fallback_from.is_some()
             && failure_valid(&run.fallback_from.unwrap())
             && run.fallback_from.unwrap().invocation.run_id == id
             && run.invocation.run_id > id && run.invocation.scope.whole
             && run.invocation.started_at >= run.fallback_from.unwrap().failed_at
-            && fallback_subject_matches(&run.fallback_from.unwrap().invocation, &run.invocation),
+            && fallback_subject_matches(&run.fallback_from.unwrap().invocation, &run.invocation)
+            && run.declined_from.is_none(),
+        Origin::RestartAfterDecline(id) => run.declined_from.is_some()
+            && run.declined_from.unwrap().valid() && run.fallback_from.is_none()
+            && run.declined_from.unwrap().invocation().run_id == id
+            && run.invocation.run_id > id && run.invocation.scope.whole
+            && run.invocation.started_at >= run.declined_from.unwrap().point()
+            && fallback_subject_matches(&run.declined_from.unwrap().invocation(), &run.invocation),
     }
 }
 
@@ -269,18 +384,20 @@ pub closed spec fn running_wf(run: &RunningInvocation) -> bool {
 
 pub proof fn start(invocation: Invocation) -> (run: Option<RunningInvocation>)
     ensures run.is_some() == (invocation_wf(&invocation)
-        && !matches!(invocation.origin, Origin::Fallback(_))),
+        && !matches!(invocation.origin, Origin::Fallback(_) | Origin::RestartAfterDecline(_))),
         run.is_some() ==> running_wf(&run.unwrap()),
         run.is_some() ==> run.unwrap().invocation() == invocation,
         run.is_some() ==> run.unwrap().documents().len() == 0,
         run.is_some() ==> run.unwrap().children().len() == 0,
         run.is_some() ==> run.unwrap().stream() == StreamState::Running,
+        run.is_some() ==> run.unwrap().completion().is_none(),
 {
-    if !invocation_wf(&invocation) || matches!(invocation.origin, Origin::Fallback(_)) {
+    if !invocation_wf(&invocation) || matches!(invocation.origin, Origin::Fallback(_) | Origin::RestartAfterDecline(_)) {
         None
     } else {
         Some(RunningInvocation { invocation, documents: Seq::empty(),
-            stream: StreamState::Running, fallback_from: None, children: Seq::empty() })
+            stream: StreamState::Running, fallback_from: None, declined_from: None,
+            completion: None, children: Seq::empty() })
     }
 }
 
@@ -288,9 +405,71 @@ pub proof fn observe(run: RunningInvocation, document: VerifierDocument) -> (out
     requires running_wf(&run),
     ensures running_wf(&out), out.invocation() == run.invocation(),
         out.documents() == run.documents().push(document), out.stream() == run.stream(),
-        out.children() == run.children(),
+        out.children() == run.children(), out.completion() == run.completion(),
 {
     RunningInvocation { documents: run.documents.push(document), ..run }
+}
+
+/// Preserve a single EOF-time protocol observation; a second observation is
+/// ambiguous and cannot repair the first by overwriting it.
+pub proof fn observe_engine_completion(run: RunningInvocation, observation: EngineCompletionObservation)
+    -> (out: RunningInvocation)
+    requires running_wf(&run),
+    ensures running_wf(&out), out.invocation() == run.invocation(),
+        out.documents() == run.documents(), out.children() == run.children(),
+        run.completion().is_none() ==> out.completion() == Some(observation)
+            && out.stream() == run.stream(),
+        run.completion().is_some() ==> out.completion() == run.completion()
+            && out.stream() == StreamState::Malformed,
+{
+    if run.completion.is_some() {
+        RunningInvocation { stream: StreamState::Malformed, ..run }
+    } else { RunningInvocation { completion: Some(observation), ..run } }
+}
+
+/// Normal exit zero is preserved. The observed protocol fields themselves must
+/// refuse completion; a caller cannot supply an arbitrary decline reason.
+pub proof fn engine_declined(run: RunningInvocation, end: ProcessEnd, point: u64)
+    -> (out: Option<EngineDecline>)
+    requires running_wf(&run),
+    ensures out.is_some() == (run.invocation().origin == Origin::Engine
+        && end == ProcessEnd::Exit(0) && point >= run.invocation().started_at
+        && run.completion().is_some() && !engine_protocol_complete(&run.completion().unwrap(), end)),
+        out.is_some() ==> out.unwrap().valid(),
+        out.is_some() ==> out.unwrap().invocation() == run.invocation(),
+        out.is_some() ==> out.unwrap().end() == end && out.unwrap().point() == point,
+        out.is_some() ==> out.unwrap().completion() == run.completion().unwrap(),
+{
+    if run.invocation.origin == Origin::Engine && end == ProcessEnd::Exit(0)
+        && point >= run.invocation.started_at && run.completion.is_some()
+        && !engine_protocol_complete(&run.completion.unwrap(), end) {
+        Some(EngineDecline { invocation: run.invocation, end, observed_at: point,
+            completion: run.completion.unwrap() })
+    } else { None }
+}
+
+pub proof fn start_declined_fallback(declined: EngineDecline, invocation: Invocation)
+    -> (out: Option<RunningInvocation>)
+    requires declined.valid(),
+    ensures out.is_some() == (invocation_wf(&invocation) && invocation.scope.whole
+        && invocation.origin == Origin::RestartAfterDecline(declined.invocation().run_id)
+        && invocation.run_id > declined.invocation().run_id
+        && invocation.started_at >= declined.point()
+        && fallback_subject_matches(&declined.invocation(), &invocation)),
+        out.is_some() ==> running_wf(&out.unwrap()),
+        out.is_some() ==> out.unwrap().invocation() == invocation,
+        out.is_some() ==> out.unwrap().documents().len() == 0,
+        out.is_some() ==> out.unwrap().children().len() == 0,
+        out.is_some() ==> out.unwrap().completion().is_none(),
+        out.is_some() ==> out.unwrap().stream() == StreamState::Running,
+{
+    if invocation_wf(&invocation) && invocation.scope.whole
+        && invocation.origin == Origin::RestartAfterDecline(declined.invocation.run_id)
+        && invocation.run_id > declined.invocation.run_id && invocation.started_at >= declined.observed_at
+        && fallback_subject_matches(&declined.invocation, &invocation) {
+        Some(RunningInvocation { invocation, documents: Seq::empty(), stream: StreamState::Running,
+            fallback_from: None, declined_from: Some(declined), completion: None, children: Seq::empty() })
+    } else { None }
 }
 
 pub proof fn interrupt(run: RunningInvocation) -> (out: RunningInvocation)
@@ -319,6 +498,7 @@ pub proof fn stream_started(run: RunningInvocation, solver: SolverId) -> (out: O
         out.is_some() ==> running_wf(&out.unwrap()),
         out.is_some() ==> out.unwrap().invocation() == run.invocation(),
         out.is_some() ==> out.unwrap().documents() == run.documents(),
+        out.is_some() ==> out.unwrap().completion() == run.completion(),
         out.is_some() ==> out.unwrap().stream() == run.stream(),
         out.is_some() ==> out.unwrap().children().len() == run.children().len() + 1,
         out.is_some() ==> out.unwrap().children().drop_last() == run.children(),
@@ -340,6 +520,7 @@ pub proof fn stream_closed(run: RunningInvocation, index: int, transcript: Solve
         out.is_some() ==> running_wf(&out.unwrap()),
         out.is_some() ==> out.unwrap().invocation() == run.invocation(),
         out.is_some() ==> out.unwrap().documents() == run.documents(),
+        out.is_some() ==> out.unwrap().completion() == run.completion(),
         out.is_some() ==> out.unwrap().stream() == run.stream(),
         out.is_some() ==> out.unwrap().children().len() == run.children().len(),
         out.is_some() ==> out.unwrap().children()[index].closed() == Some(transcript),
@@ -390,13 +571,16 @@ pub proof fn start_fallback(failed: EngineFailure, invocation: Invocation)
         && invocation.started_at >= failed.failed_at
         && fallback_subject_matches(&failed.invocation, &invocation) {
         Some(RunningInvocation { invocation, documents: Seq::empty(),
-            stream: StreamState::Running, fallback_from: Some(failed), children: Seq::empty() })
+            stream: StreamState::Running, fallback_from: Some(failed), declined_from: None,
+            completion: None, children: Seq::empty() })
     } else { None }
 }
 
 pub closed spec fn can_complete(run: &RunningInvocation, end: ProcessEnd, point: u64) -> bool {
     running_wf(run) && run.stream == StreamState::Running
         && run.invocation.verification == VerificationSetting::Enabled
+        && (run.invocation.origin == Origin::Engine ==> run.completion.is_some()
+            && engine_protocol_complete(&run.completion.unwrap(), end))
         && end == ProcessEnd::Exit(0) && point >= run.invocation.started_at
         && run.documents.len() > 0
         && every_child_closed(run.children)
@@ -422,6 +606,7 @@ impl CompletedInvocation {
     pub closed spec fn transcripts(&self) -> Seq<SolverTranscript> { observed_transcripts(self.run.documents) }
     pub closed spec fn children(&self) -> Seq<ChildStream> { self.run.children }
     pub closed spec fn predecessor(&self) -> Option<EngineFailure> { self.run.fallback_from }
+    pub closed spec fn declined_predecessor(&self) -> Option<EngineDecline> { self.run.declined_from }
 }
 
 pub proof fn complete(run: RunningInvocation, end: ProcessEnd, point: u64)
@@ -526,6 +711,13 @@ pub proof fn completed_origin_is_justified(report: &CompletedInvocation)
             && report.invocation().started_at >= report.predecessor().unwrap().point()
             && fallback_subject_matches(&report.predecessor().unwrap().invocation(), &report.invocation())
             && report.invocation().scope.whole,
+        Origin::RestartAfterDecline(id) => report.declined_predecessor().is_some()
+            && report.declined_predecessor().unwrap().valid()
+            && report.declined_predecessor().unwrap().invocation().run_id == id
+            && report.invocation().run_id > id
+            && report.invocation().started_at >= report.declined_predecessor().unwrap().point()
+            && fallback_subject_matches(&report.declined_predecessor().unwrap().invocation(), &report.invocation())
+            && report.invocation().scope.whole,
     },
 {}
 
@@ -627,13 +819,15 @@ pub closed spec fn repair_selectable(result: &ValidatedResult, target_index: int
             && result.invocations()[j].documents()[d].functions[k].name@ == name
 }
 
-/// A mixed project must not hide a selected target's independent fallback.
+/// Every target in the requested repair scope must retain non-fallback origin.
+/// Unrequested dependency records do not widen that supplied repair scope.
 pub closed spec fn repair_target_origin_allowed(result: &ValidatedResult, target_index: int) -> bool {
     0 <= target_index < result.requested_targets().len()
-        && forall|i: int| 0 <= i < result.invocations().len()
-            && same_target(&result.requested_targets()[target_index], &result.invocations()[i].invocation().target)
+        && forall|i: int, j: int| 0 <= i < result.invocations().len()
+            && 0 <= j < result.requested_targets().len()
+            && #[trigger] same_target(&result.requested_targets()[j], &result.invocations()[i].invocation().target)
             ==> match result.invocations()[i].invocation().origin {
-                Origin::Fallback(_) => false, _ => true,
+                Origin::Fallback(_) | Origin::RestartAfterDecline(_) => false, _ => true,
             }
 }
 
@@ -647,6 +841,22 @@ pub proof fn repair_accepted(result: &ValidatedResult, target_index: int, name: 
     result.whole() && repair_selectable(result, target_index, name)
         && !matches!(result.path(), ExecutionPath::IndependentFallback(_))
         && repair_target_origin_allowed(result, target_index)
+}
+
+/// Both crashed-engine and normal-exit declined-engine restarts are excluded
+/// from every requested target of repair authority.
+pub proof fn repair_refuses_requested_fallback(result: &ValidatedResult, selected: int,
+    report: int, requested: int, name: Seq<u8>)
+    requires result.valid(), 0 <= report < result.invocations().len(),
+        0 <= requested < result.requested_targets().len(),
+        same_target(&result.requested_targets()[requested], &result.invocations()[report].invocation().target),
+        match result.invocations()[report].invocation().origin {
+            Origin::Fallback(_) | Origin::RestartAfterDecline(_) => true, _ => false,
+        },
+{
+    assert(!repair_target_origin_allowed(result, selected));
+    let accepted = repair_accepted(result, selected, name);
+    assert(!accepted);
 }
 
 /// A report cannot cover two distinct requested targets.
@@ -869,6 +1079,7 @@ proof fn record_child_lifecycles(run: RunningInvocation, transcripts: Seq<Solver
             transcript_wf(transcripts[i]) && transcripts[i].solver == run.invocation().context@.solver,
     ensures running_wf(&out), out.invocation() == run.invocation(),
         out.documents() == run.documents(), out.stream() == StreamState::Running,
+        out.completion() == run.completion(),
         out.children().len() == transcripts.len(),
         every_child_closed(out.children()), child_stream_inventory(out.children()) == transcripts,
     decreases transcripts.len(),
@@ -903,10 +1114,26 @@ proof fn record_child_lifecycles(run: RunningInvocation, transcripts: Seq<Solver
     }
 }
 
+proof fn positive_engine_completion(whole: bool) -> (out: EngineCompletionObservation)
+    ensures engine_protocol_complete(&out, ProcessEnd::Exit(0)),
+{
+    EngineCompletionObservation {
+        protocol: Some(EngineProtocolObservation { raw: seq![10u8], versions: seq![Some(1u64)],
+            terminal: Some(EngineTerminalObservation { version: 1, event: b"compiler-sealed"@,
+                phase: b"full"@, normal: Some(true), success: Some(true) }) }),
+        stdout: Seq::empty(), remainder: Seq::empty(),
+        documents: seq![EngineDocumentObservation { functions: EngineFieldShape::Object,
+            version: Some(seq![1u8]), profile: Some(seq![2u8]), toolchain: Some(seq![3u8]),
+            commit: Some(seq![4u8]), os: Some(seq![5u8]), arch: Some(seq![6u8]),
+            error: Some(false), vir_error: Some(false), success: EngineSuccessField::Boolean(true),
+            verified: Some(1), errors: Some(0), whole: Some(whole) }],
+    }
+}
+
 /// Positive fixture genuinely starts, observes and completes the modeled process.
 proof fn single_completion(invocation: Invocation, document: VerifierDocument, point: u64)
     -> (out: CompletedInvocation)
-    requires invocation_wf(&invocation), !matches!(invocation.origin, Origin::Fallback(_)),
+    requires invocation_wf(&invocation), !matches!(invocation.origin, Origin::Fallback(_) | Origin::RestartAfterDecline(_)),
         invocation.verification == VerificationSetting::Enabled,
         document_matches(&invocation, &document), document_good(&document), document_streams_valid(&document),
         point >= invocation.started_at,
@@ -918,6 +1145,12 @@ proof fn single_completion(invocation: Invocation, document: VerifierDocument, p
     assert(started.is_some());
     assert(started.unwrap().documents() =~= Seq::<VerifierDocument>::empty());
     let with_children = record_child_lifecycles(started.unwrap(), document.transcripts@);
+    let with_children = if invocation.origin == Origin::Engine {
+        let protocol = positive_engine_completion(invocation.scope.whole);
+        // Child lifecycle construction does not alter the initially absent record.
+        assert(with_children.completion().is_none());
+        observe_engine_completion(with_children, protocol)
+    } else { with_children };
     let observed = observe(with_children, document);
     assert(observed.documents() == seq![document]);
     single_document_inventory(document);
@@ -1322,6 +1555,74 @@ pub proof fn fallback_subject_swap_refused(failed: EngineFailure, fresh: Invocat
 {
     let started = start_fallback(failed, fresh);
     assert(started.is_none());
+}
+
+/// An exit-zero engine with an unusable side channel restarts independently;
+/// it never masquerades as a process failure or leaks old documents.
+pub fn normal_zero_decline_fresh_fallback_control() {
+    let request = example_request(true);
+    let engine = example_invocation(true, 1, Origin::Engine);
+    let document = example_document(true, 1, true, Verdict::Verified,
+        Establishment::Confirmed, VerifierEnd::Finished(0));
+    let fallback = example_invocation(true, 3, Origin::RestartAfterDecline(1));
+    let fresh_document = example_document(true, 3, true, Verdict::Verified,
+        Establishment::Confirmed, VerifierEnd::Finished(0));
+    proof {
+        let started = start(engine);
+        assert(started.is_some());
+        let observed = observe(started.unwrap(), document);
+        let valid_protocol = positive_engine_completion(true);
+        let missing_terminal = EngineCompletionObservation { protocol: None, ..valid_protocol };
+        let observed = observe_engine_completion(observed, missing_terminal);
+        let rejected_completion = complete(observed, ProcessEnd::Exit(0), 2);
+        assert(rejected_completion.is_none());
+        let not_a_crash = engine_failed(observed, ProcessEnd::Exit(0), 2);
+        assert(not_a_crash.is_none());
+        let declined = engine_declined(observed, ProcessEnd::Exit(0), 2);
+        assert(declined.is_some());
+        assert(declined.unwrap().end() == ProcessEnd::Exit(0));
+        let wrong_status = engine_declined(observed, ProcessEnd::Exit(1), 2);
+        assert(wrong_status.is_none());
+        // Repeated metadata cannot overwrite the first unusable observation.
+        let overwritten = observe_engine_completion(observed, valid_protocol);
+        assert(overwritten.stream() == StreamState::Malformed);
+        let still_rejected = complete(overwritten, ProcessEnd::Exit(0), 2);
+        assert(still_rejected.is_none());
+        let restarted = start_declined_fallback(declined.unwrap(), fallback);
+        assert(restarted.is_some());
+        assert(restarted.unwrap().documents() =~= Seq::<VerifierDocument>::empty());
+        let contaminated = observe(restarted.unwrap(), document);
+        assert(!document_matches(&contaminated.invocation(), &document));
+        let leaked = complete(contaminated, ProcessEnd::Exit(0), 4);
+        assert(leaked.is_none());
+        let fresh = observe(restarted.unwrap(), fresh_document);
+        assert(fresh.documents() == seq![fresh_document]);
+        single_document_inventory(fresh_document);
+        assert(observed_transcripts(fresh.documents()) =~= Seq::<SolverTranscript>::empty());
+        assert(child_stream_inventory(fresh.children()) =~= Seq::<SolverTranscript>::empty());
+        let completed = complete(fresh, ProcessEnd::Exit(0), 4);
+        assert(completed.is_some());
+        completed_origin_is_justified(&completed.unwrap());
+        assert(completed.unwrap().declined_predecessor().is_some());
+        let finished = finish_project_per_target(example_context(true), seq![completed.unwrap()], ProcessEnd::Exit(0), 5);
+        assert(finished.is_some());
+        let candidate = finished.unwrap();
+        assert(same_target(&request.targets[0], &candidate.invocations()[0].invocation().target));
+        assert(same_scope(&request.scope, &candidate.invocations()[0].invocation().scope));
+        assert(covered_at(&request, &candidate, 0));
+        let accepted = validate_current_complete(&request, &candidate, example_context(true), 6);
+        assert(accepted.is_some());
+        assert(repair_selectable(&accepted.unwrap(), 0, seq![12u8]));
+        assert(!repair_target_origin_allowed(&accepted.unwrap(), 0));
+        let repair = repair_accepted(&accepted.unwrap(), 0, seq![12u8]);
+        assert(!repair);
+        // Consistent complete engine evidence is never relabeled as a decline.
+        let good_started = start(engine);
+        assert(good_started.is_some());
+        let good_observed = observe_engine_completion(good_started.unwrap(), valid_protocol);
+        let good_decline = engine_declined(good_observed, ProcessEnd::Exit(0), 2);
+        assert(good_decline.is_none());
+    }
 }
 
 /// A failed partial engine run cannot leak its output into the fresh full fallback.

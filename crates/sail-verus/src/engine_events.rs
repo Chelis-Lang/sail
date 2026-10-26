@@ -8,6 +8,10 @@ use sail_api::proof::{InputEvent, Observation, Phase, Target, VERSION};
 use serde_json::Value;
 
 use crate::managed::{Runtime, TargetIdentity};
+use sail_acceptance::authority::{
+    EngineCompletion, EngineDocumentCandidates, EngineDocumentFields, EngineFieldShape,
+    EngineProtocolCandidate, EngineSuccessField, EngineTerminalFields,
+};
 
 const MAX_SOURCE: u64 = 16 * 1024 * 1024;
 const MAX_EVENT: usize = 4 * 1024 * 1024;
@@ -267,7 +271,7 @@ struct Termination {
     success: Option<bool>,
 }
 
-fn terminal(path: &Path) -> Option<Terminal> {
+fn terminal_candidate(path: &Path) -> Option<EngineProtocolCandidate> {
     let mut bytes = Vec::new();
     std::fs::File::open(path)
         .ok()?
@@ -275,24 +279,102 @@ fn terminal(path: &Path) -> Option<Terminal> {
         .read_to_end(&mut bytes)
         .ok()?;
     if bytes.len() as u64 > MAX_SOURCE {
-        return None;
+        return Some(EngineProtocolCandidate {
+            raw: bytes,
+            versions: Vec::new(),
+            terminal: None,
+        });
     }
-    let text = String::from_utf8(bytes).ok()?;
-    if !text.ends_with('\n') {
-        return None;
+    let text = std::str::from_utf8(&bytes).ok();
+    let versions = text.map_or_else(Vec::new, |text| {
+        text.lines()
+            .map(|line| {
+                serde_json::from_str::<Value>(line)
+                    .ok()
+                    .and_then(|event| event["version"].as_u64())
+            })
+            .collect()
+    });
+    // Typed decoding retains the original terminal fields and rejects duplicate
+    // normal/success members. Header and termination checks are source-shared.
+    let terminal = text
+        .and_then(|text| text.lines().last())
+        .and_then(|line| serde_json::from_str::<Terminal>(line).ok())
+        .map(|last| EngineTerminalFields {
+            version: u64::from(last.version),
+            event: last.event.into_bytes(),
+            phase: last.phase.into_bytes(),
+            normal: last.payload.normal_termination,
+            success: last.payload.success,
+        });
+    Some(EngineProtocolCandidate {
+        raw: bytes,
+        versions,
+        terminal,
+    })
+}
+
+fn terminal(path: &Path) -> Option<EngineTerminalFields> {
+    let candidate = terminal_candidate(path)?;
+    sail_acceptance::authority::engine_terminal_complete(&candidate)
+        .then_some(candidate.terminal)
+        .flatten()
+}
+
+/// The real native decoder returns field candidates; the shared checker decides
+/// whether their original types/values can establish engine completion.
+pub(crate) fn completion_candidates(
+    path: &Path,
+    stdout: &[u8],
+) -> (Option<EngineProtocolCandidate>, EngineDocumentCandidates) {
+    let documents = if stdout.len() > MAX_RESULT {
+        EngineDocumentCandidates {
+            documents: Vec::new(),
+            remainder: Vec::new(),
+        }
+    } else {
+        document_candidates(stdout)
+    };
+    (terminal_candidate(path), documents)
+}
+
+fn document_candidates(stdout: &[u8]) -> EngineDocumentCandidates {
+    let (documents, remainder) = crate::attribution::json_documents(stdout);
+    let documents = documents
+        .iter()
+        .map(|document| {
+            let text = |value: &Value| value.as_str().map(|value| value.as_bytes().to_vec());
+            let results = &document["verification-results"];
+            EngineDocumentFields {
+                functions: if document["func-details"].is_object() {
+                    EngineFieldShape::Object
+                } else {
+                    EngineFieldShape::Other
+                },
+                version: text(&document["verus"]["version"]),
+                profile: text(&document["verus"]["profile"]),
+                toolchain: text(&document["verus"]["toolchain"]),
+                commit: text(&document["verus"]["commit"]),
+                os: text(&document["verus"]["platform"]["os"]),
+                arch: text(&document["verus"]["platform"]["arch"]),
+                error: results["encountered-error"].as_bool(),
+                vir_error: results["encountered-vir-error"].as_bool(),
+                success: match results.get("success") {
+                    None => EngineSuccessField::Missing,
+                    Some(value) => value
+                        .as_bool()
+                        .map_or(EngineSuccessField::Other, EngineSuccessField::Boolean),
+                },
+                verified: results["verified"].as_u64(),
+                errors: results["errors"].as_u64(),
+                whole: results["is-verifying-entire-crate"].as_bool(),
+            }
+        })
+        .collect();
+    EngineDocumentCandidates {
+        documents,
+        remainder,
     }
-    let events: Vec<Value> = text
-        .lines()
-        .map(serde_json::from_str)
-        .collect::<std::result::Result<_, _>>()
-        .ok()?;
-    if !events.iter().all(|event| event["version"] == 1) {
-        return None;
-    }
-    // Decode the original terminal line again through typed fields, so duplicate
-    // normal-termination/success fields cannot be silently overwritten by Value.
-    let last: Terminal = serde_json::from_str(text.lines().last()?).ok()?;
-    (last.version == 1 && last.event == "compiler-sealed" && last.phase == "full").then_some(last)
 }
 
 /// A terminal observation alone is not a completed verifier invocation. The
@@ -302,25 +384,11 @@ fn terminal(path: &Path) -> Option<Terminal> {
 /// distinguish normal compiler errors from caught internal panics. Older source
 /// events without that distinction need conservative stock fallback.
 pub(crate) fn completed(path: &Path, stdout: &[u8], exit: Option<i32>) -> bool {
-    if !matches!(exit, Some(0 | 1)) || stdout.len() > MAX_RESULT {
-        return false;
-    }
-    let Some(terminal) = terminal(path) else {
-        return false;
-    };
-    let Some(sealed_success) = terminal
-        .payload
-        .success
-        .filter(|_| terminal.payload.normal_termination == Some(true))
-    else {
-        return false;
-    };
-    // The seal and the process must agree: Verus exits 0 exactly when the
-    // complete driver (proof, VIR and late EXEC checks) succeeded.
-    if (exit == Some(0)) != sealed_success {
-        return false;
-    }
-    document_completed(stdout, sealed_success)
+    let (protocol, documents) = completion_candidates(path, stdout);
+    matches!(
+        sail_acceptance::authority::engine_completion(&protocol, &documents, stdout, exit),
+        EngineCompletion::Complete
+    )
 }
 
 /// A stock driver's complete structured result: normal exit 0 or 1 and one
@@ -336,64 +404,17 @@ pub(crate) fn stock_completed(stdout: &[u8], exit: Option<i32>) -> bool {
 
 /// The structured result document is whole and agrees with `success`.
 fn document_completed(stdout: &[u8], sealed_success: bool) -> bool {
-    let (documents, remainder) = crate::attribution::json_documents(stdout);
-    let [document] = documents.as_slice() else {
-        return false;
-    };
-    if !remainder.iter().all(u8::is_ascii_whitespace)
-        || !document["func-details"].is_object()
-        || !["version", "profile", "toolchain", "commit"]
-            .iter()
-            .all(|key| {
-                document["verus"][key]
-                    .as_str()
-                    .is_some_and(|value| !value.is_empty())
-            })
-        || !["os", "arch"].iter().all(|key| {
-            document["verus"]["platform"][key]
-                .as_str()
-                .is_some_and(|value| !value.is_empty())
-        })
-    {
-        return false;
-    }
-    let results = &document["verification-results"];
-    let Some(vir_error) = results["encountered-vir-error"].as_bool() else {
-        return false;
-    };
-    // A seal contradicting the document it accompanies is not completion
-    // evidence: neither a reported success nor a VIR error may be overruled.
-    if results["success"]
-        .as_bool()
-        .is_some_and(|success| success != sealed_success)
-        || (vir_error && sealed_success)
-    {
-        return false;
-    }
-    // Normal compiler errors and ordinary failed proofs retain their exact
-    // document. The terminal marker, not diagnostic text, excludes internal
-    // panic termination that older producers folded into this same shape.
-    if results["encountered-error"].as_bool().is_none()
-        || results
-            .get("success")
-            .is_some_and(|value| !value.is_boolean())
-    {
-        return false;
-    }
-    // The pinned JSON producer deliberately omits counts and scope after VIR
-    // errors. Such a document is a legitimate compiler failure, not a crash.
-    vir_error
-        || (results["verified"].as_u64().is_some()
-            && results["errors"].as_u64().is_some()
-            && results["is-verifying-entire-crate"].as_bool().is_some()
-            && (results["is-verifying-entire-crate"] != true || results["success"].is_boolean()))
+    sail_acceptance::authority::engine_document_stream_complete(
+        &document_candidates(stdout),
+        sealed_success,
+    )
 }
 
 /// Reads the existing bounded full terminal; never establishes proof success.
 pub(crate) fn terminal_success(path: &Path) -> Option<bool> {
     let terminal = terminal(path)?;
-    (terminal.payload.normal_termination == Some(true))
-        .then_some(terminal.payload.success)
+    (terminal.normal == Some(true))
+        .then_some(terminal.success)
         .flatten()
 }
 
@@ -540,6 +561,35 @@ mod tests {
         std::fs::remove_file(path)?;
         Ok(())
     }
+    #[test]
+    fn successful_terminal_cannot_override_original_error_fields()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let path =
+            std::env::temp_dir().join(format!("sail-engine-error-fields-{}", std::process::id()));
+        std::fs::write(
+            &path,
+            include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
+        )?;
+        let original: Value = serde_json::from_slice(include_bytes!(
+            "../tests/fixtures/engine-terminal/success.json"
+        ))?;
+        assert!(completed(&path, &serde_json::to_vec(&original)?, Some(0)));
+        for (field, value) in [
+            ("encountered-error", serde_json::json!(true)),
+            ("errors", serde_json::json!(1)),
+        ] {
+            let mut inconsistent = original.clone();
+            inconsistent["verification-results"][field] = value;
+            assert!(!completed(
+                &path,
+                &serde_json::to_vec(&inconsistent)?,
+                Some(0)
+            ));
+        }
+        std::fs::remove_file(path)?;
+        Ok(())
+    }
+
     #[test]
     fn source_diagnostic_retains_exact_message_and_location() {
         let raw = serde_json::json!({"message":{"note":"postcondition not satisfied","spans":[{"as_string":"crate:part.rs:5:30: 5:35 (#0)"}]},"level":"Error"});
