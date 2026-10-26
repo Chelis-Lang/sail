@@ -76,9 +76,15 @@ def validate_assembly(snapshots: dict[str, bytes]) -> None:
     workspace = tomllib.loads(snapshots["Cargo.toml"].decode())
     require(not ({"patch", "replace"} & set(workspace)), "workspace dependency overrides require review")
     protected_packages = ("sail-acceptance", "sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")
+    # sail-daemon's optional `temporal` feature is chosen by each member
+    # (ADR 0080); only disabling default features is accepted, never a redirect.
+    feature_selectable = {"sail-daemon"}
     for name in protected_packages:
-        require(workspace["workspace"]["dependencies"][name] == {"path": "crates/" + name},
-            "workspace protected dependency redirected: " + name)
+        entry = workspace["workspace"]["dependencies"][name]
+        expected = [{"path": "crates/" + name}]
+        if name in feature_selectable:
+            expected.append({"path": "crates/" + name, "default-features": False})
+        require(entry in expected, "workspace protected dependency redirected: " + name)
     api = tomllib.loads(snapshots["crates/sail-api/Cargo.toml"].decode())
     require(set(api) == {"package", "dependencies", "target", "lints"}
         and set(api["package"]) == set(package)

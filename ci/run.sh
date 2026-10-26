@@ -189,6 +189,8 @@ case "$step" in
     python3 scripts/test-bench-cargo-compare.py
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
+    # `sail verify` without D.I.V.E. (ADR 0080) stays buildable and lint-clean.
+    cargo clippy --locked -p sail-cli -p sail-daemon -p sail-runtime --no-default-features -- -D warnings
     cargo nextest run --workspace --locked --profile ci
     # check_mcp drives the e2e legacy phase; its own unit tests stay here.
     cargo test --locked -p sail-cli --example check_mcp
