@@ -121,6 +121,17 @@ Acceptance also checks each requested target's report invariants and actual
 function verdicts: every reported function must be confirmed verified, Verus
 must explicitly report zero errors, and partial-scope reuse cannot establish
 whole-target evidence. An inconsistent success summary never authorizes a repair.
+A repeated requested target identity or a focused Verus selector in the actual
+full report also prevents acceptance, even when its completion flag claims
+success. Retained jobs recompute acceptance through the same checked report
+validator after refreshing currentness. A successful crate with zero reported
+functions remains eligible; missing crate evidence does not.
+Compile-only `--no-verify` never establishes receipt, whole-target or repair
+authority, even when Verus exits zero and reports `success: true`. Enabled
+zero-function verification remains distinct. Older receipt formats are refreshed;
+retained jobs and baselines from producers without the new mode record retain
+their observations but withhold positive target completion. Re-run those inputs
+to establish fresh proof evidence.
 A missing or ambiguous exact function records `batch.selection_error` with a
 stable code and prevents acceptance while retaining the independent full report.
 

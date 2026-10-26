@@ -12,6 +12,7 @@ repository = "https://github.com/Chelis-Lang/sail"
 license = "MIT"
 
 [workspace.dependencies]
+sail-acceptance = { path = "crates/sail-acceptance" }
 proc-macro2 = { version = "=1.0.107", features = ["span-locations"] }
 quote = "=1.0.47"
 syn = { version = "=2.0.119", features = ["full", "fold", "visit", "extra-traits"] }
@@ -74,7 +75,7 @@ toml_edit = { version = "0.23", default-features = false, features = ["parse", "
 [workspace.lints.rust]
 missing_docs = "deny"
 unsafe_code = "forbid"
-unexpected_cfgs = { level = "deny", check-cfg = [] }
+unexpected_cfgs = { level = "deny", check-cfg = ["cfg(sail_verus)"] }
 
 [workspace.lints.clippy]
 all = { level = "deny", priority = -1 }

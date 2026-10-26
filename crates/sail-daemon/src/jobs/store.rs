@@ -14,6 +14,11 @@ use serde::{Deserialize, Serialize};
 
 use super::State;
 
+/// Private producer admissibility revision, not proof authority by itself.
+pub(super) const PROOF_AUTHORITY_REVISION: u32 = 1;
+
+const LEGACY_AUTHORITY_NOTE: &str = "The producer did not record verification-enabled proof authority; target completion is withheld. Re-run to establish proof evidence.";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct Stored {
     pub status: Status,
@@ -34,6 +39,9 @@ pub(super) struct Projection {
     context_sha256: String,
     input_revision: String,
     currentness: sail_api::project::Currentness,
+    // Absent older producers are unrecorded, never implicitly current policy.
+    #[serde(default)]
+    proof_authority_revision: u32,
 }
 impl Projection {
     pub(super) fn validated(bytes: &[u8], project: &sail_api::project::ProjectResult) -> Self {
@@ -44,6 +52,7 @@ impl Projection {
             context_sha256: project.context_sha256.clone(),
             input_revision: project.input_revision.clone(),
             currentness: project.currentness,
+            proof_authority_revision: PROOF_AUTHORITY_REVISION,
         }
     }
     pub(super) fn with_stderr(mut self, bytes: &[u8]) -> Self {
@@ -200,7 +209,7 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         return Ok(frames.select(currentness));
     }
     // This parse uses the same bytes whose exact seal was checked above.
-    let (project, repair) = if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
+    let (mut project, repair) = if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
         let mut envelope: sail_api::repair::ResultDocument =
             serde_json::from_slice(&bytes).map_err(io::Error::other)?;
         (full_phase(&mut envelope)?, Some(Box::new(envelope)))
@@ -210,6 +219,7 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
             None,
         )
     };
+    withhold_legacy_authority(&mut project, projection.proof_authority_revision);
     let frame = |currentness| {
         let mut project = project.clone();
         let mut status = job.status.clone();
@@ -246,11 +256,13 @@ fn frame_key(job: &Stored, projection: &Projection) -> io::Result<String> {
         status: &'a Status,
         repair: bool,
         stdout_sha256: &'a str,
+        proof_authority_revision: u32,
     }
     serde_json::to_vec(&Key {
         status: &job.status,
         repair: matches!(job.submission.mode, sail_api::jobs::Mode::Repair(_)),
         stdout_sha256: &projection.stdout_sha256,
+        proof_authority_revision: projection.proof_authority_revision,
     })
     .map(|bytes| stdout_digest(&bytes))
     .map_err(io::Error::other)
@@ -320,12 +332,40 @@ fn classify(
 }
 fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::ProjectResult> {
     let bytes = project_bytes(state, job)?;
-    if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
+    let mut project = if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
         let mut envelope: sail_api::repair::ResultDocument =
             serde_json::from_slice(&bytes).map_err(io::Error::other)?;
-        full_phase(&mut envelope)
+        full_phase(&mut envelope)?
     } else {
-        serde_json::from_slice(&bytes).map_err(io::Error::other)
+        serde_json::from_slice(&bytes).map_err(io::Error::other)?
+    };
+    withhold_legacy_authority(
+        &mut project,
+        job.projection
+            .as_ref()
+            .map_or(0, |projection| projection.proof_authority_revision),
+    );
+    Ok(project)
+}
+
+/// Old records can retain observations and historical verdicts, but cannot
+/// establish that an omitted effective per-package option enabled verification.
+pub(super) fn withhold_legacy_authority(
+    project: &mut sail_api::project::ProjectResult,
+    revision: u32,
+) {
+    if revision == PROOF_AUTHORITY_REVISION {
+        return;
+    }
+    for target in &mut project.targets {
+        target.complete = false;
+    }
+    if !project
+        .notes
+        .iter()
+        .any(|note| note == LEGACY_AUTHORITY_NOTE)
+    {
+        project.notes.push(LEGACY_AUTHORITY_NOTE.into());
     }
 }
 /// Moves the full phase out of a retained repair document.
@@ -657,5 +697,154 @@ mod result_frame_tests {
         assert!(wrong.is_err_and(|e| e.to_string().starts_with("SAIL0816:")));
         assert!(wrong_status.is_err_and(|e| e.to_string().starts_with("SAIL0816:")));
         assert!(oversized.is_err_and(|e| e.to_string().starts_with("SAIL0814:")));
+    }
+}
+
+#[cfg(test)]
+mod legacy_authority_tests {
+    use super::*;
+
+    fn remember_job(state: &State, job: &Stored) -> Result<(), Box<dyn std::error::Error>> {
+        state
+            .jobs
+            .lock()
+            .map_err(|_| "job mutex poisoned")?
+            .insert(job.status.id.clone(), job.clone());
+        Ok(())
+    }
+
+    fn zero_function_project()
+    -> Result<sail_api::project::ProjectResult, Box<dyn std::error::Error>> {
+        let mut report: sail_api::output::Report = serde_json::from_str(include_str!(
+            "../../../sail-cli/tests/fixtures/attr/report.golden.json"
+        ))?;
+        report.exit_code = Some(0);
+        for krate in &mut report.crates {
+            krate.functions.clear();
+            krate.verus.verified = Some(0);
+            krate.verus.errors = Some(0);
+            krate.verus.success = Some(true);
+            krate.verus.encountered_vir_error = Some(false);
+        }
+        report.summary = sail_api::output::Summary::of(&report.crates);
+        let mut project =
+            super::currentness_note_tests::project(sail_api::project::Currentness::Current);
+        project.targets.push(sail_api::project::TargetResult {
+            package_id: "package".into(),
+            target: "target".into(),
+            kind: vec!["lib".into()],
+            establishing_run: "original-run".into(),
+            reused: false,
+            scope_reuse: None,
+            requested: true,
+            complete: true,
+            report,
+            dependency_store: None,
+            dependency_build: None,
+        });
+        Ok(project)
+    }
+
+    #[test]
+    fn missing_legacy_revision_cannot_be_laundered_by_frames_or_baseline_copy()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-legacy-authority-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let server = super::super::bind(
+            &root.join("socket"),
+            &root.join("jobs"),
+            Path::new("/bin/true"),
+        )?;
+        let state = &server.state;
+        let original = zero_function_project()?;
+        assert!(
+            sail_api::repair::accepted(&original),
+            "fresh enabled zero-function control"
+        );
+        let bytes = serde_json::to_vec(&original)?;
+        let fresh = Projection::validated(&bytes, &original);
+        let mut old = serde_json::to_value(&fresh)?;
+        old.as_object_mut()
+            .ok_or("projection must be an object")?
+            .remove("proof_authority_revision");
+        let legacy: Projection = serde_json::from_value(old)?;
+        assert_eq!(legacy.proof_authority_revision, 0);
+        let mut preserved = original.clone();
+        withhold_legacy_authority(&mut preserved, 0);
+        assert_eq!(preserved.currentness, original.currentness);
+        assert_eq!(preserved.exit_code, original.exit_code);
+        assert_eq!(preserved.targets[0].report, original.targets[0].report);
+        assert!(!preserved.targets[0].complete);
+        assert!(!sail_api::repair::accepted(&preserved));
+
+        let mut job = Stored::new(Submission {
+            mode: sail_api::jobs::Mode::Stock,
+            project_dir: root.clone(),
+            args: Vec::new(),
+            force: false,
+            environment: BTreeMap::new(),
+            input_revision: None,
+        });
+        job.status.state = Lifecycle::Completed;
+        job.projection = Some(legacy.clone());
+        let directory = state.root.join(&job.status.id);
+        std::fs::create_dir_all(&directory)?;
+        std::fs::write(directory.join("stdout"), &bytes)?;
+        remember_job(state, &job)?;
+        assert_ne!(frame_key(&job, &legacy)?, frame_key(&job, &fresh)?);
+        for _ in 0..2 {
+            let frame = result_frame(state, &job)?;
+            let response: sail_api::jobs::Response =
+                sail_api::jobs::read_frame(&mut frame.as_slice())?;
+            let sail_api::jobs::Response::Result(document) = response else {
+                return Err("expected result".into());
+            };
+            assert_eq!(
+                document.result.ok_or("missing project")?["targets"][0]["complete"],
+                false
+            );
+        }
+        let copied = super::super::product::save_baseline(state, &job.status.id, "legacy-copy")?;
+        assert!(!copied.result.targets[0].complete);
+        assert!(
+            !super::super::product::baseline(state, "legacy-copy")?
+                .result
+                .targets[0]
+                .complete
+        );
+
+        let mut historical = original;
+        historical.currentness = sail_api::project::Currentness::Historical;
+        let old_baseline = sail_api::evidence::Baseline {
+            contracts: None,
+            version: sail_api::evidence::VERSION,
+            name: "old-baseline".into(),
+            job_id: job.status.id.clone(),
+            result: historical,
+        };
+        std::fs::write(
+            state.root.join("baselines/old-baseline.json"),
+            serde_json::to_vec(&old_baseline)?,
+        )?;
+        let loaded = super::super::product::baseline(state, "old-baseline")?;
+        assert_eq!(
+            loaded.result.currentness,
+            sail_api::project::Currentness::Historical
+        );
+        assert!(!loaded.result.targets[0].complete);
+        job.projection = Some(fresh);
+        remember_job(state, &job)?;
+        let fresh_zero = super::super::product::save_baseline(state, &job.status.id, "fresh-zero")?;
+        assert!(fresh_zero.result.targets[0].complete);
+        assert!(
+            super::super::product::baseline(state, "fresh-zero")?
+                .result
+                .targets[0]
+                .complete
+        );
+        drop(server);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 }

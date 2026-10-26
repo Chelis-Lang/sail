@@ -60,6 +60,58 @@ pub(crate) fn in_order<T: Sync, R: Send>(items: &[T], work: impl Fn(&T) -> R + S
         .collect()
 }
 
+/// Candidate ordering checked by the acceptance core before any descriptor join.
+pub(crate) fn proposed_fact_order(
+    facts: &[sail_acceptance::inputs::InputFact<'_>],
+) -> (Vec<usize>, Vec<usize>) {
+    let mut order: Vec<_> = (0..facts.len()).collect();
+    order.sort_unstable_by(|&a, &b| {
+        (facts[a].namespace, facts[a].name).cmp(&(facts[b].namespace, facts[b].name))
+    });
+    let mut inverse = vec![0; facts.len()];
+    for (rank, &position) in order.iter().enumerate() {
+        inverse[position] = rank;
+    }
+    (order, inverse)
+}
+
+/// Checks the complete independent identity/binding ledger of returned records.
+/// Values describe native record identity, not successful physical file reads.
+/// Empty/empty is a complete empty descriptor ledger, not verifier authority.
+pub(crate) fn exact_descriptors(expected: &[(&[u8], &[u8])], returned: &[(&[u8], &[u8])]) -> bool {
+    use sail_acceptance::inputs::{InputFact, InputValue, compare_readback};
+    if expected.is_empty() && returned.is_empty() {
+        return true;
+    }
+    let expected: Vec<_> = expected
+        .iter()
+        .map(|&(name, binding)| InputFact {
+            namespace: 0,
+            name,
+            value: InputValue::Present(binding),
+        })
+        .collect();
+    let returned: Vec<_> = returned
+        .iter()
+        .map(|&(name, binding)| InputFact {
+            namespace: 0,
+            name,
+            value: InputValue::Present(binding),
+        })
+        .collect();
+    let (before_order, before_inverse) = proposed_fact_order(&expected);
+    let (after_order, after_inverse) = proposed_fact_order(&returned);
+    compare_readback(
+        &expected,
+        &returned,
+        &before_order,
+        &before_inverse,
+        &after_order,
+        &after_inverse,
+    )
+    .is_equal()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

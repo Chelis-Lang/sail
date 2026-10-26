@@ -1,12 +1,16 @@
 //! Cargo metadata and declared input revision tracking.
 
-use super::files::digest_all;
+use super::files::{digest_all_tagged, read_outcome_keys_match};
 use crate::{Error, Result};
+use sail_acceptance::inputs::{
+    InputFact, InputValue, OriginalCapture, OriginalGuard, compare_readback, reads_complete,
+};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 
 /// Declared workspace inputs used by managed jobs and watch.
 #[derive(Debug, Clone)]
@@ -26,6 +30,145 @@ pub struct InputSnapshot {
     pub(super) digests: BTreeMap<PathBuf, String>,
     /// Source path aliases and their canonical destinations, including linked ancestors.
     pub(super) bindings: BTreeMap<PathBuf, PathBuf>,
+    /// Original capture provenance; projections share its entire observed namespace.
+    pub(super) capture: Option<SnapshotGuard>,
+}
+
+#[derive(Debug)]
+pub(super) struct SnapshotGuard {
+    guard: OriginalGuard,
+    paths: Arc<BTreeSet<PathBuf>>,
+}
+
+impl Clone for SnapshotGuard {
+    fn clone(&self) -> Self {
+        Self {
+            guard: self.guard.duplicate(),
+            paths: Arc::clone(&self.paths),
+        }
+    }
+}
+
+impl SnapshotGuard {
+    fn finish(
+        original: OriginalCapture,
+        after: Option<&str>,
+        revision: &str,
+        paths: &BTreeSet<PathBuf>,
+    ) -> Option<Self> {
+        original
+            .finish(after.map(str::as_bytes), revision.as_bytes())
+            .map(|guard| Self {
+                guard,
+                paths: Arc::new(paths.clone()),
+            })
+    }
+}
+
+/// Native ordering proposals confer no authority: the source-shared core checks
+/// the complete forward/inverse permutation and every adjacent key.
+pub(super) fn proposed_order(facts: &[InputFact<'_>]) -> (Vec<usize>, Vec<usize>) {
+    crate::parallel::proposed_fact_order(facts)
+}
+
+fn snapshot_facts<'a>(
+    digests: &'a BTreeMap<PathBuf, String>,
+    bindings: &'a BTreeMap<PathBuf, PathBuf>,
+) -> Vec<InputFact<'a>> {
+    digests
+        .iter()
+        .map(|(path, hash)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(hash.as_bytes()),
+        })
+        .chain(bindings.iter().map(|(alias, target)| InputFact {
+            namespace: 1,
+            name: alias.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
+        }))
+        .collect()
+}
+
+fn bindings_current(bindings: &BTreeMap<PathBuf, PathBuf>) -> bool {
+    let aliases: Vec<_> = bindings.keys().map(PathBuf::as_path).collect();
+    let reads = crate::parallel::in_order(&aliases, |&alias| (alias, alias.canonicalize()));
+    bindings_readback(bindings, &reads)
+}
+
+fn bindings_readback(
+    bindings: &BTreeMap<PathBuf, PathBuf>,
+    reads: &[(&Path, std::io::Result<PathBuf>)],
+) -> bool {
+    if bindings.is_empty() && reads.is_empty() {
+        return true;
+    }
+    let expected: Vec<_> = bindings
+        .iter()
+        .map(|(alias, target)| InputFact {
+            namespace: 1,
+            name: alias.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
+        })
+        .collect();
+    let observed: Vec<_> = reads
+        .iter()
+        .map(|(alias, read)| InputFact {
+            namespace: 1,
+            name: alias.as_os_str().as_encoded_bytes(),
+            value: match read {
+                Ok(target) => InputValue::Present(target.as_os_str().as_encoded_bytes()),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => InputValue::Absent,
+                Err(_) => InputValue::Unreadable,
+            },
+        })
+        .collect();
+    let (before_order, before_inverse) = proposed_order(&expected);
+    let (after_order, after_inverse) = proposed_order(&observed);
+    compare_readback(
+        &expected,
+        &observed,
+        &before_order,
+        &before_inverse,
+        &after_order,
+        &after_inverse,
+    )
+    .is_equal()
+}
+
+fn project_guard(
+    observed: &InputSnapshot,
+    revision: &str,
+    digests: &BTreeMap<PathBuf, String>,
+    bindings: &BTreeMap<PathBuf, PathBuf>,
+) -> Option<SnapshotGuard> {
+    let selected = snapshot_facts(digests, bindings);
+    project_guard_facts(observed, revision, &selected)
+}
+
+fn project_guard_facts(
+    observed: &InputSnapshot,
+    revision: &str,
+    selected: &[InputFact<'_>],
+) -> Option<SnapshotGuard> {
+    let capture = observed.capture.as_ref()?;
+    let source = snapshot_facts(&observed.digests, &observed.bindings);
+    let (source_order, source_inverse) = proposed_order(&source);
+    let (selected_order, selected_inverse) = proposed_order(selected);
+    let guard = capture.guard.project(
+        observed.revision.as_bytes(),
+        revision.as_bytes(),
+        &source,
+        selected,
+        &source_order,
+        &source_inverse,
+        &selected_order,
+        &selected_inverse,
+    )?;
+    Some(SnapshotGuard {
+        guard,
+        paths: Arc::clone(&capture.paths),
+    })
 }
 
 #[derive(Default)]
@@ -391,8 +534,14 @@ pub(super) fn snapshot_metadata_stamped(
 /// the stamp it had around the snapshot's content reads.
 pub(super) fn unchanged_since(snapshot: &InputSnapshot, stamp: Option<&String>) -> bool {
     snapshot.complete
-        && stamp.is_some()
-        && stamp_paths(&snapshot.observation_paths).as_ref() == stamp
+        && snapshot.capture.as_ref().is_some_and(|capture| {
+            let now = stamp_paths(&capture.paths);
+            capture.guard.retained(
+                snapshot.revision.as_bytes(),
+                stamp.map(String::as_bytes),
+                now.as_deref().map(str::as_bytes),
+            )
+        })
 }
 
 /// A selected revision from this run's complete source observation. Every
@@ -528,13 +677,18 @@ fn stamped_snapshot(
     let observation_paths = path_set(observation_paths);
     let files = path_set(files);
     let stamp_before = stamp_paths(&observation_paths);
+    let original = OriginalCapture::begin(stamp_before.as_deref().map(str::as_bytes));
     let (revision, readable, digests) = contents_revision(&files, &bindings.paths);
     complete &= readable;
-    complete &= stamp_before.is_some() && stamp_before == stamp_paths(&observation_paths);
-    complete &= bindings
-        .paths
-        .iter()
-        .all(|(alias, target)| alias.canonicalize().is_ok_and(|actual| actual == *target));
+    let stamp_after = stamp_paths(&observation_paths);
+    let capture = SnapshotGuard::finish(
+        original,
+        stamp_after.as_deref(),
+        &revision,
+        &observation_paths,
+    );
+    complete &= capture.is_some();
+    complete &= bindings_current(&bindings.paths);
     roots.sort();
     roots.dedup();
     (
@@ -547,6 +701,7 @@ fn stamped_snapshot(
             observation_paths,
             digests,
             bindings: bindings.paths,
+            capture,
         },
         stamp_before,
     )
@@ -563,7 +718,10 @@ struct Projection {
 
 impl Projection {
     /// Borrow the exact selected digests in order; no input is reread or omitted.
-    fn reads<'a>(&'a self, observed: &'a InputSnapshot) -> impl Iterator<Item = Result<&'a str>> {
+    fn reads<'a>(
+        &'a self,
+        observed: &'a InputSnapshot,
+    ) -> impl Iterator<Item = (&'a Path, Result<&'a str>)> {
         let mut available = observed
             .digests
             .range(self.files.first().cloned().unwrap_or_default()..)
@@ -572,11 +730,13 @@ impl Projection {
             while available.peek().is_some_and(|(key, _)| *key < path) {
                 available.next();
             }
-            available
-                .peek()
-                .filter(|(key, _)| *key == path)
-                .map(|(_, digest)| digest.as_str())
-                .ok_or_else(|| Error::new("SAIL3101", "missing observed input"))
+            match available.peek().filter(|(key, _)| *key == path) {
+                Some((key, digest)) => (key.as_path(), Ok(digest.as_str())),
+                None => (
+                    path.as_path(),
+                    Err(Error::new("SAIL3101", "missing observed input")),
+                ),
+            }
         })
     }
 }
@@ -613,6 +773,7 @@ fn projected_snapshot(
         &projection.bindings,
         projection.reads(observed),
     );
+    let capture = project_guard(observed, &revision, &digests, &projection.bindings)?;
     Some(InputSnapshot {
         workspace: projection.workspace,
         revision,
@@ -622,6 +783,7 @@ fn projected_snapshot(
         observation_paths,
         digests,
         bindings: projection.bindings,
+        capture: Some(capture),
     })
 }
 
@@ -637,12 +799,29 @@ pub(super) fn snapshot_revision_projected(
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
     let projection = projected_selection(data, extras, home.as_deref(), observed)?;
-    Some(fold_revision(
+    let (revision, complete) = fold_revision(
         &projection.files,
         &projection.bindings,
         projection.reads(observed),
         |_, _| {},
-    ))
+    );
+    let selected: Vec<_> = projection
+        .reads(observed)
+        .map(|(path, read)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: read.map_or(InputValue::Unreadable, |hash| {
+                InputValue::Present(hash.as_bytes())
+            }),
+        })
+        .chain(projection.bindings.iter().map(|(alias, target)| InputFact {
+            namespace: 1,
+            name: alias.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
+        }))
+        .collect();
+    project_guard_facts(observed, &revision, &selected)?;
+    Some((revision, complete))
 }
 
 #[allow(
@@ -971,40 +1150,77 @@ fn contents_revision(
     bindings: &BTreeMap<PathBuf, PathBuf>,
 ) -> (String, bool, BTreeMap<PathBuf, String>) {
     let paths: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
-    fold_contents(files, bindings, digest_all(&paths))
+    fold_contents(files, bindings, digest_all_tagged(&paths))
 }
 
-fn fold_contents<S: AsRef<str> + Into<String>>(
+fn fold_contents<'a, S: AsRef<str>>(
     files: &BTreeSet<PathBuf>,
     bindings: &BTreeMap<PathBuf, PathBuf>,
-    reads: impl IntoIterator<Item = Result<S>>,
+    reads: impl IntoIterator<Item = (&'a Path, Result<S>)>,
 ) -> (String, bool, BTreeMap<PathBuf, String>) {
     let mut recorded = Vec::with_capacity(files.len());
     let (revision, complete) = fold_revision(files, bindings, reads, |path, hash| {
-        recorded.push((path.to_owned(), hash.into()));
+        recorded.push((path.to_owned(), hash.to_owned()));
     });
     (revision, complete, recorded.into_iter().collect())
 }
 
-/// Fold the original path bytes, content hashes and bindings in exactly the
-/// same order, optionally retaining the individual file observations.
-fn fold_revision<S: AsRef<str>>(
+/// Fold independently keyed outcomes in the original requested path order,
+/// optionally retaining digests. Revision-only callers avoid building a map.
+fn fold_revision<'a, S: AsRef<str>>(
     files: &BTreeSet<PathBuf>,
     bindings: &BTreeMap<PathBuf, PathBuf>,
-    reads: impl IntoIterator<Item = Result<S>>,
-    mut record: impl FnMut(&Path, S),
+    reads: impl IntoIterator<Item = (&'a Path, Result<S>)>,
+    mut record: impl FnMut(&Path, &str),
 ) -> (String, bool) {
-    let mut complete = true;
+    // A parallel result owns the path actually read alongside its outcome.
+    // Validate all returned keys before reducing them to a keyed lookup.
+    let reads: Vec<_> = reads.into_iter().collect();
+    let required: Vec<_> = files
+        .iter()
+        .map(|path| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(&[]),
+        })
+        .collect();
+    let observed: Vec<_> = reads
+        .iter()
+        .map(|(path, read)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: read.as_ref().map_or(InputValue::Unreadable, |hash| {
+                InputValue::Present(hash.as_ref().as_bytes())
+            }),
+        })
+        .collect();
+    let (required_order, required_inverse) = proposed_order(&required);
+    let (observed_order, observed_inverse) = proposed_order(&observed);
+    let complete = reads_complete(
+        &required,
+        &observed,
+        &required_order,
+        &required_inverse,
+        &observed_order,
+        &observed_inverse,
+    );
+    let by_name: BTreeMap<_, _> = reads
+        .iter()
+        .filter_map(|(path, read)| {
+            read.as_ref()
+                .ok()
+                .map(|hash| (path.as_os_str().as_encoded_bytes(), hash))
+        })
+        .collect();
     let mut hasher = Sha256::new();
-    for (path, digest) in files.iter().zip(reads) {
+    for path in files {
         let bytes = path.as_os_str().as_encoded_bytes();
         hasher.update((bytes.len() as u64).to_le_bytes());
         hasher.update(bytes);
-        if let Ok(hash) = digest {
+        if let Some(hash) = by_name.get(bytes) {
             hasher.update(hash.as_ref().as_bytes());
-            record(path, hash);
+            record(path, hash.as_ref());
         } else {
-            complete = false;
             hasher.update(b"unreadable");
         }
     }
@@ -1053,15 +1269,31 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
 // folds their results in the original sorted order, exactly as one by one.
 #[cfg(unix)]
 fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
+    let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
+    let stats = crate::parallel::in_order(&names, |&path| (path, std::fs::symlink_metadata(path)));
+    stamp_readback(paths, &stats)
+}
+
+#[cfg(unix)]
+fn stamp_readback(
+    paths: &BTreeSet<PathBuf>,
+    stats: &[(&Path, std::io::Result<std::fs::Metadata>)],
+) -> Option<String> {
     use std::os::unix::fs::MetadataExt as _;
+    let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
+    if !read_outcome_keys_match(&names, stats) {
+        return None;
+    }
+    let by_name: BTreeMap<_, _> = stats
+        .iter()
+        .map(|(path, metadata)| (path.as_os_str().as_encoded_bytes(), metadata))
+        .collect();
     let mut stamp = Sha256::new();
-    let paths: Vec<&PathBuf> = paths.iter().collect();
-    let stats = crate::parallel::in_order(&paths, |path| std::fs::symlink_metadata(path));
-    for (path, metadata) in paths.into_iter().zip(stats) {
+    for path in paths {
         let name = path.as_os_str().as_encoded_bytes();
         stamp.update((name.len() as u64).to_le_bytes());
         stamp.update(name);
-        let metadata = match metadata {
+        let metadata = match by_name.get(name)? {
             Ok(metadata) => metadata,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 stamp.update(b"missing");
@@ -1543,6 +1775,16 @@ mod tests {
             .ok_or_else(|| std::io::Error::other("complete source projection refused"))?;
         assert_eq!(projected.revision, observed.revision);
         assert_eq!(projected.bindings, observed.bindings);
+        assert_eq!(
+            snapshot_revision_projected(&data, &[], &observed),
+            Some((projected.revision.clone(), projected.complete))
+        );
+        let mut unguarded = observed.clone();
+        unguarded.capture = None;
+        assert!(snapshot_revision_projected(&data, &[], &unguarded).is_none());
+        let mut rebound = observed.clone();
+        rebound.revision.push_str("-rebound");
+        assert!(snapshot_revision_projected(&data, &[], &rebound).is_none());
         std::fs::remove_file(&alias)?;
         std::os::unix::fs::symlink(root.join("bad.rs"), &alias)?;
         let fresh = snapshot_metadata(&data, &[]);
@@ -1555,6 +1797,135 @@ mod tests {
         std::fs::remove_file(&alias)?;
         std::os::unix::fs::symlink(root.join("good.rs"), &alias)?;
         assert_eq!(snapshot_metadata(&data, &[]).revision, observed.revision);
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
+    fn content_capture_refuses_missing_extra_and_failed_read_outcomes() {
+        let a = Path::new("a.rs");
+        let b = Path::new("b.rs");
+        let c = Path::new("c.rs");
+        let files = BTreeSet::from([a.to_owned(), b.to_owned()]);
+        let bindings = BTreeMap::new();
+        let (revision, complete, digests) =
+            fold_contents(&files, &bindings, [(a, Ok("one")), (b, Ok("two"))]);
+        assert!(complete);
+        assert_eq!(digests.len(), 2);
+        let reordered = fold_contents(&files, &bindings, [(b, Ok("two")), (a, Ok("one"))]);
+        assert_eq!(reordered, (revision, true, digests));
+        for reads in [
+            vec![(a, Ok("one"))],
+            vec![(a, Ok("one")), (b, Ok("two")), (c, Ok("extra"))],
+            vec![(a, Ok("one")), (a, Ok("two"))],
+            vec![
+                (a, Ok("one")),
+                (b, Err(Error::new("SAIL3101", "read failed"))),
+            ],
+        ] {
+            assert!(!fold_contents(&files, &bindings, reads).1);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn metadata_stamps_validate_returned_paths_before_folding() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-tagged-stats-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        let absent = root.join("absent.toml");
+        let extra = root.join("extra.rs");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        let files = BTreeSet::from([a.clone(), b.clone(), absent.clone()]);
+        let paths = [a.as_path(), b.as_path(), absent.as_path()];
+        let read =
+            || crate::parallel::in_order(&paths, |&path| (path, std::fs::symlink_metadata(path)));
+        let before = stamp_readback(&files, &read());
+        assert!(before.is_some());
+        let mut reordered = read();
+        reordered.reverse();
+        assert_eq!(stamp_readback(&files, &reordered), before);
+        reordered.pop();
+        assert!(stamp_readback(&files, &reordered).is_none());
+        let mut unexpected = read();
+        unexpected.push((extra.as_path(), std::fs::symlink_metadata(&extra)));
+        assert!(stamp_readback(&files, &unexpected).is_none());
+        let duplicate = [
+            (a.as_path(), std::fs::symlink_metadata(&a)),
+            (a.as_path(), std::fs::symlink_metadata(&a)),
+            (absent.as_path(), std::fs::symlink_metadata(&absent)),
+        ];
+        assert!(stamp_readback(&files, &duplicate).is_none());
+        std::fs::write(&a, "changed contents")?;
+        let mut changed = read();
+        changed.reverse();
+        assert_ne!(stamp_readback(&files, &changed), before);
+        std::fs::remove_dir_all(root)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn raw_alias_reads_cannot_cancel_a_retarget_with_reordering() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-tagged-aliases-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let a = root.join("a");
+        let b = root.join("b");
+        let first = root.join("first.rs");
+        let second = root.join("second.rs");
+        std::fs::write(&first, "first")?;
+        std::fs::write(&second, "second")?;
+        std::os::unix::fs::symlink(&first, &a)?;
+        std::os::unix::fs::symlink(&second, &b)?;
+        let expected = BTreeMap::from([(a.clone(), first.clone()), (b.clone(), second.clone())]);
+        let names = [a.as_path(), b.as_path()];
+        let read = || crate::parallel::in_order(&names, |&name| (name, name.canonicalize()));
+        let mut reads = read();
+        reads.reverse();
+        assert!(bindings_readback(&expected, &reads));
+        reads.pop();
+        assert!(!bindings_readback(&expected, &reads));
+        let duplicate = [
+            (a.as_path(), a.canonicalize()),
+            (a.as_path(), a.canonicalize()),
+        ];
+        assert!(!bindings_readback(&expected, &duplicate));
+        std::fs::remove_file(&a)?;
+        std::fs::remove_file(&b)?;
+        std::os::unix::fs::symlink(&second, &a)?;
+        std::os::unix::fs::symlink(&first, &b)?;
+        let mut retargeted = read();
+        retargeted.reverse();
+        assert!(!bindings_readback(&expected, &retargeted));
+        std::fs::remove_dir_all(root)
+    }
+
+    #[test]
+    fn raw_content_reads_keep_their_own_paths_under_permutation() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-tagged-inputs-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        let files = BTreeSet::from([a.clone(), b.clone()]);
+        let paths = [a.as_path(), b.as_path()];
+        let before = fold_contents(&files, &BTreeMap::new(), digest_all_tagged(&paths));
+        assert!(before.1);
+        let mut reads = digest_all_tagged(&paths);
+        reads.reverse();
+        assert_eq!(fold_contents(&files, &BTreeMap::new(), reads), before);
+        // Swapping both physical contents and result order used to cancel if
+        // expected paths were reattached to untagged results by position.
+        std::fs::write(&a, "second")?;
+        std::fs::write(&b, "first")?;
+        let mut changed = digest_all_tagged(&paths);
+        changed.reverse();
+        let after = fold_contents(&files, &BTreeMap::new(), changed);
+        assert!(after.1);
+        assert_ne!(after.0, before.0);
+        assert_ne!(after.2, before.2);
         std::fs::remove_dir_all(root)
     }
 
@@ -1720,10 +2091,16 @@ mod tests {
         assert_eq!(same.revision, observed.revision);
         assert_eq!(same.observation_paths, observed.observation_paths);
         assert_eq!(same_stamp, stamp);
+        let mut wrong_revision = observed.clone();
+        wrong_revision.revision.push_str("-unobserved");
+        assert!(!unchanged_since(&wrong_revision, stamp.as_ref()));
         let file = std::fs::OpenOptions::new().write(true).open(&source)?;
         let original_time = file.metadata()?.modified()?;
         std::fs::write(&source, "new")?;
         file.set_times(std::fs::FileTimes::new().set_modified(original_time))?;
+        // A caller cannot pair old bytes with a newly sampled mutation stamp.
+        let fresh_stamp = stamp_paths(&observed.observation_paths);
+        assert!(!unchanged_since(&observed, fresh_stamp.as_ref()));
         let changed = snapshot_metadata_observed(&data, &[], &observed, stamp.as_ref());
         assert!(changed.complete);
         assert_ne!(changed.revision, observed.revision);
@@ -2070,6 +2447,7 @@ mod tests {
             observation_paths: BTreeSet::new(),
             digests: std::collections::BTreeMap::new(),
             bindings: std::collections::BTreeMap::new(),
+            capture: None,
         };
         let unchanged = super::closure_scope(&snapshot, &data, None);
         assert_eq!(unchanged.roots, snapshot.roots);

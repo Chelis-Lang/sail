@@ -381,7 +381,10 @@ fn agent_view(project: &ProjectResult, job: &Value, reuse: &[String]) -> Value {
     let mut errors = Vec::new();
     let mut verus = (0_u64, 0_u64);
     let mut targets = Vec::new();
+    let mut complete_requested = !requested.is_empty();
     for target in &requested {
+        let complete = sail_api::acceptance::complete_target(target).is_some();
+        complete_requested &= complete;
         let mut target_counts = Counts::default();
         for c in &target.report.crates {
             let cleared = c.unknown_passed_by_verus_totals();
@@ -425,7 +428,7 @@ fn agent_view(project: &ProjectResult, job: &Value, reuse: &[String]) -> Value {
             "kind": target.kind,
             "reused": target.reused,
             "establishing_run": target.establishing_run,
-            "complete": target.complete,
+            "complete": complete,
             "attribution": target.report.attribution.status,
             "counts": target_counts.json(),
             "verus_totals": {"verified": tv, "errors": te},
@@ -488,14 +491,35 @@ fn agent_view(project: &ProjectResult, job: &Value, reuse: &[String]) -> Value {
             names(&unresolved),
             counts.verified
         )
+    } else if requested
+        .iter()
+        .any(|target| !sail_api::acceptance::verification_enabled_command(&target.report.command))
+    {
+        format!(
+            "NOT VERIFIED: verification was disabled for a requested target; no complete whole-target proof ({exit})."
+        )
     } else if project.no_reuse.is_some() && counts.functions == 0 && errors.is_empty() {
         // Without proof reuse, Cargo-Verus skips crates it finds up to date
         // and reports nothing for them: no function result is not a proof.
         format!(
             "NO RESULT: no function was verified in this run; Cargo found every package up to date, or verified nothing ({exit})."
         )
+    } else if project.exit_code == Some(0) && complete_requested {
+        match project.currentness {
+            sail_api::project::Currentness::Current => {
+                format!("VERIFIED: all {scope} verified ({exit}).")
+            }
+            sail_api::project::Currentness::Historical => format!(
+                "RECORDED PROOF: all {scope} verified for the historical input revision ({exit})."
+            ),
+            sail_api::project::Currentness::Unknown => format!(
+                "RECORDED PROOF: all {scope} verified for the recorded input revision; currentness unknown ({exit})."
+            ),
+        }
     } else if project.exit_code == Some(0) && !requested.is_empty() {
-        format!("VERIFIED: all {scope} verified ({exit}).")
+        format!(
+            "INCOMPLETE: recorded results for {scope}; no complete whole-target proof ({exit})."
+        )
     } else if errors.is_empty() {
         format!("NO RESULT: {scope}; no function failed, but the run did not succeed ({exit}).")
     } else {
@@ -899,6 +923,61 @@ mod tests {
                "exit_code": 1, "targets": [target("input", true), target("vstd", false)],
                "execution": {"verifier_invocations": 1, "reused_targets": 0, "wall_ms": 1.0},
                "notes": [], "error": null})
+    }
+
+    #[test]
+    fn zero_function_headlines_require_actual_proof_authority_and_current_inputs()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut project: ProjectResult = serde_json::from_value(project())?;
+        project.targets.truncate(1);
+        project.exit_code = Some(0);
+        let report = &mut project.targets[0].report;
+        report.exit_code = Some(0);
+        report.diagnostics.clear();
+        for krate in &mut report.crates {
+            krate.functions.clear();
+            krate.verus.verified = Some(0);
+            krate.verus.errors = Some(0);
+            krate.verus.success = Some(true);
+            krate.verus.encountered_vir_error = Some(false);
+        }
+        report.summary = sail_api::output::Summary::of(&report.crates);
+        let summary = |p: &ProjectResult| agent_view(p, &json!({}), &[]);
+        assert!(
+            summary(&project)["summary"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("VERIFIED:"))
+        );
+
+        project.targets[0].report.command = vec!["--".into(), "--no-verify".into()];
+        let compile_only = summary(&project);
+        assert_eq!(compile_only["targets"][0]["complete"], false);
+        assert!(
+            compile_only["summary"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("NOT VERIFIED:"))
+        );
+        project.targets[0].report.command.clear();
+        project.targets[0].complete = false;
+        assert!(
+            summary(&project)["summary"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("INCOMPLETE:"))
+        );
+
+        project.targets[0].complete = true;
+        for currentness in [
+            sail_api::project::Currentness::Historical,
+            sail_api::project::Currentness::Unknown,
+        ] {
+            project.currentness = currentness;
+            assert!(
+                summary(&project)["summary"]
+                    .as_str()
+                    .is_some_and(|s| s.starts_with("RECORDED PROOF:"))
+            );
+        }
+        Ok(())
     }
 
     #[test]

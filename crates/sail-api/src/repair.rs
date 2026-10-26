@@ -4,8 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::output::{EstablishmentName, VerdictName};
-use crate::project::{Currentness, ProjectResult};
+use crate::project::ProjectResult;
 
 /// Independent repair contract version.
 pub const VERSION: u32 = 1;
@@ -64,34 +63,7 @@ impl BatchResult {
 /// must be internally consistent and every function must be confirmed verified.
 #[must_use]
 pub fn accepted(full: &ProjectResult) -> bool {
-    let selected: Vec<_> = full.targets.iter().filter(|t| t.requested).collect();
-    full.currentness == Currentness::Current
-        && full.exit_code == Some(0)
-        && full.error.is_none()
-        && !selected.is_empty()
-        && selected.iter().all(|target| {
-            target.complete
-                && target.scope_reuse.is_none()
-                && target.report.error.is_none()
-                && target.report.exit_code == Some(0)
-                && target.report.invariant_violations().is_empty()
-                && target.report.summary.failed == 0
-                && target.report.summary.unknown == 0
-                && target.report.summary.provisional == 0
-                && !target.report.crates.is_empty()
-                && target.report.engine.as_ref().is_none_or(|engine| {
-                    engine.established_by == crate::output::EngineEstablishment::Engine
-                })
-                && target.report.crates.iter().all(|report| {
-                    report.verus.success == Some(true)
-                        && report.verus.errors == Some(0)
-                        && report.verus.encountered_vir_error != Some(true)
-                        && report.functions.iter().all(|function| {
-                            function.verdict == VerdictName::Verified
-                                && function.establishment == EstablishmentName::Confirmed
-                        })
-                })
-        })
+    crate::acceptance::complete_selection(full).is_some()
 }
 
 /// Explicit selected target/function; never guessed from semantic dependencies.

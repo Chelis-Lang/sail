@@ -205,6 +205,36 @@ pub(super) fn read_content(path: &Path, maximum: u64) -> Option<Content> {
     })
 }
 
+fn artifact_readback(
+    paths: &[PathBuf],
+    reads: Vec<(&Path, Option<Content>)>,
+    maximum: u64,
+) -> Option<BTreeMap<PathBuf, Content>> {
+    let expected: Vec<_> = paths
+        .iter()
+        .map(|path| (path.as_os_str().as_encoded_bytes(), &[][..]))
+        .collect();
+    let returned: Vec<_> = reads
+        .iter()
+        .map(|(path, _)| (path.as_os_str().as_encoded_bytes(), &[][..]))
+        .collect();
+    if !crate::parallel::exact_descriptors(&expected, &returned) {
+        return None;
+    }
+    let mut by_name: BTreeMap<_, _> = reads
+        .into_iter()
+        .map(|(path, content)| (path.as_os_str().as_encoded_bytes(), content))
+        .collect();
+    let mut remaining = maximum;
+    let mut artifacts = BTreeMap::new();
+    for path in paths {
+        let content = by_name.remove(path.as_os_str().as_encoded_bytes())??;
+        remaining = remaining.checked_sub(content.size)?;
+        artifacts.insert(path.clone(), content);
+    }
+    Some(artifacts)
+}
+
 fn lookups(
     target: &Path,
     unit: &Unit,
@@ -376,15 +406,11 @@ impl Snapshot {
         }
         // Full reads of every body, concurrently; the total limit then applies
         // to the actual sizes, as when reading one by one.
-        let contents = crate::parallel::in_order(&bodies, |path| {
-            read_content(path, TOTAL_LIMIT.min(FILE_LIMIT))
+        let paths: Vec<_> = bodies.iter().map(PathBuf::as_path).collect();
+        let contents = crate::parallel::in_order(&paths, |&path| {
+            (path, read_content(path, TOTAL_LIMIT.min(FILE_LIMIT)))
         });
-        let mut remaining = TOTAL_LIMIT;
-        for (path, bytes) in bodies.into_iter().zip(contents) {
-            let bytes = bytes?;
-            remaining = remaining.checked_sub(bytes.size)?;
-            inventory.artifacts.insert(path, bytes);
-        }
+        inventory.artifacts = artifact_readback(&bodies, contents, TOTAL_LIMIT)?;
         if externs
             .iter()
             .any(|path| !inventory.artifacts.contains_key(path))
@@ -850,6 +876,42 @@ fn graph_intact(root: &Path, inventory: &Inventory) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tagged_artifact_bodies_bind_paths_and_total_limits() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-tagged-bodies-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let a = root.join("a.rlib");
+        let b = root.join("b.rlib");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        let paths = [a.as_path(), b.as_path()];
+        let bodies = [a.clone(), b.clone()];
+        let read = || crate::parallel::in_order(&paths, |&path| (path, read_content(path, 100)));
+        let original = artifact_readback(&bodies, read(), 100);
+        assert!(original.is_some());
+        let mut reversed = read();
+        reversed.reverse();
+        assert_eq!(artifact_readback(&bodies, reversed, 100), original);
+        assert!(artifact_readback(&bodies, read(), 10).is_none());
+        let mut missing = read();
+        missing.pop();
+        assert!(artifact_readback(&bodies, missing, 100).is_none());
+        let duplicate = vec![
+            (a.as_path(), read_content(&a, 100)),
+            (a.as_path(), read_content(&a, 100)),
+        ];
+        assert!(artifact_readback(&bodies, duplicate, 100).is_none());
+        let mut extra = read();
+        extra.push((root.as_path(), None));
+        assert!(artifact_readback(&bodies, extra, 100).is_none());
+        std::fs::write(&a, "second")?;
+        std::fs::write(&b, "first")?;
+        let mut swapped = read();
+        swapped.reverse();
+        assert_ne!(artifact_readback(&bodies, swapped, 100), original);
+        std::fs::remove_dir_all(root)
+    }
 
     struct Root(PathBuf);
     impl Root {

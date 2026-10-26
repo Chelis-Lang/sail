@@ -11,7 +11,9 @@
 
 use super::InputSnapshot;
 use super::files::{digest, json};
+use super::input::proposed_order;
 use crate::{Error, Result};
+use sail_acceptance::inputs::{InputFact, InputValue, compare_readback};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -77,24 +79,34 @@ pub(super) fn entries(
     files.into_iter().collect()
 }
 
-enum State {
-    Unchanged,
-    Changed,
+enum Observation {
+    Present(Vec<u8>),
+    Absent,
     Unreadable,
 }
 
-fn current(path: &Path, expected: Option<&String>) -> State {
-    let Some(expected) = expected else {
+impl Observation {
+    fn value(&self) -> InputValue<'_> {
+        match self {
+            Self::Present(bytes) => InputValue::Present(bytes),
+            Self::Absent => InputValue::Absent,
+            Self::Unreadable => InputValue::Unreadable,
+        }
+    }
+}
+
+fn observe(path: &Path, expected_absent: bool) -> Observation {
+    if expected_absent {
         return match std::fs::symlink_metadata(path) {
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => State::Unchanged,
-            Ok(_) => State::Changed,
-            Err(_) => State::Unreadable,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Observation::Absent,
+            Ok(_) => Observation::Present(Vec::new()),
+            Err(_) => Observation::Unreadable,
         };
-    };
+    }
     let mut file = match std::fs::File::open(path) {
         Ok(file) => file,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return State::Changed,
-        Err(_) => return State::Unreadable,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Observation::Absent,
+        Err(_) => return Observation::Unreadable,
     };
     let mut hasher = Sha256::new();
     let mut buffer = vec![0u8; 65536];
@@ -102,14 +114,10 @@ fn current(path: &Path, expected: Option<&String>) -> State {
         match file.read(&mut buffer) {
             Ok(0) => break,
             Ok(count) => hasher.update(&buffer[..count]),
-            Err(_) => return State::Unreadable,
+            Err(_) => return Observation::Unreadable,
         }
     }
-    if format!("{:x}", hasher.finalize()) == *expected {
-        State::Unchanged
-    } else {
-        State::Changed
-    }
+    Observation::Present(format!("{:x}", hasher.finalize()).into_bytes())
 }
 
 /// Rechecks the latest Current record of `context` against the files now.
@@ -146,23 +154,24 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
     if record.version != 2 || record.files.is_empty() {
         return Err(missing());
     }
-    let states = crate::parallel::in_order(&record.files, |(path, expected)| {
-        current(path, expected.as_ref())
-    });
-    let binding_states = crate::parallel::in_order(
-        &record.bindings.iter().collect::<Vec<_>>(),
-        |(alias, expected)| match alias.canonicalize() {
-            Ok(actual) if actual == **expected => State::Unchanged,
-            Ok(_) => State::Changed,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => State::Changed,
-            Err(_) => State::Unreadable,
-        },
-    );
-    let states: Vec<_> = states.into_iter().chain(binding_states).collect();
-    let changed = states.iter().any(|state| matches!(state, State::Changed));
-    let unreadable = states
+    let files: Vec<_> = record
+        .files
         .iter()
-        .any(|state| matches!(state, State::Unreadable));
+        .map(|(path, expected)| (path.as_path(), expected.is_none()))
+        .collect();
+    let reads =
+        crate::parallel::in_order(&files, |&(path, absent)| (0, path, observe(path, absent)));
+    let aliases: Vec<_> = record.bindings.keys().map(PathBuf::as_path).collect();
+    let alias_reads = crate::parallel::in_order(&aliases, |&alias| {
+        let value = match alias.canonicalize() {
+            Ok(actual) => Observation::Present(actual.as_os_str().as_encoded_bytes().to_vec()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Observation::Absent,
+            Err(_) => Observation::Unreadable,
+        };
+        (1, alias, value)
+    });
+    let observed: Vec<_> = reads.into_iter().chain(alias_reads).collect();
+    let (changed, unreadable) = compare_observed(&record, &observed);
     Ok(InputSnapshot {
         workspace: workspace.to_owned(),
         revision: if changed {
@@ -176,7 +185,46 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
         observation_paths: BTreeSet::new(),
         digests: BTreeMap::new(),
         bindings: BTreeMap::new(),
+        capture: None,
     })
+}
+
+fn compare_observed(record: &Record, reads: &[(u8, &Path, Observation)]) -> (bool, bool) {
+    let expected: Vec<_> = record
+        .files
+        .iter()
+        .map(|(path, hash)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: hash.as_ref().map_or(InputValue::Absent, |hash| {
+                InputValue::Present(hash.as_bytes())
+            }),
+        })
+        .chain(record.bindings.iter().map(|(alias, target)| InputFact {
+            namespace: 1,
+            name: alias.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
+        }))
+        .collect();
+    let observed: Vec<_> = reads
+        .iter()
+        .map(|(namespace, path, value)| InputFact {
+            namespace: *namespace,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: value.value(),
+        })
+        .collect();
+    let (before_order, before_inverse) = proposed_order(&expected);
+    let (after_order, after_inverse) = proposed_order(&observed);
+    let comparison = compare_readback(
+        &expected,
+        &observed,
+        &before_order,
+        &before_inverse,
+        &after_order,
+        &after_inverse,
+    );
+    (comparison.changed(), comparison.unknown())
 }
 
 #[cfg(test)]
@@ -215,6 +263,55 @@ mod tests {
             ],
             BTreeMap::new(),
         )?;
+        Ok(())
+    }
+
+    #[test]
+    fn raw_readback_results_cannot_swap_file_identity() -> TestResult {
+        let root = fixture("tagged-readback")?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        let missing = root.join("config.toml");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        let record = Record {
+            version: 2,
+            revision: "rev".into(),
+            files: vec![
+                (a.clone(), Some(super::super::files::file_digest(&a)?)),
+                (b.clone(), Some(super::super::files::file_digest(&b)?)),
+                (missing.clone(), None),
+            ],
+            bindings: BTreeMap::new(),
+        };
+        let paths = [
+            (a.as_path(), false),
+            (b.as_path(), false),
+            (missing.as_path(), true),
+        ];
+        let read = || {
+            crate::parallel::in_order(&paths, |&(path, absent)| (0, path, observe(path, absent)))
+        };
+        let mut unchanged = read();
+        unchanged.reverse();
+        assert_eq!(compare_observed(&record, &unchanged), (false, false));
+        unchanged.pop();
+        assert_ne!(compare_observed(&record, &unchanged), (false, false));
+        let mut extra = read();
+        extra.push((0, root.as_path(), Observation::Absent));
+        assert_ne!(compare_observed(&record, &extra), (false, false));
+        let duplicate = vec![
+            (0, a.as_path(), observe(&a, false)),
+            (0, a.as_path(), observe(&a, false)),
+            (0, missing.as_path(), Observation::Absent),
+        ];
+        assert_eq!(compare_observed(&record, &duplicate), (false, true));
+        std::fs::write(&a, "second")?;
+        std::fs::write(&b, "first")?;
+        let mut swapped = read();
+        swapped.reverse();
+        assert_eq!(compare_observed(&record, &swapped), (true, false));
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 
@@ -259,6 +356,49 @@ mod tests {
             check(&root.join("cache"), &root.join("ws"), "ctx")?.revision,
             "rev"
         );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn duplicate_input_rows_and_unreadable_inputs_cannot_be_current() -> TestResult {
+        let root = fixture("invalid-inventory")?;
+        setup(&root)?;
+        let workspace = root.join("ws");
+        let context = root
+            .join("cache/projects")
+            .join(digest(workspace.as_os_str().as_encoded_bytes()))
+            .join("ctx");
+        let path = context.join(FILE);
+        let mut value: serde_json::Value = serde_json::from_slice(&std::fs::read(&path)?)?;
+        let duplicate = value["files"][0].clone();
+        value["files"]
+            .as_array_mut()
+            .ok_or("missing rows")?
+            .push(duplicate);
+        std::fs::write(&path, serde_json::to_vec(&value)?)?;
+        let duplicate = check(&root.join("cache"), &workspace, "ctx")?;
+        assert!(!duplicate.complete);
+        // A directory cannot provide file-content bytes. A read failure stays
+        // Unknown, rather than becoming an observation of missing config.
+        record(
+            &context,
+            "rev",
+            vec![(workspace.clone(), Some("digest".into()))],
+            BTreeMap::new(),
+        )?;
+        let failed = check(&root.join("cache"), &workspace, "ctx")?;
+        assert!(!failed.complete);
+        assert_eq!(failed.revision, "rev");
+        record(
+            &context,
+            "rev",
+            vec![(workspace.clone(), None)],
+            BTreeMap::new(),
+        )?;
+        let appeared = check(&root.join("cache"), &workspace, "ctx")?;
+        assert!(appeared.complete);
+        assert_ne!(appeared.revision, "rev");
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
