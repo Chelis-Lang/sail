@@ -5,7 +5,8 @@
 //!   the shim uses (ADR 0011);
 //! - [`output`]: the `sail verify --output json` document (ADR 0014);
 //! - [`schema`]: a small JSON Schema checker for that document's schema;
-//! - [`policy`]: the serving policy for cached `unknown` answers (ADR 0009).
+//! - [`policy`]: the serving policy for cached `unknown` answers (ADR 0009);
+//! - [`stamp`]: complete stat stamps and the cross-run settle rule (ADR 0082).
 #![forbid(unsafe_code)]
 
 /// Sail's version, as `sail --version` and every report state it:
@@ -33,6 +34,7 @@ pub mod protocol;
 pub mod repair;
 pub mod runtime;
 pub mod schema;
+pub mod stamp;
 pub mod temporal;
 
 #[cfg(unix)]

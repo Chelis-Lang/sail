@@ -31,7 +31,7 @@ SYNTAX = "crates/sail-acceptance/src/syntax.rs"
 # merely updating a manifest. Runtime-only implementation drift must refuse.
 SYNTAX_SHA256 = "616d4c2c5377fe45e9f8c110d040cf608577fd021337fc35fbe746d25d506197"
 LIB_SHA256 = "3e8ae88827486b5c993273f7c26bd2da86ec18ac61844d2dde81c7dd2f26fda9"
-API_LIB_SHA256 = "125f9959d72bf6bbff719526cdaad169301b9c1e156db5b46ea79b91d4c50491"
+API_LIB_SHA256 = "c0d86d594bb374650fae43024f49264a4c6f840c8b0f73ab8092d620afdc7fed"
 # Binding inventories cover both ordinary and proof-only imports. In particular,
 # an erased import cannot shadow a Cargo glob with a different checked callee.
 IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': 'afa1214ec210fc66be045700eea9103fa502d5ea671036c954667bd98c75de2e'}

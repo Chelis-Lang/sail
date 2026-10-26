@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import os
 from pathlib import Path
@@ -189,6 +190,17 @@ class SourceCaptureTests(unittest.TestCase):
         mutation += b"\nuse std::ptr::*;\n#[cfg(sail_verus)] use super::inputs::byte_lt as eq;\n"
         with self.assertRaisesRegex(CHECKER.Refusal, "import bindings changed"):
             CHECKER.compiled_subset(path, mutation)
+
+    def test_reviewed_api_assembly_is_accepted_and_any_other_module_refused(self):
+        library = "crates/sail-acceptance/src/lib.rs"
+        api = "crates/sail-api/src/lib.rs"
+        reviewed = (CHECKER.ROOT / api).read_bytes()
+        self.assertIn(b"pub mod stamp;", reviewed)
+        self.assertEqual(hashlib.sha256(reviewed).hexdigest(), CHECKER.API_LIB_SHA256)
+        snapshots = {library: (CHECKER.ROOT / library).read_bytes(),
+            api: reviewed.replace(b"pub mod stamp;", b"pub mod stamp;\npub mod unreviewed;")}
+        with self.assertRaisesRegex(CHECKER.Refusal, "API factory module assembly changed"):
+            CHECKER.validate_assembly(snapshots)
 
     def test_working_assembly_detects_new_build_source_and_symlink_paths(self):
         with tempfile.TemporaryDirectory(prefix="sail-source-layout-") as temporary:
