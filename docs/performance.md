@@ -42,6 +42,13 @@ functional qualification does not grant a performance waiver.
 The [historical private rc.6 matrix](validation/release-matrix.md) describes
 its own frozen artifacts. No new Sail release is created by these changes.
 
+The [ordered-projection follow-up](validation/ordered-input-projection.md)
+measures a small further unchanged-Anvil reduction (about 4% Linux, 3% Mac)
+and separately identified Mac cold controls. The combined candidate
+measures Anvil cold at 99.665 → 100.039 s and Vest at 39.116 → 38.029 s
+(three rounds). Anvil cold and unchanged costs remain open. These measurements
+do not replace the frozen matrix below or accept its remaining slower rows.
+
 ## What to expect
 
 - **First use.** A matching project skips vstd verification using the proof

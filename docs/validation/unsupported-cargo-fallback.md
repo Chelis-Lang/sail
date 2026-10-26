@@ -28,8 +28,8 @@ no `Checking` or `Compiling` lines. The documented NoReuse execution counter
 counts one aggregate Cargo invocation, rather than individual target compiles.
 No fallback result is reported Current or usable as a proof receipt.
 
-Raw samples, JSON, stderr and setup logs:
-`s3://chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-24/cargo-fallback-paired-anvil-final.tgz`,
+Raw samples, JSON, stderr and setup logs in the private evidence bucket:
+`experiments/2026-10-24/cargo-fallback-paired-anvil-final.tgz`,
 SHA-256 `bd09eccfa54a39031f666157b088a31edc500c6f0144aa143493a45e6d291e8d`.
 
 ## Gates

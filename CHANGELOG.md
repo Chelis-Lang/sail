@@ -22,6 +22,10 @@ semantic versioning once the API is published.
   or renames arrive alongside delayed input-creation notifications. Actual input
   edits, removals and renames still cancel and restart the active verification.
 
+- Reduce unchanged managed-verification setup work by calculating internal
+  revisions without building unused snapshot maps and by merging ordered input
+  paths. Complete content and filesystem-mutation checks are preserved.
+
 - Add opt-in scalar literal-contract queries and independently evaluated concrete
   assignments through the existing source-owner and pinned SMT runtime APIs.
   Unsupported scope stays explicit; native mutation UNKNOWN and proof tiers
