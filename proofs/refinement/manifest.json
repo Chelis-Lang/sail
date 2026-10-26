@@ -600,9 +600,11 @@
         "crates/sail-api/src/acceptance.rs",
         "crates/sail-api/src/acceptance_sort.rs",
         "crates/sail-api/src/output.rs",
-        "crates/sail-api/src/project.rs"
+        "crates/sail-api/src/project.rs",
+        "crates/sail-api/src/jobs.rs",
+        "crates/sail-api/src/repair.rs"
       ],
-      "verified": 199,
+      "verified": 201,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
@@ -902,6 +904,9 @@
         "check_authority::inputs::value_difference",
         "check_authority::inputs::value_present",
         "check_authority::inputs::value_readable",
+        "check_authority::jobs::Mode::arrow_0",
+        "check_authority::jobs::Mode::arrow_Repair_0",
+        "check_authority::jobs::VERSION",
         "check_authority::output::SCHEMA_VERSION",
         "check_authority::project::SCHEMA_VERSION",
         "check_authority::refinement::checked_factory_refines_function",
@@ -924,7 +929,8 @@
         "check_authority::refinement::project_function",
         "check_authority::refinement::stale_request_refused",
         "check_authority::refinement::swapped_repair_function_refused",
-        "check_authority::refinement::swapped_request_refused"
+        "check_authority::refinement::swapped_request_refused",
+        "check_authority::repair::VERSION"
       ],
       "negative_controls": [
         {
@@ -1401,6 +1407,35 @@
           "declaration_sha256": "fe88b7cc5636448f0556d1b22fa86966c19048077e978f14f96a25d594c9611f"
         },
         {
+          "name": "SolverInfo",
+          "kind": "struct",
+          "fields": {
+            "name": [
+              "String"
+            ],
+            "version": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "path": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "sha256": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "1cfc872db24657845fa2e0929c57cd7a74b514c7e6770c99881b61ce6d9b21de"
+        },
+        {
           "name": "ErrorInfo",
           "kind": "struct",
           "fields": {
@@ -1483,14 +1518,15 @@
         ";"
       ],
       "retained_fields": {
-        "Report": "schema_version command exit_code error summary crates engine",
+        "Report": "schema_version mode command exit_code error summary crates engine solver",
         "CrateReport": "verus functions",
         "VerusResults": "errors success encountered_vir_error",
         "FunctionReport": "function verdict establishment evidence_tier unstable provenance obligations",
-        "ProvenanceReport": "source checks_solved checks_served checks_unrecorded",
+        "ProvenanceReport": "mode source checks_solved checks_served checks_unrecorded engine",
         "ObligationReport": "id",
         "Summary": "functions verified failed unknown provisional unstable",
-        "EngineProvenance": "established_by",
+        "EngineProvenance": "name manifest_sha256 established_by",
+        "SolverInfo": "name version path sha256",
         "ErrorInfo": ""
       }
     },
@@ -1765,11 +1801,193 @@
         ";"
       ],
       "retained_fields": {
-        "TargetResult": "package_id target kind requested complete scope_reuse report",
+        "TargetResult": "package_id target kind establishing_run reused requested complete scope_reuse report",
         "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
         "RequestTarget": "package_id target kind",
         "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
         "EngineIdentity": "name manifest_sha256"
+      }
+    },
+    "jobs": {
+      "source_sha256": "1a98c11aad004d75eb7ba508f4035004de558875f253e33664f9fdac3fa894e2",
+      "bindings": [
+        [
+          "use",
+          "std",
+          ":",
+          ":",
+          "collections",
+          ":",
+          ":",
+          "BTreeMap",
+          ";"
+        ],
+        [
+          "use",
+          "std",
+          ":",
+          ":",
+          "fmt",
+          ":",
+          ":",
+          "Write",
+          "as",
+          "_",
+          ";"
+        ],
+        [
+          "use",
+          "std",
+          ":",
+          ":",
+          "io",
+          ":",
+          ":",
+          "{",
+          "self",
+          ",",
+          "Read",
+          ",",
+          "Write",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "std",
+          ":",
+          ":",
+          "path",
+          ":",
+          ":",
+          "{",
+          "Path",
+          ",",
+          "PathBuf",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "serde",
+          ":",
+          ":",
+          "{",
+          "Deserialize",
+          ",",
+          "Serialize",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "serde_json",
+          ":",
+          ":",
+          "Value",
+          ";"
+        ]
+      ],
+      "declarations": [
+        {
+          "name": "Mode",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Stock",
+            "Interactive",
+            "Repair"
+          ],
+          "declaration_sha256": "4739577645e3cef30f706f444bcba9f0b3906f4733b59c11182d39e27da84a08",
+          "tuple_fields": {
+            "Repair": [
+              "crate",
+              ":",
+              ":",
+              "repair",
+              ":",
+              ":",
+              "Selection"
+            ]
+          }
+        }
+      ],
+      "schema_constant": [
+        "pub",
+        "const",
+        "VERSION",
+        ":",
+        "u32",
+        "=",
+        "1",
+        ";"
+      ],
+      "retained_fields": {}
+    },
+    "repair": {
+      "source_sha256": "b28457b8ca40218a80a1b1f8cc19df2148881343a1133d9c9d6811b337a9b6cd",
+      "bindings": [
+        [
+          "use",
+          "serde",
+          ":",
+          ":",
+          "{",
+          "Deserialize",
+          ",",
+          "Serialize",
+          "}",
+          ";"
+        ],
+        [
+          "use",
+          "crate",
+          ":",
+          ":",
+          "project",
+          ":",
+          ":",
+          "ProjectResult",
+          ";"
+        ]
+      ],
+      "declarations": [
+        {
+          "name": "Selection",
+          "kind": "struct",
+          "fields": {
+            "package": [
+              "String"
+            ],
+            "target": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "kind": [
+              "String"
+            ],
+            "function": [
+              "String"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "3c429c0f880aa868a442bb1015b7a26a99e893d5778903bd748205f9386870b8"
+        }
+      ],
+      "schema_constant": [
+        "pub",
+        "const",
+        "VERSION",
+        ":",
+        "u32",
+        "=",
+        "1",
+        ";"
+      ],
+      "retained_fields": {
+        "Selection": "package target kind function"
       }
     }
   }

@@ -1,9 +1,10 @@
 # Acceptance boundary refinements
 
-Status: follow-up implementation is in progress above the production acceptance
-operations in [PR #362](https://github.com/Chelis-Lang/sail/pull/362). The earlier
-PR's validation checkout remains frozen. This work does not establish the
-service-wide theorem or close the remaining provider assumptions by declaration.
+Status: implementation and qualification are in progress after the production
+acceptance operations merged in [PR #362](https://github.com/Chelis-Lang/sail/pull/362).
+The six deliverables below remain the completion scope of
+[PR #378](https://github.com/Chelis-Lang/sail/pull/378). Component milestones do
+not establish the service-wide theorem or close provider assumptions by declaration.
 
 The [acceptance design](evidence-acceptance-core.md) states the intended theorem.
 The [production refinement guide](acceptance-production-refinements.md) records
@@ -119,3 +120,22 @@ The `Acceptance production refinements` aggregate requires successful execution
 of all three jobs. Missing, skipped, cancelled or failing jobs fail the aggregate
 and CI completion. Splitting jobs changes scheduling; it does not change the
 proof commands, per-case deadline, resource limits or mutation inventory.
+
+## Capturing original submission types
+
+The stock proof driver includes the actual `jobs::Mode` enum and
+`repair::Selection` fields used by original-submission admission. Its declaration
+projection preserves the `Repair(Selection)` payload, the original enum variants,
+all selected field types and the modules' binding environments. Unknown tuple
+payloads, missing variants, conditional selected declarations and changed imports
+refuse capture. Native socket helpers remain bound source outside the proof;
+their platform cfg and expression macros do not supply authority declarations.
+The full canonical function inventory and normal failing controls must qualify
+any factory that consumes these representations.
+
+The projected reports also retain actual mode, solver observations, engine
+identity and per-function provenance mode. Target records retain their original
+establishing run and fresh/reused distinction. Retaining these fields enables
+an executable origin/context correspondence check; the fields themselves do
+not authenticate a process, establish a complete child inventory or prove a
+truthful cache writer.
