@@ -17,9 +17,9 @@ use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verifi
 
 /// Builds untrusted order candidates and invokes the checked authority factory.
 pub use crate::acceptance_sort::{
-    bind_replayed_exact_partial_project, bind_replayed_project, complete_exact_partial_request,
-    complete_exact_scope_report, complete_report, complete_request, complete_selection,
-    complete_submitted_request, complete_target, complete_whole_report,
+    admit_declared_replay, bind_replayed_exact_partial_project, bind_replayed_project,
+    complete_exact_partial_request, complete_exact_scope_report, complete_report, complete_request,
+    complete_selection, complete_submitted_request, complete_target, complete_whole_report,
     withhold_unbound_request_authority,
 };
 
@@ -116,6 +116,30 @@ sail_code! {
         request: &'a ResolvedRequest,
         invocation: &'a [u8],
         workspace: &'a [u8],
+    }
+
+    /// Admission of an exact retained replay over the supplied request,
+    /// native-path and guarded-readback domain. This is not full service or
+    /// physical compiler-input authority, nor a live process observation.
+    pub struct DeclaredReplayAdmission<'a, 'b> {
+        original: &'a ResolvedRequest,
+        current: &'a ResolvedRequest,
+        project: ProjectResult,
+        paths: RequestPathBinding<'a>,
+        readback: ReplayReadback<'a, 'b>,
+    }
+
+    impl<'a, 'b> DeclaredReplayAdmission<'a, 'b> {
+        sail_method! {
+            /// Borrows exactly the independently supplied current request.
+            pub fn request(&self) -> (out: &'a ResolvedRequest)
+                requires(true) ensures(out == declared_replay_current(self)) { self.current }
+        }
+        sail_method! {
+            /// Borrows the admitted view with its original reports intact.
+            pub fn project(&self) -> (out: &ProjectResult)
+                requires(true) ensures(*out == declared_replay_project(self)) { &self.project }
+        }
     }
 
     impl<'a> RequestPathBinding<'a> {
@@ -2599,4 +2623,86 @@ sail_spec! {
             && forall |j: int| 0 <= j < project.targets@.len() && target_match(&expected[0], &project.targets@[j]) ==> j == i;
         assert(project.targets@[i].requested);
     }
+}
+
+sail_spec! {
+    pub closed spec fn declared_replay_original<'a, 'b>(a: &DeclaredReplayAdmission<'a, 'b>) -> &'a ResolvedRequest { a.original }
+    pub closed spec fn declared_replay_current<'a, 'b>(a: &DeclaredReplayAdmission<'a, 'b>) -> &'a ResolvedRequest { a.current }
+    pub closed spec fn declared_replay_project(a: &DeclaredReplayAdmission) -> ProjectResult { a.project }
+    pub closed spec fn declared_replay_paths<'a, 'b>(a: &DeclaredReplayAdmission<'a, 'b>) -> RequestPathBinding<'a> { a.paths }
+    pub closed spec fn declared_replay_readback<'a, 'b>(a: &DeclaredReplayAdmission<'a, 'b>) -> ReplayReadback<'a, 'b> { a.readback }
+
+    /// Conjunction over supplied immutable evidence. There is deliberately no
+    /// complete physical input domain, solver-inventory or launch assertion.
+    pub open spec fn declared_replay_valid(a: &DeclaredReplayAdmission) -> bool {
+        let current = declared_replay_current(a);
+        let project = declared_replay_project(a);
+        let paths = declared_replay_paths(a);
+        let readback = declared_replay_readback(a);
+        replay_request_payload(current, declared_replay_original(a))
+            && request_path_binding_valid(&paths) && path_binding_request(&paths) == current
+            && replay_readback_valid(&readback) && replay_readback_request(&readback) == current
+            && if partial_command(current.args@) {
+                exact_partial_request_authorized(current, &project)
+                    && !request_authorized(current, &project) && !supplied_selection_authorized(&project)
+            } else { request_authorized(current, &project) }
+    }
+}
+
+sail_verified! {
+    /// Composes checked request/report association, native byte identity and
+    /// supplied guarded readback. Missing witnesses refuse the replay candidate.
+    /// Existing full whole/partial binders retain their original checks and
+    /// constructive contracts. This does not admit a full service proof.
+    pub fn admit_declared_replay_ordered<'a, 'b>(mut project: ProjectResult,
+        original: &'a ResolvedRequest, current: &'a ResolvedRequest, orders: &[ReportOrder],
+        paths: Option<&RequestPathBinding<'a>>,
+        readback: Option<&'a sail_acceptance::inputs::GuardedReadback<'b>>)
+        -> (out: Option<DeclaredReplayAdmission<'a, 'b>>)
+        requires(true)
+        ensures(out.is_some() ==> declared_replay_valid(&out.unwrap()),
+            out.is_some() ==> declared_replay_original(&out.unwrap()) == original,
+            out.is_some() ==> declared_replay_current(&out.unwrap()) == current,
+            out.is_some() ==> same_replay_evidence(&project, &declared_replay_project(&out.unwrap())),
+            out.is_some() ==> paths.is_some() && readback.is_some(),
+            out.is_some() ==> replay_readback_observation(&declared_replay_readback(&out.unwrap())) == readback.unwrap(),
+            out.is_some() ==> string_bytes(&declared_replay_project(&out.unwrap()).run_id) == string_bytes(&current.run_id),
+            paths.is_some() && readback.is_some()
+                && request_paths_correspond(current, path_binding_invocation(paths.unwrap())@,
+                    path_binding_workspace(paths.unwrap())@)
+                && !partial_command(current.args@)
+                && replay_constructive_request(original, &project, current, orders, readback.unwrap()) ==> out.is_some(),
+            paths.is_some() && readback.is_some()
+                && request_paths_correspond(current, path_binding_invocation(paths.unwrap())@,
+                    path_binding_workspace(paths.unwrap())@)
+                && partial_command(current.args@)
+                && small_exact_partial_transfer(original, &project, current, orders@, readback.unwrap()) ==> out.is_some())
+    {
+        let Some(paths) = paths else { return None; };
+        let Some(checked_paths) = bind_request_paths(current, paths.invocation(), paths.workspace()) else { return None; };
+        let Some(readback) = readback else { return None; };
+        // Reveal only the original constructive premises; no positive field or
+        // replacement assumption supplies missing evidence.
+        sail_proof! {
+            reveal(replay_constructive_request);
+            reveal(small_exact_partial_transfer);
+        }
+        let Some(checked_readback) = seal_replay_readback(current, readback) else { return None; };
+        let accepted = if focused_command(&current.args) {
+            bind_replayed_exact_partial_project_ordered(&mut project, original, current, orders, readback)
+        } else {
+            bind_replayed_project_ordered(&mut project, original, current, orders, readback)
+        };
+        if !accepted { return None; }
+        Some(DeclaredReplayAdmission { original, current, project, paths: checked_paths, readback: checked_readback })
+    }
+}
+
+sail_verified! {
+    /// Consumes the admitted declared-domain view without changing any field.
+    /// It grants no stronger Current, physical-input or full-service authority.
+    pub fn present_declared_replay(admitted: DeclaredReplayAdmission) -> (out: ProjectResult)
+        requires(declared_replay_valid(&admitted))
+        ensures(out == declared_replay_project(&admitted))
+    { admitted.project }
 }

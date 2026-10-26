@@ -846,3 +846,104 @@ fn missing_or_swapped_native_paths_withhold_whole_and_partial_labels() -> TestRe
     }
     Ok(())
 }
+
+/// Declared value-domain composition only: these reports and input facts are
+/// fixtures, not physical compiler/solver observations or service qualification.
+#[test]
+fn declared_replay_conjoins_scope_paths_association_and_guarded_inputs() -> TestResult {
+    use sail_acceptance::inputs::{InputFact, InputValue};
+    use sail_api::acceptance::{
+        admit_declared_replay, bind_request_paths, present_declared_replay,
+    };
+    let facts = [InputFact {
+        namespace: 0,
+        name: b"declared nonempty fixture source",
+        value: InputValue::Present(b"source bytes"),
+    }];
+    for partial in [false, true] {
+        for variant in [
+            "positive",
+            "missing-paths",
+            "missing-readback",
+            "swapped-paths",
+            "missing-guard",
+            "changed-revision",
+            "swapped-original",
+            "changed-scope",
+            "missing-report-authority",
+        ] {
+            let mut original = original_request();
+            let mut report = passing_report()?;
+            if partial {
+                original.args = vec!["--".into(), "--verify-module".into(), "m".into()];
+                report.command.clone_from(&original.args);
+                for krate in &mut report.crates {
+                    krate.verus.success = None;
+                }
+            }
+            let mut candidate = project(vec![target("app", report)]);
+            if partial {
+                candidate.targets[0].complete = false;
+                candidate.targets[0].scope_reuse = Some(original.args.clone());
+            }
+            let mut current = original.clone();
+            current.run_id = "independently allocated view".into();
+            let mut path_request = current.clone();
+            match variant {
+                "swapped-paths" => path_request.invocation = "/different-native-invocation".into(),
+                "swapped-original" => original.context_sha256 = "different-original-context".into(),
+                "changed-scope" => current.args.push("different-current-scope".into()),
+                "missing-report-authority" if partial => candidate.targets[0].scope_reuse = None,
+                "missing-report-authority" => candidate.targets[0].complete = false,
+                _ => (),
+            }
+            let paths = bind_request_paths(
+                &path_request,
+                path_request.invocation.as_bytes(),
+                path_request.workspace.as_bytes(),
+            )
+            .ok_or("independent fixture native paths")?;
+            let guard = if variant == "missing-guard" {
+                None
+            } else {
+                Some(b"fixture guard".as_slice())
+            };
+            let revision = if variant == "changed-revision" {
+                b"other revision".as_slice()
+            } else {
+                b"revision".as_slice()
+            };
+            let readback = replay_declared_readback(&facts, &facts, guard, revision);
+            let mut expected = candidate.clone();
+            expected.run_id.clone_from(&current.run_id);
+            let admitted = admit_declared_replay(
+                candidate,
+                &original,
+                &current,
+                (variant != "missing-paths").then_some(&paths),
+                (variant != "missing-readback").then_some(&readback),
+            );
+            assert_eq!(
+                admitted.is_some(),
+                variant == "positive",
+                "partial={partial} {variant}"
+            );
+            if let Some(admitted) = admitted {
+                assert_eq!(admitted.request(), &current);
+                assert_eq!(admitted.project(), &expected);
+                let view = present_declared_replay(admitted);
+                assert_eq!(
+                    view, expected,
+                    "presentation preserves every admitted field"
+                );
+                assert_eq!(view.targets[0].establishing_run, "establishing-run");
+                assert_eq!(complete_request(&current, &view).is_some(), !partial);
+                assert_eq!(
+                    sail_api::acceptance::complete_exact_partial_request(&current, &view).is_some(),
+                    partial
+                );
+            }
+        }
+    }
+    Ok(())
+}
