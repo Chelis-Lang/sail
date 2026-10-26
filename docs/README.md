@@ -22,6 +22,7 @@ experimental features and validation limits are identified explicitly.
 | Read job Status and Results from Rust | [Result client](result-client.md) |
 | Run isolated native model checks, simulation and independent trace validation from Rust | [Temporal jobs](temporal-jobs.md) |
 | Consume structured reports and provenance | [Output schema](output-schema.md) |
+| Persist Sail's caches between CI runs, with measured gains and a GitHub Actions example | [CI cache](ci-cache.md) |
 | Share signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
 | Interpret Current, Historical and Unknown evidence | [Freshness](freshness.md) |
 | Understand trust boundaries and opt-in verdict differences | [Trust](trust.md), [divergences](divergences.md) |

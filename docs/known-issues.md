@@ -49,6 +49,14 @@ binds the latest cumulative source and preserves the same positive-kill limit.
 
 ## Release performance
 
+- **Restored managed targets and receipts are not reused on a new runner**
+  ([#421](https://github.com/Chelis-Lang/sail/issues/421)). Compiler-family and
+  proof-context keys bind the installed Sail and Rust files' device and inode,
+  so a `~/.cache/sail/projects/` restored onto a new CI runner gets a new
+  family and rebuilds everything. CapybaraKV takes 42.7 s instead of 0.89 s.
+  The solver-reply cache and a SAIL3112 project's own `target/` are
+  unaffected. See [caching Sail in CI](ci-cache.md#caveats).
+
 - **Mac resource-limit subsumption is unavailable on the current solver.**
   Resource counts vary for one captured vstd query, while inputs and answers
   agree. The recorder uses separately verified exact default and limit-100
