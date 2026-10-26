@@ -9,7 +9,8 @@ observation guarantee or service theorem is claimed. All six rows of the
 | Frozen source | Actual result | Limits |
 |---|---|---|
 | `4bd22455` | All 31 model and 155 production cases pass coherently on macOS and native Linux; native workspace passes | Solver passes 53/54 and stops at the actual compiler-phase witness's missing frozen fixture (#425); later e2e/PR conformance unrun |
-| `73f928d1` | Native workspace (605.71 s), all 31 model and 213 production cases pass, complete_suite=true; all 53 solver tests pass (22.49 s gate duration) | Full e2e is running; PR conformance pending. Later code does not inherit these results |
+| `73f928d1` | Native workspace (605.71 s), all 31 model and 213 production cases pass, complete_suite=true; all 53 solver tests pass (22.49 s gate duration) | Full e2e stops at the cold JSON replay trace assertion; PR conformance unrun. The newer source restores the missing cold-miss trace; later code does not inherit the passing earlier stages |
+| `00a501c7` | Whole authority root passes 489/0 with all 830 function entries and final frozen source/runtime checks. The byte-identical query/input assemblies pass separately at `11f3be8c`: 353/0 (637), 283/0 (469); every previous function retained | Component development evidence, not one combined canonical pass. Workspace stops at twelve style/lint diagnostics; corrected local annotations retain proved bodies and require rerun |
 | `b8775f8f` | Native whole positive roots: query 343/0 (621 function entries), inputs 264/0 (438), authority 430/0 (736); every prior function retained, final source/runtime identity checked. Workspace passes (475.68 s) | Development positive evidence only: 16 new stdout controls and its complete 229-case canonical matrix remain unqualified |
 | `cc8c24a1` | Complete macOS canonical query component: 288 obligations, 503 function entries and all 39 ordinary controls. Native full e2e union including extra and PR conformance pass | Earlier checkpoint, not qualification of later code; e2e/PR gate durations 1,175.78 s/122.67 s include image/build work |
 
@@ -28,9 +29,11 @@ native adapter sources explicitly without claiming those bodies are proved.
 The proposed complete matrix retains every inherited control and requires
 283 cases: three whole positive roots and 280 ordinary failing controls.
 Three whole source assemblies and every mutation anchor pass textual closure;
-this is not compilation or verification. The manifest retains the earlier whole-positive function/counter inventories;
-all three roots need new discovery after the ownership primitive, publication
-and replay additions. No guessed count replaces an actual stock run. Four inherited short mutation anchors
+this is not compilation or verification. The manifest records actual discovered inventories: query 353/637, inputs
+283/469 and authority 489/830 (verified/function entries). Query/input dependency
+bytes match their complete successful `11f3be8c` assemblies; authority qualifies
+its whole root at `00a501c7` with final source/runtime checks. This does not
+replace the required coherent canonical run or any ordinary failure control. Four inherited short mutation anchors
 now use their unchanged original function envelopes because new functions share
 the former short needles; guard changes and contracts remain intact. Both full
 whole/partial binder always-refuse controls remain required.
@@ -39,18 +42,46 @@ Native `714bf6e5` passes exact lexer equality over 419 Rust sources, all 296
 manifest mutations and all 40 source-control tests (48,852 dual lexer calls).
 Its query root passes 343/0; the input root stops at 277 verified / 5 errors,
 with eight diagnostic locations in new owned-compiler witnesses/contracts.
-Authority and workspace are unrun. The source correction makes byte witnesses
-explicit, composes descriptor correspondence, and strengthens start/completion
-guarantees without weakening contracts or changing production control flow.
-The unchanged ownership primitive now lives in the existing shared input module;
-its phase re-export preserves native callers. Whole-root rerun is pending.
+Authority and workspace are unrun. The correction makes byte witnesses explicit, composes descriptor
+correspondence and strengthens start/completion guarantees. The complete
+input root then passes 283/0. Its unchanged ownership primitive lives in the
+existing shared input module, with the phase re-export preserving native callers.
+Later local unfolding/invariant corrections make the whole authority root pass
+489/0 without raising resources, focusing functions or weakening contracts.
 That stopped run excludes the later declared replay/publication subcompositions. The [lexer allocation defect](https://github.com/Chelis-Lang/sail/issues/432)
-has a source candidate and exact frozen-blob comparison plan; no speedup is
-measured or selected. All newer canonical controls, native integration,
+passes the frozen equality and native measurement below; this qualifies only
+the measured source-lexer/preflight scope, not Sail runtime performance. All newer canonical controls, native integration,
 conformance and added-cost qualification remain pending. Local builds and
 verifier jobs remain stopped while the owner's machine is busy.
 
 ## Source and actual scope
+
+The `00a501c7` whole authority proof and stopped workspace gate are preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-latest-00a501c7-native-development.tgz`.
+SHA-256: `50b8148f4269927582e32d348ff120db391e86813d740ae6225531c768381cbe`.
+The 6,663,071-byte archive was independently downloaded and hashed.
+
+The `73f928d1` full native gate is preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-next-73f928d1-native-gate.tgz`.
+SHA-256: `36efa6ace7d98ec504c619df8e2fb8f6efb5722e8e3288fea6ae1a3600fb11c2`.
+Independent GET/hash verification passes. Its production report states
+complete_suite=true with all 213 cases. E2e fails at `json-record`: the unchanged
+assertion expects `miss: no record`, but no new cold-miss line is emitted and the
+last prior `hit` remains visible. Source restores that trace without changing
+the assertion; exact-partial cases remain required after this earlier stop.
+
+The `11f3be8c` quiet native lexer measurement (c7i.4xlarge, us-east-1, Python3.12)
+is preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-lexer-11f3be8c-native-measurement.tgz`.
+SHA-256: `a31c7eb93c228e19e661a37798e00fc040a4a32aee0657b58e325e93f55f37b5`.
+Independent GET/hash verification passes. Both lexers inspect identical frozen
+in-memory source/mutation inputs: 727 cases. Every exact result and final source
+check passes. Four alternating rounds retain all 16 samples, after warmup;
+median tokenizer time is 27.2620 s before and 8.4631 s after, while unchanged
+canonical source-preflight median is 75.1638 s before and 27.0651 s after.
+Git reads/module loading precede timing; tokenizer timings exclude result
+comparison. These measurements do not measure Verus, full gates, production
+Sail verification or added runtime validation cost.
 
 The `714bf6e5` lexer comparison and stopped proof attempt is preserved at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-latest-714bf6e5-native-development.tgz`.
@@ -142,6 +173,8 @@ implementation obligation; it is not selected.
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `00a501c7` | Native authority proof/workspace | Entire authority root passes 489/0, all 830 functions and final source/runtime checks. Workspace stops at source-shared style/lifetime lint diagnostics and an unfulfilled field lint expectation; local reasons/annotations retain the proved control flow. Full gate rerun pending |
+| 2026-10-26 | `73f928d1` | Native full gate | Workspace, 31 model cases, all 213 production cases and 53 solver tests pass. E2e stops at the original cold JSON replay trace assertion; PR conformance unrun. Restored cold trace and exact-partial source fixes require a new whole gate |
 | 2026-10-26 | `66a4cb46` | Whole authority root development | VIR checking requires hide headers at the start of the function body, not inside a nested proof block. The correction moves the identical headers to the supported position; loop/liveness verification and workspace remain pending |
 | 2026-10-26 | `df79d529` | Native whole positive roots | Query/inputs pass again. Authority reports an incomplete constructive loop invariant in exact-partial request admission and the unchanged rlimit in its new whole replay witness. The correction retains conditional singleton/target facts and controls local unfolding; runtime guards, contracts, scope and resource limits stay unchanged |
 | 2026-10-26 | `11f3be8c` | Native whole positive roots | Query 353/0 and inputs 283/0 pass; authority VIR checking rejects an executable Vec-to-slice coercion inside the new constructive proof helper call. Moving the same slice borrow before the proof block preserves the witness/contract; final authority and workspace remain pending |

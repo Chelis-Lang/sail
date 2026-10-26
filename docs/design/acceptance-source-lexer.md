@@ -1,8 +1,15 @@
 # Acceptance source lexer qualification plan
 
-Status: source-only candidate tracked in [#432](https://github.com/Chelis-Lang/sail/issues/432). Focused regressions and the standalone
-differential helper have not run. No performance result or runtime selection
-is established by this change.
+Status: the frozen implementation passes exact lexer equality and native
+source-preflight measurement, tracked in [#432](https://github.com/Chelis-Lang/sail/issues/432).
+At `714bf6e5`, all 419 Rust sources, 296 mutations and 40 source-control tests
+(48,852 dual calls) agree. At `11f3be8c`, a quiet c7i.4xlarge in us-east-1
+checks 727 frozen source/mutation cases over four alternating rounds, retaining
+all 16 timing samples and final source checks. Median lexer time falls from
+27.2620 s to 8.4631 s; unchanged source-preflight time falls from75.1638 s to
+27.0651 s. This measures source tooling only. Full canonical/current-source
+qualification and production runtime cost remain separate; see the
+[owning record](../validation/acceptance-boundary-refinements.md).
 
 `scripts/acceptance-source.py::tokens` formerly passed `source[at:]` to
 `re.match` for raw prefixes and again for ordinary words, characters or
@@ -72,7 +79,8 @@ ambiguous mutation needles and any mismatch fail the helper. Equal lexer
 refusals are recorded as differential results, never as source acceptance.
 The receipt records frozen source/lexer identity, case hashes, counts and status;
 an interrupted/incomplete receipt is not a pass. No verifier or proof authority
-is invoked or selected. The helper and these commands are unrun source work.
+is invoked or selected. The frozen comparison scope above has run; later source revisions need their
+own appropriate qualification.
 
 After the differential, run the unchanged source-control tests and canonical
 source preflight through the normal native gates. Existing assembly, imports,
@@ -99,5 +107,5 @@ Keep cold image/build, source preflight, verifier work and full native gate
 timings distinct. A reduction in suffix allocation does not establish the
 same reduction in the full gate or in Sail's verification runtime. Root owns
 the quiet native differential, measurements, exact-source gate and selection;
-all remain pending. Raw receipts/logs stay outside git, and measured acceptance
+final integrated selection remains pending. Raw receipts/logs stay outside git, and measured acceptance
 belongs in the existing refinement qualification record.
