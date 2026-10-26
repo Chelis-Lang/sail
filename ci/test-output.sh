@@ -9,7 +9,7 @@
 #   ci/test-output.sh SAIL loop|loader|flags|extra
 #
 # `loop`: combined output, passing proofs, an unchanged re-run, a compile
-# error and partial verification. `loader`: a loader variable. `flags`: the
+# error, partial verification and a seeded-mutation smoke. `loader`: a loader variable. `flags`: the
 # setups verified without proof reuse. `extra`: `-- --output-json --time` and
 # a `-p`/`--features` workspace. Every cold build verifies vstd (one to two
 # minutes on a two-CPU CI runner), so CI runs `loop`, `loader` and `flags` as
@@ -25,6 +25,9 @@ sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_output_checkout/target/e2e-ou
 case "$sail_output_evidence" in /*) ;; *) sail_output_evidence="$PWD/$sail_output_evidence" ;; esac
 # The observer path is harness state, never a verifier input.
 unset SAIL_E2E_OUTPUT_OUT
+# The per-function verdict checker (ci/test-output-evidence.py substitutes one).
+smoke_check="${SAIL_E2E_CHECK_OUTPUT:-$sail_output_checkout/target/release/examples/check_output}"
+unset SAIL_E2E_CHECK_OUTPUT
 work="$(mktemp -d)"
 # Stock macOS has neither GNU sed's `-i` spelling nor `timeout`. Edit through
 # a copy (keeping the file's inode and mode, as `sed -i` keeps its mode), and
@@ -241,6 +244,96 @@ if grep -qE '^ *(Compiling|Checking) ' "$work/logged-sail.err"; then
 fi
 rm in-workspace.log
 echo "e2e: combined output, passing, unchanged, compile error, partial verification, the stored-span fallback and the run after a workspace log identical to cargo verus verify"
+
+# A seeded-mutation smoke (ADR 0063) through managed `sail verify`: the
+# original, an unchanged re-run, seeded mutants from `cargo xtask gen-mutants`
+# (ci/fixtures/mutation-smoke/smoke.toml), each followed by a revert to the
+# original, and a forced re-run. Each step is compared with stock as above
+# (`same`); then an unchanged re-run of each side, Sail's with `--output
+# json`, whose per-function verdicts must be stock's `--output-json` ones
+# (check_output). Every revert and the forced run must get the original's
+# answers. The catalogue's `expected` is stock's outcome.
+smoke_start=$SECONDS
+smoke_dir="$sail_output_checkout/ci/fixtures/mutation-smoke"
+smoke_mutants="smoke-compare-001 smoke-logic-001 smoke-statement-001 smoke-constant-001"
+cp "$smoke_dir/lib.rs" src/lib.rs
+smoke_step() { # label; rest = environment for the Sail side
+  local label="$1"; shift
+  plain_run "$label-plain" stock_cargo verus verify
+  sail_run "$label-sail" env "$@" "$sail" verify
+  same "$label-plain" "$label-sail"
+}
+# Unchanged re-runs: stock's human one and Sail's `--output json`, which
+# must have the same exit code and stderr, and stock's verdicts.
+smoke_json() { # label
+  CARGO_TARGET_DIR="$work/target-plain" quiet_run "$1-again" stock_cargo verus verify
+  CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-json" "$sail" verify --output json
+  same "$1-again" "$1-json" "rc err"
+}
+smoke_verdicts() { # label verus-json-label
+  "$smoke_check" "$work/$1-json.out" "$work/$2.out" > /dev/null \
+    || { echo "e2e: $1 per-function verdicts differ from stock's ($2)" >&2; exit 1; }
+}
+# Stock's `--output-json` results for the current source. Changed Verus
+# arguments alone do not re-verify a fresh crate (VI-0005), so clean it first.
+smoke_verus_json() { # label
+  CARGO_TARGET_DIR="$work/target-plain" stock_cargo clean -q -p demo
+  plain_run "$1" stock_cargo verus verify -- --output-json --time
+}
+smoke_original() { # label; rest = environment: also the original's answers
+  smoke_step "$@"
+  same base-plain "$1-sail"
+  smoke_json "$1"
+  smoke_verdicts "$1" base-verusjson
+}
+smoke_step base
+grep -q "verified, 0 errors" "$work/base-plain.out"
+CARGO_TARGET_DIR="$work/target-plain" quiet_run unchanged-plain stock_cargo verus verify
+CARGO_TARGET_DIR="$work/target-sail" quiet_run unchanged-sail "$sail" verify
+same unchanged-plain unchanged-sail
+smoke_json base
+smoke_verus_json base-verusjson
+smoke_verdicts base base-verusjson
+for id in $smoke_mutants; do
+  python3 - "$smoke_dir/smoke.toml" "$id" "$smoke_dir/lib.rs" src/lib.rs > "$work/$id.expected" <<'PY'
+import json, re, sys
+catalogue, mutant, original, out = sys.argv[1:]
+# The generator's strings: one-line JSON or multi-line literal (no tomllib on
+# macOS's Python 3.9).
+edits = []
+for block in open(catalogue).read().split("\n[[edit]]\n")[1:]:
+    fields = re.finditer(r"^(\w+) = (?:'''\n(.*?)'''|(\"[^\n]*\"))$", block, re.M | re.S)
+    edits.append({m[1]: json.loads(m[3]) if m[2] is None else m[2] for m in fields})
+[edit] = [e for e in edits if e["id"] == mutant]
+text = open(original).read()
+assert text.count(edit["find"]) == 1, mutant
+open(out, "w").write(text.replace(edit["find"], edit["replace"]))
+print(edit["expected"])
+PY
+  expected="$(cat "$work/$id.expected")"
+  smoke_step "$id"
+  case "$expected:$(cat "$work/$id-plain.rc")" in
+    verified:0) ;;
+    errors:[1-9]*)
+      grep -q "verification results:: .*, [1-9][0-9]* errors" "$work/$id-plain.out" || {
+        echo "e2e: stock did not reach verification errors for $id" >&2
+        cat "$work/$id-plain.err" >&2
+        exit 1
+      } ;;
+    *)
+      echo "e2e: stock's outcome for $id differs from the catalogue's $expected (exit $(cat "$work/$id-plain.rc"))" >&2
+      exit 1 ;;
+  esac
+  smoke_json "$id"
+  smoke_verus_json "$id-verusjson"
+  smoke_verdicts "$id" "$id-verusjson"
+  cp "$smoke_dir/lib.rs" src/lib.rs
+  smoke_original "$id-revert"
+done
+# Fresh verification forced on both sides of the unchanged original.
+CARGO_TARGET_DIR="$work/target-plain" stock_cargo clean -q -p demo
+smoke_original forced SAIL_MANAGED_FORCE=1
+echo "e2e: seeded mutants ($smoke_mutants), their reverts, unchanged and forced runs identical to cargo verus verify ($((SECONDS - smoke_start)) s)"
 
 fi
 
