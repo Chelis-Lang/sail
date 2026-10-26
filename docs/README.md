@@ -78,6 +78,9 @@ separates the next loader/decoder implementation slice from unsupported opaque
 I/O and the native observation/launch architecture decisions.
 The [source lexer qualification plan](design/acceptance-source-lexer.md) covers
 exact Git-blob differential checks and separate native preflight measurements.
+The [owned compiler pipe candidate](design/acceptance-compiler-pipes.md) connects
+actual endpoint reads and EOF to completion, with its remaining qualification
+and physical-origin limits.
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs

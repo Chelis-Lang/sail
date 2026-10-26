@@ -928,6 +928,11 @@ authority by itself.
 
 ### Shared owned-completion boundary
 
+The subsequent [owned compiler pipe candidate](acceptance-compiler-pipes.md)
+adds actual endpoint/EOF tokens to production completion. The raw shared
+reducer described below remains a modeled reduction, rather than a native
+caller-vector admission API. Its new source and controls are unqualified.
+
 The candidate adds these source-shared operations in `phase_inputs.rs`:
 
 | Operation | Concrete boundary |
