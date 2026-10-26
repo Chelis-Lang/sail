@@ -234,15 +234,9 @@ pub fn shape_ok(command: &str, reply: &[u8]) -> bool {
 ///
 /// The first problem found.
 pub fn parse_entry(data: &[u8], key: &str) -> Result<(Meta, Vec<u8>), Problem> {
-    let nl = data
-        .iter()
-        .position(|&b| b == b'\n')
-        .ok_or(Problem::BadHeader)?;
-    let meta: Meta = data
-        .get(..nl)
-        .and_then(|h| serde_json::from_slice(h).ok())
-        .ok_or(Problem::BadHeader)?;
-    let reply = data.get(nl + 1..).unwrap_or_default().to_vec();
+    let (header, reply) = sail_acceptance::query::split_record(data).ok_or(Problem::BadHeader)?;
+    let meta: Meta = serde_json::from_slice(header).map_err(|_| Problem::BadHeader)?;
+    let reply = reply.to_vec();
     let computed = hex(&sha256(&reply));
     let version = meta.entry_version;
     let recorded_key = meta.key.as_bytes().to_vec();
@@ -452,9 +446,10 @@ impl DiskCache {
         let tmp = dir.join(format!(".tmp-{}-{seq}-{key}", std::process::id()));
         let written = (|| {
             let mut f = std::fs::File::create(&tmp)?;
-            let mut buf = serde_json::to_vec(&meta).map_err(std::io::Error::other)?;
-            buf.push(b'\n');
-            buf.extend_from_slice(reply);
+            let header = serde_json::to_vec(&meta).map_err(std::io::Error::other)?;
+            let buf = sail_acceptance::query::encode_record(header, reply).ok_or_else(|| {
+                std::io::Error::other("serialized cache header contains a newline")
+            })?;
             f.write_all(&buf)?;
             // No fsync: a torn or lost entry after a crash fails its
             // integrity check and is a miss, which costs time, never
@@ -496,6 +491,65 @@ mod tests {
         let (meta, got) = c.get(&k).unwrap_or_default_for_test();
         assert_eq!(got, reply);
         assert_eq!(meta.command, "get-model");
+        let _ = std::fs::remove_dir_all(c.root());
+    }
+
+    #[test]
+    fn record_framing_preserves_format_and_rejection_priority() {
+        let c = DiskCache::new(scratch("framing"));
+        let key = QueryKey([21; 32]);
+        let reply = b"unsat\n\x00\xff\n";
+        assert!(
+            c.put(
+                &key,
+                reply,
+                "check-sat",
+                "z3\nidentity",
+                "writer\ncontext",
+                None
+            )
+            .is_ok()
+        );
+        let data = std::fs::read(c.entry_path(&key)).unwrap_or_default();
+        let (meta, decoded) = parse_entry(&data, &key.to_string())
+            .unwrap_or_else(|problem| unreachable!("unexpected parse failure: {problem:?}"));
+        assert_eq!(decoded, reply);
+        let wire = |meta: &Meta| {
+            // Independent oracle for the existing header-newline-payload format.
+            let mut bytes = serde_json::to_vec(meta).unwrap_or_default();
+            bytes.push(b'\n');
+            bytes.extend_from_slice(reply);
+            bytes
+        };
+        assert_eq!(data, wire(&meta));
+        assert_eq!(meta.solver, "z3\nidentity");
+        assert_eq!(meta.provenance, "writer\ncontext");
+        let mut changed = meta;
+        changed.entry_version = 0;
+        changed.key = "different-key".to_owned();
+        changed.reply_sha256 = "different-digest".to_owned();
+        assert!(matches!(
+            parse_entry(&wire(&changed), &key.to_string()),
+            Err(Problem::WrongVersion)
+        ));
+        changed.entry_version = ENTRY_VERSION;
+        assert!(matches!(
+            parse_entry(&wire(&changed), &key.to_string()),
+            Err(Problem::KeyMismatch)
+        ));
+        changed.key = key.to_string();
+        assert!(matches!(
+            parse_entry(&wire(&changed), &key.to_string()),
+            Err(Problem::HashMismatch)
+        ));
+        assert!(matches!(
+            parse_entry(b"{}", &key.to_string()),
+            Err(Problem::BadHeader)
+        ));
+        assert!(matches!(
+            parse_entry(b"\nunsat\n", &key.to_string()),
+            Err(Problem::BadHeader)
+        ));
         let _ = std::fs::remove_dir_all(c.root());
     }
 

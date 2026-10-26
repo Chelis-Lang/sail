@@ -63,6 +63,7 @@ The production adapters now use these operations:
 | Shim `spawn_storer` | `PublicationBatch<Entry>` | Checked byte accounting bounds the actual pending payloads; release returns exactly their original values in order, or no values. |
 | Shim publication adapter | `PublicationGate::allows` | Every supplied closure observation is required. The adapter requires input completion, active pairing, empty queues, successful exit, quiet stderr EOF and successful forwarding before opening the storer's atomic gate. |
 | Daemon write-behind | `Fifo<Job>` | The actual immutable key/value/metadata job leaves in insertion order. Mutex behavior, memory insertion and persistence are outside this FIFO proof. |
+| Local disk write/read framing | `encode_record`, `split_record` | The actual writer emits exactly serialized header bytes, one newline and the unchanged reply. The actual reader splits at that first newline; the checked roundtrip preserves arbitrary multiline/binary payloads. |
 | `parse_entry` disk admission | `RecoveryRecord<Meta>::recover` | The original metadata and exact reply bytes survive only if decoded version, requested key and computed payload digest all match. Errors preserve the existing version/key/hash priority. |
 
 The two-stack FIFO is proved directly over its complete ordered payload
@@ -150,6 +151,33 @@ solver shutdown: that ownership can leave a producer waiting on its stderr
 write while the shim waits for stdout EOF. This is shutdown availability
 hardening; neither the sampled hang nor its fix demonstrates a false proof.
 The existing closed-stderr regression retains its five-second deadline.
+
+`DiskCache::put_scoped` passes its actual serialized metadata vector and
+borrowed reply to `encode_record`. A newline-bearing header is refused before
+writing. Successful encoding returns exactly those header bytes, one newline
+and that complete reply, with no additional allocation or payload copy over
+the previous format. `parse_entry` uses `split_record` over the actual read
+buffer; both returned slices are proved to partition that buffer at its first
+newline. `record_partition_unique` and `record_bytes_roundtrip` prove that
+reading a successfully encoded record restores its exact original header and
+reply, even with additional newlines, NUL or non-UTF-8 bytes in the payload.
+Missing separators retain `BadHeader`; JSON decode and version/key/digest
+checks retain their existing error priority.
+
+The framing theorem interprets metadata as arbitrary bytes. Serde's mapping
+between `Meta` fields and those bytes, the standard slice copy into the owned
+reply, hashing, successful OS write/read correspondence, rename/crash behavior
+and prior truthful solver publication remain explicit obligations. In
+particular, a valid record containing `unsat` acquires no solver authority from
+this roundtrip. Shared and bundled codecs and their writer contracts remain
+outside this local framing theorem.
+
+The byte checks add linear comparison over proposed command bytes and linear
+scanning of inter-item trivia, without another raw transcript copy. The disk
+writer adds one linear scan of its serialized header; the decoder retains a
+linear first-newline search. These are correctness guards, with no measured
+performance claim. Native timing and whole-corpus qualification belong to the
+combined change's owning gate.
 
 Disk integrity is deliberately a smaller theorem than solver provenance.
 `RecoveryRecord` does not turn the header's `provenance` string into an origin.
@@ -259,8 +287,11 @@ The raw-prefix extension adds three controls against the actual executable
 `RawTranscript::command` body: omit exact command-byte comparison, omit the
 inter-item trivia check, and start a feed at the proposed command offset
 instead of the previous endpoint. Their contracts, simulations and nonempty
-witnesses remain in scope; each fails with 154 verified obligations and one
-ordinary verification error under the same 155-obligation scope. These are
+witnesses remain in scope. The disk-framing extension additionally checks
+removing the header-newline guard, changing the encoded separator to carriage
+return, and retaining the separator inside the decoded payload. Each of these
+six mutations fails with 162 verified obligations and one ordinary verification
+error under the same 163-obligation scope. These are
 checked statement changes, not injected `assert(false)` controls.
 
 A timeout or resource-limit failure does not qualify as a successful negative
@@ -295,8 +326,8 @@ RUSTUP_TOOLCHAIN=1.99.1 VERUS_Z3_PATH="$stock_runtime/z3" \
   --cfg sail_verus --no-cheating --output-json --num-threads 1
 ```
 
-The local source-sharing closure passes 155 obligations: 59 existing model/context,
-39 query executable operations, 38 reused input-core obligations and 19 query
+The local source-sharing closure passes 163 obligations: 59 existing model/context,
+44 query executable obligations, 38 reused input-core obligations and 22 query
 simulation/witness obligations. The new nonempty byte witness includes CR/LF,
 line comments, quoted parentheses and a command split across input chunks;
 refusal witnesses cover skipped nontrivia, changed bytes and offset overflow. Focused Rust clippy checks cover acceptance, shim, cache and daemon; their 159 nonignored
@@ -339,12 +370,12 @@ following physical interfaces remain obligations, not established guarantees:
 | Shim adapters around the checked correlator/replay core | Channels, exact frame offsets, expectation construction, held-check release, the complete pair-only permutation/projection and effort annotation preserve the proved payload interpretation. The owned queue removal and countdown bodies themselves are now checked. |
 | Process launch, stdout/stderr monitor, publication adapters | Supplied closure observations belong to the identified immutable process. The source-shared gate requires all supplied observations and the batch preserves its actual owned values; OS observations and atomic flag/channel handoff remain unproved. |
 | Daemon `HELLO`/`PUT`, write-behind and memory stamps | Every admitted local writer refines the observed-run publication path. A handshake alone does not prove its arbitrary `PUT` truthful. Actual write jobs use the checked FIFO, but locking, insertion/settlement and I/O correspondence remain obligations. |
-| `DiskCache::put_scoped/get_stamped` | Protected prior publication, unique temporary files, atomic rename, digest computation, concrete stamps and crash behavior refine the ghost history. The actual decoded-envelope admission body now checks version/key/digest and preserves the exact payload. The implementation does not store or verify this model's ghost histories. |
+| `DiskCache::put_scoped/get_stamped` | Protected prior publication, unique temporary files, atomic rename, digest computation, concrete stamps and crash behavior refine the ghost history. The actual byte encoder/first-newline decoder now preserve header and payload; the decoded-envelope admission body checks version/key/digest and preserves the exact payload. The implementation does not store or verify this model's ghost histories. |
 | Shared/bundled admission | Excluded here; needs a reviewed writer-origin contract or independent certificate checking before inclusion. |
 
 The source-shared changes start from production base `53d30e87`, which
 includes main `237c7d8d`; the raw-prefix extension starts from `c6270f75`.
-The executable core and bounded simulations pass 155
+The executable core and bounded simulations pass 163
 whole-crate obligations with zero errors through the direct stock driver
 (including 59 existing query/context obligations); the existing model scope
 and controls remain intact. Full native qualification and integrated checker
