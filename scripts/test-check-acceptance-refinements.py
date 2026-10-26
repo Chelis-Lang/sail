@@ -242,6 +242,7 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/phase_inputs.rs", b"pub struct PhaseInputs", b"#[derive(Deserialize)] pub struct PhaseInputs"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct AttemptIdentity", b"#[derive(Default)] pub struct AttemptIdentity"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct DeclinedEngine", b"#[derive(Deserialize)] pub struct DeclinedEngine"),
+            ("crates/sail-acceptance/src/authority.rs", b"pub struct MissingEngineFeature", b"#[derive(Default)] pub struct MissingEngineFeature"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"pub struct QueryPrefix", b"#[derive(Default)] pub struct QueryPrefix"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"pub struct FramedCommand", b"#[derive(Deserialize)] pub struct FramedCommand"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"raw: RawTranscript,", b"pub raw: RawTranscript,"),
