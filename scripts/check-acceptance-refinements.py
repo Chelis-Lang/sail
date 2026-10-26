@@ -37,7 +37,7 @@ PUBLICATION_CORE = 'crates/sail-acceptance/src/query_publication.rs'
 PIPE_CORE = 'crates/sail-acceptance/src/stream_capture.rs'
 # Exact reviewed one-read event types and endpoint read primitive; no full-output oracle.
 PIPE_GHOST_ITEMS = frozenset(['6fcc1d7016aa6a4e7715d36438bf650ee7ccb2408a8d21d4b98848cba606dc43'])
-PIPE_HOST_TRAITS = frozenset(['8aba7eb762233c94d4506d60cb602120604a5e8a16c494f7033c61b4ef1adf39'])
+PIPE_HOST_TRAITS = frozenset(['78590e0391f7573656049a517dd0fb8c8adcd1587e82e6de2987b4648919ca28'])
 # These exact native adapters are reviewed/bound, not compiled proof bodies.
 QUERY_NATIVE_BINDINGS = {'crates/sail-cache/src/lib.rs': ['DiskCache::put_scoped'], 'crates/sail-cache/src/persist.rs': ['NativeWriteHost', 'write_record'], 'crates/sail-shim/src/cached.rs': ['SolverPipe', 'Solving', 'start_solver', 'Pairer', 'output_side', 'Storing', 'spawn_storer']}
 QUERY_NATIVE_SHA256 = {'crates/sail-cache/src/lib.rs': '106f1bd0fff663e6302be566de7b9e9c789e1e8433d354192e20f13db14b09dc', 'crates/sail-cache/src/persist.rs': '956ec4c117fb2b722a9a2454a9f1a60adf76e58a5a61397b1f144d4894d23260', 'crates/sail-shim/src/cached.rs': '51fda3b57cc24a9ca238d911050da14f15d5abaadea191ef53cc9374028a1650'}
