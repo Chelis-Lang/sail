@@ -104,8 +104,9 @@ parser's proposed decoded UTF-8 string cannot become a different sampled key:
 the shared checker must admit its byte mapping first. A nonempty stock witness
 accepts exact whitespace and newline names and refuses trimmed, escaped,
 empty and unrelated keys. A real rustc child emits these same dep-info cases;
-a separate Cargo fingerprint witness establishes trailing-only script-name
-whitespace handling. The Rust string/line framing and Cargo directive semantics
+a separate real Cargo fingerprint witness establishes instruction-line framing
+and preservation of leading payload whitespace, including indented prefixes and
+Unicode trailing whitespace. The Rust string/line framing and Cargo directive semantics
 remain named native provider boundaries, not a proved complete compiler parser.
 
 Declaration traversal distinguishes a successfully enumerated empty tree from
