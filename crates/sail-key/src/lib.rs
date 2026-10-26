@@ -25,6 +25,7 @@
 mod prefix_factory;
 
 use std::fmt;
+use std::sync::Arc;
 
 use sail_acceptance::key_prefix::{HashHost, Prefix};
 use sail_acceptance::query::PrefixFeed;
@@ -215,6 +216,7 @@ impl PrefixHasher {
 /// Its key is computed only when requested, without copying the hash for no-output commands.
 pub struct CommandFrame<'command, 'owner> {
     frame: CoreCommand<'command, 'owner, Sha256Host>,
+    owner: &'owner Arc<()>,
 }
 impl CommandFrame<'_, '_> {
     /// The command's exact supported head bytes.
@@ -237,6 +239,60 @@ impl CommandFrame<'_, '_> {
     pub fn key(&self) -> QueryKey {
         QueryKey(self.frame.key())
     }
+
+    /// Retains this original exact command/hash checkpoint and session lease.
+    /// The lease is never hashed or sent to the solver/cache protocol.
+    #[must_use]
+    pub fn freeze(&self) -> OwnedCommand {
+        OwnedCommand {
+            command: self.frame.freeze(),
+            owner: Arc::clone(self.owner),
+        }
+    }
+}
+
+/// Immutable original command/head/key checkpoint from one actual parser
+/// session. There is no raw-key, raw-Vec or deserializing constructor.
+pub struct OwnedCommand {
+    command: sail_acceptance::query_prefix::FrozenCommand<Sha256Host>,
+    owner: Arc<()>,
+}
+impl OwnedCommand {
+    /// Original unchanged v2 key, sealed at the command's original endpoint.
+    #[must_use]
+    pub fn key(&self) -> QueryKey {
+        QueryKey(self.command.key())
+    }
+    /// Original exact command bytes.
+    #[must_use]
+    pub fn command(&self) -> &[u8] {
+        self.command.command()
+    }
+    /// Original exact accepted head bytes.
+    #[must_use]
+    pub fn head(&self) -> &[u8] {
+        self.command.head()
+    }
+    /// Original endpoint in the actual parser/input session.
+    #[must_use]
+    pub fn end(&self) -> usize {
+        self.command.end()
+    }
+    /// Conservative charge for this native object and owned logical payloads.
+    /// It excludes allocator bookkeeping, as the existing publication budget does.
+    #[must_use]
+    pub fn retained_bytes(&self) -> Option<usize> {
+        std::mem::size_of::<Self>()
+            .checked_add(self.command.command().len())?
+            .checked_add(self.command.head().len())?
+            .checked_add(6 * std::mem::size_of::<usize>())
+    }
+    /// Consumes the checkpoint only when constructing original wire metadata.
+    #[must_use]
+    pub fn into_parts(self) -> (QueryKey, Vec<u8>, Vec<u8>) {
+        let (key, head, command) = self.command.into_parts();
+        (QueryKey(key), head, command)
+    }
 }
 
 /// One cache session's jointly owned exact raw transcript and incremental v2 key.
@@ -244,6 +300,8 @@ impl CommandFrame<'_, '_> {
 pub struct SessionPrefix {
     seed: Prefix<Sha256Host>,
     session: QueryState<Sha256Host>,
+    /// Opaque parser lineage only; never key material or an OS process identity.
+    owner: Arc<()>,
 }
 
 impl SessionPrefix {
@@ -252,7 +310,11 @@ impl SessionPrefix {
     pub fn new(solver: &SolverIdentity, mode: &Mode) -> Self {
         let (session, seed) =
             prefix_factory::new_session_seed(Sha256Host(Sha256::new()), solver, mode);
-        Self { seed, session }
+        Self {
+            seed,
+            session,
+            owner: Arc::new(()),
+        }
     }
     /// Transfers a fresh actual solver input pipe into an independent delivery
     /// checker seeded with this session's exact solver and mode header.
@@ -263,6 +325,24 @@ impl SessionPrefix {
     ) -> InputDelivery<Pipe> {
         InputDelivery {
             delivery: sail_acceptance::query_delivery::Delivery::new(pipe, self.seed.duplicate()),
+            owner: Arc::clone(&self.owner),
+        }
+    }
+    /// Retains acknowledged bytes once for original checkpoint validation,
+    /// bounded independently of original forwarding and pipe-write success.
+    #[must_use]
+    pub fn recorded_delivery<Pipe: sail_acceptance::query_delivery::InputPipe>(
+        &self,
+        pipe: Pipe,
+        limit: usize,
+    ) -> InputDelivery<Pipe> {
+        InputDelivery {
+            delivery: sail_acceptance::query_delivery::Delivery::new_captured(
+                pipe,
+                self.seed.duplicate(),
+                limit,
+            ),
+            owner: Arc::clone(&self.owner),
         }
     }
     /// Appends exactly the bytes received by this session.
@@ -277,7 +357,10 @@ impl SessionPrefix {
     ) -> Option<CommandFrame<'a, 'b>> {
         self.session
             .command(offset, command)
-            .map(|frame| CommandFrame { frame })
+            .map(|frame| CommandFrame {
+                frame,
+                owner: &self.owner,
+            })
     }
 
     /// Borrows all original bytes for pinned-solver replay.
@@ -335,11 +418,17 @@ pub fn sha256(bytes: &[u8]) -> [u8; 32] {
 /// Its closure check binds delivered bytes to the parser session terminal key.
 pub struct InputDelivery<Pipe> {
     delivery: sail_acceptance::query_delivery::Delivery<Pipe, Sha256Host>,
+    owner: Arc<()>,
 }
 impl<Pipe: sail_acceptance::query_delivery::InputPipe> InputDelivery<Pipe> {
     /// Calls the owned pipe's full write and flush before acknowledging bytes.
     pub fn write(&mut self, bytes: &[u8]) -> bool {
         self.delivery.write(bytes)
+    }
+    /// Releases unavailable recording storage while preserving every later
+    /// original pipe write, flush and close operation.
+    pub fn forget_capture(&mut self) {
+        self.delivery.forget_capture();
     }
     /// Whether a delivery failure has permanently withheld eligibility.
     #[must_use]
@@ -355,7 +444,10 @@ impl<Pipe: sail_acceptance::query_delivery::InputPipe> InputDelivery<Pipe> {
     pub fn seal(&mut self, expected: QueryKey, complete: bool) -> Option<DeliveredInput> {
         self.delivery
             .seal(expected.0, complete)
-            .map(|delivered| DeliveredInput { delivered })
+            .map(|delivered| DeliveredInput {
+                delivered,
+                owner: Arc::clone(&self.owner),
+            })
     }
     /// Closes the exact owned input pipe.
     pub fn close(&mut self) {
@@ -367,6 +459,7 @@ impl<Pipe: sail_acceptance::query_delivery::InputPipe> InputDelivery<Pipe> {
 /// clean solver-output or executable-image certificate.
 pub struct DeliveredInput {
     delivered: sail_acceptance::query_delivery::Delivered<Sha256Host>,
+    owner: Arc<()>,
 }
 impl DeliveredInput {
     /// The complete-input key retained by the private delivery token.
@@ -407,7 +500,10 @@ impl DeliveredInput {
             gate,
             identity,
         )
-        .map(|observation| OwnedObservedPublication { observation })
+        .map(|observation| OwnedObservedPublication {
+            observation,
+            owner: self.owner,
+        })
     }
 }
 
@@ -432,6 +528,7 @@ impl ObservedPublication {
 /// Joint publication retaining actual opaque input/output ownership leases.
 pub struct OwnedObservedPublication<Owner, Identity> {
     observation: sail_acceptance::query_output_owner::OwnedPublication<Sha256Host, Owner, Identity>,
+    owner: Arc<()>,
 }
 impl<Owner, Identity: sail_acceptance::inputs::OwnerIdentity<Owner>>
     OwnedObservedPublication<Owner, Identity>
@@ -440,6 +537,62 @@ impl<Owner, Identity: sail_acceptance::inputs::OwnerIdentity<Owner>>
     #[must_use]
     pub fn input_key(&self) -> QueryKey {
         QueryKey(self.observation.input_key())
+    }
+    /// Requires the original parser/delivery lineage and an endpoint within
+    /// the actual completed input. Hash equality alone cannot pass this check.
+    #[must_use]
+    pub fn same_command_session(&self, command: &OwnedCommand) -> bool {
+        Arc::ptr_eq(&self.owner, &command.owner)
+            && u64::try_from(command.end()).is_ok_and(|end| end <= self.observation.input_length())
+    }
+    /// Validates actual original command spans and keys against acknowledged
+    /// input in one incremental pass. Candidate sorting never changes publication
+    /// or SMT bytes, and every actual command participates in its permutation.
+    #[must_use]
+    pub fn validate_commands(&self, commands: &[&OwnedCommand]) -> bool {
+        if !commands
+            .iter()
+            .all(|command| self.same_command_session(command))
+        {
+            return false;
+        }
+        let checkpoints: Vec<_> = commands.iter().map(|command| &command.command).collect();
+        let mut order: Vec<_> = (0..commands.len()).collect();
+        order.sort_by_key(|&index| checkpoints[index].end());
+        let mut inverse = vec![0; commands.len()];
+        for (rank, &index) in order.iter().enumerate() {
+            inverse[index] = rank;
+        }
+        self.observation
+            .validate_checkpoints(&checkpoints, &order, &inverse)
+    }
+    /// Binds every actual fresh reply to its original command's acknowledged
+    /// prefix and same-stream ordinal, after this stdout owner's replay prefix.
+    /// The certified evidence order does not reorder the pending payload batch.
+    #[must_use]
+    pub fn validate_pairs(
+        &self,
+        pairs: &[(
+            &OwnedCommand,
+            &sail_acceptance::query_output_owner::OwnedFrame<Owner>,
+        )],
+    ) -> bool {
+        if !pairs
+            .iter()
+            .all(|(command, _)| self.same_command_session(command))
+        {
+            return false;
+        }
+        let checkpoints: Vec<_> = pairs.iter().map(|(command, _)| &command.command).collect();
+        let frames: Vec<_> = pairs.iter().map(|(_, frame)| *frame).collect();
+        let mut order: Vec<_> = (0..pairs.len()).collect();
+        order.sort_by_key(|&index| checkpoints[index].end());
+        let mut inverse = vec![0; pairs.len()];
+        for (rank, &index) in order.iter().enumerate() {
+            inverse[index] = rank;
+        }
+        self.observation
+            .validate_bindings(&checkpoints, &frames, &order, &inverse)
     }
     /// Checks original output owner as well as exact ordinal, range and bytes.
     #[must_use]
