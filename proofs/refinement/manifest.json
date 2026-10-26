@@ -779,9 +779,10 @@
         "crates/sail-api/src/output.rs",
         "crates/sail-api/src/project.rs",
         "crates/sail-api/src/jobs.rs",
-        "crates/sail-api/src/repair.rs"
+        "crates/sail-api/src/repair.rs",
+        "crates/sail-daemon/src/jobs/store.rs"
       ],
-      "verified": 273,
+      "verified": 278,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
@@ -800,6 +801,7 @@
         "check_authority::acceptance::SubmittedAuthority::request",
         "check_authority::acceptance::all_owned_ids",
         "check_authority::acceptance::append_obligations",
+        "check_authority::acceptance::apply_retained_currentness",
         "check_authority::acceptance::authority_policy",
         "check_authority::acceptance::authority_report",
         "check_authority::acceptance::bind_submission",
@@ -869,8 +871,12 @@
         "check_authority::acceptance::require_process_observation",
         "check_authority::acceptance::resolved_coverage",
         "check_authority::acceptance::resolved_expected",
+        "check_authority::acceptance::retained_currentness",
         "check_authority::acceptance::same_engine",
+        "check_authority::acceptance::same_project_except_completion",
+        "check_authority::acceptance::same_project_except_freshness_and_completion",
         "check_authority::acceptance::same_target",
+        "check_authority::acceptance::same_target_except_completion",
         "check_authority::acceptance::same_target_identity",
         "check_authority::acceptance::selection_authority_valid",
         "check_authority::acceptance::selection_project",
@@ -899,6 +905,7 @@
         "check_authority::acceptance::verification_disabled",
         "check_authority::acceptance::verification_enabled_command",
         "check_authority::acceptance::verification_enabled_options",
+        "check_authority::acceptance::withhold_unbound_request_authority_ordered",
         "check_authority::authority::AttemptLedger::new",
         "check_authority::authority::AttemptLedger::reserve",
         "check_authority::authority::CompletionPolicy::clone",
@@ -1222,6 +1229,7 @@
         "check_authority::refinement::project_function",
         "check_authority::refinement::project_observed_process_end",
         "check_authority::refinement::recovering_finish_refuses_missing_events",
+        "check_authority::refinement::retained_current_frame_refines_request",
         "check_authority::refinement::stale_request_refused",
         "check_authority::refinement::swapped_repair_function_refused",
         "check_authority::refinement::swapped_request_refused",
@@ -1419,6 +1427,48 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "if !matched && report.error.is_none() { report.error = Some(unavailable); }",
           "after": "if false { report.error = Some(unavailable); }"
+        },
+        {
+          "name": "retained-original-current",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if complete && matches!(original, Currentness::Current) {",
+          "after": "if complete {"
+        },
+        {
+          "name": "retained-complete-readback",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if complete && matches!(original, Currentness::Current) {",
+          "after": "if matches!(original, Currentness::Current) {"
+        },
+        {
+          "name": "retained-exact-revision",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if !exact_bytes(revision.as_bytes(), expected.as_bytes()) {",
+          "after": "if false {"
+        },
+        {
+          "name": "retained-view-currentness",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "crate::jobs::Currentness::Unknown => Currentness::Unknown,",
+          "after": "crate::jobs::Currentness::Unknown => Currentness::Current,"
+        },
+        {
+          "name": "retained-request-admission",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "|| complete_request_ordered(request, project, orders).is_some()),",
+          "after": "|| true),"
+        },
+        {
+          "name": "retained-clear-refused-labels",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "project.targets[i].complete = false;",
+          "after": "project.targets[i].complete = true;"
+        },
+        {
+          "name": "retained-preserve-positive",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if admitted {\n            return corresponding;\n        }",
+          "after": "if false {\n            return corresponding;\n        }"
         }
       ]
     }
@@ -2289,6 +2339,17 @@
               "Selection"
             ]
           }
+        },
+        {
+          "name": "Currentness",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "Current",
+            "Historical",
+            "Unknown"
+          ],
+          "declaration_sha256": "ebeb663c56b996553be5be25f0ea4b883fcf2b48b961ef86c1a6dd9f2092bd39"
         }
       ],
       "schema_constant": [

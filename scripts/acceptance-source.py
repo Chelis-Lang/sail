@@ -426,6 +426,12 @@ def candidate_forwarders(source: str) -> None:
     is reviewed runner logic, not a claim that std sorting is formally proved.
     """
     expected = {
+        "withhold_unbound_request_authority": """let orders: Vec<_> = if request.is_some()
+            && matches!(project.currentness, crate::project::Currentness::Current)
+            && project.exit_code == Some(0) {
+                project.targets.iter().map(|target| candidate_order(&target.report)).collect()
+            } else { Vec::new() };
+            withhold_unbound_request_authority_ordered(project, request, &orders)""",
         "complete_submitted_request": """let orders: Vec<_> = project.targets.iter()
             .map(|target| candidate_order(&target.report)).collect();
             complete_submitted_request_ordered(arguments, mode, request, project, &orders)""",
@@ -444,6 +450,7 @@ def candidate_forwarders(source: str) -> None:
             }).collect(); complete_selection_ordered(project, &orders)""",
     }
     signatures = {
+        "withhold_unbound_request_authority": "fn withhold_unbound_request_authority(project: &mut ProjectResult, request: Option<&ResolvedRequest>,) -> bool",
         "complete_submitted_request": "fn complete_submitted_request<'a>(arguments: &'a [String], mode: &'a Mode, request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<SubmittedAuthority<'a>>",
         "complete_request": "fn complete_request<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<CompleteRequest<'a>>",
         "complete_report": "fn complete_report(report: &Report, policy: CompletionPolicy) -> Option<CompleteReport<'_>>",
@@ -454,7 +461,7 @@ def candidate_forwarders(source: str) -> None:
     }
     imports = [
         "use sail_acceptance::authority::CompletionPolicy;",
-        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, SubmittedAuthority, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered,};",
+        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, SubmittedAuthority, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered, withhold_unbound_request_authority_ordered,};",
         "use crate::jobs::Mode;",
         "use crate::output::Report;", "use crate::project::{ProjectResult, ResolvedRequest, TargetResult};",
     ]
@@ -489,7 +496,7 @@ def candidate_forwarders(source: str) -> None:
             actual = [token.value for token in stream[begin + 1:end]]
             wanted = [token.value for token in tokens(expected[name])]
             require(actual == wanted, "untrusted authority forwarding changed: " + name)
-    require(len(found) == 7 and set(found) == {*expected, "candidate_order"},
+    require(len(found) == 8 and set(found) == {*expected, "candidate_order"},
         "authority candidate adapter function inventory changed")
     require(actual_imports == [[t.value for t in tokens(text)] for text in imports],
         "candidate forwarding binding environment changed")
@@ -507,7 +514,7 @@ def api_stencils(snapshots: dict[str, bytes], expected: dict | None = None) -> t
     for module, selected, enums in (
         ("output", OUTPUT_FIELDS, OUTPUT_ENUMS),
         ("project", PROJECT_FIELDS, ("Currentness",)),
-        ("jobs", {}, ("Mode",)),
+        ("jobs", {}, ("Mode", "Currentness")),
         ("repair", {"Selection": "package target kind function"}, ()),
     ):
         source = snapshots["crates/sail-api/src/" + module + ".rs"].decode()

@@ -18,7 +18,7 @@ use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verifi
 /// Builds untrusted order candidates and invokes the checked authority factory.
 pub use crate::acceptance_sort::{
     complete_report, complete_request, complete_selection, complete_submitted_request,
-    complete_target, complete_whole_report,
+    complete_target, complete_whole_report, withhold_unbound_request_authority,
 };
 
 use crate::jobs::Mode;
@@ -208,6 +208,66 @@ sail_code! {
                 ensures(out == authority_policy(self))
             { self.policy }
         }
+    }
+}
+
+sail_verified! {
+    /// Classifies a retained result from its original state and actual readback.
+    /// A matching revision cannot upgrade Historical or Unknown establishment.
+    pub fn retained_currentness(original: &Currentness, expected: &str,
+        observed: Option<&str>, complete: bool) -> (out: crate::jobs::Currentness)
+        requires(true)
+        ensures((out is Current) == (*original is Current && complete
+                && observed.is_some() && observed.unwrap().spec_bytes() == expected.spec_bytes()),
+            *original is Historical ==> out is Historical,
+            observed.is_some() && observed.unwrap().spec_bytes() != expected.spec_bytes()
+                ==> out is Historical,
+            out is Current ==> *original is Current)
+    {
+        if let Some(revision) = observed {
+            if !exact_bytes(revision.as_bytes(), expected.as_bytes()) {
+                return crate::jobs::Currentness::Historical;
+            }
+            if complete && matches!(original, Currentness::Current) {
+                return crate::jobs::Currentness::Current;
+            }
+        }
+        if matches!(original, Currentness::Historical) {
+            crate::jobs::Currentness::Historical
+        } else {
+            crate::jobs::Currentness::Unknown
+        }
+    }
+}
+
+sail_verified! {
+    /// Applies one selected freshness view without modifying proof evidence.
+    /// Returns whether a formerly Current result needs the lost-readback note.
+    pub fn apply_retained_currentness(project: &mut ProjectResult,
+        view: &crate::jobs::Currentness) -> (lost: bool)
+        requires(true)
+        ensures(final(project).targets == old(project).targets,
+            final(project).kind == old(project).kind,
+            final(project).schema_version == old(project).schema_version,
+            final(project).run_id == old(project).run_id,
+            final(project).workspace == old(project).workspace,
+            final(project).context_sha256 == old(project).context_sha256,
+            final(project).input_revision == old(project).input_revision,
+            final(project).exit_code == old(project).exit_code,
+            final(project).error == old(project).error,
+            final(project).engine == old(project).engine,
+            (final(project).currentness is Current) == (*view is Current),
+            (final(project).currentness is Historical) == (*view is Historical),
+            (final(project).currentness is Unknown) == (*view is Unknown),
+            lost == (old(project).currentness is Current && *view is Unknown))
+    {
+        let originally_current = matches!(project.currentness, Currentness::Current);
+        project.currentness = match view {
+            crate::jobs::Currentness::Current => Currentness::Current,
+            crate::jobs::Currentness::Historical => Currentness::Historical,
+            crate::jobs::Currentness::Unknown => Currentness::Unknown,
+        };
+        originally_current && matches!(view, crate::jobs::Currentness::Unknown)
     }
 }
 
@@ -1644,5 +1704,82 @@ sail_verified! {
             Some(value) => { if !packed_driver_arguments_match(value.as_str(), second) { return false; } }
         }
         true
+    }
+}
+
+sail_spec! {
+    /// Exact retained target data, allowing only loss of its completion label.
+    pub open spec fn same_target_except_completion(a: &TargetResult, b: &TargetResult) -> bool {
+        a.package_id == b.package_id && a.target == b.target && a.kind == b.kind
+            && a.establishing_run == b.establishing_run && a.reused == b.reused
+            && a.requested == b.requested && a.scope_reuse == b.scope_reuse && a.report == b.report
+    }
+
+    /// All captured project data except freshness and completion labels stays fixed.
+    pub open spec fn same_project_except_freshness_and_completion(a: &ProjectResult, b: &ProjectResult) -> bool {
+        a.kind == b.kind && a.schema_version == b.schema_version && a.run_id == b.run_id
+            && a.workspace == b.workspace && a.context_sha256 == b.context_sha256
+            && a.input_revision == b.input_revision
+            && a.exit_code == b.exit_code && a.error == b.error && a.engine == b.engine
+            && a.targets@.len() == b.targets@.len()
+            && forall |i: int| 0 <= i < a.targets@.len() ==>
+                same_target_except_completion(&a.targets@[i], &b.targets@[i])
+    }
+
+    /// Request refusal additionally preserves the original freshness observation.
+    pub open spec fn same_project_except_completion(a: &ProjectResult, b: &ProjectResult) -> bool {
+        same_project_except_freshness_and_completion(a, b) && a.currentness == b.currentness
+    }
+}
+
+sail_verified! {
+    /// Rechecks original request authority before retained completion can be shown.
+    /// Refusal clears labels while preserving the recorded reports and currentness.
+    pub fn withhold_unbound_request_authority_ordered(project: &mut ProjectResult,
+        request: Option<&ResolvedRequest>, orders: &[ReportOrder]) -> (corresponding: bool)
+        requires(true)
+        ensures(same_project_except_completion(old(project), final(project)),
+            forall |i: int| 0 <= i < final(project).targets@.len() ==>
+                final(project).targets@[i].complete ==> old(project).targets@[i].complete,
+            final(project).currentness is Current && final(project).exit_code == Some(0i32)
+                && (exists |i: int| 0 <= i < final(project).targets@.len()
+                    && final(project).targets@[i].complete) ==>
+                request.is_some() && request_authorized(request.unwrap(), final(project)),
+            request.is_none() ==> !corresponding,
+            request.is_some() && small_positive_request(request.unwrap(), old(project))
+                && orders@.len() == 1 && orders@[0].forward@.len() == 0
+                && orders@[0].inverse@.len() == 0 ==>
+                corresponding && *final(project) == *old(project))
+    {
+        let corresponding = match request {
+            Some(request) => request_corresponds(request, project),
+            None => false,
+        };
+        let admitted = match request {
+            Some(request) => corresponding
+                && verification_enabled_command(&request.args)
+                && !focused_command(&request.args)
+                && (!matches!(project.currentness, Currentness::Current)
+                    || project.exit_code != Some(0)
+                    || complete_request_ordered(request, project, orders).is_some()),
+            None => false,
+        };
+        if admitted {
+            return corresponding;
+        }
+        let mut i = 0usize;
+        sail_while! { (i < project.targets.len())
+            invariant(i <= project.targets.len(),
+                same_project_except_completion(old(project), project),
+                forall |j: int| 0 <= j < i ==> !project.targets@[j].complete,
+                forall |j: int| i <= j < project.targets@.len() ==>
+                    project.targets@[j].complete == old(project).targets@[j].complete)
+            decreases(project.targets.len() - i)
+            {
+                project.targets[i].complete = false;
+                i += 1;
+            }
+        }
+        corresponding
     }
 }

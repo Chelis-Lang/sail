@@ -10,10 +10,32 @@ use crate::acceptance::{
     CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, SubmittedAuthority,
     complete_report_ordered, complete_request_ordered, complete_selection_ordered,
     complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered,
+    withhold_unbound_request_authority_ordered,
 };
 use crate::jobs::Mode;
 use crate::output::Report;
 use crate::project::{ProjectResult, ResolvedRequest, TargetResult};
+
+/// Rechecks retained original-request authority with candidate obligation orders.
+#[must_use]
+pub fn withhold_unbound_request_authority(
+    project: &mut ProjectResult,
+    request: Option<&ResolvedRequest>,
+) -> bool {
+    let orders: Vec<_> = if request.is_some()
+        && matches!(project.currentness, crate::project::Currentness::Current)
+        && project.exit_code == Some(0)
+    {
+        project
+            .targets
+            .iter()
+            .map(|target| candidate_order(&target.report))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    withhold_unbound_request_authority_ordered(project, request, &orders)
+}
 
 /// Checks original submission correspondence and actual complete request authority.
 #[must_use]
