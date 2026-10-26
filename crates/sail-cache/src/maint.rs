@@ -466,9 +466,9 @@ mod tests {
     #[test]
     fn gc_evicts_least_recently_used_first() {
         let c = scratch("gc");
-        let keys: Vec<QueryKey> = (0..6u8)
-            .map(|i| put(&c, i, &vec![b'x'; 1000], "get-model"))
-            .collect();
+        // One complete response frame of 1000 bytes.
+        let reply = [vec![b'x'; 999], b"\n".to_vec()].concat();
+        let keys: Vec<QueryKey> = (0..6u8).map(|i| put(&c, i, &reply, "get-model")).collect();
         // Entry i was last used 1000 - 100 i seconds ago; entry 0 is the
         // oldest. Then a hit on entry 1 makes it the newest.
         for (i, k) in keys.iter().enumerate() {

@@ -797,3 +797,178 @@ fn closed_stderr_sink_does_not_deadlock_a_large_diagnostic() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// Starts a daemon on `cache` at `socket` and waits for its socket.
+fn start_daemon(socket: &Path, cache: &Path) {
+    let (sock, root) = (socket.to_path_buf(), cache.to_path_buf());
+    std::thread::spawn(move || {
+        sail_daemon::serve(&sock, &root, Arc::new(sail_daemon::Stats::default()))
+    });
+    for _ in 0..100 {
+        if socket.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
+
+/// Every entry file under `cache`.
+fn entry_files(cache: &Path) -> Vec<PathBuf> {
+    std::fs::read_dir(cache.join("v2"))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .flat_map(|bucket| {
+            std::fs::read_dir(bucket.path())
+                .into_iter()
+                .flatten()
+                .flatten()
+        })
+        .map(|e| e.path())
+        .collect()
+}
+
+/// Replaces the stored reply `from` with `to`, keeping the entry's header
+/// and reply digest consistent, so only the payload is wrong. Waits for the
+/// write-behind queue to put `from` on disk first.
+fn rewrite_entry(cache: &Path, from: &[u8], to: &[u8]) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        for path in entry_files(cache) {
+            let data = std::fs::read(&path).unwrap_or_default();
+            let Some(nl) = data.iter().position(|&b| b == b'\n') else {
+                continue;
+            };
+            if &data[nl + 1..] != from {
+                continue;
+            }
+            let mut header: serde_json::Value =
+                serde_json::from_slice(&data[..nl]).unwrap_or_default();
+            // Only the entry itself, never a write-behind temporary file.
+            if path.file_name().and_then(|n| n.to_str()) != header["key"].as_str() {
+                continue;
+            }
+            header["reply_sha256"] = sail_key::sha256(to)
+                .iter()
+                .fold(String::new(), |mut s, b| {
+                    use std::fmt::Write as _;
+                    let _ = write!(s, "{b:02x}");
+                    s
+                })
+                .into();
+            let entry = [header.to_string().as_bytes(), b"\n", to].concat();
+            assert!(std::fs::write(&path, entry).is_ok());
+            return;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "no stored reply {:?}",
+            String::from_utf8_lossy(from)
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
+
+/// Fills a cache with ordinary pinned-Z3 replies for `input`, then applies
+/// `rewrites` and returns a fresh daemon's socket on that store, so every
+/// reply is read from the changed entry files.
+fn filled_then_rewritten(dir: &Path, input: &[u8], rewrites: &[(&[u8], &[u8])]) -> PathBuf {
+    let (socket, cache) = (dir.join("d.sock"), dir.join("cache"));
+    start_daemon(&socket, &cache);
+    let fill = input_run(&dir.join("z3"), Some(&socket), input);
+    assert!(fill.status.success());
+    for (from, to) in rewrites {
+        rewrite_entry(&cache, from, to);
+    }
+    let fresh = dir.join("e.sock");
+    start_daemon(&fresh, &cache);
+    fresh
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn late_cache_frame_refusal_replays_exactly_after_a_served_prefix() {
+    // #379: a stored reply with two concatenated forms is refused, and the
+    // session replays into the pinned Z3 after the one reply it served.
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let input = b"(get-info :version)\n(get-info :name)\n(exit)\n";
+    let direct = input_run(&solver, None, input);
+    assert!(direct.status.success());
+    assert!(direct.stdout.ends_with(b"(:name \"Z3\")\n"));
+    let socket = filled_then_rewritten(
+        &dir,
+        input,
+        &[(b"(:name \"Z3\")\n", b"(:name \"Z3\")(:evil \"extra\")\n")],
+    );
+    let records = dir.join("provenance");
+    assert!(std::fs::create_dir_all(&records).is_ok());
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail-z3"));
+    cmd.args(["-smt2", "-in"])
+        .env("SAIL_Z3_PATH", &solver)
+        .env("SAIL_DAEMON_SOCKET", &socket)
+        .env("SAIL_PROVENANCE_DIR", &records)
+        .env_remove("SAIL_TRACE_DIR")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn().unwrap_or_else(|e| unreachable!("shim: {e}"));
+    if let Some(mut stdin) = child.stdin.take() {
+        assert!(stdin.write_all(input).is_ok());
+    }
+    let actual = child
+        .wait_with_output()
+        .unwrap_or_else(|e| unreachable!("output: {e}"));
+    assert_eq!(
+        String::from_utf8_lossy(&actual.stdout),
+        String::from_utf8_lossy(&direct.stdout)
+    );
+    assert_eq!(actual.stderr, direct.stderr);
+    assert_eq!(actual.status.code(), direct.status.code());
+    let record = take_record(&records);
+    assert_eq!(record["replies_served"], 1, "the version reply was served");
+    assert_eq!(record["solver_started"], true);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn diverged_replay_after_served_replies_stops_with_an_error() {
+    // A well-formed cached reply that the pinned Z3 does not give, then a
+    // refused one: the replay must not skip the differing reply by count.
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let input = b"(get-info :version)\n(get-info :name)\n(exit)\n";
+    let direct = input_run(&solver, None, input);
+    assert!(direct.status.success());
+    let version = direct
+        .stdout
+        .split_inclusive(|&b| b == b'\n')
+        .next()
+        .unwrap_or_default()
+        .to_vec();
+    assert!(version.starts_with(b"(:version "));
+    let wrong = b"(:version \"0.0.0\")\n";
+    assert_ne!(version, wrong);
+    let socket = filled_then_rewritten(
+        &dir,
+        input,
+        &[
+            (&version, wrong),
+            (b"(:name \"Z3\")\n", b"(:name \"Z3\")(:evil \"extra\")\n"),
+        ],
+    );
+    let actual = input_run(&solver, Some(&socket), input);
+    assert_eq!(actual.status.code(), Some(1));
+    assert_eq!(
+        String::from_utf8_lossy(&actual.stdout),
+        String::from_utf8_lossy(wrong),
+        "nothing after the served reply is forwarded"
+    );
+    assert!(
+        String::from_utf8_lossy(&actual.stderr).contains("error[SAIL2005]"),
+        "{}",
+        String::from_utf8_lossy(&actual.stderr)
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

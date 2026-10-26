@@ -18,6 +18,22 @@ mod metadata_stdout;
 /// build subprocess removes it so nested user commands retain their environment.
 pub(crate) const CARGO_METADATA_ENV: &str = "SAIL_MANAGED_CARGO_METADATA";
 
+/// The `reason` of the record that opens one Cargo build's section of the
+/// managed artifact journal.
+pub(crate) const JOURNAL_BEGIN: &str = "sail-journal-begin";
+/// The `reason` of the record that closes a section: Cargo's output reached
+/// EOF, every unit record was written, and Cargo exited normally (with any
+/// status). A section without it is incomplete evidence.
+pub(crate) const JOURNAL_END: &str = "sail-journal-end";
+
+fn journal_marker(reason: &str) -> Vec<u8> {
+    let mut line = serde_json::json!({ "reason": reason })
+        .to_string()
+        .into_bytes();
+    line.push(b'\n');
+    line
+}
+
 /// An owned metadata-only namespace; it contains no compilation artifacts.
 pub(crate) fn metadata_target(cache: &Path) -> Result<PathBuf> {
     std::path::absolute(cache)
@@ -186,6 +202,9 @@ fn cargo() -> Result<ExitCode> {
         .append(true)
         .open(path)
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    records
+        .write_all(&journal_marker(JOURNAL_BEGIN))
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -209,10 +228,16 @@ fn cargo() -> Result<ExitCode> {
                 .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         }
     }
-    child
+    let exit = child
         .wait()
-        .map(status)
-        .map_err(|e| Error::new("SAIL3111", e.to_string()))
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    // A signal leaves the section open, so its records never count as complete.
+    if exit.code().is_some() {
+        records
+            .write_all(&journal_marker(JOURNAL_END))
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    }
+    Ok(status(exit))
 }
 
 fn argument(args: &[OsString], flag: &str) -> Option<String> {

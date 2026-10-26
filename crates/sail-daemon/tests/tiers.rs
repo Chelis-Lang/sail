@@ -128,6 +128,36 @@ fn drained(r: &Running) -> bool {
 }
 
 #[test]
+fn puts_that_are_not_one_response_frame_are_refused() {
+    let dir = Scratch::new("frame");
+    let r = Running::start(&dir.0, &sail_daemon::Config::default());
+    let mut c = r.cache_client();
+    let bad: [(&str, &[u8]); 4] = [
+        ("get-info", b"(:name \"Z3\")(:evil \"extra\")\n"),
+        ("check-sat", b"unsat\nsat\n"),
+        ("get-model", b"(model)\n(model)\n"),
+        ("get-model", b"(model"),
+    ];
+    for (i, (command, reply)) in (950..).zip(bad) {
+        assert!(c.put(&key(i).0, meta(command), reply.to_vec()).is_ok());
+    }
+    assert!(
+        c.put(&key(960).0, meta("get-info"), b"(:name \"Z3\")\n".to_vec())
+            .is_ok()
+    );
+    wait_until(Duration::from_secs(10), "the writes", || drained(&r));
+    for i in 950..954 {
+        assert_eq!(c.get(&key(i).0).ok().flatten(), None, "entry {i}");
+        assert_eq!(on_disk(&r.disk(), &key(i)), None, "entry {i}");
+    }
+    assert_eq!(
+        c.get(&key(960).0).ok().flatten(),
+        Some(b"(:name \"Z3\")\n".to_vec())
+    );
+    r.stop();
+}
+
+#[test]
 fn memory_hits_always_match_disk() {
     let dir = Scratch::new("match");
     let r = Running::start(&dir.0, &sail_daemon::Config::default());

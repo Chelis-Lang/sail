@@ -26,7 +26,7 @@ use sail_api::protocol::{Effort, Identity, PutMeta};
 use sail_key::{Mode, PrefixHasher, QueryKey, SolverIdentity};
 use sail_session::Session;
 use sail_smtlib::command::{CommandKind, Output, classify};
-use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter};
+use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
 
 /// What the output side should do with the next reply.
 enum Expect {
@@ -71,11 +71,18 @@ fn write_out(bytes: &[u8]) -> bool {
 /// Whether `reply` has the shape the solver gives for `command`. This is
 /// defence in depth against any pairing or storage fault: a mismatch is
 /// treated as a miss and the session falls back to the solver.
+///
+/// A reply must be exactly one complete response frame. Two concatenated
+/// forms would add a reply to the client's stream and shift every later
+/// pairing, and the replay after a fallback counts frames.
 fn plausible(command: &[u8], reply: &[u8]) -> bool {
     use sail_smtlib::command::CommandKind;
     let Ok(c) = classify(command) else {
         return false;
     };
+    if !is_single_response(reply) {
+        return false;
+    }
     let body = reply.trim_ascii();
     match c.kind {
         CommandKind::Echo => {
@@ -418,8 +425,48 @@ fn queue_stores(
     }
 }
 
+/// The storing thread and the channel to it.
+struct Storing {
+    tx: Sender<Entry>,
+    allowed: Arc<AtomicBool>,
+    storer: Option<JoinHandle<()>>,
+}
+
+impl Storing {
+    /// Starts storing to `client`; without one, `pairer` stops recording.
+    fn start(client: Option<Client>, pairer: &mut Pairer) -> Self {
+        let (tx, rx) = std::sync::mpsc::channel::<Entry>();
+        let allowed = Arc::new(AtomicBool::new(false));
+        let storer = client.and_then(|client| spawn_storer(client, rx, Arc::clone(&allowed)));
+        if storer.is_none() {
+            // No daemon to store to.
+            pairer.stop();
+        }
+        Self {
+            tx,
+            allowed,
+            storer,
+        }
+    }
+
+    /// Ends the session's stores, publishing them only if `allowed`.
+    fn close(self, allowed: bool) {
+        self.allowed.store(allowed, Ordering::SeqCst);
+        drop(self.tx);
+        if let Some(h) = self.storer {
+            let _ = h.join();
+        }
+    }
+}
+
 /// The output side once a solver runs: forwards replies after the first
-/// `skip`, records paired replies, and owns the solver process.
+/// `served.len()`, records paired replies, and owns the solver process.
+///
+/// Each suppressed reply must reproduce the reply the cache already served
+/// for that position: byte for byte, or for statistics by `rlimit-count`
+/// ([`ServedReply::reproduced_by`]). If the replay differs, the client has seen a
+/// stream the pinned solver does not produce: nothing more is forwarded,
+/// the solver is killed, and the shim exits with an error (`SAIL2005`).
 ///
 /// When the solver's output ends it waits for the solver to exit. The reply
 /// in flight at that point is stored only if the solver exited cleanly: a
@@ -435,7 +482,7 @@ fn queue_stores(
 fn output_side(
     mut from: impl Read,
     mut child: Child,
-    skip: u64,
+    served: &[ServedReply],
     expects: &Receiver<Expect>,
     client: Option<Client>,
     input: &InputStatus,
@@ -447,7 +494,8 @@ fn output_side(
     // byte is forwarded as read, exactly as pass-through forwards it.
     let mut streaming = false;
     let mut splitter = ResponseSplitter::new();
-    let mut replay = ReplayCursor::new(skip);
+    let mut replay = ReplayCursor::new(u64::try_from(served.len()).unwrap_or(u64::MAX));
+    let mut check = ReplayCheck::new(served);
     let mut forward_from: Option<usize> = replay.forwarding().then_some(0);
     let mut forwarded = 0usize;
     let mut forwarding_ok = true;
@@ -458,14 +506,7 @@ fn output_side(
     // Pairs replies with expectations as either arrives. Stores go to a
     // separate thread, so forwarding never waits on the daemon.
     let mut pairer = Pairer::default();
-    let (store_tx, store_rx) = std::sync::mpsc::channel::<Entry>();
-    let publication_allowed = Arc::new(AtomicBool::new(false));
-    let storer =
-        client.and_then(|client| spawn_storer(client, store_rx, Arc::clone(&publication_allowed)));
-    if storer.is_none() {
-        // No daemon to store to.
-        pairer.stop();
-    }
+    let storing = Storing::start(client, &mut pairer);
 
     loop {
         let n = match from.read(&mut buf) {
@@ -495,15 +536,18 @@ fn output_side(
         for item in items {
             let start = usize::try_from(item.offset).unwrap_or(usize::MAX);
             if let Some((fresh, s)) = prev.take()
-                && fresh
+                && !check.settle(fresh, all.get(s..start).unwrap_or_default(), &mut pairer)
             {
-                pairer.reply(all.get(s..start).unwrap_or_default().to_vec());
+                break;
             }
             let fresh = replay.advance();
             if fresh && forward_from.is_none() {
                 forward_from = Some(start);
             }
             prev = Some((fresh, start));
+        }
+        if check.diverged {
+            break;
         }
         if let Some(f) = forward_from
             && all.len() > forwarded.max(f)
@@ -514,9 +558,12 @@ fn output_side(
             }
             forwarded = all.len();
         }
-        queue_stores(&mut pairer, expects, &store_tx, false);
+        queue_stores(&mut pairer, expects, &storing.tx, false);
+        // Streaming starts only after every suppressed replay reply has been
+        // compared with the reply served in its place.
         if forward_from.is_some()
             && forwarded == all.len()
+            && check.complete()
             && (pairer.pending.is_stopped() || all.len() > limit)
         {
             // Recording has stopped, or the session outgrew the buffer: stop
@@ -531,8 +578,11 @@ fn output_side(
     // Stop reading first: a solver blocked writing to a closed pipe then
     // fails and exits instead of waiting forever.
     drop(from);
+    if check.diverged {
+        let _ = child.kill(); // it may wait for input that will never come
+    }
     // End of output. Deliver what is left, as pass-through would.
-    if forward_from.is_some() && all.len() > forwarded {
+    if !check.diverged && forward_from.is_some() && all.len() > forwarded {
         forwarding_ok &= write_out(all.get(forwarded..).unwrap_or_default());
     }
     let (_, mut code) = match child.wait() {
@@ -541,18 +591,22 @@ fn output_side(
     };
     // The last reply runs to the end of the stream, and is complete only if
     // the solver exited cleanly.
-    if let Some((fresh, s)) = prev.take()
-        && fresh
+    if !check.diverged
+        && let Some((fresh, s)) = prev.take()
         && code == 0
     {
-        pairer.reply(all.get(s..).unwrap_or_default().to_vec());
+        check.settle(fresh, all.get(s..).unwrap_or_default(), &mut pairer);
+    }
+    if check.finish(forwarding_ok && code == 0) {
+        pairer.stop();
+        code = 1;
     }
     let input_done = input.done.load(Ordering::SeqCst);
     // Once the input has ended, every expectation is queued or about to be.
     // Before that, more may never come, so take only what is there.
-    queue_stores(&mut pairer, expects, &store_tx, input_done);
+    queue_stores(&mut pairer, expects, &storing.tx, input_done);
     for entry in pairer.finish() {
-        let _ = store_tx.send(entry);
+        let _ = storing.tx.send(entry);
     }
     let silent = stderr.is_some_and(crate::cached_stderr::Monitor::quiet);
     if stderr.is_some_and(crate::cached_stderr::Monitor::failed) || !forwarding_ok {
@@ -566,11 +620,7 @@ fn output_side(
         quiet: silent,
         forwarding_ok,
     };
-    publication_allowed.store(gate.allows(), Ordering::SeqCst);
-    drop(store_tx);
-    if let Some(h) = storer {
-        let _ = h.join();
-    }
+    storing.close(gate.allows());
     if !input_done {
         // The input side is blocked reading a client that waits for replies
         // the dead solver will never give.
@@ -580,12 +630,14 @@ fn output_side(
 }
 
 /// Starts the solver, queues `first` (the expectation for the command that
-/// caused the start) and writes `raw` to it. `client`, if any, records.
+/// caused the start) and writes `raw` to it. `served` holds the replies
+/// already given from the cache, which the replay must reproduce. `client`,
+/// if any, records.
 fn start_solver(
     solver: &Path,
     args: &[std::ffi::OsString],
     raw: &[u8],
-    skip: u64,
+    served: Vec<ServedReply>,
     first: Expect,
     client: Option<Client>,
 ) -> Option<Solving> {
@@ -622,7 +674,7 @@ fn start_solver(
             output_side(
                 stdout,
                 child,
-                skip,
+                &served,
                 &rx,
                 client,
                 &observed_input,
@@ -760,6 +812,117 @@ fn observe(
     (output, name, expect)
 }
 
+/// The replies a session served from the cache before any solver started.
+#[derive(Default)]
+struct Served {
+    /// The replies, until a solver takes them to check its replay.
+    replies: Vec<ServedReply>,
+    /// How many there were.
+    count: u64,
+    /// The retained replies' total length.
+    bytes: usize,
+}
+
+impl Served {
+    fn push(&mut self, command: &[u8], reply: Vec<u8>) {
+        let statistics = classify(command).is_ok_and(|c| {
+            c.kind
+                == CommandKind::GetInfo {
+                    keyword: b":all-statistics",
+                }
+        });
+        self.bytes = self.bytes.saturating_add(reply.len());
+        self.replies.push(ServedReply {
+            bytes: reply,
+            statistics,
+        });
+        self.count += 1;
+    }
+
+    fn take(&mut self) -> Vec<ServedReply> {
+        self.bytes = 0;
+        std::mem::take(&mut self.replies)
+    }
+}
+
+/// One reply served from the cache.
+struct ServedReply {
+    bytes: Vec<u8>,
+    /// Whether it answers `(get-info :all-statistics)`.
+    statistics: bool,
+}
+
+impl ServedReply {
+    /// Whether the replay's reply in this position reproduces it: the same
+    /// bytes, or for statistics, whose times and memory vary from run to
+    /// run, one frame with the same `rlimit-count`.
+    fn reproduced_by(&self, replay: &[u8]) -> bool {
+        if self.statistics {
+            is_single_response(replay)
+                && replay.starts_with(b"(:")
+                && rlimit_count(replay).is_some()
+                && rlimit_count(replay) == rlimit_count(&self.bytes)
+        } else {
+            self.bytes == replay
+        }
+    }
+}
+
+/// Checks a replay's suppressed replies against those already served.
+struct ReplayCheck<'a> {
+    served: &'a [ServedReply],
+    checked: usize,
+    diverged: bool,
+}
+
+impl<'a> ReplayCheck<'a> {
+    fn new(served: &'a [ServedReply]) -> Self {
+        Self {
+            served,
+            checked: 0,
+            diverged: false,
+        }
+    }
+
+    /// Whether every served reply has been compared with its replay.
+    fn complete(&self) -> bool {
+        !self.diverged && self.checked == self.served.len()
+    }
+
+    /// At the end of the replay: whether it diverged, including a `clean`
+    /// replay that gave fewer replies than were served. A divergence is
+    /// reported on stderr.
+    fn finish(&mut self, clean: bool) -> bool {
+        self.diverged |= clean && self.checked < self.served.len();
+        if self.diverged {
+            eprintln!(
+                "error[SAIL2005]: sail-z3: the pinned solver's replay differs from reply {} \
+                 served from the cache; stopping",
+                self.checked + 1
+            );
+        }
+        self.diverged
+    }
+
+    /// Settles one complete reply: a fresh one goes to the pairer, a
+    /// suppressed one must equal the reply served in its place. Returns
+    /// false once the replay has diverged.
+    fn settle(&mut self, fresh: bool, bytes: &[u8], pairer: &mut Pairer) -> bool {
+        if fresh {
+            pairer.reply(bytes.to_vec());
+        } else if self
+            .served
+            .get(self.checked)
+            .is_some_and(|r| r.reproduced_by(bytes))
+        {
+            self.checked += 1;
+        } else {
+            self.diverged = true;
+        }
+        !self.diverged
+    }
+}
+
 /// Runs a cached session. Returns `None`, having consumed no input, if the
 /// daemon cannot be reached or cannot identify the solver; the caller then
 /// runs plain pass-through.
@@ -778,7 +941,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     let mut session = Session::new();
     let mut splitter = CommandSplitter::new();
     let mut raw: Vec<u8> = Vec::new();
-    let mut served = 0u64;
+    let mut served = Served::default();
     let mut solving: Option<Solving> = None;
     let mut client = Some(client);
     let mut stdin = std::io::stdin().lock();
@@ -851,11 +1014,12 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                     // As when forwarding the solver's output fails.
                     return Some(ExitCode::from(1));
                 }
-                served += 1;
+                served.push(&item.bytes, reply);
                 continue;
             }
             // Miss: start the solver with the whole input so far.
-            let Some(s) = start_solver(solver, args, &raw, served, expect, client.take()) else {
+            let replies = served.take();
+            let Some(s) = start_solver(solver, args, &raw, replies, expect, client.take()) else {
                 return Some(ExitCode::from(1));
             };
             solving = Some(s);
@@ -866,14 +1030,15 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         {
             s.write(&chunk);
         }
-        if raw.len() > limit {
+        // Served replies are retained for the replay check, so they count.
+        if raw.len().saturating_add(served.bytes) > limit {
             let terminal = prefix.silence_key();
             return Some(overflow(
                 solving,
                 solver,
                 args,
                 std::mem::take(&mut raw),
-                served,
+                served.take(),
                 terminal,
                 &mut stdin,
             ));
@@ -895,15 +1060,15 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
 /// Continues a session that outgrew [`buffer_limit`] as pass-through: no
 /// more lookups, nothing recorded, and no retained input. A solver already
 /// running stops recording; otherwise one starts now with the whole input,
-/// and its replies to the commands already served are discarded as on any
-/// miss. No provenance record is written, so the session's checks are
+/// and its replies to the commands already served are compared with them
+/// and discarded as on any miss. No provenance record is written, so the session's checks are
 /// reported as unrecorded.
 fn overflow(
     solving: Option<Solving>,
     solver: &Path,
     args: &[std::ffi::OsString],
     raw: Vec<u8>,
-    served: u64,
+    served: Vec<ServedReply>,
     terminal: QueryKey,
     stdin: &mut impl Read,
 ) -> ExitCode {
@@ -948,26 +1113,26 @@ fn finish_run(
     client: Option<Client>,
     solver: &Path,
     args: &[std::ffi::OsString],
-    (raw, served): (&[u8], u64),
+    (raw, served): (&[u8], Served),
     prefix: &mut PrefixHasher,
     complete: bool,
 ) -> Option<ExitCode> {
     let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
     prefix.update(raw.get(from..).unwrap_or_default());
-    let end = SessionEnd {
+    let mut end = SessionEnd {
         raw,
         served,
         terminal: prefix.silence_key(),
         complete,
     };
-    let (code, started) = finish_input(solving, client, solver, args, &end);
-    record_provenance(raw, end.served, started);
+    let (code, started) = finish_input(solving, client, solver, args, &mut end);
+    record_provenance(raw, end.served.count, started);
     code
 }
 
 struct SessionEnd<'a> {
     raw: &'a [u8],
-    served: u64,
+    served: Served,
     terminal: QueryKey,
     complete: bool,
 }
@@ -977,7 +1142,7 @@ fn finish_input(
     mut client: Option<Client>,
     solver: &Path,
     args: &[std::ffi::OsString],
-    end: &SessionEnd<'_>,
+    end: &mut SessionEnd<'_>,
 ) -> (Option<ExitCode>, bool) {
     let certified = solving.is_none()
         && end.complete
@@ -994,7 +1159,7 @@ fn finish_input(
                 solver,
                 args,
                 end.raw,
-                end.served,
+                end.served.take(),
                 Expect::Stop,
                 client.take(),
             )
@@ -1117,7 +1282,7 @@ mod tests {
             let mut stored = Vec::new();
             for (i, is_reply) in order.iter().enumerate() {
                 if *is_reply && usize::from(r) < n {
-                    p.reply(vec![b'm', r]);
+                    p.reply(vec![b'm', r, b'\n']);
                     r += 1;
                 } else if usize::from(e) < n {
                     p.expect(model(e));
@@ -1127,7 +1292,7 @@ mod tests {
                     stored.extend(p.drain());
                 }
             }
-            while usize::from(r) < n { p.reply(vec![b'm', r]); r += 1; }
+            while usize::from(r) < n { p.reply(vec![b'm', r, b'\n']); r += 1; }
             while usize::from(e) < n { p.expect(model(e)); e += 1; }
             stored.extend(p.drain());
             prop_assert_eq!(stored.len(), n);
@@ -1259,6 +1424,36 @@ mod tests {
     }
 
     #[test]
+    fn replay_must_reproduce_served_replies() {
+        let mut served = super::Served::default();
+        served.push(b"(get-model)", b"(model)\n".to_vec());
+        served.push(
+            b"(get-info :all-statistics)",
+            b"(:rlimit-count 5\n :time 0.01)\n".to_vec(),
+        );
+        let replies = served.take();
+        assert_eq!(served.count, 2);
+        assert!(replies[0].reproduced_by(b"(model)\n"));
+        assert!(!replies[0].reproduced_by(b"(model )\n"));
+        // Statistics vary in time and memory, never in rlimit-count.
+        assert!(replies[1].reproduced_by(b"(:rlimit-count 5\n :time 0.02)\n"));
+        assert!(!replies[1].reproduced_by(b"(:rlimit-count 6\n :time 0.01)\n"));
+        assert!(!replies[1].reproduced_by(b"(:time 0.01)\n"));
+        assert!(!replies[1].reproduced_by(b"(:rlimit-count 5)\n(:x 1)\n"));
+        let mut check = super::ReplayCheck::new(&replies);
+        let mut pairer = Pairer::default();
+        assert!(check.settle(false, b"(model)\n", &mut pairer));
+        assert!(!check.finish(false), "an unclean end is not judged");
+        assert!(
+            check.finish(true),
+            "a clean replay one reply short diverged"
+        );
+        let mut check = super::ReplayCheck::new(&replies);
+        assert!(!check.settle(false, b"(model 1)\n", &mut pairer));
+        assert!(check.diverged);
+    }
+
+    #[test]
     fn plausibility_by_command() {
         use super::plausible;
         assert!(plausible(b"(echo \"<<DONE>>\")", b"<<DONE>>\n"));
@@ -1276,5 +1471,17 @@ mod tests {
             b"(:rlimit-count 5)\n"
         ));
         assert!(!plausible(b"(get-model)", b"(error \"no model\")\n"));
+        // Exactly one complete frame (#379).
+        assert!(!plausible(
+            b"(get-info :name)",
+            b"(:name \"Z3\")(:evil \"extra\")\n"
+        ));
+        assert!(!plausible(b"(check-sat)", b"unsat\nsat\n"));
+        assert!(!plausible(b"(get-model)", b"(model)\n(model)\n"));
+        assert!(!plausible(b"(get-model)", b"(model"));
+        assert!(!plausible(
+            b"(get-info :all-statistics)",
+            b"(:a 1)\n(:b 2)\n"
+        ));
     }
 }
