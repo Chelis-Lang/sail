@@ -350,6 +350,36 @@ Existing name checks, atomic immutable publication, producer revision,
 Historical framing, baseline pin/capacity policy and read-side admission remain
 in place.
 
+### Native path byte correspondence
+
+The source candidate adds private `RequestPathBinding` evidence for the exact
+invocation/workspace bytes supplied independently of a resolved request.
+`bind_request_paths` accepts precisely when both byte sequences equal the
+request's UTF-8 String bytes. It retains the original immutable request and
+byte slices; no normalization, lossy replacement or result-derived request
+construction is accepted. This is a data correspondence relation, not a
+certificate of filesystem identity, loaded image, launch or complete input
+discovery.
+
+`withhold_unmatched_request_paths` preserves the captured reports, original
+establishing identities, exits and input currentness. A missing or mismatched
+binding clears both whole-target completion and `scope_reuse`; retaining the
+latter would still allow exact-partial authority. A matching binding leaves
+the supplied project unchanged. Source refinements demonstrate nonempty byte
+admission, mismatch refusal, preservation on match and refusal by both whole
+and exact-partial request factories after withholding. Source Rust controls
+also contrast invalid native bytes with a different real UTF-8 replacement-name
+path and compare complete project preservation. These additions are unrun and
+unqualified; native boundary integration is a separate source milestone.
+
+Current fail-closed path gates do not require assuming Cargo rejects non-UTF-8
+paths: job RPC/private-record Path serialization, live canonical invocation
+`to_str`, no-op key serialization and actual configuration-path read-check
+publication can refuse that domain. These source observations do not prove
+the entire pathname/compiler-input domain. The new private relation makes
+the byte comparison explicit rather than treating `to_string_lossy` as
+byte-faithful or a later serde refusal as a proved source relation.
+
 ## Exact evidence context
 
 Requests, started invocations and observed verifier documents carry the shared
