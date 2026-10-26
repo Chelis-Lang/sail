@@ -23,7 +23,7 @@ sail_code! {
             pub closed spec fn output_view(&self) -> CompleteOutput { self.output }
             pub closed spec fn gate_view(&self) -> PublicationGate { self.gate }
             pub open spec fn complete(&self) -> bool {
-                self.output.complete() && self.gate.complete()
+                self.output_view().complete() && self.gate_view().complete()
             }
         }
         sail_method! {
