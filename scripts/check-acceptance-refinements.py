@@ -27,6 +27,14 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = "proofs/refinement/manifest.json"
 SYNTAX = "crates/sail-acceptance/src/syntax.rs"
 RETAINED_BRIDGE = "crates/sail-daemon/src/jobs/store.rs"
+KEY_NATIVE = "crates/sail-key/src/lib.rs"
+KEY_FACTORY = "crates/sail-key/src/prefix_factory.rs"
+KEY_CORE = "crates/sail-acceptance/src/key_prefix.rs"
+# Native key types, SHA adapter, fresh-state factory and module/import bindings
+# are reviewed in their complete enclosing source; they are not all proved.
+KEY_NATIVE_SHA256 = "1ec119960263bec07e1cd6921064db6cfdee2c30a727f3a556c3b91f7e650dbd"
+KEY_HOST_TRAITS = frozenset({"07062a121a098f5dee4b51714ff0b575b1e6568347408344bc4aea5f3fe8be9a"})
+KEY_RECORDING_IMPLS = frozenset({"de6e87c96d820b1610f24bc6b31aa3a64ba0e8d329446d476e08fcedcdcf5c3e"})
 # The native classify/apply_currentness/withhold_unbound_authority bridges have
 # been reviewed to forward the actual project and readback to the shared code.
 # Their enclosing native binding environment is pinned in full; the module's
@@ -35,20 +43,20 @@ RETAINED_BRIDGE_SHA256 = "30d6ff97c475501a2587d6140eafdbbf23b6f51fa6152c99168755
 # This reviewed source uses the identical argument/type/body metavariables in
 # Cargo and stock profiles. Changes require an explicit runner review, beyond
 # merely updating a manifest. Runtime-only implementation drift must refuse.
-SYNTAX_SHA256 = 'b346fda2d5fc49adc2e20b98661f53423cfc5edc6a2c28b331a808b78864422a'
-LIB_SHA256 = "3e8ae88827486b5c993273f7c26bd2da86ec18ac61844d2dde81c7dd2f26fda9"
+SYNTAX_SHA256 = 'deb8606ce9d123997dd286ae3e184c7496bdaf5e659543a7be724baffd9adc70'
+LIB_SHA256 = "3f34723996bd6285e863fbf1acf839eb712771db6259890026617e7638b690cd"
 API_LIB_SHA256 = "125f9959d72bf6bbff719526cdaad169301b9c1e156db5b46ea79b91d4c50491"
 # Binding inventories cover both ordinary and proof-only imports. In particular,
 # an erased import cannot shadow a Cargo glob with a different checked callee.
-IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '589a12d568f5c878749274c4a9f2be0780ec7c4769cebdecdd8519d52351d9f2'}
+IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '589a12d568f5c878749274c4a9f2be0780ec7c4769cebdecdd8519d52351d9f2', 'crates/sail-acceptance/src/key_prefix.rs': 'abcb768a7dca61a2e4248956921314487e845306a6335e944610f3c5bb90e5b8', 'crates/sail-key/src/prefix_factory.rs': 'ee9e47f8b6e77a4af6e4591da3e19dc1adfe159ef357f561a87edeb26ea0081c'}
 # Exact reviewed ghost declarations and abstract primitive contracts. These
 # permit no arbitrary erased types or host implementations. The native host
 # implementation is a separate obligation, never discharged by a trait bound.
 INPUT_GHOST_ITEMS = frozenset({'34a7aa7c26994229805fe92e7e544f340920dbd3416ea1dcff4e4c8f7ea82697'})
 INPUT_HOST_TRAITS = frozenset({'d5f071d9dcd1b4ec056b39af49e32cad198b1ebe2a4f692ce837364c83ca0691'})
-REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply', 'frame-premature-root-close', 'frame-ignore-doubled-quote', 'frame-ignore-input-comment', 'head-ignore-framing', 'response-ignore-line-terminator', 'response-ignore-list-framing'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence', 'input-opened-object-binding', 'input-read-final-handle', 'input-read-final-path', 'input-read-chunk-bytes', 'input-read-eof-required', 'input-read-cache-object', 'input-read-requested-binding', 'input-environment-byte-name', 'input-environment-escaped-name', 'input-kernel-hash-bytes', 'input-kernel-final-handle-observation', 'input-kernel-final-path-observation', 'input-kernel-open-observation-order', 'input-kernel-buffer-required', 'input-kernel-read-failure', 'input-kernel-always-error', 'input-guarded-readback-change', 'input-guarded-readback-availability', 'input-guarded-readback-always-unknown'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence', 'submission-arguments', 'submission-mode', 'submission-whole-authority', 'submission-positive', 'driver-token-bytes', 'driver-token-coverage', 'driver-sources-order', 'process-wait-required', 'process-distinct-slot', 'process-duplicate-stream', 'process-stderr-binding', 'process-recovery-bytes', 'process-payload-binding', 'process-refusal-recorded', 'retained-original-current', 'retained-complete-readback', 'retained-exact-revision', 'retained-view-currentness', 'retained-request-admission', 'retained-clear-refused-labels', 'retained-preserve-positive', 'target-exact-cargo-name', 'target-rust-name-normalization', 'target-kind-binding', 'process-configure-slot']}
+REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply', 'frame-premature-root-close', 'frame-ignore-doubled-quote', 'frame-ignore-input-comment', 'head-ignore-framing', 'response-ignore-line-terminator', 'response-ignore-list-framing', 'key-solver-platform', 'key-mode-domain', 'key-raw-bytes', 'key-end-domain', 'key-counter-refusal', 'key-feed-order', 'key-silence-domain', 'key-state-copy', 'key-length-word', 'key-typed-platform', 'key-typed-optin'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence', 'input-opened-object-binding', 'input-read-final-handle', 'input-read-final-path', 'input-read-chunk-bytes', 'input-read-eof-required', 'input-read-cache-object', 'input-read-requested-binding', 'input-environment-byte-name', 'input-environment-escaped-name', 'input-kernel-hash-bytes', 'input-kernel-final-handle-observation', 'input-kernel-final-path-observation', 'input-kernel-open-observation-order', 'input-kernel-buffer-required', 'input-kernel-read-failure', 'input-kernel-always-error', 'input-guarded-readback-change', 'input-guarded-readback-availability', 'input-guarded-readback-always-unknown'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence', 'submission-arguments', 'submission-mode', 'submission-whole-authority', 'submission-positive', 'driver-token-bytes', 'driver-token-coverage', 'driver-sources-order', 'process-wait-required', 'process-distinct-slot', 'process-duplicate-stream', 'process-stderr-binding', 'process-recovery-bytes', 'process-payload-binding', 'process-refusal-recorded', 'retained-original-current', 'retained-complete-readback', 'retained-exact-revision', 'retained-view-currentness', 'retained-request-admission', 'retained-clear-refused-labels', 'retained-preserve-positive', 'target-exact-cargo-name', 'target-rust-name-normalization', 'target-kind-binding', 'process-configure-slot']}
 COMPONENTS = {
-    "query": {"models": ["context", "query_association"], "core": ["inputs", "query"]},
+    "query": {"models": ["context", "query_association"], "core": ["inputs", "query", "key_prefix"]},
     "inputs": {"models": ["context"], "core": ["inputs"]},
     "authority": {"models": ["context", "authority"], "core": ["inputs", "authority"]},
 }
@@ -86,7 +94,7 @@ def validate_assembly(snapshots: dict[str, bytes]) -> None:
         "unexpected executable leaf package")
     workspace = tomllib.loads(snapshots["Cargo.toml"].decode())
     require(not ({"patch", "replace"} & set(workspace)), "workspace dependency overrides require review")
-    protected_packages = ("sail-acceptance", "sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")
+    protected_packages = ("sail-acceptance", "sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")
     # sail-daemon's optional `temporal` feature is chosen by each member
     # (ADR 0080); only disabling default features is accepted, never a redirect.
     feature_selectable = {"sail-daemon"}
@@ -103,13 +111,26 @@ def validate_assembly(snapshots: dict[str, bytes]) -> None:
         and all(api["package"][key] == {"workspace": True} for key in
             ("version", "edition", "rust-version", "publish", "license", "repository")),
         "API target/feature/build assembly changed")
-    for name in ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"):
+    key = tomllib.loads(snapshots["crates/sail-key/Cargo.toml"].decode())
+    require(set(key) == {"package", "dependencies", "dev-dependencies", "lints"}
+        and set(key["package"]) == set(package) and key["package"]["name"] == "sail-key"
+        and all(key["package"][field] == {"workspace": True} for field in
+            ("version", "edition", "rust-version", "publish", "license", "repository"))
+        and key["dependencies"] == {name: {"workspace": True}
+            for name in ("sail-acceptance", "sail-session", "sha2")}
+        and key["dev-dependencies"] == {name: {"workspace": True}
+            for name in ("proptest", "sail-smtlib")}
+        and key["lints"] == {"workspace": True}, "key target/dependency/build assembly changed")
+    require(hashlib.sha256(snapshots[KEY_NATIVE]).hexdigest() == KEY_NATIVE_SHA256,
+        "native key declarations/primitives/callers changed; explicit review required")
+    for name in ("sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"):
         manifest = tomllib.loads(snapshots["crates/" + name + "/Cargo.toml"].decode())
         require(manifest["dependencies"]["sail-acceptance"] == {"workspace": True}, "runtime dependency redirected")
     protected = {
         "crates/sail-acceptance/src/query.rs": ("Fifo", "BoundPair", "CorrelatedQueue", "ReplayCursor", "PublicationBatch", "RecoveryRecord", "RawTranscript", "PrefixFeed"),
         "crates/sail-acceptance/src/inputs.rs": ("OriginalCapture", "OriginalGuard", "Readback", "GuardedReadback", "ProviderSeal", "OpenedRead", "ReadChunk", "ReadSeal", "CompletedRead"),
         "crates/sail-acceptance/src/authority.rs": ("AttemptLedger", "UnconfiguredAttempt", "ReservedAttempt", "RunningAttempt", "ObservedAttempt"),
+        KEY_CORE: ("Prefix",),
         "crates/sail-api/src/acceptance.rs": ("CompleteReport", "CompleteSelection", "CompleteRequest", "SubmissionBinding", "SubmittedAuthority"),
     }
     for path, names in protected.items():
@@ -153,6 +174,8 @@ def dependency_paths(component: str) -> list[str]:
     result += ["proofs/acceptance/" + stem + ".rs" for stem in entry["models"]]
     result += ["crates/sail-acceptance/src/" + stem + ".rs" for stem in entry["core"]]
     result.append("proofs/refinement/" + component + ".rs")
+    if component == "query":
+        result += [KEY_NATIVE, KEY_FACTORY]
     if component == "authority":
         result += ["crates/sail-api/src/acceptance.rs", "crates/sail-api/src/acceptance_sort.rs",
             *["crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES],
@@ -162,7 +185,7 @@ def dependency_paths(component: str) -> list[str]:
 
 def declaration_source(path: str) -> bool:
     """Only the inventoried declarations of these actual API modules compile."""
-    return path in {"crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES}
+    return path == KEY_NATIVE or path in {"crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES}
 
 
 def compiled_subset(path: str, content: bytes) -> None:
@@ -174,6 +197,10 @@ def compiled_subset(path: str, content: bytes) -> None:
     if path == RETAINED_BRIDGE:
         require(hashlib.sha256(content).hexdigest() == RETAINED_BRIDGE_SHA256,
             "native retained bridge changed; explicit implementation/binding review required")
+        return
+    if path == KEY_NATIVE:
+        require(hashlib.sha256(content).hexdigest() == KEY_NATIVE_SHA256,
+            "native key declaration/primitive bindings changed")
         return
     if path.startswith("proofs/acceptance/"):
         COMMON.standalone(content.decode())
@@ -211,7 +238,8 @@ def compiled_subset(path: str, content: bytes) -> None:
         inputs = path == "crates/sail-acceptance/src/inputs.rs"
         SOURCE.checked_item_envelopes(text, proof=path.startswith("proofs/refinement/"),
             reviewed_ghost_items=INPUT_GHOST_ITEMS if inputs else frozenset(),
-            reviewed_host_traits=INPUT_HOST_TRAITS if inputs else frozenset())
+            reviewed_host_traits=INPUT_HOST_TRAITS if inputs else KEY_HOST_TRAITS if path == KEY_CORE else frozenset(),
+            reviewed_trait_impls=KEY_RECORDING_IMPLS if path == KEY_CORE else frozenset())
 
 
 def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[dict]:
@@ -225,7 +253,7 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[d
         "unlisted or missing refinement source")
     require({str(path.relative_to(root)) for path in (root / "crates/sail-acceptance/src").rglob("*.rs")}
         == {"crates/sail-acceptance/src/" + name + ".rs"
-            for name in ("lib", "syntax", "query", "inputs", "authority")},
+            for name in ("lib", "syntax", "query", "inputs", "authority", "key_prefix")},
         "unlisted executable leaf source")
     for entry in entries:
         component = entry["id"]
@@ -250,6 +278,8 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[d
             compiled_subset(path, snapshots[path].replace(before, after))
     SOURCE.api_stencils(snapshots, manifest.get("api_declarations"))
     require(manifest.get("api_declarations") is not None, "missing API representation inventory")
+    SOURCE.key_stencil(snapshots, manifest.get("key_declarations"))
+    require(manifest.get("key_declarations") is not None, "missing key representation inventory")
     return entries
 
 
@@ -277,6 +307,11 @@ def captured_driver(entry: dict, snapshots: dict[str, bytes], control: dict | No
         files[filename] = sources["proofs/acceptance/" + stem + ".rs"]
         name = "authority_model" if stem == "authority" else stem
         declarations.append('#[path="' + filename + '"] pub mod ' + name + ';')
+    if component == "query":
+        files["key_types.rs"], _ = SOURCE.key_stencil(sources)
+        files["prefix_factory.rs"] = sources[KEY_FACTORY]
+        declarations += ['#[path="key_types.rs"] mod key_types;',
+            'pub use key_types::{SolverIdentity, Mode};', 'mod prefix_factory;']
     if component == "authority":
         stencils, _ = SOURCE.api_stencils(sources)
         files.update(stencils)
@@ -325,7 +360,7 @@ def captured_tree(root: Path, commit: str, paths: list[str]) -> dict[str, bytes]
 def working_source_matches(root: Path, snapshots: dict[str, bytes]) -> None:
     """Recheck both content and auto-discovery before and after verification."""
     require(not any((root / "crates" / name / "build.rs").exists()
-        for name in ("sail-acceptance", "sail-api")), "unreviewed protected build script")
+        for name in ("sail-acceptance", "sail-api", "sail-key")), "unreviewed protected build script")
     expected = {path for path in snapshots if path.startswith("crates/")
         and ("/src/" in path and path.endswith(".rs") or path.endswith("/Cargo.toml"))}
     actual = {str(path.relative_to(root)) for crate in (root / "crates").iterdir() if crate.is_dir()
@@ -418,6 +453,7 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
         for path, value in snapshots.items()}, "stock_archive_sha256": asset["sha256"],
         "runtime_sha256": runtime, "rustc": rustc, "cases": results,
         "api_declarations": manifest["api_declarations"],
+        "key_declarations": manifest["key_declarations"],
         "validated_components": list(COMPONENTS),
         "checked_components": [entry["id"] for entry in entries],
         "complete_suite": component is None,
@@ -426,7 +462,10 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
                 {SYNTAX, RETAINED_BRIDGE, "crates/sail-api/src/acceptance_sort.rs"} and not declaration_source(path)],
             "reviewed_syntax": [SYNTAX],
             "abstract_primitive_contracts": {path: ["FileReadHost"]
-                for path in entry["dependencies"] if path == "crates/sail-acceptance/src/inputs.rs"},
+                if path.endswith("/inputs.rs") else ["HashHost"]
+                for path in entry["dependencies"] if path in {"crates/sail-acceptance/src/inputs.rs", KEY_CORE}},
+            "reviewed_native_primitives": {path: ["Sha256Host", "PrefixHasher::new"]
+                for path in entry["dependencies"] if path == KEY_NATIVE},
             "reviewed_native_bridges": {path: ["classify", "apply_currentness", "withhold_unbound_authority"]
                 for path in entry["dependencies"] if path == RETAINED_BRIDGE},
             "declaration_projections": [path for path in entry["dependencies"]

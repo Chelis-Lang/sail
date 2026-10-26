@@ -257,7 +257,11 @@ impl Tap<'_> {
                         .as_ref()
                         .and_then(|id| query_key(&snapshot, id, &self.ctx.mode))
                         .map(|k| k.to_string());
-                    let prefix_key = self.prefix.as_ref().map(|p| p.key().to_string());
+                    let prefix_key = self
+                        .prefix
+                        .as_ref()
+                        .filter(|p| p.is_exact())
+                        .map(|p| p.key().to_string());
                     Some(Pending::Check {
                         seq,
                         snapshot,

@@ -140,7 +140,8 @@ def top_level(stream: list[Token]) -> list[bool]:
 
 def checked_item_envelopes(source: str, *, proof: bool = False,
         reviewed_ghost_items: frozenset[str] = frozenset(),
-        reviewed_host_traits: frozenset[str] = frozenset()) -> None:
+        reviewed_host_traits: frozenset[str] = frozenset(),
+        reviewed_trait_impls: frozenset[str] = frozenset()) -> None:
     """Privileged modules cannot hide ordinary unchecked Rust constructors.
 
     Stock Verus intentionally ignores ordinary Rust outside its envelopes.
@@ -159,6 +160,22 @@ def checked_item_envelopes(source: str, *, proof: bool = False,
         items.add("verus")
         functions.add("verus")
     regions: list[tuple[int, int]] = []
+    # The reviewed recording host is ordinary executable trait syntax inside
+    # sail_code!, whose stock expansion verifies its inherited trait contract.
+    # The same implementation outside that envelope would be ignored by Verus.
+    code_regions = [(i, closing(stream, i + 2)) for i in range(len(stream) - 2)
+        if stream[i].value == "sail_code" and stream[i + 1].value == "!"]
+    for i, token in enumerate(stream):
+        if token.value != "impl" or not any(begin < i < end for begin, end in code_regions):
+            continue
+        body = i + 1
+        while body < len(stream) and stream[body].value != "{":
+            body += 1
+        require(body < len(stream), "unterminated checked trait implementation")
+        end = closing(stream, body)
+        values = [item.value for item in stream[i:end + 1]]
+        if hashlib.sha256(repr(values).encode()).hexdigest() in reviewed_trait_impls:
+            regions.append((i, end))
     for i in range(len(stream) - 2):
         if stream[i].value in functions and stream[i + 1].value == "!":
             end = closing(stream, i + 2)
@@ -221,7 +238,8 @@ def checked_item_envelopes(source: str, *, proof: bool = False,
             body = source[stream[at].end:stream[end].begin]
             checked_item_envelopes(body, proof=proof,
                 reviewed_ghost_items=reviewed_ghost_items,
-                reviewed_host_traits=reviewed_host_traits)
+                reviewed_host_traits=reviewed_host_traits,
+                reviewed_trait_impls=reviewed_trait_impls)
             at = end + 1
             continue
         at = begin
@@ -407,6 +425,33 @@ def record(source: str, name: str, kind: str,
         require(tuples == tuple_variants, "missing reviewed enum payload: " + name)
         result["tuple_fields"] = tuples
     return result
+
+
+def key_stencil(snapshots: dict[str, bytes], expected: dict | None = None) -> tuple[bytes, dict]:
+    """Project the complete real key identity/mode, with no invented fields."""
+    path = "crates/sail-key/src/lib.rs"
+    source = snapshots[path].decode()
+    identity = record(source, "SolverIdentity", "struct")
+    mode = record(source, "Mode", "enum", {"OptIn": ["String"]})
+    require(identity["fields"] == {"name": ["String"], "version": ["String"],
+        "binary_sha256": ["[", "u8", ";", "32", "]"], "platform": ["String"]},
+        "solver identity representation changed")
+    require(mode["variants"] == ["Default", "OptIn"], "key mode representation changed")
+    inventory = {"source_sha256": hashlib.sha256(snapshots[path]).hexdigest(),
+        "declarations": [identity, mode]}
+    require(expected is None or expected == inventory, "key declaration inventory changed")
+    lines = ["use vstd::prelude::*;", "verus! {"]
+    for item in (identity, mode):
+        lines.append("pub " + item["kind"] + " " + item["name"] + " {")
+        if item["kind"] == "struct":
+            lines += ["pub " + name + ": " + " ".join(value) + ","
+                for name, value in item["fields"].items()]
+        else:
+            lines += [name + ("(" + " ".join(item["tuple_fields"][name]) + ")"
+                if name in item["tuple_fields"] else "") + "," for name in item["variants"]]
+        lines.append("}")
+    lines.append("}")
+    return ("\n".join(lines) + "\n").encode(), inventory
 
 
 OUTPUT_FIELDS = {
