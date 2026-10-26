@@ -365,7 +365,7 @@ PROJECT_FIELDS = {
     "TargetResult": "package_id target kind requested complete scope_reuse report",
     "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
     "RequestTarget": "package_id target kind",
-    "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine targets",
+    "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
     "EngineIdentity": "name manifest_sha256",
 }
 OUTPUT_ENUMS = ("VerdictName", "EstablishmentName", "EvidenceTierName", "SourceSummaryName", "EngineEstablishment")
