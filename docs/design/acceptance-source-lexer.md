@@ -1,6 +1,6 @@
 # Acceptance source lexer qualification plan
 
-Status: source-only candidate. Focused regressions and the standalone
+Status: source-only candidate tracked in [#432](https://github.com/Chelis-Lang/sail/issues/432). Focused regressions and the standalone
 differential helper have not run. No performance result or runtime selection
 is established by this change.
 
