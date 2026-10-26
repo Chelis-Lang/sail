@@ -2,10 +2,16 @@
 
 This source candidate connects actual owned compiler endpoints to the shared
 completion gate for [reads and launches](https://github.com/Chelis-Lang/sail/issues/374).
-It has received source review and formatting only. Compilation, direct
-stock-Verus checking, broken controls and integrated native/conformance
-qualification remain pending. It does not establish complete compiler inputs
-or complete the service proof.
+At frozen `573b6e0b`, direct pinned stock Verus checks the whole input root
+(308 verified obligations, 538 function entries) and all 115 ordinary broken
+controls, including every inherited control and all twenty new pipe controls.
+Final source/runtime checks pass. The native workspace gate stops at one
+strict style lint before native tests; the documented local allowance preserves
+the explicit checked wait projection. That correction and integrated
+native/conformance qualification remain pending. The
+[owning qualification record](../validation/acceptance-boundary-refinements.md)
+retains the exact scope, failures and archive. This does not qualify current
+main, establish complete compiler inputs or complete the service proof.
 
 The previous owned completion accepts modeled stdout/stderr vectors and proves
 their preservation. A caller-supplied vector alone does not establish that its
@@ -71,24 +77,35 @@ file, argument, environment control, transport or runtime selection is added.
 
 ## Qualification plan and limits
 
-The source-only fixture in `proofs/refinement/stream_capture.rs` covers ordered
+The checked fixture in `proofs/refinement/stream_capture.rs` covers ordered
 nonempty read prefixes, actual EOF, no/empty-buffer reads, sticky fatal errors,
 retryable errors, foreign leases, swapped roles, post-EOF reads and typed
 completion of successful, failing and signaled waits. The native byte-buffer
 unit fixtures cover actual read prefixes and EOF plus equal bytes with a
-different retained `Arc` or role. Neither fixture has been executed locally.
+different retained `Arc` or role. The finite proof fixture passes through
+direct stock Verus on native Linux; the native unit fixtures remain unrun.
 
 The integration includes this module, fixture, private constructors, exact read
 trait/event declarations and native bindings in the closed canonical capture.
-All twenty new controls remain unqualified, including full seal/completion
-always-refuse controls. Actual whole-root function/count discovery is pending;
-the previous inventories remain strict checks and do not qualify this extension.
-Run all positive functions and every existing/new broken control with direct
-stock Verus. Run the ordinary native workspace gate and unchanged solver, full e2e,
+All twenty new controls pass within the full 115-control input component,
+including full seal/completion always-refuse controls. Whole-root discovery at
+`86c1c5cf` passes query 353/637, inputs 308/538 and authority 498/878
+(verified obligations/function entries), retaining every previous function.
+This is not a complete three-component mutation qualification. The original
+`573b6e0b` report also has the scope-label defect in
+[#449](https://github.com/Chelis-Lang/sail/issues/449): nineteen hash-bound
+native adapters are absent from the compiled driver, and its primitive summary
+omits `CompilerPipeReadHost` and `OwnerIdentity`. Actual per-case
+`compiled_source_sha256` identifies compiled proof scope; native adapters are
+reviewed/hash-bound source, not proved bodies. The separate archive correction
+preserves that distinction without rewriting old reports.
+
+Qualify the lint correction with the ordinary native workspace gate and
+unchanged solver, full e2e,
 fast/standard conformance and macOS gates. Exercise original fallback output
-with both pipes larger than pipe capacity, piped stdin needing EOF, and child
-exit before a descendant's delayed output. Two unrun native regression tests
-exercise those cases; a filesystem handshake releases the descendant only
+with dual 128 KiB streams, piped stdin needing EOF, and child exit before a
+descendant's delayed output. Two unrun native regression tests exercise those
+cases; a filesystem handshake releases the descendant only
 after the original child wait, avoiding a scheduling assumption. The last case must preserve all
 output and finish only at actual endpoint EOF; deadlines used by existing
 cleanup tests remain unchanged. Measure capture cost on a quiet native host

@@ -9,8 +9,12 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
-| `86c1c5cf` | Native whole positive discovery passes all three roots: query 353/0 (637 function entries), inputs 308/0 (538), authority 498/0 (878); every previous function retained, final frozen source/runtime identity checked | Development discovery only; the complete 115 input controls and native workspace remain pending. No coherent complete matrix or service theorem claimed |
-| `0dbb7adc` | Native whole-positive discovery passes query 353/0 (637 function entries), then input compilation refuses two `usize` arguments to the pipe primitive's `nat` capacity specification | Authority and final source/runtime checks unrun; no input inventory frozen. Explicit specification-only casts preserve the exact one-read contracts and all existing controls; all three roots require a new frozen rerun |
+| `573b6e0b` input component | 2026-10-26: all 116 direct-stock cases pass: whole positive 308/0 (538 function entries), all 95 inherited and all 20 new pipe negatives, including both full-factory always-refuse controls; final source/runtime checks pass | `complete_component_controls=true`, `complete_suite=false`; exact control list retained. Report labels need the separate #449 scope correction below; native adapter bodies are not proved |
+| `573b6e0b` workspace attempt 1 | 2026-10-26: gate stops after 178.38 s at private D.I.V.E. dependency authentication | The controller started before its read-only credential was staged; native tests unrun. Original log/status preserved |
+| `573b6e0b` workspace attempt 2 | 2026-10-26: authenticated unchanged gate stops after 183.44 s at one `manual_unwrap_or_default` lint in `complete_owned_compiler_pipes` | Native tests unrun. A documented local allowance preserves the explicit checked wait projection; the correction needs new qualification |
+| `86c1c5cf` | Native whole positive discovery passes all three roots: query 353/0 (637 function entries), inputs 308/0 (538), authority 498/0 (878); every previous function retained, final frozen source/runtime identity checked | Positive discovery only; input controls qualify separately at `573b6e0b`. No coherent complete matrix or service theorem claimed |
+| `0dbb7adc` | 2026-10-26: native whole-positive discovery passes query 353/0 (637 function entries), then input compilation refuses two `usize` arguments to the pipe primitive's `nat` capacity specification | Authority and final source/runtime checks unrun; no input inventory frozen. Explicit specification-only casts preserve the exact one-read contracts and all existing controls; all three roots require a new frozen rerun |
+| `a11802eb` | 2026-10-26: discovery interrupted before any proof report | SSH logout stopped its user service manager ten seconds later; no qualification result. The subsequent system-service run is separately recorded |
 | `4bd22455` | All 31 model and 155 production cases pass coherently on macOS and native Linux; native workspace passes | Solver passes 53/54 and stops at the actual compiler-phase witness's missing frozen fixture (#425); later e2e/PR conformance unrun |
 | `73f928d1` | Native workspace (605.71 s), all 31 model and 213 production cases pass, complete_suite=true; all 53 solver tests pass (22.49 s gate duration) | Full e2e stops at the cold JSON replay trace assertion; PR conformance unrun. The newer source restores the missing cold-miss trace; later code does not inherit the passing earlier stages |
 | `3352f2fd` | Native combined gate stops during workspace lint checks (181.61 s) | Five source-shared API style diagnostics; models, refinements, solver, e2e and conformance are unrun. Documented local lint allowances preserve the proved path-binding/refusal branches; rerun required |
@@ -22,10 +26,32 @@ Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
 
-The initial owned-pipe discovery attempt at `a11802eb` was interrupted before
-producing a proof report: the SSH session ended and its user service manager
-shut down ten seconds later. The native pipe lane uses a system service for
-subsequent runs; the interrupted attempt supplies no qualification evidence.
+The owned-pipe evidence uses native Linux x86-64 and core image
+`sail-ci:c4710b7fd3ca282a-core`, image ID
+`sha256:b520a475caa587db8d35847b989cb588c256b6bff16cd57644005298645765f9`.
+Every Stock call checks its complete root with the pinned archive/runtime,
+120 s timeout and unchanged resources. No function selection or control was
+removed. The complete input runner duration is 3,860.10 s, including capture
+checks; it is not a performance measurement and does not qualify current main.
+
+Private raw evidence is retained under object key
+`experiments/2026-10-26/acceptance-owned-pipes-573b6e0b-native.tgz`, SHA-256
+`50ab18dcb55b1f7a6e7fa748847c71de6ce9fd8178a47f8f321ec65b71303631`
+(28,401,564 bytes). Upload and an independent HTTP GET/hash pass. The archive
+retains exact bundles, commands, original reports/logs and every failed or
+interrupted attempt without rewriting them.
+
+The separate archive `scope-correction.md` discloses
+[#449](https://github.com/Chelis-Lang/sail/issues/449): the historical report's
+`source_roles.checked_source` includes nineteen hash-bound native adapters
+absent from `captured_driver`, and its abstract-primitive summary omits
+`CompilerPipeReadHost` and `OwnerIdentity`. Actual per-case
+`compiled_source_sha256` identifies compiled proof scope. Native adapters are
+reviewed and hash-bound, not stock-Verus-checked bodies; the workspace did not
+reach their tests. Root correction `111bbe0d` fixes those labels on its later
+integration branch and changes no actual compiled case or proof count.
+The narrow lint allowance similarly changes no executable statement, contract
+or control. Neither correction inherits qualification of the newer integration.
 
 The newer local source composes exact-partial request transfer, live retained
 frame admission, paired baseline publication, native raw-path correspondence,
@@ -43,6 +69,10 @@ query 353/637, inputs 308/538 and authority 498/878 (verified/function entries).
 All earlier function entries and all existing controls are retained; input
 qualification includes 115 ordinary controls. The discovery report SHA-256 is
 `f2b810aa4402b54a960a7c6501f4715ac19e9721f48117fb87d43e002b768aa5`.
+The complete input report SHA-256 is
+`0130f32c8a3e1f3fca24429dffee7cd4261bd0f8e34d85a4d1c397298076f900`;
+its runtime/Rust compiler identities match discovery and all 115 control names
+and their order match the manifest.
 This does not replace the required coherent canonical run or any ordinary
 failure control. Four inherited short mutation anchors
 now use their unchanged original function envelopes because new functions share

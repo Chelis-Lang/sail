@@ -13,15 +13,16 @@ role and the pipe-read primitive. The targeted metadata regression passes;
 integrated native qualification remains pending. Earlier overbroad role labels
 do not qualify native bodies; use each case's actual compiled-file inventory.
 
-The corrected whole input root passes 283/0, preserving all earlier functions;
-the whole authority root passes 489/0 with final source/runtime checks. The
-original `714bf6e5` constructive/contract failures and subsequent corrections
-remain in the [owning record](validation/acceptance-boundary-refinements.md).
-The newer source remains unqualified as a whole: all canonical failure controls,
-native I/O/owner refinements and integrated gates remain required. The
-`00a501c7` workspace gate stops at style/lifetime lint diagnostics; local
-annotations retain the proved bodies and need rerun. These validation gaps do
-not demonstrate a production false mathematical proof; see
+At frozen `573b6e0b`, the owned-compiler input root passes direct stock Verus
+with 308 verified obligations, 538 function entries and all 115 ordinary broken
+controls. Three-root positive discovery also passes, retaining every old
+function. Native workspace qualification stops before tests at one
+`manual_unwrap_or_default` style lint in the new pipe completion operation.
+Its documented local allowance preserves the executable body, contracts and
+all controls; the corrected source still needs native qualification. Earlier failures remain
+in the [owning record](validation/acceptance-boundary-refinements.md).
+Full physical input, launch and service obligations remain open. These
+validation gaps do not demonstrate a production false mathematical proof; see
 [#374](https://github.com/Chelis-Lang/sail/issues/374#issuecomment-6427046792).
 
 ## Compiler-phase witness selected without its inputs
