@@ -28,6 +28,7 @@
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{OsStr, OsString};
+use std::fmt::Write as _;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
 
@@ -52,9 +53,18 @@ pub(crate) struct Observed {
     /// The tracked environment.
     pub(crate) environment: Environment,
     /// Every local source-map file and tracked file, as rustc names them,
-    /// except imported VIR, which the invocation binds by its extern
+    /// with the checksum rustc computed of the bytes it read (source-map files
+    /// only), except imported VIR, which the invocation binds by its extern
     /// ([`crate::adapter`]'s driver dependencies).
-    pub(crate) files: BTreeSet<String>,
+    pub(crate) files: BTreeMap<String, Option<Source>>,
+}
+
+/// rustc's checksum of a source file it read (`algorithm=hex`) and its length.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Source {
+    pub(crate) checksum: String,
+    pub(crate) size: u64,
 }
 
 #[derive(Deserialize)]
@@ -71,7 +81,7 @@ struct Document {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Phase {
-    sources: BTreeMap<String, serde_json::Value>,
+    sources: BTreeMap<String, Source>,
     extra_tracked_files: Vec<String>,
     tracked_environment: Environment,
 }
@@ -176,15 +186,21 @@ pub(crate) fn read(path: &Path, binding: &str, pid: u32) -> Option<Observed> {
         return None;
     }
     let mut environment = Environment::new();
-    let mut files = BTreeSet::new();
+    let mut files: BTreeMap<String, Option<Source>> = BTreeMap::new();
     for phase in document.phases.into_values() {
-        files.extend(phase.sources.into_keys());
-        files.extend(
-            phase
-                .extra_tracked_files
-                .into_iter()
-                .filter(|file| Path::new(file).extension().is_none_or(|e| e != "vir")),
-        );
+        for (file, source) in phase.sources {
+            // Both phases read one file once; different bytes are not one read.
+            if let Some(Some(old)) = files.insert(file, Some(source.clone()))
+                && old != source
+            {
+                return None;
+            }
+        }
+        for file in phase.extra_tracked_files {
+            if Path::new(&file).extension().is_none_or(|e| e != "vir") {
+                files.entry(file).or_insert(None);
+            }
+        }
         for (name, value) in phase.tracked_environment {
             // One process has one environment; disagreement is not an observation.
             if environment
@@ -195,7 +211,7 @@ pub(crate) fn read(path: &Path, binding: &str, pid: u32) -> Option<Observed> {
             }
         }
     }
-    if files.iter().any(String::is_empty) {
+    if files.keys().any(String::is_empty) {
         return None;
     }
     Some(Observed { environment, files })
@@ -328,22 +344,39 @@ fn declare_files(text: &str, files: &[String]) -> Option<String> {
 }
 
 /// Append to the dep-info at `path` each observed declaration and file it
-/// lacks, in rustc's own form, replacing the file atomically. `None` when the
-/// file cannot be read, parsed or replaced.
+/// lacks, in rustc's own form, replacing the file atomically. When the
+/// dep-info records checksums (Cargo's checksum freshness), each added file
+/// gets rustc's checksum of the bytes the compiler read; a file without one
+/// refuses the merge, since a checksum taken now could describe later bytes.
+/// `None` when the file cannot be read, parsed or replaced.
 pub(crate) fn merge(path: &Path, observed: &Observed) -> Option<()> {
     let original = std::fs::read_to_string(path).ok()?;
     let present: BTreeSet<String> = super::source_inputs::dependencies(&original)?
         .into_iter()
         .collect();
-    let missing: Vec<String> = observed
+    let missing: Vec<(&String, &Option<Source>)> = observed
         .files
         .iter()
-        .filter(|file| !present.contains(*file))
-        .cloned()
+        .filter(|(file, _)| !present.contains(*file))
         .collect();
-    let text = declare_files(&original, &missing)?;
-    let present = declared(&text);
+    let checksums = original.lines().any(|line| line.starts_with("# checksum:"));
     let mut addition = String::new();
+    if checksums {
+        for (file, source) in &missing {
+            let source = source.as_ref()?;
+            writeln!(
+                addition,
+                "# checksum:{} file_len:{} {}",
+                source.checksum,
+                source.size,
+                escape_file(file)
+            )
+            .ok()?;
+        }
+    }
+    let names: Vec<String> = missing.iter().map(|(file, _)| (*file).clone()).collect();
+    let text = declare_files(&original, &names)?;
+    let present = declared(&text);
     for (name, value) in &observed.environment {
         let escaped = escape(name);
         if context_bound(name) || present.contains(escaped.as_str()) {
@@ -433,10 +466,22 @@ mod tests {
                     ("VERUSDOC".to_owned(), None),
                 ]),
                 // Imported VIR is bound by its extern, not here.
-                files: BTreeSet::from([
-                    "/w/data.txt".to_owned(),
-                    "/w/src/lib.rs".to_owned(),
-                    "/w/src/value.rs".to_owned(),
+                files: BTreeMap::from([
+                    ("/w/data.txt".to_owned(), None),
+                    (
+                        "/w/src/lib.rs".to_owned(),
+                        Some(Source {
+                            checksum: "sha256=00".to_owned(),
+                            size: 1,
+                        }),
+                    ),
+                    (
+                        "/w/src/value.rs".to_owned(),
+                        Some(Source {
+                            checksum: "sha256=01".to_owned(),
+                            size: 2,
+                        }),
+                    ),
                 ]),
             })
         );
@@ -574,7 +619,7 @@ mod tests {
         ]);
         let observed = Observed {
             environment,
-            files: BTreeSet::from(["src/lib.rs".to_owned()]),
+            files: BTreeMap::from([("src/lib.rs".to_owned(), None)]),
         };
         merge(&path, &observed).ok_or("merge")?;
         let merged = std::fs::read_to_string(&path)?;
@@ -605,17 +650,29 @@ mod tests {
         std::fs::write(&path, original)?;
         let observed = Observed {
             environment: Environment::from([("VERUSDOC".to_owned(), None)]),
-            files: BTreeSet::from([
-                "src/lib.rs".to_owned(),
-                "src/value.rs".to_owned(),
-                "src/a b.txt".to_owned(),
+            files: BTreeMap::from([
+                ("src/lib.rs".to_owned(), None),
+                (
+                    "src/value.rs".to_owned(),
+                    Some(Source {
+                        checksum: "blake3=01".to_owned(),
+                        size: 2,
+                    }),
+                ),
+                (
+                    "src/a b.txt".to_owned(),
+                    Some(Source {
+                        checksum: "blake3=02".to_owned(),
+                        size: 3,
+                    }),
+                ),
             ]),
         };
         merge(&path, &observed).ok_or("merge")?;
         let merged = std::fs::read_to_string(&path)?;
         assert_eq!(
             merged,
-            "/t/demo-0123.d: src/lib.rs src/a\\ b.txt src/value.rs\n/t/libdemo-0123.rmeta: src/lib.rs src/a\\ b.txt src/value.rs\n\nsrc/lib.rs:\nsrc/a\\ b.txt:\nsrc/value.rs:\n\n# env-dep:VERUSDOC\n# checksum:blake3=00 file_len:1 src/lib.rs\n"
+            "/t/demo-0123.d: src/lib.rs src/a\\ b.txt src/value.rs\n/t/libdemo-0123.rmeta: src/lib.rs src/a\\ b.txt src/value.rs\n\nsrc/lib.rs:\nsrc/a\\ b.txt:\nsrc/value.rs:\n\n# env-dep:VERUSDOC\n# checksum:blake3=00 file_len:1 src/lib.rs\n# checksum:blake3=02 file_len:3 src/a\\ b.txt\n# checksum:blake3=01 file_len:2 src/value.rs\n"
         );
         // Sail's own reader of the unit's inputs now sees the ghost-only files.
         assert_eq!(
@@ -628,6 +685,12 @@ mod tests {
         );
         merge(&path, &observed).ok_or("merge again")?;
         assert_eq!(std::fs::read_to_string(&path)?, merged);
+        // Under checksum freshness, a file the report gives no checksum for
+        // cannot be declared truthfully: refuse.
+        let mut unchecked = observed;
+        unchecked.files.insert("src/data.txt".to_owned(), None);
+        assert!(merge(&path, &unchecked).is_none());
+        let observed = unchecked;
         // Without rustc's layout the files cannot be declared: refuse.
         std::fs::write(&path, "/t/libdemo.rmeta: src/lib.rs\n")?;
         assert!(merge(&path, &observed).is_none());
