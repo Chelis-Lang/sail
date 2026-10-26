@@ -320,6 +320,42 @@
           "source": "crates/sail-acceptance/src/inputs.rs",
           "before": "if inverse[f] != i || forward[r] != i {",
           "after": "if false {"
+        },
+        {
+          "name": "raw-ignore-command-bytes",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if !super::inputs::byte_eq(&self.bytes[offset..end], command)",
+          "after": "if false"
+        },
+        {
+          "name": "raw-ignore-gap",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "|| !trivia(&self.bytes[self.fed..offset], false)",
+          "after": "|| false"
+        },
+        {
+          "name": "raw-skip-separators",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "let start = self.fed;\n                self.fed = end;",
+          "after": "let start = offset;\n                self.fed = end;"
+        },
+        {
+          "name": "record-ignore-header-newline",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "if !header_line(&header) { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "record-change-separator",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "header.push(b'\\n');",
+          "after": "header.push(b'\\r');"
+        },
+        {
+          "name": "record-keep-separator-in-reply",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "let parts = (&data[..i], &data[i + 1..]);",
+          "after": "let parts = (&data[..i], &data[i..]);"
         }
       ]
     },
@@ -450,6 +486,30 @@
           "source": "crates/sail-acceptance/src/inputs.rs",
           "before": "if inverse[f] != i || forward[r] != i",
           "after": "if false"
+        },
+        {
+          "name": "input-provider-wrong-frame-child",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "|| frame.child != start.child",
+          "after": "|| false"
+        },
+        {
+          "name": "input-provider-terminal-count",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "|| end.frames != events.len() - 3",
+          "after": "|| false"
+        },
+        {
+          "name": "input-provider-required-read-frame",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "|| read.frame != frame",
+          "after": "|| false"
+        },
+        {
+          "name": "input-provider-required-read-presence",
+          "source": "crates/sail-acceptance/src/inputs.rs",
+          "before": "|| read.raw.is_none()",
+          "after": "|| false"
         }
       ]
     },
@@ -834,6 +894,24 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "|| !matches!(project.currentness, Currentness::Current)",
           "after": "|| false"
+        },
+        {
+          "name": "request-repair-function",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "        same_function && exact_bytes(request.repair_package.as_str().as_bytes(), package.as_bytes())",
+          "after": "        true && exact_bytes(request.repair_package.as_str().as_bytes(), package.as_bytes())"
+        },
+        {
+          "name": "request-positive",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "Some(CompleteRequest { request, project })",
+          "after": "None"
+        },
+        {
+          "name": "request-repair-presence",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if exact_bytes(name.as_str().as_bytes(), project.targets[t].report.crates[c].functions[f].function.as_str().as_bytes()) {",
+          "after": "if true {"
         }
       ]
     }
@@ -1295,7 +1373,7 @@
       }
     },
     "project": {
-      "source_sha256": "c9f7771dc0d0142cdd66424542ab662bf5767c3cbf5b5e883c530a4af90996e7",
+      "source_sha256": "26a50939d660f5d11b6ee424b882fab950749f70ec23ce3b5d092c9806229b62",
       "bindings": [
         [
           "use",
@@ -1500,6 +1578,24 @@
               "EngineIdentity",
               ">"
             ],
+            "function": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "repair_package": [
+              "String"
+            ],
+            "repair_target": [
+              "Option",
+              "<",
+              "String",
+              ">"
+            ],
+            "repair_kind": [
+              "String"
+            ],
             "targets": [
               "Vec",
               "<",
@@ -1508,7 +1604,7 @@
             ]
           },
           "variants": [],
-          "declaration_sha256": "1049ca4f4df23febd9629de87bc4f73c86cc1a3b5ceb4f7dabd091f25c52c68c"
+          "declaration_sha256": "0f1b9e060ba2b84554d53e29332cff207ac81c3066bbdd6f23596ada842cf5e3"
         },
         {
           "name": "EngineIdentity",
@@ -1550,7 +1646,7 @@
         "TargetResult": "package_id target kind requested complete scope_reuse report",
         "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
         "RequestTarget": "package_id target kind",
-        "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine targets",
+        "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
         "EngineIdentity": "name manifest_sha256"
       }
     }
