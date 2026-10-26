@@ -1,6 +1,8 @@
 //! Actual acknowledged-input prefix validation in certified checkpoint order.
 //! Sorting visits evidence only; query bytes and publication order are untouched.
-use crate::key_prefix::{HashHost, end};
+use crate::key_prefix::HashHost;
+#[cfg(sail_verus)]
+use crate::key_prefix::end;
 use crate::query_delivery::Delivered;
 use crate::query_prefix::FrozenCommand;
 #[cfg(sail_verus)]
