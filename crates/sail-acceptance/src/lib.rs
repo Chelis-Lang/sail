@@ -10,4 +10,6 @@ mod syntax;
 
 pub mod authority;
 pub mod inputs;
+/// Exact incremental key framing through source-bound hash primitives.
+pub mod key_prefix;
 pub mod query;
