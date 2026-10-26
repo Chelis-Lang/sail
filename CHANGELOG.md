@@ -47,6 +47,10 @@ semantic versioning once the API is published.
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
+- Move owned compiler configuration, reservation and completion matching into
+  source-shared factories. Refusals preserve the original output buffers and
+  process status; the only new identity primitive is native ownership equality.
+  Compilation, direct proofs and integrated qualification remain pending.
 - Extend owned command construction to native, verifying and fallback compiler
   launches. Reconcile exact program, ordered arguments, directory and environment
   operations before spawn; match completion to the original owned child and its

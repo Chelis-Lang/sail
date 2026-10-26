@@ -6,11 +6,15 @@
 #[cfg(sail_verus)]
 use vstd::prelude::*;
 
-use crate::authority::{CompilerUnit, ObservedAttempt, ProcessDescriptor, ReservedAttempt};
+use crate::authority::{
+    CompilerUnit, ObservedAttempt, ProcessDescriptor, ReservedAttempt, RunningAttempt,
+    UnsealedOutput,
+};
 #[cfg(sail_verus)]
 use crate::authority::{
     observation_complete, observed_running, reserved_descriptor, reserved_run, reserved_slot,
-    reserved_unit, running_exit, running_pid, running_reserved,
+    reserved_unit, running_exit, running_invalid, running_pid, running_reserved, running_stderr,
+    running_stdout,
 };
 use crate::inputs::{
     InputFact, byte_eq, copy_bytes, input_key_eq, input_order, ordered_key_less, selection_covered,
@@ -1064,5 +1068,282 @@ sail_verified! {
             Some(projection) => Some(CommandEnvironment { projection, recorded }),
             None => None,
         }
+    }
+}
+
+sail_code! {
+    /// Final raw command sealed while its checked environment projection is live.
+    /// This establishes construction correspondence, not a compiler input domain.
+    pub struct ConfiguredIntent {
+        descriptor: ProcessDescriptor,
+        inheritance: EnvironmentInheritance,
+    }
+
+    /// Actual spawn readouts proposed by the private native owned-child adapter.
+    /// The fields alone carry no process or compiler authority.
+    pub struct OwnedSpawnFields<'a, Owner> {
+        /// Native ownership lease copied from the actual owned child.
+        pub owner: Owner,
+        /// Actual owned child process ID.
+        pub pid: u32,
+        /// Configuration sealed before that owned child was spawned.
+        pub configuration: Option<&'a ConfiguredIntent>,
+    }
+
+    /// Source-checked original reservation and native owned spawn.
+    pub struct OwnedCompilerAttempt<'a, Owner> {
+        running: RunningAttempt<'a>,
+        owner: Owner,
+        pid: u32,
+        descriptor: ProcessDescriptor,
+        inheritance: EnvironmentInheritance,
+    }
+
+    /// Actual completion readouts and original buffers from the private native adapter.
+    /// Missing wait and a waited signal are distinct; no success Boolean is supplied.
+    pub struct OwnedCompletionFields<Owner> {
+        /// Same native ownership lease retained by the completed child.
+        pub owner: Option<Owner>,
+        /// Actual completed child PID, absent for unobserved planning output.
+        pub pid: Option<u32>,
+        /// Original pre-spawn checked construction, when available.
+        pub configuration: Option<ConfiguredIntent>,
+        /// Outer absence is no wait; inner absence is an actual signal.
+        #[expect(clippy::option_option, reason = "No wait and an observed signaled exit are different primitive outcomes.")]
+        pub wait: Option<Option<i32>>,
+        /// Original complete stdout buffer, preserved on refusal.
+        pub stdout: Vec<u8>,
+        /// Original complete stderr buffer, preserved on refusal.
+        pub stderr: Vec<u8>,
+    }
+}
+
+sail_trait! {
+    /// Only native ownership identity comparison, not a process success oracle.
+    /// Production uses a thin `Arc::ptr_eq` adapter, never a compiler-domain premise.
+    pub trait OwnerIdentity<Owner> {
+        spec { spec fn identity(owner: &Owner) -> int; }
+        /// Compare exactly these two opaque ownership leases.
+        fn same_owner(&self, original: &Owner, actual: &Owner) -> (same: bool)
+            requires (true)
+            ensures (same == (Self::identity(original) == Self::identity(actual)));
+    }
+}
+
+sail_spec! {
+    /// One final raw override/removal has the exact typed environment row.
+    pub open spec fn descriptor_environment_row(operation: (Vec<u8>, Option<Vec<u8>>), row: InputFact) -> bool {
+        row.namespace == 3 && row.name@ == operation.0@
+            && match (operation.1, row.value) {
+                (Some(value), crate::inputs::InputValue::Present(bytes)) => value@ == bytes@,
+                (None, crate::inputs::InputValue::Absent) => true,
+                _ => false,
+            }
+    }
+    /// Every final native environment operation retains its original row position.
+    pub open spec fn descriptor_environment(descriptor: ProcessDescriptor, rows: Seq<InputFact>) -> bool {
+        descriptor.overrides.len() == rows.len()
+            && forall|i: int| 0 <= i < rows.len() ==> descriptor_environment_row(descriptor.overrides[i], #[trigger] rows[i])
+    }
+}
+
+sail_verified! {
+    /// Bind a native descriptor to the actual rows admitted by its environment factory.
+    pub fn descriptor_environment_matches(descriptor: &ProcessDescriptor, rows: &[InputFact<'_>]) -> (matches: bool)
+        requires (true) ensures (matches == descriptor_environment(*descriptor, rows@))
+    {
+        if descriptor.overrides.len() != rows.len() { return false; }
+        let mut i = 0;
+        sail_while! { (i < rows.len())
+            invariant (i <= rows.len(), descriptor.overrides.len() == rows.len(),
+                forall|j: int| 0 <= j < i ==> descriptor_environment_row(descriptor.overrides[j], #[trigger] rows[j]))
+            decreases (rows.len() - i)
+            {
+                let operation = &descriptor.overrides[i];
+                let value = match &operation.1 {
+                    Some(bytes) => crate::inputs::InputValue::Present(bytes),
+                    None => crate::inputs::InputValue::Absent,
+                };
+                let expected = InputFact { namespace: 3, name: &operation.0, value };
+                if !input_key_eq(&expected, &rows[i]) || value_difference(&expected.value, &rows[i].value) != 0 { return false; }
+                sail_proof! { assert(descriptor_environment_row(descriptor.overrides[i as int], rows[i as int])); }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+impl ConfiguredIntent {
+    sail_impl_spec! {
+        /// Exact retained raw final command.
+        pub closed spec fn descriptor_view(&self) -> ProcessDescriptor { self.descriptor }
+        /// Original explicit inheritance policy.
+        pub closed spec fn inheritance_view(&self) -> EnvironmentInheritance { self.inheritance }
+    }
+    sail_method! {
+        /// Borrow the retained descriptor without changing its construction origin.
+        pub fn descriptor(&self) -> (out: &ProcessDescriptor)
+            requires (true) ensures (*out == self.descriptor_view())
+        { &self.descriptor }
+    }
+    sail_method! {
+        /// Borrow the original explicit inheritance policy retained by configuration.
+        pub fn inheritance(&self) -> (out: &EnvironmentInheritance)
+            requires (true) ensures (*out == self.inheritance_view())
+        { &self.inheritance }
+    }
+}
+
+sail_verified! {
+    /// Check the final command against its original records and checked environment.
+    pub fn seal_configured_intent(recorded: &ProcessDescriptor, actual: &ProcessDescriptor, environment: &CommandEnvironment<'_>) -> (out: Option<ConfiguredIntent>)
+        requires (true)
+        ensures (out.is_some() == (same_descriptor(*recorded, *actual)
+            && descriptor_environment(*actual, environment.projection_view().overrides_view().rows@)),
+            out.is_some() ==> same_descriptor(out.unwrap().descriptor_view(), *actual)
+                && out.unwrap().inheritance_view() == environment.projection_view().inheritance_view())
+    {
+        if !descriptors_equal(recorded, actual) || !descriptor_environment_matches(actual, environment.projection().overrides()) { return None; }
+        let inheritance = match environment.projection().inheritance() {
+            EnvironmentInheritance::Inherit => EnvironmentInheritance::Inherit,
+            EnvironmentInheritance::Clear => EnvironmentInheritance::Clear,
+        };
+        Some(ConfiguredIntent { descriptor: copy_descriptor(actual), inheritance })
+    }
+}
+
+impl<'a, Owner> OwnedCompilerAttempt<'a, Owner> {
+    sail_impl_spec! {
+        /// Original reserved descriptor and initially empty observed process state.
+        pub closed spec fn running_view(&self) -> RunningAttempt<'a> { self.running }
+        /// Original owned-child lease, not an integer process label.
+        pub closed spec fn owner_view(&self) -> Owner { self.owner }
+        /// Original observed PID.
+        pub closed spec fn pid_view(&self) -> u32 { self.pid }
+        /// Independently reserved raw command.
+        pub closed spec fn descriptor_view(&self) -> ProcessDescriptor { self.descriptor }
+        /// Original configured inheritance policy retained at the owned spawn.
+        pub closed spec fn inheritance_view(&self) -> EnvironmentInheritance { self.inheritance }
+        /// The start factory creates no stream or wait observations.
+        pub closed spec fn ready(&self) -> bool {
+            self.pid != 0 && running_pid(&self.running) == self.pid
+                && same_descriptor(self.descriptor, reserved_descriptor(&running_reserved(&self.running)))
+                && running_stdout(&self.running).is_none() && running_stderr(&self.running).is_none()
+                && running_exit(&self.running).is_none() && !running_invalid(&self.running)
+        }
+    }
+}
+
+sail_verified! {
+    /// Bind an original reservation to owned spawn fields, never a supplied match flag.
+    pub fn begin_owned_compiler<'a, Owner>(reserved: ReservedAttempt<'a>, fields: OwnedSpawnFields<'_, Owner>) -> (out: Option<OwnedCompilerAttempt<'a, Owner>>)
+        requires (true)
+        ensures (out.is_some() == (fields.pid != 0 && fields.configuration.is_some()
+            && same_descriptor(reserved_descriptor(&reserved), fields.configuration.unwrap().descriptor_view())),
+            out.is_some() ==> out.unwrap().ready()
+                && running_reserved(&out.unwrap().running_view()) == reserved
+                && out.unwrap().owner_view() == fields.owner && out.unwrap().pid_view() == fields.pid
+                && out.unwrap().inheritance_view() == fields.configuration.unwrap().inheritance_view())
+    {
+        let configuration = match fields.configuration { Some(value) => value, None => return None };
+        if !descriptors_equal(reserved.descriptor(), configuration.descriptor()) { return None; }
+        let descriptor = copy_descriptor(reserved.descriptor());
+        let inheritance = match configuration.inheritance() {
+            EnvironmentInheritance::Inherit => EnvironmentInheritance::Inherit,
+            EnvironmentInheritance::Clear => EnvironmentInheritance::Clear,
+        };
+        match reserved.started(fields.pid) {
+            Some(running) => Some(OwnedCompilerAttempt { running, owner: fields.owner, pid: fields.pid, descriptor, inheritance }),
+            None => None,
+        }
+    }
+}
+
+sail_spec! {
+    /// Exact completion matching uses concrete fields, not a host-wide success premise.
+    pub open spec fn owned_completion_matches<Owner, Identity: OwnerIdentity<Owner>>(attempt: OwnedCompilerAttempt<Owner>, completion: OwnedCompletionFields<Owner>) -> bool {
+        completion.owner.is_some() && completion.pid == Some(attempt.pid_view())
+            && completion.configuration.is_some() && completion.wait.is_some()
+            && Identity::identity(&attempt.owner_view()) == Identity::identity(&completion.owner.unwrap())
+            && same_descriptor(attempt.descriptor_view(), completion.configuration.unwrap().descriptor_view())
+            && attempt.inheritance_view() == completion.configuration.unwrap().inheritance_view()
+    }
+    /// Success and refusal retain the original completed buffers/status exactly.
+    pub open spec fn owned_completion_output<Owner>(result: Result<ObservedAttempt, UnsealedOutput>, completion: OwnedCompletionFields<Owner>) -> bool {
+        match result {
+            Ok(observed) => running_stdout(&observed_running(&observed)) == Some(completion.stdout)
+                && running_stderr(&observed_running(&observed)) == Some(completion.stderr)
+                && running_exit(&observed_running(&observed)) == completion.wait,
+            Err(raw) => raw.stdout == completion.stdout && raw.stderr == completion.stderr
+                && raw.exit == match completion.wait { Some(exit) => exit, None => None },
+        }
+    }
+}
+
+sail_verified! {
+    /// Explicit construction policy remains distinct even when final override rows match.
+    pub fn environment_inheritance_equal(original: &EnvironmentInheritance, actual: &EnvironmentInheritance) -> (matches: bool)
+        requires (true) ensures (matches == (*original == *actual))
+    {
+        matches!((original, actual),
+            (EnvironmentInheritance::Inherit, EnvironmentInheritance::Inherit)
+                | (EnvironmentInheritance::Clear, EnvironmentInheritance::Clear))
+    }
+}
+
+sail_verified! {
+    /// Compare original and actual owner/PID/command fields with only identity as a primitive.
+    pub fn owned_identity_matches<Owner, Identity>(identity: &Identity, original_owner: &Owner, original_pid: u32, original_descriptor: &ProcessDescriptor,
+        actual_owner: &Owner, actual_pid: u32, actual_descriptor: &ProcessDescriptor) -> (matches: bool)
+        where (Identity: OwnerIdentity<Owner>)
+        requires (true)
+        ensures (matches == (Identity::identity(original_owner) == Identity::identity(actual_owner)
+            && original_pid == actual_pid && same_descriptor(*original_descriptor, *actual_descriptor)))
+    {
+        identity.same_owner(original_owner, actual_owner) && original_pid == actual_pid
+            && descriptors_equal(original_descriptor, actual_descriptor)
+    }
+}
+
+sail_verified! {
+    /// Shared admission and original-buffer transfer for one owned compiler completion.
+    /// Failing exits and signals remain observations; missing wait refuses authority.
+    ///
+    /// # Errors
+    /// Returns the original buffers and observed exit projection when original
+    /// start, owner, PID, configuration, policy or wait correspondence is missing.
+    pub fn complete_owned_compiler<'a, Owner, Identity>(identity: &Identity, attempt: Option<OwnedCompilerAttempt<'a, Owner>>, completion: OwnedCompletionFields<Owner>) -> (out: Result<ObservedAttempt<'a>, UnsealedOutput>)
+        where (Identity: OwnerIdentity<Owner>)
+        requires (attempt.is_some() ==> attempt.unwrap().ready())
+        ensures (out.is_ok() == (attempt.is_some() && owned_completion_matches::<Owner, Identity>(attempt.unwrap(), completion)),
+            owned_completion_output(out, completion),
+            out.is_ok() ==> running_reserved(&observed_running(&out.unwrap())) == running_reserved(&attempt.unwrap().running_view())
+                && running_pid(&observed_running(&out.unwrap())) == attempt.unwrap().pid_view())
+    {
+        let exit = match completion.wait { Some(exit) => exit, None => None };
+        let attempt = match attempt {
+            Some(attempt) => attempt,
+            None => return Err(UnsealedOutput { stdout: completion.stdout, stderr: completion.stderr, exit }),
+        };
+        let owner = match &completion.owner {
+            Some(owner) => owner,
+            None => return Err(UnsealedOutput { stdout: completion.stdout, stderr: completion.stderr, exit }),
+        };
+        let configuration = match &completion.configuration {
+            Some(configuration) => configuration,
+            None => return Err(UnsealedOutput { stdout: completion.stdout, stderr: completion.stderr, exit }),
+        };
+        let pid = match completion.pid {
+            Some(pid) => pid,
+            None => return Err(UnsealedOutput { stdout: completion.stdout, stderr: completion.stderr, exit }),
+        };
+        if completion.wait.is_none()
+            || !environment_inheritance_equal(&attempt.inheritance, configuration.inheritance())
+            || !owned_identity_matches(identity, &attempt.owner, attempt.pid, &attempt.descriptor,
+                owner, pid, configuration.descriptor()) {
+            return Err(UnsealedOutput { stdout: completion.stdout, stderr: completion.stderr, exit });
+        }
+        attempt.running.stdout_eof(completion.stdout).stderr_eof(completion.stderr).exited(exit).finish_or_output()
     }
 }

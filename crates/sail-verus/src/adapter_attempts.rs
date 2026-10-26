@@ -3,11 +3,18 @@
 //! OS command/pipe/wait attribution is an explicit native adapter boundary.
 //! These records do not certify compiler input closure or verifier semantics.
 
-use crate::managed::command_environment::{CommandView, Completed, LaunchLease, Spawned};
+use crate::managed::command_environment::{
+    CommandView, Completed, LaunchLease, NativeOwnerIdentity, Spawned,
+};
 use crate::{Error, Result};
+#[cfg(test)]
+use sail_acceptance::authority::RunningAttempt;
 use sail_acceptance::authority::{
     AttemptLedger, CompilerUnit, ObservedAttempt, ProcessDescriptor, ReservedAttempt,
-    RunningAttempt, UnconfiguredAttempt,
+    UnconfiguredAttempt, UnsealedOutput,
+};
+use sail_acceptance::phase_inputs::{
+    OwnedCompilerAttempt, begin_owned_compiler, complete_owned_compiler,
 };
 use std::fs::File;
 use std::io::Write;
@@ -34,12 +41,7 @@ pub(crate) struct Allocation<'a> {
 }
 
 /// Keeps the actual owned launch bound to its original reserved command.
-pub(super) struct OwnedRunningAttempt<'a> {
-    running: RunningAttempt<'a>,
-    pid: u32,
-    descriptor: ProcessDescriptor,
-    lease: LaunchLease,
-}
+pub(super) type OwnedRunningAttempt<'a> = OwnedCompilerAttempt<'a, LaunchLease>;
 
 impl<'a> Allocation<'a> {
     /// Exclusive payload namespace owned by this pre-spawn allocation.
@@ -299,23 +301,7 @@ impl<'a> Journal<'a> {
         reserved: Option<ReservedAttempt<'a>>,
         child: &Spawned,
     ) -> Option<OwnedRunningAttempt<'a>> {
-        let reserved = reserved?;
-        if !child.matches_descriptor(reserved.descriptor()) {
-            self.refuse(
-                "owned compiler command differs from its reserved descriptor or environment",
-            );
-            return None;
-        }
-        let descriptor = sail_acceptance::phase_inputs::copy_descriptor(reserved.descriptor());
-        let pid = child.id();
-        let lease = child.launch_lease();
-        let running = reserved.started(pid)?;
-        Some(OwnedRunningAttempt {
-            running,
-            pid,
-            descriptor,
-            lease,
-        })
+        begin_owned_compiler(reserved?, child.spawn_fields())
     }
 
     #[cfg(test)]
@@ -344,18 +330,9 @@ impl<'a> Journal<'a> {
         running: Option<OwnedRunningAttempt<'a>>,
         completed: Completed,
     ) -> CapturedChild<'a> {
-        let (output, waited) = completed.into_parts();
-        let Some(running) = running else {
-            self.refuse("owned compiler has no matching reserved launch");
-            return self.capture_inner(None, output);
-        };
-        if !waited
-            .is_some_and(|waited| waited.matches(&running.lease, running.pid, &running.descriptor))
-        {
-            self.refuse("compiler completion does not match its original owned child and wait");
-            return self.capture_inner(None, output);
-        }
-        self.capture_inner(Some(running.running), output)
+        let (status, fields) = completed.into_parts();
+        let observed = complete_owned_compiler(&NativeOwnerIdentity, running, fields);
+        self.capture_result(observed, status)
     }
 
     #[cfg(test)]
@@ -369,6 +346,7 @@ impl<'a> Journal<'a> {
 
     /// Always retains the same fresh bytes/status. Observation failures are sticky
     /// and remove evidence without changing the actual compiler result.
+    #[cfg(test)]
     fn capture_inner(
         &mut self,
         running: Option<RunningAttempt<'a>>,
@@ -389,6 +367,31 @@ impl<'a> Journal<'a> {
             .stderr_eof(output.stderr)
             .exited(status.code())
             .finish_or_output();
+        self.capture_result(observed, status)
+    }
+
+    fn capture_result(
+        &mut self,
+        observed: std::result::Result<ObservedAttempt<'a>, UnsealedOutput>,
+        status: ExitStatus,
+    ) -> CapturedChild<'a> {
+        if self.unavailable.is_some() {
+            let (stdout, stderr) = match observed {
+                Ok(observed) => {
+                    let (stdout, stderr, _) = observed.into_output();
+                    (stdout, stderr)
+                }
+                Err(output) => (output.stdout, output.stderr),
+            };
+            return CapturedChild::unavailable_because(
+                Output {
+                    stdout,
+                    stderr,
+                    status,
+                },
+                self.unavailable.as_deref(),
+            );
+        }
         match observed {
             Ok(observed) => {
                 if let Err(failure) = self.persist_observed(&observed) {

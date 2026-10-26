@@ -375,4 +375,162 @@ pub fn command_environment_missing_readback_control() {
     assert(omitted.is_none());
 }
 
+/// Concrete primitive identity comparison over retained scalar owner witnesses.
+/// This fixture is not an OS owner or a compiler input-domain provider.
+pub struct ScalarOwnerIdentity;
+
+impl OwnerIdentity<u64> for ScalarOwnerIdentity {
+    open spec fn identity(owner: &u64) -> int { *owner as int }
+    fn same_owner(&self, original: &u64, actual: &u64) -> bool { *original == *actual }
+}
+
+/// Nonempty typed environment and exact final descriptor admit a configured intent.
+pub fn configured_intent_witness(inherit: bool) -> (out: Option<ConfiguredIntent>)
+    ensures out.is_some(), out.is_some() ==> out.unwrap().descriptor_view().program@ == seq![99u8]
+        && out.unwrap().descriptor_view().arguments@ == Seq::<Vec<u8>>::empty()
+        && out.unwrap().descriptor_view().directory.is_none()
+        && out.unwrap().descriptor_view().overrides.len() == 1
+        && out.unwrap().descriptor_view().overrides[0].0@ == seq![65u8]
+        && out.unwrap().descriptor_view().overrides[0].1.is_some()
+        && out.unwrap().descriptor_view().overrides[0].1.unwrap()@ == seq![55u8]
+        && out.unwrap().inheritance_view() == if inherit { EnvironmentInheritance::Inherit } else { EnvironmentInheritance::Clear },
+{
+    let rows = vec![InputFact { namespace: 3, name: b"A", value: InputValue::Present(b"7") }];
+    let one = vec![0usize];
+    let policy = if inherit { EnvironmentInheritance::Inherit } else { EnvironmentInheritance::Clear };
+    let environment = seal_command_environment(policy,
+        Inventory { rows: &[], order: &[], inverse: &[] },
+        Inventory { rows: &rows, order: &one, inverse: &one },
+        Inventory { rows: &rows, order: &one, inverse: &one },
+        Inventory { rows: &rows, order: &one, inverse: &one });
+    assert(environment.is_some());
+    let environment = match environment { Some(value) => value, None => { assert(false); return None; } };
+    let descriptor = ProcessDescriptor { program: vec![99u8], arguments: Vec::new(), directory: None,
+        overrides: vec![(vec![65u8], Some(vec![55u8]))] };
+    let admitted = seal_configured_intent(&descriptor, &descriptor, &environment);
+    assert(admitted.is_some());
+    admitted
+}
+
+/// A typed environment token for different native rows cannot authorize a descriptor.
+pub fn configured_intent_wrong_environment_and_command_controls() {
+    let rows = vec![InputFact { namespace: 3, name: b"A", value: InputValue::Present(b"7") }];
+    let one = vec![0usize];
+    let environment = seal_command_environment(EnvironmentInheritance::Clear,
+        Inventory { rows: &[], order: &[], inverse: &[] },
+        Inventory { rows: &rows, order: &one, inverse: &one },
+        Inventory { rows: &rows, order: &one, inverse: &one },
+        Inventory { rows: &rows, order: &one, inverse: &one });
+    let environment = match environment { Some(value) => value, None => { assert(false); return; } };
+    let missing = ProcessDescriptor { program: vec![99u8], arguments: Vec::new(), directory: None, overrides: Vec::new() };
+    let missing = seal_configured_intent(&missing, &missing, &environment);
+    assert(missing.is_none());
+    let wrong = ProcessDescriptor { program: vec![99u8], arguments: Vec::new(), directory: None,
+        overrides: vec![(vec![65u8], Some(vec![57u8]))] };
+    let wrong = seal_configured_intent(&wrong, &wrong, &environment);
+    assert(wrong.is_none());
+    let original = ProcessDescriptor { program: vec![99u8], arguments: Vec::new(), directory: None,
+        overrides: vec![(vec![65u8], Some(vec![55u8]))] };
+    let different = ProcessDescriptor { program: vec![99u8], arguments: vec![vec![9u8]], directory: None,
+        overrides: vec![(vec![65u8], Some(vec![55u8]))] };
+    let different = seal_configured_intent(&original, &different, &environment);
+    assert(different.is_none());
+}
+
+/// A concrete started attempt with no supplied stream/wait success token.
+pub fn owned_compiler_start_witness<'a>(run: &'a [u8], unit: &'a CompilerUnit, configuration: &ConfiguredIntent) -> (out: Option<OwnedCompilerAttempt<'a, u64>>)
+    ensures out.is_some(), out.is_some() ==> out.unwrap().ready()
+        && out.unwrap().owner_view() == 17 && out.unwrap().pid_view() == 7
+        && same_descriptor(out.unwrap().descriptor_view(), configuration.descriptor_view())
+        && out.unwrap().inheritance_view() == configuration.inheritance_view(),
+{
+    let mut ledger = AttemptLedger::new(run, unit);
+    let reserved = ledger.reserve(copy_descriptor(configuration.descriptor()));
+    let reserved = match reserved { Some(value) => value, None => { assert(false); return None; } };
+    let admitted = begin_owned_compiler(reserved, OwnedSpawnFields { owner: 17u64, pid: 7, configuration: Some(configuration) });
+    assert(admitted.is_some());
+    admitted
+}
+
+/// Successful, failing and signaled waits preserve output; missing/mismatched fields refuse.
+pub fn owned_compiler_completion_constructive_and_refusal_controls() {
+    let run = vec![1u8];
+    let unit = CompilerUnit { manifest: vec![2u8], name: vec![3u8], crate_type: vec![4u8], cargo_name: None };
+    let identity = ScalarOwnerIdentity;
+    let mut case = 0u8;
+    while case < 11
+        invariant case <= 11,
+        decreases 11 - case,
+    {
+        let configuration = configured_intent_witness(false);
+        let configuration = match configuration { Some(value) => value, None => { assert(false); return; } };
+        let attempt = owned_compiler_start_witness(&run, &unit, &configuration);
+        let attempt = if case == 9 { None } else { attempt };
+        let configuration = if case == 10 {
+            let different = configured_intent_witness(true);
+            match different { Some(value) => value, None => { assert(false); return; } }
+        } else { configuration };
+        let wait = if case == 6 { None } else if case == 8 { Some(None) }
+            else if case == 7 { Some(Some(1i32)) } else { Some(Some(0i32)) };
+        let completion = OwnedCompletionFields {
+            owner: if case == 3 { None } else if case == 1 { Some(18u64) } else { Some(17u64) },
+            pid: if case == 4 { None } else if case == 2 { Some(8u32) } else { Some(7u32) },
+            configuration: if case == 5 { None } else { Some(configuration) }, wait,
+            stdout: vec![65u8, 66u8], stderr: vec![67u8],
+        };
+        let observed = complete_owned_compiler(&identity, attempt, completion);
+        assert(observed.is_ok() == (case == 0 || case == 7 || case == 8));
+        match observed {
+            Ok(observed) => {
+                let stdout = observed.stdout(); let stderr = observed.stderr();
+                assert(stdout@ == seq![65u8, 66u8]); assert(stderr@ == seq![67u8]);
+                let exit = observed.exit();
+                assert(exit == if case == 8 { None } else if case == 7 { Some(1i32) } else { Some(0i32) });
+            },
+            Err(raw) => { assert(raw.stdout@ == seq![65u8, 66u8]); assert(raw.stderr@ == seq![67u8]); },
+        }
+        case += 1;
+    }
+}
+
+/// Spawn identity alone cannot substitute a missing configuration or a zero PID.
+pub fn owned_compiler_start_missing_and_different_command_controls() {
+    let run = vec![1u8];
+    let unit = CompilerUnit { manifest: vec![2u8], name: vec![3u8], crate_type: vec![4u8], cargo_name: None };
+    let configuration = configured_intent_witness(false);
+    let configuration = match configuration { Some(value) => value, None => { assert(false); return; } };
+    let mut case = 0u8;
+    while case < 3
+        invariant case <= 3,
+        decreases 3 - case,
+    {
+        let mut ledger = AttemptLedger::new(&run, &unit);
+        let descriptor = if case == 2 {
+            ProcessDescriptor { program: vec![99u8], arguments: vec![vec![9u8]], directory: None,
+                overrides: vec![(vec![65u8], Some(vec![55u8]))] }
+        } else { copy_descriptor(configuration.descriptor()) };
+        let reserved = ledger.reserve(descriptor);
+        let reserved = match reserved { Some(value) => value, None => { assert(false); return; } };
+        let admitted = begin_owned_compiler(reserved, OwnedSpawnFields {
+            owner: 17u64, pid: if case == 0 { 0 } else { 7 },
+            configuration: if case == 1 { None } else { Some(&configuration) },
+        });
+        assert(admitted.is_none());
+        case += 1;
+    }
+}
+
+/// Equal owner and PID cannot replace different argv boundaries at completion.
+pub fn owned_identity_wrong_descriptor_control() {
+    let identity = ScalarOwnerIdentity;
+    let original = ProcessDescriptor { program: vec![99u8], arguments: vec![vec![65u8], vec![66u8]],
+        directory: None, overrides: Vec::new() };
+    let different = ProcessDescriptor { program: vec![99u8], arguments: vec![vec![65u8, 66u8]],
+        directory: None, overrides: Vec::new() };
+    let valid = owned_identity_matches(&identity, &17u64, 7, &original, &17u64, 7, &original);
+    assert(valid);
+    let different = owned_identity_matches(&identity, &17u64, 7, &original, &17u64, 7, &different);
+    assert(!different);
+}
+
 }
