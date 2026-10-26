@@ -14,9 +14,9 @@
 pub mod maint;
 pub mod memory;
 pub mod pack;
+mod persist;
 pub mod shared;
 
-use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
@@ -448,27 +448,7 @@ impl DiskCache {
         // must not write into the same temporary file.
         let seq = TMP_SEQ.fetch_add(1, Ordering::Relaxed);
         let tmp = dir.join(format!(".tmp-{}-{seq}-{key}", std::process::id()));
-        let written = (|| {
-            let mut f = std::fs::File::create(&tmp)?;
-            let header = serde_json::to_vec(&meta).map_err(std::io::Error::other)?;
-            let buf = sail_acceptance::query::encode_record(header, reply).ok_or_else(|| {
-                std::io::Error::other("serialized cache header contains a newline")
-            })?;
-            f.write_all(&buf)?;
-            // No fsync: a torn or lost entry after a crash fails its
-            // integrity check and is a miss, which costs time, never
-            // correctness. The stamp comes from the open file, so it
-            // describes exactly these bytes; a rename keeps the inode and
-            // the modification time.
-            let stamp = FileStamp::of(&f.metadata()?);
-            drop(f);
-            std::fs::rename(&tmp, &path)?;
-            Ok(PutOutcome::Written(stamp))
-        })();
-        if written.is_err() {
-            let _ = std::fs::remove_file(&tmp);
-        }
-        written
+        persist::write_record(&tmp, &path, &meta, reply).map(PutOutcome::Written)
     }
 }
 
