@@ -98,3 +98,40 @@ takes the full path and records. `SAIL_MANAGED_NOOP=0` disables replay;
 Revisit if Sail adds per-run side effects that consumers rely on (job events,
 watch state) to the managed path. Replay is excluded wherever those are
 requested.
+
+## Amendment: solver identity (2026-10-26)
+
+**Context.** Every shim handshake (one per Verus solver session) made the
+daemon launch `z3 --version` and read the whole Z3 executable, because equal
+path, length and mtime do not establish equal bytes (#213: a one-byte
+replacement at fixed path, length and nanosecond mtime kept the old digest).
+That cost 2 to 3.3 s per fresh project and 0.5 to 0.9 s per Vest edit.
+
+**Decision.** The daemon reuses a solver's identity (its version output and
+executable SHA-256) under the same rule as replay. It keys the identity by
+the absolute solver path and the complete stamp of the file it resolves to
+(device, inode, size, mode, mtime and ctime with nanoseconds; the shared
+`sail_api::stamp::Stamp`). An identity is recorded only after a full fresh
+identification whose stamps before and after are equal, whose ctime is at
+least 2 s older than the start of that identification, and whose executable
+is not an interpreter script (`#!`, whose output can depend on files the
+stamp does not cover). A later handshake whose stamp is exactly the recorded
+one skips the version launch and the read. Any other stamp, an unreadable
+stamp or a relative path identifies afresh as before, and a launch, version
+or read failure still refuses the handshake, so the shim falls back. The memo
+lives only in the daemon's memory and holds at most eight paths.
+
+**#213's scenario.** A same-path replacement by rename gives the path a new
+inode and a fresh ctime. An in-place rewrite keeps the inode but advances
+ctime, and restoring mtime with `utimes` advances ctime again. Either way
+the stamp differs and the handshake re-identifies. The new file is then too
+recent to record until 2 s after its last change. The settle rule covers
+coarse clocks: a change after recording carries a ctime at or after the
+recording's start, which is past the recorded ctime.
+
+**Consequences.** The limits are those of replay: a filesystem whose ctime
+does not advance on write, or a clock set backwards past the recorded ctime,
+combined with a rewrite that keeps size, inode, mode and mtime. Version
+output is assumed to be a function of the native executable; a script
+wrapper is never memoized, so a wrapper whose target changes keeps the fresh
+version check. The managed runner's once-per-run solver digest is unchanged.

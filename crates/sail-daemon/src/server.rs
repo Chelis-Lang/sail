@@ -167,7 +167,7 @@ struct State {
     last_activity: Mutex<Instant>,
     /// Digest reuse requires equality of the entire freshly read executable.
     binary_digests: DigestMemo,
-    /// Identities of settled executables, by complete stat stamp (ADR 0084).
+    /// Identities of settled executables, by complete stat stamp (ADR 0082).
     identities: IdentityMemo,
 }
 
@@ -182,11 +182,15 @@ fn hex(bytes: &[u8]) -> String {
 // Equal path, length and mtime do not establish equal executable bytes (#213).
 // A settled native executable whose complete stat stamp (device, inode, size,
 // mode, mtime and ctime) is unchanged keeps the identity a fresh
-// identification recorded (ADR 0084): a same-path replacement or rewrite,
+// identification recorded (ADR 0082): a same-path replacement or rewrite,
 // even one restoring mtime, moves inode or ctime. Every other handshake is
 // identified afresh from the complete current bytes, and any read or launch
 // failure rejects it so the shim takes its fail-safe path.
-fn identify(path: &Path, digests: &DigestMemo, memo: &IdentityMemo) -> Result<Identity, String> {
+pub(crate) fn identify(
+    path: &Path,
+    digests: &DigestMemo,
+    memo: &IdentityMemo,
+) -> Result<Identity, String> {
     let known = match memo.lookup(path) {
         Found::Hit(known) => known,
         Found::Miss(observed) => {

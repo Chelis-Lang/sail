@@ -1,4 +1,4 @@
-//! Solver identity reuse under a settled complete stat stamp (ADR 0084).
+//! Solver identity reuse under a settled complete stat stamp (ADR 0082).
 //!
 //! A handshake identifies its solver by the version it prints and the
 //! SHA-256 of its executable. Both are a function of the executable, so a
@@ -263,6 +263,41 @@ mod tests {
         let relative = Path::new("stable");
         memo.record(relative, &settled(&stable), &known(1));
         assert!(matches!(memo.lookup(relative), Found::Miss(_)), "relative");
+        Ok(())
+    }
+
+    #[test]
+    fn a_hit_skips_the_launch_and_a_restored_mtime_rewrite_identifies_afresh()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use crate::digest_memo::{DigestMemo, MAX_RETAINED_BYTES};
+        use crate::server::identify;
+        let dir = scratch("server")?;
+        // Not launchable: only a memo hit can identify it.
+        let solver = dir.0.join("solver");
+        executable(&solver, b"\x7fELF not really an executable")?;
+        let (digests, memo) = (DigestMemo::new(MAX_RETAINED_BYTES), IdentityMemo::new());
+        assert!(
+            identify(&solver, &digests, &memo).is_err(),
+            "fresh launch fails"
+        );
+        let observed = Observation {
+            start: SystemTime::now() + Duration::from_secs(3),
+            before: stamp(&solver),
+        };
+        memo.record(&solver, &observed, &known(7));
+        let hit = identify(&solver, &digests, &memo)?;
+        assert_eq!(hit.version, known(7).version);
+        assert_eq!(hit.binary_sha256, "07".repeat(32));
+
+        // #213: same bytes length, restored mtime; ctime moves, so the
+        // handshake identifies afresh and here refuses.
+        // The settle rule was simulated above; let real time pass a coarse
+        // ctime tick so the rewrite's ctime differs.
+        std::thread::sleep(Duration::from_millis(50));
+        let mtime = solver.metadata()?.modified()?;
+        std::fs::write(&solver, b"\x7fELF not really an executablf")?;
+        set_mtime(&solver, mtime)?;
+        assert!(identify(&solver, &digests, &memo).is_err(), "re-identified");
         Ok(())
     }
 
