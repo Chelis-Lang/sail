@@ -11,11 +11,13 @@
         "crates/sail-acceptance/src/inputs.rs",
         "crates/sail-acceptance/src/query.rs",
         "crates/sail-acceptance/src/key_prefix.rs",
+        "crates/sail-acceptance/src/query_policy.rs",
+        "crates/sail-acceptance/src/query_prefix.rs",
         "proofs/refinement/query.rs",
         "crates/sail-key/src/lib.rs",
         "crates/sail-key/src/prefix_factory.rs"
       ],
-      "verified": 262,
+      "verified": 288,
       "functions": [
         "check_query::context::Mode::arrow_0",
         "check_query::context::Mode::arrow_OptIn_0",
@@ -215,6 +217,7 @@
         "check_query::key_prefix::identity_fields_shape",
         "check_query::key_prefix::identity_fields_tuple_injective",
         "check_query::key_prefix::identity_prefix_injective",
+        "check_query::key_prefix::joint_owner_control",
         "check_query::key_prefix::nonempty_framing_control",
         "check_query::key_prefix::overflow_framing_control",
         "check_query::key_prefix::owned_feed_control",
@@ -222,6 +225,7 @@
         "check_query::key_types::Mode::arrow_0",
         "check_query::key_types::Mode::arrow_OptIn_0",
         "check_query::prefix_factory::new_prefix",
+        "check_query::prefix_factory::new_query_prefix",
         "check_query::query::BoundPair::expectation",
         "check_query::query::BoundPair::expected",
         "check_query::query::BoundPair::into_parts",
@@ -281,6 +285,7 @@
         "check_query::query::ReplayCursor::left",
         "check_query::query::ReplayCursor::new",
         "check_query::query::command_head",
+        "check_query::query::commented_head_control",
         "check_query::query::complete_list",
         "check_query::query::delimiter",
         "check_query::query::encode_record",
@@ -444,6 +449,44 @@
         "check_query::query_association::store_step",
         "check_query::query_association::store_wf",
         "check_query::query_association::stored_reply_has_admitted_origin",
+        "check_query::query_policy::ResponsePolicy::clone",
+        "check_query::query_policy::named",
+        "check_query::query_policy::one_head",
+        "check_query::query_policy::prefixed",
+        "check_query::query_policy::response_policy",
+        "check_query::query_policy::silent_head",
+        "check_query::query_policy::tactic_policy_control",
+        "check_query::query_policy::word_eq",
+        "check_query::query_policy::word_prefix",
+        "check_query::query_prefix::FramedCommand::coherent",
+        "check_query::query_prefix::FramedCommand::end",
+        "check_query::query_prefix::FramedCommand::endpoint",
+        "check_query::query_prefix::FramedCommand::head",
+        "check_query::query_prefix::FramedCommand::head_view",
+        "check_query::query_prefix::FramedCommand::key",
+        "check_query::query_prefix::FramedCommand::key_view",
+        "check_query::query_prefix::FramedCommand::policy",
+        "check_query::query_prefix::QueryPrefix::active",
+        "check_query::query_prefix::QueryPrefix::append",
+        "check_query::query_prefix::QueryPrefix::bytes",
+        "check_query::query_prefix::QueryPrefix::coherent",
+        "check_query::query_prefix::QueryPrefix::command",
+        "check_query::query_prefix::QueryPrefix::fed",
+        "check_query::query_prefix::QueryPrefix::hash_tail",
+        "check_query::query_prefix::QueryPrefix::is_empty",
+        "check_query::query_prefix::QueryPrefix::key",
+        "check_query::query_prefix::QueryPrefix::len",
+        "check_query::query_prefix::QueryPrefix::matches",
+        "check_query::query_prefix::QueryPrefix::material",
+        "check_query::query_prefix::QueryPrefix::new",
+        "check_query::query_prefix::QueryPrefix::refuse",
+        "check_query::query_prefix::QueryPrefix::silence_key",
+        "check_query::query_prefix::QueryPrefix::trailing_trivia",
+        "check_query::query_prefix::QueryPrefix::valid",
+        "check_query::query_prefix::QueryPrefix::view",
+        "check_query::query_prefix::flat_byte",
+        "check_query::query_prefix::flat_contents_prefix",
+        "check_query::query_prefix::flat_list_frame",
         "check_query::refinement::bar_frame_grammar",
         "check_query::refinement::coalesced_and_partial_response_witness",
         "check_query::refinement::command_bytes_refine_binding",
@@ -660,6 +703,60 @@
           "source": "crates/sail-key/src/prefix_factory.rs",
           "before": "Some(name.as_str().as_bytes())",
           "after": "None"
+        },
+        {
+          "name": "head-complete-leading-trivia",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "i < bytes.len() && (comment || bytes[i] == b';'",
+          "after": "false && (comment || bytes[i] == b';'"
+        },
+        {
+          "name": "head-complete-untruncated",
+          "source": "crates/sail-acceptance/src/query.rs",
+          "before": "let head = &bytes[start..i];",
+          "after": "let head = &bytes[start..start + 1];"
+        },
+        {
+          "name": "policy-tactic-head",
+          "source": "crates/sail-acceptance/src/query_policy.rs",
+          "before": "word_eq(head,\"check-sat-using\")",
+          "after": "word_eq(head,\"check-sat-using-bad\")"
+        },
+        {
+          "name": "policy-get-prefix",
+          "source": "crates/sail-acceptance/src/query_policy.rs",
+          "before": "word_prefix(head,\"get-\")",
+          "after": "false"
+        },
+        {
+          "name": "policy-whole-head",
+          "source": "crates/sail-acceptance/src/query_policy.rs",
+          "before": "crate::inputs::byte_eq(head,bytes)",
+          "after": "word_prefix(head,word)"
+        },
+        {
+          "name": "owner-policy-head",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "response_policy(self.head)",
+          "after": "response_policy(&[])"
+        },
+        {
+          "name": "owner-original-append",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "self.raw.append(bytes);",
+          "after": "self.raw.append(&[]);"
+        },
+        {
+          "name": "owner-command-end",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "let endpoint = feed.end();",
+          "after": "let endpoint = 0;"
+        },
+        {
+          "name": "owner-hash-tail",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "let accepted = self.prefix.feed(&feed);",
+          "after": "let accepted = true;"
         }
       ]
     },
@@ -2808,7 +2905,7 @@
     }
   },
   "key_declarations": {
-    "source_sha256": "1ec119960263bec07e1cd6921064db6cfdee2c30a727f3a556c3b91f7e650dbd",
+    "source_sha256": "2499b0206dea2d722abed831cb47e7b0131b257821a9d3fe688b640bdd519747",
     "declarations": [
       {
         "name": "SolverIdentity",
