@@ -1042,7 +1042,7 @@ fn driver() -> Result<ExitCode> {
         },
         established.as_ref(),
         None,
-        CompletionOrigin::Live(captured.observation()),
+        CompletionOrigin::Live(captured.observation(), captured.unavailable_reason()),
     )?;
     // A successful process alone is insufficient: partial/no-verify output
     // must never become a reusable proof. Reuse only the complete successful
@@ -1187,7 +1187,10 @@ struct Captured<'a> {
 
 #[derive(Clone, Copy)]
 enum CompletionOrigin<'a, 'b> {
-    Live(Option<&'a sail_acceptance::authority::ObservedAttempt<'b>>),
+    Live(
+        Option<&'a sail_acceptance::authority::ObservedAttempt<'b>>,
+        Option<&'a str>,
+    ),
     Bundled,
     Retained,
 }
@@ -1368,7 +1371,7 @@ fn bind_process_observation(
     origin: CompletionOrigin<'_, '_>,
 ) -> bool {
     match origin {
-        CompletionOrigin::Live(observed) => sail_api::acceptance::require_process_observation(
+        CompletionOrigin::Live(observed, reason) => sail_api::acceptance::require_process_observation(
             report,
             observed,
             captured.stdout,
@@ -1376,9 +1379,9 @@ fn bind_process_observation(
             captured.exit,
             sail_api::output::ErrorInfo {
                 code: "SAIL3111".into(),
-                message:
-                    "compiler process observation unavailable; retained proof authority withheld"
-                        .into(),
+                message: reason.map_or_else(
+                    || "compiler process observation unavailable; retained proof authority withheld".into(),
+                    |reason| format!("compiler process observation unavailable; retained proof authority withheld: {reason}")),
             },
         ),
         CompletionOrigin::Bundled | CompletionOrigin::Retained => true,
