@@ -23,7 +23,10 @@ use sail_acceptance::query::{
 };
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
-use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
+use sail_key::{
+    DeliveredInput, InputDelivery, Mode, ObservedPublication, QueryKey, SessionPrefix,
+    SolverIdentity,
+};
 use sail_session::Session;
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
@@ -342,18 +345,26 @@ impl Pairer {
         out
     }
 
-    /// At the end of the session: releases a held check.
-    fn finish(&mut self) -> Vec<Entry> {
+    /// Releases a held check while preserving the actual frozen input token
+    /// for the joint publication transition; a silence key cannot replace it.
+    fn finish_observed(&mut self) -> (Vec<Entry>, Option<DeliveredInput>) {
         let mut out = Vec::new();
+        let mut delivery = None;
         if !self.pending.is_stopped() {
             self.release(&mut out);
             if self.pending.is_empty()
                 && let Some(key) = self.terminal.take()
             {
                 out.push(Entry::Silence { key: key.key() });
+                delivery = Some(key);
             }
         }
-        out
+        (out, delivery)
+    }
+
+    #[cfg(test)]
+    fn finish(&mut self) -> Vec<Entry> {
+        self.finish_observed().0
     }
 }
 
@@ -402,7 +413,7 @@ struct Solving {
 fn spawn_storer(
     mut client: Client,
     entries: Receiver<Entry>,
-    publication_allowed: Arc<AtomicBool>,
+    publication: Receiver<Option<ObservedPublication>>,
 ) -> Option<JoinHandle<()>> {
     std::thread::Builder::new()
         .name("sail-z3-store".to_owned())
@@ -419,7 +430,10 @@ fn spawn_storer(
                     return;
                 }
             }
-            let Some(pending) = pending.release(publication_allowed.load(Ordering::SeqCst)) else {
+            let Some(publication) = publication.recv().ok().flatten() else {
+                return;
+            };
+            let Some(pending) = publication.release(pending) else {
                 return;
             };
             // A daemon error drops the remaining stores.
@@ -453,7 +467,7 @@ fn queue_stores(
 /// The storing thread and the channel to it.
 struct Storing {
     tx: Sender<Entry>,
-    allowed: Arc<AtomicBool>,
+    publication: Sender<Option<ObservedPublication>>,
     storer: Option<JoinHandle<()>>,
 }
 
@@ -461,22 +475,22 @@ impl Storing {
     /// Starts storing to `client`; without one, `pairer` stops recording.
     fn start(client: Option<Client>, pairer: &mut Pairer) -> Self {
         let (tx, rx) = std::sync::mpsc::channel::<Entry>();
-        let allowed = Arc::new(AtomicBool::new(false));
-        let storer = client.and_then(|client| spawn_storer(client, rx, Arc::clone(&allowed)));
+        let (publication, observed) = std::sync::mpsc::channel();
+        let storer = client.and_then(|client| spawn_storer(client, rx, observed));
         if storer.is_none() {
             // No daemon to store to.
             pairer.stop();
         }
         Self {
             tx,
-            allowed,
+            publication,
             storer,
         }
     }
 
-    /// Ends the session's stores, publishing them only if `allowed`.
-    fn close(self, allowed: bool) {
-        self.allowed.store(allowed, Ordering::SeqCst);
+    /// Ends the session's stores with the exact joint owned observation.
+    fn close(self, observation: Option<ObservedPublication>) {
+        let _ = self.publication.send(observation);
         drop(self.tx);
         if let Some(h) = self.storer {
             let _ = h.join();
@@ -658,7 +672,8 @@ fn output_side(
     // Once the input has ended, every expectation is queued or about to be.
     // Before that, more may never come, so take only what is there.
     queue_stores(&mut pairer, expects, &storing.tx, input_done);
-    for entry in pairer.finish() {
+    let (final_entries, delivery) = pairer.finish_observed();
+    for entry in final_entries {
         let _ = storing.tx.send(entry);
     }
     let silent = stderr.is_some_and(crate::cached_stderr::Monitor::quiet);
@@ -673,7 +688,8 @@ fn output_side(
         quiet: silent,
         forwarding_ok,
     };
-    storing.close(gate.allows());
+    let publication = delivery.and_then(|delivery| delivery.observe_publication(output, gate));
+    storing.close(publication);
     if !input_done {
         // The input side is blocked reading a client that waits for replies
         // the dead solver will never give.
@@ -1538,6 +1554,23 @@ mod tests {
         duplicate.expect(Expect::Terminal(terminal(b"(echo 1)")?));
         assert!(duplicate.pending.is_stopped());
         assert!(duplicate.finish().is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn finalization_retains_original_delivery_once_beside_silence_entry() -> Result<(), &'static str>
+    {
+        let delivered = terminal(b"(echo 1)")?;
+        let key = delivered.key();
+        let mut pairer = Pairer::default();
+        pairer.expect(Expect::Terminal(delivered));
+        let (entries, input) = pairer.finish_observed();
+        assert_eq!(entries.len(), 1);
+        assert!(matches!(&entries[0], Entry::Silence { key: observed } if *observed == key));
+        assert_eq!(input.as_ref().map(sail_key::DeliveredInput::key), Some(key));
+        let (again, duplicate) = pairer.finish_observed();
+        assert!(again.is_empty());
+        assert!(duplicate.is_none());
         Ok(())
     }
 

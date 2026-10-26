@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Retain the actual frozen input delivery and complete stdout observations
+  through the local cache publication handoff, requiring their typed joint
+  observation before releasing pending entries. This preserves existing
+  forwarding/fallback behavior and does not authenticate arbitrary writers or
+  establish persistent cache origins.
+
 - Require EOF and a complete partition of retained solver stdout before cache
   publication; include response endpoints in the output buffer budget.
 
