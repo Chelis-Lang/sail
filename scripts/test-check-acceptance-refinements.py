@@ -110,6 +110,64 @@ class SourceCaptureTests(unittest.TestCase):
                 self.assertEqual(roles["abstract_primitive_contracts"][CHECKER.PIPE_CORE],
                     ["CompilerPipeReadHost"])
 
+    def test_current_main_input_helpers_are_native_bindings_only(self):
+        helpers = {
+            "crates/sail-api/src/lib.rs", "crates/sail-api/src/stamp.rs",
+            "crates/sail-verus/src/lib.rs", "crates/sail-verus/Cargo.toml",
+            "crates/sail-verus/src/adapter_verus_channel.rs",
+            *{"crates/sail-verus/src/managed/" + name + ".rs" for name in (
+                "transport", "ghost_environment", "tool_digests", "receipts",
+                "source_inputs", "build_inputs_sources", "retained/history",
+                "retained/phase_fields", "noop_origins", "files")},
+        }
+        self.assertTrue(helpers <= set(CHECKER.INPUT_NATIVE_SHA256))
+        for component in ("inputs", "authority"):
+            entry = {"id": component, "dependencies": CHECKER.dependency_paths(component),
+                "source": "proofs/refinement/" + component + ".rs"}
+            roles = CHECKER.source_roles(entry)
+            self.assertTrue(helpers <= set(roles["bound_native_input_source"]))
+            self.assertFalse(helpers & set(roles["checked_source"]))
+            snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+            _, _, files = CHECKER.captured_driver(entry, snapshots)
+            self.assertNotIn("stamp.rs", files)
+            self.assertNotIn("transport.rs", files)
+            self.assertNotIn("ghost_environment.rs", files)
+
+    def test_current_main_native_helper_drift_refuses(self):
+        for path, before, after in (
+            ("crates/sail-verus/src/lib.rs",
+                b"pub mod adapter;", b'#[path="unreviewed.rs"] pub mod adapter;'),
+            ("crates/sail-verus/Cargo.toml",
+                b"sail-acceptance.workspace = true", b'sail-acceptance = { path = "hidden" }'),
+            ("crates/sail-verus/src/managed/tool_digests.rs",
+                b"*recorded == stamp", b"true"),
+            ("crates/sail-verus/src/managed/command_environment.rs",
+                b"#[cfg(test)]\nimpl ConfigureCommand for std::process::Command",
+                b"impl ConfigureCommand for std::process::Command"),
+            ("crates/sail-verus/src/managed/command_environment.rs",
+                b"        self.env_remove(name);", b"        self.inner.env_remove(name);"),
+            ("crates/sail-verus/src/managed/transport.rs",
+                b"command.remove_env(name);", b"drop(name);"),
+            ("crates/sail-verus/src/adapter_verus_channel.rs",
+                b"command.env(COMMON, value);", b"command.arg(value);"),
+            ("crates/sail-verus/src/managed/ghost_environment.rs",
+                b"document.pid != pid", b"false"),
+            ("crates/sail-api/src/stamp.rs",
+                b"metadata.ctime_nsec(),", b"0,"),
+            ("crates/sail-verus/src/managed/receipts.rs",
+                b"&& self.producer_history_intact()", b"&& true"),
+            ("crates/sail-verus/src/managed/receipts.rs",
+                b"&& self.invocation.environment_observed()", b"&& true"),
+            ("crates/sail-verus/src/managed/build_inputs_sources.rs",
+                b"previous.version == SOURCE_VERSION && previous.covered",
+                b"previous.version == SOURCE_VERSION || previous.covered"),
+        ):
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            self.assertIn(before, original)
+            with self.subTest(path=path, before=before), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original.replace(before, after, 1))
+
     def snapshots(self) -> dict[str, bytes]:
         return {"crates/sail-api/src/" + name + ".rs":
             (ROOT / "crates/sail-api/src" / (name + ".rs")).read_bytes()

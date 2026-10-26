@@ -93,6 +93,26 @@ Per-case `compiled_source_sha256` records the files actually passed to Verus.
 [#449](https://github.com/Chelis-Lang/sail/issues/449) corrects the earlier
 overbroad native-input role; it adds no native-code proof or whole-service credit.
 
+The current-main capture binds 48 native input/authority source and assembly
+files, including the actual Verus crate/module assembly, packed option channel,
+file-backed transport, ghost-environment reader, shared stat stamps, tool
+identity memo, receipt/archive histories and versioned declaration transfer.
+These files appear only under `bound_native_input_source`; adding them changes
+neither the generated stock driver nor its compiled files. The API assembly
+admits the reviewed `stamp` module, while the authority driver continues to
+compile only the exact inventoried API declaration projections.
+
+The command review keeps production `ConfigureCommand` and descriptor access on
+the owned compiler builder; std Command implementations remain test-only.
+`RemoveEnvironment` permits outer Cargo removal without granting compiler
+configuration or completion authority, and its owned implementation records
+through the same builder. Actual child leases, EOF tokens, selected-attempt
+history, independent fallback directories and both receipt guards remain bound
+native contracts rather than new Stock-compiled bodies. Filesystem observation,
+stat-memo trust, physical input completeness and executed-image identity remain
+outside this source review. The direct-proof CI policy conflict remains
+unresolved in the [handoff](../acceptance-proof-handoff.md).
+
 The checker, toolchain, runtime and OS must remain trustworthy and immutable
 during checking. Pre/post hashes do not prove atomic launch identity against
 transient executable replacement. The Python checker remains reviewed/tested

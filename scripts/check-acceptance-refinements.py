@@ -48,7 +48,56 @@ QUERY_HOST_TRAITS = {'crates/sail-acceptance/src/cache_write.rs': ['e1f217be8798
 QUERY_SCRIPT_IMPLS = {'crates/sail-acceptance/src/cache_write.rs': ['b14cfdbc045ce226b03452823bf1706890c04c58817293134e9d1f2fc1ce12b4'], 'crates/sail-acceptance/src/query_delivery.rs': ['8378afe345bf6880d519cf675e3b5db5e4b01f6900781bef674f6c1fd7019d72']}
 # These closed native compiler/request/store adapters are bound in full and
 # remain outside the stock-compiled bodies. Their OS/process provenance remains open.
-INPUT_NATIVE_SHA256 = {'crates/sail-verus/src/adapter.rs': 'e5d7809c83f78dfc46df6bc2dda958a9a7291ec2425bb1caaa930513aff47ea1', 'crates/sail-verus/src/adapter_attempts.rs': '6eb4411659b547a86f093c80f3f5b9f4cb28316821576646a85db385e4fe3e58', 'crates/sail-verus/src/engine.rs': '31eed396f2c97eb343dbc6596e2975da4b7464ed89856755adc95ed158db7dee', 'crates/sail-verus/src/managed/mod.rs': '0c85a5dd96e2af1cfda837742a11263c4d6b343cb4d9eeb436c8f1d03f86c9a3', 'crates/sail-verus/src/managed/command_environment.rs': '902b9c9c7db1fb58935c642408f0c8cdcc98f08320b655c358d7ba9adf71d750', 'crates/sail-verus/src/managed/runner.rs': '2625c09ba4cc607ea68596f7fdedeaae9ff3b0a64e77c3010853bc48d8f3513c', 'crates/sail-verus/src/managed/request.rs': 'dc079a01a60d64ee482540f5023deba9025cbc45010b6b2d1b56f2f7519bbaba', 'crates/sail-verus/src/managed/noop.rs': '912840c7458ad4d63f6b22bca46ddd53779cbb13060fe938353b9f597694cee5', 'crates/sail-verus/src/managed/shipped.rs': '9b75f3e7bbc9b7fc46dee18448e9d2aadbbd9dfe185285f090b9ec3a654bd761', 'crates/sail-verus/src/managed/shipped/compiler.rs': 'ccf013b3f20798e3539f84a5893efdf82e14faaadd62d33a0b53637b9d3b5498', 'crates/sail-verus/src/managed/shipped/native.rs': '44fe0484d960e237d89972fd623d859e6080b9288db41d713403b7a93aefb3bc', 'crates/sail-verus/src/managed/shipped/native_reads.rs': '3fa562e94e38cb8f4489e072c60ea3cd7776ede5352ada907a29adaf63f5f580', 'crates/sail-verus/src/managed/retained/driver.rs': 'bd39ae74d8614a0d8457bac1dfa2e419b39bd5cce5bfea2765863d081ce2516a', 'crates/sail-verus/src/managed/retained/compiler.rs': 'e0a92daa80b5296cad7e10950b30fc1d49610250d1f00e3fa2dca8782df1da49', 'crates/sail-verus/src/managed/retained/native.rs': '7b4bf88dc3fabc99497de450d6f99a0f6d39b6da60f653f63deaade7910992fa', 'crates/sail-verus/src/managed/retained/producers.rs': '501246e0ccd8ec5bd5025fb985cb104adf8c40a540d4b93b03b4b645ac18ba4c', 'crates/sail-daemon/src/jobs/product.rs': '8333b8ad44f4f061dc0c1c2ee31e0128a2aa3ab4a63795364e1dee76328ea90d', 'crates/sail-daemon/src/jobs/result_cache.rs': '7d63c09a1e623d2204e64f593adc32e1527c04786ca57439aab1e64600680b64', 'crates/sail-verus/src/managed/command_pipe.rs': 'aaccb4db7cce2648b4a1acdc5da658ea2b53abbcc24956310deac5c7b6e6eb31'}
+INPUT_NATIVE_SHA256 = {
+    'crates/sail-verus/src/adapter.rs': '7c7166b0696bdc2234e3751601f5b32608bcabb1f3389abe0a6766889bbe158a',
+    'crates/sail-verus/src/adapter_attempts.rs': '6eb4411659b547a86f093c80f3f5b9f4cb28316821576646a85db385e4fe3e58',
+    'crates/sail-verus/src/engine.rs': 'c95a32e3b60cdfe9c8cf768a56e22a5fc2aa4c3aa47dad86028a242b42153213',
+    'crates/sail-verus/src/managed/mod.rs': '7d1a4092e364b466a4da4247fb91418af8930fbd8316e83b8641d8f1b8b9cff9',
+    'crates/sail-verus/src/managed/command_environment.rs': 'd66a54bc20f8550e89e1078ce4db22ff9ab5b744268a2991630a5f89e3a804e6',
+    'crates/sail-verus/src/managed/runner.rs': '9040276ef2a0be9fd740c769d4d603e4c91ea5339e30f989f7dfd9ee7d938e1e',
+    'crates/sail-verus/src/managed/request.rs': 'dc079a01a60d64ee482540f5023deba9025cbc45010b6b2d1b56f2f7519bbaba',
+    'crates/sail-verus/src/managed/noop.rs': '5144183f5739a0141dd16e8a1341ebbe9d2c33872e9504c74be7ce0bb1ba9b60',
+    'crates/sail-verus/src/managed/shipped.rs': '9a0f1774a16d6960a62b62a0f6cf699c5a29a8bb3cf4743a57de80a9bd3d9a01',
+    'crates/sail-verus/src/managed/shipped/compiler.rs': 'f3815824f391a1cdd9d59420c124ec4da838a137b58a16fca4019a6a77d3ec97',
+    'crates/sail-verus/src/managed/shipped/native.rs': '7acc4ef691a8128ff22b0a1dc3e94af33b6e0037b550681ad35229323f3b5a0f',
+    'crates/sail-verus/src/managed/shipped/native_reads.rs': '3fa562e94e38cb8f4489e072c60ea3cd7776ede5352ada907a29adaf63f5f580',
+    'crates/sail-verus/src/managed/retained/driver.rs': '93de5f65a381e246986a7e2d573e9b70809d679dc5b6adc6841236c1912ecc6b',
+    'crates/sail-verus/src/managed/retained/compiler.rs': 'ae7cd326831418fd148bccad1727b9b601a6d45dc335aa41b0558271dfeac710',
+    'crates/sail-verus/src/managed/retained/native.rs': '7b4bf88dc3fabc99497de450d6f99a0f6d39b6da60f653f63deaade7910992fa',
+    'crates/sail-verus/src/managed/retained/producers.rs': '501246e0ccd8ec5bd5025fb985cb104adf8c40a540d4b93b03b4b645ac18ba4c',
+    'crates/sail-daemon/src/jobs/product.rs': '8333b8ad44f4f061dc0c1c2ee31e0128a2aa3ab4a63795364e1dee76328ea90d',
+    'crates/sail-daemon/src/jobs/result_cache.rs': '7d63c09a1e623d2204e64f593adc32e1527c04786ca57439aab1e64600680b64',
+    'crates/sail-verus/src/managed/command_pipe.rs': 'aaccb4db7cce2648b4a1acdc5da658ea2b53abbcc24956310deac5c7b6e6eb31',
+    'crates/sail-api/src/lib.rs': 'c0d86d594bb374650fae43024f49264a4c6f840c8b0f73ab8092d620afdc7fed',
+    'crates/sail-api/src/stamp.rs': 'fafb1eea946f08ea4a1e534a0b3c634094c862f63eb8b9251b9e76c498d0dda8',
+    'crates/sail-verus/src/adapter_verus_channel.rs': '2229526e8081f0d7309a30c4f3acdf04062d19363b6c1152aa98aab44182d421',
+    'crates/sail-verus/src/managed/build_environment.rs': 'ee5fa359e0ca7265dc736b409e08bb0f45333d65ac9e2e44e80cc928a1ec0714',
+    'crates/sail-verus/src/managed/build_inputs.rs': 'b1f57a1f943d9c015a39e9ffabf77bfe7cee5d490c97b19eb1d97f8f445d2966',
+    'crates/sail-verus/src/managed/build_inputs_family.rs': 'ad22f4e115f9644243c429462cae1f2563e11fb338c50944116ca42acdda33e3',
+    'crates/sail-verus/src/managed/build_inputs_sources.rs': '04dc4ef8b47f360d486dcb5524c1288ec036f5936b5a74866b72dc4306058411',
+    'crates/sail-verus/src/managed/build_inputs_package_environment.rs': '1155e253a1ccfb9607f01273522af32775cafd1ee8f7d93769a6501633d1ecf4',
+    'crates/sail-verus/src/managed/build_unit_plan.rs': '3e76d01766dcc3d92d3af6538cacf834bce210f2d1a9a6a2273c31b764dd874d',
+    'crates/sail-verus/src/managed/dependency_snapshot.rs': '5f9af1aaf0cfc8eeaf2611ee84d878e5a21e95a5dd05b1377bb9f40cb924c2b2',
+    'crates/sail-verus/src/managed/environment.rs': '41e37d497023ccd874af84e95318f80c83e3a2e4f6c6eb613ac02d93fb0ddb6f',
+    'crates/sail-verus/src/managed/files.rs': '6fe922e0141ce156f91d445e97c4d5653033aeedf69c7a0bde17c36ba8395445',
+    'crates/sail-verus/src/managed/ghost_environment.rs': '3b5bb921d1df792963bc764c990ec85edb85162dc50571e65e1c94aee170062d',
+    'crates/sail-verus/src/managed/input.rs': '5899dfb6f7e5663c0e9e7325ea29abf49bb657cdd155c59048348f636f91c292',
+    'crates/sail-verus/src/managed/noop_origins.rs': '56763925ca9b7c7ef8621ba1671f48097734161d87a2bdc0b8747c03b1694dd4',
+    'crates/sail-verus/src/managed/read_check.rs': 'f187434c72bbb4abdbf58466ffd7a10648f7e29be8729eac7679954d84f7d7ad',
+    'crates/sail-verus/src/managed/receipts.rs': 'ffb63b3f85455cdcb07aa6c4e01ff90a6bfa175be51d5f1d1ecc6221e160c3a6',
+    'crates/sail-verus/src/managed/retained/archive.rs': '1fa79d3167f4b496176745ac884fced1863037dac7c16fbd2cedd410aa092ee5',
+    'crates/sail-verus/src/managed/retained/history.rs': '40c15b7834f07a242ef300674cad6c27d0126746db2bb98a25ede0b8c665040e',
+    'crates/sail-verus/src/managed/retained/mod.rs': 'da72364cd1759a0bd577fae9803fc34a0de323dad1ab9c5943a4e6e54328fc4f',
+    'crates/sail-verus/src/managed/retained/phase_fields.rs': '594552f03e3f3a7742b5ad75964b1f90f830325c1d06abdf18b178d09c503664',
+    'crates/sail-verus/src/managed/source_inputs.rs': 'd78183cfce373378eb2a929ad3f34f2ac517e8ac91f3180b4d609516d59ed892',
+    'crates/sail-verus/src/managed/store.rs': '3cf8473ed05acb46c8b5bcbe7a23b18886188087e52dd5cea1abe5e225112c9e',
+    'crates/sail-verus/src/managed/tool_digests.rs': 'c53d675ab062eafb6ba29b97e753d8630d5aef69c663cf91eae2016dc3565329',
+    'crates/sail-verus/src/managed/transport.rs': '8d602d2b84a9b517a1d281b0ed3fd4f586cb68c1c45692970721b103c6d0c416',
+    'crates/sail-verus/src/managed/visible_output.rs': '67dd94f1db4336c6aff782d92572cd4360dad3ff08c55f2274e443d33ace1bcb',
+    'crates/sail-verus/src/parallel.rs': 'c2f4ab8e7268ca28fe106255ed13cdba0838004283cc1f7b47b3f4e6a9d9a483',
+    'crates/sail-verus/src/lib.rs': '812c8b05e10aeb73f7cda4a7289d9d23d40ea3d0639d1bad1d95e612d1e0291b',
+    'crates/sail-verus/Cargo.toml': '7433b377b5a8a1cc4c9717ca90936ff39d81007b57de42eb2220a37b27d76cee',
+}
 # Native key types, SHA adapter, fresh-state factory and module/import bindings
 # are reviewed in their complete enclosing source; they are not all proved.
 KEY_NATIVE_SHA256 = 'b363a7cd49229556a8e876af2da2bb7362ba9c4c2874f34bc092c4b59bf6e630'
@@ -64,7 +113,7 @@ RETAINED_BRIDGE_SHA256 = 'f1214b5c3cada2004a55eb359e8ec62724a8fa5349ec50ca7d3b9e
 # merely updating a manifest. Runtime-only implementation drift must refuse.
 SYNTAX_SHA256 = 'deb8606ce9d123997dd286ae3e184c7496bdaf5e659543a7be724baffd9adc70'
 LIB_SHA256 = '8a4d5d731b1b60ae0c516c9f17ce41e1d1fca7351798d5e2367de4527d55ab3d'
-API_LIB_SHA256 = "125f9959d72bf6bbff719526cdaad169301b9c1e156db5b46ea79b91d4c50491"
+API_LIB_SHA256 = 'c0d86d594bb374650fae43024f49264a4c6f840c8b0f73ab8092d620afdc7fed'
 # Binding inventories cover both ordinary and proof-only imports. In particular,
 # an erased import cannot shadow a Cargo glob with a different checked callee.
 IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '82616ae32e5bfc5aad996d9700e42fedc1a39de3a8b230254d98d602e6e238fc', 'crates/sail-acceptance/src/key_prefix.rs': 'abcb768a7dca61a2e4248956921314487e845306a6335e944610f3c5bb90e5b8', 'crates/sail-key/src/prefix_factory.rs': '22f9a04f035b109591f920519d7423c7de774bfc66315194b3939f291bf62988', 'crates/sail-acceptance/src/query_policy.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_prefix.rs': '6c28aff345658a06686d88714020c77540412e4b5403912081c62141c82059b0', 'crates/sail-acceptance/src/phase_inputs.rs': 'e31c1fd6ae8c583a1fb26630289887e8aa3b0eaae302c997a571085167c83532', 'crates/sail-acceptance/src/cache_write.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_delivery.rs': 'dd5692fc8c75546d449a2c623708ec6748a7be654391385107f4fa20e971d08e', 'crates/sail-acceptance/src/query_output.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_publication.rs': '5b42b5e8b9a5cdc3fc2c046bb501eb353d630a73b668b7a2e6a8ae857cbb8fab', 'crates/sail-acceptance/src/stream_capture.rs': '18c75f1316fdcfe0ddaae6f01a1a4a261ee5a0e48f1aec2d4a0d5649f2e5e9da', 'crates/sail-acceptance/src/query_output_owner.rs': 'a39dc18af6d81e5a8685b606379b6421026478c1544bd33da36231fb10f62a7f', 'crates/sail-acceptance/src/query_holding.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_checkpoints.rs': '3a451c460b5bb877272130b7081c5f715678a4577e4d117e9d516c8558ad935c'}
