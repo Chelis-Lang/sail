@@ -475,9 +475,7 @@ impl ReplayPreflight {
                 };
                 let native_paths = resolution.capture_paths();
                 let current = resolution.resolve();
-                let Some(paths) = native_paths.bind(&current) else {
-                    return None;
-                };
+                let paths = native_paths.bind(&current)?;
                 Some(consume(paths.request(), &paths, readback))
             },
         )
