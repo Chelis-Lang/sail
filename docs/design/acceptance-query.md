@@ -322,6 +322,63 @@ are scripted, not a trusted solver or native I/O qualification. The shared and
 native additions, normal controls, macOS/Linux gates, unchanged conformance and
 validation-cost measurement are unrun/unqualified.
 
+### Original output ownership and frame transfer (source candidate)
+
+The next source slice distinguishes value preservation from stream identity.
+`query_output::FramePayload` preserves copied bytes, ordinal and start/end from
+the actual checked borrowed frame; its membership check against `CompleteOutput`
+is only a value relation. Equal-valued streams can satisfy that relation.
+`query_output_owner::StreamOutput` therefore owns the original controller and
+an opaque ownership lease. Its `StreamFrame` can produce private-field
+`OwnedFrame` only after a retained lease compares equal to that original borrow.
+`CompletedStream` preserves the same original lease at EOF. Membership checks
+require both lease identity and exact original frame values/position. There is
+no public raw-Vec or deserializing constructor for an owned frame.
+
+The identity primitive is the unchanged shared `inputs::OwnerIdentity`
+contract: native comparison uses only `Arc::ptr_eq` on strongly retained
+allocations. Its logical identity projection is not a numeric runtime label,
+PID or successful-result flag. Moving that shared trait from `phase_inputs`
+without changing its contract is a prerequisite captured separately by the
+integration owner. These additions remain source-only until that dependency
+and their complete module/type/import/function inventories qualify together.
+
+Native `start_solver` allocates one lease beside the actual owned spawn and
+extraction of that child's stdin/stdout. Private `SolverProcess` retains the
+actual child and the lease for the output worker; private `Solving` retains its
+other strong reference beside the original input-delivery controller. Its
+terminal metadata carries the actual frozen `DeliveredInput` and the same
+lease together. `observe_owned_publication` requires that input lease to match
+the completed output lease through the narrow identity primitive. This is the
+actual common-child lease flow, rather than an equality premise on supplied
+PIDs. Actual descriptor extraction, OS I/O, executable identity and truthful
+native attribution of that private constructor remain provider obligations.
+The core delivered-input token alone does not prove those native facts.
+
+The real pairer now owns `BoundPair<Expect, OwnedFrame>` through held checks,
+effort annotation and the pending batch. Fresh output copies originate at the
+same successful checked `frame` call; replay comparison still consumes the
+original byte slices and uses its existing semantics. Before releasing any
+batch, the actual storer checks each paired entry against that retained output
+owner and checks the silence key against the original frozen input. Final PUT
+conversion consumes only the original owned response bytes. No forwarding,
+fallback, gate, diagnostic or exit path depends on this interpretation.
+
+Swapped equal-byte owners, wrong retained leases and different input/output
+child leases have explicit refusal source controls. Native script tests keep
+equal byte/ordinal/range values while allocating distinct live Arc leases and
+check refusal; they do not qualify a real trusted solver or OS launch. Existing
+pairing, replay, held-order and effort assertions remain unchanged, with test
+fixtures routed through the original checked frame controller. All new
+proofs/tests/mutations, native gates, default conformance and cost measurements
+are unrun/unqualified.
+
+This does not finish Entry-to-origin refinement. The original command/prefix/key
+checkpoint, complete accepted-command inventory and held-check release
+permutation still need their actual production joins. Neither frame membership
+nor the common lease provides the modeled prior-publication ledger, protected
+protocol writer, restart initialization or shared/bundled origin contract.
+
 The component uses `ModelContext`, `Mode` and `SolverId` from the captured
 [shared context](../../proofs/acceptance/context.rs). A current session retains
 the exact request, scope, runtime, solver, mode and effective input map throughout

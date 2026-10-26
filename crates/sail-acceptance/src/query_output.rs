@@ -72,6 +72,14 @@ sail_code! {
         start: usize,
         end: usize,
     }
+    /// Value-preserving copy of one admitted interval, retaining its exact
+    /// ordinal and byte endpoints through queues, annotation and publication.
+    pub struct FramePayload {
+        bytes: Vec<u8>,
+        ordinal: usize,
+        start: usize,
+        end: usize,
+    }
     /// The solver stdout bytes already received and all admitted endpoints.
     pub struct Transcript {
         bytes: Vec<u8>,
@@ -243,6 +251,47 @@ sail_code! {
             /// Original byte range ending in the owning stdout buffer.
             pub fn end(&self) -> (out: usize) requires (true) ensures (out==self.end_view()) { self.end }
         }
+        sail_method! {
+            /// Transfers this exact interval into owned storage without
+            /// dropping its source position or reinterpreting its bytes.
+            pub fn into_owned(self) -> (out: FramePayload)
+                requires (true)
+                ensures (out.view() == self.view(), out.ordinal_view() == self.ordinal_view(),
+                    out.start_view() == self.start_view(), out.end_view() == self.end_view())
+            {
+                let mut bytes = Vec::new();
+                bytes.extend_from_slice(self.bytes);
+                FramePayload { bytes, ordinal:self.ordinal, start:self.start, end:self.end }
+            }
+        }
+    }
+    impl FramePayload {
+        sail_impl_spec! {
+            pub closed spec fn view(&self) -> Seq<u8> { self.bytes@ }
+            pub closed spec fn ordinal_view(&self) -> nat { self.ordinal as nat }
+            pub closed spec fn start_view(&self) -> nat { self.start as nat }
+            pub closed spec fn end_view(&self) -> nat { self.end as nat }
+        }
+        sail_method! {
+            /// Borrows the original response bytes after ownership transfer.
+            pub fn bytes(&self) -> (out: &[u8]) requires (true) ensures (out@ == self.view()) { &self.bytes }
+        }
+        sail_method! {
+            /// Original frame ordinal, independent of held-check release order.
+            pub fn ordinal(&self) -> (out: usize) requires (true) ensures (out == self.ordinal_view()) { self.ordinal }
+        }
+        sail_method! {
+            /// Original start offset in the completed stdout owner.
+            pub fn start(&self) -> (out: usize) requires (true) ensures (out == self.start_view()) { self.start }
+        }
+        sail_method! {
+            /// Original end offset in the completed stdout owner.
+            pub fn end(&self) -> (out: usize) requires (true) ensures (out == self.end_view()) { self.end }
+        }
+        sail_method! {
+            /// Consumes the positional witness only at unchanged wire conversion.
+            pub fn into_bytes(self) -> (out: Vec<u8>) requires (true) ensures (out@ == self.view()) { self.bytes }
+        }
     }
     impl CompleteOutput {
         sail_impl_spec! {
@@ -250,6 +299,12 @@ sail_code! {
             pub closed spec fn endpoints(&self) -> Seq<usize> { self.ends@ }
             pub closed spec fn complete(&self) -> bool { frames_wf(self.view(),self.endpoints())
                 && (if self.endpoints().len()==0 { self.view().len()==0 } else { self.endpoints().last()==self.view().len() }) }
+            pub open spec fn contains(&self, frame: &FramePayload) -> bool {
+                frame.ordinal_view() < self.endpoints().len()
+                    && frame.start_view() == frame_start(self.endpoints(), frame.ordinal_view() as int)
+                    && frame.end_view() == self.endpoints()[frame.ordinal_view() as int]
+                    && frame.view() == self.view().subrange(frame.start_view() as int,frame.end_view() as int)
+            }
         }
         sail_method! {
             /// Number of exact frames in the complete actual output partition.
@@ -258,6 +313,19 @@ sail_code! {
         sail_method! {
             /// Original complete stdout, retained without copying by the seal.
             pub fn bytes(&self) -> (out: &[u8]) requires (true) ensures (out@==self.view()) { &self.bytes }
+        }
+        sail_method! {
+            /// Checks exact ordinal, endpoints and bytes against this complete
+            /// owner; shape or an equal payload at another position is insufficient.
+            pub fn contains_frame(&self, frame: &FramePayload) -> (out: bool)
+                requires (self.complete()) ensures (out == self.contains(frame))
+            {
+                if frame.ordinal >= self.ends.len() { return false; }
+                let start = if frame.ordinal == 0 { 0 } else { self.ends[frame.ordinal - 1] };
+                let end = self.ends[frame.ordinal];
+                if frame.start != start || frame.end != end { return false; }
+                crate::inputs::byte_eq(&frame.bytes, &self.bytes[start..end])
+            }
         }
     }
 }

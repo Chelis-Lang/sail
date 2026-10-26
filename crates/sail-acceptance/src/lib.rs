@@ -20,6 +20,8 @@ pub mod query;
 pub mod query_delivery;
 /// Exact stdout coverage and same-owner response intervals.
 pub mod query_output;
+/// Original opaque stream leases retained through frame copies and publication.
+pub mod query_output_owner;
 /// Default response policy from exact accepted command head bytes.
 pub mod query_policy;
 /// Joint ownership of exact raw input and its incremental key material.
