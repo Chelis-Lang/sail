@@ -625,3 +625,21 @@ The separate [normal-wrapper control proposal](managed-wrapper-control-transport
 describes an unselected environment-preserving transport and its required native
 authentication/process joins. It does not change the selected runtime or close
 the reproduced environment and verification-phase input gaps.
+
+## Capturing concrete feature refusal
+
+The combined canonical driver captures the private `MissingEngineFeature`
+factory and the native engine's actual `engine_decision` call. Its feature
+observation retains original diagnostic bytes, the exact ASCII feature name
+and the runtime's supplied available-feature list; it grants neither image
+identity nor exhaustive compiler-input authority. Six additional ordinary
+controls require byte-origin, name, availability, normal-exit, decision and
+model-admission guards. The earlier exit-zero decline control now names the
+complete original factory to distinguish it from the added feature factory;
+its original failure condition is unchanged.
+
+Whole-root development probes check the resulting input root at 237/0 and
+authority root at 385/0, retaining every prior explicit function. These source
+probes are separate from the complete committed proof/control matrix and native
+service gates. The frozen `4bd22455` gate does not include this later feature
+slice; no earlier receipt qualifies the added behavior.

@@ -414,7 +414,7 @@
           "after": "\n}"
         }
       ],
-      "verified": 74,
+      "verified": 75,
       "functions": [
         "check_authority::authority::Candidate::context",
         "check_authority::authority::Candidate::invocations",
@@ -498,6 +498,8 @@
         "check_authority::authority::engine_declined",
         "check_authority::authority::engine_document_complete",
         "check_authority::authority::engine_failed",
+        "check_authority::authority::engine_observation_refuses",
+        "check_authority::authority::engine_observation_usable",
         "check_authority::authority::engine_protocol_complete",
         "check_authority::authority::engine_text_present",
         "check_authority::authority::every_child_closed",
@@ -513,6 +515,7 @@
         "check_authority::authority::failure_valid",
         "check_authority::authority::fallback_subject_matches",
         "check_authority::authority::fallback_subject_swap_refused",
+        "check_authority::authority::feature_prefix",
         "check_authority::authority::finish_project",
         "check_authority::authority::finish_project_per_target",
         "check_authority::authority::good_function",
@@ -524,6 +527,7 @@
         "check_authority::authority::invocation_wf",
         "check_authority::authority::malformed",
         "check_authority::authority::malformed_or_error_document_refused",
+        "check_authority::authority::missing_feature_valid",
         "check_authority::authority::missing_sibling_and_ambiguous_reports_controls",
         "check_authority::authority::missing_tier_and_inconsistent_summary_controls",
         "check_authority::authority::normal_zero_decline_fresh_fallback_control",
@@ -564,6 +568,7 @@
         "check_authority::authority::stream_closed",
         "check_authority::authority::stream_started",
         "check_authority::authority::target_equal",
+        "check_authority::authority::valid_protocol_missing_feature_restart_control",
         "check_authority::authority::validate_current_complete",
         "check_authority::authority::validate_document",
         "check_authority::authority::validate_scoped",
@@ -624,7 +629,7 @@
           "after": "if false { return None; }"
         }
       ],
-      "verified": 208,
+      "verified": 209,
       "functions": [
         "check_composition::authority::Candidate::context",
         "check_composition::authority::Candidate::invocations",
@@ -708,6 +713,8 @@
         "check_composition::authority::engine_declined",
         "check_composition::authority::engine_document_complete",
         "check_composition::authority::engine_failed",
+        "check_composition::authority::engine_observation_refuses",
+        "check_composition::authority::engine_observation_usable",
         "check_composition::authority::engine_protocol_complete",
         "check_composition::authority::engine_text_present",
         "check_composition::authority::every_child_closed",
@@ -723,6 +730,7 @@
         "check_composition::authority::failure_valid",
         "check_composition::authority::fallback_subject_matches",
         "check_composition::authority::fallback_subject_swap_refused",
+        "check_composition::authority::feature_prefix",
         "check_composition::authority::finish_project",
         "check_composition::authority::finish_project_per_target",
         "check_composition::authority::good_function",
@@ -734,6 +742,7 @@
         "check_composition::authority::invocation_wf",
         "check_composition::authority::malformed",
         "check_composition::authority::malformed_or_error_document_refused",
+        "check_composition::authority::missing_feature_valid",
         "check_composition::authority::missing_sibling_and_ambiguous_reports_controls",
         "check_composition::authority::missing_tier_and_inconsistent_summary_controls",
         "check_composition::authority::normal_zero_decline_fresh_fallback_control",
@@ -774,6 +783,7 @@
         "check_composition::authority::stream_closed",
         "check_composition::authority::stream_started",
         "check_composition::authority::target_equal",
+        "check_composition::authority::valid_protocol_missing_feature_restart_control",
         "check_composition::authority::validate_current_complete",
         "check_composition::authority::validate_document",
         "check_composition::authority::validate_scoped",
