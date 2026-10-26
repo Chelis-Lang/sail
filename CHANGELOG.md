@@ -11,6 +11,11 @@ semantic versioning once the API is published.
   forwarding/fallback behavior and does not authenticate arbitrary writers or
   establish persistent cache origins.
 
+- Preserve each fresh cached reply's original stream lease, frame ordinal and
+  byte range through pairing and effort annotation; require original output
+  membership and one retained input/output child lease before local publication.
+  Equal bytes from a different stream do not supply that observation.
+
 - Require EOF and a complete partition of retained solver stdout before cache
   publication; include response endpoints in the output buffer budget.
 

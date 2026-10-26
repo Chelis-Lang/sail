@@ -23,18 +23,44 @@ use sail_acceptance::query::{
 };
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
-use sail_key::{
-    DeliveredInput, InputDelivery, Mode, ObservedPublication, QueryKey, SessionPrefix,
-    SolverIdentity,
-};
+use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
 use sail_session::Session;
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
 
+/// A strongly retained allocation minted only beside the actual child/pipe
+/// extraction below; PID and equal stream values cannot substitute for it.
+type SolverLease = Arc<()>;
+type SolverFrame = sail_acceptance::query_output_owner::OwnedFrame<SolverLease>;
+type SolverPublication = sail_key::OwnedObservedPublication<SolverLease, SolverOwnerIdentity>;
+
+struct SolverOwnerIdentity;
+impl sail_acceptance::inputs::OwnerIdentity<SolverLease> for SolverOwnerIdentity {
+    fn same_owner(&self, original: &SolverLease, actual: &SolverLease) -> bool {
+        Arc::ptr_eq(original, actual)
+    }
+}
+
+/// The actual frozen input and its original private solver lease travel together.
+struct TerminalInput {
+    delivered: DeliveredInput,
+    owner: SolverLease,
+}
+/// Created only alongside this exact spawn and extracted descriptors.
+struct SolverProcess {
+    child: Child,
+    owner: SolverLease,
+}
+impl TerminalInput {
+    fn key(&self) -> QueryKey {
+        self.delivered.key()
+    }
+}
+
 /// What the output side should do with the next reply.
 enum Expect {
     /// Full input reached EOF; certify it only after a quiet, complete session.
-    Terminal(DeliveredInput),
+    Terminal(TerminalInput),
     /// Store the reply under this key.
     Store {
         key: QueryKey,
@@ -144,7 +170,7 @@ fn unservable(command: &[u8], reply: &[u8], effort: Option<&Effort>) -> bool {
 /// Silence certificates have a separate complete-session origin.
 enum Entry {
     Paired {
-        pair: BoundPair<Expect, Vec<u8>>,
+        pair: BoundPair<Expect, SolverFrame>,
         effort: Option<Effort>,
     },
     Silence {
@@ -153,6 +179,13 @@ enum Entry {
 }
 
 impl Entry {
+    fn observed_by(&self, publication: &SolverPublication) -> bool {
+        match self {
+            Self::Paired { pair, .. } => publication.contains_frame(pair.reply()),
+            Self::Silence { key } => *key == publication.input_key(),
+        }
+    }
+
     fn effort_mut(&mut self) -> Option<&mut Effort> {
         match self {
             Self::Paired { effort, .. } => effort.as_mut(),
@@ -167,6 +200,7 @@ impl Entry {
                     return None;
                 };
                 pair.reply()
+                    .bytes()
                     .len()
                     .checked_add(command.len())?
                     .checked_add(text.len())
@@ -184,7 +218,7 @@ impl Entry {
                 let Expect::Store { key, command, .. } = expect else {
                     return None;
                 };
-                (key, command, reply, effort)
+                (key, command, reply.into_bytes(), effort)
             }
             Self::Silence { key } => (
                 key,
@@ -203,6 +237,13 @@ impl Entry {
             reply,
         ))
     }
+}
+
+fn batch_observed(pending: &PublicationBatch<Entry>, publication: &SolverPublication) -> bool {
+    pending
+        .entries()
+        .iter()
+        .all(|entry| entry.observed_by(publication))
 }
 
 /// A `check-sat` reply held back until its effort is known: the
@@ -232,8 +273,8 @@ fn rlimit_count(reply: &[u8]) -> Option<u64> {
 /// `Expect::Stop`, a solver error reply, an implausible reply, or
 /// [`Pairer::stop`].
 struct Pairer {
-    terminal: Option<DeliveredInput>,
-    pending: CorrelatedQueue<Expect, Vec<u8>>,
+    terminal: Option<TerminalInput>,
+    pending: CorrelatedQueue<Expect, SolverFrame>,
     /// The latest `rlimit-count` seen in a statistics reply.
     last_count: Option<u64>,
     held: Option<HeldCheck>,
@@ -251,10 +292,27 @@ impl Default for Pairer {
 }
 
 impl Pairer {
-    fn reply(&mut self, reply: Vec<u8>) {
+    fn reply_frame(&mut self, reply: SolverFrame) {
         // A stopped pairer never pairs again; retaining payloads only grows.
         if !self.pending.is_stopped() {
             self.pending.reply(reply);
+        }
+    }
+
+    #[cfg(test)]
+    fn reply(&mut self, reply: Vec<u8>) {
+        // Legacy value-domain fixtures each declare their own original stream;
+        // they do not qualify actual producer ownership or full publication.
+        let owner = Arc::new(());
+        let mut output = sail_acceptance::query_output_owner::StreamOutput::new(Arc::clone(&owner));
+        output.append(&reply);
+        let frame = output
+            .frame(0, reply.len())
+            .and_then(|frame| frame.into_owned(owner, &SolverOwnerIdentity));
+        if let Some(frame) = frame {
+            self.reply_frame(frame);
+        } else {
+            self.stop();
         }
     }
 
@@ -289,7 +347,7 @@ impl Pairer {
         // Pop only when both sides have an entry: popping one and finding the
         // other empty would drop it and shift every later pairing by one.
         while let Some(pair) = self.pending.take_pair() {
-            let reply = pair.reply();
+            let reply = pair.reply().bytes();
             let Expect::Store { text, limit, .. } = pair.expectation() else {
                 self.pending.stop();
                 break;
@@ -347,7 +405,7 @@ impl Pairer {
 
     /// Releases a held check while preserving the actual frozen input token
     /// for the joint publication transition; a silence key cannot replace it.
-    fn finish_observed(&mut self) -> (Vec<Entry>, Option<DeliveredInput>) {
+    fn finish_observed(&mut self) -> (Vec<Entry>, Option<TerminalInput>) {
         let mut out = Vec::new();
         let mut delivery = None;
         if !self.pending.is_stopped() {
@@ -406,6 +464,8 @@ struct Solving {
     input: Arc<InputStatus>,
     /// The output side; it owns the solver and returns its exit status.
     output: JoinHandle<u8>,
+    /// Original child lease shared only with this child's actual output owner.
+    owner: SolverLease,
 }
 
 /// Sends paired replies to the daemon on its own thread, so forwarding never
@@ -413,7 +473,7 @@ struct Solving {
 fn spawn_storer(
     mut client: Client,
     entries: Receiver<Entry>,
-    publication: Receiver<Option<ObservedPublication>>,
+    publication: Receiver<Option<SolverPublication>>,
 ) -> Option<JoinHandle<()>> {
     std::thread::Builder::new()
         .name("sail-z3-store".to_owned())
@@ -433,6 +493,9 @@ fn spawn_storer(
             let Some(publication) = publication.recv().ok().flatten() else {
                 return;
             };
+            if !batch_observed(&pending, &publication) {
+                return;
+            }
             let Some(pending) = publication.release(pending) else {
                 return;
             };
@@ -467,7 +530,7 @@ fn queue_stores(
 /// The storing thread and the channel to it.
 struct Storing {
     tx: Sender<Entry>,
-    publication: Sender<Option<ObservedPublication>>,
+    publication: Sender<Option<SolverPublication>>,
     storer: Option<JoinHandle<()>>,
 }
 
@@ -489,7 +552,7 @@ impl Storing {
     }
 
     /// Ends the session's stores with the exact joint owned observation.
-    fn close(self, observation: Option<ObservedPublication>) {
+    fn close(self, observation: Option<SolverPublication>) {
         let _ = self.publication.send(observation);
         drop(self.tx);
         if let Some(h) = self.storer {
@@ -521,15 +584,16 @@ impl Storing {
 )]
 fn output_side(
     mut from: impl Read,
-    mut child: Child,
+    mut process: SolverProcess,
     served: &[ServedReply],
     expects: &Receiver<Expect>,
     client: Option<Client>,
     input: &InputStatus,
     stderr: Option<&crate::cached_stderr::Monitor>,
 ) -> u8 {
+    let owner = Arc::clone(&process.owner);
     let limit = buffer_limit();
-    let mut all = sail_acceptance::query_output::Transcript::new(); // every output byte so far
+    let mut all = sail_acceptance::query_output_owner::StreamOutput::new(Arc::clone(&owner));
     // Once forwarding is live and nothing more will be recorded, every later
     // byte is forwarded as read, exactly as pass-through forwards it.
     let mut streaming = false;
@@ -580,15 +644,24 @@ fn output_side(
         for item in items {
             let start = usize::try_from(item.offset).unwrap_or(usize::MAX);
             if let Some((fresh, s)) = prev.take() {
-                if all.frame(s, start).is_none() {
+                let frame = all.frame(s, start);
+                if frame.is_none() {
                     pairer.stop();
                 }
+                let owned = if fresh {
+                    frame.and_then(|frame| {
+                        frame.into_owned(Arc::clone(&owner), &SolverOwnerIdentity)
+                    })
+                } else {
+                    None
+                };
                 // Framing refusal stops publication. Replay comparison still
                 // consumes the original bytes and keeps its original behavior.
-                if !check.settle(
+                if !check.settle_observed(
                     fresh,
                     all.bytes().get(s..start).unwrap_or_default(),
                     &mut pairer,
+                    owned,
                 ) {
                     break;
                 }
@@ -636,13 +709,13 @@ fn output_side(
     // fails and exits instead of waiting forever.
     drop(from);
     if check.diverged {
-        let _ = child.kill(); // it may wait for input that will never come
+        let _ = process.child.kill(); // it may wait for input that will never come
     }
     // End of output. Deliver what is left, as pass-through would.
     if !check.diverged && forward_from.is_some() && all.len() > forwarded {
         forwarding_ok &= write_out(all.bytes().get(forwarded..).unwrap_or_default());
     }
-    let (_, mut code) = match child.wait() {
+    let (_, mut code) = match process.child.wait() {
         Ok(status) => crate::status_code(status),
         Err(_) => (None, 1),
     };
@@ -653,10 +726,18 @@ fn output_side(
         && code == 0
     {
         let end = all.len();
-        if all.frame(s, end).is_none() {
+        let frame = all.frame(s, end);
+        if frame.is_none() {
             pairer.stop();
         }
-        check.settle(fresh, all.bytes().get(s..).unwrap_or_default(), &mut pairer);
+        let owned =
+            frame.and_then(|frame| frame.into_owned(Arc::clone(&owner), &SolverOwnerIdentity));
+        check.settle_observed(
+            fresh,
+            all.bytes().get(s..).unwrap_or_default(),
+            &mut pairer,
+            owned,
+        );
     }
     // This consumes the actual stdout owner. It attests EOF and complete
     // response coverage, separately from the process/input/origin conditions.
@@ -688,7 +769,11 @@ fn output_side(
         quiet: silent,
         forwarding_ok,
     };
-    let publication = delivery.and_then(|delivery| delivery.observe_publication(output, gate));
+    let publication = delivery.and_then(|input| {
+        input
+            .delivered
+            .observe_owned_publication(input.owner, output, gate, SolverOwnerIdentity)
+    });
     storing.close(publication);
     if !input_done {
         // The input side is blocked reading a client that waits for replies
@@ -727,6 +812,13 @@ fn start_solver(
         let _ = child.wait();
         return None;
     };
+    // One opaque lease is allocated beside this exact owned spawn and both
+    // extracted descriptors. Strong references survive until publication ends.
+    let owner = Arc::new(());
+    let process = SolverProcess {
+        child,
+        owner: Arc::clone(&owner),
+    };
     let (tx, rx) = std::sync::mpsc::channel();
     let input = Arc::new(InputStatus {
         done: AtomicBool::new(false),
@@ -742,7 +834,7 @@ fn start_solver(
         .spawn(move || {
             output_side(
                 stdout,
-                child,
+                process,
                 &served,
                 &rx,
                 client,
@@ -756,6 +848,7 @@ fn start_solver(
         expects: tx,
         input,
         output,
+        owner,
     };
     s.write(prefix.bytes());
     Some(s)
@@ -779,7 +872,10 @@ impl Solving {
         let delivered = self.stdin.seal(terminal, complete);
         let final_expectation = match delivered {
             Some(delivered) if self.input.valid.load(Ordering::SeqCst) => {
-                Expect::Terminal(delivered)
+                Expect::Terminal(TerminalInput {
+                    delivered,
+                    owner: Arc::clone(&self.owner),
+                })
             }
             _ => {
                 self.input.valid.store(false, Ordering::SeqCst);
@@ -991,9 +1087,19 @@ impl<'a> ReplayCheck<'a> {
     /// Settles one complete reply: a fresh one goes to the pairer, a
     /// suppressed one must equal the reply served in its place. Returns
     /// false once the replay has diverged.
-    fn settle(&mut self, fresh: bool, bytes: &[u8], pairer: &mut Pairer) -> bool {
+    fn settle_observed(
+        &mut self,
+        fresh: bool,
+        bytes: &[u8],
+        pairer: &mut Pairer,
+        frame: Option<SolverFrame>,
+    ) -> bool {
         if fresh {
-            pairer.reply(bytes.to_vec());
+            if let Some(frame) = frame {
+                pairer.reply_frame(frame);
+            } else {
+                pairer.stop();
+            }
         } else if self
             .served
             .get(self.checked)
@@ -1004,6 +1110,16 @@ impl<'a> ReplayCheck<'a> {
             self.diverged = true;
         }
         !self.diverged
+    }
+
+    #[cfg(test)]
+    fn settle(&mut self, fresh: bool, bytes: &[u8], pairer: &mut Pairer) -> bool {
+        if fresh {
+            pairer.reply(bytes.to_vec());
+            !self.diverged
+        } else {
+            self.settle_observed(false, bytes, pairer, None)
+        }
     }
 }
 
@@ -1278,7 +1394,7 @@ fn record_provenance(input: &[u8], served: u64, solver_started: bool) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Entry, Expect, Pairer};
+    use super::{Entry, Expect, Pairer, TerminalInput};
     use proptest::prelude::*;
     use sail_key::QueryKey;
 
@@ -1530,7 +1646,7 @@ mod tests {
         }
         fn close(&mut self) {}
     }
-    fn terminal(bytes: &[u8]) -> Result<sail_key::DeliveredInput, &'static str> {
+    fn terminal(bytes: &[u8]) -> Result<TerminalInput, &'static str> {
         let mut prefix = sail_key::SessionPrefix::new(&identity(), &sail_key::Mode::Default);
         let mut delivery = prefix.delivery(TestPipe);
         prefix.append(bytes);
@@ -1539,6 +1655,10 @@ mod tests {
         }
         delivery
             .seal(prefix.silence_key(), true)
+            .map(|delivered| TerminalInput {
+                delivered,
+                owner: std::sync::Arc::new(()),
+            })
             .ok_or("script delivery must seal")
     }
 
@@ -1567,10 +1687,120 @@ mod tests {
         let (entries, input) = pairer.finish_observed();
         assert_eq!(entries.len(), 1);
         assert!(matches!(&entries[0], Entry::Silence { key: observed } if *observed == key));
-        assert_eq!(input.as_ref().map(sail_key::DeliveredInput::key), Some(key));
+        assert_eq!(input.as_ref().map(TerminalInput::key), Some(key));
         let (again, duplicate) = pairer.finish_observed();
         assert!(again.is_empty());
         assert!(duplicate.is_none());
+        Ok(())
+    }
+
+    fn owned_output(
+        owner: &super::SolverLease,
+    ) -> Result<
+        (
+            super::SolverFrame,
+            sail_acceptance::query_output_owner::CompletedStream<super::SolverLease>,
+        ),
+        &'static str,
+    > {
+        let mut output =
+            sail_acceptance::query_output_owner::StreamOutput::new(std::sync::Arc::clone(owner));
+        output.append(b"unsat\n");
+        let frame = output
+            .frame(0, 6)
+            .ok_or("script frame")?
+            .into_owned(std::sync::Arc::clone(owner), &super::SolverOwnerIdentity)
+            .ok_or("retained original lease")?;
+        output.end();
+        Ok((frame, output.seal().ok_or("script EOF and coverage")?))
+    }
+
+    /// Native Arc identity and scripted streams only; this is not an actual
+    /// trusted solver or physical launch/pipe qualification.
+    #[test]
+    fn equal_byte_streams_cannot_swap_original_owners_or_child_publication()
+    -> Result<(), &'static str> {
+        let original = terminal(b"(check-sat)\n")?;
+        let other = terminal(b"(check-sat)\n")?;
+        let (first, output) = owned_output(&original.owner)?;
+        let (second, other_output) = owned_output(&other.owner)?;
+        assert_eq!(first.bytes(), second.bytes());
+        assert_eq!(first.payload().ordinal(), second.payload().ordinal());
+        assert_eq!(first.payload().start(), second.payload().start());
+        assert_eq!(first.payload().end(), second.payload().end());
+        assert!(output.contains_frame(&first, &super::SolverOwnerIdentity));
+        assert!(!other_output.contains_frame(&first, &super::SolverOwnerIdentity));
+        let gate = super::PublicationGate {
+            input_closed: true,
+            pairing_active: true,
+            queues_empty: true,
+            normal_exit: true,
+            quiet: true,
+            forwarding_ok: true,
+        };
+        let publication = original
+            .delivered
+            .observe_owned_publication(
+                original.owner,
+                Some(output),
+                gate,
+                super::SolverOwnerIdentity,
+            )
+            .ok_or("original stream/child leases")?;
+        assert!(publication.contains_frame(&first));
+        assert!(!publication.contains_frame(&second));
+        let mut pairs = super::CorrelatedQueue::empty();
+        pairs.expect(store(1, "(check-sat)"));
+        pairs.reply(first);
+        let mut original_batch = super::PublicationBatch::empty();
+        assert!(original_batch.push(
+            Entry::Paired {
+                pair: pairs.take_pair().ok_or("original pair")?,
+                effort: None
+            },
+            6,
+            6
+        ));
+        assert!(super::batch_observed(&original_batch, &publication));
+        pairs.expect(store(2, "(check-sat)"));
+        pairs.reply(second);
+        let mut swapped_batch = super::PublicationBatch::empty();
+        assert!(swapped_batch.push(
+            Entry::Paired {
+                pair: pairs.take_pair().ok_or("swapped pair")?,
+                effort: None
+            },
+            6,
+            6
+        ));
+        assert!(!super::batch_observed(&swapped_batch, &publication));
+        assert!(
+            Entry::Silence {
+                key: publication.input_key()
+            }
+            .observed_by(&publication)
+        );
+        assert!(!Entry::Silence { key: key(255) }.observed_by(&publication));
+        let third = terminal(b"(check-sat)\n")?;
+        let gate = super::PublicationGate {
+            input_closed: true,
+            pairing_active: true,
+            queues_empty: true,
+            normal_exit: true,
+            quiet: true,
+            forwarding_ok: true,
+        };
+        assert!(
+            third
+                .delivered
+                .observe_owned_publication(
+                    third.owner,
+                    Some(other_output),
+                    gate,
+                    super::SolverOwnerIdentity
+                )
+                .is_none()
+        );
         Ok(())
     }
 
