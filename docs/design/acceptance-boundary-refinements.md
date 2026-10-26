@@ -56,6 +56,22 @@ proof cannot be manufactured from an exact partial receipt. A compile-only
 observation may match a request and remain Current while supplying no proof
 authority. Genuine enabled zero-function proofs remain admissible.
 
+The initial consumer inventory is:
+
+| Surface | Existing checked operation | Correspondence still needed |
+|---|---|---|
+| Fresh managed completion | `sail-verus` runner's independent requested coverage and whole-report admission | Persist the independently resolved request through later reads |
+| CLI retained job labels | `sail-cli/src/jobs.rs` calls `complete_target` | Bind the retained target to the original request before a current complete claim |
+| MCP summary/targets/full views | `sail-mcp/src/compact.rs` rechecks target authority | Preserve original-request admission across shaping and detail choices |
+| Repair CLI and job responses | `sail-api/src/repair.rs` calls selected-project authority with additional batch guards | Retain the independent full-phase request rather than infer it from selected result flags |
+| Evidence inventories | `sail-api/src/evidence.rs` rechecks whole-target authority | Preserve request and observation context through lookup and comparison |
+| Saved baselines | `sail-daemon/src/jobs/product.rs` forces Historical and retains producer-admissibility state | Preserve immutable establishment identity without upgrading history to present proof |
+| Schema-two project JSON | Actual typed fields remain candidates until checked | Serialization and a stored completion flag cannot construct original-request authority |
+
+This is a reviewed caller inventory, not a proof that every reachable rendering
+or producer transition satisfies the composed theorem. Other backend families
+and temporal/neutral-contract results retain their separate evidence contracts.
+
 Digest equality retains the existing cryptographic assumptions; it does not
 replace full logical input equality in a theorem. Public report headers do not
 establish an observed launch, an exhaustive compiler inventory, an admitted
