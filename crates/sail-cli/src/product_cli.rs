@@ -172,6 +172,10 @@ fn cancel_owned(client: &Client, id: &str) {
 }
 
 pub(crate) fn worker(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
+    let (request_capture, args) = match crate::managed_cli::request_capture_arguments(args) {
+        Ok(parsed) => parsed,
+        Err(message) => return error(&message, err),
+    };
     if args.first().map(String::as_str) != Some("--selection-json") {
         return error("private repair worker requires a selection", err);
     }
@@ -191,11 +195,12 @@ pub(crate) fn worker(args: &[String], out: &mut dyn Write, err: &mut dyn Write) 
         Ok(arguments) => arguments,
         Err(message) => return error(&message, err),
     };
-    let config = match crate::managed_cli::config(arguments, true) {
+    let mut config = match crate::managed_cli::config(arguments, true) {
         Ok(config) => config,
         Err(message) => return error(&message, err),
     };
-    match sail_verus::engine::repair(&config, &selection.function, err) {
+    config.request_capture = request_capture;
+    match sail_verus::engine::repair_selected(&config, &selection, err) {
         Ok(batch) => {
             let code = batch
                 .full

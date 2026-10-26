@@ -78,6 +78,10 @@ fn original_request() -> ResolvedRequest {
         input_revision: "revision".into(),
         args: Vec::new(),
         engine: None,
+        function: None,
+        repair_package: String::new(),
+        repair_target: None,
+        repair_kind: String::new(),
         targets: vec![RequestTarget {
             package_id: "cargo-package#1.0.0".into(),
             target: "app".into(),
@@ -91,8 +95,14 @@ fn original_request_binds_nonempty_scope_and_all_identity_fields() -> TestResult
     let request = original_request();
     let actual = project(vec![target("app", passing_report()?)]);
     let authority = complete_request(&request, &actual).ok_or("valid nonempty request refused")?;
-    assert!(std::ptr::eq(authority.request(), &request));
-    assert!(std::ptr::eq(authority.project(), &actual));
+    assert!(std::ptr::eq(
+        authority.request(),
+        std::ptr::from_ref(&request)
+    ));
+    assert!(std::ptr::eq(
+        authority.project(),
+        std::ptr::from_ref(&actual)
+    ));
     for field in [
         "run",
         "workspace",
@@ -136,6 +146,88 @@ fn original_request_binds_nonempty_scope_and_all_identity_fields() -> TestResult
     }
     zero.targets[0].report.summary = Summary::of(&zero.targets[0].report.crates);
     assert!(complete_request(&request, &zero).is_some());
+    Ok(())
+}
+
+#[test]
+fn submitted_arguments_only_allow_the_documented_incremental_noop() {
+    let strings = |values: &[&str]| values.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    let submitted = strings(&[
+        "--incremental",
+        "-p",
+        "app",
+        "--",
+        "--incremental",
+        "--no-verify",
+    ]);
+    let actual = strings(&["-p", "app", "--", "--incremental", "--no-verify"]);
+    assert!(sail_api::acceptance::submitted_arguments_match(
+        &submitted, &actual
+    ));
+    assert!(!sail_api::acceptance::submitted_arguments_match(
+        &submitted,
+        &strings(&["-p", "app", "--", "--incremental"])
+    ));
+    assert!(!sail_api::acceptance::submitted_arguments_match(
+        &submitted,
+        &strings(&["-p", "other", "--", "--incremental", "--no-verify"])
+    ));
+    assert!(!sail_api::acceptance::submitted_arguments_match(
+        &submitted,
+        &strings(&["-p", "app", "--", "--no-verify"])
+    ));
+}
+
+#[test]
+fn repair_selection_preserves_raw_package_and_exact_function_identity() {
+    let mut request = original_request();
+    request.function = Some("app::lemma".into());
+    request.repair_package = "app@1.0.0".into();
+    request.repair_target = Some("app-bin".into());
+    request.repair_kind = "bin".into();
+    let selected = Some("app-bin".to_owned());
+    assert!(sail_api::acceptance::repair_request_matches(
+        &request,
+        "app@1.0.0",
+        &selected,
+        "bin",
+        "app::lemma"
+    ));
+    for (package, target, kind, function) in [
+        ("cargo-package#1.0.0", selected.clone(), "bin", "app::lemma"),
+        ("app@1.0.0", Some("other-bin".into()), "bin", "app::lemma"),
+        ("app@1.0.0", selected.clone(), "lib", "app::lemma"),
+        ("app@1.0.0", selected, "bin", "app::other"),
+    ] {
+        assert!(!sail_api::acceptance::repair_request_matches(
+            &request, package, &target, kind, function
+        ));
+    }
+}
+
+#[test]
+fn repair_requires_its_function_in_actual_requested_full_records() -> TestResult {
+    let mut request = original_request();
+    request.function = Some("input::Counter::get".into());
+    let mut actual = project(vec![target("app", passing_report()?)]);
+    assert!(complete_request(&request, &actual).is_some());
+    assert!(sail_api::acceptance::requested_function_present(
+        &request, &actual
+    ));
+    request.function = Some("input::does_not_exist".into());
+    assert!(
+        complete_request(&request, &actual).is_some(),
+        "whole-target proof remains independent of repair selection"
+    );
+    assert!(!sail_api::acceptance::requested_function_present(
+        &request, &actual
+    ));
+    request.function = Some("input::Counter::get".into());
+    actual.targets[0].requested = false;
+    assert!(
+        !sail_api::acceptance::requested_function_present(&request, &actual),
+        "a dependency is not the requested repair target"
+    );
     Ok(())
 }
 

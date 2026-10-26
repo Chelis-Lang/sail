@@ -161,6 +161,61 @@ sail_spec! {
                     && successful_report(&p.targets@[i].report, CompletionPolicy::Whole))
     }
 
+    pub open spec fn small_request_match(r: &ResolvedRequest, p: &ProjectResult) -> bool {
+        request_header_matches(r, p) && r.targets@.len() == 1 && p.targets@.len() == 1
+            && p.targets@[0].requested
+            && string_bytes(&r.targets@[0].package_id) == string_bytes(&p.targets@[0].package_id)
+            && string_bytes(&r.targets@[0].target) == string_bytes(&p.targets@[0].target)
+            && exists |i: int| 0 <= i < p.targets@[0].kind@.len()
+                && string_bytes(&r.targets@[0].kind) == string_bytes(&p.targets@[0].kind@[i])
+    }
+
+    pub open spec fn small_positive_request(r: &ResolvedRequest, p: &ProjectResult) -> bool {
+        small_request_match(r, p) && !partial_command(r.args@) && !verification_disabled(r.args@)
+            && p.currentness is Current && p.exit_code == Some(0i32) && p.error.is_none()
+            && p.targets@[0].complete && p.targets@[0].scope_reuse.is_none()
+            && !partial_command(p.targets@[0].report.command@)
+            && small_positive_report(&p.targets@[0].report, CompletionPolicy::Whole)
+    }
+
+    pub proof fn single_target_coverage(es: Seq<RequestedTarget>, ts: Seq<TargetResult>)
+        requires es.len() == 1, ts.len() == 1, ts[0].requested, target_match(&es[0], &ts[0]),
+        ensures exact_requested_coverage(es, ts),
+    {
+        assert(request_covered(&es[0], ts)) by {
+            assert(exists |i: int| 0 <= i < ts.len() && target_match(&es[0], &ts[i]) && ts[i].requested
+                && forall |j: int| 0 <= j < ts.len() && target_match(&es[0], &ts[j]) ==> j == i);
+        }
+        assert(target_covered(&ts[0], es)) by {
+            assert(exists |i: int| 0 <= i < es.len() && target_match(&es[i], &ts[0])
+                && forall |j: int| 0 <= j < es.len() && target_match(&es[j], &ts[0]) ==> j == i);
+        }
+    }
+
+    pub open spec fn normalized_arguments(args: Seq<String>, end: nat) -> Seq<Seq<u8>>
+        recommends end <= args.len()
+        decreases end
+    {
+        if end == 0 { Seq::empty() }
+        else if string_bytes(&args[end - 1]) == b"--incremental"@
+            && !(exists |i: int| 0 <= i < end - 1 && string_bytes(&args[i]) == b"--"@)
+        { normalized_arguments(args, (end - 1) as nat) }
+        else { normalized_arguments(args, (end - 1) as nat).push(string_bytes(&args[end - 1])) }
+    }
+
+    pub open spec fn repair_function_at(r: &ResolvedRequest, p: &ProjectResult,
+        t: int, c: int, f: int) -> bool {
+        r.function.is_some() && 0 <= t < p.targets@.len() && p.targets@[t].requested
+            && 0 <= c < p.targets@[t].report.crates@.len()
+            && 0 <= f < p.targets@[t].report.crates@[c].functions@.len()
+            && string_bytes(&r.function.unwrap())
+                == string_bytes(&p.targets@[t].report.crates@[c].functions@[f].function)
+    }
+
+    pub open spec fn repair_function_present(r: &ResolvedRequest, p: &ProjectResult) -> bool {
+        exists |t: int, c: int, f: int| repair_function_at(r, p, t, c, f)
+    }
+
     pub open spec fn focused_argument(bytes: Seq<u8>) -> bool {
         sail_acceptance::authority::flag_matches(bytes, b"--verify-module"@)
             || sail_acceptance::authority::flag_matches(bytes, b"--verify-only-module"@)
@@ -459,11 +514,71 @@ sail_verified! {
 }
 
 sail_verified! {
-    /// Checks the retained pre-execution identity and independently resolved scope.
-    /// A matching failed or compile-only observation is not positive proof authority.
-    pub fn request_corresponds(request: &ResolvedRequest, project: &ProjectResult) -> (out: bool)
+    /// Checks only the CLI's documented no-op incremental-flag removal.
+    /// Forwarded verifier arguments, including every option after `--`, stay exact.
+    pub fn submitted_arguments_match(submitted: &[String], actual: &[String]) -> (out: bool)
         requires(true)
-        ensures(out ==> request_header_matches(request, project) && resolved_coverage(request, project))
+        ensures(out ==> actual@.map_values(|s: String| string_bytes(&s))
+            == normalized_arguments(submitted@, submitted@.len()))
+    {
+        let mut i = 0usize;
+        let mut j = 0usize;
+        let mut forwarded = false;
+        sail_while! { (i < submitted.len())
+            invariant(i <= submitted.len(), j <= actual.len(),
+                actual@.take(j as int).map_values(|s: String| string_bytes(&s))
+                    == normalized_arguments(submitted@, i as nat),
+                forwarded == (exists |k: int| 0 <= k < i && string_bytes(&submitted@[k]) == b"--"@))
+            decreases(submitted.len() - i)
+            {
+                if forwarded || !exact_bytes(submitted[i].as_str().as_bytes(), b"--incremental") {
+                    if j == actual.len() || !exact_bytes(submitted[i].as_str().as_bytes(), actual[j].as_str().as_bytes()) {
+                        return false;
+                    }
+                    j += 1;
+                }
+                if exact_bytes(submitted[i].as_str().as_bytes(), b"--") { forwarded = true; }
+                i += 1;
+            }
+        }
+        j == actual.len()
+    }
+}
+
+sail_verified! {
+    /// Binds an actual captured repair focus to the original exact selection.
+    pub fn repair_request_matches(request: &ResolvedRequest, package: &str,
+        target: &Option<String>, kind: &str, function: &str) -> (out: bool)
+        requires(true)
+        ensures(out == (request.function.is_some()
+            && string_bytes(&request.function.unwrap()) == vstd::utf8::encode_utf8(function@)
+            && string_bytes(&request.repair_package) == vstd::utf8::encode_utf8(package@)
+            && string_bytes(&request.repair_kind) == vstd::utf8::encode_utf8(kind@)
+            && match (&request.repair_target, target) {
+                (None, None) => true,
+                (Some(a), Some(b)) => string_bytes(a) == string_bytes(b),
+                _ => false,
+            }))
+    {
+        let same_function = match &request.function {
+            Some(actual) => exact_bytes(actual.as_str().as_bytes(), function.as_bytes()),
+            None => false,
+        };
+        same_function && exact_bytes(request.repair_package.as_str().as_bytes(), package.as_bytes())
+            && exact_bytes(request.repair_kind.as_str().as_bytes(), kind.as_bytes())
+            && match (&request.repair_target, target) {
+                (None, None) => true,
+                (Some(a), Some(b)) => exact_bytes(a.as_str().as_bytes(), b.as_str().as_bytes()),
+                _ => false,
+            }
+    }
+}
+
+sail_verified! {
+    /// Checks the actual original/output headers before reasoning about coverage.
+    pub fn request_headers_match(request: &ResolvedRequest, project: &ProjectResult) -> (out: bool)
+        requires(true)
+        ensures(out == request_header_matches(request, project))
     {
         if !exact_bytes(project.kind.as_str().as_bytes(), b"sail-project-result")
             || project.schema_version != crate::project::SCHEMA_VERSION
@@ -473,6 +588,19 @@ sail_verified! {
             || !exact_bytes(request.context_sha256.as_str().as_bytes(), project.context_sha256.as_str().as_bytes())
             || !exact_bytes(request.input_revision.as_str().as_bytes(), project.input_revision.as_str().as_bytes())
             || !same_engine(&request.engine, &project.engine) { return false; }
+        true
+    }
+}
+
+sail_verified! {
+    /// Checks the retained pre-execution identity and independently resolved scope.
+    /// A matching failed or compile-only observation is not positive proof authority.
+    pub fn request_corresponds(request: &ResolvedRequest, project: &ProjectResult) -> (out: bool)
+        requires(true)
+        ensures(out ==> request_header_matches(request, project) && resolved_coverage(request, project),
+            small_request_match(request, project) ==> out)
+    {
+        if !request_headers_match(request, project) { return false; }
         let mut expected: Vec<RequestedTarget> = Vec::new();
         let mut i = 0usize;
         sail_while! { (i < request.targets.len())
@@ -488,6 +616,13 @@ sail_verified! {
                 i += 1;
             }
         }
+        sail_proof! {
+            if small_request_match(request, project) {
+                assert(expected@.len() == 1);
+                assert(target_match(&expected@[0], &project.targets@[0]));
+                single_target_coverage(expected@, project.targets@);
+            }
+        }
         if !requested_coverage(&expected, &project.targets) { return false; }
         sail_proof! {
             assert(resolved_expected(request, expected@));
@@ -499,13 +634,66 @@ sail_verified! {
 }
 
 sail_verified! {
+    /// Finds the original repair function in actual requested full-report records.
+    /// This presence check alone confers no verdict or Currentness authority.
+    pub fn requested_function_present(request: &ResolvedRequest, project: &ProjectResult) -> (out: bool)
+        requires(true)
+        ensures(out == repair_function_present(request, project))
+    {
+        let Some(name) = &request.function else { return false; };
+        let mut t = 0usize;
+        sail_while! { (t < project.targets.len())
+            invariant(t <= project.targets.len(), request.function.is_some(),
+                string_bytes(name) == string_bytes(&request.function.unwrap()),
+                forall |a: int, b: int, d: int| 0 <= a < t ==> !repair_function_at(request, project, a, b, d))
+            decreases(project.targets.len() - t)
+            {
+                if project.targets[t].requested {
+                    let mut c = 0usize;
+                    sail_while! { (c < project.targets[t].report.crates.len())
+                        invariant(t < project.targets.len(), project.targets@[t as int].requested,
+                            request.function.is_some(), string_bytes(name) == string_bytes(&request.function.unwrap()),
+                            c <= project.targets@[t as int].report.crates@.len(),
+                            forall |b: int, d: int| 0 <= b < c ==> !repair_function_at(request, project, t as int, b, d))
+                        decreases(project.targets@[t as int].report.crates@.len() - c)
+                        {
+                            let mut f = 0usize;
+                            sail_while! { (f < project.targets[t].report.crates[c].functions.len())
+                                invariant(t < project.targets.len(), project.targets@[t as int].requested,
+                                    request.function.is_some(), string_bytes(name) == string_bytes(&request.function.unwrap()),
+                                    c < project.targets@[t as int].report.crates@.len(),
+                                    f <= project.targets@[t as int].report.crates@[c as int].functions@.len(),
+                                    forall |d: int| 0 <= d < f ==> !repair_function_at(request, project, t as int, c as int, d))
+                                decreases(project.targets@[t as int].report.crates@[c as int].functions@.len() - f)
+                                {
+                                    if exact_bytes(name.as_str().as_bytes(), project.targets[t].report.crates[c].functions[f].function.as_str().as_bytes()) {
+                                        sail_proof! { assert(repair_function_at(request, project, t as int, c as int, f as int)); }
+                                        return true;
+                                    }
+                                    f += 1;
+                                }
+                            }
+                            c += 1;
+                        }
+                    }
+                }
+                t += 1;
+            }
+        }
+        false
+    }
+}
+
+sail_verified! {
     /// Mints Current whole-request authority from an independent request and actual reports.
     pub fn complete_request_ordered<'a>(request: &'a ResolvedRequest, project: &'a ProjectResult,
         orders: &[ReportOrder]) -> (out: Option<CompleteRequest<'a>>)
         requires(true)
         ensures(out.is_some() ==> request_authorized(request, project),
             out.is_some() ==> request_authority_request(&out.unwrap()) == request,
-            out.is_some() ==> request_authority_project(&out.unwrap()) == project)
+            out.is_some() ==> request_authority_project(&out.unwrap()) == project,
+            small_positive_request(request, project) && orders@.len() == 1
+                && orders@[0].forward@.len() == 0 && orders@[0].inverse@.len() == 0 ==> out.is_some())
     {
         if !request_corresponds(request, project) || focused_command(&request.args)
             || !verification_enabled_command(&request.args)
@@ -589,7 +777,10 @@ sail_verified! {
         ensures(out.is_some() ==> target.complete && target.scope_reuse.is_none(),
             out.is_some() ==> successful_report(&target.report, CompletionPolicy::Whole),
             out.is_some() ==> !partial_command(target.report.command@),
-            out.is_some() ==> authority_report(&out.unwrap()) == &target.report)
+            out.is_some() ==> authority_report(&out.unwrap()) == &target.report,
+            target.complete && target.scope_reuse.is_none() && !partial_command(target.report.command@)
+                && small_positive_report(&target.report, CompletionPolicy::Whole)
+                && forward@.len() == 0 && inverse@.len() == 0 ==> out.is_some())
     {
         if !target.complete || target.scope_reuse.is_some() { return None; }
         complete_whole_report_ordered(&target.report, forward, inverse)
@@ -603,7 +794,9 @@ sail_verified! {
         requires(true)
         ensures(out.is_some() ==> successful_report(report, CompletionPolicy::Whole),
             out.is_some() ==> !partial_command(report.command@),
-            out.is_some() ==> authority_report(&out.unwrap()) == report)
+            out.is_some() ==> authority_report(&out.unwrap()) == report,
+            !partial_command(report.command@) && small_positive_report(report, CompletionPolicy::Whole)
+                && forward@.len() == 0 && inverse@.len() == 0 ==> out.is_some())
     {
         if focused_command(&report.command) { return None; }
         complete_report_ordered(report, CompletionPolicy::Whole, forward, inverse)
@@ -654,7 +847,7 @@ sail_verified! {
 sail_verified! {
     fn unique_observed(e: &RequestedTarget, ts: &[TargetResult]) -> (out: Option<usize>)
         requires(true)
-        ensures(out.is_some() ==> request_covered(e, ts@))
+        ensures(out.is_some() == request_covered(e, ts@))
     {
         let mut found: Option<usize> = None;
         let mut i = 0usize;
@@ -681,7 +874,7 @@ sail_verified! {
 sail_verified! {
     fn unique_requested(t: &TargetResult, es: &[RequestedTarget]) -> (out: Option<usize>)
         requires(true)
-        ensures(out.is_some() ==> target_covered(t, es@))
+        ensures(out.is_some() == target_covered(t, es@))
     {
         let mut found: Option<usize> = None;
         let mut i = 0usize;
@@ -709,7 +902,7 @@ sail_verified! {
     /// Failed targets without artifacts must still appear as observations.
     pub fn requested_coverage(expected: &[RequestedTarget], targets: &[TargetResult]) -> (out: bool)
         requires(true)
-        ensures(out ==> exact_requested_coverage(expected@, targets@))
+        ensures(out == exact_requested_coverage(expected@, targets@))
     {
         if expected.is_empty() { return false; }
         let mut i = 0usize;

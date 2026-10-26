@@ -39,6 +39,14 @@ pub struct ResolvedRequest {
     pub args: Vec<String>,
     /// Independently selected engine; absent for stock verification.
     pub engine: Option<EngineIdentity>,
+    /// Exact engine focus function, when this run executes a repair batch.
+    pub function: Option<String>,
+    /// Raw package selector validated by the repair worker before execution.
+    pub repair_package: String,
+    /// Exact selected binary name; absent for an explicitly selected library.
+    pub repair_target: Option<String>,
+    /// Explicit repair target kind; empty when this is not a repair selection.
+    pub repair_kind: String,
     /// Complete independently resolved requested target inventory.
     pub targets: Vec<RequestTarget>,
 }
