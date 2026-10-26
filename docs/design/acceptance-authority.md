@@ -848,6 +848,80 @@ and job Currentness enum definitions. Filesystem readback completeness, exact
 serialization/cache selection, original process origins and every CLI/MCP
 rendering remain independent service-refinement obligations.
 
+## Service composition interface plan
+
+This is an inventory and implementation plan, not a new acceptance API or a
+service theorem. The authority component exposes checked borrowed relations;
+the native runner, daemon and serializers still determine which observations
+reach them. The full-service bridge must consume independently produced
+observations rather than reconstruct a model witness from a successful report.
+Source additions described here remain unqualified until the complete captured
+roots, ordinary failing controls and native gates qualify their integrated head.
+This table inventories the authority-owned interfaces; query and compiler-input
+components retain their own source inventories and provider obligations. It
+does not replace the integrated capture's exact module/type/function inventory.
+
+The model entrypoint is
+`proofs/acceptance/composition.rs::accept_current_complete`. Its inputs include
+the original model request, candidate, input evidence/world, complete ordered
+query executions and observation point. Its private-field `Accepted` token supports
+`present`, `historical_view` and `repair_projection`. The executable request
+factories below do not currently construct that token. In particular,
+`retained_current_frame_refines_request` composes request withholding and a
+revision classifier over supplied observations; it does not establish the
+physical observations or complete solver inventory required by
+`accept_current_complete`.
+
+| Native boundary | Existing executable interface | Relation required for service composition |
+|---|---|---|
+| Before Cargo and independent unchanged-call preflight | `managed/request.rs::Resolution::{resolve,capture_paths}`; `NativeRequestPaths::bind` forwards to `bind_request_paths` and returns private-field `RequestPathBinding` | Bind the actual invocation/configuration, independently selected Cargo targets, effective driver options and runtime to the model request. Exact native path bytes are one conjunct; a matching display string does not establish metadata, launch or input completeness. |
+| Original submission and worker capture | `bind_submission`, `bind_retained_submission`; `jobs/worker.rs::captured_request` and `jobs/store.rs::retained_request` | Preserve actual submitted arguments/mode/repair selection, worker capture identity and original run through decoding and retention. A newly parsed `ResolvedRequest` remains metadata until that native provenance relation is established. |
+| Original process/report admission | `ObservedAttempt`, `AttemptIdentity` and checked whole/repair/report factories; ordinary receipt/history readers | Relate actual owned child handles, descriptor, PID/slot, both stream EOFs and wait status to the report's original records and complete invocation/solver inventory. Archived identities remain original producer evidence and cannot mint a live attempt. |
+| Final whole-request result | `complete_request_ordered`, `withhold_unbound_request_authority_ordered`, `withhold_unmatched_request_paths` | Map the independently selected expected target inventory and every admitted target/report to the same model request/candidate/context. Rechecking flags alone cannot provide the missing producer or query evidence. Withholding must preserve original reports and process outcomes. |
+| Exact partial scope | `complete_exact_scope_report_ordered`, `complete_exact_partial_target_ordered`, `complete_exact_partial_request_ordered`; private-field `ExactScopeReport` and `ExactPartialRequest` | Preserve exact ordered command scope and original report coverage through the corresponding native branch. The model whole-acceptance constructor requires whole scope: partial admission must retain its separate relation and cannot be cast to `Accepted` or complete-target reuse. |
+| Current input readback | `managed/read_check.rs::with_guarded_readback` callback; `seal_replay_readback` returns private-field `ReplayReadback` | Establish that the actual observed file/configuration domain is exhaustive and that guard/read outcomes refer to the claimed supported observation point. A matching recorded revision and unchanged supplied domain do not establish either fact. |
+| Whole/partial unchanged-call transfer | `managed/noop.rs::{prepare,replay_bound}`, ordinary original-history admission, `bind_replayed_project_ordered` or `bind_replayed_exact_partial_project_ordered` | Relate the independently resolved current request, exact retained original request/result and actual scoped readback to model retained refresh. Preserve reports, original establishing identities and selected history while changing only the view run ID. Output timing is presentation metadata. Missing history or failed replay must use the ordinary path. |
+| Retained job frames and repair decisions | `jobs/store.rs::{result_with_request,result_frame,project_with_request}`; `retained_repair_accepted` | Preserve one admitted original request through frame-key selection, exact sealed stdout decoding, currentness classification and repair acceptance. Prove warm/fresh representations have the same admitted evidence; cache-key equality is not a substitute for that transition relation. |
+| Immutable baseline publication | `jobs/product.rs::{completed_with_request,publish_baseline}` and private native `CompletedObservation` | Carry the exact paired request/result observation through persistence and returned view, preserving immutable original identity, pin/capacity policy and Historical framing. The native carrier is not a model `Accepted` token or a new present-day proof. |
+| CLI, JSON and MCP rendering | Actual producer paths in the success-presentation table; checked target/repair consumers | Relate each emitted positive label and its Current/Historical/Unknown context to the same admitted view. Prove serialization, RPC identity, compact/detail selection and repair shaping preserve that relation. A formatter that calls `complete_target` cannot independently discharge earlier request, origin or freshness obligations. |
+
+Implement the bridge in three source-shared steps. First define explicit
+representation relations from the actual retained request, report/process
+inventory and readback to the corresponding model inputs, preserving all
+original fields and absence/order distinctions. The request side must use the
+pre-result expected inventory; the report side must not choose that inventory.
+Each relation needs a constructive nonempty witness and ordinary controls for
+swapped original request, missing requested target, changed scope, missing
+child/query stream and changed input guard/revision. Genuine enabled
+zero-function verification remains a separate admissible witness.
+
+Second, add executable service transitions that consume those checked relations
+and the independently supplied query/input evidence at the actual producer
+boundaries. The join must use a common context, original invocation identity
+and supported observation point; unrelated successful component tokens are
+insufficient. Keep successful live execution, original retained history,
+exact-partial scope and named opt-in engine modes distinct. Required whole and
+partial full-binder always-refuse controls must continue to fail ordinarily;
+smaller constructor controls cannot replace them.
+
+Third, carry the admitted view through every output branch, including warm
+frames, retained repair, baseline save/load, compact/full MCP and unchanged-call
+output. Add transition controls that drop or swap the admission at each actual
+branch and demonstrate an ordinary failure while preserving raw reports, exits
+and original establishment. Existing exact diagnostic and partial-replay output
+assertions remain unchanged. These native transition tests complement the
+source-shared proofs; they do not establish complete physical observation.
+
+The [compiler-input closure](https://github.com/Chelis-Lang/sail/issues/373)
+and [read/launch observation](https://github.com/Chelis-Lang/sail/issues/374)
+contracts remain explicit open dependencies. The bridge cannot assume an
+exhaustive compiler-input domain, a single global read point, actual image
+identity or complete child/session capture simply because the provider's
+supplied list passes a checked reducer. Any external provider contract must
+state and implement its supported platform/atomicity domain, then receive its
+own native qualification. Until those dependencies and all six obligation
+rows close, this plan does not establish the service-wide acceptance theorem.
+
 | Model boundary | Production source | Remaining obligation |
 |---|---|---|
 | Exact target and invocation | Managed `TargetIdentity`, `cargo_target`, requested coverage and failed compiler calls | Relate actual Cargo metadata and compiler invocation to the model's complete target inventory and exact fields. |
