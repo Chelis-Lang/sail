@@ -56,6 +56,12 @@ sail_verified! {
         }
         let Some(borrowed)=parser.command(0,&bytes) else { return false; };
         let command=borrowed.freeze();
+        sail_proof! {
+            assert(parser.matches((b"z3"@,b"pinned"@,b"binary"@,b"platform"@,None)));
+            assert(command.material_view() == parser.material());
+            assert(command.material_view() =~= crate::key_prefix::header(b"z3"@,b"pinned"@,b"binary"@,b"platform"@,None)+bytes@);
+            assert(command.key_view() == Host::digest(crate::key_prefix::end(command.material_view(),3)));
+        }
         if !parser.hash_tail() || !delivery.write(&bytes) { return false; }
         sail_proof! {
             assert(parser.matches((b"z3"@,b"pinned"@,b"binary"@,b"platform"@,None)));
@@ -67,6 +73,10 @@ sail_verified! {
         sail_proof! {
             assert(crate::inputs::valid_permutation(order@,inverse@,1));
             assert(input.capture_view() == Some(bytes@));
+            assert(command.material_view() =~= input.initial_material()+bytes@);
+            assert(command.key_view() == Host::digest(end(input.initial_material()+bytes@,3)));
+            assert(bytes@.subrange(0,3) =~= bytes@);
+            assert(bytes@.take(3) =~= bytes@);
             assert(checkpoint_rank(&input,commands@,order@,0));
             assert(checkpoints_match(&input,commands@,order@,inverse@));
         }
