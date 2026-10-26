@@ -51,6 +51,29 @@ internally consistent pending that decision. This source reconciliation does
 not authorize publication or resolve that policy; the lead owns final review,
 qualification and PR publication. All six obligations #371–#376 remain open.
 
+## Current-main capture binding
+
+The native capture follow-up starts from `182ad788`. It rebinds the reviewed
+API `stamp` module assembly and expands the input/authority native-only closure
+from 19 to 48 files. Added bindings cover packed options, file-backed settings,
+ghost environment, actual Verus module/dependency assembly, shared stat stamps,
+tool identities, content reads, receipt/archive histories and versioned source
+inventory transfer. The exact paths are the checker's `INPUT_NATIVE_SHA256`
+keys and the manifest dependencies. Source-role reports keep every one outside
+`checked_source`; none of those native files is compiled by stock Verus.
+
+Textual reconstruction authenticates the complete `f8d61408` positive report by
+its source hashes and compares the generated drivers and every actual compiled
+file. The current assembly is byte-identical: query 18 files, inputs 9 and
+authority 14. The manifest preserves the report's exact 431/308/498 verified
+counts and 759/538/878 function inventories, and the current exact 115/115/107
+negative-control lists. These are source-correspondence checks, not a new proof
+run; the f8 report remains positive-only and does not qualify the native union
+or all mutation cases. Full native/macOS, solver, conformance, cost and final
+canonical proof qualification remain pending. No pure executable body, proof,
+control or golden is changed by this rebinding, and the CI policy conflict
+above remains unresolved.
+
 ## Published source and worktrees
 
 The PR branch is `proof/acceptance-followup`. Its implementation checkpoint
