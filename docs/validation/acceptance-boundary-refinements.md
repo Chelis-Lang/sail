@@ -38,18 +38,20 @@ retained job, engine, CLI and declared-environment controls. Independent review
 retests nine real producer cases and the sticky capture-budget control from
 the exact committed bodies. These tests do not prove the native adapters.
 
-The request metadata channel is typed runner configuration carried through a
-private consumed CLI argument. It does not inject new environment variables
-into compilation. Original absent or user-supplied values remain consistent
-with declared environment-read accounting.
+The request metadata channel uses typed Sail runner configuration and consumed
+wrapper arguments. This component does not establish compiler-environment
+fidelity: existing managed controls remain observable, as reproduced in #385.
+The [normal-wrapper transport proposal](../design/managed-wrapper-control-transport.md)
+preserves original compiler environment and OS arguments as an explicit
+implementation obligation; it is not selected.
 
 ## Native and hosted gates
 
 | Gate | Current evidence | Remaining |
 |---|---|---|
 | Initial documentation draft | Native Linux full workspace gate at `d4bb18a3`; 1,098 tests and all workspace checks pass. Implementation bytes equal parent `c6270f75`, whose pre-push proof, solver, full e2e and PR conformance gates pass | Does not qualify the later executable changes |
-| Combined production proofs | All 42 canonical cases pass on macOS and native Linux at `e7f13656`. The expanded `7cbf806e` matrix passes all 71 cases on macOS: three positive roots (216/0, 91/0, 273/0) and 68 ordinary failing controls; every prior function remains inventoried | Final expanded source requires fresh combined macOS/Linux checking |
-| Combined workspace/solver/e2e | `e7f13656`: macOS strict clippy and 1,107/1,107 tests pass; native Linux workspace (1,118 tests), all 29 model cases, 42 production cases and 44 solver tests pass | Neutral-contract end-to-end phase fails; remaining end-to-end phases and PR conformance are unrun |
+| Combined production proofs | All 82 canonical cases pass on macOS at `42637e0d`. The file-kernel/readback input root and all 27 mutations pass on macOS and native Linux at `e2dcee0d`; all 44 authority cases pass on macOS at `aeb741ff` after proof-only factoring, 299/0 positive and 298/1 per mutation | Final combined 92-case source requires fresh coherent checking on both platforms |
+| Combined workspace/solver/e2e | Native `e2dcee0d` workspace passes 1,140/1,140 tests and every workspace check. The complete unchanged native managed phase passes at `bc22690e`, including the original one-invocation/reuse assertion, CLI/MCP jobs and real MCP tool listing | Full combined pre-push gate, remaining e2e phases, solver faults and PR conformance remain pending |
 | Differential conformance | Corpus, comparator and deadlines unchanged | PR tier before publication; full fast and standard before merge |
 | Cost | Additional byte/header scans, request validation and provider accounting are implemented; no measured delta or gain claimed | Bounded native cost measurement before selection; retain every sample |
 | Hosted checks | The draft targets main; its published head is the initial documentation checkpoint | Publish qualified executable changes and require final-head checks before any merge |
@@ -136,6 +138,30 @@ SHA-256 `8d3790c28804b0fdec945644cf37093d7c7ef4e6e28e6ddffd9e9b8617279219`.
 Earlier appended rows are not attributed to the final diagnostic. This is
 diagnosis, not a passing gate; [#390](https://github.com/Chelis-Lang/sail/issues/390)
 owns the correction.
+
+The `bc22690e` correction passes the complete unchanged native managed phase
+in 250.24 seconds, including the original cold-edit one-invocation/reuse
+assertion, alias-retarget refusal, CLI/MCP jobs and the real MCP client listing.
+Its 46 focused runner tests and strict clippy also pass. The exact source and
+native receipts are preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-declaration-fix-bc22690e.tgz`,
+SHA-256 `aae2801687857892d77fa11dcd416922c70f5ea71224ffc06f816f7c23819db9`.
+This is one complete phase, not the full combined pre-push gate or a fix for
+the never-observed ghost-only input in #386.
+
+The expanded file-kernel source at `e2dcee0d` passes the complete native
+workspace gate (1,140/1,140 tests) and all 28 input proof cases. Its macOS
+authority resource-limit refusal remains indexed above. Combined raw evidence
+and source are preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-input-kernel-e2dcee0d.tgz`,
+SHA-256 `ee1dad8f20830d6351d8b0d7a0da85d8fd41da6e74c2b543b246a95d6e6459c6`.
+The proof-only opacity/reveal correction at `aeb741ff` passes all 44 canonical
+authority cases in 303.70 seconds: 299/0 positive, 298/1 per mutation, every
+prior function and control retained, ordinary termination and normal resources.
+Its exact source and receipt are preserved at
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-authority-aeb741ff.tgz`,
+SHA-256 `1d487f5ff8544e6c07dd7fb615ba62fd442a3743bacd97a0c4cce750c4cbbb95`.
+These component checkpoints do not replace a fresh final combined qualification.
 
 The model runner now requires every inventoried guard control by name and
 order. Its failure tests remove each required control in turn; all 12 tests

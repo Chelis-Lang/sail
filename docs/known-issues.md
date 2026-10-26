@@ -37,9 +37,10 @@ output is preserved while completion is withheld. The allocation correction
 restores complete evidence in the targeted native rerun, but the required
 reuse/invocation gate still fails: a complete fresh declaration scan shrinks
 the original retained environment domain and rejects the dependency receipt
-([#390](https://github.com/Chelis-Lang/sail/issues/390)). Its correction must
-preserve every validated original declaration and current-value check; the
-ghost-only missing-input defect remains separate.
+([#390](https://github.com/Chelis-Lang/sail/issues/390)). The correction preserves
+and freshly reobserves every independently validated original declaration;
+the complete native managed phase now passes. The combined gate remains
+pending, and the ghost-only missing-input defect remains separate.
 
 Sequential retained file reads can assemble an old revision that never existed
 as one state during the check
