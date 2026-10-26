@@ -512,3 +512,56 @@ sail_spec! {
             identity_fields(a.0,a.1,a.2,a.3,a.4)[1] == (if a.4.is_some() { b"mode:opt-in"@ } else { b"mode:default"@ })
     { reveal(identity_fields); }
 }
+
+sail_verified! {
+    /// A real check command, fragmented input and comment tail retain one exact raw/hash owner.
+    #[allow(clippy::byte_char_slices, reason = "Explicit integer bytes keep the constructive control visible to the verifier's array model.")]
+    pub fn joint_owner_control() -> (passed: bool)
+        requires (true) ensures (passed)
+    {
+        sail_proof! { reveal(<RecordingHash as HashHost>::bytes); }
+        let prefix = Prefix::new(RecordingHash { bytes: Vec::new() }, b"z3",b"4",b"binary",b"platform",None);
+        let mut owner = crate::query_prefix::QueryPrefix::new(prefix);
+        let contents = [b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't'];
+        let mut command = Vec::new(); command.push(b'('); command.extend_from_slice(&contents); command.push(b')');
+        owner.append(&command[..4]); owner.append(&command[4..]);
+        sail_proof! {
+            assert(owner.view() == command@);
+            assert forall|i: int| 0 <= i < contents.len() implies #[trigger] crate::query_prefix::flat_byte(contents@[i]) by {}
+            crate::query_prefix::flat_list_frame(contents@);
+            assert(command@ =~= seq![b'('] + contents@ + seq![b')']);
+            assert(crate::query::single_list(command@,true));
+            assert(crate::query::trivia_after(Seq::<u8>::empty(),false) == Some(false));
+            assert(owner.fed() == 0 && owner.active());
+            assert(owner.view().subrange(0,command@.len() as int) == command@);
+            assert(owner.view().subrange(0,0) == Seq::<u8>::empty());
+        }
+        let _observed_key = match owner.command(0,&command) {
+            Some(frame) => frame.key(),
+            None => return false,
+        };
+        sail_proof! {
+            assert(owner.matches((b"z3"@,b"4"@,b"binary"@,b"platform"@,None)));
+            assert(owner.fed() == command@.len());
+            assert(owner.view().take(owner.fed() as int) =~= command@);
+            assert(_observed_key == RecordingHash::digest(end(header(b"z3"@,b"4"@,b"binary"@,b"platform"@,None)+command@,11)));
+        }
+        let tail = [b' ',b';',b't',b'a',b'i',b'l',b'\n'];
+        owner.append(&tail);
+        let completed = owner.hash_tail();
+        sail_proof! {
+            assert(owner.matches((b"z3"@,b"4"@,b"binary"@,b"platform"@,None)));
+            assert(_observed_key == RecordingHash::digest(end(header(b"z3"@,b"4"@,b"binary"@,b"platform"@,None)+command@,11)));
+        }
+        let mut expected = Vec::new(); expected.extend_from_slice(&command); expected.extend_from_slice(&tail);
+        sail_proof! {
+            assert(completed);
+            assert(owner.active());
+            assert(owner.view() =~= expected@);
+        }
+        let valid = owner.valid();
+        let same = crate::inputs::byte_eq(owner.bytes(),&expected);
+        sail_proof! { assert(valid); assert(same); }
+        completed && valid && same
+    }
+}

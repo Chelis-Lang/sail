@@ -553,7 +553,7 @@ incremental framing executed by `sail-key::PrefixHasher`. The source-shared
 `SolverIdentity` fields and `Mode` variant. The stock driver captures their full
 original declarations, including the opt-in `String` payload and binary array,
 rather than substituting an unrelated proof-only identity. Neither type moves
-out of its public `sail-key` namespace. [ADR 0080](../decisions/0080-checked-query-key-framing.md)
+out of its public `sail-key` namespace. [ADR 0082](../decisions/0082-checked-query-key-framing.md)
 proposes the explicit key-to-leaf edge; there is no cross-crate source-path bypass.
 
 The controller proves these exact effects:
@@ -577,8 +577,11 @@ remains the narrow reviewed primitive boundary: fresh SHA-256 state, exact
 update, state copy and consuming finalization. Its source and caller bindings
 must be captured alongside the checked controller. Neither a matching digest
 nor an implementation of the public primitive trait establishes solver origin.
-The production cache caller now passes owned raw-feed tokens to this controller;
-its before/after checks also require the exact-length flag. Counter overflow is
+The production cache caller owns a `SessionPrefix`, which combines the raw
+transcript and this controller in one object. Its checked command operation
+borrows an immutable command/key view from that same object; no caller can
+supply a feed from another transcript. Its before/after checks also require
+the exact-length flag. Counter overflow is
 sticky and disables interpretation/publication while preserving input forwarding.
 The measurement trace omits a prefix key when that flag has been lost.
 
@@ -599,12 +602,11 @@ independent SHA-256 vectors for default, empty opt-in and named opt-in modes ove
 every fragment boundary. The pinned-solver `sail-shim` cached-session tests also
 cover normal reuse, diagnostic preservation, unmatched/incomplete publication
 refusal and late replay after a cached prefix. Native integration qualification
-and added-cost measurements remain separate gates. This slice does not yet prove
-that a feed borrowed from another transcript belongs to the same physical
-session; actual joint session ownership and the complete invocation/stream
-refinement must establish that relation. It also does not establish that
-reported solver metadata names the executable actually launched, or that a
-persistent reply has a truthful writer origin.
+and added-cost measurements remain separate gates. The checked joint owner establishes transcript-to-hash ownership. Complete
+invocation/stream refinement must still establish that this owner observed
+every actual physical input and reply. Reported solver metadata must also be
+bound to the executable actually launched, and persistent replies need a
+truthful writer origin.
 
 ## Native observation-candidate refusal
 
@@ -658,3 +660,41 @@ original program's verification when a preceding layer changes compiler inputs.
 The full proof must move existing output/timing/logging metadata into an
 input-preserving private channel too. This defect and the complete physical
 invocation/stream and writer refinements remain open.
+
+
+## Same-owner command and key transitions
+
+The actual cache loop uses `sail_key::SessionPrefix`, whose private
+`QueryPrefix<Sha256Host>` owns both the complete raw transcript and incremental
+hash state. The source-shared constructor reads the original typed solver and
+mode. Induction over append, command, refusal and tail transitions establishes
+that the hash material is exactly the identity/mode header followed by the
+owner's raw bytes through its current endpoint. Appending and refusing never
+change replay bytes; refusal stays sticky. A command must match an exact
+contiguous interval, with only trivia between the previous endpoint and its
+start, and pass the supported structural frame/head checks.
+
+An accepted `CommandFrame` immutably borrows that owner's state. It exposes the
+exact checked head, endpoint and v2 digest at that transition; the borrow
+prevents advancing the owner while the frame remains usable. No-output commands
+need no hash copy/finalization. The actual GET uses the key already retained in
+its output expectation. Finishing feeds the exact owned suffix and checks the
+complete endpoint before publication. Buffer overflow consumes and drops the
+owner after replay, then continues forwarding without retaining another input
+copy. This preserves the bounded-buffer and failed-output safeguards.
+
+The constructive stock/native control fragments a real `check-sat`, derives its
+key before a trailing comment, completes the tail, and checks exact replay bytes.
+Native tests compare the real SHA implementation with the existing independent
+v2 vectors and detached reference hasher over every fragment boundary in all
+three mode cases. The complete original query proof root plus the joint owner
+checks 273 obligations at ordinary settings. The eleven original key controls
+remain in scope; new ordinary controls remove the actual command feed, remove
+the tail feed, replace the accepted endpoint, and remove sticky refusal.
+
+This is structural framing and exact binding, not a proof of SMT command
+arity/types/meaning or complete response cardinality. The native session policy,
+input/output splitter extraction and physical process/I/O correspondence remain
+separate obligations. Neither a successful hash transition nor the tail method
+asserts EOF, a clean solver exit, or a truthful stored solver origin. The
+publication gate and protected-store/writer obligations remain required.
