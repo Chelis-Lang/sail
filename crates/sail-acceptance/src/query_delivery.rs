@@ -106,7 +106,12 @@ sail_code! {
                     out.capture_view() == Some(Seq::<u8>::empty()), out.capture_limit() == limit)
             {
                 let mut out=Self::new(pipe,prefix);
-                out.capture=Some(Vec::new()); out.capture_limit=limit; out
+                out.capture=Some(Vec::new()); out.capture_limit=limit;
+                sail_proof! {
+                    assert(out.sent() =~= Seq::<u8>::empty());
+                    assert(out.capture_view().unwrap() =~= out.sent());
+                }
+                out
             }
         }
         sail_method! {
@@ -157,6 +162,13 @@ sail_code! {
                     if self.healthy {
                         assert(self.delivered.material() =~= self.initial.material() + self.pipe.sent());
                         assert(self.delivered.length() == self.pipe.sent().len());
+                    }
+                    if self.capture_view().is_some() {
+                        assert(old(self).capture_view().is_some());
+                        assert(old(self).capture_view().unwrap() == old(self).sent());
+                        assert(self.capture_view().unwrap() == old(self).capture_view().unwrap()+bytes@);
+                        assert(self.capture_view().unwrap() =~= self.pipe.sent());
+                        assert(self.capture_view().unwrap().len() <= self.capture_limit);
                     }
                 }
                 true
@@ -377,6 +389,11 @@ sail_verified! {
         let key=expected.silence_key();
         let mut delivery=Delivery::new_captured(ScriptPipe {bytes:Vec::new(),closed:false,fail_next:false},prefix,2);
         if !delivery.write(&[7u8]) || !delivery.write(&[8u8]) { return false; }
+        sail_proof! {
+            assert(seq![7u8]+seq![8u8] =~= seq![7u8,8u8]);
+            assert(delivery.material() =~= expected.material());
+            assert(delivery.length() == expected.length());
+        }
         let Some(sealed)=delivery.seal(key,true) else { return false; };
         let Some(bytes)=sealed.captured_bytes() else { return false; };
         bytes.len()==2 && bytes[0]==7 && bytes[1]==8
@@ -396,6 +413,11 @@ sail_verified! {
         let key=expected.silence_key();
         let mut delivery=Delivery::new_captured(ScriptPipe {bytes:Vec::new(),closed:false,fail_next:false},prefix,1);
         if !delivery.write(&[7u8]) || !delivery.write(&[8u8]) { return false; }
+        sail_proof! {
+            assert(seq![7u8]+seq![8u8] =~= seq![7u8,8u8]);
+            assert(delivery.material() =~= expected.material());
+            assert(delivery.length() == expected.length());
+        }
         let Some(sealed)=delivery.seal(key,true) else { return false; };
         sealed.captured_bytes().is_none()
     }

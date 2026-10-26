@@ -71,6 +71,7 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `dfda8f71` | Expanded query whole-positive discovery | Reports 16 unmet obligations in new capture/checkpoint/owner constructive proofs; proof guidance adds retained invariants, exact sequence equalities and owning-module preservation facts. Executable bodies, predicates, original controls, deadlines and resources remain unchanged; no positive count qualified |
 | 2026-10-26 | `0247a13e` | Expanded query whole-positive discovery | Refused cross-module reveals of two closed partition specs before verification; an owning-module proved lemma supplies the same facts without widening visibility. Source selftests pass 43/43; no new positive count is qualified |
 | 2026-10-26 | `e7f4dbc6` | Expanded query capture selftests | Refused three stale delivery mutation contexts and one ambiguous native-test source fragment before positive discovery; contexts are updated to preserve their original mutations, with no check or scope relaxation |
 | 2026-10-26 | `fe8be9ee` | Detached merge cost guard | Stopped on a +4.09% external proof-edit median; all correctness gates pass. Retained samples expose 50 ms process-wait polling and a smaller internal timing difference; attribution remains unprofiled. Owner accepts this bounded result |
