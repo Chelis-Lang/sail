@@ -149,6 +149,11 @@ fn one(
     let Response::Result(document) = client.call(&Request::Result { id: job.id.clone() })? else {
         return Err("missing service result".into());
     };
+    // Preserve the exact response before any acceptance assertion fails.
+    std::fs::write(
+        output.join(format!("{label}.result.json")),
+        serde_json::to_vec_pretty(&document)?,
+    )?;
     let evidence = document
         .contracts
         .as_deref()
@@ -159,7 +164,14 @@ fn one(
         || document.job.currentness != Currentness::Unknown
         || document.job.input_revision.as_deref() != Some(digest.as_str())
     {
-        return Err("source or conservative proof identity mismatch".into());
+        let backend = document.result.as_ref();
+        return Err(format!(
+            "source or conservative proof identity mismatch for {label}: expected {expected:?}, observed {:?}; lowering={}; source={}; expected_source={digest}; currentness={:?}; revision={:?}; backend_currentness={:?}; backend_notes={:?}; target_completeness={:?}",
+            evidence.proof.state, evidence.manifest.version, evidence.manifest.original_sha256,
+            document.job.currentness, document.job.input_revision,
+            backend.and_then(|v| v.get("currentness")), backend.and_then(|v| v.get("notes")),
+            backend.and_then(|v| v["targets"].as_array()).map(|targets| targets.iter().map(|t| (&t["target"], &t["requested"], &t["complete"])).collect::<Vec<_>>()),
+        ).into());
     }
     if expected == ProofState::Proved {
         if evidence.proof.checks.unsat == 0
@@ -187,10 +199,6 @@ fn one(
     }
     validate_compound_failure(label, &backend)?;
     validate_assurance(client, output, label, &document, &digest, expected)?;
-    std::fs::write(
-        output.join(format!("{label}.result.json")),
-        serde_json::to_vec_pretty(&document)?,
-    )?;
     // Observe exact worker bytes directly from our owned test service's store,
     // independently of the public typed projection. These paths are never submitted.
     let owned = output.join("cache/projects/jobs").join(&job.id);

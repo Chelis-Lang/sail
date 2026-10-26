@@ -48,6 +48,16 @@ including user variables with the former transport names. A real-child
 environment probe checks absence and original-value cases against the same
 declared-read recorder used for proof inputs.
 
+Compiler-input accounting recognizes the existing stdout completion protocol
+before forwarding can acknowledge and retire its peer. It validates the
+current private endpoint capability, exact marker grammar and live peer with
+the same parser as the output receiver, then removes only that framing from
+its accounting copy. Original bytes and acknowledgment behavior remain with
+the original output path. Foreign, malformed or truncated markers cannot close
+an input provider, and non-marker bytes preceding a marker remain observable.
+Recognizing a completion marker establishes no metadata or verifier verdict.
+This native framing adapter remains outside the stock-checked acceptance core.
+
 Private job projections retain the independent request beside the stdout seal.
 Every result read validates that binding, and immutable frame keys include the
 original submission and request. Current successful projects additionally pass

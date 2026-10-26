@@ -230,13 +230,37 @@ fn cargo_messages(
         },
     )
     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    #[cfg(unix)]
+    let markers = std::env::var_os(crate::managed::visible_output::ENV).map_or(Ok(None), |path| {
+        crate::managed::visible_output::MarkerObserver::open(Path::new(&path)).map(Some)
+    });
+    #[cfg(unix)]
+    let mut observed = markers.as_ref().ok().map(|_| Vec::new());
+    #[cfg(not(unix))]
     let mut observed = Some(Vec::new());
     if let Some(stdout) = child.stdout.take() {
-        for line in std::io::BufReader::new(stdout).split(b'\n') {
-            let line = line.map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-            capture_cargo_line(&mut observed, &line, 64 * 1024 * 1024);
+        let mut stdout = std::io::BufReader::new(stdout);
+        loop {
+            let mut frame = Vec::new();
+            if stdout
+                .read_until(b'\n', &mut frame)
+                .map_err(|e| Error::new("SAIL3111", e.to_string()))?
+                == 0
+            {
+                break;
+            }
+            let line = frame.strip_suffix(b"\n").unwrap_or(&frame);
+            #[cfg(unix)]
+            capture_cargo_observation(
+                &mut observed,
+                &frame,
+                64 * 1024 * 1024,
+                markers.as_ref().ok().and_then(Option::as_ref),
+            );
+            #[cfg(not(unix))]
+            capture_cargo_line(&mut observed, line, 64 * 1024 * 1024);
             forwarded
-                .write_all(&line)
+                .write_all(line)
                 .and_then(|()| forwarded.write_all(b"\n"))
                 .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         }
@@ -277,6 +301,40 @@ fn capture_cargo_line(observed: &mut Option<Vec<u8>>, line: &[u8], limit: usize)
             *observed = None;
         }
     }
+}
+
+/// Strip only a validated current output-control marker from the accounting
+/// copy, before forwarding can acknowledge and retire its peer socket.
+#[cfg(unix)]
+fn capture_cargo_observation(
+    observed: &mut Option<Vec<u8>>,
+    frame: &[u8],
+    limit: usize,
+    markers: Option<&crate::managed::visible_output::MarkerObserver>,
+) {
+    if observed.is_none() {
+        return;
+    }
+    if let Some(markers) = markers {
+        match markers.decode(frame) {
+            Ok(Some(bytes)) => {
+                if !bytes.is_empty() {
+                    capture_cargo_line(
+                        observed,
+                        bytes.strip_suffix(b"\n").unwrap_or(&bytes),
+                        limit,
+                    );
+                }
+                return;
+            }
+            Err(_) => {
+                *observed = None;
+                return;
+            }
+            Ok(None) => {}
+        }
+    }
+    capture_cargo_line(observed, frame.strip_suffix(b"\n").unwrap_or(frame), limit);
 }
 
 /// Parse complete JSON documents so genuine multiline Verus output is not
@@ -1494,6 +1552,119 @@ fn target_identity(
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    struct MarkerWriter(std::sync::mpsc::Sender<Vec<u8>>);
+    #[cfg(unix)]
+    impl std::io::Write for MarkerWriter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0
+                .send(bytes.to_vec())
+                .map_err(|_| std::io::Error::other("marker observation closed"))?;
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[cfg(unix)]
+    fn marker_accounting(
+        raw: &[u8],
+        markers: &crate::managed::visible_output::MarkerObserver,
+    ) -> Option<Vec<u8>> {
+        let mut observed = Some(Vec::new());
+        for frame in raw.split_inclusive(|byte| *byte == b'\n') {
+            super::capture_cargo_observation(&mut observed, frame, 64 * 1024 * 1024, Some(markers));
+        }
+        observed
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cargo_accounting_uses_exact_live_markers_without_acknowledging()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use crate::managed::visible_output::{MarkerObserver, Receiver, send_test};
+        let receiver = Receiver::bind()?;
+        let endpoint = receiver.path().to_owned();
+        let markers = MarkerObserver::open(&endpoint)?;
+        let raw = b"{\"reason\":\"build-script-executed\",\"package_id\":\"demo\"}\n";
+        let (tx, rx) = std::sync::mpsc::channel();
+        let sender_path = endpoint.clone();
+        let sender =
+            std::thread::spawn(move || send_test(&sender_path, raw, &mut MarkerWriter(tx)));
+        let payload = rx.recv_timeout(std::time::Duration::from_secs(5))?;
+        let marker = rx.recv_timeout(std::time::Duration::from_secs(5))?;
+        assert_eq!(payload, raw);
+        let wire = [payload.as_slice(), marker.as_slice()].concat();
+        let counted = marker_accounting(&wire, &markers).ok_or("valid accounting refused")?;
+        assert_eq!(counted, raw);
+        assert_eq!(
+            super::cargo_artifacts(&counted, &mut Vec::new(), 1, 2)?,
+            Some(1)
+        );
+        assert!(
+            !sender.is_finished(),
+            "accounting must not acknowledge the sender"
+        );
+
+        // Preserve a valid Cargo JSON record preceding a marker in the same frame.
+        let embedded = [
+            raw.strip_suffix(b"\n").ok_or("payload newline")?,
+            marker.as_slice(),
+        ]
+        .concat();
+        assert_eq!(marker_accounting(&embedded, &markers), Some(raw.to_vec()));
+        // Every original non-marker byte is retained, including malformed JSON.
+        let malformed_prefix = [b"{broken".as_slice(), marker.as_slice()].concat();
+        let kept = marker_accounting(&malformed_prefix, &markers).ok_or("marker framing")?;
+        assert_eq!(kept, b"{broken\n");
+        assert_eq!(super::cargo_artifacts(&kept, &mut Vec::new(), 1, 2)?, None);
+
+        let mut foreign = marker.clone();
+        let capability_start = b"[[sail-stdout:".len();
+        foreign[capability_start] = if foreign[capability_start] == b'0' {
+            b'1'
+        } else {
+            b'0'
+        };
+        let unrecognized = marker_accounting(&foreign, &markers).ok_or("foreign text retained")?;
+        assert_eq!(unrecognized, foreign);
+        assert_eq!(
+            super::cargo_artifacts(&unrecognized, &mut Vec::new(), 1, 2)?,
+            None
+        );
+        let capability = std::fs::read_to_string(
+            endpoint
+                .parent()
+                .ok_or("endpoint parent")?
+                .join("capability"),
+        )?;
+        for malformed in [
+            format!("[[sail-stdout:{capability}:0-0]]\n").into_bytes(),
+            format!("[[sail-stdout:{capability}:bad-name]]\n").into_bytes(),
+            marker.strip_suffix(b"\n").ok_or("marker newline")?.to_vec(),
+            [
+                marker.strip_suffix(b"\n").ok_or("marker newline")?,
+                b"junk\n",
+            ]
+            .concat(),
+        ] {
+            assert!(marker_accounting(&malformed, &markers).is_none());
+        }
+        receiver
+            .decode(&marker)?
+            .completion
+            .ok_or("completion missing")?
+            .acknowledge()?;
+        sender.join().map_err(|_| "sender thread")??;
+        assert!(
+            markers.decode(&marker).is_err(),
+            "retired peers are never recognized later"
+        );
+        receiver.finish()?;
+        Ok(())
+    }
+
     #[cfg(unix)]
     #[test]
     fn cargo_provider_records_actual_child_and_nonzero_normal_exit()
