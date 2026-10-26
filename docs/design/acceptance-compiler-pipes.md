@@ -78,13 +78,18 @@ completion of successful, failing and signaled waits. The native byte-buffer
 unit fixtures cover actual read prefixes and EOF plus equal bytes with a
 different retained `Arc` or role. Neither fixture has been executed locally.
 
-The lead must include this new module, fixture, private constructors, read trait
-and every native binding/caller in the closed canonical capture; check all
-positive functions and every existing/new broken control with direct stock
-Verus. Run the ordinary native workspace gate and unchanged solver, full e2e,
+The integration includes this module, fixture, private constructors, exact read
+trait/event declarations and native bindings in the closed canonical capture.
+All twenty new controls remain unqualified, including full seal/completion
+always-refuse controls. Actual whole-root function/count discovery is pending;
+the previous inventories remain strict checks and do not qualify this extension.
+Run all positive functions and every existing/new broken control with direct
+stock Verus. Run the ordinary native workspace gate and unchanged solver, full e2e,
 fast/standard conformance and macOS gates. Exercise original fallback output
 with both pipes larger than pipe capacity, piped stdin needing EOF, and child
-exit before a descendant's delayed output. The last case must preserve all
+exit before a descendant's delayed output. Two unrun native regression tests
+exercise those cases; a filesystem handshake releases the descendant only
+after the original child wait, avoiding a scheduling assumption. The last case must preserve all
 output and finish only at actual endpoint EOF; deadlines used by existing
 cleanup tests remain unchanged. Measure capture cost on a quiet native host
 before selection. No existing assertion, proof limit or timeout may be relaxed.

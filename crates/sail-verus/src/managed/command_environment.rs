@@ -604,6 +604,82 @@ impl ConfigureCommand for std::process::Command {
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
+    #[test]
+    fn owned_pipe_drain_closes_stdin_and_preserves_both_large_streams()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut command = Command::new("/bin/sh");
+        command
+            .args(["-c", "cat >/dev/null; i=0; while [ \"$i\" -lt 8192 ]; do printf '0123456789abcdef'; printf 'fedcba9876543210' >&2; i=$((i + 1)); done; exit 7"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        let completed = command.spawn()?.wait_with_output()?;
+        assert!(matches!(
+            &completed.fields.stdout,
+            sail_acceptance::stream_capture::PipeReadback::Observed(_)
+        ));
+        assert!(matches!(
+            &completed.fields.stderr,
+            sail_acceptance::stream_capture::PipeReadback::Observed(_)
+        ));
+        let output = completed.raw_output();
+        assert_eq!(output.status.code(), Some(7));
+        assert_eq!(output.stdout, b"0123456789abcdef".repeat(8192));
+        assert_eq!(output.stderr, b"fedcba9876543210".repeat(8192));
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn owned_pipe_drain_preserves_descendant_output_after_original_wait()
+    -> Result<(), Box<dyn std::error::Error>> {
+        struct ReleaseOnDrop(PathBuf);
+        impl Drop for ReleaseOnDrop {
+            fn drop(&mut self) {
+                // Also release the fixture descendant on an early test failure.
+                let _ = std::fs::write(&self.0, []);
+            }
+        }
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos();
+        let directory = std::env::temp_dir().join(format!(
+            "sail-pipe-descendant-{}-{unique}",
+            std::process::id()
+        ));
+        std::fs::create_dir(&directory)?;
+        let release = directory.join("release");
+        let _release_on_drop = ReleaseOnDrop(release.clone());
+        let mut command = Command::new("/bin/sh");
+        command
+            .args(["-c", "(while [ ! -f \"$1\" ]; do sleep 0.01; done; printf tail; printf late >&2) & printf head; exit 7", "sail-pipe-descendant"])
+            .arg(&release)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        let mut child = command.spawn()?;
+        // The descendant cannot finish until this independently observed wait
+        // has completed. No scheduling delay establishes the test's ordering.
+        assert_eq!(child.wait()?.code(), Some(7));
+        std::fs::write(&release, [])?;
+        let completed = child.wait_with_output()?;
+        assert!(matches!(
+            &completed.fields.stdout,
+            sail_acceptance::stream_capture::PipeReadback::Observed(_)
+        ));
+        assert!(matches!(
+            &completed.fields.stderr,
+            sail_acceptance::stream_capture::PipeReadback::Observed(_)
+        ));
+        let output = completed.raw_output();
+        std::fs::remove_file(&release)?;
+        std::fs::remove_dir(&directory)?;
+        assert_eq!(output.status.code(), Some(7));
+        assert_eq!(output.stdout, b"headtail");
+        assert_eq!(output.stderr, b"late");
+        Ok(())
+    }
+
     #[test]
     fn identical_pid_and_descriptor_do_not_replace_original_owned_child() {
         let owner = Arc::new(());

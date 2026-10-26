@@ -1386,7 +1386,7 @@ sail_code! {
         /// Original pre-spawn checked configuration.
         pub configuration: Option<ConfiguredIntent>,
         /// Missing wait and actual waited signal remain different observations.
-        #[expect(clippy::option_option, reason = "Actual wait presence is independent of whether termination was signaled.")]
+        #[allow(clippy::option_option, reason = "Actual wait presence is independent of whether termination was signaled.")]
         pub wait: Option<Option<i32>>,
         /// Private stdout EOF evidence or explicitly unavailable actual bytes.
         pub stdout: PipeReadback<Owner>,
