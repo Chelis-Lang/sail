@@ -205,7 +205,7 @@ gate commands in `ci/run.sh`. `cargo xtask fetch-verus` installs the pinned
 Verus for host runs.
 
 CI serves rapid iteration: it catches regressions quickly and cheaply, and each
-job should finish in a few minutes (the longest e2e phases take about seven). Acceptance-, evidence- and
+job should finish in about four minutes. Acceptance-, evidence- and
 release-style checks belong in the local tiers below, never in CI.
 
 **Required on every PR** (branch protection): `No AI authorship markers`,
