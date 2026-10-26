@@ -1,6 +1,6 @@
 # 0083: The temporal backend is an extension workspace
 
-- **Status:** accepted
+- **Status:** accepted; amended 2026-10-26 (the extension check is local-only)
 - **Date:** 2026-10-26
 - **Supersedes:** [0080](0080-optional-temporal-runtime.md)
 
@@ -63,7 +63,11 @@ temporal-enabled `sail` must link it, not only its worker.
   `SAIL_DEPENDENCY_READ_TOKEN`. Without the token, as on fork pull requests,
   it skips its steps, reports a notice and succeeds. `CI completion` requires
   its result. `ci/run.sh` applies the credential helper only to the
-  `extension` and `release` steps.
+  `extension` and `release` steps. (Amended 2026-10-26: temporal jobs do not
+  ship in 0.1.0, so the job was removed from CI and `CI completion` no longer
+  requires it. `ci/run.sh extension` and `ci/local.sh extension` remain the
+  local tier, run before changes to `extensions/`, `sail-runtime::temporal`
+  or the `TemporalBackend` contract; no CI step receives the token.)
 - Release: public archives are built from the main workspace and contain no
   worker; `THIRD-PARTY-NOTICES`, generated from the main lock, lists no
   D.I.V.E. crate. `SAIL_RELEASE_TEMPORAL=1 scripts/release.sh stage` stages
@@ -76,7 +80,8 @@ temporal-enabled `sail` must link it, not only its worker.
   required main-workspace jobs no longer see the token.
 - Temporal coverage (the D.I.V.E. client, worker process, shared endpoint
   with the backend linked and the temporal-enabled `sail`) runs only in the
-  `Temporal extension` job, and so only where the token exists. A fork pull
+  `Temporal extension` job, and so only where the token exists. (Since the
+  2026-10-26 amendment it runs only locally, with D.I.V.E. access.) A fork pull
   request cannot change the extension's result; reviewers must not read a
   skipped extension as passing.
 - The extension lock can drift from the root lock. Shared dependency

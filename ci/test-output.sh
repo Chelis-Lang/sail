@@ -6,12 +6,13 @@
 # inside the CI image, with Sail's Verus selected (SAIL_VERUS_BUILD) and
 # stock `cargo verus` on PATH.
 #
-#   ci/test-output.sh SAIL loop|loader|flags|noop|extra
+#   ci/test-output.sh SAIL loop [noop]|loader|flags|extra
 #
 # `loop`: combined output, passing proofs, an unchanged re-run, a compile
-# error, partial verification and a seeded-mutation smoke. `noop`:
-# unchanged-call replay (ADR 0082) and every change that must miss it.
-# `loader`: a loader variable. `flags`: the
+# error, partial verification and a seeded-mutation smoke; with `noop`
+# (`ci/run.sh` always passes it), then unchanged-call replay (ADR 0082) and
+# every change that must miss it, on the same warm targets. `loader`: a loader
+# variable. `flags`: the
 # setups verified without proof reuse. `extra`: `-- --output-json --time` and
 # a `-p`/`--features` workspace. Every cold build verifies vstd (one to two
 # minutes on a two-CPU CI runner), so CI runs `loop`, `loader` and `flags` as
@@ -19,7 +20,12 @@
 # local-only (`ci/local.sh e2e extra`).
 set -euo pipefail
 sail="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
-part="${2:?usage: ci/test-output.sh SAIL loop|loader|flags|noop|extra}"
+part="${2:?usage: ci/test-output.sh SAIL loop [noop]|loader|flags|extra}"
+noop_part="${3:-}"
+case "$part:$noop_part:$#" in
+  loop::2 | loop:noop:3 | loader::2 | flags::2 | extra::2) ;;
+  *) echo 'usage: ci/test-output.sh SAIL loop [noop]|loader|flags|extra' >&2; exit 2 ;;
+esac
 sail_output_phase="$part"
 sail_output_checkout="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_output_checkout/target/e2e-output-evidence}"
@@ -113,6 +119,8 @@ pub fn bad(x: u32) -> (r: u32)
 
 } // verus!
 RS
+# The original, restored before the replay cases.
+cp src/lib.rs "$work/demo-lib.rs"
 run() { # $1 = label; rest = command
   local label="$1" code; shift
   touch src/lib.rs
@@ -164,8 +172,8 @@ warm_plain() { CARGO_TARGET_DIR="$work/target-plain" quiet_run "$@"; }
 warm_sail() { CARGO_TARGET_DIR="$work/target-sail" quiet_run "$@"; }
 # Warm-ups: each side builds and verifies vstd once, where the part needs it.
 # The loader part's Sail run builds its own context meanwhile (below).
-case "$part" in loop | loader | noop | extra) warm_plain warmup-plain stock_cargo verus verify & ;; esac
-case "$part" in loop | noop | extra) warm_sail warmup-sail "$sail" verify & ;; esac
+case "$part" in loop | loader | extra) warm_plain warmup-plain stock_cargo verus verify & ;; esac
+case "$part" in loop | extra) warm_sail warmup-sail "$sail" verify & ;; esac
 [ "$part" = loader ] || wait
 
 if [ "$part" = loop ]; then
@@ -339,12 +347,17 @@ echo "e2e: seeded mutants ($smoke_mutants), their reverts, unchanged and forced 
 
 fi
 
-if [ "$part" = noop ]; then
+if [ "$noop_part" = noop ]; then
 # Unchanged-call replay (ADR 0082). The first unchanged call after a
 # verification takes the full path and records; an identical later call
 # replays it without Cargo. Every change below must miss, and every output
 # must still match plain Cargo-Verus. Each decision is logged to the trace,
 # which is constant for the whole part (it is part of the replay key).
+# The cases need warm stock and managed Sail targets, so they follow `loop`
+# and reuse its warm-ups rather than a job of their own, starting from the
+# original source.
+noop_start=$SECONDS
+cp "$work/demo-lib.rs" src/lib.rs
 export SAIL_MANAGED_NOOP_TRACE="$work/noop.trace"
 : > "$SAIL_MANAGED_NOOP_TRACE"
 decision() { tail -n 1 "$SAIL_MANAGED_NOOP_TRACE"; }
@@ -550,7 +563,7 @@ for label in removed-bin after-removed-bin; do
 done
 rerecord after-bin
 unset SAIL_MANAGED_NOOP_TRACE
-echo "e2e: unchanged calls replay plain output; edits, restored mtimes, touches, files, binaries, declared variables, dep-info inputs, the lockfile, fingerprints, JSON and partial scope each miss"
+echo "e2e: unchanged calls replay plain output; edits, restored mtimes, touches, files, binaries, declared variables, dep-info inputs, the lockfile, fingerprints, JSON and partial scope each miss ($((SECONDS - noop_start)) s)"
 fi
 
 if [ "$part" = flags ]; then

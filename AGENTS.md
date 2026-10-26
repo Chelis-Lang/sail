@@ -188,7 +188,7 @@ ci/local.sh proofs                # direct stock-Verus model proofs and all brok
 ci/local.sh refinements           # actual production bodies and refinement controls
 ci/local.sh e2e [PHASE]           # `sail verify` vs `cargo verus verify`: identical output (all phases + extra)
 ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
-ci/local.sh extension             # temporal extension workspace: fmt, clippy, tests (needs D.I.V.E. access)
+ci/local.sh extension             # local-only: temporal extension workspace fmt, clippy, tests (needs D.I.V.E. access)
 ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
 
@@ -211,21 +211,19 @@ release-style checks belong in the local tiers below, never in CI.
 **Required on every PR** (branch protection): `No AI authorship markers`,
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
-gate, including image creation, direct acceptance-model proofs, production
-refinements and the `Temporal extension` job, to have succeeded. The
-extension job is the only one given the private-dependency token; where the
-token is unavailable (fork PRs) it skips its steps and succeeds, so a skipped
-extension is not a passing one. Branches must be current
-with `main` before merging. The `End to end` check aggregates eleven parallel
+gate, including image creation, direct acceptance-model proofs and production
+refinements, to have succeeded. No CI job receives the private-dependency
+token. Branches must be current
+with `main` before merging. The `End to end` check aggregates ten parallel
 phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
   warm, `--output json`, one MCP `verify` call and the portfolio;
 - `output`: the edit loop (combined output, passing, unchanged, compile error,
-  partial verification) and a seeded-mutation smoke;
+  partial verification), a seeded-mutation smoke, then, on the same warm
+  targets, unchanged-call replay (ADR 0082) against `cargo verus verify` and
+  every change that must miss it;
 - `flags`: the setups verified as plain Cargo-Verus verifies them;
 - `loader`: a loader variable (no proof reuse, one note);
-- `noop`: unchanged-call replay (ADR 0082) against `cargo verus verify`, and
-  every change that must miss it;
 - `managed`: managed receipts, failing-first reuse, prune, durable jobs, MCP
   and Claude Code's tool listing;
 - `managed-copies`: two fresh member workspaces establish their own vstd and
@@ -264,6 +262,12 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   lines in the PR.
 - *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
   Run it before pushing changes that touch platform-specific code.
+- *Temporal extension (local):* `ci/local.sh extension` (or `ci/run.sh
+  extension`): the `extensions/temporal` workspace's fmt, clippy and tests,
+  with D.I.V.E. access (see `docs/private-dependencies.md`). Temporal jobs do
+  not ship in 0.1.0, so CI does not run it. Run it before pushing changes to
+  `extensions/` or the `TemporalBackend` interface, and put the result in
+  the PR.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
   `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
   suite, the pinned fork with and without `sail-z3`, with exact output checks,
