@@ -561,3 +561,193 @@ fn selected_authority_refuses_duplicate_partial_and_stale_envelopes() -> TestRes
     }
     Ok(())
 }
+
+fn replay_declared_readback<'a>(
+    expected: &'a [sail_acceptance::inputs::InputFact<'a>],
+    observed: &'a [sail_acceptance::inputs::InputFact<'a>],
+    stamp: Option<&[u8]>,
+    revision: &[u8],
+) -> sail_acceptance::inputs::GuardedReadback<'a> {
+    sail_acceptance::inputs::guard_readback(
+        expected,
+        observed,
+        &[0],
+        &[0],
+        &[0],
+        &[0],
+        sail_acceptance::inputs::OriginalCapture::begin(Some(b"original observation stamp")),
+        stamp,
+        revision,
+    )
+}
+
+#[test]
+fn replay_transfer_requires_independent_requests_and_checked_readback() -> TestResult {
+    use sail_acceptance::inputs::{InputFact, InputValue};
+    let expected = [InputFact {
+        namespace: 0,
+        name: b"declared fixture source",
+        value: InputValue::Present(b"original exact bytes"),
+    }];
+    for variant in [
+        "positive",
+        "changed-guard",
+        "missing-guard",
+        "changed-revision",
+        "changed-input",
+        "unreadable-input",
+        "swapped-original",
+        "changed-current-scope",
+    ] {
+        let observed = [InputFact {
+            namespace: 0,
+            name: b"declared fixture source",
+            value: match variant {
+                "changed-input" => InputValue::Present(b"changed exact bytes"),
+                "unreadable-input" => InputValue::Unreadable,
+                _ => InputValue::Present(b"original exact bytes"),
+            },
+        }];
+        let stamp = match variant {
+            "changed-guard" => Some(b"another observation stamp".as_slice()),
+            "missing-guard" => None,
+            _ => Some(b"original observation stamp".as_slice()),
+        };
+        let revision = if variant == "changed-revision" {
+            b"another revision".as_slice()
+        } else {
+            b"revision".as_slice()
+        };
+        let readback = replay_declared_readback(&expected, &observed, stamp, revision);
+        let mut actual = project(vec![target("app", passing_report()?)]);
+        let original_project = actual.clone();
+        let mut original = original_request();
+        let mut current = original.clone();
+        current.run_id = "independently allocated current view".into();
+        if variant == "swapped-original" {
+            original.workspace = "/another-original-workspace".into();
+        }
+        if variant == "changed-current-scope" {
+            current.targets[0].target = "another-target".into();
+        }
+        let accepted = sail_api::acceptance::bind_replayed_project(
+            &mut actual,
+            &original,
+            &current,
+            &readback,
+        );
+        assert_eq!(accepted, variant == "positive", "{variant}");
+        let mut expected_project = original_project;
+        if accepted {
+            expected_project.run_id.clone_from(&current.run_id);
+            assert!(complete_request(&current, &actual).is_some());
+        }
+        assert_eq!(
+            actual, expected_project,
+            "all reports, original establishing identities and fields stay intact: {variant}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn replay_request_fidelity_checks_every_original_execution_field() {
+    let original = original_request();
+    for field in [
+        "positive",
+        "run",
+        "same-run",
+        "invocation",
+        "workspace",
+        "context",
+        "revision",
+        "arguments",
+        "engine",
+        "function",
+        "repair-package",
+        "repair-target",
+        "repair-kind",
+        "target-package",
+        "target-name",
+        "target-kind",
+        "omitted-target",
+    ] {
+        let mut current = original.clone();
+        current.run_id = "new independently allocated view".into();
+        match field {
+            "run" => current.run_id.clear(),
+            "same-run" => current.run_id.clone_from(&original.run_id),
+            "invocation" => current.invocation = "/other-invocation".into(),
+            "workspace" => current.workspace = "/other-workspace".into(),
+            "context" => current.context_sha256 = "other-context".into(),
+            "revision" => current.input_revision = "other-revision".into(),
+            "arguments" => current.args.push("--rlimit=100".into()),
+            "engine" => {
+                current.engine = Some(sail_api::project::EngineIdentity {
+                    name: "interactive".into(),
+                    manifest_sha256: "other-engine".into(),
+                });
+            }
+            "function" => current.function = Some(String::new()),
+            "repair-package" => current.repair_package = "other-package".into(),
+            "repair-target" => current.repair_target = Some(String::new()),
+            "repair-kind" => current.repair_kind = "lib".into(),
+            "target-package" => current.targets[0].package_id = "other-package".into(),
+            "target-name" => current.targets[0].target = "other-target".into(),
+            "target-kind" => current.targets[0].kind = "lib".into(),
+            "omitted-target" => current.targets.clear(),
+            _ => (),
+        }
+        assert_eq!(
+            sail_api::acceptance::replay_requests_match(&current, &original),
+            field == "positive",
+            "{field}"
+        );
+    }
+}
+
+#[test]
+fn replay_keeps_enabled_zero_function_proofs_and_refuses_compile_only() -> TestResult {
+    use sail_acceptance::inputs::{InputFact, InputValue};
+    let facts = [InputFact {
+        namespace: 0,
+        name: b"declared fixture source",
+        value: InputValue::Present(b"source bytes"),
+    }];
+    let readback = replay_declared_readback(
+        &facts,
+        &facts,
+        Some(b"original observation stamp"),
+        b"revision",
+    );
+    let mut report = passing_report()?;
+    for krate in &mut report.crates {
+        krate.functions.clear();
+        krate.verus.verified = Some(0);
+    }
+    report.summary = Summary::of(&report.crates);
+    let mut actual = project(vec![target("app", report)]);
+    let original = original_request();
+    let mut current = original.clone();
+    current.run_id = "new independent view".into();
+    assert!(sail_api::acceptance::bind_replayed_project(
+        &mut actual,
+        &original,
+        &current,
+        &readback
+    ));
+    assert_eq!(actual.targets[0].report.summary.functions, 0);
+    assert_eq!(actual.targets[0].establishing_run, "establishing-run");
+    let before = actual.clone();
+    let mut disabled = current.clone();
+    disabled.run_id = "another independent view".into();
+    disabled.args = vec!["--".into(), "--no-verify".into()];
+    assert!(!sail_api::acceptance::bind_replayed_project(
+        &mut actual,
+        &current,
+        &disabled,
+        &readback
+    ));
+    assert_eq!(actual, before);
+    Ok(())
+}

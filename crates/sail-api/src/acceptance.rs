@@ -17,8 +17,9 @@ use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verifi
 
 /// Builds untrusted order candidates and invokes the checked authority factory.
 pub use crate::acceptance_sort::{
-    complete_report, complete_request, complete_selection, complete_submitted_request,
-    complete_target, complete_whole_report, withhold_unbound_request_authority,
+    bind_replayed_project, complete_report, complete_request, complete_selection,
+    complete_submitted_request, complete_target, complete_whole_report,
+    withhold_unbound_request_authority,
 };
 
 use crate::jobs::Mode;
@@ -59,6 +60,26 @@ sail_code! {
     pub struct CompleteRequest<'a> {
         request: &'a ResolvedRequest,
         project: &'a ProjectResult,
+    }
+
+    /// Private revision-linked declared readback for one supplied current
+    /// request. Physical closure and request origin remain native obligations.
+    pub struct ReplayReadback<'a, 'b> {
+        request: &'a ResolvedRequest,
+        readback: &'a sail_acceptance::inputs::GuardedReadback<'b>,
+    }
+
+    impl<'a, 'b> ReplayReadback<'a, 'b> {
+        sail_method! {
+            /// Returns the exact current request bound by the checked factory.
+            pub fn request(&self) -> (out: &'a ResolvedRequest)
+                requires(true) ensures(out == replay_readback_request(self)) { self.request }
+        }
+        sail_method! {
+            /// Borrows the original typed observation; no metadata remints it.
+            pub fn observation(&self) -> (out: &'a sail_acceptance::inputs::GuardedReadback<'b>)
+                requires(true) ensures(out == replay_readback_observation(self)) { self.readback }
+        }
     }
 
     /// Pre-execution request correspondence, not a completed invocation origin.
@@ -1787,5 +1808,250 @@ sail_verified! {
             }
         }
         corresponding
+    }
+}
+
+sail_spec! {
+    pub closed spec fn replay_readback_request<'a, 'b>(r: &ReplayReadback<'a, 'b>) -> &'a ResolvedRequest { r.request }
+    pub closed spec fn replay_readback_observation<'a, 'b>(r: &ReplayReadback<'a, 'b>) -> &'a sail_acceptance::inputs::GuardedReadback<'b> { r.readback }
+    pub open spec fn replay_readback_valid(r: &ReplayReadback) -> bool {
+        let readback = replay_readback_observation(r);
+        readback.unchanged_view() && readback.guard_view().is_some()
+            && readback.guard_view().unwrap().revision_view() == string_bytes(&replay_readback_request(r).input_revision)
+    }
+
+    pub open spec fn replay_optional_text(a: &Option<String>, b: &Option<String>) -> bool {
+        match (a, b) {
+            (None, None) => true,
+            (Some(x), Some(y)) => string_bytes(x) == string_bytes(y),
+            _ => false,
+        }
+    }
+    pub open spec fn replay_target_inventory(a: Seq<crate::project::RequestTarget>, b: Seq<crate::project::RequestTarget>) -> bool {
+        a.len() == b.len() && forall |i: int| 0 <= i < a.len() ==>
+            string_bytes(&a[i].package_id) == string_bytes(&b[i].package_id)
+                && string_bytes(&a[i].target) == string_bytes(&b[i].target)
+                && string_bytes(&a[i].kind) == string_bytes(&b[i].kind)
+    }
+    /// Exact resolved execution request except the separately allocated view ID.
+    pub open spec fn replay_request_payload(current: &ResolvedRequest, original: &ResolvedRequest) -> bool {
+        string_bytes(&current.run_id).len() > 0 && string_bytes(&original.run_id).len() > 0
+            && string_bytes(&current.run_id) != string_bytes(&original.run_id)
+            && string_bytes(&current.invocation) == string_bytes(&original.invocation)
+            && string_bytes(&current.workspace) == string_bytes(&original.workspace)
+            && string_bytes(&current.context_sha256) == string_bytes(&original.context_sha256)
+            && string_bytes(&current.input_revision) == string_bytes(&original.input_revision)
+            && current.args@.len() == original.args@.len()
+            && current.args@.map_values(|s: String| string_bytes(&s)) == original.args@.map_values(|s: String| string_bytes(&s))
+            && engine_identity_matches(&current.engine, &original.engine)
+            && replay_optional_text(&current.function, &original.function)
+            && string_bytes(&current.repair_package) == string_bytes(&original.repair_package)
+            && replay_optional_text(&current.repair_target, &original.repair_target)
+            && string_bytes(&current.repair_kind) == string_bytes(&original.repair_kind)
+            && replay_target_inventory(current.targets@, original.targets@)
+    }
+    /// The replay changes only the current view identity in captured proof fields.
+    pub open spec fn same_replay_evidence(a: &ProjectResult, b: &ProjectResult) -> bool {
+        a.kind == b.kind && a.schema_version == b.schema_version
+            && a.workspace == b.workspace && a.context_sha256 == b.context_sha256
+            && a.input_revision == b.input_revision && a.currentness == b.currentness
+            && a.exit_code == b.exit_code && a.targets == b.targets
+            && a.error == b.error && a.engine == b.engine
+    }
+}
+
+sail_verified! {
+    /// Compares optional original request text, preserving absence versus empty.
+    pub fn same_replay_optional_text(a: &Option<String>, b: &Option<String>) -> (out: bool)
+        requires(true) ensures(out == replay_optional_text(a, b))
+    {
+        match (a, b) {
+            (None, None) => true,
+            (Some(x), Some(y)) => exact_bytes(x.as_str().as_bytes(), y.as_str().as_bytes()),
+            _ => false,
+        }
+    }
+}
+
+sail_verified! {
+    /// Compares complete ordered requested targets using their exact raw fields.
+    pub fn same_replay_targets(a: &[crate::project::RequestTarget], b: &[crate::project::RequestTarget]) -> (out: bool)
+        requires(true) ensures(out == replay_target_inventory(a@, b@))
+    {
+        if a.len() != b.len() { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < a.len())
+            invariant(i <= a.len(), a.len() == b.len(),
+                forall |j: int| 0 <= j < i ==> string_bytes(&a@[j].package_id) == string_bytes(&b@[j].package_id)
+                    && string_bytes(&a@[j].target) == string_bytes(&b@[j].target)
+                    && string_bytes(&a@[j].kind) == string_bytes(&b@[j].kind))
+            decreases(a.len() - i)
+            {
+                if !exact_bytes(a[i].package_id.as_str().as_bytes(), b[i].package_id.as_str().as_bytes())
+                    || !exact_bytes(a[i].target.as_str().as_bytes(), b[i].target.as_str().as_bytes())
+                    || !exact_bytes(a[i].kind.as_str().as_bytes(), b[i].kind.as_str().as_bytes()) { return false; }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Compares original request argument bytes without normalization or flag removal.
+    pub fn same_replay_arguments(a: &[String], b: &[String]) -> (out: bool)
+        requires(true)
+        ensures(out == (a@.map_values(|s: String| string_bytes(&s)) == b@.map_values(|s: String| string_bytes(&s))),
+            out ==> a@.len() == b@.len(),
+            out ==> partial_command(a@) == partial_command(b@),
+            out ==> verification_disabled(a@) == verification_disabled(b@))
+    {
+        if a.len() != b.len() { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < a.len())
+            invariant(i <= a.len(), a.len() == b.len(),
+                forall |j: int| 0 <= j < i ==> string_bytes(&a@[j]) == string_bytes(&b@[j]))
+            decreases(a.len() - i)
+            {
+                sail_proof! {
+                    assert(a@.map_values(|s: String| string_bytes(&s))[i as int] == string_bytes(&a@[i as int]));
+                    assert(b@.map_values(|s: String| string_bytes(&s))[i as int] == string_bytes(&b@[i as int]));
+                }
+                if !exact_bytes(a[i].as_str().as_bytes(), b[i].as_str().as_bytes()) { return false; }
+                i += 1;
+            }
+        }
+        sail_proof! { assert(a@.map_values(|s: String| string_bytes(&s)) =~= b@.map_values(|s: String| string_bytes(&s))); }
+        true
+    }
+}
+
+sail_verified! {
+    /// Matches an independently supplied current request against the retained
+    /// original before either result or run ID can supply its expected scope.
+    pub fn replay_requests_match(current: &ResolvedRequest, original: &ResolvedRequest) -> (out: bool)
+        requires(true) ensures(out == replay_request_payload(current, original))
+    {
+        !current.run_id.is_empty() && !original.run_id.is_empty()
+            && !exact_bytes(current.run_id.as_str().as_bytes(), original.run_id.as_str().as_bytes())
+            && exact_bytes(current.invocation.as_str().as_bytes(), original.invocation.as_str().as_bytes())
+            && exact_bytes(current.workspace.as_str().as_bytes(), original.workspace.as_str().as_bytes())
+            && exact_bytes(current.context_sha256.as_str().as_bytes(), original.context_sha256.as_str().as_bytes())
+            && exact_bytes(current.input_revision.as_str().as_bytes(), original.input_revision.as_str().as_bytes())
+            && same_replay_arguments(&current.args, &original.args)
+            && same_engine(&current.engine, &original.engine)
+            && same_replay_optional_text(&current.function, &original.function)
+            && exact_bytes(current.repair_package.as_str().as_bytes(), original.repair_package.as_str().as_bytes())
+            && same_replay_optional_text(&current.repair_target, &original.repair_target)
+            && exact_bytes(current.repair_kind.as_str().as_bytes(), original.repair_kind.as_str().as_bytes())
+            && same_replay_targets(&current.targets, &original.targets)
+    }
+}
+
+sail_verified! {
+    /// Seals a request-linked observation only from its actual guarded readback
+    /// and exact original bound revision. This is not whole-proof authority.
+    pub fn seal_replay_readback<'a, 'b>(request: &'a ResolvedRequest,
+        readback: &'a sail_acceptance::inputs::GuardedReadback<'b>) -> (out: Option<ReplayReadback<'a, 'b>>)
+        requires(true)
+        ensures(out.is_some() == (readback.unchanged_view() && readback.guard_view().is_some()
+                && readback.guard_view().unwrap().revision_view() == string_bytes(&request.input_revision)),
+            out.is_some() ==> replay_readback_valid(&out.unwrap()),
+            out.is_some() ==> replay_readback_request(&out.unwrap()) == request,
+            out.is_some() ==> replay_readback_observation(&out.unwrap()) == readback)
+    {
+        if !readback.matches_revision(request.input_revision.as_str().as_bytes()) { return None; }
+        Some(ReplayReadback { request, readback })
+    }
+}
+
+sail_spec! {
+    pub proof fn replay_request_preserves_modes(current: &ResolvedRequest, original: &ResolvedRequest)
+        requires replay_request_payload(current, original),
+        ensures partial_command(current.args@) == partial_command(original.args@),
+            verification_disabled(current.args@) == verification_disabled(original.args@),
+    {
+        assert(current.args@.len() == original.args@.len());
+        assert forall |i: int| 0 <= i < current.args@.len() implies
+            string_bytes(&current.args@[i]) == string_bytes(&original.args@[i]) by {
+            assert(current.args@.map_values(|s: String| string_bytes(&s))[i]
+                == original.args@.map_values(|s: String| string_bytes(&s))[i]);
+        }
+    }
+
+    pub proof fn replay_request_preserves_coverage(current: &ResolvedRequest, original: &ResolvedRequest, project: &ProjectResult)
+        requires replay_request_payload(current, original), resolved_coverage(original, project),
+        ensures resolved_coverage(current, project),
+    {
+        let es = choose |es: Seq<RequestedTarget>| resolved_expected(original, es)
+            && exact_requested_coverage(es, project.targets@);
+        assert forall |i: int| 0 <= i < es.len() implies
+            es[i].package@ == string_bytes(&current.targets@[i].package_id)
+                && es[i].name@ == string_bytes(&current.targets@[i].target)
+                && es[i].kind@ == string_bytes(&current.targets@[i].kind) by {
+            assert(string_bytes(&original.targets@[i].package_id) == string_bytes(&current.targets@[i].package_id));
+        }
+        assert(resolved_expected(current, es));
+    }
+
+    // Keep the constructive premise opaque at callers so a broken always-false
+    // implementation produces an ordinary counterexample without searching the
+    // nested report representation. Its exact original meaning is unchanged.
+    #[verifier::opaque]
+    pub open spec fn replay_constructive_request(original: &ResolvedRequest, project: &ProjectResult,
+        current: &ResolvedRequest, orders: &[ReportOrder], readback: &sail_acceptance::inputs::GuardedReadback) -> bool {
+        small_positive_request(original, project) && replay_request_payload(current, original)
+            && readback.unchanged_view() && readback.guard_view().is_some()
+            && readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision)
+            && orders@.len() == 1 && orders@[0].forward@.len() == 0 && orders@[0].inverse@.len() == 0
+    }
+
+    pub proof fn replay_constructive_request_definition(original: &ResolvedRequest, project: &ProjectResult,
+        current: &ResolvedRequest, orders: &[ReportOrder], readback: &sail_acceptance::inputs::GuardedReadback)
+        ensures replay_constructive_request(original, project, current, orders, readback)
+            == (small_positive_request(original, project) && replay_request_payload(current, original)
+                && readback.unchanged_view() && readback.guard_view().is_some()
+                && readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision)
+                && orders@.len() == 1 && orders@[0].forward@.len() == 0 && orders@[0].inverse@.len() == 0),
+    { reveal(replay_constructive_request); }
+}
+
+sail_verified! {
+    /// Binds a retained whole proof to an independent current request and actual
+    /// typed guarded readback. It changes only the view ID; reports and original
+    /// establishing identities remain intact. Native request production and
+    /// complete physical compiler-input observation remain separate obligations.
+    pub fn bind_replayed_project_ordered(project: &mut ProjectResult, original: &ResolvedRequest,
+        current: &ResolvedRequest, orders: &[ReportOrder], readback: &sail_acceptance::inputs::GuardedReadback)
+        -> (accepted: bool)
+        requires(true)
+        ensures(same_replay_evidence(old(project), final(project)),
+            accepted ==> replay_request_payload(current, original),
+            accepted ==> request_authorized(original, old(project)),
+            accepted ==> request_authorized(current, final(project)),
+            accepted ==> readback.unchanged_view() && readback.guard_view().is_some()
+                && readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision),
+            accepted ==> string_bytes(&final(project).run_id) == string_bytes(&current.run_id),
+            !accepted ==> *final(project) == *old(project),
+            replay_constructive_request(original, old(project), current, orders, readback) ==> accepted)
+    {
+        sail_proof! { reveal(replay_constructive_request); }
+        if !replay_requests_match(current, original) { return false; }
+        sail_proof! { replay_request_preserves_modes(current, original); }
+        let Some(sealed) = seal_replay_readback(current, readback) else { return false; };
+        let current = sealed.request();
+        if !verification_enabled_command(&current.args) || focused_command(&current.args)
+            || complete_request_ordered(original, project, orders).is_none() { return false; }
+        sail_proof! {
+            assert(request_authorized(original, project));
+            replay_request_preserves_coverage(current, original, project);
+        }
+        let current_run = current.run_id.clone();
+        project.run_id = current_run;
+        sail_proof! {
+            assert(request_header_matches(current, project));
+            assert(request_authorized(current, project));
+        }
+        true
     }
 }

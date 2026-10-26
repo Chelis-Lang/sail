@@ -8,9 +8,9 @@ use sail_acceptance::authority::CompletionPolicy;
 
 use crate::acceptance::{
     CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, SubmittedAuthority,
-    complete_report_ordered, complete_request_ordered, complete_selection_ordered,
-    complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered,
-    withhold_unbound_request_authority_ordered,
+    bind_replayed_project_ordered, complete_report_ordered, complete_request_ordered,
+    complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered,
+    complete_whole_report_ordered, withhold_unbound_request_authority_ordered,
 };
 use crate::jobs::Mode;
 use crate::output::Report;
@@ -79,6 +79,23 @@ pub fn complete_report(report: &Report, policy: CompletionPolicy) -> Option<Comp
 pub fn complete_whole_report(report: &Report) -> Option<CompleteReport<'_>> {
     let order = candidate_order(report);
     complete_whole_report_ordered(report, &order.forward, &order.inverse)
+}
+
+/// Transfers an original whole proof only after independent current-request and
+/// actual typed guarded-readback checks. Candidate sorting supplies no authority.
+#[must_use]
+pub fn bind_replayed_project(
+    project: &mut ProjectResult,
+    original: &ResolvedRequest,
+    current: &ResolvedRequest,
+    readback: &sail_acceptance::inputs::GuardedReadback<'_>,
+) -> bool {
+    let orders = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect::<Vec<_>>();
+    bind_replayed_project_ordered(project, original, current, &orders, readback)
 }
 
 /// Revalidates target completion before deriving a positive public presentation.
