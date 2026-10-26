@@ -10,6 +10,8 @@ mod syntax;
 
 pub mod authority;
 pub mod inputs;
+/// Exact incremental key framing through source-bound hash primitives.
+pub mod key_prefix;
 /// One owned operational argument layer with exact ordinary-argv restoration.
 pub mod observation_arguments;
 pub mod query;
