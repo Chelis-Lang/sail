@@ -4,110 +4,251 @@
 //! one. Recording never changes forwarded argv, environment operations or I/O.
 
 use super::environment::ParentEnvironment;
+use sail_acceptance::authority::ProcessDescriptor;
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
-use std::path::Path;
-use std::process::{Child, Output, Stdio};
+use std::path::{Path, PathBuf};
+use std::process::{Child, ExitStatus, Output, Stdio};
+use std::sync::Arc;
 
 #[derive(serde::Serialize)]
-pub(super) struct EnvironmentObservation {
+pub(crate) struct EnvironmentObservation {
     parent_sha256: String,
     operations_sha256: String,
     effective_sha256: String,
     inherits: bool,
 }
 
-pub(super) struct Command {
+pub(crate) struct Command {
     inner: std::process::Command,
     parent: ParentEnvironment,
     inherits: bool,
     recorded: BTreeMap<OsString, Option<OsString>>,
+    program: OsString,
+    arguments: Vec<OsString>,
+    directory: Option<PathBuf>,
 }
 
 /// Owns the exact spawned child and the optional final environment observation.
-pub(super) struct Spawned {
+pub(crate) struct Spawned {
     child: Child,
     environment: Option<EnvironmentObservation>,
+    descriptor: Option<ProcessDescriptor>,
+    waited: Option<ExitStatus>,
+    owner: Arc<()>,
 }
 
-pub(super) struct Completed {
+pub(crate) struct Completed {
     output: Output,
     environment: Option<EnvironmentObservation>,
+    launch: Option<WaitedLaunch>,
+}
+
+/// One checked builder, owned child and actual normal wait; not compiler-input authority.
+pub(crate) struct WaitedLaunch {
+    pid: u32,
+    descriptor: ProcessDescriptor,
+    owner: Arc<()>,
+}
+
+/// Native ownership lease; PID reuse cannot substitute a different child.
+pub(crate) struct LaunchLease {
+    owner: Arc<()>,
+}
+
+impl WaitedLaunch {
+    pub(crate) fn matches(
+        &self,
+        lease: &LaunchLease,
+        pid: u32,
+        descriptor: &ProcessDescriptor,
+    ) -> bool {
+        Arc::ptr_eq(&self.owner, &lease.owner)
+            && self.pid == pid
+            && sail_acceptance::phase_inputs::descriptors_equal(&self.descriptor, descriptor)
+    }
+}
+
+/// Read-only final command fields; no mutable native builder escapes.
+pub(crate) trait CommandView {
+    fn get_program(&self) -> &OsStr;
+    fn get_args(&self) -> impl Iterator<Item = &OsStr>;
+    fn get_current_dir(&self) -> Option<&Path>;
+    fn get_envs(&self) -> impl Iterator<Item = (&OsStr, Option<&OsStr>)>;
+}
+
+/// Narrow configuration supported by actual compiler observation requests.
+pub(crate) trait ConfigureCommand {
+    fn arg(&mut self, argument: impl AsRef<OsStr>) -> &mut Self;
+    fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self;
 }
 
 impl Spawned {
-    pub(super) fn id(&self) -> u32 {
+    pub(crate) fn id(&self) -> u32 {
         self.child.id()
     }
-    pub(super) fn environment(&self) -> Option<&EnvironmentObservation> {
+    pub(crate) fn environment(&self) -> Option<&EnvironmentObservation> {
         self.environment.as_ref()
     }
-    pub(super) fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
+
+    pub(crate) fn construction_observed(&self) -> bool {
+        self.environment.is_some() && self.descriptor.is_some()
+    }
+
+    pub(crate) fn launch_lease(&self) -> LaunchLease {
+        LaunchLease {
+            owner: Arc::clone(&self.owner),
+        }
+    }
+    pub(crate) fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
         self.child.stdout.take()
     }
-    pub(super) fn take_stderr(&mut self) -> Option<std::process::ChildStderr> {
+    pub(crate) fn take_stderr(&mut self) -> Option<std::process::ChildStderr> {
         self.child.stderr.take()
     }
-    pub(super) fn kill(&mut self) -> std::io::Result<()> {
+    pub(crate) fn kill(&mut self) -> std::io::Result<()> {
         self.child.kill()
     }
-    pub(super) fn wait(&mut self) -> std::io::Result<std::process::ExitStatus> {
-        self.child.wait()
+    pub(crate) fn wait(&mut self) -> std::io::Result<ExitStatus> {
+        let status = self.child.wait()?;
+        self.waited = Some(status);
+        Ok(status)
+    }
+
+    pub(crate) fn try_wait(&mut self) -> std::io::Result<Option<ExitStatus>> {
+        let status = self.child.try_wait()?;
+        if let Some(status) = status {
+            self.waited = Some(status);
+        }
+        Ok(status)
+    }
+
+    pub(crate) fn matches_descriptor(&self, descriptor: &ProcessDescriptor) -> bool {
+        self.environment.is_some()
+            && self.descriptor.as_ref().is_some_and(|actual| {
+                sail_acceptance::phase_inputs::descriptors_equal(actual, descriptor)
+            })
+    }
+
+    /// The caller retains original pipe ownership; status comes only from this child.
+    pub(crate) fn captured(
+        &mut self,
+        stdout: Vec<u8>,
+        stderr: Vec<u8>,
+    ) -> std::io::Result<Completed> {
+        let status = self
+            .waited
+            .ok_or_else(|| std::io::Error::other("owned compiler has no normal wait"))?;
+        let launch = self.descriptor.take().map(|descriptor| WaitedLaunch {
+            pid: self.child.id(),
+            descriptor,
+            owner: Arc::clone(&self.owner),
+        });
+        Ok(Completed {
+            output: Output {
+                stdout,
+                stderr,
+                status,
+            },
+            environment: self.environment.take(),
+            launch,
+        })
+    }
+
+    pub(crate) fn wait_with_output(self) -> std::io::Result<Completed> {
+        let pid = self.child.id();
+        let output = self.child.wait_with_output()?;
+        Ok(Completed {
+            output,
+            environment: self.environment,
+            launch: self.descriptor.map(|descriptor| WaitedLaunch {
+                pid,
+                descriptor,
+                owner: self.owner,
+            }),
+        })
     }
 }
 
 impl Completed {
     #[cfg(test)]
-    pub(super) fn environment(&self) -> Option<&EnvironmentObservation> {
+    pub(crate) fn environment(&self) -> Option<&EnvironmentObservation> {
         self.environment.as_ref()
     }
     #[cfg(test)]
-    pub(super) fn into_output(self) -> Output {
+    pub(crate) fn into_output(self) -> Output {
         self.output
     }
-    pub(super) fn into_observed_output(self) -> Option<Output> {
+    pub(crate) fn into_observed_output(self) -> Option<Output> {
         self.environment?;
         Some(self.output)
+    }
+
+    pub(crate) fn into_parts(self) -> (Output, Option<WaitedLaunch>) {
+        let launch = self.environment.and(self.launch);
+        (self.output, launch)
     }
 }
 
 impl Command {
-    pub(super) fn new(program: impl AsRef<OsStr>) -> Self {
+    pub(crate) fn new(program: impl AsRef<OsStr>) -> Self {
+        let program = program.as_ref().to_owned();
         Self {
-            inner: std::process::Command::new(program),
+            inner: std::process::Command::new(&program),
             parent: ParentEnvironment::capture(),
             inherits: true,
             recorded: BTreeMap::new(),
+            program,
+            arguments: Vec::new(),
+            directory: None,
         }
     }
 
-    pub(super) fn arg(&mut self, argument: impl AsRef<OsStr>) -> &mut Self {
+    pub(crate) fn arg(&mut self, argument: impl AsRef<OsStr>) -> &mut Self {
+        let argument = argument.as_ref();
         self.inner.arg(argument);
+        self.arguments.push(argument.to_owned());
         self
     }
 
-    pub(super) fn args<I, S>(&mut self, arguments: I) -> &mut Self
+    pub(crate) fn args<I, S>(&mut self, arguments: I) -> &mut Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        self.inner.args(arguments);
+        for argument in arguments {
+            self.arg(argument);
+        }
         self
     }
 
-    pub(super) fn current_dir(&mut self, directory: impl AsRef<Path>) -> &mut Self {
+    pub(crate) fn current_dir(&mut self, directory: impl AsRef<Path>) -> &mut Self {
+        let directory = directory.as_ref();
         self.inner.current_dir(directory);
+        self.directory = Some(directory.to_owned());
         self
     }
 
-    pub(super) fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
+    pub(crate) fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
         self.inner.env(&name, &value);
         self.recorded
             .insert(name.as_ref().to_owned(), Some(value.as_ref().to_owned()));
         self
     }
 
-    pub(super) fn env_remove(&mut self, name: impl AsRef<OsStr>) -> &mut Self {
+    pub(crate) fn envs<I, K, V>(&mut self, values: I) -> &mut Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        for (name, value) in values {
+            self.env(name, value);
+        }
+        self
+    }
+
+    pub(crate) fn env_remove(&mut self, name: impl AsRef<OsStr>) -> &mut Self {
         self.inner.env_remove(&name);
         if self.inherits {
             self.recorded.insert(name.as_ref().to_owned(), None);
@@ -124,24 +265,24 @@ impl Command {
             reason = "Production outer Cargo preserves inheritance; native controls exercise explicit clearing before other callers migrate."
         )
     )]
-    pub(super) fn env_clear(&mut self) -> &mut Self {
+    pub(crate) fn env_clear(&mut self) -> &mut Self {
         self.inner.env_clear();
         self.inherits = false;
         self.recorded.clear();
         self
     }
 
-    pub(super) fn stdin(&mut self, stream: impl Into<Stdio>) -> &mut Self {
+    pub(crate) fn stdin(&mut self, stream: impl Into<Stdio>) -> &mut Self {
         self.inner.stdin(stream);
         self
     }
 
-    pub(super) fn stdout(&mut self, stream: impl Into<Stdio>) -> &mut Self {
+    pub(crate) fn stdout(&mut self, stream: impl Into<Stdio>) -> &mut Self {
         self.inner.stdout(stream);
         self
     }
 
-    pub(super) fn stderr(&mut self, stream: impl Into<Stdio>) -> &mut Self {
+    pub(crate) fn stderr(&mut self, stream: impl Into<Stdio>) -> &mut Self {
         self.inner.stderr(stream);
         self
     }
@@ -276,25 +417,233 @@ impl Command {
         })
     }
 
-    pub(super) fn spawn(&mut self) -> std::io::Result<Spawned> {
-        let environment = self.observe_environment();
-        let child = self.inner.spawn()?;
-        Ok(Spawned { child, environment })
+    fn checked_descriptor(&self) -> Option<ProcessDescriptor> {
+        let recorded = ProcessDescriptor {
+            program: self.program.as_encoded_bytes().to_vec(),
+            arguments: self
+                .arguments
+                .iter()
+                .map(|value| value.as_encoded_bytes().to_vec())
+                .collect(),
+            directory: self
+                .directory
+                .as_ref()
+                .map(|path| path.as_os_str().as_encoded_bytes().to_vec()),
+            overrides: self
+                .recorded
+                .iter()
+                .map(|(name, value)| {
+                    (
+                        name.as_encoded_bytes().to_vec(),
+                        value
+                            .as_ref()
+                            .map(|value| value.as_encoded_bytes().to_vec()),
+                    )
+                })
+                .collect(),
+        };
+        let actual = ProcessDescriptor {
+            program: self.inner.get_program().as_encoded_bytes().to_vec(),
+            arguments: self
+                .inner
+                .get_args()
+                .map(|value| value.as_encoded_bytes().to_vec())
+                .collect(),
+            directory: self
+                .inner
+                .get_current_dir()
+                .map(|path| path.as_os_str().as_encoded_bytes().to_vec()),
+            overrides: self
+                .inner
+                .get_envs()
+                .map(|(name, value)| {
+                    (
+                        name.as_encoded_bytes().to_vec(),
+                        value.map(|value| value.as_encoded_bytes().to_vec()),
+                    )
+                })
+                .collect(),
+        };
+        sail_acceptance::phase_inputs::descriptors_equal(&recorded, &actual).then_some(recorded)
     }
 
-    pub(super) fn output(&mut self) -> std::io::Result<Completed> {
-        let environment = self.observe_environment();
+    pub(crate) fn spawn(&mut self) -> std::io::Result<Spawned> {
+        let descriptor = self.checked_descriptor();
+        let environment = descriptor.as_ref().and_then(|_| self.observe_environment());
+        let child = self.inner.spawn()?;
+        Ok(Spawned {
+            child,
+            environment,
+            descriptor,
+            waited: None,
+            owner: Arc::new(()),
+        })
+    }
+
+    pub(crate) fn status(&mut self) -> std::io::Result<ExitStatus> {
+        self.spawn()?.wait()
+    }
+
+    pub(crate) fn output(&mut self) -> std::io::Result<Completed> {
+        let environment = self
+            .checked_descriptor()
+            .and_then(|_| self.observe_environment());
         let output = self.inner.output()?;
         Ok(Completed {
             output,
             environment,
+            // std Command::output does not expose its child's PID; this path
+            // can supply planning output, never a compiler launch completion.
+            launch: None,
         })
+    }
+}
+
+impl CommandView for Command {
+    fn get_program(&self) -> &OsStr {
+        self.inner.get_program()
+    }
+    fn get_args(&self) -> impl Iterator<Item = &OsStr> {
+        self.inner.get_args()
+    }
+    fn get_current_dir(&self) -> Option<&Path> {
+        self.inner.get_current_dir()
+    }
+    fn get_envs(&self) -> impl Iterator<Item = (&OsStr, Option<&OsStr>)> {
+        self.inner.get_envs()
+    }
+}
+
+impl ConfigureCommand for Command {
+    fn arg(&mut self, argument: impl AsRef<OsStr>) -> &mut Self {
+        Self::arg(self, argument)
+    }
+    fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
+        Self::env(self, name, value)
+    }
+}
+
+// Existing ordinary native controls retain their original std Command setup.
+// Production compiler configuration has no mutable std Command implementation.
+#[cfg(test)]
+impl CommandView for std::process::Command {
+    fn get_program(&self) -> &OsStr {
+        self.get_program()
+    }
+    fn get_args(&self) -> impl Iterator<Item = &OsStr> {
+        self.get_args()
+    }
+    fn get_current_dir(&self) -> Option<&Path> {
+        self.get_current_dir()
+    }
+    fn get_envs(&self) -> impl Iterator<Item = (&OsStr, Option<&OsStr>)> {
+        self.get_envs()
+    }
+}
+
+#[cfg(test)]
+impl ConfigureCommand for std::process::Command {
+    fn arg(&mut self, argument: impl AsRef<OsStr>) -> &mut Self {
+        self.arg(argument)
+    }
+    fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
+        self.env(name, value)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identical_pid_and_descriptor_do_not_replace_original_owned_child() {
+        let owner = Arc::new(());
+        let original = LaunchLease {
+            owner: Arc::clone(&owner),
+        };
+        let different = LaunchLease {
+            owner: Arc::new(()),
+        };
+        let descriptor = ProcessDescriptor {
+            program: b"compiler".to_vec(),
+            arguments: vec![b"source.rs".to_vec()],
+            directory: None,
+            overrides: Vec::new(),
+        };
+        let waited = WaitedLaunch {
+            pid: 7,
+            descriptor: sail_acceptance::phase_inputs::copy_descriptor(&descriptor),
+            owner,
+        };
+        assert!(waited.matches(&original, 7, &descriptor));
+        assert!(!waited.matches(&different, 7, &descriptor));
+        assert!(!waited.matches(&original, 9, &descriptor));
+    }
+
+    #[test]
+    fn final_descriptor_preserves_order_empty_arguments_and_cwd()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut command = Command::new("compiler");
+        command
+            .args(["a b", "", "--literal=7"])
+            .current_dir("original/../directory");
+        command
+            .env("SAIL_COMMAND_DESCRIPTOR_VALUE", "")
+            .env_remove("SAIL_COMMAND_DESCRIPTOR_REMOVED");
+        let descriptor = command
+            .checked_descriptor()
+            .ok_or("matching descriptor refused")?;
+        assert_eq!(descriptor.program, b"compiler");
+        assert_eq!(
+            descriptor.arguments,
+            [b"a b".to_vec(), b"".to_vec(), b"--literal=7".to_vec()]
+        );
+        assert_eq!(
+            descriptor.directory,
+            Some(b"original/../directory".to_vec())
+        );
+        assert!(
+            descriptor
+                .overrides
+                .contains(&(b"SAIL_COMMAND_DESCRIPTOR_VALUE".to_vec(), Some(Vec::new())))
+        );
+        assert!(
+            descriptor
+                .overrides
+                .contains(&(b"SAIL_COMMAND_DESCRIPTOR_REMOVED".to_vec(), None))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn different_actual_arguments_cwd_or_program_refuse_descriptor() {
+        let mut argument = Command::new("compiler");
+        argument.arg("original");
+        argument.inner.arg("unrecorded");
+        assert!(argument.checked_descriptor().is_none());
+
+        let mut directory = Command::new("compiler");
+        directory.current_dir("original");
+        directory.inner.current_dir("different");
+        assert!(directory.checked_descriptor().is_none());
+
+        let mut program = Command::new("compiler");
+        program.inner = std::process::Command::new("different");
+        assert!(program.checked_descriptor().is_none());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn final_descriptor_preserves_non_unicode_argument_bytes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use std::os::unix::ffi::OsStringExt as _;
+        let raw = vec![b'a', 0xff, b' ', b'\\'];
+        let mut command = Command::new("compiler");
+        command.arg(OsString::from_vec(raw.clone()));
+        let descriptor = command.checked_descriptor().ok_or("raw argument refused")?;
+        assert_eq!(descriptor.arguments, [raw]);
+        Ok(())
+    }
 
     #[test]
     fn owned_command_keeps_actual_environment_operations_and_output()

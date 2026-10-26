@@ -4,6 +4,7 @@
 //! forwarded with their original argument bytes. Verified targets alone get
 //! isolated observation sidecars; these flags leave solver input unchanged.
 
+use crate::managed::command_environment::{Command as CompilerCommand, Spawned};
 use crate::managed::{Invocation, Runtime, TargetIdentity, digest, event, file_digest, json};
 use crate::{Error, Result};
 use std::ffi::OsString;
@@ -70,7 +71,7 @@ pub(crate) struct InvocationLog<'a> {
 }
 
 impl InvocationLog<'_> {
-    fn record(&self, child: &mut std::process::Child) -> Result<()> {
+    fn record(&self, child: &mut Spawned) -> Result<()> {
         let recorded = json(
             &self.directory.join(format!("{}.started", child.id())),
             &serde_json::json!({"target":self.target,"run_id":self.run_id}),
@@ -86,12 +87,42 @@ impl InvocationLog<'_> {
 }
 
 /// Own the compiler and its pipe reader across every streamed-output failure.
-struct CompilerOutput {
-    child: std::process::Child,
+struct CompilerOutput<C: OutputChild = std::process::Child> {
+    child: C,
     stdout: Option<std::thread::JoinHandle<std::io::Result<Vec<u8>>>>,
 }
 
-impl CompilerOutput {
+trait OutputChild {
+    fn try_wait(&mut self) -> std::io::Result<Option<std::process::ExitStatus>>;
+    fn kill(&mut self) -> std::io::Result<()>;
+    fn wait(&mut self) -> std::io::Result<std::process::ExitStatus>;
+}
+
+impl OutputChild for std::process::Child {
+    fn try_wait(&mut self) -> std::io::Result<Option<std::process::ExitStatus>> {
+        self.try_wait()
+    }
+    fn kill(&mut self) -> std::io::Result<()> {
+        self.kill()
+    }
+    fn wait(&mut self) -> std::io::Result<std::process::ExitStatus> {
+        self.wait()
+    }
+}
+
+impl OutputChild for Spawned {
+    fn try_wait(&mut self) -> std::io::Result<Option<std::process::ExitStatus>> {
+        self.try_wait()
+    }
+    fn kill(&mut self) -> std::io::Result<()> {
+        self.kill()
+    }
+    fn wait(&mut self) -> std::io::Result<std::process::ExitStatus> {
+        self.wait()
+    }
+}
+
+impl<C: OutputChild> CompilerOutput<C> {
     fn stdout(&mut self) -> Result<Vec<u8>> {
         self.stdout
             .take()
@@ -114,7 +145,7 @@ impl CompilerOutput {
     }
 }
 
-impl Drop for CompilerOutput {
+impl<C: OutputChild> Drop for CompilerOutput<C> {
     fn drop(&mut self) {
         self.stop();
     }
@@ -671,7 +702,7 @@ fn driver() -> Result<ExitCode> {
             .then(crate::managed::shipped::active)
             .flatten();
         if research == crate::managed::research::Mode::Off && runtime.is_none() && plan.is_none() {
-            let actual = Command::new(wrapper)
+            let actual = CompilerCommand::new(wrapper)
                 .args(&args)
                 .env_remove(crate::managed::visible_output::ENV)
                 .status()
@@ -695,7 +726,7 @@ fn driver() -> Result<ExitCode> {
             // use after its fresh native boundary checks succeed.
             .filter(|_| observation.is_none())
             .and_then(|runtime| crate::managed::retained::Native::begin(runtime, &args, &wrapper));
-        let mut command = Command::new(&wrapper);
+        let mut command = CompilerCommand::new(&wrapper);
         let native_args = if let Some(call) = &observation {
             call.arguments()
         } else if let Some(attempt) = &retained {
@@ -715,11 +746,13 @@ fn driver() -> Result<ExitCode> {
         let mut child = command
             .spawn()
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-        if let Some(call) = &mut observation {
-            call.started(child.id());
-        }
-        if let Some(attempt) = &mut retained {
-            attempt.started(child.id());
+        if child.construction_observed() {
+            if let Some(call) = &mut observation {
+                call.started(child.id());
+            }
+            if let Some(attempt) = &mut retained {
+                attempt.started(child.id());
+            }
         }
         let actual = child
             .wait()
@@ -916,7 +949,7 @@ fn driver() -> Result<ExitCode> {
         return Ok(ExitCode::SUCCESS);
     }
     let mut retention = retained.as_ref().map(|_| retention_started.elapsed());
-    let mut cmd = Command::new(&wrapper);
+    let mut cmd = CompilerCommand::new(&wrapper);
     let compiler_args = if let Some(call) = &call {
         call.compiler_arguments()
     } else if let Some(attempt) = &retained {
@@ -967,12 +1000,14 @@ fn driver() -> Result<ExitCode> {
     let mut child = cmd
         .spawn()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
-    let observing = attempts.started(reserved, &child);
-    if let Some(call) = &mut call {
-        call.compiler_started(child.id());
-    }
-    if let Some(attempt) = &mut retained {
-        attempt.started(child.id());
+    let observing = attempts.started_owned(reserved, &child);
+    if child.construction_observed() {
+        if let Some(call) = &mut call {
+            call.compiler_started(child.id());
+        }
+        if let Some(attempt) = &mut retained {
+            attempt.started(child.id());
+        }
     }
     let invocation_log = InvocationLog {
         directory: &runtime.invocations,
@@ -983,7 +1018,7 @@ fn driver() -> Result<ExitCode> {
     event(
         &serde_json::json!({"event":"target-started","run_id":runtime.run_id,"target":identity.target_name()}),
     );
-    let stdout = child.stdout.take().map(|mut pipe| {
+    let stdout = child.take_stdout().map(|mut pipe| {
         std::thread::spawn(move || {
             let mut bytes = Vec::new();
             pipe.read_to_end(&mut bytes).map(|_| bytes)
@@ -991,7 +1026,7 @@ fn driver() -> Result<ExitCode> {
     });
     let mut output = CompilerOutput { child, stdout };
     let mut stderr = Vec::new();
-    if let Some(mut pipe) = output.child.stderr.take() {
+    if let Some(mut pipe) = output.child.take_stderr() {
         let mut buf = vec![0; 65536];
         loop {
             let n = pipe
@@ -1012,7 +1047,7 @@ fn driver() -> Result<ExitCode> {
     } else {
         attempts.refuse("missing compiler stderr pipe");
     }
-    let exit = output
+    output
         .child
         .wait()
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
@@ -1021,21 +1056,18 @@ fn driver() -> Result<ExitCode> {
         call.compiler_finished();
     }
     let stdout = output.stdout()?;
-    let captured = attempts.capture(
-        observing,
-        std::process::Output {
-            stdout,
-            stderr,
-            status: exit,
-        },
-    );
+    let completed = output
+        .child
+        .captured(stdout, stderr)
+        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    let captured = attempts.capture_owned(observing, completed);
     if let Some(relay) = relay {
         relay.finish();
     }
     let mut established = None;
     let captured = if let Some(engine) = &runtime.engine {
         let stock = |directory: &Path| {
-            let mut stock = Command::new(&engine.stock_wrapper);
+            let mut stock = CompilerCommand::new(&engine.stock_wrapper);
             let logs = runtime.attribution_logs.then(|| directory.join("logs"));
             stock
                 .args(&launcher_args)
@@ -1163,7 +1195,7 @@ pub const NOT_REQUESTED: &str = "obligation detail not recorded: the run that es
 /// stock, and its sidecar records the feature.
 pub(crate) fn engine_output<'a>(
     dir: &Path,
-    stock: impl FnOnce(&Path) -> Command,
+    stock: impl FnOnce(&Path) -> CompilerCommand,
     captured: attempts::CapturedChild<'a>,
     invocation_log: &InvocationLog<'_>,
     attempts: &mut attempts::Journal<'a>,
@@ -1239,14 +1271,14 @@ pub(crate) fn engine_output<'a>(
     let mut child = stock
         .spawn()
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
-    let observing = attempts.started(reserved, &child);
+    let observing = attempts.started_owned(reserved, &child);
     invocation_log.record(&mut child)?;
     let output = child
         .wait_with_output()
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     Ok((
         attempts
-            .capture(observing, output)
+            .capture_owned(observing, output)
             .with_predecessor(captured),
         false,
     ))
@@ -2412,7 +2444,7 @@ mod tests {
         std::fs::create_dir_all(log.directory)?;
         let input = log.directory.join("engine.output");
         std::fs::write(&input, document)?;
-        let mut command = Command::new("/bin/sh");
+        let mut command = CompilerCommand::new("/bin/sh");
         command
             .args([
                 "-c",
@@ -2433,17 +2465,17 @@ mod tests {
             .ok_or("fixture root")?
             .join("engine.events.jsonl");
         if seed.is_file() {
-            command = Command::new("/bin/sh");
+            command = CompilerCommand::new("/bin/sh");
             command.args(["-c", "cat \"$1\"; printf 'original engine diagnostic\\n' >&2; cat \"$3\" > \"$4\"; exit \"$2\"", "engine"])
                 .arg(&input).arg(exit).arg(seed).arg(directory.join("engine.events.jsonl"))
                 .stdout(Stdio::piped()).stderr(Stdio::piped());
         }
         let reserved = attempts.configure(allocation, &command);
         let mut child = command.spawn()?;
-        let observing = attempts.started(reserved, &child);
+        let observing = attempts.started_owned(reserved, &child);
         log.record(&mut child)?;
         let output = child.wait_with_output()?;
-        Ok(attempts.capture(observing, output))
+        Ok(attempts.capture_owned(observing, output))
     }
 
     #[cfg(unix)]
@@ -2547,7 +2579,7 @@ mod tests {
             };
             let reply = dir.join("stock.output");
             std::fs::write(&reply, stock_document)?;
-            let mut stock = Command::new("/bin/sh");
+            let mut stock = CompilerCommand::new("/bin/sh");
             stock.current_dir(&dir).env("SAIL_ENGINE", "interactive").args([
                 "-c",
                 "reply=$1; shift; printf '%s\\0' \"$@\" > stock.argv; printf '%s' \"${SAIL_ENGINE-unset}\" > stock.engine; cat \"$reply\"; printf 'original engine diagnostic\\n' >&2; exit 1",
@@ -2630,7 +2662,7 @@ mod tests {
             include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
         )?;
         let captured = capture_engine(&log, &mut attempts, success, "0")?;
-        let mut stock = Command::new("/bin/sh");
+        let mut stock = CompilerCommand::new("/bin/sh");
         stock.args(["-c", "exit 2"]);
         let engine_directory = captured
             .directory()
@@ -2644,7 +2676,7 @@ mod tests {
         let captured = capture_engine(&log, &mut attempts, success, "101")?;
         let reply = dir.join("stock.output");
         std::fs::write(&reply, success)?;
-        let mut stock = Command::new("/bin/sh");
+        let mut stock = CompilerCommand::new("/bin/sh");
         stock.args(["-c", "cat \"$1\"", "stock"]).arg(&reply);
         let engine_directory = captured
             .directory()
@@ -2753,7 +2785,7 @@ mod tests {
         let captured = capture_engine(&log, &mut attempts, &stdout, "0")?;
         let original_directory = captured.directory().ok_or("original directory")?.to_owned();
         let original_slot = checked_feature_refusal(&captured)?;
-        let mut stock = Command::new("/bin/sh");
+        let mut stock = CompilerCommand::new("/bin/sh");
         stock.args([
             "-c",
             "printf 'independent fallback reply'; printf 'original stock diagnostic' >&2; exit 1",
@@ -2827,7 +2859,7 @@ mod tests {
         assert!(declined.protocol_candidate().is_none());
         let reply = root.join("stock.output");
         std::fs::write(&reply, success)?;
-        let mut stock = Command::new("/bin/sh");
+        let mut stock = CompilerCommand::new("/bin/sh");
         stock
             .args([
                 "-c",
@@ -2969,7 +3001,7 @@ mod tests {
                 },
             )?;
             let captured = capture_engine(&log, &mut attempts, document, code)?;
-            let mut stock = Command::new("/bin/sh");
+            let mut stock = CompilerCommand::new("/bin/sh");
             stock
                 .current_dir(&dir)
                 .args(["-c", "touch stock.started; exit 2"]);

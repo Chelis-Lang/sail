@@ -853,13 +853,68 @@ real child still exits and prints its actual result. Direct stock proofs
 include a nonempty readback witness and reject a coherent but different
 readback/result pair or missing readback against original builder operations.
 
-This migration covers the outer Cargo and optional build-planning command
-constructors. Inner adapter/compiler commands, archived command inheritance,
+The earlier component milestone covers the outer Cargo and optional build-planning command
+constructors. The separate source-only candidate below migrates inner compiler
+construction. Archived command inheritance,
 actual executable launch identity and original-submission correspondence remain
 open. Native `std::Command`/OS/environment enumeration and serialization are
 explicit adapters. The wrapper preserves original physical argv and environment
 operations; it does not clear or normalize them to satisfy its proof. No
 command capture claims that a declared compiler list covers all physical I/O.
+
+### Owned inner compiler candidate
+
+The source-only candidate routes the adapter's ordinary native compiler,
+observed native compiler, verifying compiler and engine fallback through the
+same private owned builder. It adds independently retained raw program,
+ordered argv and optional lexical directory to the existing environment
+operation records. Immediately before its own spawn, the builder compares
+these fields with its native readback through source-shared `descriptors_equal`
+and seals its environment through the existing projection. Neither operation
+rewrites arguments, directories or environment values.
+
+Compiler observation configuration accepts the narrow `ConfigureCommand`
+interface, which forwards argument/environment additions through that builder.
+Journal configuration receives only `CommandView`, an immutable readback
+interface. Native `std::Command` implementations of those interfaces exist
+only for tests; production configuration cannot obtain a mutable native command
+from the wrapper. The actual adapter Cargo-message subprocess remains a native
+command with its original cleanup owner; it is not mislabeled an owned compiler.
+
+`OwnedRunningAttempt` retains the original reserved descriptor, actual child
+PID and a private ownership lease after checking the spawned builder's exact
+descriptor. Completion requires the same lease, PID and descriptor. Lease
+identity prevents a different child with a reused PID and identical arguments
+from matching. Private `Completed` values obtain their status from that owned
+child's actual wait, rather than a status supplied alongside output buffers.
+The streaming verifier retains the original pipe extraction, stderr forwarding,
+wait and stdout-reader join order; fallback keeps its original `wait_with_output`
+path. The existing cleanup owner still stops the child and joins readers on
+streaming failure. Optional construction failure withholds the journal's
+observation while preserving the real fresh output and status.
+
+No new in-run capture file, compiler argument, environment control or transport
+is added. The raw intent and ownership lease stay in process memory. Existing
+configured research observation endpoints remain unchanged; this candidate selects
+no research endpoint or transport.
+`std::Command::output` still supplies optional planning output, but lacks an
+exposed actual PID and cannot produce the new compiler wait token.
+
+Only formatting and source review have run for this candidate. New ordinary
+source controls cover exact empty/non-Unicode argument bytes, lexical cwd,
+program/argument/cwd substitution and different leases with identical PID and
+descriptor. They are not executed receipts. Existing engine fallback controls
+use the owned builder with their original assertions. Compilation, lint, normal
+tests, canonical source capture/proof controls, complete native/macOS gates,
+conformance and native cost measurements remain pending.
+
+This is a native construction/wait guard using existing checked comparators,
+not a stock-Verus proof of the native adapter, pipe readers or OS. Parent
+inheritance timing, original-submission correspondence, archive schema,
+complete compiler inputs, opaque I/O, control-channel fidelity and actual
+executable-image/atomic observation identity remain separate obligations.
+No descriptor or ownership lease constructs `CompilerDomain` or Current proof
+authority by itself.
 
 ## Remaining concrete refinement
 
