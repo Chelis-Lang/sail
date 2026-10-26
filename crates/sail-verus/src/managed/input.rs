@@ -1262,35 +1262,41 @@ fn stamp_roots<'a>(
     roots: impl IntoIterator<Item = &'a Path>,
     mut paths: BTreeSet<PathBuf>,
 ) -> Option<String> {
+    let roots: Vec<&Path> = roots.into_iter().collect();
+    // Preserve the same exact root domain and conservative error policy while
+    // overlapping independent path observations.
+    let resolved = crate::parallel::in_order(&roots, |&path| match path.canonicalize() {
+        Ok(resolved) => Some(resolved),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Some(path.to_owned()),
+        Err(_) => None,
+    });
+    paths.extend(resolved.into_iter().collect::<Option<Vec<_>>>()?);
     // Package roots share most ancestors (the registry source directory, the
-    // home directory): each ancestor is examined once.
+    // home directory): each ancestor is examined once. The resolutions and
+    // link checks are independent, so they overlap; the stamped set is the
+    // same as examining them one by one.
     let mut examined = HashSet::new();
-    for path in roots {
-        // Compiler declarations may add an alternate spelling (src/../file)
-        // of a file already observed. Stamp the resolved file once; actual
-        // aliases remain separately stamped below and bound in the snapshot.
-        match path.canonicalize() {
-            Ok(resolved) => {
-                paths.insert(resolved);
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                paths.insert(path.to_owned());
-            }
-            Err(_) => return None,
+    let ancestors: Vec<&Path> = roots
+        .iter()
+        .flat_map(|path| path.ancestors())
+        .filter(|alias| examined.insert(*alias))
+        .collect();
+    let links = crate::parallel::in_order(&ancestors, |&alias| {
+        match std::fs::symlink_metadata(alias) {
+            Ok(metadata) => Some(metadata.file_type().is_symlink()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Some(false),
+            Err(_) => None,
         }
-        for alias in path.ancestors() {
-            if examined.insert(alias) {
-                match std::fs::symlink_metadata(alias) {
-                    Ok(metadata) if metadata.file_type().is_symlink() => {
-                        paths.insert(alias.to_owned());
-                    }
-                    Ok(_) => {}
-                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                    Err(_) => return None,
-                }
-            }
-        }
-    }
+    })
+    .into_iter()
+    .collect::<Option<Vec<_>>>()?;
+    paths.extend(
+        ancestors
+            .iter()
+            .zip(links)
+            .filter(|(_, link)| *link)
+            .map(|(alias, _)| (*alias).to_owned()),
+    );
     stamp_paths(&paths)
 }
 
@@ -1414,6 +1420,41 @@ pub(super) fn configuration_paths(workspace: &Path, cargo_home: Option<&Path>) -
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    #[test]
+    fn mutation_stamps_cover_resolved_roots_and_linked_ancestors() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-stamp-roots-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("real/src"))?;
+        std::fs::write(root.join("real/src/lib.rs"), "x")?;
+        std::os::unix::fs::symlink(root.join("real"), root.join("link"))?;
+        let root = root.canonicalize()?;
+        let snapshot = |roots: Vec<std::path::PathBuf>| super::InputSnapshot {
+            workspace: root.clone(),
+            revision: String::new(),
+            roots,
+            excluded: Vec::new(),
+            complete: true,
+            observation_paths: std::collections::BTreeSet::new(),
+            digests: std::collections::BTreeMap::new(),
+            bindings: std::collections::BTreeMap::new(),
+            capture: None,
+        };
+        let linked = snapshot(vec![root.join("link/src/../src/lib.rs")]);
+        let explicit = super::InputSnapshot {
+            observation_paths: [root.join("real/src/lib.rs"), root.join("link")]
+                .into_iter()
+                .collect(),
+            ..snapshot(Vec::new())
+        };
+        assert!(super::mutation_stamp(&linked).is_some());
+        assert_eq!(
+            super::mutation_stamp(&linked),
+            super::mutation_stamp(&explicit)
+        );
+        std::fs::remove_dir_all(root)
+    }
+
     #[test]
     fn only_managed_metadata_ignores_the_callers_target_override() {
         let workspace = std::path::Path::new("workspace");

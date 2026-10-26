@@ -37,7 +37,7 @@ skipped job all fail the aggregate.
 | `ci/local.sh e2e PHASE` | Scope | Image |
 |---|---|---|
 | `legacy` | New projects, cold/warm output parity, JSON, MCP and portfolio | core |
-| `output` | Edit-loop output, compile errors and partial verification | core |
+| `output` | Edit-loop output, compile errors, partial verification and a seeded-mutation smoke | core |
 | `flags` | Cargo/Verus invocation flags | core |
 | `loader` | Loader-variable fallback | core |
 | `managed` | Failing-first vstd reuse, complete receipts, jobs/MCP, missing evidence, edits, source-alias retargeting, prune and Cargo metadata | mcp |
@@ -140,9 +140,18 @@ not run, and copies those steps' logs to `<out>/failing/`. Every sample is in
 speedups with 95% bootstrap intervals, the cache hit share of solver lookups and the share of Sail runs with a
 newly published retained-proof receipt.
 
-Tiers: `ci/local.sh conformance standard` ends with two mutants per class of
-`human-eval` for one round; `ci/local.sh conformance deep` runs every
-catalogue for one round. Both are local-only. Timings come only from a native
+Tiers: the e2e `output` phase (CI) ends with a smoke on a tiny local crate,
+`ci/fixtures/mutation-smoke/lib.rs`, with four mutants of its catalogue
+`smoke.toml` (`cargo xtask gen-mutants --file ci/fixtures/mutation-smoke/lib.rs
+--name smoke --seed 1 --per-class 1`; `expected` settled from stock runs and
+checked on every run). It runs the original, an unchanged re-run, each mutant
+followed by a revert and a forced re-run, comparing each step's exit code,
+stdout and stderr with stock's as the rest of `ci/test-output.sh` does and
+each step's per-function verdicts (`check_output`); reverts and the forced
+run must get the original's answers. `ci/local.sh conformance standard` ends
+with two mutants per class of `human-eval` for one round;
+`ci/local.sh conformance deep` runs every catalogue for one round. Both are
+local-only. Timings come only from a native
 host (`ci/run.sh bench mutants NAME ROUNDS`, three rounds for a release).
 
 For release-product mutation measurements, pass `--vstd-lock release-out/deps/<bundle>/Cargo.lock` to both `mutants oracle` and
