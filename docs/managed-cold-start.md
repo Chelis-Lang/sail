@@ -29,7 +29,7 @@ ordinary environment. Public fallback snapshots retain caller target selection.
 
 The Sail cache must be physically disjoint from every resolved package
 directory. A cache inside a package, or a package stored beneath the cache,
-uses ordinary Cargo-Verus fallback with one `note[SAIL3112]` and no managed
+uses ordinary Cargo-Verus fallback (`SAIL3112`) with no managed
 proof reuse or receipts. Symbolic aliases and not-yet-created cache suffixes
 are checked too. Use an external cache (the default) to reuse proofs. This
 conservatively includes projects checked out beneath the Sail cache: its
@@ -52,7 +52,7 @@ Release archives include preverified vstd for the supported dependency and
 compiler setup. A matching fresh project or worktree can use that proof;
 otherwise it compiles and verifies normally. Signed solver replies in the
 archive can still answer exact matching queries on a proof-bundle miss.
-`note[SAIL3138]` explains a miss and any available alignment commands; Sail
+A `SAIL3138` note (JSON, or `SAIL_EXPLAIN=1`) explains a miss and any available alignment commands; Sail
 does not change the project's dependencies for you. See
 [installation](install.md) and [performance](performance.md).
 

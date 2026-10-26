@@ -246,26 +246,10 @@ fi
 
 if [ "$part" = flags ]; then
 # Setups managed verification cannot bind to a proof receipt (ADR 0046)
-# are verified as plain Cargo-Verus verifies them: one note line, then
-# Cargo-Verus's own output and exit code. Each side runs once (both at once) to warm
-# its target; the second runs are compared, with Cargo's `Finished ... in
-# Ns` timing blanked.
-unbound_normalize() { sed -E '/^note\[SAIL3112\]/d; s/(Finished.* in )[0-9.]+s$/\1Ns/' "$1"; }
-unbound_compare() { # label
-  local label="$1" part
-  if [ "$(grep -c '^note\[SAIL3112\]' "$work/$label-sail.err")" != 1 ]; then
-    echo "e2e: $label: expected one note[SAIL3112] line" >&2
-    cat "$work/$label-sail.err" >&2
-    exit 1
-  fi
-  for part in rc out err; do
-    if ! cmp -s <(unbound_normalize "$work/$label-plain.$part") <(unbound_normalize "$work/$label-sail.$part"); then
-      echo "e2e: $label $part differs from plain cargo verus verify" >&2
-      diff -u <(unbound_normalize "$work/$label-plain.$part") <(unbound_normalize "$work/$label-sail.$part") >&2 || true
-      exit 1
-    fi
-  done
-}
+# are verified as plain Cargo-Verus verifies them, with Cargo-Verus's own
+# output and exit code and no Sail note (`SAIL_EXPLAIN=1` adds it). Each side
+# runs once (both at once) to warm its target; the second runs are compared,
+# with Cargo's `Finished ... in Ns` timing blanked.
 unbound_case() { # label; rest = the arguments for both sides
   local label="$1"; shift
   touch src/lib.rs
@@ -274,7 +258,7 @@ unbound_case() { # label; rest = the arguments for both sides
   wait
   plain_run "$label-plain" stock_cargo verus verify "$@"
   sail_run "$label-sail" "$sail" verify "$@"
-  unbound_compare "$label"
+  same "$label-plain" "$label-sail"
 }
 unbound_case config --config build.jobs=2
 unbound_case tests --tests
@@ -334,18 +318,17 @@ fn main() {
 RS
   plain_run unsupported-fail-plain stock_cargo verus verify
   sail_run unsupported-fail-sail "$sail" verify
-  unbound_compare unsupported-fail
+  same unsupported-fail-plain unsupported-fail-sail
   [ "$(cat "$work/unsupported-fail-sail.rc")" = 101 ]
-  grep -q 'Cargo .* cannot track' "$work/unsupported-fail-sail.err"
   cp src/lib.rs "$work/unsupported-failing.rs"
   edit_in_place 's/ensures r > x,/ensures r >= x,/' src/lib.rs
   plain_run unsupported-pass-plain stock_cargo verus verify
   sail_run unsupported-pass-sail "$sail" verify
-  unbound_compare unsupported-pass
+  same unsupported-pass-plain unsupported-pass-sail
   [ "$(cat "$work/unsupported-pass-sail.rc")" = 0 ]
   CARGO_TARGET_DIR="$work/target-plain" quiet_run unsupported-noop-plain stock_cargo verus verify
   CARGO_TARGET_DIR="$work/target-sail" quiet_run unsupported-noop-sail "$sail" verify
-  unbound_compare unsupported-noop
+  same unsupported-noop-plain unsupported-noop-sail
   if grep -qE '^ *(Compiling|Checking) ' "$work/unsupported-noop-sail.err"; then
     echo 'e2e: unsupported Cargo rebuilt an unchanged passing project' >&2
     exit 1
@@ -370,7 +353,7 @@ PY
 # cases above (a fresh one would add two cold builds to this job).
 run target-dir-plain stock_cargo verus verify --target-dir "$work/target-plain"
 run target-dir-sail "$sail" verify --target-dir "$work/target-sail"
-unbound_compare target-dir
+same target-dir-plain target-dir-sail
 # Last: plain Cargo-Verus then treats the crate as fresh for any later
 # Verus arguments, since `--no-verify` builds it successfully.
 unbound_case no-verify -- --no-verify
@@ -379,7 +362,8 @@ fi
 
 if [ "$part" = loader ]; then
 # A process-loader variable: verified as plain Cargo-Verus verifies it, with
-# one note line, no proof receipts and no dependency store. The failing proof
+# the same output, no proof receipts and no dependency store; the JSON run and
+# `SAIL_EXPLAIN=1` carry one note saying why. The failing proof
 # fails; the JSON run builds the loader context's own target.
 LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
   quiet_run loader-json "$sail" verify --output json
@@ -397,9 +381,12 @@ wait # the plain warm-up
 plain_run loader-plain stock_cargo verus verify
 LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
   run loader-sail "$sail" verify
-[ "$(grep -c '^note\[SAIL3112\]' "$work/loader-sail.err")" = 1 ]
-edit_in_place '/^note\[SAIL3112\]/d' "$work/loader-sail.err"
 same loader-plain loader-sail
+SAIL_EXPLAIN=1 LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
+  run loader-explain "$sail" verify
+[ "$(grep -c '^note\[SAIL3112\]' "$work/loader-explain.err")" = 1 ]
+edit_in_place '/^note\[SAIL3112\]/d' "$work/loader-explain.err"
+same loader-plain loader-explain
 echo "e2e: LD_LIBRARY_PATH verified as plain cargo verus verify, without proof reuse"
 fi
 

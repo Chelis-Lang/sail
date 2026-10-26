@@ -21,12 +21,22 @@ semantic versioning once the API is published.
 - Refuse missing, malformed or incomplete compiler-declaration journals as
   complete input evidence. Record child lifecycle and exact artifact/read
   association; normal failing verifier exits remain distinct from incomplete
-  observations. Uncovered source inventories remain conservative.
+  observations. Uncovered source inventories remain conservative. Each Cargo
+  journal section must retain its own complete child history; another section's
+  completed child cannot supply missing coverage.
 - Use stock-Verus-checked raw transcript feeds and cache record framing in
   production. Exact bytes, separators and payloads are preserved; malformed
   prefix candidates disable cache work. Complete parser, compiler-input,
   process/store-origin and service-composition proofs remain open.
 
+- Keep fresh per-target input revisions independent: a target whose revision
+  cannot be read again now marks only its own receipt changed, instead of every
+  receipt package in the run.
+- Make native temporal jobs an optional `temporal` build feature (default on).
+  `cargo build -p sail-cli --no-default-features` builds a complete
+  `sail verify` that compiles no D.I.V.E. code. A malformed or unreadable
+  `sail-runtime-worker.json` now only makes temporal jobs unavailable instead
+  of preventing `sail serve` from starting.
 - Report a stored managed result as Unknown, not Current, in job status, MCP
   and repair acceptance once the Sail, Verus, Cargo or rustc installation it was
   recorded against has changed.
@@ -38,6 +48,19 @@ semantic versioning once the API is published.
   verification, recording the target as not reusable rather than failing the
   build, and publish no receipt when a unit's dep-info or build-script output
   cannot be read.
+- Serve, store or keep a cached solver reply only when it is exactly one
+  complete response frame (#379). After a cache fallback, compare the pinned
+  solver's replay with every reply already served; a difference stops the
+  session with `SAIL2005` instead of continuing on a diverged stream.
+- Treat a missing, unreadable, malformed or unclosed artifact journal, or a
+  lost source-input record after earlier runs, as incomplete compiler-input
+  coverage (#377): that run verifies again and grants no current receipt.
+- Human `sail verify` stderr is now exactly plain `cargo verus verify`'s: the
+  `warning[SAIL0003]` (cache daemon unavailable), `note[SAIL3112]` (verified
+  without proof reuse) and `note[SAIL3138]` (shipped vstd proof unused) lines
+  are printed only with `SAIL_EXPLAIN=1`. `--output json` results carry them
+  in `notes` (now including `SAIL0003`); JSON runs, jobs, `watch` and MCP keep
+  them on stderr.
 
 - Add linked acceptance lifecycle models and a conditional composed proof,
   checked directly by stock Verus with complete captured dependencies and

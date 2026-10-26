@@ -8,6 +8,10 @@ publish.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["temporal"]
+temporal = ["sail-runtime/temporal"]
+
 [dependencies]
 sail-acceptance.workspace = true
 bytes.workspace = true

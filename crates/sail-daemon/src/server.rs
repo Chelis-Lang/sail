@@ -438,7 +438,8 @@ impl State {
     /// Stores a reply: queued for disk and held in memory meanwhile. A key
     /// whose entry file exists, or whose write is already queued, is left
     /// alone, so memory never holds bytes that differ from the entry disk
-    /// has or will have.
+    /// has or will have. A reply that is not exactly one plausible response
+    /// frame for its command is refused, so it can never be served.
     fn put(
         &self,
         key: QueryKey,
@@ -447,6 +448,13 @@ impl State {
         solver: &Solver,
         mode: &str,
     ) {
+        if !sail_cache::shape_ok(&meta.command, &reply) {
+            self.log.line(&format!(
+                "refused PUT {key}: reply does not have the shape of one `{}` response",
+                meta.command
+            ));
+            return;
+        }
         if self.disk.contains(&key) {
             return;
         }

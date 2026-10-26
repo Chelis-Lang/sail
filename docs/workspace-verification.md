@@ -57,10 +57,11 @@ relative Cargo/cache homes are resolved against that directory.
 Sail owns the Cargo target and Verus's logs, and binds Cargo library and
 binary targets to proof receipts. It never refuses what plain
 `cargo verus verify` accepts. When an invocation asks for something it
-cannot bind to a receipt, `sail verify` prints one `note[SAIL3112]` line on
-stderr naming the reason, then verifies exactly as `cargo verus verify`
-does, in your own target, with `sail-z3` and the solver cache in front of
-Z3: the rest of the output, the verdicts and the exit code are Cargo-Verus's.
+cannot bind to a receipt, `sail verify` verifies exactly as
+`cargo verus verify` does, in your own target, with `sail-z3` and the solver
+cache in front of Z3: the output, the verdicts and the exit code are
+Cargo-Verus's. With `SAIL_EXPLAIN=1` (and in JSON runs) one
+`note[SAIL3112]` line on stderr names the reason first.
 Nothing is reused or recorded. These setups are:
 
 - `--target-dir`, Verus's `--log`, `--log-all` and `--log-dir`, and
@@ -104,8 +105,8 @@ The job's exit code is Cargo-Verus's. `sail jobs result` adds a
 A process-loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`,
 `DYLD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES` or `DYLD_FRAMEWORK_PATH`) is
 handled the same way inside managed verification, so it also works for jobs
-and MCP: Sail cannot bind what it changes to a receipt, so such a run prints
-one `note[SAIL3112]` line, verifies what Cargo rebuilds exactly as
+and MCP: Sail cannot bind what it changes to a receipt, so such a run
+(noted as `SAIL3112`) verifies what Cargo rebuilds exactly as
 `cargo verus verify` does, in Sail's target, and neither reuses nor records
 proof receipts or dependency records. `--output json` reads `unknown`, with
 a `SAIL3112` note and `no_reuse` whose `verified_as` is `managed`, and has
@@ -152,9 +153,8 @@ What differs is when there is work:
   is partial.
 - **Terminal.** On a terminal Sail asks Cargo for colour, as plain Cargo
   would print there; Cargo's progress bar is not shown. `-v` and
-  `--message-format` are verified as plain Cargo-Verus does (with one
-  `note[SAIL3112]` line), since Cargo would otherwise print Sail's driver and
-  flags.
+  `--message-format` are verified as plain Cargo-Verus does (`SAIL3112`),
+  since Cargo would otherwise print Sail's driver and flags.
 - **Combined output.** Verus's summary line reaches stdout once Verus has
   finished. With `2>&1`, a compile-phase error reported after verification
   (lifetime or erasure checks) appears before the summary instead of after
@@ -368,9 +368,9 @@ Unix socket paths are limited to 107 bytes on Linux and 103 on macOS
 (`SUN_LEN`). When a deep `HOME` or a long `SAIL_CACHE_DIR` would exceed that,
 Sail puts both sockets in a private per-cache directory instead,
 `/tmp/sail-<hash>/` (mode 0700; used only when no other user can access it).
-If the daemon still cannot start, `sail verify` prints one
-`warning[SAIL0003]` line saying why and verifies without the cache, with the
-same results. An explicit `SAIL_DAEMON_SOCKET` is used as given, so keep it
+If the daemon still cannot start, `sail verify` verifies without the cache,
+with the same results; `--output json` notes why (`SAIL0003`), and
+`SAIL_EXPLAIN=1` prints one `warning[SAIL0003]` line in human output. An explicit `SAIL_DAEMON_SOCKET` is used as given, so keep it
 short.
 An explicitly selected older cache daemon can keep running: Sail starts a
 private jobs-only sidecar alongside it instead of terminating it.

@@ -280,9 +280,56 @@ impl ResponseSplitter {
     }
 }
 
+/// Whether `reply` is exactly one complete solver response, starting at its
+/// first byte and followed by nothing but whitespace.
+///
+/// "Complete" means the [`ResponseSplitter`] emits it while the stream is
+/// still open: a balanced expression, or a line ended by `\n`. This is the
+/// unit a live session counts responses in, so a stored reply that passes
+/// stands for exactly one reply in the stream.
+#[must_use]
+pub fn is_single_response(reply: &[u8]) -> bool {
+    let mut splitter = ResponseSplitter::new();
+    let mut items = Vec::new();
+    splitter.push(reply, &mut items);
+    matches!(items.as_slice(), [one] if one.offset == 0) && splitter.finish().is_none()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn single_response_requires_exactly_one_complete_frame() {
+        for ok in [
+            b"sat\n".as_slice(),
+            b"unsat\r\n",
+            b"(:name \"Z3\")\n",
+            b"(:name \"Z3\")",
+            b"(model\n  (define-fun x () Int 1)\n)\n  \n",
+            b"(:reason-unknown \"a ) in a string\")\n",
+        ] {
+            assert!(is_single_response(ok), "{:?}", String::from_utf8_lossy(ok));
+        }
+        for bad in [
+            b"".as_slice(),
+            b"\n",
+            b" sat\n",
+            b"sat",
+            b"sat\nunsat\n",
+            b"(:name \"Z3\")(:evil \"extra\")\n",
+            b"(:name \"Z3\")\n(:evil \"extra\")\n",
+            b"(:name \"Z3\") trailing\n",
+            b"(:name \"Z3\"",
+            b"(:name \"Z3\")\nsat",
+        ] {
+            assert!(
+                !is_single_response(bad),
+                "{:?}",
+                String::from_utf8_lossy(bad)
+            );
+        }
+    }
 
     fn commands(src: &[u8]) -> Vec<(ItemKind, u64, String)> {
         let mut s = CommandSplitter::new();

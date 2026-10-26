@@ -165,7 +165,7 @@ binds the latest cumulative source and preserves the same positive-kill limit.
   own `librustc_driver` and `libLLVM` copies through the dynamic loader. It
   also reads `liballocator_api2` and `libproc_macro_hack` during crate
   lookup. These are bytes the proof was not built with, so the miss is kept.
-  `note[SAIL3138]` names the components; a minimal toolchain with `rust-src`
+  The `SAIL3138` note names the components; a minimal toolchain with `rust-src`
   gets the proof.
 
 - **Instant revert has a narrow qualified profile and visible costs.** Final
@@ -321,8 +321,8 @@ binds the latest cumulative source and preserves the same positive-kill limit.
 - **Some setups get no proof reuse.** Tests, benches, examples,
   `--target-dir`, Verus `--log` options, `--no-verify`, Cargo `--config`
   overrides and loader variables such as `LD_LIBRARY_PATH` are verified as
-  plain `cargo verus verify` verifies them, with one `note[SAIL3112]` line,
-  but nothing is reused or recorded. Jobs, `watch` and MCP verify them the
+  plain `cargo verus verify` verifies them (`SAIL3112`), but nothing is
+  reused or recorded. Jobs, `watch` and MCP verify them the
   same way and mark the result `no_reuse`, never `current`
   ([workspace verification](workspace-verification.md#setups-verified-without-proof-reuse)).
 - **Fresh projects verify vstd again while the native-artifact store is

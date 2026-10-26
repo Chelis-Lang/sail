@@ -2184,8 +2184,10 @@ fn target_revisions(
             return projected;
         }
     }
+    // Fresh reads are per target: an unavailable revision is missing for its
+    // own target only (that receipt is dirty), never for the whole batch.
     let fresh = crate::parallel::in_order(&requested, |&id| (id, target_revision(data, id)));
-    target_revision_readback(&requested, fresh).unwrap_or_default()
+    target_revision_entries(&requested, fresh).unwrap_or_default()
 }
 
 /// Evidence from the same admitted receipt policy, independently of the
@@ -2244,7 +2246,19 @@ fn preserve_receipt_declarations(
     }
 }
 
+/// The complete batch, or `None` when any returned record is missing,
+/// foreign, duplicated or has no revision.
 fn target_revision_readback(
+    ids: &[&str],
+    reads: Vec<(&str, String)>,
+) -> Option<HashMap<String, String>> {
+    let available = reads.iter().all(|(_, revision)| !revision.is_empty());
+    target_revision_entries(ids, reads).filter(|_| available)
+}
+
+/// The available revisions of an exactly matching batch of returned records;
+/// a target whose revision is unavailable is absent from the map.
+fn target_revision_entries(
     ids: &[&str],
     reads: Vec<(&str, String)>,
 ) -> Option<HashMap<String, String>> {
@@ -2253,14 +2267,13 @@ fn target_revision_readback(
         .iter()
         .map(|(id, _)| (id.as_bytes(), &[][..]))
         .collect();
-    if !crate::parallel::exact_descriptors(&expected, &returned)
-        || reads.iter().any(|(_, revision)| revision.is_empty())
-    {
+    if !crate::parallel::exact_descriptors(&expected, &returned) {
         return None;
     }
     Some(
         reads
             .into_iter()
+            .filter(|(_, revision)| !revision.is_empty())
             .map(|(id, revision)| (id.to_owned(), revision))
             .collect(),
     )
@@ -2677,7 +2690,11 @@ pub(crate) fn run_engine_held(
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
     let loader = super::configuration::check(&invocation, &config.args)?;
-    if let Some(variable) = &loader {
+    // Human output is plain Cargo-Verus's; Sail's notes reach it only with
+    // `SAIL_EXPLAIN=1`. JSON callers (jobs, `watch`, MCP) keep them on stderr
+    // as diagnostics and in the result's notes.
+    let show_notes = out.is_none() || crate::explain();
+    if let Some(variable) = loader.as_ref().filter(|_| show_notes) {
         let _ = writeln!(
             err,
             "note[SAIL3112]: {variable} is set, so this run reuses no proof receipts and records none; it verifies what Cargo rebuilds, as `cargo verus verify` does (unset {variable} to reuse proofs)"
@@ -2942,7 +2959,9 @@ pub(crate) fn run_engine_held(
         &data,
     )?;
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
-    let (sources, source_coverage) = super::source_inputs::load(&source_state);
+    let source_observed_before = paths.input_state.exists();
+    let (sources, source_coverage) =
+        super::source_inputs::load(&source_state, source_observed_before);
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
     data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
@@ -3287,8 +3306,13 @@ pub(crate) fn run_engine_held(
             &paths.run.join("artifacts.jsonl"),
             &data,
         )?;
-        let (sources, source_coverage) =
-            super::source_inputs::update(&source_state, &paths.run.join("artifacts.jsonl"), &data)?;
+        let (sources, source_coverage) = super::source_inputs::update_with_history(
+            &source_state,
+            &paths.run.join("artifacts.jsonl"),
+            &data,
+            source_observed_before,
+            source_coverage,
+        )?;
         // Coverage after the run needs a contract for every script Cargo ran.
         let mut unscheduled = super::build_inputs::unscheduled(
             &paths.run.join("cargo.stdout"),
@@ -3596,7 +3620,9 @@ pub(crate) fn run_engine_held(
     }
     if let Some(reason) = shipped_miss {
         let message = shipped_miss_message(&reason);
-        let _ = writeln!(err, "note[SAIL3138]: {message}");
+        if show_notes {
+            let _ = writeln!(err, "note[SAIL3138]: {message}");
+        }
         notes.push(format!("SAIL3138: {message}"));
     }
     for target in targets.iter().filter(|t| t.dependency_store.is_some()) {
@@ -6246,7 +6272,15 @@ mod tests {
         assert!(target_revision_readback(&ids, extra).is_none());
         let mut unavailable = read();
         unavailable[0].1.clear();
-        assert!(target_revision_readback(&ids, unavailable).is_none());
+        assert!(target_revision_readback(&ids, unavailable.clone()).is_none());
+        // Fresh reads keep every other target's revision.
+        let entries = target_revision_entries(&ids, unavailable)
+            .ok_or_else(|| std::io::Error::other("no partial revisions"))?;
+        assert_eq!(entries.get("a"), None);
+        assert_eq!(entries.get("b"), original.get("b"));
+        let mut foreign = read();
+        foreign.push(("foreign", String::new()));
+        assert!(target_revision_entries(&ids, foreign).is_none());
         std::fs::write(root.join("a/lib.rs"), "changed")?;
         let mut changed = read();
         changed.reverse();

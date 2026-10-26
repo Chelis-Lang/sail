@@ -1,16 +1,16 @@
 # Acceptance boundary refinement qualification
 
-Status: expanded captured-source stock checks pass all 82 production cases
-and 31 model cases on macOS at `42637e0d`, with the full host gate passing
-1,128/1,128 tests. Native Linux passes the earlier 71 production cases at
-`0b646c48`; its end-to-end gate fails on journal reservation
-reuse during a repeated same-run compiler invocation. The allocation correction
-at `bcd21d9d` restores complete target evidence, but the unchanged managed test
-still observes three verifier invocations instead of one; publication remains pending. The
-earlier retained-transition candidate passes 78 cases and the macOS gate at `0c3dbc1d`. Draft
-[PR #378](https://github.com/Chelis-Lang/sail/pull/378) targets main after #362 merged.
-No service-wide theorem, complete compiler closure or authenticated physical
-observation is claimed. The [obligation ledger](../design/acceptance-boundary-refinements.md)
+Status: frozen `a615dbba` passes all 92 canonical production cases and
+31 model cases on macOS and native x86-64 Linux, and the full macOS host gate
+passes 1,133/1,133 tests. Its native workspace and solver-fault gates pass;
+the complete end-to-end run stops at the unchanged build-script reuse assertion:
+three verifier invocations instead of one. PR conformance is unrun. The
+reported targets remain Current and complete, so this failure demonstrates a
+reuse regression, not a false proof. The cause is not yet established.
+[PR #378](https://github.com/Chelis-Lang/sail/pull/378) remains a draft whose
+published head is the initial documentation checkpoint. No service-wide
+theorem, complete compiler closure or authenticated physical observation is
+claimed. The [obligation ledger](../design/acceptance-boundary-refinements.md)
 tracks the six remaining deliverables separately.
 
 ## Source and actual scope
@@ -50,8 +50,8 @@ implementation obligation; it is not selected.
 | Gate | Current evidence | Remaining |
 |---|---|---|
 | Initial documentation draft | Native Linux full workspace gate at `d4bb18a3`; 1,098 tests and all workspace checks pass. Implementation bytes equal parent `c6270f75`, whose pre-push proof, solver, full e2e and PR conformance gates pass | Does not qualify the later executable changes |
-| Combined production proofs | All 82 canonical cases pass on macOS at `42637e0d`. The file-kernel/readback input root and all 27 mutations pass on macOS and native Linux at `e2dcee0d`; all 44 authority cases pass on macOS at `aeb741ff` after proof-only factoring, 299/0 positive and 298/1 per mutation | Final combined 92-case source requires fresh coherent checking on both platforms |
-| Combined workspace/solver/e2e | Native `e2dcee0d` workspace passes 1,140/1,140 tests and every workspace check. The complete unchanged native managed phase passes at `bc22690e`, including the original one-invocation/reuse assertion, CLI/MCP jobs and real MCP tool listing | Full combined pre-push gate, remaining e2e phases, solver faults and PR conformance remain pending |
+| Combined production proofs | All 92 canonical production cases and all 31 model cases pass coherently on macOS and native Linux at `a615dbba` | Later key, compiler-phase and owned-attempt changes need their own final combined qualification |
+| Combined workspace/solver/e2e | Native `a615dbba` workspace and all 48 solver-fault tests pass. Full e2e passes the earlier managed, fresh-copy and native-compiler controls, then stops at build-script reuse | Fix the regression, rerun the complete e2e union and PR conformance, then qualify the final combined source before publication |
 | Differential conformance | Corpus, comparator and deadlines unchanged | PR tier before publication; full fast and standard before merge |
 | Cost | Additional byte/header scans, request validation and provider accounting are implemented; no measured delta or gain claimed | Bounded native cost measurement before selection; retain every sample |
 | Hosted checks | The draft targets main; its published head is the initial documentation checkpoint | Publish qualified executable changes and require final-head checks before any merge |
@@ -72,6 +72,11 @@ implementation obligation; it is not selected.
 | 2026-10-26 | `bcd21d9d` | Native Linux complete managed phase | Exclusive journal allocation restores complete evidence for both reported targets, with no report error. The original cold-edit assertion still fails: three verifier invocations, zero reused targets, expected one invocation. The 111.73-second run is a failed targeted regression check, not a full pre-push gate; the remaining cause is under investigation |
 | 2026-10-26 | `e2dcee0d` | macOS complete expanded input/kernel integration | Query and all 28 input cases, all 31 models, 27 source-capture tests and the full host gate pass. The authority root refuses its original request-coverage mutation because it hits the normal solver resource limit. The complete attempt fails; no resource, scope, inventory or guard check is relaxed. A proof-only opacity/reveal correction passes both whole-root development probes; final canonical qualification remains pending |
 | 2026-10-26 | `9bce577a` | Native combined pre-push gate | Workspace passes. Model stage is deliberately interrupted after main merges #389's runtime/currentness and shim safeguards as `6d825736`; source must incorporate those fixes before qualification. Remaining stages are unrun. The interruption is recorded separately from verifier/check failures |
+
+| 2026-10-26 | `a615dbba` | Native combined pre-push gate | Workspace, all 31 model cases, all 92 production cases and all 48 solver-fault tests pass. Full e2e stops at `ci/test-managed.py` build-script assertion: three verifier invocations, expected one; both reported targets are Current and complete. Earlier one-invocation edit, fresh copies and native compiler replacement controls pass. Cause unconfirmed; remaining e2e and PR conformance unrun |
+| 2026-10-26 | `a615dbba` plus matcher diagnostics | macOS full managed diagnosis | Stops earlier at the first failed-proof Current assertion, reporting Historical. Source instrumentation and unchanged assertions are preserved; cause unknown. This attempt does not diagnose the native build-script failure |
+
+| 2026-10-26 | `520e9c96` merge candidate | Focused native adapter/shim tests | Initial fixture assembly has duplicate test names, then 667/668 pass with one child-PID assertion still indexing the new outer marker. Fixtures retain all assertions and bind the added markers; final 669/669 pass. The 16 real cached sessions pass with one leaky-process label, so no descriptor-cleanup qualification is claimed |
 
 Legacy updater-body SHA-256:
 `94d497cbcd16f4f6f0b94b6d4166d07f3d26abf54b9b05abc9c78eb433a65ef4`.
@@ -115,6 +120,26 @@ native service or complete the six design obligations.
 The environment and retained-readback defect probes are preserved privately at
 `chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-26/acceptance-boundary-defect-probes.tgz`.
 SHA-256: `4d0e17baff34cc202ae081829e6784a09fe453dcb1ddd0b6622a9b238d1c39e5`.
+
+The frozen `a615dbba` native attempt is preserved privately under
+`experiments/2026-10-26/acceptance-combined-a615dbba-native.tgz`, SHA-256
+`4da33109a22e0da58ee0ddda81b13785da0dec766688f1e75bc5cebca236a22d`.
+Its macOS qualification and exact source bundle are preserved under
+`experiments/2026-10-26/acceptance-combined-a615dbba-mac.tgz`, SHA-256
+`59d6800de66bb37d899b5145e68a45978347d57f7a1e5929d96af47282f1c5d8`.
+The native controller uploaded and independently read back its archive before
+teardown. The stopped run is not a full pre-push pass.
+
+The `520e9c96` integration preserves the main branch's replay comparisons,
+retained-response buffer accounting, exact stderr policy, per-target fresh
+revisions and optional temporal packaging. Cargo journal sections additionally
+retain their own typed intent/child/frame/terminal ownership. A section cannot
+borrow another section's completed child, and a later terminal cannot finish
+an earlier section. Both minimal traces are rejected by the actual parser and
+covered by regression tests. Prior missing or uncovered input history cannot
+become covered from a later closed journal alone. All 669 selected tests,
+27 source-capture tests and strict workspace clippy pass on macOS; the full
+combined qualification remains pending.
 
 ## Limits retained after these slices
 
@@ -178,8 +203,8 @@ bytes. Shim overflow transfers the original `RawTranscript` owner directly to
 pass-through and releases it after replay, preserving the main branch's memory
 bound without cloning the transcript. Strict workspace clippy, all 652 selected
 daemon/ledger/shim/verifier tests and all 12 real pinned-Z3 cached sessions pass
-on macOS after resolving these conflicts. Full coherent stock proofs, the host
-gate and native qualification of that merged source remain pending.
+on macOS after resolving these conflicts. The full coherent stock proofs and host gate pass at `a615dbba`; native e2e
+remains failed as indexed above.
 
 The model runner now requires every inventoried guard control by name and
 order. Its failure tests remove each required control in turn; all 12 tests

@@ -214,9 +214,13 @@ pub const STALE_TEMP: Duration = Duration::from_secs(3600);
 /// `command` (the name stored in the header). This is the coarse,
 /// name-only form of the shim's shape check (ADR 0011): the header keeps
 /// the command's name, not its text, so for example an `echo` reply is only
-/// checked to end a line.
+/// checked to end a line. Every reply must be exactly one complete response
+/// frame: two concatenated forms would add a reply to a session's stream.
 #[must_use]
 pub fn shape_ok(command: &str, reply: &[u8]) -> bool {
+    if !sail_smtlib::split::is_single_response(reply) {
+        return false;
+    }
     let body = reply.trim_ascii();
     match command {
         "check-sat" | "check-sat-assuming" => matches!(body, b"sat" | b"unsat" | b"unknown"),
@@ -476,6 +480,19 @@ mod tests {
         let d = std::env::temp_dir().join(format!("sail-cache-test-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         d
+    }
+
+    #[test]
+    fn shape_requires_exactly_one_response_frame() {
+        assert!(super::shape_ok("get-info", b"(:name \"Z3\")\n"));
+        assert!(super::shape_ok("check-sat", b"unsat\n"));
+        assert!(!super::shape_ok(
+            "get-info",
+            b"(:name \"Z3\")(:evil \"extra\")\n"
+        ));
+        assert!(!super::shape_ok("check-sat", b"unsat\nsat\n"));
+        assert!(!super::shape_ok("get-model", b"(model)\n(model)\n"));
+        assert!(!super::shape_ok("echo", b"a\nb\n"));
     }
 
     #[test]
