@@ -463,8 +463,9 @@ impl Storing {
 /// `served.len()`, records paired replies, and owns the solver process.
 ///
 /// Each suppressed reply must reproduce the reply the cache already served
-/// for that position: byte for byte, or for statistics by `rlimit-count`
-/// ([`ServedReply::reproduced_by`]). If the replay differs, the client has seen a
+/// for that position: byte for byte, or for statistics, which carry no
+/// verdict, structurally ([`ServedReply::reproduced_by`]). If the replay
+/// differs, the client has seen a
 /// stream the pinned solver does not produce: nothing more is forwarded,
 /// the solver is killed, and the shim exits with an error (`SAIL2005`).
 ///
@@ -854,14 +855,13 @@ struct ServedReply {
 
 impl ServedReply {
     /// Whether the replay's reply in this position reproduces it: the same
-    /// bytes, or for statistics, whose times and memory vary from run to
-    /// run, one frame with the same `rlimit-count`.
+    /// bytes, or for statistics, one well-formed statistics response. Their
+    /// times, memory and even resource counts vary from run to run on the
+    /// same input (`corpus/repros/z3-resource-count-variation`), and they
+    /// carry no verdict.
     fn reproduced_by(&self, replay: &[u8]) -> bool {
         if self.statistics {
-            is_single_response(replay)
-                && replay.starts_with(b"(:")
-                && rlimit_count(replay).is_some()
-                && rlimit_count(replay) == rlimit_count(&self.bytes)
+            plausible(b"(get-info :all-statistics)", replay)
         } else {
             self.bytes == replay
         }
@@ -1435,11 +1435,13 @@ mod tests {
         assert_eq!(served.count, 2);
         assert!(replies[0].reproduced_by(b"(model)\n"));
         assert!(!replies[0].reproduced_by(b"(model )\n"));
-        // Statistics vary in time and memory, never in rlimit-count.
+        // Statistics, even resource counts, vary on identical input: only
+        // their structure is checked.
         assert!(replies[1].reproduced_by(b"(:rlimit-count 5\n :time 0.02)\n"));
-        assert!(!replies[1].reproduced_by(b"(:rlimit-count 6\n :time 0.01)\n"));
-        assert!(!replies[1].reproduced_by(b"(:time 0.01)\n"));
+        assert!(replies[1].reproduced_by(b"(:rlimit-count 6\n :time 0.01)\n"));
         assert!(!replies[1].reproduced_by(b"(:rlimit-count 5)\n(:x 1)\n"));
+        assert!(!replies[1].reproduced_by(b"unsat\n"));
+        assert!(!replies[1].reproduced_by(b"(error \"x\")\n"));
         let mut check = super::ReplayCheck::new(&replies);
         let mut pairer = Pairer::default();
         assert!(check.settle(false, b"(model)\n", &mut pairer));

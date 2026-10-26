@@ -1,6 +1,6 @@
-# 0080: The cache checks response framing with the SMT-LIB splitter
+# 0081: The cache checks response framing with the SMT-LIB splitter
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-26
 
 ## Context

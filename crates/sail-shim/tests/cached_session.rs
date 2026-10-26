@@ -972,3 +972,46 @@ fn diverged_replay_after_served_replies_stops_with_an_error() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn replayed_statistics_may_differ_in_resource_count() {
+    // Z3's statistics, rlimit-count included, can vary on identical input
+    // (corpus/repros/z3-resource-count-variation). A served statistics reply
+    // the replay does not reproduce byte for byte is not a divergence.
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let input = b"(get-info :all-statistics)\n(get-info :name)\n(exit)\n";
+    let direct = input_run(&solver, None, input);
+    assert!(direct.status.success());
+    let (socket, cache) = (dir.join("d.sock"), dir.join("cache"));
+    start_daemon(&socket, &cache);
+    let fill = input_run(&solver, Some(&socket), input);
+    assert!(fill.status.success());
+    let name = b"(:name \"Z3\")\n";
+    let split = fill
+        .stdout
+        .windows(name.len())
+        .position(|w| w == name)
+        .unwrap_or_else(|| unreachable!("no name reply"));
+    let statistics = fill.stdout[..split].to_vec();
+    assert!(statistics.starts_with(b"(:"), "{statistics:?}");
+    let served = b"(:rlimit-count 987654321\n :time 0.00)\n";
+    rewrite_entry(&cache, &statistics, served);
+    rewrite_entry(&cache, name, b"(:name \"Z3\")(:evil \"extra\")\n");
+    let fresh = dir.join("e.sock");
+    start_daemon(&fresh, &cache);
+    let actual = input_run(&solver, Some(&fresh), input);
+    assert_eq!(
+        actual.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&actual.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&actual.stdout),
+        String::from_utf8_lossy(&[served.as_slice(), name].concat())
+    );
+    assert_eq!(actual.stderr, direct.stderr);
+    let _ = std::fs::remove_dir_all(&dir);
+}
