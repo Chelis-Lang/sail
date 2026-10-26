@@ -2,8 +2,9 @@
 
 Status: selected production bodies and model refinements pass direct stock
 checking on native macOS arm64 and Linux x86-64. Native pre-push correctness
-gates pass. Hosted checks, full fast/standard conformance and added-cost
-qualification remain pending; the integration remains a candidate.
+gates, hosted checks and full fast/standard conformance pass. The owner accepts
+the bounded native timing result below; broader release performance and the
+service-wide safety theorem remain open.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
@@ -24,15 +25,15 @@ do not establish these proofs.
 
 | Gate | Current evidence | Remaining |
 |---|---|---|
-| Captured production-source refinements | All 25 cases pass on both platforms: three positive roots, 22 ordinary failing mutations; counts query 134, inputs 54, authority 163, zero errors | Hosted checks |
-| Changed component/composed models | All 29 cases pass on both platforms: four positive roots, 25 ordinary failing mutations; counts 59, 64, 64, 198 | Hosted checks |
+| Captured production-source refinements | All 25 cases pass on both platforms: three positive roots, 22 ordinary failing mutations; counts query 134, inputs 54, authority 163, zero errors; hosted job passes | Service-wide refinement remains open |
+| Changed component/composed models | All 29 cases pass on both platforms: four positive roots, 25 ordinary failing mutations; counts 59, 64, 64, 198; hosted job passes | Native observation and production composition obligations remain open |
 | Workspace | macOS host: strict clippy and 1,087/1,087 tests. Native Linux full image gate: 1,098/1,098 tests, clippy, doctests, strict rustdoc, dependency policy, layering and generated benchmark page | Hosted combined gate |
 | Pinned solver | Native Linux: all 44 tests pass, including faults and cached sessions; macOS focused cached-session tests pass at the earlier unchanged-query checkpoint | Hosted solver suite |
 | Checker controls | 20 production-runner and 12 model-runner tests pass; documentation links, formatting and completion guard pass | Hosted checks |
 | End to end | Native full run passes all phase entrypoints plus local extra cases, including 73 managed observations, real MCP client listing and repair | Hosted ten-phase aggregate |
 | PR conformance | Pass-through, cache-fill, cache-warm and engine each match 33/33 units and compare 311 functions; zero unstable/different/infra errors and zero skipped projects; five units with resource-count drift | Full fast/standard before merge; deep before release |
-| Added cost | No product performance gain or added-cost result claimed | Native measurements before selection |
-| Publication | Required native pre-push gates pass; draft PR #362 owns the combined work | Exact-head hosted checks; owner review |
+| Added cost | Bounded native fixture measured below; owner accepts the observed difference and its measurement limits | Broader release performance and attribution remain separate |
+| Publication | Native pre-push gates and all 20 hosted checks pass on `fe8be9ee`; PR #362 owns the combined work | Protected merge; hosted checks rerun on the final documentation head |
 
 Linux runs on a dedicated EC2 `c7i.4xlarge` in `us-east-1`. The final full
 workspace wrapper takes 108 s; model proofs 254 s, production refinements
@@ -68,6 +69,7 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `fe8be9ee` | Detached merge cost guard | Stopped on a +4.09% external proof-edit median; all correctness gates pass. Retained samples expose 50 ms process-wait polling and a smaller internal timing difference; attribution remains unprofiled. Owner accepts this bounded result |
 | 2026-10-25 | Query refinement before `953f74a6` | Closed-stderr solver regression | Repeated five-second timeout; captured shim stack and open reader FD while producer blocked writing stderr; fixed by closing the failed reader before joining. No false proof demonstrated |
 | 2026-10-25 | Integration development source | Stock-driver compatibility | Unsupported proof-envelope/type and inventory mismatches refused; corrected without scope, resource or timeout relaxation; not qualification |
 | 2026-10-25 | Checker development source | Independent assembly/erasure review | Cargo path redirection and a pointer-equality/proof-import shadow mutant exposed missing source-correspondence checks; fixed with reviewed assembly/import inventories and refusal controls. Late build-script injection now refuses after the proof loop |
@@ -106,3 +108,46 @@ Those remain explicit obligations in
 
 The failed `9f8085a0` native gate log SHA-256 is
 `5defc8d305c11ba90fe804be95fe3b87a11b05720fc1cc1019b3ca28762bbb0e`.
+
+## Full merge qualification
+
+Implementation `fe8be9ee1a3db45db9899caa5ec8706dc28ab8c4` passes full
+conformance on native Linux `c7i.4xlarge` in `us-east-1`. The original corpus
+selection, comparator, deadlines and baselines are unchanged:
+
+| Suite | Each of pass-through, cache-fill, cache-warm and engine |
+|---|---|
+| Full fast | 147/147 Same; 3,451 functions; zero unstable/different/infrastructure errors or skipped projects; 11 units with resource-count drift |
+| Standard | 159/159 Same; 13,166 functions; zero unstable/different/infrastructure errors or skipped projects; standard command includes its HumanEval mutation controls |
+
+Full fast takes 653 seconds including preparation; standard takes 4,776
+seconds. All 20 hosted checks pass on the same implementation head, including
+both direct-stock proof suites and the complete end-to-end aggregate.
+
+The same native host measures original main
+`3b0bac191d0866fdd400d7dcd52e9cacc50d5cfe` against the candidate, with the
+same pinned stock/fork runtime. Three rounds per version exercise one tiny
+Cargo project and its vstd dependency. Each proof edit runs the verifier once
+and reuses one dependency on both versions. All samples and validation remain
+intact; no refusal or failed sample is discarded.
+
+| Scenario | Baseline external median | Candidate external median | Change |
+|---|---:|---:|---:|
+| Unchanged | 0.364958 s | 0.364843 s | -0.03% |
+| Proof edit | 1.217066 s | 1.266806 s | +4.09% |
+
+These are observations, not an attributed cost of the new validation logic.
+The runner times `Popen.wait(timeout=...)`; the measured Python 3.12.3 POSIX
+implementation polls with sleeps reaching 50 ms. The external proof-edit gap
+is approximately one such interval. Sail's own internal proof-edit medians
+are 1.171367 s and 1.199841 s, a 28.474 ms increase over a different timing
+boundary. Neither measurement profiles the contributing operations or
+establishes a general slowdown. The owner accepts the bounded result on
+2026-10-26; release-wide performance remains separately gated.
+
+Raw original artifact:
+`chelis-sail-native-evidence-010928226848-us-east-1/experiments/2026-10-25/proof-362-merge-fe8be9ee-durable.tgz`.
+SHA-256: `5565452090c829ef098ee139aab4e4800d89fd6c488f9b7aca54fcb31555d8c8`.
+The final documentation update preserves all implementation, proof, manifest
+and checker bytes qualified here. Required hosted checks run again before the
+protected merge.

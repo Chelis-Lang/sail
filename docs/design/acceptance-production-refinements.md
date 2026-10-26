@@ -1,9 +1,10 @@
 # Production acceptance refinements
 
 Status: source sharing, concrete refinement proofs and production callers pass
-native macOS and Linux checks. Full native pre-push correctness gates pass;
-hosted checks, full fast/standard conformance and added-cost qualification
-remain pending for the integration candidate. The owning
+native macOS and Linux checks. Native pre-push gates, hosted checks and full
+fast/standard conformance pass. The owner accepts the bounded native timing
+result; its measurement limits and the remaining service-wide theorem are
+recorded separately. The owning
 [validation record](../validation/acceptance-production-refinements.md) separates
 checked source from accepted integration.
 
@@ -88,10 +89,10 @@ python3 scripts/check-acceptance-refinements.py \
 ```
 
 The output is a new directory outside the checkout. `ci/local.sh refinements`
-uses the same runner in the core CI image. The proposed separate
+uses the same runner in the core CI image. The separate
 **Acceptance production refinements** job feeds **CI completion**. Its
-native wrapper takes 197 seconds on the qualified Linux host; hosted checks
-remain separate.
+native wrapper takes 197 seconds on the qualified Linux host; the hosted
+production-refinement and model-proof jobs also pass.
 
 The runner captures canonical Git blobs with inherited Git redirection and
 replace refs disabled. Fixed drivers compile captured source, never reopened
