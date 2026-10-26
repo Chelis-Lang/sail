@@ -30,6 +30,7 @@ pub const GENERATOR: &str = "gen-mutants 2";
 const USAGE: &str =
     "usage: cargo xtask gen-mutants --project NAME [--unit UNIT] --seed N --per-class N
                        [--source DIR] [--name SHORT] [--out DIR]
+       cargo xtask gen-mutants --file CRATE_ROOT --name SHORT --seed N --per-class N [--out DIR]
 
   --project   corpus project (corpus/corpus.toml)
   --unit      the unit to mutate when the project has several (its id, e.g.
@@ -39,7 +40,9 @@ const USAGE: &str =
   --source    the fetched source (default: the corpus cache, as
               `sail-conformance fetch` leaves it)
   --name      short name for ids and files (default: the project name)
-  --out       output directory (default: corpus/mutants)";
+  --out       output directory (default: corpus/mutants)
+  --file      instead of a corpus unit, the crate rooted at this local file
+              (its directory is the source; ids, unit and files use --name)";
 
 struct Args {
     project: String,
@@ -49,6 +52,7 @@ struct Args {
     source: Option<PathBuf>,
     name: Option<String>,
     out: PathBuf,
+    file: Option<PathBuf>,
 }
 
 fn parse(args: &[String]) -> Result<Args> {
@@ -60,6 +64,7 @@ fn parse(args: &[String]) -> Result<Args> {
         source: None,
         name: None,
         out: PathBuf::from("corpus/mutants"),
+        file: None,
     };
     let mut seed = None;
     let mut it = args.iter();
@@ -87,11 +92,13 @@ fn parse(args: &[String]) -> Result<Args> {
             "--source" => a.source = Some(value()?.into()),
             "--name" => a.name = Some(value()?),
             "--out" => a.out = value()?.into(),
+            "--file" => a.file = Some(value()?.into()),
             _ => return Err(format!("unknown argument `{arg}`\n{USAGE}")),
         }
     }
     a.seed = seed.ok_or_else(|| format!("--seed is required\n{USAGE}"))?;
-    if a.project.is_empty() || a.per_class == 0 {
+    let local_ok = a.file.is_some() && a.name.is_some() && a.project.is_empty();
+    if a.per_class == 0 || !(local_ok || (a.file.is_none() && !a.project.is_empty())) {
         return Err(USAGE.to_owned());
     }
     Ok(a)
@@ -357,17 +364,24 @@ pub fn catalogue(mutants: &[Mutant], unit: &str, header: &str) -> String {
     t
 }
 
-/// Entry point.
-///
-/// # Errors
-///
-/// A message for bad arguments, a missing source tree or unwritable output.
-#[allow(
-    clippy::too_many_lines,
-    reason = "argument handling, generation and the two output files in order"
-)]
-pub fn run(args: &[String]) -> Result<()> {
-    let a = parse(args)?;
+/// What to mutate: a corpus unit, or a local crate root (`--file`).
+struct Target {
+    /// The directory the catalogue's file paths are relative to.
+    source: PathBuf,
+    /// The crate root.
+    crate_root: PathBuf,
+    /// The name hashed into the seed order.
+    project: String,
+    /// The catalogue's unit.
+    unit: String,
+    /// The pinned commit, or `local source`.
+    commit: String,
+    /// The arguments naming this target, for the header.
+    invocation: String,
+}
+
+/// A corpus unit, as `sail-conformance fetch` leaves it (or `--source`).
+fn corpus_target(a: &Args) -> Result<Target> {
     let root = crate::workspace_root();
     let corpus = sail_verus::corpus::Corpus::load(&root.join("corpus/corpus.toml"))
         .map_err(|e| e.to_string())?;
@@ -415,31 +429,73 @@ pub fn run(args: &[String]) -> Result<()> {
     } else {
         source.join(&unit.root)
     };
-    let files = crate_files(&source, &crate_root);
+    Ok(Target {
+        crate_root,
+        project: a.project.clone(),
+        unit: unit.id.clone(),
+        commit: project.commit.clone(),
+        invocation: format!(
+            "--project {}{}",
+            a.project,
+            a.unit
+                .as_ref()
+                .map(|u| format!(" --unit {u}"))
+                .unwrap_or_default()
+        ),
+        source,
+    })
+}
+
+/// A local crate root outside the corpus (`--file`), named `name`.
+fn local_target(file: &Path, name: &str) -> Result<Target> {
+    if !file.is_file() {
+        return Err(format!("{} is not a file", file.display()));
+    }
+    let source = file
+        .parent()
+        .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
+    Ok(Target {
+        crate_root: file.to_path_buf(),
+        source,
+        project: name.to_owned(),
+        unit: name.to_owned(),
+        commit: "local source".to_owned(),
+        invocation: format!("--file {}", file.display()),
+    })
+}
+
+/// Entry point.
+///
+/// # Errors
+///
+/// A message for bad arguments, a missing source tree or unwritable output.
+pub fn run(args: &[String]) -> Result<()> {
+    let a = parse(args)?;
+    let name = a.name.clone().unwrap_or_else(|| a.project.clone());
+    let t = match &a.file {
+        Some(file) => local_target(file, &name)?,
+        None => corpus_target(&a)?,
+    };
+    let files = crate_files(&t.source, &t.crate_root);
     if files.is_empty() {
         return Err(format!(
             "no source files reached from {}",
-            crate_root.display()
+            t.crate_root.display()
         ));
     }
-    let name = a.name.clone().unwrap_or_else(|| a.project.clone());
-    let (mutants, counts) = generate(&source, &files, &a.project, &name, a.seed, a.per_class)?;
+    let (mutants, counts) = generate(&t.source, &files, &t.project, &name, a.seed, a.per_class)?;
+    let oracle_note = if a.file.is_some() {
+        "# `expected` is \"pending\" until its consumer settles it from stock Verus.\n"
+    } else {
+        "# `expected` is \"pending\" until `sail-bench mutants oracle` settles it from\n\
+         # three stock Verus runs per mutant on the reference platform.\n"
+    };
     let header = format!(
         "# Mutation catalogue for {} (ADR 0063), generated by `cargo xtask gen-mutants\n\
-         # --project {}{} --name {name} --seed {} --per-class {}` ({GENERATOR}) at {}.\n\
-         # `expected` is \"pending\" until `sail-bench mutants oracle` settles it from\n\
-         # three stock Verus runs per mutant on the reference platform.\n",
-        unit.id,
-        a.project,
-        a.unit
-            .as_ref()
-            .map(|u| format!(" --unit {u}"))
-            .unwrap_or_default(),
-        a.seed,
-        a.per_class,
-        project.commit,
+         # {} --name {name} --seed {} --per-class {}` ({GENERATOR}) at {}.\n{oracle_note}",
+        t.unit, t.invocation, a.seed, a.per_class, t.commit,
     );
-    let text = catalogue(&mutants, &unit.id, &header);
+    let text = catalogue(&mutants, &t.unit, &header);
     let digest = format!("{:x}", Sha256::digest(text.as_bytes()));
     let mut per_mutant = serde_json::Map::new();
     for m in &mutants {
@@ -463,9 +519,9 @@ pub fn run(args: &[String]) -> Result<()> {
     let meta = serde_json::json!({
         "schema_version": 1,
         "generator": GENERATOR,
-        "project": a.project,
-        "unit": unit.id,
-        "base_commit": project.commit,
+        "project": t.project,
+        "unit": t.unit,
+        "base_commit": t.commit,
         "seed": a.seed,
         "per_class": a.per_class,
         "files": files.len(),
@@ -492,7 +548,7 @@ pub fn run(args: &[String]) -> Result<()> {
         .map_err(|e| format!("cannot write {}: {e}", side.display()))?;
     println!(
         "{}: {} files, {} mutants ({}), sha256 {digest}\nwrote {} and {}",
-        unit.id,
+        t.unit,
         files.len(),
         mutants.len(),
         CLASSES
@@ -513,6 +569,21 @@ pub fn run(args: &[String]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_local_file_needs_a_name_and_no_project() {
+        let args = |s: &str| s.split(' ').map(str::to_owned).collect::<Vec<_>>();
+        let ok = parse(&args("--file a/lib.rs --name smoke --seed 1 --per-class 1"));
+        assert!(ok.is_ok_and(|a| a.file.is_some() && a.project.is_empty()));
+        assert!(parse(&args("--file a/lib.rs --seed 1 --per-class 1")).is_err());
+        assert!(
+            parse(&args(
+                "--file a/lib.rs --project p --name s --seed 1 --per-class 1"
+            ))
+            .is_err()
+        );
+        assert!(parse(&args("--project p --seed 1 --per-class 1")).is_ok());
+    }
 
     #[test]
     fn windows_are_unique() {
