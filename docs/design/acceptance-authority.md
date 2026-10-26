@@ -339,6 +339,27 @@ workspace gates and the composed proof run have their own owning qualification.
 
 ## Refinement and remaining trust boundaries
 
+The production `SubmissionBinding` borrows the actual retained job arguments,
+`jobs::Mode` and pre-execution `ResolvedRequest`. Its checked constructor permits
+only the documented pre-separator incremental no-op in argument correspondence
+and checks the original repair package, target, kind and function. Named
+interactive requests require the explicit interactive engine identity.
+`SubmittedAuthority` combines that binding with the existing checked whole
+request factory without replacing either borrowed record. Job capture, retained
+request loading and retained repair acceptance use these source-shared checks.
+The constructive control accepts a coherent nonempty function report; argument,
+mode and repair-selection swaps are refused by the same checked constructors.
+
+`SubmissionKind::StockForOptIn` describes a stock request under an opt-in
+submission. It does not establish a failed engine attempt, a successful child
+process, or accepted repair evidence. Original submission-to-request
+correspondence and record validation do not yet establish the complete physical
+invocation history. Canonical metadata selection, effective per-package driver
+options, child identity, complete observations and retained-proof transfer must
+be connected separately to the lifecycle model. A matching context digest is
+still conditional on its documented input encoding and collision-resistance
+assumptions; it is not a proof that the complete compiler-input maps coincide.
+
 | Model boundary | Production source | Remaining obligation |
 |---|---|---|
 | Exact target and invocation | Managed `TargetIdentity`, `cargo_target`, requested coverage and failed compiler calls | Relate actual Cargo metadata and compiler invocation to the model's complete target inventory and exact fields. |

@@ -7,12 +7,29 @@
 use sail_acceptance::authority::CompletionPolicy;
 
 use crate::acceptance::{
-    CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, complete_report_ordered,
-    complete_request_ordered, complete_selection_ordered, complete_target_ordered,
-    complete_whole_report_ordered,
+    CompleteReport, CompleteRequest, CompleteSelection, ReportOrder, SubmittedAuthority,
+    complete_report_ordered, complete_request_ordered, complete_selection_ordered,
+    complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered,
 };
+use crate::jobs::Mode;
 use crate::output::Report;
 use crate::project::{ProjectResult, ResolvedRequest, TargetResult};
+
+/// Checks original submission correspondence and actual complete request authority.
+#[must_use]
+pub fn complete_submitted_request<'a>(
+    arguments: &'a [String],
+    mode: &'a Mode,
+    request: &'a ResolvedRequest,
+    project: &'a ProjectResult,
+) -> Option<SubmittedAuthority<'a>> {
+    let orders: Vec<_> = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect();
+    complete_submitted_request_ordered(arguments, mode, request, project, &orders)
+}
 
 /// Validates the complete original request without trusting result-selected scope.
 #[must_use]

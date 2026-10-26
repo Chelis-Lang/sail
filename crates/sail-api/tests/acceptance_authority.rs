@@ -150,6 +150,68 @@ fn original_request_binds_nonempty_scope_and_all_identity_fields() -> TestResult
 }
 
 #[test]
+fn submitted_authority_keeps_the_original_arguments_and_mode() -> TestResult {
+    use sail_api::acceptance::{SubmissionKind, bind_submission, complete_submitted_request};
+    use sail_api::jobs::Mode;
+    let request = original_request();
+    let actual = project(vec![target("app", passing_report()?)]);
+    let arguments = Vec::new();
+    let mode = Mode::Stock;
+    let authority = complete_submitted_request(&arguments, &mode, &request, &actual)
+        .ok_or("valid submission refused")?;
+    assert_eq!(authority.kind(), SubmissionKind::Stock);
+    assert!(std::ptr::eq(
+        authority.request(),
+        std::ptr::from_ref(&request)
+    ));
+    assert!(std::ptr::eq(
+        authority.project(),
+        std::ptr::from_ref(&actual)
+    ));
+    assert!(std::ptr::eq(authority.mode(), std::ptr::from_ref(&mode)));
+    let wrong_arguments = vec!["--features".into(), "different-proof-inputs".into()];
+    assert!(bind_submission(&wrong_arguments, &mode, &request).is_none());
+    let mut opt_in = request.clone();
+    opt_in.engine = Some(sail_api::project::EngineIdentity {
+        name: "interactive".into(),
+        manifest_sha256: "manifest".into(),
+    });
+    assert!(bind_submission(&arguments, &Mode::Stock, &opt_in).is_none());
+    assert_eq!(
+        bind_submission(&arguments, &Mode::Interactive, &opt_in)
+            .ok_or("interactive match refused")?
+            .kind(),
+        SubmissionKind::Interactive
+    );
+    let stock_for_opt_in = bind_submission(&arguments, &Mode::Interactive, &request)
+        .ok_or("stock observation refused")?;
+    assert_eq!(stock_for_opt_in.kind(), SubmissionKind::StockForOptIn);
+    assert_ne!(stock_for_opt_in.kind(), SubmissionKind::Repair);
+    opt_in.engine.as_mut().ok_or("missing engine")?.name = "unrecognized".into();
+    assert!(bind_submission(&arguments, &Mode::Interactive, &opt_in).is_none());
+    opt_in.engine.as_mut().ok_or("missing engine")?.name = "interactive".into();
+    opt_in.function = Some("original".into());
+    opt_in.repair_package = "app".into();
+    opt_in.repair_kind = "lib".into();
+    let repair = sail_api::repair::Selection {
+        package: "app".into(),
+        target: None,
+        kind: "lib".into(),
+        function: "original".into(),
+    };
+    assert_eq!(
+        bind_submission(&arguments, &Mode::Repair(repair.clone()), &opt_in)
+            .ok_or("matching repair refused")?
+            .kind(),
+        SubmissionKind::Repair
+    );
+    let mut swapped = repair;
+    swapped.function = "other".into();
+    assert!(bind_submission(&arguments, &Mode::Repair(swapped), &opt_in).is_none());
+    Ok(())
+}
+
+#[test]
 fn submitted_arguments_only_allow_the_documented_incremental_noop() {
     let strings = |values: &[&str]| values.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
     let submitted = strings(&[
