@@ -349,10 +349,10 @@ binds the latest cumulative source and preserves the same positive-kill limit.
   `job_coalescing`, `bundled`, `jobs` and `tiers` fixtures,
   `sail-cli::daemon_ops`, `sail-cli::shared_ops`,
   `sail-runtime-worker::process` and `sail-shim::faults` wait controls. The
-  rule for fixture waits is in [testing](testing.md). Separately, under that
-  load the `sail-cli::watch` fixture rarely sees one extra restart after its
-  Cargo output write (about 1 in 100 runs; cause unconfirmed,
-  [#403](https://github.com/Chelis-Lang/sail/issues/403)).
+  rule for fixture waits is in [testing](testing.md). The rare extra
+  `sail-cli::watch` restart after its Cargo output write
+  ([#403](https://github.com/Chelis-Lang/sail/issues/403)) is corrected; see
+  the [watch qualification](validation/watch-and-store-races.md).
 - **Verifier wait under amd64 emulation.** Verification sometimes stalls under
   amd64 emulation, which is no longer used for performance or Linux
   validation (ADR 0038). [#68](https://github.com/Chelis-Lang/sail/issues/68),

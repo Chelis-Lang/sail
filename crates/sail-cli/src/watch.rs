@@ -85,7 +85,7 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
     // debounce window only once they are ready, just as for later edits.
     live.pending = Some(Instant::now());
     while !stop.load(Ordering::SeqCst) {
-        if monitoring.changed(&inputs.roots, err) {
+        if monitoring.changed(err) {
             live.cancel(true)?;
             live.pending = Some(Instant::now());
         }
@@ -99,6 +99,9 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
                 &extra,
                 err,
             );
+            // The run reads its inputs after this point. Notifications that
+            // arrive later for changes already present here are not edits.
+            monitoring.observe();
             let status = crate::jobs::submit(&live.client, &args)?;
             announce(&status, "queued", live.jsonl, out, err);
             live.status = Some(status);
