@@ -1425,6 +1425,7 @@ sail_verified! {
     /// # Errors
     /// Returns original bytes when either endpoint lacks genuine EOF evidence,
     /// has a different lease/role, or fails original process/wait correspondence.
+    #[allow(clippy::manual_unwrap_or_default, reason = "Preserve the explicit wait projection in the exact native and stock-checked bodies.")]
     pub fn complete_owned_compiler_pipes<'a, Owner, Identity>(identity: &Identity, attempt: Option<OwnedCompilerAttempt<'a, Owner>>, completion: OwnedPipeCompletionFields<Owner>) -> (out: Result<ObservedAttempt<'a>, UnsealedOutput>)
         where (Identity: OwnerIdentity<Owner>)
         requires (attempt.is_some() ==> attempt.unwrap().ready())
