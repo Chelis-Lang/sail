@@ -15,9 +15,11 @@ use serde::{Deserialize, Serialize};
 use super::State;
 
 /// Private producer admissibility revision, not proof authority by itself.
-pub(super) const PROOF_AUTHORITY_REVISION: u32 = 2;
+// Revision three requires Receipt 7 and the selected original attempt history;
+// older retained jobs and baselines cannot acquire that evidence by copying.
+pub(super) const PROOF_AUTHORITY_REVISION: u32 = 3;
 
-const LEGACY_AUTHORITY_NOTE: &str = "The producer did not record independent verification-enabled request authority; target completion is withheld. Re-run to establish proof evidence.";
+const LEGACY_AUTHORITY_NOTE: &str = "The producer did not record current-policy original-request and selected-attempt authority; target completion is withheld. Re-run to establish proof evidence.";
 const UNBOUND_AUTHORITY_NOTE: &str = "SAIL3115: original request correspondence could not be established; whole-target proof authority is withheld";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -428,7 +430,7 @@ pub(super) fn withhold_unbound_authority(
 }
 
 /// Old records can retain observations and historical verdicts, but cannot
-/// establish that an omitted effective per-package option enabled verification.
+/// establish current-policy original-request and selected-attempt evidence.
 pub(super) fn withhold_legacy_authority(
     project: &mut sail_api::project::ProjectResult,
     revision: u32,
@@ -848,11 +850,45 @@ mod legacy_authority_tests {
         })
     }
 
-    #[test]
-    fn missing_legacy_revision_cannot_be_laundered_by_frames_or_baseline_copy()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let root =
-            std::env::temp_dir().join(format!("sail-legacy-authority-{}", std::process::id()));
+    fn older_baseline_withholds_completion(
+        state: &State,
+        job_id: &str,
+        mut historical: sail_api::project::ProjectResult,
+        revision: Option<u32>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        historical.currentness = sail_api::project::Currentness::Historical;
+        let old_baseline = sail_api::evidence::Baseline {
+            contracts: None,
+            version: sail_api::evidence::VERSION,
+            name: "old-baseline".into(),
+            job_id: job_id.to_owned(),
+            result: historical,
+        };
+        let mut old_baseline = serde_json::to_value(old_baseline)?;
+        if let Some(value) = revision {
+            old_baseline["proof_authority_revision"] = value.into();
+        }
+        std::fs::write(
+            state.root.join("baselines/old-baseline.json"),
+            serde_json::to_vec(&old_baseline)?,
+        )?;
+        let loaded = super::super::product::baseline(state, "old-baseline")?;
+        assert_eq!(
+            loaded.result.currentness,
+            sail_api::project::Currentness::Historical
+        );
+        assert!(!loaded.result.targets[0].complete);
+        Ok(())
+    }
+
+    fn obsolete_revision_cannot_be_laundered_by_frames_or_baseline_copy(
+        revision: Option<u32>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "sail-legacy-authority-{}-{}",
+            std::process::id(),
+            revision.map_or_else(|| "missing".to_owned(), |value| value.to_string())
+        ));
         std::fs::create_dir_all(&root)?;
         let server = super::super::bind(
             &root.join("socket"),
@@ -869,13 +905,18 @@ mod legacy_authority_tests {
         let request = original_request(&original, &root)?;
         let fresh = Projection::validated(&bytes, &original).with_request(Some(request));
         let mut old = serde_json::to_value(&fresh)?;
-        old.as_object_mut()
-            .ok_or("projection must be an object")?
-            .remove("proof_authority_revision");
+        match revision {
+            Some(value) => old["proof_authority_revision"] = value.into(),
+            None => {
+                old.as_object_mut()
+                    .ok_or("projection must be an object")?
+                    .remove("proof_authority_revision");
+            }
+        }
         let legacy: Projection = serde_json::from_value(old)?;
-        assert_eq!(legacy.proof_authority_revision, 0);
+        assert_eq!(legacy.proof_authority_revision, revision.unwrap_or(0));
         let mut preserved = original.clone();
-        withhold_legacy_authority(&mut preserved, 0);
+        withhold_legacy_authority(&mut preserved, legacy.proof_authority_revision);
         assert_eq!(preserved.currentness, original.currentness);
         assert_eq!(preserved.exit_code, original.exit_code);
         assert_eq!(preserved.targets[0].report, original.targets[0].report);
@@ -918,25 +959,8 @@ mod legacy_authority_tests {
                 .complete
         );
 
-        let mut historical = original;
-        historical.currentness = sail_api::project::Currentness::Historical;
-        let old_baseline = sail_api::evidence::Baseline {
-            contracts: None,
-            version: sail_api::evidence::VERSION,
-            name: "old-baseline".into(),
-            job_id: job.status.id.clone(),
-            result: historical,
-        };
-        std::fs::write(
-            state.root.join("baselines/old-baseline.json"),
-            serde_json::to_vec(&old_baseline)?,
-        )?;
-        let loaded = super::super::product::baseline(state, "old-baseline")?;
-        assert_eq!(
-            loaded.result.currentness,
-            sail_api::project::Currentness::Historical
-        );
-        assert!(!loaded.result.targets[0].complete);
+        older_baseline_withholds_completion(state, &job.status.id, original, revision)?;
+        assert_eq!(fresh.proof_authority_revision, PROOF_AUTHORITY_REVISION);
         job.projection = Some(fresh);
         remember_job(state, &job)?;
         let fresh_zero = super::super::product::save_baseline(state, &job.status.id, "fresh-zero")?;
@@ -949,6 +973,21 @@ mod legacy_authority_tests {
         );
         drop(server);
         std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn missing_legacy_revision_cannot_be_laundered_by_frames_or_baseline_copy()
+    -> Result<(), Box<dyn std::error::Error>> {
+        obsolete_revision_cannot_be_laundered_by_frames_or_baseline_copy(None)
+    }
+
+    #[test]
+    fn superseded_and_unknown_revisions_cannot_gain_selected_history_authority()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for revision in [1, 2, PROOF_AUTHORITY_REVISION + 1] {
+            obsolete_revision_cannot_be_laundered_by_frames_or_baseline_copy(Some(revision))?;
+        }
         Ok(())
     }
 }
