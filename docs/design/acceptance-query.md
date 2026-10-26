@@ -676,7 +676,8 @@ preserving all 462 earlier entries. Its 39 required negative controls retain
 all 30 earlier controls and add complete-head, policy, owned append/endpoint and
 tail-hash failures. The four required CI partitions each repeat this whole
 positive root; only their complete union covers every negative control.
-A source-bound full query run is still required to qualify this assembly.
+Frozen `cc8c24a1` passes this complete 40-case component; later additions
+require their own source-bound qualification.
 These checks do not establish actual solver delivery, clean termination,
 truthful cache origin, physical persistence or the service-wide theorem.
 
@@ -827,3 +828,35 @@ new runtime pin. The managed compiler-visible argument defect
 ([#393](https://github.com/Chelis-Lang/sail/issues/393)) remains open. None of the
 framing, write receipts, hashes or metadata can substitute for the remaining
 solved-origin witness.
+
+## Captured delivery and write adapters
+
+The canonical query driver includes the actual `cache_write` and
+`query_delivery` modules, the typed session/delivery seed factory and every
+method of their private `WriteCommit`, `Delivery` and `Delivered` types. The
+complete module/import/function/control inventory includes their script
+implementations and exact primitive contracts. Trait or script drift refuses
+capture before proof execution.
+
+The surrounding native bodies are separately reviewed and pinned in full:
+`DiskCache::put_scoped`, `persist::NativeWriteHost`, `SessionPrefix` and
+`InputDelivery`, and the shim's actual `SolverPipe`/`Solving`/`Pairer` caller.
+Their source hashes do not turn filesystem, serde, OS pipe or executable-image
+semantics into proved bodies. Reports list these native adapters separately
+from the source-shared transaction/controller checked by stock Verus.
+
+A whole positive development probe checks 322 obligations and 584 function
+entries, preserving every earlier query function. The required query inventory
+adds six write and thirteen delivery/seal controls to the previous 39 controls.
+All 32 selected shim/actual pinned-Z3 session tests and 43 acceptance/key/cache
+component tests pass on the integrated native macOS source; strict clippy
+passes. These focused checks do not qualify the full current control matrix,
+Linux integration, solver faults, differential suites or added cost.
+
+The same-owner seed and actual successful pipe writes establish delivery-key
+agreement under the explicit cryptographic assumptions. A frozen input token
+prevents later writes and cannot be reconstructed from a success Boolean or
+terminal key. It still needs the actual output, termination and publication
+refinement. No unknown compiler context is represented as an empty context,
+and a write receipt never supplies solver truth. The broader service theorem
+and physical provider obligations remain open.

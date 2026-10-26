@@ -13,12 +13,59 @@
         "crates/sail-acceptance/src/key_prefix.rs",
         "crates/sail-acceptance/src/query_policy.rs",
         "crates/sail-acceptance/src/query_prefix.rs",
+        "crates/sail-acceptance/src/cache_write.rs",
+        "crates/sail-acceptance/src/query_delivery.rs",
         "proofs/refinement/query.rs",
         "crates/sail-key/src/lib.rs",
-        "crates/sail-key/src/prefix_factory.rs"
+        "crates/sail-key/src/prefix_factory.rs",
+        "crates/sail-cache/src/lib.rs",
+        "crates/sail-cache/src/persist.rs",
+        "crates/sail-shim/src/cached.rs"
       ],
-      "verified": 294,
+      "verified": 322,
       "functions": [
+        "check_query::cache_write::PersistenceHost::close",
+        "check_query::cache_write::PersistenceHost::closed_image",
+        "check_query::cache_write::PersistenceHost::create",
+        "check_query::cache_write::PersistenceHost::errors",
+        "check_query::cache_write::PersistenceHost::failure_stage",
+        "check_query::cache_write::PersistenceHost::header",
+        "check_query::cache_write::PersistenceHost::header_bytes",
+        "check_query::cache_write::PersistenceHost::image",
+        "check_query::cache_write::PersistenceHost::invalid_header",
+        "check_query::cache_write::PersistenceHost::position",
+        "check_query::cache_write::PersistenceHost::remove",
+        "check_query::cache_write::PersistenceHost::rename",
+        "check_query::cache_write::PersistenceHost::rename_requests",
+        "check_query::cache_write::PersistenceHost::stamp",
+        "check_query::cache_write::PersistenceHost::steps",
+        "check_query::cache_write::PersistenceHost::write_all",
+        "check_query::cache_write::WriteCommit::bytes",
+        "check_query::cache_write::WriteCommit::bytes_view",
+        "check_query::cache_write::WriteCommit::header_length",
+        "check_query::cache_write::WriteCommit::header_size",
+        "check_query::cache_write::WriteCommit::into_stamp",
+        "check_query::cache_write::WriteCommit::stamp_view",
+        "check_query::cache_write::WriteScript::close",
+        "check_query::cache_write::WriteScript::closed_image",
+        "check_query::cache_write::WriteScript::create",
+        "check_query::cache_write::WriteScript::errors",
+        "check_query::cache_write::WriteScript::failure_stage",
+        "check_query::cache_write::WriteScript::header",
+        "check_query::cache_write::WriteScript::header_bytes",
+        "check_query::cache_write::WriteScript::image",
+        "check_query::cache_write::WriteScript::invalid_header",
+        "check_query::cache_write::WriteScript::position",
+        "check_query::cache_write::WriteScript::remove",
+        "check_query::cache_write::WriteScript::rename",
+        "check_query::cache_write::WriteScript::rename_requests",
+        "check_query::cache_write::WriteScript::stamp",
+        "check_query::cache_write::WriteScript::steps",
+        "check_query::cache_write::WriteScript::write_all",
+        "check_query::cache_write::failed_write_control",
+        "check_query::cache_write::malformed_write_header_control",
+        "check_query::cache_write::successful_write_control",
+        "check_query::cache_write::write_record",
         "check_query::context::Mode::arrow_0",
         "check_query::context::Mode::arrow_OptIn_0",
         "check_query::context::ReadOutcome::arrow_Present_bytes",
@@ -232,6 +279,7 @@
         "check_query::key_types::Mode::arrow_OptIn_0",
         "check_query::prefix_factory::new_prefix",
         "check_query::prefix_factory::new_query_prefix",
+        "check_query::prefix_factory::new_session_seed",
         "check_query::query::BoundPair::expectation",
         "check_query::query::BoundPair::expected",
         "check_query::query::BoundPair::into_parts",
@@ -455,6 +503,38 @@
         "check_query::query_association::store_step",
         "check_query::query_association::store_wf",
         "check_query::query_association::stored_reply_has_admitted_origin",
+        "check_query::query_delivery::Delivered::key",
+        "check_query::query_delivery::Delivered::key_view",
+        "check_query::query_delivery::Delivered::length",
+        "check_query::query_delivery::Delivered::material",
+        "check_query::query_delivery::Delivery::active",
+        "check_query::query_delivery::Delivery::close",
+        "check_query::query_delivery::Delivery::closed",
+        "check_query::query_delivery::Delivery::coherent",
+        "check_query::query_delivery::Delivery::healthy",
+        "check_query::query_delivery::Delivery::initial_material",
+        "check_query::query_delivery::Delivery::length",
+        "check_query::query_delivery::Delivery::matches",
+        "check_query::query_delivery::Delivery::material",
+        "check_query::query_delivery::Delivery::new",
+        "check_query::query_delivery::Delivery::seal",
+        "check_query::query_delivery::Delivery::sealed",
+        "check_query::query_delivery::Delivery::sent",
+        "check_query::query_delivery::Delivery::success_hint",
+        "check_query::query_delivery::Delivery::write",
+        "check_query::query_delivery::InputPipe::close",
+        "check_query::query_delivery::InputPipe::closed",
+        "check_query::query_delivery::InputPipe::sent",
+        "check_query::query_delivery::InputPipe::success_hint",
+        "check_query::query_delivery::InputPipe::write",
+        "check_query::query_delivery::ScriptPipe::close",
+        "check_query::query_delivery::ScriptPipe::closed",
+        "check_query::query_delivery::ScriptPipe::sent",
+        "check_query::query_delivery::ScriptPipe::success_hint",
+        "check_query::query_delivery::ScriptPipe::write",
+        "check_query::query_delivery::complete_delivery_control",
+        "check_query::query_delivery::failed_delivery_control",
+        "check_query::query_delivery::sealed_delivery_control",
         "check_query::query_policy::ResponsePolicy::clone",
         "check_query::query_policy::named",
         "check_query::query_policy::one_head",
@@ -763,6 +843,120 @@
           "source": "crates/sail-acceptance/src/query_prefix.rs",
           "before": "let accepted = self.prefix.feed(&feed);",
           "after": "let accepted = true;"
+        },
+        {
+          "name": "write-omitted-full-write",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); host.remove(); return Err(error);\n        }\n",
+          "after": ""
+        },
+        {
+          "name": "write-omitted-rename-call",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "        if let Err(error) = host.rename() {\n            host.remove(); return Err(error);\n        }\n",
+          "after": ""
+        },
+        {
+          "name": "write-premature-metadata",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); host.remove(); return Err(error);\n        }\n        let observed = host.stamp(&file);\n",
+          "after": "        let observed = host.stamp(&file);\n        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); host.remove(); return Err(error);\n        }\n"
+        },
+        {
+          "name": "write-cleanup-unowned-name",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "Err(error) => return Err(error),",
+          "after": "Err(error) => { host.remove(); return Err(error); },"
+        },
+        {
+          "name": "write-substitute-original-error",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "Err(error) => return Err(error),",
+          "after": "Err(error) => return Err(host.invalid_header()),"
+        },
+        {
+          "name": "write-omit-owned-cleanup",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); host.remove(); return Err(error);\n        }\n",
+          "after": "        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); return Err(error);\n        }\n"
+        },
+        {
+          "name": "delivery-omit-actual-pipe-write",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                if !self.pipe.write(bytes) { self.healthy = false; return false; }",
+          "after": ""
+        },
+        {
+          "name": "delivery-hash-different-write-bytes",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "self.delivered.update(bytes);",
+          "after": "self.delivered.update(&[]);"
+        },
+        {
+          "name": "delivery-heal-failed-delivery",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                if !self.delivered.is_exact() { self.healthy = false; }",
+          "after": "                if !self.delivered.is_exact() { self.healthy = false; } else { self.healthy = true; }"
+        },
+        {
+          "name": "delivery-omit-terminal-key-binding",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "let accepted = crate::inputs::byte_eq(&key, &expected);",
+          "after": "let accepted = true;"
+        },
+        {
+          "name": "delivery-accept-closed-pipe",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "if !complete || !self.healthy || self.closed || self.sealed { return false; }",
+          "after": "if !complete || !self.healthy || self.sealed { return false; }"
+        },
+        {
+          "name": "delivery-omit-owned-pipe-close",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                self.pipe.close();",
+          "after": ""
+        },
+        {
+          "name": "delivery-seed-drops-mode",
+          "source": "crates/sail-key/src/prefix_factory.rs",
+          "before": "let seed = new_prefix(host.duplicate(),solver,mode);",
+          "after": "let seed = new_prefix(host.duplicate(),solver,&Mode::Default);"
+        },
+        {
+          "name": "delivery-seal-without-freezing",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                self.sealed = true;",
+          "after": ""
+        },
+        {
+          "name": "delivery-seal-unmatched-prefix",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                if !accepted { return None; }",
+          "after": ""
+        },
+        {
+          "name": "delivery-write-after-seal",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "if self.closed || self.sealed { self.healthy = false; return false; }",
+          "after": "if self.closed { self.healthy = false; return false; }"
+        },
+        {
+          "name": "delivery-token-different-prefix",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "Some(Delivered { prefix: self.delivered.duplicate() })",
+          "after": "Some(Delivered { prefix: self.initial.duplicate() })"
+        },
+        {
+          "name": "delivery-token-different-domain",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "{ self.prefix.silence_key() }",
+          "after": "{ self.prefix.key() }"
+        },
+        {
+          "name": "delivery-parser-drops-mode",
+          "source": "crates/sail-key/src/prefix_factory.rs",
+          "before": "let session = new_query_prefix(host,solver,mode);",
+          "after": "let session = new_query_prefix(host,solver,&Mode::Default);"
         }
       ]
     },
@@ -3560,7 +3754,7 @@
     }
   },
   "key_declarations": {
-    "source_sha256": "2499b0206dea2d722abed831cb47e7b0131b257821a9d3fe688b640bdd519747",
+    "source_sha256": "6cd5a45f3ec7c6f1e08d428a17370ef55f45e5d14bc463e081830db50f16ae5f",
     "declarations": [
       {
         "name": "SolverIdentity",

@@ -25,10 +25,19 @@ and function remains. The capture still requires exact full actual function
 inventories and obligation counts.
 
 [PR #378](https://github.com/Chelis-Lang/sail/pull/378) remains a draft, with
-published WIP head `94a9630d` under the owner's pre-push waiver. Later integration
+published WIP head `4bd22455` under the owner's pre-push waiver. Later integration
 is local. No complete service theorem, compiler-input closure or physical
 observation guarantee is claimed; all six rows of the
 [obligation ledger](../design/acceptance-boundary-refinements.md) remain open.
+
+The published `4bd22455` checkpoint also passes all 31 canonical model cases
+and all 155 production cases coherently on macOS, including every required
+ordinary failing control and the final source/runtime checks. Its native Linux
+workspace and model gates pass; production refinements and later native steps
+remain in progress. The newer 322-obligation delivery/write query slice has
+only its development positive probe and focused native checks so far. Local
+heavy validation is deferred while the owner's machine is saturated; unfinished
+checks remain unfinished.
 
 ## Source and actual scope
 
@@ -71,7 +80,7 @@ implementation obligation; it is not selected.
 | Combined workspace/solver/e2e | Native `a615dbba` workspace and all 48 solver-fault tests pass. Native `cc8c24a1` full e2e union and PR conformance pass, including the original build-script reuse assertion | Qualify the later combined phase/history source with every required gate |
 | Differential conformance | Native PR tier passes at `cc8c24a1`; corpus, comparator and deadlines unchanged | Final combined PR tier, full fast and standard before merge |
 | Cost | Additional byte/header scans, request validation and provider accounting are implemented; no measured delta or gain claimed | Bounded native cost measurement before selection; retain every sample |
-| Hosted checks | The draft publishes executable WIP at `94a9630d` under the owner's pre-push waiver; later integration is local | Final-head local qualification and hosted checks before any merge |
+| Hosted checks | The draft publishes executable WIP at `4bd22455` under the owner's pre-push waiver; later integration is local | Final-head local qualification and hosted checks before any merge |
 
 ## Failed and interrupted attempts
 

@@ -30,9 +30,16 @@ RETAINED_BRIDGE = "crates/sail-daemon/src/jobs/store.rs"
 KEY_NATIVE = "crates/sail-key/src/lib.rs"
 KEY_FACTORY = "crates/sail-key/src/prefix_factory.rs"
 KEY_CORE = "crates/sail-acceptance/src/key_prefix.rs"
+WRITE_CORE = 'crates/sail-acceptance/src/cache_write.rs'
+DELIVERY_CORE = 'crates/sail-acceptance/src/query_delivery.rs'
+# These exact native adapters are reviewed/bound, not compiled proof bodies.
+QUERY_NATIVE_BINDINGS = {'crates/sail-cache/src/lib.rs': ['DiskCache::put_scoped'], 'crates/sail-cache/src/persist.rs': ['NativeWriteHost', 'write_record'], 'crates/sail-shim/src/cached.rs': ['SolverPipe', 'Solving', 'start_solver', 'Pairer']}
+QUERY_NATIVE_SHA256 = {'crates/sail-cache/src/lib.rs': '106f1bd0fff663e6302be566de7b9e9c789e1e8433d354192e20f13db14b09dc', 'crates/sail-cache/src/persist.rs': '956ec4c117fb2b722a9a2454a9f1a60adf76e58a5a61397b1f144d4894d23260', 'crates/sail-shim/src/cached.rs': '66244d4097fe3299a106c0da6a8adb78f4ae90e73fa8fbae494e06604c6a47be'}
+QUERY_HOST_TRAITS = {'crates/sail-acceptance/src/cache_write.rs': ['e1f217be87981cbd3d19140f85d8c7e8434568bd092cee9555efab9da58cf851'], 'crates/sail-acceptance/src/query_delivery.rs': ['127030cacff4e231147ffc843933effa0c754b3ad1963e460c5e981bcde92220']}
+QUERY_SCRIPT_IMPLS = {'crates/sail-acceptance/src/cache_write.rs': ['b14cfdbc045ce226b03452823bf1706890c04c58817293134e9d1f2fc1ce12b4'], 'crates/sail-acceptance/src/query_delivery.rs': ['8378afe345bf6880d519cf675e3b5db5e4b01f6900781bef674f6c1fd7019d72']}
 # Native key types, SHA adapter, fresh-state factory and module/import bindings
 # are reviewed in their complete enclosing source; they are not all proved.
-KEY_NATIVE_SHA256 = "2499b0206dea2d722abed831cb47e7b0131b257821a9d3fe688b640bdd519747"
+KEY_NATIVE_SHA256 = "6cd5a45f3ec7c6f1e08d428a17370ef55f45e5d14bc463e081830db50f16ae5f"
 KEY_HOST_TRAITS = frozenset({"07062a121a098f5dee4b51714ff0b575b1e6568347408344bc4aea5f3fe8be9a"})
 KEY_RECORDING_IMPLS = frozenset({"de6e87c96d820b1610f24bc6b31aa3a64ba0e8d329446d476e08fcedcdcf5c3e"})
 # The native classify/apply_currentness/withhold_unbound_authority bridges have
@@ -44,19 +51,19 @@ RETAINED_BRIDGE_SHA256 = "335fa1b37baa23159a33cdc86735c7fc5c128714d710d7f8c39ad4
 # Cargo and stock profiles. Changes require an explicit runner review, beyond
 # merely updating a manifest. Runtime-only implementation drift must refuse.
 SYNTAX_SHA256 = 'deb8606ce9d123997dd286ae3e184c7496bdaf5e659543a7be724baffd9adc70'
-LIB_SHA256 = "e971d54829723253eda935e220dc1a48775df3212a2d805d91b6a1161cc7f9e7"
+LIB_SHA256 = "b2f75455527a64744043e406b17a5398164ec6853e33de277d22553234278339"
 API_LIB_SHA256 = "125f9959d72bf6bbff719526cdaad169301b9c1e156db5b46ea79b91d4c50491"
 # Binding inventories cover both ordinary and proof-only imports. In particular,
 # an erased import cannot shadow a Cargo glob with a different checked callee.
-IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '589a12d568f5c878749274c4a9f2be0780ec7c4769cebdecdd8519d52351d9f2', 'crates/sail-acceptance/src/key_prefix.rs': 'abcb768a7dca61a2e4248956921314487e845306a6335e944610f3c5bb90e5b8', 'crates/sail-key/src/prefix_factory.rs': '22f9a04f035b109591f920519d7423c7de774bfc66315194b3939f291bf62988', 'crates/sail-acceptance/src/query_policy.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_prefix.rs': '6c28aff345658a06686d88714020c77540412e4b5403912081c62141c82059b0', 'crates/sail-acceptance/src/phase_inputs.rs': '8478abc31aa0447e4110da6b72daf07252239c434787637dda9f681028504faa'}
+IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '589a12d568f5c878749274c4a9f2be0780ec7c4769cebdecdd8519d52351d9f2', 'crates/sail-acceptance/src/key_prefix.rs': 'abcb768a7dca61a2e4248956921314487e845306a6335e944610f3c5bb90e5b8', 'crates/sail-key/src/prefix_factory.rs': '22f9a04f035b109591f920519d7423c7de774bfc66315194b3939f291bf62988', 'crates/sail-acceptance/src/query_policy.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_prefix.rs': '6c28aff345658a06686d88714020c77540412e4b5403912081c62141c82059b0', 'crates/sail-acceptance/src/phase_inputs.rs': '8478abc31aa0447e4110da6b72daf07252239c434787637dda9f681028504faa', 'crates/sail-acceptance/src/cache_write.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_delivery.rs': 'dd5692fc8c75546d449a2c623708ec6748a7be654391385107f4fa20e971d08e'}
 # Exact reviewed ghost declarations and abstract primitive contracts. These
 # permit no arbitrary erased types or host implementations. The native host
 # implementation is a separate obligation, never discharged by a trait bound.
 INPUT_GHOST_ITEMS = frozenset({'34a7aa7c26994229805fe92e7e544f340920dbd3416ea1dcff4e4c8f7ea82697'})
 INPUT_HOST_TRAITS = frozenset({'d5f071d9dcd1b4ec056b39af49e32cad198b1ebe2a4f692ce837364c83ca0691'})
-REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply', 'frame-premature-root-close', 'frame-ignore-doubled-quote', 'frame-ignore-input-comment', 'head-ignore-framing', 'response-ignore-line-terminator', 'response-ignore-list-framing', 'key-solver-platform', 'key-mode-domain', 'key-raw-bytes', 'key-end-domain', 'key-counter-refusal', 'key-feed-order', 'key-silence-domain', 'key-state-copy', 'key-length-word', 'key-typed-platform', 'key-typed-optin', 'head-complete-leading-trivia', 'head-complete-untruncated', 'policy-tactic-head', 'policy-get-prefix', 'policy-whole-head', 'owner-policy-head', 'owner-original-append', 'owner-command-end', 'owner-hash-tail'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence', 'input-opened-object-binding', 'input-read-final-handle', 'input-read-final-path', 'input-read-chunk-bytes', 'input-read-eof-required', 'input-read-cache-object', 'input-read-requested-binding', 'input-environment-byte-name', 'input-environment-escaped-name', 'input-kernel-hash-bytes', 'input-kernel-final-handle-observation', 'input-kernel-final-path-observation', 'input-kernel-open-observation-order', 'input-kernel-buffer-required', 'input-kernel-read-failure', 'input-kernel-always-error', 'input-guarded-readback-change', 'input-guarded-readback-availability', 'input-guarded-readback-always-unknown', 'phase-run', 'phase-unit', 'phase-slot', 'phase-unit-manifest', 'phase-pid', 'phase-binding', 'phase-complete', 'phase-normal-wait', 'phase-count', 'phase-known-pair', 'phase-verification-fields', 'phase-compilation-fields', 'phase-no-foreign-fields', 'phase-always-refuse', 'phase-final-descriptor', 'phase-program', 'phase-argument-vector', 'phase-directory', 'phase-overrides', 'phase-override-value', 'row-checksum-role', 'row-size-key', 'row-tracked-value', 'row-env-absent', 'row-env-present', 'row-drop-final', 'row-fact-drop-final', 'row-fact-role', 'row-always-refuse', 'row-size-high-byte', 'filename-control-byte-refusal', 'filename-escape-prefix', 'filename-escape-value', 'filename-literal-byte', 'filename-cardinality', 'filename-constructive'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence', 'submission-arguments', 'submission-mode', 'submission-whole-authority', 'submission-positive', 'driver-token-bytes', 'driver-token-coverage', 'driver-sources-order', 'process-wait-required', 'process-distinct-slot', 'process-duplicate-stream', 'process-stderr-binding', 'process-recovery-bytes', 'process-payload-binding', 'process-refusal-recorded', 'retained-original-current', 'retained-complete-readback', 'retained-exact-revision', 'retained-view-currentness', 'retained-request-admission', 'retained-clear-refused-labels', 'retained-preserve-positive', 'target-exact-cargo-name', 'target-rust-name-normalization', 'target-kind-binding', 'process-configure-slot', 'decline-actual-zero', 'engine-complete-protocol', 'decline-refusal', 'repair-decline', 'origin-slot', 'origin-pid', 'origin-descriptor', 'feature-raw-origin', 'feature-available', 'feature-name', 'feature-normal-zero', 'feature-decision', 'feature-model-admission']}
+REQUIRED_CONTROLS = {'query': ['fifo_wrong_stack', 'partial_pair_consumes_head', 'replay_off_by_one', 'noisy_publication', 'corrupt_recovery', 'ungated_batch_release', 'incomplete_permutation', 'raw-ignore-command-bytes', 'raw-ignore-gap', 'raw-skip-separators', 'record-ignore-header-newline', 'record-change-separator', 'record-keep-separator-in-reply', 'frame-premature-root-close', 'frame-ignore-doubled-quote', 'frame-ignore-input-comment', 'head-ignore-framing', 'response-ignore-line-terminator', 'response-ignore-list-framing', 'key-solver-platform', 'key-mode-domain', 'key-raw-bytes', 'key-end-domain', 'key-counter-refusal', 'key-feed-order', 'key-silence-domain', 'key-state-copy', 'key-length-word', 'key-typed-platform', 'key-typed-optin', 'head-complete-leading-trivia', 'head-complete-untruncated', 'policy-tactic-head', 'policy-get-prefix', 'policy-whole-head', 'owner-policy-head', 'owner-original-append', 'owner-command-end', 'owner-hash-tail', 'write-omitted-full-write', 'write-omitted-rename-call', 'write-premature-metadata', 'write-cleanup-unowned-name', 'write-substitute-original-error', 'write-omit-owned-cleanup', 'delivery-omit-actual-pipe-write', 'delivery-hash-different-write-bytes', 'delivery-heal-failed-delivery', 'delivery-omit-terminal-key-binding', 'delivery-accept-closed-pipe', 'delivery-omit-owned-pipe-close', 'delivery-seed-drops-mode', 'delivery-seal-without-freezing', 'delivery-seal-unmatched-prefix', 'delivery-write-after-seal', 'delivery-token-different-prefix', 'delivery-token-different-domain', 'delivery-parser-drops-mode'], 'inputs': ['input-ignore-present-value', 'input-ignore-current-stamp', 'input-ignore-required-read-presence', 'input-ignore-inverse-permutation', 'input-provider-wrong-frame-child', 'input-provider-terminal-count', 'input-provider-required-read-frame', 'input-provider-required-read-presence', 'input-opened-object-binding', 'input-read-final-handle', 'input-read-final-path', 'input-read-chunk-bytes', 'input-read-eof-required', 'input-read-cache-object', 'input-read-requested-binding', 'input-environment-byte-name', 'input-environment-escaped-name', 'input-kernel-hash-bytes', 'input-kernel-final-handle-observation', 'input-kernel-final-path-observation', 'input-kernel-open-observation-order', 'input-kernel-buffer-required', 'input-kernel-read-failure', 'input-kernel-always-error', 'input-guarded-readback-change', 'input-guarded-readback-availability', 'input-guarded-readback-always-unknown', 'phase-run', 'phase-unit', 'phase-slot', 'phase-unit-manifest', 'phase-pid', 'phase-binding', 'phase-complete', 'phase-normal-wait', 'phase-count', 'phase-known-pair', 'phase-verification-fields', 'phase-compilation-fields', 'phase-no-foreign-fields', 'phase-always-refuse', 'phase-final-descriptor', 'phase-program', 'phase-argument-vector', 'phase-directory', 'phase-overrides', 'phase-override-value', 'row-checksum-role', 'row-size-key', 'row-tracked-value', 'row-env-absent', 'row-env-present', 'row-drop-final', 'row-fact-drop-final', 'row-fact-role', 'row-always-refuse', 'row-size-high-byte', 'filename-control-byte-refusal', 'filename-escape-prefix', 'filename-escape-value', 'filename-literal-byte', 'filename-cardinality', 'filename-constructive'], 'authority': ['verification-enabled', 'effective-verification-enabled', 'whole-terminal-summary', 'confirmed-function', 'whole-command', 'requested-coverage', 'summary-count', 'normal-exit', 'fresh-selection', 'obligation-uniqueness', 'provenance-counts', 'request-original-context', 'request-independent-coverage', 'request-verification-enabled', 'request-current', 'request-repair-function', 'request-positive', 'request-repair-presence', 'submission-arguments', 'submission-mode', 'submission-whole-authority', 'submission-positive', 'driver-token-bytes', 'driver-token-coverage', 'driver-sources-order', 'process-wait-required', 'process-distinct-slot', 'process-duplicate-stream', 'process-stderr-binding', 'process-recovery-bytes', 'process-payload-binding', 'process-refusal-recorded', 'retained-original-current', 'retained-complete-readback', 'retained-exact-revision', 'retained-view-currentness', 'retained-request-admission', 'retained-clear-refused-labels', 'retained-preserve-positive', 'target-exact-cargo-name', 'target-rust-name-normalization', 'target-kind-binding', 'process-configure-slot', 'decline-actual-zero', 'engine-complete-protocol', 'decline-refusal', 'repair-decline', 'origin-slot', 'origin-pid', 'origin-descriptor', 'feature-raw-origin', 'feature-available', 'feature-name', 'feature-normal-zero', 'feature-decision', 'feature-model-admission']}
 COMPONENTS = {
-    "query": {"models": ["context", "query_association"], "core": ["inputs", "query", "key_prefix", "query_policy", "query_prefix"]},
+    "query": {"models": ["context", "query_association"], "core": ["inputs", "query", "key_prefix", "query_policy", "query_prefix", "cache_write", "query_delivery"]},
     "inputs": {"models": ["context"], "core": ["inputs", "authority", "phase_inputs"]},
     "authority": {"models": ["context", "authority"], "core": ["inputs", "authority", "phase_inputs"]},
 }
@@ -131,6 +138,8 @@ def validate_assembly(snapshots: dict[str, bytes]) -> None:
         "crates/sail-acceptance/src/inputs.rs": ("OriginalCapture", "OriginalGuard", "Readback", "GuardedReadback", "ProviderSeal", "OpenedRead", "ReadChunk", "ReadSeal", "CompletedRead"),
         "crates/sail-acceptance/src/authority.rs": ("AttemptLedger", "UnconfiguredAttempt", "ReservedAttempt", "RunningAttempt", "ObservedAttempt", "AttemptIdentity", "DeclinedEngine", "MissingEngineFeature"),
         KEY_CORE: ("Prefix",),
+        WRITE_CORE: ("WriteCommit",),
+        DELIVERY_CORE: ("Delivery", "Delivered"),
         "crates/sail-acceptance/src/phase_inputs.rs": ("PhaseRequest", "PhaseInputs"),
         "crates/sail-acceptance/src/query_prefix.rs": ("QueryPrefix", "FramedCommand"),
         "crates/sail-api/src/acceptance.rs": ("CompleteReport", "CompleteSelection", "CompleteRequest", "SubmissionBinding", "SubmittedAuthority"),
@@ -179,7 +188,7 @@ def dependency_paths(component: str) -> list[str]:
     if component == "inputs":
         result.append("proofs/refinement/phase_inputs.rs")
     if component == "query":
-        result += [KEY_NATIVE, KEY_FACTORY]
+        result += [KEY_NATIVE, KEY_FACTORY, *QUERY_NATIVE_BINDINGS]
     if component == "authority":
         result += ["crates/sail-api/src/acceptance.rs", "crates/sail-api/src/acceptance_sort.rs",
             *["crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES],
@@ -201,6 +210,10 @@ def compiled_subset(path: str, content: bytes) -> None:
     if path == RETAINED_BRIDGE:
         require(hashlib.sha256(content).hexdigest() == RETAINED_BRIDGE_SHA256,
             "native retained bridge changed; explicit implementation/binding review required")
+        return
+    if path in QUERY_NATIVE_SHA256:
+        require(hashlib.sha256(content).hexdigest() == QUERY_NATIVE_SHA256[path],
+            "native query/write primitive changed; explicit source/binding review required")
         return
     if path == KEY_NATIVE:
         require(hashlib.sha256(content).hexdigest() == KEY_NATIVE_SHA256,
@@ -242,8 +255,8 @@ def compiled_subset(path: str, content: bytes) -> None:
         inputs = path == "crates/sail-acceptance/src/inputs.rs"
         SOURCE.checked_item_envelopes(text, proof=path.startswith("proofs/refinement/"),
             reviewed_ghost_items=INPUT_GHOST_ITEMS if inputs else frozenset(),
-            reviewed_host_traits=INPUT_HOST_TRAITS if inputs else KEY_HOST_TRAITS if path == KEY_CORE else frozenset(),
-            reviewed_trait_impls=KEY_RECORDING_IMPLS if path == KEY_CORE else frozenset())
+            reviewed_host_traits=INPUT_HOST_TRAITS if inputs else KEY_HOST_TRAITS if path == KEY_CORE else frozenset(QUERY_HOST_TRAITS.get(path, ())),
+            reviewed_trait_impls=KEY_RECORDING_IMPLS if path == KEY_CORE else frozenset(QUERY_SCRIPT_IMPLS.get(path, ())))
 
 
 def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[dict]:
@@ -257,7 +270,7 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[d
         "unlisted or missing refinement source")
     require({str(path.relative_to(root)) for path in (root / "crates/sail-acceptance/src").rglob("*.rs")}
         == {"crates/sail-acceptance/src/" + name + ".rs"
-            for name in ("lib", "syntax", "query", "inputs", "authority", "key_prefix", "query_policy", "query_prefix", "phase_inputs")},
+            for name in ("lib", "syntax", "query", "inputs", "authority", "key_prefix", "query_policy", "query_prefix", "phase_inputs", "cache_write", "query_delivery")},
         "unlisted executable leaf source")
     for entry in entries:
         component = entry["id"]
@@ -496,13 +509,16 @@ def check(root: Path, archive: Path, install: Path, out: Path, timeout: int,
         "complete_suite": component is None and partition is None,
         "source_roles": {entry["id"]: {
             "checked_source": [path for path in entry["dependencies"] if path not in
-                {SYNTAX, RETAINED_BRIDGE, "crates/sail-api/src/acceptance_sort.rs"} and not declaration_source(path)],
+                {SYNTAX, RETAINED_BRIDGE, "crates/sail-api/src/acceptance_sort.rs", *QUERY_NATIVE_BINDINGS} and not declaration_source(path)],
             "reviewed_syntax": [SYNTAX],
             "abstract_primitive_contracts": {path: ["FileReadHost"]
-                if path.endswith("/inputs.rs") else ["HashHost"]
-                for path in entry["dependencies"] if path in {"crates/sail-acceptance/src/inputs.rs", KEY_CORE}},
-            "reviewed_native_primitives": {path: ["Sha256Host", "PrefixHasher::new", "SessionPrefix", "CommandFrame"]
+                if path.endswith("/inputs.rs") else ["PersistenceHost"] if path == WRITE_CORE
+                else ["InputPipe"] if path == DELIVERY_CORE else ["HashHost"]
+                for path in entry["dependencies"] if path in {"crates/sail-acceptance/src/inputs.rs", KEY_CORE, WRITE_CORE, DELIVERY_CORE}},
+            "reviewed_native_primitives": {path: ["Sha256Host", "PrefixHasher::new", "SessionPrefix", "CommandFrame", "InputDelivery", "DeliveredInput"]
                 for path in entry["dependencies"] if path == KEY_NATIVE},
+            "reviewed_query_io": {path: QUERY_NATIVE_BINDINGS[path]
+                for path in entry["dependencies"] if path in QUERY_NATIVE_BINDINGS},
             "reviewed_native_bridges": {path: ["classify", "apply_currentness", "withhold_unbound_authority"]
                 for path in entry["dependencies"] if path == RETAINED_BRIDGE},
             "declaration_projections": [path for path in entry["dependencies"]

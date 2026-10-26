@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Create cache temporary files exclusively and clean only successfully owned
+  writes, preserving independently owned existing names on failure.
+
 - Preserve independent original-request capture when unchanged-call replay is
   available: capture requests take the ordinary execution path.
 - Isolate managed compiler evidence per attempt, bind completion and reuse to

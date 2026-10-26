@@ -204,7 +204,8 @@ class SourceCaptureTests(unittest.TestCase):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-acceptance/src/authority.rs",
-            CHECKER.KEY_CORE, CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
+            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE,
+            CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
             "crates/sail-acceptance/src/phase_inputs.rs",
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
@@ -238,6 +239,9 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct GuardedReadback", b"#[derive(Default)] pub struct GuardedReadback"),
             ("crates/sail-acceptance/src/inputs.rs", b"pub struct CompletedRead", b"#[derive(Default)] pub struct CompletedRead"),
             (CHECKER.KEY_CORE, b"pub struct Prefix", b"#[derive(Default)] pub struct Prefix"),
+            (CHECKER.WRITE_CORE, b"pub struct WriteCommit", b"#[derive(Default)] pub struct WriteCommit"),
+            (CHECKER.DELIVERY_CORE, b"pub struct Delivery", b"#[derive(Default)] pub struct Delivery"),
+            (CHECKER.DELIVERY_CORE, b"pub struct Delivered", b"#[derive(Deserialize)] pub struct Delivered"),
             ("crates/sail-acceptance/src/phase_inputs.rs", b"pub struct PhaseRequest", b"#[derive(Default)] pub struct PhaseRequest"),
             ("crates/sail-acceptance/src/phase_inputs.rs", b"pub struct PhaseInputs", b"#[derive(Deserialize)] pub struct PhaseInputs"),
             ("crates/sail-acceptance/src/authority.rs", b"pub struct AttemptIdentity", b"#[derive(Default)] pub struct AttemptIdentity"),
@@ -340,6 +344,30 @@ class SourceCaptureTests(unittest.TestCase):
             original = (ROOT / path).read_bytes()
             with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
                 CHECKER.compiled_subset(path, original + b"\npub fn unchecked_factory() -> bool { true }")
+
+    def test_query_io_primitives_and_script_implementations_remain_source_bound(self):
+        for path, before, after in (
+            ("crates/sail-cache/src/persist.rs", b".create_new(true)", b".create(true)"),
+            ("crates/sail-cache/src/lib.rs", b"persist::write_record(&tmp, &path, &meta, reply)",
+                b"persist::write_record(&tmp, &path, &meta, b\"unsat\\n\")"),
+            ("crates/sail-shim/src/cached.rs", b"stdin.write_all(bytes)", b"stdin.write_all(b\"\")"),
+        ):
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original.replace(before, after, 1))
+        for path, before, after in (
+            (CHECKER.WRITE_CORE, b"spec fn steps(&self) -> Seq<u8>;", b"spec fn steps(&self) -> bool;"),
+            (CHECKER.DELIVERY_CORE, b"spec fn sent(&self) -> Seq<u8>;", b"spec fn sent(&self) -> bool;"),
+            (CHECKER.WRITE_CORE, b"fn remove(&mut self) { self.steps.push(11); }", b"fn remove(&mut self) {}"),
+            (CHECKER.DELIVERY_CORE, b"fn close(&mut self) { self.closed = true; }", b"fn close(&mut self) {}"),
+        ):
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
+                CHECKER.compiled_subset(path, original.replace(before, after, 1))
 
     def test_executable_cfg_loading_and_unchecked_spec_refuse(self):
         for source in (b"#[cfg(sail_verus)] fn valid() -> bool { true }",
