@@ -1408,6 +1408,12 @@ fn invocations(paths: &Paths) -> Vec<Invocation> {
 /// A run whose only failure is a compile error in a selected crate qualifies
 /// too ([`confined_compile_failure`]).
 ///
+/// A focused run (`--verify-module`, `--verify-function`) qualifies on the
+/// same evidence: what it retains is the dependencies' build-script contracts,
+/// which the focus does not change and the next run revalidates. Without
+/// this, the passing call after a failing focused one cleaned every
+/// build-script package and rebuilt the dependency closure (#441).
+///
 /// A run that established build-script declarations (`script_coverage` false:
 /// a project's first managed run, or any run after one that withdrew them)
 /// qualifies only with Cargo's own completion evidence as well: Cargo finished
@@ -1425,8 +1431,7 @@ fn negative_compiler_generation(
     engine: bool,
     args: &[String],
 ) -> bool {
-    if focused(args)
-        || result.currentness != Currentness::Current
+    if result.currentness != Currentness::Current
         || result.exit_code != Some(101)
         || result.error.is_some()
         || expected.is_empty()
@@ -1481,8 +1486,23 @@ fn negative_compiler_generation(
         if names.is_empty() || names != starts {
             return Some(false);
         }
-        let completed =
-            |call: &Invocation| crate::engine::completed_compiler_output(&paths.run, call, engine);
+        // A focused selection verifies part of each selected crate; its
+        // verifier must still finish normally and say exactly that. Every
+        // other call must have verified its whole crate.
+        let focus = focused(args);
+        let selected = |call: &Invocation| {
+            expected
+                .iter()
+                .any(|(id, name, kind)| selected_call(data, (id, name, kind), call))
+        };
+        let completed = |call: &Invocation| {
+            crate::engine::completed_compiler_output(
+                &paths.run,
+                call,
+                engine,
+                !(focus && selected(call)),
+            )
+        };
         let proof_failure = calls.values().any(|call| call.report.exit_code == Some(1))
             && calls.values().all(completed);
         if !proof_failure
@@ -4958,6 +4978,41 @@ mod tests {
         }
     }
 
+    /// #441: a focused failing run keeps the dependencies' script contracts
+    /// when its verifier finished normally and reported the partial scope.
+    #[test]
+    fn focused_failing_run_keeps_contracts_only_with_a_partial_normal_outcome()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let f = NegativeGeneration::new("focused")?;
+        let focus = ["--".to_owned(), "--verify-module=selected".to_owned()];
+        let eligible = |f: &NegativeGeneration, args: &[String]| {
+            negative_compiler_generation(
+                &f.paths,
+                &f.data,
+                &f.expected,
+                &f.result,
+                true,
+                true,
+                args,
+            )
+        };
+        // A whole-crate document is not the outcome of a focused call.
+        assert!(!eligible(&f, &focus));
+        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        let mut document: Value = serde_json::from_slice(include_bytes!(
+            "../../tests/fixtures/engine-terminal/failed-proof.json"
+        ))?;
+        document["verification-results"]["is-verifying-entire-crate"] = Value::Bool(false);
+        std::fs::write(sidecar.join("verus.stdout"), serde_json::to_vec(&document)?)?;
+        assert!(eligible(&f, &focus));
+        // An unfocused run must still have verified its entire crate.
+        assert!(!eligible(&f, &[]));
+        // Interrupted or failed-to-seal verifiers still refuse.
+        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        assert!(!eligible(&f, &focus));
+        Ok(())
+    }
+
     #[test]
     #[allow(
         clippy::too_many_lines,
@@ -5505,7 +5560,8 @@ mod tests {
         assert!(!crate::engine::completed_compiler_output(
             &f.paths.run,
             &f.call,
-            false
+            false,
+            true
         ));
         let stock = |f: &NegativeGeneration, args: &[String]| {
             negative_compiler_generation(
@@ -5631,7 +5687,8 @@ mod tests {
         assert!(!stock(&f, &[]), "an unstarted selected target");
         f.expected.retain(|(_, name, _)| name != "unstarted");
         assert!(stock(&f, &[]));
-        assert!(!stock(
+        // A compile error stops a focused selection the same way (#441).
+        assert!(stock(
             &f,
             &["--".to_owned(), "--verify-function=selected".to_owned()]
         ));
