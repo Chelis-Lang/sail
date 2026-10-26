@@ -64,7 +64,7 @@ original submission and request. Current successful projects additionally pass
 the checked whole-request factory before retaining complete target flags.
 Unknown and Historical projections retain their explicit evidence framing.
 Baselines preserve the same binding and cannot restore completeness stripped
-from a legacy job. The private producer revision is two; absent or older
+from a legacy job. The private producer revision is checked; absent or older
 records withhold authority without changing input Currentness or verdicts.
 
 This connects the concrete request predicate to the actual managed runner,
@@ -362,10 +362,44 @@ the qualified fork can complete successfully while every optional engine event
 append fails on a read-only preexisting file. The old valid terminal bytes remain
 unchanged, and structural completion validation accepts them alongside the new
 stdout. That is a stale-origin gap, not a demonstrated false mathematical proof.
-Private slot-scoped producer paths and an independently checked selected-attempt
-reference are required before this file can establish current-child origin.
-This association work remains pending; a familiar filename and a well-formed
-record do not discharge it.
+The managed adapter allocates an exclusive slot directory before configuring
+logs, provenance and engine/focus destinations. Each exact raw output is written
+with exclusive creation before its terminal observation. The private selected
+reference preserves the owned original run/unit/slot/final descriptor/PID/status,
+raw-output digests, selected file inventory and predecessor history. A fresh
+fallback receives a different directory and preserves its predecessor's files.
+Engine completion, focused repair, missing-feature handling, target completeness,
+receipt publication and dependency-output publication follow that same reference.
+A later configured reservation makes an older selection noncurrent even if an
+interrupted writer left its invocation JSON behind. Fixed target filenames do
+not supply live authority.
+
+Receipt version seven rejects older producer evidence. Its current-run admission
+requires the selected original namespace and reserved/terminal/raw file binding;
+missing, mismatched or ambiguous producer kinds cannot mint a live receipt.
+Qualified bundled compiler-boundary provenance remains a separate native import
+and creates no fictional live child. The same-workspace experimental restoration
+preserves the original selected reference and refuses unavailable original
+history before placing output; its physical target-domain transfer remains open.
+
+The disabled native-artifact store's version-two layout copies the complete
+original producer subtree, including raw streams, per-attempt records and owned
+archive metadata. It checks every copied path/file and ties displayed replay
+buffers to that original producer. Adoption derives the store location from the
+native adoption layout and validated archive key, preserving the original run,
+slot, PID and descriptor. Removing original run files does not erase the copied
+history. Missing, extra, modified or omitted archive files withhold reuse; stripping
+an archive reference and resealing cannot create a live origin. This layout does
+not enable the store or discharge its native compiler-input blocker (#187).
+
+These native serializers, filesystem/image reads, protected-writer properties,
+child/exec/pipe/wait association and whole native event simulation remain outside
+the stock-checked metadata-copy factory. In particular, self-consistent metadata
+or an executable path is not proof of an immutable loaded process image. The
+complete `ProjectResult`-to-model invocation/source/context relation, authentic
+side-channel writer, feature-refusal branch and full compiler/solver domain still
+need their own refinement. Native Linux/default conformance and cost qualification
+of this namespace/archive integration remain separate gates.
 
 ## Checked controls
 
@@ -535,10 +569,13 @@ closure, structured records and termination. Model constructors do not prove
 those I/O facts. Rust/Verus/vstd, Z3, build/deployment and the documented
 observation-interface assumptions remain trusted.
 
-The shared leaf and permitted crate edges are recorded in ADR 0079. Backend and
-solver/compiler inputs are unchanged. No conformance or performance improvement
-is claimed; the native cost of producing and checking index candidates remains
-to be measured.
+The shared leaf and permitted crate edges are recorded in ADR 0079. The current
+candidate moves existing private observation destinations into per-attempt
+paths; those argv/environment values are compiler-observable under #385/#393.
+Descriptor equality does not establish original compiler-input transparency.
+The original-input transport must be fixed before final default selection.
+No conformance or performance improvement is claimed; native qualification and
+the cost of index checks and complete history transfer remain separate gates.
 
 The separate [normal-wrapper control proposal](managed-wrapper-control-transport.md)
 describes an unselected environment-preserving transport and its required native

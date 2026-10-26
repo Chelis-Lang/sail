@@ -737,7 +737,15 @@ fn driver() -> Result<ExitCode> {
         std::env::var("CARGO_BIN_NAME").ok(),
     );
     crate::managed::retire_receipts(&runtime, &identity)?;
-    let dir = runtime.sidecars.join(identity.key());
+    let sidecar = runtime.sidecars.join(identity.key());
+    let unit = identity.compiler_unit();
+    let attempt_directory = sidecar.join("attempts");
+    let mut attempts = attempts::Journal::new(runtime.run_id.as_bytes(), &unit, &attempt_directory);
+    let allocation = attempts.allocate();
+    let dir = allocation.as_ref().map_or_else(
+        || sidecar.clone(),
+        |allocation| allocation.directory().to_owned(),
+    );
     std::fs::create_dir_all(dir.join("provenance"))
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     let logs = runtime.attribution_logs.then(|| dir.join("logs"));
@@ -805,7 +813,7 @@ fn driver() -> Result<ExitCode> {
         finish(
             &runtime,
             identity,
-            &dir,
+            &sidecar,
             &Captured {
                 stdout: &replay.stdout,
                 stderr: &replay.stderr,
@@ -819,7 +827,7 @@ fn driver() -> Result<ExitCode> {
             let _ = crate::managed::retained::publish_shipped(&runtime, proof);
         }
         let shown_stdout = crate::verus_stdout::rebuild(&replay.stdout, flags);
-        std::fs::write(dir.join("verus.shown-stdout"), &shown_stdout)
+        std::fs::write(sidecar.join("verus.shown-stdout"), &shown_stdout)
             .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         crate::managed::visible_output::emit(
             crate::managed::visible_output::Stream::Stdout,
@@ -847,7 +855,7 @@ fn driver() -> Result<ExitCode> {
         finish(
             &runtime,
             identity.clone(),
-            &dir,
+            &sidecar,
             &Captured {
                 stdout: &restored.stdout,
                 stderr: &restored.stderr,
@@ -863,6 +871,10 @@ fn driver() -> Result<ExitCode> {
         )
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         invocation.retained_from = Some(restored.establishing_run);
+        invocation.selected_attempt = restored.selected_attempt;
+        if invocation.selected_attempt.is_none() {
+            invocation.success = false;
+        }
         json(&path, &invocation)?;
         crate::managed::visible_output::emit(
             crate::managed::visible_output::Stream::Stderr,
@@ -924,10 +936,7 @@ fn driver() -> Result<ExitCode> {
         .engine
         .as_ref()
         .map(|_| crate::engine_events::Relay::start(source_events.clone(), &runtime, &identity));
-    let unit = identity.compiler_unit();
-    let attempt_directory = dir.join("attempts");
-    let mut attempts = attempts::Journal::new(runtime.run_id.as_bytes(), &unit, &attempt_directory);
-    let reserved = attempts.reserve(&cmd);
+    let reserved = allocation.and_then(|allocation| attempts.configure(allocation, &cmd));
     let compile_started = std::time::Instant::now();
     let mut child = cmd
         .spawn()
@@ -999,12 +1008,16 @@ fn driver() -> Result<ExitCode> {
     }
     let mut established = None;
     let captured = if let Some(engine) = &runtime.engine {
-        let mut stock = Command::new(&engine.stock_wrapper);
-        stock
-            .args(&launcher_args)
-            .env_remove(crate::managed::visible_output::ENV)
-            .envs(&launcher_environment)
-            .args(observation_args(flags, logs.as_deref()));
+        let stock = |directory: &Path| {
+            let mut stock = Command::new(&engine.stock_wrapper);
+            let logs = runtime.attribution_logs.then(|| directory.join("logs"));
+            stock
+                .args(&launcher_args)
+                .env_remove(crate::managed::visible_output::ENV)
+                .envs(&launcher_environment)
+                .args(observation_args(flags, logs.as_deref()));
+            stock
+        };
         let (output, trusted) =
             engine_output(&dir, stock, captured, &invocation_log, &mut attempts)?;
         if trusted {
@@ -1029,12 +1042,14 @@ fn driver() -> Result<ExitCode> {
         )
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
+    let selected_attempt = captured.selected_attempt(&identity);
+    let selected_directory = captured.directory().unwrap_or(&dir);
     let invocation_key = identity.key();
     let measured = (identity.manifest.clone(), identity.target_name().to_owned());
     let observation_available = finish(
         &runtime,
         identity,
-        &dir,
+        selected_directory,
         &Captured {
             stdout,
             stderr,
@@ -1042,7 +1057,11 @@ fn driver() -> Result<ExitCode> {
         },
         established.as_ref(),
         None,
-        CompletionOrigin::Live(captured.observation(), captured.unavailable_reason()),
+        CompletionOrigin::Live(
+            captured.observation(),
+            captured.unavailable_reason(),
+            selected_attempt.as_ref(),
+        ),
     )?;
     // A successful process alone is insufficient: partial/no-verify output
     // must never become a reusable proof. Reuse only the complete successful
@@ -1075,7 +1094,7 @@ fn driver() -> Result<ExitCode> {
     let shown = crate::verus_stdout::rebuild(stdout, flags);
     // The dependency store must replay exactly what this target displayed,
     // including effective per-package output flags, when it seeds a new target.
-    std::fs::write(dir.join("verus.shown-stdout"), &shown)
+    std::fs::write(selected_directory.join("verus.shown-stdout"), &shown)
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     // Wait for the managed writer to deliver the rebuilt stdout before this
     // driver exits: Cargo's subsequent diagnostics must not overtake it.
@@ -1118,7 +1137,7 @@ pub const NOT_REQUESTED: &str = "obligation detail not recorded: the run that es
 /// stock, and its sidecar records the feature.
 pub(crate) fn engine_output<'a>(
     dir: &Path,
-    mut stock: Command,
+    stock: impl FnOnce(&Path) -> Command,
     captured: attempts::CapturedChild<'a>,
     invocation_log: &InvocationLog<'_>,
     attempts: &mut attempts::Journal<'a>,
@@ -1130,6 +1149,8 @@ pub(crate) fn engine_output<'a>(
     let missing = crate::engine::required_feature(captured.stderr(), &available)
         .or_else(|| crate::engine::required_feature(captured.stdout(), &available));
     if missing.is_none()
+        && captured.observation().is_some()
+        && captured.directory() == Some(dir)
         && crate::engine_events::completed(
             &dir.join("engine.events.jsonl"),
             captured.stdout(),
@@ -1138,22 +1159,30 @@ pub(crate) fn engine_output<'a>(
     {
         return Ok((captured, true));
     }
-    if let Some(feature) = &missing {
-        std::fs::write(dir.join(crate::engine::MISSING_FEATURE), feature)
-            .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
-    }
-    std::fs::write(dir.join("engine.failed.stdout"), captured.stdout())
+    if let Err(failure) = std::fs::write(dir.join("engine.failed.stdout"), captured.stdout())
         .and_then(|()| std::fs::write(dir.join("engine.failed.stderr"), captured.stderr()))
-        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
-    let _ = std::fs::remove_file(dir.join("focus.source.json"));
-    for directory in [dir.join("logs"), dir.join("provenance")] {
-        if directory.exists() {
-            std::fs::remove_dir_all(&directory)
-                .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
-        }
+    {
+        attempts.refuse(&format!(
+            "cannot preserve predecessor presentation: {failure}"
+        ));
     }
-    std::fs::create_dir_all(dir.join("provenance"))
-        .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
+    let allocation = attempts.allocate();
+    let fallback_directory = allocation.as_ref().map_or_else(
+        || dir.to_owned(),
+        |allocation| allocation.directory().to_owned(),
+    );
+    if let Err(failure) = std::fs::create_dir_all(fallback_directory.join("provenance")) {
+        attempts.refuse(&format!("cannot create fallback provenance: {failure}"));
+    }
+    if let Some(feature) = &missing
+        && let Err(failure) = std::fs::write(
+            fallback_directory.join(crate::engine::MISSING_FEATURE),
+            feature,
+        )
+    {
+        attempts.refuse(&format!("cannot record fallback feature: {failure}"));
+    }
+    let mut stock = stock(&fallback_directory);
     for key in [
         "SAIL_ENGINE",
         "SAIL_ENGINE_FUNCTION",
@@ -1164,10 +1193,10 @@ pub(crate) fn engine_output<'a>(
         stock.env_remove(key);
     }
     stock
-        .env("SAIL_PROVENANCE_DIR", dir.join("provenance"))
+        .env("SAIL_PROVENANCE_DIR", fallback_directory.join("provenance"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let reserved = attempts.reserve(&stock);
+    let reserved = allocation.and_then(|allocation| attempts.configure(allocation, &stock));
     let mut child = stock
         .spawn()
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
@@ -1176,7 +1205,12 @@ pub(crate) fn engine_output<'a>(
     let output = child
         .wait_with_output()
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
-    Ok((attempts.capture(observing, output), false))
+    Ok((
+        attempts
+            .capture(observing, output)
+            .with_predecessor(captured),
+        false,
+    ))
 }
 
 struct Captured<'a> {
@@ -1190,6 +1224,7 @@ enum CompletionOrigin<'a, 'b> {
     Live(
         Option<&'a sail_acceptance::authority::ObservedAttempt<'b>>,
         Option<&'a str>,
+        Option<&'a attempts::SelectedAttempt>,
     ),
     Bundled,
     Retained,
@@ -1248,8 +1283,8 @@ fn report_verification_arguments(
     Some(arguments)
 }
 
-/// Records the target's invocation. Returns whether origin evidence is bound
-/// and Verus remains readable afterwards. Missing either records no reusable
+/// Records whether the target's origin evidence is bound and Verus remains
+/// readable afterwards. Missing either records no reusable
 /// success while preserving the target's own exit status, as with stock.
 fn finish(
     runtime: &Runtime,
@@ -1265,9 +1300,11 @@ fn finish(
         stderr,
         exit,
     } = *captured;
-    std::fs::write(dir.join("verus.stdout"), stdout)
-        .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
-        .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    if !matches!(origin, CompletionOrigin::Live(Some(_), ..)) {
+        std::fs::write(dir.join("verus.stdout"), stdout)
+            .and_then(|()| std::fs::write(dir.join("verus.stderr"), stderr))
+            .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+    }
     let (docs, _) = crate::attribution::json_documents(stdout);
     let attr = if dependency_build.is_some() {
         // Replayed from Sail's shipped dependency build, which records no
@@ -1341,10 +1378,14 @@ fn finish(
         (driver_dependencies(), verifier.join().unwrap_or(false))
     });
     let dependencies = dependencies?;
-    let observation_available = origin_available && verifier_readable;
+    let selected_attempt = bind_selected_producer(&mut report, origin);
+    let producer_available =
+        !matches!(origin, CompletionOrigin::Live(..)) || selected_attempt.is_some();
+    let observation_available = origin_available && verifier_readable && producer_available;
     let success = observation_available && receipt_success(&report, &report_args);
     let invocation = Invocation {
         retained_from: None,
+        selected_attempt,
         identity,
         run_id: runtime.run_id.clone(),
         report,
@@ -1364,13 +1405,37 @@ fn finish(
     Ok(observation_available)
 }
 
+fn bind_selected_producer(
+    report: &mut sail_api::output::Report,
+    origin: CompletionOrigin<'_, '_>,
+) -> Option<attempts::SelectedAttempt> {
+    let selected = match origin {
+        CompletionOrigin::Live(Some(observed), _, Some(selected))
+            if selected.matches_observed(observed) =>
+        {
+            Some(selected.clone())
+        }
+        _ => None,
+    };
+    if matches!(origin, CompletionOrigin::Live(..)) && selected.is_none() && report.error.is_none()
+    {
+        report.error = Some(sail_api::output::ErrorInfo {
+            code: "SAIL3111".into(),
+            message:
+                "selected compiler attempt evidence unavailable; retained proof authority withheld"
+                    .into(),
+        });
+    }
+    selected
+}
+
 fn bind_process_observation(
     report: &mut sail_api::output::Report,
     captured: &Captured<'_>,
     origin: CompletionOrigin<'_, '_>,
 ) -> bool {
     match origin {
-        CompletionOrigin::Live(observed, reason) => sail_api::acceptance::require_process_observation(
+        CompletionOrigin::Live(observed, reason, _) => sail_api::acceptance::require_process_observation(
             report,
             observed,
             captured.stdout,
@@ -1940,7 +2005,7 @@ mod tests {
             &captured,
             None,
             None,
-            super::CompletionOrigin::Live(None, None),
+            super::CompletionOrigin::Live(None, None, None),
         )?;
         assert!(!observed);
         let recorded: super::Invocation = serde_json::from_slice(&std::fs::read(
@@ -2312,11 +2377,26 @@ mod tests {
                 "cat \"$1\"; printf 'original engine diagnostic\\n' >&2; exit \"$2\"",
                 "engine",
             ])
-            .arg(input)
+            .arg(&input)
             .arg(exit)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        let reserved = attempts.reserve(&command);
+        let allocation = attempts.allocate().ok_or("fixture allocation refused")?;
+        let directory = allocation.directory().to_owned();
+        // Fixtures seed a document outside the producer directory. The actual
+        // child copies it into its own declared fresh event path before exit.
+        let seed = log
+            .directory
+            .parent()
+            .ok_or("fixture root")?
+            .join("engine.events.jsonl");
+        if seed.is_file() {
+            command = Command::new("/bin/sh");
+            command.args(["-c", "cat \"$1\"; printf 'original engine diagnostic\\n' >&2; cat \"$3\" > \"$4\"; exit \"$2\"", "engine"])
+                .arg(&input).arg(exit).arg(seed).arg(directory.join("engine.events.jsonl"))
+                .stdout(Stdio::piped()).stderr(Stdio::piped());
+        }
+        let reserved = attempts.configure(allocation, &command);
         let mut child = command.spawn()?;
         let observing = attempts.started(reserved, &child);
         log.record(&mut child)?;
@@ -2369,6 +2449,10 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keep the original output/argv/spawn and new separate-history assertions in one fallback refusal matrix."
+    )]
     fn interrupted_engine_restarts_exact_stock_args_and_preserves_failure()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-engine-restart-{}", std::process::id()));
@@ -2427,7 +2511,17 @@ mod tests {
                 "reply=$1; shift; printf '%s\\0' \"$@\" > stock.argv; printf '%s' \"${SAIL_ENGINE-unset}\" > stock.engine; cat \"$reply\"; printf 'original engine diagnostic\\n' >&2; exit 1",
                 "stock",
             ]).arg(reply).args(["crate path.rs", "--", "literal;$(untouched)"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
+            let engine_directory = captured
+                .directory()
+                .ok_or("missing engine namespace")?
+                .to_owned();
+            let (output, trusted) =
+                engine_output(&engine_directory, |_| stock, captured, &log, &mut attempts)?;
+            let fallback_directory = output
+                .directory()
+                .ok_or("missing fallback namespace")?
+                .to_owned();
+            assert_ne!(engine_directory, fallback_directory);
             let output = output.into_output();
             assert!(!trusted);
             assert_eq!(output.stdout, stock_document);
@@ -2438,13 +2532,21 @@ mod tests {
                 b"crate path.rs\0--\0literal;$(untouched)\0"
             );
             assert_eq!(std::fs::read(dir.join("stock.engine"))?, b"unset");
-            assert_eq!(std::fs::read(dir.join("engine.failed.stdout"))?, document);
             assert_eq!(
-                std::fs::read(dir.join("engine.failed.stderr"))?,
+                std::fs::read(engine_directory.join("engine.failed.stdout"))?,
+                document
+            );
+            assert_eq!(
+                std::fs::read(engine_directory.join("engine.failed.stderr"))?,
                 b"original engine diagnostic\n"
             );
-            assert!(!dir.join("focus.source.json").exists());
-            assert!(!dir.join("logs/unsealed").exists());
+            assert_eq!(
+                std::fs::read(dir.join("focus.source.json"))?,
+                b"focused evidence"
+            );
+            assert_eq!(std::fs::read(dir.join("logs/unsealed"))?, b"old log");
+            assert!(!fallback_directory.join("focus.source.json").exists());
+            assert!(!fallback_directory.join("logs/unsealed").exists());
             assert!(dir.join("engine.events.jsonl").is_file());
             let markers = std::fs::read_dir(&starts)?.collect::<std::io::Result<Vec<_>>>()?;
             assert_eq!(
@@ -2488,7 +2590,12 @@ mod tests {
         let captured = capture_engine(&log, &mut attempts, success, "0")?;
         let mut stock = Command::new("/bin/sh");
         stock.args(["-c", "exit 2"]);
-        let (_, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
+        let engine_directory = captured
+            .directory()
+            .ok_or("missing engine namespace")?
+            .to_owned();
+        let (_, trusted) =
+            engine_output(&engine_directory, |_| stock, captured, &log, &mut attempts)?;
         assert!(trusted);
         // An injected engine crash (exit 101, no seal) falls back to stock.
         std::fs::remove_file(dir.join("engine.events.jsonl"))?;
@@ -2497,11 +2604,16 @@ mod tests {
         std::fs::write(&reply, success)?;
         let mut stock = Command::new("/bin/sh");
         stock.args(["-c", "cat \"$1\"", "stock"]).arg(&reply);
-        let (output, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
+        let engine_directory = captured
+            .directory()
+            .ok_or("missing engine namespace")?
+            .to_owned();
+        let (output, trusted) =
+            engine_output(&engine_directory, |_| stock, captured, &log, &mut attempts)?;
         let output = output.into_output();
         assert!(!trusted);
         assert_eq!(output.stdout, success);
-        assert!(dir.join("engine.failed.stdout").is_file());
+        assert!(engine_directory.join("engine.failed.stdout").is_file());
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
@@ -2549,7 +2661,12 @@ mod tests {
                 "stock",
             ])
             .arg(&reply);
-        let (output, trusted) = engine_output(&root, stock, captured, &log, &mut attempts)?;
+        let engine_directory = captured
+            .directory()
+            .ok_or("missing engine namespace")?
+            .to_owned();
+        let (output, trusted) =
+            engine_output(&engine_directory, |_| stock, captured, &log, &mut attempts)?;
         assert!(!trusted);
         assert_eq!(output.status().code(), Some(0));
         assert_eq!(output.stdout(), success);
@@ -2562,7 +2679,10 @@ mod tests {
                 .slot(),
             1
         );
-        assert_eq!(std::fs::read(root.join("engine.failed.stdout"))?, success);
+        assert_eq!(
+            std::fs::read(engine_directory.join("engine.failed.stdout"))?,
+            success
+        );
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
@@ -2679,7 +2799,12 @@ mod tests {
             stock
                 .current_dir(&dir)
                 .args(["-c", "touch stock.started; exit 2"]);
-            let (output, trusted) = engine_output(&dir, stock, captured, &log, &mut attempts)?;
+            let engine_directory = captured
+                .directory()
+                .ok_or("missing engine namespace")?
+                .to_owned();
+            let (output, trusted) =
+                engine_output(&engine_directory, |_| stock, captured, &log, &mut attempts)?;
             let output = output.into_output();
             assert!(trusted);
             assert_eq!(output.stdout, document);
@@ -2689,7 +2814,7 @@ mod tests {
                 Some(code)
             );
             assert!(!dir.join("stock.started").exists());
-            assert!(!dir.join("engine.failed.stdout").exists());
+            assert!(!engine_directory.join("engine.failed.stdout").exists());
             let markers = std::fs::read_dir(&starts)?.collect::<std::io::Result<Vec<_>>>()?;
             assert_eq!(
                 markers

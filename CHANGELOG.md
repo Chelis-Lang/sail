@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Isolate managed compiler evidence per attempt, bind completion and reuse to
+  the selected original history, and preserve independent fallback files.
+  Older private receipts require a fresh check; archived transfers validate the
+  complete original producer files without fabricating new live invocations.
+
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.

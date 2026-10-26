@@ -180,6 +180,22 @@ finished, so its content at the end of the run is the content compiled, and
 that content is bound into the proof receipts and the read-time record like
 any other input ([#120](https://github.com/Chelis-Lang/sail/issues/120)).
 
+### Original compiler histories
+
+A fresh managed proof uses an exclusive per-attempt directory for its raw output,
+logs and engine evidence. A normal exit and a familiar filename do not establish
+completion. The selected reference must match the original run, target, final
+command, process status and complete recorded payload; a later unfinished attempt
+cannot reuse its predecessor's completion. Journal failures preserve fresh
+verifier output and status while withholding proof reuse and completeness.
+
+Older private receipt formats require a fresh check. Stored native-artifact
+transfers preserve and validate the original producer subtree rather than create
+a new live invocation from serialized metadata. Missing or modified history
+refuses reuse. This does not enable the disabled native-artifact store, establish
+a full compiler-input domain or change the existing qualified bundled-proof
+import. See [invocation and result authority](design/acceptance-authority.md).
+
 ### Explicit native include directories
 
 For a dependency with Cargo's `links` name, Sail preobserves existing absolute
