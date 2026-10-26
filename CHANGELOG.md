@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Sign a GitHub build-provenance attestation for each release archive, and have
+  `scripts/install.py` verify it with `gh attestation verify` when GitHub CLI
+  is signed in. A failed attestation refuses installation; without `gh` the
+  installer notes that only the checksum was checked. `--require-attestation`
+  makes the check mandatory.
 - Keep fresh per-target input revisions independent: a target whose revision
   cannot be read again now marks only its own receipt changed, instead of every
   receipt package in the run.

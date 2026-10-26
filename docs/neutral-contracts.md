@@ -1,6 +1,6 @@
 # Neutral Rust contracts
 
-The private `sail-contracts` library checks scalar contracts when ordinary Rust
+The `sail-contracts` library checks scalar contracts when ordinary Rust
 code runs. The checks also run in release builds. A runtime check establishes
 the behavior exercised by that execution; it does not establish an SMT proof.
 The ordinary `sail verify` Verus input route is unchanged.
@@ -10,9 +10,9 @@ supported scalar source file, emits a content-bound shadow and can run the
 actual managed backend. Its native oracle acceptance is separate from runtime
 checks. Matching requirement IDs do not establish contract faithfulness.
 [Neutral source jobs](neutral-contract-jobs.md) expose that actual helper through
-the existing private Sail service without caller-created shadows or tools.
+the existing local Sail job service without caller-created shadows or tools.
 
-Use the crate from the Sail workspace or a pinned private Git revision. It is
+Use the crate from the Sail workspace or a pinned Git revision of it. It is
 not published to crates.io. The [version-one specification](spec/neutral-contracts.md)
 defines the accepted source subset and the separate backend boundary.
 
