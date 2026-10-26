@@ -735,16 +735,64 @@ alone. Canonical native Linux, differential and added-cost qualification remain
 integration gates.
 
 
+## Actual solver-input delivery
+
+The cached shim transfers the `ChildStdin` taken from its actual owned solver
+child into `query_delivery::Delivery`. The only native primitive writes the
+supplied bytes with `write_all`, flushes that descriptor and returns the actual
+outcome. Successful calls append those exact bytes to an independent incremental
+v2 prefix. Any failed or partial write permanently withholds publication; a
+later successful write cannot heal it. The primitive may have delivered part of
+a failed call, which is deliberately not sufficient for a complete input claim.
+
+The parser owner and delivery seed are jointly constructed by the checked
+`new_session_seed` factory from the same typed solver identity and verification
+mode. Before terminal expectations become eligible, the complete-silence key
+computed from all successful pipe writes must equal the parser owner's terminal
+key. Missing, extra or reordered bytes and different solver/mode headers withhold
+publication under the existing cryptographic assumptions. Hash equality still
+does not prove exact logical equality without those assumptions.
+
+Terminal metadata and the existing completion signal precede closing this same
+owned pipe. This ordering preserves the output thread's existing early-exit
+behavior: closing first could let it observe a dead child before input
+completion. Failed writes close the descriptor immediately, preserving the old
+failure behavior. Original bytes, solver output, status and the quiet/normal-exit
+publication guards retain their original paths. The check adds another streaming
+hash of bytes actually delivered to a running solver; native cost qualification
+is pending.
+
+Stock Verus checks the generic delivery operations, nonempty two-write witness,
+partial-write failure and permanent refusal. Script-only optional outcome hints
+prove constructive controls; native I/O has no predicted outcome. The native
+`SolverPipe` forwards remain reviewed OS/library boundaries, not a proof of the
+operating system. Focused controls cover different physical chunking, omitted,
+extra and reordered bytes, solver/mode mismatches and unhealable partial failure.
+The owning compatibility assembly has 305 obligations. Eight ordinary mutations
+omit the actual write, hash different bytes, heal a failure, drop the terminal
+comparison, accept a closed pipe, omit closure, or detach either factory result
+from the requested mode. Canonical capture and full platform/differential gates
+remain integration work.
+
+This is a concrete successful-write correspondence step toward query-only
+origin. It does not yet connect complete exact stdout framing, stderr and
+observed normal termination through a query-only solved-origin type to every
+writer. The executable's physical identity, filesystem-wide protected store
+history, truthful shared/bundle writers, compiler closure and full service
+composition remain open.
+
+
 ## WIP handoff
 
 The current owner slice is committed for WIP publication, not accepted as the
 complete design proof. It contains joint raw/hash ownership, complete supported
 head extraction, exact head-derived response policy, the tactic-check accounting
-fix ([#397](https://github.com/Chelis-Lang/sail/issues/397)), and the actual
-record-write transaction with exclusive temporary-file creation.
+fix ([#397](https://github.com/Chelis-Lang/sail/issues/397)), the actual
+record-write transaction with exclusive temporary-file creation, and independent
+owned solver-input delivery bound to the parser terminal key.
 
-The owner compatibility graph checks 295 obligations and all six writer
-mutations fail ordinary verification. Focused native cache tests, executable
+The owner compatibility graph checks 305 obligations. The six writer and eight
+delivery mutations fail ordinary verification. Focused native cache tests, executable
 write scripts and clippy pass. This is separate from the canonical integration
 capture, its newer obligations, native Linux, full host/solver/differential
 qualification and performance acceptance. The writer source/primitive inventory
