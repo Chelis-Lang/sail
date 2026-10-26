@@ -108,6 +108,25 @@ checks could not be made), with the note "inputs could not be confirmed
 unchanged; re-run for a current result". Verification itself still runs and
 its report is kept as the record of that run.
 
+Compiler declarations also require a completed observation from every Cargo
+child that the adapter declared before spawning. Sail binds each retained
+artifact message to the actual child PID, checks the final frame count after
+stdout EOF and a normal child exit, and requires a tagged usable dep-info read
+for every ordinary compiler artifact. An observed empty child is distinct from
+a missing, malformed or truncated journal
+([issue #377](https://github.com/Chelis-Lang/sail/issues/377)). Missing, repeated, foreign or
+unreadable dep-info outcomes withhold coverage. A normal nonzero exit can
+complete this accounting without establishing a successful proof or receipt.
+Fresh verifier diagnostics remain available when declaration coverage is
+unknown. Previously uncovered source inventories do not become covered merely
+because a later observation is empty.
+
+This check establishes the observed declaration ledger. Cargo/rustc's guarantee
+that dep-info names all actual compiler inputs and the OS's process/filesystem
+semantics remain trusted boundaries; the check does not prove atomic compiler
+launch identity. See the [input refinement component](design/acceptance-inputs.md)
+for the exact proved scope and remaining obligations.
+
 Build-script coverage does not wait for scripts outside an explicit `-p`
 selection's dependency closure, because they never run for it. Without an exact
 selection or a complete, unambiguous resolve graph, every resolved package is in

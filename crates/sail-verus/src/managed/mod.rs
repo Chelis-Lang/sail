@@ -24,7 +24,7 @@ pub(crate) mod research;
 pub(crate) mod retained;
 mod runner;
 pub(crate) mod shipped;
-mod source_inputs;
+pub(crate) mod source_inputs;
 mod store;
 pub(crate) mod visible_output;
 
