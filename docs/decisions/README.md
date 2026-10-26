@@ -87,3 +87,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0077: Separate scalar literal-contract counterexamples from Verus mutation verdicts](0077-scalar-literal-contract-witnesses.md)
 - [0078: Captured acceptance models checked by stock Verus (accepted)](0078-stock-acceptance-models.md)
 - [0079: Source-shared executable acceptance refinements (accepted)](0079-source-shared-acceptance-refinements.md)
+
+- [0080: Check query-key framing in the acceptance leaf (proposed)](0080-checked-query-key-framing.md)

@@ -437,3 +437,99 @@ compiler/runtime identity and the operating-system/process interfaces remain
 trusted where stated. No claim of verified production I/O, default diagnostic
 parity, termination, performance or an end-to-end verified Sail follows from
 this model alone.
+
+## Exact production v2 key material
+
+[`key_prefix`](../../crates/sail-acceptance/src/key_prefix.rs) now owns the
+incremental framing executed by `sail-key::PrefixHasher`. The source-shared
+[`prefix_factory`](../../crates/sail-key/src/prefix_factory.rs) reads the real
+`SolverIdentity` fields and `Mode` variant. The stock driver captures their full
+original declarations, including the opt-in `String` payload and binary array,
+rather than substituting an unrelated proof-only identity. Neither type moves
+out of its public `sail-key` namespace. [ADR 0080](../decisions/0080-checked-query-key-framing.md)
+proposes the explicit key-to-leaf edge; there is no cross-crate source-path bypass.
+
+The controller proves these exact effects:
+
+- Initialization feeds the unchanged v2 domain, mode tag/name and every solver
+  identity field as an eight-byte little-endian length followed by its bytes.
+- Every update appends its entire original slice exactly once. Cloning preserves
+  the incremental state, length and sticky validity flag.
+- `feed` accepts a `RawTranscript`-owned `PrefixFeed` only at the current byte
+  counter, with a matching interval length. Repeated or out-of-order feeds
+  permanently refuse exact-length authority before another key can be used.
+- Normal keys append the existing end marker and cumulative length to a copied
+  state. Silence keys keep the existing separate domain and nested normal key.
+- Equal fully framed hash-input bytes imply equality of all solver fields,
+  default/opt-in variant and exact opt-in name, and the full raw input prefix.
+  Field boundaries, comments, Unicode bytes and fragmentation are not normalized.
+
+The last theorem is about the bytes supplied to hashing. It does not assert
+that a finite hash is globally injective. The private production `Sha256Host`
+remains the narrow reviewed primitive boundary: fresh SHA-256 state, exact
+update, state copy and consuming finalization. Its source and caller bindings
+must be captured alongside the checked controller. Neither a matching digest
+nor an implementation of the public primitive trait establishes solver origin.
+The production cache caller now passes owned raw-feed tokens to this controller;
+its before/after checks also require the exact-length flag. Counter overflow is
+sticky and disables interpretation/publication while preserving input forwarding.
+The measurement trace omits a prefix key when that flag has been lost.
+
+The local whole-source compatibility check covers the input/query cores, key
+controller and real typed factory with directly invoked pinned stock Verus,
+`--cfg sail_verus --no-cheating --output-json --num-threads 1`, whole-crate scope
+and ordinary resource limits. It proves 163 obligations. All eleven controls
+fail through ordinary verification: wrong solver field, mode tag, raw update,
+end marker, counter overflow, feed order, silence domain, state copy,
+little-endian length, typed platform mapping and typed opt-in mapping. Earlier
+control attempts reached unrelated resource limits and were refused; the final
+checked modular lemmas and opaque recursive encoding qualify all controls without
+raising limits or omitting proof functions. Canonical integration must retain
+these new source/type/import/function inventories and native primitive bindings.
+
+`cargo test -p sail-key -p sail-acceptance` runs the executable controls and fixed
+independent SHA-256 vectors for default, empty opt-in and named opt-in modes over
+every fragment boundary. The pinned-solver `sail-shim` cached-session tests also
+cover normal reuse, diagnostic preservation, unmatched/incomplete publication
+refusal and late replay after a cached prefix. Native integration qualification
+and added-cost measurements remain separate gates. This slice does not yet prove
+that a feed borrowed from another transcript belongs to the same physical
+session; actual joint session ownership and the complete invocation/stream
+refinement must establish that relation. It also does not establish that
+reported solver metadata names the executable actually launched, or that a
+persistent reply has a truthful writer origin.
+
+## Native observation-candidate refusal
+
+The exact candidate fork `12459c9cc3a3022c91822643aa1cb8e7fac74871` builds on native
+x86-64 Linux with the pinned source lock and Z3 and verifies all 2,059 vstd
+obligations. Its complete corrected nonignored regression run passes 4,838 tests
+across all 161 test binaries; 63 source-ignored tests remain ignored and none are
+filtered. An earlier run used the wrong working directory and failed the Cargo
+and examples binaries; that failed attempt remains indexed rather than counted
+as acceptance.
+
+The candidate is nevertheless **refused for selection**. For each of the actual
+procedural-macro `args`, `args_os` and `/proc/self/cmdline` controls, stock,
+selected fork and unwrapped candidate produce zero verified functions and one
+error. Both active `off` and `on` envelopes change that to one verified function
+and zero errors. Local argv restoration does not preserve physical compiler
+inputs. This is an executable default-mode conformance defect in the unselected
+transport, not a solver arithmetic counterexample. Runtime selection, pinning
+and publication remain unchanged. Full corpus, determinism and cost qualification
+are deferred until a transport preserving actual compiler inputs replaces it.
+
+The native receipts retain exact commands, source/lock/toolchain identities,
+runtime file inventory and every raw result. Their SHA-256 indexes are:
+
+| Gate | Result | Receipt SHA-256 |
+|---|---|---|
+| Observation semantic control | Refused; six active-envelope proof changes | `f1da9ee02c3127f731dfbb47ff25c60ea0536bce0809955cc76c464c8680662d` |
+| Full fork regression, first attempt | Failed; incorrect harness working directory | `7019b8387aa9cf1216a78220eee96ff7fc394cdee510ab62534d9e870ce27478` |
+| Full fork regression, corrected attempt | Passed; 4,838/4,838 nonignored tests | `9a63547ea3f4f052ff5c57b5c7396c70b3366aff6673244fa1aa5ad6d6276316` |
+| Built suite runtime inventory | Captured; unselected candidate | `ebc67cb3131b39d412bc8621e8f7ec0a7f965b6c167bac01b9ff7ca9a17b3577` |
+
+The native machine is a `c7i.4xlarge` in `us-east-1`; these are correctness
+qualification observations, not clean performance measurements. Raw logs remain
+outside the repository. The failed semantic gate remains decisive despite the
+successful build and ordinary regression run.
