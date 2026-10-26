@@ -33,7 +33,7 @@ baseline.
 | Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
 | Default output identical to stock | Done: human stderr is byte-identical by default; Sail notes only with `SAIL_EXPLAIN=1` or in JSON (#391) | — |
 | Default-mode verdict conformance | Open defects #385, #386, #393 (environment and `--time` reach the verified compiler) | Fix, with conformance coverage |
-| Unchanged calls | Done when replay applies: 26 ms against stock's 0.26 s on Anvil (ADR 0082, #402). Otherwise unchanged Anvil about 1.7 s | #314 |
+| Unchanged calls | Done when replay applies: 26 ms against stock's 0.26 s on Anvil on Linux, 60 ms against 0.25 s on macOS (ADR 0082, #402, #437). Otherwise unchanged Anvil about 1.7 s | #314 |
 | Tiny edits | Sail still slower than stock by a fraction of a second | #156 |
 | Cold runs | Linux at parity or faster; macOS Anvil about 0.4 s slower on 100 s | #278, #232 |
 | CI cache reuse | Done: tools identified by content, so restored caches are reused on a new runner (#428); [guide](ci-cache.md) | — |

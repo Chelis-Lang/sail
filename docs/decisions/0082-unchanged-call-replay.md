@@ -184,7 +184,20 @@ recorded beyond that (its size and times) changes only through those events.
 The comparison runs under the family lock, so no Sail run or prune changes
 the target meanwhile, as for every other replay observation.
 
-**Consequences.** Vest and Anvil unchanged calls replay on macOS. A replay
-reads each copy and its original once (Anvil has 41 build scripts, about 28 MB
-each way). CI runs on Linux, where the copies are hard links, so the
-unit tests in `noop.rs` carry the copy cases.
+**Consequences.** Vest and Anvil unchanged calls replay on macOS. Measured
+on EC2 mac-m4.metal (us-east-1, macOS 27.0, load average 9 to 14 from other
+work), four unchanged calls 5 s apart after a cold run, with `cargo verus`
+and the main stage:
+
+| Project | Branch replay | Main | Stock |
+|---|---|---|---|
+| Vest (`-- --rlimit 100`) | 0.093 s | 0.638 s | 0.260 s |
+| Anvil (`--lib -- --verify-module vdeployment_controller`) | 0.060 s | 1.643 s | 0.246 s |
+
+Medians over the replayed calls; main never records, so its median is over
+calls 2 to 4. The first unchanged call still takes the full path and records
+(Vest 4 copies, Anvil 41). Anvil's copies hold 30.9 MB; on the same host,
+reading and comparing them with their originals takes 4.4 ms single-threaded
+against 10.9 ms for hashing the copies alone, and replay spreads the
+comparisons over worker threads. CI runs on Linux, where the copies are hard
+links, so the unit tests in `noop.rs` carry the copy cases.
