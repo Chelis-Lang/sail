@@ -867,6 +867,7 @@ fn declared_replay_conjoins_scope_paths_association_and_guarded_inputs() -> Test
             "missing-readback",
             "swapped-paths",
             "missing-guard",
+            "changed-guard",
             "changed-revision",
             "swapped-original",
             "changed-scope",
@@ -903,10 +904,10 @@ fn declared_replay_conjoins_scope_paths_association_and_guarded_inputs() -> Test
                 path_request.workspace.as_bytes(),
             )
             .ok_or("independent fixture native paths")?;
-            let guard = if variant == "missing-guard" {
-                None
-            } else {
-                Some(b"fixture guard".as_slice())
+            let guard = match variant {
+                "missing-guard" => None,
+                "changed-guard" => Some(b"fixture guard".as_slice()),
+                _ => Some(b"original observation stamp".as_slice()),
             };
             let revision = if variant == "changed-revision" {
                 b"other revision".as_slice()
