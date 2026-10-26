@@ -12,6 +12,14 @@ semantic versioning once the API is published.
   the installed tools, the cache records and declared variables still
   matches. Unchanged Anvil and Vest calls take 26 ms, against 0.26 s and
   0.20 s for `cargo verus verify`. `SAIL_MANAGED_NOOP=0` disables replay.
+- Keep instant revert to a target's original verified revision after many
+  edits. Retention now keeps up to 16 revisions per target, still within the
+  per-target 1 GiB and arena byte limits, and pins the first verified revision
+  of the current lineage against count eviction. A new `SAIL3146` note
+  (`--output json`, or `SAIL_EXPLAIN=1`) says when instant revert did not
+  apply and why: an unqualified dependency profile, a target too cheap to
+  retain, or an evicted revision. `SAIL3138`'s alignment advice now says the
+  vstd default-features step is needed too.
 - Sign a GitHub build-provenance attestation for each release archive, and have
   `scripts/install.py` verify it with `gh attestation verify` when GitHub CLI
   is signed in. A failed attestation refuses installation; without `gh` the
