@@ -496,7 +496,10 @@ Native `validate_pairs` constructs that certificate over the same original
 paired entries inspected by the private storer gate; publication consumes the
 unchanged pending batch. Symbolic fixture metadata cannot pass this gate. The
 working arrays are charged at six machine-word slots per candidate plus five
-vector headers within the existing bound. Ordinary UTF-8 command metadata, key
+vector headers within the existing bound. Fixed retained delivery/publication
+and incremental hash state also participate. The same atomic counter charges
+actual fresh reply copies and the one input tape, so these cannot each consume
+an independent recording allowance. Ordinary UTF-8 command metadata, key
 bytes, solver arguments, effort rules, forwarding and independent fallback stay
 unchanged. Capacity refusal can reduce caching and needs native cost measurement.
 
@@ -504,7 +507,8 @@ The source includes a constructive nonempty parser/delivery/output/binding
 witness and missing/wrong-original controls. Native source regressions cover
 the actual Pairer held-release permutation, equal-byte ordinal swaps, missing
 frames, equal-session/wrong acknowledged prefixes, absent capture and original
-complete/incomplete replay cursors. They are unrun and unqualified. This is a
+complete/incomplete replay cursors, and unchanged original wire metadata after
+release. They are unrun and unqualified. This is a
 checked relation over supplied original parser/frame observations, not full
 semantic event coverage or a proved native storer/OS refinement. Actual delimiter
 and mode coverage, pinned executed image, protected writers, arbitrary startup

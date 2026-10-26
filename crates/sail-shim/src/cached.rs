@@ -13,13 +13,13 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, ExitCode, Stdio};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use sail_acceptance::query::{
-    BoundPair, CorrelatedQueue, PublicationBatch, PublicationGate, ReplayCursor, response_frame,
+    BoundPair, CorrelatedQueue, PublicationBatch, PublicationGate, response_frame,
 };
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
@@ -33,6 +33,14 @@ use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_s
 type SolverLease = Arc<()>;
 type SolverFrame = sail_acceptance::query_output_owner::OwnedFrame<SolverLease>;
 type SolverPublication = sail_key::OwnedObservedPublication<SolverLease, SolverOwnerIdentity>;
+
+/// Original pending-publication bound, also charged before retaining snapshots.
+const PUBLICATION_LIMIT: usize = 64 * 1024 * 1024;
+/// Fixed new retained/certificate state is charged before recording starts.
+const PUBLICATION_FIXED_BYTES: usize = 5 * std::mem::size_of::<Vec<usize>>()
+    + std::mem::size_of::<DeliveredInput>()
+    + std::mem::size_of::<SolverPublication>()
+    + std::mem::size_of::<sail_key::PrefixHasher>();
 
 struct SolverOwnerIdentity;
 impl sail_acceptance::inputs::OwnerIdentity<SolverLease> for SolverOwnerIdentity {
@@ -51,6 +59,63 @@ struct SolverProcess {
     child: Child,
     owner: SolverLease,
 }
+
+/// Production metadata has one private original checkpoint. Symbolic test
+/// metadata exercises the same transitions but can never authorize publication.
+enum StoreCommand {
+    Original(sail_key::OwnedCommand),
+    #[cfg(test)]
+    Symbolic {
+        key: QueryKey,
+        command: String,
+        text: Vec<u8>,
+    },
+}
+impl StoreCommand {
+    fn key(&self) -> QueryKey {
+        match self {
+            Self::Original(command) => command.key(),
+            #[cfg(test)]
+            Self::Symbolic { key, .. } => *key,
+        }
+    }
+    fn text(&self) -> &[u8] {
+        match self {
+            Self::Original(command) => command.command(),
+            #[cfg(test)]
+            Self::Symbolic { text, .. } => text,
+        }
+    }
+    fn retained_bytes(&self) -> Option<usize> {
+        let command = match self {
+            Self::Original(command) => command.retained_bytes()?,
+            #[cfg(test)]
+            Self::Symbolic { command, text, .. } => std::mem::size_of::<Self>()
+                .checked_add(command.len())?
+                .checked_add(text.len())?,
+        };
+        command.checked_add(std::mem::size_of::<SolverFrame>())
+    }
+    fn observed_by(&self, publication: &SolverPublication) -> bool {
+        match self {
+            Self::Original(command) => publication.same_command_session(command),
+            #[cfg(test)]
+            Self::Symbolic { .. } => false,
+        }
+    }
+    fn into_metadata(self) -> (QueryKey, String) {
+        match self {
+            Self::Original(command) => {
+                let (key, head, _command) = command.into_parts();
+                let name = String::from_utf8(head)
+                    .unwrap_or_else(|error| String::from_utf8_lossy(error.as_bytes()).into_owned());
+                (key, name)
+            }
+            #[cfg(test)]
+            Self::Symbolic { key, command, .. } => (key, command),
+        }
+    }
+}
 impl TerminalInput {
     fn key(&self) -> QueryKey {
         self.delivered.key()
@@ -63,10 +128,7 @@ enum Expect {
     Terminal(TerminalInput),
     /// Store the reply under this key.
     Store {
-        key: QueryKey,
-        command: String,
-        /// The command's exact bytes, for the shape check.
-        text: Vec<u8>,
+        command: StoreCommand,
         /// For checks: the `:rlimit` in force (ADR 0009).
         limit: Option<u64>,
     },
@@ -181,7 +243,12 @@ enum Entry {
 impl Entry {
     fn observed_by(&self, publication: &SolverPublication) -> bool {
         match self {
-            Self::Paired { pair, .. } => publication.contains_frame(pair.reply()),
+            Self::Paired { pair, .. } => {
+                let Expect::Store { command, .. } = pair.expectation() else {
+                    return false;
+                };
+                publication.contains_frame(pair.reply()) && command.observed_by(publication)
+            }
             Self::Silence { key } => *key == publication.input_key(),
         }
     }
@@ -189,14 +256,13 @@ impl Entry {
     fn wire_cost(&self) -> Option<usize> {
         match self {
             Self::Paired { pair, .. } => {
-                let Expect::Store { command, text, .. } = pair.expectation() else {
+                let Expect::Store { command, .. } = pair.expectation() else {
                     return None;
                 };
                 pair.reply()
                     .bytes()
                     .len()
-                    .checked_add(command.len())?
-                    .checked_add(text.len())
+                    .checked_add(command.retained_bytes()?)
             }
             Self::Silence { .. } => {
                 Some(b"sail-session-silent/v1\n".len() + "sail-session-silence".len())
@@ -208,9 +274,10 @@ impl Entry {
         let (key, command, reply, effort) = match self {
             Self::Paired { pair, effort } => {
                 let (expect, reply) = pair.into_parts();
-                let Expect::Store { key, command, .. } = expect else {
+                let Expect::Store { command, .. } = expect else {
                     return None;
                 };
+                let (key, command) = command.into_metadata();
                 (key, command, reply.into_bytes(), effort)
             }
             Self::Silence { key } => (
@@ -233,10 +300,27 @@ impl Entry {
 }
 
 fn batch_observed(pending: &PublicationBatch<Entry>, publication: &SolverPublication) -> bool {
-    pending
+    if !pending
         .entries()
         .iter()
         .all(|entry| entry.observed_by(publication))
+    {
+        return false;
+    }
+    let mut pairs = Vec::new();
+    for entry in pending.entries() {
+        if let Entry::Paired { pair, .. } = entry {
+            let Expect::Store {
+                command: StoreCommand::Original(command),
+                ..
+            } = pair.expectation()
+            else {
+                return false;
+            };
+            pairs.push((command, pair.reply()));
+        }
+    }
+    publication.validate_pairs(&pairs)
 }
 
 /// A `check-sat` reply held back until its effort is known: the
@@ -351,10 +435,11 @@ impl Pairer {
         // other empty would drop it and shift every later pairing by one.
         while let Some(pair) = self.pending.take_pair() {
             let reply = pair.reply().bytes();
-            let Expect::Store { text, limit, .. } = pair.expectation() else {
+            let Expect::Store { command, limit, .. } = pair.expectation() else {
                 self.pending.stop();
                 break;
             };
+            let text = command.text();
             // Never store a reply that does not fit its command; stop
             // recording, since pairing can no longer be trusted.
             if reply.starts_with(b"(error") || !plausible(text, reply) {
@@ -439,12 +524,41 @@ impl Pairer {
 struct InputStatus {
     /// All producer expectations have been queued and the input side has finished.
     done: AtomicBool,
-    /// Permanently false after any failed input delivery or completion observation.
+    /// Permanently false after failed delivery/completion or recording capacity.
     valid: AtomicBool,
+    /// Monotone shared charge for checkpoints, input tape and fresh reply copies.
+    /// Already released snapshots remain charged, so no live snapshot escapes it.
+    recorded_bytes: AtomicUsize,
 }
 
 impl InputStatus {
+    fn charge(&self, cost: usize) -> bool {
+        let accepted = self.valid.load(Ordering::SeqCst)
+            && self
+                .recorded_bytes
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |used| {
+                    used.checked_add(cost)
+                        .filter(|next| *next <= PUBLICATION_LIMIT)
+                })
+                .is_ok();
+        if !accepted {
+            self.valid.store(false, Ordering::SeqCst);
+        }
+        accepted
+    }
     fn send_expectation(&self, expects: &Sender<Expect>, expectation: Expect) {
+        let expectation = if let Expect::Store { command, .. } = &expectation {
+            let charge = command.retained_bytes();
+            let accepted = charge.is_some_and(|charge| self.charge(charge));
+            if accepted {
+                expectation
+            } else {
+                self.valid.store(false, Ordering::SeqCst);
+                Expect::Stop
+            }
+        } else {
+            expectation
+        };
         if expects.send(expectation).is_err() {
             self.valid.store(false, Ordering::SeqCst);
         }
@@ -496,7 +610,7 @@ fn spawn_storer(
                 let Some(cost) = entry.wire_cost() else {
                     return;
                 };
-                if !pending.push(entry, cost, 64 * 1024 * 1024) {
+                if !pending.push(entry, cost, PUBLICATION_LIMIT) {
                     return;
                 }
             }
@@ -603,14 +717,16 @@ fn output_side(
 ) -> u8 {
     let owner = Arc::clone(&process.owner);
     let limit = buffer_limit();
-    let mut all = sail_acceptance::query_output_owner::StreamOutput::new(Arc::clone(&owner));
+    let mut all = sail_acceptance::query_output_owner::StreamOutput::new_replayed(
+        Arc::clone(&owner),
+        u64::try_from(served.len()).unwrap_or(u64::MAX),
+    );
     // Once forwarding is live and nothing more will be recorded, every later
     // byte is forwarded as read, exactly as pass-through forwards it.
     let mut streaming = false;
     let mut splitter = ResponseSplitter::new();
-    let mut replay = ReplayCursor::new(u64::try_from(served.len()).unwrap_or(u64::MAX));
     let mut check = ReplayCheck::new(served);
-    let mut forward_from: Option<usize> = replay.forwarding().then_some(0);
+    let mut forward_from: Option<usize> = all.forwarding().then_some(0);
     let mut forwarded = 0usize;
     let mut forwarding_ok = true;
     // Whether the last complete response belongs to the fresh suffix, and its start.
@@ -658,11 +774,14 @@ fn output_side(
                 if frame.is_none() {
                     pairer.stop();
                 }
-                let owned = if fresh {
+                let owned = if fresh && input.charge(start.saturating_sub(s)) {
                     frame.and_then(|frame| {
                         frame.into_owned(Arc::clone(&owner), &SolverOwnerIdentity)
                     })
                 } else {
+                    if fresh {
+                        pairer.stop();
+                    }
                     None
                 };
                 // Framing refusal stops publication. Replay comparison still
@@ -676,7 +795,7 @@ fn output_side(
                     break;
                 }
             }
-            let fresh = replay.advance();
+            let fresh = all.advance_replay();
             if fresh && forward_from.is_none() {
                 forward_from = Some(start);
             }
@@ -740,8 +859,14 @@ fn output_side(
         if frame.is_none() {
             pairer.stop();
         }
-        let owned =
-            frame.and_then(|frame| frame.into_owned(Arc::clone(&owner), &SolverOwnerIdentity));
+        let owned = if fresh && input.charge(end.saturating_sub(s)) {
+            frame.and_then(|frame| frame.into_owned(Arc::clone(&owner), &SolverOwnerIdentity))
+        } else {
+            if fresh {
+                pairer.stop();
+            }
+            None
+        };
         check.settle_observed(
             fresh,
             all.bytes().get(s..).unwrap_or_default(),
@@ -833,6 +958,7 @@ fn start_solver(
     let input = Arc::new(InputStatus {
         done: AtomicBool::new(false),
         valid: AtomicBool::new(true),
+        recorded_bytes: AtomicUsize::new(PUBLICATION_FIXED_BYTES),
     });
     // Queued before the solver sees any input, so it precedes its reply.
     input.send_expectation(&tx, first);
@@ -854,7 +980,7 @@ fn start_solver(
         })
         .ok()?;
     let mut s = Solving {
-        stdin: prefix.delivery(SolverPipe { stdin: Some(stdin) }),
+        stdin: prefix.recorded_delivery(SolverPipe { stdin: Some(stdin) }, PUBLICATION_LIMIT),
         expects: tx,
         input,
         output,
@@ -870,6 +996,9 @@ impl Solving {
     }
 
     fn write(&mut self, bytes: &[u8]) {
+        if !self.input.charge(bytes.len()) {
+            self.stdin.forget_capture();
+        }
         if !self.stdin.write(bytes) {
             self.stdin.close();
             self.input.valid.store(false, Ordering::SeqCst);
@@ -993,9 +1122,7 @@ fn observe(
         .and_then(|v| v.parse::<u64>().ok());
     let expect = match output {
         Output::One => Expect::Store {
-            key: frame.key(),
-            command: name.clone(),
-            text: item.bytes.clone(),
+            command: StoreCommand::Original(frame.freeze()),
             limit,
         },
         _ => Expect::Stop,
@@ -1198,7 +1325,8 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
             let hit = match (expects, &expect) {
                 (Output::None, _) => continue,
-                (Output::One, Expect::Store { key, .. }) => {
+                (Output::One, Expect::Store { command, .. }) => {
+                    let key = command.key();
                     match client.as_mut().map(|c| c.get_with_effort(&key.0)) {
                         Some(Ok(found)) => found
                             .filter(|(r, e)| !unservable(&item.bytes, r, e.as_ref()))
@@ -1501,9 +1629,15 @@ mod tests {
             assert_eq!(actual, expected);
             assert_eq!(prefix.bytes(), command);
             if expected == Output::One {
-                let Expect::Store { key, text, .. } = metadata else {
+                let Expect::Store {
+                    command: checkpoint,
+                    ..
+                } = metadata
+                else {
                     unreachable!("one response needs an exact Store expectation");
                 };
+                let key = checkpoint.key();
+                let text = checkpoint.text();
                 assert_eq!(text, command);
                 assert_eq!(key, prefix.key());
             } else {
@@ -1637,6 +1771,7 @@ mod tests {
         let status = super::InputStatus {
             done: AtomicBool::new(false),
             valid: AtomicBool::new(true),
+            recorded_bytes: std::sync::atomic::AtomicUsize::new(0),
         };
         let (sender, receiver) = std::sync::mpsc::channel();
         drop(receiver);
@@ -1647,6 +1782,24 @@ mod tests {
         assert!(!status.valid.load(Ordering::SeqCst));
         assert!(!status.done.load(Ordering::SeqCst));
         Ok(())
+    }
+
+    #[test]
+    fn recording_costs_share_the_original_bound_and_cannot_resume() {
+        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+        let status = super::InputStatus {
+            done: AtomicBool::new(false),
+            valid: AtomicBool::new(true),
+            recorded_bytes: AtomicUsize::new(super::PUBLICATION_LIMIT - 3),
+        };
+        assert!(status.charge(2));
+        assert!(!status.charge(2));
+        assert!(!status.valid.load(Ordering::SeqCst));
+        assert!(!status.charge(0));
+        assert_eq!(
+            status.recorded_bytes.load(Ordering::SeqCst),
+            super::PUBLICATION_LIMIT - 1
+        );
     }
 
     struct TestPipe;
@@ -1725,13 +1878,339 @@ mod tests {
         Ok((frame, output.seal().ok_or("script EOF and coverage")?))
     }
 
+    fn terminal_checkpoint(
+        bytes: &[u8],
+    ) -> Result<(TerminalInput, sail_key::OwnedCommand), &'static str> {
+        let mut prefix = sail_key::SessionPrefix::new(&identity(), &sail_key::Mode::Default);
+        let mut delivery = prefix.recorded_delivery(TestPipe, super::PUBLICATION_LIMIT);
+        prefix.append(bytes);
+        let command = prefix
+            .command(0, bytes.trim_ascii_end())
+            .ok_or("original script command")?
+            .freeze();
+        if !prefix.hash_tail() || !delivery.write(bytes) {
+            return Err("script complete input");
+        }
+        let delivered = delivery
+            .seal(prefix.silence_key(), true)
+            .ok_or("script frozen input")?;
+        Ok((
+            TerminalInput {
+                delivered,
+                owner: std::sync::Arc::new(()),
+            },
+            command,
+        ))
+    }
+
+    fn recorded_expectations(
+        original: &[u8],
+        acknowledged: &[u8],
+        capacity: usize,
+    ) -> Result<(TerminalInput, Vec<Expect>), &'static str> {
+        let mut prefix = sail_key::SessionPrefix::new(&identity(), &sail_key::Mode::Default);
+        let mut delivery = prefix.recorded_delivery(TestPipe, capacity);
+        prefix.append(original);
+        let mut splitter = super::CommandSplitter::new();
+        let mut items = Vec::new();
+        splitter.push(original, &mut items);
+        if splitter.finish().is_some() {
+            return Err("complete original parser input");
+        }
+        let mut session = super::Session::new();
+        let mut expectations = Vec::new();
+        for item in items {
+            match super::observe(&mut session, &item, &mut prefix) {
+                (super::Output::One, _, expectation) => expectations.push(expectation),
+                (super::Output::None, _, _) => {}
+                _ => return Err("supported original response policy"),
+            }
+        }
+        // Tests may intentionally declare a different acknowledged tape under
+        // this same parser seed. Its actual independent terminal key does not
+        // authorize the original per-command checkpoints.
+        let mut actual = sail_key::SessionPrefix::new(&identity(), &sail_key::Mode::Default);
+        actual.append(acknowledged);
+        if !actual.hash_tail() || !delivery.write(acknowledged) {
+            return Err("complete scripted actual delivery");
+        }
+        let delivered = delivery
+            .seal(actual.silence_key(), true)
+            .ok_or("actual frozen tape")?;
+        Ok((
+            TerminalInput {
+                delivered,
+                owner: std::sync::Arc::new(()),
+            },
+            expectations,
+        ))
+    }
+
+    fn framed_replies(
+        owner: &super::SolverLease,
+        skipped: u64,
+        replies: &[&[u8]],
+    ) -> Result<
+        (
+            Vec<super::SolverFrame>,
+            sail_acceptance::query_output_owner::CompletedStream<super::SolverLease>,
+        ),
+        &'static str,
+    > {
+        let mut output = sail_acceptance::query_output_owner::StreamOutput::new_replayed(
+            std::sync::Arc::clone(owner),
+            skipped,
+        );
+        let mut frames = Vec::new();
+        for reply in replies {
+            let start = output.len();
+            output.append(reply);
+            let end = output.len();
+            let fresh = output.advance_replay();
+            let frame = output
+                .frame(start, end)
+                .ok_or("original complete response")?;
+            if fresh {
+                frames.push(
+                    frame
+                        .into_owned(std::sync::Arc::clone(owner), &super::SolverOwnerIdentity)
+                        .ok_or("original retained response owner")?,
+                );
+            }
+        }
+        output.end();
+        Ok((
+            frames,
+            output.seal().ok_or("actual original EOF and coverage")?,
+        ))
+    }
+
+    fn publication_gate() -> super::PublicationGate {
+        super::PublicationGate {
+            input_closed: true,
+            pairing_active: true,
+            queues_empty: true,
+            normal_exit: true,
+            quiet: true,
+            forwarding_ok: true,
+        }
+    }
+
+    fn pair_batch(
+        expectations: Vec<Expect>,
+        frames: Vec<super::SolverFrame>,
+    ) -> Result<super::PublicationBatch<Entry>, &'static str> {
+        if expectations.len() != frames.len() {
+            return Err("complete declared fixture pair domain");
+        }
+        let mut pairer = Pairer::default();
+        let mut entries = Vec::new();
+        for (expectation, frame) in expectations.into_iter().zip(frames) {
+            pairer.expect(expectation);
+            pairer.reply_frame(frame);
+            entries.extend(pairer.drain());
+        }
+        entries.extend(pairer.finish());
+        let mut pending = super::PublicationBatch::empty();
+        for entry in entries {
+            let cost = entry.wire_cost().ok_or("bounded original entry")?;
+            if !pending.push(entry, cost, super::PUBLICATION_LIMIT) {
+                return Err("original fixture publication bound");
+            }
+        }
+        Ok(pending)
+    }
+
+    fn batch_pairs(
+        pending: &super::PublicationBatch<Entry>,
+    ) -> Result<Vec<(&sail_key::OwnedCommand, &super::SolverFrame)>, &'static str> {
+        pending
+            .entries()
+            .iter()
+            .map(|entry| {
+                let Entry::Paired { pair, .. } = entry else {
+                    return Err("original paired fixture entry");
+                };
+                let Expect::Store {
+                    command: super::StoreCommand::Original(command),
+                    ..
+                } = pair.expectation()
+                else {
+                    return Err("original actual checkpoint");
+                };
+                Ok((command, pair.reply()))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn actual_checkpoint_binding_preserves_held_release_permutation() -> Result<(), &'static str> {
+        let bytes=b"(get-info :all-statistics)\n(check-sat)\n(get-info :reason-unknown)\n(get-info :all-statistics)\n";
+        let (input, expectations) = recorded_expectations(bytes, bytes, super::PUBLICATION_LIMIT)?;
+        let (frames, output) = framed_replies(
+            &input.owner,
+            0,
+            &[
+                b"(:rlimit-count 10)\n",
+                b"unknown\n",
+                b"(:reason-unknown \"canceled\")\n",
+                b"(:rlimit-count 13)\n",
+            ],
+        )?;
+        let publication = input
+            .delivered
+            .observe_owned_publication(
+                input.owner,
+                Some(output),
+                publication_gate(),
+                super::SolverOwnerIdentity,
+            )
+            .ok_or("original complete fixture publication")?;
+        let pending = pair_batch(expectations, frames)?;
+        let pairs = batch_pairs(&pending)?;
+        assert_eq!(
+            pairs
+                .iter()
+                .map(|(_, frame)| frame.payload().ordinal())
+                .collect::<Vec<_>>(),
+            vec![0, 2, 1, 3]
+        );
+        assert!(super::batch_observed(&pending, &publication));
+        assert!(publication.validate_pairs(&pairs));
+        assert!(!publication.validate_pairs(&pairs[..3]));
+        let wrong: Vec<_> = pairs
+            .iter()
+            .map(|(command, _)| (*command, pairs[0].1))
+            .collect();
+        assert!(!publication.validate_pairs(&wrong));
+        let expected: Vec<_> = pairs
+            .iter()
+            .map(|(command, frame)| {
+                (
+                    command.key(),
+                    command.head().to_vec(),
+                    frame.bytes().to_vec(),
+                )
+            })
+            .collect();
+        let released = publication
+            .release(pending)
+            .ok_or("same original payload release")?;
+        assert_eq!(released.len(), expected.len());
+        for (entry, (key, head, reply)) in released.into_iter().zip(expected) {
+            let (actual_key, meta, actual_reply) =
+                entry.into_put().ok_or("original wire conversion")?;
+            assert_eq!(QueryKey(actual_key), key);
+            assert_eq!(meta.command.as_bytes(), head);
+            assert_eq!(meta.provenance, "pinned-solver");
+            assert_eq!(actual_reply, reply);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn identical_reply_bytes_cannot_swap_original_command_associations() -> Result<(), &'static str>
+    {
+        let bytes = b"(get-info :name)\n(get-info :name)\n";
+        let (input, expectations) = recorded_expectations(bytes, bytes, super::PUBLICATION_LIMIT)?;
+        let (frames, output) =
+            framed_replies(&input.owner, 0, &[b"(:name \"z3\")\n", b"(:name \"z3\")\n"])?;
+        let publication = input
+            .delivered
+            .observe_owned_publication(
+                input.owner,
+                Some(output),
+                publication_gate(),
+                super::SolverOwnerIdentity,
+            )
+            .ok_or("original complete fixture publication")?;
+        let pending = pair_batch(expectations, frames)?;
+        let pairs = batch_pairs(&pending)?;
+        assert_eq!(pairs[0].1.bytes(), pairs[1].1.bytes());
+        assert_ne!(pairs[0].0.key(), pairs[1].0.key());
+        assert!(publication.validate_pairs(&pairs));
+        assert!(!publication.validate_pairs(&[(pairs[0].0, pairs[1].1), (pairs[1].0, pairs[0].1)]));
+        Ok(())
+    }
+
+    #[test]
+    fn parser_lineage_and_terminal_key_do_not_replace_actual_prefix_bytes()
+    -> Result<(), &'static str> {
+        for (actual, capacity) in [
+            (b";b\n(check-sat)\n".as_slice(), super::PUBLICATION_LIMIT),
+            (b";a\n(check-sat)\n".as_slice(), 1),
+        ] {
+            let (input, expectations) =
+                recorded_expectations(b";a\n(check-sat)\n", actual, capacity)?;
+            let (frames, output) = framed_replies(&input.owner, 0, &[b"unsat\n"])?;
+            let publication = input
+                .delivered
+                .observe_owned_publication(
+                    input.owner,
+                    Some(output),
+                    publication_gate(),
+                    super::SolverOwnerIdentity,
+                )
+                .ok_or("original fixture stream/child owners")?;
+            let pending = pair_batch(expectations, frames)?;
+            let pairs = batch_pairs(&pending)?;
+            assert!(publication.same_command_session(pairs[0].0));
+            assert!(!publication.validate_pairs(&pairs));
+            assert!(!super::batch_observed(&pending, &publication));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn fresh_bindings_require_this_output_owners_complete_replay_prefix() -> Result<(), &'static str>
+    {
+        let bytes = b"(get-info :name)\n(get-info :name)\n";
+        for skipped in [1, 0, 3] {
+            let (input, mut expectations) =
+                recorded_expectations(bytes, bytes, super::PUBLICATION_LIMIT)?;
+            let Expect::Store {
+                command: super::StoreCommand::Original(command),
+                ..
+            } = expectations.pop().ok_or("fresh original expectation")?
+            else {
+                return Err("fresh original checkpoint");
+            };
+            let (mut frames, output) = framed_replies(
+                &input.owner,
+                skipped,
+                &[b"(:name \"z3\")\n", b"(:name \"z3\")\n"],
+            )?;
+            let publication = input
+                .delivered
+                .observe_owned_publication(
+                    input.owner,
+                    Some(output),
+                    publication_gate(),
+                    super::SolverOwnerIdentity,
+                )
+                .ok_or("original output owner and complete coverage")?;
+            if let Some(frame) = frames.pop() {
+                assert_eq!(frame.payload().ordinal(), 1);
+                assert_eq!(
+                    publication.validate_pairs(&[(&command, &frame)]),
+                    skipped == 1
+                );
+            } else {
+                assert_eq!(skipped, 3);
+                assert!(!publication.validate_pairs(&[]));
+            }
+        }
+        Ok(())
+    }
+
     /// Native Arc identity and scripted streams only; this is not an actual
     /// trusted solver or physical launch/pipe qualification.
     #[test]
     fn equal_byte_streams_cannot_swap_original_owners_or_child_publication()
     -> Result<(), &'static str> {
-        let original = terminal(b"(check-sat)\n")?;
-        let other = terminal(b"(check-sat)\n")?;
+        let (original, first_command) = terminal_checkpoint(b"(check-sat)\n")?;
+        let (other, second_command) = terminal_checkpoint(b"(check-sat)\n")?;
+        assert_eq!(first_command.key(), second_command.key());
         let (first, output) = owned_output(&original.owner)?;
         let (second, other_output) = owned_output(&other.owner)?;
         assert_eq!(first.bytes(), second.bytes());
@@ -1740,14 +2219,7 @@ mod tests {
         assert_eq!(first.payload().end(), second.payload().end());
         assert!(output.contains_frame(&first, &super::SolverOwnerIdentity));
         assert!(!other_output.contains_frame(&first, &super::SolverOwnerIdentity));
-        let gate = super::PublicationGate {
-            input_closed: true,
-            pairing_active: true,
-            queues_empty: true,
-            normal_exit: true,
-            quiet: true,
-            forwarding_ok: true,
-        };
+        let gate = publication_gate();
         let publication = original
             .delivered
             .observe_owned_publication(
@@ -1759,8 +2231,13 @@ mod tests {
             .ok_or("original stream/child leases")?;
         assert!(publication.contains_frame(&first));
         assert!(!publication.contains_frame(&second));
+        assert!(publication.same_command_session(&first_command));
+        assert!(!publication.same_command_session(&second_command));
         let mut pairs = super::CorrelatedQueue::empty();
-        pairs.expect(store(1, "(check-sat)"));
+        pairs.expect(Expect::Store {
+            command: super::StoreCommand::Original(first_command),
+            limit: None,
+        });
         pairs.reply(first);
         let mut original_batch = super::PublicationBatch::empty();
         assert!(original_batch.push(
@@ -1772,7 +2249,10 @@ mod tests {
             6
         ));
         assert!(super::batch_observed(&original_batch, &publication));
-        pairs.expect(store(2, "(check-sat)"));
+        pairs.expect(Expect::Store {
+            command: super::StoreCommand::Original(second_command),
+            limit: None,
+        });
         pairs.reply(second);
         let mut swapped_batch = super::PublicationBatch::empty();
         assert!(swapped_batch.push(
@@ -1784,6 +2264,12 @@ mod tests {
             6
         ));
         assert!(!super::batch_observed(&swapped_batch, &publication));
+        if let Expect::Store { command, .. } = store(1, "(check-sat)") {
+            assert!(
+                !command.observed_by(&publication),
+                "symbolic metadata never supplies live publication authority"
+            );
+        }
         assert!(
             Entry::Silence {
                 key: publication.input_key()
@@ -1792,14 +2278,7 @@ mod tests {
         );
         assert!(!Entry::Silence { key: key(255) }.observed_by(&publication));
         let third = terminal(b"(check-sat)\n")?;
-        let gate = super::PublicationGate {
-            input_closed: true,
-            pairing_active: true,
-            queues_empty: true,
-            normal_exit: true,
-            quiet: true,
-            forwarding_ok: true,
-        };
+        let gate = publication_gate();
         assert!(
             third
                 .delivered
@@ -1826,9 +2305,11 @@ mod tests {
             .unwrap_or_default()
             .to_owned();
         Expect::Store {
-            key: key(i),
-            command,
-            text: text.as_bytes().to_vec(),
+            command: super::StoreCommand::Symbolic {
+                key: key(i),
+                command,
+                text: text.as_bytes().to_vec(),
+            },
             limit: None,
         }
     }
@@ -1890,12 +2371,8 @@ mod tests {
 
     fn check(i: u8, limit: u64) -> Expect {
         match store(i, "(check-sat)") {
-            Expect::Store {
-                key, command, text, ..
-            } => Expect::Store {
-                key,
+            Expect::Store { command, .. } => Expect::Store {
                 command,
-                text,
                 limit: Some(limit),
             },
             other => other,

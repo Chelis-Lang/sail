@@ -17,6 +17,12 @@ semantic versioning once the API is published.
   preserving held-check release order and refusing missing or swapped frames.
   Native and formal qualification remain pending.
 
+- Wire original command checkpoints through the shim's existing pairing,
+  held-check and storer paths. Input capture, fresh reply copies and checkpoint
+  retention share the existing recording bound; exhaustion stops recording
+  while preserving delivery and forwarding. This source candidate has not
+  completed native, differential or performance qualification.
+
 - Retain the actual frozen input delivery and complete stdout observations
   through the local cache publication handoff, requiring their typed joint
   observation before releasing pending entries. This preserves existing
