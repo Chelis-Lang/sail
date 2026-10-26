@@ -13,7 +13,7 @@ import stat
 import sys
 import time
 
-MAX_FILES = 512
+MAX_FILES = 1024
 MAX_FILE_BYTES = 8 * 1024**2
 MAX_TOTAL_BYTES = 64 * 1024**2
 PATTERNS = (
