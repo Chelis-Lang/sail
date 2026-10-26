@@ -238,6 +238,15 @@ sail_code! {
         closed: bool,
         fail_next: bool,
     }
+    impl ScriptPipe {
+        sail_method! {
+            /// Starts an empty scripted pipe with an explicitly declared next
+            /// primitive result; this never constructs an actual native pipe.
+            pub fn new(fail_next: bool) -> (out: Self) requires (true)
+                ensures (out.sent().len() == 0, !out.closed(), out.success_hint() == Some(!fail_next))
+            { Self {bytes:Vec::new(),closed:false,fail_next} }
+        }
+    }
     impl InputPipe for ScriptPipe {
         sail_trait_impl_spec! {
             closed spec fn sent(&self) -> Seq<u8> { self.bytes@ }
