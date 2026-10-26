@@ -248,6 +248,33 @@ pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
     Some(paths)
 }
 
+/// Original unit records with closed outer sections and a complete typed
+/// lifecycle for every recorded producer. This establishes attribution only;
+/// no dep-info read is invented and no compiler-input closure is asserted.
+pub(super) fn provider_records(artifacts: &Path) -> Option<Vec<Value>> {
+    let raw = std::fs::read_to_string(artifacts).ok()?;
+    let observed = journal(&raw)?;
+    if !observed
+        .sessions
+        .values()
+        .all(|events| sail_acceptance::inputs::seal_provider(events).is_some())
+    {
+        return None;
+    }
+    Some(
+        completed_sections(&raw)?
+            .into_iter()
+            .flatten()
+            .filter(|record| {
+                matches!(
+                    record["reason"].as_str(),
+                    Some("compiler-artifact" | "build-script-executed")
+                )
+            })
+            .collect(),
+    )
+}
+
 /// The unit records of a complete artifact journal, without its section
 /// markers: every line parses, and every record lies in a section the
 /// producer opened and closed (see [`crate::adapter::JOURNAL_END`]). `None`
