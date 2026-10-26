@@ -781,7 +781,7 @@
         "crates/sail-api/src/jobs.rs",
         "crates/sail-api/src/repair.rs"
       ],
-      "verified": 244,
+      "verified": 273,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
@@ -866,6 +866,7 @@
         "check_authority::acceptance::requested_coverage",
         "check_authority::acceptance::requested_function_present",
         "check_authority::acceptance::requested_target",
+        "check_authority::acceptance::require_process_observation",
         "check_authority::acceptance::resolved_coverage",
         "check_authority::acceptance::resolved_expected",
         "check_authority::acceptance::same_engine",
@@ -898,13 +899,50 @@
         "check_authority::acceptance::verification_disabled",
         "check_authority::acceptance::verification_enabled_command",
         "check_authority::acceptance::verification_enabled_options",
+        "check_authority::authority::AttemptLedger::new",
+        "check_authority::authority::AttemptLedger::reserve",
         "check_authority::authority::CompletionPolicy::clone",
+        "check_authority::authority::ObservedAttempt::exit",
+        "check_authority::authority::ObservedAttempt::into_output",
+        "check_authority::authority::ObservedAttempt::normal_success",
+        "check_authority::authority::ObservedAttempt::pid",
+        "check_authority::authority::ObservedAttempt::reserved",
+        "check_authority::authority::ObservedAttempt::stderr",
+        "check_authority::authority::ObservedAttempt::stdout",
+        "check_authority::authority::ReservedAttempt::descriptor",
+        "check_authority::authority::ReservedAttempt::run",
+        "check_authority::authority::ReservedAttempt::slot",
+        "check_authority::authority::ReservedAttempt::started",
+        "check_authority::authority::ReservedAttempt::unit",
+        "check_authority::authority::RunningAttempt::exited",
+        "check_authority::authority::RunningAttempt::finish",
+        "check_authority::authority::RunningAttempt::finish_or_output",
+        "check_authority::authority::RunningAttempt::stderr_eof",
+        "check_authority::authority::RunningAttempt::stdout_eof",
+        "check_authority::authority::WaitObservation::arrow_0",
+        "check_authority::authority::WaitObservation::arrow_Exited_0",
         "check_authority::authority::argument_flag",
         "check_authority::authority::copy_bytes",
         "check_authority::authority::distinct_id_values",
         "check_authority::authority::flag_matches",
+        "check_authority::authority::ledger_next",
+        "check_authority::authority::ledger_run",
+        "check_authority::authority::ledger_unit",
+        "check_authority::authority::observation_complete",
+        "check_authority::authority::observed_payload_matches",
+        "check_authority::authority::observed_running",
         "check_authority::authority::owned_id",
         "check_authority::authority::owned_obligation",
+        "check_authority::authority::reserved_descriptor",
+        "check_authority::authority::reserved_run",
+        "check_authority::authority::reserved_slot",
+        "check_authority::authority::reserved_unit",
+        "check_authority::authority::running_exit",
+        "check_authority::authority::running_invalid",
+        "check_authority::authority::running_pid",
+        "check_authority::authority::running_reserved",
+        "check_authority::authority::running_stderr",
+        "check_authority::authority::running_stdout",
         "check_authority::authority::strict_order_differs",
         "check_authority::authority::unique_obligations",
         "check_authority::authority_model::Candidate::context",
@@ -1151,19 +1189,25 @@
         "check_authority::jobs::VERSION",
         "check_authority::output::SCHEMA_VERSION",
         "check_authority::project::SCHEMA_VERSION",
+        "check_authority::refinement::ambiguous_observations_preserve_output",
+        "check_authority::refinement::attempt_slots_are_independent_of_pid",
         "check_authority::refinement::changed_original_arguments_refused",
         "check_authority::refinement::changed_original_mode_refused",
+        "check_authority::refinement::changed_process_payload_refused",
         "check_authority::refinement::changed_repair_selection_refused",
         "check_authority::refinement::checked_factory_refines_function",
+        "check_authority::refinement::checked_process_observation",
         "check_authority::refinement::checked_repair_presence_has_confirmed_evidence",
         "check_authority::refinement::checked_request_refines_function",
         "check_authority::refinement::checked_submitted_request_refines_function",
         "check_authority::refinement::compile_only_original_request_refused",
         "check_authority::refinement::compile_only_report_refused",
+        "check_authority::refinement::duplicate_process_stream_refused",
         "check_authority::refinement::focused_report_refused",
         "check_authority::refinement::function_refines",
         "check_authority::refinement::interrupted_report_refused",
         "check_authority::refinement::matching_repair_selection_accepts",
+        "check_authority::refinement::missing_process_wait_refused",
         "check_authority::refinement::missing_repair_function_refused",
         "check_authority::refinement::missing_requested_scope_refused",
         "check_authority::refinement::model_establishment",
@@ -1176,6 +1220,8 @@
         "check_authority::refinement::positive_zero_function_factory",
         "check_authority::refinement::project_effective_verification",
         "check_authority::refinement::project_function",
+        "check_authority::refinement::project_observed_process_end",
+        "check_authority::refinement::recovering_finish_refuses_missing_events",
         "check_authority::refinement::stale_request_refused",
         "check_authority::refinement::swapped_repair_function_refused",
         "check_authority::refinement::swapped_request_refused",
@@ -1331,13 +1377,55 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "let second = &arguments[boundary..];",
           "after": "let second = &arguments[..boundary];"
+        },
+        {
+          "name": "process-wait-required",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "|| matches!(self.exit, WaitObservation::Pending)",
+          "after": "|| false"
+        },
+        {
+          "name": "process-distinct-slot",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "self.next += 1;",
+          "after": "self.next += 0;"
+        },
+        {
+          "name": "process-duplicate-stream",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "if self.stdout.is_some() { self.invalid = true; }",
+          "after": "if self.stdout.is_some() { self.invalid = false; }"
+        },
+        {
+          "name": "process-stderr-binding",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "else { self.stderr = Some(bytes); }",
+          "after": "else { self.stdout = Some(bytes); }"
+        },
+        {
+          "name": "process-recovery-bytes",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "let stdout = match self.stdout { Some(bytes) => bytes, None => Vec::new() };",
+          "after": "let stdout = Vec::new();"
+        },
+        {
+          "name": "process-payload-binding",
+          "source": "crates/sail-acceptance/src/authority.rs",
+          "before": "exact_bytes(observed.stdout(), stdout) && exact_bytes(observed.stderr(), stderr) && observed.exit() == exit",
+          "after": "true && exact_bytes(observed.stderr(), stderr) && observed.exit() == exit"
+        },
+        {
+          "name": "process-refusal-recorded",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if !matched && report.error.is_none() { report.error = Some(unavailable); }",
+          "after": "if false { report.error = Some(unavailable); }"
         }
       ]
     }
   ],
   "api_declarations": {
     "output": {
-      "source_sha256": "9c1bb2987fedd63c24c2ce5e242b632d1660c54df14345deba1987bd2009570c",
+      "source_sha256": "9f64e4becd83b88bc0ce27ed6c5e89dd9b5e9c790184c511e834f9ebb2746679",
       "bindings": [
         [
           "use",
@@ -1450,7 +1538,7 @@
             ]
           },
           "variants": [],
-          "declaration_sha256": "274c87123649c24e6af237e7270d2e13e85cbeee27e28ecc33fd7d4097895731"
+          "declaration_sha256": "441ee80f07cd1ef606b39641ba5ec8ef9be422c79a0670df0f54d6d97383c84a"
         },
         {
           "name": "CrateReport",
