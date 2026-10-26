@@ -17,7 +17,7 @@ use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-const VERSION: u32 = 3;
+const VERSION: u32 = 4;
 const FILE_LIMIT: u64 = 256 * 1024 * 1024;
 const OUTPUT_LIMIT: u64 = 16 * 1024 * 1024;
 const ENTRY_LIMIT: u64 = 8 * 1024 * 1024;
@@ -101,6 +101,7 @@ pub(super) struct Entry {
     pub(super) version: u32,
     pub(super) basis: Basis,
     pub(super) receipt: Receipt,
+    pub(super) history: super::history::History,
     /// Complete accepted GHOST/EXEC wire document, stored as a checked blob.
     pub(super) compiler_reads: Content,
     pub(super) outputs: Vec<Output>,
@@ -118,10 +119,12 @@ impl Entry {
         stdout: Content,
         stderr: Content,
     ) -> Option<Self> {
+        let history = super::history::History::capture(&receipt)?;
         Self {
             version: VERSION,
             basis,
             receipt,
+            history,
             compiler_reads,
             outputs,
             stdout,
@@ -139,6 +142,8 @@ impl Entry {
 
     fn intact(&self) -> bool {
         self.version == VERSION
+            && self.history.matches_receipt(&self.receipt)
+            && self.history.matches_streams(&self.stdout, &self.stderr)
             && self
                 .clone()
                 .seal()
@@ -185,6 +190,7 @@ pub(super) struct RollbackFailure {
 
 pub(super) struct Restored {
     pub(super) receipt: Receipt,
+    pub(super) history: String,
     pub(super) stdout: Vec<u8>,
     pub(super) stderr: Vec<u8>,
 }
@@ -209,7 +215,7 @@ fn sha(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
-fn bytes(path: &Path, limit: u64) -> Option<Vec<u8>> {
+pub(super) fn bytes(path: &Path, limit: u64) -> Option<Vec<u8>> {
     let file = open(path)?;
     if file.metadata().ok()?.len() > limit {
         return None;
@@ -228,7 +234,12 @@ fn checked_bytes(path: &Path, expected: &Content, limit: u64) -> Option<Vec<u8>>
 }
 
 /// Independent bounded stream copy into a fresh file; never edits in place.
-fn fresh_copy(from: &Path, to: &Path, expected: &Content, executable: bool) -> Option<()> {
+pub(super) fn fresh_copy(
+    from: &Path,
+    to: &Path,
+    expected: &Content,
+    executable: bool,
+) -> Option<()> {
     if !sha(&expected.sha256) || expected.size > FILE_LIMIT {
         return None;
     }
@@ -333,9 +344,12 @@ pub(super) fn restore(
     output_directory: &Path,
     output_names: &BTreeSet<std::ffi::OsString>,
     caller: &CallerEnvironment,
-    run: &str,
+    run: (&str, &Path),
     after: impl Fn() -> bool,
 ) -> std::result::Result<Option<Restored>, RollbackFailure> {
+    if run.1.file_name().map(std::ffi::OsStr::as_encoded_bytes) != Some(run.0.as_bytes()) {
+        return Ok(None);
+    }
     let Some(directory) = target(root, &basis.identity) else {
         return Ok(None);
     };
@@ -347,9 +361,9 @@ pub(super) fn restore(
             continue;
         };
         if !entry.intact()
-            || !entry.receipt.producer_history_intact()
+            || !entry.history.available(root)
             || entry.basis != *basis
-            || !caller.matches(run, &entry.receipt.declared_environment)
+            || !caller.matches(run.0, &entry.receipt.declared_environment)
         {
             continue;
         }
@@ -365,24 +379,6 @@ pub(super) fn restore(
                     .iter()
                     .any(|output| output.path == *path && output.content.sha256 == *sha)
             })
-        {
-            continue;
-        }
-        // The original committed establishing run must still bind this receipt.
-        let Some(commit) = bytes(&entry.receipt.committed, ENTRY_LIMIT)
-            .and_then(|raw| serde_json::from_slice::<serde_json::Value>(&raw).ok())
-        else {
-            continue;
-        };
-        if commit["context"].as_str() != Some(&basis.context)
-            || commit["run_id"].as_str() != Some(&entry.receipt.invocation.run_id)
-            || !commit["receipt_checksums"]
-                .as_array()
-                .is_some_and(|checksums| {
-                    checksums
-                        .iter()
-                        .any(|sha| sha.as_str() == Some(&entry.receipt.checksum))
-                })
         {
             continue;
         }
@@ -414,6 +410,9 @@ pub(super) fn restore(
         ) {
             continue;
         }
+        let Some(history) = entry.history.adopt(root, run.1) else {
+            continue;
+        };
         let mut written = Vec::new();
         let placed = entry.outputs.iter().all(|output| {
             if place_blob(root, output).is_none() {
@@ -428,6 +427,7 @@ pub(super) fn restore(
                 .open(&path)
                 .and_then(|file| file.set_modified(SystemTime::now()));
             return Ok(Some(Restored {
+                history,
                 receipt: entry.receipt,
                 stdout,
                 stderr,
@@ -471,11 +471,16 @@ pub(super) fn retain(
         .try_fold(u64::try_from(encoded.len()).ok()?, |total, content| {
             total.checked_add(content.size)
         })?;
+    let history = entry.history.incoming()?;
     let _admission = super::budget::admit(
         root,
-        incoming,
-        u64::try_from(entry.outputs.len()).ok()?.checked_add(10)?,
+        incoming.checked_add(history.0)?,
+        u64::try_from(entry.outputs.len())
+            .ok()?
+            .checked_add(10)?
+            .checked_add(history.1)?,
     )?;
+    entry.history.publish(root)?;
     let blobs = root.join("blobs");
     std::fs::create_dir_all(&blobs).ok()?;
     for (source, content) in entry
@@ -684,6 +689,7 @@ fn collect(root: &Path, live_graphs: &BTreeSet<String>) {
     };
     let mut referenced = BTreeSet::new();
     let mut graphs = live_graphs.clone();
+    let mut histories = BTreeSet::new();
     for target in targets {
         let Ok(target) = target else {
             return;
@@ -714,6 +720,10 @@ fn collect(root: &Path, live_graphs: &BTreeSet<String>) {
             if !record.intact() {
                 return;
             }
+            let Some(history) = record.history.key() else {
+                return;
+            };
+            histories.insert(history);
             graphs.insert(record.basis.dependency_inventory);
             referenced.extend(
                 record
@@ -740,6 +750,22 @@ fn collect(root: &Path, live_graphs: &BTreeSet<String>) {
                 .is_some_and(|name| sha(name) && !referenced.contains(name))
         {
             let _ = std::fs::remove_file(entry.path());
+        }
+    }
+    // Adopted runs own independent copies; arena eviction cannot erase them.
+    if let Ok(entries) = std::fs::read_dir(root.join("histories")) {
+        for entry in entries {
+            let Ok(entry) = entry else {
+                return;
+            };
+            if entry.file_type().is_ok_and(|kind| kind.is_dir())
+                && entry
+                    .file_name()
+                    .to_str()
+                    .is_some_and(|name| sha(name) && !histories.contains(name))
+            {
+                let _ = std::fs::remove_dir_all(entry.path());
+            }
         }
     }
     // The caller supplies graph references from every live compiler artifact
@@ -887,10 +913,18 @@ mod tests {
             std::fs::write(root.join("libunit-abcd.rmeta"), b"artifact B")?;
             let placed = std::cell::Cell::new(false);
             assert!(
-                restore(root, basis, root, names, &other, "actual-owned-run", || {
-                    placed.set(true);
-                    true
-                })
+                restore(
+                    root,
+                    basis,
+                    root,
+                    names,
+                    &other,
+                    ("actual-owned-run", &root.join("actual-owned-run")),
+                    || {
+                        placed.set(true);
+                        true
+                    }
+                )
                 .is_ok_and(|value| value.is_none())
             );
             assert!(!placed.get());
@@ -955,7 +989,7 @@ mod tests {
                     root,
                     &names,
                     &caller,
-                    "actual-owned-run",
+                    ("actual-owned-run", &root.join("actual-owned-run")),
                     || true,
                 )
                 .map_err(|failure| format!("rollback: {:?}", failure.paths))?
@@ -1056,8 +1090,8 @@ mod tests {
             &run,
             "establishing-A",
             &identity,
-            b"fixture original stdout",
-            b"",
+            b"literal stdout",
+            b"literal diagnostics",
             0,
         );
         assert!(selected_attempt.is_some());
@@ -1074,6 +1108,7 @@ mod tests {
             invocation: super::super::super::receipts::Invocation {
                 dependency_build: None,
                 retained_from: None,
+                retained_history: None,
                 selected_attempt,
                 identity,
                 run_id: "establishing-A".into(),
@@ -1130,7 +1165,7 @@ mod tests {
             &root.0,
             names,
             &CallerEnvironment::capture("test-current").ok_or("caller snapshot")?,
-            "test-current",
+            ("test-current", &root.0.join("test-current")),
             || {
                 assert!(std::fs::remove_file(artifact).is_ok());
                 assert!(std::fs::create_dir(artifact).is_ok());
@@ -1187,10 +1222,12 @@ mod tests {
             },
             executable: false,
         };
+        let history = super::super::history::History::capture(&receipt).ok_or("history")?;
         let entry = Entry {
             version: VERSION,
             basis: basis.clone(),
             receipt,
+            history,
             compiler_reads: Content {
                 sha256: digest(&raw),
                 size: raw.len() as u64,
@@ -1209,6 +1246,188 @@ mod tests {
         .seal()
         .ok_or("seal")?;
         Ok(entry)
+    }
+
+    fn publish_adopted_target(
+        root: &Root,
+        original: &Receipt,
+        adopted: super::super::super::receipts::Invocation,
+    ) -> Result<Receipt, Box<dyn std::error::Error>> {
+        let current = root.0.join("test-current");
+        std::fs::create_dir(current.join("pending-receipts"))?;
+        let destination = root.0.join("current-receipts");
+        std::fs::create_dir(&destination)?;
+        let mut receipt = original.clone();
+        receipt.invocation = adopted;
+        receipt.committed = current.join("committed.json");
+        let receipt = receipt.seal();
+        super::super::super::files::json(&current.join("pending-receipts/unit.json"), &receipt)?;
+        super::super::super::receipts::publish(&current, &destination, &receipt.context)?;
+        let retained: Receipt = super::super::super::receipts::read(&destination.join("unit.json"))
+            .ok_or("published receipt")?;
+        assert!(retained.valid(&retained.context));
+        let target = sail_api::project::TargetResult {
+            package_id: retained.package_id.clone(),
+            target: retained.name.clone(),
+            kind: retained.kind.clone(),
+            establishing_run: retained.invocation.establishing_run().to_owned(),
+            reused: true,
+            scope_reuse: None,
+            requested: true,
+            complete: retained.valid(&retained.context),
+            report: retained.invocation.report.clone(),
+            dependency_store: None,
+            dependency_build: None,
+        };
+        assert!(sail_api::acceptance::complete_target(&target).is_some());
+        assert_eq!(target.establishing_run, original.invocation.run_id);
+        Ok(retained)
+    }
+
+    #[test]
+    fn retained_history_survives_original_and_arena_removal_but_never_becomes_live()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("owned-history")?;
+        let entry = archive_fixture(&root, BTreeMap::new())?;
+        let original = entry.receipt.invocation.clone();
+        retain(
+            &root.0,
+            &entry,
+            [
+                &root.0.join("stdout"),
+                &root.0.join("stderr"),
+                &root.0.join("inputs.json"),
+            ],
+            &BTreeSet::new(),
+        )
+        .ok_or("retain original")?;
+        std::fs::remove_dir_all(entry.receipt.committed.parent().ok_or("original run")?)?;
+        assert!(!entry.receipt.producer_history_intact());
+        assert!(!entry.receipt.valid(&entry.basis.context));
+        let current = root.0.join("test-current");
+        let names = BTreeSet::from([OsString::from("libunit-abcd.rmeta")]);
+        let restored = restore(
+            &root.0,
+            &entry.basis,
+            &root.0,
+            &names,
+            &CallerEnvironment::capture("test-current").ok_or("caller")?,
+            ("test-current", &current),
+            || true,
+        )
+        .map_err(|error| format!("rollback: {:?}", error.paths))?
+        .ok_or("restore without original")?;
+        assert_eq!(restored.stdout, b"literal stdout");
+        let mut adopted = original.clone();
+        adopted.run_id = "test-current".to_owned();
+        adopted.retained_from = Some(original.run_id.clone());
+        adopted.retained_history = Some(restored.history);
+        let selected = adopted
+            .selected_directory(&current)
+            .ok_or("owned copied history")?;
+        assert!(selected.starts_with(current.join("retained-histories")));
+        assert_eq!(adopted.establishing_run(), original.run_id);
+        assert_eq!(adopted.selected_attempt, original.selected_attempt);
+        assert!(adopted.producer_available(&current));
+        assert!(adopted.successful_for(None));
+        std::fs::remove_dir_all(root.0.join("histories"))?;
+        assert!(
+            adopted.producer_available(&current),
+            "adopted copy outlives arena eviction"
+        );
+        let receipt = publish_adopted_target(&root, &entry.receipt, adopted.clone())?;
+        let extra = selected.join("unaccounted-history");
+        std::fs::write(&extra, b"extra")?;
+        assert!(!adopted.producer_available(&current));
+        assert!(!receipt.valid(&receipt.context));
+        std::fs::remove_file(extra)?;
+        let stdout = selected.join("verus.stdout");
+        let bytes = std::fs::read(&stdout)?;
+        std::fs::write(&stdout, b"modified producer output")?;
+        assert!(!adopted.producer_available(&current));
+        std::fs::write(&stdout, bytes)?;
+        assert!(adopted.producer_available(&current));
+        let mut changed = adopted.clone();
+        changed.report.command.push("--no-verify".to_owned());
+        assert!(!changed.producer_available(&current));
+        changed = adopted.clone();
+        changed.retained_from = Some("another-original-run".to_owned());
+        assert!(!changed.producer_available(&current));
+        changed = adopted.clone();
+        changed.retained_history = None;
+        assert!(!changed.producer_available(&current));
+        assert!(!changed.successful_for(None));
+        changed.retained_from = None;
+        assert!(
+            !changed.producer_available(&current),
+            "archive cannot remint a live selection"
+        );
+        assert!(
+            adopted
+                .selected_directory(&root.0.join("another-run"))
+                .is_none()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn old_arena_and_incomplete_history_indexes_refuse_before_output_placement()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("history-index")?;
+        let entry = archive_fixture(&root, BTreeMap::new())?;
+        retain(
+            &root.0,
+            &entry,
+            [
+                &root.0.join("stdout"),
+                &root.0.join("stderr"),
+                &root.0.join("inputs.json"),
+            ],
+            &BTreeSet::new(),
+        )
+        .ok_or("retain")?;
+        let index = target(&root.0, &entry.basis.identity).ok_or("target")?;
+        let record = entries(&index).into_iter().next().ok_or("entry")?;
+        let original = std::fs::read(&record)?;
+        let names = BTreeSet::from([OsString::from("libunit-abcd.rmeta")]);
+        let mut candidates = Vec::new();
+        let mut old = entry.clone();
+        old.version = VERSION - 1;
+        candidates.push(old.seal().ok_or("old seal")?);
+        let mut missing: serde_json::Value = serde_json::from_slice(&original)?;
+        let map = missing["history"]["files"].as_object_mut().ok_or("files")?;
+        let omitted = map
+            .keys()
+            .find(|key| key.ends_with(".allocated"))
+            .cloned()
+            .ok_or("allocated file")?;
+        map.remove(&omitted);
+        candidates.push(
+            serde_json::from_value::<Entry>(missing)?
+                .seal()
+                .ok_or("subset seal")?,
+        );
+        for candidate in candidates {
+            super::super::super::files::json(&record, &candidate)?;
+            std::fs::write(root.0.join("libunit-abcd.rmeta"), b"unchanged output")?;
+            assert!(
+                restore(
+                    &root.0,
+                    &entry.basis,
+                    &root.0,
+                    &names,
+                    &CallerEnvironment::capture("test-current").ok_or("caller")?,
+                    ("test-current", &root.0.join("test-current")),
+                    || true
+                )
+                .is_ok_and(|value| value.is_none())
+            );
+            assert_eq!(
+                std::fs::read(root.0.join("libunit-abcd.rmeta"))?,
+                b"unchanged output"
+            );
+        }
+        Ok(())
     }
 
     #[test]
@@ -1237,7 +1456,7 @@ mod tests {
             &root.0,
             &names,
             &CallerEnvironment::capture("test-current").ok_or("caller snapshot")?,
-            "test-current",
+            ("test-current", &root.0.join("test-current")),
             || true,
         )
         .map_err(|error| format!("rollback: {:?}", error.paths))?
@@ -1254,7 +1473,7 @@ mod tests {
                 &root.0,
                 &names,
                 &CallerEnvironment::capture("test-current").ok_or("caller snapshot")?,
-                "test-current",
+                ("test-current", &root.0.join("test-current")),
                 || false
             )
             .is_ok_and(|value| value.is_none())

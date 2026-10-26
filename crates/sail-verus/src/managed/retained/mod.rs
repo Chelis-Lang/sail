@@ -10,6 +10,7 @@ mod compiler;
 pub(crate) mod cost;
 mod driver;
 mod eligibility;
+pub(in crate::managed) mod history;
 mod namespace;
 mod native;
 pub(in crate::managed) mod phase_fields;

@@ -4583,6 +4583,7 @@ mod tests {
             input_revision: target_revision(data, "input"),
             invocation: Invocation {
                 retained_from: None,
+                retained_history: None,
                 selected_attempt: fixture_producer(
                     paths,
                     &super::super::receipts::TargetIdentity {
@@ -6332,6 +6333,7 @@ mod tests {
             input_revision: target_revision(&data, "vstd"),
             invocation: Invocation {
                 retained_from: None,
+                retained_history: None,
                 selected_attempt: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: dependency.join("Cargo.toml"),

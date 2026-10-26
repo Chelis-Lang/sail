@@ -102,6 +102,9 @@ pub(crate) struct Invocation {
     /// Original proof run for the named same-workspace content experiment.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retained_from: Option<String>,
+    /// Separate archived original history copied into this run, never a live seal.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retained_history: Option<String>,
     /// Exact immutable producer namespace. Legacy records cannot select a live attempt.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selected_attempt: Option<crate::adapter::attempts::SelectedAttempt>,
@@ -117,21 +120,20 @@ pub(crate) struct Invocation {
 
 impl Invocation {
     pub(crate) fn selected_directory(&self, run: &Path) -> Option<PathBuf> {
-        if self.dependency_build.is_some() {
+        if self.retained_history.is_some() {
+            return super::retained::history::selected_directory(self, run);
+        }
+        if self.dependency_build.is_some() || self.retained_from.is_some() {
             return None;
         }
-        let original = match &self.retained_from {
-            Some(original) => run.parent()?.join(original),
-            None => run.to_owned(),
-        };
         self.selected_attempt
             .as_ref()?
-            .directory(&original, &self.identity, self.report.exit_code)
+            .directory(run, &self.identity, self.report.exit_code)
     }
     pub(crate) fn producer_available(&self, run: &Path) -> bool {
         match (&self.selected_attempt, &self.dependency_build) {
             (Some(_), None) => self.selected_directory(run).is_some(),
-            (None, Some(_)) => self.retained_from.is_none(),
+            (None, Some(_)) => self.retained_from.is_none() && self.retained_history.is_none(),
             _ => false,
         }
     }
@@ -140,6 +142,7 @@ impl Invocation {
     /// and no source-engine fallback. It never turns `success` into true.
     pub(crate) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
         if self.selected_attempt.is_some() == self.dependency_build.is_some()
+            || self.retained_from.is_some() != self.retained_history.is_some()
             || self.dependency_build.is_some() && self.retained_from.is_some()
         {
             return false;
@@ -584,6 +587,7 @@ mod tests {
             input_revision: "inputs".to_owned(),
             invocation: Invocation {
                 retained_from: None,
+                retained_history: None,
                 selected_attempt: crate::adapter::attempts::fixture_history(
                     committed.parent().unwrap_or(Path::new("")),
                     "run",

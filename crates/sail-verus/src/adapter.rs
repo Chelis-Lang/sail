@@ -895,6 +895,8 @@ fn driver() -> Result<ExitCode> {
         )
         .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
         invocation.retained_from = Some(restored.establishing_run);
+        invocation.retained_history = Some(restored.history);
+        invocation.report = restored.report;
         invocation.selected_attempt = restored.selected_attempt;
         if invocation.selected_attempt.is_none() {
             invocation.success = false;
@@ -1406,14 +1408,14 @@ fn finish(
     let producer_available =
         !matches!(origin, CompletionOrigin::Live(..)) || selected_attempt.is_some();
     let observation_available = origin_available && verifier_readable && producer_available;
-    let success = observation_available && receipt_success(&report, &report_args);
     let invocation = Invocation {
         retained_from: None,
+        retained_history: None,
         selected_attempt,
         identity,
         run_id: runtime.run_id.clone(),
+        success: observation_available && receipt_success(&report, &report_args),
         report,
-        success,
         dependencies,
         dependency_build: dependency_build.cloned(),
     };
@@ -1424,7 +1426,7 @@ fn finish(
         &invocation,
     )?;
     event(
-        &serde_json::json!({"event":"target-complete","run_id":runtime.run_id,"target":invocation.identity.target_name(),"success":success}),
+        &serde_json::json!({"event":"target-complete","run_id":runtime.run_id,"target":invocation.identity.target_name(),"success":invocation.success}),
     );
     Ok(observation_available)
 }

@@ -206,7 +206,14 @@ transfers preserve and validate the original producer subtree rather than create
 a new live invocation from serialized metadata. Missing or modified history
 refuses reuse. This does not enable the disabled native-artifact store, establish
 a full compiler-input domain or change the existing qualified bundled-proof
-import. See [invocation and result authority](design/acceptance-authority.md).
+import. The experimental same-workspace arena also copies its original receipt,
+commit and complete selected-attempt history. A restored run owns a separate
+archive copy and retains the original producer identity; removing old run files
+or evicting the arena cannot turn it into a new live invocation. Every later
+reuse checks that copied history and the current receipt's own commit. Older
+arena entries or damaged copies miss conservatively. This does not complete
+physical compiler-input or filesystem observation proofs. See
+[invocation and result authority](design/acceptance-authority.md).
 
 ### Explicit native include directories
 

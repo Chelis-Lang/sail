@@ -1162,6 +1162,7 @@ pub(super) fn retained_producer_intact(receipt: &Receipt, key: &str) -> bool {
                 && original.identity == receipt.invocation.identity
                 && original.run_id == receipt.invocation.run_id
                 && original.retained_from == receipt.invocation.retained_from
+                && original.retained_history == receipt.invocation.retained_history
                 && original.selected_attempt == receipt.invocation.selected_attempt
                 && original.success == receipt.invocation.success
                 && serde_json::to_value(&original.report).ok()?
@@ -1646,6 +1647,7 @@ mod tests {
                 input_revision: "workspace-specific".to_owned(),
                 invocation: super::super::receipts::Invocation {
                     retained_from: None,
+                    retained_history: None,
                     selected_attempt,
                     identity: super::super::receipts::TargetIdentity {
                         manifest: self.root.join("reg/vstd/Cargo.toml"),

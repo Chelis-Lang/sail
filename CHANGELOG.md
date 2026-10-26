@@ -13,6 +13,11 @@ semantic versioning once the API is published.
   check for whole-target completion; archived transfers validate the
   complete original producer files without fabricating new live invocations.
 
+- Preserve independent original selected-attempt archives for experimental
+  same-workspace proof restoration, so removing the original run or evicting
+  the arena does not erase an already adopted run's history. Older entries and
+  damaged or mismatched archive references refuse reuse.
+
 - Preserve and freshly reobserve valid receipts' declared environment names when
   successful compilation replaces broader failed-verification dep-info, keeping
   strict refusal for incomplete scans and changed values.
