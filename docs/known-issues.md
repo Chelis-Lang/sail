@@ -29,6 +29,17 @@ hits and no warm solver. Removing the actual variant makes the warm test fail.
 This is a response-accounting defect, without a demonstrated false-proof exploit;
 it does not close complete stream classification or writer-origin obligations.
 
+## Cache temporary-file ownership
+
+[Sail #412](https://github.com/Chelis-Lang/sail/issues/412) records a native
+cache-write ownership defect: the earlier create/truncate path could modify an
+existing independently owned name and attempted cleanup even when creation
+failed. The candidate checked transaction uses exclusive creation and cleans
+only a successfully created temporary file. The issue preserves the exact old
+and fixed native fixture scopes; no false mathematical proof is claimed.
+Full canonical and native/differential qualification of the integrated writer
+remains pending.
+
 ## Original-request capture and unchanged-call replay
 
 [Sail #413](https://github.com/Chelis-Lang/sail/issues/413) records a defect in
