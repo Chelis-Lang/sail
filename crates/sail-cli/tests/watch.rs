@@ -5,8 +5,12 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+/// Waits for a liveness condition. Each step execs Cargo and a freshly written
+/// worker script, and macOS assesses a new executable on its first exec; under
+/// heavy parallel load that alone has taken over ten seconds. The bound only
+/// stops a hung run; the ordering assertions below are what this test checks.
 fn wait_for(what: &str, mut predicate: impl FnMut() -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(15);
+    let deadline = Instant::now() + Duration::from_secs(120);
     while !predicate() {
         assert!(Instant::now() < deadline, "timed out waiting for {what}");
         std::thread::sleep(Duration::from_millis(50));
@@ -34,8 +38,12 @@ fn package(root: &Path, name: &str, dependencies: &str) {
 fn worker(root: &Path, log: &Path) -> std::path::PathBuf {
     use std::os::unix::fs::PermissionsExt as _;
     let fake = root.join("worker");
+    // Every run must still be in flight when the next edit cancels it, so it
+    // outlasts any plausible edit-to-cancel latency: under heavy load one
+    // edit cycle has taken over 30 s. A finished run writes `end`, which the
+    // test treats as a missed cancellation.
     let script = format!(
-        "#!/bin/sh\necho start >> '{0}'\necho $$ >> '{1}'\nsleep 30\necho end >> '{0}'\n",
+        "#!/bin/sh\necho start >> '{0}'\necho $$ >> '{1}'\nsleep 600\necho end >> '{0}'\n",
         log.display(),
         root.join("pids").display()
     );
