@@ -135,3 +135,8 @@ combined with a rewrite that keeps size, inode, mode and mtime. Version
 output is assumed to be a function of the native executable; a script
 wrapper is never memoized, so a wrapper whose target changes keeps the fresh
 version check. The managed runner's once-per-run solver digest is unchanged.
+Measured on native c7i.8xlarge (us-east-1), six alternating pairs against
+main: a fresh project's first `sail verify` takes 30.46 s (main 31.13 s,
+faster in every pair), with 366 sessions in both arms. A Vest edit's wall
+time overlaps (22.55 s against 22.69 s), and the daemon's CPU per edit falls
+from 3.40 to 1.04 s ([record](../validation/solver-identity.md)).
