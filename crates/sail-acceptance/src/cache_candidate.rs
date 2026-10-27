@@ -384,6 +384,7 @@ sail_code! {
             /// Account for the actual owned transition and return that exact
             /// transition to the native map/order operations. No replacement
             /// payload or separately supplied completion flag is accepted.
+            #[allow(clippy::implicit_saturating_sub, reason = "Explicit guarded subtraction preserves the checked body and its full-runtime mutation controls.")]
             pub fn apply<Value, Stamp>(&mut self, update: EntryUpdate<Value, Stamp>, cost: u64)
                 -> (out: EntryUpdate<Value, Stamp>)
                 requires (true)

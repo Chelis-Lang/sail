@@ -38,7 +38,11 @@ Clippy's question-mark lint
 the actual endpoint borrow and checked runtime bodies; corrected-source Stock
 and native qualification remain pending in the
 [candidate record](validation/cache-candidate-refinement.md). This candidate-only
-integration stop earns no new proof or ordinary-negative credit.
+integration stop earns no new proof or ordinary-negative credit. The subsequent
+`494c091c` whole Stock roots pass (query519/908, inputs308/538, authority510/895),
+then native Clippy stops at the shared accounting body's explicit subtraction
+style. Its narrow documented allowance retains the proved body; native tests and
+ordinary negatives remain unrun.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
