@@ -33,6 +33,14 @@
       "after": "match update {",
       "native_test": "actual_owned_accounting_preserves_stale_replacement_and_retirement",
       "scope": "ordinary native test failure only; no Stock negative credit; source capture may first refuse"
+    },
+    {
+      "name": "native-candidate-slot-padding-undercharged",
+      "source": "crates/sail-cache/src/memory.rs",
+      "before": "        ENTRY_OVERHEAD.saturating_add(growth)",
+      "after": "        ENTRY_OVERHEAD + 8",
+      "native_test": "actual_carrier_growth_is_charged_before_admission",
+      "scope": "ordinary native test failure only on this measured native layout; no Stock/allocator/RSS credit"
     }
   ]
 }

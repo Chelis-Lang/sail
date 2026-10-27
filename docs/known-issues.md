@@ -21,32 +21,26 @@ The pinned stock verifier rejects the actual `Arc::ptr_eq` operation used by
 native memory settlement ([#473](https://github.com/Chelis-Lang/sail/issues/473)).
 Its whole-file nonempty support probe exits before verification with no resource
 marker; this is a proof-support gap, not a native Arc defect or false verdict.
-The replacement insertion-generation operations are source-only and unqualified.
+The replacement insertion-generation/accounting operations have complete Stock
+positives and all 53 new ordinary controls; full inherited/service qualification
+remains open.
 The existing native LRU clock also increments without an overflow guard
 ([#474](https://github.com/Chelis-Lang/sail/issues/474)); its bounded source
 reproduction recipe is unrun. The source candidate uses the checked clock in the actual map paths and
-preserves it across clearing, but native/formal qualification is pending. A separate public Config.queue_wait overflow also has a checked-refusal source
-fix and an unrun native regression ([#478](https://github.com/Chelis-Lang/sail/issues/478)).
+preserves it across clearing; its bounded exhaustion regression and reset mutation
+qualify natively. A separate public Config.queue_wait overflow also has a checked-refusal source
+fix and a passing native regression ([#478](https://github.com/Chelis-Lang/sail/issues/478)).
 The [owning record](validation/cache-candidate-refinement.md) separates these
 limits from future production and solver-origin proofs.
 
-The first generation candidate `37a38135` passes its 12+62 source checks but
-stops before proof/native tests: its constructive witness calls an executable
-endpoint getter in ghost mode, and two explicit-refusal methods trigger strict
-Clippy's question-mark lint
-([#483](https://github.com/Chelis-Lang/sail/issues/483)). Source corrections retain
-the actual endpoint borrow and checked runtime bodies; corrected-source Stock
-and native qualification remain pending in the
-[candidate record](validation/cache-candidate-refinement.md). This candidate-only
-integration stop earns no new proof or ordinary-negative credit. The subsequent
-`494c091c` whole Stock roots pass (query519/908, inputs308/538, authority510/895),
-then native Clippy stops at the shared accounting body's explicit subtraction
-style. Its narrow documented allowance retains the proved body; native tests and
-ordinary negatives remain unrun.
-The `a6e5208e` native preflight clears production compilation and stops at one
-test-only owned-handle style lint; its local allowance preserves the actual
-issued-handle fixture and all assertions. Fresh corrected-head qualification
-remains required.
+The candidate's incremental slot charge originally adds 8 bytes for generation,
+while complete old/current native types measure 80→96 bytes after alignment
+([#486](https://github.com/Chelis-Lang/sail/issues/486)). The correction preserves
+the original logical 128-byte allowance and adds actual carrier growth with a native
+layout/admission regression. Its corrected-source qualification is pending in the
+[candidate record](validation/cache-candidate-refinement.md). This is an
+incremental accounting gap, not a proved total-budget/RSS violation or false
+verdict; the shared accounting proof intentionally covers supplied charges.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

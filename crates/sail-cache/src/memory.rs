@@ -18,14 +18,51 @@ use crate::{DiskCache, Effort, FileStamp, PutOutcome, StoreContext};
 
 /// Original per-entry bookkeeping allowance; new retained carriers are additional.
 pub const ENTRY_OVERHEAD: u64 = 128;
-/// Bytes charged per slot, including its immutable eight-byte insertion generation.
-pub const SLOT_OVERHEAD: u64 = ENTRY_OVERHEAD + 8;
+/// Original logical allowance plus the actual carrier growth from insertion identity.
+/// This includes alignment growth; it is not an allocator or RSS upper bound.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::checked_conversions,
+    reason = "Const-compatible conversion checks round-trip identity; a delta outside u64 saturates to a charge that memory admission refuses."
+)]
+pub const SLOT_OVERHEAD: u64 = {
+    let growth = SLOT_GROWTH as u64;
+    if growth as usize == SLOT_GROWTH {
+        ENTRY_OVERHEAD.saturating_add(growth)
+    } else {
+        u64::MAX
+    }
+};
 /// The actual source-shared cache value, with the native effort representation.
 pub type Value = cache_candidate::CandidateValue<Effort>;
 /// The actual source-shared candidate persistence state.
 pub type State = cache_candidate::SlotState<FileStamp>;
 type Slot = CandidateSlot<Arc<Value>, FileStamp>;
 type Update = EntryUpdate<Arc<Value>, FileStamp>;
+
+// Complete pre-generation carrier shape, retaining the original variant order.
+// These private layout-only types are never instantiated or used as cache state.
+#[allow(
+    dead_code,
+    reason = "The complete old state shape is used only by size_of; no runtime instances are constructed."
+)]
+enum StateBeforeGeneration {
+    OnDisk(FileStamp),
+    Pending,
+}
+
+#[allow(
+    dead_code,
+    reason = "The complete old slot shape is used only by size_of; no parallel runtime ledger or instances exist."
+)]
+struct SlotBeforeGeneration {
+    value: Arc<Value>,
+    state: StateBeforeGeneration,
+    tick: u64,
+}
+
+const SLOT_GROWTH: usize =
+    std::mem::size_of::<Slot>().saturating_sub(std::mem::size_of::<SlotBeforeGeneration>());
 
 fn value_cost(value: &Value) -> u64 {
     u64::try_from(value.reply.len())
@@ -615,6 +652,24 @@ mod tests {
         assert_eq!(t.stats().entries, 1);
         assert_eq!(t.stats().pending, 1);
         assert!(t.stats().bytes <= t.stats().capacity_bytes);
+    }
+
+    #[test]
+    fn actual_carrier_growth_is_charged_before_admission() {
+        let added =
+            std::mem::size_of::<Slot>().saturating_sub(std::mem::size_of::<SlotBeforeGeneration>());
+        let added = u64::try_from(added).unwrap_or(u64::MAX);
+        // This independent native-layout bound catches a raw-field-only charge.
+        assert!(SLOT_OVERHEAD.saturating_sub(ENTRY_OVERHEAD) >= added);
+        let required = ENTRY_OVERHEAD.saturating_add(added).saturating_add(1);
+        let capacity = tier_overhead()
+            .saturating_add(required.saturating_mul(4))
+            .saturating_sub(1);
+        let tier = MemoryTier::new(capacity);
+        assert!(insert_pending(&tier, &QueryKey([72; 32]), val(1, b'a')).is_none());
+        assert_eq!(tier.stats().entries, 0);
+        assert_eq!(tier.stats().pending, 0);
+        assert_eq!(tier.stats().bytes, tier_overhead());
     }
 
     #[test]

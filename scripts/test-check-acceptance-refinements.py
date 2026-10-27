@@ -231,6 +231,7 @@ class SourceCaptureTests(unittest.TestCase):
             ("        self.clock.exhaust();", "        self.clock = Clock::start();"),
             ("        self.slots.clear();", "        *self = Self::default();"),
             ("        self.accounting.clear();", "        self.accounting = Accounting::empty();"),
+            ("const SLOT_GROWTH: usize =", "type EscapedOldSlot = SlotBeforeGeneration;\nconst SLOT_GROWTH: usize ="),
             ("                inner: Arc::clone(endpoint),", "                inner: Arc::new(Mutex::new(Inner::default())),"),
             ("struct MemoryEndpoint {", "pub struct MemoryEndpoint {"),
             ("    queued: Prepared<MemoryEndpoint, Effort>,", "    pub queued: Prepared<MemoryEndpoint, Effort>,"),
