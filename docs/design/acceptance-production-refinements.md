@@ -137,6 +137,22 @@ limits and timeouts fail the gate. The report distinguishes checked bodies,
 declaration projections and surrounding runtime source bound only by hash.
 Binding a file's hash does not prove its behavior.
 
+The exact-partial request full-factory refusal control retains every original
+loop and invariant. Its deliberately wrong early refusal rejects actual
+singleton target requests, including the existing nonempty constructive
+example; it does so before the original proof-only unfolding, and the final
+refusal rejects all remaining inputs. The original loop
+remains reachable for non-singleton requests satisfying the original guards.
+There is no unconditional early return, unreachable-loop padding or unrelated
+false assertion. Production code and contracts are unchanged. The complete
+function inventory and verification count stay mandatory; a resource refusal
+still earns no control credit. At frozen `6a4e5b86`, the complete authority
+positive and this ordinary refusal control pass with 498 obligations/all 878
+functions; two selected path controls also pass. This is three controls only,
+not full-component qualification. Earlier proof-opacity attempts did not remove
+the resource refusal and were reverted. Qualification is recorded in the
+[owning record](../validation/acceptance-boundary-refinements.md).
+
 ## What remains to prove
 
 | Remaining obligation | Why these refinements do not discharge it |
