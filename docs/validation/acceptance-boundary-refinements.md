@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
 | `53757913` query guidance | All three complete positive roots repeat 471/821, 308/538 and 502/883 with final source/runtime checks. A bounded original control-111 diagnostic passes: query positive 471/0, then 470 verified plus one ordinary error across all 821 functions, with no resource marker | One ordinary negative only; incomplete component/suite. All 392 controls remain required. The integrated source changes only erased finite-frame/prefix proof guidance; native bodies and the original mutation remain unchanged, and broader combined qualification remains pending |
 | `e91627d0` native workspace | Strict Clippy and compilation pass; nextest runs 1,271 tests across 82 binaries: 1,269 pass, two receipt-erasure regressions fail, 56 configured skips; gate exits 100 after 303.35 s, final source/image checks pass | Solver and later workspace stages unrun. A separate unchanged two-test native baseline repeats both failures; the exact target-key correction and stronger direct controls pass a separate two-test focused run at `fbab3fd0`; combined qualification remains pending |
 | Main integration `dca5cd43` | Source union retains the three main build-script fixes, original request/origin replay guards, noop revision 6, all inherited copy/request tests and four independently strict local-only witness/toolchain entrypoints | Textual review and native hash bindings only; no new Stock/native/conformance or service credit. Frozen `e91627d0` qualification remains a separate earlier source |
@@ -44,6 +45,21 @@ observation guarantee or service theorem is claimed. All six rows of the
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The stopped `e36c749bb061554a07f4b896f464c6d4dfb73cce` workspace attempt is
+retained at `experiments/2026-10-27/acceptance-combined-e36c749b-native-early.tgz`,
+SHA-256 `791b2298dd34f28ecb2526e9131a698c067abbc9cf62138d0d60fbd0fd444bb4`
+(6,822,406 bytes). Agent upload/readback and independent lead GET/hash review
+pass. The lead's raw status/log audit confirms the sole diagnostic is
+`clippy::too_many_lines` in
+`baseline_publication_preserves_its_observed_request_in_both_directions`
+([#463](https://github.com/Chelis-Lang/sail/issues/463)). A documented local
+allowance retains the coherent original observation, moved-path read/publication,
+Historical baseline readback and every projection/serde assertion. Both enclosing
+native source bindings are refreshed; that native fixture remains unproved.
+Native tests, solver and later gates are unrun, and the correction requires a
+fresh frozen native gate. Separate complete Stock-positive discovery does not
+qualify these native paths or the complete control matrix.
 
 The stopped `e91627d0fecbae039236f9b474e00e7f51c2d0d8` workspace attempt is
 retained at `experiments/2026-10-27/acceptance-combined-e91627d0-native-early.tgz`,

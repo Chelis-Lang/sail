@@ -418,6 +418,10 @@ mod baseline_request_tests {
     /// Exercises the actual retrieval/publication boundary. Reports are
     /// declared metadata fixtures, not a trusted verifier or physical readback.
     #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keep the same observed request through path movement, baseline publication/readback and exact serde-byte assertions."
+    )]
     fn baseline_publication_preserves_its_observed_request_in_both_directions() -> TestResult {
         let root = std::env::temp_dir().join(format!(
             "sail-baseline-request-observation-{}",

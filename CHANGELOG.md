@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve the coherent completed-baseline request fixture under the strict
+  line-limit lint with a documented test-local allowance (#463); all assertions
+  and production behavior remain unchanged, with fresh native qualification pending.
+
 - Preserve an admitted receipt's declaration names after erasure by looking up
   its exact package/target/kind revision, matching the current revision batch
   (#390). Missing or changed revisions, unrelated targets, invalid originals
