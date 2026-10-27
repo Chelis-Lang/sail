@@ -340,6 +340,16 @@ transports scalar push/append equality and both returned options to the actual
 new raw prefix before moving their original items into the existing vector.
 No body scope, invariant, predicate, control or resource is relaxed.
 
+The completed outer/raw-owner whole-positive run at `88ab662d` passes all 524
+functions/918 query entries and retains every prior 837 entry, with no resource
+or VIR error and final frozen guards passing. The manifest locks only this
+observed inventory. It checks the actual outer/list/atom/cursor/chunk transitions,
+exact raw-history and ordered item relations, owned QueryPrefix append, clone
+continuation and constructive paths. All 192 ordinary controls and the new
+native/conformance gates remain required; no source/runtime/API-wide or #371
+solver/origin completion is claimed. Later lexical source requires separate
+actual discovery.
+
 ### Scalar policy-option readback candidate
 
 `query_options.rs` adds a source-shared candidate for the raw `:print-success`
