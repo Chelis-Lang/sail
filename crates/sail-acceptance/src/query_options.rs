@@ -108,6 +108,9 @@ sail_verified! {
                 && retained@.subrange(1,17) == retained@.subrange(start,end));
             assert(next_options(ordinary@,None,Some(no@),Some(ten@),Some(no@),Some(ten@)));
             assert(next_options(retained@,None,Some(no@),Some(ten@),Some(no@),Some(ten@)));
+            assert(crate::query_policy::named(reset@.subrange(1,6),"reset"@));
+            assert(exists|start: int, end: int| crate::query::head_span(reset@,start,end)
+                && reset@.subrange(1,6) == reset@.subrange(start,end));
             assert(next_options(reset@,None,Some(no@),Some(ten@),None,None));
         }
         let mut state = OptionState::new();
