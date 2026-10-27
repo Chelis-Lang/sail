@@ -3129,7 +3129,9 @@ fn run_recorded(
             "SAIL3139",
             format!(
                 "Cargo {version} cannot track this project's build-script inputs for proof reuse; \
-                 select Rust {toolchain}, for example `RUSTUP_TOOLCHAIN={toolchain} sail verify`, to enable reuse"
+                 its build-script protocol is qualified for Cargo {}. Select a qualified Rust \
+                 toolchain, for example `RUSTUP_TOOLCHAIN={toolchain} sail verify`, to enable reuse",
+                super::build_environment::QUALIFIED_RANGE
             ),
         ));
     }

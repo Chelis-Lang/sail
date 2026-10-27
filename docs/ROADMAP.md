@@ -61,7 +61,7 @@ jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
 | 2. Frontend floor (#162) | Profiled; persistent frontend reuse unqualified | Parked after 0.1.0 |
 | 3. Solver work on misses (#158, #244) | Longest-first bucket dispatch by a static size estimate shipped in fork commit `ee8dd97d` (runtime `f8589ed4` onward): Vest 10–15% faster at 7–15 threads, no gain on Anvil | Parked after 0.1.0 |
 | 4. Incidental edits (#118) | Closure identity, spec-parameter names and trait spellings merged | 15-edit catalogue untimed |
-| 5. Managed overhead (#156, #314) | Unchanged-call replay; unit-graph and script-snapshot reuse (#407) | Setup cost when replay misses; tiny-edit cost |
+| 5. Managed overhead (#156, #314) | Unchanged-call replay; unit-graph and script-snapshot reuse (#407); build-script receipts for Cargo 1.93–1.99 (ADR 0084) | Setup cost when replay misses; tiny-edit cost |
 | 6. Instant revert (#163) | Linux and macOS for qualified profiles; 16 revisions with pinned baseline; `SAIL3146` explains skips | More dependency profiles |
 | CI and team caches (#240, #242) | Measured recipe in [CI caching](ci-cache.md); restored caches reused across runners (#428) | GitHub Actions example not yet run on GitHub |
 

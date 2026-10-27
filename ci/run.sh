@@ -13,11 +13,17 @@
 #   boundary-witness admission|shapes
 #                        local-only external compiler witnesses; requires
 #                        frozen inputs and the owning bounded runner
+#   cargo-range          local-only: the build-script protocol self-test
+#                        (ADR 0084) against every qualified Cargo release
+#                        (SAIL_CARGO_RANGE_TOOLCHAINS) and a divergent
+#                        control (SAIL_CARGO_RANGE_DIVERGENT), installing
+#                        them with rustup; SAIL_CARGO_RANGE_CANDIDATES only
+#                        reports unqualified candidates' results
 #   e2e-build DIR        CI only: build the e2e binaries once (release sail,
 #                        sail-z3, sail-conformance, check_output, check_mcp)
 #                        into DIR/e2e-bin.tar, which every e2e phase job
 #                        unpacks (SAIL_E2E_PREBUILT) instead of building
-#   e2e [legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra] Run all phases by default; CI runs them in parallel.
+#   e2e [legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra|cargo-range] Run all phases by default; CI runs them in parallel.
 #                        `sail new` writes what stock `cargo verus new`
 #                        writes, and its lib and bin projects verify;
 #                        `sail verify` (managed verification, the default,
@@ -101,7 +107,7 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|boundary-witness|e2e-build|e2e|conformance|extension|host|bench|release|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|boundary-witness|cargo-range|e2e-build|e2e|conformance|extension|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
@@ -147,6 +153,10 @@ fetch_repair_source() {
   ./target/release/sail-conformance fetch --tier fast --project verus-examples
   sail_repair_source="${SAIL_CACHE_DIR:-$HOME/.cache/sail}/corpus/verus-7d829946231d"
 }
+
+# Every qualified Cargo release (QUALIFIED_CARGO in
+# crates/sail-verus/src/managed/build_environment.rs, ADR 0084).
+sail_cargo_range_qualified="1.93.0 1.93.1 1.94.0 1.94.1 1.95.0 1.96.0 1.96.1 1.97.0 1.97.1 1.98.0 1.98.1 1.99.0 1.99.1"
 
 # Starts a cache daemon on a fresh cache; sets $sock, $cache and $daemon.
 start_daemon() {
@@ -223,7 +233,21 @@ case "$step" in
     # not just Z3. Keep their strict missing-input failures in the local witness
     # invocation rather than treating them as solver fixtures.
     cargo nextest run --workspace --locked --profile ci --run-ignored only \
-      -E 'not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes))'
+      -E 'not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes) or test(=managed::build_environment::tests::qualified_cargo_range_self_test))'
+    ;;
+
+  cargo-range)
+    # The build-script protocol self-test (ADR 0084) against real rustup
+    # toolchains: every qualified Cargo must pass; every divergent one must
+    # be unqualified and fail. Installs the toolchains (network), so local-only.
+    local_only cargo-range
+    export SAIL_CARGO_RANGE_TOOLCHAINS="${SAIL_CARGO_RANGE_TOOLCHAINS:-$sail_cargo_range_qualified}"
+    export SAIL_CARGO_RANGE_DIVERGENT="${SAIL_CARGO_RANGE_DIVERGENT:-1.87.0}"
+    for sail_toolchain in $SAIL_CARGO_RANGE_TOOLCHAINS $SAIL_CARGO_RANGE_DIVERGENT ${SAIL_CARGO_RANGE_CANDIDATES:-}; do
+      rustup toolchain install "$sail_toolchain" --profile minimal
+    done
+    cargo nextest run -p sail-verus --lib --locked --profile ci --run-ignored only --no-capture \
+      -E 'test(=managed::build_environment::tests::qualified_cargo_range_self_test)'
     ;;
 
   boundary-witness)
@@ -258,12 +282,12 @@ case "$step" in
   e2e)
     phase="${1:-full}"
     if [ "$#" -gt 1 ]; then
-      echo 'e2e: expected at most one phase: legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra' >&2
+      echo 'e2e: expected at most one phase: legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra|cargo-range' >&2
       exit 2
     fi
     case "$phase" in
-      full|legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra) ;;
-      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra" >&2; exit 2 ;;
+      full|legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra|cargo-range) ;;
+      *) echo "e2e: unknown phase '$phase'; expected legacy|managed|managed-copies|managed-native|contracts|scripts|repair|output|loader|flags|extra|cargo-range" >&2; exit 2 ;;
     esac
     sail_checkout="$PWD"
     sail_output_evidence="${SAIL_E2E_OUTPUT_OUT:-$sail_checkout/target/e2e-output-evidence}"
@@ -416,6 +440,16 @@ RS
       # local-only (ADR 0013).
       local_only e2e extra
       (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" extra)
+    fi
+    if [ "$phase" = cargo-range ]; then
+      # Projects pinning another qualified Cargo, and an unqualified one
+      # (ADR 0084): several cold builds per toolchain, so local-only and
+      # never part of `full`.
+      local_only e2e cargo-range
+      for sail_toolchain in ${SAIL_CARGO_RANGE_E2E:-1.97.1 1.98.0 1.99.1} ${SAIL_CARGO_RANGE_E2E_UNQUALIFIED:-1.92.0}; do
+        rustup toolchain install "$sail_toolchain" --profile minimal
+      done
+      (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" cargo-range)
     fi
     if [ "$phase" = full ] || [ "$phase" = managed ] || [ "$phase" = managed-copies ] || [ "$phase" = managed-native ] || [ "$phase" = scripts ]; then
       sail_managed_evidence="${SAIL_MANAGED_ACCEPTANCE_OUT:-$sail_checkout/target/managed-acceptance}"
