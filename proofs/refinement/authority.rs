@@ -48,6 +48,57 @@ pub fn constructed_original_request(source: acceptance::RequestConstruction<'_>)
     acceptance::construct_resolved_request(source)
 }
 
+/// One genuine original dictionary entry yields one request row, using actual
+/// insertion/iteration and the actual header constructor, without supplied rows.
+pub fn constructed_original_dictionary_request(header: crate::request_targets::OriginalRequestHeader<'_>,
+    original: (String, String, String)) -> (request: Option<crate::project::ResolvedRequest>)
+    ensures request.is_some(), request.is_some() ==>
+        crate::request_targets::original_header_matches(&header, &request.unwrap())
+            && request.unwrap().targets@.len() == 1,
+{
+    let mut source = std::collections::BTreeSet::new();
+    crate::request_targets::insert_original_target(&mut source, original);
+    crate::request_targets::construct_original_request(header, &source)
+}
+
+/// Actual dictionary projection cannot turn original compile-only into a proof.
+pub fn original_dictionary_compile_only_refuses(header: crate::request_targets::OriginalRequestHeader<'_>,
+    source: &crate::request_targets::OriginalTargets, project: &crate::project::ProjectResult,
+    orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires header.arguments@.len() == 2,
+        string_bytes(&header.arguments@[0]) == b"--"@,
+        string_bytes(&header.arguments@[1]) == b"--no-verify"@,
+    ensures refused,
+{
+    let Some(request) = crate::request_targets::construct_original_request(header, source)
+        else { return false; };
+    proof {
+        assert(string_bytes(&request.args@[0]) == b"--"@);
+        assert(string_bytes(&request.args@[1]) == b"--no-verify"@);
+        assert(acceptance::verification_disabled(request.args@));
+    }
+    acceptance::complete_request_ordered(&request, project, orders).is_none()
+}
+
+/// Actual dictionary projection retains the original partial selector too.
+pub fn original_dictionary_partial_refuses(header: crate::request_targets::OriginalRequestHeader<'_>,
+    source: &crate::request_targets::OriginalTargets, project: &crate::project::ProjectResult,
+    orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires header.arguments@.len() == 2,
+        string_bytes(&header.arguments@[0]) == b"--"@,
+        string_bytes(&header.arguments@[1]) == b"--verify-module=selected"@,
+    ensures refused,
+{
+    let Some(request) = crate::request_targets::construct_original_request(header, source)
+        else { return false; };
+    proof {
+        assert(string_bytes(&request.args@[0]) == b"--"@);
+        assert(string_bytes(&request.args@[1]) == b"--verify-module=selected"@);
+        assert(acceptance::partial_command(request.args@));
+    }
+    acceptance::complete_request_ordered(&request, project, orders).is_none()
+}
+
 /// Every field of a real pre-execution target triple survives the constructor.
 pub fn constructed_original_target(source: &(String,String,String))
     -> (target: crate::project::RequestTarget)

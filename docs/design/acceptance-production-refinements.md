@@ -128,19 +128,20 @@ erased proof blocks; original loop scaffolding remains. All 397 inherited
 mutation objects remain unchanged. Actual verifier/function counts are not
 guessed: the older inventories remain until new complete-root discovery, and
 every new mutation still needs an ordinary failure at the full scope. The
-separate known `4c43e5a9` query control 151 selector failure remains unqualified;
-these additions neither repair nor discard that inherited control.
+separate known `4c43e5a9` query control 151 selector failure is corrected by
+importing the exact reviewed full-method control from `00352b64`; it still needs
+ordinary negative qualification. All other inherited controls are unchanged.
 
-Set iteration remains a distinct operation. The original
-`BTreeSet<(String, String, String)>` is still selected, and its actual native
-iteration supplies the target vector. Current vstd source makes set-domain
+Set iteration remains a distinct operation. The earlier original
+`BTreeSet<(String, String, String)>` supplied the target vector. Current vstd
+source makes set-domain
 coverage conditional on comparator laws; source review alone does not establish
 those laws for String keys. Dedicated complete-file support diagnostics are
 separate from acceptance qualification. If necessary, a reviewed internal key
 with an actual checked bytewise lexicographic comparator can preserve the old
 String-tuple ordering while enabling checked set construction/iteration. That
-conversion remains a proposal until valid support results and source review;
-there is no assumed ordering or supplied completeness Boolean.
+conversion needs actual checking and native qualification; there is no assumed
+ordering or supplied completeness Boolean.
 
 Native support diagnostics now distinguish the two cases at the same pinned
 Stock setup. The complete String and String-tuple order-law file fails two
@@ -180,18 +181,25 @@ remaining three postcondition diagnostics concern executable `Ordering`
 equality in byte equality and the key comparator's first return, including its
 inherited standard-trait postcondition. A source follow-up uses direct enum
 variant matching for those three actual variant tests and retains every byte
-scan, return value and postcondition; it needs a fresh whole-file run. No
+scan, return value and postcondition. No
 ordering equality law is assumed and no function is excluded from the probe.
-The managed selection still uses the original String-tuple set. Actual set
-storage/insertion/iteration and request projection must be connected to the
-new key only after the kernel is checked and the conversion reviewed. That
-later projection must iterate the real original set, not certify a supplied
+The `62a1d31a` whole-file support probe passes 17 verified functions, zero errors
+and all 333 actual function details in 9.589 seconds, with final source/runtime
+checks and unchanged default scope/resources. All five candidate probe attempts
+are retained in
+`experiments/2026-10-27/acceptance-request-arc-support-native.tgz`, SHA-256
+`42e4e848571415ad693fd15d6839c735146346638d4597b670c9ad15c3e2693c`
+(7,662,072 bytes), with independent storage readback. This is standalone
+library-support evidence, not production canonical qualification. The candidate
+now connects actual set storage/insertion/iteration and request projection to
+that key. This projection iterates the real original set, not a supplied
 list or mint a physical compiler-input domain. New comparator primitives add
 no String-order axiom, dependency, public record schema or provider selection.
 The follow-up key interface exposes closed original-tuple projections and
 constructor/borrow round-trip postconditions. Later projection proofs can use
 those checked relations without exposing private fields or assuming a digest
-or String-view injection law. Comparator runtime bodies remain unchanged.
+or String-view injection law. Projection/header caller conversion leaves the
+`62a1d31a` comparator runtime bodies unchanged.
 
 The separate `request_targets.rs` source candidate implements operations over
 the real `BTreeSet<OriginalTargetKey>`. Insertion passes the actual original
@@ -206,7 +214,8 @@ projection for every valid original standard-library dictionary, so an
 always-refusing implementation must fail verification.
 The ordinary native fixture compares insertion, duplicate handling and complete
 projection with the original String-tuple set. These bodies, their contracts
-and the fixture remain unqualified and unselected by managed execution.
+and the fixture remain unqualified; the source candidate's managed callers now
+use these operations, while no publication or runtime selection is implied.
 
 The same candidate adds `OriginalRequestHeader`, a borrowed construction input
 without target rows, and `construct_original_request(header, &OriginalTargets)`.
@@ -216,19 +225,29 @@ original-header relation with actual dictionary coverage, cardinality, uniquenes
 and order. `ResolvedRequest` remains the single resulting request type; the
 borrowed header carries no authority. A nonempty ordinary fixture retains every
 header/engine/repair field and compile-only arguments across two actual original
-targets. The operation, fixture and eventual `Resolution` caller conversion
+targets. The operation, fixture and actual `Resolution` caller conversion
 still need checking; no result-selected list, input-domain provider or metadata
 enumeration completeness is inferred from this constructor.
 
-The proposed caller conversion changes the actual requested-target set type,
+The candidate caller conversion changes the actual requested-target set type,
 delegates each real metadata insertion to `insert_original_target`, and makes
-`Resolution` call `project_original_targets` on that original set. Existing
+`Resolution` call `construct_original_request` on that original set and its
+borrowed header. Both actual pre-Cargo request capture and unchanged-call
+preflight consume that result. Unexpected projection absence refuses replay or
+returns the existing `SAIL3115` capture error before Cargo starts; it cannot
+admit a truncated request. Existing
 native dependency/cleanup predicates can borrow the unchanged original tuple
 through `as_tuple`; no additional String clones, row lists or namespace
-reconstruction are needed. Broad caller conversion waits for kernel checking
-and review. Closed canonical module/import/trait/function inventories, executable
-mutation controls and exact full-root discovery must then include both modules;
-older source hashes or numeric support probes cannot qualify this join.
+reconstruction are needed. Actual metadata and Cargo-unit-graph root insertion
+use the same checked insertion operation; the original metadata filters,
+feature tests, target kinds and option/value-state handling are preserved.
+Their JSON decoding and upstream selection remain native and unproved. Native
+differential fixtures live in separate test modules, outside the captured proof
+bodies. Closed canonical module/import/spec-trait inventories include both
+actual modules and 28 additional executable mutation controls; complete-root
+function/count discovery, ordinary negatives, native checks and cost measurement
+remain pending. Older source hashes and numeric support probes cannot qualify
+this join.
 
 Native path rendering still uses the old `to_string_lossy` operation and the
 independent raw-path binding, including invalid-byte refusal. Cargo metadata
