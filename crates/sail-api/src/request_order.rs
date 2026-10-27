@@ -188,8 +188,9 @@ sail_verified! {
         requires(true)
         ensures(equal == (left@ == right@))
     {
+        let order = compare_original_bytes(left, right);
         sail_proof! { byte_order_laws(left@, right@, left@); }
-        compare_original_bytes(left, right) == Ordering::Equal
+        matches!(order, Ordering::Equal)
     }
 }
 
@@ -289,9 +290,9 @@ sail_code! {
             ensures(order == key_order(self, other))
         {
             let package = compare_original_bytes(self.original.0.as_str().as_bytes(), other.original.0.as_str().as_bytes());
-            if package != Ordering::Equal { return package; }
+            if !matches!(package, Ordering::Equal) { return package; }
             let target = compare_original_bytes(self.original.1.as_str().as_bytes(), other.original.1.as_str().as_bytes());
-            if target != Ordering::Equal { return target; }
+            if !matches!(target, Ordering::Equal) { return target; }
             compare_original_bytes(self.original.2.as_str().as_bytes(), other.original.2.as_str().as_bytes())
         }
         }

@@ -171,7 +171,17 @@ postconditions. Only the four Eq/PartialOrd/Ord/Clone methods change envelopes;
 their executable bodies remain identical. The reviewed syntax fingerprint and
 checked-function envelope inventory include this macro, with ordinary source
 guard controls retaining refusal of raw or unknown-envelope methods. Those
-controls and a corrected complete-file probe remain unrun.
+source-guard controls remain unrun.
+The corrected trait-envelope probe first stops at two helper mode errors: its
+executable wrapper called a proof function without a proof block. With those
+two ghost calls correctly scoped, the unchanged whole file reaches 15 verified
+and two failed functions in 10.05 seconds without resource exhaustion. The
+remaining three postcondition diagnostics concern executable `Ordering`
+equality in byte equality and the key comparator's first return, including its
+inherited standard-trait postcondition. A source follow-up uses direct enum
+variant matching for those three actual variant tests and retains every byte
+scan, return value and postcondition; it needs a fresh whole-file run. No
+ordering equality law is assumed and no function is excluded from the probe.
 The managed selection still uses the original String-tuple set. Actual set
 storage/insertion/iteration and request projection must be connected to the
 new key only after the kernel is checked and the conversion reviewed. That
