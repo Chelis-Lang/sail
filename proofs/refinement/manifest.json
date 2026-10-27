@@ -4904,7 +4904,7 @@
         {
           "name": "empty-human-factory-full-operation-always-refuses",
           "source": "crates/sail-api/src/acceptance.rs",
-          "before": "{\n        if !empty_human_candidate(original, observed, human) || !replay_requests_match(current, original)\n            || !empty_human_bytes(stdout, stderr) { return None; }\n        let Some(paths) = paths else { return None; };\n        let Some(paths) = bind_request_paths(current, paths.invocation(), paths.workspace()) else { return None; };\n        let Some(readback) = readback else { return None; };\n        let Some(readback) = seal_replay_readback(current, readback) else { return None; };\n        sail_proof! {\n            if resolved_coverage(original, observed) { resolved_coverage_has_requested_target(original, observed); }\n            if resolved_coverage(current, observed) { resolved_coverage_has_requested_target(current, observed); }\n            assert(!supplied_selection_authorized(observed));\n        }\n        Some(EmptyHumanOutput { original, current, observed, stderr, paths, readback })\n    }",
+          "before": "{\n        if !empty_human_bytes(stdout, stderr) { return None; }\n        if !empty_human_candidate(original, observed, human) || !replay_requests_match(current, original) { return None; }\n        let Some(paths) = paths else { return None; };\n        let Some(paths) = bind_request_paths(current, paths.invocation(), paths.workspace()) else { return None; };\n        let Some(readback) = readback else { return None; };\n        let Some(readback) = seal_replay_readback(current, readback) else { return None; };\n        sail_proof! {\n            if resolved_coverage(original, observed) { resolved_coverage_has_requested_target(original, observed); }\n            if resolved_coverage(current, observed) { resolved_coverage_has_requested_target(current, observed); }\n            assert(!supplied_selection_authorized(observed));\n        }\n        Some(EmptyHumanOutput { original, current, observed, stderr, paths, readback })\n    }",
           "after": "{ None }"
         },
         {
@@ -4916,8 +4916,8 @@
         {
           "name": "empty-human-factory-ignores-original-stdout",
           "source": "crates/sail-api/src/acceptance.rs",
-          "before": "|| !empty_human_bytes(stdout, stderr)",
-          "after": "|| !empty_human_bytes(b\"\", stderr)"
+          "before": "if !empty_human_bytes(stdout, stderr)",
+          "after": "if !empty_human_bytes(b\"\", stderr)"
         },
         {
           "name": "empty-human-factory-constructs-unchecked-native-paths",

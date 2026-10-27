@@ -3095,8 +3095,8 @@ sail_verified! {
                 && readback.is_some() && readback.unwrap().unchanged_view() && readback.unwrap().guard_view().is_some()
                 && readback.unwrap().guard_view().unwrap().revision_view() == string_bytes(&current.input_revision)))
     {
-        if !empty_human_candidate(original, observed, human) || !replay_requests_match(current, original)
-            || !empty_human_bytes(stdout, stderr) { return None; }
+        if !empty_human_bytes(stdout, stderr) { return None; }
+        if !empty_human_candidate(original, observed, human) || !replay_requests_match(current, original) { return None; }
         let Some(paths) = paths else { return None; };
         let Some(paths) = bind_request_paths(current, paths.invocation(), paths.workspace()) else { return None; };
         let Some(readback) = readback else { return None; };
