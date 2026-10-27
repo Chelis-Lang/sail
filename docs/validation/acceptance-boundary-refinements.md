@@ -1113,3 +1113,13 @@ single opening-parenthesis byte array in the partial-output constructive fixture
 A documented allowance on that one fixture retains every byte/assertion and
 requires a fresh strict native run. No full workspace, solver or conformance
 claim follows.
+
+The next owned-output attempt `bc83170b` observes 567 verified/1 failed
+function and 971 query entries in 39.312 seconds, entire crate/no VIR or
+resource refusal, with final source/runtime checks. Actual factory, paired
+append, discard and all controller facades now clear; the partial-output
+refusal witness also clears. The one remaining nonempty witness needs explicit
+trim ranges and newline witnesses for its original CRLF/line intervals.
+Scoped facts expose those exact bytes without changing an executable operation,
+contract, assertion, control, driver scope or resource setting. Whole-positive
+inventory remains unqualified until that constructive path succeeds.
