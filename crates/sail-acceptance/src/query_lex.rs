@@ -525,8 +525,8 @@ sail_verified! {
         let expected=[b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't'];
         sail_proof! {
             assert(head_transition(src@) == (14int,false,Ok((0usize,expected@)))) by {
-                reveal_with_fuel(head_transition,1);
-                reveal_with_fuel(lex_transition,2);
+                reveal(head_transition);
+                reveal(lex_transition);
                 reveal_with_fuel(trivia_stop,7);
                 reveal_with_fuel(word_stop,11);
             }
