@@ -5309,6 +5309,16 @@ mod tests {
 
     impl NegativeGeneration {
         fn new(label: &str) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+            Self::with_document(
+                label,
+                include_bytes!("../../tests/fixtures/engine-terminal/failed-proof.json"),
+            )
+        }
+
+        fn with_document(
+            label: &str,
+            stdout: &[u8],
+        ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
             // Cargo reports canonical manifest paths; macOS's temporary
             // directory is reached through the `/var` symlink.
             let root = std::env::temp_dir().canonicalize()?.join(format!(
@@ -5363,18 +5373,23 @@ mod tests {
                     "lib".to_owned(),
                 )]),
             };
-            fixture.seal()?;
+            fixture.seal_document(stdout)?;
             Ok(fixture)
         }
 
         fn seal(&mut self) -> std::io::Result<()> {
+            self.seal_document(include_bytes!(
+                "../../tests/fixtures/engine-terminal/failed-proof.json"
+            ))
+        }
+
+        fn seal_document(&mut self, stdout: &[u8]) -> std::io::Result<()> {
             let sidecar = self
                 .paths
                 .run
                 .join("sidecars")
                 .join(self.call.identity.key());
             std::fs::create_dir_all(&sidecar)?;
-            let stdout = include_bytes!("../../tests/fixtures/engine-terminal/failed-proof.json");
             let events =
                 include_bytes!("../../tests/fixtures/engine-terminal/terminal-failure.jsonl");
             if self.call.selected_attempt.is_none() {
@@ -5469,17 +5484,19 @@ mod tests {
         };
         // A whole-crate document is not the outcome of a focused call.
         assert!(!eligible(&f, &focus));
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
         let mut document: Value = serde_json::from_slice(include_bytes!(
             "../../tests/fixtures/engine-terminal/failed-proof.json"
         ))?;
         document["verification-results"]["is-verifying-entire-crate"] = Value::Bool(false);
-        std::fs::write(sidecar.join("verus.stdout"), serde_json::to_vec(&document)?)?;
+        // Establish the partial document through its own original producer;
+        // editing another path cannot change an owned attempt's output.
+        let f =
+            NegativeGeneration::with_document("focused-partial", &serde_json::to_vec(&document)?)?;
         assert!(eligible(&f, &focus));
         // An unfocused run must still have verified its entire crate.
         assert!(!eligible(&f, &[]));
         // Interrupted or failed-to-seal verifiers still refuse.
-        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        std::fs::remove_file(f.directory.join("engine.events.jsonl"))?;
         assert!(!eligible(&f, &focus));
         Ok(())
     }

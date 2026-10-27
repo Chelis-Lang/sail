@@ -10,9 +10,21 @@ read path correctly projects absent freshness to Unknown
 ([#464](https://github.com/Chelis-Lang/sail/issues/464)). The correction preserves
 the independently checked original pair for the whole-positive assertion and
 explicitly retains the retrieved Unknown/data-only case and all old assertions.
-The separate runner failure remains under investigation; corrected combined
-native qualification and solver remain pending in the
+Both test-only fixture corrections need combined
+native qualification; solver remains unrun in the
 [owning record](validation/acceptance-boundary-refinements.md).
+
+The combined `6e239d21` workspace passes strict compilation and Clippy, then
+its existing focused-failure contract fixture writes a partial document at the
+legacy sidecar root instead of the owned selected-attempt directory
+([#465](https://github.com/Chelis-Lang/sail/issues/465)). The actual document
+remains whole, so its eligibility assertion correctly fails under focus. The
+test-only correction captures the partial document through a fresh original
+producer and removes the terminal from its actual selected directory. Whole
+under focus, partial without focus and unsealed calls still refuse; production
+predicates remain unchanged. The separate daemon fixture failure is
+[#464](https://github.com/Chelis-Lang/sail/issues/464). Both fail again in a
+strict two-test baseline; corrected-source focused and full gates are pending.
 
 The later `e36c749b` native workspace stops before tests and solver at one
 test-only line-limit lint in the coherent baseline observed-request fixture
