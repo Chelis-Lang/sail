@@ -451,3 +451,11 @@ deep gate compares exactly.
   engine lacks falls back to stock verification (`SAIL3124`), and the engine
   arm counts it as `engine-lacks-feature`
   ([reproduction](../corpus/repros/engine-without-singular/)).
+
+The actual lexical bridge has separate candidate-only qualification findings:
+[#487](https://github.com/Chelis-Lang/sail/issues/487) corrects a nonrecursive
+proof-witness reveal form; [#488](https://github.com/Chelis-Lang/sail/issues/488)
+records strict native lint/rustdoc refusal after all 24 SMT package tests pass.
+Scoped reveal, native lint documentation and exact endpoint facts are being
+qualified without relaxing parser contracts or controls. Neither finding is a
+native incorrect verdict. Whole-root and full controls remain pending.

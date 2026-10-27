@@ -228,6 +228,7 @@ sail_spec! {
 sail_verified! {
     /// Checks the same nonempty original ASCII digit range used by the
     /// hexadecimal, binary, numeral and decimal token branches.
+    #[allow(clippy::manual_range_contains, reason = "Explicit ASCII bounds are the actual shared operations checked by pinned Stock.")]
     fn all_digits(bytes:&[u8],start:usize,kind:u8) -> (accepted:bool)
         requires (start <= bytes.len(),kind <= 2)
         ensures (accepted == digit_run(bytes@,start as int,kind))
@@ -298,7 +299,7 @@ sail_verified! {
 
 sail_code! {
     /// Mechanical lexical/shallow-head failure, mapped to existing native
-    /// ErrorCode values without granting command or solver authority.
+    /// `ErrorCode` values without granting command or solver authority.
     #[derive(Debug,Clone,Copy,PartialEq,Eq)]
     pub enum LexFailureKind {
         /// No initial token, including input containing only trivia.
@@ -481,6 +482,10 @@ sail_code! {
             /// than interpreting a token against a separately supplied slice.
             /// Full framing implies the existing checked raw head-span relation;
             /// command arity/body and solver meaning remain separate.
+            ///
+            /// # Errors
+            /// Retains the original empty/unclosed, invalid-token and
+            /// unterminated string/quoted-symbol diagnostic classes/offsets.
             pub fn command_head(&mut self) -> (out:Result<(usize,&'a [u8]),LexFailure>)
                 requires (old(self).well_formed(),old(self).position_view() == 0,!old(self).failed_view())
                 ensures (final(self).well_formed(),final(self).input_view() == old(self).input_view(),
