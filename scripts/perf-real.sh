@@ -71,7 +71,9 @@
 #   SAIL_PERF_NOREPLAY 1: then one more unmodified rerun, `unchanged-noreplay`,
 #                      with SAIL_MANAGED_NOOP=0 for Sail (the full unchanged path)
 #   SAIL_PERF_REVERT   1: after each edit, restore the pristine source and
-#                      measure that as `EDIT-revert`
+#                      measure that as `EDIT-revert`; or a list of edit names
+#                      to revert only after those (e.g. "body-early fix", so
+#                      `fix` follows `fail` directly)
 #   SAIL_PERF_STOCK_HOME stock release install root for corpus fetching only
 #   SAIL_PERF_CORPUS   fetched corpus (default ~/.cache/sail/corpus)
 #   SAIL_PERF_VERUS_ARGS  extra Verus arguments for every run (e.g. "-V spinoff-all")
@@ -592,12 +594,16 @@ results="$out/results.tsv"
 sample_failures=0
 
 run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run only
-  local round="$1" mode="$2" dir="$3" phase="$4" log prov t0 t1 code=0 s0 s1
+  local round="$1" mode="$2" dir="$3" phase="$4" log prov live t0 t1 code=0 s0 s1
   shift 4
   local run_env=("$@")
   log="$out/r$round/$mode.$phase.log"
   prov="$out/r$round/prov/$mode.$phase"
-  mkdir -p "$prov"
+  # Sail keys unchanged-call replay on every SAIL_* variable, so each run of
+  # an arm sees the same provenance directory; its files move to the phase's
+  # own directory afterwards.
+  live="$out/r$round/prov/$mode.live"
+  mkdir -p "$prov" "$live"
   s0=$(stats)
   # Quietness: settle, then record the 1-minute load average (which still
   # carries the previous run's own work) and the processes running right now.
@@ -611,7 +617,8 @@ run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run on
   t0=$(now)
   (cd "$dir/$pkg" && if [ -n "${SAIL_PERF_VERUS_BUILD:-}" ]; then export SAIL_VERUS_BUILD="$SAIL_PERF_VERUS_BUILD"; fi &&
     if [ ${#run_env[@]} -gt 0 ]; then export "${run_env[@]}"; fi &&
-    PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$prov" verus_cmd "$mode" ${time_args[@]+"${time_args[@]}"}) >"$log" 2>&1 || code=$?
+    PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$live" verus_cmd "$mode" ${time_args[@]+"${time_args[@]}"}) >"$log" 2>&1 || code=$?
+  find "$live" -mindepth 1 -maxdepth 1 -exec mv {} "$prov"/ \;
   t1=$(now)
   s1=$(stats)
   local sessions started served
@@ -682,7 +689,7 @@ run_mode() { # ROUND MODE
     reset_files "$dir"
     apply_op "$dir" "$op" "$file" "$line"
     run_one "$round" "$mode" "$dir" "$name"
-    if [ "${SAIL_PERF_REVERT:-0}" = 1 ]; then
+    if [ "${SAIL_PERF_REVERT:-0}" = 1 ] || case " ${SAIL_PERF_REVERT:-} " in *" $name "*) true ;; *) false ;; esac; then
       reset_files "$dir"
       run_one "$round" "$mode" "$dir" "$name-revert"
     fi

@@ -33,9 +33,9 @@ body and specification edits improve 153.62 → 85.89 s and
 79.43 → 41.11 s and 79.47 → 14.35 s.
 
 Unchanged Anvil invokes zero verifiers but still costs 1.95 s versus stock
-0.33 s on Linux and 1.83 s versus 0.28 s on Mac in that matrix. Linux main
-now replays unchanged calls; the [current macOS numbers](#macos-on-current-main)
-show replay does not yet apply on macOS. Tiny edits add about
+0.33 s on Linux and 1.83 s versus 0.28 s on Mac in that matrix. Current main
+replays unchanged calls on both platforms; see the
+[current macOS numbers](#macos-on-current-main). Tiny edits add about
 0.36 s on Linux and 0.67 s on Mac. Mac Anvil cold adds 0.86 s on a roughly
 100-second run; Vest adds 0.06 s. Individual slower mutation edits remain
 visible. Ten Linux rows and twelve Mac rows require performance review;
@@ -53,75 +53,119 @@ do not replace the frozen matrix below or accept its remaining slower rows.
 
 ## macOS on current main
 
-These numbers come from main `3a662dd5`, installed as a release stage
+These numbers come from main `dca5cd43`, which includes the macOS replay fix
+(#451), build-script receipts for Cargo 1.93–1.99
+([ADR 0084](decisions/0084-qualified-cargo-range.md)) and the
+focused fail→fix fix (#450). Sail ran as a release stage
 (`scripts/release.sh stage`) with the pinned macOS engine and its shipped vstd
-proof. The host was an EC2 mac-m4.metal (Apple M4, 10 cores, 24 GiB) in
-us-east-1b, running macOS 27.0 (26A428), on 2026-10-26. The comparison is
-`scripts/perf-real.sh run` against stock `cargo verus verify` 0.2026.10.18.7d82994,
-with six paired rounds that alternate which arm goes first. Each arm starts from
-a fresh copy and an empty Sail cache, and vstd comes from crates.io. Vest passes
-`--rlimit 100` on both arms. The edit is `body-early`, a one-line `assert(true);`
-in one function, and revert restores the original file. Each cell is the median
-of the six rounds, with the range in brackets, in seconds. Every exit code
-matched stock's.
+proof.
+
+The host was an EC2 mac-m4.metal (Apple M4, 10 cores, 24 GiB) in us-east-1b,
+running macOS 27.0 (26A428), on 2026-10-27. `scripts/perf-real.sh run`
+compared Sail against stock `cargo verus verify` 0.2026.10.18.7d82994 over six
+paired rounds, alternating which arm went first. Each arm started from a fresh
+copy and an empty Sail cache, with vstd from crates.io.
+
+- Vest passes `--rlimit 100` on both arms.
+- Anvil keeps its own `rust-toolchain.toml` (Rust 1.98.0) on both arms. Under
+  ADR 0084 it now gets receipts and replay; earlier it fell back with
+  `SAIL3139`. The other projects run on 1.99.1.
+
+The phases, in order:
+
+1. **cold**
+2. **unchanged, first:** records the replay.
+3. **unchanged, second:** replays.
+4. **unchanged with `SAIL_MANAGED_NOOP=0`:** the full unchanged path.
+5. **one-line edit:** `body-early`, an `assert(true);` in one function.
+6. **revert**
+7. **fail:** a failing `assert(1 + 1 == 3);`.
+8. **fix:** the same line made true, straight from the failing state.
+9. **fix revert**
+
+Each cell is the median of six rounds, with the range in brackets, in seconds.
+Every exit code matched stock's: fail exits 101 on both arms.
 
 | Project | Phase | Stock | Sail | Stock/Sail |
 |---|---|---:|---:|---:|
-| Vest | cold | 38.4 [38.3–38.7] | 37.5 [37.1–37.7] | 1.02× |
-| | unchanged, first | 0.26 [0.25–0.26] | 0.77 [0.76–0.79] | 0.33× |
-| | unchanged, second | 0.25 [0.25–0.26] | 0.62 [0.61–0.63] | 0.41× |
-| | unchanged, `SAIL_MANAGED_NOOP=0` | 0.25 [0.25–0.25] | 0.56 [0.55–0.59] | 0.45× |
-| | one-line edit | 22.1 [21.9–22.2] | 12.2 [12.1–12.3] | 1.81× |
-| | revert | 22.2 [22.1–22.3] | 1.10 [1.07–1.11] | 20.2× |
-| IronKV | cold | 20.0 [20.0–20.3] | 12.3 [11.7–12.3] | 1.64× |
-| | unchanged, first | 0.20 [0.20–0.20] | 0.27 [0.26–0.28] | 0.76× |
-| | unchanged, second | 0.20 [0.20–0.20] | 0.26 [0.24–0.26] | 0.79× |
-| | unchanged, `SAIL_MANAGED_NOOP=0` | 0.20 [0.20–0.21] | 0.24 [0.24–0.24] | 0.84× |
-| | one-line edit | 4.25 [4.24–4.28] | 3.30 [3.06–3.32] | 1.29× |
-| | revert | 4.29 [4.26–4.32] | 2.18 [2.16–2.25] | 1.97× |
-| CapybaraKV | cold | 31.1 [31.0–31.2] | 29.4 [29.2–29.6] | 1.06× |
-| | unchanged, first | 0.23 [0.22–0.23] | 0.56 [0.55–0.58] | 0.41× |
-| | unchanged, second | 0.22 [0.22–0.22] | 0.46 [0.46–0.48] | 0.47× |
-| | unchanged, `SAIL_MANAGED_NOOP=0` | 0.22 [0.22–0.23] | 0.46 [0.45–0.47] | 0.48× |
-| | one-line edit | 14.8 [14.8–14.9] | 5.84 [5.82–5.92] | 2.54× |
-| | revert | 14.8 [14.8–14.9] | 5.48 [5.45–5.53] | 2.71× |
-| Anvil (`--verify-module vdeployment_controller`) | cold | 99.8 [99.5–100.0] | 99.9 [99.7–100.5] | 1.00× |
-| | unchanged, first | 0.28 [0.27–0.29] | 1.90 [1.86–1.94] | 0.15× |
-| | unchanged, second | 0.23 [0.22–0.24] | 1.64 [1.63–1.65] | 0.14× |
-| | unchanged, `SAIL_MANAGED_NOOP=0` | 0.23 [0.22–0.24] | 1.58 [1.56–1.59] | 0.15× |
-| | one-line edit | 79.1 [78.9–79.2] | 41.0 [40.9–41.1] | 1.93× |
-| | revert | 79.1 [78.9–79.3] | 14.5 [14.4–14.5] | 5.47× |
+| Vest | cold | 38.4 [38.3–38.5] | 38.2 [38.0–38.5] | 1.01× |
+| | unchanged, first | 0.26 [0.26–0.26] | 0.79 [0.79–0.81] | 0.33× |
+| | unchanged, replayed | 0.25 [0.25–0.26] | 0.09 [0.09–0.09] | 2.81× |
+| | unchanged, `SAIL_MANAGED_NOOP=0` | 0.26 [0.25–0.26] | 0.57 [0.55–0.61] | 0.45× |
+| | one-line edit | 22.0 [22.0–22.2] | 12.5 [12.5–12.7] | 1.76× |
+| | revert | 22.2 [22.0–22.2] | 1.11 [1.08–1.14] | 20.0× |
+| | fail | 20.6 [20.6–20.7] | 10.9 [10.8–11.0] | 1.89× |
+| | fix | 22.2 [22.1–22.2] | 12.5 [12.3–12.5] | 1.78× |
+| | fix revert | 22.2 [22.0–22.3] | 1.08 [1.07–1.13] | 20.6× |
+| IronKV | cold | 20.1 [20.0–20.4] | 12.3 [12.2–12.4] | 1.63× |
+| | unchanged, first | 0.21 [0.20–0.21] | 0.28 [0.28–0.29] | 0.74× |
+| | unchanged, replayed | 0.20 [0.20–0.21] | 0.05 [0.05–0.05] | 4.05× |
+| | unchanged, `SAIL_MANAGED_NOOP=0` | 0.21 [0.20–0.21] | 0.24 [0.24–0.25] | 0.84× |
+| | one-line edit | 4.25 [4.24–4.28] | 3.32 [3.31–3.33] | 1.28× |
+| | revert | 4.26 [4.24–4.28] | 2.21 [2.21–2.22] | 1.93× |
+| | fail | 3.99 [3.97–4.01] | 3.11 [3.10–3.13] | 1.28× |
+| | fix | 4.26 [4.24–4.31] | 2.94 [2.92–2.96] | 1.45× |
+| | fix revert | 4.26 [4.25–4.27] | 2.21 [2.20–2.22] | 1.93× |
+| CapybaraKV | cold | 31.0 [30.9–31.2] | 30.1 [29.8–30.9] | 1.03× |
+| | unchanged, first | 0.22 [0.22–0.23] | 0.59 [0.58–0.62] | 0.38× |
+| | unchanged, replayed | 0.22 [0.22–0.22] | 0.04 [0.04–0.05] | 5.12× |
+| | unchanged, `SAIL_MANAGED_NOOP=0` | 0.22 [0.22–0.22] | 0.45 [0.44–0.48] | 0.50× |
+| | one-line edit | 14.8 [14.8–14.8] | 5.98 [5.95–6.05] | 2.47× |
+| | revert | 14.9 [14.8–14.9] | 5.60 [5.58–5.63] | 2.65× |
+| | fail | 14.0 [14.0–14.1] | 5.03 [5.02–5.04] | 2.78× |
+| | fix | 14.9 [14.9–14.9] | 5.90 [5.86–5.93] | 2.52× |
+| | fix revert | 14.9 [14.8–14.9] | 5.62 [5.58–5.81] | 2.65× |
+| Anvil (`--verify-module vdeployment_controller`) | cold | 99.5 [99.2–99.7] | 100.2 [100.1–100.4] | 0.99× |
+| | unchanged, first | 0.30 [0.28–0.30] | 2.07 [2.03–2.11] | 0.14× |
+| | unchanged, replayed | 0.24 [0.24–0.25] | 0.06 [0.06–0.06] | 4.18× |
+| | unchanged, `SAIL_MANAGED_NOOP=0` | 0.24 [0.24–0.25] | 1.59 [1.58–1.60] | 0.15× |
+| | one-line edit | 79.0 [78.9–79.4] | 41.0 [40.9–41.1] | 1.93× |
+| | revert | 79.1 [79.0–79.3] | 14.5 [14.5–14.5] | 5.45× |
+| | fail | 75.1 [75.0–75.3] | 12.0 [11.8–12.0] | 6.28× |
+| | fix | 79.1 [78.9–79.6] | 23.5 [23.4–23.5] | 3.37× |
+| | fix revert | 79.1 [78.9–79.4] | 14.5 [14.4–14.6] | 5.46× |
 
-- **Edits and reverts are faster on every project.** Undo on Vest takes about
-  1 s, against 22 s with stock.
+- **Edits, failing edits, fixes and reverts are faster on every project.** A
+  revert takes about 1 s on Vest, against 22 s with stock. A failing edit on
+  Anvil takes 12 s, against 75 s with stock.
+- **Replayed unchanged calls take 0.04–0.09 s, against stock's 0.20–0.25 s.**
+- **The first unchanged call after a verification is still slower than
+  stock.** That call takes the full path and records the replay:
+  - Anvil: 2.07 s, against 0.30 s.
+  - Vest and CapybaraKV: about 0.6–0.8 s, against 0.2–0.3 s.
+  - IronKV: 0.28 s, against 0.21 s.
+
+  The `SAIL_MANAGED_NOOP=0` row shows the full path without recording. Every
+  later unchanged call replays.
 - **Cold runs.** IronKV is the only project that gets the shipped vstd proof,
-  so it is the only one with a large cold gain. Vest's `--rlimit 100`,
-  CapybaraKV's `--no-default-features` resolution and Anvil's patched Verus
-  sources each miss the proof, and those projects verify vstd themselves.
-  Anvil cold ties stock: its median is 0.1 s slower, inside the ranges.
-- **Unchanged calls in this table predate the macOS replay fix.** These runs
-  never replayed on macOS ([#437](https://github.com/Chelis-Lang/sail/issues/437)):
-  Cargo copies rather than hard-links each build script's binary there, so
-  replay's ctime guard refused to record. With the fix
-  ([ADR 0082](decisions/0082-unchanged-call-replay.md), amended 2026-10-26),
-  unchanged Vest takes 0.093 s and Anvil 0.060 s on the same host, against
-  stock's 0.26 s and 0.25 s.
+  so it is the only one with a large cold gain. The other three verify vstd
+  themselves, because each misses the proof:
+  - Vest's `--rlimit 100`
+  - CapybaraKV's `--no-default-features` resolution
+  - Anvil's patched Verus sources
 
-The load average during these runs was 5–27, mostly from the runs' own Verus
-and Sail work, with nothing else on the machine. Raw logs are kept outside the
-repository (`mac-final-phase1.tgz`, sha256
-`4bd5ebbe932f9d29b5b0a85ee28cf584a09bcbf74ad6d6e258989c93c7150e17`). To repeat
-a project's measurement, put the stage's `bin/`, stock Verus and
+  Anvil cold is 0.7 s slower than stock on about 100 s (0.7%), with ranges
+  that do not overlap. Vest and CapybaraKV cold are slightly faster.
+
+The load average during these runs was 2–17, from the runs' own Verus and Sail
+work; nothing else ran on the machine. `ci/run.sh host` on the same build passed
+1134 tests, with clippy clean. Raw logs are kept outside the repository
+(`mac-final-phase2.tgz`, sha256
+`e1a29b7731fea26cb3ecae2c57ceefa97faedfbc602dd075bb9c74d8fd739fae`).
+
+To repeat a project's measurement, put the stage's `bin/`, stock Verus and
 `sail-conformance` on `PATH` and run:
 
 ```sh
 RUSTUP_TOOLCHAIN=1.99.1 SAIL_PERF_VSTD=registry SAIL_PERF_VERUS_TIMES=0 \
-SAIL_PERF_EDITS=body-early SAIL_PERF_NOOPS=0 SAIL_PERF_UNCHANGED=2 \
-SAIL_PERF_NOREPLAY=1 SAIL_PERF_REVERT=1 \
+SAIL_PERF_EDITS="body-early fail fix" SAIL_PERF_REVERT="body-early fix" \
+SAIL_PERF_NOOPS=0 SAIL_PERF_UNCHANGED=2 SAIL_PERF_NOREPLAY=1 \
   scripts/perf-real.sh run vest 6    # vest also takes SAIL_PERF_VERUS_ARGS="--rlimit 100"
 ```
 
-Anvil also needs OpenSSL (`brew install openssl@3`, then set `OPENSSL_DIR`).
+For Anvil, leave `RUSTUP_TOOLCHAIN` unset so that its own toolchain file
+applies. Anvil also needs OpenSSL (`brew install openssl@3`, then set
+`OPENSSL_DIR`).
 
 ## What to expect
 
