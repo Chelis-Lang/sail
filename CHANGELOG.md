@@ -8,6 +8,11 @@ semantic versioning once the API is published.
 - Distinguish the completed-view fixture's original whole-request evidence from
   its retained Unknown projection when freshness is unavailable (#464). Preserve
   both cases and all original baseline assertions; runtime behavior is unchanged.
+- Repair the focused-failure contract fixture after selected-attempt integration
+  (#465): capture its initial partial document through a fresh owned producer
+  and check the engine terminal in that selected directory. Keep all scope and
+  sealing assertions; production policy is unchanged and native qualification
+  remains pending.
 
 - Preserve the coherent completed-baseline request fixture under the strict
   line-limit lint with a documented test-local allowance (#463); all assertions

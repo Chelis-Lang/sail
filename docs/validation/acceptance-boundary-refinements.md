@@ -65,9 +65,33 @@ freshness projection, and separately checks the retrieved pair's Unknown state,
 absent whole facet and unchanged data. All prior target, request, report,
 path-movement, Historical baseline and serde assertions remain. Only test code
 and both enclosing unproved native bindings change; no currentness rewrite,
-freshness-provider substitute or runtime policy is added. The other native
-runner failure is independently investigated; no cause or correction is claimed
-here. Fresh native qualification and solver remain pending.
+freshness-provider substitute or runtime policy is added. The independent runner
+fixture correction is described below. Fresh native qualification and solver
+remain pending.
+
+A separate unchanged `6e239d21` CI-profile nextest selection runs only
+`focused_failing_run_keeps_contracts_only_with_a_partial_normal_outcome` and
+`baseline_publication_preserves_its_observed_request_in_both_directions`:
+both fail again, with 639 other tests not selected. Test execution takes
+0.086 s; the command takes 28.81 s including compilation; final source/image
+checks pass. The daemon fixture's currentness assumption is tracked in
+[#464](https://github.com/Chelis-Lang/sail/issues/464).
+
+The focused runner failure is test-only path drift introduced when merging
+the focused contract-retention behavior with selected-attempt history
+([#465](https://github.com/Chelis-Lang/sail/issues/465)). Its ordinary fixture
+already captures the original whole document through a real child and retained
+payload binding. The test then writes partial bytes outside that selected
+directory; the actual owned document remains whole and correctly refuses
+focus. Rewriting the owned file would invalidate its terminal payload hash.
+The correction constructs the partial document before a fresh original fixture
+producer captures it and removes the seal from the actual selected directory.
+All four original assertions remain: whole under focus refuses, partial under
+focus qualifies, partial without focus refuses and unsealed refuses. This
+changes no production completion, focus, whole, failed-scope or ownership
+predicate, and establishes no physical compiler or mathematical proof claim.
+Only the reviewed enclosing native runner binding changes. Corrected focused
+tests and the combined workspace/solver gates remain pending.
 
 The stopped `e36c749bb061554a07f4b896f464c6d4dfb73cce` workspace attempt is
 retained at `experiments/2026-10-27/acceptance-combined-e36c749b-native-early.tgz`,

@@ -59,7 +59,7 @@ INPUT_NATIVE_SHA256 = {
     'crates/sail-verus/src/engine.rs': 'a6ca795294e29f76b8f7647713da1ef1d8b79e2f1df7281f1fc7fe5869c1f0d2',
     'crates/sail-verus/src/managed/mod.rs': '7d1a4092e364b466a4da4247fb91418af8930fbd8316e83b8641d8f1b8b9cff9',
     'crates/sail-verus/src/managed/command_environment.rs': '43b34bd36c7c6c2f22a9bc34a39bd77737e65a3c167855143985cbddbe87508f',
-    'crates/sail-verus/src/managed/runner.rs': '0d35ac60dab222da753dfb2900b65b04a2c8ed46570f15b6b8335e3a5fece069',
+    'crates/sail-verus/src/managed/runner.rs': 'facb1b43876fcc4e1e53387f120f3c02fae0d6b2eb43aa02632441465d77d3ee',
     'crates/sail-verus/src/managed/request.rs': 'dc079a01a60d64ee482540f5023deba9025cbc45010b6b2d1b56f2f7519bbaba',
     'crates/sail-verus/src/managed/noop.rs': 'cf9870294921a9ce51e34db189012cfb9e7373c9aba56409e47e3887ee8a186b',
     'crates/sail-verus/src/managed/shipped.rs': '4785c4450b09daeb049574458adf3dda63f79455ec7a0bff113e86aa4e47709a',
