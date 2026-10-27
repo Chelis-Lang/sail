@@ -21,7 +21,7 @@ across roots and do not represent a service theorem or product performance.
 The positive-only report SHA-256 is
 `30822d09dcc90b76c315fd3ec8fa392af478b7b20def6d9e56e7d5e60cc36876`.
 
-The capture retains 115 query, 115 input and 107 authority ordinary-Verus
+The historical capture retains 115 query, 115 input and 107 authority ordinary-Verus
 controls. The corrected `c44cdcfa` query run passes all four partitions:
 119 full-scope calls, comprising four whole query positives and the exact
 disjoint union of 115 ordinary failures. Independent archive review checks
@@ -51,8 +51,17 @@ The source selftest inventory retains all 44 tests present at `c44cdcfa`
 The existing assembly/private-token fixture now supplies the required option
 module beside its original sources, preserving every mutation and assertion
 (#458); all 50 pass on native Linux at `90e2329f` in 198.139 s.
-Its expanded query counts/functions await complete whole-positive discovery;
-the historical 431/759 inventory is not an expanded-root result. The reviewed
+Complete whole-positive discovery at `069e91f6` passes the expanded query root
+with 441 verified obligations and 776 function entries, inputs with 308/538 and
+authority with 498/878, retaining every prior function. Direct stock invocations
+use the same 120-second limit, one thread, default resources and complete roots;
+final source/runtime rechecks pass. Root times are 33.110 s, 31.395 s and
+20.976 s on the same native `c7i.4xlarge`. The closed positive report SHA-256 is
+`80829df588f1cad425d1249ab606017c5551a80a9dfd68ec185bbeffa6b817cf`.
+The manifest freezes these actual inventories. The current 359-case matrix
+(three positives plus 134/115/107 controls), workspace, solver and differential
+gates remain pending; the earlier c44 result covers its exact 115 query controls.
+The reviewed
 scope correction retains the complete validator loops while mutating acceptance
 exits (#454), and the completion fixture preserves the actual ten phases (#453).
 
