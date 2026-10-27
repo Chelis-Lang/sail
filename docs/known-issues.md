@@ -1,5 +1,7 @@
 # Known issues and limits
 
+- [#493](https://github.com/Chelis-Lang/sail/issues/493): `68b84947` human-context spec accessor omits its two retained lifetimes, so direct Stock compilation refuses before proof checking. Native strict Clippy and all 15 focused tests pass because Cargo erases that spec. The follow-up names both lifetimes; complete requalification remains pending.
+
 Open Sail defects, integration limits and current product limits. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
