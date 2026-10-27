@@ -12,6 +12,29 @@ sail_spec! {
             && forall|i: int| 1 <= i <= bytes.len() ==>
                 crate::query::frame_scan(bytes.take(i),comments).0 > 0
     }
+
+    /// Establish the future exact-byte scan before mutating the owned buffer.
+    /// This is the existing framing grammar, not a second parser or an axiom.
+    pub proof fn pending_append_facts(bytes: Seq<u8>, depth: usize,
+        lex: crate::query::FrameLex, byte: u8, comments: bool)
+        requires pending_list(bytes,depth,lex,comments),
+        ensures crate::query::frame_scan(bytes.push(byte),comments)
+            == (depth as int + if crate::query::structural(lex,byte) && byte == b'(' {1int}
+                else if crate::query::structural(lex,byte) && byte == b')' {-1int} else {0int},
+                crate::query::frame_lex(lex,byte,comments)),
+            bytes.push(byte)[0] == b'(',
+            forall|i: int| 1 <= i < bytes.push(byte).len() ==>
+                crate::query::frame_scan(bytes.push(byte).take(i),comments).0 > 0,
+    {
+        assert(bytes.push(byte).drop_last() =~= bytes);
+        assert(bytes.push(byte).last() == byte);
+        reveal_with_fuel(crate::query::frame_scan,1);
+        assert forall|i: int| 1 <= i < bytes.push(byte).len() implies
+            crate::query::frame_scan(bytes.push(byte).take(i),comments).0 > 0 by {
+            assert(i <= bytes.len());
+            assert(bytes.push(byte).take(i) =~= bytes.take(i));
+        }
+    }
 }
 
 sail_code! {
@@ -162,23 +185,27 @@ sail_verified! {
         })
     {
         sail_proof! {
-            assert(crate::query::frame_scan(bytes@,comments) == (depth as int,lex));
+            pending_append_facts(bytes@,depth,lex,byte,comments);
         }
         let next = crate::query::frame_step(depth,lex,byte,comments);
         bytes.push(byte);
         sail_proof! {
             reveal(ListFrame::well_formed);
-            assert(crate::query::frame_scan(bytes@.drop_last(),comments) == (depth as int,lex));
+            assert(crate::query::frame_scan(bytes@,comments) == (next.0 as int,next.1));
             assert(bytes@.last() == byte);
-            reveal_with_fuel(crate::query::frame_scan,1);
             assert forall|i: int| 1 <= i < bytes@.len() implies
                 crate::query::frame_scan(bytes@.take(i),comments).0 > 0 by {
-                assert(bytes@.take(i) =~= bytes@.drop_last().take(i));
             }
         }
         if next.0 == 0 {
             ListStep::Complete(bytes)
         } else {
+            sail_proof! {
+                assert forall|i: int| 1 <= i <= bytes@.len() implies
+                    crate::query::frame_scan(bytes@.take(i),comments).0 > 0 by {
+                    if i == bytes@.len() { assert(bytes@.take(i) =~= bytes@); }
+                }
+            }
             ListStep::Pending(ListFrame { bytes, depth:next.0, lex:next.1, comments })
         }
     }
