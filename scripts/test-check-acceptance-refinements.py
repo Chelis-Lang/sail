@@ -245,6 +245,15 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
             SOURCE.runtime_mutation(source, "let nested = true", "let nested = false")
 
+    def test_reused_projection_does_not_reuse_another_sources_runtime_location(self):
+        warm = "sail_method! { fn f() -> (ok: bool) requires (false) ensures (ok) { true } }"
+        SOURCE.runtime_mutation(warm, "true", "false")
+        # Same method and selector, but the only selected token is now a contract.
+        different = "sail_method! { fn f() -> (ok: bool) requires (true) ensures (ok) { false } }"
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(different, "true", "false")
+        SOURCE.runtime_mutation(warm, "true", "false")
+
     def test_runtime_control_preserves_loop_contracts_and_selects_actual_loop_code(self):
         source = """sail_method! {
             fn checked() -> (ok: bool) requires (true) ensures (ok)
