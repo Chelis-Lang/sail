@@ -93,8 +93,16 @@ Its private endpoint dispatch is not a public `finish(success)` API. Candidate
 value, slot-state and disk-outcome native names are aliases of the shared real
 records; the disk format and mode/solver/provenance fields are preserved.
 
-Each slot charges the original 128-byte allowance plus its eight-byte insertion
-generation. The configured memory budget also reserves three native pointer
+Each slot charges the original 128-byte logical allowance plus the actual
+nonnegative carrier-size growth from insertion identity, including padding.
+Private layout-only types preserve the complete prior state/slot shape; they
+are never instantiated or used as cache state. The portable const conversion
+checks its round trip before adding the delta; overflow saturates to a charge
+that memory admission refuses. The measured native layout grows from 80 to 96
+bytes, so this charge adds 16 bytes rather than only the eight-byte field
+([#486](https://github.com/Chelis-Lang/sail/issues/486)). This does not establish
+an allocator/RSS bound or quantify spare margin in the original allowance.
+The configured memory budget also reserves three native pointer
 words for the additional retained tier endpoint metadata (24 bytes on the
 supported 64-bit hosts). Queue cost adds the actual `size_of` carrier difference
 between prepared and raw candidate records; it is not guessed from selected
@@ -102,7 +110,9 @@ fields. Read hits retain the existing value Arc clone but add no endpoint clone.
 The original five-slot LRU fixture includes the newly charged fixed metadata,
 retaining every eviction/count/budget assertion. New boundary tests reject a
 reply just above the usable quarter limit and a second queued record whose
-handle metadata exceeds the original queue budget. These tests are unrun.
+handle metadata exceeds the original queue budget. The original source candidate's
+104 cache/daemon tests pass; the layout correction adds an actual-type admission
+regression and a separate undercharged native mutation control, pending execution.
 Allocator bookkeeping and RSS are not this logical budget. Layout, cost and
 conformance are unmeasured; no performance result is claimed.
 

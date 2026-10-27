@@ -269,6 +269,14 @@ def candidate_memory_policy(source: str) -> None:
         "candidate memory cannot replace or fabricate its endpoint")
     require(occurrences(["Accounting", ":", ":", "empty", "("]) == 1,
         "candidate accounting must initialize only once in a fresh Inner")
+    for kind, name in (("enum", "StateBeforeGeneration"), ("struct", "SlotBeforeGeneration")):
+        declarations = [i for i in range(len(stream) - 1)
+            if values[i:i + 2] == [kind, name]]
+        require(len(declarations) == 1 and declarations[0] > 0
+            and stream[declarations[0] - 1].value == "]",
+            "candidate old layout types must remain private attributed declarations")
+        require(values.count(name) == 2,
+            "candidate old layout types may only describe the original carrier for size_of")
     require(not ({"unsafe", "replace", "swap", "take", "try_unwrap", "into_inner", "cfg", "mod"} & set(values)),
         "candidate memory reset/alias syntax outside reviewed subset")
     for prefix in ("Self", "Default"):

@@ -17,7 +17,7 @@ solver execution established its exact key and payload?
 |---|---|---|
 | Shim publication | `cached.rs::Entry::into_put` and `batch_observed` | The checked local observations become ordinary key, metadata and response bytes on the wire |
 | Protocol PUT | `server.rs::State::put` | HELLO binds solver/mode; reply-shape checks do not establish a prior solver execution |
-| Pending memory | `writer.rs::Writer::submit`, `Memory::insert_pending` | A pending entry is already serveable; persistence is not its first acceptance point |
+| Pending memory | `writer.rs::Writer::submit`, `MemoryTier::prepare` | A pending entry is already serveable; persistence is not its first acceptance point |
 | Disk and recovery | `sail-cache::DiskCache::{put_scoped,get_stamped}`, `persist::write_record` | Key/hash/stamp checks and exact writes preserve candidate data; they do not reconstruct a truthful publication ledger |
 | Shared and bundled imports | `server.rs::{shared_get,keep}`, `sail-cache::{shared,pack}` | Signatures authenticate a publisher's claims; the truth of those claims needs a separate explicit contract |
 | Runtime disk writer | `sail-runtime/src/store.rs` | The distinct `runtime-smt-v1` namespace has its own authority contract and cannot silently become a default shim origin |
@@ -31,7 +31,9 @@ and shared/bundled claims do not supply that membership.
 The architecture-independent [candidate-write refinement plan](cache-write-candidate-refinement.md)
 traces the actual job, disk arguments and same-original-Arc settlement. Its
 stock-library probe rejects the actual Arc identity operation; its replacement
-generation transitions are source-only and unqualified. Candidate fidelity
+generation/accounting transitions have full-root Stock positives and 53 new
+ordinary controls; the complete inherited control union and service qualification
+remain open. Candidate fidelity
 cannot establish solver origin or supply the missing admission capability.
 
 ## Two concrete architectures

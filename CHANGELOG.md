@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Include alignment growth in the cache slot's incremental insertion-generation
+  charge, preserving the original logical 128-byte allowance (#486). The native
+  old 80-byte/new 96-byte observation identifies 8 bytes of omitted padding; corrected
+  source uses the portable actual carrier-size delta. This is not an RSS bound.
 - Route actual cache insertion, settlement and removal counters through the
   source-shared owned-entry accounting operation. Saturating retirement and
   overflow refusal retain existing behavior; map/lock and supplied-charge
