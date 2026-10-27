@@ -1733,8 +1733,38 @@
         {
           "name": "replay-full-output-join-always-refuses",
           "source": "crates/sail-acceptance/src/query_output_owner.rs",
-          "before": "\n                if !replay.complete() || !identity.same_owner(&self.owner,replay.owner()) { return None; }\n                let Some(original) = &self.replayed else { return None; };\n                if original.count() as u128 != replay.total() as u128 { return None; }\n                Some(self)\n            ",
-          "after": "\n                let _ = (replay,identity); None\n            "
+          "before": "\n                if !replay.complete() || !identity.same_owner(&self.owner,replay.owner()) { return None; }\n                let Some(original) = &self.replayed else { return None; };\n                if original.count() as u128 != replay.total() as u128 { return None; }\n                let total = replay.total();\n                if total > self.output.frames() { return None; }\n                let mut ordinal = 0usize;\n                sail_while! { (ordinal < total)\n                    invariant (ordinal <= total, total == replay.served_view().len(),\n                        total <= self.output_view().endpoints().len(),\n                        forall|i:int| 0 <= i < ordinal ==> self.replay_frame_matches(replay,i))\n                    decreases (total-ordinal)\n                    {\n                        let Some(bytes) = self.output.frame_bytes(ordinal) else {\n                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }\n                            return None;\n                        };\n                        if !replay.reproduces_at(ordinal,bytes) {\n                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }\n                            return None;\n                        }\n                        sail_proof! { assert(self.replay_frame_matches(replay,ordinal as int)); }\n                        ordinal += 1;\n                    }\n                }\n                Some(self)\n            ",
+          "after": "\n                if !replay.complete() || !identity.same_owner(&self.owner,replay.owner()) { return None; }\n                let Some(original) = &self.replayed else { return None; };\n                if original.count() as u128 != replay.total() as u128 { return None; }\n                let total = replay.total();\n                if total > self.output.frames() { return None; }\n                let mut ordinal = 0usize;\n                sail_while! { (ordinal < total)\n                    invariant (ordinal <= total, total == replay.served_view().len(),\n                        total <= self.output_view().endpoints().len(),\n                        forall|i:int| 0 <= i < ordinal ==> self.replay_frame_matches(replay,i))\n                    decreases (total-ordinal)\n                    {\n                        let Some(bytes) = self.output.frame_bytes(ordinal) else {\n                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }\n                            return None;\n                        };\n                        if !replay.reproduces_at(ordinal,bytes) {\n                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }\n                            return None;\n                        }\n                        sail_proof! { assert(self.replay_frame_matches(replay,ordinal as int)); }\n                        ordinal += 1;\n                    }\n                }\n                None\n            "
+        },
+        {
+          "name": "replay-prefix-retained-reproduction",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "if !replay.reproduces_at(ordinal,bytes)",
+          "after": "if false"
+        },
+        {
+          "name": "replay-prefix-original-output-ordinal",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "self.output.frame_bytes(ordinal)",
+          "after": "self.output.frame_bytes(0)"
+        },
+        {
+          "name": "replay-prefix-original-served-ordinal",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "replay.reproduces_at(ordinal,bytes)",
+          "after": "replay.reproduces_at(0,bytes)"
+        },
+        {
+          "name": "replay-prefix-original-frame-bytes",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "Some(&self.bytes[start..end])",
+          "after": "Some(&self.bytes[0..end-start])"
+        },
+        {
+          "name": "replay-prefix-reproduction-cannot-ignore-bytes",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "self.served[ordinal].reproduced_by(actual)",
+          "after": "true"
         }
       ]
     },

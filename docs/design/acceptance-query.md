@@ -242,8 +242,14 @@ order. Native framing refusal calls its checked permanent-refusal operation.
 only when comparisons are complete, its original drained suppression count
 equals the original served count, and the original opaque owners match through
 the existing `OwnerIdentity` contract. Equal counts from another child cannot
-substitute. The native caller still must supply its real buffer slice and lease;
-that process/read correspondence remains unproved native source.
+substitute. The join additionally visits every original suppressed ordinal in
+the completed output, borrows its exact retained endpoint interval and rechecks
+that interval against the original served receipt's mechanical reproduction
+predicate. Its postcondition states that relation for every suppressed position.
+Completed comparisons against unrelated bytes cannot substitute even with the
+same owner and count ([#457](https://github.com/Chelis-Lang/sail/issues/457)).
+The native process/read correspondence still must establish that this retained
+output came from the actual endpoint; that physical origin remains unproved.
 
 This theorem is correspondence to the existing mechanical comparison policy.
 It does not assert semantic equivalence of arbitrary `(:...)` lists. Charter
@@ -265,12 +271,18 @@ native accounting facts, not a proved RSS bound; allocator overhead and runtime
 cost remain unmeasured. Retaining commands and checking their framing adds work
 and can reach the existing recording/overflow bounds earlier.
 
-The candidate appends 22 ordinary controls to the 134 inherited query controls,
+The candidate appends 27 ordinary controls to the 134 inherited query controls,
 including complete mint/comparison/join always-refuse controls, original byte
 and order substitutions, sticky divergence and wrong-owner/count joins.
 Constructive paths exercise a nonempty exact/statistics history and the actual
-stdout completion join. Three native tests cover minting, owner/count/comparison
-joins and retained allocation accounting. They are not executed evidence.
+stdout completion join. A nonempty refusal witness completes an unsat comparison
+but retains sat stdout with the same owner/count, then requires refusal.
+Four native tests cover minting, owner/count/comparison joins, different actual
+stdout and retained allocation accounting. They are not executed evidence.
+The full-factory always-refuse mutation preserves the new prefix loop and its
+obligations. Qualification of the #457 relation, witness and all controls is
+pending. The recheck adds another bounded prefix scan without storing duplicate
+response payloads; its runtime cost remains unmeasured.
 The query driver now has twenty actual files; its old verified count and full
 function list remain intentionally unchanged pending actual whole-positive
 discovery. Inputs/authority controls and inventories remain unchanged, including

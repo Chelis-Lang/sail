@@ -138,6 +138,15 @@ completion join. Qualification remains pending. Its statistics shape exception
 does not establish arbitrary statistics equivalence, truthful origins or numeric
 effort/reason semantics; these remain part of #371/#372.
 
+The candidate replay completion join originally checked comparison completion,
+owner and count without relating comparison arguments to retained stdout
+([#457](https://github.com/Chelis-Lang/sail/issues/457)). The source correction
+directly rechecks each original suppressed frame against its served receipt.
+The same-owner/count but unsat-compared/sat-retained refusal witness and all
+controls still need whole-root/native qualification. This finding concerns the
+missing desired relation, not a demonstrated runtime false verdict or violation
+of the earlier postcondition.
+
 The shared [MCP/API presentation override](design/acceptance-authority.md#success-presentation-call-graph)
 preserves existing verdict/establishment behavior. Proof/native qualification
 is pending; the helper establishes no request/process/cache authority and

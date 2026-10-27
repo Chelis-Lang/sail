@@ -214,6 +214,17 @@ sail_code! {
                 ensures (out == self.checked_view()) { self.checked }
         }
         sail_method! {
+            /// Recheck a retained stdout prefix slice against its original
+            /// served ordinal, independently of earlier compare arguments.
+            pub fn reproduces_at(&self, ordinal: usize, actual: &[u8]) -> (accepted: bool)
+                requires (true)
+                ensures (accepted == (ordinal < self.served_view().len()
+                    && self.served_view()[ordinal as int].reproduces(actual@)))
+            {
+                ordinal < self.served.len() && self.served[ordinal].reproduced_by(actual)
+            }
+        }
+        sail_method! {
             /// Sticky divergence observed by the native kill/forwarding path.
             pub fn diverged(&self) -> (out: bool) requires (true)
                 ensures (out == self.diverged_view()) { self.diverged }

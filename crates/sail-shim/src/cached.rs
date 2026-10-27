@@ -2808,6 +2808,30 @@ mod tests {
     }
 
     #[test]
+    fn replay_join_refuses_same_owner_count_with_different_retained_stdout() {
+        use sail_acceptance::query_output_owner::StreamOutput;
+        use sail_acceptance::query_replay::{Replay, ServedReply};
+        let owner = std::sync::Arc::new(());
+        let served = [ServedReply::new(b"(check-sat)", b"unsat\n".to_vec(), None)];
+        let mut replay = Replay::new(&served, std::sync::Arc::clone(&owner));
+        assert!(replay.compare(b"unsat\n"));
+        assert!(replay.complete());
+        let mut output = StreamOutput::new_replayed(std::sync::Arc::clone(&owner), 1);
+        output.append(b"sat\n");
+        assert!(output.frame(0, 4).is_some());
+        assert!(!output.advance_replay());
+        output.end();
+        let Some(output) = output.seal() else {
+            unreachable!("complete literal actual stdout frame");
+        };
+        assert!(
+            output
+                .with_replay(&replay, &super::SolverOwnerIdentity)
+                .is_none()
+        );
+    }
+
+    #[test]
     fn plausibility_by_command() {
         use super::plausible;
         assert!(plausible(b"(echo \"<<DONE>>\")", b"<<DONE>>\n"));

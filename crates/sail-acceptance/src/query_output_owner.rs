@@ -230,18 +230,40 @@ sail_code! {
     impl<Owner> CompletedStream<Owner> {
         sail_method! {
             /// Join completed comparisons to this actual stdout suppression
-            /// cursor. Equal counts alone cannot replace comparison completion.
+            /// cursor and recheck every actual retained suppressed frame.
             pub fn with_replay<Identity>(self, replay: &crate::query_replay::Replay<'_, Owner>, identity: &Identity) -> (out: Option<Self>)
                 where (Identity: OwnerIdentity<Owner>)
                 requires (true)
                 ensures (out.is_some() == (replay.complete_view()
                     && self.replayed_view() == Some(replay.served_view().len())
-                    && Identity::identity(&self.owner_view()) == Identity::identity(&replay.owner_view())),
+                    && Identity::identity(&self.owner_view()) == Identity::identity(&replay.owner_view())
+                    && self.replay_prefix_matches(replay)),
                     out.is_some() ==> out.unwrap() == self)
             {
                 if !replay.complete() || !identity.same_owner(&self.owner,replay.owner()) { return None; }
                 let Some(original) = &self.replayed else { return None; };
                 if original.count() as u128 != replay.total() as u128 { return None; }
+                let total = replay.total();
+                if total > self.output.frames() { return None; }
+                let mut ordinal = 0usize;
+                sail_while! { (ordinal < total)
+                    invariant (ordinal <= total, total == replay.served_view().len(),
+                        total <= self.output_view().endpoints().len(),
+                        forall|i:int| 0 <= i < ordinal ==> self.replay_frame_matches(replay,i))
+                    decreases (total-ordinal)
+                    {
+                        let Some(bytes) = self.output.frame_bytes(ordinal) else {
+                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }
+                            return None;
+                        };
+                        if !replay.reproduces_at(ordinal,bytes) {
+                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }
+                            return None;
+                        }
+                        sail_proof! { assert(self.replay_frame_matches(replay,ordinal as int)); }
+                        ordinal += 1;
+                    }
+                }
                 Some(self)
             }
         }
@@ -251,6 +273,19 @@ sail_code! {
             pub closed spec fn complete(&self) -> bool { self.output.complete() }
             pub closed spec fn replayed_view(&self) -> Option<nat> {
                 match self.replayed {Some(replayed)=>Some(replayed.count_view()),None=>None}
+            }
+            pub open spec fn replay_frame_matches(&self, replay: &crate::query_replay::Replay<'_,Owner>, ordinal: int) -> bool {
+                if !(0 <= ordinal < replay.served_view().len()) {false}
+                else {
+                    crate::query_output::frame_interval(self.output_view().view(),self.output_view().endpoints(),ordinal)
+                    && replay.served_view()[ordinal].reproduces(self.output_view().view().subrange(
+                        crate::query_output::frame_start(self.output_view().endpoints(),ordinal),
+                        self.output_view().endpoints()[ordinal] as int))
+                }
+            }
+            pub open spec fn replay_prefix_matches(&self, replay: &crate::query_replay::Replay<'_,Owner>) -> bool {
+                replay.served_view().len() <= self.output_view().endpoints().len()
+                    && forall|i:int| 0 <= i < replay.served_view().len() ==> self.replay_frame_matches(replay,i)
             }
         }
         sail_method! {
@@ -624,5 +659,33 @@ sail_verified! {
         let Some(output) = output.seal() else { return false; };
         if !replay.compare(&bytes) { return false; }
         output.with_replay(&replay,identity).is_some()
+    }
+}
+
+sail_verified! {
+    /// Same owner/count and completed comparisons cannot substitute unrelated
+    /// bytes for the actual completed stdout prefix (#457).
+    #[allow(clippy::byte_char_slices, reason = "Literal unsat/sat frames expose the concrete different-output refusal witness.")]
+    pub fn different_compared_stdout_refused<Identity>(owner: u64, identity: &Identity) -> (refused: bool)
+        where (Identity: OwnerIdentity<u64>)
+        requires (true) ensures (refused)
+    {
+        let cached = [b'u',b'n',b's',b'a',b't',b'\n'];
+        let actual = [b's',b'a',b't',b'\n'];
+        let served = [crate::query_replay::ServedReply::new(b"(check-sat)",crate::inputs::copy_bytes(&cached),None)];
+        let mut replay = crate::query_replay::Replay::new(&served,owner);
+        if !replay.compare(&cached) { return false; }
+        let mut output = StreamOutput::new_replayed(owner,1);
+        output.append(&actual);
+        sail_proof! {
+            assert(crate::query::response_trim(actual@,0,3));
+            assert(crate::query::response_span(actual@,0,3));
+            assert(crate::query::response_shape(actual@));
+            assert(output.output_view().view().subrange(0,4) =~= actual@);
+        }
+        if output.frame(0,4).is_none() || output.advance_replay() { return false; }
+        output.end();
+        let Some(output) = output.seal() else { return false; };
+        output.with_replay(&replay,identity).is_none()
     }
 }
