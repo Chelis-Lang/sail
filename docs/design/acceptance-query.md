@@ -1667,3 +1667,9 @@ isolated branch plans 493 unique cases or 502 partitioned calls. The inherited
 counts, whole-root/native/control qualification and conformance remain pending.
 No dependency edge, architecture selection, trusted primitive or wire token is
 introduced. Native physical/terminal boundaries and the CI policy remain open.
+
+The old native `ReplayCheck::new` and `complete` forwarding helpers are now
+fixture-only, with bodies retained, because the actual chunk loop uses the
+checked owner factory/completion getter. The native terminal `diverged`,
+`settle_observed` and `finish` paths stay unchanged. Actual caller compilation,
+not merely the SMT library fixture, is required before qualification.
