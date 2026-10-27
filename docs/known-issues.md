@@ -21,7 +21,10 @@ fixture passes; the combined native workspace still requires qualification.
 The option-state candidate adds nineteen ordinary controls to the inherited
 115 query controls. Complete discovery at `069e91f6` passes query 441/776,
 inputs 308/538 and authority 498/878 with all previous functions and final
-source/runtime rechecks. The expanded ordinary-control matrix remains pending.
+source/runtime rechecks. Later combined replay/presentation discovery at
+`e57f065f` passes query 471/821, inputs 308/538 and authority 502/883, again
+retaining all previous functions and final checks. Its 395 unique planned
+cases still need all 392 ordinary negatives and native/differential gates.
 Its existing assembly/private-token source fixture
 omits the required option module (#458); the source correction adds that
 fixture input and retains every original mutation. Native integration exposes a missing production
@@ -141,13 +144,15 @@ all service consumers remain separate obligations. See the
 
 The [scalar-option candidate](design/acceptance-query.md#scalar-policy-option-readback-candidate)
 checks original raw option fields and persistent native Session readback for
-`:print-success` and `:rlimit`; direct-stock and native qualification remain
-pending. It does not establish pinned-solver defaults, option/alias/reset
+`:print-success` and `:rlimit`; complete stock-positive discovery passes,
+while ordinary controls and combined native qualification remain pending.
+It does not establish pinned-solver defaults, option/alias/reset
 semantics or the complete SMT interpretation required by #371.
 
 The [served-byte replay candidate](design/acceptance-query.md#original-served-byte-replay-comparison-candidate)
 adds the actual mechanical comparison/count transition and a same-owner stdout
-completion join. Qualification remains pending. Its statistics shape exception
+completion join. Complete stock-positive discovery passes; ordinary controls
+and native qualification remain pending. Its statistics shape exception
 does not establish arbitrary statistics equivalence, truthful origins or numeric
 effort/reason semantics; these remain part of #371/#372.
 
@@ -155,14 +160,16 @@ The candidate replay completion join originally checked comparison completion,
 owner and count without relating comparison arguments to retained stdout
 ([#457](https://github.com/Chelis-Lang/sail/issues/457)). The source correction
 directly rechecks each original suppressed frame against its served receipt.
-The same-owner/count but unsat-compared/sat-retained refusal witness and all
-controls still need whole-root/native qualification. This finding concerns the
+The same-owner/count but unsat-compared/sat-retained refusal witness passes
+complete stock-positive discovery at `e57f065f`; controls and native
+qualification remain pending. This finding concerns the
 missing desired relation, not a demonstrated runtime false verdict or violation
 of the earlier postcondition.
 
 The shared [MCP/API presentation override](design/acceptance-authority.md#success-presentation-call-graph)
-preserves existing verdict/establishment behavior. Proof/native qualification
-is pending; the helper establishes no request/process/cache authority and
+preserves existing verdict/establishment behavior. Its whole authority positive
+passes at `e57f065f`; ordinary controls and native qualification remain pending.
+The helper establishes no request/process/cache authority and
 does not close #376's remaining shaping and serialization joins.
 
 ## Performance

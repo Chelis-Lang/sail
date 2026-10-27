@@ -58,12 +58,29 @@ use the same 120-second limit, one thread, default resources and complete roots;
 final source/runtime rechecks pass. Root times are 33.110 s, 31.395 s and
 20.976 s on the same native `c7i.4xlarge`. The closed positive report SHA-256 is
 `80829df588f1cad425d1249ab606017c5551a80a9dfd68ec185bbeffa6b817cf`.
-The manifest freezes these actual inventories. The current 359-case matrix
+The option-only manifest freezes these actual inventories. Its 359-case matrix
 (three positives plus 134/115/107 controls), workspace, solver and differential
 gates remain pending; the earlier c44 result covers its exact 115 query controls.
 The reviewed
 scope correction retains the complete validator loops while mutating acceptance
 exits (#454), and the completion fixture preserves the actual ten phases (#453).
+
+The combined replay/presentation source passes complete positive discovery at
+`e57f065f`: query 471 verified obligations and 821 function entries, inputs
+308/538, authority 502/883, with every prior function retained and final
+source/runtime checks. The report SHA-256 is
+`92bc5c3b953207b84fe8bf37405cfc7d63fdb96dc0ec0f0eaf9bceec891230ce`.
+Both complete source suites pass at the preceding `0a3a7f2c` checkpoint:
+12 model and 53 production tests, retaining every earlier test. Later changes
+only instantiate literal/framing/partition facts in the full constructive
+witnesses, leaving executable operations, contracts and all control objects
+unchanged. The manifest locks the actual combined inventories. Its 395 unique
+planned cases (three whole positives plus 161/115/116 ordinary negatives) remain
+pending. Qualification uses four existing partitions per component, components
+sequenced: 404 actual calls include twelve repeated whole positives. Each
+individual report remains incomplete; the exact all-component union requires
+separate identity, function, obligation and ordinary-failure audits. This is
+not a single unpartitioned run or a service theorem.
 
 Native integration corrects the production `Duration` import (#455), renames
 two payload locals and uses `AtomicUsize::try_update` with the same SeqCst
@@ -150,6 +167,8 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `fdd05dcc` | Combined replay/presentation discovery | Literal framing/statistics and positive compared-stdout factory witnesses pass; only the final different-output refusal postcondition remains unproved. Instantiate the original exact receipt and sealed frame interval/bytes; no executable, predicate, control or resource change and no expanded inventory locked |
+| 2026-10-26 | `0a3a7f2c` | Combined replay/presentation discovery | All 12 model and 53 production source selftests pass; whole query reports six constructive-witness diagnostics in three new replay/output factories. Instantiate exact literal name/list framing and existing transcript partition facts without changing execution, contracts, controls or limits; input/authority discovery and the planned 395-case matrix remain unrun |
 | 2026-10-26 | `c87877d8` | Expanded whole-positive discovery | Ordinary and reset-assertions preservation witnesses pass. The final reset relation still needs the same explicit original-head existential instance; no expanded inventory, negative matrix or final-root qualification claimed |
 | 2026-10-26 | `b74bcb06` | Expanded whole-positive discovery | Exact reset head bytes pass; the two ordinary preservation instances still need explicit original-head existential witnesses and non-setter/non-reset name facts. No contracts or scope are changed; all later roots/controls remain unrun |
 | 2026-10-26 | `fe8d021f` | Expanded whole-positive discovery | Both actual setter witnesses pass; constructive ordinary/reset-assertions success exits remain unproved. Instantiate unchanged preservation/reset relations for the remaining literal history; retain all executable calls and do not weaken the full always-refuse control |

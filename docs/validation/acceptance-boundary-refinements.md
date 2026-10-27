@@ -9,6 +9,8 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `720e461e` | Lossless-conversion follow-up repeats all three complete positives at the exact locked sets: 471/821, 308/538 and 502/883, with final source/runtime checks | The component-sequenced partition matrix is running; no complete-control union, native workspace, conformance or service result yet |
+| `e57f065f` | Complete combined native positives pass: query 471/0 (821 functions), inputs 308/0 (538), authority 502/0 (883); every earlier function retained and final source/runtime checks pass | Actual inventories locked. All 392 ordinary negatives in the 395 unique planned cases remain pending; component partitions repeat positives and require an exact union audit. Native/differential gates and all six service obligations remain open |
 | `0a3a7f2c` native workspace | Strict gate reaches compilation and refuses one `cast_lossless` diagnostic at the replay join's u64-to-u128 comparison | No native tests or solver stage ran. The source correction uses the equivalent supported `u128::from` conversion and retains every guard and exact mutation context; fresh qualification remains required |
 | `6a4e5b86` authority diagnostics | 2026-10-27: all three canonical selected partitions pass, each with the entire authority positive 498/0 and all 878 functions; controls 76, 97 and 98 each fail ordinary verification at 497 verified plus one error | Identical source/runtime/compiler across six calls; default resources and final checks retained. Three of 107 controls only, not a complete component or suite; no native/workspace or broader service credit |
 | `1b7015c8` authority diagnostic | 2026-10-27: complete authority positive passes 498/0 with all 878 functions; the genuine singleton-refusal mutation retains 497 verified plus one error | It still reaches rlimit when the wrong shortcut follows eager proof unfolding. No negative control qualifies; the next variant places the identical wrong runtime shortcut before that existing erased reveal |
@@ -144,13 +146,17 @@ native adapter sources explicitly without claiming those bodies are proved.
 The combined source retains every inherited control and plans 395 cases:
 three whole positive roots and 392 ordinary failing controls (161 query,
 115 input and 116 authority). Its actual compiled file inventories contain
-20, 9 and 14 files respectively. The manifest retains the last successful
-option-only inventories from `069e91f6`: query 441/776, inputs 308/538 and
-authority 498/878 (verified/function entries), with final source/runtime checks
-and every prior function retained. Those counts do not qualify the later replay
-and presentation bodies; new complete-root discovery must extend them before
-canonical qualification. That separate positive report SHA-256 is
-`80829df588f1cad425d1249ab606017c5551a80a9dfd68ec185bbeffa6b817cf`.
+20, 9 and 14 files respectively. The manifest locks complete positive discovery
+at `e57f065f`: query 471/821, inputs 308/538 and authority 502/883
+(verified/function entries), with final source/runtime checks and every prior
+function retained. Its report SHA-256 is
+`92bc5c3b953207b84fe8bf37405cfc7d63fdb96dc0ec0f0eaf9bceec891230ce`.
+The preceding option-only `069e91f6` positive inventories were 441/776,
+308/538 and 498/878. Four existing partitions per component, components
+sequenced, will check 404 actual calls: twelve repeated complete positives
+and all 392 distinct negatives. Individual reports remain incomplete; the
+exact all-component union needs independent scope/identity audits and does
+not constitute one unpartitioned run or a service theorem.
 The prior 340-case candidate used query 431/759. Its complete
 `f8d61408` positive report SHA-256 is
 `30822d09dcc90b76c315fd3ec8fa392af478b7b20def6d9e56e7d5e60cc36876`;
@@ -645,3 +651,13 @@ and `824d01d2a8307efd39088f4f03e404e5f7b56859ae2a81e0ad5840efc66d6201`.
 These are actual execution counterexamples, separate from component proof
 passes. Main `920ce606` has the same injected-environment path by source
 inspection; its binary has not been qualified against these fixtures.
+
+The failed combined `0a3a7f2c` attempts are retained separately. Native early
+gate: `experiments/2026-10-27/acceptance-combined-0a3a7f2c-native-early.tgz`,
+SHA-256 `5d79dd2fc4142e5d4d8b3ba505fe6b913b07c7e7978ea09c81b51181e1a676ee`
+(6,757,774 bytes). Source/discovery attempt:
+`experiments/2026-10-27/acceptance-combined-0a3a7f2c-discovery.tar`, SHA-256
+`8d30c425048eaca0bcf127b31da527621677bb5d1d0bc6d8b98923ac2ee91e13`
+(8,212,480 bytes). Independent S3 GET/hash passes for both. The discovery
+archive includes the complete source bundle; its constructive proof failures
+do not supply a successful final report or negative credit.

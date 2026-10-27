@@ -50,9 +50,11 @@ proofs of those native bodies.
 The combined planned matrix is 395 cases: three whole positive roots and
 161 query, 115 input and 116 authority ordinary negative controls. Actual Stock
 assemblies contain 20, 9 and 14 compiled files. Every inherited function and
-control remains required. The manifest retains prior successful inventories
-until whole-root discovery supplies the new exact function sets and counts;
-that deliberate mismatch must refuse canonical qualification, never be waived.
+control remains required. The manifest locks combined discovery at `e57f065f`: 471/821, 308/538 and
+502/883 verified/function entries, retaining every prior function. Exact-head
+`720e461e` repeats those sets after the lossless conversion, with final
+source/runtime checks. Its partition matrix is still running; no complete
+negative union is established yet. Inventory mismatches must never be waived.
 
 Actual existing evidence remains separate:
 
@@ -65,6 +67,12 @@ Actual existing evidence remains separate:
   inputs 308/538 and authority 498/878, retaining every earlier function with
   final source/runtime checks. This does not qualify later replay/presentation
   bodies or the expanded negative matrix.
+- `e57f065f` and `720e461e`: complete combined discovery passes query
+  471/821, inputs 308/538 and authority 502/883, with every prior function
+  retained and final source/runtime checks. The full negative union is pending.
+- `6a4e5b86`: three selected authority diagnostics each pass the whole 498/878
+  positive and one ordinary negative, including the genuine full-factory
+  refusal. This is incomplete-component evidence.
 - Native budget regression compiles and fails before the carrier fix, then
   passes after it; all 28 cached-session native tests pass separately. The
   option source suite passes all 50 tests at its frozen checkpoint. Neither
