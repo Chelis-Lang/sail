@@ -437,24 +437,32 @@ sail_spec! {
 sail_verified! {
     /// Nonempty actual owner append preserves complete ordered emissions
     /// across a pending-atom chunk boundary, including delimiter reprocessing.
+    #[allow(clippy::byte_char_slices, reason = "Keep explicit original byte carriers visible to Stock and nonempty owner-inventory controls.")]
     pub fn append_items_control<Host>(prefix: Prefix<Host>) -> (passed: bool)
         where (Host: HashHost)
         requires (prefix.exact(),prefix.length() == 0)
         ensures (passed)
     {
+        let first=[b'a',b'b'];
+        let following=[b')',b'c',b')'];
+        let expected=[b'a',b'b',b')',b'c',b')'];
         sail_proof! {
-            assert(crate::query_split::model_scan((0u8,Seq::<u8>::empty(),0int),true,0,b"ab"@)
-                == ((2u8,b"ab"@,0int),seq![])) by { reveal_with_fuel(crate::query_split::model_scan,3); }
-            assert(crate::query_split::model_scan((2u8,b"ab"@,0int),true,2,b")c)"@)
-                == ((0u8,Seq::<u8>::empty(),0int),seq![(crate::query_split::ItemKind::Atom,0int,b"ab"@),
-                    (crate::query_split::ItemKind::Stray,2int,b")"@),(crate::query_split::ItemKind::Atom,3int,b"c"@),
-                    (crate::query_split::ItemKind::Stray,4int,b")"@)])) by { reveal_with_fuel(crate::query_split::model_scan,4); }
+            assert(crate::query_split::model_scan((0u8,Seq::<u8>::empty(),0int),true,0,first@)
+                == ((2u8,first@,0int),seq![])) by { reveal(crate::query_split::model_step); reveal(crate::query_split::idle_model);
+                reveal(crate::query_split::atom_ends); reveal(crate::query_split::terminated_atom);
+                reveal(crate::query::word_delimiter); reveal_with_fuel(crate::query_split::model_scan,3); }
+            assert(crate::query_split::model_scan((2u8,first@,0int),true,2,following@)
+                == ((0u8,Seq::<u8>::empty(),0int),seq![(crate::query_split::ItemKind::Atom,0int,first@),
+                    (crate::query_split::ItemKind::Stray,2int,seq![b')']),(crate::query_split::ItemKind::Atom,3int,seq![b'c']),
+                    (crate::query_split::ItemKind::Stray,4int,seq![b')'])])) by { reveal(crate::query_split::model_step); reveal(crate::query_split::idle_model);
+                reveal(crate::query_split::atom_ends); reveal(crate::query_split::terminated_atom);
+                reveal(crate::query::word_delimiter); reveal_with_fuel(crate::query_split::model_scan,4); }
         }
         let mut owner=QueryPrefix::new(prefix);
-        let none=owner.append_items(b"ab");
+        let none=owner.append_items(&first);
         sail_proof! { assert(crate::query_split::item_models(none@).len() == none@.len()); }
         if !none.is_empty() { return false; }
-        let items=owner.append_items(b")c)");
+        let items=owner.append_items(&following);
         sail_proof! { assert(crate::query_split::item_models(items@).len() == items@.len()); }
         if items.len() != 4 { return false; }
         matches!(items[0].kind,crate::query_split::ItemKind::Atom)
@@ -466,6 +474,6 @@ sail_verified! {
             && items[2].offset == 3 && items[2].bytes.len() == 1 && items[2].bytes[0] == b'c'
             && matches!(items[3].kind,crate::query_split::ItemKind::Stray)
             && items[3].offset == 4 && items[3].bytes.len() == 1 && items[3].bytes[0] == b')'
-            && !owner.has_pending_item() && crate::inputs::byte_eq(owner.bytes(),b"ab)c)")
+            && !owner.has_pending_item() && crate::inputs::byte_eq(owner.bytes(),&expected)
     }
 }

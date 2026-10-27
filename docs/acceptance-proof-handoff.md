@@ -85,6 +85,16 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+At `3c3725c3`, the whole root progresses to 517 verified/4 failed functions and
+913 query entries, retaining all 837 old entries with no resource marker and
+final guards passing. No new positive lock is claimed. Original-item transport
+through extended raw prefixes and scoped finite scalar facts target the remaining
+obligations; identical explicit byte arrays keep constructive bytes/assertions
+visible. All 190 controls/contracts/resources stay required. The lead has now
+independently verified the closed twelve-archive object's GET/hash/all nested
+hashes and all 22 bounded verifier results; the newer failed attempt is retained
+separately, without wider qualification.
+
 At `3f7779b4`, complete query verification observes 505 verified/11 failed
 functions and 908 actual query entries, with all 837 prior entries retained, no
 resource marker and final guards passing. No new inventory is locked. Exact

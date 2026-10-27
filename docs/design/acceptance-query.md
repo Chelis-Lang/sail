@@ -298,6 +298,16 @@ operation, loop VC and resource setting; full-function mutants carry the same
 proof scope and unchanged intended runtime substitutions. Full-root rerun and
 all 190 ordinary controls remain required.
 
+The next whole run at `3c3725c3` clears the initial/existential, first-close and
+ordered trace obligations, observing 517 verified/4 failed functions with 913
+query entries and all 837 prior entries retained. No resource marker appears;
+final guards pass. No complete positive/count lock follows from this refusal.
+The remaining candidate adds original-item monotonicity across the actual next
+chunk prefix and scoped scalar facts. Its two constructive byte carriers become
+explicit arrays with identical bytes and assertions, following the qualified
+kernel pattern; no production byte, policy, predicate or resource is changed.
+All 190 controls remain, with full-mutant scopes and loop annotations preserved.
+
 ### Scalar policy-option readback candidate
 
 `query_options.rs` adds a source-shared candidate for the raw `:print-success`

@@ -657,6 +657,21 @@ sail_spec! {
         requires 0 <= start <= end <= history.len(),
         ensures (history+tail).subrange(start,end) == history.subrange(start,end),
     { assert((history+tail).subrange(start,end) =~= history.subrange(start,end)); }
+    proof fn original_item_append(item:Item,history:Seq<u8>,tail:Seq<u8>,input:bool)
+        requires original_item(item,history,input),
+        ensures original_item(item,history+tail,input),
+    {
+        prefix_slice_append(history,item.offset as int,item.offset as int+item.bytes@.len(),tail);
+    }
+    proof fn original_items_append(items:Seq<Item>,floor:int,history:Seq<u8>,tail:Seq<u8>,input:bool)
+        requires 0 <= floor <= items.len(),
+            forall|i:int| floor <= i < items.len() ==> original_item(items[i],history,input),
+        ensures forall|i:int| floor <= i < items.len() ==> original_item(items[i],history+tail,input),
+    {
+        assert forall|i:int| floor <= i < items.len() implies original_item(items[i],history+tail,input) by {
+            original_item_append(items[i],history,tail,input);
+        }
+    }
     /// The original delimiter-only CR trim removes one final suffix byte.
     proof fn suffix_drop_last(history:Seq<u8>,start:int)
         requires 0 <= start < history.len(),
@@ -884,6 +899,17 @@ sail_code! {
                                     assert(data@.subrange(_chunk_start as int,data@.len() as int).take(consumed as int)
                                         =~= data@.subrange(_chunk_start as int,cursor as int));
                                 }
+                                sail_proof! {
+                                    assert forall|history:Seq<u8>| self.matches(history) implies
+                                        forall|i:int| items@.len() <= i < appended@.len() ==>
+                                            original_item(appended@[i],history+data@.take(cursor as int),self.input) by {
+                                        assert((history+data@.take(_chunk_start as int))
+                                            +data@.subrange(_chunk_start as int,cursor as int)
+                                            =~= history+data@.take(cursor as int));
+                                        original_items_append(appended@,items@.len() as int,history+data@.take(_chunk_start as int),
+                                            data@.subrange(_chunk_start as int,cursor as int),self.input);
+                                    }
+                                }
                                 let mut position=current.position; position.advance(consumed as u64);
                                 let state=match step {
                                     ListStep::Pending(next) => {
@@ -918,7 +944,17 @@ sail_code! {
                             }
                             state => {
                                 let (next,first,second)=Self { input:current.input,state,position:current.position }.step(data[cursor]);
-                                sail_proof! { item_models_facts(appended@); }
+                                sail_proof! {
+                                    assert forall|history:Seq<u8>| self.matches(history) implies
+                                        forall|i:int| items@.len() <= i < appended@.len() ==>
+                                            original_item(appended@[i],history+data@.take(_chunk_start as int+1),self.input) by {
+                                        assert((history+data@.take(_chunk_start as int))+seq![data@[_chunk_start as int]]
+                                            =~= history+data@.take(_chunk_start as int+1));
+                                        original_items_append(appended@,items@.len() as int,history+data@.take(_chunk_start as int),
+                                            seq![data@[_chunk_start as int]],self.input);
+                                    }
+                                    item_models_facts(appended@);
+                                }
                                 if let Some(item)=first { appended.push(item); }
                                 sail_proof! { item_models_facts(appended@); }
                                 if let Some(item)=second { appended.push(item); }
@@ -931,6 +967,12 @@ sail_code! {
                                         data@.take(_chunk_start as int),seq![data@[_chunk_start as int]]);
                                 }
                             }
+                        }
+                        sail_proof! {
+                            reveal(StreamSplitter::well_formed);
+                            let ghost history=choose|history:Seq<u8>| self.matches(history);
+                            assert(current.matches(history+data@.take(cursor as int)));
+                            assert(exists|history:Seq<u8>| current.matches(history));
                         }
                     }
                 }
@@ -1007,29 +1049,36 @@ sail_verified! {
 
 sail_verified! {
     /// Actual top-level comment, CRLF, chunk boundary and list fast path.
+    #[allow(clippy::byte_char_slices, reason = "Keep explicit nonempty chunk bytes and lexical boundaries available to Stock without opaque byte-string literals.")]
     pub fn outer_chunks_control() -> (passed: bool)
         requires (true) ensures (passed)
     {
+        let leading=[b';',b'c',b'\r'];
+        let opening=[b'\n',b'('];
+        let following=[b')',b'a',b')'];
         sail_proof! {
-            assert(model_scan((0u8,Seq::<u8>::empty(),0int),true,0,b";c\r"@)
-                == ((0u8,Seq::<u8>::empty(),0int),seq![])) by { reveal_with_fuel(model_scan,4); }
-            assert(model_scan((0u8,Seq::<u8>::empty(),0int),true,3,b"\n("@)
-                == ((3u8,seq![b'('],4int),seq![])) by { reveal_with_fuel(model_scan,3); }
+            assert(model_scan((0u8,Seq::<u8>::empty(),0int),true,0,leading@)
+                == ((0u8,Seq::<u8>::empty(),0int),seq![])) by { reveal(model_step); reveal(idle_model); reveal(atom_ends); reveal(terminated_atom);
+                reveal(crate::query::word_delimiter); reveal_with_fuel(model_scan,4); }
+            assert(model_scan((0u8,Seq::<u8>::empty(),0int),true,3,opening@)
+                == ((3u8,seq![b'('],4int),seq![])) by { reveal(model_step); reveal(idle_model); reveal(atom_ends); reveal(terminated_atom);
+                reveal(crate::query::word_delimiter); reveal_with_fuel(model_scan,3); }
             assert(crate::query::frame_scan(seq![b'(',b')'],true)
                 == (0int,crate::query::FrameLex::Plain)) by {
                 reveal_with_fuel(crate::query::frame_scan,3);
             }
-            assert(model_scan((3u8,seq![b'('],4int),true,5,b")a)"@)
-                == ((0u8,Seq::<u8>::empty(),0int),seq![(ItemKind::List,4int,b"()"@),
-                    (ItemKind::Atom,6int,b"a"@),(ItemKind::Stray,7int,b")"@)])) by { reveal_with_fuel(model_scan,4); }
+            assert(model_scan((3u8,seq![b'('],4int),true,5,following@)
+                == ((0u8,Seq::<u8>::empty(),0int),seq![(ItemKind::List,4int,seq![b'(',b')']),
+                    (ItemKind::Atom,6int,seq![b'a']),(ItemKind::Stray,7int,seq![b')'])])) by { reveal(model_step); reveal(idle_model); reveal(atom_ends); reveal(terminated_atom);
+                reveal(crate::query::word_delimiter); reveal_with_fuel(model_scan,4); }
         }
-        let (first,items)=StreamSplitter::start(true).push_items(b";c\r",Vec::new());
+        let (first,items)=StreamSplitter::start(true).push_items(&leading,Vec::new());
         sail_proof! { item_models_facts(items@); }
         if !items.is_empty() { return false; }
-        let (second,items)=first.push_items(b"\n(",items);
+        let (second,items)=first.push_items(&opening,items);
         sail_proof! { item_models_facts(items@); }
         if !items.is_empty() { return false; }
-        let (last,items)=second.push_items(b")a)",items);
+        let (last,items)=second.push_items(&following,items);
         sail_proof! { item_models_facts(items@); }
         if items.len() != 3 { return false; }
         matches!(items[0].kind,ItemKind::List) && items[0].offset == 4 && items[0].bytes.len() == 2 && items[0].bytes[0] == b'(' && items[0].bytes[1] == b')'
@@ -1108,12 +1157,18 @@ sail_verified! {
             },
         };
         sail_proof! {
+            assert(step_shape(state,out.0,out.1,out.2,byte,input,position));
             assert forall|history:Seq<u8>| state_matches(state,input,position as int,history) implies
                 state_matches(out.0,input,position as int+1,history.push(byte))
                 && optional_original(out.1,history.push(byte),input)
                 && optional_original(out.2,history.push(byte),input) by {
                 assert(history.push(byte) =~= history+seq![byte]);
-                if model(state).0 == 2 || model(state).0 == 3 {
+                if model(state).0 == 0 {
+                    assert(state_matches(out.0,input,position as int+1,history.push(byte)));
+                    assert(optional_original(out.1,history.push(byte),input));
+                } else if model(state).0 == 1 {
+                    assert(state_matches(out.0,input,position as int+1,history.push(byte)));
+                } else if model(state).0 == 2 || model(state).0 == 3 {
                     let start=model(state).2;
                     assert(0 <= start < history.len());
                     suffix_append(history,start,seq![byte]);
@@ -1121,6 +1176,18 @@ sail_verified! {
                     if model(state).0 == 2 && model(state).1.last() == b'\r' {
                         suffix_drop_last(history,start);
                         prefix_slice_append(history,start,history.len() as int-1,seq![byte]);
+                    }
+                    if model(state).0 == 2 {
+                        if atom_ends(byte,input) {
+                            assert(optional_original(out.1,history.push(byte),input));
+                            assert(optional_original(out.2,history.push(byte),input));
+                            assert(state_matches(out.0,input,position as int+1,history.push(byte)));
+                        } else {
+                            assert(state_matches(out.0,input,position as int+1,history.push(byte)));
+                        }
+                    } else {
+                        assert(state_matches(out.0,input,position as int+1,history.push(byte)));
+                        assert(optional_original(out.1,history.push(byte),input));
                     }
                 }
             }
