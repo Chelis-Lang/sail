@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `b94a9f3e` checked byte renderer | Complete authority passes 523/0 across 915 actual entries, retaining all prior functions (23.895 s). Strict API/Verus/CLI Clippy, all 15 selected native tests and source suites 12/67 pass; final source/image/runtime checks pass | Stdout omission control 134 again reaches default rlimit and earns zero credit; moving the same gate earlier did not repair #485. No new renderer negative, full-control/e2e/conformance or service credit |
 | `199e7587` native output and bounded controls | Source suites 12/67, strict API/Verus/CLI Clippy, all 15 selected native tests and the complete original output phase pass. The bounded authority positive and controls 122–133 qualify with full 520/912 scope; final source/image/runtime guards pass | Control 134 reaches default rlimit inside admit_empty_human_output (519 verified/1 failed function, 912 entries) and earns zero credit (#485); 135–136 are unrun. Full authority, e2e/conformance and service qualification remain open |
 | `0df9c812` human-output candidate | Direct pinned Stock passes 520 verified/0 errors and all 912 actual entries, including all 895 prior functions (22.623 s). Strict API/Verus/CLI Clippy, all 15 selected native tests and source suites 12/65 pass; final source/image/runtime checks pass. The original output phase now records and replays empty human output | Output then fails the restored-mtime trace assertion: the specific human invalidation refusal is overwritten by a second proof-cache `miss: no record`. The follow-up preserves that first decision and ordinary fallback. All 136 authority controls, full e2e/conformance and service qualification remain open |
 | `3717e932` empty human-output candidate | Whole authority reaches 519 verified/1 failed function, retains all prior entries, no resource marker and final source/runtime checks pass (21.350 s). Native strict Clippy passes all targets in API/Verus/CLI; all 15 selected no-op/human-output tests pass; source suites pass 12/12 and 65/65. Final source/image checks pass (414.112 s total) | The sole remaining proof failure is finite byte-string prefix/suffix content in the constructive footer witness. No whole-positive lock, negative or e2e/conformance credit. The follow-up uses the pinned verifier's scoped reveal_byteslit builtin; runtime bytes, checks, witness assertions and resource limits are unchanged |
@@ -513,6 +514,16 @@ contracts. Its stdout-omission control still substitutes an empty slice for the
 same original supplied stdout; no check, model, resource or expected rejection
 is removed. New qualification must establish an ordinary failure at default
 resources; source ordering alone is not evidence of a repaired control.
+
+The next #485 candidate separates actual metadata admission into a private-field
+EmptyHumanContext and consumes that checked context in the small byte-attachment
+operation. The original public wrapper retains its full original iff, request,
+readback and output contracts. The context validity definition contains the same
+metadata and non-authority conjunction; scoped opacity changes proof unfolding,
+not its meaning or any executable check. The actual stdout omission targets the
+final attachment, and two full-operation refusal controls are added. Every prior
+control remains required. Fresh positive discovery, ordinary refusal at default
+limits and native qualification remain pending; no assumption or limit is added.
 
 The diagnostic and source-tooling archives are retained under
 `experiments/2026-10-27/acceptance-recording-a73d13c2-native.tgz`
