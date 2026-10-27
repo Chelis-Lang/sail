@@ -550,6 +550,35 @@ class RuntimeControlTests(unittest.TestCase):
         with self.assertRaisesRegex(SOURCE.SourceRefusal, "erased proof"):
             SOURCE.runtime_mutation(source, source, changed)
 
+    def test_runtime_control_cannot_move_proof_across_runtime_assignment(self):
+        for proof in ("sail_proof! { assert(x); }", "proof { assert(x); }"):
+            before = "{ let mut x = true; " + proof + " x = false; true }"
+            source = "sail_method! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"
+            after = "{ let mut x = true; x = false; " + proof + " true && true }"
+            with self.subTest(proof=proof), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "both sides of erased proof"):
+                SOURCE.runtime_mutation(source, before, after)
+            # Moving in the other direction also changes proof context.
+            with self.subTest(reverse=proof), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "both sides of erased proof"):
+                SOURCE.runtime_mutation(source.replace(before, after), after, before)
+
+    def test_runtime_control_refuses_ambiguous_edits_on_both_sides_of_proof(self):
+        before = "{ let x = true; sail_proof! { assert(x); } if x { true } else { false } }"
+        source = "sail_method! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"
+        after = "{ let x = false; sail_proof! { assert(x); } if !x { false } else { true } }"
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "both sides of erased proof"):
+            SOURCE.runtime_mutation(source, before, after)
+        SOURCE.runtime_mutation(source, before, before.replace("let x = true;", "let x = false;"))
+        SOURCE.runtime_mutation(source, before, before.replace("if x", "if !x"))
+
+    def test_runtime_control_refuses_relocation_with_changed_repeated_expressions(self):
+        before = "{ let mut x = true == true; sail_proof! { assert(x); } x = false; true }"
+        source = "sail_method! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"
+        after = "{ let mut x = true; x = false == true; sail_proof! { assert(x); } true && true }"
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "both sides of erased proof"):
+            SOURCE.runtime_mutation(source, before, after)
+
     def test_runtime_control_refuses_bare_verification_syntax(self):
         before = "{ true }"
         source = "sail_verified! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"

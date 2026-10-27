@@ -18,13 +18,33 @@ current implemented scope is:
 
 | Finding | Correction | Evidence and limits |
 |---|---|---|
-| #454, #508, #537 | Preserve function contracts, loop annotations and erased proof groups per executable body; refuse proof-only faults and bare verification statements | All 42 local source tests pass. All 22 existing control objects and 25 captured programs remain unchanged; comparison makes zero Stock calls |
+| #454, #508, #537 | Preserve function contracts, loop annotations, erased proof groups and all but one proof-delimited runtime interval; refuse proof-only faults and bare verification statements | All 45 local source tests pass. All 22 existing control objects and 25 captured programs remain unchanged; comparison makes zero Stock calls |
 | #532 | Accept digits in reviewed proof-import identifiers | Exact import hashes, allowed prefixes and cfg/body refusals remain; covered by source tests |
-| #419 | Resolve configuration homes from the same supplied environment | New supplied-home and CARGO_HOME-precedence native regression is added; native execution remains pending |
+| #419 | Resolve configuration homes from the same supplied environment | Supplied-home and CARGO_HOME-precedence regression passes in the native gate at `9597caad` |
 | #514 | Distinguish the exact `.union(` member expression from an erased declaration | Positive Set union and all erased-declaration/alternate-macro refusals pass |
 | #432 | Match lexer regexes at absolute source positions, avoiding remaining-tail copies | Six lexical span/literal/refusal regressions pass; no token/envelope memoization or new main timing claim |
-| #475 | Separate core/Singular target volumes by physical checkout | Actual-wrapper fixture passes on macOS with a recording Docker substitute; separate checkouts differ, same checkout/alias stay warm. Fresh native integration remains required |
-| #540 | Restore generated-file scenario source and build script before later stock-oracle controls | Native full-local failure reproduced at `d1518341`; correction retains every comparison/assertion and requires a new full local run |
+| #475 | Separate core/Singular target volumes by physical checkout | Actual-wrapper fixture passes on macOS with a recording Docker substitute; separate checkouts differ, same checkout/alias stay warm. Native aggregate uses a fresh physical-checkout target volume |
+| #540 | Restore generated-file scenario source and build script before later stock-oracle controls | Full local native E2E passes at `9597caad`, retaining every comparison/assertion |
+
+Native aggregate `9597caad4e2311b642b7470764376928cbbd426c` passes:
+1,161 Rust tests, solver51, model29, refinement25, full local E2E (all phases
+and extras), and PR conformance. All 25 captured programs equal main byte for
+byte. Host: c7i.4xlarge, x86-64 Linux, us-east-1; core image
+`sha256:85ce0f274de085e47ae6bd297555fa4c43b58e18c6c3c4b392e0c608219899f2`.
+Artifact `acceptance-audit-bugs-9597caad-native.tgz`, 7,023,701 bytes, SHA-256
+`f77e197e5922752d69e61a00d3c50a1dc89430c41592e8ecfb856a180a333f10`;
+source/image and upload/readback guards pass. This source has the same tree as
+`c575471e`; later documentation commits through `08ba9bb6` leave its code
+unchanged. All hosted checks pass at `08ba9bb6`.
+
+Independent review of that head found a remaining source-admission gap: an
+unchanged erased assertion could move past a runtime assignment when a separate
+runtime edit was present. The original 22 registered controls do not do this.
+The candidate now allows runtime edits in only one exact interval between
+unchanged proof groups, with bidirectional relocation and ambiguous repeated-token
+regressions. Multi-interval controls are conservatively refused. Fresh native
+qualification of this correction and full fast/standard conformance are pending;
+the earlier aggregate does not qualify the later checker change.
 
 The #540 failed aggregate passes native gate (1,160 Rust tests), solver51,
 model29 and production refinement25 before the full managed sequence fails;
@@ -36,14 +56,15 @@ source/image and upload/readback guards pass.
 | Date | Source | Gate | Result |
 |---|---|---|---|
 | 2026-10-27 | `d1518341` | Full native local E2E | Failed at ghost-environment stock comparison: generated-file fixture leaked `OUT_DIR` source into an oracle lacking its build script (#540) |
+| 2026-10-27 | `08ba9bb6` | Source admission review | Assertion relocation with a separate runtime edit was admitted; source-only reproduction, no Stock invocation or wrong Sail verdict demonstrated |
 
 Earlier runtime/input fixes already merged in #436, #445, #512 and #515 are
 not reintroduced by this extraction. Corrections belonging only to unselected
 parser, metadata and cache components remain tracked with those components.
 The independent #534 envelope cache is not a prerequisite. The only production
 Rust change observes supplied configuration homes; no proof source or manifest
-changes. Fresh native/Stock,
-full local E2E and hosted qualification remain pending for this bugfix head.
+changes. The later source-position correction remains subject to the fresh
+qualification described above.
 
 ## Checked source and runtime
 

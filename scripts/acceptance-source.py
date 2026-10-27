@@ -200,7 +200,18 @@ def _executable_envelopes(stream: list[Token]) -> list[tuple[int, int]]:
     return bodies
 
 
-def _runtime_projection(text: str) -> tuple[tuple[str, ...], tuple[tuple[str, ...], ...], tuple[tuple[int, int], ...], tuple[tuple[str, ...], ...], tuple[tuple[tuple[str, ...], ...], ...]]:
+class RuntimeProjection(NamedTuple):
+    """Exact runtime tokens and their retained verification boundaries."""
+
+    skeleton: tuple[str, ...]
+    runtime: tuple[tuple[str, ...], ...]
+    spans: tuple[tuple[int, int], ...]
+    loops: tuple[tuple[str, ...], ...]
+    proofs: tuple[tuple[tuple[str, ...], ...], ...]
+    proof_positions: tuple[tuple[int, ...], ...]
+
+
+def _runtime_projection(text: str) -> RuntimeProjection:
     """Project runtime tokens and retain every signature and loop contract.
 
     Source is parsed on each call; this guard caches no admission result.
@@ -212,12 +223,14 @@ def _runtime_projection(text: str) -> tuple[tuple[str, ...], tuple[tuple[str, ..
     spans: list[tuple[int, int]] = []
     loop_contracts: list[list[str]] = []
     proof_groups: list[tuple[tuple[str, ...], ...]] = []
+    proof_positions: list[tuple[int, ...]] = []
     cursor = 0
     for begin, end in bodies:
         skeleton.extend(token.value for token in stream[cursor:begin])
         skeleton.append("<checked-runtime-body>")
         values: list[str] = []
         body_proofs: list[tuple[str, ...]] = []
+        body_positions: list[int] = []
         annotations: dict[int, int] = {}
         at = begin
         while at <= end:
@@ -232,6 +245,7 @@ def _runtime_projection(text: str) -> tuple[tuple[str, ...], tuple[tuple[str, ..
             if ghost or ghost_group:
                 proof_end = closing(stream, at + (2 if ghost else 1)) + 1
                 body_proofs.append(tuple(item.value for item in stream[at:proof_end]))
+                body_positions.append(len(values))
                 at = proof_end
                 # Its trailing empty statements are erased too; otherwise a
                 # proof-only false assertion can masquerade as runtime (#508).
@@ -267,10 +281,30 @@ def _runtime_projection(text: str) -> tuple[tuple[str, ...], tuple[tuple[str, ..
             at += 1
         executable.append(values)
         proof_groups.append(tuple(body_proofs))
+        proof_positions.append(tuple(body_positions))
         cursor = end + 1
     skeleton.extend(token.value for token in stream[cursor:])
-    return (tuple(skeleton), tuple(tuple(body) for body in executable),
-        tuple(spans), tuple(tuple(contract) for contract in loop_contracts), tuple(proof_groups))
+    return RuntimeProjection(tuple(skeleton), tuple(tuple(body) for body in executable),
+        tuple(spans), tuple(tuple(contract) for contract in loop_contracts), tuple(proof_groups),
+        tuple(proof_positions))
+
+
+def _preserved_proof_positions(original: tuple[str, ...], changed: tuple[str, ...],
+        original_positions: tuple[int, ...], changed_positions: tuple[int, ...]) -> None:
+    """Allow runtime edits in only one interval between unchanged proof groups.
+
+    Comparing exact intervals avoids ambiguous matching of repeated tokens.
+    This deliberately refuses multi-interval controls; their intended faults
+    need separate review rather than admitting relocated proof guidance.
+    """
+    def intervals(values: tuple[str, ...], positions: tuple[int, ...]) -> list[tuple[str, ...]]:
+        boundaries = (0, *positions, len(values))
+        return [values[left:right] for left, right in zip(boundaries, boundaries[1:])]
+
+    old = intervals(original, original_positions)
+    new = intervals(changed, changed_positions)
+    require(sum(left != right for left, right in zip(old, new)) <= 1,
+        "mutation changes runtime intervals on both sides of erased proof code")
 
 
 def runtime_mutation(source: str, before: str, after: str) -> None:
@@ -289,12 +323,15 @@ def runtime_mutation(source: str, before: str, after: str) -> None:
         "empty or ambiguous executable mutation")
     changed = source.replace(before, after)
 
-    original_skeleton, original_runtime, spans, original_loops, original_proofs = _runtime_projection(source)
-    changed_skeleton, changed_runtime, _, changed_loops, changed_proofs = _runtime_projection(changed)
+    original_skeleton, original_runtime, spans, original_loops, original_proofs, original_positions = _runtime_projection(source)
+    changed_skeleton, changed_runtime, _, changed_loops, changed_proofs, changed_positions = _runtime_projection(changed)
     require(original_skeleton == changed_skeleton,
         "mutation changes signature, contract or non-runtime source")
     require(original_loops == changed_loops, "mutation changes checked loop contract")
     require(original_proofs == changed_proofs, "mutation changes erased proof code")
+    for old_body, new_body, old_positions, new_positions in zip(
+            original_runtime, changed_runtime, original_positions, changed_positions):
+        _preserved_proof_positions(old_body, new_body, old_positions, new_positions)
     begin = source.index(before)
     end = begin + len(before)
     require(any(begin <= lo and hi <= end for lo, hi in spans),

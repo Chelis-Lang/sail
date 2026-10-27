@@ -20,7 +20,8 @@ semantic versioning once the API is published.
   exact import bindings and executable-configuration refusals.
 
 - Refuse production proof controls that change contracts or loop obligations,
-  or change only erased proof syntax, instead of introducing an executable fault.
+  change erased proof syntax or alter runtime intervals on both sides of it,
+  instead of introducing an executable fault.
 
 - Fail safe on several cache and daemon edge cases. The disk cache creates
   its temporary entry file exclusively, so a preexisting file or symlink at
