@@ -7,6 +7,16 @@ No complete compiler-input closure, physical
 observation guarantee or service theorem is claimed. All six rows of the
 [obligation ledger](../design/acceptance-boundary-refinements.md) remain open.
 
+The isolated source candidate from `4c43e5a9` additionally source-shares the
+actual owned streaming-list byte/chunk/copy/finish operations and the native
+delimiter call (proposed ADR 0086). Source assembly includes 21/9/14 compiled
+files and 171/115/121 ordinary controls. Earlier positive inventories remain
+mandatory bootstrap sets; actual expanded positive/function discovery, native
+tests, full controls, conformance and cost qualification are unrun for this
+candidate. This is an implementation scope statement, not execution evidence.
+Native outer offsets/top-level emission inventory and solver interpretation stay
+open under #371; no physical EOF, complete parser inventory or origin claim is made.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |

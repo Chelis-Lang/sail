@@ -93,13 +93,32 @@ class SourceLexerTests(unittest.TestCase):
 class SourceCaptureTests(unittest.TestCase):
     """Mistaken source/representation selection cannot become proof evidence."""
 
+    def test_stream_list_body_is_checked_and_native_delegation_is_bound(self):
+        entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),
+            "source": "proofs/refinement/query.rs"}
+        snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+        _, _, files = CHECKER.captured_driver(entry, snapshots)
+        self.assertEqual(files["core_query_split.rs"], snapshots[CHECKER.SPLIT_CORE])
+        self.assertIn(CHECKER.SPLIT_CORE, CHECKER.source_roles(entry)["checked_source"])
+        for path, before, after in (
+            ("crates/sail-smtlib/src/split.rs", b"frame.push_chunk(&data[cursor..])", b"frame.push_chunk(&data[..])"),
+            ("crates/sail-smtlib/src/split.rs", b"bytes: frame.finish(),", b"bytes: Vec::new(),"),
+            ("crates/sail-smtlib/src/lex.rs", b"sail_acceptance::query::delimiter(b)", b"false"),
+            ("crates/sail-smtlib/Cargo.toml", b"sail-acceptance.workspace = true", b"sail-acceptance = { path = \"../alternate\" }"),
+        ):
+            original = snapshots[path]
+            CHECKER.compiled_subset(path, original)
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original.replace(before, after))
+
     def test_completed_presentation_has_no_public_or_derived_mint(self):
         paths = {path for component in CHECKER.COMPONENTS
             for path in CHECKER.dependency_paths(component)}
         paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/Cargo.toml", "crates/sail-api/src/lib.rs"])
         paths.update("crates/" + name + "/Cargo.toml" for name in
-            ("sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
+            ("sail-smtlib", "sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
         original = {path: (ROOT / path).read_bytes() for path in paths}
         path = "crates/sail-api/src/acceptance.rs"
         for before, after in (
@@ -156,7 +175,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/Cargo.toml", "crates/sail-api/src/lib.rs"])
         paths.update("crates/" + name + "/Cargo.toml" for name in
-            ("sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
+            ("sail-smtlib", "sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
         original = {path: (ROOT / path).read_bytes() for path in paths}
         for before, after in (
             (b"        statistics: bool,", b"        pub statistics: bool,"),
@@ -212,7 +231,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/Cargo.toml", "crates/sail-api/src/lib.rs"])
         paths.update("crates/" + name + "/Cargo.toml" for name in
-            ("sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
+            ("sail-smtlib", "sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
         original = {path: (ROOT / path).read_bytes() for path in paths}
         for before, after in (
             (b"        active: bool,", b"        pub active: bool,"),
@@ -499,13 +518,13 @@ class SourceCaptureTests(unittest.TestCase):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-acceptance/src/authority.rs",
-            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.PIPE_CORE,
+            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.PIPE_CORE,
             CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
             "crates/sail-acceptance/src/phase_inputs.rs",
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
         paths += ["crates/" + name + "/Cargo.toml" for name in
-            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
+            ("sail-smtlib", "sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         CHECKER.validate_assembly(snapshots)
         for path, before, after in (
@@ -538,6 +557,8 @@ class SourceCaptureTests(unittest.TestCase):
             (CHECKER.OUTPUT_OWNER_CORE, b"pub struct CompletedStream", b"#[derive(Deserialize)] pub struct CompletedStream"),
             (CHECKER.OUTPUT_OWNER_CORE, b"pub struct OwnedPublication", b"#[derive(Default)] pub struct OwnedPublication"),
             (CHECKER.HOLDING_CORE, b"pub struct Holding", b"#[derive(Default)] pub struct Holding"),
+            (CHECKER.SPLIT_CORE, b"pub struct ListFrame", b"#[derive(Default)] pub struct ListFrame"),
+            (CHECKER.SPLIT_CORE, b"        depth: usize,", b"        pub depth: usize,"),
             ("crates/sail-acceptance/src/query.rs", b"pub struct ReplayedPrefix", b"#[derive(Default)] pub struct ReplayedPrefix"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"pub struct FrozenCommand", b"#[derive(Deserialize)] pub struct FrozenCommand"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"command: Vec<u8>,", b"pub command: Vec<u8>,"),
@@ -656,13 +677,13 @@ class SourceCaptureTests(unittest.TestCase):
     def test_owned_query_modules_keep_actual_imports_and_checked_constructors(self):
         for path in ("crates/sail-acceptance/src/query_prefix.rs",
                 "crates/sail-acceptance/src/query_policy.rs",
-                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.KEY_FACTORY):
+                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             CHECKER.compiled_subset(path, original)
             for addition in (b"\nuse hidden::*;", b"\n#[cfg(sail_verus)] use hidden::*;"):
                 with self.subTest(path=path, addition=addition), self.assertRaises(CHECKER.Refusal):
                     CHECKER.compiled_subset(path, original + addition)
-        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.KEY_FACTORY):
+        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
                 CHECKER.compiled_subset(path, original + b"\npub fn unchecked_factory() -> bool { true }")

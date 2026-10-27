@@ -32,23 +32,27 @@ pub struct Item {
     pub bytes: Vec<u8>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 enum State {
     /// Between items, at depth 0.
     Idle,
-    /// Inside a list, outside any string, quoted symbol or comment.
-    List,
-    /// Inside a string literal.
-    Str,
-    /// Just saw `"` inside a string: either an escaped `""` or the end.
-    StrQuote,
-    /// Inside a `|quoted symbol|`.
-    Quoted,
-    /// Inside a `;` comment (input side only). `in_list` says where to
-    /// return.
-    Comment { in_list: bool },
+    /// The same actual owned list bytes and checked lexical/depth state.
+    List(sail_acceptance::query_split::ListFrame),
+    /// Inside a top-level `;` comment (input side only).
+    Comment,
     /// Inside a bare top-level atom.
     Atom,
+}
+
+impl Clone for State {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Idle => Self::Idle,
+            Self::List(frame) => Self::List(frame.duplicate()),
+            Self::Comment => Self::Comment,
+            Self::Atom => Self::Atom,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,7 +65,6 @@ enum Side {
 struct Splitter {
     side: Side,
     state: State,
-    depth: u64,
     /// Bytes of the item in progress.
     current: Vec<u8>,
     /// Stream offset of `current[0]`.
@@ -75,7 +78,6 @@ impl Splitter {
         Self {
             side,
             state: State::Idle,
-            depth: 0,
             current: Vec::new(),
             current_offset: 0,
             offset: 0,
@@ -97,21 +99,43 @@ impl Splitter {
     }
 
     fn push(&mut self, data: &[u8], out: &mut Vec<Item>) {
-        for &b in data {
-            self.step(b, out);
-            self.offset += 1;
+        let mut cursor = 0;
+        while cursor < data.len() {
+            match std::mem::replace(&mut self.state, State::Idle) {
+                State::List(frame) => {
+                    let (step, consumed) = frame.push_chunk(&data[cursor..]);
+                    cursor += consumed;
+                    self.offset += consumed as u64;
+                    match step {
+                        sail_acceptance::query_split::ListStep::Pending(frame) => {
+                            self.state = State::List(frame);
+                        }
+                        sail_acceptance::query_split::ListStep::Complete(bytes) => {
+                            self.current = bytes;
+                            self.emit(ItemKind::List, out);
+                        }
+                    }
+                }
+                state => {
+                    self.state = state;
+                    self.step(data[cursor], out);
+                    self.offset += 1;
+                    cursor += 1;
+                }
+            }
         }
     }
 
     fn step(&mut self, b: u8, out: &mut Vec<Item>) {
-        match self.state {
+        match std::mem::replace(&mut self.state, State::Idle) {
             State::Idle => match b {
                 b' ' | b'\t' | b'\n' | b'\r' => {}
-                b';' if self.side == Side::Input => self.state = State::Comment { in_list: false },
+                b';' if self.side == Side::Input => self.state = State::Comment,
                 b'(' => {
-                    self.begin(b);
-                    self.depth = 1;
-                    self.state = State::List;
+                    self.current_offset = self.offset;
+                    self.state = State::List(sail_acceptance::query_split::ListFrame::start(
+                        self.side == Side::Input,
+                    ));
                 }
                 b')' if self.side == Side::Input => {
                     self.begin(b);
@@ -140,73 +164,40 @@ impl Splitter {
                     }
                 } else {
                     self.current.push(b);
+                    self.state = State::Atom;
                 }
             }
-            State::List => {
-                self.current.push(b);
-                match b {
-                    b'(' => self.depth += 1,
-                    b')' => {
-                        self.depth -= 1;
-                        if self.depth == 0 {
-                            self.emit(ItemKind::List, out);
-                        }
-                    }
-                    b'"' => self.state = State::Str,
-                    b'|' => self.state = State::Quoted,
-                    b';' if self.side == Side::Input => {
-                        self.state = State::Comment { in_list: true }
-                    }
-                    _ => {}
+            State::List(frame) => match frame.push(b) {
+                sail_acceptance::query_split::ListStep::Pending(frame) => {
+                    self.state = State::List(frame);
                 }
-            }
-            State::Str => {
-                self.current.push(b);
-                if b == b'"' {
-                    self.state = State::StrQuote;
+                sail_acceptance::query_split::ListStep::Complete(bytes) => {
+                    self.current = bytes;
+                    self.emit(ItemKind::List, out);
                 }
-            }
-            State::StrQuote => {
-                if b == b'"' {
-                    // Escaped quote: still inside the string.
-                    self.current.push(b);
-                    self.state = State::Str;
-                } else {
-                    self.state = State::List;
-                    self.step(b, out);
-                }
-            }
-            State::Quoted => {
-                self.current.push(b);
-                if b == b'|' {
-                    self.state = State::List;
-                }
-            }
-            State::Comment { in_list } => {
-                if in_list {
-                    self.current.push(b);
-                }
-                if b == b'\n' || b == b'\r' {
-                    self.state = if in_list { State::List } else { State::Idle };
+            },
+            State::Comment => {
+                if b != b'\n' && b != b'\r' {
+                    self.state = State::Comment;
                 }
             }
         }
     }
 
     fn finish(mut self) -> Option<Item> {
-        match self.state {
+        match std::mem::replace(&mut self.state, State::Idle) {
             State::Atom => {
                 let mut out = Vec::new();
                 self.emit(ItemKind::Atom, &mut out);
                 out.pop()
             }
-            _ if self.current.is_empty() => None,
             // An incomplete list: report what there is, as a stray.
-            _ => Some(Item {
+            State::List(frame) => Some(Item {
                 kind: ItemKind::Stray,
                 offset: self.current_offset,
-                bytes: self.current,
+                bytes: frame.finish(),
             }),
+            _ => None,
         }
     }
 }
@@ -298,6 +289,58 @@ pub fn is_single_response(reply: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shared_list_frames_preserve_chunks_and_incomplete_finish() {
+        for (source, kind) in [
+            (b"(echo \"a\"\"(b)\")".as_slice(), ItemKind::List),
+            (b"(assert |x)y|)", ItemKind::List),
+            (b"(x; hidden )\r\n)", ItemKind::List),
+            (b"(echo \"x\"", ItemKind::Stray),
+            (b"(|x)", ItemKind::Stray),
+        ] {
+            for width in 1..=source.len() {
+                let mut splitter = CommandSplitter::new();
+                let mut items = Vec::new();
+                for chunk in source.chunks(width) {
+                    splitter.push(chunk, &mut items);
+                }
+                items.extend(splitter.finish());
+                assert_eq!(
+                    items,
+                    vec![Item {
+                        kind,
+                        offset: 0,
+                        bytes: source.to_vec()
+                    }]
+                );
+            }
+        }
+        let source = b"echo text\r\n()";
+        for width in 1..=source.len() {
+            let mut splitter = ResponseSplitter::new();
+            let mut items = Vec::new();
+            for chunk in source.chunks(width) {
+                splitter.push(chunk, &mut items);
+            }
+            assert!(splitter.finish().is_none());
+            assert_eq!(
+                items,
+                vec![
+                    Item {
+                        kind: ItemKind::Atom,
+                        offset: 0,
+                        bytes: b"echo text".to_vec()
+                    },
+                    Item {
+                        kind: ItemKind::List,
+                        offset: 11,
+                        bytes: b"()".to_vec()
+                    },
+                ]
+            );
+        }
+    }
 
     #[test]
     fn single_response_requires_exactly_one_complete_frame() {
