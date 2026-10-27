@@ -1193,3 +1193,11 @@ All 254 ordinary query controls remain mandatory and unqualified as a complete
 set. Native retained SMT tests and strict SMT/shim caller Clippy remain pending;
 the separate tail candidate and physical/origin boundaries are not qualified.
 Actual driver SHA-256: `5fa538c31cd023383fcffb575e111ec5fa5c825b5aed81fa56a9357a43b23ff6`; elapsed 44.03646102999846 seconds.
+
+- `8e8bc41d`, 2026-10-27: explicit clean and actual acceptance/SMT rebuild pass
+  all 26 retained SMT tests, zero skipped; strict SMT/shim Clippy then stops on
+  five new acceptance-module style lints (#503), before shim compilation clears.
+  Final source checks pass. The followup uses idiomatic Option mapping,
+  saturating subtraction and question-mark syntax, with narrowly documented
+  complex transfer/constructive tuple signatures. Fresh whole-query and native
+  qualification is required; no style exemption grants behavioral/proof credit.
