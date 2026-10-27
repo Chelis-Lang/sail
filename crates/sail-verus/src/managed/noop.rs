@@ -35,9 +35,9 @@ use sail_api::project::{ProjectResult, ResolvedRequest};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 #[cfg(test)]
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
+use std::time::{Duration, SystemTime};
 
 // Version five combines checked request transfers and private-settings isolation.
 const VERSION: u32 = 5;

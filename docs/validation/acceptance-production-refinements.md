@@ -44,6 +44,37 @@ Independent S3 GET/hash verification and the full query-scope audit pass.
 It includes development refusals and the final control reports; no live native
 logs or native-body qualification are included.
 
+The next option-state candidate retains all 115 inherited query controls and
+adds nineteen, alongside unchanged 115 input and 107 authority controls.
+Its expanded query counts/functions await complete whole-positive discovery;
+the historical 431/759 inventory is not an expanded-root result. The reviewed
+scope correction retains the complete validator loops while mutating acceptance
+exits (#454), and the completion fixture preserves the actual ten phases (#453).
+
+Native integration corrects the production `Duration` import (#455), renames
+two payload locals and uses `AtomicUsize::try_update` with the same SeqCst
+orderings and closure. The pinned Rust source implements the deprecated
+`fetch_update` by calling that exact operation. The inline entry remains
+unboxed with a documented lint allowance. Its recording charge now includes
+the entire carrier and original logical payload/index allowance, including the
+silence carrier (#456); allocator overhead and capacity remain outside this
+existing logical budget. On native x86-64 the ordinary parser/delivery regression
+compiles and fails with the old formula (356 versus required 476 bytes, carrier
+408), then passes with the correction. The closed red/green patch digests are
+`cd545f0e9387239ad312b5027b6207970142a942f33d2ee62d3499ac6599b59d`
+and `543ec5e478ab7b9fef7660764229ffd0ad2a63ee3848241bbdfb1b1eda340831`.
+All 28 cached-session ordinary native tests then pass, including the unchanged
+Pairer/holding/annotation paths and option-state readback controls. This is
+focused native test evidence, not ordinary-Verus control credit or
+workspace/solver/differential/performance qualification.
+
+The three closed native lint stops through `03725fea` are preserved privately
+at `experiments/2026-10-27/acceptance-query-native-stops-through-03725fea.tar`:
+92,160 bytes, SHA-256
+`b57ac975d3924b2383f41c7658474ecd92a2c99120de493ec5e9a1f3ccd19894`.
+Native PUT and GET/hash checks pass. Ordinary workspace tests and the solver
+suite did not run in those attempts.
+
 ## Checked source and runtime
 
 The frozen checkpoint is `3b1cb3623ef17a2c4a99bc8bd3e12e88f1ef63fb`.
