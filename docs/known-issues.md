@@ -4,6 +4,19 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The frozen `4c43e5a9` ordinary-control matrix stops at query control 151:
+its mutation selector replaces `1nat` in an ensures clause instead of changing
+the executable comparison method ([#468](https://github.com/Chelis-Lang/sail/issues/468)).
+The strict runner refuses its pre-verification type error, zero obligations and
+empty function inventory. Three other query partitions terminate normally;
+inputs and authority never launch. No complete component or matrix qualifies.
+The correction preserves the full original method and contracts, changing only
+terminal acceptance to refusal, and adds balanced-contract executable-location
+checks plus source regressions. Source inspection of all descriptors finds no
+other misplaced production selector; native ordinary-negative requalification
+remains required in the [owning record](validation/acceptance-boundary-refinements.md).
+This is a qualification-tool defect, with no demonstrated false Sail verdict.
+
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
 read path correctly projects absent freshness to Unknown
