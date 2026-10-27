@@ -171,6 +171,27 @@ constructor/borrow round-trip postconditions. Later projection proofs can use
 those checked relations without exposing private fields or assuming a digest
 or String-view injection law. Comparator runtime bodies remain unchanged.
 
+The separate `request_targets.rs` source candidate implements operations over
+the real `BTreeSet<OriginalTargetKey>`. Insertion passes the actual original
+triple to the checked key constructor and standard set insertion. Projection
+consumes only actual `Iterator::next` outcomes and calls the same actual target
+record constructor. Its loop relates produced keys plus the iterator's remaining
+keys to the immutable original dictionary: exact cardinality, set coverage,
+uniqueness and order. There is no supplied complete-list or success Boolean.
+The ordinary native fixture compares insertion, duplicate handling and complete
+projection with the original String-tuple set. These bodies, their contracts
+and the fixture remain unqualified and unselected by managed execution.
+
+The proposed caller conversion changes the actual requested-target set type,
+delegates each real metadata insertion to `insert_original_target`, and makes
+`Resolution` call `project_original_targets` on that original set. Existing
+native dependency/cleanup predicates can borrow the unchanged original tuple
+through `as_tuple`; no additional String clones, row lists or namespace
+reconstruction are needed. Broad caller conversion waits for kernel checking
+and review. Closed canonical module/import/trait/function inventories, executable
+mutation controls and exact full-root discovery must then include both modules;
+older source hashes or numeric support probes cannot qualify this join.
+
 Native path rendering still uses the old `to_string_lossy` operation and the
 independent raw-path binding, including invalid-byte refusal. Cargo metadata
 decoding/selection, argument option/value state, per-unit effective options,
