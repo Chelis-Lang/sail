@@ -5,7 +5,7 @@
 //! interpretation; this module does not replace those obligations with axioms.
 use crate::query_core::{BoundPair, CorrelatedQueue, PublicationBatch, PublicationGate, ReplayCursor};
 use crate::query_association as model;
-use crate::{cache_candidate, cache_indexed};
+use crate::{cache_bucket, cache_candidate, cache_counted, cache_indexed, cache_slots};
 use vstd::prelude::*;
 
 verus! {

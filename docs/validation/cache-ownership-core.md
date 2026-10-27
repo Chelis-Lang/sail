@@ -48,3 +48,5 @@ mutation targets the same executable macro expansion with its Copy-bound
 spelling, and committing the new source makes the final-build-script fixture
 exercise the full real leaf inventory. All 53 assertions/tests pass; no
 Stock result or native service acceptance is inferred from that source suite.
+
+| 2026-10-27 | `16afedff` | First main-context whole discovery | Query compilation refuses missing cache_bucket/cache_counted/cache_slots imports in relocated witnesses (E0433); zero verified/errors, zero proof/control credit; later roots unrun. Import-only correction retains every witness body |
