@@ -10,7 +10,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 | Frozen source | Actual result | Limits |
 |---|---|---|
 | `53757913` query guidance | All three complete positive roots repeat 471/821, 308/538 and 502/883 with final source/runtime checks. A bounded original control-111 diagnostic passes: query positive 471/0, then 470 verified plus one ordinary error across all 821 functions, with no resource marker | One ordinary negative only; incomplete component/suite. All 392 controls remain required. The integrated source changes only erased finite-frame/prefix proof guidance; native bodies and the original mutation remain unchanged, and broader combined qualification remains pending |
-| `e91627d0` native workspace | 2026-10-27: 1,271 tests run, 1,269 pass, two fail, 56 skip; workspace duration 303.35 s | Initial failure cause was unknown; subsequent source diagnosis identifies the #390 target-key mismatch, with focused correction qualification pending. Solver is unrun; this frozen result does not qualify the new view or main union |
+| `e91627d0` native workspace | Strict Clippy and compilation pass; nextest runs 1,271 tests across 82 binaries: 1,269 pass, two receipt-erasure regressions fail, 56 configured skips; gate exits 100 after 303.35 s, final source/image checks pass | Solver and later workspace stages unrun. A separate unchanged two-test native baseline repeats both failures; the exact target-key correction and stronger direct controls pass a separate two-test focused run at `fbab3fd0`; combined qualification remains pending |
 | Main integration `dca5cd43` | Source union retains the three main build-script fixes, original request/origin replay guards, noop revision 6, all inherited copy/request tests and four independently strict local-only witness/toolchain entrypoints | Textual review and native hash bindings only; no new Stock/native/conformance or service credit. Frozen `e91627d0` qualification remains a separate earlier source |
 | `e2015ac7` native workspace | Strict gate passes earlier fixture diagnostics and stops after 250.51 s at one test-only `Pairer::reply` pass-by-value style lint; final source/image checks pass | Native tests and solver unrun. A local documented allowance preserves the original owned legacy-fixture interface and every assertion; production runtime behavior is unchanged, and the next frozen gate remains required |
 | `720e461e` | Lossless-conversion follow-up repeats all three complete positives at the exact locked sets: 471/821, 308/538 and 502/883, with final source/runtime checks | All four query partitions terminated: three pass and one refuses control 111 on an additional resource-limit diagnostic. No complete-control union; inputs/authority matrix arms were not launched. Long matrix held for the combined view/main/receipt source and new inventory. Native workspace, conformance and service qualification remain separate |
@@ -45,15 +45,46 @@ Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
 
-The stopped `e91627d0` native attempt is retained at
-`experiments/2026-10-27/acceptance-combined-e91627d0-native-early.tgz`, SHA-256
-`25e2650114c6b0ce2574286e9a33a02f68c70dc26b5c9a17ece4e9ce5981a37d`
-(6,802,873 bytes); the lead independently downloaded and checked the archive
-hash. The native workspace records two failures whose cause was initially unknown.
-Subsequent source diagnosis identifies the #390 target-key mismatch; focused
-correction qualification remains pending. Solver and later gates are unrun. The
-new presentation view and reviewed main union require their own frozen native
-and proof qualification; the earlier positive inventories remain historical.
+The stopped `e91627d0fecbae039236f9b474e00e7f51c2d0d8` workspace attempt is
+retained at `experiments/2026-10-27/acceptance-combined-e91627d0-native-early.tgz`,
+SHA-256 `25e2650114c6b0ce2574286e9a33a02f68c70dc26b5c9a17ece4e9ce5981a37d`
+(6,802,873 bytes); upload and independent HTTP GET/hash pass. Test execution
+takes 33.956 s; the gate duration includes script preflight and compilation.
+The environment and core image match the `720e461e` native record below.
+The failures are the existing runner tests
+`admissible_receipt_names_survive_erasure_without_rehabilitating_a_failed_scan`
+and `unrelated_script_declarations_do_not_expand_a_dependency_receipt`.
+
+A separate frozen `e91627d0` native run selects those exact two tests with the
+unchanged CI nextest profile. Both fail again (30.07 s including compilation),
+with final source/image checks. Retained fixture records show revision 9,
+successful original selected-attempt receipts, original declared name sets and
+empty post-erasure dep-info. The original receipts pass their existing validity
+assertions. This is a conservative production reuse regression, not fixture
+schema drift or a demonstrated false proof
+([#390](https://github.com/Chelis-Lang/sail/issues/390#issuecomment-6432437950)).
+The first fixture-copy attempt uses the panic thread ID and cannot find the
+process-named directory; a subsequent narrow recovery retains only the two
+known fixture directory prefixes and their regular files, without an environment
+dump. The failed copy remains recorded rather than rewritten.
+
+The minimal runtime correction indexes `preserve_receipt_declarations` by the
+same exact package/target/kind revision key as `target_records_in`'s current
+batch. Every existing guard and assertion remains. Direct helper controls
+independently recompute tagged current revisions, admit the unchanged original
+names first, then refuse missing/different revisions, changed original values,
+corrupt originals and a sibling target; failed fresh scans remain unavailable.
+Only the reviewed enclosing native runner binding changes. The adapter is
+hash-bound, not a stock-checked body. The corrected-source focused run at `fbab3fd0` passes both tests (0.100 s
+test time, 7.934 s command including build); the exact unchanged baseline at
+`e91627d0` fails both (30.071 s command). Final source/image checks pass on
+both with the same image. The combined archive is
+`experiments/2026-10-27/acceptance-receipt-erasure-e916-native.tgz`, SHA-256
+`746602dd219d70093d99b5cb68ae3ecb0f08767aef350233a221887c60bfc0ce`
+(13,528,762 bytes), independently downloaded, hashed and inspected. Failed
+initial fixture-copy PID selection remains indexed alongside the successful
+narrow recovery. Full combined workspace, solver and all broader service
+obligations remain pending.
 
 The stopped `720e461ed4f0287d4343922ef0ade8e83b6db935` attempt is retained at
 `experiments/2026-10-27/acceptance-combined-720e461e-native-early.tgz`, SHA-256
