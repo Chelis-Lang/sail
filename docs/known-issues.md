@@ -25,6 +25,11 @@ preserves its contract and ordinary controls; whole-root qualification remains p
 That helper run at `ff4676cb` also refuses (480 verified/one failed, 836 entries).
 The next guidance derives the future exact sequence before mutation and checks
 the actual full-buffer scan afterward, without relaxing byte/prefix contracts.
+The complete query root then passes at `a182c1e4` (482/837, all earlier functions,
+final identity checks). Its native SMT package passes 22/22 tests, then strict
+Clippy refuses three style diagnostics (#470). Method/witness-local annotations
+retain the actual byte push/copy/witness and all checks; corrected-source native
+qualification and all ordinary controls remain pending.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
