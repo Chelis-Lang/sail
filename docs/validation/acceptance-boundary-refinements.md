@@ -1049,3 +1049,15 @@ Closed archive `acceptance-parser-352900-native-smt.tgz`: 4,911 bytes, SHA-256
 independent lead archive verification remains pending. The next candidate adds
 one documented local range allowance and complete rustdoc, preserving actual
 operations, contracts and all controls. No workspace/solver/conformance credit.
+
+Frozen `1f356624` whole-query discovery passes **553 verified/0 errors** and
+**951 actual query entries**, with all prior 918 retained, in 40.040282814
+seconds. The entire query crate uses unchanged pinned Stock/default 120-second,
+one-thread/no-cheating settings; no VIR/resource refusal occurs and final
+source/runtime checks pass. Actual driver SHA-256:
+`5a0b8eaa5b30ad80a6cc9b005aaace37172230a079c9b7581d99f0c059ecda72`.
+The manifest locks only this observed query inventory; input/authority counts
+remain earlier observations, not fresh qualification. Native `1f356624` explicitly
+cleans and recompiles both touched packages and passes all 24 SMT tests and
+strict package Clippy, with final source checks. All 213 controls, broader
+workspace/solver/conformance and the stdout-owned composition remain required.

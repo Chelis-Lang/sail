@@ -1548,3 +1548,14 @@ so its checked exit carries the actual delimiter fact; it visits the same bytes
 and returns the same original split point. This is an equivalent production
 loop spelling, distinct from the surrounding erased proof guidance. Native
 package, whole-root and control qualification remain separate requirements.
+
+The frozen lexical whole-query run `1f356624` passes 553 verified functions
+with zero errors and 951 actual query entries, retaining every earlier 918
+entry in 40.040 seconds. It uses the entire query root, pinned Stock, default
+120 seconds/one thread/no-cheating and passes final source/runtime guards; no
+VIR/resource refusal occurs. The manifest locks only that observed inventory.
+The exact frozen native SMT package rebuild passes all 24 tests and strict
+Clippy. This qualifies the named actual lexical transitions/head correspondence,
+not remaining command arguments, Session/Z3 interpretation, physical read/EOF,
+output-owned composition, cache origin or any full-control/service theorem.
+All 213 query controls remain mandatory.
