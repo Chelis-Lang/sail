@@ -123,14 +123,34 @@ class SourceCaptureTests(unittest.TestCase):
         self.assertIn(CHECKER.OUTPUT_SPLIT_CORE, CHECKER.source_roles(entry)["checked_source"])
         path = "crates/sail-shim/src/cached.rs"
         for before, after in (
-            (b"query_output_split::ParsedOutput::new_replayed(", b"query_output_owner::StreamOutput::new_replayed("),
-            (b"let items = all.append_items(chunk);", b"let items = all.append_items(&[]);"),
+            (b"query_output_order::OutputOrder::new(", b"query_output_split::ParsedOutput::new_replayed("),
+            (b"let mut batch = order.append_batch(chunk);", b"let mut batch = order.append_batch(&[]);"),
         ):
             original = snapshots[path]
             CHECKER.compiled_subset(path, original)
             self.assertEqual(original.count(before), 1)
             with self.subTest(before=before), self.assertRaises(CHECKER.Refusal):
                 CHECKER.compiled_subset(path, original.replace(before, after))
+
+    def test_actual_output_event_order_and_independent_native_check_are_closed(self):
+        entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),
+            "source": "proofs/refinement/query.rs"}
+        snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+        _, _, files = CHECKER.captured_driver(entry, snapshots)
+        self.assertEqual(files["core_query_output_order.rs"], snapshots[CHECKER.OUTPUT_ORDER_CORE])
+        self.assertIn(CHECKER.OUTPUT_ORDER_CORE, CHECKER.source_roles(entry)["checked_source"])
+        for path, before, after in (
+            ("crates/sail-shim/src/cached.rs", b"order.append_batch(chunk)", b"order.append_batch(&[])"),
+            ("crates/sail-shim/src/cached.rs", b"batch.settle_current(&mut pairer.pending, payload, &SolverOwnerIdentity)", b"true"),
+            ("crates/sail-smtlib/src/split.rs", b"sail_acceptance::query_split::single_response(reply)", b"true"),
+        ):
+            original = snapshots[path]
+            CHECKER.compiled_subset(path, original)
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(before=before), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original.replace(before, after))
+        self.assertEqual(snapshots[CHECKER.OUTPUT_ORDER_CORE].count(
+            b"self.order.comparison.next_statistics() && !crate::query_split::single_response(actual)"), 1)
 
     def test_actual_lexer_state_and_head_are_checked_with_bound_native_calls(self):
         entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),
@@ -652,7 +672,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-acceptance/src/authority.rs",
-            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.LEX_CORE, CHECKER.OUTPUT_SPLIT_CORE, CHECKER.PIPE_CORE,
+            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.LEX_CORE, CHECKER.OUTPUT_SPLIT_CORE, CHECKER.OUTPUT_ORDER_CORE, CHECKER.PIPE_CORE,
             CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
             "crates/sail-acceptance/src/phase_inputs.rs",
@@ -687,6 +707,9 @@ class SourceCaptureTests(unittest.TestCase):
             (CHECKER.OUTPUT_CORE, b"pub struct FramePayload", b"#[derive(Deserialize)] pub struct FramePayload"),
             (CHECKER.OUTPUT_OWNER_CORE, b"pub struct StreamOutput", b"#[derive(Default)] pub struct StreamOutput"),
             (CHECKER.OUTPUT_SPLIT_CORE, b"pub struct ParsedOutput", b"#[derive(Default)] pub struct ParsedOutput"),
+            (CHECKER.OUTPUT_ORDER_CORE, b"pub struct OutputOrder", b"#[derive(Deserialize)] pub struct OutputOrder"),
+            (CHECKER.OUTPUT_ORDER_CORE, b"pub struct OutputBatch", b"#[derive(Default)] pub struct OutputBatch"),
+            (CHECKER.OUTPUT_ORDER_CORE, b"items:Vec<crate::query_split::Item>", b"pub items:Vec<crate::query_split::Item>"),
             (CHECKER.OUTPUT_SPLIT_CORE, b"controller:crate::query_output_owner::StreamOutput<Owner>", b"pub controller:crate::query_output_owner::StreamOutput<Owner>"),
             (CHECKER.OUTPUT_OWNER_CORE, b"pub struct StreamFrame", b"#[derive(Deserialize)] pub struct StreamFrame"),
             (CHECKER.OUTPUT_OWNER_CORE, b"pub struct OwnedFrame", b"#[derive(Default)] pub struct OwnedFrame"),

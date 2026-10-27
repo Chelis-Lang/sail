@@ -28,6 +28,8 @@ pub mod query_lex;
 pub mod query_options;
 /// Exact stdout coverage and same-owner response intervals.
 pub mod query_output;
+/// Actual emitted-item, frame, replay and queue-handover ordering.
+pub mod query_output_order;
 /// Original opaque stream leases retained through frame copies and publication.
 pub mod query_output_owner;
 /// Actual output splitter and retained stdout bytes consumed through one controller.

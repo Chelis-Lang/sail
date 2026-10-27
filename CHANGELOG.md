@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Source-share actual emitted-item, frame, replay and queue-handover ordering,
+  preserving original forwarding, independent grammar and terminal handling.
+  Validate copied fresh payloads against original owner/range/bytes; additional
+  comparison cost and new proof/native/control qualification remain unmeasured.
+
 - Pair actual stdout splitting with the same retained output controller used
   for forwarding, frame refusal and replay. Keep byte output, independent
   framing, EOF handling and origin checks unchanged; new source/control/native

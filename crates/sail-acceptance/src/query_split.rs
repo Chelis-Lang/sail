@@ -1258,3 +1258,25 @@ sail_verified! {
             && last.finish().is_none()
     }
 }
+
+sail_spec! {
+    /// Exact original native single-response predicate, separate from the
+    /// independent response-shape algorithm and any solver interpretation.
+    pub open spec fn split_single_response(bytes:Seq<u8>) -> bool {
+        let parsed=model_scan((0u8,Seq::<u8>::empty(),0int),false,0,bytes);
+        parsed.1.len() == 1 && parsed.1[0].1 == 0 && parsed.0.0 != 2 && parsed.0.0 != 3
+    }
+}
+
+sail_verified! {
+    /// Actual native offset-zero/exact-one-emission/finished-state refusal.
+    /// This remains algorithmically independent of `response_frame`.
+    pub fn single_response(reply:&[u8]) -> (accepted:bool)
+        requires (true)
+        ensures (accepted == split_single_response(reply@))
+    {
+        let (splitter,items)=StreamSplitter::start(false).push_items(reply,Vec::new());
+        let single=items.len() == 1 && items[0].offset == 0;
+        single && splitter.finish().is_none()
+    }
+}

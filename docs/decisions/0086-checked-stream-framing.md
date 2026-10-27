@@ -54,3 +54,10 @@ forwarding and independent frame refusal consume that controller. Existing
 `StreamOutput` contracts and physical/EOF/origin dependencies stay unchanged.
 This adds no dependency edge or architecture selection. Its new functions and
 controls require independent whole-root/native qualification.
+
+The next same-edge candidate owns actual per-item/frame/replay/queue ordering
+in `OutputOrder`/`OutputBatch` and shares the independent native single-response
+algorithm. It introduces no host callback, trusted primitive, wire token,
+third-party dependency or new layering edge. Native terminal/tail handling stays
+unchanged and remains a required next refinement. The extra fresh raw-payload
+comparison has unmeasured cost; qualification must cover the actual new bodies.

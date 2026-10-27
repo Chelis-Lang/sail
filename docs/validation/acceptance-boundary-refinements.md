@@ -1144,3 +1144,17 @@ SHA-256 `8c1663d1cf99541c3af852fb5ae85edefe3fac7b370ba34c978304c97a8e8b03`,
 nested SHA/size checks pass; independent lead GET/raw audit remains pending.
 The indexed originals include both full lexical/output positives and native
 gates, all intervening refusals and the bounded five-pair scheduling stop.
+
+The lead independently GET/hash audits combined v3 and all twelve nested
+SHA/size entries, plus raw `fa1bef13` whole 568/971/no-resource/final guards and
+native 25/25/strict-Clippy records. This qualifies that frozen milestone's
+stated scope, not the newer per-item source.
+
+The new actual chunk/item ordering candidate owns the real output/replay and
+emission vector, frames original intervals before native charge/copy, performs
+actual replay/queue settlement and advances once. Original 225 controls remain
+unchanged; 29 ordinary controls append (254 query, 24/9/14 source assembly).
+The terminal native block remains byte-identical and explicitly unrefined.
+Three targeted source guards and textual closure pass. New function counts,
+whole Stock/native/control qualification, runtime cost and full service remain
+unqualified; no evidence is inherited merely from matching source hashes.

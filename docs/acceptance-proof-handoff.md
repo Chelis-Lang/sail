@@ -429,3 +429,28 @@ sizes pass, independent lead audit pending. Only five bounded lexical controls
 193–197 are observed here; 198 source preparation was interrupted before Stock
 for scheduling, and 198–213 remain verifier-unrun. No output controls or full
 component matrix pass is claimed. Actual native per-item ordering is next.
+
+## Actual per-item ordering source candidate
+
+`OutputOrder` owns actual parser/output/replay/pending/forwarding state and moves
+it with the emitted vector into `OutputBatch`. Actual source operations prepare
+one original item, run independent frame admission, retain native charge/copy
+order, settle the same raw interval through real replay/queue methods, then
+advance exactly once. Fresh payload identity/ordinal/range/raw-byte validation
+adds an unmeasured linear comparison without a payload copy. No supplied
+success/origin flag or new host callback is used.
+
+The actual `is_single_response` algorithm also moves into the checked splitter;
+its native API remains a facade and the separate grammar check is retained.
+Checked `into_parts` restores the exact original fields before a byte-identical
+native EOF/drop/wait/tail/seal/finish/with_replay block. That terminal block is
+still the mandatory next production refinement, with physical, budget,
+Session/Z3, queue-drain/origin and presentation dependencies open.
+
+All 225 earlier control objects remain byte-identical; 29 new full-function
+controls append (254 query, 24/9/14 assembly). This branch plans 493 unique cases
+or 502 four-partition calls. New actual function counts are undiscovered; the
+568/971 lock is only the earlier checkpoint. Three targeted textual capture/
+private-field guards pass; full textual assembly passes. Native new controls,
+whole Stock and full controls/conformance are pending. All work stays isolated;
+no local native/proof build or excluded consumer/provider action runs.
