@@ -26,7 +26,9 @@ use sail_api::protocol::{Effort, Identity, PutMeta};
 use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
 use sail_session::Session as NativeSession;
 use sail_smtlib::command::{CommandKind, Output, classify};
-use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
+#[cfg(test)]
+use sail_smtlib::split::CommandSplitter;
+use sail_smtlib::split::{Item, ItemKind, ResponseSplitter, is_single_response};
 
 /// Native Session plus independently retained raw policy-option bytes.
 /// Map readback agreement does not prove the pinned solver's option semantics.
@@ -1404,7 +1406,6 @@ impl<'a> ReplayCheck<'a> {
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
     let (client, mut prefix) = connect(socket, solver)?;
     let mut session = ObservedSession::new();
-    let mut splitter = CommandSplitter::new();
     let mut served = Served::default();
     let mut solving: Option<Solving> = None;
     let mut client = Some(client);
@@ -1424,9 +1425,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
         };
         let chunk = buf.get(..n).unwrap_or_default().to_vec();
-        prefix.append(&chunk);
-        let mut items = Vec::new();
-        splitter.push(&chunk, &mut items);
+        let items = prefix.append_items(&chunk);
         // Expectations for commands in this chunk are queued before the
         // chunk reaches the solver.
         let mut fresh_solver = false;
@@ -1506,7 +1505,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     }
     // At the end of input while serving, incomplete trailing input goes to
     // the solver, which decides what it means.
-    let complete = input_read_ok && splitter.finish().is_none() && prefix.trailing_trivia();
+    let complete = input_read_ok && !prefix.has_pending_item() && prefix.trailing_trivia();
     finish_run(solving, client, solver, args, served, &mut prefix, complete)
 }
 

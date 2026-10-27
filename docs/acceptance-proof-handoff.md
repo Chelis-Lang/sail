@@ -85,6 +85,30 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+## Outer-stream and paired input source candidate
+
+The isolated `proof/acceptance-stream-outer` child of `9c3b4ea6` now contains the
+actual outer state machine/chunk loop and the `QueryPrefix` owned parser/raw-tape
+join described in the [query design](design/acceptance-query.md#actual-outer-splitter-and-paired-input-tape-candidate).
+The shim receives command items from the same operation that appends their raw
+bytes. Original byte/key/field behavior, delimiter reprocessing, CRLF/finish and
+malformed-item behavior are preserved as source intent, with fresh qualification
+pending. No second retained transcript, normalization, origin flag or new graph
+edge is introduced. The transitive ordered-inventory theorem is now an implemented proof candidate
+requiring qualification; the output-tape join, lexical/solver meaning and physical/origin premises remain open.
+
+All 171 inherited query controls remain byte-identical and pass their exact
+executable source selectors. Sixteen ordinary controls append (187 total),
+including nonempty whole-transition/chunk guard substitutions. Inputs/authority
+remain 115/121: 426 planned unique cases, 435 four-partition calls. Assembly
+remains 21/9/14 files. The older 482/837 query lock is historical, not a guessed
+new inventory; new whole-root discovery and all old-function retention must
+succeed before replacing it. No local build/test/verifier execution is used.
+Native paired-owner and unchanged original fixtures, complete controls,
+conformance and runtime cost remain unqualified. CI policy remains unresolved.
+The frozen 9c3b4ea6 bounded eleven-case job continues independently and does not
+qualify this new source.
+
 ## Streaming-list source candidate and scope
 
 The isolated candidate from `4c43e5a9` adds the actual pending-list byte/chunk

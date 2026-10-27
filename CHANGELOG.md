@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Source-share the actual outer SMT stream states, atom/CRLF/finish rules,
+  absolute cursor and chunk loop. Pair input splitting with its owned raw
+  transcript append while preserving public fields, original bytes and keys.
+  New whole-root/native/control qualification and remaining parser/solver
+  correspondence stay open under #371 (proposed ADR 0086).
+
 - Source-share the actual pending-list byte/chunk framing and word delimiter
   used by the SMT stream splitters. Preserve original bytes, chunk boundaries,
   public splitter APIs and malformed finish behavior. New proof/native and

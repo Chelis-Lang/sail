@@ -195,6 +195,60 @@ origins remain separate. The proposed dependency edge is recorded by
 dependency, reverse edge or runtime selection. Actual runtime cost remains
 unmeasured; no extra full-frame validation scan is introduced by the kernel.
 
+### Actual outer splitter and paired input-tape candidate
+
+The next source candidate moves the actual outer machine into
+`query_split::StreamSplitter`, including idle/comment dispatch, owned top-level
+atoms, original absolute `StreamPosition`, list-chunk fast path, ordered item
+emission, copy and explicit finish. `sail-smtlib` keeps its existing public
+splitter paths and reexports the unchanged `Item`/`ItemKind` fields. Its wrappers
+move the existing output vector through the shared operation; no payload copy or
+second retained raw tape is added. Input delimiters are reconsidered at the same
+absolute offset before the cursor advances once. Output atoms still end only at
+LF; delimiter termination removes a trailing CR, while unfinished-atom finish
+keeps it. Input comments end at either CR or LF, and incomplete lists remain
+strays. These are the original mechanical rules, without SMT meaning.
+
+The actual one-byte transition has an exact state/emission-shape contract, not
+only a one-way claim about whatever items happen to be emitted. The chunk loop
+relates every pending buffer and every newly emitted item to the same original
+history and preserves all preexisting output items. The chunk loop also has an exact ordered-inventory contract against repeated
+scalar transitions (`model_scan`), with inductive pending-list/first-close lemmas
+for its list-chunk optimization. These specifications refine the same actual
+operations; they introduce no assumed parser result or second runtime parser.
+This wider theorem is implemented as a proof candidate and awaits whole-root
+qualification; a raw-byte theorem alone would not exclude an omitted item. Nonempty checked candidates exercise atom-plus-stray ordering, absolute
+offsets, delimiter CR trim versus unfinished finish, comments/CRLF and list
+completion across chunk boundaries. Sixteen appended ordinary controls include
+whole-transition always-idle and whole-chunk dropped-atom substitutions; every
+one of the 171 inherited query control objects remains unchanged.
+
+`QueryPrefix` now owns that actual input splitter alongside its original raw
+transcript and hash prefix. `append_items` appends the actual raw bytes and
+returns the actual splitter items in one shared operation, preserving raw bytes,
+feed position and hash material. Coherence relates the pending splitter state
+to that same owned transcript. The shim consumes these returned items and uses
+the same parser's read-only pending-item test at input end, replacing its two
+separate native append/split calls. Existing `append` still returns unit and
+retains all original bytes; its discarded items grant no command authority.
+The raw Vec's actual post-append length supplies representability for this input
+join, rather than an assumed history or all-inputs Boolean. The standalone
+splitter's representable cursor/output-vector premises and the output-side
+physical tape/endpoint join remain explicit. Allocation success is not proved.
+
+This wider candidate has no native or whole-root verifier result yet. The
+manifest retains only the historical observed query 482/837 lock until actual
+whole-positive discovery; new positive/function counts must not be inferred.
+There are 187 query, 115 input and 121 authority controls: 426 planned unique
+cases, or 435 calls with four partitions per component. The closed assembly
+remains 21/9/14 files. The 16 new controls and native paired-owner fixture are
+unexecuted. All prior assertions, functions and controls remain required.
+Remaining qualification of the ordered-inventory theorem, lexical
+spans/classification, solver interpretation, output-tape
+composition, launch/EOF and cache-origin obligations stay open under #371/#372.
+Runtime cost is unmeasured; no new full-frame scan, normalization, trust axiom,
+wire token, verdict or cache policy is introduced. ADR 0086 remains proposed.
+
 ### Scalar policy-option readback candidate
 
 `query_options.rs` adds a source-shared candidate for the raw `:print-success`
