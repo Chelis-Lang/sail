@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `8b3432c4` corrected control | Both native source suites pass (12 model-source, 59 production-source). Complete Stock positives retain query 471/821, inputs 308/538, authority 510/895. Bounded query partition `150/161` passes its whole positive and corrected control 151 at 470 verified plus one ordinary error, all 821 functions, with final source/runtime checks and no resource marker | Five actual verifier calls; only one ordinary negative. `complete_component_controls=false` and `complete_suite=false`. No complete query union, 400-case matrix or service theorem |
 | `4c43e5a9` controls | Fresh complete positives repeat 471/821, 308/538 and 510/895 with final source/runtime checks. Four query workers terminate with exits 0, 0, 1, 0; control 151 selects `1nat` inside `compare`'s ensures clause and produces a pre-verification type error, zero obligations and an empty function inventory (#468) | The strict inventory check refuses it. No ordinary-negative credit, complete query union or 400-case completion; inputs/authority never launch. The durable continuation correctly stops on the actual query failure before the reserved unstarted-component boundary |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
@@ -63,7 +64,17 @@ that orchestration failure receives zero proof credit. The follow-up reuses
 one token list and advances a balanced-group cursor past complete erased and
 runtime envelopes instead of rescanning every prior erased range. This keeps
 the same contracts, runtime projection and regression assertions; fresh source
-suites and the repaired whole-root control remain required. Existing
+suites and the repaired whole-root control remain required. The corrected `8b3432c4` diagnostic report is SHA-256
+`0ccfd4021724888b643010dd6d1924f2e77f4b49da2ec4253c4c0e88fb2dff15`;
+its five raw calls include the three-root discovery and repeated query positive.
+The follow-up inventory regression restores the actual historical `1nat`/`false`
+descriptor and requires refusal through the real checker inventory, before any
+Stock call; it supplements the four helper fixtures and remains unrun until the
+next source suite. The closed selector subset also explicitly refuses nested
+runtime function declarations/envelopes inside an executable body, preventing
+an inner function contract from being mistaken for its enclosing runtime code;
+a separate regression covers both nested checked macros and direct functions.
+No current production control requires nested runtime declarations. Existing
 loop checks, exact function/obligation counts, controls and resource limits stay
 required. The failed matrix and nondurable original launcher remain indexed;
 its orchestration guard and correctly aborted service receive zero proof credit.
