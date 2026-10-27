@@ -47,9 +47,9 @@ findings; they are not a list of 95 established main-branch regressions. A
 failure observed only on a PR does not establish applicability to main.
 
 The former ticket numbers below are stable local finding identifiers. Their
-GitHub tickets are removed at the owner's request. Full original reports and
+GitHub tickets are closed as PR-only at the owner's request. Full original reports and
 all 69 comments are preserved in a managed local Markdown archive; this index
-keeps the technical work discoverable in the repository. Deletion does not
+keeps the technical work discoverable in the repository. Closure does not
 mean a fix is merged, qualified or no longer required.
 
 PR 378 retains the remaining composition work; PR 543 contains the parser
