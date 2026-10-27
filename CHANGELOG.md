@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Repair ordinary managed replay and selected-attempt fixture compilation by
+  importing the shared settle constant and supplying the fixture's explicitly
+  empty declared compiler environment (#459, #460). Keep original assertions
+  and production guards; native workspace and solver qualification are pending.
+
 - Strengthen the replay candidate's completion join to recheck every actual
   retained suppressed stdout frame against its original served receipt (#457).
   Same-owner/count comparisons against unrelated bytes cannot substitute for

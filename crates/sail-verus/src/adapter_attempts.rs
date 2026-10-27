@@ -1376,9 +1376,13 @@ mod tests {
                 captured.unavailable_reason(),
                 selected_attempt.as_ref(),
             ),
+            // This report/selected-attempt fixture declares no compiler environment
+            // reads; the explicit empty fixture domain is not a real compiler hook.
+            Some(BTreeMap::new()),
         )?;
         let invocation: Invocation =
             serde_json::from_slice(&std::fs::read(invocations.join(format!("{key}.json")))?)?;
+        assert_eq!(invocation.compiler_environment, Some(BTreeMap::new()));
         assert_eq!(
             std::fs::read(sidecar.join("verus.stdout"))?,
             captured.stdout()

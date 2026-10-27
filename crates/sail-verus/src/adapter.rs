@@ -9,8 +9,6 @@ use crate::managed::transport;
 use crate::managed::{Invocation, Runtime, TargetIdentity, digest, event, file_digest, json};
 use crate::{Error, Result};
 use std::ffi::OsString;
-#[cfg(test)]
-use std::io::Read;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
@@ -1469,6 +1467,11 @@ fn report_verification_arguments(
 /// Records whether the target's origin evidence is bound and Verus remains
 /// readable afterwards. Missing either records no reusable
 /// success while preserving the target's own exit status, as with stock.
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    reason = "Keep the captured output, origin and compiler environment explicit in one unchanged completion-to-invocation handoff"
+)]
 fn finish(
     runtime: &Runtime,
     identity: TargetIdentity,

@@ -4,6 +4,18 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The frozen `720e461e` combined native workspace stops before native tests at
+two fixture compile errors: an omitted shared settle-constant import
+([#459](https://github.com/Chelis-Lang/sail/issues/459)) and a missing compiler
+environment argument in the selected-attempt completion fixture
+([#460](https://github.com/Chelis-Lang/sail/issues/460)). Narrow source fixes
+retain the real settle rule, supplied empty declared-environment fixture domain
+and all original positive/negative assertions. The same gate reports style
+limits and an unused import; local allowances preserve production bodies and
+guards. Corrected-source native workspace and solver qualification remain
+pending; the stopped attempt is retained in the
+[owning record](validation/acceptance-boundary-refinements.md).
+
 The full production runner refuses loop-dropping negative controls
 ([#454](https://github.com/Chelis-Lang/sail/issues/454)). The correction preserves
 complete bodies and loop obligations while changing only acceptance exits,
