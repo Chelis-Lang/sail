@@ -465,6 +465,16 @@ sail_verified! {
         let items=owner.append_items(&following);
         sail_proof! { assert(crate::query_split::item_models(items@).len() == items@.len()); }
         if items.len() != 4 { return false; }
+        sail_proof! {
+            assert(crate::query_split::item_models(items@)[0] == (crate::query_split::ItemKind::Atom,0int,first@));
+            assert(crate::query_split::item_models(items@)[1] == (crate::query_split::ItemKind::Stray,2int,seq![b')']));
+            assert(crate::query_split::item_models(items@)[2] == (crate::query_split::ItemKind::Atom,3int,seq![b'c']));
+            assert(crate::query_split::item_models(items@)[3] == (crate::query_split::ItemKind::Stray,4int,seq![b')']));
+            assert(owner.view() =~= expected@);
+            assert(owner.coherent());
+            assert(owner.parser_view() == (0u8,Seq::<u8>::empty(),0int));
+            assert(!owner.pending_item_view());
+        }
         matches!(items[0].kind,crate::query_split::ItemKind::Atom)
             && items[0].offset == 0 && items[0].bytes.len() == 2
             && items[0].bytes[0] == b'a' && items[0].bytes[1] == b'b'

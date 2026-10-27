@@ -308,7 +308,15 @@ explicit arrays with identical bytes and assertions, following the qualified
 kernel pattern; no production byte, policy, predicate or resource is changed.
 All 190 controls remain, with full-mutant scopes and loop annotations preserved.
 A documented function-local line-count allowance keeps the actual chunk
-transition and its now 111-line source proof together; it changes no math check.
+transition and its long source proof together; it changes no math check.
+
+At `19482b13`, the whole query root observes 519 verified/4 failed functions,
+915 query entries, no resource marker and final guards passing. No positive lock
+is taken. The next source candidate makes push-versus-append suffix equality,
+initial-object well-formedness in the actual loop, list chunk suffix transport
+and concrete returned-item projections explicit. Literal byte carriers and all
+assertions remain nonempty and unchanged in value. Actual predicates, default
+resources and all 190 ordinary controls remain required.
 
 ### Scalar policy-option readback candidate
 

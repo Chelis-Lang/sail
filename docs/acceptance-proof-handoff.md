@@ -85,6 +85,12 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+The `19482b13` whole query run observes 519 verified/4 failed functions and 915
+query entries in 38.300 s with no resource marker and final guards passing.
+No new positive lock follows. Pending-frame suffix equality, initial-object
+well-formedness and raw chunk state/returned-field facts are strengthened as
+proof guidance only; all 190 controls and default resources remain required.
+
 At `3c3725c3`, the whole root progresses to 517 verified/4 failed functions and
 913 query entries, retaining all 837 old entries with no resource marker and
 final guards passing. No new positive lock is claimed. Original-item transport
