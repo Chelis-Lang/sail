@@ -7,7 +7,9 @@ semantic versioning once the API is published.
 
 - Refuse incompatible proof receipts and contexts from the two integration
   lineages. The combined contract records both original producer history and
-  the observed compiler environment under fresh private revisions (#446).
+  the observed compiler environment and ghost-only file declarations under
+  receipt revision 9. Independently assigned older revisions cannot authorize
+  reuse of the combined contract (#446).
 - Keep bounded source inventory transfer on the same declaration revision and
   refuse older unversioned inventories; incomplete private coverage remains
   ineligible (#447).
@@ -148,6 +150,14 @@ semantic versioning once the API is published.
   production. Exact bytes, separators and payloads are preserved; malformed
   prefix candidates disable cache work. Complete parser, compiler-input,
   process/store-origin and service-composition proofs remain open.
+- Stop reusing a proof after a file read only in ghost code changes. An
+  `include!`, `include_str!` or `include_bytes!` inside a `proof fn`, spec or
+  assertion left its file out of the crate's dep-info, so editing that file
+  so the proof fails kept the old receipt Current (#439, VI-0037). Sail now
+  declares the verification phase's files from the fork's report in the
+  unit's dep-info, with the checksum the compiler computed when Cargo checks
+  checksums, so Cargo and receipts treat them like any other source file.
+  Existing receipts are not reused after this upgrade.
 
 - Stop reusing a proof after an environment variable read only in ghost code
   changes. Verus's erased compilation leaves an `env!` or `option_env!` read

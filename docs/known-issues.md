@@ -37,6 +37,12 @@ Its assertions and missing-input failures remain unchanged. The frozen
 `73f928d1` native solver suite now passes all 53 tests; later integrated source
 still needs final qualification. See the [owning record](validation/acceptance-boundary-refinements.md).
 
+The separate remove-only command-interface integration correction
+([#452](https://github.com/Chelis-Lang/sail/issues/452)) preserves outer Cargo's
+private-setting removal without granting it compiler configuration authority.
+The source correction is retained from `9b4ceea2`; native compilation remains
+pending, and no native compiler diagnostic is claimed by the source finding.
+
 ## Default-mode verdict differences
 
 These break the correctness contract and stay listed until fixed and
@@ -68,9 +74,11 @@ current-main reconciliation is source-only and does not qualify the combined
 production source.
 
 The merged private identity revisions are distinct from both prior contracts
-([#446](https://github.com/Chelis-Lang/sail/issues/446)): receipt version 8 and
-proof-context encoding 3 require both observed compiler environment and original
-producer history. No acceptance of an older record or current-main false verdict
+([#446](https://github.com/Chelis-Lang/sail/issues/446)): receipt version 9 and
+proof-context encoding 3 require observed compiler environment, original
+producer history and ghost-only file declarations. Main independently used
+revision 8 for ghost-file admission, so the combined source rejects both prior
+revision-8 contracts. No acceptance of an older record or current-main false verdict
 is demonstrated by that source review.
 
 The bounded source inventory transfer previously used declaration revision 2
@@ -104,13 +112,22 @@ Current numbers are in [performance](performance.md).
   apply (for example after a `touch`, a recent ctime or a different
   argument), unchanged Anvil takes about 1.7 s against stock's 0.3 s, with no
   verifier run.
+- **Unchanged-call replay never records on macOS**
+  ([#437](https://github.com/Chelis-Lang/sail/issues/437)). On macOS, Cargo
+  copies every build script's `build-script-build` again on every run, where
+  Linux keeps a hard link. That advances ctimes during the run, and the replay
+  ctime guard ([ADR 0082](decisions/0082-unchanged-call-replay.md)) refuses the
+  record. Unchanged calls therefore take the full path: on Vest they cost
+  0.56–0.77 s against 0.25 s with stock, and on Anvil 1.6–1.9 s against
+  0.23–0.28 s. Results are unaffected. See
+  [performance](performance.md#macos-on-current-main).
 - **Tiny edits cost more than stock**
   ([#156](https://github.com/Chelis-Lang/sail/issues/156)). Input checks,
   receipts and complete reports add a fraction of a second to small edits.
 - **macOS cold Anvil is slightly slower than stock**
   ([#278](https://github.com/Chelis-Lang/sail/issues/278),
-  [#232](https://github.com/Chelis-Lang/sail/issues/232)): about 0.4 s on
-  100 s. Linux cold runs are at parity or faster.
+  [#232](https://github.com/Chelis-Lang/sail/issues/232)): about 0.1 s on
+  100 s, within run-to-run range. Linux cold runs are at parity or faster.
 - **A miss re-solves the whole bucket**
   ([#158](https://github.com/Chelis-Lang/sail/issues/158)). Editing one
   function re-sends its module's whole solver session; on Anvil one bucket

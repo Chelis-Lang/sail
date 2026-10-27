@@ -69,8 +69,8 @@ impl Observation {
         self.directory.join("inputs.json")
     }
 
-    /// Both phases' tracked environment, read without source admission (#386).
-    pub(super) fn environment(&self) -> Option<super::super::ghost_environment::Environment> {
+    /// Both phases' reads, without source admission (#386, #439).
+    pub(super) fn observed(&self) -> Option<super::super::ghost_environment::Observed> {
         super::super::ghost_environment::read(&self.document(), &self.binding, self.pid?)
     }
 

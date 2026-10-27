@@ -1160,6 +1160,51 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 else:
                     env[ghost_flag] = original_ghost
             print("managed acceptance: a ghost-only environment read binds its proof; removing it fails like plain Cargo-Verus")
+            # A file read only in ghost code (#439): an `include!` inside a
+            # proof body, which the erased compilation never expands.
+            original_source = source.read_text()
+            ghost_file = project / "src/ghost_value.rs"
+            oracle_ghost_file = oracle_project / "src/ghost_value.rs"
+            ghost_source = original_source + (
+                "\nverus! {\nproof fn included_value_is_two() {\n"
+                '    assert(include!("ghost_value.rs") == 2);\n'
+                "}\n}\n")
+            oracle_source = (oracle_project / "src/lib.rs").read_text()
+            try:
+                source.write_text(ghost_source)
+                ghost_file.write_text("2\n")
+                included_run, included, included_target = managed()
+                assert included_run.returncode == 0, diagnostic(included)
+                if included["currentness"] != "current":
+                    included_run, included, included_target = managed()
+                assert included["currentness"] == "current" and included_target["complete"], diagnostic(included)
+                warm_run, warm_file, warm_target = managed()
+                assert warm_run.returncode == 0 and warm_target["reused"], diagnostic(warm_file)
+                assert warm_file["execution"]["verifier_invocations"] == 0, diagnostic(warm_file)
+                ghost_file.write_text("3\n")
+                human = bounded_verification([sail, "verify"], project, env, 240)
+                assert human.returncode != 0, human.stderr.decode()
+                assert b"assertion failed" in human.stderr, human.stderr.decode()
+                edited_run, edited, edited_target = managed()
+                assert edited_run.returncode != 0 and not edited_target["reused"], diagnostic(edited)
+                assert not edited_target["complete"], diagnostic(edited)
+                assert edited["execution"]["verifier_invocations"] > 0, diagnostic(edited)
+                (oracle_project / "src/lib.rs").write_text(ghost_source)
+                oracle_ghost_file.write_text("3\n")
+                plain_file = bounded_verification(
+                    [cargo_verus, "verus", "verify", "--target-dir", str(root / "oracle-target")],
+                    oracle_project, stock_env(), 240)
+                assert plain_file.returncode == edited_run.returncode, (plain_file.returncode, edited_run.returncode)
+                assert errors(edited_run) == errors(plain_file), (errors(edited_run), errors(plain_file))
+                ghost_file.write_text("2\n")
+                revert_run, reverted, revert_target = managed()
+                assert revert_run.returncode == 0 and revert_target["complete"], diagnostic(reverted)
+            finally:
+                source.write_text(original_source)
+                ghost_file.unlink(missing_ok=True)
+                (oracle_project / "src/lib.rs").write_text(oracle_source)
+                oracle_ghost_file.unlink(missing_ok=True)
+            print("managed acceptance: a ghost-only included file binds its proof; editing it fails like plain Cargo-Verus")
             print("managed acceptance: failing first runs keep vstd, cold, unchanged, CLI/MCP jobs, missing receipt, restored-mtime failing edit, repeated focus, plain runs without logs and prune passed")
         if part in ("all", "scripts"):
             print("managed acceptance: build-script reuse passed")
