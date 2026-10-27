@@ -4780,6 +4780,36 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": " presentation_verdict(&report.verdict,&report.establishment) ",
           "after": " VerdictName::Provisional "
+        },
+        {
+          "name": "completed-view-original-request",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "CompletedPresentation { project,request,whole }",
+          "after": "CompletedPresentation { project,request:None,whole }"
+        },
+        {
+          "name": "completed-view-no-unchecked-whole",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "Some(request) => complete_request_ordered(request,project,orders),",
+          "after": "Some(request) => Some(CompleteRequest {request,project}),"
+        },
+        {
+          "name": "completed-view-request-projection",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ match &self.request { Some(request) => Some(*request), None => None } }",
+          "after": "{ None }"
+        },
+        {
+          "name": "completed-view-whole-projection-always-withholds",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ match &self.whole { Some(whole) => Some(whole), None => None } }",
+          "after": "{ None }"
+        },
+        {
+          "name": "completed-view-full-factory-always-withholds-whole",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "\n        let whole = match request {\n            Some(request) => complete_request_ordered(request,project,orders),\n            None => None,\n        };\n        CompletedPresentation { project,request,whole }\n    ",
+          "after": "\n        let _ = orders; CompletedPresentation { project,request,whole:None }\n    "
         }
       ]
     }
