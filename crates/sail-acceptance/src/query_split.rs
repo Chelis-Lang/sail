@@ -73,7 +73,7 @@ sail_code! {
         sail_method! {
             /// Appends the actual next byte. The returned completion owns all
             /// original bytes through the first root close, without trimming.
-            pub fn push(mut self, byte: u8) -> (out: ListStep)
+            pub fn push(self, byte: u8) -> (out: ListStep)
                 requires (self.well_formed(), self.bytes_view().len() < usize::MAX)
                 ensures (match out {
                     ListStep::Pending(next) => next.well_formed()
@@ -86,28 +86,8 @@ sail_code! {
                 sail_proof! {
                     reveal(ListFrame::well_formed);
                     assert(pending_list(self.bytes@,self.depth,self.lex,self.comments));
-                    assert(crate::query::frame_scan(self.bytes@,self.comments)
-                        == (self.depth as int,self.lex));
                 }
-                let next = crate::query::frame_step(self.depth,self.lex,byte,self.comments);
-                self.bytes.push(byte);
-                sail_proof! {
-                    assert(crate::query::frame_scan(self.bytes@.drop_last(),self.comments)
-                        == (self.depth as int,self.lex));
-                    assert(self.bytes@.last() == byte);
-                    reveal_with_fuel(crate::query::frame_scan,1);
-                    assert forall|i: int| 1 <= i < self.bytes@.len() implies
-                        crate::query::frame_scan(self.bytes@.take(i),self.comments).0 > 0 by {
-                        assert(self.bytes@.take(i) =~= self.bytes@.drop_last().take(i));
-                    }
-                }
-                self.depth = next.0;
-                self.lex = next.1;
-                if next.0 == 0 {
-                    ListStep::Complete(self.bytes)
-                } else {
-                    ListStep::Pending(self)
-                }
+                append_list(self.bytes,self.depth,self.lex,byte,self.comments)
             }
         }
 
@@ -164,6 +144,42 @@ sail_code! {
                 requires (self.well_formed())
                 ensures (bytes@ == self.bytes_view(), !crate::query::single_list(bytes@,self.comments_view()))
             { self.bytes }
+        }
+    }
+}
+
+sail_verified! {
+    /// The same actual byte append over its owned vector, separated from the
+    /// containing record so its old byte-prefix facts remain explicit.
+    fn append_list(mut bytes: Vec<u8>, depth: usize, lex: crate::query::FrameLex,
+        byte: u8, comments: bool) -> (out: ListStep)
+        requires (pending_list(bytes@,depth,lex,comments), bytes@.len() < usize::MAX)
+        ensures (match out {
+            ListStep::Pending(next) => next.well_formed()
+                && next.bytes_view() == bytes@.push(byte) && next.comments_view() == comments,
+            ListStep::Complete(complete) => complete@ == bytes@.push(byte)
+                && crate::query::single_list(complete@,comments),
+        })
+    {
+        sail_proof! {
+            assert(crate::query::frame_scan(bytes@,comments) == (depth as int,lex));
+        }
+        let next = crate::query::frame_step(depth,lex,byte,comments);
+        bytes.push(byte);
+        sail_proof! {
+            reveal(ListFrame::well_formed);
+            assert(crate::query::frame_scan(bytes@.drop_last(),comments) == (depth as int,lex));
+            assert(bytes@.last() == byte);
+            reveal_with_fuel(crate::query::frame_scan,1);
+            assert forall|i: int| 1 <= i < bytes@.len() implies
+                crate::query::frame_scan(bytes@.take(i),comments).0 > 0 by {
+                assert(bytes@.take(i) =~= bytes@.drop_last().take(i));
+            }
+        }
+        if next.0 == 0 {
+            ListStep::Complete(bytes)
+        } else {
+            ListStep::Pending(ListFrame { bytes, depth:next.0, lex:next.1, comments })
         }
     }
 }

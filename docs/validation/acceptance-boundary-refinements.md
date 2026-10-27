@@ -19,6 +19,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `8752d3c6` parser query positive | Full-root compilation clears the borrowed-pattern defect; verification retains 479 verified/one failed function across all 835 entries in 32.564 s. Only push's postappend scan/prefix assertions refuse, without a resource marker; final source/runtime guards pass | No positive/control/native qualification or inventory lock. The next source candidate moves that same owned Vec append into a private checked helper, preserving the public operation/contract and full-root obligations |
 | `668be5f2` parser query positive | Complete query capture refuses compilation at three E0382 proof-pattern moves after 3.156 s (#469), with final source/runtime guards passing | Verification never starts: no function/obligation inventory, control or native credit. Borrowed proof-pattern correction preserves executable operations/contracts and must repeat the whole root at unchanged resources |
 | `48f09fa7` parser query positive | Native full-query attempt checks all 835 function entries and retains 477 verified plus three failed functions in 39.006 s, with final source/runtime guards passing. Diagnostics include push's missing preappend scan fact/postcondition, chunk endpoint constructiveness and a resource refusal in the long-command witness | No positive/control/native credit and no inventory lock. Separate source guidance explicitly unfolds the original invariant and scopes finite-prefix/flat-list facts; contracts, runtime operations, resources and all controls remain mandatory |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
@@ -59,6 +60,22 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The next closed parser attempt is retained as
+`experiments/2026-10-27/acceptance-parser-8752d3-native.tgz`, SHA-256
+`c3a16223e37268448d58fd7dd4c5788ca11bc895d31eb867fc5f34ba6b7ead52`
+(297,190 bytes). Host creation and independent local SCP/hash agree; private
+object upload/readback remain pending. It clears the proof-only ownership
+compiler errors and all three constructive witnesses without resource refusal,
+but the append method still lacks the post-mutation scan/prefix facts. Its
+final source/runtime checks pass; the failed count supplies no inventory lock.
+The follow-up consumes the actual Vec and immutable scalar state through a
+private checked append helper, rather than mutating a nested Vec projection.
+It appends the same byte and returns the same owned complete/pending payload;
+the public operation/contract and every inherited function remain. Original
+byte/comment and full always-pending controls target this actual append helper
+with their same wrong operations and full obligations. No interpretation,
+resource or constructor guard is weakened; the complete root must rerun.
 
 The separate closed parser guidance attempt is retained as
 `experiments/2026-10-27/acceptance-parser-668be5-native.tgz`, SHA-256
