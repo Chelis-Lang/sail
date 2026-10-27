@@ -914,6 +914,12 @@ sail_code! {
                         let (next,first,second)=Self { input:current.input,state,position:current.position }.step(data[0]);
                         sail_proof! {
                             assert(data@.take(1) =~= seq![data@[0]]);
+                            assert forall|history:Seq<u8>| self.matches(history) implies
+                                next.matches(history+data@.take(1))
+                                && optional_original(first,history+data@.take(1),self.input)
+                                && optional_original(second,history+data@.take(1),self.input) by {
+                                assert(history.push(data@[0]) =~= history+data@.take(1));
+                            }
                             model_scan_one(model(state),self.input,self.position_view(),data@[0]);
                         }
                         (next,first,second,1)
@@ -976,6 +982,12 @@ sail_code! {
                                     =~= history+data@.take(cursor as int));
                                 original_items_append(appended@,items@.len() as int,history+data@.take(_chunk_start as int),
                                     data@.subrange(_chunk_start as int,cursor as int),self.input);
+                            }
+                            assert forall|history:Seq<u8>| self.matches(history) implies
+                                optional_original(first,history+data@.take(cursor as int),self.input)
+                                && optional_original(second,history+data@.take(cursor as int),self.input) by {
+                                assert((history+data@.take(_chunk_start as int))+data@.subrange(_chunk_start as int,cursor as int)
+                                    =~= history+data@.take(cursor as int));
                             }
                             item_models_facts(appended@);
                         }
