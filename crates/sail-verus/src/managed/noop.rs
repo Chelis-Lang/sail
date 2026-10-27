@@ -816,7 +816,8 @@ pub fn replay_empty_human_output(
             if !sail_api::acceptance::empty_human_bytes(&[], &stderr) {
                 return None;
             }
-            trace("hit: empty human output only");
+            trace("replay kind: empty human output only");
+            trace("hit");
             Some(HumanReplay { stderr })
         })
         .ok()??

@@ -473,6 +473,11 @@ whole-root function/VC discovery, every new negative, native tests and the
 unchanged positive recording/hit assertions remain required. No new inventory or
 qualification is inferred from source inspection.
 
+The byte-only reader preserves the established exact `hit` decision trace and
+records its distinct replay kind on a separate line. The unchanged original
+end-to-end recording/hit assertions remain required; a new diagnostic spelling
+does not replace those assertions.
+
 The diagnostic and source-tooling archives are retained under
 `experiments/2026-10-27/acceptance-recording-a73d13c2-native.tgz`
 (SHA-256 `a62760bcbdebfcecda2c57652d21f683e44d4dda459f1bd38e17b19aaec8ff61`,
