@@ -682,6 +682,9 @@ sail_spec! {
             =~= history.subrange(start,history.len() as int-1));
     }
     /// Pending bytes are the actual suffix of this same original raw stream.
+    pub open spec fn emission_slots(first:Option<Item>,second:Option<Item>) -> int {
+        (if first.is_some() {1int} else {0int})+(if second.is_some() {1int} else {0int})
+    }
     spec fn state_matches(state: SplitState, input: bool, position: int,
         history: Seq<u8>) -> bool {
         history.len() == position && match state {
@@ -754,6 +757,7 @@ sail_code! {
         sail_impl_spec! {
             pub closed spec fn input_view(&self) -> bool { self.input }
             pub open spec fn has_pending_item_spec(&self) -> bool { self.transition_view().0 == 2 || self.transition_view().0 == 3 }
+            pub open spec fn pending_slots(&self) -> int { if self.has_pending_item_spec() {1int} else {0int} }
             pub closed spec fn fresh(&self) -> bool { self.state is Idle && self.position_view() == 0 }
             /// Logical projection of the actual owned state, with no
             /// runtime copy and no supplied parse-success flag.
@@ -827,6 +831,7 @@ sail_code! {
                     self.position_view() < usize::MAX)
                 ensures (out.0.input_view() == self.input_view(),out.0.position_view() == self.position_view()+1,
                     out.0.well_formed(),
+                    emission_slots(out.1,out.2)+out.0.pending_slots() <= 1+self.pending_slots(),
                     self.step_result(out.0,out.1,out.2,byte),
                     out.0.transition_view() == model_step(self.transition_view(),self.input_view(),self.position_view(),byte).0,
                     option_models(out.1)+option_models(out.2)
@@ -851,10 +856,75 @@ sail_code! {
             }
         }
         sail_method! {
+            /// Executes the actual list fast path or one outer byte, retaining
+            /// the consumed prefix and exact ordered outputs as one transition.
+            fn consume_chunk(self,data:&[u8]) -> (out:(Self,Option<Item>,Option<Item>,usize))
+                requires (self.well_formed(),data.len()>0,self.position_view()+data@.len() <= usize::MAX,
+                    self.position_view()+data@.len() <= u64::MAX)
+                ensures (0 < out.3 <= data.len(),out.0.well_formed(),out.0.input_view() == self.input_view(),
+                    out.0.position_view() == self.position_view()+out.3,
+                    emission_slots(out.1,out.2)+out.0.pending_slots() <= out.3+self.pending_slots(),
+                    model(out.0.state) == model_scan(model(self.state),self.input,self.position_view(),data@.take(out.3 as int)).0,
+                    option_models(out.1)+option_models(out.2)
+                        == model_scan(model(self.state),self.input,self.position_view(),data@.take(out.3 as int)).1,
+                    forall|history:Seq<u8>| self.matches(history) ==>
+                        out.0.matches(history+data@.take(out.3 as int))
+                        && optional_original(out.1,history+data@.take(out.3 as int),self.input)
+                        && optional_original(out.2,history+data@.take(out.3 as int),self.input))
+            {
+                let current=self;
+                match current.state {
+                    SplitState::List(frame,start) => {
+                        let (step,consumed)=frame.push_chunk(data);
+                        let mut position=current.position; position.advance(consumed as u64);
+                        let (state,item)=match step {
+                            ListStep::Pending(next) => {
+                                sail_proof! {
+                                    assert(frame.comments_view() == self.input);
+                                    reveal(ListFrame::well_formed);
+                                    list_model_pending(frame.bytes_view(),start as int,self.input,
+                                        self.position_view(),data@.take(consumed as int));
+                                }
+                                (SplitState::List(next,start),None)
+                            }
+                            ListStep::Complete(bytes) => {
+                                sail_proof! {
+                                    assert(frame.comments_view() == self.input);
+                                    list_model_complete(frame.bytes_view(),start as int,self.input,
+                                        self.position_view(),data@.take(consumed as int));
+                                }
+                                (SplitState::Idle,Some(Item { kind:ItemKind::List,offset:start,bytes }))
+                            }
+                        };
+                        let next=Self { input:current.input,state,position };
+                        sail_proof! {
+                            assert forall|history:Seq<u8>| self.matches(history) implies
+                                next.matches(history+data@.take(consumed as int))
+                                && optional_original(item,history+data@.take(consumed as int),self.input) by {
+                                suffix_append(history,start as int,data@.take(consumed as int));
+                            }
+                            reveal(StreamSplitter::well_formed);
+                            let ghost history=choose|history:Seq<u8>| self.matches(history);
+                            assert(next.matches(history+data@.take(consumed as int)));
+                            assert(exists|history:Seq<u8>| next.matches(history));
+                        }
+                        (next,item,None,consumed)
+                    }
+                    state => {
+                        let (next,first,second)=Self { input:current.input,state,position:current.position }.step(data[0]);
+                        sail_proof! {
+                            assert(data@.take(1) =~= seq![data@[0]]);
+                            model_scan_one(model(state),self.input,self.position_view(),data@[0]);
+                        }
+                        (next,first,second,1)
+                    }
+                }
+            }
+        }
+        sail_method! {
             /// Executes the original chunk loop over the actual owned state.
             /// In-list chunks retain the first-close fast path; outer bytes
             /// advance once even when their delimiter is reconsidered.
-            #[allow(clippy::too_many_lines, reason = "Keep the actual owned state, consumed cursor, ordered emissions and their checked loop facts in one coherent production transition.")]
             pub fn push_items(self, data: &[u8], items: Vec<Item>) -> (out: (Self,Vec<Item>))
                 requires (self.well_formed(),self.position_view()+data@.len() <= usize::MAX,
                     items@.len()+data@.len()+(if self.position_view()>0 {1int} else {0int}) <= usize::MAX,
@@ -877,6 +947,8 @@ sail_code! {
                     invariant (cursor <= data.len(),self.well_formed(),current.well_formed(),current.input_view() == self.input_view(),
                         current.position_view() == self.position_view()+cursor,
                         appended@.len() <= items@.len()+cursor+(if self.position_view()>0 {1int} else {0int}),
+                        appended@.len()+current.pending_slots() <= items@.len()+cursor+self.pending_slots(),
+                        self.pending_slots() <= if self.position_view()>0 {1int} else {0int},
                         appended@.take(items@.len() as int) == items@,
                         appended@.len() >= items@.len(),
                         model(current.state) == model_scan(model(self.state),self.input,self.position_view(),data@.take(cursor as int)).0,
@@ -892,99 +964,35 @@ sail_code! {
                     decreases (data.len()-cursor)
                     {
                         let _chunk_start=cursor;
-                        match current.state {
-                            SplitState::List(frame,start) => {
-                                let (step,consumed)=frame.push_chunk(&data[_chunk_start..]);
-                                cursor += consumed;
-                                sail_proof! {
-                                    assert(data@.subrange(_chunk_start as int,data@.len() as int).take(consumed as int)
-                                        =~= data@.subrange(_chunk_start as int,cursor as int));
-                                    assert forall|history:Seq<u8>| self.matches(history) implies
-                                        frame.bytes_view() == (history+data@.take(_chunk_start as int)).subrange(start as int,
-                                            (history.len()+_chunk_start) as int) by {}
-                                    assert forall|history:Seq<u8>| self.matches(history) implies
-                                        (history+data@.take(cursor as int)).subrange(start as int,(history.len()+cursor) as int)
-                                            == frame.bytes_view()+data@.subrange(_chunk_start as int,cursor as int) by {
-                                        suffix_append(history+data@.take(_chunk_start as int),start as int,
-                                            data@.subrange(_chunk_start as int,cursor as int));
-                                        assert((history+data@.take(_chunk_start as int))+data@.subrange(_chunk_start as int,cursor as int)
-                                            =~= history+data@.take(cursor as int));
-                                    }
-                                }
-                                sail_proof! {
-                                    assert forall|history:Seq<u8>| self.matches(history) implies
-                                        forall|i:int| items@.len() <= i < appended@.len() ==>
-                                            original_item(appended@[i],history+data@.take(cursor as int),self.input) by {
-                                        assert((history+data@.take(_chunk_start as int))
-                                            +data@.subrange(_chunk_start as int,cursor as int)
-                                            =~= history+data@.take(cursor as int));
-                                        original_items_append(appended@,items@.len() as int,history+data@.take(_chunk_start as int),
-                                            data@.subrange(_chunk_start as int,cursor as int),self.input);
-                                    }
-                                }
-                                let mut position=current.position; position.advance(consumed as u64);
-                                let state=match step {
-                                    ListStep::Pending(next) => {
-                                        sail_proof! {
-                                            assert(frame.comments_view() == self.input);
-                                            reveal(ListFrame::well_formed);
-                                            assert(next.bytes_view() == frame.bytes_view()+data@.subrange(_chunk_start as int,cursor as int));
-                                            list_model_pending(frame.bytes_view(),start as int,self.input,
-                                                current.position.view(),data@.subrange(_chunk_start as int,cursor as int));
-                                        }
-                                        SplitState::List(next,start)
-                                    }
-                                    ListStep::Complete(bytes) => {
-                                        sail_proof! {
-                                            assert(frame.comments_view() == self.input);
-                                            assert(bytes@ == frame.bytes_view()+data@.subrange(_chunk_start as int,cursor as int));
-                                            list_model_complete(frame.bytes_view(),start as int,self.input,
-                                                current.position.view(),data@.subrange(_chunk_start as int,cursor as int));
-                                        }
-                                        sail_proof! { item_models_facts(appended@); }
-                                        appended.push(Item { kind:ItemKind::List,offset:start,bytes });
-                                        SplitState::Idle
-                                    }
-                                };
-                                current=Self { input:current.input,state,position };
-                                sail_proof! {
-                                    assert(data@.take(cursor as int) =~= data@.take(_chunk_start as int)
-                                        +data@.subrange(_chunk_start as int,cursor as int));
-                                    model_scan_join(model(self.state),self.input,self.position_view(),
-                                        data@.take(_chunk_start as int),data@.subrange(_chunk_start as int,cursor as int));
-                                }
-                            }
-                            state => {
-                                let (next,first,second)=Self { input:current.input,state,position:current.position }.step(data[cursor]);
-                                sail_proof! {
-                                    assert forall|history:Seq<u8>| self.matches(history) implies
-                                        forall|i:int| items@.len() <= i < appended@.len() ==>
-                                            original_item(appended@[i],history+data@.take(_chunk_start as int+1),self.input) by {
-                                        assert((history+data@.take(_chunk_start as int))+seq![data@[_chunk_start as int]]
-                                            =~= history+data@.take(_chunk_start as int+1));
-                                        original_items_append(appended@,items@.len() as int,history+data@.take(_chunk_start as int),
-                                            seq![data@[_chunk_start as int]],self.input);
-                                    }
-                                    item_models_facts(appended@);
-                                }
-                                if let Some(item)=first { appended.push(item); }
-                                sail_proof! { item_models_facts(appended@); }
-                                if let Some(item)=second { appended.push(item); }
-                                current=next;
-                                cursor += 1;
-                                sail_proof! {
-                                    assert(data@.take(cursor as int) =~= data@.take(_chunk_start as int)+seq![data@[_chunk_start as int]]);
-                                    model_scan_one(model(state),self.input,self.position_view()+_chunk_start,data@[_chunk_start as int]);
-                                    model_scan_join(model(self.state),self.input,self.position_view(),
-                                        data@.take(_chunk_start as int),seq![data@[_chunk_start as int]]);
-                                }
-                            }
-                        }
+                        let (next,first,second,consumed)=current.consume_chunk(&data[cursor..]);
+                        cursor += consumed;
                         sail_proof! {
-                            reveal(StreamSplitter::well_formed);
-                            let ghost history=choose|history:Seq<u8>| self.matches(history);
-                            assert(current.matches(history+data@.take(cursor as int)));
-                            assert(exists|history:Seq<u8>| current.matches(history));
+                            assert(data@.subrange(_chunk_start as int,data@.len() as int).take(consumed as int)
+                                =~= data@.subrange(_chunk_start as int,cursor as int));
+                            assert forall|history:Seq<u8>| self.matches(history) implies
+                                forall|i:int| items@.len() <= i < appended@.len() ==>
+                                    original_item(appended@[i],history+data@.take(cursor as int),self.input) by {
+                                assert((history+data@.take(_chunk_start as int))+data@.subrange(_chunk_start as int,cursor as int)
+                                    =~= history+data@.take(cursor as int));
+                                original_items_append(appended@,items@.len() as int,history+data@.take(_chunk_start as int),
+                                    data@.subrange(_chunk_start as int,cursor as int),self.input);
+                            }
+                            item_models_facts(appended@);
+                        }
+                        if let Some(item)=first { appended.push(item); }
+                        sail_proof! { item_models_facts(appended@); }
+                        if let Some(item)=second { appended.push(item); }
+                        current=next;
+                        sail_proof! {
+                            assert(data@.take(cursor as int) =~= data@.take(_chunk_start as int)
+                                +data@.subrange(_chunk_start as int,cursor as int));
+                            model_scan_join(model(self.state),self.input,self.position_view(),
+                                data@.take(_chunk_start as int),data@.subrange(_chunk_start as int,cursor as int));
+                            assert forall|history:Seq<u8>| self.matches(history) implies
+                                current.matches(history+data@.take(cursor as int)) by {
+                                assert((history+data@.take(_chunk_start as int))+data@.subrange(_chunk_start as int,cursor as int)
+                                    =~= history+data@.take(cursor as int));
+                            }
                         }
                     }
                 }
