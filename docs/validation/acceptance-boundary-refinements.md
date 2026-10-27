@@ -79,6 +79,17 @@ loop checks, exact function/obligation counts, controls and resource limits stay
 required. The failed matrix and nondurable original launcher remain indexed;
 its orchestration guard and correctly aborted service receive zero proof credit.
 
+A further source-only #468 witness finds that a selector editing only a
+`sail_while!` invariant or termination clause was still accepted as runtime
+syntax. The source projection now balances the actual loop macro grammar,
+retains the complete invariant/decreases groups as protected contracts, and
+excludes them from executable selector spans. Whole-method edits that change
+both runtime code and loop annotations refuse as well. Real loop conditions,
+bodies and post-loop returns remain eligible mutation targets. Four focused
+source tests pass locally in 0.002 seconds; complete native source/inventory
+qualification remains pending. This changes the checker, not production Rust,
+formal obligations, existing mutation descriptors or verifier limits.
+
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
