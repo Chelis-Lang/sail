@@ -1499,3 +1499,10 @@ gates, all intervening refusals and the bounded five-pair scheduling stop.
   Upload/independent lead audit and corrected focused/full native gates remain
   pending. The code-associated correction preserves every old assertion and
   adds CR coverage; all production bodies, captures and proof controls stay fixed.
+
+- `90d70f80`, 2026-10-27: actual clean/recompile of acceptance, SMT and key crates;
+  all five `prefix_framing` tests pass, zero skipped. Strict key Clippy then
+  refuses only the new CR fixture's `assert_is_empty` spelling (#501). Exact
+  source/image/final-source checks pass. The local correction uses diagnostic
+  empty-array equality for the same zero-item assertion; focused native rerun
+  and full workspace/solver qualification remain pending.

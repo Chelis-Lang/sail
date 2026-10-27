@@ -130,7 +130,10 @@ fn input_carriage_return_terminates_atoms_at_every_raw_boundary() {
         assert_eq!(items[3].offset, 10);
         assert_eq!(items[3].bytes, b"foo");
         assert!(!owner.has_pending_item());
-        assert!(owner.append_items(b"\n").is_empty());
+        assert_eq!(
+            owner.append_items(b"\n"),
+            [] as [sail_acceptance::query_split::Item; 0]
+        );
         assert!(!owner.has_pending_item());
         assert_eq!(owner.bytes(), [raw.as_slice(), b"\n"].concat());
         assert!(owner.hash_tail());
