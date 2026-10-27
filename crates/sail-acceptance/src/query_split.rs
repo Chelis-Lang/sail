@@ -653,14 +653,14 @@ sail_spec! {
             state is Idle && item.is_none()
         } else if input && byte == b';' { state is Comment && item.is_none() }
         else if byte == b'(' {
-            match state { SplitState::List(frame,start) => start == position
-                && frame.bytes_view() == seq![byte], _ => false } && item.is_none()
+            (match state { SplitState::List(frame,start) => start == position
+                && frame.bytes_view() == seq![byte], _ => false }) && item.is_none()
         } else if input && byte == b')' {
             state is Idle && match item { Some(item) => item.kind is Stray
                 && item.offset == position && item.bytes@ == seq![byte], None => false }
         } else {
-            match state { SplitState::Atom(atom) => atom.start_view() == position
-                && atom.bytes_view() == seq![byte], _ => false } && item.is_none()
+            (match state { SplitState::Atom(atom) => atom.start_view() == position
+                && atom.bytes_view() == seq![byte], _ => false }) && item.is_none()
         }
     }
     /// Exact operational transition, including emitted inventory. Together
@@ -767,7 +767,7 @@ sail_code! {
                     self.position_view()+data@.len() <= u64::MAX)
                 ensures (out.0.input_view() == self.input_view(),out.0.well_formed(),
                     out.0.position_view() == self.position_view()+data@.len(),
-                    out.1@.take(items@.len()) == items@,out.1@.len() >= items@.len(),
+                    out.1@.take(items@.len() as int) == items@,out.1@.len() >= items@.len(),
                     out.0.transition_view() == model_scan(self.transition_view(),self.input_view(),self.position_view(),data@).0,
                     item_models(out.1@) == item_models(items@)
                         + model_scan(self.transition_view(),self.input_view(),self.position_view(),data@).1,
@@ -783,7 +783,7 @@ sail_code! {
                     invariant (cursor <= data.len(),current.well_formed(),current.input_view() == self.input_view(),
                         current.position_view() == self.position_view()+cursor,
                         appended@.len() <= items@.len()+cursor+(if self.position_view()>0 {1int} else {0int}),
-                        appended@.take(items@.len()) == items@,
+                        appended@.take(items@.len() as int) == items@,
                         appended@.len() >= items@.len(),
                         model(current.state) == model_scan(model(self.state),self.input,self.position_view(),data@.take(cursor as int)).0,
                         item_models(appended@) == item_models(items@)

@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Correct erased outer-stream proof expression grouping and Seq index projections
+  (#481), preserving runtime operations and contract meaning. Whole-root
+  verification of the wider parser candidate remains pending.
+
 - Retain complete ordered parser emissions and continuation in the checked
   input-owner append contract (#480), with nonempty constructive and drop/reorder
   controls. Runtime bytes and returned data are unchanged; qualification is pending.

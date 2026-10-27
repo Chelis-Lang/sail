@@ -20,6 +20,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `0ef78997` outer/owner query attempt | Complete query capture refuses Stock compilation after 1.928 s: two ungrouped match predicates cause four E0308 diagnostics and two Seq::take indices need nat→int casts (#481); final frozen source/runtime checks pass | No verifier/function-count/control credit. Erased grouping/projection correction retains every runtime operation, pre/postcondition meaning, loop VC and all 189 query controls; full-root rerun required |
 | `9c3b4ea6` bounded parser controls | All eleven canonical query partitions pass: corrected 151 plus 162–171, each repeating the whole 482/837 positive and one ordinary negative at 120 s/one thread; final source/runtime checks pass | Bounded diagnostic only, complete_component_controls=false and complete_suite=false. Does not qualify the newer outer/owner source or waive the full controls/native/conformance gates |
 | Owner-inventory correction candidate (#480) | Exact initial-state, continuation and complete ordered-emission contracts now reach the actual raw-owner wrapper; concrete shared witness and two full-operation controls are added | Source only; preserved f5a179d5 was unlaunched and did not claim this stronger relation. New actual discovery/native/189-query-control qualification remains pending |
 | Outer-stream/input-tape source candidate | Actual outer states, cursor, chunk loop and paired raw append are implemented; 16 ordinary controls append to the unchanged 171 query controls | Source only: new positive/function discovery, native paired fixture, complete 187-query-control qualification and conformance pending; historical 482/837 does not qualify the new bodies |
@@ -69,6 +70,13 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The closed outer/owner refusal archive is
+`experiments/2026-10-27/acceptance-parser-0ef789-positive-native.tgz`, SHA-256
+`a83e9e47d2d537fc3b253db0113a47a246d2016b47fe2ec96d31b4f864480336`
+(279,498 bytes). Host creation and independent local SCP/hash agree; private
+upload/readback is pending. It retains the exact full capture, six raw compiler
+diagnostics and failed report; no verifier inventory is inferred from this run.
 
 The closed bounded archive is
 `experiments/2026-10-27/acceptance-parser-9c3b4e-bounded11-native.tgz`, SHA-256

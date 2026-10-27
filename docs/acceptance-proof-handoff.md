@@ -85,6 +85,14 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+The first wider outer/owner whole-query attempt at `0ef78997` refuses Stock
+compilation after 1.928 s with six erased expression/index diagnostics (#481).
+Final source/runtime checks pass; no new inventory is locked. Parentheses and
+explicit int projections correct only that proof syntax, preserving all actual
+runtime statements and all 189 controls. Its full-function mutant uses the same
+corrected contracts/loop invariant on both sides. Fresh whole-root discovery is
+required before any wider positive claim.
+
 ## Raw-owner inventory correction candidate (#480)
 
 Review of preserved `f5a179d5` found its actual owner append returned all items
