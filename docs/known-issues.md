@@ -14,6 +14,10 @@ Its first full query run at `48f09fa7` refuses with missing append/endpoint proo
 facts and a resource marker in constructiveness; final identity checks pass,
 but no positive or control qualifies. Explicit scoped proof guidance retains
 the original byte/frame relation and default limits; rerun remains required.
+The follow-up `668be5f2` refuses Stock compilation because proof-only patterns
+move values later used by executable matches (#469). Borrowed proof patterns
+correct that candidate defect without changing native behavior; no verification
+or control credit is obtained until the complete rerun passes.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

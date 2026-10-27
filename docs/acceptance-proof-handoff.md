@@ -109,6 +109,10 @@ scoped finite-prefix/flat-list guidance for the unchanged constructive cases;
 runtime operations, contracts, resources and control intent are preserved.
 The closed failed archive and controller preflight refusal remain in the
 [owning record](validation/acceptance-boundary-refinements.md).
+The complete `668be5f2` follow-up stops at three proof-only moved-value compiler
+errors (#469), before verification. Borrowing those inspected values preserves
+the original runtime operations and obligations; a fresh whole root remains
+required, with no credit from either refusal.
 
 ## Frozen pre-kernel proof scope and qualification
 
