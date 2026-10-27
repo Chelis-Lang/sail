@@ -16,7 +16,7 @@ Commit `6a1a8fcf` integrates actual terminal-output operations while preserving
 all prior controls, renderer corrections, the original-checkpoint source fixture,
 colored byte-only replay and the typed solver/mode-to-model bridge.
 The subsequent checked bound lemma replaces an invalid external closed-spec
-reveal; its full-root qualification is pending.
+reveal; complete Stock qualification passes at `b327ab39`.
 
 The current required inventory is 338 query, 115 input and 265 authority
 negatives, plus three complete positive roots. These are required cases, not
@@ -29,6 +29,7 @@ timeout and resource refusals earn zero ordinary-negative credit.
 | `16938f40` | Three complete Stock roots, native gate with 1,304 passing tests and normal solver/fault53 | Later source needs its own gates |
 | `ee4e684f` | All31 model cases and all115 input-record negatives across four canonical partitions | Complete compiler/physical input closure; query/authority partitions from that attempt refuse resources |
 | `d2bef2d0` | Whole Stock query646/1,114, inputs308/538, authority619/1,045; all12 model/80 production source tests | Native gate stops at colored predicate parentheses; Rust tests/solver unrun |
+| `b327ab39` | Whole Stock666/1,151,308/538,619/1,045 and all17 selected native replay tests | Strict workspace Clippy refuses one new fixture assertion style; corrected full native/control/e2e gates pending |
 | `561c1570` parser component | Whole613/1,056 and four full-positive/ordinary-negative pairs for earlier resource failures | Complete expanded query-control union and current integration gates |
 | `a694e30c` parser component | Native27 SMT tests and strict SMT/shim Clippy; subsequent cuts erase to the same native token projection | Current combined native/solver/e2e/conformance/cost |
 | `39612384` request component | All23 original-selector ordinary negatives; independent24-call raw/function/source audit | Full metadata construction/filter/native correspondence |

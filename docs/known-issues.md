@@ -48,9 +48,11 @@
   byte-only factories/rendering, eighteen executable failure controls and
   actual native record/readback fixtures. The whole authority root passes
   619/1,045 at `d2bef2d0`; its native gate stops at a redundant-parentheses
-  lint. That correction and private-token source protections need fresh
-  proof/native qualification, all eighteen ordinary controls and the actual
-  output phase. This is not yet a qualified fix.
+  lint. The corrected whole roots and all17 selected native replay fixtures
+  pass at `b327ab39`; strict workspace Clippy then refuses a new fixture's
+  empty-value assertion style. That correction, the full native gate, all
+  eighteen ordinary controls and actual output phase remain required. This
+  is not yet a qualified end-to-end fix.
 
 - [#507](https://github.com/Chelis-Lang/sail/issues/507): the managed ghost-only
   include case remains Unknown after both existing allowed verification calls.
@@ -58,6 +60,10 @@
   reports freshly established build-script declarations. The underlying
   observation/declaration mismatch remains unconfirmed. Conservative Unknown,
   the original positive assertion and ghost-file invalidation stay required.
+  Source review now finds that the ghost merge changes only the first
+  blank-separated dep-info output while the complete reader requires every
+  output body to agree. Main #515 corrects that join; the actual combined
+  managed phase must establish whether it resolves the original failure.
 
 - [#496](https://github.com/Chelis-Lang/sail/issues/496): combined runner `eaf51208` drops three parser import-binding hash entries during table reconciliation; existing native source tests catch the lost hidden-import refusal. The correction restores the exact parent-table union. Canonical source/Stock barriers remain independent; no false proof is demonstrated.
 

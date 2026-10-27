@@ -45,7 +45,7 @@
         "crates/sail-daemon/src/writer.rs",
         "crates/sail-daemon/src/server.rs"
       ],
-      "verified": 646,
+      "verified": 666,
       "functions": [
         "check_query::cache_candidate::Accounting::apply",
         "check_query::cache_candidate::Accounting::bytes",
@@ -1008,6 +1008,7 @@
         "check_query::query_prefix::QueryPrefix::valid",
         "check_query::query_prefix::QueryPrefix::view",
         "check_query::query_prefix::append_items_control",
+        "check_query::query_prefix::coherent_prefix_bound",
         "check_query::query_prefix::flat_byte",
         "check_query::query_prefix::flat_contents_prefix",
         "check_query::query_prefix::flat_list_frame",
@@ -1191,7 +1192,12 @@
         "check_query::refinement::transcript_append_refines",
         "check_query::refinement::transcript_initially_refines",
         "check_query::refinement::transcript_refines",
-        "check_query::refinement::trivia_framing_state"
+        "check_query::refinement::trivia_framing_state",
+        "check_query::refinement::typed_model_command",
+        "check_query::refinement::typed_model_fields",
+        "check_query::refinement::typed_model_mode",
+        "check_query::refinement::typed_model_solver",
+        "check_query::refinement::typed_model_supported_command_constructive"
       ],
       "negative_controls": [
         {

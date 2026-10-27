@@ -606,7 +606,7 @@ fn colored_human_record_preserves_bytes_without_proof_authority()
         &key,
     ))?)?;
     assert_eq!(record.observation.stderr, stderr);
-    assert!(record.observation.stdout.is_empty());
+    assert_eq!(record.observation.stdout.as_slice(), b"");
     assert!(record.observation.origins.is_empty());
     assert!(sail_api::acceptance::complete_selection(&record.observation.result).is_none());
     assert!(!record_path(&fixture.config.cache, &key).exists());

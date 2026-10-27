@@ -27,7 +27,24 @@ input prefix. The first correction tries to reveal a closed representation
 outside its module and is refused before verification (`6a1a8fcf`). The next
 candidate exposes the bound through a checked proof lemma in the actual
 owning module. All original contracts and runtime operations remain.
-No proof/native acceptance is claimed for the integrated source yet.
+The checked owning-module bound now passes in frozen `b327ab39`: complete
+query666/1,151, inputs308/538 and authority619/1,045, retaining all inherited
+functions at default full scope. All17 selected native replay tests pass,
+including exact colored grammar and actual record/readback/render/refusal.
+Strict workspace Clippy then identifies one fixture assertion that should
+print the empty byte value on failure. Its correction uses byte equality;
+no lint allowance, production operation or proof body changes. The full
+native gate, solver/control union, e2e, conformance and cost remain required.
+
+Independent GET/hash, raw three-root scope/function/resource checks, all343
+canonical source hashes and native summaries pass for
+`experiments/2026-10-27/acceptance-tail-bound-b327ab39-native.tgz`, SHA-256
+`355ab97424ada208422e8f023bb6ca3aa4c0aaf53931822f3a245a35f79c48ff`.
+The manifest locks only these actually observed function/obligation inventories.
+
+Failed attempt: `b327ab39`, 2026-10-27, strict Clippy exit101 from the
+new fixture's empty-value assertion; the three whole proofs and17 replay
+tests pass in the same archived bounded qualifier above.
 
 Failed attempt: `fa947cb7`, 2026-10-27, whole query 647/1 at unchanged
 resources; archive
