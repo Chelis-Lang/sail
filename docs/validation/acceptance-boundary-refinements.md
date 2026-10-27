@@ -1183,3 +1183,13 @@ unqualified; no evidence is inherited merely from matching source hashes.
   splitter loop again records a resource refusal. No actual inventory is
   locked; full scope/default resources and every control remain mandatory.
   The closed-predicate candidate compiler refusal is tracked as #502.
+
+The actual chunk/item/frame/replay/queue owner checkpoint `26b52508` passes the
+entire query root: **596 verified/zero errors, 1,025 actual function entries**,
+retaining all 971 prior functions. Pinned Stock/default 120 seconds, one thread,
+no-cheating, no VIR/resource refusal and final source/runtime checks pass.
+The manifest locks only these observed query results; other roots are historical.
+All 254 ordinary query controls remain mandatory and unqualified as a complete
+set. Native retained SMT tests and strict SMT/shim caller Clippy remain pending;
+the separate tail candidate and physical/origin boundaries are not qualified.
+Actual driver SHA-256: `5fa538c31cd023383fcffb575e111ec5fa5c825b5aed81fa56a9357a43b23ff6`; elapsed 44.03646102999846 seconds.

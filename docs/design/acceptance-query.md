@@ -1673,3 +1673,9 @@ fixture-only, with bodies retained, because the actual chunk loop uses the
 checked owner factory/completion getter. The native terminal `diverged`,
 `settle_observed` and `finish` paths stay unchanged. Actual caller compilation,
 not merely the SMT library fixture, is required before qualification.
+
+The frozen actual chunk/item owner at `26b52508` passes whole-query Stock with
+596 verified/1,025 actual functions, retaining all prior 971. The exact scan-prefix
+proof cut and stronger true append facet preserve the original executable parser
+body and verifier limits. The 254 ordinary controls, native SMT/shim qualification
+and separately implemented tail source remain pending; this is not full #371.
