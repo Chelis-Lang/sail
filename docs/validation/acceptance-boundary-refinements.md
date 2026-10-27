@@ -7,10 +7,22 @@ No complete compiler-input closure, physical
 observation guarantee or service theorem is claimed. All six rows of the
 [obligation ledger](../design/acceptance-boundary-refinements.md) remain open.
 
+The isolated source candidate from `4c43e5a9` additionally source-shares the
+actual owned streaming-list byte/chunk/copy/finish operations and the native
+delimiter call (proposed ADR 0086). Source assembly includes 21/9/14 compiled
+files and 171/115/121 ordinary controls. Discovery at `a182c1e4` passes the whole
+query positive at 482/837, retaining the earlier sets. Its 22 native SMT tests
+pass, followed by strict Clippy refusal; corrected-source native qualification,
+ordinary controls, conformance and cost qualification remain pending. Input and
+authority evidence remains historical; those components are not rerun here.
+Native outer offsets/top-level emission inventory and solver interpretation stay
+open under #371; no physical EOF, complete parser inventory or origin claim is made.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| Parser/cache/human source union (`34128e07` + `4127e34f`) | Retains all 278 query, 115 input and 147 authority controls as exact inherited objects; query discovery requires all 1,058 inherited functions. Actual cache bodies match the reviewed cache candidate, and parser/lexer/output bodies match their qualified milestone | Source integration only; 568 is a historical required query obligation floor, not an observed combined count. Complete combined inventories, controls and native/differential acceptance remain pending |
 | Required authority discovery floor | The manifest now retains all 915 functions and 523 obligations actually observed at frozen `b94a9f3e`, independently read from its archived positive report | Historical required floor only; the added human context/attachment functions still require fresh discovery and unchanged complete-scope controls |
-| `68b84947` checked human context | Direct Stock compiler refuses with E0106 at the proof-only context accessor (zero verified/zero verification failures); strict API/Verus/CLI Clippy and all 15 focused native tests pass | No positive or negative credit; stdout control remains unrun. Source checks are still finishing. The follow-up retains both original context lifetimes explicitly; no runtime check, contract, inventory or resource limit changes (#493) |
+| `68b84947` checked human context | Direct Stock compiler refuses with E0106 at the proof-only context accessor (zero verified/zero verification failures); strict API/Verus/CLI Clippy and all 15 focused native tests pass | No positive or negative credit; stdout control remains unrun. Source suites finish successfully (12 models/67 production). The follow-up retains both original context lifetimes explicitly; no runtime check, contract, inventory or resource limit changes (#493) |
 | Context/cache source union (`68b84947` + `cde57913`) | Preserves exact 214 query, 115 input and 147 authority control objects, all inherited function minima, the checked human context/attachment decomposition and actual cache generation/accounting/layout implementation | Source integration only. Separate frozen `68b84947` and `cde57913` native qualifications are running; neither establishes this union. Complete combined discovery, control qualification, native/differential gates and service obligations remain open |
 | `b94a9f3e` checked byte renderer | Complete authority passes 523/0 across 915 actual entries, retaining all prior functions (23.895 s). Strict API/Verus/CLI Clippy, all 15 selected native tests and source suites 12/67 pass; final source/image/runtime checks pass | Stdout omission control 134 again reaches default rlimit and earns zero credit; moving the same gate earlier did not repair #485. No new renderer negative, full-control/e2e/conformance or service credit |
 | Cache/service source union (`fe8c9188` + `b94a9f3e`) | Source assembly retains exact 214 query, 115 input and 145 authority control objects, root byte-only renderer/native bindings and cache generation/accounting/layout implementation. Historical manifest arrays are required discovery minima only: query519/908, inputs308/538, authority520/912 | Source-only union, not observed combined proof counts. A capped 15-second local metadata audit is interrupted without qualification credit; no builds/tests/Stock run locally. Lead must discover all combined whole-root inventories with unchanged resources/final checks and lock actual counts before the complete control union/native/differential gates |
@@ -31,6 +43,28 @@ observation guarantee or service theorem is claimed. All six rows of the
 | `4c43e5a9` full e2e | Isolated evidence-root run stops after 35.909 s: neutral positive has 2,061 unsat checks but Unknown backend currentness and `NotProved`; provider completion is absent (#471). Final source/image guards pass | No positive authority or full e2e credit. PR/full fast/standard conformance unrun. Earlier nested evidence-root attempt correctly refused repository Cargo configuration and is separate |
 | `8b3432c4` corrected control | Both native source suites pass (12 model-source, 59 production-source). Complete Stock positives retain query 471/821, inputs 308/538, authority 510/895. Bounded query partition `150/161` passes its whole positive and corrected control 151 at 470 verified plus one ordinary error, all 821 functions, with final source/runtime checks and no resource marker | Five actual verifier calls; only one ordinary negative. `complete_component_controls=false` and `complete_suite=false`. No complete query union, 400-case matrix or service theorem |
 | `4c43e5a9` controls | Fresh complete positives repeat 471/821, 308/538 and 510/895 with final source/runtime checks. Four query workers terminate with exits 0, 0, 1, 0; control 151 selects `1nat` inside `compare`'s ensures clause and produces a pre-verification type error, zero obligations and an empty function inventory (#468) | The strict inventory check refuses it. No ordinary-negative credit, complete query union or 400-case completion; inputs/authority never launch. The durable continuation correctly stops on the actual query failure before the reserved unstarted-component boundary |
+| Actual lexer/borrowed-head source candidate | Real lexical endpoints/classification/sticky state and borrowed head now execute in shared source; closed 22/9/14 textual assembly and 213 query controls | Source only: actual new discovery, ordinary controls/native/error mapping/conformance/cost qualification pending. Inherited 524/918 is the observed parent minimum, not a guessed lexical count |
+| Outer native-delegation fixture (#484) | One lightweight source test at `2bf6c63a` reproduces stale native-body selector failure 0!=1 in 0.294 s; retargeting the same four meaningful native guards passes the same test in 0.240 s | Test fixture only: mathematical controls/assertions and runtime code unchanged; no native/proof/service qualification |
+| `88ab662d` outer native package | After explicit cargo clean, both sail-acceptance/sail-smtlib Compile lines occur; all 22 SMT tests pass/0 skip in 0.572 s testtime. Strict Clippy refuses four style diagnostics (#470 recurrence); final source guard passes | Function-local annotations/doc correction preserve every qualified executable body token, predicate/control/assertion. Fresh strict native and wider qualification remain required |
+| `88ab662d` outer/raw-owner whole query positive | Entire query root passes 524 verified/0 errors with 918 actual entries, all 837 prior entries retained, no VIR/resource failure, 37.812 s, final frozen source/runtime checks pass | Positive only: exact observed inventory locked; all 192 query controls, new native/conformance and later lexical/output/solver/origin joins remain unqualified |
+| `2bf6c63a` extracted chunk query attempt | Complete query observes 522 verified/2 failed functions across 918 query entries in 39.445 s; final frozen source/runtime guards pass, with the outer loop's default rlimit marker retained | No qualification/count lock. Explicit scalar push/append and returned-option raw-prefix equalities target the remaining chunk/outer transport facts; all 192 controls/contracts/default resources remain required |
+| `e36f9681` outer/owner query attempt | Full query observes 522 verified/1 failed function and 915 query entries, 38.232 s, final guards passing. Sole outer-loop raw-state carry includes a default rlimit refusal; scalar/constructive obligations clear | No inventory lock/qualification. Actual chunk-transition extraction retains payloads/contracts/old190 controls and adds two full-method controls, without raising resources |
+| `19482b13` outer/owner query attempt | Full query observes 519 verified/4 failed functions across 915 query entries, no resource marker, 38.300 s, final source/runtime checks pass | No positive lock/qualification. Remaining pending-frame suffix, chunk raw-state carry and concrete returned-data witnesses receive exact equality/invariant facts, without changing predicate meaning, bytes or resources |
+| `3c3725c3` outer/owner query attempt | Full query observes 517 verified/4 failed functions, 913 query entries with all 837 prior entries retained; no resource marker, 38.355 s, final frozen source/runtime checks pass | No inventory lock/qualification. Remaining scalar/chunk raw-history transport and two finite byte-literal inventory witnesses receive exact prefix monotonicity/scoped scalar facts and identical explicit byte-array carriers; contracts/resources/all 190 controls remain required |
+| `3f7779b4` outer/owner query attempt | Full query compilation/lowering clears; whole-root verification observes 505 verified/11 failed functions across 908 query entries (all 837 earlier entries retained), no resource marker, 38.494 s, final source/runtime checks pass | No inventory lock or qualification. Remaining raw-history existential/suffix, first-close induction, chunk trace composition and constructive inventory obligations require actual proof guidance at unchanged contracts/resources |
+| `cc98352f` outer/owner query attempt | Pinned Stock source lowering refuses four public/opaque-field predicates and unsupported core::mem::replace after 2.759 s; one generated-data Clone warning is retained. Final frozen source/runtime checks pass | No verifier/count/control credit. Exact public projections and modeled Option::take preserve predicate/ownership meaning without a new axiom; #481 recurrence and #482 copy-continuation correction require a fresh whole root |
+| `0ef78997` outer/owner query attempt | Complete query capture refuses Stock compilation after 1.928 s: two ungrouped match predicates cause four E0308 diagnostics and two Seq::take indices need nat→int casts (#481); final frozen source/runtime checks pass | No verifier/function-count/control credit. Erased grouping/projection correction retains every runtime operation, pre/postcondition meaning, loop VC and all 189 query controls; full-root rerun required |
+| `9c3b4ea6` bounded parser controls | All eleven canonical query partitions pass: corrected 151 plus 162–171, each repeating the whole 482/837 positive and one ordinary negative at 120 s/one thread; final source/runtime checks pass | Bounded diagnostic only, complete_component_controls=false and complete_suite=false. Does not qualify the newer outer/owner source or waive the full controls/native/conformance gates |
+| Owner-inventory correction candidate (#480) | Exact initial-state, continuation and complete ordered-emission contracts now reach the actual raw-owner wrapper; concrete shared witness and two full-operation controls are added | Source only; preserved f5a179d5 was unlaunched and did not claim this stronger relation. New actual discovery/native/189-query-control qualification remains pending |
+| Outer-stream/input-tape source candidate | Actual outer states, cursor, chunk loop and paired raw append are implemented; 16 ordinary controls append to the unchanged 171 query controls | Source only: new positive/function discovery, native paired fixture, complete 187-query-control qualification and conformance pending; historical 482/837 does not qualify the new bodies |
+| `e6e0e67a` native dependency graph | Actual `xtask check-layering` passes for 20 crates/three extension crates, then all six selected layering unit tests pass; final source checks pass | Qualifies the implemented dependency graph and selected tests, not an architectural acceptance/runtime selection, full workspace gate or parser semantics theorem |
+| `e6e0e67a` native SMT package | All 22 package tests pass, zero skips (0.566 s test time), then strict all-target/all-feature package Clippy passes; final source checks pass | Native SMT package only. No ordinary-negative, full workspace, solver, conformance or service credit. Architecture graph and bounded whole-root control diagnostics remain separate |
+| `a182c1e4` parser query positive | Entire query Stock root passes 482/0 with all 837 query function entries, retaining every earlier qualified function and all 835 initial candidate entries; final source/runtime checks pass (34.038 s) | Positive discovery only; no ordinary-negative, full parser/solver interpretation or service credit. Observed counts await the stricter runtime-descriptor guard union and canonical locking |
+| `a182c1e4` native SMT package | All 22 tests pass, zero skips (0.561 s test time; 11.141 s command), then strict package Clippy refuses three new-kernel style diagnostics in 3.574 s (#470); final source checks pass | Local method/witness annotations preserve every statement/contract/control and require the same native tests/Clippy rerun. No complete package gate, workspace, solver or conformance qualification |
+| `ff4676cb` parser query positive | Full root retains 480 verified/one failed function across 836 query entries in 32.978 s, no resource marker; final source/runtime guards pass. The owned-Vec helper still refuses the same predecessor-scan/proper-prefix assertions | No positive or inventory lock. Next guidance proves the future appended sequence's scan/prefix facts before mutation, then asserts the stronger actual full-buffer scan against checked `frame_step`; runtime operations and original contracts remain unchanged |
+| `8752d3c6` parser query positive | Full-root compilation clears the borrowed-pattern defect; verification retains 479 verified/one failed function across all 835 entries in 32.564 s. Only push's postappend scan/prefix assertions refuse, without a resource marker; final source/runtime guards pass | No positive/control/native qualification or inventory lock. The next source candidate moves that same owned Vec append into a private checked helper, preserving the public operation/contract and full-root obligations |
+| `668be5f2` parser query positive | Complete query capture refuses compilation at three E0382 proof-pattern moves after 3.156 s (#469), with final source/runtime guards passing | Verification never starts: no function/obligation inventory, control or native credit. Borrowed proof-pattern correction preserves executable operations/contracts and must repeat the whole root at unchanged resources |
+| `48f09fa7` parser query positive | Native full-query attempt checks all 835 function entries and retains 477 verified plus three failed functions in 39.006 s, with final source/runtime guards passing. Diagnostics include push's missing preappend scan fact/postcondition, chunk endpoint constructiveness and a resource refusal in the long-command witness | No positive/control/native credit and no inventory lock. Separate source guidance explicitly unfolds the original invariant and scopes finite-prefix/flat-list facts; contracts, runtime operations, resources and all controls remain mandatory |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
 | `e36c749b` | Complete native discovery passes query 471/0 (821 functions), inputs 308/0 (538), authority 510/0 (895); every earlier function retained and final source/runtime checks pass | Actual inventories locked for 400 unique planned cases: 397 negatives plus three positives. The 409-call partition schedule remains held for native compile/Clippy clearance; no combined matrix, native completion or service theorem |
@@ -193,6 +227,176 @@ remains required.
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The closed native package attempt is `acceptance-parser-88ab66-smt-native.tgz`,
+SHA-256 `10f3a41a488432e232cd50217fc0a058941ea090f6c882def6fcb26b967ed0b7`
+(4,928 bytes). Host creation and independent local SCP/hash/report/rebuild-line
+checks pass; separate object upload/readback is pending. It retains all 22 test
+passes and the four raw Clippy diagnostics; no full workspace/solver/conformance
+qualification follows.
+
+The whole-query positive is retained as
+`acceptance-parser-88ab66-positive-native.tgz`, SHA-256
+`22503dadc8744753d399904a65694c9d036c4726b3bffadae70e89ae9440c250`
+(310,412 bytes). Host creation and independent local SCP/hash/full report agree;
+object upload/readback is pending. Actual driver hash remains
+`cab0c74526facdb3cce470441aa9ed45e9956f3bc1fc69ca7450a5b8116a0557`;
+the expanded actual core files have their separate complete captured hashes.
+No declaration/function count is guessed from this driver hash.
+
+The next closed proof refusal, separately from the immutable twelve-archive
+object, is `acceptance-parser-3c3725-positive-native.tgz`, SHA-256
+`58c4ccc7b9d7d90ceef0a09063545409ebe81e84b9ad2715e62820fc34c43833`
+(303,116 bytes). Host creation and independent local SCP/hash/report checks
+pass; object upload/readback is pending. All raw errors remain visible.
+
+The twelve closed parser archives are additionally retained in the immutable
+combined object `experiments/2026-10-27/acceptance-parser-closed-20261027-v1.tgz`,
+SHA-256 `82b6048c71e91b2432c6de951b7ada8d4c9711652a29bffb2ab62a5f61b891e4`
+(4,824,255 bytes). Agent PUT200/GET200 readback and independent local combined/
+all 12 indexed subarchive hashes pass; independent lead GET/audit is pending.
+Original archives remain. The included `acceptance-parser-3f7779-positive-native.tgz`
+has SHA-256 `ea6e14300aa5f0d25970552780a684ae0f3faa8288ff17f2c93964e847417490`
+(302,512 bytes), preserving the actual failed verifier JSON and all diagnostics.
+The following per-archive paths identify subarchives in this combined object;
+separate publication/readback is not claimed.
+
+The closed lowering refusal is
+`experiments/2026-10-27/acceptance-parser-cc9835-positive-native.tgz`, SHA-256
+`5ab2ac3e1a4188cc1cacbca22ca3f2910d618bf8452107be4276f31b424709c6`
+(279,770 bytes). Host creation and independent local SCP/hash agree; private
+upload/readback remains pending. All five errors and the derived-Clone warning
+remain visible. This is proof-program lowering, not a native workspace verdict.
+
+The closed outer/owner refusal archive is
+`experiments/2026-10-27/acceptance-parser-0ef789-positive-native.tgz`, SHA-256
+`a83e9e47d2d537fc3b253db0113a47a246d2016b47fe2ec96d31b4f864480336`
+(279,498 bytes). Host creation and independent local SCP/hash agree; private
+upload/readback is pending. It retains the exact full capture, six raw compiler
+diagnostics and failed report; no verifier inventory is inferred from this run.
+
+The closed bounded archive is
+`experiments/2026-10-27/acceptance-parser-9c3b4e-bounded11-native.tgz`, SHA-256
+`92142dec29aa54739d6dffc17f9106165a4834a33a11291080e852140b323c4f`
+(2,399,543 bytes). Host creation and independent local SCP/hash agree; all eleven
+canonical reports were independently read. Private object upload/readback remains
+pending. Their 1,852.773 s summed controller duration is a gate duration, not a
+performance measurement. Every positive retains the actual 482/837 inventory;
+this is not discovery or qualification of the newer outer/owner candidate.
+
+Native graph checks are retained as
+`experiments/2026-10-27/acceptance-parser-e6e0-layering-native.tgz`, SHA-256
+`c9f7b75a307b07222850d28008704f75c467784b1ca3f3a4b79d1824d2fba480`
+(7,830 bytes); host creation and independent local SCP/hash agree, with private
+upload/readback pending. The actual current graph passes, including the one
+proposed parser-to-leaf edge and all six layering unit tests (20 unrelated
+xtask tests filtered). ADR 0086 remains proposed; this check is not an owner
+architecture/runtime-selection decision or qualification of outer parser joins.
+
+The corrected native package archive is
+`experiments/2026-10-27/acceptance-parser-e6e0-smt-native.tgz`, SHA-256
+`0c983752977b8a7ab8d64d48e46d5c3b3d263b6ee0c3ef8a6289adfc92c65895`
+(10,612 bytes); host creation and independent local SCP/hash agree, with
+private object upload/readback pending. The same 22 native SMT tests and strict
+package Clippy pass after only three method/witness annotations; the failed
+earlier style run remains indexed. This establishes the package scope, not the
+remaining outer parser/offset/capacity relation or full service behavior.
+
+The coherent controller union incorporates the reviewed #468 source guard and
+balanced-cursor regressions (`4eeb4c95`, `8b3432c4`, `44b249c6`). Only comparison
+control 151 changes: it now selects the full unchanged method and substitutes
+the actual final false return, retaining every signature/contract. All 170
+other query control objects remain byte-identical. All ten new list controls
+and corrected 151 pass the executable-span source guard; no negative credit
+is granted before their entire-root ordinary failures. Actual query inventory
+is locked only from the successful `a182c1e4` report: 482/837, retaining every old
+function. Input/authority inventories remain historical and unchanged. The
+assembled driver and 20 compiled file hashes match that report; the remaining
+kernel file differs only by the three reviewed native annotations. The
+source-reproduced #468 loop-contract recurrence is corrected by the included
+root-qualified `9099f673` delta; loop contracts remain identical under mutation.
+All ten new controls and corrected 151 also pass that stricter source guard.
+
+The successful parser positive is retained as
+`experiments/2026-10-27/acceptance-parser-a182c1-positive-native.tgz`, SHA-256
+`d0ad7fa8747d87f8ba96d83890e55d48d80f7f442b30833fcbb3759b1f53b7f1`
+(304,783 bytes); host creation and independent local SCP/hash agree. Its exact
+837-entry set includes all 821 earlier qualified query entries and every one of
+the 835 initial candidate entries; observed verified obligations are 482, with
+no errors/resource marker and final source/runtime checks passing. Native
+wrappers remain bound unproved source; the list kernel's representable-capacity
+caller and outer stream/lexical joins remain open. Private upload/readback is pending.
+
+The separate native package archive is
+`experiments/2026-10-27/acceptance-parser-a182c1-smt-native.tgz`, SHA-256
+`94beb2d9ecbb12662e49b6983da3c11102c04eba26e62425b213f48cd09dce99`
+(9,235 bytes); host creation and independent local SCP/hash agree, while private
+object upload/readback is pending. All 22 original/new SMT tests pass, including
+arbitrary chunking, exact spans and malformed finish cases. Strict package
+Clippy then reports `vec_init_then_push` in start, `return_self_not_must_use`
+in duplicate and `byte_char_slices` in the endpoint witness
+([#470](https://github.com/Chelis-Lang/sail/issues/470)). The correction adds
+`must_use` to duplicate and documented local style allowances to preserve the
+actual opening push and concrete whole-root byte witness. No executable
+statement, contract, assertion, control or global lint setting changes. Package
+tests/Clippy must repeat on corrected source before negative-control qualification.
+
+The separate `ff4676cb` attempt is retained as
+`experiments/2026-10-27/acceptance-parser-ff4676-native.tgz`, SHA-256
+`f15f993a0183fa0f2262d534aa31560388551163b4cc7f8e65463ddf2abe7f9b`
+(299,725 bytes); host creation and independent local SCP/hash agree, with
+private upload/readback pending. Its append assertions still refuse even after
+separating the vector from its containing record; that refactor alone does not
+explain or close the proof gap. The next checked framing lemma derives scan and
+proper-prefix facts for the immutable exact `bytes.push(byte)` sequence before
+the actual append. The executable post-state is related to that stronger full
+scan, preserving the existing exact-byte/first-close contracts and controls.
+No parser behavior, resource limit or proof scope is relaxed; the whole root
+must pass before any inventory or negative-control credit.
+
+The next closed parser attempt is retained as
+`experiments/2026-10-27/acceptance-parser-8752d3-native.tgz`, SHA-256
+`c3a16223e37268448d58fd7dd4c5788ca11bc895d31eb867fc5f34ba6b7ead52`
+(297,190 bytes). Host creation and independent local SCP/hash agree; private
+object upload/readback remain pending. It clears the proof-only ownership
+compiler errors and all three constructive witnesses without resource refusal,
+but the append method still lacks the post-mutation scan/prefix facts. Its
+final source/runtime checks pass; the failed count supplies no inventory lock.
+The follow-up consumes the actual Vec and immutable scalar state through a
+private checked append helper, rather than mutating a nested Vec projection.
+It appends the same byte and returns the same owned complete/pending payload;
+the public operation/contract and every inherited function remain. Original
+byte/comment and full always-pending controls target this actual append helper
+with their same wrong operations and full obligations. No interpretation,
+resource or constructor guard is weakened; the complete root must rerun.
+
+The separate closed parser guidance attempt is retained as
+`experiments/2026-10-27/acceptance-parser-668be5-native.tgz`, SHA-256
+`3fdec357ed5eac04ee666f79fdcd384e1ab53d4bb5afa5d3b7a6943b2bdf4820`
+(279,744 bytes); host creation and independent local SCP/hash agree, while
+private object upload/readback remain pending. Complete Stock compilation
+reports three moved-value errors in proof-only pattern inspections
+([#469](https://github.com/Chelis-Lang/sail/issues/469)). Their borrowed-pattern
+correction changes no executable parser operation, contract, resource limit or
+control. Final source/runtime checks pass; no verification or inventory lock
+is obtained, and the earlier `48f09fa7` refusals remain unresolved evidence.
+
+The closed parser attempt is retained as
+`experiments/2026-10-27/acceptance-parser-48f09-native.tgz`, SHA-256
+`1a9e779c6dacf9c4597dd5cc01813ccc792609a9eecbfdfc1bbabebb1c18ebfa`
+(348,993 bytes). Host creation and an independent local SCP/hash agree; object
+upload/readback remains pending. It preserves the first controller's root/Ubuntu
+Git-ownership preflight refusal (no verifier call), then the Ubuntu system
+service's whole-query refusal, exact command, source bundle, captured driver/files,
+raw JSON/stderr and terminal unit states. Native Linux uses freshly rebuilt core
+image ID `sha256:920da549f02ad2b6e7305b49fe5444f3c8fcb8e54ea36d5ea8e85c3a434f00e6`.
+Stock uses the pinned runtime, 120 s timeout, one thread and unchanged resources.
+All original functions are retained, but the failed 477 count is not an accepted
+inventory. Explicit preappend invariant facts and scoped finite-list proof
+guidance replace eager recursive unfolding; the full-push mutant is rebound to
+that complete body with the same wrong acceptance exit and all proof obligations.
+No native SMT tests or negative controls have run. A new frozen whole root must
+pass before proceeding; parser interpretation and service obligations stay open.
 
 The stopped `6e239d212182e3b6595de52d335acf765974d7b5` native attempt is retained
 at `experiments/2026-10-27/acceptance-combined-6e239d21-native-early.tgz`, SHA-256
@@ -1006,3 +1210,144 @@ SHA-256 `5d79dd2fc4142e5d4d8b3ba505fe6b913b07c7e7978ea09c81b51181e1a676ee`
 (8,212,480 bytes). Independent S3 GET/hash passes for both. The discovery
 archive includes the complete source bundle; its constructive proof failures
 do not supply a successful final report or negative credit.
+
+The outer annotation-only `9ecf7de5` native package rerun explicitly cleans and
+recompiles `sail-acceptance` and `sail-smtlib`; all 22 SMT tests and strict package
+Clippy pass, with final source checks. Its closed local archive
+`acceptance-parser-9ecf7d-smt-native.tgz` is 3,869 bytes, SHA-256
+`a86bae00653abe85ceb4dad1f6b7899d4678b69db9d4bf719342719bd31ed739`.
+Independent upload/readback and full workspace/solver/conformance remain pending.
+The combined lexical source has separate undiscovered whole-root scope.
+
+The first actual lexical whole-root candidate `a0e2f74d` observes 549 verified/4
+failed functions and 951 query entries in 38.562 seconds (entire crate, no VIR
+error or resource refusal; final source/runtime guards pass). The failed VCs are
+trivia history composition, decimal first-dot/subslice identity and two finite
+nonempty lexer witnesses. No new inventory is locked. The next candidate adds
+scoped erased unfolding and exact slice facts; it preserves all executable
+transitions, contracts, 213 controls and default resources. The closed failed
+archive `acceptance-parser-a0e2f7-positive-native.tgz` is 310,600 bytes, SHA-256
+`6933b26ad0dec19d34a47ea7ea33f9dfc8ac4ed2ab614198f2d614f416bc19b6`.
+
+The lexical proof-guidance candidate `cc0edc87` is refused before verification:
+`reveal_with_fuel` was applied to a nonrecursive spec in a finite constructive
+witness. [#487](https://github.com/Chelis-Lang/sail/issues/487) records this candidate
+proof-compiler defect. The correction uses ordinary scoped `reveal` for those nonrecursive
+definitions, retaining fuel only on recursive endpoint scans. This attempt
+supplies no verified-function, native or control credit. Final frozen guards
+and the closed refusal archive are recorded separately when terminal.
+
+The corrected reveal attempt `352900b0` verifies 551 functions with two failed
+proof functions and 951 query entries in 39.790 seconds, without VIR/resource
+refusal and with final source/runtime checks. Trivia composition and the actual
+literal-span constructive path now clear. The remaining VCs are the decimal
+loop break exit fact and the finite original head-slice identity. The next
+candidate expresses the same first-dot stop in the actual loop condition
+instead of `break`, retaining identical byte visits, classification and returned
+endpoints, and supplies exact scoped witness slice facts. All contracts and 213
+controls remain; no positive inventory is locked from this failed attempt.
+
+The `352900b0` native SMT package run explicitly recompiles both touched crates
+after cleaning: all 24 tests pass (none skipped), then strict Clippy reports
+three explicit ASCII range lints and two rustdoc defects
+([#488](https://github.com/Chelis-Lang/sail/issues/488)). Final source checks pass.
+Closed archive `acceptance-parser-352900-native-smt.tgz`: 4,911 bytes, SHA-256
+`7adc8dba1e888ae837de060f755026915420741b44dbedbd40c19488c5a4eb40`;
+independent lead archive verification remains pending. The next candidate adds
+one documented local range allowance and complete rustdoc, preserving actual
+operations, contracts and all controls. No workspace/solver/conformance credit.
+
+Frozen `1f356624` whole-query discovery passes **553 verified/0 errors** and
+**951 actual query entries**, with all prior 918 retained, in 40.040282814
+seconds. The entire query crate uses unchanged pinned Stock/default 120-second,
+one-thread/no-cheating settings; no VIR/resource refusal occurs and final
+source/runtime checks pass. Actual driver SHA-256:
+`5a0b8eaa5b30ad80a6cc9b005aaace37172230a079c9b7581d99f0c059ecda72`.
+The manifest locks only this observed query inventory; input/authority counts
+remain earlier observations, not fresh qualification. Native `1f356624` explicitly
+cleans and recompiles both touched packages and passes all 24 SMT tests and
+strict package Clippy, with final source checks. All 213 controls, broader
+workspace/solver/conformance and the stdout-owned composition remain required.
+
+The next isolated source candidate pairs actual `StreamOutput` and output-mode
+splitter in private `ParsedOutput`. `append_items` retains the same raw chunk
+and exact ordered parser inventory; actual output-side calls delegate without
+changing original forwarding, independent frame refusal or physical EOF/wait.
+All previous operations/contracts remain; two nonempty constructive candidates
+and twelve ordinary full-method controls append (225 query, 23/9/14 assembly).
+Whole-root counts, native new fixtures and full controls are unqualified; the
+553/951 lexical checkpoint is not evidence for these newly added functions.
+
+The initial stdout-owned source `4701ed90` is refused before verification:
+its new constructive witness ([#490](https://github.com/Chelis-Lang/sail/issues/490))
+calls the split module's private
+`item_models_facts` lemma (E0603). The bounded correction asserts the public
+actual item-model projection's length directly in that witness; existing pure
+parser bodies/visibility, native operations, contracts and 225 controls stay
+unchanged. No positive/function/native credit follows from this refusal.
+
+The frozen lexical `2a332fb0` bounded diagnostic closes five canonical pairs
+(controls 193–197): each whole positive verifies 553/0 and its ordinary negative
+552/1, entire crate/no VIR, with the canonical final guards. Scheduling then
+prioritizes the actual stdout-owned source milestone: control 198's source
+preparation is interrupted before any verifier starts; 198–213 remain verifier
+unrun. No active Stock call is killed/restarted. The controller exits 130 for
+this scheduling stop, recorded separately from all completed case results.
+Closed archive `acceptance-parser-2a332f-bounded5-closed.tgz`: 1,123,083 bytes,
+SHA-256 `d420535704d4c28d21fe14d183369bd557b12be8b37f53f0277d756dc50b44c2`.
+All 225 inherited/new controls remain required for the final source union.
+
+The complete lexical positive archive `acceptance-parser-1f3566-positive-closed.tgz`
+is 317,353 bytes, SHA-256
+`90814c68f331f38709a402b3f494122e0c975184bae793070cfd9d86ca6bc3ab`.
+Its native package archive `acceptance-parser-1f3566-native-smt-closed.tgz` is
+3,971 bytes, SHA-256
+`c7e25b5c800a947e4cad4a5f9384fc683ca20fa76124a9733d03b08f24ae459b`.
+Independent lead archive verification remains pending for these newer artifacts.
+
+The corrected stdout witness attempt `f3de98e5` observes 564 verified/4 failed
+functions and 971 query entries in 39.460 seconds, entire crate/no VIR or
+resource refusal, with final source/runtime checks. Factory/discard empty-tape
+identity and two finite constructive/refusal paths remain unsatisfied; no new
+inventory is locked. The next candidate supplies exact empty/slice/atom facts
+and exposes the existing transcript completion predicate through its existing
+partition lemma, retaining all operations/contracts/controls/resources.
+
+Its native package run explicitly cleans and recompiles both touched packages:
+all **25 tests pass**, none skipped. Strict Clippy refuses only the explicit
+single opening-parenthesis byte array in the partial-output constructive fixture
+([#491](https://github.com/Chelis-Lang/sail/issues/491)); final source checks pass.
+A documented allowance on that one fixture retains every byte/assertion and
+requires a fresh strict native run. No full workspace, solver or conformance
+claim follows.
+
+The next owned-output attempt `bc83170b` observes 567 verified/1 failed
+function and 971 query entries in 39.312 seconds, entire crate/no VIR or
+resource refusal, with final source/runtime checks. Actual factory, paired
+append, discard and all controller facades now clear; the partial-output
+refusal witness also clears. The one remaining nonempty witness needs explicit
+trim ranges and newline witnesses for its original CRLF/line intervals.
+Scoped facts expose those exact bytes without changing an executable operation,
+contract, assertion, control, driver scope or resource setting. Whole-positive
+inventory remains unqualified until that constructive path succeeds.
+
+
+The complete owned-stdout checkpoint **`fa1bef13` passes 568 verified/0 errors,
+971 actual query entries**, retaining all earlier 951 entries, in 40.334065155
+seconds. It checks the entire query crate with pinned Stock/default 120 seconds,
+one thread/no-cheating, no VIR/resource refusal, and final source/runtime guards.
+Actual driver SHA-256:
+`18c800e1e2b8cd1b621a736317a5ca493fb55848b8236c733af88015010266b4`.
+The exact native source explicitly cleans/recompiles both touched packages,
+passes all 25 SMT tests (none skipped), and passes strict package Clippy with
+final source checks. The manifest locks only this actual query inventory;
+input/authority checkpoints are not newly qualified. Complete 225 query controls,
+full workspace/solver/conformance and native per-item/physical/Session/Z3/origin
+correspondence remain required.
+
+Closed combined v3: `experiments/2026-10-27/acceptance-parser-closed-20261027-v3.tgz`,
+SHA-256 `8c1663d1cf99541c3af852fb5ae85edefe3fac7b370ba34c978304c97a8e8b03`,
+2,997,197 bytes. PUT 200/GET 200 byte-identical readback and local outer/twelve
+nested SHA/size checks pass; independent lead GET/raw audit remains pending.
+The indexed originals include both full lexical/output positives and native
+gates, all intervening refusals and the bounded five-pair scheduling stop.

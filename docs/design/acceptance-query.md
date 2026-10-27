@@ -143,13 +143,262 @@ a partial list, multiple non-list lines or an unterminated atom cannot pass as
 one response. Echo response meaning remains command-dependent and the existing
 exact echo-text check remains required.
 
-The native splitters still propose items. Their complete emission inventory,
+The native splitters still propose top-level items. Their complete emission inventory,
 command-kind/output-count semantics, option extraction, replay-frame counting,
 concrete solver/mode encoding and process correspondence remain obligations
 under [#371](https://github.com/Chelis-Lang/sail/issues/371). In particular,
 these admission validators do not prove that every actual solver stream or
 command is observed. An independent launch inventory and a complete concrete
 stream history are required for that service-level refinement.
+
+### Actual owned streaming-list kernel candidate
+
+`query_split::ListFrame` now owns the actual pending list used by both native
+splitters. Its checked constructor begins with `(`; the native opener arm calls
+it for the byte it just consumed. The native
+splitter passes each actual contiguous chunk to `push_chunk`, which calls the existing
+checked `frame_step` for each actual byte and stops at the first root close.
+Completion returns the same owned original byte vector; a pending result retains
+exactly the old bytes followed by the entire consumed chunk. The returned count
+identifies the exact chunk prefix consumed, leaving the next form untouched.
+Input comments, doubled quotes, quoted symbols and output non-comment behavior
+use the existing byte grammar. Pending finish returns unchanged bytes for the
+native stray item, and does not claim completion or physical EOF. The native
+lexer also calls the existing checked `delimiter` operation directly.
+
+These actual production operations enter the complete query Stock assembly,
+rather than remaining native hash bindings. Nonempty constructive checks cover
+real completion and stopping before a second form; ten ordinary controls cover
+original bytes, comment domain, completion, chunk cursor/order, finish, checked
+copy and full-body always-pending/overconsuming substitutions. The native public
+splitter `Clone` API delegates its list state to the checked exact-copy operation.
+All older functions and controls remain required. Native original tests remain,
+with additional unexecuted chunk-width cases for literals/comments/CRLF and
+incomplete finish. No passing verifier, native or conformance claim is made for
+the latest annotated source. Whole query discovery at `a182c1e4` passes 482/837
+with all old functions retained. Native SMT tests pass 22 cases; strict package
+Clippy then refuses three new-kernel style lints (#470). Narrow annotations
+preserve the actual statements; the `e6e0e67a` native rerun passes all 22 tests
+and strict package Clippy. All ordinary controls and broader parser/solver joins
+remain pending. The manifest locks only the observed 482/837 query inventory;
+the ten new runtime edits and corrected comparison control 151 enter bounded
+whole-root diagnostics before the later complete 171-control bridge matrix.
+
+The theorem is conditional on representable buffer append; it adds no trusted
+Boolean or grammar premise on supplied bytes. The outer native `u64` offset
+accounting, copying into `Item`, top-level atom/trivia emission inventory and
+all callers' capacity obligations are still unproved. The native atom/CRLF and
+stray behavior is preserved but remains outside this checked kernel. Full lexer
+spans/classification, SMT/Session/solver semantics, launch completeness and cache
+origins remain separate. The proposed dependency edge is recorded by
+[ADR 0086](../decisions/0086-checked-stream-framing.md), with no third-party
+dependency, reverse edge or runtime selection. Actual runtime cost remains
+unmeasured; no extra full-frame validation scan is introduced by the kernel.
+
+### Actual outer splitter and paired input-tape candidate
+
+The next source candidate moves the actual outer machine into
+`query_split::StreamSplitter`, including idle/comment dispatch, owned top-level
+atoms, original absolute `StreamPosition`, list-chunk fast path, ordered item
+emission, copy and explicit finish. `sail-smtlib` keeps its existing public
+splitter paths and reexports the unchanged `Item`/`ItemKind` fields. Its wrappers
+move the existing output vector through the shared operation; no payload copy or
+second retained raw tape is added. Input delimiters are reconsidered at the same
+absolute offset before the cursor advances once. Output atoms still end only at
+LF; delimiter termination removes a trailing CR, while unfinished-atom finish
+keeps it. Input comments end at either CR or LF, and incomplete lists remain
+strays. These are the original mechanical rules, without SMT meaning.
+
+The actual one-byte transition has an exact state/emission-shape contract, not
+only a one-way claim about whatever items happen to be emitted. The chunk loop
+relates every pending buffer and every newly emitted item to the same original
+history and preserves all preexisting output items. The chunk loop also has an exact ordered-inventory contract against repeated
+scalar transitions (`model_scan`), with inductive pending-list/first-close lemmas
+for its list-chunk optimization. These specifications refine the same actual
+operations; they introduce no assumed parser result or second runtime parser.
+This wider theorem is implemented as a proof candidate and awaits whole-root
+qualification; a raw-byte theorem alone would not exclude an omitted item. Nonempty checked candidates exercise atom-plus-stray ordering, absolute
+offsets, delimiter CR trim versus unfinished finish, comments/CRLF and list
+completion across chunk boundaries. Sixteen appended ordinary controls include
+whole-transition always-idle and whole-chunk dropped-atom substitutions; every
+one of the 171 inherited query control objects remains unchanged.
+
+`QueryPrefix` now owns that actual input splitter alongside its original raw
+transcript and hash prefix. `append_items` appends the actual raw bytes and
+returns the actual splitter items in one shared operation, preserving raw bytes,
+feed position and hash material. Coherence relates the pending splitter state
+to that same owned transcript. The shim consumes these returned items and uses
+the same parser's read-only pending-item test at input end, replacing its two
+separate native append/split calls. Existing `append` still returns unit and
+retains all original bytes; its discarded items grant no command authority.
+The raw Vec's actual post-append length supplies representability for this input
+join, rather than an assumed history or all-inputs Boolean. The standalone
+splitter's representable cursor/output-vector premises and the output-side
+physical tape/endpoint join remain explicit. Allocation success is not proved.
+
+This wider candidate has no native or whole-root verifier result yet. The
+manifest retains only the historical observed query 482/837 lock until actual
+whole-positive discovery; new positive/function counts must not be inferred.
+There are 187 query, 115 input and 121 authority controls: 426 planned unique
+cases, or 435 calls with four partitions per component. The closed assembly
+remains 21/9/14 files. The 16 new controls and native paired-owner fixture are
+unexecuted. All prior assertions, functions and controls remain required.
+Remaining qualification of the ordered-inventory theorem, lexical
+spans/classification, solver interpretation, output-tape
+composition, launch/EOF and cache-origin obligations stay open under #371/#372.
+Runtime cost is unmeasured; no new full-frame scan, normalization, trust axiom,
+wire token, verdict or cache policy is introduced. ADR 0086 remains proposed.
+
+The review of `f5a179d5` found a candidate wrapper-contract gap
+([#480](https://github.com/Chelis-Lang/sail/issues/480)): although its actual
+body returned all items, its postcondition allowed an empty return after parser
+advancement. No native wrong verdict or violated existing postcondition is
+claimed. The correction preserves the exact parser continuation **and** the
+complete ordered emitted inventory across `QueryPrefix::append_items`, exposes
+the actual logical state projection, and carries the real initial idle state
+through both checked native key factories. No runtime statement changes. A
+nonempty concrete RecordingHash-seeded witness checks a pending atom across two
+actual owner appends and all four ordered atom/stray outputs. Two full-operation
+controls drop or reorder those returned items. All 187 earlier controls remain;
+one new full-chunk descriptor is rebound to its strengthened, identical
+before/after contract while keeping its loop and mutation. There are now 189
+query controls, with 115/121 inputs/authority: 428 planned unique cases or 437
+four-partition calls. Actual new positive/function discovery remains pending.
+
+The next pinned Stock compiler pass at `cc98352f` reaches source lowering but
+refuses four public predicates that directly mention opaque fields/private
+helpers and the unsupported `core::mem::replace` call (#481). Public closed
+projections now retain those exact predicates without publishing mutable fields.
+The owned transfer uses the existing modeled `Option::take`: coherent private
+constructors retain Some, the actual parser moves once, and Some is restored
+with its actual continuation. The unreachable None branch retains raw bytes and
+refuses interpretation. No new assumption/specification or copied parser is
+introduced; valid-path emitted/forwarded bytes and hash behavior are unchanged.
+
+Review also found that raw-history preservation alone did not distinguish Idle
+from input Comment across the public clone contract
+([#482](https://github.com/Chelis-Lang/sail/issues/482)). Actual copying was
+correct; no native wrong verdict is demonstrated. Duplicate now retains exact
+transition-view equality, with a real copied-parser nonempty witness and ordinary
+whole-copy Idle→Comment control. All 189 prior controls remain, with the three
+existing full-function descriptors rebound to their identical actual predicate/
+transfer contracts and same mutations. Query controls are now 190: 429 planned
+unique cases or 438 four-partition calls. Fresh whole-root/native/control
+qualification is required. The pinned derived-Item Clone warning is retained in
+the failed raw log; no specification for that generated general-data clone or
+complete public parser API theorem is claimed.
+
+The `3f7779b4` whole root reaches verification: 505 verified/11 failed functions,
+908 query entries with all 837 earlier entries retained, no resource marker and
+final guards passing. This refusal earns no inventory lock or qualification.
+The next proof candidate adds exact Seq suffix/append/cardinality facts, explicit
+existential history witnesses, initial cursor exposure and scoped finite trace
+facts. It retains every raw/history/inventory predicate, original runtime byte
+operation, loop VC and resource setting; full-function mutants carry the same
+proof scope and unchanged intended runtime substitutions. Full-root rerun and
+all 190 ordinary controls remain required.
+
+The next whole run at `3c3725c3` clears the initial/existential, first-close and
+ordered trace obligations, observing 517 verified/4 failed functions with 913
+query entries and all 837 prior entries retained. No resource marker appears;
+final guards pass. No complete positive/count lock follows from this refusal.
+The remaining candidate adds original-item monotonicity across the actual next
+chunk prefix and scoped scalar facts. Its two constructive byte carriers become
+explicit arrays with identical bytes and assertions, following the qualified
+kernel pattern; no production byte, policy, predicate or resource is changed.
+All 190 controls remain, with full-mutant scopes and loop annotations preserved.
+The later chunk-transition extraction keeps the actual operations in smaller
+checked functions and removes that intermediate function-local line allowance.
+
+At `19482b13`, the whole query root observes 519 verified/4 failed functions,
+915 query entries, no resource marker and final guards passing. No positive lock
+is taken. The next source candidate makes push-versus-append suffix equality,
+initial-object well-formedness in the actual loop, list chunk suffix transport
+and concrete returned-item projections explicit. Literal byte carriers and all
+assertions remain nonempty and unchanged in value. Actual predicates, default
+resources and all 190 ordinary controls remain required.
+
+The `e36f9681` whole root reaches 522 verified/1 failed function across 915
+query entries, with final guards passing. All scalar/constructive witnesses now
+clear; the actual outer loop still has a raw-state carry failure and a default
+rlimit refusal, so no positive lock or qualification follows. The next source
+candidate extracts the actual list-fast-path/one-byte operation into
+`consume_chunk`, preserving original owned payloads, exact consumed prefixes,
+continuation and ordered outputs. The outer loop composes this same operation.
+A checked pending-item slot bound carries the existing vector-capacity argument;
+no caller trust flag, parser-result assumption or resource increase is added.
+All 190 controls remain. The old non-list output-drop mutant preserves list
+outputs after extraction, retaining its original meaning; two new whole-method
+controls drop the transition outputs or zero its consumed count. There are 192
+query controls: 431 planned unique cases or 440 four-partition calls. Whole-root
+actual discovery/control/native qualification remains pending.
+
+The first extracted-transition run at `2bf6c63a` observes 522 verified/2 failed
+functions and 918 query entries, with final guards passing and a default outer
+loop rlimit refusal. No positive lock follows. The next candidate explicitly
+transports scalar push/append equality and both returned options to the actual
+new raw prefix before moving their original items into the existing vector.
+No body scope, invariant, predicate, control or resource is relaxed.
+
+The completed outer/raw-owner whole-positive run at `88ab662d` passes all 524
+functions/918 query entries and retains every prior 837 entry, with no resource
+or VIR error and final frozen guards passing. The manifest locks only this
+observed inventory. It checks the actual outer/list/atom/cursor/chunk transitions,
+exact raw-history and ordered item relations, owned QueryPrefix append, clone
+continuation and constructive paths. All 192 ordinary controls and the new
+native/conformance gates remain required; no source/runtime/API-wide or #371
+solver/origin completion is claimed. Later lexical source requires separate
+actual discovery.
+
+The actual `88ab662d` native SMT package rebuild passes all 22 existing tests;
+strict Clippy then refuses four new outer-code style diagnostics (#470). Narrow
+function-local annotations and doc backticks retain token-identical checked
+executable bodies and unchanged predicates/controls. The annotation-only `9ecf7de5` rerun explicitly recompiles both touched
+packages after cleaning: all 22 SMT tests and strict package Clippy pass, with
+final source checks. This supplies no workspace, solver or service claim.
+
+### Actual lexical state and borrowed command-head candidate
+
+`query_lex` now contains the actual lexer trivia/word/string/quoted-symbol
+cursor operations, ASCII word classification, original `Token`/`TokenKind`
+declarations and total text projection. The same borrowed source, cursor and
+sticky error live in a private shared `Lexer`; native `sail-smtlib::lex::Lexer`
+is a thin Iterator/error-code facade. Exact lexical transition contracts retain
+both token inventory and error/cursor state, including unterminated strings/bars,
+doubled quotes, CRLF comments, permissive non-ASCII simple symbols, numeric and
+keyword spellings, and the first-error terminal behavior. No token is checked
+against a separately selected byte buffer in command-head interpretation.
+
+The actual shallow `command::classify` now obtains its original borrowed head
+from the shared `Lexer::command_head`, retaining that same iterator after the
+first two tokens for existing argument parsing. Its mechanical transition and
+conditional full-frame `head_span` theorem use the original source bytes, not a
+supplied native kind or success flag. Classification remains shallow: valid
+existing `(assert` head handling is preserved even without a complete body;
+leading trivia and original errors/offsets remain unchanged. Raw command/key
+bytes are never normalized, copied into another transcript or rewritten.
+Native ErrorCode mapping, argument/value-span walking, Session effects, response
+cardinality semantics and the pinned solver's interpretation remain explicit
+unverified adapters/obligations. Structural spans do not establish SMT validity,
+solver truth, physical delivery/EOF or cache origin.
+
+Twenty-one ordinary controls append to all 192 outer controls (213 total),
+including full-next/full-head/text always-refusal, sticky/copy behavior, wrong
+source/span/open offset, kind acceptance, delimiter/comment/quote endpoints and
+numeric domains. Three nonempty constructive candidates cover original borrowed
+heads across comment CRLF, doubled-quote/bar/binary spans and real invalid-word
+sticky failure plus copy. All earlier functions/controls/assertions remain;
+positive/function counts are undiscovered. Closed source assembly is 22/9/14
+files. Planned scope is 452 unique cases or 461 calls with four partitions per
+component; these are plans, not qualified cases. New native controls and the
+unchanged original tests are unexecuted. Three targeted source-guard tests pass
+locally; no local compiler/verifier execution is used. The exact native lexer
+and classify source is bound/unverified, while the shared actual lexer bodies
+enter Stock; no native helper is merely relabeled as proved.
+
+This is still proposed ADR 0086's single existing parser-to-leaf edge, with no
+new third-party or workspace edge. Actual cost, all new whole-root/native/control
+qualification and later output-tape/Session/solver/origin joins remain pending.
 
 ### Scalar policy-option readback candidate
 
@@ -179,7 +428,7 @@ map; the first use also checks that actual map.
 
 | Source | Concrete responsibility and remaining boundary |
 |---|---|
-| `sail-smtlib` `command.rs`, `lex.rs`, `split.rs` | Propose head/kind/value intervals and command/response items. Full stream-emission inventory, command arity/type semantics and classification remain native obligations. |
+| `sail-smtlib` `command.rs`, `lex.rs`, `split.rs` | Propose head/kind/value intervals and top-level items. Actual list buffer/byte/chunk operations and delimiter calls delegate to the checked leaf; outer stream-emission inventory, command arity/type semantics and classification remain native obligations. |
 | `sail-session/src/lib.rs` | Applies the native option map, resets and output policy. This candidate checks its two actual readbacks against raw transitions; the rest of Session remains unproved. |
 | `query.rs`, `query_policy.rs`, `query_options.rs` | Check whole command framing, bare head, default head policy and the two raw scalar-option transitions. The new option component still needs direct-stock qualification. |
 | `sail-shim/src/cached.rs` | Supplies original command bytes and actual Session readback, preserves forwarding, and crosschecks native head/output policy. This caller is hash-bound native source, not a stock-compiled body. |
@@ -1286,3 +1535,82 @@ pairing gates remain necessary. This source candidate has constructive and
 refusal source controls but no completed proof, native test, canonical capture,
 differential or cost qualification. It does not close #371/#372 or the service
 composition. No compiler context is supplied by an empty placeholder.
+
+The first lexical full-root attempt (`a0e2f74d`) leaves four proof functions
+unsatisfied: actual trivia composition and decimal span identities, plus two
+finite constructive paths. The actual next-token and borrowed-head operations
+have no reported failures in this incomplete attempt. Scoped proof-only facts
+address these VCs without changing executable bytes, contracts or resources;
+whole-root discovery and all controls remain required.
+
+The first-dot scan now states its original delimiter stop in the loop condition
+so its checked exit carries the actual delimiter fact; it visits the same bytes
+and returns the same original split point. This is an equivalent production
+loop spelling, distinct from the surrounding erased proof guidance. Native
+package, whole-root and control qualification remain separate requirements.
+
+The frozen lexical whole-query run `1f356624` passes 553 verified functions
+with zero errors and 951 actual query entries, retaining every earlier 918
+entry in 40.040 seconds. It uses the entire query root, pinned Stock, default
+120 seconds/one thread/no-cheating and passes final source/runtime guards; no
+VIR/resource refusal occurs. The manifest locks only that observed inventory.
+The exact frozen native SMT package rebuild passes all 24 tests and strict
+Clippy. This qualifies the named actual lexical transitions/head correspondence,
+not remaining command arguments, Session/Z3 interpretation, physical read/EOF,
+output-owned composition, cache origin or any full-control/service theorem.
+All 213 query controls remain mandatory.
+
+### Actual owned stdout/splitter candidate
+
+`query_output_split::ParsedOutput` owns the actual `StreamOutput` and one
+output-mode `StreamSplitter`. Its private factory initializes both before any
+read. `append_items` first retains the original read bytes in that controller,
+then advances that same owned splitter and returns its complete ordered
+`model_scan` inventory against the retained tape. Its coherence predicate is a
+projection of private actual bytes/cursor/state, not a supplied Boolean or
+separately chosen history. The retained byte vector's real length supplies the
+existing cursor/emission capacity bounds. No second raw tape is introduced.
+
+The shim's actual output loop uses this controller instead of separately
+appending to `StreamOutput` and pushing the chunk into `ResponseSplitter`.
+Frame refusal still runs the unchanged `Transcript::frame`/`response_shape`
+check over the original intervals; framing items do not authorize publication.
+Forwarding, replay cursor advancement/comparison, original offsets and pending
+reply order, physical read/end/wait handling, final prefix checks and publication
+remain unchanged. `discard` retains the existing raw-storage release and resets
+only the now-unused private parser after the native loop enters streaming mode.
+The controller has no mutable escape that can append bytes without its parser.
+
+This wrapper preserves every existing `StreamOutput` body and total contract.
+Adding its parser invariant directly to the old controller would instead have
+strengthened old caller preconditions. Only the new paired controller methods
+require its own factory-established coherence. Failed/partial frame refusal
+continues to retain every raw byte. A nonempty constructive candidate fragments
+two original atom responses, retains CRLF, checks ordered items, advances the
+original suppression cursor and independently admits their actual intervals;
+a second candidate keeps an unfinished list unpublishable after the explicit
+end event. These are logical controller traces, not authenticated OS EOF or
+solver-origin observations.
+
+Twelve ordinary full-method controls append to all 213 query controls (225),
+covering output mode/replay initialization, original chunk/offset/continuation,
+complete returned inventory, discard reset, end/refusal and always-refusing
+frame/seal paths. Closed query assembly adds this actual production file
+(23/9/14 files); this branch plans 464 unique cases or 473 four-partition calls.
+The inherited 553/951 query inventory is the observed lexical checkpoint, not a
+count for these new functions. Actual whole-root discovery, all controls,
+new native fixtures, full workspace/conformance and runtime cost remain pending.
+Native output read/forwarding attribution, independently supplied EOF/exit
+truth, downstream Session/solver interpretation and cache origin remain open.
+No dependency edge, solver policy, trust axiom or CI-policy choice changes.
+
+The frozen actual paired stdout controller at `fa1bef13` passes the complete
+query positive: 568 verified/0 errors, 971 actual entries, every previous 951
+entry retained, in 40.334 seconds with unchanged default resources and final
+source/runtime checks. Both nonempty positive and partial-refusal traces pass;
+factory coherence is constructible. The exact source rebuild passes all 25
+native SMT tests and strict package Clippy. The manifest locks that observed
+inventory. This proves paired append/complete emitted inventory and the named
+controller facets; the native per-item loop's frame/replay advancement/handover
+ordering remains bound/unverified. Full 225 controls, broader native/conformance,
+physical I/O/EOF, Session/Z3 interpretation and cache origin stay open.

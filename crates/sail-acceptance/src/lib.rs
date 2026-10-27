@@ -24,12 +24,16 @@ pub mod query_checkpoints;
 pub mod query_delivery;
 /// Actual immutable held payloads and independently mutable effort metadata.
 pub mod query_holding;
+/// Actual borrowed SMT lexical cursors and quoted/string/word endpoints.
+pub mod query_lex;
 /// Exact raw scalar option transitions and persistent native Session readback.
 pub mod query_options;
 /// Exact stdout coverage and same-owner response intervals.
 pub mod query_output;
 /// Original opaque stream leases retained through frame copies and publication.
 pub mod query_output_owner;
+/// Actual output splitter and retained stdout bytes consumed through one controller.
+pub mod query_output_split;
 /// Default response policy from exact accepted command head bytes.
 pub mod query_policy;
 /// Joint ownership of exact raw input and its incremental key material.
@@ -38,4 +42,6 @@ pub mod query_prefix;
 pub mod query_publication;
 /// Original served bytes and the mechanical replay-comparison transition.
 pub mod query_replay;
+/// Actual owned pending-list bytes and first-root streaming completion.
+pub mod query_split;
 pub mod stream_capture;

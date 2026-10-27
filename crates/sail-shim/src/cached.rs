@@ -26,7 +26,9 @@ use sail_api::protocol::{Effort, Identity, PutMeta};
 use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
 use sail_session::Session as NativeSession;
 use sail_smtlib::command::{CommandKind, Output, classify};
-use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
+#[cfg(test)]
+use sail_smtlib::split::{CommandSplitter, ResponseSplitter};
+use sail_smtlib::split::{Item, ItemKind, is_single_response};
 
 /// Native Session plus independently retained raw policy-option bytes.
 /// Map readback agreement does not prove the pinned solver's option semantics.
@@ -815,14 +817,13 @@ fn output_side(
 ) -> u8 {
     let owner = Arc::clone(&process.owner);
     let limit = buffer_limit();
-    let mut all = sail_acceptance::query_output_owner::StreamOutput::new_replayed(
+    let mut all = sail_acceptance::query_output_split::ParsedOutput::new_replayed(
         Arc::clone(&owner),
         u64::try_from(served.len()).unwrap_or(u64::MAX),
     );
     // Once forwarding is live and nothing more will be recorded, every later
     // byte is forwarded as read, exactly as pass-through forwards it.
     let mut streaming = false;
-    let mut splitter = ResponseSplitter::new();
     let mut check = ReplayCheck::new(served, Arc::clone(&owner));
     let mut forward_from: Option<usize> = all.forwarding().then_some(0);
     let mut forwarded = 0usize;
@@ -862,9 +863,7 @@ fn output_side(
             }
             continue;
         }
-        all.append(chunk);
-        let mut items: Vec<Item> = Vec::new();
-        splitter.push(chunk, &mut items);
+        let items = all.append_items(chunk);
         for item in items {
             let start = usize::try_from(item.offset).unwrap_or(usize::MAX);
             if let Some((fresh, s)) = prev.take() {
@@ -1404,7 +1403,6 @@ impl<'a> ReplayCheck<'a> {
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
     let (client, mut prefix) = connect(socket, solver)?;
     let mut session = ObservedSession::new();
-    let mut splitter = CommandSplitter::new();
     let mut served = Served::default();
     let mut solving: Option<Solving> = None;
     let mut client = Some(client);
@@ -1424,9 +1422,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
         };
         let chunk = buf.get(..n).unwrap_or_default().to_vec();
-        prefix.append(&chunk);
-        let mut items = Vec::new();
-        splitter.push(&chunk, &mut items);
+        let items = prefix.append_items(&chunk);
         // Expectations for commands in this chunk are queued before the
         // chunk reaches the solver.
         let mut fresh_solver = false;
@@ -1506,7 +1502,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     }
     // At the end of input while serving, incomplete trailing input goes to
     // the solver, which decides what it means.
-    let complete = input_read_ok && splitter.finish().is_none() && prefix.trailing_trivia();
+    let complete = input_read_ok && !prefix.has_pending_item() && prefix.trailing_trivia();
     finish_run(solving, client, solver, args, served, &mut prefix, complete)
 }
 
