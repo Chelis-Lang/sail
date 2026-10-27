@@ -333,6 +333,13 @@ controls drop the transition outputs or zero its consumed count. There are 192
 query controls: 431 planned unique cases or 440 four-partition calls. Whole-root
 actual discovery/control/native qualification remains pending.
 
+The first extracted-transition run at `2bf6c63a` observes 522 verified/2 failed
+functions and 918 query entries, with final guards passing and a default outer
+loop rlimit refusal. No positive lock follows. The next candidate explicitly
+transports scalar push/append equality and both returned options to the actual
+new raw prefix before moving their original items into the existing vector.
+No body scope, invariant, predicate, control or resource is relaxed.
+
 ### Scalar policy-option readback candidate
 
 `query_options.rs` adds a source-shared candidate for the raw `:print-success`

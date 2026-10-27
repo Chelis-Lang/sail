@@ -85,6 +85,13 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+The first actual extracted chunk run at `2bf6c63a` observes 522 verified/2 failed
+functions and 918 query entries, with final guards passing; a default outer-loop
+rlimit marker remains. No new positive inventory is locked. The next candidate
+adds scalar push/append and returned-option prefix equalities only, preserving
+all 192 controls and default resources. The source fixture correction #484 is
+included without touching the live qualification source.
+
 The existing native-delegation source fixture is corrected after the outer
 extraction (#484): actual thin input and finish calls replace removed native
 implementation snippets. All four baseline/uniqueness/refusal assertions stay;
