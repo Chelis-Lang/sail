@@ -54,7 +54,7 @@ PRESENTATION_NATIVE_SHA256 = {'crates/sail-api/src/evidence.rs': '0f6234f0bf8339
 # These closed native compiler/request/store adapters are bound in full and
 # remain outside the stock-compiled bodies. Their OS/process provenance remains open.
 INPUT_NATIVE_SHA256 = {
-    'crates/sail-verus/src/adapter.rs': 'ac81516e0abb9b771eca0517bbeb4fef7b2a0de15b55d6a34d22b38e4145fd84',
+    'crates/sail-verus/src/adapter.rs': '7bc68e3f575120aa5d133eacb72fea47f7d9f637563048a71b1cb3b62e69c7e6',
     'crates/sail-verus/src/adapter_attempts.rs': 'f8713751833e4de1bd17a3b97ac2e4b801c1c8137281eb2939d3b6849f528777',
     'crates/sail-verus/src/engine.rs': 'a6ca795294e29f76b8f7647713da1ef1d8b79e2f1df7281f1fc7fe5869c1f0d2',
     'crates/sail-verus/src/managed/mod.rs': '7d1a4092e364b466a4da4247fb91418af8930fbd8316e83b8641d8f1b8b9cff9',

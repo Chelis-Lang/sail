@@ -9,6 +9,9 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `9099f673` source controls | Native model-source tests pass 12/12 and production-source tests pass 63/63 (259.807 s), including exact original control inventory, protected loop annotations and real runtime selectors; final source/image guards pass | Source-tooling qualification only, no Stock call or runtime test. Rust bodies, proof resources and 397 descriptors remain unchanged |
+| `4c43e5a9` native gates | Workspace passes all 1,278 tests with 57 configured skips, plus doctests and workspace checks; solver suite passes 53/53. Separate direct model suite passes all 31 cases | Frozen-source gates, not automatic qualification of later source or a complete production-control matrix |
+| `4c43e5a9` full e2e | Isolated evidence-root run stops after 35.909 s: neutral positive has 2,061 unsat checks but Unknown backend currentness and `NotProved`; provider completion is absent (#471). Final source/image guards pass | No positive authority or full e2e credit. PR/full fast/standard conformance unrun. Earlier nested evidence-root attempt correctly refused repository Cargo configuration and is separate |
 | `8b3432c4` corrected control | Both native source suites pass (12 model-source, 59 production-source). Complete Stock positives retain query 471/821, inputs 308/538, authority 510/895. Bounded query partition `150/161` passes its whole positive and corrected control 151 at 470 verified plus one ordinary error, all 821 functions, with final source/runtime checks and no resource marker | Five actual verifier calls; only one ordinary negative. `complete_component_controls=false` and `complete_suite=false`. No complete query union, 400-case matrix or service theorem |
 | `4c43e5a9` controls | Fresh complete positives repeat 471/821, 308/538 and 510/895 with final source/runtime checks. Four query workers terminate with exits 0, 0, 1, 0; control 151 selects `1nat` inside `compare`'s ensures clause and produces a pre-verification type error, zero obligations and an empty function inventory (#468) | The strict inventory check refuses it. No ordinary-negative credit, complete query union or 400-case completion; inputs/authority never launch. The durable continuation correctly stops on the actual query failure before the reserved unstarted-component boundary |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
@@ -89,6 +92,29 @@ bodies and post-loop returns remain eligible mutation targets. Four focused
 source tests pass locally in 0.002 seconds; complete native source/inventory
 qualification remains pending. This changes the checker, not production Rust,
 formal obligations, existing mutation descriptors or verifier limits.
+
+That complete source qualification now passes at frozen `9099f673`; the
+private archive `experiments/2026-10-27/acceptance-source-9099f673-native.tgz`
+is SHA-256 `689480751efc40e823b66e6ff05892e3bde457a20611ebc28f1a7a42fe1fb82e`
+(6,828,538 bytes), with controller upload/readback checked. Lead independent
+GET/hash and raw report review remain pending. The earlier full native workspace
+and solver pass at `4c43e5a9` is retained separately as
+`experiments/2026-10-27/acceptance-combined-4c43e5a9-native-early.tgz`, SHA-256
+`7cedd3c40dd0ea9de271800e98aa5c088e4c6f83fdec2e52c2211a88e6028d75`;
+lead independent GET/hash and raw status/log review pass.
+
+The isolated e2e failure is retained at
+`experiments/2026-10-27/acceptance-4c43e5a9-isolated-gates.tgz`, SHA-256
+`930fa2d6cb7108ad5e4804131a00ed97c31f1334763df5ca35872f987e778705`
+(126,953,807 bytes); lead independent GET/hash passes. Source tracing identifies
+the mismatched endpoint lookup: `cargo_messages` reads the raw environment,
+although the original driver and runner use the private transport file.
+The correction uses `transport::var`, preserving marker authentication, forwarded
+bytes, complete provider accounting and the conservative proof/currentness
+policy. A focused regression executes a real `sail-cargo` alias with its own
+transport file, a live original output marker, actual child output and both
+absent/conflicting caller variables. Its unchanged baseline and corrected
+native runs are pending; this is not a claim that #471 or full e2e is qualified.
 
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace

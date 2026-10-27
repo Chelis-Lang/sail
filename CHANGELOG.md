@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Read managed Cargo's output-control endpoint from its private transport file
+  when classifying artifact output (#471). Valid completion markers no longer
+  prevent the artifact provider from sealing solely because the endpoint is
+  absent from the caller environment. Caller variables cannot override the
+  private file; incomplete or unrecognized observations still withhold reuse.
+
 - Distinguish the completed-view fixture's original whole-request evidence from
   its retained Unknown projection when freshness is unavailable (#464). Preserve
   both cases and all original baseline assertions; runtime behavior is unchanged.
