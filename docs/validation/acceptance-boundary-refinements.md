@@ -1485,3 +1485,17 @@ SHA-256 `8c1663d1cf99541c3af852fb5ae85edefe3fac7b370ba34c978304c97a8e8b03`,
 nested SHA/size checks pass; independent lead GET/raw audit remains pending.
 The indexed originals include both full lexical/output positives and native
 gates, all intervening refusals and the bounded five-pair scheduling stop.
+
+
+- `efd3fb3e`, 2026-10-27: native workspace reports 1,302 run/1,301 passed/1 failed/
+  57 skipped; sole failure is the input-owner fixture's three-item expectation
+  on a CR-terminated fourth atom (#500), not a demonstrated parser regression.
+  A separately rebuilt native old/current probe (`4c43e5a9`/`efd3fb3e`) confirms
+  byte-identical 29-row traces: all 15 CR boundaries emit four/no pending/LF no
+  extra; all 14 genuinely unterminated boundaries emit three/pending `foo`, then
+  LF emits one. Exact source/image/commands/rebuild/final-source checks are in
+  `acceptance-input-cr-native-baseline-probe.tgz`, 5,894 bytes, SHA-256
+  `d0888b546099f4dc4d544a0eeec996bede57850d2acb5222145c31b78f29a7be`.
+  Upload/independent lead audit and corrected focused/full native gates remain
+  pending. The code-associated correction preserves every old assertion and
+  adds CR coverage; all production bodies, captures and proof controls stay fixed.

@@ -69,7 +69,7 @@ fn actual_command_items_share_the_original_raw_owner_at_every_boundary() {
         binary_sha256: [7; 32],
         platform: "linux-x86_64".into(),
     };
-    let raw = b";c\r\na)()\r\nfoo\r";
+    let raw = b";c\r\na)()\r\nfoo";
     for boundary in 0..=raw.len() {
         let mut owner = SessionPrefix::new(&solver, &Mode::Default);
         let mut items = owner.append_items(&raw[..boundary]);
@@ -91,6 +91,46 @@ fn actual_command_items_share_the_original_raw_owner_at_every_boundary() {
         assert_eq!(terminated[0].kind, ItemKind::Atom);
         assert_eq!(terminated[0].offset, 10);
         assert_eq!(terminated[0].bytes, b"foo");
+        assert!(!owner.has_pending_item());
+        assert_eq!(owner.bytes(), [raw.as_slice(), b"\n"].concat());
+        assert!(owner.hash_tail());
+        let mut reference = PrefixHasher::new(&solver, &Mode::Default);
+        reference.update(raw);
+        reference.update(b"\n");
+        assert_eq!(owner.silence_key(), reference.silence_key());
+    }
+}
+
+#[test]
+fn input_carriage_return_terminates_atoms_at_every_raw_boundary() {
+    use sail_acceptance::query_split::ItemKind;
+    let solver = SolverIdentity {
+        name: "z3".into(),
+        version: "4.16.0".into(),
+        binary_sha256: [7; 32],
+        platform: "linux-x86_64".into(),
+    };
+    let raw = b";c\r\na)()\r\nfoo\r";
+    for boundary in 0..=raw.len() {
+        let mut owner = SessionPrefix::new(&solver, &Mode::Default);
+        let mut items = owner.append_items(&raw[..boundary]);
+        items.extend(owner.append_items(&raw[boundary..]));
+        assert_eq!(owner.bytes(), raw);
+        assert_eq!(items.len(), 4);
+        assert_eq!(items[0].kind, ItemKind::Atom);
+        assert_eq!(items[0].offset, 4);
+        assert_eq!(items[0].bytes, b"a");
+        assert_eq!(items[1].kind, ItemKind::Stray);
+        assert_eq!(items[1].offset, 5);
+        assert_eq!(items[1].bytes, b")");
+        assert_eq!(items[2].kind, ItemKind::List);
+        assert_eq!(items[2].offset, 6);
+        assert_eq!(items[2].bytes, b"()");
+        assert_eq!(items[3].kind, ItemKind::Atom);
+        assert_eq!(items[3].offset, 10);
+        assert_eq!(items[3].bytes, b"foo");
+        assert!(!owner.has_pending_item());
+        assert!(owner.append_items(b"\n").is_empty());
         assert!(!owner.has_pending_item());
         assert_eq!(owner.bytes(), [raw.as_slice(), b"\n"].concat());
         assert!(owner.hash_tail());
