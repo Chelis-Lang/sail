@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Strengthen the replay candidate's completion join to recheck every actual
+  retained suppressed stdout frame against its original served receipt (#457).
+  Same-owner/count comparisons against unrelated bytes cannot substitute for
+  that relation. The source correction and refusal witness await qualification;
+  its additional prefix scan has no cost measurement.
+
 - Share the existing provisional presentation override between MCP summaries
   and API evidence comparisons. Every verdict/establishment combination and
   the evidence-tier behavior are preserved. The shared borrowed-field/report

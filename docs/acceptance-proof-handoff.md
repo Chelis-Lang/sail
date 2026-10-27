@@ -247,9 +247,11 @@ and serialization correspondence. See the
 [presentation boundary](design/acceptance-authority.md#success-presentation-call-graph).
 
 The served-byte replay candidate appends `query_replay.rs`, actual comparison
-history refinement functions and a same-owner stdout completion join. Query now
-has 156 ordinary controls (the 134 option/inherited controls plus 22 replay
-controls); no positive/function count has been guessed. Whole-root discovery
+history refinement functions and a same-owner stdout completion join. The
+#457 followup rechecks every original retained suppressed frame against its
+served receipt; comparison completion plus owner/count alone is insufficient.
+Query now has 161 ordinary controls (the 134 option/inherited controls plus
+27 replay/prefix controls); no positive/function count has been guessed. Whole-root discovery
 must retain all old functions and derive the expanded inventory from Stock.
 The lead's #454 full-body/loop-preserving mutant correction is merged; do not
 restore earlier truncated control objects. Statistics interpretation/origins,
