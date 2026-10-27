@@ -3,6 +3,7 @@
 import argparse
 import fcntl
 import hashlib
+import heapq
 import itertools
 import json
 import os
@@ -18,6 +19,7 @@ MAX_FILE_BYTES = 8 * 1024**2
 MAX_TOTAL_BYTES = 64 * 1024**2
 PATTERNS = (
     '*.out', '*.err', '*.rc', '*.json',
+    'noop.trace',
     'commands/*',
     'demo/Cargo.toml', 'demo/Cargo.lock', 'demo/src/**/*.rs',
     'ws/Cargo.toml', 'ws/Cargo.lock', 'ws/*/Cargo.toml', 'ws/*/src/**/*.rs',
@@ -33,11 +35,12 @@ PATTERNS = (
 )
 
 
-def capture(work, destination, part, original_exit, sail):
+def capture(work, destination, part, original_exit, sail, last_command=None):
     """Capture selected ordinary files; every omission/read failure is indexed."""
     work = work.resolve(strict=True)
     destination = destination.absolute()
     assert original_exit != 0, 'failure capture is not a passing-test operation'
+    assert last_command is None or last_command.replace('-', '').isalnum(), 'invalid last command label'
     assert not destination.resolve().is_relative_to(work), 'evidence must outlive fixture cleanup'
     destination.mkdir(parents=True, exist_ok=False)
     index = {
@@ -45,6 +48,8 @@ def capture(work, destination, part, original_exit, sail):
         'captured_unix': time.time(), 'platform': platform.platform(),
         'scope': 'Selected original streams, command/source snapshots and producer records; no targets, cache payloads or executable copies.',
         'capture_complete': False, 'files': [], 'errors': [],
+        'last_command': last_command,
+        'selection_order': 'Last-command observations, newest producer records, current source, other streams, older command snapshots; timestamps prioritize diagnostics only.',
         'limits': {'files': MAX_FILES, 'per_file_bytes': MAX_FILE_BYTES,
                    'total_bytes': MAX_TOTAL_BYTES},
         'producer_mapping': 'Paths/run IDs are observations; timing does not reconstruct cross-stream write order or assign a run to a command.',
@@ -77,7 +82,30 @@ def capture(work, destination, part, original_exit, sail):
                 raise ValueError('Sail executable changed while identified')
         except (OSError, ValueError) as error:
             index['errors'].append('Sail identity: ' + repr(error))
-        candidates = itertools.chain.from_iterable(work.glob(pattern) for pattern in PATTERNS)
+        def selection_key(path):
+            relative = path.relative_to(work)
+            last = last_command and relative.name.startswith(last_command + '.')
+            if last and (len(relative.parts) == 1 or relative.parts[0] == 'commands'):
+                priority = 0
+            elif relative.parts[0] == 'cache':
+                priority = 1
+            elif relative.parts[0] in ('demo', 'ws'):
+                priority = 2
+            elif relative.parts[0] == 'commands':
+                priority = 4
+            else:
+                priority = 3
+            try:
+                modified = path.lstat().st_mtime_ns
+            except OSError:
+                modified = -1  # The ordinary capture still records the refusal.
+            return priority, -modified, relative.as_posix()
+
+        # Retain one overflow witness so the original incomplete-capture check
+        # fires. Discovery keeps only this bounded heap, never all candidate paths.
+        candidates = heapq.nsmallest(MAX_FILES + 1,
+            itertools.chain.from_iterable(work.glob(pattern) for pattern in PATTERNS),
+            key=selection_key)
         for path in candidates:
             name = path.relative_to(work).as_posix()
             if name in seen:
@@ -227,9 +255,10 @@ def main():
     parser.add_argument('--part', choices=['loop', 'loader', 'flags', 'extra', 'cargo-range'], required=True)
     parser.add_argument('--exit', type=int, required=True)
     parser.add_argument('--sail', type=Path, required=True)
+    parser.add_argument('--last-command')
     args = parser.parse_args()
     destination = args.out.resolve() / (args.part + '-' + str(time.time_ns()))
-    return capture(args.work, destination, args.part, args.exit, args.sail.resolve())
+    return capture(args.work, destination, args.part, args.exit, args.sail.resolve(), args.last_command)
 
 
 if __name__ == '__main__':

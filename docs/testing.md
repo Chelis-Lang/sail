@@ -86,6 +86,27 @@ groups once using the already established managed donor, then the local-only
 `managed-native` as well: their independent donor setup is an additional entry
 path. No phase or assertion can be omitted to authorize a merge.
 
+## Output failure evidence
+
+`ci/test-output.sh` retains selected failure observations outside its temporary
+fixture. Set `SAIL_E2E_OUTPUT_OUT` to choose the destination; the default is
+`target/e2e-output-evidence`. The index records the original test exit,
+executable identity, retained byte hashes, refusals and incomplete captures.
+
+Selection prioritizes the last command's streams and metadata, then newer
+producer records, current source, other streams and older command snapshots.
+At most 1,024 files, 8 MiB per file and 64 MiB total are retained, under the
+existing 60-second collector deadline. Discovery retains only a bounded heap
+of 1,025 candidate paths, including an overflow witness. Hitting a limit still
+marks the capture incomplete; collector failure preserves the test's exit.
+Modification times prioritize diagnostics only: they do not associate a
+producer with a command or reconstruct stdout/stderr order.
+
+`python3 ci/test-output-evidence.py` checks the real shell trap with controlled
+children and filesystem overflow/refusal fixtures. It does not run Verus.
+The [validation record](validation/e2e-output-evidence.md#priority-selection)
+distinguishes these checks from real failed-run qualification.
+
 ## Managed timeout evidence
 
 The managed fixture writes an operation record and a flushed progress line

@@ -23,6 +23,10 @@ semantic versioning once the API is published.
   change erased proof syntax or alter runtime intervals on both sides of it,
   instead of introducing an executable fault.
 
+- Prioritize the last output-test command and original producer records over
+  older command snapshots when a failure archive reaches its file cap (#477).
+  File, byte and time limits stay fixed, incomplete captures stay indexed, and
+  collector failures preserve the original test exit.
 - Fail safe on several cache and daemon edge cases. The disk cache creates
   its temporary entry file exclusively, so a preexisting file or symlink at
   that name is refused rather than followed and truncated, and a name the
