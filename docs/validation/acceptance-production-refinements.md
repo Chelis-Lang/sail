@@ -150,6 +150,7 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `0a3a7f2c` | Combined replay/presentation discovery | All 12 model and 53 production source selftests pass; whole query reports six constructive-witness diagnostics in three new replay/output factories. Instantiate exact literal name/list framing and existing transcript partition facts without changing execution, contracts, controls or limits; input/authority discovery and the planned 395-case matrix remain unrun |
 | 2026-10-26 | `c87877d8` | Expanded whole-positive discovery | Ordinary and reset-assertions preservation witnesses pass. The final reset relation still needs the same explicit original-head existential instance; no expanded inventory, negative matrix or final-root qualification claimed |
 | 2026-10-26 | `b74bcb06` | Expanded whole-positive discovery | Exact reset head bytes pass; the two ordinary preservation instances still need explicit original-head existential witnesses and non-setter/non-reset name facts. No contracts or scope are changed; all later roots/controls remain unrun |
 | 2026-10-26 | `fe8d021f` | Expanded whole-positive discovery | Both actual setter witnesses pass; constructive ordinary/reset-assertions success exits remain unproved. Instantiate unchanged preservation/reset relations for the remaining literal history; retain all executable calls and do not weaken the full always-refuse control |
