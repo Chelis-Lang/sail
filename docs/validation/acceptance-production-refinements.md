@@ -22,6 +22,22 @@ native acceptance. The full three-root Stock discovery, native gate/solver,
 ordinary negative controls and output end-to-end phase remain required.
 The source-fixture correction for #513 also requires the fresh native gate.
 
+Frozen `d2bef2d0` passes complete Stock discovery at query 646/1,114,
+inputs 308/538 and authority 619/1,045, retaining every previous function.
+The native source suites pass: 12 model and all 80 production tests, including
+the corrected #513 fixture. Production source tests take 408.055 s. The full
+gate then refuses redundant parentheses in the new colored byte predicate;
+Rust tests and solver checks are unrun. The correction removes only those
+parentheses and updates the corresponding two full-body controls. The new
+colored token is also added to the private-field/derive protection inventory,
+with three structural refusal mutations. These later changes need fresh
+qualification.
+
+Interrupted/failed attempt: `d2bef2d0`, 2026-10-27, native gate exit 101 after
+source suites, `unused_parens`; archive
+`experiments/2026-10-27/acceptance-colored-d2bef2d0-native.tgz`, SHA-256
+`85df6d9f44516c01fcf8d8f220665b3d53e04447b25c4427013db72957b1f9ba`.
+
 ## Owned query publication candidate
 
 Whole positive discovery at `f8d61408` passes all three complete stock roots

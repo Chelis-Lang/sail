@@ -195,7 +195,7 @@ def validate_assembly(snapshots: dict[str, bytes]) -> None:
         PUBLICATION_CORE: ("PublicationObservation",),
         "crates/sail-acceptance/src/phase_inputs.rs": ("PhaseRequest", "PhaseInputs", "EnvironmentProjection", "CommandEnvironment", "ConfiguredIntent", "OwnedCompilerAttempt"),
         "crates/sail-acceptance/src/query_prefix.rs": ("QueryPrefix", "FramedCommand", "FrozenCommand"),
-        "crates/sail-api/src/acceptance.rs": ("CompleteReport", "ExactScopeReport", "CompleteSelection", "CompleteRequest", "CompletedPresentation", "SubmissionBinding", "SubmittedAuthority", "ReplayReadback", "ExactPartialRequest", "RequestPathBinding", "DeclaredReplayAdmission", "EmptyHumanOutput", "EmptyHumanContext"),
+        "crates/sail-api/src/acceptance.rs": ("CompleteReport", "ExactScopeReport", "CompleteSelection", "CompleteRequest", "CompletedPresentation", "SubmissionBinding", "SubmittedAuthority", "ReplayReadback", "ExactPartialRequest", "RequestPathBinding", "DeclaredReplayAdmission", "EmptyHumanOutput", "EmptyHumanContext", "ColoredEmptyHumanOutput"),
         REQUEST_ORDER: ("OriginalTargetKey",),
     }
     for path, names in protected.items():

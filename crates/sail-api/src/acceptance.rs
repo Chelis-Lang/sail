@@ -3503,11 +3503,10 @@ sail_verified! {
         requires(true) ensures(out == (stdout@.len() == 0 && cargo_colored_footer(stderr@)))
     {
         if !stdout.is_empty() { return false; }
-        (
-            cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in ")
+        cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in ")
             || cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized] target(s) in ")
             || cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in ")
-            || cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in "))
+            || cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in ")
     }
 }
 
