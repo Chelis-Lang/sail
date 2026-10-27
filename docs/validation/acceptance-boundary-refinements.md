@@ -10,6 +10,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 | Frozen source | Actual result | Limits |
 |---|---|---|
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
+| `e36c749b` | Complete native discovery passes query 471/0 (821 functions), inputs 308/0 (538), authority 510/0 (895); every earlier function retained and final source/runtime checks pass | Actual inventories locked for 400 unique planned cases: 397 negatives plus three positives. The 409-call partition schedule remains held for native compile/Clippy clearance; no combined matrix, native completion or service theorem |
 | `53757913` query guidance | All three complete positive roots repeat 471/821, 308/538 and 502/883 with final source/runtime checks. A bounded original control-111 diagnostic passes: query positive 471/0, then 470 verified plus one ordinary error across all 821 functions, with no resource marker | One ordinary negative only; incomplete component/suite. All 392 controls remain required. The integrated source changes only erased finite-frame/prefix proof guidance; native bodies and the original mutation remain unchanged, and broader combined qualification remains pending |
 | `e91627d0` native workspace | Strict Clippy and compilation pass; nextest runs 1,271 tests across 82 binaries: 1,269 pass, two receipt-erasure regressions fail, 56 configured skips; gate exits 100 after 303.35 s, final source/image checks pass | Solver and later workspace stages unrun. A separate unchanged two-test native baseline repeats both failures; the exact target-key correction and stronger direct controls pass a separate two-test focused run at `fbab3fd0`; combined qualification remains pending |
 | Main integration `dca5cd43` | Source union retains the three main build-script fixes, original request/origin replay guards, noop revision 6, all inherited copy/request tests and four independently strict local-only witness/toolchain entrypoints | Textual review and native hash bindings only; no new Stock/native/conformance or service credit. Frozen `e91627d0` qualification remains a separate earlier source |
@@ -233,18 +234,20 @@ original whole/partial binders and current path/readback witnesses; it does not
 construct full physical-input or solver-origin authority. Closed capture binds
 native adapter sources explicitly without claiming those bodies are proved.
 
-The combined source retains every inherited control and plans 395 cases:
-three whole positive roots and 392 ordinary failing controls (161 query,
-115 input and 116 authority). Its actual compiled file inventories contain
+The combined source retains every inherited control and plans 400 cases:
+three whole positive roots and 397 ordinary failing controls (161 query,
+115 input and 121 authority). Its actual compiled file inventories contain
 20, 9 and 14 files respectively. The manifest locks complete positive discovery
-at `e57f065f`: query 471/821, inputs 308/538 and authority 502/883
+at `e36c749b`: query 471/821, inputs 308/538 and authority 510/895
 (verified/function entries), with final source/runtime checks and every prior
 function retained. Its report SHA-256 is
-`92bc5c3b953207b84fe8bf37405cfc7d63fdb96dc0ec0f0eaf9bceec891230ce`.
+`08dec98c65e5205cbf5ff1fa072f87282ae38f1384466c2d37e8a0112b806384`.
+The historical `e57f065f`/`720e461e` plan had 395 unique cases, 392 negatives
+and authority 502/883; its refused control-111 attempt remains indexed above.
 The preceding option-only `069e91f6` positive inventories were 441/776,
 308/538 and 498/878. Four existing partitions per component, components
-sequenced, will check 404 actual calls: twelve repeated complete positives
-and all 392 distinct negatives. Individual reports remain incomplete; the
+sequenced, will check 409 actual calls: twelve repeated complete positives
+and all 397 distinct negatives. Individual reports remain incomplete; the
 exact all-component union needs independent scope/identity audits and does
 not constitute one unpartitioned run or a service theorem.
 The prior 340-case candidate used query 431/759. Its complete

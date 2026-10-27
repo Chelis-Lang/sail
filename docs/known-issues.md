@@ -57,6 +57,14 @@ source/runtime rechecks. Later combined replay/presentation discovery at
 `e57f065f` passes query 471/821, inputs 308/538 and authority 502/883, again
 retaining all previous functions and final checks. Its 395 unique planned
 cases still need all 392 ordinary negatives and native/differential gates.
+The later reconciled main/presentation/receipt source passes complete discovery
+at `e36c749b`: query 471/821, inputs 308/538 and authority 510/895, with every
+earlier function and final source/runtime checks. Its 400-case plan requires
+all 397 ordinary negatives; the 409-call partition schedule is held for native
+compile/Clippy clearance. The independently audited `53757913` archive covers
+all three earlier positives and one ordinary control-111 diagnostic with no
+resource marker; it does not qualify a complete component or matrix. All six
+service obligations remain open.
 Its existing assembly/private-token source fixture
 omits the required option module (#458); the source correction adds that
 fixture input and retains every original mutation. Native integration exposes a missing production
