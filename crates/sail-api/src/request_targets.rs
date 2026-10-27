@@ -90,7 +90,7 @@ sail_spec! {
         ensures ordered_keys(keys.unref()),
     {
         original_target_key_order_is_lawful();
-        vstd::laws_cmp::lemma_ref_obeys_cmp_spec::<OriginalTargetKey>();
+        broadcast use vstd::laws_cmp::lemma_ref_obeys_cmp_spec;
         assert(vstd::laws_cmp::obeys_cmp::<&OriginalTargetKey>());
         assert forall |i: int, j: int| 0 <= i < j < keys.len() implies
             crate::request_order::key_order(&*keys[i], &*keys[j]) == std::cmp::Ordering::Less by {
@@ -119,7 +119,7 @@ sail_verified! {
     fn next_original_target(iterator: &mut Iter<'_, OriginalTargetKey>) -> (target: Option<RequestTarget>)
         requires(true)
         ensures(target.is_some() == (old(iterator).remaining().len() > 0),
-            final(iterator).remaining() == if old(iterator).remaining().len() > 0 {
+            (*final(iterator)).remaining() == if old(iterator).remaining().len() > 0 {
                 old(iterator).remaining().drop_first()
             } else { old(iterator).remaining() },
             target.is_some() ==> crate::request_order::original_key_value((target.unwrap().package_id,
