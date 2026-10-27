@@ -24,20 +24,25 @@ A separate report-mode construction source slice delegates the actual adapter
 operation to checked `request_mode.rs`. Its original packed option matcher and
 native lookup remain; fourteen mandatory executable controls and nonempty
 mode/preservation witnesses are added without changing any of the existing 63
-request controls or their minimum function inventories. This new slice is
-source-only pending full source, complete-root, native and ordinary-negative
-qualification. Supplied option values establish no physical compiler origin.
+request controls. Frozen `69a4c365` passes all three complete Stock roots,
+strict workspace/all-target Clippy and all 23 selected native fixtures. Its actual
+authority inventory is 576 verified obligations and 983 function entries; every
+older function remains required. The 67 source-unit receipt is `30846bfe`, with
+raw harness and manifest equality checked before the fresh whole-root runs.
+All fourteen new ordinary negatives, conformance and cost remain pending.
+Supplied option values establish no physical compiler origin.
 
 The later captured-worker selection source candidate is separate from the frozen
 request/domain qualifier. It adds the actual decoded `RequestCapture` declaration
 and version constant, the checked consuming selection loop, native caller binding
 and twelve mandatory executable controls. The representation regression also
 refuses changed, missing or conditionally attributed capture-version constants.
-Existing 559/961 authority inventory
-entries are retained as a required subset; no new function/obligation counts are
-guessed. All new whole-root, source, native and negative checks are pending.
-Decoding/canonicalization/journal origin are native boundaries; no physical-origin
-or proof-authority claim follows from selecting a matching request data record.
+Its frozen `83627504` qualifier passes all three complete Stock roots, native
+Clippy and all 18 selected fixtures; `f12b23ec` freezes the actual 566/972 authority
+inventory with every prior function retained. The twelve new ordinary negatives
+remain mandatory and unqualified on that branch. Decoding/canonicalization/journal
+origin are native boundaries; no physical-origin or proof-authority claim follows
+from selecting a matching request data record.
 
 The failed `23ccd443` capture attempt is retained at
 `experiments/2026-10-27/acceptance-request-domain-23ccd443-native.tgz`, SHA-256
@@ -200,6 +205,23 @@ no program body. Conformance/cost, ordinary negatives and native
 metadata/original-launch/journal/provider joins remain open; this is no service
 or physical-input closure claim.
 
+The successful report-mode qualifier is frozen `69a4c365`. Its canonical
+whole-root discovery passes query 471/0 (821 functions), inputs 308/0 (538) and
+authority 576/0 (983), retaining every old function. Strict workspace/all-target
+Clippy passes in 92.188 s; all 23 selected native request/report/decoder fixtures
+pass (803 skipped, 6.235 s test time; 149.356 s including compilation). The final
+source, pinned runtime and image checks pass. Total controller time is 413.223 s.
+The new proof program receives fresh complete-root verification; unchanged source
+harness/manifest bytes refer to the 67-test source-unit receipt at `30846bfe`,
+with no new unit-suite or compiled-byte equality claim. Its exact archive is
+`experiments/2026-10-27/acceptance-request-domain-69a4c365-native.tgz`,
+7,616,550 bytes, SHA256
+`1b31b170020b246d5bec12ab632f16fc186b7f5e85576d80892ee620fdae4f02`,
+with authenticated byte-identical PUT/GET. The ready inventory lock changes only
+actual discovered minima and documentation; it does not relabel the frozen run.
+All fourteen new ordinary negatives and the remaining full-domain/provider joins
+remain open.
+
 The first report-mode qualifier at `30846bfe` passes all 67 production source
 tests and the complete query/input roots. Whole authority reaches ordinary
 verification with 571 verified and five failed functions, without resource
@@ -219,6 +241,7 @@ labeled `30846bfe` when its harness/manifest bytes remain unchanged.
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `69a4c365` report-mode qualification | Complete query 471/0 (821 functions), inputs 308/0 (538) and authority 576/0 (983) pass with all old functions. Strict workspace/all-target Clippy passes; 23/23 selected native fixtures pass, 803 skipped. Final source/image/runtime checks pass; total 413.223 s | Actual supplied-option projection and native data fixtures only. All fourteen new ordinary negatives, conformance, cost, full Cargo selection and physical/provider joins remain open |
 | `25ab8eef` report-mode proof framing | Query 471/0 (821 functions), inputs 308/0 (538) pass; whole authority 574 verified and two ordinary failed functions, with no resource diagnostic. Final source/image/runtime checks pass; native stages unrun | Prefix-push and loop invariants now prove; one finite take-prefix example and exact appended-prefix projection remain. Archive `experiments/2026-10-27/acceptance-request-domain-25ab8eef-native.tgz`, 7,603,081 bytes, SHA256 `ae73f511861b0a6f5b597dfc9b1b22a1829bed49e596a0c4fda0d6770a9014db` |
 | `30846bfe` report-mode candidate | Source suites pass, including all 67 production tests. Complete query 471/0 (821 functions), inputs 308/0 (538) pass; whole authority reaches571 verified and5 failed functions with no resource diagnostic. Controller stops in485.476 s; final source/image/runtime checks pass | Pushed-prefix/mode framing and two finite examples need proof guidance. Native compilation/tests and all14 new controls are unrun; no new authority inventory or negative credit |
 | `83627504-stock2` captured-worker candidate | Unchanged f12 source-harness/manifest and exact annotation delta pass identity checks. Whole query 471/0 (821 functions), inputs 308/0 (538), authority 566/0 (972) pass with every old function retained; whole step158.071 s. Full workspace/all-target strict Clippy passes92.030 s. Actual nextest18 run/18 pass/807 skips,148.940 s including build and6.239 s tests. Total408.378 s; final source/image/runtime checks pass | Source-unit receipt remainsf12; all12 new controls, complete native workspace tests, conformance/cost and physical/provider/origin joins remain unqualified |
