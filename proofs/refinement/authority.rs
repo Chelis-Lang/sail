@@ -1316,8 +1316,6 @@ pub fn declared_replay_missing_native_paths_refused(project: crate::project::Pro
     acceptance::admit_declared_replay_ordered(project, original, current, orders, None, Some(readback)).is_none()
 }
 
-}
-
 /// The real worker selector retains one original record behind earlier runs.
 /// The selected record remains data; this witness constructs no proof facet.
 pub fn original_worker_journal_preserves_nonempty_input(
@@ -1372,4 +1370,6 @@ pub fn duplicate_worker_journal_run_refuses(
 {
     crate::request_capture::select_original_request(records, worker, invocation,
         arguments, mode, project).is_none()
+}
+
 }

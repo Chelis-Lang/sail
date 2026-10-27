@@ -119,8 +119,39 @@ SHA-256 `f9125c1023ee1b47a863bcc89f3cd831f5213cfbc9eface98b040a817535daf5`
 bundle. The native follow-up remains pending; earlier Stock receipts retain their
 actual frozen source labels rather than being relabeled as a new-head run.
 
+The test-only follow-up at `ba7e816b` passes full workspace/all-target strict
+Clippy and all 16 selected native request/kernel/fixture tests (671 filtered or
+configured skips), including all four exact-partial/noop authority fixtures.
+Before compilation it compares the raw complete three-root driver/source bytes
+against passed `dcf94ef7`, requires exact equality of every file and locked
+inventory, and independently validates the same pinned runtime. Mathematical
+receipts remain labeled `dcf94ef7`: this is a native-only follow-up, not a new
+Stock invocation or full-suite claim. Final source/image/runtime checks pass.
+
+Evidence is `experiments/2026-10-27/acceptance-request-domain-ba7e816b-native.tgz`,
+SHA-256 `01c357c7cf15502d3fc07e7c34d7878f2c2a33de725735af797bf14c392914e0`
+(7,224,990 bytes), with authenticated PUT/GET agreement. The frozen source bundle,
+exact byte-comparison report, prior mathematical-source identity and actual
+nextest summary are retained. Ordinary refinement negatives, conformance, added
+cost and broader service/provider joins remain open.
+
+The first captured-worker qualifier at `9478b711` stops at source preflight.
+The correction moves all four original-journal witnesses inside the existing
+`verus!` wrapper (#492) and aligns query dependencies with the actual
+`dependency_paths` component rule (#479). The new worker source remains required
+and hash-bound for inputs/authority; every earlier query source and control is
+retained. No checked envelope, strict dependency equality, contract, loop or
+resource rule changes.
+
+Evidence is `experiments/2026-10-27/acceptance-request-domain-9478b711-native.tgz`,
+SHA-256 `8abc099c9bc4564c69ff91892908b9bceed52bcf1bc2b92189495c2dd05da3f6`
+(7,079,958 bytes), authenticated PUT/GET agreement, complete source bundle.
+Source refusal correctly prevents any Stock/native credit at that head.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `9478b711` captured-worker candidate | Model source suite passes. Production source suite runs 67 tests: one failure and four errors from a query dependency mismatch and four witnesses outside the Verus envelope (#479, #492). Controller stops in 28.912 s; final source/image/runtime checks pass | All Stock roots, native compilation/tests and ordinary negatives are unrun. Correcting the actual program/closure leaves every safeguard and control intact |
+| `ba7e816b` native-only follow-up | All three complete driver/source files match passed `dcf94ef7` raw bytes and inventories; runtime identity matches (57.609 s). Full workspace/all-target strict Clippy passes (92.926 s). Actual nextest summary: 16 run, 16 pass, 671 skips; step 103.691 s including build, test runtime 6.235 s. Total 263.160 s; final source/image/runtime checks pass | Mathematical receipts remain `dcf94ef7`; no new Stock, negative, full native workspace, conformance or service credit. The separate captured-worker selector requires fresh qualification |
 | `dcf94ef7` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961) repeat at the locked inventories. Native Clippy clears the three #489 compilation errors and stops after 91.955 s on six API fixture style diagnostics. Controller finishes in 569.868 s; final source/image/runtime checks pass | Native request tests, ordinary negatives, conformance and cost checks are unrun. The native fixture style correction changes no captured proof body or adapter |
 | `206c077f` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961) pass again at the locked inventories. Native Clippy passes the earlier nine diagnostics and stops after 83.208 s at three lib-test compilation errors in two unmigrated fixtures (#489). Controller finishes in 560.684 s; final source/image/runtime checks pass | Native tests, ordinary negatives, conformance and cost checks are unrun; no selected-runtime or false-verdict finding |
 | `f98ea578` request/domain candidate | Source suites pass, including all 66 production tests. All complete production roots pass: query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961). All earlier functions retained and final source/image/runtime checks pass. Controller finishes in 487.306 s | Native Clippy stops after 17.296 s on nine new style diagnostics (explicit Option cases/refusals, owned String argument, comparison chain). Request tests and ordinary negatives are unrun. Checked in-memory construction/iteration supplies no complete metadata, physical-input, launch or journal-origin theorem |
