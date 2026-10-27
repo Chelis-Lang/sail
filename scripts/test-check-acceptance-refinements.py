@@ -461,7 +461,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-acceptance/src/authority.rs",
-            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.PIPE_CORE,
+            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.PIPE_CORE,
             CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
             "crates/sail-acceptance/src/phase_inputs.rs",
