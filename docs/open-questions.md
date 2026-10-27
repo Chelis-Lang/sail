@@ -478,3 +478,44 @@ planned for releases after 0.1.0. The owner answered all twelve on
     verdict. OS privileges, unsafe exceptions, new dependencies or a Rustc fork
     require their corresponding owner decisions/ADRs. The first buffer slice
     can proceed independently without constructing complete compiler authority.
+
+39. **Authenticated normal-wrapper process lineage.**
+
+    The [private control proposal](design/managed-wrapper-control-transport.md)
+    needs an independently authenticated actual Cargo-launched compiler
+    invocation. Should qualification pursue a reviewed bridge in Cargo's final
+    per-unit command/spawn path, or a qualified platform process-event and
+    message-sender provider? The former needs the corresponding Cargo/backend
+    decision; the latter needs concrete Linux/macOS adapters and any required
+    privilege, dependency or unsafe-boundary approvals. Neither is selected.
+    PID/UID text, current image and parent-image conjunction do not establish
+    original launch intent. This is separate from question 38's complete
+    physical-input domain and immutable executable relation. The chosen work
+    must retain main's file-backed transport and ghost-read corrections, not
+    replace them with the proposal's earlier baseline. Qualification approval
+    is not runtime selection or rollout approval.
+
+40. **Actual cache-origin admission architecture.**
+
+    The [reviewable implementation choices](design/cache-origin-admission.md)
+    identify the missing #372 fact before pending-memory serving, disk writes
+    and export: which actual observed solver execution established this exact
+    key and payload? Should the daemon own the observing solver path, allowing
+    one execution through a larger streaming/fallback redesign, or independently
+    validate complete candidate sessions through another pinned-solver run?
+    Neither is selected or measured. Both require private admitted-batch
+    authority and protected persistent origin authentication; checksums,
+    provenance strings and signatures alone do not establish solver truth.
+    This decision does not close the separate input, launch or request domains.
+
+41. **Placement of the direct proof gates.**
+
+    The supplied operating instructions require hosted model and production
+    refinement proof jobs in CI completion. Merged #434 moves those suites to
+    native local acceptance while retaining six-result hosted completion. The
+    draft integration preserves its stronger eight-result completion pending
+    owner resolution; its inherited workflow header describes the other policy.
+    Should this PR keep hosted proof jobs or follow #434's native-local proof
+    policy? No proof, control, conformance scope or resource limit is waived by
+    either choice. CI must retain its duration limits, and native qualification
+    remains required regardless of proof-job placement.

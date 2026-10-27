@@ -1,13 +1,18 @@
 # Private control through the normal Verus Cargo wrapper
 
-Status: proposal, not implemented or selected. The current managed adapters still
-inject compiler-visible environment values. The reproduced fresh disagreement in
-[#385](https://github.com/Chelis-Lang/sail/issues/385) and stale ghost-input reuse
-in [#386](https://github.com/Chelis-Lang/sail/issues/386) remain blockers. This
-proposal does not authorize a runtime pin or claim complete compiler-input
-observation.
+Status: proposal, not implemented or selected in this integration. Main's
+[#440](https://github.com/Chelis-Lang/sail/pull/440) fixes the original
+#385/#393 witnesses with file-backed alias settings and packed Cargo-Verus
+options. [#436](https://github.com/Chelis-Lang/sail/pull/436) fixes the original
+#386 ghost-environment witness, and
+[#445](https://github.com/Chelis-Lang/sail/pull/445) adds ghost-only file
+declarations. This integration retains those corrections. Remaining
+compiler-visible channels are tracked in
+[#435](https://github.com/Chelis-Lang/sail/issues/435); the broader original
+launch/provider relation remains open. This proposal authorizes no runtime pin
+and claims no complete compiler-input observation.
 
-Managed execution currently selects a Cargo alias and a different Rust compiler
+The earlier baseline selected a Cargo alias and a different Rust compiler
 wrapper through environment variables. Cargo, build scripts, procedural macros
 and the verifier can observe that environment. Removing those variables only
 when spawning the final verifier leaves earlier programs affected. Recording a
@@ -167,7 +172,8 @@ per-unit values must remain plain; blindly restoring all submitting-parent
 values would also be wrong. A real Cargo probe of forced `[env] RUSTC_WRAPPER`
 restoration confirms the distinction: the compiled `env!` and wrapper process
 see the forced value, but build-script execution still sees Cargo's selected
-wrapper. That configuration alone cannot close #385. The external probe is
+wrapper. That configuration alone does not address the historical #385 witness;
+main fixes it through the separate file-backed transport. The external probe is
 exploratory and is not a selected workaround.
 
 Optional unit-graph planning and other metadata probes must not leak their
@@ -183,8 +189,10 @@ descriptor binding, slot uniqueness within its supplied namespace, protocol stat
 and refusal of mismatched authority. Completing the service theorem also needs
 concrete producers for the native process/ownership observations above and for
 the full compiler-input domain, including verification-only environment reads.
-The final erased dep-info file is not that domain: #386 reproduces a successful
-proof whose verification-only environment dependency is absent there.
+The final erased dep-info file is not that domain: the historical #386 witness
+omits a verification-only environment dependency there. Main now records those
+reads before erasure; that correction does not certify opaque procedural-macro
+or build-script reads or every physical compiler input.
 
 Before selection, implement and qualify the authenticated process bridge,
 original-request normalization, actual per-unit environment relation, private
