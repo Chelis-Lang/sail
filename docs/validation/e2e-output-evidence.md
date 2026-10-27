@@ -21,6 +21,73 @@ above 8 MiB, and retains only the remaining shared-budget prefix when the 32 MiB
 command-snapshot allowance is nearly exhausted. Refusal metadata stays in the
 outer log without printing payload bytes.
 
+## Priority selection
+
+The #477 correction uses a bounded 1,025-path heap to select the last command's
+observations and newer original producer records before older duplicate
+command snapshots. It also retains `noop.trace`. The existing 1,024-file,
+8 MiB per-file, 64 MiB total and 60-second limits, executable/file identity
+checks, omission indexing and original test exits remain unchanged. Timestamps
+are a diagnostic preference, not producer attribution or cross-stream order.
+
+On 2026-10-27, a filesystem overflow fixture against main `9dc2038c`'s actual
+collector reproduces #477: 1,024 selected files omit the producer result, the
+index remains incomplete and original exit 17 is retained. Whether the final
+command's metadata is also omitted depends on filesystem enumeration order;
+the producer omission follows the original traversal's command-before-cache
+order. The corrected collector retains both the final command and producer
+records under the same cap. All existing special-file, external-path, byte
+limit and snapshot controls pass, as do all six actual shell controls for
+cleanup, mismatch, child/collector failure and a relative destination.
+
+These are controlled Python/filesystem/shell fixtures on macOS with Python
+3.9.6 and both Bash 5.3.15 and the system Bash 3.2.57, not a real Verus failure.
+
+Native c7i.4xlarge/us-east-1 qualification at `7a281e20`, on bugfix base
+`ef655f82`, completes the local fast tier across explicitly source/runtime-
+identical attempts: workspace gate (1,161 passed, 54 skipped), all 51 solver
+tests, all 29 model and 25 production proof cases, full E2E including local
+extra, and PR conformance in all four modes (33 Same / 311 functions each,
+zero different, unstable or infrastructure errors). The conformance reports
+retain their observed resource-limit drift; this is not full FAST or STANDARD.
+Native Rust is 1.99.0; Stock uses the pinned 1.99.1/7d82994 runtime. Native MCP
+image `8662b3182457` retains the pinned Stock, engine and real MCP client;
+source/runtime postchecks pass for every credited stage.
+
+After the independent full E2E pass, an external controlled failed-prefix
+fixture runs actual unchanged Sail/stock verification and the original
+`check_output` first. Only after checker exit 0 does it create 1,032 labeled
+diagnostic fillers outside the project/producer directories and deliberately
+exit 79. The unchanged owning harness exits 1. Its collector retains exactly
+1,024 files / 13,316,255 bytes, marks the capture incomplete solely for the file
+count, and preserves all 11 original byte preimages, including the producer
+matched by actual run/context identifiers and the last command's observations.
+The controlled prefix leaves later assertions unrun; the separate normal full
+E2E run passes them. This does not reproduce or fix the original nondeterministic
+unchanged-call failure that motivated #477.
+
+| Attempt at `7a281e20` | Result and limit |
+|---|---|
+| Initial helper environment | Failed: 1,159/1,161 tests; nonstandard global `CARGO_TARGET_DIR` shared nested fixture targets; all later stages unrun |
+| Focused normal-environment diagnosis | Three unmodified target-identity fixtures pass with that global override unset; no full-gate credit |
+| Standard environment | Gate/solver/both proof suites/full E2E pass; aggregate fails at PR conformance because the read-only source mount lacked a writable observer destination; 33 infrastructure refusals, no verification credit there |
+| Continuation | Supported `SAIL_CONFORMANCE_OUT` destination: PR conformance and controlled failed prefix pass; source/runtime identity checks join only the completed successful stages above |
+
+Both failed aggregates remain failed. Closed archive key
+`experiments/2026-10-27/acceptance-output-evidence-477-7a281e20-native-closed-20261027-v1.tgz`,
+SHA-256 `78477294ee5595a1584b7841b0da791813557b3f30b0041979192dbb1caf736c`,
+2,446,929 bytes, retains all four attempts and raw proof/conformance/collector
+records. PUT/GET is byte-identical; local raw audit passes. Lead independent
+review verifies the outer/four nested hashes, 929 canonical Git blobs, all
+54 raw Stock calls (47 ordinary negatives) with exact pins/function/VC scope
+and no resource refusal, the native gates, conformance and collector/preimages.
+
+Restack `ece464fc` onto merged main `9702cfdd` has exactly the qualified
+`7a281e20` tree (`99c16631b9d07233a1afb224f76b4c69fa5f36aa`). This documentation
+reconciliation changes no collector, test, proof or native source and claims
+no new execution. Required hosted checks apply to the delivered head. No corpus
+entry, solver input, runtime pin, comparison or acceptance assertion changes.
+
 ## Managed background verifier streams
 
 The managed-harness extension at `1655edb5` retains each verification's
