@@ -46,6 +46,11 @@ logs or native-body qualification are included.
 
 The next option-state candidate retains all 115 inherited query controls and
 adds nineteen, alongside unchanged 115 input and 107 authority controls.
+The source selftest inventory retains all 44 tests present at `c44cdcfa`
+(43 at `0247a13e` plus the role-metadata regression) and adds six later tests.
+The existing assembly/private-token fixture now supplies the required option
+module beside its original sources, preserving every mutation and assertion
+(#458); the corrected complete 50-test run remains pending.
 Its expanded query counts/functions await complete whole-positive discovery;
 the historical 431/759 inventory is not an expanded-root result. The reviewed
 scope correction retains the complete validator loops while mutating acceptance
@@ -136,6 +141,8 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `b572bc99` | Expanded capture selftests | 49/50 pass; existing assembly/private-token fixture omits newly required `query_options.rs` and raises `KeyError` before its mutations (#458). Add that source to the fixture, preserving every assertion; no whole-positive discovery or ordinary-Verus control started |
+| 2026-10-26 | `03725fea` | Native workspace gate | Strict clippy next refuses two owner/payload similar-name locals, deprecated atomic alias and the enlarged inline entry variant; ordinary workspace tests and solver remain unrun. The correction preserves inline ownership and charges its complete carrier (#456) |
 | 2026-10-26 | `9f6dfd52` | Native workspace gate | Shared-kernel lint corrections pass; strict clippy next refuses the native completion adapter's optional-environment guard. Use the equivalent optional borrow and retain the same raw output, with an explicitly reviewed native source binding; ordinary tests/solver remain unrun |
 | 2026-10-26 | `c44cdcfa` | Native workspace gate | Source selftests complete before strict clippy refuses eight shared-kernel style diagnostics. Reasoned local annotations retain checked Option branches/lifetimes, and a local payload name changes; no executable transition or contract changes. Ordinary workspace tests and solver suite remain unrun at this checkpoint |
 | 2026-10-26 | `35373419` | Initial four query-control partitions | Partition 0 completes 30 cases; partition 2 refuses an rlimit hit in `output-exact-appended-bytes`, and partitions 1/3 refuse whole-validator mutations that removed a loop VC. No aggregate qualification: retain full validator bodies/loops with terminal acceptance forced false, and add an exact-byte proof cut without changing executable append, contracts, count checks or limits |
