@@ -4197,7 +4197,7 @@
         "crates/sail-mcp/Cargo.toml",
         "crates/sail-cli/src/managed_cli.rs"
       ],
-      "verified": 581,
+      "verified": 591,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
