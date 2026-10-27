@@ -1123,3 +1123,24 @@ trim ranges and newline witnesses for its original CRLF/line intervals.
 Scoped facts expose those exact bytes without changing an executable operation,
 contract, assertion, control, driver scope or resource setting. Whole-positive
 inventory remains unqualified until that constructive path succeeds.
+
+
+The complete owned-stdout checkpoint **`fa1bef13` passes 568 verified/0 errors,
+971 actual query entries**, retaining all earlier 951 entries, in 40.334065155
+seconds. It checks the entire query crate with pinned Stock/default 120 seconds,
+one thread/no-cheating, no VIR/resource refusal, and final source/runtime guards.
+Actual driver SHA-256:
+`18c800e1e2b8cd1b621a736317a5ca493fb55848b8236c733af88015010266b4`.
+The exact native source explicitly cleans/recompiles both touched packages,
+passes all 25 SMT tests (none skipped), and passes strict package Clippy with
+final source checks. The manifest locks only this actual query inventory;
+input/authority checkpoints are not newly qualified. Complete 225 query controls,
+full workspace/solver/conformance and native per-item/physical/Session/Z3/origin
+correspondence remain required.
+
+Closed combined v3: `experiments/2026-10-27/acceptance-parser-closed-20261027-v3.tgz`,
+SHA-256 `8c1663d1cf99541c3af852fb5ae85edefe3fac7b370ba34c978304c97a8e8b03`,
+2,997,197 bytes. PUT 200/GET 200 byte-identical readback and local outer/twelve
+nested SHA/size checks pass; independent lead GET/raw audit remains pending.
+The indexed originals include both full lexical/output positives and native
+gates, all intervening refusals and the bounded five-pair scheduling stop.

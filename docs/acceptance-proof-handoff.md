@@ -405,10 +405,11 @@ independent response-frame refusal and publication gates stay unchanged.
 The source adds two nonempty constructive candidates and twelve full-method
 ordinary controls, retaining all 213 earlier controls (225 query). Assembly is
 23/9/14 files; this isolated branch plans 464 unique cases/473 partitioned calls.
-The inherited lexical 553/951 inventory is historical for this newer source;
-new function counts require actual discovery. All controls, native new fixtures,
-workspace/conformance/cost and physical/parser/Session/Z3/origin composition stay
-open. Two targeted lightweight source guards pass; no local native/proof build
+Frozen `fa1bef13` now passes whole-query discovery at 568 verified/0 errors,
+971 actual entries and all prior 951 retained; only that observed inventory is
+locked. Its exact native rebuild passes all 25 SMT tests and strict Clippy. All
+225 controls, workspace/conformance/cost and native event-order/physical/Session/
+Z3/origin composition stay open. Two targeted lightweight source guards pass; no local native/proof build
 or excluded consumer/provider action is used. ADR 0086 and CI policy remain
 unselected; this slice adds no graph edge or new trusted premise.
 
@@ -416,3 +417,15 @@ The actual native output loop's once-per-item replay-cursor advancement and
 frame handover remain bound/unverified caller event-order relations. The paired
 append theorem does not by itself compile that for-loop or authenticate physical
 reads/end/wait, comparison, solver origin or presentation authority.
+
+
+The output-owned checkpoint is `fa1bef13`: actual complete query positive
+568/971, default 120 seconds/one thread/no-cheating, final source/runtime checked,
+all prior functions retained, native actual clean/recompile 25 tests plus strict
+Clippy. Closed combined v3 is `experiments/2026-10-27/acceptance-parser-closed-20261027-v3.tgz`,
+SHA-256 `8c1663d1cf99541c3af852fb5ae85edefe3fac7b370ba34c978304c97a8e8b03`,
+2,997,197 bytes; PUT/GET byte-identical readback and local twelve nested hashes/
+sizes pass, independent lead audit pending. Only five bounded lexical controls
+193–197 are observed here; 198 source preparation was interrupted before Stock
+for scheduling, and 198–213 remain verifier-unrun. No output controls or full
+component matrix pass is claimed. Actual native per-item ordering is next.
