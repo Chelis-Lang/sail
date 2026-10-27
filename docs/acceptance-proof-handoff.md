@@ -70,6 +70,10 @@ Serde/RPC/frontend preservation and physical/origin premises remain open.
 The candidate's generic wrapper uses explicit `Option::default` to avoid the
 pinned derive's unintended generic `Default` bound (#462); missing request
 still decodes as `None`. This is source-reviewed, not native-reproduced.
+The later `e36c749b` native gate refuses only this candidate's coherent baseline
+fixture line-limit lint (#463), before native tests/solver. A documented local
+allowance retains all fixture statements/assertions; fresh native qualification
+remains pending. No production body or checked proof body changes.
 Frozen `e91627d0` workspace records 1,271 run, 1,269 pass, two fail and 56 skip
 in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 #390 target-key mismatch awaiting focused correction qualification. Solver is unrun. The [owning record](validation/acceptance-boundary-refinements.md)

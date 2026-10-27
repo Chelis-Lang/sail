@@ -4,6 +4,13 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The later `e36c749b` native workspace stops before tests and solver at one
+test-only line-limit lint in the coherent baseline observed-request fixture
+([#463](https://github.com/Chelis-Lang/sail/issues/463)). A documented local
+allowance preserves every statement/assertion and all production behavior;
+corrected-source qualification remains pending in the
+[owning record](validation/acceptance-boundary-refinements.md).
+
 The combined `e91627d0` native gate passes strict compilation and Clippy, then
 two existing receipt-erasure regressions fail
 ([#390](https://github.com/Chelis-Lang/sail/issues/390#issuecomment-6432437950)).
