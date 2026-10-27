@@ -288,6 +288,16 @@ qualification is required. The pinned derived-Item Clone warning is retained in
 the failed raw log; no specification for that generated general-data clone or
 complete public parser API theorem is claimed.
 
+The `3f7779b4` whole root reaches verification: 505 verified/11 failed functions,
+908 query entries with all 837 earlier entries retained, no resource marker and
+final guards passing. This refusal earns no inventory lock or qualification.
+The next proof candidate adds exact Seq suffix/append/cardinality facts, explicit
+existential history witnesses, initial cursor exposure and scoped finite trace
+facts. It retains every raw/history/inventory predicate, original runtime byte
+operation, loop VC and resource setting; full-function mutants carry the same
+proof scope and unchanged intended runtime substitutions. Full-root rerun and
+all 190 ordinary controls remain required.
+
 ### Scalar policy-option readback candidate
 
 `query_options.rs` adds a source-shared candidate for the raw `:print-success`

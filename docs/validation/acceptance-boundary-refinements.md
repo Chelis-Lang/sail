@@ -20,6 +20,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `3f7779b4` outer/owner query attempt | Full query compilation/lowering clears; whole-root verification observes 505 verified/11 failed functions across 908 query entries (all 837 earlier entries retained), no resource marker, 38.494 s, final source/runtime checks pass | No inventory lock or qualification. Remaining raw-history existential/suffix, first-close induction, chunk trace composition and constructive inventory obligations require actual proof guidance at unchanged contracts/resources |
 | `cc98352f` outer/owner query attempt | Pinned Stock source lowering refuses four public/opaque-field predicates and unsupported core::mem::replace after 2.759 s; one generated-data Clone warning is retained. Final frozen source/runtime checks pass | No verifier/count/control credit. Exact public projections and modeled Option::take preserve predicate/ownership meaning without a new axiom; #481 recurrence and #482 copy-continuation correction require a fresh whole root |
 | `0ef78997` outer/owner query attempt | Complete query capture refuses Stock compilation after 1.928 s: two ungrouped match predicates cause four E0308 diagnostics and two Seq::take indices need nat→int casts (#481); final frozen source/runtime checks pass | No verifier/function-count/control credit. Erased grouping/projection correction retains every runtime operation, pre/postcondition meaning, loop VC and all 189 query controls; full-root rerun required |
 | `9c3b4ea6` bounded parser controls | All eleven canonical query partitions pass: corrected 151 plus 162–171, each repeating the whole 482/837 positive and one ordinary negative at 120 s/one thread; final source/runtime checks pass | Bounded diagnostic only, complete_component_controls=false and complete_suite=false. Does not qualify the newer outer/owner source or waive the full controls/native/conformance gates |
@@ -71,6 +72,17 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The twelve closed parser archives are additionally retained in the immutable
+combined object `experiments/2026-10-27/acceptance-parser-closed-20261027-v1.tgz`,
+SHA-256 `82b6048c71e91b2432c6de951b7ada8d4c9711652a29bffb2ab62a5f61b891e4`
+(4,824,255 bytes). Agent PUT200/GET200 readback and independent local combined/
+all 12 indexed subarchive hashes pass; independent lead GET/audit is pending.
+Original archives remain. The included `acceptance-parser-3f7779-positive-native.tgz`
+has SHA-256 `ea6e14300aa5f0d25970552780a684ae0f3faa8288ff17f2c93964e847417490`
+(302,512 bytes), preserving the actual failed verifier JSON and all diagnostics.
+The following per-archive paths identify subarchives in this combined object;
+separate publication/readback is not claimed.
 
 The closed lowering refusal is
 `experiments/2026-10-27/acceptance-parser-cc9835-positive-native.tgz`, SHA-256

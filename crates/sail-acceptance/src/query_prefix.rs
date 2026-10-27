@@ -442,11 +442,20 @@ sail_verified! {
         requires (prefix.exact(),prefix.length() == 0)
         ensures (passed)
     {
-        sail_proof! { reveal_with_fuel(crate::query_split::model_scan,4); }
+        sail_proof! {
+            assert(crate::query_split::model_scan((0u8,Seq::<u8>::empty(),0int),true,0,b"ab"@)
+                == ((2u8,b"ab"@,0int),seq![])) by { reveal_with_fuel(crate::query_split::model_scan,3); }
+            assert(crate::query_split::model_scan((2u8,b"ab"@,0int),true,2,b")c)"@)
+                == ((0u8,Seq::<u8>::empty(),0int),seq![(crate::query_split::ItemKind::Atom,0int,b"ab"@),
+                    (crate::query_split::ItemKind::Stray,2int,b")"@),(crate::query_split::ItemKind::Atom,3int,b"c"@),
+                    (crate::query_split::ItemKind::Stray,4int,b")"@)])) by { reveal_with_fuel(crate::query_split::model_scan,4); }
+        }
         let mut owner=QueryPrefix::new(prefix);
         let none=owner.append_items(b"ab");
+        sail_proof! { assert(crate::query_split::item_models(none@).len() == none@.len()); }
         if !none.is_empty() { return false; }
         let items=owner.append_items(b")c)");
+        sail_proof! { assert(crate::query_split::item_models(items@).len() == items@.len()); }
         if items.len() != 4 { return false; }
         matches!(items[0].kind,crate::query_split::ItemKind::Atom)
             && items[0].offset == 0 && items[0].bytes.len() == 2
