@@ -817,19 +817,16 @@ fn output_side(
 ) -> u8 {
     let owner = Arc::clone(&process.owner);
     let limit = buffer_limit();
-    let mut all = sail_acceptance::query_output_split::ParsedOutput::new_replayed(
+    let mut order = sail_acceptance::query_output_order::OutputOrder::new(
+        served,
         Arc::clone(&owner),
-        u64::try_from(served.len()).unwrap_or(u64::MAX),
+        Arc::clone(&owner),
     );
     // Once forwarding is live and nothing more will be recorded, every later
     // byte is forwarded as read, exactly as pass-through forwards it.
     let mut streaming = false;
-    let mut check = ReplayCheck::new(served, Arc::clone(&owner));
-    let mut forward_from: Option<usize> = all.forwarding().then_some(0);
     let mut forwarded = 0usize;
     let mut forwarding_ok = true;
-    // Whether the last complete response belongs to the fresh suffix, and its start.
-    let mut prev: Option<(bool, usize)> = None;
     let mut buf = vec![0u8; 64 * 1024];
 
     // Pairs replies with expectations as either arrives. Stores go to a
@@ -840,13 +837,13 @@ fn output_side(
     loop {
         let n = match from.read(&mut buf) {
             Ok(0) => {
-                all.end();
+                order.end();
                 break;
             }
             Ok(n) => n,
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
             Err(_) => {
-                all.refuse();
+                order.refuse();
                 forwarding_ok = false;
                 break;
             }
@@ -863,15 +860,14 @@ fn output_side(
             }
             continue;
         }
-        let items = all.append_items(chunk);
-        for item in items {
-            let start = usize::try_from(item.offset).unwrap_or(usize::MAX);
-            if let Some((fresh, s)) = prev.take() {
-                let frame = all.frame(s, start);
+        let mut batch = order.append_batch(chunk);
+        while batch.begin_next() {
+            let payload = if let Some((fresh, cost)) = batch.previous() {
+                let frame = batch.frame_previous();
                 if frame.is_none() {
                     pairer.stop();
                 }
-                let payload = if fresh && input.charge(start.saturating_sub(s)) {
+                if fresh && input.charge(cost) {
                     frame.and_then(|frame| {
                         frame.into_owned(Arc::clone(&owner), &SolverOwnerIdentity)
                     })
@@ -880,57 +876,51 @@ fn output_side(
                         pairer.stop();
                     }
                     None
-                };
-                // Framing refusal stops publication. Replay comparison still
-                // consumes the original bytes and keeps its original behavior.
-                if !check.settle_observed(
-                    fresh,
-                    all.bytes().get(s..start).unwrap_or_default(),
-                    &mut pairer,
-                    payload,
-                ) {
-                    break;
                 }
+            } else {
+                None
+            };
+            if !batch.settle_current(&mut pairer.pending, payload, &SolverOwnerIdentity) {
+                break;
             }
-            let fresh = all.advance_replay();
-            if fresh && forward_from.is_none() {
-                forward_from = Some(start);
-            }
-            prev = Some((fresh, start));
         }
-        if check.diverged() {
+        order = batch.finish();
+        if order.diverged() {
             break;
         }
-        if let Some(f) = forward_from
-            && all.len() > forwarded.max(f)
+        if let Some(f) = order.forward_from()
+            && order.len() > forwarded.max(f)
         {
-            if !write_out(all.bytes().get(forwarded.max(f)..).unwrap_or_default()) {
+            if !write_out(order.bytes().get(forwarded.max(f)..).unwrap_or_default()) {
                 forwarding_ok = false;
                 break;
             }
-            forwarded = all.len();
+            forwarded = order.len();
         }
         queue_stores(&mut pairer, expects, &storing.tx, false);
         // Streaming starts only after every suppressed replay reply has been
         // compared with the reply served in its place.
-        if forward_from.is_some()
-            && forwarded == all.len()
-            && check.complete()
+        if order.forward_from().is_some()
+            && forwarded == order.len()
+            && order.replay_complete()
             && (pairer.pending.is_stopped()
-                || all
+                || order
                     .len()
-                    .saturating_add(all.frames().saturating_mul(std::mem::size_of::<usize>()))
+                    .saturating_add(order.frames().saturating_mul(std::mem::size_of::<usize>()))
                     > limit)
         {
             // Recording has stopped, or the session outgrew the buffer: stop
             // recording for good and keep no more output.
             pairer.stop();
             streaming = true;
-            prev = None;
-            all.discard();
+            order.discard();
             forwarded = 0;
         }
     }
+    // Transfer the same actual fields before the unchanged native terminal
+    // path; physical read-end/drop/wait and tail settlement remain separate.
+    let (mut all, comparison, mut prev, forward_from) = order.into_parts();
+    let mut check = ReplayCheck { comparison };
     // Stop reading first: a solver blocked writing to a closed pipe then
     // fails and exits instead of waiting forever.
     drop(from);
@@ -1318,14 +1308,18 @@ struct ReplayCheck<'a> {
     comparison: sail_acceptance::query_replay::Replay<'a, SolverLease>,
 }
 
+#[cfg(test)]
 impl<'a> ReplayCheck<'a> {
     fn new(served: &'a [ServedReply], owner: SolverLease) -> Self {
         Self {
             comparison: sail_acceptance::query_replay::Replay::new(served, owner),
         }
     }
+}
 
+impl ReplayCheck<'_> {
     /// Whether every served reply has been compared with its replay.
+    #[cfg(test)]
     fn complete(&self) -> bool {
         self.comparison.complete()
     }
@@ -2743,7 +2737,9 @@ mod tests {
         assert!(!replies[1].reproduced_by(b"(error \"x\")\n"));
         let mut check = super::ReplayCheck::new(&replies, std::sync::Arc::new(()));
         let mut pairer = Pairer::default();
+        assert!(!check.complete());
         assert!(check.settle(false, b"(model)\n", &mut pairer));
+        assert!(!check.complete());
         assert!(!check.finish(false), "an unclean end is not judged");
         assert!(
             check.finish(true),
@@ -2752,6 +2748,18 @@ mod tests {
         let mut check = super::ReplayCheck::new(&replies, std::sync::Arc::new(()));
         assert!(!check.settle(false, b"(model 1)\n", &mut pairer));
         assert!(check.diverged());
+        assert!(!check.complete());
+
+        // The original nonempty served inventory becomes complete only after
+        // both original positions have actually been compared successfully.
+        let mut check = super::ReplayCheck::new(&replies, std::sync::Arc::new(()));
+        let mut pairer = Pairer::default();
+        assert!(!check.complete());
+        assert!(check.settle(false, replies[0].bytes(), &mut pairer));
+        assert!(!check.complete());
+        assert!(check.settle(false, replies[1].bytes(), &mut pairer));
+        assert!(check.complete());
+        assert!(!check.finish(true));
     }
 
     #[test]

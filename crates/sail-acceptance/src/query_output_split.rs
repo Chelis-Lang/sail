@@ -31,6 +31,12 @@ sail_code! {
             }
         }
         sail_method! {
+            /// Borrows this exact retained controller's original stream lease.
+            pub fn owner(&self) -> (out:&Owner)
+                requires (self.coherent()) ensures (*out == self.owner_view())
+            { self.controller.owner() }
+        }
+        sail_method! {
             /// Creates the actual output controller and suppression cursor
             /// together, before any response is observed.
             pub fn new_replayed(owner: Owner, served: u64) -> (out: Self)
@@ -161,7 +167,7 @@ sail_code! {
             #[allow(clippy::single_match_else, reason = "Explicit owned Option transfer preserves the checked original parser and unreachable defensive branch.")]
             pub fn append_items(&mut self,bytes:&[u8]) -> (out:Vec<crate::query_split::Item>)
                 requires (old(self).coherent())
-                ensures (final(self).coherent(),final(self).owner_view() == old(self).owner_view(),
+                ensures (final(self).coherent(),final(self).output_view().well_formed(),final(self).owner_view() == old(self).owner_view(),
                     final(self).replay_view() == old(self).replay_view(),
                     final(self).output_view().view() == old(self).output_view().view()+bytes@,
                     final(self).output_view().endpoints() == old(self).output_view().endpoints(),

@@ -62,6 +62,12 @@ semantic versioning once the API is published.
 - Drop cache submissions whose public queue-wait Duration cannot form a native
   Instant deadline, avoiding an arithmetic panic (#478). Normal waits keep their
   existing behavior; the bounded native regression is not yet run.
+
+- Source-share actual emitted-item, frame, replay and queue-handover ordering,
+  preserving original forwarding, independent grammar and terminal handling.
+  Validate copied fresh payloads against original owner/range/bytes; additional
+  comparison cost and new proof/native/control qualification remain unmeasured.
+
 - Pair actual stdout splitting with the same retained output controller used
   for forwarding, frame refusal and replay. Keep byte output, independent
   framing, EOF handling and origin checks unchanged; new source/control/native
