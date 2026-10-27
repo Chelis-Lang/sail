@@ -215,9 +215,7 @@ impl Completed {
         self.raw_output()
     }
     pub(crate) fn into_observed_output(self) -> Option<Output> {
-        if self.environment.is_none() {
-            return None;
-        }
+        self.environment.as_ref()?;
         Some(self.raw_output())
     }
 
