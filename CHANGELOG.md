@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep the original completed request/result pair through process-local
+  explanation, comparison and baseline presentation. A total borrowed view
+  preserves all recorded data while separately retaining optional declared
+  whole-request evidence. Wire data, errors, labels and Historical baseline
+  behavior are preserved. Direct-stock/native qualification and added-cost
+  measurement remain pending; no authority token is serialized.
+
 - Replay unchanged calls on macOS. Cargo copies each build script to
   `build-script-build` again on every macOS run, so the copy never looked
   settled and no unchanged call was recorded (#437); unchanged Anvil took

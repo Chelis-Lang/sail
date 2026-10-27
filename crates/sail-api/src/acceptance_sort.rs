@@ -7,17 +7,39 @@
 use sail_acceptance::authority::CompletionPolicy;
 
 use crate::acceptance::{
-    CompleteReport, CompleteRequest, CompleteSelection, DeclaredReplayAdmission,
-    ExactPartialRequest, ExactScopeReport, ReportOrder, RequestPathBinding, SubmittedAuthority,
-    admit_declared_replay_ordered, bind_replayed_exact_partial_project_ordered,
-    bind_replayed_project_ordered, complete_exact_partial_request_ordered,
-    complete_exact_scope_report_ordered, complete_report_ordered, complete_request_ordered,
-    complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered,
-    complete_whole_report_ordered, withhold_unbound_request_authority_ordered,
+    CompleteReport, CompleteRequest, CompleteSelection, CompletedPresentation,
+    DeclaredReplayAdmission, ExactPartialRequest, ExactScopeReport, ReportOrder,
+    RequestPathBinding, SubmittedAuthority, admit_declared_replay_ordered,
+    bind_replayed_exact_partial_project_ordered, bind_replayed_project_ordered,
+    complete_exact_partial_request_ordered, complete_exact_scope_report_ordered,
+    complete_report_ordered, complete_request_ordered, complete_selection_ordered,
+    complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered,
+    completed_presentation_ordered, withhold_unbound_request_authority_ordered,
 };
 use crate::jobs::Mode;
 use crate::output::Report;
 use crate::project::{ProjectResult, ResolvedRequest, TargetResult};
+
+/// Preserve one paired observation while checking optional declared whole scope.
+#[must_use]
+pub fn completed_presentation<'a>(
+    project: &'a ProjectResult,
+    request: Option<&'a ResolvedRequest>,
+) -> CompletedPresentation<'a> {
+    let orders: Vec<_> = if request.is_some()
+        && matches!(project.currentness, crate::project::Currentness::Current)
+        && project.exit_code == Some(0)
+    {
+        project
+            .targets
+            .iter()
+            .map(|target| candidate_order(&target.report))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    completed_presentation_ordered(project, request, &orders)
+}
 
 /// Composes declared replay evidence with untrusted order candidates. Missing
 /// native-path or guarded-readback witnesses refuse without a service claim.

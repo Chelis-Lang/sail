@@ -4,6 +4,13 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The later frozen `e91627d0` native workspace runs 1,271 tests: 1,269 pass,
+two fail and 56 skip (303.35 s). Initial cause was unknown; later source
+diagnosis identifies the #390 target-key mismatch, whose focused correction
+qualification remains pending. Solver is unrun. The archive is
+independently hash-checked in the [owning record](validation/acceptance-boundary-refinements.md).
+Neither this attempt nor earlier positives qualify the new main/view union.
+
 The frozen `720e461e` combined native workspace stops before native tests at
 two fixture compile errors: an omitted shared settle-constant import
 ([#459](https://github.com/Chelis-Lang/sail/issues/459)) and a missing compiler
@@ -183,6 +190,17 @@ preserves existing verdict/establishment behavior. Its whole authority positive
 passes at `e57f065f`; ordinary controls and native qualification remain pending.
 The helper establishes no request/process/cache authority and
 does not close #376's remaining shaping and serialization joins.
+
+The [paired process-local presentation candidate](design/acceptance-authority.md#paired-completed-observation-view-candidate)
+retains original request/result data through explanation, comparison and
+baseline consumers, with only an optional declared whole-request facet.
+Its proofs, native behavior and added cost remain unqualified; it supplies no
+serialized authority, physical observation or end-to-end #376 theorem.
+Source review found its generic baseline wrapper's bare serde default would
+add an unintended `ResolvedRequest: Default` bound
+([#462](https://github.com/Chelis-Lang/sail/issues/462)). The explicit
+`Option::default` correction preserves absent-request decoding and wire bytes;
+combined native compilation and the unchanged baseline fixture remain pending.
 
 ## Performance
 

@@ -11,13 +11,13 @@ use super::{State, get, store};
 
 /// Private on-disk provenance; the public baseline contract remains unchanged.
 #[derive(serde::Serialize, serde::Deserialize)]
-struct StoredBaseline<T> {
+struct StoredBaseline<T, R = sail_api::project::ResolvedRequest> {
     #[serde(flatten)]
     baseline: T,
     #[serde(default)]
     proof_authority_revision: u32,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    request: Option<sail_api::project::ResolvedRequest>,
+    #[serde(default = "Option::default", skip_serializing_if = "Option::is_none")]
+    request: Option<R>,
 }
 
 // One native retrieval observation, not a deserializable process/proof token.
@@ -27,8 +27,20 @@ struct CompletedObservation {
     request: Option<sail_api::project::ResolvedRequest>,
 }
 
-fn completed(state: &State, id: &str) -> io::Result<ProjectResult> {
-    completed_with_request(state, id).map(|observation| observation.result)
+impl CompletedObservation {
+    fn presentation(&self) -> sail_api::acceptance::CompletedPresentation<'_> {
+        sail_api::acceptance::completed_presentation(&self.result, self.request.as_ref())
+    }
+}
+
+// Preserve the already-read baseline pair before its public data projection.
+struct BaselineObservation {
+    baseline: Baseline,
+    request: Option<sail_api::project::ResolvedRequest>,
+}
+
+fn completed(state: &State, id: &str) -> io::Result<CompletedObservation> {
+    completed_with_request(state, id)
 }
 
 fn completed_with_request(state: &State, id: &str) -> io::Result<CompletedObservation> {
@@ -63,8 +75,10 @@ pub(super) fn explain(
     function: &str,
     obligation: Option<&str>,
 ) -> io::Result<Explanation> {
-    let result = completed(state, id)?;
-    let mut explanation = sail_api::evidence::explain(&result, target, function, obligation)
+    let observation = completed(state, id)?;
+    let presentation = observation.presentation();
+    let result = presentation.project();
+    let mut explanation = sail_api::evidence::explain(result, target, function, obligation)
         .map_err(io::Error::other)?;
     let job = get(state, id)?;
     let mut cursor = Cursor::default();
@@ -147,6 +161,10 @@ fn publish_baseline(
         job_id: id.into(),
         result,
     };
+    // Historical downgrade precedes the view. This cannot remint Current
+    // whole authority; both serialized fields still come from the same pair.
+    let presentation =
+        sail_api::acceptance::completed_presentation(&baseline.result, request.as_ref());
     let directory = state.root.join("baselines");
     store::private_dir(&directory)?;
     let target = directory.join(format!("{name}.json"));
@@ -164,7 +182,7 @@ fn publish_baseline(
         let stored = StoredBaseline {
             baseline: &baseline,
             proof_authority_revision: store::PROOF_AUTHORITY_REVISION,
-            request,
+            request: presentation.request(),
         };
         file.write_all(&serde_json::to_vec(&stored).map_err(io::Error::other)?)?;
         file.sync_all()?;
@@ -206,6 +224,10 @@ pub(super) fn baselines(state: &State) -> io::Result<Vec<String>> {
 }
 
 pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
+    baseline_with_request(state, name).map(|observation| observation.baseline)
+}
+
+fn baseline_with_request(state: &State, name: &str) -> io::Result<BaselineObservation> {
     valid_name(name)?;
     let file = std::fs::File::open(state.root.join("baselines").join(format!("{name}.json")))
         .map_err(|error| io::Error::other(format!("SAIL0905: cannot read baseline: {error}")))?;
@@ -256,24 +278,35 @@ pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
         store::withhold_legacy_authority(&mut baseline.result, stored.proof_authority_revision);
         store::withhold_unbound_authority(&mut baseline.result, stored.request.as_ref());
     }
-    Ok(baseline)
+    Ok(BaselineObservation {
+        baseline,
+        request: stored.request,
+    })
 }
 
 pub(super) fn compare(state: &State, before: &Reference, after: &str) -> io::Result<Comparison> {
     let before = match before {
         Reference::Job(id) => completed(state, id)?,
         Reference::Baseline(name) => {
-            let saved = baseline(state, name)?;
-            if saved.contracts.is_some() {
+            let saved = baseline_with_request(state, name)?;
+            if saved.baseline.contracts.is_some() {
                 return Err(io::Error::other(
                     "SAIL3142: generic comparison is unsupported for neutral evidence",
                 ));
             }
-            saved.result
+            CompletedObservation {
+                result: saved.baseline.result,
+                request: saved.request,
+            }
         }
     };
     let after = completed(state, after)?;
-    Ok(sail_api::evidence::compare(&before, &after))
+    let before = before.presentation();
+    let after = after.presentation();
+    Ok(sail_api::evidence::compare(
+        before.project(),
+        after.project(),
+    ))
 }
 
 #[cfg(test)]
@@ -404,6 +437,53 @@ mod baseline_request_tests {
         assert!(admitted.result.targets[0].complete);
         assert!(admitted.request.is_some());
         let original_request = admitted.request.clone();
+        {
+            let view = admitted.presentation();
+            assert_eq!(view.project(), &admitted.result);
+            assert_eq!(view.request(), admitted.request.as_ref());
+            assert!(view.whole().is_some());
+        }
+        for (currentness, exit_code) in [
+            (sail_api::project::Currentness::Historical, Some(0)),
+            (sail_api::project::Currentness::Unknown, Some(0)),
+            (sail_api::project::Currentness::Current, Some(1)),
+        ] {
+            let mut observation = CompletedObservation {
+                result: admitted.result.clone(),
+                request: admitted.request.clone(),
+            };
+            observation.result.currentness = currentness;
+            observation.result.exit_code = exit_code;
+            let view = observation.presentation();
+            assert_eq!(view.project(), &observation.result);
+            assert_eq!(view.request(), observation.request.as_ref());
+            assert!(view.whole().is_none());
+        }
+        {
+            let observation = CompletedObservation {
+                result: admitted.result.clone(),
+                request: None,
+            };
+            let view = observation.presentation();
+            assert_eq!(view.project(), &admitted.result);
+            assert!(view.request().is_none());
+            assert!(view.whole().is_none());
+        }
+        {
+            let mut observation = CompletedObservation {
+                result: admitted.result.clone(),
+                request: admitted.request.clone(),
+            };
+            if let Some(request) = &mut observation.request {
+                request
+                    .args
+                    .extend(["--".into(), "--verify-module".into(), "m".into()]);
+            }
+            let view = observation.presentation();
+            assert_eq!(view.project(), &observation.result);
+            assert_eq!(view.request(), observation.request.as_ref());
+            assert!(view.whole().is_none());
+        }
 
         // Move between actual result retrieval and immutable publication.
         std::fs::rename(&invocation, &displaced)?;
@@ -419,6 +499,24 @@ mod baseline_request_tests {
             state.root.join("baselines/admitted-before-move.json"),
         )?)?;
         assert_eq!(stored["request"], serde_json::to_value(&original_request)?);
+        let paired = baseline_with_request(state, "admitted-before-move")?;
+        assert_eq!(paired.request, original_request);
+        let view = sail_api::acceptance::completed_presentation(
+            &paired.baseline.result,
+            paired.request.as_ref(),
+        );
+        assert!(view.whole().is_none());
+        let owned = StoredBaseline {
+            baseline: &paired.baseline,
+            proof_authority_revision: store::PROOF_AUTHORITY_REVISION,
+            request: paired.request.clone(),
+        };
+        let borrowed = StoredBaseline {
+            baseline: &paired.baseline,
+            proof_authority_revision: store::PROOF_AUTHORITY_REVISION,
+            request: view.request(),
+        };
+        assert_eq!(serde_json::to_vec(&owned)?, serde_json::to_vec(&borrowed)?);
         assert_eq!(saved.result.targets[0].report, original.targets[0].report);
         assert_eq!(
             saved.result.targets[0].establishing_run,

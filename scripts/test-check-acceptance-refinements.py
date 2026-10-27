@@ -93,6 +93,44 @@ class SourceLexerTests(unittest.TestCase):
 class SourceCaptureTests(unittest.TestCase):
     """Mistaken source/representation selection cannot become proof evidence."""
 
+    def test_completed_presentation_has_no_public_or_derived_mint(self):
+        paths = {path for component in CHECKER.COMPONENTS
+            for path in CHECKER.dependency_paths(component)}
+        paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs",
+            "crates/sail-acceptance/Cargo.toml", "crates/sail-api/src/lib.rs"])
+        paths.update("crates/" + name + "/Cargo.toml" for name in
+            ("sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
+        original = {path: (ROOT / path).read_bytes() for path in paths}
+        path = "crates/sail-api/src/acceptance.rs"
+        for before, after in (
+            (b"        whole: Option<CompleteRequest<'a>>,", b"        pub whole: Option<CompleteRequest<'a>>,"),
+            (b"    pub struct CompletedPresentation<'a> {", b"    #[derive(Default)]\n    pub struct CompletedPresentation<'a> {"),
+        ):
+            self.assertEqual(original[path].count(before), 1)
+            snapshots = dict(original)
+            snapshots[path] = snapshots[path].replace(before, after)
+            with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
+                CHECKER.validate_assembly(snapshots)
+
+    def test_completed_view_native_pair_and_candidate_forwarding_are_bound(self):
+        path = "crates/sail-daemon/src/jobs/product.rs"
+        original = (ROOT / path).read_bytes()
+        CHECKER.compiled_subset(path, original)
+        self.assertIn(path, CHECKER.source_roles({"dependencies": CHECKER.dependency_paths("authority")})["reviewed_presentation_callers"])
+        for before, after in (
+            (b"completed_presentation(&self.result, self.request.as_ref())", b"completed_presentation(&self.result, None)"),
+            (b"request: presentation.request(),", b"request: None,"),
+        ):
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(before=before), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original.replace(before, after))
+        source = (ROOT / "crates/sail-api/src/acceptance_sort.rs").read_text()
+        SOURCE.candidate_forwarders(source)
+        before = "completed_presentation_ordered(project, request, &orders)"
+        self.assertEqual(source.count(before), 1)
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.candidate_forwarders(source.replace(before, "completed_presentation_ordered(project, None, &orders)"))
+
     def test_presentation_callers_are_native_bindings_and_enum_projection_does_not_supply_copy(self):
         entry = {"id": "authority", "source": "proofs/refinement/authority.rs",
             "dependencies": CHECKER.dependency_paths("authority")}
