@@ -10,7 +10,9 @@
 
 use std::cmp::Ordering;
 
-use sail_acceptance::{sail_code, sail_method, sail_proof, sail_spec, sail_verified, sail_while};
+use sail_acceptance::{
+    sail_code, sail_inherited_method, sail_method, sail_proof, sail_spec, sail_verified, sail_while,
+};
 
 #[cfg(sail_verus)]
 use vstd::prelude::*;
@@ -263,9 +265,9 @@ sail_spec! {
 
 sail_code! {
     impl PartialEq for OriginalTargetKey {
-        sail_method! {
+        sail_inherited_method! {
         fn eq(&self, other: &Self) -> (equal: bool)
-            requires(true) ensures(equal == key_equal(self, other))
+            ensures(equal == key_equal(self, other))
         {
             original_bytes_equal(self.original.0.as_str().as_bytes(), other.original.0.as_str().as_bytes())
                 && original_bytes_equal(self.original.1.as_str().as_bytes(), other.original.1.as_str().as_bytes())
@@ -275,16 +277,16 @@ sail_code! {
     }
     impl Eq for OriginalTargetKey {}
     impl PartialOrd for OriginalTargetKey {
-        sail_method! {
+        sail_inherited_method! {
         fn partial_cmp(&self, other: &Self) -> (order: Option<Ordering>)
-            requires(true) ensures(order == Some(key_order(self, other)))
+            ensures(order == Some(key_order(self, other)))
         { Some(self.cmp(other)) }
         }
     }
     impl Ord for OriginalTargetKey {
-        sail_method! {
+        sail_inherited_method! {
         fn cmp(&self, other: &Self) -> (order: Ordering)
-            requires(true) ensures(order == key_order(self, other))
+            ensures(order == key_order(self, other))
         {
             let package = compare_original_bytes(self.original.0.as_str().as_bytes(), other.original.0.as_str().as_bytes());
             if package != Ordering::Equal { return package; }
@@ -295,9 +297,9 @@ sail_code! {
         }
     }
     impl Clone for OriginalTargetKey {
-        sail_method! {
+        sail_inherited_method! {
         fn clone(&self) -> (key: Self)
-            requires(true) ensures(key_original(&key) == key_original(self), key == *self)
+            ensures(key_original(&key) == key_original(self), key == *self)
         {
             Self { original: (self.original.0.clone(), self.original.1.clone(), self.original.2.clone()) }
         }

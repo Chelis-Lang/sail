@@ -4,6 +4,14 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The unselected original-target comparator's first whole-file probe stops at four
+VIR errors because its Eq/Ord/Clone methods use an envelope that emits an explicit
+`requires(true)` instead of inheriting the trait preconditions
+([#472](https://github.com/Chelis-Lang/sail/issues/472)). A separate checked
+trait-method envelope preserves every native body and postcondition without an
+implementation precondition clause. Corrected-source proof checking remains
+pending; the stopped probe establishes no ordering law or request-domain closure.
+
 The original requested-target scan counts raw `--workspace` and `--all` text
 after the Cargo/Verus separator
 ([#467](https://github.com/Chelis-Lang/sail/issues/467)). A source candidate

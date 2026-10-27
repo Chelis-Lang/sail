@@ -159,7 +159,19 @@ and constructive byte/key order-law bodies for `OrdSpecImpl`. Its byte order
 matches Rust's original String/tuple field order by source review; an ordinary
 native differential fixture covers prefixes, embedded NUL, Unicode, field
 precedence, duplicate keys and actual set iteration against the old tuple set.
-Neither that fixture nor the new complete-file Stock support probe has run yet.
+The native differential fixture remains unrun. The complete-file Stock support
+probe at `367c5e03` stops in 9.04 seconds with four VIR errors and empty function
+details: the ordinary `sail_method!` envelope emits `requires(true)` on trait
+implementations, which must inherit their trait preconditions
+([#472](https://github.com/Chelis-Lang/sail/issues/472)). Final source/runtime
+checks pass, but this attempt earns zero proof credit. Its correction adds
+`sail_inherited_method!`, whose native signature/body is identical and whose
+Stock expansion inherits trait preconditions and checks the original additional
+postconditions. Only the four Eq/PartialOrd/Ord/Clone methods change envelopes;
+their executable bodies remain identical. The reviewed syntax fingerprint and
+checked-function envelope inventory include this macro, with ordinary source
+guard controls retaining refusal of raw or unknown-envelope methods. Those
+controls and a corrected complete-file probe remain unrun.
 The managed selection still uses the original String-tuple set. Actual set
 storage/insertion/iteration and request projection must be connected to the
 new key only after the kernel is checked and the conversion reviewed. That

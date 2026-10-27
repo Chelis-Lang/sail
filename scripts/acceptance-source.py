@@ -158,8 +158,10 @@ def checked_item_envelopes(source: str, *, proof: bool = False,
     """
     stream = tokens(source)
     levels = top_level(stream)
-    items = {"sail_code", "sail_spec", "sail_impl_spec", "sail_verified", "sail_method"}
-    functions = {"sail_spec", "sail_impl_spec", "sail_verified", "sail_method"}
+    items = {"sail_code", "sail_spec", "sail_impl_spec", "sail_verified", "sail_method",
+        "sail_inherited_method"}
+    functions = {"sail_spec", "sail_impl_spec", "sail_verified", "sail_method",
+        "sail_inherited_method"}
     if reviewed_host_traits:
         items.add("sail_trait")
         functions.add("sail_trait")

@@ -746,6 +746,18 @@ class SourceCaptureTests(unittest.TestCase):
                 SOURCE.checked_item_envelopes(source)
         SOURCE.checked_item_envelopes("sail_verified! { pub fn checked() -> (r:bool) requires(true) ensures(r) { true } }")
 
+    def test_inherited_trait_method_is_checked_and_raw_methods_still_refuse(self):
+        method = "fn eq(&self, other: &Self) -> (same: bool) ensures(same) { true }"
+        SOURCE.checked_item_envelopes(
+            "sail_code! { impl PartialEq for Key { sail_inherited_method! { " + method + " } } }")
+        for body in (
+            "fn eq(&self, other: &Self) -> bool { true }",
+            "unchecked_inherited_method! { " + method + " }",
+            "sail_inherited_method! { " + method + " } fn unchecked() -> bool { true }",
+        ):
+            with self.subTest(body=body), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.checked_item_envelopes("sail_code! { impl PartialEq for Key { " + body + " } }")
+
     def test_untrusted_ordering_cannot_substitute_the_report_being_authorized(self):
         source = (ROOT / "crates/sail-api/src/acceptance_sort.rs").read_text()
         SOURCE.candidate_forwarders(source)
