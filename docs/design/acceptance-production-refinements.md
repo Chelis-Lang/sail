@@ -1,16 +1,17 @@
 # Production acceptance refinements
 
-Status: source sharing, concrete refinement proofs and production callers pass
-native macOS and Linux checks. Native pre-push gates, hosted checks and full
-fast/standard conformance pass. The owner accepts the bounded native timing
-result; its measurement limits and the remaining service-wide theorem are
-recorded separately. The owning
-[validation record](../validation/acceptance-production-refinements.md) separates
-checked source from accepted integration.
+The accepted production-core baseline passes native macOS/Linux checks,
+hosted gates and full fast/standard conformance; its bounded native timing
+result was accepted by the owner. The owning
+[validation record](../validation/acceptance-production-refinements.md) records
+that baseline separately from later source.
 
-The combined revision-only input projection passes fresh native gates, both
-direct-stock proof suites and full fast/standard conformance. The final
-documentation head must pass all hosted checks before merge.
+The current boundary follow-up connects additional production parser, cache,
+request, observation and presentation operations. Its combined proof/control
+matrix and native/differential acceptance remain incomplete. Separate component
+passes do not qualify the combined source or establish the service-wide theorem;
+[boundary qualification](../validation/acceptance-boundary-refinements.md)
+records exact frozen sources and remaining work.
 
 The [acceptance design](evidence-acceptance-core.md) targets four independent
 risks: wrong query/reply association, stale input reuse, incomplete requested
@@ -59,6 +60,27 @@ read ledger and original-capture projection, retaining the worker-returned path
 with each outcome. The caller checks the source observation's original stamp
 after the complete projection batch. This adapter remains outside the pure
 source-shared theorem.
+
+## Human output and proof authority
+
+A Cargo no-op may observe no target reports even when the original request
+contains targets. Whole-request and partial-proof admission continue to refuse
+that observation. The human CLI has a separate byte-only record and opaque
+checked context retaining original/current requests, observed metadata, native
+path binding and guarded readback. Its final attachment accepts only empty
+stdout and a parsed Cargo footer. The renderer preserves the original footer
+prefix and checks the complete supplied duration. No ProjectResult, verified
+label or proof token is exposed by this path; JSON, jobs, repair and MCP retain
+their proof-authority admission.
+
+The checked context and byte gate preserve the original combined factory's
+full acceptance contract. Separating them makes the stdout omission control
+fail through an ordinary postcondition error under the unchanged default
+resources. This establishes that selected guard's proof sensitivity, not the
+full control suite or saved-output/process/input provenance. Native human-mode
+selection remains a separately bound CLI operation. The
+[boundary record](../validation/acceptance-boundary-refinements.md) distinguishes
+those proofs, actual native tests and combined qualification.
 
 ## Verification must actually run
 
