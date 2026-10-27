@@ -2584,7 +2584,9 @@ fn target_revision_with(
     reason = "All supported Cargo target selectors are resolved explicitly before complete coverage can be claimed."
 )]
 fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, String)> {
-    let workspace = args.iter().any(|a| a == "--workspace" || a == "--all");
+    // Only Cargo-side words select packages: a forwarded `--workspace` or
+    // `--all` after `--` belongs to Verus and must not widen the selection.
+    let mut workspace = false;
     let mut selected_names = Vec::new();
     let mut excluded = Vec::new();
     let mut bins = Vec::new();
@@ -2610,6 +2612,7 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, 
             }
             "--lib" => lib = true,
             "--bins" => all_bins = true,
+            "--workspace" | "--all" => workspace = true,
             _ => {
                 if let Some(v) = a.strip_prefix("--package=") {
                     selected_names.push(v);
@@ -3527,7 +3530,7 @@ fn run_recorded(
     let after_inputs = |after_metadata: Option<Result<Value>>,
                         source: Option<RevisionObservation<'_>>|
      -> Result<AfterInputs> {
-        super::build_inputs::update(
+        let scripts_observed = super::build_inputs::update(
             &paths.build_inputs,
             &paths.run.join("artifacts.jsonl"),
             &data,
@@ -3554,6 +3557,9 @@ fn run_recorded(
         }
         let (_, mut after_extras, after_coverage) =
             super::build_inputs::stale_after(&paths.build_inputs, &data, &unscheduled);
+        // A script output this run could not read leaves its declarations
+        // unknown, never an empty contract (#382).
+        let after_coverage = after_coverage && scripts_observed;
         after_extras.extend(script_roots.iter().cloned());
         after_extras.extend(native_includes.iter().cloned());
         let after_extras = ordered_extras(after_extras);
@@ -6567,7 +6573,7 @@ mod tests {
             assert!(
                 std::fs::write(
                     target.join(format!("{id}-123.d")),
-                    format!("artifact.d: {}\n", source.display())
+                    format!("artifact.d: {0}\n\n{0}:\n", source.display())
                 )
                 .is_ok()
             );
@@ -6791,6 +6797,28 @@ mod tests {
         assert_eq!(expected_targets(&data, &separated), wanted);
         assert_eq!(selected(&separated, &names), vec!["b".to_owned()]);
         assert!(expected_targets(&data, &["-punknown".to_owned()]).is_empty());
+    }
+
+    #[test]
+    fn forwarded_workspace_words_do_not_widen_the_expected_targets() {
+        let data = serde_json::json!({"workspace_members":["a","b"],
+            "workspace_default_members":["a"],"resolve":{"root":null,"nodes":[]},
+            "packages":[
+                {"id":"a","name":"a","metadata":{"verus":{"verify":true}},
+                    "targets":[{"name":"a","kind":["lib"]}]},
+                {"id":"b","name":"b","metadata":{"verus":{"verify":true}},
+                    "targets":[{"name":"b","kind":["lib"]}]}]});
+        let lib = |n: &str| (n.to_owned(), n.to_owned(), "lib".to_owned());
+        let default = BTreeSet::from([lib("a")]);
+        let both = BTreeSet::from([lib("a"), lib("b")]);
+        for word in ["--workspace", "--all"] {
+            let forwarded = vec!["--".to_owned(), word.to_owned()];
+            assert_eq!(expected_targets(&data, &forwarded), default, "{word}");
+            let cargo = vec![word.to_owned()];
+            assert_eq!(expected_targets(&data, &cargo), both, "{word}");
+            let both_sides = vec![word.to_owned(), "--".to_owned(), "--lib".to_owned()];
+            assert_eq!(expected_targets(&data, &both_sides), both, "{word}");
+        }
     }
     #[test]
     fn focused_proof_selection_is_never_whole_target_coverage() {

@@ -43,7 +43,10 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const VERSION: u32 = 2;
+/// Version 3: earlier records could omit compiler-declared files and
+/// environment names that the dep-info and build-script readers lost (#383,
+/// #408).
+const VERSION: u32 = 3;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;

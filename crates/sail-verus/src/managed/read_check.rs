@@ -27,6 +27,9 @@ use std::path::{Path, PathBuf};
 const FILE: &str = "read-check.json";
 /// A record larger than this is refused (Unknown) rather than read.
 const MAX_BYTES: u64 = 64 * 1024 * 1024;
+/// Version 3: earlier records could omit compiler-declared files that the
+/// dep-info reader split or rewrote (#408).
+const VERSION: u32 = 3;
 
 #[derive(Serialize, Deserialize)]
 struct Record {
@@ -53,7 +56,7 @@ pub(super) fn record(
     json(
         &context.join(FILE),
         &Record {
-            version: 2,
+            version: VERSION,
             revision: revision.to_owned(),
             files,
             bindings,
@@ -133,6 +136,65 @@ fn observe(path: &Path, expected_absent: bool) -> Observation {
 /// # Errors
 /// `SAIL3108` when the context has no readable record (no Current run yet).
 pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<InputSnapshot> {
+    check_with(cache, workspace, context, observe)
+}
+
+/// One path's metadata, of the name itself and of what it resolves to, or
+/// `None` for a path that is definitely absent.
+type Stamp = Option<(Vec<u64>, Option<Vec<u64>>)>;
+
+fn metadata_numbers(metadata: &std::fs::Metadata) -> Vec<u64> {
+    let modified = metadata
+        .modified()
+        .ok()
+        .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or((u64::MAX, u32::MAX), |d| (d.as_secs(), d.subsec_nanos()));
+    let kind = u64::from(metadata.is_file())
+        | u64::from(metadata.is_dir()) << 1
+        | u64::from(metadata.is_symlink()) << 2;
+    #[cfg_attr(
+        not(unix),
+        expect(unused_mut, reason = "only Unix adds the inode and change time")
+    )]
+    let mut numbers = vec![metadata.len(), kind, modified.0, u64::from(modified.1)];
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt as _;
+        numbers.extend([
+            metadata.dev(),
+            metadata.ino(),
+            u64::from(metadata.mode()),
+            metadata.ctime().cast_unsigned(),
+            metadata.ctime_nsec().cast_unsigned(),
+        ]);
+    }
+    numbers
+}
+
+/// The stamp of every path, or `None` when any path cannot be examined.
+fn stamp_all(paths: &[&Path]) -> Option<Vec<Stamp>> {
+    crate::parallel::in_order(paths, |&path| match std::fs::symlink_metadata(path) {
+        Ok(name) => {
+            let resolved = match std::fs::metadata(path) {
+                Ok(resolved) => Some(metadata_numbers(&resolved)),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                Err(_) => return None,
+            };
+            Some(Some((metadata_numbers(&name), resolved)))
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Some(None),
+        Err(_) => None,
+    })
+    .into_iter()
+    .collect()
+}
+
+fn check_with(
+    cache: &Path,
+    workspace: &Path,
+    context: &str,
+    observe: impl Fn(&Path, bool) -> Observation + Sync,
+) -> Result<InputSnapshot> {
     let missing = || Error::new("SAIL3108", "no current input record for this context");
     if context.is_empty()
         || context.len() > 128
@@ -155,7 +217,7 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
         return Err(missing());
     }
     let record: Record = serde_json::from_slice(&bytes).map_err(|_| missing())?;
-    if record.version != 2 || record.files.is_empty() {
+    if record.version != VERSION || record.files.is_empty() {
         return Err(missing());
     }
     let files: Vec<_> = record
@@ -163,6 +225,19 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
         .iter()
         .map(|(path, expected)| (path.as_path(), expected.is_none()))
         .collect();
+    // The reads of one check must describe one state of the files: every
+    // recorded path, alias and alias destination is stamped before and after
+    // the whole batch, and any difference, or any path that cannot be
+    // stamped, leaves the result unknown (#387). Without the bracket, a file
+    // read before a concurrent edit and another read after a concurrent
+    // restore could together reproduce the recorded revision although no
+    // such state existed at any moment of the check.
+    let mut guarded: Vec<&Path> = files.iter().map(|(path, _)| *path).collect();
+    guarded.extend(record.bindings.keys().map(PathBuf::as_path));
+    guarded.extend(record.bindings.values().map(PathBuf::as_path));
+    guarded.sort();
+    guarded.dedup();
+    let before = stamp_all(&guarded);
     let reads =
         crate::parallel::in_order(&files, |&(path, absent)| (0, path, observe(path, absent)));
     let aliases: Vec<_> = record.bindings.keys().map(PathBuf::as_path).collect();
@@ -174,8 +249,12 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
         };
         (1, alias, value)
     });
+    let after = stamp_all(&guarded);
     let observed: Vec<_> = reads.into_iter().chain(alias_reads).collect();
     let (changed, mut unreadable) = compare_observed(&record, &observed);
+    if before.is_none() || before != after {
+        unreadable = true;
+    }
     if !changed && !unreadable && !super::runner::runtime_current(cache, context) {
         // A changed toolchain is not an input change the record can name,
         // but the stored result no longer describes this installation.
@@ -319,7 +398,7 @@ mod tests {
         std::fs::write(&a, "first")?;
         std::fs::write(&b, "second")?;
         let record = Record {
-            version: 2,
+            version: VERSION,
             revision: "rev".into(),
             files: vec![
                 (a.clone(), Some(super::super::files::file_digest(&a)?)),
@@ -355,6 +434,65 @@ mod tests {
         let mut swapped = read();
         swapped.reverse();
         assert_eq!(compare_observed(&record, &swapped), (true, false));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn retained_readback_refuses_a_torn_two_file_revision() -> TestResult {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let root = fixture("torn")?;
+        setup(&root)?;
+        let cache = root.join("cache");
+        let workspace = root.join("ws");
+        let a = workspace.join("src/a.rs");
+        let b = workspace.join("src/b.rs");
+        std::fs::write(&a, "a0")?;
+        std::fs::write(&b, "b0")?;
+        let context = cache
+            .join("projects")
+            .join(digest(workspace.as_os_str().as_encoded_bytes()))
+            .join("ctx");
+        let recorded = |path: &Path| -> std::io::Result<(PathBuf, Option<String>)> {
+            let hash = super::super::files::file_digest(path).map_err(std::io::Error::other)?;
+            Ok((path.to_owned(), Some(hash)))
+        };
+        record(
+            &context,
+            "old-a0-b0",
+            vec![recorded(&a)?, recorded(&b)?],
+            BTreeMap::new(),
+        )?;
+        assert_eq!(check(&cache, &workspace, "ctx")?.revision, "old-a0-b0");
+        // Before the check, B changes. The check reads A as recorded; then a
+        // writer replaces A and restores B before the check reads B. A0/B0
+        // never existed during the check.
+        std::fs::write(&b, "b1-longer")?;
+        let written = AtomicBool::new(false);
+        let torn = |path: &Path, absent: bool| {
+            if path == b {
+                while !written.load(Ordering::Acquire) {
+                    std::thread::yield_now();
+                }
+                return observe(path, absent);
+            }
+            let observed = observe(path, absent);
+            if path == a {
+                let _ = std::fs::write(&a, "a1-longer");
+                let _ = std::fs::write(&b, "b0");
+                written.store(true, Ordering::Release);
+            }
+            observed
+        };
+        let snapshot = check_with(&cache, &workspace, "ctx", torn)?;
+        assert!(
+            !snapshot.complete,
+            "a torn readback is never current: {}",
+            snapshot.revision
+        );
+        // The files now settled at A1/B0 read as a change, as before.
+        let settled = check(&cache, &workspace, "ctx")?;
+        assert!(settled.complete && settled.revision != "old-a0-b0");
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

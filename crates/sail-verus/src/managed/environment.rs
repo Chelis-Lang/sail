@@ -160,29 +160,79 @@ pub(super) fn declared_names(target: &Path) -> Option<BTreeSet<String>> {
             if !(dep_info || script) || !kind.is_file() {
                 continue;
             }
-            let text = match std::fs::read_to_string(&path) {
-                Ok(text) => text,
+            let bytes = match std::fs::read(&path) {
+                Ok(bytes) => bytes,
                 Err(error) if gone(&error) => continue,
                 Err(_) => return None,
             };
-            names.extend(declarations(&text, dep_info));
+            names.extend(if dep_info {
+                dep_info_declarations(std::str::from_utf8(&bytes).ok()?)?
+            } else {
+                script_declarations(&bytes)
+            });
         }
     }
     Some(names)
 }
 
-fn declarations(text: &str, dep_info: bool) -> Vec<String> {
-    text.lines()
-        .filter_map(|line| {
-            let rest = if dep_info {
-                line.strip_prefix("# env-dep:")?
+/// The names of a rustc dep-info's `# env-dep:` lines, decoded exactly as
+/// pinned rustc's `escape_dep_env` encodes them: `\n`, `\r` and `\\` stand
+/// for a newline, a carriage return and a backslash, and every other
+/// character, whitespace included, is the name's own (#383). A name ends at
+/// the first `=`, which rustc writes before a value. `None` for an escape
+/// rustc never writes: the declared name is then unknown.
+fn dep_info_declarations(text: &str) -> Option<Vec<String>> {
+    let mut names = Vec::new();
+    for line in text.split('\n') {
+        let Some(rest) = line.strip_prefix("# env-dep:") else {
+            continue;
+        };
+        let encoded = rest.split_once('=').map_or(rest, |(name, _)| name);
+        let mut name = String::with_capacity(encoded.len());
+        let mut chars = encoded.chars();
+        while let Some(c) = chars.next() {
+            name.push(if c == '\\' {
+                match chars.next()? {
+                    'n' => '\n',
+                    'r' => '\r',
+                    '\\' => '\\',
+                    _ => return None,
+                }
             } else {
-                line.strip_prefix("cargo:rerun-if-env-changed=")
-                    .or_else(|| line.strip_prefix("cargo::rerun-if-env-changed="))?
-            };
-            let name = rest.split_once('=').map_or(rest, |(name, _)| name).trim();
-            (!name.is_empty()).then(|| name.to_owned())
+                c
+            });
+        }
+        if !name.is_empty() {
+            names.push(name);
+        }
+    }
+    Some(names)
+}
+
+/// The `(key, value)` instructions of a build script's output, exactly as
+/// Cargo reads them: each `\n`-separated line that is UTF-8, trimmed of
+/// surrounding whitespace (Unicode whitespace included), that starts with
+/// `cargo::` or `cargo:`, split at its first `=`. The value keeps any
+/// leading whitespace after `=` (#383). Other lines are not instructions.
+pub(super) fn script_instructions(output: &[u8]) -> Vec<(&str, &str)> {
+    output
+        .split(|byte| *byte == b'\n')
+        .filter_map(|line| {
+            let line = std::str::from_utf8(line).ok()?.trim();
+            let data = line
+                .strip_prefix("cargo::")
+                .or_else(|| line.strip_prefix("cargo:"))?;
+            data.split_once('=')
         })
+        .collect()
+}
+
+/// The names a build script's output declares with `rerun-if-env-changed`.
+fn script_declarations(output: &[u8]) -> Vec<String> {
+    script_instructions(output)
+        .into_iter()
+        .filter(|(key, name)| *key == "rerun-if-env-changed" && !name.is_empty())
+        .map(|(_, name)| name.to_owned())
         .collect()
 }
 
@@ -293,6 +343,166 @@ mod tests {
     }
 
     #[test]
+    fn declaration_names_preserve_whitespace_and_decode_dep_info_escapes() {
+        assert_eq!(
+            dep_info_declarations(
+                "# env-dep: FLAG =7\n# env-dep:LINE\\nBREAK=7\n# env-dep:CR\\rLF\n# env-dep:BACK\\\\SLASH=a\\\\b\n# env-dep:TAB\tKEY\n"
+            ),
+            Some(vec![
+                " FLAG ".into(),
+                "LINE\nBREAK".into(),
+                "CR\rLF".into(),
+                "BACK\\SLASH".into(),
+                "TAB\tKEY".into(),
+            ])
+        );
+        for malformed in ["# env-dep:BAD\\xNAME\n", "# env-dep:DANGLING\\\n"] {
+            assert_eq!(dep_info_declarations(malformed), None, "{malformed:?}");
+        }
+        assert_eq!(
+            script_declarations(
+                "cargo:rerun-if-env-changed= FLAG \n  cargo::rerun-if-env-changed=INDENTED\n\tcargo:rerun-if-env-changed=TAB\u{a0}\r\nrerun-if-env-changed=BARE\ncargo:rerun-if-env-changed=\n"
+                    .as_bytes()
+            ),
+            [" FLAG", "INDENTED", "TAB"]
+        );
+        // Cargo skips a line that is not UTF-8, not the rest of the output.
+        let mut output = b"cargo:rerun-if-env-changed=\xff\n".to_vec();
+        output.extend(b"cargo:rerun-if-env-changed=AFTER\n");
+        assert_eq!(script_declarations(&output), ["AFTER"]);
+    }
+
+    #[test]
+    fn actual_rustc_declarations_keep_exact_environment_names()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-env-rustc-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let deps = root.join("debug/deps");
+        std::fs::create_dir_all(&deps)?;
+        let source = root.join("names.rs");
+        let names = [
+            " FLAG ",
+            "LINE\nBREAK",
+            "CARRIAGE\rRETURN",
+            "BACK\\SLASH",
+            "TAB\tKEY",
+            "NBSP\u{a0}",
+        ];
+        let mut program = String::new();
+        for (index, name) in names.iter().enumerate() {
+            program += &format!(
+                "pub const FLAG_{index}: &str = env!({});\n",
+                serde_json::to_string(name)?
+            );
+        }
+        std::fs::write(&source, program)?;
+        let mut command =
+            std::process::Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()));
+        command
+            .args([
+                "--edition",
+                "2024",
+                "--crate-name",
+                "env_names",
+                "--crate-type",
+                "lib",
+                "--emit",
+                "dep-info",
+            ])
+            .arg(&source)
+            .arg("-o")
+            .arg(deps.join("names.d"));
+        for name in names {
+            command.env(name, "7");
+        }
+        let output = command.output()?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let declared = declared_names(&root);
+        std::fs::remove_dir_all(root)?;
+        assert_eq!(
+            declared,
+            Some(names.into_iter().map(str::to_owned).collect())
+        );
+        Ok(())
+    }
+
+    /// Sail's names for a build script's declarations are the names Cargo
+    /// itself records in the script's fingerprint.
+    #[test]
+    fn actual_cargo_instruction_names_match_its_own_fingerprints()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-env-cargo-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("src"))?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='env-instruction-probe'\nversion='0.1.0'\nedition='2024'\n[workspace]\n",
+        )?;
+        std::fs::write(root.join("src/lib.rs"), "pub const X: u8 = 1;\n")?;
+        std::fs::write(
+            root.join("build.rs"),
+            r#"fn main() {
+    println!("  cargo:rerun-if-env-changed=INDENTED");
+    println!("\tcargo::rerun-if-env-changed=TAB_PREFIX");
+    println!("cargo:rerun-if-env-changed= FLAG ");
+    println!("cargo:rerun-if-env-changed=NBSP\u{a0}");
+    println!("cargo:rerun-if-env-changed=EM\u{2003}");
+    println!("rerun-if-env-changed=NOT_AN_INSTRUCTION");
+}"#,
+        )?;
+        let target = root.join("target");
+        let output =
+            std::process::Command::new(std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
+                .args(["check", "--offline", "--manifest-path"])
+                .arg(root.join("Cargo.toml"))
+                .arg("--target-dir")
+                .arg(&target)
+                .env_remove("RUSTC_WRAPPER")
+                .env_remove("RUSTC_WORKSPACE_WRAPPER")
+                .env_remove("CARGO_ENCODED_RUSTFLAGS")
+                .env_remove("CARGO_BUILD_TARGET")
+                .output()?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let mut cargo_names = BTreeSet::new();
+        for directory in std::fs::read_dir(target.join("debug/.fingerprint"))? {
+            let fingerprint = directory?
+                .path()
+                .join("run-build-script-build-script-build.json");
+            if !fingerprint.is_file() {
+                continue;
+            }
+            let value: serde_json::Value = serde_json::from_slice(&std::fs::read(fingerprint)?)?;
+            for entry in value["local"].as_array().ok_or("fingerprint locals")? {
+                if let Some(name) = entry
+                    .pointer("/RerunIfEnvChanged/var")
+                    .and_then(serde_json::Value::as_str)
+                {
+                    cargo_names.insert(name.to_owned());
+                }
+            }
+        }
+        let declared = declared_names(&target);
+        std::fs::remove_dir_all(root)?;
+        assert_eq!(
+            cargo_names,
+            ["INDENTED", "TAB_PREFIX", " FLAG", "NBSP", "EM"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect()
+        );
+        assert_eq!(declared, Some(cargo_names));
+        Ok(())
+    }
+
+    #[test]
     fn recorded_values_bind_presence_and_bytes() {
         let names = BTreeSet::from(["SAIL_TEST_SURELY_UNSET_L16".to_owned()]);
         let recorded = values(&names);
@@ -305,10 +515,10 @@ mod tests {
 
     #[test]
     fn authentication_plumbing_still_binds_explicit_declared_reads() {
-        let names = declarations(
+        let names = dep_info_declarations(
             "# env-dep:SAIL_DEPENDENCY_READ_TOKEN\n# env-dep:SAIL_PRIVATE_GIT_READY\n",
-            true,
-        );
+        )
+        .unwrap_or_default();
         assert_eq!(names.len(), 2);
         for name in names {
             assert!(!input_environment_key(OsStr::new(&name)));
@@ -328,11 +538,11 @@ mod tests {
     fn target_directory_declared_reads_still_bind_exact_values() {
         let name = "CARGO_TARGET_DIR".to_owned();
         assert_eq!(
-            declarations("# env-dep:CARGO_TARGET_DIR=caller-target\n", true),
+            dep_info_declarations("# env-dep:CARGO_TARGET_DIR=caller-target\n").unwrap_or_default(),
             std::slice::from_ref(&name)
         );
         assert_eq!(
-            declarations("cargo:rerun-if-env-changed=CARGO_TARGET_DIR\n", false),
+            script_declarations(b"cargo:rerun-if-env-changed=CARGO_TARGET_DIR\n"),
             std::slice::from_ref(&name)
         );
         let mut recorded = values(&BTreeSet::from([name.clone()]));

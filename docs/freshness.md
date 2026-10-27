@@ -57,6 +57,10 @@ Each later read of the result (job Status or Result, `sail jobs`, MCP reads,
 watch) rereads every recorded file completely, in parallel, and compares
 digests. It also checks that the absent configuration paths are still absent.
 Every recorded source binding must still resolve to the same destination.
+Every recorded path, binding and destination is stamped (file metadata,
+including the inode change time) before and after the reads; if any stamp
+differs, the reads may not describe one state of the files and the result
+is **Unknown**.
 
 - Every digest matches and nothing new appeared: **Current**.
 - Any file changed, disappeared or appeared: **Historical**.
@@ -215,7 +219,11 @@ Cargo's own. Two parts of the environment bind a result:
   any unit declares: rustc's `# env-dep:` dep-info lines (`env!`,
   `option_env!`, and the Verus driver's own declarations) and build scripts'
   `rerun-if-env-changed`. Each receipt records their values, and it is reused
-  only while every one is unchanged.
+  only while every one is unchanged. Names are taken exactly as rustc and
+  Cargo record them: rustc's `\n`, `\r` and `\\` escapes are decoded and
+  whitespace is part of the name; Cargo trims each output line, then reads
+  everything after `=`. A declaration file that cannot be read leaves the
+  run without receipts.
 - **What ghost code reads.** Verus compiles a verified crate twice, and the
   erased compilation rewrites its dep-info without the verification phase's
   reads, so a read in a `proof fn`, spec or assertion alone is not declared
