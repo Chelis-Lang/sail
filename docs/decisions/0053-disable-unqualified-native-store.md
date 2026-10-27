@@ -53,3 +53,16 @@ at the stated source identities. The revised parallel CI layout also passes
 its exact-source native gate, solver, complete local union, independent phase
 entries and PR subset on `6713c491`; final CI remains pending. No runtime pin
 or release asset changes.
+
+## Note of 2026-10-27
+
+The store family key (`store_family_hash`, `managed/native_tools.rs`) now
+binds the content identity of the native tools fresh Cargo would run: `cc`,
+`c++`, `ar` and `ld` as resolved on `PATH` (absent ones recorded as absent)
+and every linker or C compiler named by the environment (`RUSTC_LINKER`,
+`CC`, `CXX`, `AR`, `CARGO_TARGET_*_LINKER`). It fails closed, giving no key
+and so no store use, when a named tool does not resolve to one readable file
+or when a Cargo configuration file or compiler-flag variable mentions a
+linker. This removes the #187 reproduction from the key but does not by
+itself qualify every native input; both consumption and publication remain
+disabled under this decision.

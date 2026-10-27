@@ -45,17 +45,14 @@ which is parked until after 0.1.0.
   backslashes as escapes, so a file name with a non-breaking space is
   recorded as other paths
   ([#408](https://github.com/Chelis-Lang/sail/issues/408)).
-- `check-sat-using` counts as a check but is recorded as producing no
-  response ([#397](https://github.com/Chelis-Lang/sail/issues/397)).
-- The disk cache creates its temporary file with `File::create`, which
-  follows a preexisting symlink at that name
-  ([#412](https://github.com/Chelis-Lang/sail/issues/412)).
-- Dependency publication can write into, and then delete, a colliding
-  staging directory ([#304](https://github.com/Chelis-Lang/sail/issues/304)).
 - Native-artifact store seeding can hide a changed native linker at the same
   `PATH` ([#187](https://github.com/Chelis-Lang/sail/issues/187)). The store
   is disabled under [ADR 0053](decisions/0053-disable-unqualified-native-store.md),
-  so main is not affected; a sound replacement is not built.
+  so main is not affected. Its family key now binds the bytes of the native
+  tools (`cc`, `c++`, `ar`, `ld` on `PATH` and any linker or C compiler named
+  by the environment) and refuses the store when a linker is chosen by Cargo
+  configuration or compiler flags. Re-enabling the store is still not
+  qualified.
 
 The service-wide acceptance theorem is not complete
 ([#368](https://github.com/Chelis-Lang/sail/issues/368), #371–#376); see the

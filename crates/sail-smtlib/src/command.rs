@@ -96,6 +96,7 @@ impl CommandKind<'_> {
         match self {
             Self::CheckSat
             | Self::CheckSatAssuming
+            | Self::CheckSatUsing
             | Self::GetInfo { .. }
             | Self::Get
             | Self::Echo => Output::One,
@@ -254,6 +255,8 @@ mod tests {
     #[test]
     fn output_expectations() {
         assert_eq!(kind("(check-sat)").output(), Output::One);
+        assert_eq!(kind("(check-sat-using smt)").output(), Output::One);
+        assert_eq!(kind("(check-sat-assuming (a))").output(), Output::One);
         assert_eq!(kind("(assert true)").output(), Output::None);
         assert_eq!(kind("(simplify x)").output(), Output::Unknown);
     }
