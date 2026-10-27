@@ -60,8 +60,9 @@ sail_verified! {
             assert(command@.subrange(1,9) =~= vstd::utf8::encode_utf8("get-info"@));
             assert(command@.subrange(10,25) =~= vstd::utf8::encode_utf8(":all-statistics"@));
             assert(statistics_fields(command@,spans));
-            reveal_with_fuel(crate::query::frame_scan,8);
-            assert(crate::query::single_list(actual@.subrange(0,6),false));
+            assert(crate::query::single_list(actual@.subrange(0,6),false)) by {
+                reveal_with_fuel(crate::query::frame_scan,8);
+            }
             assert(crate::query::response_span(actual@,0,6));
             assert(statistics_shape(actual@));
         }
