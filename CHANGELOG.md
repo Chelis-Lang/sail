@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Resolve managed configuration homes from the supplied environment, keeping
+  CARGO_HOME precedence and native path bytes from that observation.
+- Validate source tokens without repeatedly copying the remaining input;
+  retain exact spans, literal boundaries and refusal behavior. Distinguish
+  reviewed Set union expressions from erased type declarations.
+
 - Restore generated-file E2E inputs before later stock-oracle comparisons in
   the full local managed suite.
 

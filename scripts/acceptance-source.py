@@ -28,6 +28,12 @@ class Token(NamedTuple):
 DERIVES = {"Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord",
     "Default", "Hash", "Serialize", "Deserialize"}
 
+# The reviewed patterns have no anchors or lookbehind; retain exact offsets.
+_RAW_STRING_PREFIX = re.compile(r'(?:br|cr|r)(#*)"')
+_CHAR_LITERAL = re.compile(r"'(?:\\.|[^'\\\n])'")
+_LIFETIME = re.compile(r"'[A-Za-z_][A-Za-z_0-9]*")
+_WORD = re.compile(r"[A-Za-z_][A-Za-z_0-9]*|[0-9][A-Za-z_0-9]*")
+
 
 def checked_attribute(stream: list[Token], start: int, allowed: set[str]) -> int:
     """Accept only reviewed attributes, with no custom derive expansion."""
@@ -79,10 +85,10 @@ def tokens(source: str) -> list[Token]:
                     at += 1
             continue
         start = at
-        raw = re.match(r'(?:br|cr|r)(#*)"', source[at:])
+        raw = _RAW_STRING_PREFIX.match(source, at)
         if raw:
             ending = '"' + raw[1]
-            at += raw.end()
+            at = raw.end()
             end = source.find(ending, at)
             require(end >= 0, "unterminated raw string")
             at = end + len(ending)
@@ -93,13 +99,13 @@ def tokens(source: str) -> list[Token]:
             require(at < len(source), "unterminated string")
             at += 1
         elif source[at] == "'":
-            char = re.match(r"'(?:\\.|[^'\\\n])'", source[at:])
-            lifetime = re.match(r"'[A-Za-z_][A-Za-z_0-9]*", source[at:])
+            char = _CHAR_LITERAL.match(source, at)
+            lifetime = _LIFETIME.match(source, at)
             require(char is not None or lifetime is not None, "unsupported character literal")
-            at += (char or lifetime).end()
+            at = (char or lifetime).end()
         else:
-            word = re.match(r"[A-Za-z_][A-Za-z_0-9]*|[0-9][A-Za-z_0-9]*", source[at:])
-            at += word.end() if word else 1
+            word = _WORD.match(source, at)
+            at = word.end() if word else at + 1
         result.append(Token(source[start:at], start, at))
     return result
 
@@ -322,7 +328,12 @@ def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
                 erased = [token.value for token in stream[i + 3:end]]
                 if erased == [token.value for token in tokens("use vstd::prelude::*;")]:
                     continue
-                require(not ({"type", "struct", "enum", "union", "trait", "impl", "const", "static"} & set(erased))
+                declarations = {"type", "struct", "enum", "union", "trait", "impl", "const", "static"}
+                # A Set.union call is an expression, not an erased declaration.
+                require(all(value not in declarations or value == "union"
+                        and position > 0 and erased[position - 1] == "."
+                        and position + 1 < len(erased) and erased[position + 1] == "("
+                        for position, value in enumerate(erased))
                     and all(value != "use" or position > 0 and erased[position - 1] == "broadcast"
                         for position, value in enumerate(erased)),
                     "erased items cannot introduce executable/type bindings")

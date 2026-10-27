@@ -1,7 +1,9 @@
 # Known issues and limits
 
 The consolidated acceptance-audit bugfix candidate addresses proof-control
-classification (#454/#508/#537), reviewed proof-import digits (#532), local
+classification (#454/#508/#537), supplied configuration homes (#419), source
+lexer tail copies (#432), exact Set union recognition (#514), proof-import
+digits (#532), local
 checkout target isolation (#475) and full-E2E generated-file fixture isolation
 (#540). Its local source/wrapper checks pass; native combined qualification
 remains pending. These changes do not complete the service proof. See the

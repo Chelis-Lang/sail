@@ -18,8 +18,11 @@ current implemented scope is:
 
 | Finding | Correction | Evidence and limits |
 |---|---|---|
-| #454, #508, #537 | Preserve function contracts, loop annotations and erased proof groups per executable body; refuse proof-only faults and bare verification statements | All 35 local source tests pass. All 22 existing control objects and 25 captured programs remain unchanged; comparison makes zero Stock calls |
+| #454, #508, #537 | Preserve function contracts, loop annotations and erased proof groups per executable body; refuse proof-only faults and bare verification statements | All 42 local source tests pass. All 22 existing control objects and 25 captured programs remain unchanged; comparison makes zero Stock calls |
 | #532 | Accept digits in reviewed proof-import identifiers | Exact import hashes, allowed prefixes and cfg/body refusals remain; covered by source tests |
+| #419 | Resolve configuration homes from the same supplied environment | New supplied-home and CARGO_HOME-precedence native regression is added; native execution remains pending |
+| #514 | Distinguish the exact `.union(` member expression from an erased declaration | Positive Set union and all erased-declaration/alternate-macro refusals pass |
+| #432 | Match lexer regexes at absolute source positions, avoiding remaining-tail copies | Six lexical span/literal/refusal regressions pass; no token/envelope memoization or new main timing claim |
 | #475 | Separate core/Singular target volumes by physical checkout | Actual-wrapper fixture passes on macOS with a recording Docker substitute; separate checkouts differ, same checkout/alias stay warm. Fresh native integration remains required |
 | #540 | Restore generated-file scenario source and build script before later stock-oracle controls | Native full-local failure reproduced at `d1518341`; correction retains every comparison/assertion and requires a new full local run |
 
@@ -37,7 +40,9 @@ source/image and upload/readback guards pass.
 Earlier runtime/input fixes already merged in #436, #445, #512 and #515 are
 not reintroduced by this extraction. Corrections belonging only to unselected
 parser, metadata and cache components remain tracked with those components.
-The independent #534 envelope cache is not a prerequisite. Fresh native/Stock,
+The independent #534 envelope cache is not a prerequisite. The only production
+Rust change observes supplied configuration homes; no proof source or manifest
+changes. Fresh native/Stock,
 full local E2E and hosted qualification remain pending for this bugfix head.
 
 ## Checked source and runtime

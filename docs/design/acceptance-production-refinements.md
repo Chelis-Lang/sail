@@ -102,6 +102,11 @@ qualify as a runtime fault. These source checks supplement the
 full Stock function/obligation inventory and ordinary failure requirement;
 they do not establish semantic inequivalence of arbitrary Rust programs.
 
+Configuration validation uses `HOME` and `CARGO_HOME` from the same supplied
+process-environment observation as the other selectors. An ambient second read
+cannot replace that observation; explicit CARGO_HOME retains precedence. This
+binds the validator's own inputs and does not establish full compiler closure.
+
 ## Independent checking
 
 Commit the source first, then run Python 3.11 or newer:
