@@ -11,8 +11,13 @@ initial output comparisons, then fails unchanged-call recording
 Cargo no-ops as empty observed target inventories. Whole-request admission
 correctly refuses those no-ops. A separate human-output candidate retains that
 refusal and exposes only empty stdout plus a parsed Cargo footer, with exact
-request/path/readback checks and no ProjectResult or proof authority. Its new
-direct-stock controls and native qualification remain pending. The same
+request/path/readback checks and no ProjectResult or proof authority. Frozen
+`0df9c812` passes the complete authority positive (520/912), strict package
+Clippy, all 15 selected replay tests and source suites. Actual end-to-end output
+now records/replays it, then fails an invalidation trace assertion because the
+subsequent proof-cache lookup overwrites the original human refusal. The source
+correction retains that refusal and ordinary execution; new negative controls
+and complete end-to-end/conformance qualification remain pending. The same
 failure's evidence collector reaches its file cap before producer state
 ([#477](https://github.com/Chelis-Lang/sail/issues/477)). Selection now prioritizes
 the last issued command and recent producers under the original caps; truncation

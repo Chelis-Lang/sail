@@ -773,54 +773,82 @@ pub fn replay_empty_human_output(
     if !human_record_path(&workspace.join(&config.cache), &key).is_file() {
         return None;
     }
-    let preflight = super::runner::replay_preflight(config).ok()?;
-    let location = ReplayLocation {
-        cache: &preflight.config.cache,
-        context: &preflight.context,
-        workspace_lock: &preflight.workspace_lock,
-        family: &preflight.family,
+    let mut reason = None;
+    let replay = (|| {
+        let preflight = super::runner::replay_preflight(config).ok()?;
+        let location = ReplayLocation {
+            cache: &preflight.config.cache,
+            context: &preflight.context,
+            workspace_lock: &preflight.workspace_lock,
+            family: &preflight.family,
+        };
+        let _workspace = lock(location.workspace_lock, true)?;
+        let _family = lock(&location.family.join("ownership.lock"), false)?;
+        preflight
+            .with_current_request(|current, paths, readback| {
+                let bytes = std::fs::read(human_record_path(location.cache, &key)).ok()?;
+                let saved: HumanRecord = serde_json::from_slice(&bytes).ok()?;
+                let record = &saved.observation;
+                if saved.kind != HUMAN_KIND
+                    || saved.version != HUMAN_VERSION
+                    || record.version != VERSION
+                    || record.key != key
+                    || !record.origins.is_empty()
+                    || record.locks.0 != location.workspace_lock
+                    || record.locks.1 != location.family.join("ownership.lock")
+                    || record.runs != location.context.join("runs")
+                {
+                    return None;
+                }
+                if let Some(changed) = mismatch(record) {
+                    reason = Some(changed);
+                    return None;
+                }
+                let admitted = sail_api::acceptance::admit_empty_human_output(
+                    &record.original_request,
+                    current,
+                    &record.result,
+                    true,
+                    &record.stdout,
+                    &record.stderr,
+                    Some(paths),
+                    Some(readback),
+                )?;
+                let stderr = regenerate_finished(admitted.stderr(), started.elapsed());
+                if !sail_api::acceptance::empty_human_bytes(&[], &stderr) {
+                    return None;
+                }
+                Some(HumanReplay { stderr })
+            })
+            .ok()??
+    })();
+    trace("replay kind: empty human output only");
+    if replay.is_some() {
+        trace("hit");
+    } else {
+        trace(&format!(
+            "miss: {}",
+            reason
+                .as_deref()
+                .unwrap_or("human-output request or readback unavailable")
+        ));
+    }
+    replay
+}
+
+/// Whether this invocation has a byte-only candidate to attempt. Presence
+/// grants no authority: an unreadable, changed or invalid candidate still runs
+/// ordinary verification. It only prevents a second proof-cache miss from
+/// overwriting the decision trace of the candidate already checked.
+#[must_use]
+pub fn has_empty_human_candidate(config: &Config) -> bool {
+    let Some(key) = key(config, false) else {
+        return false;
     };
-    let _workspace = lock(location.workspace_lock, true)?;
-    let _family = lock(&location.family.join("ownership.lock"), false)?;
-    preflight
-        .with_current_request(|current, paths, readback| {
-            let bytes = std::fs::read(human_record_path(location.cache, &key)).ok()?;
-            let saved: HumanRecord = serde_json::from_slice(&bytes).ok()?;
-            let record = &saved.observation;
-            if saved.kind != HUMAN_KIND
-                || saved.version != HUMAN_VERSION
-                || record.version != VERSION
-                || record.key != key
-                || !record.origins.is_empty()
-                || record.locks.0 != location.workspace_lock
-                || record.locks.1 != location.family.join("ownership.lock")
-                || record.runs != location.context.join("runs")
-            {
-                return None;
-            }
-            if let Some(reason) = mismatch(record) {
-                trace(&format!("miss: empty human output: {reason}"));
-                return None;
-            }
-            let admitted = sail_api::acceptance::admit_empty_human_output(
-                &record.original_request,
-                current,
-                &record.result,
-                true,
-                &record.stdout,
-                &record.stderr,
-                Some(paths),
-                Some(readback),
-            )?;
-            let stderr = regenerate_finished(admitted.stderr(), started.elapsed());
-            if !sail_api::acceptance::empty_human_bytes(&[], &stderr) {
-                return None;
-            }
-            trace("replay kind: empty human output only");
-            trace("hit");
-            Some(HumanReplay { stderr })
-        })
-        .ok()??
+    let Ok(workspace) = std::path::absolute(&config.workspace) else {
+        return false;
+    };
+    human_record_path(&workspace.join(&config.cache), &key).is_file()
 }
 
 /// The replay for an unchanged call of `key`, when every recorded

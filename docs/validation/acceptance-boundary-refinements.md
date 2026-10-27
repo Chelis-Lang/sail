@@ -9,7 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
-| `0df9c812` whole authority positive | Direct pinned Stock passes 520 verified/0 errors and all 912 actual entries, including all 895 prior functions (22.623 s). Final inner source/runtime checks pass; lead independently reads the completed raw verifier JSON and locks that observed inventory | One complete positive only. Outer native/output/source qualification is still running; all 136 authority controls, other component unions and full service qualification remain required |
+| `0df9c812` human-output candidate | Direct pinned Stock passes 520 verified/0 errors and all 912 actual entries, including all 895 prior functions (22.623 s). Strict API/Verus/CLI Clippy, all 15 selected native tests and source suites 12/65 pass; final source/image/runtime checks pass. The original output phase now records and replays empty human output | Output then fails the restored-mtime trace assertion: the specific human invalidation refusal is overwritten by a second proof-cache `miss: no record`. The follow-up preserves that first decision and ordinary fallback. All 136 authority controls, full e2e/conformance and service qualification remain open |
 | `3717e932` empty human-output candidate | Whole authority reaches 519 verified/1 failed function, retains all prior entries, no resource marker and final source/runtime checks pass (21.350 s). Native strict Clippy passes all targets in API/Verus/CLI; all 15 selected no-op/human-output tests pass; source suites pass 12/12 and 65/65. Final source/image checks pass (414.112 s total) | The sole remaining proof failure is finite byte-string prefix/suffix content in the constructive footer witness. No whole-positive lock, negative or e2e/conformance credit. The follow-up uses the pinned verifier's scoped reveal_byteslit builtin; runtime bytes, checks, witness assertions and resource limits are unchanged |
 | `594cce06` empty human-output candidate | Whole authority checks every prior function and reaches 518 verified/2 failed obligations (22.080 s), no resource marker, final source/runtime checks pass. The two failures are duration-existential guidance and finite footer examples. Native Clippy refuses two rustdoc spellings and the expanded preparation function's line limit | No whole-positive/count lock, native tests or negative/e2e credit. Follow-up adds explicit original duration witnesses and finite sequence facts, corrects rustdoc and documents the existing observation collector's lint allowance; predicates, scope and resources remain unchanged |
 | `8aabc3b8` empty human-output candidate | Full source inventory/assembly checks pass; Stock refuses six accesses to execution/no-reuse fields absent from its prior declaration projection (zero VCs/function credit, 1.827 s). Native strict Clippy then refuses dead witness fields and an elidable lifetime; final source/image guards pass | No native tests, negatives or e2e run. The correction captures the actual counter/NoReuse declarations, retains witness borrows in the byte accessor and elides the unused implementation lifetime; admission contracts and resources are unchanged |
@@ -487,6 +487,12 @@ The byte-only reader preserves the established exact `hit` decision trace and
 records its distinct replay kind on a separate line. The unchanged original
 end-to-end recording/hit assertions remain required; a new diagnostic spelling
 does not replace those assertions.
+After an existing human candidate refuses, the actual CLI takes ordinary
+execution directly rather than asking the separate proof-record reader to
+overwrite its diagnostic. Candidate presence itself grants no authority; every
+successful replay still consumes the same checked request/path/readback/bytes
+admission. One final miss reason survives unavailable preflight or changed
+observations, while JSON and other proof-record consumers keep their original path.
 
 The diagnostic and source-tooling archives are retained under
 `experiments/2026-10-27/acceptance-recording-a73d13c2-native.tgz`

@@ -232,6 +232,7 @@ fn managed(
     started: std::time::Instant,
     out: &mut dyn std::io::Write,
     err: &mut dyn std::io::Write,
+    human_candidate_checked: bool,
 ) -> sail_verus::Result<ProjectResult> {
     use sail_verus::managed::noop;
     let Some(key) = noop::key(config, json) else {
@@ -241,7 +242,7 @@ fn managed(
             sail_verus::managed::run_showing_output(config, out, err)
         };
     };
-    if let Some(replay) = noop::replay(config, &key, started) {
+    if !human_candidate_checked && let Some(replay) = noop::replay(config, &key, started) {
         if !json {
             let _ = out.write_all(&replay.stdout).and_then(|()| out.flush());
         }
@@ -325,9 +326,11 @@ pub(crate) fn verify(
     }
     // This consumer is selected before result-producing execution. Empty
     // human-output replay exposes no ProjectResult, JSON, job or MCP verdict.
-    if !worker
+    let human_candidate = !worker
         && !interactive
         && !options.json
+        && sail_verus::managed::noop::has_empty_human_candidate(&config);
+    if human_candidate
         && let Some(replay) = sail_verus::managed::noop::replay_empty_human_output(&config, started)
     {
         let _ = err.write_all(replay.stderr()).and_then(|()| err.flush());
@@ -338,7 +341,7 @@ pub(crate) fn verify(
     } else if interactive {
         sail_verus::engine::verify_showing_output(&config, out, err)
     } else {
-        managed(&config, options.json, started, out, err)
+        managed(&config, options.json, started, out, err, human_candidate)
     };
     match result {
         Ok(mut result) => {
