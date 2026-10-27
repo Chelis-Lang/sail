@@ -874,7 +874,7 @@ sail_code! {
                 let mut current=self;
                 let mut cursor=0usize;
                 sail_while! { (cursor < data.len())
-                    invariant (cursor <= data.len(),current.well_formed(),current.input_view() == self.input_view(),
+                    invariant (cursor <= data.len(),self.well_formed(),current.well_formed(),current.input_view() == self.input_view(),
                         current.position_view() == self.position_view()+cursor,
                         appended@.len() <= items@.len()+cursor+(if self.position_view()>0 {1int} else {0int}),
                         appended@.take(items@.len() as int) == items@,
@@ -899,6 +899,17 @@ sail_code! {
                                 sail_proof! {
                                     assert(data@.subrange(_chunk_start as int,data@.len() as int).take(consumed as int)
                                         =~= data@.subrange(_chunk_start as int,cursor as int));
+                                    assert forall|history:Seq<u8>| self.matches(history) implies
+                                        frame.bytes_view() == (history+data@.take(_chunk_start as int)).subrange(start as int,
+                                            (history.len()+_chunk_start) as int) by {}
+                                    assert forall|history:Seq<u8>| self.matches(history) implies
+                                        (history+data@.take(cursor as int)).subrange(start as int,(history.len()+cursor) as int)
+                                            == frame.bytes_view()+data@.subrange(_chunk_start as int,cursor as int) by {
+                                        suffix_append(history+data@.take(_chunk_start as int),start as int,
+                                            data@.subrange(_chunk_start as int,cursor as int));
+                                        assert((history+data@.take(_chunk_start as int))+data@.subrange(_chunk_start as int,cursor as int)
+                                            =~= history+data@.take(cursor as int));
+                                    }
                                 }
                                 sail_proof! {
                                     assert forall|history:Seq<u8>| self.matches(history) implies
@@ -1068,6 +1079,14 @@ sail_verified! {
                 == (0int,crate::query::FrameLex::Plain)) by {
                 reveal_with_fuel(crate::query::frame_scan,3);
             }
+            assert(seq![b'('].push(b')') =~= seq![b'(',b')']);
+            assert(model_step((3u8,seq![b'('],4int),true,5,b')')
+                == ((0u8,Seq::<u8>::empty(),0int),seq![(ItemKind::List,4int,seq![b'(',b')'])])) by { reveal(model_step); }
+            assert(model_step((0u8,Seq::<u8>::empty(),0int),true,6,b'a')
+                == ((2u8,seq![b'a'],6int),seq![])) by { reveal(model_step); reveal(idle_model); }
+            assert(model_step((2u8,seq![b'a'],6int),true,7,b')')
+                == ((0u8,Seq::<u8>::empty(),0int),seq![(ItemKind::Atom,6int,seq![b'a']),
+                    (ItemKind::Stray,7int,seq![b')'])])) by { reveal(model_step); reveal(idle_model); reveal(atom_ends); reveal(terminated_atom); reveal(crate::query::word_delimiter); }
             assert(model_scan((3u8,seq![b'('],4int),true,5,following@)
                 == ((0u8,Seq::<u8>::empty(),0int),seq![(ItemKind::List,4int,seq![b'(',b')']),
                     (ItemKind::Atom,6int,seq![b'a']),(ItemKind::Stray,7int,seq![b')'])])) by { reveal(model_step); reveal(idle_model); reveal(atom_ends); reveal(terminated_atom);
@@ -1173,6 +1192,7 @@ sail_verified! {
                     let start=model(state).2;
                     assert(0 <= start < history.len());
                     suffix_append(history,start,seq![byte]);
+                    assert(model(state).1.push(byte) =~= model(state).1+seq![byte]);
                     prefix_slice_append(history,start,history.len() as int,seq![byte]);
                     if model(state).0 == 2 && model(state).1.last() == b'\r' {
                         suffix_drop_last(history,start);
