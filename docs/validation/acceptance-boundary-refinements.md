@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `9b4ceea2` | Native source guard suites and all three whole positives pass: query 431/0 (759 functions), inputs 308/0 (538), authority 498/0 (878); all previous functions retained and final source/runtime/image identities checked | Initial discovery only. No workspace, ordinary negative matrix, solver or conformance qualification; later main integration and lint fixes need fresh gates |
 | `c44cdcfa` | Four native query partitions pass all 115 ordinary controls plus four complete query-positive runs (431 verified, 759 function entries); an independent audit checks exact disjoint union and identical source/runtime/compiler identity | Each partition remains an incomplete component; the audited union covers query only. Native workspace reaches strict clippy and stops at eight shared-kernel style diagnostics; ordinary workspace/solver tests remain unrun |
 | `7f08ce1d` | Complete native whole-positive discovery repeats query 431/0 (759 function entries), inputs 308/0 (538), authority 498/0 (878), with final source/runtime rechecks; three formerly refused query controls then pass strict full-root diagnostics | Diagnostics do not replace the complete control matrix. Later style annotations and main reconciliation require fresh exact-head qualification; all six service obligations remain open |
 | `573b6e0b` input component | 2026-10-26: all 116 direct-stock cases pass: whole positive 308/0 (538 function entries), all 95 inherited and all 20 new pipe negatives, including both full-factory always-refuse controls; final source/runtime checks pass | `complete_component_controls=true`, `complete_suite=false`; exact control list retained. Report labels need the separate #449 scope correction below; native adapter bodies are not proved |
@@ -27,6 +28,14 @@ observation guarantee or service theorem is claimed. All six rows of the
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The limited `9b4ceea2` discovery archive is retained privately at
+`experiments/2026-10-27/acceptance-main-9b4ceea2-native.tgz`, SHA-256
+`7afa325c30c5e507545a705b0608229f5a28e471951a43ad03222b24af0c4af9`
+(7,140,326 bytes). Independent S3 GET/hash and report-scope review pass.
+The later native completion correction uses the equivalent optional borrow
+before returning the original output; its current enclosing source hash is
+reviewed and rebound without claiming the native adapter is stock-checked.
 
 The owned-pipe evidence uses native Linux x86-64 and core image
 `sail-ci:c4710b7fd3ca282a-core`, image ID
