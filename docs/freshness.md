@@ -36,8 +36,10 @@ A human `sail verify` call that Cargo leaves unchanged can print only its
 when its original request, current request and recorded observations still
 match. This stores no proof receipt and creates no verified report. JSON, jobs
 and MCP use their ordinary result-producing paths. The byte-only replay accepts
-one plain `dev` or `release` completion line and empty stdout; other output,
-including warnings, colors or custom profile renderings, takes the ordinary path.
+one `dev` or `release` completion line and empty stdout, with either a plain
+prefix or Cargo's exact bold green `Finished` prefix. Replay preserves the
+original prefix bytes. Warnings, other color sequences and custom profile
+renderings take the ordinary path.
 
 Any doubt makes a result Historical or Unknown, never Current. The cost of a
 wrong "not current" is one re-run; a wrong "Current" is never acceptable.
@@ -46,6 +48,15 @@ A retained result must originally have been Current to remain Current after a
 readback. Matching inputs do not upgrade a Historical or Unknown run. Reading a
 result rechecks its original request before preserving whole-target completion;
 losing that authority preserves the recorded diagnostics and input label.
+
+Compiler-declared paths come from rustc's complete per-file dep-info rules.
+Every output rule must name the same ordered file list; unsupported,
+inconsistent or ambiguous documents withhold input coverage. Ghost-only
+compiler reads are joined into every output rule, including rules separated
+by blank lines. Exact filename checking preserves literal backslashes, tabs
+and non-ASCII spaces. This observes the compiler's declarations; complete
+physical input capture remains a separate boundary described in the proof
+[qualification record](validation/acceptance-boundary-refinements.md).
 
 ## Reading a result later
 
@@ -93,8 +104,9 @@ timestamp granularity and transient changes remain observation limits.
 - Any file changed, disappeared or appeared: **Historical**.
 - A file cannot be read, or the record is missing or malformed: **Unknown**.
 
-Older read-check records without source bindings are refused as Unknown. Run
-verification again to establish a complete record.
+Older read-check records made under an earlier source-binding or compiler
+input policy are refused as Unknown. Run verification again to establish a
+complete record.
 
 Nothing is inferred from timestamps, so an edit whose modification time was
 restored still reads as changed. Files of packages that the selection never

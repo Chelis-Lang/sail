@@ -176,17 +176,19 @@ fn remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edit
     cancel(&client, &cold.id);
     cancel(&client, &duplicate.id);
     // Older observations cannot establish coverage under the current policy.
-    record(&context, &project, 2);
-    let legacy = submit(&client, &root, &environment);
-    ready(&client, &root, &legacy.id);
-    let legacy_duplicate = submit(&client, &root, &environment);
-    assert_ne!(
-        legacy.id, legacy_duplicate.id,
-        "legacy inputs never coalesce"
-    );
-    cancel(&client, &legacy.id);
-    cancel(&client, &legacy_duplicate.id);
-    let revision = record(&context, &project, 3);
+    for old_version in [2, 3] {
+        record(&context, &project, old_version);
+        let legacy = submit(&client, &root, &environment);
+        ready(&client, &root, &legacy.id);
+        let legacy_duplicate = submit(&client, &root, &environment);
+        assert_ne!(
+            legacy.id, legacy_duplicate.id,
+            "legacy inputs never coalesce"
+        );
+        cancel(&client, &legacy.id);
+        cancel(&client, &legacy_duplicate.id);
+    }
+    let revision = record(&context, &project, 4);
     let warm = submit(&client, &root, &environment);
     ready(&client, &root, &warm.id);
     await_coalescing(&client, &root, &environment, &warm.id);
@@ -196,7 +198,7 @@ fn remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edit
     let lost = submit(&client, &root, &environment);
     assert_ne!(warm.id, lost.id);
     cancel(&client, &lost.id);
-    assert_eq!(record(&context, &project, 3), revision);
+    assert_eq!(record(&context, &project, 4), revision);
     await_coalescing(&client, &root, &environment, &warm.id);
     // A newly created configuration file is an input change.
     assert!(std::fs::create_dir_all(project.join(".cargo")).is_ok());

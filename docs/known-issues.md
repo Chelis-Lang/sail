@@ -1,5 +1,13 @@
 # Known issues and limits
 
+- [#507](https://github.com/Chelis-Lang/sail/issues/507): the root's old ghost
+  writer joins only the output rules before the first blank line, while its
+  reader requires equal file lists across every output rule. A port of main's
+  complete layout/all-output join retains the checked filename gate and all
+  provider guards, with native regressions and record retirement. Qualification
+  is pending; the original hosted Unknown result still lacks complete causal
+  evidence, and its two-call/ghost-mutation assertions remain unchanged.
+
 - [#522](https://github.com/Chelis-Lang/sail/issues/522): the colored renderer's
   full-operation always-refusing control exhausts default Stock resources at
   `6214824a` (whole 618/1). The complete positive, 17 other selected negatives,

@@ -54,7 +54,7 @@ pub(super) fn record(
     json(
         &context.join(FILE),
         &Record {
-            version: 3,
+            version: 4,
             revision: revision.to_owned(),
             files,
             bindings,
@@ -183,7 +183,7 @@ fn with_observer<T>(
         return Err(missing());
     }
     let record: Record = serde_json::from_slice(&bytes).map_err(|_| missing())?;
-    if record.version != 3 || record.files.is_empty() {
+    if record.version != 4 || record.files.is_empty() {
         return Err(missing());
     }
     let guarded_paths: BTreeSet<_> = record
@@ -388,7 +388,7 @@ mod tests {
         std::fs::write(&a, "first")?;
         std::fs::write(&b, "second")?;
         let record = Record {
-            version: 3,
+            version: 4,
             revision: "rev".into(),
             files: vec![
                 (a.clone(), Some(super::super::files::file_digest(&a)?)),

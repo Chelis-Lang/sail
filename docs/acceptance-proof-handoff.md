@@ -30,6 +30,7 @@ timeout and resource refusals earn zero ordinary-negative credit.
 | `ee4e684f` | All31 model cases and all115 input-record negatives across four canonical partitions | Complete compiler/physical input closure; query/authority partitions from that attempt refuse resources |
 | `d2bef2d0` | Whole Stock query646/1,114, inputs308/538, authority619/1,045; all12 model/80 production source tests | Native gate stops at colored predicate parentheses; Rust tests/solver unrun |
 | `b327ab39` | Whole Stock666/1,151,308/538,619/1,045 and all17 selected native replay tests | Strict workspace Clippy refuses one new fixture assertion style; corrected full native/control/e2e gates pending |
+| `9d8f8e49` combined | Whole Stock689/1,191,308/538 and620/1,046, all inherited functions retained | Native gate/selected command25+colored20/output active; later complete-layout source needs fresh qualification |
 | `c6b46500` command component | Whole query636/1,096; native SMT/session32 and strict acceptance/SMT/session/shim Clippy; independent nine-archive/raw/hash audit | Combined whole discovery, all22 new controls and complete expanded union |
 | `6214824a` integrated native | Full native gate: source80/model12, Rust1,310; solver53; actual output e2e; authority positive and17 selected ordinary negatives | One colored renderer fault exhausts default Stock resources (#522), aggregate fails; byte-only helper correction and later source need new qualification |
 | `561c1570` parser component | Whole613/1,056 and four full-positive/ordinary-negative pairs for earlier resource failures | Complete expanded query-control union and current integration gates |
@@ -69,8 +70,10 @@ exact limits. Raw logs and source bundles stay outside Git.
 
 Main advances independently. The source currently retains `dca5cd43`;
 `f7b195a7` (#512) and `67b8b95d` (#515) still require reviewed reconciliation.
-They add cache/framing/native-tool fixes and fresh compiler/Cargo input
-regressions, including ghost-file joining across every output rule. Preserve
+The complete dep-info layout and all-output ghost join from `67b8b95d` are
+ported with the root checked filename gate and higher record policies; fresh
+native qualification is pending. Other cache/framing/native-tool and compiler/
+Cargo changes still need reconciliation. Preserve
 both regression sets, source-shared ledgers and the newer independent record
 versions; do not copy native files wholesale or attribute #507 without evidence.
 

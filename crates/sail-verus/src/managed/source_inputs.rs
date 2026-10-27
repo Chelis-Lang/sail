@@ -174,11 +174,12 @@ fn journal(raw: &str) -> Option<Journal> {
 }
 
 /// Private declaration-record revision shared with bounded inventory transfer.
-pub(super) const VERSION: u32 = 4;
+pub(super) const VERSION: u32 = 5;
 
 #[derive(Default, Serialize, Deserialize)]
 pub(super) struct Inputs {
-    /// Version four combines exact typed producer/declaration journals with
+    /// Version five combines exact typed producer/declaration journals and
+    /// complete unambiguous rustc output/file layouts with
     /// per-target inventories and removal-aware paths. Earlier records keep
     /// their paths, but cannot establish complete current coverage.
     #[serde(default)]
@@ -273,76 +274,82 @@ fn present(paths: Vec<PathBuf>) -> Vec<PathBuf> {
         .collect()
 }
 
+/// The most output rules one dep-info is read with: rustc writes one per
+/// emitted output (dep-info, metadata, link), never more than a few.
+const MAX_OUTPUT_RULES: usize = 16;
+
+/// Decodes one file name exactly as pinned rustc's `escape_dep_filename`
+/// encodes it: an ASCII space is written `\ ` and every other character is
+/// written as itself, backslashes, tabs and non-ASCII spaces such as U+00A0
+/// included. A backslash before a space is therefore always the escape: the
+/// encoding never writes a bare space.
+fn decode_file(encoded: &str) -> Option<String> {
+    let mut path = String::with_capacity(encoded.len());
+    let mut chars = encoded.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' && chars.peek() == Some(&' ') {
+            chars.next();
+            path.push(' ');
+        } else {
+            path.push(c);
+        }
+    }
+    sail_acceptance::inputs::dependency_filename_matches(encoded.as_bytes(), path.as_bytes())
+        .then_some(path)
+}
+
+/// The files a rustc dep-info declares, decoded exactly (#408).
+///
+/// Rustc writes one output rule per emitted output, `<output>: <files>` with
+/// the encoded files joined by single spaces, then one empty rule
+/// `<file>:` per file, then `# ` comments (`env-dep`, `checksum`), with blank
+/// lines between the sections. The joined list alone is ambiguous (a file
+/// name may end in a backslash, and an output name is not escaped at all),
+/// so the files are read from the empty rules, one per line, and every
+/// output rule must end with exactly their joined list. Any other line, a
+/// file name with a newline among them, makes the document malformed:
+/// `None`, and its unit's inputs are unknown.
 pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
-    // Rustc escapes ASCII spaces only. Other backslashes and whitespace are
-    // literal filename bytes, not generic make escapes or token separators.
-    // The first logical rule remains the declaration source; phony targets and
-    // environment comments are separate records, not additional input tokens.
-    let joined = text.replace("\\\n", "");
-    let mut lines = joined.lines();
-    let rule = lines.next()?.split_once(": ")?.1;
-    let mut paths = Vec::new();
-    let mut word = String::new();
-    let mut start = 0;
-    let mut chars = rule.char_indices().peekable();
-    while let Some((index, c)) = chars.next() {
-        if c == '\\' {
-            match chars.peek() {
-                Some((_, ' ')) => {
-                    chars.next();
-                    word.push(' ');
-                }
-                Some(_) => word.push(c),
-                None => return None,
-            }
-        } else if c == ' ' {
-            if !word.is_empty() {
-                if !sail_acceptance::inputs::dependency_filename_matches(
-                    &rule.as_bytes()[start..index],
-                    word.as_bytes(),
-                ) {
-                    return None;
-                }
-                paths.push(std::mem::take(&mut word));
-            }
-            start = index + 1;
-        } else {
-            word.push(c);
-        }
+    let lines: Vec<&str> = text.split('\n').collect();
+    let (_, files) = rule_layout(&lines)?;
+    files
+        .into_iter()
+        .map(|index| decode_file(lines[index].strip_suffix(':')?))
+        .collect()
+}
+
+/// The line indices of a rustc dep-info's output rules and of its file
+/// rules, in order, as [`dependencies`] reads them. `None` for a document
+/// without exactly one consistent reading.
+pub(super) fn rule_layout(lines: &[&str]) -> Option<(Vec<usize>, Vec<usize>)> {
+    let rules: Vec<usize> = (0..lines.len())
+        .filter(|&index| !lines[index].is_empty() && !lines[index].starts_with("# "))
+        .collect();
+    if rules.is_empty() {
+        return None;
     }
-    if !word.is_empty() {
-        if !sail_acceptance::inputs::dependency_filename_matches(
-            &rule.as_bytes()[start..],
-            word.as_bytes(),
-        ) {
-            return None;
-        }
-        paths.push(word);
-    }
-    // Refuse unsupported multiline records rather than silently accepting only
-    // a prefix of one filename. This is a conservative format check, not a
-    // proof that rustc's line-oriented format represents every possible path.
-    for line in lines {
-        if line.is_empty() || line.starts_with("# env-dep:") || line.starts_with("# checksum:") {
+    let mut found = None;
+    for outputs in 1..=rules.len().min(MAX_OUTPUT_RULES + 1) {
+        let (output_rules, file_rules) = rules.split_at(outputs);
+        let Some(files) = file_rules
+            .iter()
+            .map(|&index| lines[index].strip_suffix(':'))
+            .collect::<Option<Vec<&str>>>()
+        else {
             continue;
-        }
-        if let Some((_, body)) = line.split_once(": ") {
-            if body != rule {
+        };
+        let joined = format!(": {}", files.join(" "));
+        if output_rules
+            .iter()
+            .all(|&index| lines[index].ends_with(&joined) && lines[index].len() > joined.len())
+        {
+            if found.is_some() {
                 return None;
             }
-        } else {
-            let encoded = line.strip_suffix(':')?;
-            if !paths.iter().any(|path| {
-                sail_acceptance::inputs::dependency_filename_matches(
-                    encoded.as_bytes(),
-                    path.as_bytes(),
-                )
-            }) {
-                return None;
-            }
+            found = Some((output_rules.to_vec(), file_rules.to_vec()));
         }
     }
-    Some(paths)
+    found
 }
 
 /// Original unit records with closed outer sections and a complete typed
@@ -899,16 +906,106 @@ mod tests {
     use super::*;
     #[test]
     fn compiler_dep_info_preserves_escaped_external_paths() {
-        assert_eq!(
-            dependencies("out.d: src/lib.rs ../shared\\ file.rs \\\n ../other.rs\n\nsrc/lib.rs:\n"),
-            Some(vec![
-                "src/lib.rs".to_owned(),
-                "../shared file.rs".to_owned(),
-                "../other.rs".to_owned()
-            ])
+        let files = [
+            "src/lib.rs",
+            "../shared file.rs",
+            "../other.rs",
+            "left\u{a0}right.txt",
+            "back\\slash.txt",
+            "tab\tname.txt",
+            "back\\ space.txt",
+            "end\\",
+        ];
+        let encoded: Vec<String> = files.iter().map(|f| f.replace(' ', "\\ ")).collect();
+        let list = encoded.join(" ");
+        let empty = encoded
+            .iter()
+            .map(|f| format!("{f}:\n"))
+            .collect::<Vec<_>>()
+            .concat();
+        let document = format!(
+            "/t/a b/demo.d: {list}\n\n/t/a b/libdemo.rmeta: {list}\n\n{empty}\n# env-dep:X=1\n"
         );
-        assert!(dependencies("truncated dep-info").is_none());
-        assert!(dependencies("out.d: trailing\\").is_none());
+        assert_eq!(
+            dependencies(&document),
+            Some(files.iter().map(|f| (*f).to_owned()).collect())
+        );
+        // Without the empty rules a trailing backslash and an escaped space
+        // cannot be told apart; the empty rules settle it.
+        assert_eq!(
+            dependencies("o: end\\ next.rs\n\nend\\:\nnext.rs:\n"),
+            Some(vec!["end\\".to_owned(), "next.rs".to_owned()])
+        );
+        assert_eq!(
+            dependencies("o: end\\ next.rs\n\nend\\ next.rs:\n"),
+            Some(vec!["end next.rs".to_owned()])
+        );
+        for malformed in [
+            "",
+            "truncated dep-info",
+            "out.d: trailing\\",
+            // A file rule missing, extra, or out of order.
+            "o: a.rs b.rs\n\na.rs:\n",
+            "o: a.rs\n\na.rs:\nb.rs:\n",
+            "o: a.rs b.rs\n\nb.rs:\na.rs:\n",
+            // Output rules that disagree, and a file name split by a newline.
+            "o: a.rs\np: b.rs\n\na.rs:\n",
+            "o: new\nline.rs\n\nnew\nline.rs:\n",
+            // A make line continuation is not rustc's layout.
+            "o: a.rs \\\n b.rs\n\na.rs:\nb.rs:\n",
+        ] {
+            assert!(dependencies(malformed).is_none(), "{malformed:?}");
+        }
+    }
+
+    /// The pinned compiler's own dep-info for file names that a general make
+    /// or whitespace parser splits or rewrites (#408).
+    #[test]
+    fn actual_rustc_dep_info_names_every_consumed_file() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-dep-info-rustc-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("a b"))?;
+        let names = [
+            "left\u{a0}right.txt",
+            "em\u{2003}space.txt",
+            "back\\slash.txt",
+            "a b/x.txt",
+            "tab\tname.txt",
+            "trailing\\",
+        ];
+        let mut source = Vec::new();
+        for (index, name) in names.iter().enumerate() {
+            std::fs::write(root.join(name), index.to_string())?;
+            source.push(format!(
+                "pub const F{index}: &str = include_str!({});\n",
+                serde_json::to_string(name).map_err(std::io::Error::other)?
+            ));
+        }
+        std::fs::write(root.join("lib.rs"), source.concat())?;
+        let output =
+            std::process::Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()))
+                .current_dir(&root)
+                .args([
+                    "--edition",
+                    "2024",
+                    "--crate-type",
+                    "lib",
+                    "--crate-name",
+                    "names",
+                    "--emit=dep-info,metadata",
+                    "lib.rs",
+                ])
+                .output()?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let text = std::fs::read_to_string(root.join("names.d"))?;
+        let mut expected = vec!["lib.rs".to_owned()];
+        expected.extend(names.iter().map(|name| (*name).to_owned()));
+        assert_eq!(dependencies(&text), Some(expected), "{text:?}");
+        std::fs::remove_dir_all(root)
     }
     #[test]
     fn compiler_dep_info_keeps_literal_unicode_tabs_and_backslashes() {
@@ -919,7 +1016,7 @@ mod tests {
             "hash#name",
             "colon:name",
         ] {
-            let text = format!("out.d: source.rs {name}\n\n{name}:\n");
+            let text = format!("out.d: source.rs {name}\n\nsource.rs:\n{name}:\n");
             assert_eq!(
                 dependencies(&text),
                 Some(vec!["source.rs".into(), name.into()])
@@ -1003,7 +1100,13 @@ mod tests {
         assert!(std::fs::create_dir_all(&target).is_ok());
         let external = root.join("shared file.rs");
         assert!(std::fs::write(&external, "good").is_ok());
-        assert!(std::fs::write(target.join("demo-123.d"), "out.d: ../shared\\ file.rs\n").is_ok());
+        assert!(
+            std::fs::write(
+                target.join("demo-123.d"),
+                "out.d: ../shared\\ file.rs\n\n../shared\\ file.rs:\n"
+            )
+            .is_ok()
+        );
         let artifacts = root.join("artifacts.jsonl");
         let artifact = serde_json::json!({"reason":"compiler-artifact","package_id":"demo","target":{"kind":["lib"]},"filenames":[target.join("libdemo-123.rmeta")]});
         assert!(
@@ -1057,8 +1160,14 @@ mod tests {
         let target = target.canonicalize()?;
         std::fs::write(project.join("src/lib.rs"), "lib")?;
         std::fs::write(project.join("src/bin/probe.rs"), "bin")?;
-        std::fs::write(target.join("demo-1.d"), "lib.d: src/lib.rs\n")?;
-        std::fs::write(target.join("probe-2.d"), "bin.d: src/bin/probe.rs\n")?;
+        std::fs::write(
+            target.join("demo-1.d"),
+            "lib.d: src/lib.rs\n\nsrc/lib.rs:\n",
+        )?;
+        std::fs::write(
+            target.join("probe-2.d"),
+            "bin.d: src/bin/probe.rs\n\nsrc/bin/probe.rs:\n",
+        )?;
         let unit = |name: &str, kind: &str, file: &str| {
             serde_json::json!({"reason":"compiler-artifact","package_id":"demo",
                 "target":{"name":name,"kind":[kind]},"filenames":[target.join(file)]})
@@ -1209,7 +1318,7 @@ mod tests {
         std::fs::write(&destination, "pub fn f() {}")?;
         let alias = workspace.join("lib.rs");
         std::os::unix::fs::symlink(&destination, &alias)?;
-        std::fs::write(target.join("demo.d"), "artifact: lib.rs\n")?;
+        std::fs::write(target.join("demo.d"), "artifact: lib.rs\n\nlib.rs:\n")?;
         let artifacts = root.join("artifacts.jsonl");
         std::fs::write(
             &artifacts,

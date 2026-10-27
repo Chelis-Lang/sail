@@ -47,8 +47,9 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use std::time::{Duration, SystemTime};
 
-// Version six retains original requests/origins and content-bound Cargo script copies.
-const VERSION: u32 = 6;
+// Version seven retains original requests/origins, content-bound Cargo script copies
+// and complete unambiguous compiler declaration layouts.
+const VERSION: u32 = 7;
 const HUMAN_VERSION: u32 = 1;
 const HUMAN_KIND: &str = "sail-empty-human-output";
 /// Cache records up to this size are compared by content; larger files

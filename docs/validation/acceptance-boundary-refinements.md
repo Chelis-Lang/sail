@@ -1,5 +1,41 @@
 # Acceptance boundary refinement qualification
 
+## Complete compiler declaration layout integration
+
+The source ports main `67b8b95d`'s complete dep-info layout and all-output ghost
+file join. Every decoded empty-rule filename still passes the actual checked
+`dependency_filename_matches` operation. The original producer/declaration
+journals and whole-record guards remain. Native fixtures retain exact Unicode,
+tab and backslash names, disambiguate a trailing backslash from an escaped
+space, refuse inconsistent/missing/reordered rules, and exercise rustc's actual
+output. The earlier make-continuation fixture is replaced with rustc's complete
+layout and explicitly refused as an unsupported form; original source/shared/
+other path expectations remain covered.
+
+This retires declaration records4, receipts9, read-check3 and replay6 in favor
+of5/10/4/7 respectively, preserving the root's stronger independent policies.
+The daemon regression continues to refuse version2 and now also refuses3;
+current-policy coalescing and every existing invalidation assertion remain.
+Four focused input-binding/report-scope/assembly source tests pass locally.
+The complete layout and native ghost writer are source-reviewed/hash-bound,
+not newly proved operations. Fresh native/compiler/managed checks remain
+required; the original #507 result is not attributed from static review alone.
+
+Whole-root discovery on frozen `9d8f8e49` passes query689/1,191,
+inputs308/538 and authority620/1,046, retaining every inherited function and
+unchanged default full scope. These are actual observations, now locked in
+the manifest; the subsequent native layout integration needs its own evidence.
+The immutable `9d8f8e49` qualifier continues through full native gates and
+selected command/colored controls before actual output e2e.
+
+Failed preparation: `799c792e`, 2026-10-27, external SYSTEM launch omitted
+`User=ubuntu`, so Git refused the differently owned checkout before every
+proof/native call. Zero qualification credit; preserved archive
+`experiments/2026-10-27/acceptance-command-union-799c792e-native.tgz`, SHA-256
+`f16ccfd9a5901da6f8ea81ded925472527b9bdda929eeb8e33c2ec9ef9332a3c`.
+The next attempt uses a fresh checkout/target and the original checkout owner;
+no source or Git ownership guard is weakened.
+
 ## Colored renderer resource correction candidate
 
 Frozen `6214824a` completes the native gate and 53 solver/fault tests, then
@@ -13,7 +49,8 @@ fingerprint invalidation, JSON and partial scope. The aggregate remains failed
 solely on the selected-control refusal, now tracked as
 [#522](https://github.com/Chelis-Lang/sail/issues/522).
 
-The terminal archive passes independent GET/hash:
+Independent GET/hash and raw review pass for all 19 complete Stock calls,
+343 canonical source hashes and 361 compiled-file hashes. The terminal archive is
 `experiments/2026-10-27/acceptance-native-colored-6214824a.tgz`, SHA-256
 `71980648d6d733dc148ba05522462d902c18022016f15f9c12f46b736eff1300`.
 Final source/runtime/image guards pass. Exact proof-program byte identity to
