@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `40d14854` | Native workspace passes (all 1,228 tests), all 31 models pass, then the production runner refuses authority control 76: 487 verified plus one error, all 830 functions, against 489 required obligations | The full-body mutation removed a loop obligation (#454). No negative credit or complete production pass; solver, e2e and conformance unrun. Corrected mutations retain complete loops and change only acceptance exits |
 | `9b4ceea2` | Native source guard suites and all three whole positives pass: query 431/0 (759 functions), inputs 308/0 (538), authority 498/0 (878); all previous functions retained and final source/runtime/image identities checked | Initial discovery only. No workspace, ordinary negative matrix, solver or conformance qualification; later main integration and lint fixes need fresh gates |
 | `c44cdcfa` | Four native query partitions pass all 115 ordinary controls plus four complete query-positive runs (431 verified, 759 function entries); an independent audit checks exact disjoint union and identical source/runtime/compiler identity | Each partition remains an incomplete component; the audited union covers query only. Native workspace reaches strict clippy and stops at eight shared-kernel style diagnostics; ordinary workspace/solver tests remain unrun |
 | `7f08ce1d` | Complete native whole-positive discovery repeats query 431/0 (759 function entries), inputs 308/0 (538), authority 498/0 (878), with final source/runtime rechecks; three formerly refused query controls then pass strict full-root diagnostics | Diagnostics do not replace the complete control matrix. Later style annotations and main reconciliation require fresh exact-head qualification; all six service obligations remain open |
@@ -28,6 +29,16 @@ observation guarantee or service theorem is claimed. All six rows of the
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The failed `40d14854` gate is retained at
+`experiments/2026-10-26/acceptance-combined-40d14854-native-gate.tgz`, SHA-256
+`26f86ce89822273e81818fa09488ff5d60e5e71173777b9e4207b7e9273570a8`
+(10,902,012 bytes); independent S3 GET/hash and failed-verifier-JSON review pass.
+The correction also restores the exact four qualified `c44cdcfa` query control
+objects and erased append proof cut omitted during integration. A cheap loop
+syntax refusal catches this known failure before execution; actual stock-Verus
+function and obligation equality remain mandatory. Corrected controls remain
+unqualified until their ordinary full-root failures are observed.
 
 The limited `9b4ceea2` discovery archive is retained privately at
 `experiments/2026-10-27/acceptance-main-9b4ceea2-native.tgz`, SHA-256
