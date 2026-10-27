@@ -10,6 +10,12 @@ complete bodies and loop obligations while changing only acceptance exits,
 and restores qualified query mutations omitted during integration. No count
 check is relaxed; fresh ordinary-control qualification remains pending.
 
+The combined gate also stops before compilation at a stale eleven-phase
+completion fixture ([#453](https://github.com/Chelis-Lang/sail/issues/453)).
+Its correction retains the actual ten-phase guard and workflow and checks
+every required result, including rejection of an extra phase. The lightweight
+fixture passes; the combined native workspace still requires qualification.
+
 ## Owned query publication control qualification
 
 Whole positive discovery at `f8d61408` passes query 431/0, inputs 308/0 and
