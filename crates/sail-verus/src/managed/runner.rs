@@ -5188,7 +5188,10 @@ mod tests {
             Vec::<String>::new()
         );
         let mut missing = expected.clone();
-        missing.insert(("other".into(), "other".into(), "lib".into()));
+        sail_api::request_targets::insert_original_target(
+            &mut missing,
+            ("other".into(), "other".into(), "lib".into()),
+        );
         assert!(!receipt_covered_targets(
             &paths,
             &missing,

@@ -87,8 +87,24 @@ explicit option cases/refusals, the actual owned String argument and explicit
 lexicographic length comparisons; no executable statement, contract or control
 changes. Native tests and ordinary negatives still require qualification.
 
+The `206c077f` qualifier repeats all three complete roots at their actual locked
+counts and passes the earlier nine style diagnostics. Its native test build then
+finds three missed fixture migrations (#489). The independent one-library helper
+now uses the existing original-key insertion helper and returns its actual
+`Result`; the two original callers propagate errors in their existing Option or
+Result domains. The missing-target negative still inserts the same additional
+triple through checked insertion. No assertion, scope or production body changes;
+only the reviewed runner native binding changes. The separate ordinary fixture
+file is not represented as a proved input adapter.
+
+Evidence is `experiments/2026-10-27/acceptance-request-domain-206c077f-native.tgz`,
+SHA-256 `2b7a697adae7d30f09abfbb5e2e0b0277e57d590a4c19c0e2328b72ac63191bb`
+(7,582,203 bytes), authenticated upload/readback agreement, with exact immutable
+source bundle. Native tests and negatives remain pending at the corrected source.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `206c077f` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961) pass again at the locked inventories. Native Clippy passes the earlier nine diagnostics and stops after 83.208 s at three lib-test compilation errors in two unmigrated fixtures (#489). Controller finishes in 560.684 s; final source/image/runtime checks pass | Native tests, ordinary negatives, conformance and cost checks are unrun; no selected-runtime or false-verdict finding |
 | `f98ea578` request/domain candidate | Source suites pass, including all 66 production tests. All complete production roots pass: query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961). All earlier functions retained and final source/image/runtime checks pass. Controller finishes in 487.306 s | Native Clippy stops after 17.296 s on nine new style diagnostics (explicit Option cases/refusals, owned String argument, comparison chain). Request tests and ordinary negatives are unrun. Checked in-memory construction/iteration supplies no complete metadata, physical-input, launch or journal-origin theorem |
 | `e3515b8c` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass. Whole authority reaches 556 verified and three ordinary errors with no resource diagnostic. Controller finishes in 470.888 s; final source/image/runtime checks pass | Two finite partial-selector witnesses and the reference-iterator ordering assertion remain. Native compilation, request tests and negatives are unrun; no authority inventory is frozen from the partial output |
 | `bfae0ec4` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass and retain earlier functions. Whole authority reaches 553 verified and five ordinary errors across 960 function entries, with no resource diagnostic. Controller finishes in 470.384 s; final source/image/runtime checks pass | Remaining failures are the initial-separator literal distinction, two partial-selector witnesses, forwarded incremental normalization and the actual reference-iterator ordering interpretation. No authority inventory or negative credit; native compilation and request tests are unrun |
