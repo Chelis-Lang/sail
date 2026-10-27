@@ -273,6 +273,11 @@ sail_code! {
             {
                 if self.current.is_some() {self.order.comparison.refuse();return false;}
                 if self.at == self.items.len() {return false;}
+                let _retained_len=self.order.output.len();
+                sail_proof! {
+                    assert(crate::query_split::original_item(self.items@[self.at as int],self.order.view(),false));
+                    assert(self.items@[self.at as int].offset as int <= _retained_len);
+                }
                 let end=self.items[self.at].offset as usize;
                 let previous=self.order.pending.take();
                 self.current=Some(Prepared {end,previous,frame:FrameStage::Unframed});
@@ -332,6 +337,10 @@ sail_code! {
                         && !final(self).order_view().output_view().output_view().healthy(),
                     out.is_none() ==> final(self).current_view().unwrap().2 == Some(None))
             {
+                sail_proof! {
+                    reveal(crate::query_output_split::ParsedOutput::coherent);
+                    crate::query_output::transcript_partition_facts(&self.order.output_view().output_view());
+                }
                 let Some(current)=&mut self.current else {return None;};
                 let Some(previous)=&current.previous else {return None;};
                 let ordinal=self.order.output.frames();
@@ -426,6 +435,8 @@ sail_code! {
                         && final(self).order_view().pending_view() == (if old(self).current_view().is_some() {None}else{old(self).order_view().pending_view()})
                         && final(self).order_view().forwarding_view() == old(self).order_view().forwarding_view())
             {
+                let _items_len=self.items.len();
+                sail_proof! {assert(self.current_view().is_some() ==> self.at < _items_len);}
                 let Some(current)=&self.current else {self.order.comparison.refuse();return false;};
                 let end=current.end;
                 if let Some(previous)=&current.previous {
@@ -445,6 +456,7 @@ sail_code! {
                         let start=previous.start;
                         let bytes=self.order.output.bytes();
                         let actual=if start <= end && end <= bytes.len() {&bytes[start..end]}else{&[]};
+                        sail_proof! {assert(actual@ == self.interval_view());}
                         if self.order.comparison.next_statistics() && !crate::query_split::single_response(actual) {
                             self.order.comparison.refuse();
                         } else {
@@ -453,6 +465,7 @@ sail_code! {
                     }
                 }
                 if self.order.comparison.diverged() {return false;}
+                sail_proof! {assert(self.at < _items_len);}
                 let fresh=self.order.output.advance_replay();
                 if fresh && self.order.forward_from.is_none() {self.order.forward_from=Some(end);}
                 self.order.pending=Some(Pending {fresh,start:end});
@@ -539,14 +552,23 @@ sail_verified! {
         let mut queue=crate::query::CorrelatedQueue::empty();queue.expect(5u8);
         let order=OutputOrder::new(served,7u64,7u64);
         let mut first=order.append_batch(b"unsat\n");
-        sail_proof! {assert(crate::query_split::item_models(first.items_view()).len()==first.items_view().len());}
+        sail_proof! {
+            reveal_byteslit(b"unsat\n");reveal_byteslit(b"sat\nsat\n");
+            assert(crate::query_split::item_models(first.items_view()).len()==first.items_view().len());
+            assert(first.items_view().len()==1);
+            assert(first.items_view()[0].offset==0);
+        }
         if !first.begin_next() || first.previous().is_some() {return None;}
         if !first.settle_current(&mut queue,None,identity) || first.begin_next() {return None;}
         let order=first.finish();
         let mut batch=order.append_batch(b"sat\nsat\n");
         sail_proof! {
             assert(crate::query_split::item_models(batch.items_view()).len()==batch.items_view().len());
+            reveal_byteslit(b"unsat\nsat\nsat\n");
             assert(batch.order_view().view() =~= b"unsat\nsat\nsat\n"@);
+            assert(batch.items_view().len()==2);
+            assert(batch.items_view()[0].offset==6);
+            assert(batch.items_view()[1].offset==10);
         }
         if !batch.begin_next() || batch.previous()!=Some((false,6)) {return None;}
         sail_proof! {
@@ -602,7 +624,7 @@ sail_verified! {
         let mut other=crate::query_output_owner::StreamOutput::new(7u64);
         other.append(b"unsat\nbad\n");
         sail_proof! {
-            reveal_byteslit(b"unsat\nbad\n");reveal_byteslit(b"bad\n");reveal_byteslit(b"sat\n");
+            reveal_byteslit(b"unsat\nbad\n");reveal_byteslit(b"unsat\n");reveal_byteslit(b"bad\n");reveal_byteslit(b"sat\n");
             control_lines();crate::query_output::transcript_partition_facts(&other.output_view());
             assert(b"unsat\nbad\n"@.subrange(0,6) =~= b"unsat\n"@);
         }

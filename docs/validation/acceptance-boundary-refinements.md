@@ -1158,3 +1158,13 @@ The terminal native block remains byte-identical and explicitly unrefined.
 Three targeted source guards and textual closure pass. New function counts,
 whole Stock/native/control qualification, runtime cost and full service remain
 unqualified; no evidence is inherited merely from matching source hashes.
+
+- `28003ea4`, 2026-10-27: first complete output-order query discovery refuses;
+  raw whole-crate JSON reports 587 verified/eight errors (no VIR error), while
+  stderr also records an inherited splitter loop resource refusal. Thirteen
+  diagnostics cover exact offset/partition/cursor/policy and finite witness
+  facts plus the single-response slice-capacity premise. Final source/runtime
+  checks pass; no positive inventory is locked and no control/native credit is
+  claimed. The source followup adds exact retained-length observations and
+  erased projection/literal facts, preserving every contract, default verifier
+  resource and all 254 controls. Tail/terminal ownership remains required.
