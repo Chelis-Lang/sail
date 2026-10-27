@@ -1308,14 +1308,16 @@ struct ReplayCheck<'a> {
     comparison: sail_acceptance::query_replay::Replay<'a, SolverLease>,
 }
 
+#[cfg(test)]
 impl<'a> ReplayCheck<'a> {
-    #[cfg(test)]
     fn new(served: &'a [ServedReply], owner: SolverLease) -> Self {
         Self {
             comparison: sail_acceptance::query_replay::Replay::new(served, owner),
         }
     }
+}
 
+impl ReplayCheck<'_> {
     /// Whether every served reply has been compared with its replay.
     #[cfg(test)]
     fn complete(&self) -> bool {
