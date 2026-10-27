@@ -4,6 +4,16 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The original requested-target scan counts raw `--workspace` and `--all` text
+after the Cargo/Verus separator
+([#467](https://github.com/Chelis-Lang/sail/issues/467)). A source candidate
+routes the actual selection operation through a checked prefix scan and adds a
+two-member/default-member regression. This is a source-confirmed request-scope
+defect; no new native reproduction, Verus acceptance of those forwarded flags
+or false verdict is claimed. Option/value-state parsing and full metadata
+selection remain open. See the
+[request-construction boundary](design/acceptance-production-refinements.md#pre-execution-request-construction-candidate).
+
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
 read path correctly projects absent freshness to Unknown

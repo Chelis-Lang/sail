@@ -54,13 +54,14 @@ PRESENTATION_NATIVE_SHA256 = {'crates/sail-api/src/evidence.rs': '0f6234f0bf8339
 # These closed native compiler/request/store adapters are bound in full and
 # remain outside the stock-compiled bodies. Their OS/process provenance remains open.
 INPUT_NATIVE_SHA256 = {
+    'crates/sail-cli/src/verify.rs': '5af239ce5077d9b3eef07c5c36edc5b0bf66a815b752a2720e1c4084928cedab',
     'crates/sail-verus/src/adapter.rs': 'b4ee6100eb224b2063127c1d6cf7769ce801308500ef7b18bf472b0461e917b2',
     'crates/sail-verus/src/adapter_attempts.rs': 'f8713751833e4de1bd17a3b97ac2e4b801c1c8137281eb2939d3b6849f528777',
-    'crates/sail-verus/src/engine.rs': 'a6ca795294e29f76b8f7647713da1ef1d8b79e2f1df7281f1fc7fe5869c1f0d2',
+    'crates/sail-verus/src/engine.rs': '72883d1f97b10cb9d0b57aabe1ab0833a8189ef41a563231bdfbd3c76b16b45b',
     'crates/sail-verus/src/managed/mod.rs': '7d1a4092e364b466a4da4247fb91418af8930fbd8316e83b8641d8f1b8b9cff9',
     'crates/sail-verus/src/managed/command_environment.rs': '43b34bd36c7c6c2f22a9bc34a39bd77737e65a3c167855143985cbddbe87508f',
-    'crates/sail-verus/src/managed/runner.rs': 'facb1b43876fcc4e1e53387f120f3c02fae0d6b2eb43aa02632441465d77d3ee',
-    'crates/sail-verus/src/managed/request.rs': 'dc079a01a60d64ee482540f5023deba9025cbc45010b6b2d1b56f2f7519bbaba',
+    'crates/sail-verus/src/managed/runner.rs': 'e98522092af1817252bad33ef7f09c08110572a324bd7b4c94656a762c62cb77',
+    'crates/sail-verus/src/managed/request.rs': '83ff0f668f9736eabf69d000cbe998af1e8c034c750d3d832190ab164af1b83a',
     'crates/sail-verus/src/managed/noop.rs': 'cf9870294921a9ce51e34db189012cfb9e7373c9aba56409e47e3887ee8a186b',
     'crates/sail-verus/src/managed/shipped.rs': '4785c4450b09daeb049574458adf3dda63f79455ec7a0bff113e86aa4e47709a',
     'crates/sail-verus/src/managed/shipped/compiler.rs': '3006fbb0015519b56a12c8ec30bc2da0f4d47593d5b603cd602e0d8a3e7900ca',

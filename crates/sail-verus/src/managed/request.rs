@@ -45,30 +45,29 @@ impl Resolution<'_> {
 
     pub(super) fn resolve(&self) -> ResolvedRequest {
         let selection = self.engine.and_then(|engine| engine.selection.as_ref());
-        ResolvedRequest {
-            run_id: self.run_id.to_owned(),
-            invocation: self.invocation.to_string_lossy().into_owned(),
-            workspace: self.workspace.to_string_lossy().into_owned(),
-            context_sha256: self.context.to_owned(),
-            input_revision: self.revision.to_owned(),
-            args: self.args.to_vec(),
-            engine: self.engine.map(crate::engine::Request::identity),
-            function: self.engine.and_then(|engine| engine.function.clone()),
-            repair_package: selection.map_or_else(String::new, |s| s.package.clone()),
-            repair_target: selection.and_then(|s| s.target.clone()),
-            repair_kind: selection.map_or_else(String::new, |s| s.kind.clone()),
-            targets: self
-                .targets
-                .iter()
-                .map(
-                    |(package_id, target, kind)| sail_api::project::RequestTarget {
-                        package_id: package_id.clone(),
-                        target: target.clone(),
-                        kind: kind.clone(),
-                    },
-                )
-                .collect(),
-        }
+        let invocation = self.invocation.to_string_lossy();
+        let workspace = self.workspace.to_string_lossy();
+        let targets = self
+            .targets
+            .iter()
+            .map(sail_api::acceptance::construct_request_target)
+            .collect();
+        sail_api::acceptance::construct_resolved_request(
+            sail_api::acceptance::RequestConstruction {
+                run_id: self.run_id,
+                invocation: invocation.as_ref(),
+                workspace: workspace.as_ref(),
+                context: self.context,
+                revision: self.revision,
+                arguments: self.args,
+                engine: self.engine.map(crate::engine::Request::identity),
+                function: self.engine.and_then(|engine| engine.function.as_deref()),
+                repair_package: selection.map_or("", |s| s.package.as_str()),
+                repair_target: selection.and_then(|s| s.target.as_deref()),
+                repair_kind: selection.map_or("", |s| s.kind.as_str()),
+                targets,
+            },
+        )
     }
 }
 
@@ -113,6 +112,54 @@ mod native_path_tests {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt as _;
     use std::path::Path;
+
+    /// Exercises the actual pre-execution builder with independent sibling
+    /// targets and compile-only arguments; no result rows supply its domain.
+    #[test]
+    fn nonempty_resolution_keeps_original_scope_and_compile_only_arguments() {
+        let args = vec![
+            "-p".into(),
+            "original".into(),
+            "--".into(),
+            "--no-verify".into(),
+        ];
+        let targets = BTreeSet::from([
+            ("package-a".into(), "original".into(), "lib".into()),
+            ("package-b".into(), "sibling".into(), "bin".into()),
+        ]);
+        let resolution = Resolution {
+            run_id: "original-run",
+            invocation: Path::new("/original/invocation"),
+            workspace: Path::new("/original/workspace"),
+            context: "original-context",
+            revision: "original-revision",
+            args: &args,
+            engine: None,
+            targets: &targets,
+        };
+        let request = resolution.resolve();
+        assert_eq!(request.run_id, "original-run");
+        assert_eq!(request.invocation, "/original/invocation");
+        assert_eq!(request.workspace, "/original/workspace");
+        assert_eq!(request.context_sha256, "original-context");
+        assert_eq!(request.input_revision, "original-revision");
+        assert_eq!(request.args, args);
+        assert!(!sail_api::acceptance::verification_enabled_command(
+            &request.args
+        ));
+        assert_eq!(request.targets.len(), 2);
+        assert_eq!(request.targets[0].package_id, "package-a");
+        assert_eq!(request.targets[0].target, "original");
+        assert_eq!(request.targets[0].kind, "lib");
+        assert_eq!(request.targets[1].package_id, "package-b");
+        assert_eq!(request.targets[1].target, "sibling");
+        assert_eq!(request.targets[1].kind, "bin");
+        assert!(request.engine.is_none() && request.function.is_none());
+        assert_eq!(request.repair_package, "");
+        assert!(request.repair_target.is_none());
+        assert_eq!(request.repair_kind, "");
+        assert!(resolution.capture_paths().bind(&request).is_some());
+    }
 
     /// Path values only: no filesystem, Cargo, verifier or global input-domain
     /// qualification is implied by this native byte-projection regression.

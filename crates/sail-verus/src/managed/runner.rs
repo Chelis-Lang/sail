@@ -2892,7 +2892,7 @@ fn target_revision_with(
     reason = "All supported Cargo target selectors are resolved explicitly before complete coverage can be claimed."
 )]
 fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, String)> {
-    let workspace = args.iter().any(|a| a == "--workspace" || a == "--all");
+    let workspace = sail_api::acceptance::cargo_workspace_selected(args);
     let mut selected_names = Vec::new();
     let mut excluded = Vec::new();
     let mut bins = Vec::new();
@@ -7603,6 +7603,23 @@ mod tests {
         assert!(changed(&data));
         std::fs::remove_dir_all(root)?;
         Ok(())
+    }
+
+    #[test]
+    fn forwarded_workspace_words_do_not_expand_the_original_cargo_selection() {
+        let data = serde_json::json!({"workspace_members":["a","b"],"workspace_default_members":["a"],
+            "resolve":{"root":null,"nodes":[]},"packages":[
+                {"id":"a","name":"a","metadata":{"verus":{"verify":true}},"targets":[{"name":"a","kind":["lib"]}]},
+                {"id":"b","name":"b","metadata":{"verus":{"verify":true}},"targets":[{"name":"b","kind":["lib"]}]}]});
+        let original = BTreeSet::from([("a".into(), "a".into(), "lib".into())]);
+        assert_eq!(expected_targets(&data, &[]), original);
+        for flag in ["--workspace", "--all"] {
+            assert_eq!(expected_targets(&data, &[flag.into()]).len(), 2);
+            assert_eq!(
+                expected_targets(&data, &["--".into(), flag.into()]),
+                original
+            );
+        }
     }
 
     #[test]
