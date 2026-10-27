@@ -1,5 +1,12 @@
 # Known issues and limits
 
+The consolidated acceptance-audit bugfix candidate addresses proof-control
+classification (#454/#508/#537), reviewed proof-import digits (#532), local
+checkout target isolation (#475) and full-E2E generated-file fixture isolation
+(#540). Its local source/wrapper checks pass; native combined qualification
+remains pending. These changes do not complete the service proof. See the
+[owning record](validation/acceptance-production-refinements.md).
+
 Open Sail defects and current product limits on main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.

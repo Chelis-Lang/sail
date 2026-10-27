@@ -10,6 +10,36 @@ the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
+## Consolidated acceptance-audit bugfix candidate
+
+The main-based bugfix extraction changes qualification tooling and fixture
+isolation independently of the broader #378 production refinements. Its
+current implemented scope is:
+
+| Finding | Correction | Evidence and limits |
+|---|---|---|
+| #454, #508, #537 | Preserve function contracts, loop annotations and erased proof groups per executable body; refuse proof-only faults and bare verification statements | All 35 local source tests pass. All 22 existing control objects and 25 captured programs remain unchanged; comparison makes zero Stock calls |
+| #532 | Accept digits in reviewed proof-import identifiers | Exact import hashes, allowed prefixes and cfg/body refusals remain; covered by source tests |
+| #475 | Separate core/Singular target volumes by physical checkout | Actual-wrapper fixture passes on macOS with a recording Docker substitute; separate checkouts differ, same checkout/alias stay warm. Fresh native integration remains required |
+| #540 | Restore generated-file scenario source and build script before later stock-oracle controls | Native full-local failure reproduced at `d1518341`; correction retains every comparison/assertion and requires a new full local run |
+
+The #540 failed aggregate passes native gate (1,160 Rust tests), solver51,
+model29 and production refinement25 before the full managed sequence fails;
+PR conformance is unrun. Hosted phase-isolated checks pass. Artifact
+`acceptance-tooling-split-d1518341-v3-native.tgz`, 6,665,267 bytes, SHA-256
+`004a85a477ba1cd41c195635cc8e39265ff6adbe01032ca08444fcc7191b6d4b`;
+source/image and upload/readback guards pass.
+
+| Date | Source | Gate | Result |
+|---|---|---|---|
+| 2026-10-27 | `d1518341` | Full native local E2E | Failed at ghost-environment stock comparison: generated-file fixture leaked `OUT_DIR` source into an oracle lacking its build script (#540) |
+
+Earlier runtime/input fixes already merged in #436, #445, #512 and #515 are
+not reintroduced by this extraction. Corrections belonging only to unselected
+parser, metadata and cache components remain tracked with those components.
+The independent #534 envelope cache is not a prerequisite. Fresh native/Stock,
+full local E2E and hosted qualification remain pending for this bugfix head.
+
 ## Checked source and runtime
 
 The frozen checkpoint is `3b1cb3623ef17a2c4a99bc8bd3e12e88f1ef63fb`.

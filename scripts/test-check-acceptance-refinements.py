@@ -142,6 +142,27 @@ class SourceCaptureTests(unittest.TestCase):
             with self.subTest(path=path, after=after), self.assertRaises(CHECKER.Refusal):
                 CHECKER.validate_assembly(candidate)
 
+    def test_reviewed_proof_import_identifier_digits_preserve_exact_binding(self):
+        path = "crates/sail-api/src/proof_import_fixture.rs"
+        original = (b"#[cfg(sail_verus)]\n"
+            b"use vstd::arithmetic::power2::{pow2, lemma2_to64};\n"
+            b"sail_spec! { proof fn ordinary2() {} }\n")
+        stream = SOURCE.tokens(original.decode())
+        start = next(i for i, token in enumerate(stream) if token.value == "use")
+        end = next(i for i in range(start, len(stream)) if stream[i].value == ";")
+        imports = [[token.value for token in stream[start:end + 1]]]
+        digest = hashlib.sha256(CHECKER.json.dumps(imports, separators=(",", ":")).encode()).hexdigest()
+        with mock.patch.dict(CHECKER.IMPORT_SHA256, {path: digest}):
+            CHECKER.compiled_subset(path, original)
+            for changed in (
+                original.replace(b"power2", b"power3"),
+                original.replace(b"vstd::", b"hidden::"),
+                original.replace(b"cfg(sail_verus)", b"cfg(not(sail_verus))"),
+                original + b"#[cfg(sail_verus)] fn unchecked2() -> bool { true }",
+            ):
+                with self.subTest(source=changed), self.assertRaises((CHECKER.Refusal, SOURCE.SourceRefusal)):
+                    CHECKER.compiled_subset(path, changed)
+
     def test_executable_cfg_loading_and_unchecked_spec_refuse(self):
         for source in (b"#[cfg(sail_verus)] fn valid() -> bool { true }",
                 b'include!("hidden.rs");', b"assume(false);", b"assume_specification[foo]() ensures false;", b"#[verifier::external_body] fn f() {}"):
@@ -325,6 +346,164 @@ class SourceCaptureTests(unittest.TestCase):
             }):
                 captured = CHECKER.captured_tree(root, commits[0], ["proof.rs"])
             self.assertEqual(captured["proof.rs"], b"original $Format:%H$")
+
+
+class RuntimeControlTests(unittest.TestCase):
+    """Negative credit requires an executable fault with intact obligations."""
+
+    def test_runtime_control_skips_nested_contract_braces(self):
+        source = """sail_method! {
+            fn compare(x: bool) -> (accepted: bool)
+                requires ({ let nested = true; nested })
+                ensures (accepted == x, if accepted {1nat} else {0nat} == 0nat)
+            { if !x { return false; } true }
+        }"""
+        SOURCE.runtime_mutation(source, "{ if !x { return false; } true }",
+            "{ if !x { return false; } false }")
+        # The historical #468 selector must refuse before invoking Stock.
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, "1nat", "false")
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, "let nested = true", "let nested = false")
+
+    def test_reused_projection_does_not_reuse_another_sources_runtime_location(self):
+        warm = "sail_method! { fn f() -> (ok: bool) requires (false) ensures (ok) { true } }"
+        SOURCE.runtime_mutation(warm, "true", "false")
+        # Same method and selector, but the only selected token is now a contract.
+        different = "sail_method! { fn f() -> (ok: bool) requires (true) ensures (ok) { false } }"
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(different, "true", "false")
+        SOURCE.runtime_mutation(warm, "true", "false")
+
+    def test_runtime_control_preserves_loop_contracts_and_selects_actual_loop_code(self):
+        source = """sail_method! {
+            fn checked() -> (ok: bool) requires (true) ensures (ok)
+            { let mut n = 0; sail_while! { (n < 1)
+                invariant(n <= 1, if n == 0 {true} else {n == 1})
+                decreases(1 - n) { n += 1; } } n == 1 }
+        }"""
+        for before, after in (
+            ("n <= 1", "n < 1"),
+            ("1 - n", "2 - n"),
+            ("{true} else", "{false} else"),
+            ("invariant(n <= 1", "invariant(n <= 2"),
+        ):
+            with self.subTest(before=before), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "loop contract"):
+                SOURCE.runtime_mutation(source, before, after)
+        SOURCE.runtime_mutation(source, "(n < 1)", "(n < 0)")
+        SOURCE.runtime_mutation(source, "n += 1;", "n += 2;")
+        SOURCE.runtime_mutation(source, "} n == 1 }", "} n == 0 }")
+
+    def test_runtime_control_refuses_loop_contract_changes_inside_whole_method(self):
+        method = "fn f() -> (ok: bool) requires (true) ensures (ok) { sail_while! { (false) invariant(true) decreases(0) { } } true }"
+        source = "sail_method! { " + method + " }"
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "loop contract"):
+            SOURCE.runtime_mutation(source, method, method.replace("invariant(true)", "invariant(false)").replace("} true }", "} false }"))
+        SOURCE.runtime_mutation(source, method, method.replace("} true }", "} false }"))
+
+    def test_runtime_control_refuses_erased_and_proof_only_selectors(self):
+        source = """sail_spec! { spec fn ghost() -> bool { true } }
+        sail_method! {
+            fn checked() -> (answer: bool) requires (true) ensures (answer)
+            { sail_proof! { assert(true); } true }
+        }"""
+        for before, after in (
+            ("spec fn ghost() -> bool { true }", "spec fn ghost() -> bool { false }"),
+            ("assert(true)", "assert(false)"),
+            ("sail_proof! { assert(true); }", "sail_proof! { assert(false); }"),
+        ):
+            with self.subTest(before=before), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.runtime_mutation(source, before, after)
+        SOURCE.runtime_mutation(source,
+            "{ sail_proof! { assert(true); } true }",
+            "{ sail_proof! { assert(true); } false }")
+
+    def test_erased_proof_semicolon_cannot_masquerade_as_a_runtime_fault(self):
+        for wrapper in ("sail_proof!", "proof"):
+            for count in range(4):
+                before = "{ " + wrapper + " { assert(true); }" + ";" * count + " true }"
+                source = "sail_method! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"
+                for remaining in range(4):
+                    after = "{ " + wrapper + " { assert(false); }" + ";" * remaining + " true }"
+                    with self.subTest(wrapper=wrapper, count=count, remaining=remaining), self.assertRaises(SOURCE.SourceRefusal):
+                        SOURCE.runtime_mutation(source, before, after)
+                with self.subTest(wrapper=wrapper, count=count), self.assertRaises(SOURCE.SourceRefusal):
+                    SOURCE.runtime_mutation(source, before, "{ true }")
+                # Real runtime mutations stay accepted with every empty tail.
+                SOURCE.runtime_mutation(source, before, before[:-6] + "false }")
+
+    def test_runtime_control_cannot_hide_an_envelope_in_ghost_code(self):
+        method = "sail_method! { fn hidden() -> (x: bool) requires (true) ensures (x) { true } }"
+        for wrapper in ("sail_spec! { %s }", "sail_proof! { %s }", "proof { %s }"):
+            source = wrapper % method
+            self.assertEqual(SOURCE.executable_envelopes(source), [])
+            with self.subTest(wrapper=wrapper), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.runtime_mutation(source, "{ true }", "{ false }")
+
+    def test_runtime_control_refuses_nested_runtime_declarations(self):
+        for nested in (
+            "sail_method! { fn hidden() -> (x: bool) requires (true) ensures (if x {1nat} else {0nat} == 0nat) { true } }",
+            "fn hidden() -> bool requires true ensures if result {1nat} else {0nat} == 0nat { true }",
+        ):
+            source = "sail_method! { fn outer() -> (ok: bool) requires (true) ensures (ok) { " + nested + " true } }"
+            with self.subTest(nested=nested), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "nested runtime function"):
+                SOURCE.runtime_mutation(source, "1nat", "false")
+
+    def test_runtime_control_keeps_contracts_even_with_whole_method_selector(self):
+        source = "sail_verified! { fn f() -> (ok: bool) requires (true) ensures (ok) { true } }"
+        method = "fn f() -> (ok: bool) requires (true) ensures (ok) { true }"
+        SOURCE.runtime_mutation(source, method, method[:-6] + "false }")
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, method, method.replace("ensures (ok)", "ensures (true)"))
+
+    def test_runtime_control_preserves_erased_proofs_with_executable_edits(self):
+        before = "{ sail_proof! { assert(true); } true }"
+        source = "sail_method! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"
+        for after in (
+            "{ sail_proof! { assert(false); } true && true }",
+            "{ true && true }",
+            "{ sail_proof! { assert(true); assert(false); } true && true }",
+        ):
+            with self.subTest(after=after), self.assertRaisesRegex(SOURCE.SourceRefusal, "erased proof"):
+                SOURCE.runtime_mutation(source, before, after)
+        SOURCE.runtime_mutation(source, before, "{ sail_proof! { assert(true); } false }")
+
+    def test_runtime_control_cannot_move_proof_guidance_between_bodies(self):
+        first = "sail_method! { fn f() -> (out: bool) requires (true) ensures (out) { sail_proof! { assert(true); } true } }"
+        second = "sail_method! { fn g() -> (out: bool) requires (true) ensures (out) { true } }"
+        source = first + second
+        changed = first.replace("{ sail_proof! { assert(true); } true }", "{ true && true }")
+        changed += second.replace("{ true }", "{ sail_proof! { assert(true); } true }")
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "erased proof"):
+            SOURCE.runtime_mutation(source, source, changed)
+
+    def test_runtime_control_refuses_bare_verification_syntax(self):
+        before = "{ true }"
+        source = "sail_verified! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"
+        for statement in ("assert(false);", "assert forall |x: int| x == 0 by {};",
+                "hide(f);", "reveal(f);", "reveal_with_fuel(f, 0);", "assume(false);"):
+            with self.subTest(statement=statement), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "verification-only syntax"):
+                SOURCE.runtime_mutation(source, before, "{ " + statement + " true }")
+        SOURCE.runtime_mutation(source, before, "{ false }")
+
+    def test_inventory_and_capture_refuse_contract_only_control(self):
+        import copy
+        import json
+        manifest = copy.deepcopy(json.loads((ROOT / CHECKER.MANIFEST).read_text()))
+        entry = manifest["components"][0]
+        control = entry["negative_controls"][0]
+        control["before"] = "ensures (result.contents() == Seq::<T>::empty())"
+        control["after"] = "ensures (true)"
+        snapshots = {path: (ROOT / path).read_bytes() for component in CHECKER.COMPONENTS
+            for path in CHECKER.dependency_paths(component)}
+        self.assertEqual(snapshots[control["source"]].decode().count(control["before"]), 1)
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            CHECKER.inventory(ROOT, manifest, snapshots)
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            CHECKER.captured_driver(entry, snapshots, control)
 
 
 if __name__ == "__main__":

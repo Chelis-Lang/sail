@@ -166,7 +166,7 @@ def compiled_subset(path: str, content: bytes) -> None:
     # Only proof imports may differ between builds. They do not supply an
     # executable branch. Actual code remains in the same source envelopes.
     import re
-    text = re.sub(r"#\[cfg\(sail_verus\)\]\s*use\s+(?:vstd::|super::inputs::)[\sA-Za-z_:*,{}]+;", "", text)
+    text = re.sub(r"#\[cfg\(sail_verus\)\]\s*use\s+(?:vstd::|super::inputs::)[\sA-Za-z_0-9:*,{}]+;", "", text)
     values = [token.value for token in SOURCE.tokens(text)]
     forbidden = {"mod", "extern", "macro_rules", "cfg", "cfg_attr", "assume", "admit", "external_body",
         "external_fn_specification", "assume_specification", "external", "trusted", "axiom"}
@@ -216,6 +216,7 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[d
             before, after = control["before"].encode(), control["after"].encode()
             require(bool(before) and before != after and snapshots[path].count(before) == 1,
                 "empty or ambiguous executable mutation")
+            SOURCE.runtime_mutation(snapshots[path].decode(), control["before"], control["after"])
             compiled_subset(path, snapshots[path].replace(before, after))
     SOURCE.api_stencils(snapshots, manifest.get("api_declarations"))
     require(manifest.get("api_declarations") is not None, "missing API representation inventory")
@@ -231,6 +232,7 @@ def captured_driver(entry: dict, snapshots: dict[str, bytes], control: dict | No
         path = control["source"]
         before, after = control["before"].encode(), control["after"].encode()
         require(path in sources and sources[path].count(before) == 1 and before != after, "invalid captured mutation")
+        SOURCE.runtime_mutation(sources[path].decode(), control["before"], control["after"])
         sources[path] = sources[path].replace(before, after)
     files = {"syntax.rs": sources[SYNTAX]}
     declarations = ["#![forbid(unsafe_code)]", "#![allow(unused_imports)]",
