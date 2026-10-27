@@ -72,11 +72,18 @@ sail_spec! {
             crate::acceptance::verification_disabled(prefix.push(argument)) ==
                 (crate::acceptance::verification_disabled(prefix)
                     || (has_report_separator(prefix) && crate::acceptance::string_bytes(&argument) == b"--no-verify"@)),
+            prefix.push(argument).take(prefix.len() as int) == prefix,
     {
         let pushed = prefix.push(argument);
         assert(pushed.len() == prefix.len() + 1);
         assert(pushed[prefix.len() as int] == argument);
         assert forall |k: int| 0 <= k < prefix.len() implies pushed[k] == prefix[k] by {};
+        vstd::seq::lemma_seq_subrange_len(pushed, 0, prefix.len() as int);
+        assert forall |k: int| 0 <= k < prefix.len() implies
+            pushed.take(prefix.len() as int)[k] == prefix[k] by {
+            vstd::seq::lemma_seq_subrange_index(pushed, 0, prefix.len() as int, k);
+        }
+        assert(pushed.take(prefix.len() as int) =~= prefix);
         if has_report_separator(pushed) {
             let i = choose |i: int| 0 <= i < pushed.len()
                 && crate::acceptance::string_bytes(&pushed[i]) == b"--"@;
@@ -194,6 +201,12 @@ sail_verified! {
                     report_prefix_push(arguments@, separator);
                 }
                 arguments.push(separator);
+                sail_proof! {
+                    let kept = kept_report_arguments(report_args@, enabled, report_args@.len());
+                    assert(arguments@.len() == kept.len() + 1);
+                    assert(arguments@.take(kept.len() as int) == kept);
+                    assert(crate::acceptance::string_bytes(&arguments@[kept.len() as int]) == b"--"@);
+                }
             }
             let no_verify = "--no-verify".to_owned();
             sail_proof! {
@@ -202,6 +215,23 @@ sail_verified! {
                 report_prefix_push(arguments@, no_verify);
             }
             arguments.push(no_verify);
+            sail_proof! {
+                let kept = kept_report_arguments(report_args@, enabled, report_args@.len());
+                if has_report_separator(report_args@) {
+                    assert(arguments@.len() == kept.len() + 1);
+                    assert(arguments@.take(kept.len() as int) == kept);
+                } else {
+                    assert(arguments@.len() == kept.len() + 2);
+                    vstd::seq::lemma_seq_subrange_composition(arguments@, 0,
+                        arguments@.len() as int - 1, 0, kept.len() as int);
+                    assert(arguments@.take(kept.len() as int) == kept);
+                    vstd::seq::lemma_seq_subrange_index(arguments@, 0,
+                        arguments@.len() as int - 1, kept.len() as int);
+                    assert(crate::acceptance::string_bytes(&arguments@[kept.len() as int]) == b"--"@);
+                }
+                assert(crate::acceptance::string_bytes(&arguments@.last()) == b"--no-verify"@);
+                assert(report_mode_projection(report_args@, enabled, arguments@));
+            }
         }
         sail_proof! {
             assert(report_mode_projection(report_args@, enabled, arguments@));

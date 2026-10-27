@@ -1424,6 +1424,10 @@ pub fn enabled_report_keeps_nonempty_forwarded_payload(original: &[String], effe
     proof {
         crate::request_mode::report_marker_literals();
         reveal_with_fuel(crate::request_mode::kept_report_arguments, 4);
+        vstd::seq::lemma_seq_subrange_len(original@, 0, 1);
+        vstd::seq::lemma_seq_subrange_index(original@, 0, 1, 0);
+        vstd::seq::lemma_seq_subrange_len(original@, 0, 2);
+        vstd::seq::lemma_seq_subrange_index(original@, 0, 2, 0);
         assert(exists |i: int| i == 0 && 0 <= i < original@.take(1).len()
             && string_bytes(&original@.take(1)[i]) == b"--"@);
         assert(exists |i: int| i == 0 && 0 <= i < original@.take(2).len()
