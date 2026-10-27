@@ -35,6 +35,9 @@ pub mod repair;
 /// Internal immutable original-target dictionary ordering and projection.
 #[doc(hidden)]
 pub mod request_order;
+/// Internal checked construction and projection of the original target set.
+#[doc(hidden)]
+pub mod request_targets;
 pub mod runtime;
 pub mod schema;
 pub mod stamp;
