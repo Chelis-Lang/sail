@@ -105,8 +105,25 @@ class SourceCaptureTests(unittest.TestCase):
                 b"let current = std::mem::replace(&mut self.0, StreamSplitter::start(true));\n        let (next, items) = current.push_items(data, std::mem::take(out));",
                 b"let current = std::mem::replace(&mut self.0, StreamSplitter::start(true));\n        let (next, items) = current.push_items(&[], std::mem::take(out));"),
             ("crates/sail-smtlib/src/split.rs", b"self.0.finish()\n    }\n}\n\n/// Splits solver output", b"None\n    }\n}\n\n/// Splits solver output"),
-            ("crates/sail-smtlib/src/lex.rs", b"sail_acceptance::query::delimiter(b)", b"false"),
+            ("crates/sail-smtlib/src/lex.rs", b"self.0\n            .next_token()\n            .map(|result| result.map_err(native_failure))", b"None"),
             ("crates/sail-smtlib/Cargo.toml", b"sail-acceptance.workspace = true", b"sail-acceptance = { path = \"../alternate\" }"),
+        ):
+            original = snapshots[path]
+            CHECKER.compiled_subset(path, original)
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original.replace(before, after))
+
+    def test_actual_lexer_state_and_head_are_checked_with_bound_native_calls(self):
+        entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),
+            "source": "proofs/refinement/query.rs"}
+        snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+        _, _, files = CHECKER.captured_driver(entry, snapshots)
+        self.assertEqual(files["core_query_lex.rs"], snapshots[CHECKER.LEX_CORE])
+        self.assertIn(CHECKER.LEX_CORE, CHECKER.source_roles(entry)["checked_source"])
+        for path, before, after in (
+            ("crates/sail-smtlib/src/command.rs", b"let (open_start, name) = lexer.command_head()?;", b"let (open_start, name) = (0, &text[..0]);"),
+            ("crates/sail-smtlib/src/lex.rs", b"Error::new(code, failure.offset)", b"Error::new(code, 0)"),
         ):
             original = snapshots[path]
             CHECKER.compiled_subset(path, original)
@@ -617,7 +634,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-acceptance/src/authority.rs",
-            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.PIPE_CORE,
+            CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.LEX_CORE, CHECKER.PIPE_CORE,
             CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
             "crates/sail-acceptance/src/phase_inputs.rs",
@@ -658,6 +675,8 @@ class SourceCaptureTests(unittest.TestCase):
             (CHECKER.HOLDING_CORE, b"pub struct Holding", b"#[derive(Default)] pub struct Holding"),
             (CHECKER.SPLIT_CORE, b"pub struct ListFrame", b"#[derive(Default)] pub struct ListFrame"),
             (CHECKER.SPLIT_CORE, b"        depth: usize,", b"        pub depth: usize,"),
+            (CHECKER.LEX_CORE, b"pub struct Lexer<'a>", b"#[derive(Default)] pub struct Lexer<'a>"),
+            (CHECKER.LEX_CORE, b"        position:usize,", b"        pub position:usize,"),
             ("crates/sail-acceptance/src/query.rs", b"pub struct ReplayedPrefix", b"#[derive(Default)] pub struct ReplayedPrefix"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"pub struct FrozenCommand", b"#[derive(Deserialize)] pub struct FrozenCommand"),
             ("crates/sail-acceptance/src/query_prefix.rs", b"command: Vec<u8>,", b"pub command: Vec<u8>,"),
@@ -776,13 +795,13 @@ class SourceCaptureTests(unittest.TestCase):
     def test_owned_query_modules_keep_actual_imports_and_checked_constructors(self):
         for path in ("crates/sail-acceptance/src/query_prefix.rs",
                 "crates/sail-acceptance/src/query_policy.rs",
-                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.KEY_FACTORY):
+                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.LEX_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             CHECKER.compiled_subset(path, original)
             for addition in (b"\nuse hidden::*;", b"\n#[cfg(sail_verus)] use hidden::*;"):
                 with self.subTest(path=path, addition=addition), self.assertRaises(CHECKER.Refusal):
                     CHECKER.compiled_subset(path, original + addition)
-        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.KEY_FACTORY):
+        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.SPLIT_CORE, CHECKER.LEX_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
                 CHECKER.compiled_subset(path, original + b"\npub fn unchecked_factory() -> bool { true }")

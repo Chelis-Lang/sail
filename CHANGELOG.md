@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Source-share actual SMT lexical spans, word classification, sticky error state
+  and borrowed shallow command heads. Preserve original bytes, public token
+  fields, diagnostics and supported shallow behavior; new qualification and
+  remaining interpretation/origin obligations stay open under #371.
+
 - Preserve exact parser continuation across copying (#482) and express the
   private owned input transfer with modeled Option::take (#481), retaining raw
   bytes, ordered items and all existing checks. Qualification remains pending.

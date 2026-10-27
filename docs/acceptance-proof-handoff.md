@@ -195,6 +195,28 @@ The frozen 9c3b4ea6 bounded eleven-case job passes all selected whole-root
 positive/ordinary-negative pairs, with final checks. Its independently read
 closed reports do not qualify this new source or the full component matrix.
 
+## Actual lexer and borrowed head source candidate
+
+The isolated lexer child moves actual token endpoints/classification/state,
+Token/TokenKind data and the shallow original head borrow into the acceptance
+leaf. Native lexer/classify callers delegate to those operations without changing
+raw bytes, errors, public fields or supported shallow behavior. Exact transition
+and conditional full-frame head-span contracts carry the original source;
+Session/argument/solver/output/physical/origin semantics remain open. See the
+[lexical design](design/acceptance-query.md#actual-lexical-state-and-borrowed-command-head-candidate).
+
+All 192 outer controls remain; 21 ordinary lexical controls append (213 query,
+452 planned unique cases/461 partitioned calls). Closed assembly adds one actual
+compiled file (22/9/14). New positive/function counts await actual discovery;
+none are inferred. Original assertions and source guards remain, with LEX_CORE
+added to the explicit constructor/import snapshot fixture and current native
+facade guard. The native error mapping and remaining classify argument helpers
+remain bound/unverified; shared functions are actual Stock input. No local
+compiler/verifier, consumer/provider or excluded reproduction action runs.
+Three targeted textual source-guard tests pass; native new witness/classifier
+checks remain unexecuted. ADR 0086 stays proposed; no new dependency edge or
+runtime/CI-policy selection occurs.
+
 ## Streaming-list source candidate and scope
 
 The isolated candidate from `4c43e5a9` adds the actual pending-list byte/chunk
