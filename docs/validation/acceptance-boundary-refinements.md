@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `ed26f794` output-control baseline | Focused native test fails, but its parent assertion retains only child stdout and hides the original refusal in stderr; controller denies baseline credit with `baseline:wrong-refusal` | Corrected implementation and Clippy unrun. The fixture now retains both child streams; rerun requires new frozen baseline/corrected sources |
 | `9099f673` source controls | Native model-source tests pass 12/12 and production-source tests pass 63/63 (259.807 s), including exact original control inventory, protected loop annotations and real runtime selectors; final source/image guards pass | Source-tooling qualification only, no Stock call or runtime test. Rust bodies, proof resources and 397 descriptors remain unchanged |
 | `4c43e5a9` native gates | Workspace passes all 1,278 tests with 57 configured skips, plus doctests and workspace checks; solver suite passes 53/53. Separate direct model suite passes all 31 cases | Frozen-source gates, not automatic qualification of later source or a complete production-control matrix |
 | `4c43e5a9` full e2e | Isolated evidence-root run stops after 35.909 s: neutral positive has 2,061 unsat checks but Unknown backend currentness and `NotProved`; provider completion is absent (#471). Final source/image guards pass | No positive authority or full e2e credit. PR/full fast/standard conformance unrun. Earlier nested evidence-root attempt correctly refused repository Cargo configuration and is separate |
@@ -115,6 +116,14 @@ policy. A focused regression executes a real `sail-cargo` alias with its own
 transport file, a live original output marker, actual child output and both
 absent/conflicting caller variables. Its unchanged baseline and corrected
 native runs are pending; this is not a claim that #471 or full e2e is qualified.
+The first baseline-only attempt is preserved as
+`experiments/2026-10-27/acceptance-output-control-06cf8ba8-native.tgz`, SHA-256
+`0cb2255af7e880bdda10be7de7a51622a5931927d8fb179c7d35f7b0ab8756ec`
+(6,835,032 bytes). Native compilation succeeds and the single selected test
+fails in 28.726 s including build time, but the original child stderr is absent
+from its failure message. The controller refuses attribution and runs neither
+the corrected test nor Clippy; final source/image checks pass. Capturing both
+child streams changes no assertion or production predicate.
 
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
