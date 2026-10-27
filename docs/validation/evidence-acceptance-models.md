@@ -16,12 +16,27 @@ candidate controls: fallback subject, selected fallback repair, engine protocol,
 decline refusal, repair decline and feature admission. The resulting manifest
 contains four positive roots and 31 ordinary negative controls.
 
-All twelve local checker tests pass, including omission of each required model
-control. Fresh native Stock qualification and the production-refinement count
-discovery are pending. The larger candidate's receipts do not qualify this
-main-based extraction. Native Rust, Cargo assembly, solver input generation and
+Frozen `21d95289` passes all 35 native Stock model cases and all three complete
+production-positive roots: query 134/263, inputs 54/91 and authority 174/303
+(verified obligations/function entries). The authority inventory is independently
+derived from unchanged production functions and the checked new model inventory.
+All twelve local checker tests pass, including omission of each required control.
+The production manifest now locks the observed counts and exact function names;
+all 22 original production controls remain unchanged. Their fresh full matrix and
+the complete native fast tier remain pending. The larger candidate's receipts do
+not qualify this extraction. Native Rust, Cargo assembly, solver input generation and
 the broader service-proof boundary are unchanged; no native process or input
 closure is established by these model rules.
+
+Host: native Linux x86-64 c7i.4xlarge, us-east-1. This initial proof run uses
+image `sha256:cedda935f85ad7dd87d871344b163ea03318becbebc8a5b487a21bf40de3689a`
+and validates the pinned Stock archive, runtime files and Rust compiler. It is
+not current CI-image packaging qualification. Artifact
+`acceptance-model-delivery-21d95289-native.tgz`, 6,387,094 bytes, SHA-256
+`49a717eb6e2482b7664ae18d83f69d9a85b47f55e0a99dfb14937a99d8eab25c`;
+final source/image/runtime guards and byte-identical upload/readback pass.
+Independent review reconstructs all 35 model candidates/drivers and all three
+production programs, checking raw whole-crate results and exact inventories.
 
 ## Expanded model qualification
 
