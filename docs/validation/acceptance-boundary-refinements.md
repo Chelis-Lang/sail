@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `e57f065f` | Complete combined native positives pass: query 471/0 (821 functions), inputs 308/0 (538), authority 502/0 (883); every earlier function retained and final source/runtime checks pass | Actual inventories locked. All 392 ordinary negatives in the 395 unique planned cases remain pending; component partitions repeat positives and require an exact union audit. Native/differential gates and all six service obligations remain open |
 | `6a4e5b86` authority diagnostics | 2026-10-27: all three canonical selected partitions pass, each with the entire authority positive 498/0 and all 878 functions; controls 76, 97 and 98 each fail ordinary verification at 497 verified plus one error | Identical source/runtime/compiler across six calls; default resources and final checks retained. Three of 107 controls only, not a complete component or suite; no native/workspace or broader service credit |
 | `1b7015c8` authority diagnostic | 2026-10-27: complete authority positive passes 498/0 with all 878 functions; the genuine singleton-refusal mutation retains 497 verified plus one error | It still reaches rlimit when the wrong shortcut follows eager proof unfolding. No negative control qualifies; the next variant places the identical wrong runtime shortcut before that existing erased reveal |
 | `f2262fce` authority diagnostics | 2026-10-27: whole authority positives pass 498/0 with all 878 functions; partitions `96/107` and `97/107` pass the always-accept/always-refuse path-withholding controls with final source/runtime checks | Control 76 still refuses at rlimit (497 verified plus one error, all 878 functions). Only two negative controls qualify; no complete component or suite credit |
@@ -143,13 +144,17 @@ native adapter sources explicitly without claiming those bodies are proved.
 The combined source retains every inherited control and plans 395 cases:
 three whole positive roots and 392 ordinary failing controls (161 query,
 115 input and 116 authority). Its actual compiled file inventories contain
-20, 9 and 14 files respectively. The manifest retains the last successful
-option-only inventories from `069e91f6`: query 441/776, inputs 308/538 and
-authority 498/878 (verified/function entries), with final source/runtime checks
-and every prior function retained. Those counts do not qualify the later replay
-and presentation bodies; new complete-root discovery must extend them before
-canonical qualification. That separate positive report SHA-256 is
-`80829df588f1cad425d1249ab606017c5551a80a9dfd68ec185bbeffa6b817cf`.
+20, 9 and 14 files respectively. The manifest locks complete positive discovery
+at `e57f065f`: query 471/821, inputs 308/538 and authority 502/883
+(verified/function entries), with final source/runtime checks and every prior
+function retained. Its report SHA-256 is
+`92bc5c3b953207b84fe8bf37405cfc7d63fdb96dc0ec0f0eaf9bceec891230ce`.
+The preceding option-only `069e91f6` positive inventories were 441/776,
+308/538 and 498/878. Four existing partitions per component, components
+sequenced, will check 404 actual calls: twelve repeated complete positives
+and all 392 distinct negatives. Individual reports remain incomplete; the
+exact all-component union needs independent scope/identity audits and does
+not constitute one unpartitioned run or a service theorem.
 The prior 340-case candidate used query 431/759. Its complete
 `f8d61408` positive report SHA-256 is
 `30822d09dcc90b76c315fd3ec8fa392af478b7b20def6d9e56e7d5e60cc36876`;
