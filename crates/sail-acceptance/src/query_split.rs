@@ -83,6 +83,12 @@ sail_code! {
                         && crate::query::single_list(bytes@,self.comments_view()),
                 })
             {
+                sail_proof! {
+                    reveal(ListFrame::well_formed);
+                    assert(pending_list(self.bytes@,self.depth,self.lex,self.comments));
+                    assert(crate::query::frame_scan(self.bytes@,self.comments)
+                        == (self.depth as int,self.lex));
+                }
                 let next = crate::query::frame_step(self.depth,self.lex,byte,self.comments);
                 self.bytes.push(byte);
                 sail_proof! {
@@ -170,7 +176,27 @@ sail_verified! {
         let pending = ListFrame::start(true);
         let data = [b')', b'(', b')'];
         let (step,used) = pending.push_chunk(&data);
-        sail_proof! { reveal_with_fuel(crate::query::frame_scan,8); }
+        sail_proof! {
+            assert(crate::query::frame_scan(seq![b'(',b')'],true)
+                == (0int,crate::query::FrameLex::Plain)) by {
+                reveal_with_fuel(crate::query::frame_scan,3);
+            }
+            match step {
+                ListStep::Pending(frame) => {
+                    reveal(ListFrame::well_formed);
+                    assert(frame.bytes_view().take(2) =~= seq![b'(',b')']);
+                    assert(crate::query::frame_scan(frame.bytes_view().take(2),true).0 > 0);
+                }
+                ListStep::Complete(bytes) => {
+                    assert(bytes@.take(2) =~= seq![b'(',b')']);
+                    if used > 1 {
+                        assert(2 < bytes@.len());
+                        assert(crate::query::frame_scan(bytes@.take(2),true).0 > 0);
+                    }
+                    assert(used == 1);
+                }
+            }
+        }
         match step {
             ListStep::Complete(bytes) => used == 1 && bytes.len() == 2
                 && bytes[0] == b'(' && bytes[1] == b')',
@@ -191,11 +217,26 @@ sail_verified! {
         let (step,used) = pending.push_chunk(&prefix);
         sail_proof! {
             assert forall|i: int| 0 <= i < prefix@.len() implies prefix@[i] != b')' by {}
-            reveal_with_fuel(crate::query::frame_scan,16);
+            assert forall|i: int| 0 <= i < prefix@.len() implies crate::query_prefix::flat_byte(prefix@[i]) by {}
+            if let ListStep::Complete(bytes) = step {
+                assert(used > 0);
+                assert(bytes@.last() == prefix@[used as int - 1]);
+                assert(bytes@.last() == b')');
+            }
+            crate::query_prefix::flat_list_frame(prefix@);
         }
         let ListStep::Pending(frame) = step else { return false; };
         let unfinished = frame.duplicate().finish();
-        match frame.push(b')') {
+        let terminal = frame.push(b')');
+        sail_proof! {
+            if let ListStep::Pending(next) = terminal {
+                reveal(ListFrame::well_formed);
+                assert(next.bytes_view() =~= seq![b'(']+prefix@+seq![b')']);
+                assert(crate::query::frame_scan(next.bytes_view(),true).0 > 0);
+                assert(crate::query::frame_scan(next.bytes_view(),true).0 == 0);
+            }
+        }
+        match terminal {
             ListStep::Complete(bytes) => used == 9 && unfinished.len() == 10
                 && bytes.len() == 11 && bytes[0] == b'(' && bytes[1] == b'c'
                 && bytes[9] == b't' && bytes[10] == b')',
