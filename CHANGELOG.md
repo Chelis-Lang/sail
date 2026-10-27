@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Route the actual per-package report-command construction through checked
+  source, retaining its existing removal/append rules and original token bytes
+  and order. Missing effective options remain unknown. Physical compiler inputs,
+  packed-option origin and full metadata selection remain separate boundaries;
+  this new slice awaits complete-root/native/control qualification.
+
 - Route decoded worker-journal selection through checked source, retaining the
   original version, worker, run, uniqueness, invocation, arguments, mode and
   project checks. Return the selected owned original request as data; decoding,
