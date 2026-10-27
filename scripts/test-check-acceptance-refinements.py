@@ -230,6 +230,53 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(CHECKER.Refusal, "checked loop syntax"):
             CHECKER.check_control_loops(original, b"{ false }")
 
+    def test_runtime_control_skips_nested_contract_braces(self):
+        source = """sail_method! {
+            fn compare(x: bool) -> (accepted: bool)
+                requires ({ let nested = true; nested })
+                ensures (accepted == x, if accepted {1nat} else {0nat} == 0nat)
+            { if !x { return false; } true }
+        }"""
+        SOURCE.runtime_mutation(source, "{ if !x { return false; } true }",
+            "{ if !x { return false; } false }")
+        # The historical #468 selector must refuse before invoking Stock.
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, "1nat", "false")
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, "let nested = true", "let nested = false")
+
+    def test_runtime_control_refuses_erased_and_proof_only_selectors(self):
+        source = """sail_spec! { spec fn ghost() -> bool { true } }
+        sail_method! {
+            fn checked() -> (answer: bool) requires (true) ensures (answer)
+            { sail_proof! { assert(true); } true }
+        }"""
+        for before, after in (
+            ("spec fn ghost() -> bool { true }", "spec fn ghost() -> bool { false }"),
+            ("assert(true)", "assert(false)"),
+            ("sail_proof! { assert(true); }", "sail_proof! { assert(false); }"),
+        ):
+            with self.subTest(before=before), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.runtime_mutation(source, before, after)
+        SOURCE.runtime_mutation(source,
+            "{ sail_proof! { assert(true); } true }",
+            "{ sail_proof! { assert(true); } false }")
+
+    def test_runtime_control_cannot_hide_an_envelope_in_ghost_code(self):
+        method = "sail_method! { fn hidden() -> (x: bool) requires (true) ensures (x) { true } }"
+        for wrapper in ("sail_spec! { %s }", "sail_proof! { %s }", "proof { %s }"):
+            source = wrapper % method
+            self.assertEqual(SOURCE.executable_envelopes(source), [])
+            with self.subTest(wrapper=wrapper), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.runtime_mutation(source, "{ true }", "{ false }")
+
+    def test_runtime_control_keeps_contracts_even_with_whole_method_selector(self):
+        source = "sail_verified! { fn f() -> (ok: bool) requires (true) ensures (ok) { true } }"
+        method = "fn f() -> (ok: bool) requires (true) ensures (ok) { true }"
+        SOURCE.runtime_mutation(source, method, method[:-6] + "false }")
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, method, method.replace("ensures (ok)", "ensures (true)"))
+
     def test_report_does_not_promote_bound_input_adapters_to_proved_bodies(self):
         for component, definition in CHECKER.COMPONENTS.items():
             entry = {"dependencies": CHECKER.dependency_paths(component)}

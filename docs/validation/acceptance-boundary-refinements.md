@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `4c43e5a9` controls | Fresh complete positives repeat 471/821, 308/538 and 510/895 with final source/runtime checks. Four query workers terminate with exits 0, 0, 1, 0; control 151 selects `1nat` inside `compare`'s ensures clause and produces a pre-verification type error, zero obligations and an empty function inventory (#468) | The strict inventory check refuses it. No ordinary-negative credit, complete query union or 400-case completion; inputs/authority never launch. The durable continuation correctly stops on the actual query failure before the reserved unstarted-component boundary |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
 | `e36c749b` | Complete native discovery passes query 471/0 (821 functions), inputs 308/0 (538), authority 510/0 (895); every earlier function retained and final source/runtime checks pass | Actual inventories locked for 400 unique planned cases: 397 negatives plus three positives. The 409-call partition schedule remains held for native compile/Clippy clearance; no combined matrix, native completion or service theorem |
@@ -43,6 +44,23 @@ observation guarantee or service theorem is claimed. All six rows of the
 | `00a501c7` | Whole authority root passes 489/0 with all 830 function entries and final frozen source/runtime checks. The byte-identical query/input assemblies pass separately at `11f3be8c`: 353/0 (637), 283/0 (469); every previous function retained | Component development evidence, not one combined canonical pass. Workspace stops at twelve style/lint diagnostics; corrected local annotations retain proved bodies and require rerun |
 | `b8775f8f` | Native whole positive roots: query 343/0 (621 function entries), inputs 264/0 (438), authority 430/0 (736); every prior function retained, final source/runtime identity checked. Workspace passes (475.68 s) | Development positive evidence only: 16 new stdout controls and its complete 229-case canonical matrix remain unqualified |
 | `cc8c24a1` | Complete macOS canonical query component: 288 obligations, 503 function entries and all 39 ordinary controls. Native full e2e union including extra and PR conformance pass | Earlier checkpoint, not qualification of later code; e2e/PR gate durations 1,175.78 s/122.67 s include image/build work |
+
+The #468 correction retains the complete original `Replay::compare` signature,
+contracts and executable method body, changing only its final `true` to `false`.
+All earlier exits already refuse. A balanced-token macro parser skips entire
+`requires`, `ensures` and optional `decreases` groups before locating the actual
+body; nested contract braces cannot become a body selector. Source validation
+now requires every production mutation to preserve the surrounding declaration
+and contract skeleton and change exactly one executable body after proof-group
+erasure. Proof-only selectors refuse. The four existing authority-model controls
+remain explicitly separate from production-body controls. Read-only inspection
+of all 397 descriptors finds no other misplaced runtime selector. All 393
+production descriptors satisfy the corrected source relation; this source audit
+is not ordinary-negative qualification. New regression fixtures and the repaired
+whole-root control remain unrun until the next frozen native attempt. Existing
+loop checks, exact function/obligation counts, controls and resource limits stay
+required. The failed matrix and nondurable original launcher remain indexed;
+its orchestration guard and correctly aborted service receive zero proof credit.
 
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
