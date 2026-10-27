@@ -4370,36 +4370,53 @@ fn run_recorded(
     // An unchanged call that ended Current without starting a verifier and
     // without help from the dependency store can be replayed (ADR 0082).
     if let Some((key, pending)) = record {
-        *pending = (result.currentness == Currentness::Current
-            && result.exit_code.is_some()
-            && result.execution.verifier_invocations == 0
-            && !retried
-            && !forced
-            && paths.reuse
-            && runtime.engine.is_none()
-            && research == super::research::Mode::Off
-            && seeded.is_empty())
-        .then(|| {
-            Some(super::noop::Facts {
-                key,
-                cache: &config.cache,
-                start: started_wall,
-                workspace_lock: paths.projects.join(super::projects::WORKSPACE_LOCK),
-                family: paths.target.parent()?,
-                context: paths.receipts.parent()?,
-                target: &paths.target,
-                observation: super::input::mutation_vector(&after_run, stamp_after.as_ref()?)?,
-                identity: &identity_paths,
-                siblings: sibling_receipts(&paths, &result.context_sha256)
-                    .into_iter()
-                    .map(|(_, receipts)| receipts)
-                    .collect(),
-                result: &result,
-                original_request: &original_request,
+        let refusal = if result.currentness != Currentness::Current {
+            Some("result currentness is not Current")
+        } else if result.exit_code.is_none() {
+            Some("original exit status is unavailable")
+        } else if result.execution.verifier_invocations != 0 {
+            Some("the run invoked a verifier")
+        } else if retried {
+            Some("the run retried missing proof receipts")
+        } else if forced {
+            Some("fresh verification was forced")
+        } else if !paths.reuse {
+            Some("proof reuse is disabled")
+        } else if runtime.engine.is_some() {
+            Some("the run used the interactive engine")
+        } else if research != super::research::Mode::Off {
+            Some("the run used a research mode")
+        } else if !seeded.is_empty() {
+            Some("dependency store candidates participated")
+        } else {
+            None
+        };
+        if let Some(reason) = refusal {
+            super::noop::unrecorded(reason);
+        }
+        *pending = refusal
+            .is_none()
+            .then(|| {
+                Some(super::noop::Facts {
+                    key,
+                    cache: &config.cache,
+                    start: started_wall,
+                    workspace_lock: paths.projects.join(super::projects::WORKSPACE_LOCK),
+                    family: paths.target.parent()?,
+                    context: paths.receipts.parent()?,
+                    target: &paths.target,
+                    observation: super::input::mutation_vector(&after_run, stamp_after.as_ref()?)?,
+                    identity: &identity_paths,
+                    siblings: sibling_receipts(&paths, &result.context_sha256)
+                        .into_iter()
+                        .map(|(_, receipts)| receipts)
+                        .collect(),
+                    result: &result,
+                    original_request: &original_request,
+                })
             })
-        })
-        .flatten()
-        .and_then(super::noop::prepare);
+            .flatten()
+            .and_then(super::noop::prepare);
     }
     drop(publication);
     // Freeing the metadata and snapshots (tens of thousands of allocations on

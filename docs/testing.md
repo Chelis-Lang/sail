@@ -111,6 +111,13 @@ does not locate the blocked command or establish a product failure. The original
 containment cancellation and the revised layout's completed native scope are in
 the [containment record](validation/dependency-store-fail-closed.md).
 
+Output-loop failure capture prioritizes the last issued command, recent original
+producer records and current source before older command snapshots. The original
+1,024-file, per-file/total-byte and wall-time caps still apply; omitted, truncated,
+changed or unreadable observations keep the index incomplete. `noop.trace` is
+included when present. Modification times prioritize diagnostic copies only;
+they do not associate a producer with a command or establish proof authority.
+
 ## Mutation suite
 
 Both stock and managed commands explicitly use the pinned runtime's Rust
