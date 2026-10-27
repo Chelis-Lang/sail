@@ -78,8 +78,9 @@ helper, retaining every loop invariant and decrease. The helper's exact byte
 postcondition keeps request and readback metadata outside that loop's proof;
 the renderer still checks the complete duration and original footer boundary
 before copying. Six existing failure controls follow their actual moved
-operations. This source decomposition addresses #505; fresh whole-root,
-ordinary-control and native qualification are still required.
+operations. Frozen `ad019e9a` passes the whole authority root at 592/1,012,
+all nine selected ordinary negatives, strict package Clippy and 15 native
+replay tests. The full combined control suite remains required for #505.
 
 The checked context and byte gate preserve the original combined factory's
 full acceptance contract. Separating them makes the stdout omission control

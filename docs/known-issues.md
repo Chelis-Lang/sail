@@ -4,10 +4,25 @@
   control `request-verification-enabled` produces its intended postcondition
   failure but also exhausts the unrelated human-footer renderer at default
   Stock resources. Whole scope and all 1,011 authority functions remain, so
-  the strict runner refuses qualification. The candidate moves the unchanged
+  the strict runner refuses qualification. The correction moves the unchanged
   byte-copy loop and every invariant into a checked helper; the renderer keeps
   its complete original contract. Six controls follow their actual moved
-  operations. Complete positive/control/native qualification remains pending.
+  operations. Frozen `ad019e9a` passes the complete authority positive, all nine
+  selected ordinary controls, strict package Clippy and 15 native replay tests.
+  The complete combined authority matrix remains required.
+
+- [#506](https://github.com/Chelis-Lang/sail/issues/506): the hosted output phase
+  retains empty stdout and one ordinary colored Cargo footer, but byte-only
+  replay recognizes plain prefixes only. The exact ANSI bytes are preserved;
+  arbitrary escape stripping or broad stdout acceptance is not a correction.
+  Exact colored-prefix support and full output qualification remain open.
+
+- [#507](https://github.com/Chelis-Lang/sail/issues/507): the managed ghost-only
+  include case remains Unknown after both existing allowed verification calls.
+  Both requested targets are complete; the second call re-verifies vstd and
+  reports freshly established build-script declarations. The underlying
+  observation/declaration mismatch remains unconfirmed. Conservative Unknown,
+  the original positive assertion and ghost-file invalidation stay required.
 
 - [#496](https://github.com/Chelis-Lang/sail/issues/496): combined runner `eaf51208` drops three parser import-binding hash entries during table reconciliation; existing native source tests catch the lost hidden-import refusal. The correction restores the exact parent-table union. Canonical source/Stock barriers remain independent; no false proof is demonstrated.
 
@@ -646,3 +661,15 @@ strict key Clippy refusal of the new CR fixture after all five native prefix
 tests pass. Its correction retains the zero-item assertion as explicit empty
 array equality; this is a test-style failure, without a production parser
 failure or false verdict. Focused rerun and full workspace gates remain pending.
+
+[#503](https://github.com/Chelis-Lang/sail/issues/503) tracks the output-owner
+candidate's native Clippy refusals after all 26 retained SMT tests pass. The
+source uses verified saturating subtraction and question-mark syntax; the exact
+pending-field Option map trial leaves one proof postcondition unproved, so its
+explicit owned branches retain a documented local allowance. Tuple signatures
+keep the actual field/queue transfer visible.
+[#504](https://github.com/Chelis-Lang/sail/issues/504) separately records the
+subsequent shim lifetime lint, corrected by splitting the test-only borrowing
+initializer from the anonymous production impl. These are candidate style/proof
+qualification limits, without a demonstrated native false verdict; strict
+native rerun and complete integrated controls/gates remain required.

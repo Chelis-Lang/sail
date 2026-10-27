@@ -108,15 +108,29 @@ impl ResponseSplitter {
 /// stands for exactly one reply in the stream.
 #[must_use]
 pub fn is_single_response(reply: &[u8]) -> bool {
-    let mut splitter = ResponseSplitter::new();
-    let mut items = Vec::new();
-    splitter.push(reply, &mut items);
-    matches!(items.as_slice(), [one] if one.offset == 0) && splitter.finish().is_none()
+    sail_acceptance::query_split::single_response(reply)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct SameOwner;
+
+    impl sail_acceptance::inputs::OwnerIdentity<u64> for SameOwner {
+        fn same_owner(&self, original: &u64, actual: &u64) -> bool {
+            original == actual
+        }
+    }
+
+    #[test]
+    fn shared_output_item_order_controls_execute_on_actual_queues() {
+        assert!(sail_acceptance::query_output_order::output_order_constructive_control(&SameOwner));
+        assert!(
+            sail_acceptance::query_output_order::output_order_foreign_payload_refused(&SameOwner)
+        );
+        assert!(sail_acceptance::query_output_order::output_order_unconsumed_refused());
+    }
 
     #[test]
     fn shared_owned_stdout_parser_controls_execute() {

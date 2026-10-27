@@ -1623,3 +1623,68 @@ boundary. Pending-input coverage uses an unterminated `foo`; a separate
 CR-terminated input case checks four original items, no pending/no extra LF
 emission and exact raw/hash retention. This test correction changes no parser
 rule or mathematical/production capture.
+
+### Actual chunk/item/frame/replay ordering candidate
+
+`query_output_order::OutputOrder` owns the qualified `ParsedOutput`, the actual
+`Replay` over the original served slice, the original pending reply metadata,
+and the first fresh forwarding offset. Its factory derives suppression count
+from that slice and retains the two actual leases already supplied by the
+native loop; the existing final owner-identity check remains mandatory.
+
+Appending a chunk moves that same controller into an `OutputBatch` with the
+actual emitted `Vec<Item>` and one index. It neither copies payloads nor removes
+or reorders vector entries. `begin_next` takes the original pending interval at
+exactly the next item's actual offset. `frame_previous` calls the unchanged
+independent frame admission and records its actual result before the existing
+native budget/copy branch. Settlement compares only the retained original
+interval or hands the actual payload to the real `CorrelatedQueue` operations
+used by `Pairer`. A private stage check prevents skipping framing/settlement;
+only a nondiverged comparison can advance suppression once, consume that item,
+and establish the next pending/first-fresh offset. Abandoning unconsumed items
+latches refusal. These stage values come from the actual operations, not a
+caller-supplied success/origin Boolean.
+
+Fresh payload handover checks existing owner identity, original ordinal/range
+and exact retained raw bytes before queue insertion. This adds one linear byte
+comparison for an active fresh handover; cost is unmeasured. The original chunk
+vector is retained directly, with constant-size controller metadata and no
+additional payload storage. Budget charging and `Arc` ownership copying remain
+in their original native order. Invalid binding stops pairing while keeping
+raw forwarding independent.
+
+The original offset-zero/exact-one-item/finished-state `is_single_response`
+algorithm is source-shared separately from `response_frame`. Statistics replay
+still runs that independent check before the same mechanical comparison; this
+is not a theorem of arbitrary statistics equivalence or solver meaning.
+
+At the chunk-loop exit, checked `into_parts` transfers exactly the same output,
+comparison, pending tuple and forwarding offset back to the native terminal
+block. The original `drop(from)`, divergence kill, remaining raw forwarding,
+wait, conditional tail settlement, seal, finish diagnostic and final
+`with_replay` block is byte-identical to the qualified checkpoint. Its actual
+terminal/tail ordering remains a mandatory next refinement, alongside physical
+I/O/EOF, budget implementation, later queue drain/PUT origin, Session/Z3 and
+presentation composition; this is no permanent scope reduction.
+
+Three nonempty candidates exercise cross-chunk/multi-item replay-to-fresh real
+queue handover, same-owner/same-ordinal/range foreign-byte refusal, and skipped
+or unsettled emissions. Twenty-nine ordinary full-function controls append to
+all 225 unchanged prior objects (254 query). Query assembly is 24 files; the
+isolated branch plans 493 unique cases or 502 partitioned calls. The inherited
+568/971 inventory belongs to the earlier paired-append checkpoint; new function
+counts, whole-root/native/control qualification and conformance remain pending.
+No dependency edge, architecture selection, trusted primitive or wire token is
+introduced. Native physical/terminal boundaries and the CI policy remain open.
+
+The old native `ReplayCheck::new` and `complete` forwarding helpers are now
+fixture-only, with bodies retained, because the actual chunk loop uses the
+checked owner factory/completion getter. The native terminal `diverged`,
+`settle_observed` and `finish` paths stay unchanged. Actual caller compilation,
+not merely the SMT library fixture, is required before qualification.
+
+The frozen actual chunk/item owner at `26b52508` passes whole-query Stock with
+596 verified/1,025 actual functions, retaining all prior 971. The exact scan-prefix
+proof cut and stronger true append facet preserve the original executable parser
+body and verifier limits. The 254 ordinary controls, native SMT/shim qualification
+and separately implemented tail source remain pending; this is not full #371.

@@ -20,7 +20,9 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
-| Footer-copy decomposition candidate (#505) | The original byte-copy loop, every invariant and decrease transfer unchanged to a checked helper. The original renderer keeps its full contract and validation order. Six existing control names follow the exact moved runtime operations; all other 218 authority controls remain unchanged | Source only; no guessed positive count or negative credit. Fresh whole-root discovery, control 14, all six renderer controls and native qualification remain required |
+| Output-order/coherent source union (`ad019e9a` + `fa6b5b62`) | Actual chunk/item/frame/replay/queue operations are integrated with the current cache/request/renderer source. All 314 query/115 input/224 authority controls remain mandatory, including six reviewed query selector updates carrying stronger append facts and the lead's six renderer retargets. Required function sets are 1,114/538/1,012 | Source integration only; 618/308/592 are inherited required floors, not predicted combined results. Fresh complete-root discovery, full controls/native/e2e/conformance/cost and service correspondence remain required |
+| `ad019e9a` footer-copy decomposition (#505) | Complete authority positive passes 592/1,012, retaining all prior functions. Original resource controls 14/71/80 and all six renderer mutations fail ordinarily with exact complete scope and default resources. Strict API/Verus/CLI Clippy and all 15 retained human-output tests pass; final source/runtime/image guards pass | Bounded nine-negative qualification only; no full component, e2e/conformance or service credit. Original byte loop/invariants/decrease and renderer contract remain. Archive `acceptance-footer-copy-ad019e9a-native.tgz`, SHA256 `77a9a1d481229fd7c95e3eeeb0671d8353a8222e931dcbd22552bd04e52ad163`; independent GET/hash passes, detailed raw audit pending |
+| `ee4e684f` hosted e2e/conformance | PR conformance and eight end-to-end phases pass: contracts, legacy, flags, loader, managed copies, managed native, scripts and repair | Output fails on directly observed colored Cargo footer bytes (#506). Managed fails when the ghost-only include stays Unknown after its existing second call (#507), cause unconfirmed. Full e2e and CI completion fail; extra and full fast/standard conformance remain required. Full original logs/artifacts/source are retained at `acceptance-coherent-ee4e684f-hosted-e2e-failures.tgz`, SHA256 `9aa73869b4f21e0764cfd2138f3329ab564545448763644070a1badd2dcf2c4b`, independent GET/hash passes |
 | `ee4e684f` complete models and control attempt | All 31 canonical model cases pass (four roots/27 negatives). Hosted authority partition 1/4 passes its whole 591/1,011 positive and controls 2/6/10, then control 14 reports the intended request postcondition failure plus an unrelated renderer rlimit (#505), 589 verified/2 errors, whole scope/all 1,011 functions | Zero credit for control 14. Native partitions continue on immutable source; no completed production union. Complete hosted log/artifact/source bundle is retained outside Git, independently uploaded/read back: `acceptance-coherent-ee4e684f-hosted-renderer-failure.tgz`, SHA256 `d82497344166621ad08334ce21f970455107695983eabdf64ce5965d17c7bfb4` |
 | `16938f40` coherent report/request/journal/parser/cache source | Three complete Stock roots pass: query 618 verified/1,060 functions, inputs 308/538 and authority 591/1,011, retaining every inherited function at default resources. Full native gate passes, including 12 model-source/78 production-source tests, strict workspace/all-target Clippy, all 1,304 native tests (57 configured skips), doctests, rustdoc, layering, deny and benchmark-page comparison. Normal pinned solver/fault suite passes 53/53 | Whole positives and native gates only. All 285 query/115 input/224 authority controls remain mandatory (624 negatives plus three roots). Full metadata/effective-option origin, e2e/conformance, cost and service joins remain open. Final source/runtime/image guards pass; independent GET/hash, raw proof scope/inventories, all 340 canonical source hashes and native summaries pass. Archive SHA256 `a4470884e163f551171c648b226b0318fe349fccac48213f335aa3affc0eafdd` |
 | `efd3fb3e` remaining native checks | On the identical frozen physical checkout and its own target, the previously unrun MCP example, all doctests, strict rustdoc, layering, deny and generated benchmark-page comparison pass. Normal pinned solver/fault suite passes. Source/image guards pass | This completes those individual commands; it does not erase the separately preserved full-gate fixture failure. Tail archive SHA256 `c8f39fb18e1cff2ab799fa283edaae1c0a333f91cd728d4879fd62d1d3d1b98b`; root GET/hash/report and actual solver summary inspected. New report-mode source still needs fresh native acceptance |
@@ -1561,3 +1563,87 @@ gates, all intervening refusals and the bounded five-pair scheduling stop.
   source/image/final-source checks pass. The local correction uses diagnostic
   empty-array equality for the same zero-item assertion; focused native rerun
   and full workspace/solver qualification remain pending.
+
+The lead independently GET/hash audits combined v3 and all twelve nested
+SHA/size entries, plus raw `fa1bef13` whole 568/971/no-resource/final guards and
+native 25/25/strict-Clippy records. This qualifies that frozen milestone's
+stated scope, not the newer per-item source.
+
+The new actual chunk/item ordering candidate owns the real output/replay and
+emission vector, frames original intervals before native charge/copy, performs
+actual replay/queue settlement and advances once. Original 225 controls remain
+unchanged; 29 ordinary controls append (254 query, 24/9/14 source assembly).
+The terminal native block remains byte-identical and explicitly unrefined.
+Three targeted source guards and textual closure pass. New function counts,
+whole Stock/native/control qualification, runtime cost and full service remain
+unqualified; no evidence is inherited merely from matching source hashes.
+
+- `28003ea4`, 2026-10-27: first complete output-order query discovery refuses;
+  raw whole-crate JSON reports 587 verified/eight errors (no VIR error), while
+  stderr also records an inherited splitter loop resource refusal. Thirteen
+  diagnostics cover exact offset/partition/cursor/policy and finite witness
+  facts plus the single-response slice-capacity premise. Final source/runtime
+  checks pass; no positive inventory is locked and no control/native credit is
+  claimed. The source followup adds exact retained-length observations and
+  erased projection/literal facts, preserving every contract, default verifier
+  resource and all 254 controls. Tail/terminal ownership remains required.
+
+- `5b69092e`, 2026-10-27: whole-query compilation refuses an attempted reveal
+  of the separate module's closed `ParsedOutput::coherent`; no verification
+  inventory or credit. The followup makes the already-established transcript
+  well-formed facet explicit in the private owner's invariant, without exposing
+  private fields, replacing a native body, adding a trust premise or changing
+  any public input precondition.
+
+- `29acd4de`, 2026-10-27: complete chunk/item candidate still refuses. The
+  actual begin/frame/settle operations clear their earlier VCs; append's new
+  private invariant needs an explicit already-proved output facet from the
+  separate module, and constructive map/literal facts remain. The inherited
+  splitter loop again records a resource refusal. No actual inventory is
+  locked; full scope/default resources and every control remain mandatory.
+  The closed-predicate candidate compiler refusal is tracked as #502.
+
+The actual chunk/item/frame/replay/queue owner checkpoint `26b52508` passes the
+entire query root: **596 verified/zero errors, 1,025 actual function entries**,
+retaining all 971 prior functions. Pinned Stock/default 120 seconds, one thread,
+no-cheating, no VIR/resource refusal and final source/runtime checks pass.
+The manifest locks only these observed query results; other roots are historical.
+All 254 ordinary query controls remain mandatory and unqualified as a complete
+set. Native retained SMT tests and strict SMT/shim caller Clippy remain pending;
+the separate tail candidate and physical/origin boundaries are not qualified.
+Actual driver SHA-256: `5fa538c31cd023383fcffb575e111ec5fa5c825b5aed81fa56a9357a43b23ff6`; elapsed 44.03646102999846 seconds.
+
+- `8e8bc41d`, 2026-10-27: explicit clean and actual acceptance/SMT rebuild pass
+  all 26 retained SMT tests, zero skipped; strict SMT/shim Clippy then stops on
+  five new acceptance-module style lints (#503), before shim compilation clears.
+  Final source checks pass. The followup uses idiomatic Option mapping,
+  saturating subtraction and question-mark syntax, with narrowly documented
+  complex transfer/constructive tuple signatures. Fresh whole-query and native
+  qualification is required; no style exemption grants behavioral/proof credit.
+
+- `51d2ba3d`, 2026-10-27: the complete idiomatic-syntax trial refuses only
+  `into_parts`' exact original pending-field postcondition under the native
+  Option-map closure. Saturating subtraction and question-mark obligations clear;
+  no resource or VIR refusal is reported. The followup retains those two idioms
+  and restores the explicit owned Option branches with a narrowly documented
+  `manual_map` allowance for this observed proof boundary. It adds no trusted
+  closure contract and preserves the complete original transfer postcondition.
+
+- `35daadcc`, 2026-10-27: whole-query Stock passes 596/1,025 with all old
+  functions retained, no VIR/resource refusal and final source/runtime checks.
+  Actual clean/recompile passes all 26 retained native SMT tests, zero skipped.
+  Acceptance/SMT strict Clippy clears; shim Clippy then refuses only the newly
+  elidable production impl lifetime (#504) after the borrowing initializer became
+  test-only. The source correction splits the named-lifetime test initializer
+  impl from the anonymous production impl, preserving every method body and
+  assertion. Native rerun, full controls/workspace/solver/conformance and the
+  separate tail candidate remain pending.
+
+- `1e739dbc`, 2026-10-27: all 26 retained SMT tests pass after actual clean/
+  rebuild; production shim Clippy clears, but lib-test Clippy refuses only the
+  old completion getter now unused in test scope (#504 recurrence). The source
+  adds incomplete checks and a separate nonempty two-reply completion path to
+  the existing ordinary replay fixture, retaining every prior assertion and
+  byte. No getter, policy or control is removed. Full native rerun remains
+  pending; all checked driver/file bytes still match the complete `35daadcc`
+  596/1,025 positive.

@@ -37,6 +37,12 @@ sail_code! {
             pub closed spec fn replay_view(&self) -> ReplayCursor { self.replay }
         }
         sail_method! {
+            /// Borrows the original opaque stream lease without transferring it.
+            pub fn owner(&self) -> (out:&Owner)
+                requires (true) ensures (*out == self.owner_view())
+            { &self.owner }
+        }
+        sail_method! {
             /// Starts before reads, around the actual endpoint's supplied lease.
             pub fn new(owner: Owner) -> (out: Self)
                 requires (true)
