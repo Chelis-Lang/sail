@@ -50,7 +50,7 @@ The source selftest inventory retains all 44 tests present at `c44cdcfa`
 (43 at `0247a13e` plus the role-metadata regression) and adds six later tests.
 The existing assembly/private-token fixture now supplies the required option
 module beside its original sources, preserving every mutation and assertion
-(#458); the corrected complete 50-test run remains pending.
+(#458); all 50 pass on native Linux at `90e2329f` in 198.139 s.
 Its expanded query counts/functions await complete whole-positive discovery;
 the historical 431/759 inventory is not an expanded-root result. The reviewed
 scope correction retains the complete validator loops while mutating acceptance
@@ -141,6 +141,7 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `90e2329f` | Expanded whole-positive discovery | All 50 source selftests pass, then the whole query root reports two unproved literal scalar-field assertions in its constructive option-history witness (440 verified, one failing function). No expanded inventory or later root/control qualification; add erased literal atom/span guidance without changing executable transitions or predicates |
 | 2026-10-26 | `b572bc99` | Expanded capture selftests | 49/50 pass; existing assembly/private-token fixture omits newly required `query_options.rs` and raises `KeyError` before its mutations (#458). Add that source to the fixture, preserving every assertion; no whole-positive discovery or ordinary-Verus control started |
 | 2026-10-26 | `03725fea` | Native workspace gate | Strict clippy next refuses two owner/payload similar-name locals, deprecated atomic alias and the enlarged inline entry variant; ordinary workspace tests and solver remain unrun. The correction preserves inline ownership and charges its complete carrier (#456) |
 | 2026-10-26 | `9f6dfd52` | Native workspace gate | Shared-kernel lint corrections pass; strict clippy next refuses the native completion adapter's optional-environment guard. Use the equivalent optional borrow and retain the same raw output, with an explicitly reviewed native source binding; ordinary tests/solver remain unrun |

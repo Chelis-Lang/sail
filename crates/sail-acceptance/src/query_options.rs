@@ -72,6 +72,16 @@ sail_verified! {
             vstd::string::is_ascii_spec_bytes(":rlimit");
             vstd::string::is_ascii_spec_bytes("reset");
             reveal_with_fuel(crate::query::trivia_after,2);
+            assert forall|i: int| 12 <= i < 26 implies
+                !crate::query::word_delimiter(print@[i]) by { }
+            assert forall|i: int| 27 <= i < 32 implies
+                !crate::query::word_delimiter(print@[i]) by { }
+            assert forall|i: int| 12 <= i < 19 implies
+                !crate::query::word_delimiter(limit@[i]) by { }
+            assert forall|i: int| 20 <= i < 22 implies
+                !crate::query::word_delimiter(limit@[i]) by { }
+            assert(keyword_fields(print@,print_spans));
+            assert(keyword_fields(limit@,limit_spans));
             assert(scalar_fields(print@,print_spans));
             assert(scalar_fields(limit@,limit_spans));
             assert(crate::query::head_span(ordinary@,1,7));
