@@ -2895,6 +2895,18 @@ sail_spec! {
             || cargo_footer_prefix(bytes, b"    Finished `release` profile [optimized + debuginfo] target(s) in "@)
     }
 
+    pub open spec fn cargo_footer_boundary_at(bytes: Seq<u8>, end: int) -> bool {
+        0 <= end <= bytes.len() && cargo_duration(bytes.skip(end))
+            && ((end == b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in "@.len()
+                    && bytes.take(end) == b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in "@)
+                || (end == b"    Finished `dev` profile [unoptimized] target(s) in "@.len()
+                    && bytes.take(end) == b"    Finished `dev` profile [unoptimized] target(s) in "@)
+                || (end == b"    Finished `release` profile [optimized] target(s) in "@.len()
+                    && bytes.take(end) == b"    Finished `release` profile [optimized] target(s) in "@)
+                || (end == b"    Finished `release` profile [optimized + debuginfo] target(s) in "@.len()
+                    && bytes.take(end) == b"    Finished `release` profile [optimized + debuginfo] target(s) in "@))
+    }
+
     pub open spec fn empty_human_observation(r: &ResolvedRequest, p: &ProjectResult, human: bool) -> bool {
         human && request_header_matches(r, p) && r.targets@.len() > 0 && p.targets@.len() == 0
             && !partial_command(r.args@) && !verification_disabled(r.args@)
@@ -2978,6 +2990,68 @@ sail_verified! {
             || cargo_footer_with_prefix(stderr, b"    Finished `dev` profile [unoptimized] target(s) in ")
             || cargo_footer_with_prefix(stderr, b"    Finished `release` profile [optimized] target(s) in ")
             || cargo_footer_with_prefix(stderr, b"    Finished `release` profile [optimized + debuginfo] target(s) in "))
+    }
+}
+
+sail_verified! {
+    /// Locates the duration of one complete footer, preserving its exact prefix.
+    pub fn cargo_footer_boundary(stderr: &[u8]) -> (out: Option<usize>)
+        requires(true)
+        ensures(out.is_some() == cargo_footer(stderr@),
+            out.is_some() ==> cargo_footer_boundary_at(stderr@, out.unwrap() as int),
+            out.is_some() ==> out.unwrap() <= 80)
+    {
+        if cargo_footer_with_prefix(stderr, b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in ") {
+            return Some(b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in ".len());
+        }
+        if cargo_footer_with_prefix(stderr, b"    Finished `dev` profile [unoptimized] target(s) in ") {
+            return Some(b"    Finished `dev` profile [unoptimized] target(s) in ".len());
+        }
+        if cargo_footer_with_prefix(stderr, b"    Finished `release` profile [optimized] target(s) in ") {
+            return Some(b"    Finished `release` profile [optimized] target(s) in ".len());
+        }
+        if cargo_footer_with_prefix(stderr, b"    Finished `release` profile [optimized + debuginfo] target(s) in ") {
+            return Some(b"    Finished `release` profile [optimized + debuginfo] target(s) in ".len());
+        }
+        None
+    }
+}
+
+sail_verified! {
+    /// Produces the byte-only replay by copying the admitted original prefix
+    /// and exactly the supplied complete numeric duration. This cannot replace
+    /// the original profile/header or insert report/diagnostic bytes.
+    #[allow(clippy::question_mark, reason = "Keep refusal explicit in the source shared with stock Verus.")]
+    pub fn render_empty_human_output(admitted: &EmptyHumanOutput, duration: &[u8]) -> (out: Option<Vec<u8>>)
+        requires(true)
+        ensures(out.is_some() ==> cargo_footer(out.unwrap()@),
+            out.is_some() ==> exists |end: int| cargo_footer_boundary_at(empty_human_stderr(admitted)@, end)
+                && out.unwrap()@ == empty_human_stderr(admitted)@.take(end) + duration@,
+            cargo_footer(empty_human_stderr(admitted)@) && cargo_duration(duration@)
+                && duration@.len() + 80 <= usize::MAX ==> out.is_some())
+    {
+        if !cargo_duration_only(duration) { return None; }
+        let stderr = admitted.stderr();
+        let Some(end) = cargo_footer_boundary(stderr) else { return None; };
+        if duration.len() > usize::MAX - end { return None; }
+        let mut bytes = copy_bytes(&stderr[..end]);
+        let mut i = 0usize;
+        sail_while! { (i < duration.len())
+            invariant(i <= duration.len(), end <= stderr.len(), end <= 80,
+                duration.len() as int + end as int <= usize::MAX,
+                cargo_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),
+                bytes@ == stderr@.take(end as int) + duration@.take(i as int))
+            decreases(duration.len() - i)
+            { bytes.push(duration[i]); i += 1; }
+        }
+        sail_proof! {
+            assert(duration@.take(i as int) =~= duration@);
+            assert(bytes@.take(end as int) =~= stderr@.take(end as int));
+            assert(bytes@.skip(end as int) =~= duration@);
+            assert(cargo_footer_boundary_at(bytes@, end as int));
+            assert(cargo_footer(bytes@));
+        }
+        Some(bytes)
     }
 }
 
