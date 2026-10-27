@@ -9,7 +9,12 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
-| `069e91f6` | Complete native whole positives pass: expanded option query 441/0 (776 functions), inputs 308/0 (538), authority 498/0 (878), every prior function retained and final source/runtime checks pass | Actual inventories frozen; all 134 expanded query controls and the current 359-case matrix remain pending, along with full native/differential gates and all six service obligations |
+| `6a4e5b86` authority diagnostics | 2026-10-27: all three canonical selected partitions pass, each with the entire authority positive 498/0 and all 878 functions; controls 76, 97 and 98 each fail ordinary verification at 497 verified plus one error | Identical source/runtime/compiler across six calls; default resources and final checks retained. Three of 107 controls only, not a complete component or suite; no native/workspace or broader service credit |
+| `1b7015c8` authority diagnostic | 2026-10-27: complete authority positive passes 498/0 with all 878 functions; the genuine singleton-refusal mutation retains 497 verified plus one error | It still reaches rlimit when the wrong shortcut follows eager proof unfolding. No negative control qualifies; the next variant places the identical wrong runtime shortcut before that existing erased reveal |
+| `f2262fce` authority diagnostics | 2026-10-27: whole authority positives pass 498/0 with all 878 functions; partitions `96/107` and `97/107` pass the always-accept/always-refuse path-withholding controls with final source/runtime checks | Control 76 still refuses at rlimit (497 verified plus one error, all 878 functions). Only two negative controls qualify; no complete component or suite credit |
+| `51c56ea3` authority guidance | 2026-10-27: the whole authority positive checks all 878 functions and retains 497 verified plus one ordinary error | The newly opaque target predicate needs a reveal in the existing whole-label refusal witness; no negative runs or qualifies. The witness correction changes no contract or executable behavior |
+| `7493c04e` authority diagnostics | 2026-10-27: canonical partition `75/107` passes the complete authority positive root (498/0, all 878 function entries); its full-factory always-refuse mutation retains 497 verified plus one error | The error is an rlimit refusal in `complete_exact_partial_request_ordered`, so no negative control qualifies. Partitions `96/107` and `97/107` remain unrun; no component or suite completion |
+| `069e91f6` | Complete native whole positives pass: expanded option query 441/0 (776 functions), inputs 308/0 (538), authority 498/0 (878), every prior function retained and final source/runtime checks pass | Actual inventories frozen; all 134 expanded query controls and its 359-case matrix remain pending, along with full native/differential gates and all six service obligations |
 | `7ac1c3d9` | Native source guards and all three whole positives pass (431/759, 308/538, 498/878). Workspace then stops in 0.51 s at a stale eleven-phase completion fixture, while the actual workflow and guard require ten (#453) | No compilation, ordinary tests or later gates run. The corrected fixture exercises all ten required positions and rejects eleven; the proof-job policy remains a separate unresolved choice |
 | `40d14854` | Native workspace passes (all 1,228 tests), all 31 models pass, then the production runner refuses authority control 76: 487 verified plus one error, all 830 functions, against 489 required obligations | The full-body mutation removed a loop obligation (#454). No negative credit or complete production pass; solver, e2e and conformance unrun. Corrected mutations retain complete loops and change only acceptance exits |
 | `9b4ceea2` | Native source guard suites and all three whole positives pass: query 431/0 (759 functions), inputs 308/0 (538), authority 498/0 (878); all previous functions retained and final source/runtime/image identities checked | Initial discovery only. No workspace, ordinary negative matrix, solver or conformance qualification; later main integration and lint fixes need fresh gates |
@@ -31,6 +36,48 @@ observation guarantee or service theorem is claimed. All six rows of the
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The terminal `7493c04e` diagnostic is retained at
+`experiments/2026-10-27/acceptance-authority-controls-7493c04e-native.tgz`,
+SHA-256 `f9f26608de2643239b169a6b912d75bda4cc1598778f861ca2d42cef02e72ab3`
+(6,727,929 bytes); the host and an independent download/hash audit agree.
+The first opacity candidate `51c56ea3` is retained at
+`experiments/2026-10-27/acceptance-authority-guidance-51c56ea3-native.tgz`,
+SHA-256 `2c4176ee230e494eb83dfd8c72340fc2de6d6438823a7dbe49541cc862f2fb8c`;
+upload and independent HTTP readback pass. Its failed positive has raw verifier
+output and the exact source bundle, not a successful final partition report
+or completed runtime recheck.
+The `f2262fce` attempt and its two successful path diagnostics are retained at
+`experiments/2026-10-27/acceptance-authority-guidance-f2262fce-native.tgz`,
+SHA-256 `7c45be58be64ddecd666f8e99b32598b684d60cb0780d7e412945f89af215251`;
+upload and independent HTTP readback pass. Opacity was insufficient for control
+76. Production/specification and refinement sources are restored exactly to
+`7493c04e`; only that genuine full-factory mutant gains a wrong singleton early
+refusal before the unchanged original guards/loop, retaining its final refusal.
+Non-singleton requests can still execute the loop under the original guards.
+No predicate, contract, invariant or resource limit is weakened; all 498
+obligations and 878 functions stay mandatory. Selected whole-root diagnostics qualify separately at `6a4e5b86`;
+full-component and integration qualification remain pending.
+
+The terminal `1b7015c8` diagnostic is retained at
+`experiments/2026-10-27/acceptance-authority-guidance-1b7015c8-native.tgz`,
+SHA-256 `be979c76b739b06eb434607356390c52e92f1927a5cb8041175d87fafa70b17b`;
+upload and independent HTTP readback pass. The next control changes only the
+position of the erroneous singleton shortcut relative to the existing erased
+reveal. Every original loop/invariant and ordinary verification limit remains.
+
+The successful `6a4e5b86` diagnostics are retained under private object key
+`experiments/2026-10-27/acceptance-authority-guidance-6a4e5b86-native.tgz`,
+SHA-256 `4419c09072fc2c8f4c7740c1c020d85b618a237dff78397682872cd174034a10`
+(7,340,416 bytes); upload and independent HTTP GET/hash pass. The partial-request
+refusal fails exactly the promised successful-admission postcondition at the
+erroneous singleton return, with no resource refusal. Path withholding always-
+accept/always-refuse controls independently fail their original contracts. All
+three whole positives retain 498 obligations and all 878 functions. Each report
+has `complete_component_controls=false` and `complete_suite=false`. Production
+and refinement sources remain byte-identical to `7493c04e`; the integrated
+replacement head still needs its own full gates. All six service obligations
+remain open.
 
 The failed `40d14854` gate is retained at
 `experiments/2026-10-26/acceptance-combined-40d14854-native-gate.tgz`, SHA-256
