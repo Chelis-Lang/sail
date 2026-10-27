@@ -383,8 +383,13 @@ assertions and adds prefix/focus, Unicode and embedded-NUL data preservation.
 Fourteen executable controls cover mode and separator guards, exact original
 argument retention, missing observations, necessary/exact marker appends,
 unnecessary appends and a full always-refusing operation with its loop intact.
-All existing 63 request controls remain required. No new verified/function counts
-are guessed; whole-root, native and ordinary-negative qualification are pending.
+All existing 63 request controls remain required. Frozen `69a4c365` passes all
+three complete Stock roots, with authority 576/0 and 983 function entries and all
+older functions retained. Strict workspace/all-target Clippy and all 23 selected
+native fixtures pass. The source-harness receipt remains `30846bfe` (67 tests),
+with unchanged harness/manifest bytes checked before fresh complete-root proof.
+All fourteen new ordinary negatives, conformance and cost remain pending; see
+[qualification](../validation/acceptance-boundary-refinements.md).
 
 The proposed guarantee is conditional on the provided observed options. Their origin and
 identity relative to the compiler's actual consumed arguments remain native
