@@ -35,6 +35,9 @@ _LIFETIME = re.compile(r"'[A-Za-z_][A-Za-z_0-9]*")
 _WORD = re.compile(r"[A-Za-z_][A-Za-z_0-9]*|[0-9][A-Za-z_0-9]*")
 
 
+CHECKED_FUNCTION_MACROS = frozenset({"sail_verified", "sail_method", "sail_no_unwind_method", "sail_drop"})
+ERASED_MACROS = frozenset({"sail_spec", "sail_impl_spec", "sail_proof", "sail_snapshot"})
+
 def checked_attribute(stream: list[Token], start: int, allowed: set[str]) -> int:
     """Accept only reviewed attributes, with no custom derive expansion."""
     require(stream[start].value == "#" and start + 2 < len(stream)
@@ -162,20 +165,29 @@ def _executable_envelopes(stream: list[Token]) -> list[tuple[int, int]]:
     while i < len(stream):
         token = stream[i]
         macro = i + 2 < len(stream) and stream[i + 1].value == "!"
-        if macro and token.value in {"sail_spec", "sail_impl_spec", "sail_proof"}:
+        if macro and token.value in ERASED_MACROS:
             i = closing(stream, i + 2) + 1
             continue
         if token.value in {"proof", "spec", "by"} and i + 1 < len(stream) and stream[i + 1].value == "{":
             i = closing(stream, i + 1) + 1
             continue
-        if not macro or token.value not in {"sail_verified", "sail_method"}:
+        if not macro or token.value not in CHECKED_FUNCTION_MACROS:
             i += 1
             continue
         end = closing(stream, i + 2)
         at = i + 3
+        if token.value == "sail_drop":
+            require([item.value for item in stream[at:at + 7]] ==
+                ["fn", "drop", "(", "&", "mut", "self", ")"],
+                "unsupported checked Drop signature")
+            at += 7
+            require(at < end and stream[at].value == "{" and closing(stream, at) == end - 1,
+                "missing or trailing checked Drop body")
+            bodies.append((at, end - 1))
+            i = end + 1
+            continue
         seen_fn = False
-        first_clause = "requires"
-        while at < end and stream[at].value != first_clause:
+        while at < end and stream[at].value != "requires":
             value = stream[at].value
             require(value != "{", "runtime body before macro contracts")
             if value == "fn":
@@ -185,8 +197,7 @@ def _executable_envelopes(stream: list[Token]) -> list[tuple[int, int]]:
                 at = closing(stream, at)
             at += 1
         require(seen_fn, "missing checked runtime function")
-        clauses = ("requires", "ensures")
-        for clause in clauses:
+        for clause in ("requires", "ensures"):
             require(at + 1 < end and stream[at].value == clause
                 and stream[at + 1].value == "(", "unsupported checked macro contract")
             at = closing(stream, at + 1) + 1
@@ -239,7 +250,7 @@ def _runtime_projection(text: str) -> RuntimeProjection:
                 at = annotations[at]
                 continue
             macro = at + 2 <= end and stream[at + 1].value == "!"
-            ghost = (macro and token.value in {"sail_proof", "sail_spec", "sail_impl_spec"})
+            ghost = (macro and token.value in ERASED_MACROS)
             ghost_group = (token.value in {"proof", "spec", "by"}
                 and at + 1 <= end and stream[at + 1].value == "{")
             if ghost or ghost_group:
@@ -253,7 +264,7 @@ def _runtime_projection(text: str) -> RuntimeProjection:
                     at += 1
                 continue
             require(token.value != "fn" and not (macro
-                and token.value in {"sail_verified", "sail_method"}),
+                and token.value in CHECKED_FUNCTION_MACROS),
                 "nested runtime function outside mutation capture subset")
             verification_only = {"assert", "assert_forall", "assume", "admit",
                 "reveal", "reveal_with_fuel", "hide", "broadcast", "calc"}
@@ -341,6 +352,90 @@ def runtime_mutation(source: str, before: str, after: str) -> None:
         "mutation must change exactly one executable body, not only proof syntax")
 
 
+def candidate_indexed_policy(source: str) -> None:
+    """Close the reviewed private actual map/index owner's construction API.
+
+    This supplements checked operation bodies; it supplies no validity, native
+    primitive, clock, accounting, allocation or solver-origin assumption.
+    """
+    prelude = "#[cfg(sail_verus)]\nuse vstd::prelude::*;"
+    require(source.count(prelude) == 1, "indexed owner conditional prelude changed")
+    checked_item_envelopes(source.replace(prelude, ""))
+    stream = tokens(source)
+    values = [token.value for token in stream]
+    require(not ({"derive", "type", "trait", "const", "static", "unsafe", "extern", "include"} & set(values)),
+        "indexed owner unreviewed constructor/type escape")
+    require(values.count("cfg") == 1 and values.count("impl") == 1,
+        "indexed owner conditional/trait implementation escape")
+    expected_imports = (
+        "use vstd::prelude::*;", "use std::collections::BTreeMap;",
+        "use crate::cache_candidate::{Entry, Slot};",
+        "use crate::cache_counted::CountedSlots;", "use crate::cache_order;",
+        "use crate::inputs::byte_eq;",
+    )
+    levels = top_level(stream)
+    require(sum(token.value == "use" and level for token, level in zip(stream, levels, strict=True))
+        == len(expected_imports), "indexed owner import surface changed")
+    for item in expected_imports:
+        wanted = [t.value for t in tokens(item)]
+        require(sum(values[i:i + len(wanted)] == wanted for i in range(len(values) - len(wanted) + 1)) == 1,
+            "indexed owner actual type/selector import changed")
+    require(values.count("sail_code") == 1 and values.count("struct") == 1
+        and values.count("enum") == 0, "indexed owner unreviewed executable type")
+    expected_declaration = [token.value for token in tokens("""pub struct IndexedSlots<Value, Stamp> {
+        slots: CountedSlots<Value, Stamp>, order: BTreeMap<u64, [u8; 32]>, }""")]
+    require(sum(values[i:i + len(expected_declaration)] == expected_declaration
+        for i in range(len(values) - len(expected_declaration) + 1)) == 1,
+        "indexed owner must retain exactly one private actual map and index")
+    start = values.index("IndexedSlots", values.index("struct"))
+    begin = next(i for i in range(start, len(values)) if values[i] == "{")
+    end = closing(stream, begin)
+    require("pub" not in values[begin + 1:end], "indexed owner state fields must remain private")
+    for view in (
+        "pub closed spec fn slots_view(&self) -> CountedSlots<Value, Stamp> { self.slots }",
+        "pub closed spec fn order_view(&self) -> Map<u64, [u8; 32]> { self.order@ }",
+        "pub open spec fn valid(&self) -> bool { paired(self.slots_view(), self.order_view()) }",
+        "pub open spec fn lookup_view(&self, key: Seq<u8>) -> Option<Slot<Value, Stamp>> { self.slots_view().lookup_view(key) }",
+    ):
+        wanted = [t.value for t in tokens(view)]
+        require(sum(values[i:i + len(wanted)] == wanted
+            for i in range(len(values) - len(wanted) + 1)) == 1,
+            "indexed owner view must bind its actual private fields")
+    expected_headers = {'empty': 'e9b3dde822a6ca59d5991a13ede4805abb25e105db54e1aa63fdde48e539985c',
+     'owner_bytes': '6fee8003e429c64986e52054b59678cfa5ab82184b1dbd8d36e661d3737fe9b2',
+     'get': '6941ee79079b88f3a261e5655c66a30c2408aebc9de1e8a91063db6141694a52',
+     'order': '34c34424bfd964b17f90c13ce87acb99e570a5c633f66f4c056b4bab05b69068',
+     'is_empty': '09c544d7d66ef2757d84a5e6a93d0220155419cc032d773967dca6d2a9ff810d',
+     'len': '7b5362d175ab2a47172cd77cdf14917bcf656b66a114c4a7f91b88ad8587943c',
+     'capacity': '31530c741a580b1fb2d8cb6d83ba1e1d6009eaf4017cb793cfefc6f6417f7186',
+     'bucket_count': '81a0f518917116da8b22a9eaef0272b9ac2f10db0641082bcca07811f3f867f3',
+     'insert_new': 'b8ade14028804b3b1dad1a11f4fa04112bce166bc18e2893e9088604d2747268',
+     'take': '0edd77639d63fc7a2272290414021f0512a00d5546708dd59b6461292c5399dc',
+     'touch': '33e9de282ab25dd3c9efb077f12b322f2464ce91442600ec68c6481f39514103',
+     'take_oldest': '5ebaa4294db21abe7f1373c271e1a1d3f2574926e12a7ab5884ee915f846422a',
+     'renumber': '6473451fc53500cc551cdfa762b72652bd4eedc735e4f1e6c2d635ec08e53130',
+     'clear': '34c36c3183cc1d15ed7e1ec9a81eee7df966510a267877beef623bad3cd9f8a0'}
+    envelopes = _executable_envelopes(stream)
+    actual_headers = {}
+    for i, token in enumerate(stream):
+        if token.value == "fn" and stream[i - 1].value not in {"spec", "proof"}:
+            require(stream[i - 1].value == "pub", "indexed owner hidden runtime entry")
+            following = [(begin, end) for begin, end in envelopes if begin > i]
+            require(bool(following), "indexed owner unchecked runtime function")
+            begin, _ = following[0]
+            name = stream[i + 1].value
+            require(name not in actual_headers, "indexed owner duplicate runtime entry")
+            actual_headers[name] = hashlib.sha256(repr(values[i - 1:begin]).encode()).hexdigest()
+    require(actual_headers == expected_headers,
+        "indexed owner runtime signature/precondition/postcondition changed")
+    paired_start = next(i - 3 for i in range(3, len(stream))
+        if stream[i].value == "fn" and stream[i + 1].value == "paired")
+    paired_begin = next(i for i in range(paired_start, len(stream)) if stream[i].value == "{")
+    paired_end = closing(stream, paired_begin)
+    require(hashlib.sha256(repr(values[paired_start:paired_end + 1]).encode()).hexdigest()
+        == "2426517e601f9dc05b731813c1d74546968f5e133d76dbe82a1fd18c8c17c1b0", "indexed owner full-key/tick correspondence predicate changed")
+
+
 def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
     """Privileged modules cannot hide ordinary unchecked Rust constructors.
 
@@ -351,8 +446,8 @@ def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
     """
     stream = tokens(source)
     levels = top_level(stream)
-    items = {"sail_code", "sail_spec", "sail_impl_spec", "sail_verified", "sail_method"}
-    functions = {"sail_spec", "sail_impl_spec", "sail_verified", "sail_method"}
+    items = {"sail_code", "sail_spec", "sail_impl_spec", *CHECKED_FUNCTION_MACROS}
+    functions = {"sail_spec", "sail_impl_spec", *CHECKED_FUNCTION_MACROS}
     if proof:
         items.add("verus")
         functions.add("verus")

@@ -8,6 +8,7 @@ semantic versioning once the API is published.
 - Extend acceptance-model checks for engine completion, normal declines,
   same-subject fallback and per-target repair origins; require every enrolled
   model failure control.
+- Stage the checked cache generation, complete-key map and index kernels; native cache adoption remains separate.
 
 - Resolve managed configuration homes from the supplied environment, keeping
   CARGO_HOME precedence and native path bytes from that observation.
