@@ -20,6 +20,15 @@ native source-suite evidence; this combined extension and actual request/domain
 construction still require fresh native source checks and complete-root Stock
 discovery. No function or obligation counts are inferred from the support probe.
 
+The later captured-worker selection source candidate is separate from the frozen
+request/domain qualifier. It adds the actual decoded `RequestCapture` declaration
+and version constant, the checked consuming selection loop, native caller binding
+and twelve mandatory executable controls. Existing 559/961 authority inventory
+entries are retained as a required subset; no new function/obligation counts are
+guessed. All new whole-root, source, native and negative checks are pending.
+Decoding/canonicalization/journal origin are native boundaries; no physical-origin
+or proof-authority claim follows from selecting a matching request data record.
+
 The failed `23ccd443` capture attempt is retained at
 `experiments/2026-10-27/acceptance-request-domain-23ccd443-native.tgz`, SHA-256
 `fa07fe39b732e64700ffe0f9aabd7f3acc6e79f69e037bff6caace61a384f7b4`

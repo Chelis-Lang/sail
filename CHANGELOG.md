@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Route decoded worker-journal selection through checked source, retaining the
+  original version, worker, run, uniqueness, invocation, arguments, mode and
+  project checks. Return the selected owned original request as data; decoding,
+  path observation and journal origin remain native boundaries. This new slice
+  awaits complete-root, native and ordinary-negative qualification.
+
 - Keep both request-candidate API-library capture bindings and declared source
   dependency ordering consistent; include the actual immutable key in assembly
   rejection fixtures (#479). The guards retain strict refusal and report the
@@ -13,8 +19,9 @@ semantic versioning once the API is published.
 - Construct the candidate's actual pre-Cargo and replay requests from the
   original target dictionary through shared checked insertion, iteration and
   header construction. Preserve target ordering, metadata filters, arguments and
-  engine/repair options; unavailable projection refuses admission. Direct-stock
-  production, native differential, conformance and cost checks remain pending.
+  engine/repair options; unavailable projection refuses admission. Complete
+  production Stock discovery passes; native differential, ordinary negatives,
+  conformance and cost checks remain pending.
 
 - Give the original-target comparator candidate an explicit checked trait-method
   envelope that inherits trait preconditions, retaining its native method bodies

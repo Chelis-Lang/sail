@@ -414,6 +414,28 @@ class SourceCaptureTests(unittest.TestCase):
             (ROOT / "crates/sail-api/src" / (name + ".rs")).read_bytes()
             for name in SOURCE.API_MODULES}
 
+    def test_worker_capture_record_and_actual_version_are_in_the_checked_projection(self):
+        snapshots = {"crates/sail-api/src/" + module + ".rs":
+            (ROOT / "crates/sail-api/src" / (module + ".rs")).read_bytes()
+            for module in SOURCE.API_MODULES}
+        stencils, inventory = SOURCE.api_stencils(snapshots)
+        project = stencils["project.rs"].decode()
+        self.assertIn("pub struct RequestCapture {", project)
+        for field in ("pub version: u32,", "pub worker_id: String,", "pub request: ResolvedRequest,"):
+            self.assertIn(field, project)
+        self.assertIn("pub const REQUEST_CAPTURE_VERSION : u32 = 1 ;", project)
+        path = "crates/sail-api/src/project.rs"
+        for before, after in (
+            (b"pub const REQUEST_CAPTURE_VERSION: u32 = 1;", b"pub const REQUEST_CAPTURE_VERSION: u32 = 2;"),
+            (b"pub const REQUEST_CAPTURE_VERSION: u32 = 1;", b"const REQUEST_CAPTURE_VERSION: u32 = 1;"),
+            (b"pub worker_id: String,", b"pub worker_id: Vec<u8>,"),
+        ):
+            changed = dict(snapshots)
+            self.assertEqual(changed[path].count(before), 1)
+            changed[path] = changed[path].replace(before, after)
+            with self.subTest(before=before), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.api_stencils(changed, inventory)
+
     def test_real_stencil_preserves_actual_authority_fields(self):
         files, inventory = SOURCE.api_stencils(self.snapshots())
         self.assertIn(b"pub command: Vec < String >,", files["output.rs"])
