@@ -10,7 +10,10 @@ witnesses are outside the existing Verus wrapper
 contains a worker dependency outside its declared component closure (#479).
 The correction keeps all four witnesses inside the checked wrapper and retains
 the actual worker binding in inputs/authority. No source guard, function,
-contract or ordinary control is omitted; fresh qualification remains pending.
+contract or ordinary control is omitted. Corrected source passes all 67 source
+checks; authority compilation then catches a mixed Option index annotation
+before verification (#492). The explicit integer relation retains its intended
+meaning; fresh complete-root/native qualification remains pending.
 
 The request/domain candidate passes all complete production Stock roots but
 native test compilation at `206c077f` stops on three old-interface uses in the
