@@ -1061,3 +1061,12 @@ remain earlier observations, not fresh qualification. Native `1f356624` explicit
 cleans and recompiles both touched packages and passes all 24 SMT tests and
 strict package Clippy, with final source checks. All 213 controls, broader
 workspace/solver/conformance and the stdout-owned composition remain required.
+
+The next isolated source candidate pairs actual `StreamOutput` and output-mode
+splitter in private `ParsedOutput`. `append_items` retains the same raw chunk
+and exact ordered parser inventory; actual output-side calls delegate without
+changing original forwarding, independent frame refusal or physical EOF/wait.
+All previous operations/contracts remain; two nonempty constructive candidates
+and twelve ordinary full-method controls append (225 query, 23/9/14 assembly).
+Whole-root counts, native new fixtures and full controls are unqualified; the
+553/951 lexical checkpoint is not evidence for these newly added functions.

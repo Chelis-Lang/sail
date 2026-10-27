@@ -27,8 +27,8 @@ use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, Sol
 use sail_session::Session as NativeSession;
 use sail_smtlib::command::{CommandKind, Output, classify};
 #[cfg(test)]
-use sail_smtlib::split::CommandSplitter;
-use sail_smtlib::split::{Item, ItemKind, ResponseSplitter, is_single_response};
+use sail_smtlib::split::{CommandSplitter, ResponseSplitter};
+use sail_smtlib::split::{Item, ItemKind, is_single_response};
 
 /// Native Session plus independently retained raw policy-option bytes.
 /// Map readback agreement does not prove the pinned solver's option semantics.
@@ -817,14 +817,13 @@ fn output_side(
 ) -> u8 {
     let owner = Arc::clone(&process.owner);
     let limit = buffer_limit();
-    let mut all = sail_acceptance::query_output_owner::StreamOutput::new_replayed(
+    let mut all = sail_acceptance::query_output_split::ParsedOutput::new_replayed(
         Arc::clone(&owner),
         u64::try_from(served.len()).unwrap_or(u64::MAX),
     );
     // Once forwarding is live and nothing more will be recorded, every later
     // byte is forwarded as read, exactly as pass-through forwards it.
     let mut streaming = false;
-    let mut splitter = ResponseSplitter::new();
     let mut check = ReplayCheck::new(served, Arc::clone(&owner));
     let mut forward_from: Option<usize> = all.forwarding().then_some(0);
     let mut forwarded = 0usize;
@@ -864,9 +863,7 @@ fn output_side(
             }
             continue;
         }
-        all.append(chunk);
-        let mut items: Vec<Item> = Vec::new();
-        splitter.push(chunk, &mut items);
+        let items = all.append_items(chunk);
         for item in items {
             let start = usize::try_from(item.offset).unwrap_or(usize::MAX);
             if let Some((fresh, s)) = prev.take() {

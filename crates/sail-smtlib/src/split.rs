@@ -119,6 +119,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn shared_owned_stdout_parser_controls_execute() {
+        assert!(sail_acceptance::query_output_split::parsed_output_constructive_control());
+        assert!(sail_acceptance::query_output_split::parsed_output_partial_refused());
+    }
+
+    #[test]
     fn shared_list_frames_preserve_chunks_and_incomplete_finish() {
         for (source, kind) in [
             (b"(echo \"a\"\"(b)\")".as_slice(), ItemKind::List),

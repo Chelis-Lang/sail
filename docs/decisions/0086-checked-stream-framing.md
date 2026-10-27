@@ -47,3 +47,10 @@ remain separate obligations under #371. Representable buffer append is an explic
 premise, not evidence of stream completeness or EOF. Normal native, whole-root
 proof/control, conformance and added-cost qualification are required; none is
 inherited from earlier captures.
+
+The next same-edge source slice pairs actual stdout retention and splitter
+advancement inside `query_output_split::ParsedOutput`; native output-side
+forwarding and independent frame refusal consume that controller. Existing
+`StreamOutput` contracts and physical/EOF/origin dependencies stay unchanged.
+This adds no dependency edge or architecture selection. Its new functions and
+controls require independent whole-root/native qualification.

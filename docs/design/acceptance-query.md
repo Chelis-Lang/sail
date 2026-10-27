@@ -1559,3 +1559,47 @@ Clippy. This qualifies the named actual lexical transitions/head correspondence,
 not remaining command arguments, Session/Z3 interpretation, physical read/EOF,
 output-owned composition, cache origin or any full-control/service theorem.
 All 213 query controls remain mandatory.
+
+### Actual owned stdout/splitter candidate
+
+`query_output_split::ParsedOutput` owns the actual `StreamOutput` and one
+output-mode `StreamSplitter`. Its private factory initializes both before any
+read. `append_items` first retains the original read bytes in that controller,
+then advances that same owned splitter and returns its complete ordered
+`model_scan` inventory against the retained tape. Its coherence predicate is a
+projection of private actual bytes/cursor/state, not a supplied Boolean or
+separately chosen history. The retained byte vector's real length supplies the
+existing cursor/emission capacity bounds. No second raw tape is introduced.
+
+The shim's actual output loop uses this controller instead of separately
+appending to `StreamOutput` and pushing the chunk into `ResponseSplitter`.
+Frame refusal still runs the unchanged `Transcript::frame`/`response_shape`
+check over the original intervals; framing items do not authorize publication.
+Forwarding, replay cursor advancement/comparison, original offsets and pending
+reply order, physical read/end/wait handling, final prefix checks and publication
+remain unchanged. `discard` retains the existing raw-storage release and resets
+only the now-unused private parser after the native loop enters streaming mode.
+The controller has no mutable escape that can append bytes without its parser.
+
+This wrapper preserves every existing `StreamOutput` body and total contract.
+Adding its parser invariant directly to the old controller would instead have
+strengthened old caller preconditions. Only the new paired controller methods
+require its own factory-established coherence. Failed/partial frame refusal
+continues to retain every raw byte. A nonempty constructive candidate fragments
+two original atom responses, retains CRLF, checks ordered items, advances the
+original suppression cursor and independently admits their actual intervals;
+a second candidate keeps an unfinished list unpublishable after the explicit
+end event. These are logical controller traces, not authenticated OS EOF or
+solver-origin observations.
+
+Twelve ordinary full-method controls append to all 213 query controls (225),
+covering output mode/replay initialization, original chunk/offset/continuation,
+complete returned inventory, discard reset, end/refusal and always-refusing
+frame/seal paths. Closed query assembly adds this actual production file
+(23/9/14 files); this branch plans 464 unique cases or 473 four-partition calls.
+The inherited 553/951 query inventory is the observed lexical checkpoint, not a
+count for these new functions. Actual whole-root discovery, all controls,
+new native fixtures, full workspace/conformance and runtime cost remain pending.
+Native output read/forwarding attribution, independently supplied EOF/exit
+truth, downstream Session/solver interpretation and cache origin remain open.
+No dependency edge, solver policy, trust axiom or CI-policy choice changes.
