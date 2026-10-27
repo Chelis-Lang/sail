@@ -98,6 +98,8 @@ executable digests, legacy-manifest migration and native rebuild controls.
 
 [Deep Verus checks](deep-verus-tests.md) explains the fork and stock source
 variants, exact shim comparisons and the independent stock test-program oracle.
+The [0.1.0 release notes](release-notes/0.1.0.md) are a draft until the
+release.
 [Releasing](releasing.md) gives the release procedure, the archive names and
 layout, and how `sail` finds the bundled engine.
 [Managed runs](managed-cold-start.md) explains what the first managed run costs
