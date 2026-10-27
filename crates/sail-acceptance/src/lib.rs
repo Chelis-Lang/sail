@@ -9,6 +9,8 @@
 mod syntax;
 
 pub mod authority;
+/// Insertion-issued candidate generations and transitions over actual memory slots.
+pub mod cache_candidate;
 /// Exact cache record-write sequencing without an origin-authority assertion.
 pub mod cache_write;
 pub mod inputs;

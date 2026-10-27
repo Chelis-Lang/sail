@@ -224,6 +224,59 @@ class SourceCaptureTests(unittest.TestCase):
             with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
                 CHECKER.validate_assembly(snapshots)
 
+    def test_candidate_clock_and_endpoint_native_surface_cannot_restart_or_escape(self):
+        source = (ROOT / CHECKER.CANDIDATE_NATIVE).read_text()
+        SOURCE.candidate_memory_policy(source)
+        for before, after in (
+            ("        self.clock.exhaust();", "        self.clock = Clock::start();"),
+            ("        self.slots.clear();", "        *self = Self::default();"),
+            ("        self.accounting.clear();", "        self.accounting = Accounting::empty();"),
+            ("const SLOT_GROWTH: usize =", "type EscapedOldSlot = SlotBeforeGeneration;\nconst SLOT_GROWTH: usize ="),
+            ("                inner: Arc::clone(endpoint),", "                inner: Arc::new(Mutex::new(Inner::default())),"),
+            ("struct MemoryEndpoint {", "pub struct MemoryEndpoint {"),
+            ("    queued: Prepared<MemoryEndpoint, Effort>,", "    pub queued: Prepared<MemoryEndpoint, Effort>,"),
+            ("#[derive(Debug)]\npub struct MemoryTier", "#[derive(Debug, Default)]\npub struct MemoryTier"),
+        ):
+            self.assertEqual(source.count(before), 1)
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.candidate_memory_policy(source.replace(before, after))
+
+    def test_candidate_records_are_private_and_ticket_copy_cannot_mint_a_constructor(self):
+        paths = {path for component in CHECKER.COMPONENTS
+            for path in CHECKER.dependency_paths(component)}
+        paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs",
+            "crates/sail-acceptance/Cargo.toml", "crates/sail-api/src/lib.rs"])
+        paths.update("crates/" + name + "/Cargo.toml" for name in
+            ("sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
+        original = {path: (ROOT / path).read_bytes() for path in paths}
+        for before, after in (
+            (b"        last: u64,", b"        pub last: u64,"),
+            (b"        bytes: u64,", b"        pub bytes: u64,"),
+            (b"        generation: u64,\n    }", b"        pub generation: u64,\n    }"),
+            (b"    pub struct Clock {", b"    #[derive(Default)]\n    pub struct Clock {"),
+            (b"    pub struct Ticket {", b"    #[derive(Default)]\n    pub struct Ticket {"),
+            (b"        endpoint: Endpoint,", b"        pub endpoint: Endpoint,"),
+            (b"        candidate: CandidateWrite<Effort>,", b"        pub candidate: CandidateWrite<Effort>,"),
+        ):
+            snapshots = dict(original)
+            self.assertIn(before, snapshots[CHECKER.CANDIDATE_CORE])
+            snapshots[CHECKER.CANDIDATE_CORE] = snapshots[CHECKER.CANDIDATE_CORE].replace(before, after)
+            with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
+                CHECKER.validate_assembly(snapshots)
+
+    def test_candidate_actual_native_callers_are_bound_but_not_all_stock_compiled(self):
+        entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),
+            "source": "proofs/refinement/query.rs"}
+        roles = CHECKER.source_roles(entry)
+        self.assertIn(CHECKER.CANDIDATE_CORE, roles["checked_source"])
+        paths = {"crates/sail-cache/src/memory.rs", "crates/sail-cache/src/lib.rs",
+            "crates/sail-daemon/src/writer.rs", "crates/sail-daemon/src/server.rs"}
+        self.assertTrue(paths <= set(roles["reviewed_query_io"]))
+        self.assertFalse(paths & set(roles["checked_source"]))
+        for path in paths:
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, (ROOT / path).read_bytes() + b"\n// native drift\n")
+
     def test_full_body_control_cannot_remove_checked_loop_syntax(self):
         original = b"{ sail_while! { (i < n) invariant(i <= n) { i += 1; } } true }"
         CHECKER.check_control_loops(original, original[:-6] + b"false }")
@@ -638,6 +691,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-acceptance/src/authority.rs",
+            CHECKER.CANDIDATE_CORE, CHECKER.CANDIDATE_NATIVE,
             CHECKER.KEY_CORE, CHECKER.WRITE_CORE, CHECKER.DELIVERY_CORE, CHECKER.OUTPUT_CORE, CHECKER.PUBLICATION_CORE, CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.PIPE_CORE,
             CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
@@ -798,13 +852,13 @@ class SourceCaptureTests(unittest.TestCase):
     def test_owned_query_modules_keep_actual_imports_and_checked_constructors(self):
         for path in ("crates/sail-acceptance/src/query_prefix.rs",
                 "crates/sail-acceptance/src/query_policy.rs",
-                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.KEY_FACTORY):
+                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.CANDIDATE_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             CHECKER.compiled_subset(path, original)
             for addition in (b"\nuse hidden::*;", b"\n#[cfg(sail_verus)] use hidden::*;"):
                 with self.subTest(path=path, addition=addition), self.assertRaises(CHECKER.Refusal):
                     CHECKER.compiled_subset(path, original + addition)
-        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.KEY_FACTORY):
+        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.CANDIDATE_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
                 CHECKER.compiled_subset(path, original + b"\npub fn unchecked_factory() -> bool { true }")

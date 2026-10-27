@@ -152,14 +152,9 @@ pub struct Stored {
     pub stamp: FileStamp,
 }
 
-/// What [`DiskCache::put_stamped`] did.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PutOutcome {
-    /// The entry was written; its file has this stamp.
-    Written(FileStamp),
-    /// An entry for the key already existed and was left alone.
-    Exists,
-}
+/// What [`DiskCache::put_stamped`] did. This is the same source-shared
+/// candidate outcome consumed by original-insertion memory settlement.
+pub type PutOutcome = sail_acceptance::cache_candidate::Publication<FileStamp>;
 
 /// Why an entry file is not a valid entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]

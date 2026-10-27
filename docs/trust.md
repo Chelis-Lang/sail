@@ -16,6 +16,14 @@ tier of signed entries (ADR 0017).
 | Bundled tier | Nothing, until verified: then as far as the release archive is trusted, and only for that archive's own pack | `replies/release.pub` and `replies/vstd.pack` must match the SHA-256 and size that the archive's `release-files.json` lists for them, or the tier is not used. Then every entry passes the shared tier's checks below, with that one key as the only trusted signer (ADR 0062) |
 | Shared tier | Nothing, until verified (rule 9): then exactly as far as its signer is trusted | An ed25519 signature by a key in `<cache root>/trust/*.pub`, over the key, reply hash, command, mode, solver identity, platform class, effort, format version and signer id. Then: key, reply hash, solver identity and platform class equal the session's, the reply has its command's shape, and an `unknown` passes the serving policy (ADR 0009). Any failure or timeout is a miss (ADR 0017) |
 
+Memory completion and stale-read removal retain private handles for the
+original insertion and tier. A newer insertion is distinct even when it reuses
+the same Arc or identical bytes; old handles cannot promote or remove it.
+Exhausted lifetime clocks refuse memory reuse without resetting their domain.
+These candidate-association guards do not establish a truthful solver origin;
+the [candidate refinement record](validation/cache-candidate-refinement.md)
+separates implemented source, unrun gates and remaining origin obligations.
+
 ## Solver identity
 
 A daemon handshake recomputes the executable hash and version. The former
