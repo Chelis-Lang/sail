@@ -272,12 +272,12 @@ impl State {
                 return None;
             }
             match slot {
-                Slot::Pending => return Some((value, Source::Memory)),
+                Slot::Pending => return Some((value.into_value(), Source::Memory)),
                 Slot::OnDisk(stamp) => {
                     if self.disk.stamp_for_hit(key) == Some(stamp) {
-                        return Some((value, Source::Memory));
+                        return Some((value.into_value(), Source::Memory));
                     }
-                    self.memory.remove_if(key, &value);
+                    value.remove_if_current();
                 }
             }
         }
@@ -362,13 +362,13 @@ impl State {
             reply: verified.reply,
             effort: verified.effort,
         });
-        let job = Job {
-            key: *key,
-            value: Arc::clone(&value),
-            command: verified.command,
+        let job = Job::new(
+            key.0,
+            Arc::clone(&value),
+            verified.command,
             provenance,
-            solver: solver.summary(),
-        };
+            solver.summary(),
+        );
         if !self.disk.contains(key)
             && self.writer.submit(&self.memory, job, Duration::ZERO) == Submitted::Dropped
         {
@@ -481,9 +481,9 @@ impl State {
         if self.disk.contains(&key) {
             return;
         }
-        let job = Job {
-            key,
-            value: Arc::new(Value {
+        let job = Job::new(
+            key.0,
+            Arc::new(Value {
                 mode: mode.to_owned(),
                 reply,
                 effort: meta.effort.map(|e| sail_cache::Effort {
@@ -492,10 +492,10 @@ impl State {
                     reason: e.reason,
                 }),
             }),
-            command: meta.command,
-            provenance: meta.provenance,
-            solver: solver.summary(),
-        };
+            meta.command,
+            meta.provenance,
+            solver.summary(),
+        );
         if self.writer.submit(&self.memory, job, self.queue_wait) == Submitted::Dropped {
             self.stats.dropped_puts.fetch_add(1, Ordering::Relaxed);
         }
@@ -771,7 +771,7 @@ pub fn bind(
     let delay = config.write_delay;
     let writer_thread = std::thread::Builder::new()
         .name("sail-daemon-writer".to_owned())
-        .spawn(move || w.writer.run(&w.disk, &w.memory, delay, &w.log))?;
+        .spawn(move || w.writer.run(&w.disk, delay, &w.log))?;
     state.log.line(&format!(
         "started: sail {}, protocol {}, socket {}, cache {}, memory {} bytes, queue {} bytes, idle timeout {}",
         sail_api::VERSION,

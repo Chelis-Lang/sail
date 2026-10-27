@@ -194,7 +194,10 @@ impl<'a> Observation<'a> {
         &self.arguments
     }
 
-    pub(crate) fn configure(&self, command: &mut std::process::Command) {
+    pub(crate) fn configure(
+        &self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         self.reads.configure(command);
     }
 

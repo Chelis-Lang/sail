@@ -5,6 +5,177 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Separate exact human-footer byte copying from replay admission metadata,
+  preserving the original output, validation order, loop obligations and
+  complete rendering contract. The change addresses a full-control proof
+  resource refusal (#505); fresh qualification remains pending.
+
+- Keep the input-owner pending-atom fixture genuinely unterminated, and cover
+  CR termination separately at every raw boundary (#500). Native pre-refinement
+  and current splitters agree on four items/no pending for CR; production grammar,
+  original pending/raw/hash assertions and existing goldens remain unchanged.
+
+- Share actual cache accounting/LRU retirement over the original owned update
+  and ordered index, preserving the native slot-map behavior. This source slice
+  still requires full qualification and does not establish global map/lock/history
+  consistency or cache origin. Strengthen the layout-only source policy against
+  alias/constructor substitution under unchanged name counts (#494).
+- Preserve unchanged human Cargo output when the run observes no target reports
+  (#476). A separate byte-only replay checks the original/current requests,
+  recorded observations, native paths and guarded readback, and admits only empty
+  stdout plus one parsed Cargo completion line. It cannot return a verified
+  report or proof token; JSON, job and MCP authority checks remain unchanged.
+  The byte-only renderer copies its admitted original footer prefix and checks
+  the complete supplied duration; its additional direct proof qualification is
+  pending.
+
+- Include recording eligibility and original-request/producer refusals in the
+  optional unchanged-call decision trace (#476), preserving all admission checks.
+  Prioritize the last command and recent producer observations in bounded output
+  failure capture (#477); keep original caps and explicit incomplete indexes.
+
+- Give each physical local-validation checkout its own Cargo target volume
+  (#475), preventing prepared worktrees from accidentally executing another
+  snapshot's binaries. Repeated runs in one checkout retain the same volume;
+  `ci/local.sh target-volume` exposes its name for evidence collection.
+
+- Read managed Cargo's output-control endpoint from its private transport file
+  when classifying artifact output (#471). Valid completion markers no longer
+  prevent the artifact provider from sealing solely because the endpoint is
+  absent from the caller environment. Caller variables cannot override the
+  private file; incomplete or unrecognized observations still withhold reuse.
+
+- Include alignment growth in the cache slot's incremental insertion-generation
+  charge, preserving the original logical 128-byte allowance (#486). The native
+  old 80-byte/new 96-byte observation identifies 8 bytes of omitted padding; corrected
+  source uses the portable actual carrier-size delta. This is not an RSS bound.
+- Route actual cache insertion, settlement and removal counters through the
+  source-shared owned-entry accounting operation. Saturating retirement and
+  overflow refusal retain existing behavior; map/lock and supplied-charge
+  correspondence remain separate unqualified obligations.
+- Bind candidate cache completion and stale-read removal to insertion-issued
+  generation handles retained with their original tier. Reinsertions, including
+  the same Arc, refuse old handles; checked lifetime-clock exhaustion leaves
+  memory miss-only (#372, #474). Memory/queue budgets charge the added retained
+  metadata. Source implementation is wired, with Stock/native/conformance and
+  cost qualification pending; solver-origin admission remains open.
+- Drop cache submissions whose public queue-wait Duration cannot form a native
+  Instant deadline, avoiding an arithmetic panic (#478). Normal waits keep their
+  existing behavior; the bounded native regression is not yet run.
+
+- Source-share actual emitted-item, frame, replay and queue-handover ordering,
+  preserving original forwarding, independent grammar and terminal handling.
+  Validate copied fresh payloads against original owner/range/bytes; additional
+  comparison cost and new proof/native/control qualification remain unmeasured.
+
+- Pair actual stdout splitting with the same retained output controller used
+  for forwarding, frame refusal and replay. Keep byte output, independent
+  framing, EOF handling and origin checks unchanged; new source/control/native
+  qualification and broader #371 correspondence remain pending.
+
+- Source-share actual SMT lexical spans, word classification, sticky error state
+  and borrowed shallow command heads. Preserve original bytes, public token
+  fields, diagnostics and supported shallow behavior; new qualification and
+  remaining interpretation/origin obligations stay open under #371.
+
+- Preserve exact parser continuation across copying (#482) and express the
+  private owned input transfer with modeled Option::take (#481), retaining raw
+  bytes, ordered items and all existing checks. Qualification remains pending.
+
+- Correct erased outer-stream proof expression grouping and Seq index projections
+  (#481), preserving runtime operations and contract meaning. Whole-root
+  verification of the wider parser candidate remains pending.
+
+- Retain complete ordered parser emissions and continuation in the checked
+  input-owner append contract (#480), with nonempty constructive and drop/reorder
+  controls. Runtime bytes and returned data are unchanged; qualification is pending.
+
+- Source-share the actual outer SMT stream states, atom/CRLF/finish rules,
+  absolute cursor and chunk loop. Pair input splitting with its owned raw
+  transcript append while preserving public fields, original bytes and keys.
+  New whole-root/native/control qualification and remaining parser/solver
+  correspondence stay open under #371 (proposed ADR 0086).
+
+- Source-share the actual pending-list byte/chunk framing and word delimiter
+  used by the SMT stream splitters. Preserve original bytes, chunk boundaries,
+  public splitter APIs and malformed finish behavior. New proof/native and
+  conformance qualification remain pending; outer stream/solver interpretation
+  remains open under #371 (proposed ADR 0086).
+
+- Route the actual original package/exclusion/binary selector scan and its
+  name/id/version comparisons through source-shared byte-range operations.
+  Retain original argument indices, byte offsets, repeated order, compact forms,
+  option-value consumption and the first Cargo separator. Complete production
+  Stock discovery, strict native Clippy and all 25 selected fixtures pass. New
+  ordinary controls, conformance and cost remain pending; metadata filters, full
+  Cargo option semantics and physical/provider joins remain separate.
+
+- Route the actual per-package report-command construction through checked
+  source, retaining its existing removal/append rules and original token bytes
+  and order. Missing effective options remain unknown. Physical compiler inputs,
+  packed-option origin and full metadata selection remain separate boundaries;
+  complete production Stock discovery, strict native Clippy and 23 selected
+  native fixtures pass. New ordinary controls, conformance and cost remain pending.
+
+- Route decoded worker-journal selection through checked source, retaining the
+  original version, worker, run, uniqueness, invocation, arguments, mode and
+  project checks. Return the selected owned original request as data; decoding,
+  path observation and journal origin remain native boundaries. This new slice
+  awaits complete-root, native and ordinary-negative qualification.
+
+- Migrate the remaining original-dictionary test fixtures to checked insertion
+  and fallible request construction (#489), retaining their independently
+  declared library scope and every positive/refusal assertion. Native test
+  qualification remains pending.
+
+- Keep both request-candidate API-library capture bindings and declared source
+  dependency ordering consistent; include the actual immutable key in assembly
+  rejection fixtures (#479). The guards retain strict refusal and report the
+  mismatching native source path. Fresh qualification remains pending.
+
+- Construct the candidate's actual pre-Cargo and replay requests from the
+  original target dictionary through shared checked insertion, iteration and
+  header construction. Preserve target ordering, metadata filters, arguments and
+  engine/repair options; unavailable projection refuses admission. Complete
+  production Stock discovery passes; native differential, ordinary negatives,
+  conformance and cost checks remain pending.
+
+- Give the original-target comparator candidate an explicit checked trait-method
+  envelope that inherits trait preconditions, retaining its native method bodies
+  and checked postconditions (#472). The earlier whole-file probe stopped before
+  verification; fresh direct-stock qualification remains pending.
+
+- Route actual CLI no-op normalization and pre-execution request, target and
+  engine-identity construction through shared checked source candidates,
+  retaining every original field and argument position. Scope workspace flag
+  detection to the Cargo prefix (#467). Direct-stock, native, differential and
+  cost qualification are pending; metadata/input/launch completeness is not
+  established.
+
+- Distinguish the completed-view fixture's original whole-request evidence from
+  its retained Unknown projection when freshness is unavailable (#464). Preserve
+  both cases and all original baseline assertions; runtime behavior is unchanged.
+- Repair the focused-failure contract fixture after selected-attempt integration
+  (#465): capture its initial partial document through a fresh owned producer
+  and check the engine terminal in that selected directory. Keep all scope and
+  sealing assertions; production policy is unchanged and native qualification
+  remains pending.
+
+- Preserve the coherent completed-baseline request fixture under the strict
+  line-limit lint with a documented test-local allowance (#463); all assertions
+  and production behavior remain unchanged, with fresh native qualification pending.
+
+- Preserve an admitted receipt's declaration names after erasure by looking up
+  its exact package/target/kind revision, matching the current revision batch
+  (#390). Missing or changed revisions, unrelated targets, invalid originals
+  and failed fresh scans still refuse; combined native qualification is pending.
+- Keep the original completed request/result pair through process-local
+  explanation, comparison and baseline presentation. A total borrowed view
+  preserves all recorded data while separately retaining optional declared
+  whole-request evidence. Wire data, errors, labels and Historical baseline
+  behavior are preserved. Direct-stock/native qualification and added-cost
+  measurement remain pending; no authority token is serialized.
+
 - Replay unchanged calls on macOS. Cargo copies each build script to
   `build-script-build` again on every macOS run, so the copy never looked
   settled and no unchanged call was recorded (#437); unchanged Anvil took
@@ -25,6 +196,187 @@ semantic versioning once the API is published.
   normally now keeps the dependencies' build-script contracts, as an
   unfocused one already did (#441).
 
+- Repair ordinary managed replay and selected-attempt fixture compilation by
+  importing the shared settle constant and supplying the fixture's explicitly
+  empty declared compiler environment (#459, #460). Keep original assertions
+  and production guards; native workspace and solver qualification are pending.
+
+- Strengthen the replay candidate's completion join to recheck every actual
+  retained suppressed stdout frame against its original served receipt (#457).
+  Same-owner/count comparisons against unrelated bytes cannot substitute for
+  that relation. The source correction and refusal witness await qualification;
+  its additional prefix scan has no cost measurement.
+
+- Share the existing provisional presentation override between MCP summaries
+  and API evidence comparisons. Every verdict/establishment combination and
+  the evidence-tier behavior are preserved. The shared borrowed-field/report
+  operations and controls await direct-stock and native qualification; they
+  grant no request or proof authority.
+
+- Add a source candidate that retains original served command/reply bytes in a
+  shared replay-comparison controller and joins completion to the same stdout
+  owner's original suppression count. Statistics exceptions require a checked
+  raw command mint and keep the native framing refusal. Retained allocation
+  accounting includes commands and carriers. Proof/native/cost qualification
+  and statistics semantics remain pending; emitted bytes are unchanged.
+- Charge the complete retained inline entry, including enum padding, against
+  the existing recording budget; exhaustion still stops recording while
+  preserving forwarding (#456). Fix the production no-op replay time import
+  needed for ordinary compilation (#455). Combined native qualification remains
+  pending.
+
+- Add a source candidate that validates scalar `:print-success` and `:rlimit`
+  values from original SMT commands and retains their bytes across commands and
+  resets, comparing actual Session readback before policy use and after every
+  transition. Unsupported sensitive values or a mismatch use live fallback.
+  Direct-stock proofs, native qualification and pinned-solver option semantics
+  remain pending; forwarded bytes and raw cache keys are unchanged.
+
+- Refuse incompatible proof receipts and contexts from the two integration
+  lineages. The combined contract records both original producer history and
+  the observed compiler environment and ghost-only file declarations under
+  receipt revision 9. Independently assigned older revisions cannot authorize
+  reuse of the combined contract (#446).
+- Keep bounded source inventory transfer on the same declaration revision and
+  refuse older unversioned inventories; incomplete private coverage remains
+  ineligible (#447).
+
+- Add a source candidate for frozen original command checkpoints and bounded
+  acknowledged-input capture. Its checked validator compares every original
+  command span and prefix key against the actual writer's retained bytes in one
+  incremental pass. Native integration, proofs, conformance and cost remain
+  unqualified.
+
+- Add a source candidate for complete original command/fresh-response binding.
+  It retains the actual stdout controller's replay cursor and checks each
+  original frame's owner and ordinal against acknowledged command order,
+  preserving held-check release order and refusing missing or swapped frames.
+  Native and formal qualification remain pending.
+
+- Wire original command checkpoints through the shim's existing pairing,
+  held-check and storer paths. Input capture, fresh reply copies and checkpoint
+  retention share the existing recording bound; exhaustion stops recording
+  while preserving delivery and forwarding. This source candidate has not
+  completed native, differential or performance qualification.
+
+- Retain the actual frozen input delivery and complete stdout observations
+  through the local cache publication handoff, requiring their typed joint
+  observation before releasing pending entries. This preserves existing
+  forwarding/fallback behavior and does not authenticate arbitrary writers or
+  establish persistent cache origins.
+
+- Preserve each fresh cached reply's original stream lease, frame ordinal and
+  byte range through pairing and effort annotation; require original output
+  membership and one retained input/output child lease before local publication.
+  Equal bytes from a different stream do not supply that observation.
+
+- Require EOF and a complete partition of retained solver stdout before cache
+  publication; include response endpoints in the output buffer budget.
+
+- Create cache temporary files exclusively and clean only successfully owned
+  writes, preserving independently owned existing names on failure.
+
+- Preserve independent original-request capture when unchanged-call replay is
+  available: capture requests take the ordinary execution path.
+- Isolate managed compiler evidence per attempt, bind completion and reuse to
+  the selected original history, and preserve independent fallback files.
+  Older private receipts, retained jobs and saved baselines require a fresh
+  check for whole-target completion; archived transfers validate the
+  complete original producer files without fabricating new live invocations.
+
+- Preserve independent original selected-attempt archives for experimental
+  same-workspace proof restoration, so removing the original run or evicting
+  the arena does not erase an already adopted run's history. Older entries and
+  damaged or mismatched archive references refuse reuse.
+
+- Route engine completion and missing-feature fallback through the checked
+  decision over original observed output. A concrete missing-feature diagnostic
+  can refuse a normal-zero engine even with a complete protocol, preserving its
+  status and starting an independent fallback.
+
+- Require unchanged-call replay to retain and revalidate the original receipts
+  and selected or archived producer histories for every positive target.
+  Missing, changed or mismatched history takes the ordinary verification path.
+
+- Bind unchanged-call replay to independently resolved current metadata,
+  runtime identity and actual guarded input readback. Whole and exact-partial
+  evidence use separate acceptance paths and preserve original establishment,
+  scope and reports. Partial replay cannot authorize a whole-target proof;
+  failed calls use the ordinary managed path.
+
+- Recheck live original-request admission before serving retained job frames.
+  Missing or differently resolved invocation directories withhold completion
+  consistently in cached and freshly built results.
+
+- Preserve one original project/request observation through immutable baseline
+  publication, so invocation-directory changes cannot split saved and reloaded
+  completion labels. Baselines remain Historical evidence.
+
+- Withhold whole and exact-partial authority when native invocation/workspace
+  bytes differ from their resolved request strings. Preserve observed reports,
+  exits, input currentness and existing error/fallback routing; add an explicit
+  metadata note instead of silently treating lossy path conversion as identity.
+
+- Carry unchanged-call replay through checked declared request/report, native
+  path and guarded-readback admission before returning its preserved project.
+  This composes existing scope/history guards and does not establish complete
+  physical input, solver-inventory or service authority.
+
+- Preserve and freshly reobserve valid receipts' declared environment names when
+  successful compilation replaces broader failed-verification dep-info, keeping
+  strict refusal for incomplete scans and changed values.
+- Capture owned compiler stdout/stderr through private readers and actual EOF
+  tokens. Production completion checks original child ownership and stream role
+  before accepting those bytes; missing or refused observations retain fresh
+  output without completion authority. Native build, proof and conformance
+  qualification remain pending for this source candidate.
+- Remove per-token remaining-source copies from the acceptance source lexer.
+  Exact token/refusal regression and native differential qualification are
+  pending; no preflight or full-gate speedup has been measured for this candidate.
+- Move owned compiler configuration, reservation and completion matching into
+  source-shared factories. Refusals preserve the original output buffers and
+  process status; the only new identity primitive is native ownership equality.
+  Compilation, direct proofs and integrated qualification remain pending.
+- Extend owned command construction to native, verifying and fallback compiler
+  launches. Reconcile exact program, ordered arguments, directory and environment
+  operations before spawn; match completion to the original owned child and its
+  actual wait. Fresh diagnostics and exit status remain the fallback when the
+  optional construction observation is unavailable. Qualification is pending.
+- Derive Cargo configuration homes from the same supplied environment used to
+  validate runtime selectors, preserving exact path bytes and Cargo-home priority.
+- Record explicit environment inheritance and exact final overrides for owned
+  managed Cargo and build-planning commands. Reconcile native readback before
+  spawning; optional capture failures preserve fresh output while withholding
+  Current admission.
+
+- Preserve literal Unicode whitespace, tabs and backslashes in compiler-declared
+  input filenames; validate filename decoding against rustc's exact space-only
+  encoding. Older inventories retain paths but withhold coverage because the
+  former decoder could omit a consumed input ([#408](https://github.com/Chelis-Lang/sail/issues/408)).
+
+- Use stock-Verus-checked operations for retained request enforcement and
+  freshness projection, preserving diagnostics and refusing promotion of
+  Historical or Unknown evidence to Current.
+- Require cache publication to match the parser session's terminal key against
+  an independent hash of the actual solver pipe's successful full writes.
+  Preserve original forwarding and refuse publication after any partial write.
+
+- Preserve fresh verifier output and status when optional process journals fail;
+  withhold whole and partial proof reuse and retained completeness instead.
+- Bind retained job completeness and repair acceptance to independently captured
+  original requests, including exact target scope and repair selection. Missing
+  older request evidence withholds completeness while preserving input Current
+  observations and historical diagnostics.
+- Refuse missing, malformed or incomplete compiler-declaration journals as
+  complete input evidence. Record child lifecycle and exact artifact/read
+  association; normal failing verifier exits remain distinct from incomplete
+  observations. Uncovered source inventories remain conservative. Each Cargo
+  journal section must retain its own complete child history; another section's
+  completed child cannot supply missing coverage.
+- Use stock-Verus-checked raw transcript feeds and cache record framing in
+  production. Exact bytes, separators and payloads are preserved; malformed
+  prefix candidates disable cache work. Complete parser, compiler-input,
+  process/store-origin and service-composition proofs remain open.
 - Stop reusing a proof after a file read only in ghost code changes. An
   `include!`, `include_str!` or `include_bytes!` inside a `proof fn`, spec or
   assertion left its file out of the crate's dep-info, so editing that file

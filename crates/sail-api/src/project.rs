@@ -7,6 +7,64 @@ use crate::output::Report;
 /// Current version of the managed project-result envelope.
 pub const SCHEMA_VERSION: u32 = 2;
 
+/// One Cargo target resolved from the request before result construction.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RequestTarget {
+    /// Exact Cargo package ID.
+    pub package_id: String,
+    /// Exact Cargo target name.
+    pub target: String,
+    /// Exact selected target kind.
+    pub kind: String,
+}
+
+/// Independent pre-execution request retained by the job worker.
+///
+/// This is private job evidence, not a field inferred from a result's selected
+/// targets. Identity digests keep their ordinary collision-resistance and
+/// native observation assumptions; this record does not prove input closure.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResolvedRequest {
+    /// Actual managed invocation identifier, allocated before Cargo executes.
+    pub run_id: String,
+    /// Canonical directory in which the request was invoked.
+    pub invocation: String,
+    /// Canonical Cargo workspace root resolved before execution.
+    pub workspace: String,
+    /// Actual pre-execution configuration and runtime identity digest.
+    pub context_sha256: String,
+    /// Original pre-execution declared input revision.
+    pub input_revision: String,
+    /// Original Cargo-Verus arguments, before per-package driver adjustment.
+    pub args: Vec<String>,
+    /// Independently selected engine; absent for stock verification.
+    pub engine: Option<EngineIdentity>,
+    /// Exact engine focus function, when this run executes a repair batch.
+    pub function: Option<String>,
+    /// Raw package selector validated by the repair worker before execution.
+    pub repair_package: String,
+    /// Exact selected binary name; absent for an explicitly selected library.
+    pub repair_target: Option<String>,
+    /// Explicit repair target kind; empty when this is not a repair selection.
+    pub repair_kind: String,
+    /// Complete independently resolved requested target inventory.
+    pub targets: Vec<RequestTarget>,
+}
+
+/// Version of the private worker's pre-execution request-capture record.
+pub const REQUEST_CAPTURE_VERSION: u32 = 1;
+
+/// One pre-execution request captured independently of the worker's stdout.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RequestCapture {
+    /// Capture format version, independently checked when reading retained jobs.
+    pub version: u32,
+    /// Parent-allocated job identity, supplied before starting the worker.
+    pub worker_id: String,
+    /// Actual managed request observed before its Cargo execution.
+    pub request: ResolvedRequest,
+}
+
 /// A complete invocation of managed Cargo verification.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProjectResult {

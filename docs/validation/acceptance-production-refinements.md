@@ -10,6 +10,130 @@ the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
+## Owned query publication candidate
+
+Whole positive discovery at `f8d61408` passes all three complete stock roots
+with final source and runtime rechecks on native x86-64 EC2 `c7i.4xlarge` in
+`us-east-1`. Query checks 431 obligations and 759 function entries, inputs
+308 and 538, authority 498 and 878; every earlier function remains present.
+Root durations are 28.168 s, 31.548 s and 21.467 s respectively. Counts overlap
+across roots and do not represent a service theorem or product performance.
+The positive-only report SHA-256 is
+`30822d09dcc90b76c315fd3ec8fa392af478b7b20def6d9e56e7d5e60cc36876`.
+
+The historical capture retains 115 query, 115 input and 107 authority ordinary-Verus
+controls. The corrected `c44cdcfa` query run passes all four partitions:
+119 full-scope calls, comprising four whole query positives and the exact
+disjoint union of 115 ordinary failures. Independent archive review checks
+every verifier stdout/stderr, all 759 functions, the 431-obligation scope,
+direct stock commands, source/runtime/compiler identity and absence of resource
+markers. Individual reports remain incomplete-component partitions; the
+audited union covers query only. Native workspace/solver checks, the complete
+340-case matrix and final main integration remain pending. Source-control selftests pass
+43/43 at `0247a13e`, retaining all 41 original tests plus two new tests; the
+final combined gate must rerun them. Development refusals below remain visible.
+Native Rust mutation results are separate from ordinary-Verus negative credit.
+Parser semantics, physical origin, protected writers/recovery and full service
+composition remain open. This candidate precedes the lead's main reconciliation.
+
+The closed proof archive is preserved privately at
+`experiments/2026-10-27/acceptance-query-c44cdcfa-stock-controls.tar`:
+64,061,440 bytes, SHA-256
+`d54d73f49d80adf58600bc2d14868eaa0706fab6e0c629c622698f74de85d0ef`.
+Independent S3 GET/hash verification and the full query-scope audit pass.
+It includes development refusals and the final control reports; no live native
+logs or native-body qualification are included.
+
+The next option-state candidate retains all 115 inherited query controls and
+adds nineteen, alongside unchanged 115 input and 107 authority controls.
+The source selftest inventory retains all 44 tests present at `c44cdcfa`
+(43 at `0247a13e` plus the role-metadata regression) and adds six later tests.
+The existing assembly/private-token fixture now supplies the required option
+module beside its original sources, preserving every mutation and assertion
+(#458); all 50 pass on native Linux at `90e2329f` in 198.139 s.
+Complete whole-positive discovery at `069e91f6` passes the expanded query root
+with 441 verified obligations and 776 function entries, inputs with 308/538 and
+authority with 498/878, retaining every prior function. Direct stock invocations
+use the same 120-second limit, one thread, default resources and complete roots;
+final source/runtime rechecks pass. Root times are 33.110 s, 31.395 s and
+20.976 s on the same native `c7i.4xlarge`. The closed positive report SHA-256 is
+`80829df588f1cad425d1249ab606017c5551a80a9dfd68ec185bbeffa6b817cf`.
+The option-only manifest freezes these actual inventories. Its 359-case matrix
+(three positives plus 134/115/107 controls), workspace, solver and differential
+gates remain pending; the earlier c44 result covers its exact 115 query controls.
+The reviewed
+scope correction retains the complete validator loops while mutating acceptance
+exits (#454), and the completion fixture preserves the actual ten phases (#453).
+
+The combined replay/presentation source passes complete positive discovery at
+`e57f065f`: query 471 verified obligations and 821 function entries, inputs
+308/538, authority 502/883, with every prior function retained and final
+source/runtime checks. The report SHA-256 is
+`92bc5c3b953207b84fe8bf37405cfc7d63fdb96dc0ec0f0eaf9bceec891230ce`.
+Both complete source suites pass at the preceding `0a3a7f2c` checkpoint:
+12 model and 53 production tests, retaining every earlier test. Later changes
+only instantiate literal/framing/partition facts in the full constructive
+witnesses, leaving executable operations, contracts and all control objects
+unchanged. That checkpoint locks its actual combined inventories. Its 395 unique
+planned cases (three whole positives plus 161/115/116 ordinary negatives) remain
+pending. Qualification uses four existing partitions per component, components
+sequenced: 404 actual calls include twelve repeated whole positives. Each
+individual report remains incomplete; the exact all-component union requires
+separate identity, function, obligation and ordinary-failure audits. This is
+not a single unpartitioned run or a service theorem.
+
+The reconciled main, completed-presentation and receipt-key source passes
+complete discovery at `e36c749b`: query 471/821, inputs 308/538 and authority
+510/895 (verified obligations/function entries), retaining every earlier
+function. Final source/runtime checks pass under the unchanged direct-stock
+120-second limit, one thread and default resources. The report SHA-256 is
+`08dec98c65e5205cbf5ff1fa072f87282ae38f1384466c2d37e8a0112b806384`.
+The current manifest freezes these observed sets. The current plan is 400
+unique cases: three whole positives plus 397 ordinary negatives (161 query,
+115 input and 121 authority). Four partitions per component, components
+sequenced, schedule 409 actual calls, including twelve repeated positives.
+The full matrix remains held until native compile/Clippy checks clear; no
+complete component, combined matrix or service theorem is claimed.
+
+The closed guidance archive is retained privately at
+`experiments/2026-10-27/acceptance-query-guidance-53757913-native.tgz`:
+35,998,012 bytes, SHA-256
+`401dedc0486abdb70273e5f98cfaa263881cff489b22540c4988a0087dadd42a`.
+Independent S3 GET/hash and raw-call audits pass. It includes every closed
+query-host development attempt, failed `720e461e` workers and reconstructable
+source bundles. At `53757913`, all three positives repeat 471/821, 308/538
+and 502/883 with final checks. Its bounded control-111 diagnostic checks the
+whole query positive, then 470 verified obligations plus one ordinary error
+across all 821 functions, with no resource marker. The audit checks all five
+calls against pins, exact Git source blobs, compiled mutation identity and
+runtime/compiler correspondence. Both diagnostic completeness flags remain
+false; this is one negative and does not qualify either the historical
+395-case plan or the current 400-case plan.
+
+Native integration corrects the production `Duration` import (#455), renames
+two payload locals and uses `AtomicUsize::try_update` with the same SeqCst
+orderings and closure. The pinned Rust source implements the deprecated
+`fetch_update` by calling that exact operation. The inline entry remains
+unboxed with a documented lint allowance. Its recording charge now includes
+the entire carrier and original logical payload/index allowance, including the
+silence carrier (#456); allocator overhead and capacity remain outside this
+existing logical budget. On native x86-64 the ordinary parser/delivery regression
+compiles and fails with the old formula (356 versus required 476 bytes, carrier
+408), then passes with the correction. The closed red/green patch digests are
+`cd545f0e9387239ad312b5027b6207970142a942f33d2ee62d3499ac6599b59d`
+and `543ec5e478ab7b9fef7660764229ffd0ad2a63ee3848241bbdfb1b1eda340831`.
+All 28 cached-session ordinary native tests then pass, including the unchanged
+Pairer/holding/annotation paths and option-state readback controls. This is
+focused native test evidence, not ordinary-Verus control credit or
+workspace/solver/differential/performance qualification.
+
+The three closed native lint stops through `03725fea` are preserved privately
+at `experiments/2026-10-27/acceptance-query-native-stops-through-03725fea.tar`:
+92,160 bytes, SHA-256
+`b57ac975d3924b2383f41c7658474ecd92a2c99120de493ec5e9a1f3ccd19894`.
+Native PUT and GET/hash checks pass. Ordinary workspace tests and the solver
+suite did not run in those attempts.
+
 ## Checked source and runtime
 
 The frozen checkpoint is `3b1cb3623ef17a2c4a99bc8bd3e12e88f1ef63fb`.
@@ -71,6 +195,25 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `788f6bf6` | Bounded replay witness discovery | Scoped list framing proves, but the positive factory needs explicit whole-subrange equality and response-trim facts. No new count/control credit; the erased correction preserves execution, contracts, controls and limits |
+| 2026-10-26 | `720e461e` | Combined query partitions | Three partitions finish; partition 2 refuses control 111 because intended binding failures are accompanied by rlimit in the new positive stdout witness. Inputs/authority unlaunched and no complete query/matrix credit. Local erased unfolding and exact prefix facts qualify separately at `53757913` |
+| 2026-10-26 | `fdd05dcc` | Combined replay/presentation discovery | Literal framing/statistics and positive compared-stdout factory witnesses pass; only the final different-output refusal postcondition remains unproved. Instantiate the original exact receipt and sealed frame interval/bytes; no executable, predicate, control or resource change and no expanded inventory locked |
+| 2026-10-26 | `0a3a7f2c` | Combined replay/presentation discovery | All 12 model and 53 production source selftests pass; whole query reports six constructive-witness diagnostics in three new replay/output factories. Instantiate exact literal name/list framing and existing transcript partition facts without changing execution, contracts, controls or limits; input/authority discovery and the planned 395-case matrix remain unrun |
+| 2026-10-26 | `c87877d8` | Expanded whole-positive discovery | Ordinary and reset-assertions preservation witnesses pass. The final reset relation still needs the same explicit original-head existential instance; no expanded inventory, negative matrix or final-root qualification claimed |
+| 2026-10-26 | `b74bcb06` | Expanded whole-positive discovery | Exact reset head bytes pass; the two ordinary preservation instances still need explicit original-head existential witnesses and non-setter/non-reset name facts. No contracts or scope are changed; all later roots/controls remain unrun |
+| 2026-10-26 | `fe8d021f` | Expanded whole-positive discovery | Both actual setter witnesses pass; constructive ordinary/reset-assertions success exits remain unproved. Instantiate unchanged preservation/reset relations for the remaining literal history; retain all executable calls and do not weaken the full always-refuse control |
+| 2026-10-26 | `52501686` | Expanded whole-positive discovery | Every literal scalar-field assertion passes, but the two successful setter calls in the constructive history lack instantiated next-state witnesses. Retain the full factory and add erased original head/keyword/value equalities and exact next-state instances; no positive inventory or control credit |
+| 2026-10-26 | `7a1cf36c` | Expanded whole-positive discovery | Literal atom obligations pass, but two constructive keyword-field assertions remain unproved (440 verified, one failing function). Add explicit extensional equality between original literal head bytes and the existing UTF-8 name predicate; no executable, predicate or resource change and no expanded inventory qualified |
+| 2026-10-26 | `90e2329f` | Expanded whole-positive discovery | All 50 source selftests pass, then the whole query root reports two unproved literal scalar-field assertions in its constructive option-history witness (440 verified, one failing function). No expanded inventory or later root/control qualification; add erased literal atom/span guidance without changing executable transitions or predicates |
+| 2026-10-26 | `b572bc99` | Expanded capture selftests | 49/50 pass; existing assembly/private-token fixture omits newly required `query_options.rs` and raises `KeyError` before its mutations (#458). Add that source to the fixture, preserving every assertion; no whole-positive discovery or ordinary-Verus control started |
+| 2026-10-26 | `03725fea` | Native workspace gate | Strict clippy next refuses two owner/payload similar-name locals, deprecated atomic alias and the enlarged inline entry variant; ordinary workspace tests and solver remain unrun. The correction preserves inline ownership and charges its complete carrier (#456) |
+| 2026-10-26 | `9f6dfd52` | Native workspace gate | Shared-kernel lint corrections pass; strict clippy next refuses the native completion adapter's optional-environment guard. Use the equivalent optional borrow and retain the same raw output, with an explicitly reviewed native source binding; ordinary tests/solver remain unrun |
+| 2026-10-26 | `c44cdcfa` | Native workspace gate | Source selftests complete before strict clippy refuses eight shared-kernel style diagnostics. Reasoned local annotations retain checked Option branches/lifetimes, and a local payload name changes; no executable transition or contract changes. Ordinary workspace tests and solver suite remain unrun at this checkpoint |
+| 2026-10-26 | `35373419` | Initial four query-control partitions | Partition 0 completes 30 cases; partition 2 refuses an rlimit hit in `output-exact-appended-bytes`, and partitions 1/3 refuse whole-validator mutations that removed a loop VC. No aggregate qualification: retain full validator bodies/loops with terminal acceptance forced false, and add an exact-byte proof cut without changing executable append, contracts, count checks or limits |
+| 2026-10-26 | `6b7b9c49` | Expanded query whole-positive discovery | Two constructive checkpoint-rank assertions remain unproved; expose the already checked frozen key/material relation directly in its factory postcondition and instantiate the original literal header/span equalities. No completed positive inventory or negative qualification claimed |
+| 2026-10-26 | `dfda8f71` | Expanded query whole-positive discovery | Reports 16 unmet obligations in new capture/checkpoint/owner constructive proofs; proof guidance adds retained invariants, exact sequence equalities and owning-module preservation facts. Executable bodies, predicates, original controls, deadlines and resources remain unchanged; no positive count qualified |
+| 2026-10-26 | `0247a13e` | Expanded query whole-positive discovery | Refused cross-module reveals of two closed partition specs before verification; an owning-module proved lemma supplies the same facts without widening visibility. Source selftests pass 43/43; no new positive count is qualified |
+| 2026-10-26 | `e7f4dbc6` | Expanded query capture selftests | Refused three stale delivery mutation contexts and one ambiguous native-test source fragment before positive discovery; contexts are updated to preserve their original mutations, with no check or scope relaxation |
 | 2026-10-26 | `fe8be9ee` | Detached merge cost guard | Stopped on a +4.09% external proof-edit median; all correctness gates pass. Retained samples expose 50 ms process-wait polling and a smaller internal timing difference; attribution remains unprofiled. Owner accepts this bounded result |
 | 2026-10-25 | Query refinement before `953f74a6` | Closed-stderr solver regression | Repeated five-second timeout; captured shim stack and open reader FD while producer blocked writing stderr; fixed by closing the failed reader before joining. No false proof demonstrated |
 | 2026-10-25 | Integration development source | Stock-driver compatibility | Unsupported proof-envelope/type and inventory mismatches refused; corrected without scope, resource or timeout relaxation; not qualification |

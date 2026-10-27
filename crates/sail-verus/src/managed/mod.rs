@@ -5,6 +5,7 @@ pub(crate) mod build_environment;
 mod build_inputs;
 mod build_unit_plan;
 pub mod cargo_toolchain;
+pub(crate) mod command_environment;
 mod configuration;
 mod dependency_snapshot;
 mod diagnostics;
@@ -18,6 +19,7 @@ pub mod noop;
 pub mod projects;
 mod read_check;
 mod receipts;
+mod request;
 pub(crate) mod research;
 #[expect(
     dead_code,
@@ -26,7 +28,7 @@ pub(crate) mod research;
 pub(crate) mod retained;
 mod runner;
 pub(crate) mod shipped;
-mod source_inputs;
+pub(crate) mod source_inputs;
 mod store;
 mod tool_digests;
 pub(crate) mod transport;
@@ -37,6 +39,7 @@ pub(crate) use files::{digest, event, file_digest, json, stat_identity};
 pub use freshness::FreshnessIndex;
 pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
+pub use request::RequestCaptureDestination;
 pub use runner::{
     Config, refresh_context, refresh_result, run, run_for_replay, run_showing_output,
 };

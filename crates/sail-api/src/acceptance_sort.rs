@@ -7,11 +7,108 @@
 use sail_acceptance::authority::CompletionPolicy;
 
 use crate::acceptance::{
-    CompleteReport, CompleteSelection, ReportOrder, complete_report_ordered,
-    complete_selection_ordered, complete_target_ordered, complete_whole_report_ordered,
+    CompleteReport, CompleteRequest, CompleteSelection, CompletedPresentation,
+    DeclaredReplayAdmission, ExactPartialRequest, ExactScopeReport, ReportOrder,
+    RequestPathBinding, SubmittedAuthority, admit_declared_replay_ordered,
+    bind_replayed_exact_partial_project_ordered, bind_replayed_project_ordered,
+    complete_exact_partial_request_ordered, complete_exact_scope_report_ordered,
+    complete_report_ordered, complete_request_ordered, complete_selection_ordered,
+    complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered,
+    completed_presentation_ordered, withhold_unbound_request_authority_ordered,
 };
+use crate::jobs::Mode;
 use crate::output::Report;
-use crate::project::{ProjectResult, TargetResult};
+use crate::project::{ProjectResult, ResolvedRequest, TargetResult};
+
+/// Preserve one paired observation while checking optional declared whole scope.
+#[must_use]
+pub fn completed_presentation<'a>(
+    project: &'a ProjectResult,
+    request: Option<&'a ResolvedRequest>,
+) -> CompletedPresentation<'a> {
+    let orders: Vec<_> = if request.is_some()
+        && matches!(project.currentness, crate::project::Currentness::Current)
+        && project.exit_code == Some(0)
+    {
+        project
+            .targets
+            .iter()
+            .map(|target| candidate_order(&target.report))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    completed_presentation_ordered(project, request, &orders)
+}
+
+/// Composes declared replay evidence with untrusted order candidates. Missing
+/// native-path or guarded-readback witnesses refuse without a service claim.
+#[must_use]
+pub fn admit_declared_replay<'a, 'b>(
+    project: ProjectResult,
+    original: &'a ResolvedRequest,
+    current: &'a ResolvedRequest,
+    paths: Option<&RequestPathBinding<'a>>,
+    readback: Option<&'a sail_acceptance::inputs::GuardedReadback<'b>>,
+) -> Option<DeclaredReplayAdmission<'a, 'b>> {
+    let orders = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect::<Vec<_>>();
+    admit_declared_replay_ordered(project, original, current, &orders, paths, readback)
+}
+
+/// Rechecks retained original-request authority with candidate obligation orders.
+#[must_use]
+pub fn withhold_unbound_request_authority(
+    project: &mut ProjectResult,
+    request: Option<&ResolvedRequest>,
+) -> bool {
+    let orders: Vec<_> = if request.is_some()
+        && matches!(project.currentness, crate::project::Currentness::Current)
+        && project.exit_code == Some(0)
+    {
+        project
+            .targets
+            .iter()
+            .map(|target| candidate_order(&target.report))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    withhold_unbound_request_authority_ordered(project, request, &orders)
+}
+
+/// Checks original submission correspondence and actual complete request authority.
+#[must_use]
+pub fn complete_submitted_request<'a>(
+    arguments: &'a [String],
+    mode: &'a Mode,
+    request: &'a ResolvedRequest,
+    project: &'a ProjectResult,
+) -> Option<SubmittedAuthority<'a>> {
+    let orders: Vec<_> = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect();
+    complete_submitted_request_ordered(arguments, mode, request, project, &orders)
+}
+
+/// Validates the complete original request without trusting result-selected scope.
+#[must_use]
+pub fn complete_request<'a>(
+    request: &'a ResolvedRequest,
+    project: &'a ProjectResult,
+) -> Option<CompleteRequest<'a>> {
+    let orders: Vec<_> = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect();
+    complete_request_ordered(request, project, &orders)
+}
 
 /// Establishes receipt/repair report authority through the checked factory.
 #[must_use]
@@ -20,11 +117,70 @@ pub fn complete_report(report: &Report, policy: CompletionPolicy) -> Option<Comp
     complete_report_ordered(report, policy, &order.forward, &order.inverse)
 }
 
+/// Validates exact ordered partial scope without granting whole-target authority.
+/// Candidate ordering confers no authority over either scope or report evidence.
+#[must_use]
+pub fn complete_exact_scope_report<'a>(
+    report: &'a Report,
+    arguments: &'a [String],
+) -> Option<ExactScopeReport<'a>> {
+    let order = candidate_order(report);
+    complete_exact_scope_report_ordered(report, arguments, &order.forward, &order.inverse)
+}
+
+/// Checks exact retained partial coverage against an independent original request.
+#[must_use]
+pub fn complete_exact_partial_request<'a>(
+    request: &'a ResolvedRequest,
+    project: &'a ProjectResult,
+) -> Option<ExactPartialRequest<'a>> {
+    let orders = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect::<Vec<_>>();
+    complete_exact_partial_request_ordered(request, project, &orders)
+}
+
+/// Transfers exact partial evidence without enabling unchanged-call replay or
+/// minting whole-target authority. Every order candidate is independently checked.
+#[must_use]
+pub fn bind_replayed_exact_partial_project(
+    project: &mut ProjectResult,
+    original: &ResolvedRequest,
+    current: &ResolvedRequest,
+    readback: &sail_acceptance::inputs::GuardedReadback<'_>,
+) -> bool {
+    let orders = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect::<Vec<_>>();
+    bind_replayed_exact_partial_project_ordered(project, original, current, &orders, readback)
+}
+
 /// Checks complete whole-target scope through the same checked factory.
 #[must_use]
 pub fn complete_whole_report(report: &Report) -> Option<CompleteReport<'_>> {
     let order = candidate_order(report);
     complete_whole_report_ordered(report, &order.forward, &order.inverse)
+}
+
+/// Transfers an original whole proof only after independent current-request and
+/// actual typed guarded-readback checks. Candidate sorting supplies no authority.
+#[must_use]
+pub fn bind_replayed_project(
+    project: &mut ProjectResult,
+    original: &ResolvedRequest,
+    current: &ResolvedRequest,
+    readback: &sail_acceptance::inputs::GuardedReadback<'_>,
+) -> bool {
+    let orders = project
+        .targets
+        .iter()
+        .map(|target| candidate_order(&target.report))
+        .collect::<Vec<_>>();
+    bind_replayed_project_ordered(project, original, current, &orders, readback)
 }
 
 /// Revalidates target completion before deriving a positive public presentation.

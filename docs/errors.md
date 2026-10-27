@@ -178,6 +178,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | `SAIL3111` | The managed adapter failed (solver capture, receipts or Cargo wrapper) | Read the message; re-run |
 | `SAIL3112` | A setup managed verification cannot bind to a proof receipt: `--target-dir`, Verus `--log` options, `--no-verify`, `-v`, `--message-format`, `--sysroot`, tests, benches or examples, Cargo `--config` or configuration Sail cannot identify, `RUSTC_WORKSPACE_WRAPPER`, a loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`, `DYLD_*`), or no target with `verify = true`. A note from `sail verify` (human output only with `SAIL_EXPLAIN=1`), a job, `watch` or MCP: the run is verified as plain `cargo verus verify` verifies it, without proof reuse; a job's project result carries `no_reuse` and a `SAIL3112:` note and is never `current`. Still an error from `--engine interactive` | Nothing. Remove the setting to get proof reuse |
 | `SAIL3114` | Inputs could not be confirmed unchanged; the result is not Current | Re-run for a current result |
+| `SAIL3115` | The job's original request capture is missing, malformed, cannot be persisted, or does not match the result. It cannot supply current complete proof authority | Retry verification; report a persistent job-storage or worker-capture failure with the accompanying message |
 
 ## Interactive engine (`--engine interactive`)
 

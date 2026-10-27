@@ -9,7 +9,7 @@ use serde_json::Value;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-type Target = (String, String, String);
+use sail_api::request_targets::{OriginalTargets, insert_original_target};
 
 /// One current Cargo plan; it cannot attest outputs or supply a proof receipt.
 pub(super) struct Plan {
@@ -21,7 +21,7 @@ impl Plan {
     pub(super) fn load(
         directory: &Path,
         metadata: &Value,
-        expected: &BTreeSet<Target>,
+        expected: &OriginalTargets,
     ) -> Option<Self> {
         super::build_environment::load(directory, metadata)?;
         let graph: Value =
@@ -29,7 +29,7 @@ impl Plan {
         Self::derive(&graph, metadata, expected)
     }
 
-    fn derive(graph: &Value, metadata: &Value, expected: &BTreeSet<Target>) -> Option<Self> {
+    fn derive(graph: &Value, metadata: &Value, expected: &OriginalTargets) -> Option<Self> {
         (graph.get("version")?.as_u64()? == 1 && !expected.is_empty()).then_some(())?;
         let known = metadata
             .get("packages")?
@@ -49,7 +49,7 @@ impl Plan {
             }
         }
         let mut indices = BTreeSet::new();
-        let mut roots = BTreeSet::new();
+        let mut roots = OriginalTargets::new();
         for root in graph.get("roots")?.as_array()? {
             let index = usize::try_from(root.as_u64()?).ok()?;
             indices.insert(index).then_some(())?;
@@ -59,11 +59,14 @@ impl Plan {
             let [kind] = kinds.as_slice() else {
                 return None;
             };
-            roots.insert((
-                unit.get("pkg_id")?.as_str()?.to_owned(),
-                unit.get("target")?.get("name")?.as_str()?.to_owned(),
-                kind.as_str()?.to_owned(),
-            ));
+            insert_original_target(
+                &mut roots,
+                (
+                    unit.get("pkg_id")?.as_str()?.to_owned(),
+                    unit.get("target")?.get("name")?.as_str()?.to_owned(),
+                    kind.as_str()?.to_owned(),
+                ),
+            );
         }
         (roots == *expected).then_some(Self { packages })
     }
@@ -120,10 +123,7 @@ impl Plan {
                     continue;
                 }
                 let value: Value = serde_json::from_str(line).ok()?;
-                if matches!(
-                    value["reason"].as_str(),
-                    Some(crate::adapter::JOURNAL_BEGIN | crate::adapter::JOURNAL_END)
-                ) {
+                if super::source_inputs::provider_metadata(&value)? {
                     continue;
                 }
                 self.packages
@@ -141,7 +141,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn fixture() -> (Value, Value, BTreeSet<Target>) {
+    fn fixture() -> (Value, Value, OriginalTargets) {
         let metadata = json!({
             "sail_selected_package_ids":["root"],
             "packages":[
@@ -163,7 +163,7 @@ mod tests {
         (
             metadata,
             graph,
-            BTreeSet::from([("root".into(), "root".into(), "lib".into())]),
+            super::super::request::original_targets([("root".into(), "root".into(), "lib".into())]),
         )
     }
 
@@ -222,6 +222,29 @@ mod tests {
         std::fs::write(&stdout, finished)?;
         std::fs::write(&artifacts, original)?;
         assert!(plan.confirms(&stdout, &artifacts));
+        let units: Vec<Value> = original
+            .lines()
+            .map(serde_json::from_str)
+            .collect::<std::result::Result<_, _>>()?;
+        std::fs::write(
+            &artifacts,
+            super::super::source_inputs::fixture_journal(&units)?,
+        )?;
+        assert!(plan.confirms(&stdout, &artifacts));
+        let outside = json!({"reason":"compiler-artifact","package_id":"windows"});
+        std::fs::write(
+            &artifacts,
+            super::super::source_inputs::fixture_journal(&[outside])?,
+        )?;
+        assert!(!plan.confirms(&stdout, &artifacts));
+        for malformed in [
+            r#"{"unknown":"record"}"#,
+            r#"{"reason":"sail-source-provider","package_id":"root"}"#,
+        ] {
+            std::fs::write(&artifacts, malformed)?;
+            assert!(!plan.confirms(&stdout, &artifacts));
+        }
+        std::fs::write(&artifacts, original)?;
         std::fs::write(
             &stdout,
             format!("{{\n  \"verification-results\": {{}}\n}}\n{finished}"),

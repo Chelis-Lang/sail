@@ -15,9 +15,12 @@ use serde::{Deserialize, Serialize};
 use super::State;
 
 /// Private producer admissibility revision, not proof authority by itself.
-pub(super) const PROOF_AUTHORITY_REVISION: u32 = 1;
+// Revision three requires Receipt 7 and the selected original attempt history;
+// older retained jobs and baselines cannot acquire that evidence by copying.
+pub(super) const PROOF_AUTHORITY_REVISION: u32 = 3;
 
-const LEGACY_AUTHORITY_NOTE: &str = "The producer did not record verification-enabled proof authority; target completion is withheld. Re-run to establish proof evidence.";
+const LEGACY_AUTHORITY_NOTE: &str = "The producer did not record current-policy original-request and selected-attempt authority; target completion is withheld. Re-run to establish proof evidence.";
+const UNBOUND_AUTHORITY_NOTE: &str = "SAIL3115: original request correspondence could not be established; whole-target proof authority is withheld";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct Stored {
@@ -42,6 +45,8 @@ pub(super) struct Projection {
     // Absent older producers are unrecorded, never implicitly current policy.
     #[serde(default)]
     proof_authority_revision: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    request: Option<sail_api::project::ResolvedRequest>,
 }
 impl Projection {
     pub(super) fn validated(bytes: &[u8], project: &sail_api::project::ProjectResult) -> Self {
@@ -53,10 +58,18 @@ impl Projection {
             input_revision: project.input_revision.clone(),
             currentness: project.currentness,
             proof_authority_revision: PROOF_AUTHORITY_REVISION,
+            request: None,
         }
     }
     pub(super) fn with_stderr(mut self, bytes: &[u8]) -> Self {
         self.stderr_sha256 = Some(stdout_digest(bytes));
+        self
+    }
+    pub(super) fn with_request(
+        mut self,
+        request: Option<sail_api::project::ResolvedRequest>,
+    ) -> Self {
+        self.request = request;
         self
     }
     pub(super) fn matches_stderr(&self, bytes: &[u8]) -> bool {
@@ -152,13 +165,30 @@ pub(super) fn load(root: &Path) -> io::Result<BTreeMap<String, Stored>> {
     Ok(jobs)
 }
 pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> {
+    result_with_request(state, job).map(|(document, _)| document)
+}
+
+/// Retains the same independently admitted request observation used to build
+/// this result. Immutable baseline publication must not resolve it again.
+pub(super) fn result_with_request<'a>(
+    state: &State,
+    job: &'a Stored,
+) -> io::Result<(
+    ResultDocument,
+    Option<&'a sail_api::project::ResolvedRequest>,
+)> {
     if job.contracts.is_some() {
-        return super::contracts::result(state, job);
+        return super::contracts::result(state, job).map(|document| (document, None));
     }
     let mut status = job.status.clone();
     let mut repair = None;
+    let request = if status.state == Lifecycle::Completed {
+        retained_request(job)
+    } else {
+        None
+    };
     let result = if status.state == Lifecycle::Completed {
-        let mut project = project(state, job)?;
+        let mut project = project_with_request(state, job, request)?;
         let snapshot = refresh(state, job, &project);
         status.currentness = classify(project.currentness, &project.input_revision, snapshot);
         apply_currentness(&mut project, status.currentness);
@@ -166,19 +196,22 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
             // The full phase is sent once, as `result`.
             let mut envelope = repair_project(state, job)?;
             envelope.batch.full = None;
-            envelope.accepted = envelope.batch.accepted_with(&project);
+            envelope.accepted = retained_repair_accepted(job, &envelope.batch, &project, request);
             repair = Some(Box::new(envelope));
         }
         Some(serde_json::to_value(project).map_err(io::Error::other)?)
     } else {
         None
     };
-    Ok(ResultDocument {
-        contracts: None,
-        repair,
-        job: status,
-        result,
-    })
+    Ok((
+        ResultDocument {
+            contracts: None,
+            repair,
+            job: status,
+            result,
+        },
+        request,
+    ))
 }
 
 /// Immutable frames avoid rebuilding large function graphs. The persisted
@@ -195,7 +228,10 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         .projection
         .as_ref()
         .ok_or_else(|| io::Error::other("SAIL0816: missing result seal"))?;
-    let key = frame_key(job, projection)?;
+    // This live observation can change without changing the serialized job:
+    // canonical invocation resolution is part of retained_request admission.
+    let request = retained_request(job);
+    let key = frame_key(job, projection, request.is_some())?;
     let bytes = match project_bytes(state, job) {
         Ok(bytes) => bytes,
         Err(error) => {
@@ -220,6 +256,7 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         )
     };
     withhold_legacy_authority(&mut project, projection.proof_authority_revision);
+    withhold_unbound_authority(&mut project, request);
     let frame = |currentness| {
         let mut project = project.clone();
         let mut status = job.status.clone();
@@ -227,7 +264,7 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         apply_currentness(&mut project, currentness);
         let mut repair = repair.clone();
         if let Some(envelope) = &mut repair {
-            envelope.accepted = envelope.batch.accepted_with(&project);
+            envelope.accepted = retained_repair_accepted(job, &envelope.batch, &project, request);
         }
         encode_result(ResultDocument {
             contracts: None,
@@ -248,21 +285,27 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
 }
 /// Identity of a completed job's immutable frame family. It binds exactly what
 /// the encoded frames are built from: the public status, the result mode and
-/// the sealed stdout digest. Unlike the whole stored record, it excludes the
-/// submission environment, which the frames never contain.
-fn frame_key(job: &Stored, projection: &Projection) -> io::Result<String> {
+/// sealed stdout digest, original submission and the current request-admission
+/// observation. The latter can change independently of every serialized field.
+fn frame_key(job: &Stored, projection: &Projection, request_admitted: bool) -> io::Result<String> {
     #[derive(Serialize)]
     struct Key<'a> {
         status: &'a Status,
         repair: bool,
         stdout_sha256: &'a str,
         proof_authority_revision: u32,
+        request: &'a Option<sail_api::project::ResolvedRequest>,
+        submission: &'a Submission,
+        request_admitted: bool,
     }
     serde_json::to_vec(&Key {
         status: &job.status,
         repair: matches!(job.submission.mode, sail_api::jobs::Mode::Repair(_)),
         stdout_sha256: &projection.stdout_sha256,
         proof_authority_revision: projection.proof_authority_revision,
+        request: &projection.request,
+        submission: &job.submission,
+        request_admitted,
     })
     .map(|bytes| stdout_digest(&bytes))
     .map_err(io::Error::other)
@@ -273,13 +316,7 @@ fn encode_result(document: ResultDocument) -> io::Result<Arc<Vec<u8>>> {
     Ok(Arc::new(bytes))
 }
 fn apply_currentness(project: &mut sail_api::project::ProjectResult, currentness: Currentness) {
-    let originally_current = project.currentness == sail_api::project::Currentness::Current;
-    project.currentness = match currentness {
-        Currentness::Current => sail_api::project::Currentness::Current,
-        Currentness::Historical => sail_api::project::Currentness::Historical,
-        Currentness::Unknown => sail_api::project::Currentness::Unknown,
-    };
-    if currentness == Currentness::Unknown && originally_current {
+    if sail_api::acceptance::apply_retained_currentness(project, &currentness) {
         project.notes.push(
             "SAIL3114: inputs could not be confirmed unchanged; re-run for a current result"
                 .to_owned(),
@@ -319,18 +356,22 @@ fn classify(
     revision: &str,
     snapshot: Option<sail_verus::managed::InputSnapshot>,
 ) -> Currentness {
-    match snapshot {
-        Some(snapshot) if snapshot.revision != revision => Currentness::Historical,
-        Some(snapshot)
-            if snapshot.complete && original == sail_api::project::Currentness::Current =>
-        {
-            Currentness::Current
-        }
-        _ if original == sail_api::project::Currentness::Historical => Currentness::Historical,
-        _ => Currentness::Unknown,
-    }
+    let observed = snapshot.map(|snapshot| (snapshot.revision, snapshot.complete));
+    sail_api::acceptance::retained_currentness(
+        &original,
+        revision,
+        observed.as_ref().map(|(revision, _)| revision.as_str()),
+        observed.as_ref().is_some_and(|(_, complete)| *complete),
+    )
 }
 fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::ProjectResult> {
+    project_with_request(state, job, retained_request(job))
+}
+fn project_with_request(
+    state: &State,
+    job: &Stored,
+    request: Option<&sail_api::project::ResolvedRequest>,
+) -> io::Result<sail_api::project::ProjectResult> {
     let bytes = project_bytes(state, job)?;
     let mut project = if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
         let mut envelope: sail_api::repair::ResultDocument =
@@ -345,11 +386,85 @@ fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::Project
             .as_ref()
             .map_or(0, |projection| projection.proof_authority_revision),
     );
+    withhold_unbound_authority(&mut project, request);
     Ok(project)
 }
 
+/// Submission remains an independent input on every read, including frame
+/// reuse. A modified record must not reuse frames for another argument list.
+pub(super) fn retained_request(job: &Stored) -> Option<&sail_api::project::ResolvedRequest> {
+    let request = job.projection.as_ref()?.request.as_ref()?;
+    let invocation = job.submission.project_dir.canonicalize().ok()?;
+    sail_api::acceptance::bind_retained_submission(
+        &job.submission.args,
+        &job.submission.mode,
+        request,
+        invocation.to_str(),
+    )?;
+    Some(request)
+}
+
+#[cfg(test)]
+pub(super) fn request_matches_mode(
+    mode: &sail_api::jobs::Mode,
+    request: &sail_api::project::ResolvedRequest,
+) -> bool {
+    sail_api::acceptance::classify_submission_mode(mode, request).is_some()
+}
+
+fn retained_repair_accepted(
+    job: &Stored,
+    batch: &sail_api::repair::BatchResult,
+    project: &sail_api::project::ProjectResult,
+    request: Option<&sail_api::project::ResolvedRequest>,
+) -> bool {
+    let sail_api::jobs::Mode::Repair(selection) = &job.submission.mode else {
+        return false;
+    };
+    request.is_some_and(|request| {
+        sail_api::acceptance::repair_request_matches(
+            request,
+            &selection.package,
+            &selection.target,
+            &selection.kind,
+            &selection.function,
+        ) && sail_api::acceptance::complete_submitted_request(
+            &job.submission.args,
+            &job.submission.mode,
+            request,
+            project,
+        )
+        .is_some_and(|authority| {
+            matches!(
+                authority.kind(),
+                sail_api::acceptance::SubmissionKind::Repair
+            )
+        }) && sail_api::acceptance::requested_function_present(request, project)
+            && batch.accepted_with(project)
+    })
+}
+
+/// Input Currentness remains independent when original request evidence is
+/// missing. Retained target flags cannot recreate that missing authority.
+pub(super) fn withhold_unbound_authority(
+    project: &mut sail_api::project::ProjectResult,
+    request: Option<&sail_api::project::ResolvedRequest>,
+) {
+    let corresponding = sail_api::acceptance::withhold_unbound_request_authority(project, request);
+    if corresponding {
+        return;
+    }
+    if !project
+        .notes
+        .iter()
+        .any(|note| note == UNBOUND_AUTHORITY_NOTE)
+    {
+        project.notes.push(UNBOUND_AUTHORITY_NOTE.to_owned());
+    }
+}
+
 /// Old records can retain observations and historical verdicts, but cannot
-/// establish that an omitted effective per-package option enabled verification.
+/// establish current-policy original-request and selected-attempt evidence.
 pub(super) fn withhold_legacy_authority(
     project: &mut sail_api::project::ProjectResult,
     revision: u32,
@@ -713,6 +828,105 @@ mod legacy_authority_tests {
         Ok(())
     }
 
+    fn frame_document(
+        state: &State,
+        job: &Stored,
+    ) -> Result<ResultDocument, Box<dyn std::error::Error>> {
+        let frame = result_frame(state, job)?;
+        match sail_api::jobs::read_frame(&mut frame.as_slice())? {
+            sail_api::jobs::Response::Result(document) => Ok(document),
+            _ => Err("expected retained result frame".into()),
+        }
+    }
+
+    /// Native frame-selection regression only: the supplied report is a
+    /// declared metadata fixture, not a trusted verifier or complete readback.
+    #[test]
+    fn cached_frames_recheck_live_invocation_admission_in_both_directions()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-live-frame-request-{}", std::process::id()));
+        let invocation = root.join("invocation");
+        let displaced = root.join("displaced");
+        std::fs::create_dir_all(&invocation)?;
+        let server = super::super::bind(
+            &root.join("socket"),
+            &root.join("jobs"),
+            Path::new("/bin/true"),
+        )?;
+        let state = &server.state;
+        let original = zero_function_project()?;
+        let bytes = serde_json::to_vec(&original)?;
+        let request = original_request(&original, &invocation)?;
+        let projection = Projection::validated(&bytes, &original).with_request(Some(request));
+        let mut job = Stored::new(Submission {
+            mode: sail_api::jobs::Mode::Stock,
+            project_dir: invocation.clone(),
+            args: Vec::new(),
+            force: false,
+            environment: BTreeMap::new(),
+            input_revision: None,
+        });
+        job.status.state = Lifecycle::Completed;
+        job.projection = Some(projection.clone());
+        let directory = state.root.join(&job.status.id);
+        std::fs::create_dir_all(&directory)?;
+        std::fs::write(directory.join("stdout"), &bytes)?;
+        assert_ne!(
+            frame_key(&job, &projection, true)?,
+            frame_key(&job, &projection, false)?
+        );
+        assert!(retained_request(&job).is_some());
+        let before = frame_document(state, &job)?;
+        assert_eq!(
+            before.result.as_ref().ok_or("before project")?["targets"][0]["complete"],
+            true
+        );
+        assert_eq!(
+            serde_json::to_value(&before)?,
+            serde_json::to_value(result(state, &job)?)?
+        );
+
+        // The serialized job, captured request and original stdout stay fixed.
+        // Only the independent live canonical-invocation observation changes.
+        std::fs::rename(&invocation, &displaced)?;
+        assert!(retained_request(&job).is_none());
+        for _ in 0..2 {
+            let refused = frame_document(state, &job)?;
+            let fresh = result(state, &job)?;
+            assert_eq!(
+                serde_json::to_value(&refused)?,
+                serde_json::to_value(&fresh)?
+            );
+            let project = refused.result.ok_or("refused project")?;
+            assert_eq!(project["targets"][0]["complete"], false);
+            assert_eq!(
+                project["targets"][0]["report"],
+                serde_json::to_value(&original.targets[0].report)?
+            );
+            assert_eq!(
+                project["targets"][0]["establishing_run"],
+                original.targets[0].establishing_run
+            );
+        }
+
+        std::fs::rename(&displaced, &invocation)?;
+        assert!(retained_request(&job).is_some());
+        let restored = frame_document(state, &job)?;
+        assert_eq!(
+            serde_json::to_value(&restored)?,
+            serde_json::to_value(result(state, &job)?)?
+        );
+        assert_eq!(
+            restored.result.ok_or("restored project")?["targets"][0]["complete"],
+            true
+        );
+        assert_eq!(std::fs::read(directory.join("stdout"))?, bytes);
+        drop(server);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     fn zero_function_project()
     -> Result<sail_api::project::ProjectResult, Box<dyn std::error::Error>> {
         let mut report: sail_api::output::Report = serde_json::from_str(include_str!(
@@ -745,11 +959,69 @@ mod legacy_authority_tests {
         Ok(project)
     }
 
-    #[test]
-    fn missing_legacy_revision_cannot_be_laundered_by_frames_or_baseline_copy()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let root =
-            std::env::temp_dir().join(format!("sail-legacy-authority-{}", std::process::id()));
+    fn original_request(
+        original: &sail_api::project::ProjectResult,
+        root: &Path,
+    ) -> Result<sail_api::project::ResolvedRequest, Box<dyn std::error::Error>> {
+        Ok(sail_api::project::ResolvedRequest {
+            run_id: original.run_id.clone(),
+            invocation: root.canonicalize()?.to_string_lossy().into_owned(),
+            workspace: original.workspace.clone(),
+            context_sha256: original.context_sha256.clone(),
+            input_revision: original.input_revision.clone(),
+            args: Vec::new(),
+            engine: None,
+            function: None,
+            repair_package: String::new(),
+            repair_target: None,
+            repair_kind: String::new(),
+            targets: vec![sail_api::project::RequestTarget {
+                package_id: "package".into(),
+                target: "target".into(),
+                kind: "lib".into(),
+            }],
+        })
+    }
+
+    fn older_baseline_withholds_completion(
+        state: &State,
+        job_id: &str,
+        mut historical: sail_api::project::ProjectResult,
+        revision: Option<u32>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        historical.currentness = sail_api::project::Currentness::Historical;
+        let old_baseline = sail_api::evidence::Baseline {
+            contracts: None,
+            version: sail_api::evidence::VERSION,
+            name: "old-baseline".into(),
+            job_id: job_id.to_owned(),
+            result: historical,
+        };
+        let mut old_baseline = serde_json::to_value(old_baseline)?;
+        if let Some(value) = revision {
+            old_baseline["proof_authority_revision"] = value.into();
+        }
+        std::fs::write(
+            state.root.join("baselines/old-baseline.json"),
+            serde_json::to_vec(&old_baseline)?,
+        )?;
+        let loaded = super::super::product::baseline(state, "old-baseline")?;
+        assert_eq!(
+            loaded.result.currentness,
+            sail_api::project::Currentness::Historical
+        );
+        assert!(!loaded.result.targets[0].complete);
+        Ok(())
+    }
+
+    fn obsolete_revision_cannot_be_laundered_by_frames_or_baseline_copy(
+        revision: Option<u32>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "sail-legacy-authority-{}-{}",
+            std::process::id(),
+            revision.map_or_else(|| "missing".to_owned(), |value| value.to_string())
+        ));
         std::fs::create_dir_all(&root)?;
         let server = super::super::bind(
             &root.join("socket"),
@@ -763,15 +1035,21 @@ mod legacy_authority_tests {
             "fresh enabled zero-function control"
         );
         let bytes = serde_json::to_vec(&original)?;
-        let fresh = Projection::validated(&bytes, &original);
+        let request = original_request(&original, &root)?;
+        let fresh = Projection::validated(&bytes, &original).with_request(Some(request));
         let mut old = serde_json::to_value(&fresh)?;
-        old.as_object_mut()
-            .ok_or("projection must be an object")?
-            .remove("proof_authority_revision");
+        match revision {
+            Some(value) => old["proof_authority_revision"] = value.into(),
+            None => {
+                old.as_object_mut()
+                    .ok_or("projection must be an object")?
+                    .remove("proof_authority_revision");
+            }
+        }
         let legacy: Projection = serde_json::from_value(old)?;
-        assert_eq!(legacy.proof_authority_revision, 0);
+        assert_eq!(legacy.proof_authority_revision, revision.unwrap_or(0));
         let mut preserved = original.clone();
-        withhold_legacy_authority(&mut preserved, 0);
+        withhold_legacy_authority(&mut preserved, legacy.proof_authority_revision);
         assert_eq!(preserved.currentness, original.currentness);
         assert_eq!(preserved.exit_code, original.exit_code);
         assert_eq!(preserved.targets[0].report, original.targets[0].report);
@@ -792,7 +1070,10 @@ mod legacy_authority_tests {
         std::fs::create_dir_all(&directory)?;
         std::fs::write(directory.join("stdout"), &bytes)?;
         remember_job(state, &job)?;
-        assert_ne!(frame_key(&job, &legacy)?, frame_key(&job, &fresh)?);
+        assert_ne!(
+            frame_key(&job, &legacy, true)?,
+            frame_key(&job, &fresh, true)?
+        );
         for _ in 0..2 {
             let frame = result_frame(state, &job)?;
             let response: sail_api::jobs::Response =
@@ -814,25 +1095,8 @@ mod legacy_authority_tests {
                 .complete
         );
 
-        let mut historical = original;
-        historical.currentness = sail_api::project::Currentness::Historical;
-        let old_baseline = sail_api::evidence::Baseline {
-            contracts: None,
-            version: sail_api::evidence::VERSION,
-            name: "old-baseline".into(),
-            job_id: job.status.id.clone(),
-            result: historical,
-        };
-        std::fs::write(
-            state.root.join("baselines/old-baseline.json"),
-            serde_json::to_vec(&old_baseline)?,
-        )?;
-        let loaded = super::super::product::baseline(state, "old-baseline")?;
-        assert_eq!(
-            loaded.result.currentness,
-            sail_api::project::Currentness::Historical
-        );
-        assert!(!loaded.result.targets[0].complete);
+        older_baseline_withholds_completion(state, &job.status.id, original, revision)?;
+        assert_eq!(fresh.proof_authority_revision, PROOF_AUTHORITY_REVISION);
         job.projection = Some(fresh);
         remember_job(state, &job)?;
         let fresh_zero = super::super::product::save_baseline(state, &job.status.id, "fresh-zero")?;
@@ -845,6 +1109,21 @@ mod legacy_authority_tests {
         );
         drop(server);
         std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn missing_legacy_revision_cannot_be_laundered_by_frames_or_baseline_copy()
+    -> Result<(), Box<dyn std::error::Error>> {
+        obsolete_revision_cannot_be_laundered_by_frames_or_baseline_copy(None)
+    }
+
+    #[test]
+    fn superseded_and_unknown_revisions_cannot_gain_selected_history_authority()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for revision in [1, 2, PROOF_AUTHORITY_REVISION + 1] {
+            obsolete_revision_cannot_be_laundered_by_frames_or_baseline_copy(Some(revision))?;
+        }
         Ok(())
     }
 }

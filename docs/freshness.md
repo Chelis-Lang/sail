@@ -31,8 +31,21 @@ These labels describe your inputs, not the solver's verdict. A Current result
 can contain a failed proof. Only a Current, successful result can be reused as a
 proof receipt or accept a repair. CLI and MCP clients receive the same label.
 
+A human `sail verify` call that Cargo leaves unchanged can print only its
+`Finished` line, with no target reports. Sail can replay that empty human output
+when its original request, current request and recorded observations still
+match. This stores no proof receipt and creates no verified report. JSON, jobs
+and MCP use their ordinary result-producing paths. The byte-only replay accepts
+one plain `dev` or `release` completion line and empty stdout; other output,
+including warnings, colors or custom profile renderings, takes the ordinary path.
+
 Any doubt makes a result Historical or Unknown, never Current. The cost of a
 wrong "not current" is one re-run; a wrong "Current" is never acceptable.
+
+A retained result must originally have been Current to remain Current after a
+readback. Matching inputs do not upgrade a Historical or Unknown run. Reading a
+result rechecks its original request before preserving whole-target completion;
+losing that authority preserves the recorded diagnostics and input label.
 
 ## Reading a result later
 
@@ -53,10 +66,28 @@ contents changed. Directory symlinks and compiler-declared external includes
 receive the same checks. Restoring the original binding and contents restores
 the logical input identity.
 
+Fresh managed content-digest reads keep one opened file handle and compare its
+original/final device, inode, length, mode and modification/change timestamps
+with the requested pathname. The hasher receives the exact checked read chunks;
+incomplete EOF, an unreadable handle or a different final object supplies no
+digest. Phase-local digest reuse also checks the original read seal against the
+actual canonical cache-key object and the requested pathname; a changed
+observation forces a fresh read.
+A stable regular file retains the same digest as before. This is an
+opened-object check, not an atomic filesystem snapshot or executable-launch
+guarantee. Retained-result reads use the same checked read/hash transaction.
+
 Each later read of the result (job Status or Result, `sail jobs`, MCP reads,
 watch) rereads every recorded file completely, in parallel, and compares
 digests. It also checks that the absent configuration paths are still absent.
 Every recorded source binding must still resolve to the same destination.
+Before any of these reads, and again after all content and binding reads,
+Sail observes a mutation stamp over the exact recorded paths, resolved objects
+and linked ancestors. A changed stamp makes the result Historical; an unavailable
+stamp cannot establish Current. This prevents separately matching file reads
+from hiding an observed mutation during the batch. Metadata endpoint equality
+still does not establish an atomic snapshot: repeated metadata, filesystem
+timestamp granularity and transient changes remain observation limits.
 
 - Every digest matches and nothing new appeared: **Current**.
 - Any file changed, disappeared or appeared: **Historical**.
@@ -114,6 +145,44 @@ checks could not be made), with the note "inputs could not be confirmed
 unchanged; re-run for a current result". Verification itself still runs and
 its report is kept as the record of that run.
 
+Compiler declarations also require a completed observation from every Cargo
+child that the adapter declared before spawning. Sail binds each retained
+artifact message to the actual child PID, checks the final frame count after
+stdout EOF and a normal child exit, and requires a tagged usable dep-info read
+for every ordinary compiler artifact. An observed empty child is distinct from
+a missing, malformed or truncated journal
+([issue #377](https://github.com/Chelis-Lang/sail/issues/377)). Missing, repeated, foreign or
+unreadable dep-info outcomes withhold coverage. A normal nonzero exit can
+complete this accounting without establishing a successful proof or receipt.
+Malformed or truncated JSON-looking child output and unsupported JSON events
+also withhold completion; ordinary verifier summaries and complete multiline
+Verus documents remain supported. Optional output accounting stops at 64 MiB
+without suppressing forwarded bytes or changing the child exit status.
+Fresh verifier diagnostics remain available when declaration coverage is
+unknown. Previously uncovered source inventories do not become covered merely
+because a later observation is empty. A rerun can therefore remain Unknown;
+removing only the source inventory does not establish missing compiler reads.
+A complete independently checked compiler-input reestablishment protocol remains
+separate work.
+
+Compiler filename decoding follows rustc's space-only filename encoding:
+ASCII spaces are escaped; tabs, non-ASCII whitespace and ordinary backslashes
+remain literal. Every proposed decoded token is checked against its original
+encoded bytes. Unexpected multiline records, foreign phony targets and NUL or
+carriage-return token bytes withhold declaration coverage. Source inventory
+schema 3 retains older paths but rejects schema 2's coverage: the older decoder
+could omit a consumed input while recording different existing paths
+([#408](https://github.com/Chelis-Lang/sail/issues/408)). This does not establish
+that a first-line text record can represent every possible OS pathname.
+Arbitrary newline-containing filenames and rustc's lossy non-UTF-8 rendering
+still require a stronger input provider.
+
+This check establishes the observed declaration ledger. Cargo/rustc's guarantee
+that dep-info names all actual compiler inputs and the OS's process/filesystem
+semantics remain trusted boundaries; the check does not prove atomic compiler
+launch identity. See the [input refinement component](design/acceptance-inputs.md)
+for the exact proved scope and remaining obligations.
+
 Build-script coverage does not wait for scripts outside an explicit `-p`
 selection's dependency closure, because they never run for it. Without an exact
 selection or a complete, unambiguous resolve graph, every resolved package is in
@@ -135,6 +204,29 @@ are still compared. Rustc reads a generated file only after its script has
 finished, so its content at the end of the run is the content compiled, and
 that content is bound into the proof receipts and the read-time record like
 any other input ([#120](https://github.com/Chelis-Lang/sail/issues/120)).
+
+### Original compiler histories
+
+A fresh managed proof uses an exclusive per-attempt directory for its raw output,
+logs and engine evidence. A normal exit and a familiar filename do not establish
+completion. The selected reference must match the original run, target, final
+command, process status and complete recorded payload; a later unfinished attempt
+cannot reuse its predecessor's completion. Journal failures preserve fresh
+verifier output and status while withholding proof reuse and completeness.
+
+Older private receipt formats require a fresh check. Stored native-artifact
+transfers preserve and validate the original producer subtree rather than create
+a new live invocation from serialized metadata. Missing or modified history
+refuses reuse. This does not enable the disabled native-artifact store, establish
+a full compiler-input domain or change the existing qualified bundled-proof
+import. The experimental same-workspace arena also copies its original receipt,
+commit and complete selected-attempt history. A restored run owns a separate
+archive copy and retains the original producer identity; removing old run files
+or evicting the arena cannot turn it into a new live invocation. Every later
+reuse checks that copied history and the current receipt's own commit. Older
+arena entries or damaged copies miss conservatively. This does not complete
+physical compiler-input or filesystem observation proofs. See
+[invocation and result authority](design/acceptance-authority.md).
 
 ### Explicit native include directories
 
@@ -192,10 +284,38 @@ artifact bytes against an established receipt. The candidate's
 [qualification record](validation/managed-selection-family.md) identifies the
 remaining gates and the original failed diagnostic.
 
+Successful erased compilation may replace a failed verification's dep-info
+with a smaller declared-environment name set. After a complete fresh scan,
+receipt admission preserves names from independently valid original receipts
+for the same admissible compiler context and scope, and freshly samples every
+name in the common union, including absence. The exact name/value-map equality
+check remains in place. An unreadable or malformed fresh scan still refuses
+reuse, and invalid receipts cannot supply names. This prevents unrelated
+successful compilation from discarding a dependency's known declaration
+history. It does not observe ghost-only inputs that no successful original
+record captured; [issue 386](https://github.com/Chelis-Lang/sail/issues/386)
+remains a separate verification-phase coverage gap.
+
 Concurrent dependency publishers reserve a private staging directory before
 writing. A name collision leaves the other publisher's files untouched; a
 failed publication cannot remove a directory it did not create. This does not
 change receipt, source or artifact admission checks.
+
+## Owned command environment observations
+
+Outer managed Cargo and optional build-planning commands use a private owned
+builder that records explicit inheritance and final set/remove/clear operations.
+It checks actual `get_envs` readback against those independent records immediately
+before spawning the same command. Optional records bind the owned child PID and
+only environment digests. Capture failure preserves fresh output/status while
+withholding Current and retained completeness; it cannot be repaired by a later
+input-only refresh. This does not establish complete inner compiler inputs.
+
+A separate full-parent reuse experiment (`26ea66b3`) fixes the ordinary ghost
+variable witness but stays unselected: it contradicts the unchanged requirement
+that unused authentication changes reuse the same proof context. The default
+context/declaration policy below remains unchanged. Completing actual compiler
+input observation or an owner contract decision must resolve that conflict.
 
 ## Which environment variables are proof inputs
 
@@ -212,10 +332,28 @@ Cargo's own. Two parts of the environment bind a result:
   layout and locale (`NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`, `COLUMNS`,
   `LANG`, `LANGUAGE`, `LC_*`).
 - **What the project declares.** After each run Sail collects every variable
-  any unit declares: rustc's `# env-dep:` dep-info lines (`env!`,
+  the target's dependency closure declares: rustc's `# env-dep:` dep-info lines (`env!`,
   `option_env!`, and the Verus driver's own declarations) and build scripts'
   `rerun-if-env-changed`. Each receipt records their values, and it is reused
-  only while every one is unchanged.
+  only while every one is unchanged and the current declaration inventory
+  contains exactly those same names and values.
+
+Dep-info names retain meaningful whitespace and decode rustc's escaped newline,
+carriage-return and backslash bytes before looking up a value. Build-script
+names follow Cargo's directive interpretation: surrounding instruction-line
+whitespace is removed before recognizing the prefix; leading whitespace inside
+the name payload remains significant. For example, rustc's
+`# env-dep: FLAG =7` names ` FLAG `, while Cargo's
+`cargo:rerun-if-env-changed= FLAG ` names ` FLAG`.
+
+An unreadable directory entry, declaration file, malformed name or unsupported
+symlinked declaration path supplies no complete declaration scan. A successful
+empty scan remains distinct. Fresh verifier reports and diagnostics remain
+available, but incomplete scans record no reusable proof receipt and cannot
+establish Current input observations. Missing or unreadable build-script output
+also supplies no complete script contract. Legacy receipt/read-time records and
+proof contexts from the earlier declaration policy cannot authorize new Current
+proof evidence; historical reports remain readable.
 - **What ghost code reads.** Verus compiles a verified crate twice, and the
   erased compilation rewrites its dep-info without the verification phase's
   reads, so a read in a `proof fn`, spec or assertion alone is not declared
@@ -328,6 +466,23 @@ homes with the bytes of every Cargo configuration file. Every other variable,
 such as an agent's session id, `TERM` or `SSH_AUTH_SOCK`, is not a proof
 input, so the CLI, MCP and every agent session or terminal share one proof
 context for a project. Child processes still receive the whole environment.
+
+Receipt declaration scans retain the actual dep-info or build-script output
+file of each name. Cargo's artifact paths attribute those files to packages.
+Only a file with one known owning package outside the target's complete resolved
+dependency closure is excluded. Unknown or ambiguous ownership, or an incomplete
+metadata graph, keeps the conservative global name domain. A failed declaration
+scan withholds reuse; ownership information cannot repair it.
+
+Originally admitted names are retained only from the same package, Cargo target
+name and kind, with the original receipt's scope, version, bytes and values still
+valid. They are sampled again, including absence; old values are never copied
+into a fresh observation. This preserves verification-phase declarations lost
+from later dep-info without importing an unrelated target's names. A new relevant
+name or a changed/removed recorded value still refuses exact-map reuse. This
+accounts for declared inputs; it does not discover opaque compiler or macro I/O.
+The independently computed current revision must match under the exact
+package/target/kind key used by the revision batch; a missing entry also refuses.
 
 **Limitation, shared with Cargo.** A build script or proc macro that reads a
 variable without declaring it, including a tool that a build script finds

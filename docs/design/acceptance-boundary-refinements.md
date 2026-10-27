@@ -1,0 +1,158 @@
+# Acceptance boundary refinements
+
+Status: implementation and qualification are in progress after the production
+acceptance operations merged in [PR #362](https://github.com/Chelis-Lang/sail/pull/362).
+The six deliverables below remain the completion scope of
+[PR #378](https://github.com/Chelis-Lang/sail/pull/378). Component milestones do
+not establish the service-wide theorem or close provider assumptions by declaration.
+
+The [acceptance design](evidence-acceptance-core.md) states the intended theorem.
+The [production refinement guide](acceptance-production-refinements.md) records
+the executable operations already checked with stock Verus. This follow-up
+connects more of the actual producers and consumers of their evidence.
+Verus translation and the pinned solver remain trusted as in the original
+design. Default-mode verdict and diagnostic conformance remains mandatory.
+The [qualification record](../validation/acceptance-boundary-refinements.md)
+distinguishes component probes, captured proofs and integration gates.
+
+## Obligations and first implementation slices
+
+| Obligation | Concrete next slice | Completion still requires |
+|---|---|---|
+| [Raw SMT interpretation](https://github.com/Chelis-Lang/sail/issues/371) | Owned exact transcript/endpoints feed the original prefix; list kernel observes 482/837; outer/raw-owner root observes 524/918; actual lexical root passes 553/951; paired stdout controller passes 568/971; actual per-item ordering is implemented but unqualified | Qualify actual per-item ordering and all 254 query controls; refine the unchanged native terminal/tail block; prove remaining physical, Session/solver/mode/key encoding against the exact model binding |
+| [Cache origins](https://github.com/Chelis-Lang/sail/issues/372) | Preserve actual immutable publication payloads through the writer boundary; relate admission to observed live-run history | Refine local initialization, physical persistence/recovery and every shared/bundled writer contract; a hash or signature does not prove solver truth |
+| [Compiler input closure](https://github.com/Chelis-Lang/sail/issues/373) | Connect independently recorded compiler-boundary observations and complete keyed event accounting to input evidence | Establish that the provider records every actual compiler input, including generated input and effective configuration; completeness of a supplied list is insufficient |
+| [Reads and launches](https://github.com/Chelis-Lang/sail/issues/374) | Preserve the actual read/path/process observations consumed by the factories under a named supported provider contract | Establish real observation/launch identity and the supported atomicity boundary; hash-then-unrelated-path-launch is insufficient |
+| [Original request correspondence](https://github.com/Chelis-Lang/sail/issues/375) | Retain independently resolved request scope and pre-execution identity, then check the actual retained result against that request | Relate submission, argument normalization/effective package options, compiler target selection and worker-side capture; result-selected flags cannot supply the expected inventory |
+| [Success surfaces and composition](https://github.com/Chelis-Lang/sail/issues/376) | Inventory each CLI, JSON, job, repair and MCP success path and require the appropriate request-bound authority | Connect complete physical observations and original requests through a concrete service transition refinement into the composed model |
+
+These are separate deliverables under
+[#368](https://github.com/Chelis-Lang/sail/issues/368) and
+[#346](https://github.com/Chelis-Lang/sail/issues/346). A bounded implementation
+may discharge part of one row without completing that deliverable. Each
+handoff and qualification must state the exact boundary it establishes.
+
+## Evidence flows and construction authority
+
+Raw transcript bytes precede their interpreted commands. A parser's offsets
+are candidates: the checked operation must validate their correspondence to
+the actual immutable bytes. Failure disables cache interpretation and preserves
+the original forwarding and pinned-solver path. Query normalization is not part
+of this work.
+
+Input observations retain the descriptor actually returned by the producer.
+Independent expected records establish required coverage. Missing events,
+duplicate keys, unreadable outcomes and unmatched identity cannot become a
+successful complete observation through relabeling, sorting or a fresh stamp.
+The original capture guard remains bound through selection and refresh.
+
+The independently resolved request precedes its result. Retained request
+records bind the selected package/target/kind, invocation, workspace, run,
+input/context identity, arguments and runtime/mode where applicable. They are
+not proof authority merely because they deserialize or carry a checksum.
+A checked immutable borrow token establishes the relation between the actual
+request and actual result. Missing older records withhold completeness while
+preserving historical diagnostics and input-currentness observations.
+
+A caller requesting repair requires the stricter repair policy. A whole-target
+proof cannot be manufactured from an exact partial receipt. A compile-only
+observation may match a request and remain Current while supplying no proof
+authority. Genuine enabled zero-function proofs remain admissible.
+
+The initial consumer inventory is:
+
+| Surface | Existing checked operation | Correspondence still needed |
+|---|---|---|
+| Unchanged-call CLI replay | Saved-result and input-stamp comparison | Bind the current request independently to the retained producer and require fresh capture when requested; saved Current labels and a new run ID cannot supply this relation |
+| Fresh managed completion | `sail-verus` runner's independent requested coverage and whole-report admission | Persist the independently resolved request through later reads |
+| CLI retained job labels | `sail-cli/src/jobs.rs` calls `complete_target` | Bind the retained target to the original request before a current complete claim |
+| MCP summary/targets/full views | `sail-mcp/src/compact.rs` rechecks target authority | Preserve original-request admission across shaping and detail choices |
+| Repair CLI and job responses | `sail-api/src/repair.rs` calls selected-project authority with additional batch guards | Retain the independent full-phase request rather than infer it from selected result flags |
+| Evidence inventories | `sail-api/src/evidence.rs` rechecks whole-target authority | Preserve request and observation context through lookup and comparison |
+| Saved baselines | `sail-daemon/src/jobs/product.rs` forces Historical and retains producer-admissibility state | Preserve immutable establishment identity without upgrading history to present proof |
+| Schema-two project JSON | Actual typed fields remain candidates until checked | Serialization and a stored completion flag cannot construct original-request authority |
+
+This is a reviewed caller inventory, not a proof that every reachable rendering
+or producer transition satisfies the composed theorem. Other backend families
+and temporal/neutral-contract results retain their separate evidence contracts.
+
+Digest equality retains the existing cryptographic assumptions; it does not
+replace full logical input equality in a theorem. Public report headers do not
+establish an observed launch, an exhaustive compiler inventory, an admitted
+solver origin or the original request by themselves.
+
+## Composition and review criteria
+
+The composed model already proves its conditional invariant over its permitted
+execution histories. The missing production refinement must identify the real
+event producer for every model fact and the exact checked operation consuming
+it. The proof ledger distinguishes:
+
+- Source-shared executable bodies checked directly by stock Verus.
+- Native adapters that construct or consume candidates, with concrete tests.
+- Physical compiler, filesystem, launch and store-provider contracts.
+- Runtime success surfaces still outside the established transition relation.
+
+An accepted component must include a nonempty constructive witness, explicit
+representation relations and guard-removal controls that fail through ordinary
+verification. Timeouts, syntax errors, missing source, malformed output,
+focused verification and missing obligations fail qualification. Closed source,
+import, module, type and function inventories must include every new authority
+constructor; new fields must remain tied to the actual declarations.
+
+Native macOS/Linux gates and solver faults remain separate from proof checking.
+Changes to shim, cache, daemon, keys or harness also require the original full
+fast and standard differential suites. Measure any added validation cost on a
+native host and retain every sample. Existing comparator, corpus selection,
+deadlines and baselines remain unchanged.
+
+The follow-up remains a draft until its implemented slices have source-bound
+proof receipts, independent review and the required integration gates. Broader
+obligations remain open even when those slices pass.
+
+## Running the production proofs
+
+`ci/local.sh refinements` checks all three production roots and every required
+negative control through directly invoked pinned stock Verus. CI runs the same
+complete roots separately as `ci/run.sh refinements query`, `inputs` and
+`authority`. Each run validates the full committed source and root inventory
+before selecting its root; its report names exactly the checked components.
+The `Acceptance production refinements` aggregate requires successful execution
+of all three jobs. Missing, skipped, cancelled or failing jobs fail the aggregate
+and CI completion. Splitting jobs changes scheduling; it does not change the
+proof commands, per-case deadline, resource limits or mutation inventory.
+
+## Capturing original submission types
+
+The stock proof driver includes the actual `jobs::Mode` enum and
+`repair::Selection` fields used by original-submission admission. Its declaration
+projection preserves the `Repair(Selection)` payload, the original enum variants,
+all selected field types and the modules' binding environments. Unknown tuple
+payloads, missing variants, conditional selected declarations and changed imports
+refuse capture. Native socket helpers remain bound source outside the proof;
+their platform cfg and expression macros do not supply authority declarations.
+The full canonical function inventory and normal failing controls must qualify
+any factory that consumes these representations.
+
+The projected reports also retain actual mode, solver observations, engine
+identity and per-function provenance mode. Target records retain their original
+establishing run and fresh/reused distinction. Retaining these fields enables
+an executable origin/context correspondence check; the fields themselves do
+not authenticate a process, establish a complete child inventory or prove a
+truthful cache writer.
+
+## Captured attempt and phase representation
+
+The combined production drivers include all shared phase factories and owned
+attempt identity operations. Required private-field checks cover `PhaseRequest`,
+`PhaseInputs`, `AttemptIdentity` and `DeclinedEngine`; unchecked derives and
+unverified constructors remain refused. The daemon bridge is rebound to the
+reviewed revision-three producer policy used by retained jobs and baselines.
+Full source and function inventories still qualify each complete root.
+
+The engine model's added `RestartAfterDecline(u64)` variant gives Verus a second
+payload-bearing origin. Its generated generic `Origin::arrow_0` alias disappears;
+the original named `arrow_Fallback_0` and new `arrow_RestartAfterDecline_0`
+selectors remain captured. Every explicit original function and proof is
+retained. This representation update does not relax whole-crate checking,
+function inventory equality, failure controls or verifier resource settings.

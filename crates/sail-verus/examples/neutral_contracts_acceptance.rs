@@ -42,6 +42,7 @@ fn main() -> TestResult {
         args: Vec::new(),
         force: true,
         attribution_logs: true,
+        request_capture: None,
     };
     let original = include_str!("../tests/fixtures/neutral-contracts/add_one.rs");
     let changed = include_str!("../tests/fixtures/neutral-contracts/body_edit.rs");

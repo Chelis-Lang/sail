@@ -1,8 +1,28 @@
 # Roadmap
 
-Current state of main and the next work. This page holds status and gates
-only; [performance](performance.md) has the numbers,
-[known issues](known-issues.md) the open defects and limits.
+Current state and next work. Evidence lives in the linked validation records
+and reports; this page holds only status and gates. Status words follow
+AGENTS.md: proposed, built, implemented, qualified, selected, accepted.
+
+## Neutral contract service
+
+| Gate | State | Evidence |
+|---|---|---|
+| Shared neutral source and actual backend helper | Qualified separately | [Lowering](spec/neutral-verus-lowering.md) |
+| Negotiated source-only job route and immutable baselines | Cumulative source qualified on native Linux and macOS | [Combined qualification](validation/integration-production.md), [ADR 0070](decisions/0070-neutral-contract-jobs.md) |
+| Source-semantic requirement entailment and full requirement tiers | Producer source-bound proof views implemented; independent links belong to Oyster | [Service boundary](spec/neutral-contract-jobs.md) |
+| Bounded neutral-source body mutation | Lifecycle qualified; native strong mutants remain Unknown and positive kills unestablished | [Policy and evidence](neutral-mutation.md), [ADR 0074](decisions/0074-bounded-neutral-mutation.md) |
+| Separate scalar literal-contract witnesses | Native Linux gates and installed source-owner witness acceptance pass; protected delivery remains separate | [Qualification](validation/scalar-literal-witnesses.md), [ADR 0077](decisions/0077-scalar-literal-contract-witnesses.md) |
+
+## Evidence-acceptance proofs
+
+| Gate | Current state | Remaining work |
+|---|---|---|
+| Query association, input identity, scope and result authority models | Expanded lifecycle models, composed admission and captured-source direct stock checking pass native and hosted checks; scope is recorded in the [model guide](design/acceptance-proof-checker.md) | Observation adapters, parser/cache-origin refinement and service-wide theorem |
+| Production acceptance core | Checkpoint `fe8be9ee` passes native/hosted gates and full fast/standard conformance; bounded timing accepted by owner | remaining stages C–F in the [refinement guide](design/acceptance-production-refinements.md); broader release performance remains separate |
+| Acceptance boundary follow-up | Combined whole Stock roots pass 646/1,114, 308/538 and 608/1,030 at `f8b26511`; the full native gate passes at `16938f40`, and all 31 models pass at `ee4e684f`. The draft now also integrates actual output item ordering, original package-selector scanning and the renderer correction, each with separate whole-root/native receipts; [qualification](validation/acceptance-boundary-refinements.md) preserves exact source and limits | All six [deliverables](design/acceptance-boundary-refinements.md) remain open. All 314 query/115 input/247 authority controls and fresh combined native gates, #506/#507 e2e corrections, compiler/process/cache-origin correspondence, conformance, native cost and the service theorem remain required |
+| Current-main source reconciliation | The draft retains main through `dca5cd43`, original request/origin guards and build-script copies/directories, and combines parser/cache/service source. Canonical dependency order and parser import guards are restored after native source refusals (#495/#496) | The parser/cache/service predecessor passes its three whole roots and source suites; the new request integration requires fresh qualification. Complete native/macOS, conformance and owner CI policy decision remain. Earlier frozen receipts do not establish current combined acceptance |
+| Streaming parser refinement (#371) | Actual outer/raw-owner root passes 524/918; lexical state/head passes 553/951; paired stdout append/controller passes 568/971 under proposed ADR 0086. Native SMT package 25 tests and strict Clippy pass | Full 225-control parser milestone and 278-control combined query union, actual per-item/frame/replay event order, native integration/cost and Session/solver/physical/origin obligations remain |
 
 ## Goal
 
@@ -32,7 +52,7 @@ baseline.
 | Fork runtime | `36d65c3f` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; selected | — |
 | Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
 | Default output identical to stock | Done: human stderr is byte-identical by default; Sail notes only with `SAIL_EXPLAIN=1` or in JSON (#391) | — |
-| Default-mode verdict conformance | Open defects #385, #386, #393 (environment and `--time` reach the verified compiler) | Fix, with conformance coverage |
+| Default-mode verdict conformance | Main fixes #385, #386 and #393 through isolated settings/options and observed ghost environment; residual #435 stays open | Combined draft conformance and remaining transport transparency |
 | Unchanged calls | Done when replay applies: 26 ms against stock's 0.26 s on Anvil on Linux, 60 ms against 0.25 s on macOS (ADR 0082, #402, #437). Otherwise unchanged Anvil about 1.7 s | #314 |
 | Tiny edits | Sail still slower than stock by a fraction of a second | #156 |
 | Cold runs | Linux at parity or faster; macOS Anvil about 0.4 s slower on 100 s | #278, #232 |

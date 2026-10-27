@@ -11,14 +11,39 @@ use super::{State, get, store};
 
 /// Private on-disk provenance; the public baseline contract remains unchanged.
 #[derive(serde::Serialize, serde::Deserialize)]
-struct StoredBaseline<T> {
+struct StoredBaseline<T, R = sail_api::project::ResolvedRequest> {
     #[serde(flatten)]
     baseline: T,
     #[serde(default)]
     proof_authority_revision: u32,
+    #[serde(default = "Option::default", skip_serializing_if = "Option::is_none")]
+    request: Option<R>,
 }
 
-fn completed(state: &State, id: &str) -> io::Result<ProjectResult> {
+// One native retrieval observation, not a deserializable process/proof token.
+// Keep the request paired with the exact project whose flags it admitted.
+struct CompletedObservation {
+    result: ProjectResult,
+    request: Option<sail_api::project::ResolvedRequest>,
+}
+
+impl CompletedObservation {
+    fn presentation(&self) -> sail_api::acceptance::CompletedPresentation<'_> {
+        sail_api::acceptance::completed_presentation(&self.result, self.request.as_ref())
+    }
+}
+
+// Preserve the already-read baseline pair before its public data projection.
+struct BaselineObservation {
+    baseline: Baseline,
+    request: Option<sail_api::project::ResolvedRequest>,
+}
+
+fn completed(state: &State, id: &str) -> io::Result<CompletedObservation> {
+    completed_with_request(state, id)
+}
+
+fn completed_with_request(state: &State, id: &str) -> io::Result<CompletedObservation> {
     let job = get(state, id)?;
     if job.contracts.is_some() {
         return Err(io::Error::other(
@@ -30,13 +55,17 @@ fn completed(state: &State, id: &str) -> io::Result<ProjectResult> {
             "SAIL0904: complete job evidence is not yet available",
         ));
     }
-    let document = store::result(state, &job)?;
-    serde_json::from_value(
+    let (document, request) = store::result_with_request(state, &job)?;
+    let project = serde_json::from_value(
         document
             .result
             .ok_or_else(|| io::Error::other("SAIL0904: job has no project evidence"))?,
     )
-    .map_err(io::Error::other)
+    .map_err(io::Error::other)?;
+    Ok(CompletedObservation {
+        result: project,
+        request: request.cloned(),
+    })
 }
 
 pub(super) fn explain(
@@ -46,8 +75,10 @@ pub(super) fn explain(
     function: &str,
     obligation: Option<&str>,
 ) -> io::Result<Explanation> {
-    let result = completed(state, id)?;
-    let mut explanation = sail_api::evidence::explain(&result, target, function, obligation)
+    let observation = completed(state, id)?;
+    let presentation = observation.presentation();
+    let result = presentation.project();
+    let mut explanation = sail_api::evidence::explain(result, target, function, obligation)
         .map_err(io::Error::other)?;
     let job = get(state, id)?;
     let mut cursor = Cursor::default();
@@ -104,7 +135,23 @@ pub(super) fn save_baseline(state: &State, id: &str, name: &str) -> io::Result<B
     if get(state, id)?.contracts.is_some() {
         return super::contracts::save_baseline(state, id, name);
     }
-    let mut result = completed(state, id)?;
+    let observation = completed_with_request(state, id)?;
+    publish_baseline(state, id, name, observation)
+}
+
+// Both fields come from one completed_with_request observation. A later path
+// change does not replace that historical original request during publication.
+fn publish_baseline(
+    state: &State,
+    id: &str,
+    name: &str,
+    observation: CompletedObservation,
+) -> io::Result<Baseline> {
+    valid_name(name)?;
+    let CompletedObservation {
+        mut result,
+        request,
+    } = observation;
     result.currentness = sail_api::project::Currentness::Historical;
     result.notes.push("Immutable baseline evidence applies only to its recorded input revision, not current workspace inputs.".into());
     let baseline = Baseline {
@@ -114,6 +161,10 @@ pub(super) fn save_baseline(state: &State, id: &str, name: &str) -> io::Result<B
         job_id: id.into(),
         result,
     };
+    // Historical downgrade precedes the view. This cannot remint Current
+    // whole authority; both serialized fields still come from the same pair.
+    let presentation =
+        sail_api::acceptance::completed_presentation(&baseline.result, request.as_ref());
     let directory = state.root.join("baselines");
     store::private_dir(&directory)?;
     let target = directory.join(format!("{name}.json"));
@@ -131,6 +182,7 @@ pub(super) fn save_baseline(state: &State, id: &str, name: &str) -> io::Result<B
         let stored = StoredBaseline {
             baseline: &baseline,
             proof_authority_revision: store::PROOF_AUTHORITY_REVISION,
+            request: presentation.request(),
         };
         file.write_all(&serde_json::to_vec(&stored).map_err(io::Error::other)?)?;
         file.sync_all()?;
@@ -172,6 +224,10 @@ pub(super) fn baselines(state: &State) -> io::Result<Vec<String>> {
 }
 
 pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
+    baseline_with_request(state, name).map(|observation| observation.baseline)
+}
+
+fn baseline_with_request(state: &State, name: &str) -> io::Result<BaselineObservation> {
     valid_name(name)?;
     let file = std::fs::File::open(state.root.join("baselines").join(format!("{name}.json")))
         .map_err(|error| io::Error::other(format!("SAIL0905: cannot read baseline: {error}")))?;
@@ -220,23 +276,299 @@ pub(super) fn baseline(state: &State, name: &str) -> io::Result<Baseline> {
         super::contracts::validate_baseline(state, &baseline, &bytes)?;
     } else {
         store::withhold_legacy_authority(&mut baseline.result, stored.proof_authority_revision);
+        store::withhold_unbound_authority(&mut baseline.result, stored.request.as_ref());
     }
-    Ok(baseline)
+    Ok(BaselineObservation {
+        baseline,
+        request: stored.request,
+    })
 }
 
 pub(super) fn compare(state: &State, before: &Reference, after: &str) -> io::Result<Comparison> {
     let before = match before {
         Reference::Job(id) => completed(state, id)?,
         Reference::Baseline(name) => {
-            let saved = baseline(state, name)?;
-            if saved.contracts.is_some() {
+            let saved = baseline_with_request(state, name)?;
+            if saved.baseline.contracts.is_some() {
                 return Err(io::Error::other(
                     "SAIL3142: generic comparison is unsupported for neutral evidence",
                 ));
             }
-            saved.result
+            CompletedObservation {
+                result: saved.baseline.result,
+                request: saved.request,
+            }
         }
     };
     let after = completed(state, after)?;
-    Ok(sail_api::evidence::compare(&before, &after))
+    let before = before.presentation();
+    let after = after.presentation();
+    Ok(sail_api::evidence::compare(
+        before.project(),
+        after.project(),
+    ))
+}
+
+#[cfg(test)]
+mod baseline_request_tests {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
+
+    fn zero_function_report() -> TestResult<sail_api::output::Report> {
+        let mut report: sail_api::output::Report = serde_json::from_str(include_str!(
+            "../../../sail-cli/tests/fixtures/attr/report.golden.json"
+        ))?;
+        report.exit_code = Some(0);
+        for krate in &mut report.crates {
+            krate.functions.clear();
+            krate.verus.verified = Some(0);
+            krate.verus.errors = Some(0);
+            krate.verus.success = Some(true);
+            krate.verus.encountered_vir_error = Some(false);
+        }
+        report.summary = sail_api::output::Summary::of(&report.crates);
+        Ok(report)
+    }
+
+    fn project(invocation: &std::path::Path) -> TestResult<ProjectResult> {
+        Ok(ProjectResult {
+            kind: "sail-project-result".into(),
+            schema_version: sail_api::project::SCHEMA_VERSION,
+            run_id: "recorded-run".into(),
+            workspace: invocation.to_string_lossy().into_owned(),
+            context_sha256: "fixture-context".into(),
+            input_revision: "recorded-revision".into(),
+            currentness: sail_api::project::Currentness::Current,
+            exit_code: Some(0),
+            targets: vec![sail_api::project::TargetResult {
+                package_id: "package".into(),
+                target: "target".into(),
+                kind: vec!["lib".into()],
+                establishing_run: "original-proof-run".into(),
+                reused: true,
+                scope_reuse: None,
+                requested: true,
+                complete: true,
+                report: zero_function_report()?,
+                dependency_store: None,
+                dependency_build: None,
+            }],
+            execution: sail_api::project::Execution {
+                verifier_invocations: 0,
+                reused_targets: 1,
+                wall_ms: 0.0,
+            },
+            notes: Vec::new(),
+            error: None,
+            engine: None,
+            no_reuse: None,
+        })
+    }
+
+    fn completed_job(
+        state: &State,
+        invocation: &std::path::Path,
+    ) -> TestResult<(String, CompletedObservation)> {
+        let project = project(invocation)?;
+        let request = sail_api::project::ResolvedRequest {
+            run_id: project.run_id.clone(),
+            invocation: invocation.canonicalize()?.to_string_lossy().into_owned(),
+            workspace: project.workspace.clone(),
+            context_sha256: project.context_sha256.clone(),
+            input_revision: project.input_revision.clone(),
+            args: Vec::new(),
+            engine: None,
+            function: None,
+            repair_package: String::new(),
+            repair_target: None,
+            repair_kind: String::new(),
+            targets: vec![sail_api::project::RequestTarget {
+                package_id: "package".into(),
+                target: "target".into(),
+                kind: "lib".into(),
+            }],
+        };
+        assert!(sail_api::acceptance::complete_request(&request, &project).is_some());
+        let original = CompletedObservation {
+            result: project,
+            request: Some(request),
+        };
+        let mut job = store::Stored::new(sail_api::jobs::Submission {
+            mode: sail_api::jobs::Mode::Stock,
+            project_dir: invocation.to_owned(),
+            args: Vec::new(),
+            force: false,
+            environment: BTreeMap::new(),
+            input_revision: None,
+        });
+        job.status.state = sail_api::jobs::Lifecycle::Completed;
+        let bytes = serde_json::to_vec(&original.result)?;
+        job.projection = Some(
+            store::Projection::validated(&bytes, &original.result)
+                .with_request(original.request.clone()),
+        );
+        let directory = state.root.join(&job.status.id);
+        std::fs::create_dir_all(&directory)?;
+        std::fs::write(directory.join("stdout"), bytes)?;
+        let id = job.status.id.clone();
+        state
+            .jobs
+            .lock()
+            .map_err(|_| io::Error::other("fixture jobs lock poisoned"))?
+            .insert(id.clone(), job);
+        Ok((id, original))
+    }
+
+    /// Exercises the actual retrieval/publication boundary. Reports are
+    /// declared metadata fixtures, not a trusted verifier or physical readback.
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keep the same observed request through path movement, baseline publication/readback and exact serde-byte assertions."
+    )]
+    fn baseline_publication_preserves_its_observed_request_in_both_directions() -> TestResult {
+        let root = std::env::temp_dir().join(format!(
+            "sail-baseline-request-observation-{}",
+            std::process::id()
+        ));
+        let invocation = root.join("invocation");
+        let displaced = root.join("displaced");
+        std::fs::create_dir_all(&invocation)?;
+        let server = super::super::bind(
+            &root.join("socket"),
+            &root.join("jobs"),
+            std::path::Path::new("/bin/true"),
+        )?;
+        let state = &server.state;
+        let (id, original_observation) = completed_job(state, &invocation)?;
+        let original = &original_observation.result;
+        // The original paired fixture passes the actual whole-request factory.
+        // It precedes the native read path's separate freshness projection.
+        {
+            let view = original_observation.presentation();
+            assert_eq!(original.targets.len(), 1);
+            assert_eq!(view.project(), original);
+            assert_eq!(view.request(), original_observation.request.as_ref());
+            assert!(view.whole().is_some());
+        }
+        let admitted = completed_with_request(state, &id)?;
+        assert!(admitted.result.targets[0].complete);
+        assert!(admitted.request.is_some());
+        assert_eq!(admitted.request, original_observation.request);
+        // No cache location/readback was supplied in this stored submission.
+        // Original proof flags survive, but native currentness is unavailable.
+        assert_eq!(
+            admitted.result.currentness,
+            sail_api::project::Currentness::Unknown
+        );
+        let original_request = admitted.request.clone();
+        {
+            let view = admitted.presentation();
+            assert_eq!(view.project(), &admitted.result);
+            assert_eq!(view.request(), admitted.request.as_ref());
+            assert!(view.whole().is_none());
+        }
+        for (currentness, exit_code) in [
+            (sail_api::project::Currentness::Historical, Some(0)),
+            (sail_api::project::Currentness::Unknown, Some(0)),
+            (sail_api::project::Currentness::Current, Some(1)),
+        ] {
+            let mut observation = CompletedObservation {
+                result: admitted.result.clone(),
+                request: admitted.request.clone(),
+            };
+            observation.result.currentness = currentness;
+            observation.result.exit_code = exit_code;
+            let view = observation.presentation();
+            assert_eq!(view.project(), &observation.result);
+            assert_eq!(view.request(), observation.request.as_ref());
+            assert!(view.whole().is_none());
+        }
+        {
+            let observation = CompletedObservation {
+                result: admitted.result.clone(),
+                request: None,
+            };
+            let view = observation.presentation();
+            assert_eq!(view.project(), &admitted.result);
+            assert!(view.request().is_none());
+            assert!(view.whole().is_none());
+        }
+        {
+            let mut observation = CompletedObservation {
+                result: admitted.result.clone(),
+                request: admitted.request.clone(),
+            };
+            if let Some(request) = &mut observation.request {
+                request
+                    .args
+                    .extend(["--".into(), "--verify-module".into(), "m".into()]);
+            }
+            let view = observation.presentation();
+            assert_eq!(view.project(), &observation.result);
+            assert_eq!(view.request(), observation.request.as_ref());
+            assert!(view.whole().is_none());
+        }
+
+        // Move between actual result retrieval and immutable publication.
+        std::fs::rename(&invocation, &displaced)?;
+        assert!(store::retained_request(&get(state, &id)?).is_none());
+        let saved = publish_baseline(state, &id, "admitted-before-move", admitted)?;
+        assert!(saved.result.targets[0].complete);
+        assert_eq!(
+            saved.result.currentness,
+            sail_api::project::Currentness::Historical
+        );
+        assert_eq!(saved, baseline(state, "admitted-before-move")?);
+        let stored: serde_json::Value = serde_json::from_slice(&std::fs::read(
+            state.root.join("baselines/admitted-before-move.json"),
+        )?)?;
+        assert_eq!(stored["request"], serde_json::to_value(&original_request)?);
+        let paired = baseline_with_request(state, "admitted-before-move")?;
+        assert_eq!(paired.request, original_request);
+        let view = sail_api::acceptance::completed_presentation(
+            &paired.baseline.result,
+            paired.request.as_ref(),
+        );
+        assert!(view.whole().is_none());
+        let owned = StoredBaseline {
+            baseline: &paired.baseline,
+            proof_authority_revision: store::PROOF_AUTHORITY_REVISION,
+            request: paired.request.clone(),
+        };
+        let borrowed = StoredBaseline {
+            baseline: &paired.baseline,
+            proof_authority_revision: store::PROOF_AUTHORITY_REVISION,
+            request: view.request(),
+        };
+        assert_eq!(serde_json::to_vec(&owned)?, serde_json::to_vec(&borrowed)?);
+        assert_eq!(saved.result.targets[0].report, original.targets[0].report);
+        assert_eq!(
+            saved.result.targets[0].establishing_run,
+            original.targets[0].establishing_run
+        );
+
+        let refused = completed_with_request(state, &id)?;
+        assert!(!refused.result.targets[0].complete);
+        assert!(refused.request.is_none());
+        std::fs::rename(&displaced, &invocation)?;
+        assert!(store::retained_request(&get(state, &id)?).is_some());
+        let saved = publish_baseline(state, &id, "refused-before-restore", refused)?;
+        assert!(!saved.result.targets[0].complete);
+        assert_eq!(saved, baseline(state, "refused-before-restore")?);
+        let stored: serde_json::Value = serde_json::from_slice(&std::fs::read(
+            state.root.join("baselines/refused-before-restore.json"),
+        )?)?;
+        assert!(stored["request"].is_null());
+        assert_eq!(saved.result.targets[0].report, original.targets[0].report);
+        assert_eq!(
+            saved.result.targets[0].establishing_run,
+            original.targets[0].establishing_run
+        );
+        drop(server);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 }

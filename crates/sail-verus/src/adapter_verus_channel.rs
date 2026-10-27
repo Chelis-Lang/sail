@@ -93,7 +93,10 @@ impl Channel {
     }
 
     /// Gives `command` the augmented value.
-    pub(crate) fn apply(&self, command: &mut std::process::Command) {
+    pub(crate) fn apply(
+        &self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         if let Some(value) = &self.augmented {
             command.env(COMMON, value);
         }

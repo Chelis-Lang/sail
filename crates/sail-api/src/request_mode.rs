@@ -1,0 +1,242 @@
+//! Actual construction of a report command from per-package verifier options.
+//!
+//! The option values are observed inputs, not proof of compiler/launch origin.
+//! This operation changes the reported command exactly as the existing adapter
+//! does; it never changes the physical compiler arguments or environment.
+#![allow(
+    clippy::redundant_as_str,
+    reason = "The pinned stock Verus specifies str::as_bytes, not String::as_bytes."
+)]
+
+use crate::acceptance::{verification_enabled_command, verification_enabled_options};
+use sail_acceptance::authority::exact_bytes;
+use sail_acceptance::{sail_proof, sail_spec, sail_verified, sail_while};
+
+#[cfg(sail_verus)]
+use vstd::prelude::*;
+#[cfg(sail_verus)]
+use vstd::string::StringSliceAdditionalSpecFns;
+
+sail_spec! {
+    pub open spec fn has_report_separator(arguments: Seq<String>) -> bool {
+        exists |i: int| 0 <= i < arguments.len()
+            && crate::acceptance::string_bytes(&arguments[i]) == b"--"@
+    }
+
+    pub open spec fn kept_report_arguments(original: Seq<String>, enabled: bool, end: nat) -> Seq<String>
+        recommends end <= original.len()
+        decreases end
+    {
+        if end == 0 { Seq::empty() }
+        else if enabled && has_report_separator(original.take(end as int))
+            && crate::acceptance::string_bytes(&original[end - 1]) == b"--no-verify"@
+        { kept_report_arguments(original, enabled, (end - 1) as nat) }
+        else { kept_report_arguments(original, enabled, (end - 1) as nat).push(original[end - 1]) }
+    }
+
+    pub open spec fn report_mode_projection(original: Seq<String>, enabled: bool, projected: Seq<String>) -> bool {
+        let kept = kept_report_arguments(original, enabled, original.len());
+        if enabled || crate::acceptance::verification_disabled(kept) { projected == kept }
+        else if has_report_separator(original) {
+            projected.len() == kept.len() + 1 && projected.take(kept.len() as int) == kept
+                && crate::acceptance::string_bytes(&projected.last()) == b"--no-verify"@
+        } else {
+            projected.len() == kept.len() + 2 && projected.take(kept.len() as int) == kept
+                && crate::acceptance::string_bytes(&projected[kept.len() as int]) == b"--"@
+                && crate::acceptance::string_bytes(&projected.last()) == b"--no-verify"@
+        }
+    }
+
+    /// Interprets only the actual literal definitions used by this constructor.
+    pub proof fn report_marker_literals()
+        ensures b"--"@ != b"--no-verify"@,
+            vstd::utf8::encode_utf8("--"@) == b"--"@,
+            vstd::utf8::encode_utf8("--no-verify"@) == b"--no-verify"@,
+    {
+        vstd::array::array_len_matches_n(b"--");
+        vstd::array::array_len_matches_n(b"--no-verify");
+        reveal_strlit("--"); reveal_byteslit(b"--");
+        reveal_strlit("--no-verify"); reveal_byteslit(b"--no-verify");
+        assert(vstd::string::is_ascii("--"));
+        assert(vstd::string::is_ascii("--no-verify"));
+        vstd::string::is_ascii_spec_bytes("--");
+        vstd::string::is_ascii_spec_bytes("--no-verify");
+        assert("--".spec_bytes() =~= b"--"@);
+        assert("--no-verify".spec_bytes() =~= b"--no-verify"@);
+    }
+
+    /// Frames an actual push without assuming a mode or dropping an argument.
+    pub proof fn report_prefix_push(prefix: Seq<String>, argument: String)
+        ensures has_report_separator(prefix.push(argument)) ==
+                (has_report_separator(prefix) || crate::acceptance::string_bytes(&argument) == b"--"@),
+            crate::acceptance::verification_disabled(prefix.push(argument)) ==
+                (crate::acceptance::verification_disabled(prefix)
+                    || (has_report_separator(prefix) && crate::acceptance::string_bytes(&argument) == b"--no-verify"@)),
+            prefix.push(argument).take(prefix.len() as int) == prefix,
+    {
+        let pushed = prefix.push(argument);
+        assert(pushed.len() == prefix.len() + 1);
+        assert(pushed[prefix.len() as int] == argument);
+        assert forall |k: int| 0 <= k < prefix.len() implies pushed[k] == prefix[k] by {};
+        vstd::seq::lemma_seq_subrange_len(pushed, 0, prefix.len() as int);
+        assert forall |k: int| 0 <= k < prefix.len() implies
+            pushed.take(prefix.len() as int)[k] == prefix[k] by {
+            vstd::seq::lemma_seq_subrange_index(pushed, 0, prefix.len() as int, k);
+        }
+        assert(pushed.take(prefix.len() as int) =~= prefix);
+        if has_report_separator(pushed) {
+            let i = choose |i: int| 0 <= i < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[i]) == b"--"@;
+            if i < prefix.len() {
+                assert(exists |j: int| j == i && 0 <= j < prefix.len()
+                    && crate::acceptance::string_bytes(&prefix[j]) == b"--"@);
+                assert(has_report_separator(prefix));
+            } else {
+                assert(i == prefix.len());
+                assert(crate::acceptance::string_bytes(&argument) == b"--"@);
+            }
+        }
+        if has_report_separator(prefix) {
+            let i = choose |i: int| 0 <= i < prefix.len()
+                && crate::acceptance::string_bytes(&prefix[i]) == b"--"@;
+            assert(exists |j: int| j == i && 0 <= j < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[j]) == b"--"@);
+            assert(has_report_separator(pushed));
+        }
+        if crate::acceptance::string_bytes(&argument) == b"--"@ {
+            assert(exists |j: int| j == prefix.len() && 0 <= j < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[j]) == b"--"@);
+            assert(has_report_separator(pushed));
+        }
+        if crate::acceptance::verification_disabled(pushed) {
+            let (i, j) = choose |i: int, j: int| 0 <= i < j < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[i]) == b"--"@
+                && crate::acceptance::string_bytes(&pushed[j]) == b"--no-verify"@;
+            if j < prefix.len() {
+                assert(exists |a: int, b: int| a == i && b == j && 0 <= a < b < prefix.len()
+                    && crate::acceptance::string_bytes(&prefix[a]) == b"--"@
+                    && crate::acceptance::string_bytes(&prefix[b]) == b"--no-verify"@);
+                assert(crate::acceptance::verification_disabled(prefix));
+            } else {
+                assert(j == prefix.len());
+                assert(crate::acceptance::string_bytes(&argument) == b"--no-verify"@);
+                assert(exists |a: int| a == i && 0 <= a < prefix.len()
+                    && crate::acceptance::string_bytes(&prefix[a]) == b"--"@);
+                assert(has_report_separator(prefix));
+            }
+        }
+        if crate::acceptance::verification_disabled(prefix) {
+            let (i, j) = choose |i: int, j: int| 0 <= i < j < prefix.len()
+                && crate::acceptance::string_bytes(&prefix[i]) == b"--"@
+                && crate::acceptance::string_bytes(&prefix[j]) == b"--no-verify"@;
+            assert(exists |a: int, b: int| a == i && b == j && 0 <= a < b < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[a]) == b"--"@
+                && crate::acceptance::string_bytes(&pushed[b]) == b"--no-verify"@);
+            assert(crate::acceptance::verification_disabled(pushed));
+        }
+        if has_report_separator(prefix) && crate::acceptance::string_bytes(&argument) == b"--no-verify"@ {
+            let i = choose |i: int| 0 <= i < prefix.len()
+                && crate::acceptance::string_bytes(&prefix[i]) == b"--"@;
+            assert(exists |a: int, b: int| a == i && b == prefix.len()
+                && 0 <= a < b < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[a]) == b"--"@
+                && crate::acceptance::string_bytes(&pushed[b]) == b"--no-verify"@);
+            assert(crate::acceptance::verification_disabled(pushed));
+        }
+    }
+}
+
+sail_verified! {
+    /// Retains exact report tokens/order while recording the observed package's
+    /// observed option mode. Absence remains unknown and cannot become enabled.
+    #[allow(clippy::manual_let_else, clippy::question_mark,
+        reason = "Keep missing-option refusal explicit in checked source and ordinary mutations.")]
+    pub fn construct_report_verification_arguments(report_args: &[String], effective: Option<&[String]>)
+        -> (out: Option<Vec<String>>)
+        requires(true)
+        ensures(out.is_some() == effective.is_some(),
+            match effective { None => out.is_none(), Some(options) => out.is_some() && {
+                let enabled = !crate::acceptance::options_disable_verification(options@);
+                report_mode_projection(report_args@, enabled, out.unwrap()@)
+                    && !crate::acceptance::verification_disabled(out.unwrap()@) == enabled
+            } })
+    {
+        let effective = match effective { Some(value) => value, None => return None };
+        let enabled = verification_enabled_options(effective);
+        sail_proof! { report_marker_literals(); }
+        let mut forwarded = false;
+        let mut arguments: Vec<String> = Vec::with_capacity(report_args.len());
+        let mut i = 0usize;
+        sail_while! { (i < report_args.len())
+            invariant(i <= report_args.len(),
+                arguments@ == kept_report_arguments(report_args@, enabled, i as nat),
+                forwarded == has_report_separator(report_args@.take(i as int)),
+                forwarded == has_report_separator(arguments@),
+                enabled ==> !crate::acceptance::verification_disabled(arguments@),
+                b"--"@ != b"--no-verify"@)
+            decreases(report_args.len() - i)
+            {
+                let argument = &report_args[i];
+                let bytes = argument.as_str().as_bytes();
+                sail_proof! {
+                    report_prefix_push(report_args@.take(i as int), *argument);
+                    assert(report_args@.take(i as int + 1)
+                        =~= report_args@.take(i as int).push(*argument));
+                }
+                if exact_bytes(bytes, b"--") { forwarded = true; }
+                if !(enabled && forwarded && exact_bytes(bytes, b"--no-verify")) {
+                    sail_proof! { report_prefix_push(arguments@, *argument); }
+                    arguments.push(argument.clone());
+                }
+                i += 1;
+            }
+        }
+        sail_proof! { assert(report_args@.take(i as int) =~= report_args@); }
+        if !enabled && verification_enabled_command(&arguments) {
+            if !forwarded {
+                let separator = "--".to_owned();
+                sail_proof! {
+                    report_marker_literals();
+                    assert(crate::acceptance::string_bytes(&separator) == b"--"@);
+                    report_prefix_push(arguments@, separator);
+                }
+                arguments.push(separator);
+                sail_proof! {
+                    let kept = kept_report_arguments(report_args@, enabled, report_args@.len());
+                    assert(arguments@.len() == kept.len() + 1);
+                    assert(arguments@.take(kept.len() as int) == kept);
+                    assert(crate::acceptance::string_bytes(&arguments@[kept.len() as int]) == b"--"@);
+                }
+            }
+            let no_verify = "--no-verify".to_owned();
+            sail_proof! {
+                report_marker_literals();
+                assert(crate::acceptance::string_bytes(&no_verify) == b"--no-verify"@);
+                report_prefix_push(arguments@, no_verify);
+            }
+            arguments.push(no_verify);
+            sail_proof! {
+                let kept = kept_report_arguments(report_args@, enabled, report_args@.len());
+                if has_report_separator(report_args@) {
+                    assert(arguments@.len() == kept.len() + 1);
+                    assert(arguments@.take(kept.len() as int) == kept);
+                } else {
+                    assert(arguments@.len() == kept.len() + 2);
+                    vstd::seq::lemma_seq_subrange_composition(arguments@, 0,
+                        arguments@.len() as int - 1, 0, kept.len() as int);
+                    assert(arguments@.take(kept.len() as int) == kept);
+                    vstd::seq::lemma_seq_subrange_index(arguments@, 0,
+                        arguments@.len() as int - 1, kept.len() as int);
+                    assert(crate::acceptance::string_bytes(&arguments@[kept.len() as int]) == b"--"@);
+                }
+                assert(crate::acceptance::string_bytes(&arguments@.last()) == b"--no-verify"@);
+                assert(report_mode_projection(report_args@, enabled, arguments@));
+            }
+        }
+        sail_proof! {
+            assert(report_mode_projection(report_args@, enabled, arguments@));
+            assert(!crate::acceptance::verification_disabled(arguments@) == enabled);
+        }
+        Some(arguments)
+    }
+}

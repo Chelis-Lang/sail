@@ -122,29 +122,37 @@ fn next(state: &State) -> Option<(String, std::path::PathBuf)> {
         queue = state.ready.wait(queue).ok()?;
     }
 }
-fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, store::Projection)> {
-    let job = get(state, id)?;
-    if job.contracts.is_some() {
-        return super::contracts::execute(state, &job);
-    }
-    if job.cancel.load(Ordering::SeqCst) {
-        return Err(io::Error::other("cancelled"));
-    }
-    let directory = state.root.join(id);
+fn worker_command(
+    state: &State,
+    job: &store::Stored,
+    directory: &std::path::Path,
+) -> io::Result<Command> {
     let stdout = store::output(&directory.join("stdout"))?;
     let stderr = store::output(&directory.join("stderr"))?;
     store::output(&directory.join("events.jsonl"))?;
     store::output(&directory.join("proof-source.jsonl"))?;
+    store::output(&directory.join("requests.jsonl"))?;
+    let capture = serde_json::to_string(&sail_verus::managed::RequestCaptureDestination {
+        path: directory.join("requests.jsonl"),
+        worker_id: job.status.id.clone(),
+    })
+    .map_err(io::Error::other)?;
     let mut command = Command::new(&state.executable);
     match &job.submission.mode {
         Mode::Repair(selection) => {
             command
                 .arg("_repair-worker")
+                .arg("--_sail-request-capture-json")
+                .arg(&capture)
                 .arg("--selection-json")
                 .arg(serde_json::to_string(selection).map_err(io::Error::other)?);
         }
         Mode::Stock | Mode::Interactive => {
-            command.arg("verify").args(["--output", "json"]);
+            command
+                .arg("verify")
+                .arg("--_sail-request-capture-json")
+                .arg(&capture)
+                .args(["--output", "json"]);
             if job.submission.mode == Mode::Interactive {
                 command.args(["--engine", "interactive"]);
             }
@@ -165,6 +173,19 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, s
     if job.submission.force {
         command.env("SAIL_MANAGED_FORCE", "1");
     }
+    Ok(command)
+}
+
+fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, store::Projection)> {
+    let job = get(state, id)?;
+    if job.contracts.is_some() {
+        return super::contracts::execute(state, &job);
+    }
+    if job.cancel.load(Ordering::SeqCst) {
+        return Err(io::Error::other("cancelled"));
+    }
+    let directory = state.root.join(id);
+    let mut command = worker_command(state, &job, &directory)?;
     let mut child = Process(command.spawn()?);
     let _parent_pipe = child.stdin.take();
     {
@@ -201,6 +222,7 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, s
         return Err(io::Error::other(no_result(&directory, status)));
     }
     let (document, projection) = read_document(&directory, &job.submission.mode)?;
+    let projection = projection.with_request(captured_request(&directory, &job, &document));
     if document.exit_code != status.code() {
         return Err(io::Error::other(
             "managed report and process exit status disagree",
@@ -217,6 +239,32 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, s
         return Err(io::Error::other("unsupported or incomplete project result"));
     }
     Ok((status.code(), document, projection))
+}
+
+/// The independent journal must contain exactly one original request for this
+/// output run. Missing/old/malformed evidence is an observation, never proof.
+fn captured_request(
+    directory: &std::path::Path,
+    job: &store::Stored,
+    project: &ProjectResult,
+) -> Option<sail_api::project::ResolvedRequest> {
+    use sail_api::project::RequestCapture;
+    let bytes = store::read_bytes(&directory.join("requests.jsonl")).ok()?;
+    let text = std::str::from_utf8(&bytes).ok()?;
+    let invocation = job.submission.project_dir.canonicalize().ok()?;
+    let invocation = invocation.to_str()?;
+    let mut records = Vec::new();
+    for line in text.lines() {
+        records.push(serde_json::from_str::<RequestCapture>(line).ok()?);
+    }
+    sail_api::request_capture::select_original_request(
+        records,
+        &job.status.id,
+        invocation,
+        &job.submission.args,
+        &job.submission.mode,
+        project,
+    )
 }
 
 /// Describes a worker that exited without writing a result, quoting its last
@@ -254,4 +302,271 @@ fn read_document(
     };
     let projection = store::Projection::validated(&bytes, &document);
     Ok((document, projection))
+}
+
+#[cfg(test)]
+mod request_capture_tests {
+    use super::*;
+    use sail_api::project::{
+        Currentness, Execution, RequestCapture, RequestTarget, ResolvedRequest, TargetResult,
+    };
+
+    fn fixture(
+        root: &std::path::Path,
+    ) -> Result<(store::Stored, ProjectResult, RequestCapture), Box<dyn std::error::Error>> {
+        let job = store::Stored::new(sail_api::jobs::Submission {
+            mode: Mode::Stock,
+            project_dir: root.to_path_buf(),
+            args: Vec::new(),
+            force: false,
+            environment: std::collections::BTreeMap::new(),
+            input_revision: None,
+        });
+        let mut report: sail_api::output::Report = serde_json::from_str(include_str!(
+            "../../../sail-cli/tests/fixtures/attr/report.golden.json"
+        ))?;
+        report.exit_code = Some(0);
+        report.error = None;
+        for krate in &mut report.crates {
+            krate
+                .functions
+                .retain(|f| f.verdict == sail_api::output::VerdictName::Verified);
+            krate.verus.errors = Some(0);
+            krate.verus.success = Some(true);
+            krate.verus.encountered_vir_error = Some(false);
+        }
+        report.summary = sail_api::output::Summary::of(&report.crates);
+        let project = ProjectResult {
+            kind: "sail-project-result".into(),
+            schema_version: sail_api::project::SCHEMA_VERSION,
+            run_id: "run".into(),
+            workspace: "/workspace".into(),
+            context_sha256: "context".into(),
+            input_revision: "revision".into(),
+            currentness: Currentness::Current,
+            exit_code: Some(0),
+            targets: vec![TargetResult {
+                package_id: "package".into(),
+                target: "app".into(),
+                kind: vec!["lib".into()],
+                establishing_run: "run".into(),
+                requested: true,
+                complete: true,
+                reused: false,
+                scope_reuse: None,
+                report,
+                dependency_store: None,
+                dependency_build: None,
+            }],
+            execution: Execution::default(),
+            notes: Vec::new(),
+            error: None,
+            engine: None,
+            no_reuse: None,
+        };
+        let capture = RequestCapture {
+            version: sail_api::project::REQUEST_CAPTURE_VERSION,
+            worker_id: job.status.id.clone(),
+            request: ResolvedRequest {
+                run_id: "run".into(),
+                invocation: root.canonicalize()?.to_string_lossy().into_owned(),
+                workspace: "/workspace".into(),
+                context_sha256: "context".into(),
+                input_revision: "revision".into(),
+                args: Vec::new(),
+                engine: None,
+                function: None,
+                repair_package: String::new(),
+                repair_target: None,
+                repair_kind: String::new(),
+                targets: vec![RequestTarget {
+                    package_id: "package".into(),
+                    target: "app".into(),
+                    kind: "lib".into(),
+                }],
+            },
+        };
+        Ok((job, project, capture))
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keep real journal selection, ignored-run headers and the original authority assertions in one regression."
+    )]
+    fn independent_request_journal_refuses_swaps_omissions_and_truncation()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-request-capture-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let (job, project, capture) = fixture(&root)?;
+        let file = root.join("requests.jsonl");
+        assert!(captured_request(&root, &job, &project).is_none());
+        std::fs::write(&file, serde_json::to_vec(&capture)?)?;
+        let request = captured_request(&root, &job, &project).ok_or("valid journal refused")?;
+        assert!(sail_api::acceptance::complete_request(&request, &project).is_some());
+        assert_ne!(project.targets[0].report.crates[0].functions.len(), 0);
+        for change in [
+            "worker",
+            "version",
+            "invocation",
+            "run",
+            "context",
+            "revision",
+            "scope",
+            "omission",
+            "args",
+        ] {
+            let mut wrong = capture.clone();
+            match change {
+                "worker" => wrong.worker_id.push('x'),
+                "version" => wrong.version += 1,
+                "invocation" => wrong.request.invocation.push('x'),
+                "run" => wrong.request.run_id.push('x'),
+                "context" => wrong.request.context_sha256.push('x'),
+                "revision" => wrong.request.input_revision.push('x'),
+                "scope" => wrong.request.targets[0].target.push('x'),
+                "omission" => wrong.request.targets.clear(),
+                "args" => wrong.request.args = vec!["--".into(), "--no-verify".into()],
+                _ => unreachable!(),
+            }
+            std::fs::write(&file, serde_json::to_vec(&wrong)?)?;
+            assert!(
+                captured_request(&root, &job, &project).is_none(),
+                "{change}"
+            );
+        }
+        let line = serde_json::to_string(&capture)?;
+        for malformed in [
+            format!("{line}\n{line}\n"),
+            format!("{line}\n{{"),
+            String::new(),
+        ] {
+            std::fs::write(&file, malformed)?;
+            assert!(captured_request(&root, &job, &project).is_none());
+        }
+        let mut prior = capture.clone();
+        prior.request.run_id = "earlier-failed-engine-run".into();
+        std::fs::write(
+            &file,
+            format!("{}\n{line}\n", serde_json::to_string(&prior)?),
+        )?;
+        assert_eq!(
+            captured_request(&root, &job, &project),
+            Some(capture.request.clone())
+        );
+        // Every decoded row has a checked header, even if its run is ignored.
+        // Retain exact selected ownership with ignored rows before or after it.
+        prior.request.invocation = "ignored-other-invocation".into();
+        let prior_line = serde_json::to_string(&prior)?;
+        for journal in [
+            format!("{prior_line}\n{line}\n"),
+            format!("{line}\n{prior_line}\n"),
+        ] {
+            std::fs::write(&file, journal)?;
+            assert_eq!(
+                captured_request(&root, &job, &project),
+                Some(capture.request.clone())
+            );
+        }
+        for change in ["version", "worker"] {
+            let mut ignored = prior.clone();
+            if change == "version" {
+                ignored.version += 1;
+            } else {
+                ignored.worker_id.push('x');
+            }
+            let wrong = serde_json::to_string(&ignored)?;
+            for journal in [format!("{wrong}\n{line}\n"), format!("{line}\n{wrong}\n")] {
+                std::fs::write(&file, journal)?;
+                assert!(
+                    captured_request(&root, &job, &project).is_none(),
+                    "{change}"
+                );
+            }
+        }
+        let mut refused = project.clone();
+        store::withhold_unbound_authority(&mut refused, None);
+        assert_eq!(refused.currentness, Currentness::Current);
+        assert_eq!(refused.targets[0].report, project.targets[0].report);
+        assert!(!refused.targets[0].complete);
+        assert!(
+            refused
+                .notes
+                .iter()
+                .any(|note| note.starts_with("SAIL3115:"))
+        );
+        for flag in ["--no-verify", "--verify-function=input::Counter::get"] {
+            let mut partial_request = capture.request.clone();
+            partial_request.args = vec!["--".into(), flag.into()];
+            let mut observation = project.clone();
+            observation.targets[0].report.command = partial_request.args.clone();
+            let notes = observation.notes.clone();
+            store::withhold_unbound_authority(&mut observation, Some(&partial_request));
+            assert!(!observation.targets[0].complete);
+            assert_eq!(
+                observation.notes, notes,
+                "known partial/compile-only scope is not a request observation failure"
+            );
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn retained_repair_mode_cannot_swap_the_captured_selection()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-repair-request-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let (_, project, capture) = fixture(&root)?;
+        let mut request = capture.request;
+        request.engine = Some(sail_api::project::EngineIdentity {
+            name: "interactive".into(),
+            manifest_sha256: "manifest".into(),
+        });
+        request.function = Some("app::lemma".into());
+        request.repair_package = "app@1.0.0".into();
+        request.repair_target = Some("app-bin".into());
+        request.repair_kind = "bin".into();
+        let selection = sail_api::repair::Selection {
+            package: "app@1.0.0".into(),
+            target: Some("app-bin".into()),
+            kind: "bin".into(),
+            function: "app::lemma".into(),
+        };
+        // The previous projection only used this batch predicate; it cannot
+        // distinguish any original repair function or target selection.
+        let batch = sail_api::repair::BatchResult {
+            focus: None,
+            full: Some(project.clone()),
+            manifest_sha256: "manifest".into(),
+            compiler_invocations: 1,
+            batched: false,
+            selection_error: None,
+            engine_fault: None,
+        };
+        assert!(batch.accepted_with(&project));
+        assert!(store::request_matches_mode(
+            &Mode::Repair(selection.clone()),
+            &request
+        ));
+        assert!(!store::request_matches_mode(&Mode::Stock, &request));
+        assert!(!store::request_matches_mode(&Mode::Interactive, &request));
+        for field in ["package", "target", "kind", "function"] {
+            let mut swapped = selection.clone();
+            match field {
+                "package" => swapped.package.push('x'),
+                "target" => swapped.target = None,
+                "kind" => swapped.kind = "lib".into(),
+                "function" => swapped.function.push('x'),
+                _ => unreachable!(),
+            }
+            assert!(
+                !store::request_matches_mode(&Mode::Repair(swapped), &request),
+                "{field}"
+            );
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 }

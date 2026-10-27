@@ -1,0 +1,14 @@
+[package]
+name = "sail-proc-macro-read-escape"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[features]
+declared-input = ["sail-read-escape/declared-input"]
+
+[dependencies]
+sail-read-escape = { path = "escape" }
+
+[workspace]
+members = ["escape"]

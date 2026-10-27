@@ -35,7 +35,7 @@ pub(crate) fn emit(kind: Stream, bytes: &[u8]) -> io::Result<()> {
 }
 
 #[cfg(unix)]
-pub(crate) use unix::Receiver;
+pub(crate) use unix::{MarkerObserver, Receiver};
 
 /// Exercise the complete production sender through an owned original-pipe writer.
 #[cfg(all(test, unix))]
@@ -107,6 +107,67 @@ mod unix {
             return Err(io::Error::other("invalid managed output capability"));
         }
         Ok(format!("[[sail-stdout:{capability}:").into_bytes())
+    }
+
+    fn marker<'a>(line: &'a [u8], prefix: &[u8]) -> io::Result<Option<(usize, &'a str)>> {
+        let Some(start) = line
+            .windows(prefix.len())
+            .position(|window| window == prefix)
+        else {
+            return Ok(None);
+        };
+        let name = line[start + prefix.len()..]
+            .strip_suffix(b"]]\n")
+            .and_then(|bytes| std::str::from_utf8(bytes).ok())
+            .filter(|name| name.len() <= 41)
+            .and_then(|name| {
+                let (pid, sequence) = name.split_once('-')?;
+                (pid.parse::<u32>().ok()? != 0 && sequence.parse::<u64>().is_ok()).then_some(name)
+            })
+            .ok_or_else(|| io::Error::other("invalid driver stdout completion marker"))?;
+        Ok(Some((start, name)))
+    }
+
+    fn original_bytes(line: &[u8], start: usize) -> Vec<u8> {
+        let mut bytes = line[..start].to_vec();
+        if !bytes.is_empty() {
+            bytes.push(b'\n');
+        }
+        bytes
+    }
+
+    /// Side-effect-free recognition while the sender is still awaiting its ACK.
+    /// It removes only protocol framing from accounting, never grants metadata
+    /// authority or acknowledges, deletes or otherwise changes a peer.
+    pub(crate) struct MarkerObserver {
+        directory: PathBuf,
+        prefix: Vec<u8>,
+    }
+    impl MarkerObserver {
+        pub(crate) fn open(path: &Path) -> io::Result<Self> {
+            if !std::fs::symlink_metadata(path)?.file_type().is_socket() {
+                return Err(io::Error::other("managed output endpoint is not a socket"));
+            }
+            let directory = path
+                .parent()
+                .ok_or_else(|| io::Error::other("missing output directory"))?;
+            Ok(Self {
+                directory: directory.to_owned(),
+                prefix: prefix(directory)?,
+            })
+        }
+        pub(crate) fn decode(&self, line: &[u8]) -> io::Result<Option<Vec<u8>>> {
+            let Some((start, name)) = marker(line, &self.prefix)? else {
+                return Ok(None);
+            };
+            if !std::fs::symlink_metadata(self.directory.join(name))?
+                .file_type()
+                .is_socket()
+            {
+                return Err(io::Error::other("stdout completion peer is not a socket"));
+            }
+            Ok(Some(original_bytes(line, start)))
+        }
     }
 
     pub(super) fn send(path: &Path, bytes: &[u8], writer: &mut dyn Write) -> io::Result<()> {
@@ -262,36 +323,18 @@ mod unix {
             &self.path
         }
         pub(crate) fn decode(&self, line: &[u8]) -> io::Result<Decoded> {
-            let Some(start) = line
-                .windows(self.prefix.len())
-                .position(|window| window == self.prefix)
-            else {
+            let Some((start, name)) = marker(line, &self.prefix)? else {
                 return Ok(Decoded {
                     bytes: line.to_vec(),
                     completion: None,
                 });
             };
-            let marker = &line[start + self.prefix.len()..];
-            let name = marker
-                .strip_suffix(b"]]\n")
-                .and_then(|bytes| std::str::from_utf8(bytes).ok())
-                .filter(|name| name.len() <= 41)
-                .and_then(|name| {
-                    let (pid, sequence) = name.split_once('-')?;
-                    (pid.parse::<u32>().ok()? != 0 && sequence.parse::<u64>().is_ok())
-                        .then_some(name)
-                })
-                .ok_or_else(|| io::Error::other("invalid driver stdout completion marker"))?;
             let peer = self.directory.join(name);
             if !std::fs::symlink_metadata(&peer)?.file_type().is_socket() {
                 return Err(io::Error::other("stdout completion peer is not a socket"));
             }
-            let mut bytes = line[..start].to_vec();
-            if !bytes.is_empty() {
-                // Cargo adds a newline to a final unterminated stdout record.
-                // Preserve that observed original-pipe byte when removing the marker.
-                bytes.push(b'\n');
-            }
+            // Preserve the original final-record newline exactly as accounting does.
+            let bytes = original_bytes(line, start);
             Ok(Decoded {
                 bytes,
                 completion: Some(Acknowledgment {

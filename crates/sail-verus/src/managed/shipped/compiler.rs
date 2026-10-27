@@ -1,7 +1,8 @@
 //! Read the experimental fork's distinct verification and compilation inputs.
 
 use super::Call;
-use serde::{Deserialize, Serialize};
+use crate::managed::retained::phase_fields;
+pub(super) use crate::managed::retained::phase_fields::Document;
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::PathBuf;
@@ -25,32 +26,6 @@ fn open(path: &std::path::Path) -> Option<std::fs::File> {
 #[cfg(not(unix))]
 fn open(_: &std::path::Path) -> Option<std::fs::File> {
     None
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct Document {
-    kind: String,
-    schema: u32,
-    binding: String,
-    pid: u32,
-    complete: bool,
-    phases: BTreeMap<String, Phase>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct Phase {
-    sources: BTreeMap<String, Source>,
-    extra_tracked_files: Vec<String>,
-    tracked_environment: BTreeMap<String, Option<String>>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct Source {
-    checksum: String,
-    size: u64,
 }
 
 /// A fresh private request around this exact real compiler child.
@@ -147,7 +122,10 @@ impl Observation {
         })
     }
 
-    pub(super) fn configure(&self, command: &mut std::process::Command) {
+    pub(super) fn configure(
+        &self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         command
             .env(DIRECTORY, &self.directory)
             .env(BINDING, &self.binding);
@@ -247,18 +225,7 @@ impl Document {
 
     /// Bind the union of environment observations from both actual phases.
     pub(super) fn environment(&self) -> Option<BTreeMap<String, Option<String>>> {
-        let mut result = BTreeMap::new();
-        for phase in self.phases.values() {
-            for (name, value) in &phase.tracked_environment {
-                if result
-                    .insert(name.clone(), value.clone())
-                    .is_some_and(|old| old != *value)
-                {
-                    return None;
-                }
-            }
-        }
-        Some(result)
+        phase_fields::environment(self)
     }
 
     /// Apply the same explicit path mapping as the containing vstd unit.

@@ -4,7 +4,7 @@
 //! such as `vstd` copies that dependency's compiled Cargo units (every unit of
 //! its dependency closure, with Cargo's fingerprints), its proof receipt, its
 //! build-script contracts and the verifier's recorded output into
-//! `<cache>/dependency-store/v1/<key>/`. A later managed run that starts a new
+//! `<cache>/dependency-store/v2/<key>/`. A later managed run that starts a new
 //! Cargo target (a new project, worktree or sandbox) with the same key copies
 //! the units in before Cargo runs. Cargo's own fingerprints then decide what is
 //! fresh, exactly as for a target directory plain Cargo-Verus had built
@@ -20,14 +20,15 @@
 //! run's result. The store never changes a solver query, a verdict or a
 //! diagnostic: it only lets Cargo find a dependency fresh.
 //!
-//! The v1 native-artifact path is disabled. Its
+//! The native-artifact path is disabled. Its
 //! identity does not establish the native compiler/linker inputs that fresh
 //! Cargo would read (#187). The format below remains available for investigation;
 //! managed runs neither seed nor publish entries until that path is qualified.
 
-use super::files::{digest, json};
+use super::files::{digest, file_digest, json};
 use super::receipts::{RECEIPT_VERSION, Receipt, complete, digests_match};
 use crate::{Error, Result};
+use sail_api::request_targets::OriginalTargets;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -37,7 +38,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Layout version of the store directory and its manifests.
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 /// Entries kept by default; `SAIL_DEPENDENCY_STORE_ENTRIES` overrides it, and
 /// `0` disables the store.
 const DEFAULT_ENTRIES: usize = 4;
@@ -91,11 +92,7 @@ pub(super) struct Candidate {
 /// than package and target selection, toolchain, runtime and engine identities, relevant environment and Cargo
 /// configuration bytes), the root, the resolved closure (package ids, enabled
 /// features and dependency edges) and the workspace's `[profile]` table.
-pub(super) fn candidates(
-    data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
-    family: &str,
-) -> Vec<Candidate> {
+pub(super) fn candidates(data: &Value, expected: &OriginalTargets, family: &str) -> Vec<Candidate> {
     let packages: BTreeMap<&str, &Value> = data["packages"]
         .as_array()
         .into_iter()
@@ -106,12 +103,14 @@ pub(super) fn candidates(
     let Some(profile) = profile_table(data) else {
         return Vec::new();
     };
-    let selected =
-        super::runner::dependency_closure(data, expected.iter().map(|(id, _, _)| id.as_str()));
+    let selected = super::runner::dependency_closure(
+        data,
+        super::request::original_rows(expected).map(|(id, _, _)| id.as_str()),
+    );
     let mut out = Vec::new();
     for (id, package) in &packages {
         if members.contains(id)
-            || expected.iter().any(|(selected, _, _)| selected == id)
+            || super::request::original_rows(expected).any(|(selected, _, _)| selected == id)
             || !selected.contains(*id)
             || package
                 .pointer("/metadata/verus/verify")
@@ -276,6 +275,8 @@ struct Manifest {
     files: Vec<StoredFile>,
     /// The verifier's own output for the root, as that run captured it.
     recorded: Vec<StoredFile>,
+    /// Every copied original attempt file, including raw output and ledger records.
+    producer: Vec<StoredFile>,
     checksum: String,
 }
 
@@ -324,6 +325,16 @@ fn executable(_: &std::fs::Metadata) -> bool {
 /// the recorded permissions and modification time. The copy is written under
 /// a temporary name and renamed, so `to` never holds partial content.
 fn copy(from: &Path, to: &Path, executable: bool, modified: (u64, u32)) -> Result<(String, u64)> {
+    copy_limited(from, to, executable, modified, u64::MAX)
+}
+
+fn copy_limited(
+    from: &Path,
+    to: &Path,
+    executable: bool,
+    modified: (u64, u32),
+    limit: u64,
+) -> Result<(String, u64)> {
     let failed = |e: std::io::Error| Error::new("SAIL3131", format!("{}: {e}", to.display()));
     let temporary = to.with_file_name(format!(
         ".{}.sail-store-{}",
@@ -350,9 +361,13 @@ fn copy(from: &Path, to: &Path, executable: bool, modified: (u64, u32)) -> Resul
             if n == 0 {
                 break;
             }
+            let next = size
+                .checked_add(n as u64)
+                .filter(|size| *size <= limit)
+                .ok_or_else(|| std::io::Error::other("producer copy byte budget exhausted"))?;
             hasher.update(&buffer[..n]);
             output.write_all(&buffer[..n])?;
-            size += n as u64;
+            size = next;
         }
         output.set_modified(UNIX_EPOCH + Duration::new(modified.0, modified.1))?;
         drop(output);
@@ -564,6 +579,7 @@ fn validated(
         || !receipt.invocation.success
         || !receipt.invocation.environment_observed()
         || !complete(&receipt.invocation.report)
+        || !producer_intact(entry, &manifest)
     {
         return Err(damaged("stored proof receipt is not a complete success"));
     }
@@ -592,6 +608,7 @@ fn contained(path: &Path) -> bool {
 /// in `target` are exactly the receipt's artifacts and dependencies.
 fn moved_receipt(manifest: &Manifest, target: &Path) -> Option<Receipt> {
     let mut receipt = manifest.receipt.clone();
+    receipt.producer_archive = Some(manifest.key.clone());
     receipt.artifact_hashes = receipt
         .artifact_hashes
         .iter()
@@ -971,6 +988,193 @@ fn long_running_note(message: &Value) -> bool {
             || timed(text, " finished in "))
 }
 
+/// Complete regular-file inventory beneath the owned copied producer subtree.
+/// This is native filesystem/digest attribution; it never recreates live events.
+fn producer_inventory(directory: &Path) -> Option<BTreeSet<PathBuf>> {
+    fn visit(root: &Path, directory: &Path, files: &mut BTreeSet<PathBuf>) -> Option<()> {
+        if !std::fs::symlink_metadata(directory)
+            .ok()?
+            .file_type()
+            .is_dir()
+        {
+            return None;
+        }
+        for entry in std::fs::read_dir(directory).ok()? {
+            let entry = entry.ok()?;
+            let kind = entry.file_type().ok()?;
+            if kind.is_dir() {
+                visit(root, &entry.path(), files)?;
+            } else if kind.is_file() {
+                if files.len() >= 65_536 {
+                    return None;
+                }
+                files.insert(entry.path().strip_prefix(root).ok()?.to_owned());
+            } else {
+                return None;
+            }
+        }
+        Some(())
+    }
+    let mut files = BTreeSet::new();
+    visit(directory, directory, &mut files)?;
+    Some(files)
+}
+
+fn record_producer(publication: &Publication<'_>, staging: &Path) -> Result<Vec<StoredFile>> {
+    let receipt = &publication.receipt;
+    let Some(selected) = &receipt.invocation.selected_attempt else {
+        // A qualified bundled compiler-boundary proof has its own original
+        // manifest provenance, and does not invent a new child/attempt archive.
+        return if receipt.invocation.dependency_build.is_some() {
+            Ok(Vec::new())
+        } else {
+            Err(Error::new(
+                "SAIL3102",
+                "missing original selected producer history",
+            ))
+        };
+    };
+    let refused = || {
+        Error::new(
+            "SAIL3102",
+            "original producer history changed or is unavailable",
+        )
+    };
+    let source = publication.sidecar.parent().ok_or_else(refused)?;
+    if !selected.archive_matches(
+        source,
+        &receipt.invocation.identity,
+        receipt.invocation.establishing_run(),
+        receipt.invocation.report.exit_code,
+    ) {
+        return Err(refused());
+    }
+    let inventory = producer_inventory(source).ok_or_else(refused)?;
+    let destination = staging.join("producer");
+    std::fs::create_dir(&destination).map_err(|e| Error::new("SAIL3102", e.to_string()))?;
+    let mut bytes = 0u64;
+    let mut files = Vec::new();
+    for relative in &inventory {
+        if !contained(relative) {
+            return Err(refused());
+        }
+        let from = source.join(relative);
+        let to = destination.join(relative);
+        let meta = std::fs::symlink_metadata(&from).map_err(|_| refused())?;
+        if !meta.file_type().is_file() {
+            return Err(refused());
+        }
+        if meta.len() > 2 * 1024 * 1024 * 1024 - bytes {
+            return Err(refused());
+        }
+        std::fs::create_dir_all(to.parent().ok_or_else(refused)?)
+            .map_err(|e| Error::new("SAIL3102", e.to_string()))?;
+        let time = modified(&meta).ok_or_else(refused)?;
+        let exec = executable(&meta);
+        let (sha256, size) = copy_limited(&from, &to, exec, time, 2 * 1024 * 1024 * 1024 - bytes)?;
+        bytes = bytes.checked_add(size).ok_or_else(refused)?;
+        files.push(StoredFile {
+            path: relative.clone(),
+            sha256,
+            size,
+            modified: time,
+            executable: exec,
+        });
+    }
+    if producer_inventory(source).as_ref() != Some(&inventory)
+        || !selected.archive_matches(
+            source,
+            &receipt.invocation.identity,
+            receipt.invocation.establishing_run(),
+            receipt.invocation.report.exit_code,
+        )
+        || !selected.archive_matches(
+            &destination,
+            &receipt.invocation.identity,
+            receipt.invocation.establishing_run(),
+            receipt.invocation.report.exit_code,
+        )
+    {
+        return Err(refused());
+    }
+    Ok(files)
+}
+
+fn producer_intact(entry: &Path, manifest: &Manifest) -> bool {
+    let receipt = &manifest.receipt;
+    let Some(selected) = &receipt.invocation.selected_attempt else {
+        return receipt.invocation.dependency_build.is_some() && manifest.producer.is_empty();
+    };
+    let directory = entry.join("producer");
+    let expected: BTreeSet<_> = manifest
+        .producer
+        .iter()
+        .map(|file| file.path.clone())
+        .collect();
+    if expected.len() != manifest.producer.len()
+        || producer_inventory(&directory).as_ref() != Some(&expected)
+    {
+        return false;
+    }
+    manifest.producer.iter().all(|file| {
+        contained(&file.path)
+            && std::fs::symlink_metadata(directory.join(&file.path))
+                .is_ok_and(|meta| meta.file_type().is_file() && meta.len() == file.size)
+            && file_digest(&directory.join(&file.path)).as_ref().ok() == Some(&file.sha256)
+    }) && manifest.recorded.iter().all(|file| {
+        let original = directory.join(selected.slot().to_string()).join(&file.path);
+        contained(&file.path) && file_digest(&original).as_ref().ok() == Some(&file.sha256)
+    }) && selected.archive_matches(
+        &directory,
+        &receipt.invocation.identity,
+        receipt.invocation.establishing_run(),
+        receipt.invocation.report.exit_code,
+    )
+}
+
+/// A retained adopted receipt must still identify the exact original copied
+/// producer and report. The actual cache root derives from its native adoption
+/// layout; a result-supplied absolute path cannot choose an evidence source.
+pub(super) fn retained_producer_intact(receipt: &Receipt, key: &str) -> bool {
+    let check = || -> Option<bool> {
+        if key.len() != 64
+            || !key
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+        {
+            return Some(false);
+        }
+        let adopted = receipt.committed.parent()?;
+        if adopted.file_name()? != "adopted" {
+            return Some(false);
+        }
+        let run = adopted.parent()?;
+        let workspace = run.parent()?.parent()?.parent()?;
+        let cache = workspace.parent()?.parent()?;
+        let entry = root(cache).join(key);
+        let manifest: Manifest =
+            serde_json::from_slice(&std::fs::read(entry.join("manifest.json")).ok()?).ok()?;
+        let original = &manifest.receipt.invocation;
+        Some(
+            manifest.version == VERSION
+                && manifest.key == key
+                && manifest.intact()
+                && original.identity == receipt.invocation.identity
+                && original.run_id == receipt.invocation.run_id
+                && original.retained_from == receipt.invocation.retained_from
+                && original.retained_history == receipt.invocation.retained_history
+                && original.selected_attempt == receipt.invocation.selected_attempt
+                && original.success == receipt.invocation.success
+                && serde_json::to_value(&original.report).ok()?
+                    == serde_json::to_value(&receipt.invocation.report).ok()?
+                && serde_json::to_value(&original.dependency_build).ok()?
+                    == serde_json::to_value(&receipt.invocation.dependency_build).ok()?
+                && producer_intact(&entry, &manifest),
+        )
+    };
+    check() == Some(true)
+}
+
 fn stage(candidate: &Candidate, publication: &Publication<'_>, staging: &Path) -> Result<()> {
     let refused = |what: &str| Error::new("SAIL3102", what.to_owned());
     let target = publication.target;
@@ -1038,6 +1242,7 @@ fn stage(candidate: &Candidate, publication: &Publication<'_>, staging: &Path) -
         return Err(refused("artifacts changed while they were stored"));
     }
     let recorded = record_output(&publication.sidecar, &staging.join("recorded"))?;
+    let producer = record_producer(publication, staging)?;
     let manifest = Manifest {
         version: VERSION,
         key: candidate.key.clone(),
@@ -1049,6 +1254,7 @@ fn stage(candidate: &Candidate, publication: &Publication<'_>, staging: &Path) -
         directories,
         files,
         recorded,
+        producer,
         checksum: String::new(),
     }
     .seal();
@@ -1259,7 +1465,7 @@ mod tests {
     struct Fixture {
         root: PathBuf,
         data: Value,
-        expected: BTreeSet<(String, String, String)>,
+        expected: OriginalTargets,
     }
 
     const VSTD: &str = "registry+https://example.invalid/index#vstd@1.0.0";
@@ -1320,7 +1526,11 @@ mod tests {
             Self {
                 root,
                 data,
-                expected: BTreeSet::from([(WS.to_owned(), "ws".to_owned(), "lib".to_owned())]),
+                expected: crate::managed::request::original_targets([(
+                    WS.to_owned(),
+                    "ws".to_owned(),
+                    "lib".to_owned(),
+                )]),
             }
         }
 
@@ -1402,9 +1612,37 @@ mod tests {
                 },
                 functions: Vec::new(),
             });
+            let identity = super::super::receipts::TargetIdentity {
+                manifest: self.root.join("reg/vstd/Cargo.toml"),
+                name: "vstd".into(),
+                crate_type: "lib".into(),
+                rustc_args_sha256: "args".into(),
+                cargo_name: None,
+            };
+            let run = self
+                .root
+                .join(format!("{name}-history"))
+                .join("establishing-run");
+            let selected_attempt = crate::adapter::attempts::fixture_history(
+                &run,
+                "establishing-run",
+                &identity,
+                b"{\"recorded\":true}\n",
+                stderr,
+                0,
+            );
+            assert!(
+                selected_attempt.is_some(),
+                "actual fixture producer history"
+            );
+            let sidecar = selected_attempt
+                .as_ref()
+                .and_then(|selected| selected.directory(&run, &identity, Some(0)))
+                .unwrap_or_else(|| unreachable!("fixture producer directory"));
             let receipt = Receipt {
                 version: RECEIPT_VERSION,
                 partial_args: None,
+                producer_archive: None,
                 checksum: String::new(),
                 package_id: VSTD.to_owned(),
                 name: "vstd".to_owned(),
@@ -1413,6 +1651,8 @@ mod tests {
                 input_revision: "workspace-specific".to_owned(),
                 invocation: super::super::receipts::Invocation {
                     retained_from: None,
+                    retained_history: None,
+                    selected_attempt,
                     identity: super::super::receipts::TargetIdentity {
                         manifest: self.root.join("reg/vstd/Cargo.toml"),
                         name: "vstd".to_owned(),
@@ -1440,13 +1680,10 @@ mod tests {
                 .into_iter()
                 .next()
                 .unwrap_or_else(|| unreachable!());
-            let sidecar = self.root.join(format!("{name}-sidecar"));
-            write(&sidecar.join("verus.stdout"), b"{\"recorded\":true}\n");
             write(
                 &sidecar.join("verus.shown-stdout"),
                 b"verification results:: 1 verified, 0 errors\n",
             );
-            write(&sidecar.join("verus.stderr"), stderr);
             publish(
                 &candidate,
                 &Publication {
@@ -1746,13 +1983,120 @@ mod tests {
     }
 
     #[test]
+    fn bounded_producer_copy_never_publishes_a_truncated_history() -> std::io::Result<()> {
+        let fixture = Fixture::new("producer-copy-limit");
+        let source = fixture.root.join("source");
+        let destination = fixture.root.join("copy");
+        std::fs::write(&source, b"complete original history")?;
+        assert!(copy_limited(&source, &destination, false, (0, 0), 5).is_err());
+        assert!(!destination.exists());
+        assert_eq!(std::fs::read(&source)?, b"complete original history");
+        let result = copy_limited(&source, &destination, false, (0, 0), 25)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        assert_eq!(result.1, 25);
+        assert_eq!(std::fs::read(&destination)?, b"complete original history");
+        Ok(())
+    }
+
+    #[test]
+    fn adopted_receipt_uses_complete_original_archive_after_source_history_is_removed()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let fixture = Fixture::new("producer-archive");
+        let (_, candidate, _) = fixture.build("old");
+        let entry = root(&fixture.cache()).join(&candidate.key);
+        let manifest: Manifest =
+            serde_json::from_slice(&std::fs::read(entry.join("manifest.json"))?)?;
+        assert!(!manifest.producer.is_empty());
+        assert!(producer_intact(&entry, &manifest));
+        // Only the independently copied archive survives. No new child starts
+        // or live AttemptIdentity are constructed by seed/adopt/readback.
+        std::fs::remove_dir_all(fixture.root.join("old-history"))?;
+        let (_, seeded, warnings) = seed_into(&fixture, &candidate, "new");
+        assert!(warnings.is_empty(), "{warnings}");
+        assert_eq!(seeded.len(), 1);
+        let run = fixture
+            .cache()
+            .join("projects/workspace/current/runs/adopted-run");
+        let destination = fixture.cache().join("projects/workspace/current/receipts");
+        std::fs::create_dir_all(&destination)?;
+        super::super::receipts::adopt(
+            &run,
+            &destination,
+            std::ffi::OsStr::new("proof.json"),
+            "current",
+            "current-revision".into(),
+            seeded[0].receipt.clone(),
+        )?;
+        let receipt: Receipt =
+            serde_json::from_slice(&std::fs::read(destination.join("proof.json"))?)?;
+        assert!(receipt.valid("current"));
+        assert_eq!(receipt.invocation.run_id, "establishing-run");
+        assert_eq!(
+            receipt.producer_archive.as_deref(),
+            Some(candidate.key.as_str())
+        );
+        let selected = receipt
+            .invocation
+            .selected_attempt
+            .as_ref()
+            .ok_or("missing original selected producer")?;
+        let payload = entry
+            .join("producer")
+            .join(selected.slot().to_string())
+            .join("verus.stdout");
+        let original = std::fs::read(&payload)?;
+        std::fs::write(&payload, b"{\"valid_but_different\":true}\n")?;
+        assert!(!receipt.valid("current"));
+        std::fs::write(&payload, &original)?;
+        assert!(receipt.valid("current"));
+        let terminal = entry
+            .join("producer")
+            .join(format!("{}.observed", selected.slot()));
+        let original_terminal = std::fs::read(&terminal)?;
+        std::fs::remove_file(&terminal)?;
+        assert!(!receipt.valid("current"));
+        std::fs::write(&terminal, &original_terminal)?;
+        assert!(receipt.valid("current"));
+        let extra = entry.join("producer/unaccounted-source");
+        std::fs::write(&extra, b"extra")?;
+        assert!(!receipt.valid("current"));
+        std::fs::remove_file(&extra)?;
+        assert!(receipt.valid("current"));
+        let mut omitted = manifest.clone();
+        omitted
+            .producer
+            .retain(|file| file.path != Path::new(&format!("{}.reserved", selected.slot())));
+        assert!(omitted.producer.len() < manifest.producer.len());
+        json(&entry.join("manifest.json"), &omitted.seal())?;
+        assert!(!receipt.valid("current"));
+        json(&entry.join("manifest.json"), &manifest)?;
+        assert!(receipt.valid("current"));
+        // Re-saving a stripped archive reference cannot turn the old report
+        // into a new live producer, even with a fresh checksum/commit marker.
+        let mut stripped = receipt.clone();
+        stripped.producer_archive = None;
+        let stripped = stripped.seal();
+        json(
+            &stripped.committed,
+            &serde_json::json!({"context":"current", "run_id":stripped.invocation.run_id,
+            "receipt_checksums":[stripped.checksum]}),
+        )?;
+        assert!(!stripped.valid("current"));
+        Ok(())
+    }
+
+    #[test]
     fn a_path_dependency_in_the_closure_is_never_stored() {
         let fixture = Fixture::new("path");
         let mut data = fixture.data.clone();
         data["packages"][2]["source"] = Value::Null;
         assert!(candidates(&data, &fixture.expected, "family").is_empty());
         // Selected targets are verified by the run itself, never stored.
-        let selected = BTreeSet::from([(VSTD.to_owned(), "vstd".to_owned(), "lib".to_owned())]);
+        let selected = crate::managed::request::original_targets([(
+            VSTD.to_owned(),
+            "vstd".to_owned(),
+            "lib".to_owned(),
+        )]);
         assert!(candidates(&fixture.data, &selected, "family").is_empty());
     }
 
@@ -1785,8 +2129,19 @@ mod tests {
                 target: &target,
                 artifacts: &fixture.root.join("old-artifacts.jsonl"),
                 build_inputs: &fixture.root.join("old-build-inputs.json"),
-                receipt,
-                sidecar: fixture.root.join("old-sidecar"),
+                receipt: receipt.clone(),
+                sidecar: receipt
+                    .invocation
+                    .selected_attempt
+                    .as_ref()
+                    .and_then(|selected| {
+                        selected.directory(
+                            &fixture.root.join("old-history/establishing-run"),
+                            &receipt.invocation.identity,
+                            Some(0),
+                        )
+                    })
+                    .unwrap_or_else(|| unreachable!("fixture original producer")),
                 data: &fixture.data,
             },
             &store,

@@ -11,6 +11,391 @@ checks. Its [refinement adapter](../../proofs/refinement/inputs.rs) relates the
 same checked executable bodies to the model's exact input-map representation.
 Physical observation, compiler-closure discovery and the remaining native
 caller/context mapping still have the boundaries listed below.
+The [compiler-consumed observation proposal](compiler-input-observation.md)
+identifies the next actual loader/decoder-buffer slice, phase boundaries and
+the separate opaque-I/O and native launch decisions; it is a source-only plan.
+
+## Reads through the actual opened object
+
+Fresh `managed/files.rs::file_digest` calls now bracket their byte stream with
+structured pathname and opened-handle observations. The native adapter owns
+one `File`: it obtains that handle's initial metadata, reads through the same
+handle, obtains its final metadata, and rechecks the requested pathname. It
+never closes and reopens a path to obtain the final handle stamp. On Unix the
+adapter copies device, inode, byte length, mode, modification seconds/nanoseconds
+and change seconds/nanoseconds without normalization. Length conversion is
+checked; other platforms refuse this observation protocol conservatively.
+
+The source-shared `OpenedRead::begin` requires a regular file and exact equality
+of the original pathname and opened-handle stamps. Each successful nonempty
+read prefix passes to `OpenedRead::chunk`. The returned private `ReadChunk`
+retains those exact bytes and the original object identity; the native hasher
+consumes only `ReadChunk::bytes()`. The counter admits partial chunks but cannot
+exceed the original reported length. EOF, read failure and later chunks are
+distinct transitions. Failure is sticky, and EOF before the exact byte length
+cannot produce a `ReadSeal`. Final handle and pathname stamps must equal the
+original stamp, which the transaction never replaces.
+
+Phase-local digest entries retain the hash and original `ReadSeal` together.
+Before admitting a parallel result under a proposed canonical key, and before
+returning a cached value, `ReadSeal::matches_binding` compares both the key's
+and the actual requested pathname's object observations with the original read.
+An alias retarget between canonical key discovery and opening cannot populate
+the old key with the newly opened object's digest. A changed cache-key observation
+discards the old entry and rereads instead of attaching a fresh stamp to old bytes. As with the other
+endpoint checks, inode reuse and repeated metadata remain OS observation limits;
+this is not a proof of global atomicity or a retained live-descriptor lease.
+The cache association defect is tracked in [#381](https://github.com/Chelis-Lang/sail/issues/381).
+
+`open_read_digest` and `read_opened_digest` are now the actual executable
+open/read/hash loops used by native digest production. The checked body owns the
+file and hash state, passes only the actual returned read prefix through
+`ReadChunk::bytes()`, and requires explicit EOF, exact length and original
+endpoint observations before returning `CompletedRead`. Its logical
+`FileObservation` trace binds the actual path/open/handle/read/EOF operations in
+order. Hash operations preserve that filesystem trace; omitting an observation
+or substituting an earlier stamp cannot establish the final trace contract.
+The owned descriptor is dropped when native code extracts the digest/seal,
+within each file read.
+
+The kernel's unconditional safety contract permits real I/O failure. A separate
+conditional productivity clause uses structured `ScriptedReadFile` primitive
+outcomes, derived by a checked concrete provider from its owned byte vector.
+Every concrete primitive body verifies the exact bytes and observations it
+produces. Nonempty and empty successful kernel calls are proved without assuming
+that hardware succeeds. The private native provider explicitly exposes no
+scripted file or handle; these constructive outcomes cannot authorize native
+filesystem or compiler-domain evidence. A deliberately colliding length-based
+forward hash accepts two distinct three-byte streams with the same digest,
+showing that the kernel does not need a universal inverse/injectivity law.
+Native SHA identities require their separately named finite-domain crypto
+condition or direct byte comparison when proving byte equality from a digest.
+
+`checked_opened_read_trace` also verifies finite factory transitions. Its ghost
+byte stream concatenates the exact supplied chunk slices in order. Constructive
+controls exercise partial/overlong/post-EOF chunks, read errors and mismatched
+original/final observations. Native controls hash a real multi-chunk file and an
+empty file, refuse partially consumed or write-only handles (including empty
+write-only files), and refuse an opened handle retained across a same-content
+symlink retarget. A fresh open after retargeting remains usable. Successful
+SHA-256 output and requested fold ordering are unchanged for stable files.
+
+This shrinks the pathname-label/opened-object and short-read boundaries. The
+named low-level OS contract is that `File::open` yields an owned object at its
+initial offset, `File::metadata` describes that same object, successful reads
+return the next observed bytes of that handle, and pathname metadata describes
+the object resolved at that call. Private native ownership supplies the same
+handle to these operations. The generic kernel proves its theorem for providers
+satisfying these operation contracts. The private native forwarders and their
+standard-library/OS/SHA semantics remain explicit source-bound assumptions; the
+stock check does not prove those native bodies or the OS. Production Host
+implementations and call sites require a closed source inventory. A generic
+`CompletedRead` alone cannot mint a complete compiler-domain/service authority.
+The pure factories themselves assume no filesystem or hash law.
+
+This **does not** prove that equal endpoint metadata implies one atomic content
+version. Transient changes, exact repeated metadata, timestamp granularity,
+filesystem-specific identity behavior and path ABA remain separate observation
+limits. It does not prove that a later pathname-based executable launch runs
+this opened object, nor that SHA-256 was implemented correctly or is injective.
+Native phase-cache map operations, retained-read caller mapping in `read_check.rs`, compiler
+closure discovery, configuration/environment collection and launch identity
+retain their separately listed refinement obligations. Native macOS/Linux host
+gates and cost qualification apply to the integrated implementation.
+
+### A guard over the complete recorded readback batch
+
+`read_check::check` now begins an `OriginalCapture` before any content or alias
+read and finishes it after all those reads. The independently collected guard
+domain is the original record's file paths, binding keys and binding destinations;
+its native stamp also observes resolved objects and linked ancestors. Parallel
+content observations still retain their actual returned keys and pass the same
+exact-domain comparison. Present, absent and failed observations remain distinct.
+Present files use the checked read/hash kernel; a path-metadata failure observes
+absence only for actual `NotFound`, while subsequent kernel failures remain
+unreadable. No extra content read or change to successful revision bytes is needed.
+
+The source-shared `guard_readback` factory retains the exact `Readback` and
+optional `OriginalGuard` in private `GuardedReadback` evidence. It invokes the
+actual comparison and capture factories itself, with no caller-supplied success
+predicate. Its iff contract requires a nonempty exact complete typed domain and
+present equal original/final stamp bytes before both changed/unknown flags can
+be false. `compare_readback` also proves its equality flag is exactly the
+complement of those two flags. The native adapter preserves the original
+capture across the full batch, then consumes the checked getters. Changed stamps
+yield a different revision; unavailable stamps cannot yield the old complete
+revision. The actual-map refinement and constructive controls cover source,
+alias, absence, missing stamps, changed stamps, partial and duplicate domains.
+The run-local stamp encodes presence explicitly
+and validates the returned metadata-key inventory before folding it in sorted
+path order. It is separate from the logical content/revision identity.
+
+The real-file [#387](https://github.com/Chelis-Lang/sail/issues/387) control
+records A0/B0, begins checking A0/B1, reads A0, writes A1 then B0 and finally
+reads B0. No filesystem state during that check had both old values. The original
+helper nevertheless returned the old complete revision. The batch guard now
+refuses it, and removing that guard reproduces the failure. The exact-revert,
+unchanged, absence, linked-ancestor and tagged read-domain controls stay intact.
+
+This guards the original recorded domain, not an independently proved complete
+compiler-input closure. It does not prove a global linearization point from
+metadata equality. The native metadata traversal, observation ordering,
+unsupported mutation classes and cryptographic stamp assumptions remain named
+boundaries. In particular, no axiom equates a repeated ctime with an immutable
+file version, and a loaded record is still only a candidate under the original
+protected evidence/domain contract.
+
+### Recovery of uncovered source inventories
+
+`previous_covered` remains required. A later empty or partial declaration journal
+cannot reestablish an inventory that previously lost a required observation.
+Deleting only that source record would forget the missing domain while allowing
+Cargo to reuse the same compiled target; it is not a proved recovery protocol.
+
+A justified replacement protocol needs an independently identified fresh
+compiler/unit execution domain. One concrete candidate is a fresh owned compiler
+target plus the current pre-Cargo unit graph, with each required unit matched to
+actual wrapper starts, normal completion/artifact disposition and usable dep-info
+reads. It must preserve exact package/target/features/platform identity, distinguish
+fresh/up-to-date and unexecuted units on failure, include generated inputs and
+declared environment/configuration, and retain original before/after guards.
+Only a complete reestablishment could replace old uncovered hints; interrupted
+or partial runs cannot promote them. The current package-only unit-plan check
+cannot establish this replacement. This recovery protocol is not implemented
+by the opened-read transaction and remains tracked with compiler closure.
+
+## Declared environment names and provider failures
+
+The executable `environment_name_matches` checks a proposed dep-info name
+against its exact rustc spelling. Its iff contract preserves ordinary name bytes
+including whitespace and checks the exact `\n`, `\r` and `\\` escape relation.
+`encoded_environment_prefix` proves the loop's prefix relation. The native
+parser's proposed decoded UTF-8 string cannot become a different sampled key:
+the shared checker must admit its byte mapping first. A nonempty stock witness
+accepts exact whitespace and newline names and refuses trimmed, escaped,
+empty and unrelated keys. A real rustc child emits these same dep-info cases;
+a separate real Cargo fingerprint witness establishes instruction-line framing
+and preservation of leading payload whitespace, including indented prefixes and
+Unicode trailing whitespace. The Rust string/line framing and Cargo directive semantics
+remain named native provider boundaries, not a proved complete compiler parser.
+
+Declaration traversal distinguishes a successfully enumerated empty tree from
+missing directories, failed entries, unreadable/non-UTF-8 required files,
+nonregular required files and unsupported symlinks. Failure preserves the fresh
+verifier report but withholds new pending receipts and global Current. A retained
+receipt also needs the exact currently observed declared-name/value map. The
+build-script producer separately retains actual output-read failure rather than
+converting it into an empty successful contract. This closes concrete provider
+loss/name-association defects; it does not discover undeclared process I/O or
+prove that the enumerated target tree contains every actual compiler request.
+
+The provider-loss and wrong-name defects are tracked separately in
+[#382](https://github.com/Chelis-Lang/sail/issues/382) and
+[#383](https://github.com/Chelis-Lang/sail/issues/383).
+
+Receipt policy 6, read-time record policy 3 and proof-context policy 2 refuse
+legacy proof authority established with partial scans or incorrectly mapped
+names. Compiler-family artifact identity is unchanged; it cannot mint proof
+receipts by itself. Dependency-store admission checks the receipt version.
+Baselines retain Historical evidence. Shipped/native tracked-environment JSON
+records use exact original keys independently of this declaration parser and
+are not reclassified by an unrelated schema bump.
+Verification-phase environment completeness and original compiler-environment
+preservation remain independently tracked defects in
+[#386](https://github.com/Chelis-Lang/sail/issues/386) and
+[#385](https://github.com/Chelis-Lang/sail/issues/385). The read kernel does not
+close either gap; their exact projects are in `corpus/repros/`.
+
+## Completed compiler-declaration providers
+
+### Attributable verification and compilation fields
+
+The source-shared [phase component](../../crates/sail-acceptance/src/phase_inputs.rs)
+accounts for the existing fork's two actual declaration phases. After all command
+configuration and before spawn, `PhaseRequest::for_reserved` copies the allocated
+run, every raw compiler unit field, slot, binding and full final
+`ProcessDescriptor`. Program bytes, ordered argument boundaries, explicit
+working-directory presence and ordered environment override/removal pairs all
+participate; inherited environment and directory remain separate context inputs.
+The constructor consumes and returns the same owned reservation. A later
+`ObservedAttempt::reserved()` borrow cannot attach a new original binding;
+the compile-fail documentation control checks this ownership boundary.
+Cargo-name absence and an empty Cargo name remain different. The seal consumes
+that immutable request and compares it with the actual `ObservedAttempt`'s
+reservation, including the complete final descriptor. This matters because
+separate native argument-key namespaces can both allocate slot zero for the
+same raw run/unit. Their commands still cannot share a phase request.
+
+The parsed document separately reports only PID, binding and its phase fields;
+36d does not echo raw run/unit/slot/descriptor fields. Matching that metadata is
+not authentication of the file writer. A fresh immutable selected slot namespace
+and descriptor-bound producer path remain part of the native origin obligation.
+It requires one verification phase and one compilation phase, the existing
+final-document header and a normal observed exit. A normal nonzero exit can
+complete declaration accounting, without becoming a successful proof. The
+protocol has one final document; it invents no per-phase stdout EOF events.
+
+Both recorded phases contribute their exact fields. Typed source checksum and
+length declarations, extra tracked path requests, and environment name/value or
+absence are distinct keys. The joined inventory must cover every field in both
+phases and contain no other field. Conflicting values, duplicate identities,
+missing phases, foreign attempts and unreadable outcomes refuse admission.
+These field namespaces describe declarations, not input-world byte observations.
+The actual native consumers now pass borrowed raw source, tracked-path and
+environment declarations to `expand_declarations`. Its checked loop emits both
+source fields under the same exact pathname, every tracked path, and every
+raw environment name/value or explicit absence. The full `u64` source length
+uses the existing eight little-endian bytes; the size-encoding lemma proves
+that no length bits are lost. This is an encoding result, without a digest
+injectivity assumption. `declaration_facts` then converts every emitted row
+exactly once. Whitespace, invalid byte values, absence and present-empty values
+are preserved. Invalid UTF-8 during the later native environment-map extraction
+refuses extraction instead of turning a present value into absence. Duplicate
+tracked paths remain duplicates and fail the existing unique-key check.
+
+The Serde document decoder, BTreeMap iteration and projection into those raw
+borrowed declaration records remain an explicit native adapter boundary.
+The checked expansion establishes no extra compiler reads, producer authenticity
+or complete physical input closure. It preserves the previous successful field
+order and source-length encoding; a complete empty decoded phase stays empty.
+
+Sorting only proposes complete forward/inverse indices. The checked subset
+comparison has an iff contract, and the sorted-cursor lemma proves that a valid
+member cannot be skipped. Both union passes use monotone cursors rather than
+repeated full scans.
+
+The existing unselected shipped/retained consumers share one strict document
+schema and invoke this checked field-union logic for their environment maps.
+Duplicate JSON phase, source and environment keys refuse instead of overwriting
+an earlier field. All original source, copy, package and runtime checks remain.
+The attributable native entry point additionally joins the final parsed document
+to its original request and actual child. Its normal-wrapper integration and
+control transport are not selected for default proof authority.
+
+The [#386](https://github.com/Chelis-Lang/sail/issues/386) native compiler witness
+uses the pinned fork's existing observation hook. Its verification phase records
+`ORDINARY_PROOF_FLAG=7`; erased compilation and the final dep-info omit that
+verification-only read. The checked two-phase union preserves it. The explicit
+local witness validates the installed fork before launching its owned child:
+
+```sh
+SAIL_ACTUAL_PHASE_BUILD="$SAIL_FORK_BUILD" \
+SAIL_ACTUAL_PHASE_OUT="$SAIL_PHASE_OUT" \
+ci/run.sh boundary-witness phases
+```
+
+The output directory must not exist; an external bounded runner owns the child
+group and retains source/runtime identities and raw output. This is a standalone
+actual-compiler witness, separate from default managed Cargo/Journal integration
+and the complete native acceptance gate. Real-child controls also exercise a
+normal nonzero producer, changed PID/binding, old-child/new-slot association,
+missing completion, malformed JSON and a missing phase.
+
+`PhaseInputs` proves exact accounting of the typed declarations under the
+source-bound producer/parser contract. It is not a `CompilerDomain`, fresh input
+world or proof-success token. Native serde decoding and field construction,
+compiler-hook fidelity, final protected-record origin, launch identity and the
+underlying OS remain explicit adapter boundaries. An additional tracked pathname
+declares a request, not consumed bytes. SourceMap exclusions and arbitrary
+proc-macro/build-script I/O remain outside complete observation. The current
+ambient hook environment is observable by user code; it must not be enabled as
+default transport before the environment contract and legacy-authority policy
+are repaired. This component alone does not close #385, #386, #373 or #374.
+
+### Cargo declaration journals
+
+The default managed Cargo adapter records a private pre-spawn intent in the
+run's artifact journal, then the PID from the actual `Child`. Each retained
+`compiler-artifact` or `build-script-executed` message carries that same producer
+and child identity. The terminal record is written only after the stdout reader
+reaches EOF and `wait` returns a normal exit status. A normal nonzero Cargo exit
+can complete observation accounting; it establishes no successful proof. Spawn,
+read, forwarding, journal-write and wait errors leave an unsealed intent, and the
+owned child is killed and reaped on an early return.
+
+The source-shared `seal_provider` checks the concrete event sequence: one intent,
+one nonzero started child, only frames from that producer/child, and one terminal
+with the exact frame count. Zero frames is a valid completed empty observation;
+a missing journal is not. Interleaved and appended children retain separate
+intent inventories. An unfinished child cannot disappear merely because another
+child completed. Duplicate producer intents, malformed JSON, records outside an
+intent, unknown record kinds and unterminated final records refuse coverage.
+PID reuse inside the same run namespace also refuses coverage conservatively.
+The build-script scheduling and unit-plan consumers skip only schema-validated
+private control records. Their original unit package/scope checks remain in
+force; malformed controls and unknown records do not gain a metadata exemption.
+
+Before sealing, the native Cargo observer reuses the complete-document parser
+for mixed stdout. It retains artifact/build-script documents, permits known
+Cargo diagnostic/build-finished documents and Verus verification documents, and
+leaves ordinary verifier summary/timing text unchanged. JSON-looking malformed
+or truncated remainder and unsupported JSON documents withhold the terminal
+record even after a normal exit; they cannot become an observed empty child.
+Capture accounting retains at most 64 MiB, then discards its buffer and withholds
+the terminal while forwarding and returning the actual child status as before.
+This parser is reviewed native code, not a complete raw-output proof. Corrupted
+bytes that no longer look like JSON can be indistinguishable from ordinary
+verifier text. That interpretation/provider boundary remains open.
+
+`seal_compiler_provider` additionally scans actual artifact-frame positions.
+Every ordinary compiler artifact requires exactly one tagged successful dep-info
+read. Build-script and custom-build frames are counted but do not require a
+source dep-info read. Each `ArtifactRead` carries its original producer, child,
+frame position and actual dep-info bytes. The native read returns these together;
+a sorter only proposes their order. The checked scan rejects missing, duplicate,
+foreign-child, extra and unreadable outcomes. It proves both directions of the
+exact read-domain relation, strict uniqueness and successful raw-byte presence.
+The refinement adapter constructs an exact `Map<usize, Seq<u8>>` from those
+returned outcomes and proves that its domain equals the observed required
+artifact positions. It does not substitute an independently supplied complete
+inventory for the actual frame positions.
+
+The inductive `artifact_prefix_step` theorem covers each concrete scan step;
+`artifact_next` proves that complete typed outcomes determine the next required
+read. The production constructor's acceptance predicate is proved in both
+directions, so the nonempty successful witness establishes an actual usable
+seal. Controls cover a missing read, wrong child, incomplete execution, failed
+wait and an observed empty child. Native controls also exercise reordered,
+duplicate and outside outcomes, multiple child intents, malformed/truncated
+journals and a real spawned child with a normal nonzero exit. The existing
+package-attribution fixture retains its original assertions under a synthetic
+completed-provider envelope.
+
+`managed/source_inputs.rs` preserves the old successful dependency parsing,
+lexical aliases, canonical destinations and output ordering. Empty or unusable
+dep-info rules withhold coverage. Previously uncovered source hints remain
+uncovered rather than acquiring coverage from a later empty stream. Establishing
+a replacement complete source inventory after such a refusal remains a separate
+recovery policy; this slice does not invent one.
+
+These are **declaration-provider** proofs. The following boundaries remain:
+
+- The native JSON/make parsers, package attribution, path encoding and conversion
+  from the retained raw messages to typed events are source-bound reviewed
+  adapters, not stock-Verus-proved parsers. The journal retains recognized Cargo
+  artifact/build-script messages; it is not a full raw stdout transcript.
+- The adapter's actual `spawn`/PID/stdout EOF/`wait` correspondence and protected
+  endpoint append/read semantics are exercised by real-child controls and
+  structurally owned Rust code. The Rust standard library and OS primitives are
+  not proved by this component. Removing an entire invocation before its
+  pre-spawn intent is recorded is outside this endpoint's observation domain.
+- A completed journal establishes accounting for observed declarations, not that
+  Cargo/rustc emitted every physical compiler input, environment observation,
+  generated file or dynamic-library access. Compiler dep-info completeness and
+  independently expected invocation coverage remain explicit provider contracts.
+- Reading a dep-info file after compilation does not prove an atomic relation
+  between a previous executable hash and the subsequently launched process, or
+  that the dependency file could not be replaced. Compiler-launch identity,
+  actual consumed source bytes and filesystem observation semantics remain open
+  refinement obligations. No digest injectivity or complete-filesystem axiom is
+  introduced.
+
+The [issue #377](https://github.com/Chelis-Lang/sail/issues/377) regression
+against the original updater body demonstrates that a missing
+artifact journal could set declaration coverage to true. This is an accounting
+defect witness, not an end-to-end false-proof demonstration. Final macOS/native
+Linux gates and the managed failing-first workflow qualify the integrated PR;
+focused controls alone do not establish those broader results.
 
 ## Source-shared production refinement
 
@@ -346,11 +731,250 @@ Deliberately broken source controls cover the actual obligations:
 | Omit equality of required and context-map domains | Observing a plausible subset could claim complete input evidence |
 | Omit solver equality during projection | A different selected solver could inherit a projection without the required context-change boundary |
 | Omit the later transaction boundary for retained reads | Old read witnesses could satisfy a required fresh-read projection |
+| Omit an observed frame's child identity | A foreign child frame could satisfy provider completion |
+| Omit the final retained-frame count | A truncated or augmented provider trace could seal |
+| Omit the actual dep-info outcome's frame identity | A read from another artifact could satisfy a required position |
+| Omit successful raw-read presence | An unreadable artifact could enter the observed input map |
 
 The checker mutates temporary captured copies using unique manifest needles,
 retains the same verification scope and requires actual verification errors.
 Parse errors, dropped proof functions and resource-limit failures do not count
 as successful negative controls.
+
+## Exact compiler filename tokens
+
+The actual native `source_inputs::dependencies` decoder now preserves tabs,
+non-ASCII whitespace, hashes, colons and ordinary backslashes, and separates
+only unescaped ASCII spaces. Rust 1.99.1's
+[`escape_dep_filename`](https://github.com/rust-lang/rust/blob/1.99.1/compiler/rustc_interface/src/passes.rs)
+escapes only those spaces. The shared `dependency_filename_matches` operation
+checks each native proposal against that literal encoding. Its contract is an
+iff: a nonempty single-line name without NUL must encode to exactly the supplied
+bytes, with every byte and final length checked. The proof includes positive
+nonempty byte witnesses, rejection controls and ordinary guard-removal mutants.
+
+This fixes the demonstrated declaration-decoding defect
+([#408](https://github.com/Chelis-Lang/sail/issues/408)). The native compiler
+control creates both files invented by the former Unicode split, compiles an
+actual external include, and checks that the corrected inventory retains the
+consumed file and changes revision when it changes. A standalone
+[corpus control](../../corpus/repros/dep-info-filename-bytes/README.md) confirms
+that changing this external file changes the actual pinned compiler outcome.
+Source inventory schema 3 withholds older schema-2 coverage while preserving
+its known paths; an old incomplete decoder result cannot acquire corrected
+coverage merely by loading it under the new code.
+
+The token proof does not prove native character iteration, logical-rule
+selection, document framing, Serde projection or the compiler's input closure.
+Conservative tail checks refuse unsupported ordinary multiline records and
+foreign phony targets, but arbitrary newline names remain ambiguous in rustc's
+line-oriented text format. Non-UTF-8 path rendering is also lossy. Neither
+checksums nor a successful token check establish that no such physical input
+was consumed. These remain obligations for the stronger compiler provider.
+
+## Parent and effective environment projection
+
+The full-parent **reuse policy** in candidate `26ea66b3` is unselected.
+It fixes the ordinary ghost-variable witness, but contradicts the existing
+acceptance requirement that unused authentication changes retain the same
+context and reuse (`ci/test-managed.py`, authentication controls). That gate
+still requires an explicit credential read to force verification. No assertion
+is weakened. Selection needs actual compiler-input observation that distinguishes
+unused caller values from proof-relevant reads, or an owner contract decision.
+The projection kernel and native command capture below are independent of
+selecting that global reuse policy.
+
+The unselected `26ea66b3` reuse experiment captures every raw parent environment entry once,
+without prefix exclusions. Source-shared `seal_environment_projection` checks
+all unique keys, complete parent coverage, every final override/removal and the
+origin of every projected row. The private token retains the original parent,
+operations, explicit Inherit/Clear policy and exact result, plus its complete
+checked ordering. Missing/extra names, stale overwritten values, removal turned
+into an empty value, duplicate keys and unreadable data cannot enter that token.
+The native parent fingerprint uses the Inherit projection with no overrides;
+only the domain-separated digest is retained by optional command observations. Native
+`vars_os`, byte borrowing and JSON serialization remain explicit adapters.
+Digest identity requires the existing cryptographic assumption.
+
+The kernel also checks supplied effective environments for final command
+overrides and removals. Native controls build and run real inherited and
+cleared commands, compare the complete observed child fingerprint with the
+projection and check nonempty, empty and removed values. The construction
+branch explicitly supplies Inherit/Clear: `Command::get_envs` cannot identify
+that policy, and clearing can erase an otherwise explicit removal operation.
+These controls do not establish that every production command is built through
+a typed policy wrapper or authenticate a Cargo compiler child.
+
+A complete actual managed regression now checks the ordinary ghost-only
+variable witness ([#386](https://github.com/Chelis-Lang/sail/issues/386)):
+flag **7** establishes proof, the unchanged command reuses it, and removing
+only that variable changes the context and yields the genuine assertion
+failure. Plain same-fork verification also rejects it. No forced run is needed.
+[The executable corpus control](../../corpus/repros/ghost-environment-boundary/repro.py)
+checks pinned runtime bytes, original warm reuse and the actual fresh failure.
+This closes that missing-parent-variable axis in the candidate, not all possible
+effective child-input changes. The unselected experiment's policy-3 contexts invalidate filtered older
+identities. No original caller keys, including volatile controls or private
+credentials, are silently excluded to retain cache performance; full native
+cost and conformance qualification remain pending.
+
+Complete original-submission transfer, actual Cargo-generated environments,
+Sail-added input fidelity and opaque compiler filesystem/process I/O remain
+separate obligations. A full parent fingerprint does not supply those facts.
+
+## Owned native command environments
+
+The actual outer managed Cargo invocation and build-environment planner now
+construct a private owned command. Its constructor creates the native
+`std::process::Command` and captures the parent; callers cannot wrap an already
+configured command or obtain mutable access to its native builder. The exact
+`env`, `env_remove` and `env_clear` operations update both the native command
+and independently retained final operations. Clearing records Clear explicitly
+and removes earlier operations. A removal after Clear is a native no-op;
+`get_envs` alone cannot reveal the inheritance policy.
+
+Immediately before the owned native spawn/output, `seal_command_environment`
+requires bidirectional exact matching of recorded and actual `get_envs` rows,
+then uses the checked explicit-policy projection. The same owned native command
+spawns the child. The observation retains only parent, operation and effective
+digests plus the explicit inheritance policy. After the original pipes are drained and the owned child is waited, outer
+invocation records are written with exclusive creation and that same child's
+original PID. They live at `runs/<run>/cargo-environment-<pid>.json`, beside
+`cargo.stdout`/`cargo.stderr`, outside the per-target invocation/selected-attempt
+subtrees. They are optional run observations, not members of the selected-attempt
+archive or a full compiler-input token. A capture or
+recording failure preserves fresh status and diagnostics while withholding
+Current admission; incomplete planning observations supply no plan.
+
+Native controls exercise repeated set/remove/clear sequences and the actual
+child's output. Deliberately changing, adding or omitting private native
+operations behind the recorded builder state withholds the observation; the
+real child still exits and prints its actual result. Direct stock proofs
+include a nonempty readback witness and reject a coherent but different
+readback/result pair or missing readback against original builder operations.
+
+The earlier component milestone covers the outer Cargo and optional build-planning command
+constructors. The separate source-only candidate below migrates inner compiler
+construction. Archived command inheritance,
+actual executable launch identity and original-submission correspondence remain
+open. Native `std::Command`/OS/environment enumeration and serialization are
+explicit adapters. The wrapper preserves original physical argv and environment
+operations; it does not clear or normalize them to satisfy its proof. No
+command capture claims that a declared compiler list covers all physical I/O.
+
+### Owned inner compiler candidate
+
+The source-only candidate routes the adapter's ordinary native compiler,
+observed native compiler, verifying compiler and engine fallback through the
+same private owned builder. It adds independently retained raw program,
+ordered argv and optional lexical directory to the existing environment
+operation records. Immediately before its own spawn, the builder compares
+these fields with its native readback through source-shared `descriptors_equal`
+and seals its environment through the existing projection. Neither operation
+rewrites arguments, directories or environment values.
+
+Compiler observation configuration accepts the narrow `ConfigureCommand`
+interface, which forwards argument/environment additions through that builder.
+Journal configuration receives only `CommandView`, an immutable readback
+interface. Native `std::Command` implementations of those interfaces exist
+only for tests; production configuration cannot obtain a mutable native command
+from the wrapper. The actual adapter Cargo-message subprocess remains a native
+command with its original cleanup owner; it is not mislabeled an owned compiler.
+
+`ConfiguredIntent` is now produced by a source-shared factory while the actual
+`CommandEnvironment` borrow is live. It checks original/native descriptor
+identity and exact correspondence between every raw descriptor override and
+the actual environment rows. It retains the final descriptor and explicit
+inheritance policy. Presence of a native Boolean cannot stand in for this
+configuration token.
+
+`OwnedRunningAttempt` now aliases the shared `OwnedCompilerAttempt`, whose
+factory retains the original reserved descriptor, actual child PID and private
+ownership lease after checking the spawned builder's configured intent.
+The shared completion operation requires the same lease, PID, descriptor and
+actual wait observation. Lease
+identity prevents a different child with a reused PID and identical arguments
+from matching. Private `Completed` values obtain their status from that owned
+child's actual wait, rather than a status supplied alongside output buffers.
+The streaming verifier retains the original pipe extraction, stderr forwarding,
+wait and stdout-reader join order; fallback keeps its original `wait_with_output`
+path. The existing cleanup owner still stops the child and joins readers on
+streaming failure. Optional construction failure withholds the journal's
+observation while preserving the real fresh output and status.
+
+No new in-run capture file, compiler argument, environment control or transport
+is added. The raw intent and ownership lease stay in process memory. Existing
+configured research observation endpoints remain unchanged; this candidate selects
+no research endpoint or transport.
+`std::Command::output` still supplies optional planning output, but lacks an
+exposed actual PID and cannot produce the new compiler wait token.
+
+Only formatting and source review have run for this candidate. New ordinary
+source controls cover exact empty/non-Unicode argument bytes, lexical cwd,
+program/argument/cwd substitution and different leases with identical PID and
+descriptor. They are not executed receipts. Existing engine fallback controls
+use the owned builder with their original assertions. Compilation, lint, normal
+tests, canonical source capture/proof controls, complete native/macOS gates,
+conformance and native cost measurements remain pending.
+
+The new shared contracts and controls have not run through stock Verus. They
+are proposed source refinements, not proved or accepted operations yet. This
+is also not a stock-Verus proof of the native adapter, pipe readers or OS. Parent
+inheritance timing, original-submission correspondence, archive schema,
+complete compiler inputs, opaque I/O, control-channel fidelity and actual
+executable-image/atomic observation identity remain separate obligations.
+No descriptor or ownership lease constructs `CompilerDomain` or Current proof
+authority by itself.
+
+### Shared owned-completion boundary
+
+The subsequent [owned compiler pipe candidate](acceptance-compiler-pipes.md)
+adds actual endpoint/EOF tokens to production completion. The raw shared
+reducer described below remains a modeled reduction, rather than a native
+caller-vector admission API. Its new source and controls are unqualified.
+
+The candidate adds these source-shared operations in `phase_inputs.rs`:
+
+| Operation | Concrete boundary |
+|---|---|
+| `descriptor_environment_matches` / `seal_configured_intent` | Bind every raw final override/removal to the exact typed rows admitted by the live environment factory, and retain original program/argv/cwd/policy |
+| `begin_owned_compiler` | Consume the independent reservation; require its exact descriptor, a configured intent and nonzero actual PID; retain the original native owner lease without stream/wait observations |
+| `owned_identity_matches` | Compare original/actual opaque ownership identity, PID and every descriptor field |
+| `complete_owned_compiler` | Require present configuration/owner/PID/wait, compare descriptor and explicit inheritance policy with the original owned start, and move actual stdout/stderr vectors through the existing attempt reducer; return unchanged vectors on refusal |
+
+`OwnedSpawnFields` and `OwnedCompletionFields` are explicitly raw candidate
+observations. Their public fields do not authenticate a real process. Production
+readouts come only from the private owned wrapper: the actual `Child::id`,
+retained configuration token, `Arc` ownership lease, original successful
+`wait`/`try_wait`/`wait_with_output` result, and the original output vectors.
+Missing wait and an actual signaled exit remain distinct. A genuine failing
+exit is still a completed process observation; it cannot become a successful
+proof merely because this operation records it.
+
+The single shared ownership primitive is `inputs::OwnerIdentity::same_owner`,
+re-exported by `phase_inputs` for the existing native API. Its unchanged contract
+is shared with process-stream consumers without importing the compiler-phase
+module into query proof roots. No previously qualified function is removed by
+this relocation: the primitive is introduced by this still-unqualified slice.
+Its contract is exact opaque identity equality; the production body is `Arc::ptr_eq` on the two
+actual retained leases. It has no `all_inputs`, compiler-domain, successful-I/O,
+watcher, metadata-stability or verifier-success premise. The constructive
+`ScalarOwnerIdentity` fixture proves that primitive over actual `u64` values,
+then exercises nonempty buffers, normal success/failure, a signal, different or
+missing owner/PID/configuration, missing start/wait and wrong reserved command.
+It also refuses a different inheritance policy with otherwise identical rows.
+It supplies neither native authority nor an assumption that physical I/O always
+succeeds.
+
+The native journal delegates start/completion admission to those shared bodies.
+Its remaining native work converts the actual platform status without changing
+it, persists the original observed payloads and handles persistence refusal.
+Native `std` spawn/read/wait semantics, raw OS string projection and actual
+`Arc` identity remain the narrow source-bound primitives/adapters. The shared
+contracts are conditional on those actual observations, not a theorem that
+arbitrary supplied fields came from a compiler. Closed source/function/caller
+inventory and direct proof/failing-control/native gates remain required before
+selection; no such gate has run for this slice.
 
 ## Remaining concrete refinement
 
@@ -391,3 +1015,22 @@ actual input core preserves exact declared identity and guard bytes. It does
 not prove that every real compiler/filesystem observation produces that map
 or that every production Current response follows the complete modeled
 authority transaction.
+
+## Canonical compiler-phase capture
+
+The input root includes the actual `authority` and `phase_inputs` leaf modules
+and the supporting `proofs/refinement/phase_inputs.rs` witness module. Its
+closed dependency list, import bindings and private `PhaseRequest`/`PhaseInputs`
+constructors are checked alongside every earlier input function and control.
+The authority root includes the same phase module for exact owned attempt
+identity copies. All methods in these modules participate in whole-crate
+verification; the supporting module is not a fourth optional proof root.
+
+The input control inventory retains all 27 prior controls and adds 36 phase,
+command, declaration-row and filename controls. Two original environment-name
+mutation anchors now name their complete original function because the new
+filename checker contains similar byte comparisons; the original mutation
+semantics and required failures are unchanged. The combined positive input
+probe checks 221 obligations and 379 function entries. These development counts
+do not replace the complete canonical control suite, prove exhaustive compiler
+I/O, or establish physical observation atomicity.

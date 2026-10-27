@@ -152,13 +152,11 @@ pub(crate) const MISSING_FEATURE: &str = "engine.missing-feature";
 /// back to stock verification because of them.
 fn missing_in_run(run: &Path) -> Vec<String> {
     let mut missing = std::collections::BTreeSet::new();
-    if let Ok(entries) = std::fs::read_dir(run.join("sidecars")) {
-        for entry in entries.filter_map(std::result::Result::ok) {
-            if let Some(bytes) = bounded_document(&entry.path().join(MISSING_FEATURE)) {
-                let name = String::from_utf8_lossy(&bytes).trim().to_owned();
-                if !name.is_empty() {
-                    missing.insert(name);
-                }
+    for (_, directory) in selected_calls(run) {
+        if let Some(bytes) = bounded_document(&directory.join(MISSING_FEATURE)) {
+            let name = String::from_utf8_lossy(&bytes).trim().to_owned();
+            if !name.is_empty() {
+                missing.insert(name);
             }
         }
     }
@@ -501,6 +499,8 @@ pub fn import(cache: &Path, pins: &Pins, source: &Path) -> Result<Status> {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Request {
     pub function: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection: Option<sail_api::repair::Selection>,
     pub cargo_verus: PathBuf,
     pub manifest: PathBuf,
     #[serde(default)]
@@ -528,6 +528,7 @@ impl Request {
         // omitted; no owned strings, paths or artifact vectors are cloned.
         let Self {
             function: _,
+            selection: _,
             cargo_verus,
             manifest,
             manifest_sha256,
@@ -558,10 +559,7 @@ impl Request {
 
     /// Project-level engine identity.
     pub(crate) fn identity(&self) -> sail_api::project::EngineIdentity {
-        sail_api::project::EngineIdentity {
-            name: "interactive".to_owned(),
-            manifest_sha256: self.manifest_sha256.clone(),
-        }
+        sail_api::acceptance::construct_interactive_identity(&self.manifest_sha256)
     }
 }
 
@@ -578,6 +576,7 @@ fn request(config: &crate::managed::Config, function: Option<String>) -> Result<
         .map_err(|e| Error::new("SAIL3120", e.to_string()))?
         .with_file_name("verus");
     let request = Request {
+        selection: None,
         function,
         cargo_verus: runtime_dir(&build).join("cargo-verus"),
         manifest: manifest_path,
@@ -770,13 +769,39 @@ pub fn repair(
     function: &str,
     err: &mut dyn std::io::Write,
 ) -> Result<sail_api::repair::BatchResult> {
+    repair_selected_inner(config, function, None, err)
+}
+
+/// Runs a repair with the exact target/function selection already checked by
+/// the CLI worker against its original request arguments.
+/// Library callers must establish the same selection-to-Cargo-arguments
+/// relationship; this entry point retains that selection but does not itself
+/// resolve raw package selectors into canonical Cargo target identities.
+///
+/// # Errors
+/// As [`repair`]; the exact validated selection is retained before execution.
+pub fn repair_selected(
+    config: &crate::managed::Config,
+    selection: &sail_api::repair::Selection,
+    err: &mut dyn std::io::Write,
+) -> Result<sail_api::repair::BatchResult> {
+    repair_selected_inner(config, &selection.function, Some(selection), err)
+}
+
+fn repair_selected_inner(
+    config: &crate::managed::Config,
+    function: &str,
+    selection: Option<&sail_api::repair::Selection>,
+    err: &mut dyn std::io::Write,
+) -> Result<sail_api::repair::BatchResult> {
     if function.is_empty() || !function.contains("::") || crate::managed::focused(&config.args) {
         return Err(Error::new(
             "SAIL3120",
             "repair requires one exact crate-qualified function and independent full scope",
         ));
     }
-    let (request, manifest_sha256) = request(config, Some(function.to_owned()))?;
+    let (mut request, manifest_sha256) = request(config, Some(function.to_owned()))?;
+    request.selection = selection.cloned();
     let mut config = config.clone();
     config.force = true;
     let (mut full, _workspace) =
@@ -793,11 +818,8 @@ pub fn repair(
     let mut selected = Vec::new();
     let mut selection_error = None;
     let gathered = (|| -> Result<()> {
-        for entry in std::fs::read_dir(run.join("sidecars"))
-            .map_err(|e| Error::new("SAIL3123", e.to_string()))?
-        {
-            let entry = entry.map_err(|e| Error::new("SAIL3123", e.to_string()))?;
-            let path = entry.path().join("focus.report.json");
+        for (_, directory) in selected_calls(&run) {
+            let path = directory.join("focus.report.json");
             if !path.is_file() {
                 continue;
             }
@@ -916,11 +938,8 @@ impl LauncherAdaptation {
 
 fn launcher_notes(run: &Path, result: &mut sail_api::project::ProjectResult) {
     use std::io::Read as _;
-    let Ok(entries) = std::fs::read_dir(run.join("sidecars")) else {
-        return;
-    };
-    for entry in entries.filter_map(std::result::Result::ok) {
-        let Ok(file) = std::fs::File::open(entry.path().join("launcher-options.json")) else {
+    for (_, directory) in selected_calls(run) {
+        let Ok(file) = std::fs::File::open(directory.join("launcher-options.json")) else {
             continue;
         };
         let mut bytes = Vec::new();
@@ -955,22 +974,54 @@ pub(crate) struct FocusTarget {
     pub report: sail_api::output::Report,
 }
 
+fn selected_calls(run: &Path) -> Vec<(crate::managed::Invocation, PathBuf)> {
+    let Ok(entries) = std::fs::read_dir(run.join("invocations")) else {
+        return Vec::new();
+    };
+    entries
+        .filter_map(std::result::Result::ok)
+        .filter_map(|entry| {
+            let call: crate::managed::Invocation =
+                serde_json::from_slice(&bounded_document(&entry.path())?).ok()?;
+            if call.run_id.as_bytes() != run.file_name()?.as_encoded_bytes()
+                || entry.file_name()
+                    != std::ffi::OsString::from(format!("{}.json", call.identity.key()))
+            {
+                return None;
+            }
+            let directory = call.selected_directory(run)?;
+            Some((call, directory))
+        })
+        .collect()
+}
+
+fn sidecar_call(run: &Path, sidecar: &Path) -> Option<crate::managed::Invocation> {
+    let root = if sidecar.parent()?.file_name()? == "attempts" {
+        sidecar.parent()?.parent()?
+    } else {
+        sidecar
+    };
+    let key = root.file_name()?.to_str()?;
+    let call: crate::managed::Invocation = serde_json::from_slice(&bounded_document(
+        &run.join("invocations").join(format!("{key}.json")),
+    )?)
+    .ok()?;
+    (call.identity.key() == key && call.run_id.as_bytes() == run.file_name()?.as_encoded_bytes())
+        .then_some(call)
+}
+
 fn completed_driver(run: &Path, sidecar: &Path) -> bool {
     let valid = || -> Option<bool> {
-        if sidecar.join("engine.failed.stdout").try_exists().ok()? {
+        let invocation = sidecar_call(run, sidecar)?;
+        let directory = invocation.selected_directory(run)?;
+        if invocation.report.engine.as_ref().is_some_and(|engine| {
+            engine.established_by == sail_api::output::EngineEstablishment::StockFallback
+        }) {
             return Some(false);
         }
-        let key = sidecar.file_name()?.to_str()?;
-        let invocation: crate::managed::Invocation = serde_json::from_slice(&bounded_document(
-            &run.join("invocations").join(format!("{key}.json")),
-        )?)
-        .ok()?;
-        if invocation.identity.key() != key || invocation.run_id != run.file_name()?.to_str()? {
-            return Some(false);
-        }
-        let stdout = bounded_document(&sidecar.join("verus.stdout"))?;
+        let stdout = bounded_document(&directory.join("verus.stdout"))?;
         Some(crate::engine_events::completed(
-            &sidecar.join("engine.events.jsonl"),
+            &directory.join("engine.events.jsonl"),
             &stdout,
             invocation.report.exit_code,
         ))
@@ -991,7 +1042,14 @@ pub(crate) fn completed_compiler_output(
     engine: bool,
     whole: bool,
 ) -> bool {
-    let sidecar = run.join("sidecars").join(call.identity.key());
+    let Some(sidecar) = call.selected_directory(run).or_else(|| {
+        // Qualified bundled/retained transfers have no fresh child. Their
+        // independent transfer admission remains a distinct native boundary.
+        (call.dependency_build.is_some() && !engine)
+            .then(|| run.join("sidecars").join(call.identity.key()))
+    }) else {
+        return false;
+    };
     let driver = if engine {
         completed_driver(run, &sidecar)
     } else {
@@ -1034,15 +1092,14 @@ pub(crate) fn completed_compiler_output(
 /// normal exit.
 fn completed_stock_driver(run: &Path, sidecar: &Path) -> bool {
     let valid = || -> Option<bool> {
-        let key = sidecar.file_name()?.to_str()?;
-        let invocation: crate::managed::Invocation = serde_json::from_slice(&bounded_document(
-            &run.join("invocations").join(format!("{key}.json")),
-        )?)
-        .ok()?;
-        if invocation.identity.key() != key || invocation.run_id != run.file_name()?.to_str()? {
-            return Some(false);
-        }
-        let stdout = bounded_document(&sidecar.join("verus.stdout"))?;
+        let invocation = sidecar_call(run, sidecar)?;
+        let directory = invocation.selected_directory(run).or_else(|| {
+            invocation
+                .dependency_build
+                .as_ref()
+                .map(|_| run.join("sidecars").join(invocation.identity.key()))
+        })?;
+        let stdout = bounded_document(&directory.join("verus.stdout"))?;
         Some(crate::engine_events::stock_completed(
             &stdout,
             invocation.report.exit_code,
@@ -1227,6 +1284,7 @@ mod tests {
         manifest.save(&root)?;
         let path = root.join(source_build::MANIFEST);
         let request = Request {
+            selection: None,
             function: Some("demo::selected".to_owned()),
             cargo_verus: runtime.join("cargo-verus"),
             manifest: path.clone(),
@@ -1301,6 +1359,43 @@ mod tests {
         assert!(serde_json::from_str::<LauncherAdaptation>(&duplicate).is_err());
     }
 
+    fn observed_fixture<'a>(
+        journal: &mut crate::adapter::attempts::Journal<'a>,
+        stdout: &[u8],
+        stderr: &[u8],
+    ) -> std::result::Result<crate::adapter::attempts::CapturedChild<'a>, Box<dyn std::error::Error>>
+    {
+        let allocation = journal.allocate().ok_or("fixture allocation refused")?;
+        let directory = allocation.directory().to_owned();
+        let stdout_seed = directory.join("fixture.stdout");
+        let stderr_seed = directory.join("fixture.stderr");
+        let events_seed = directory.join("fixture.events");
+        std::fs::write(&stdout_seed, stdout)?;
+        std::fs::write(&stderr_seed, stderr)?;
+        std::fs::write(
+            &events_seed,
+            include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
+        )?;
+        let mut command = std::process::Command::new("/bin/sh");
+        command
+            .args([
+                "-c",
+                "cat \"$1\"; cat \"$2\" >&2; cat \"$3\" > \"$4\"",
+                "engine",
+            ])
+            .arg(stdout_seed)
+            .arg(stderr_seed)
+            .arg(events_seed)
+            .arg(directory.join("engine.events.jsonl"))
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        let reserved = journal.configure(allocation, &command);
+        let child = command.spawn()?;
+        let running = journal.started(reserved, &child);
+        let output = child.wait_with_output()?;
+        Ok(journal.capture(running, output))
+    }
+
     fn driver_fixture(root: &Path) -> std::result::Result<PathBuf, Box<dyn std::error::Error>> {
         let identity = crate::managed::TargetIdentity {
             manifest: root.join("Cargo.toml"),
@@ -1329,13 +1424,46 @@ mod tests {
             attribution: &attribution,
             diagnostics: &[],
         });
+        let run_id = root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or("missing run id")?;
+        let unit = identity.compiler_unit();
+        let attempt_directory = sidecar.join("attempts");
+        let mut journal =
+            crate::adapter::attempts::Journal::new(run_id.as_bytes(), &unit, &attempt_directory);
+        let allocation = journal.allocate().ok_or("fixture allocation refused")?;
+        let directory = allocation.directory().to_owned();
+        let seed = sidecar.join("fixture.stdout");
+        let seal = sidecar.join("fixture.events");
+        std::fs::write(&seed, stdout)?;
+        std::fs::write(
+            &seal,
+            include_bytes!("../tests/fixtures/engine-terminal/terminal-success.jsonl"),
+        )?;
+        let mut command = std::process::Command::new("/bin/sh");
+        command
+            .args(["-c", "cat \"$1\"; cat \"$2\" > \"$3\"", "engine"])
+            .arg(seed)
+            .arg(seal)
+            .arg(directory.join("engine.events.jsonl"))
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        let reserved = journal.configure(allocation, &command);
+        let child = command.spawn()?;
+        let running = journal.started(reserved, &child);
+        let output = child.wait_with_output()?;
+        let captured = journal.capture(running, output);
+        assert_eq!(captured.stdout(), stdout);
+        assert_eq!(captured.status().code(), Some(0));
+        let selected_attempt = captured
+            .selected_attempt(&identity)
+            .ok_or("fixture selected reference refused")?;
         let invocation = crate::managed::Invocation {
             retained_from: None,
-            run_id: root
-                .file_name()
-                .and_then(|s| s.to_str())
-                .ok_or("missing run id")?
-                .into(),
+            retained_history: None,
+            selected_attempt: Some(selected_attempt),
+            run_id: run_id.into(),
             identity,
             report,
             success: true,
@@ -1348,7 +1476,7 @@ mod tests {
                 .join(format!("{}.json", invocation.identity.key())),
             serde_json::to_vec(&invocation)?,
         )?;
-        std::fs::write(sidecar.join("verus.stdout"), stdout)?;
+        let sidecar = directory;
         Ok(sidecar)
     }
 
@@ -1368,7 +1496,7 @@ mod tests {
         let captured = std::process::Command::new("/bin/sh")
             .args(["-c", "printf 'interrupted'; exit 101"])
             .output()?;
-        let mut stock = std::process::Command::new("/bin/sh");
+        let mut stock = crate::managed::command_environment::Command::new("/bin/sh");
         stock
             .args(["-c", "cat \"$1\"", "stock"])
             .arg(sidecar.join("verus.stdout"));
@@ -1381,7 +1509,29 @@ mod tests {
                 .ok_or("missing run id")?,
             target: "demo",
         };
-        let (output, trusted) = crate::adapter::engine_output(&sidecar, stock, captured, &log)?;
+        let unit = sail_acceptance::authority::CompilerUnit {
+            manifest: b"fixture/Cargo.toml".to_vec(),
+            name: b"demo".to_vec(),
+            crate_type: b"lib".to_vec(),
+            cargo_name: None,
+        };
+        let attempt_directory = sidecar
+            .parent()
+            .ok_or("missing attempt directory")?
+            .to_owned();
+        let mut attempts = crate::adapter::attempts::Journal::new(
+            log.run_id.as_bytes(),
+            &unit,
+            &attempt_directory,
+        );
+        let (output, trusted) = crate::adapter::engine_output(
+            &sidecar,
+            |_| Ok(stock),
+            crate::adapter::attempts::CapturedChild::unavailable(captured),
+            &log,
+            &mut attempts,
+        )?;
+        let output = output.into_output();
         assert!(!trusted);
         assert_eq!(output.status.code(), Some(0));
         assert_eq!(output.stdout, std::fs::read(sidecar.join("verus.stdout"))?);
@@ -1457,14 +1607,6 @@ mod tests {
         let seal = include_str!("../tests/fixtures/engine-terminal/terminal-success.jsonl");
         std::fs::write(sidecar.join("engine.events.jsonl"), seal)?;
         let stdout = std::fs::read(sidecar.join("verus.stdout"))?;
-        let engine = |stderr: &str| -> std::io::Result<std::process::Output> {
-            let mut output = std::process::Command::new("/bin/sh")
-                .args(["-c", "exit 0"])
-                .output()?;
-            output.stdout.clone_from(&stdout);
-            output.stderr = stderr.as_bytes().to_vec();
-            Ok(output)
-        };
         let invocations = root.join("invocations");
         let run_id = root
             .file_name()
@@ -1477,23 +1619,71 @@ mod tests {
             target: "demo",
         };
         let stock = || {
-            let mut stock = std::process::Command::new("/bin/sh");
+            let mut stock = crate::managed::command_environment::Command::new("/bin/sh");
             stock.args(["-c", "printf stock; exit 1"]);
             stock
         };
         // Control: the same complete engine output is trusted.
-        let (_, trusted) = crate::adapter::engine_output(&sidecar, stock(), engine("")?, &log)?;
+        let original =
+            sidecar_call(&root, &sidecar).ok_or("fixture original invocation missing")?;
+        let unit = original.identity.compiler_unit();
+        let attempt_directory = sidecar
+            .parent()
+            .ok_or("missing attempt directory")?
+            .to_owned();
+        let mut attempts = crate::adapter::attempts::Journal::new(
+            log.run_id.as_bytes(),
+            &unit,
+            &attempt_directory,
+        );
+        let captured = observed_fixture(&mut attempts, &stdout, b"")?;
+        let engine_directory = captured
+            .directory()
+            .ok_or("missing actual engine namespace")?
+            .to_owned();
+        let (_, trusted) = crate::adapter::engine_output(
+            &engine_directory,
+            |_| Ok(stock()),
+            captured,
+            &log,
+            &mut attempts,
+        )?;
         assert!(trusted);
         assert!(!sidecar.join(MISSING_FEATURE).exists());
         let diagnostic =
             "error: Please cargo build with `--features singular` to use integer_ring attribute\n";
-        let (output, trusted) =
-            crate::adapter::engine_output(&sidecar, stock(), engine(diagnostic)?, &log)?;
+        let captured = observed_fixture(&mut attempts, &stdout, diagnostic.as_bytes())?;
+        let engine_directory = captured
+            .directory()
+            .ok_or("missing actual engine namespace")?
+            .to_owned();
+        let (output, trusted) = crate::adapter::engine_output(
+            &engine_directory,
+            |_| Ok(stock()),
+            captured,
+            &log,
+            &mut attempts,
+        )?;
+        let fallback_directory = output
+            .directory()
+            .ok_or("missing actual fallback namespace")?
+            .to_owned();
+        let mut invocation = original;
+        invocation.report.exit_code = output.status().code();
+        invocation.success = false;
+        invocation.selected_attempt = output.selected_attempt(&invocation.identity);
+        assert!(invocation.selected_attempt.is_some());
+        std::fs::write(
+            root.join("invocations")
+                .join(format!("{}.json", invocation.identity.key())),
+            serde_json::to_vec(&invocation)?,
+        )?;
+        let output = output.into_output();
         assert!(!trusted, "the engine's rejection is never the answer");
         assert_eq!(output.stdout, b"stock");
         assert_eq!(output.status.code(), Some(1));
         assert_eq!(
-            std::fs::read_to_string(sidecar.join(MISSING_FEATURE))?,
+            std::fs::read_to_string(fallback_directory.join(MISSING_FEATURE))?,
             "singular"
         );
         assert_eq!(missing_in_run(&root), ["singular"]);
@@ -1525,7 +1715,9 @@ mod tests {
         assert!(!completed_driver(&root, &sidecar));
         std::fs::write(&output, valid_output)?;
         let key = sidecar
-            .file_name()
+            .parent()
+            .and_then(Path::parent)
+            .and_then(Path::file_name)
             .and_then(|name| name.to_str())
             .ok_or("missing sidecar key")?;
         let record = root.join("invocations").join(format!("{key}.json"));

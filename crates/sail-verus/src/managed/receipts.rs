@@ -45,6 +45,19 @@ pub(crate) struct TargetIdentity {
 }
 
 impl TargetIdentity {
+    /// Raw launcher fields, without treating Rust name normalization as Cargo identity.
+    pub(crate) fn compiler_unit(&self) -> sail_acceptance::authority::CompilerUnit {
+        sail_acceptance::authority::CompilerUnit {
+            manifest: self.manifest.as_os_str().as_encoded_bytes().to_vec(),
+            name: self.name.as_bytes().to_vec(),
+            crate_type: self.crate_type.as_bytes().to_vec(),
+            cargo_name: self
+                .cargo_name
+                .as_ref()
+                .map(|name| name.as_bytes().to_vec()),
+        }
+    }
+
     pub(crate) fn key(&self) -> String {
         digest(&serde_json::to_vec(self).unwrap_or_default())
     }
@@ -62,16 +75,22 @@ impl TargetIdentity {
         if package["manifest_path"].as_str().map(Path::new) != Some(self.manifest.as_path()) {
             return None;
         }
+        let unit = self.compiler_unit();
         let mut matches = package["targets"].as_array()?.iter().filter(|target| {
-            target["name"].as_str().is_some_and(|name| {
-                name.replace('-', "_") == self.name
-                    && self.cargo_name.as_deref().is_none_or(|exact| exact == name)
-            }) && target["kind"].as_array().is_some_and(|kinds| {
-                kinds.iter().any(|kind| {
-                    kind.as_str() == Some(self.crate_type.as_str())
-                        || (kind == "lib" && self.crate_type == "rlib")
-                })
-            })
+            let Some(name) = target["name"].as_str() else {
+                return false;
+            };
+            let Some(kinds) = target["kind"].as_array() else {
+                return false;
+            };
+            let Some(kinds): Option<Vec<Vec<u8>>> = kinds
+                .iter()
+                .map(|kind| kind.as_str().map(|kind| kind.as_bytes().to_vec()))
+                .collect()
+            else {
+                return false;
+            };
+            sail_acceptance::authority::compiler_unit_matches_target(&unit, name.as_bytes(), &kinds)
         });
         let target = matches.next()?;
         matches.next().is_none().then_some(target)
@@ -83,6 +102,12 @@ pub(crate) struct Invocation {
     /// Original proof run for the named same-workspace content experiment.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retained_from: Option<String>,
+    /// Separate archived original history copied into this run, never a live seal.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retained_history: Option<String>,
+    /// Exact immutable producer namespace. Legacy records cannot select a live attempt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected_attempt: Option<crate::adapter::attempts::SelectedAttempt>,
     pub identity: TargetIdentity,
     pub run_id: String,
     pub report: Report,
@@ -101,6 +126,24 @@ pub(crate) struct Invocation {
 }
 
 impl Invocation {
+    pub(crate) fn selected_directory(&self, run: &Path) -> Option<PathBuf> {
+        if self.retained_history.is_some() {
+            return super::retained::history::selected_directory(self, run);
+        }
+        if self.dependency_build.is_some() || self.retained_from.is_some() {
+            return None;
+        }
+        self.selected_attempt
+            .as_ref()?
+            .directory(run, &self.identity, self.report.exit_code)
+    }
+    pub(crate) fn producer_available(&self, run: &Path) -> bool {
+        match (&self.selected_attempt, &self.dependency_build) {
+            (Some(_), None) => self.selected_directory(run).is_some(),
+            (None, Some(_)) => self.retained_from.is_none() && self.retained_history.is_none(),
+            _ => false,
+        }
+    }
     /// Whether the environment the compiler read in every phase is known: an
     /// observed verification-phase environment, or a replay of Sail's shipped
     /// dependency build, whose own admission binds the recorded compiler
@@ -117,14 +160,21 @@ impl Invocation {
     /// Whole proofs retain their success authority. A partial report has a
     /// separate authority: exact recorded arguments, successful verifier output
     /// and no source-engine fallback. It never turns `success` into true.
-    pub(super) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
+    pub(crate) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
+        if self.selected_attempt.is_some() == self.dependency_build.is_some()
+            || self.retained_from.is_some() != self.retained_history.is_some()
+            || self.dependency_build.is_some() && self.retained_from.is_some()
+        {
+            return false;
+        }
         match partial_args {
             None => self.success && complete(&self.report),
             Some(args) => {
                 super::runner::focused(args)
                     && self.report.command == args
                     && self.report.engine.is_none()
-                    && complete(&self.report)
+                    && sail_api::acceptance::complete_exact_scope_report(&self.report, args)
+                        .is_some()
             }
         }
     }
@@ -148,6 +198,9 @@ pub(crate) struct Receipt {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub partial_args: Option<Vec<String>>,
     pub checksum: String,
+    /// Dependency-store archive key, assigned only by an admitted store transfer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub producer_archive: Option<String>,
     pub package_id: String,
     pub name: String,
     pub kind: Vec<String>,
@@ -164,19 +217,26 @@ pub(crate) struct Receipt {
     pub declared_environment: BTreeMap<String, Option<Vec<u8>>>,
 }
 
-/// Version 4 distinguishes exact-scope reports from whole-target proof receipts.
-/// Version 6: earlier receipts were established while Sail's private settings
-/// and observation options reached the compiler (#385, #393), so their proof
-/// may be of a different program; none is reused.
-/// Version 7 requires the invocation's observed compiler environment (#386).
-/// Version 8 also requires its ghost-only files declared (#439).
-pub(crate) const RECEIPT_VERSION: u32 = 8;
+/// Version nine combines original selected-producer history, observed compiler
+/// environment and ghost-only file declarations. Both lineages independently
+/// used revision eight for different contracts (#446); neither older encoding
+/// is reusable. Earlier receipts also predate private-settings/option isolation
+/// (#385, #393). Preserve historical reports while requiring a fresh proof.
+pub(crate) const RECEIPT_VERSION: u32 = 9;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
         self.checksum = String::new();
         self.checksum = digest(&serde_json::to_vec(&self).unwrap_or_default());
         self
+    }
+    pub(super) fn producer_history_intact(&self) -> bool {
+        if let Some(key) = &self.producer_archive {
+            return super::store::retained_producer_intact(self, key);
+        }
+        self.committed
+            .parent()
+            .is_some_and(|run| self.invocation.producer_available(run))
     }
     pub(crate) fn valid(&self, context: &str) -> bool {
         self.valid_in(context, &PhaseDigests::default())
@@ -199,6 +259,7 @@ impl Receipt {
         self.partial_args.as_deref() == partial_args
             && partial_args.is_none_or(super::runner::focused)
             && self.version == RECEIPT_VERSION
+            && self.producer_history_intact()
             && self.invocation.environment_observed()
             && super::environment::unchanged(&self.declared_environment)
             && read::<Commit>(&self.committed).is_some_and(|commit| {
@@ -223,6 +284,14 @@ impl Receipt {
                     && digests.matches(&self.artifact_hashes)
             }
     }
+}
+
+/// The ordinary per-target receipt name, shared by the runner and replay reader.
+pub(super) fn target_path(directory: &Path, package: &str, name: &str, kind: &[String]) -> PathBuf {
+    directory.join(format!(
+        "{}.json",
+        digest(&serde_json::to_vec(&(package, name, kind)).unwrap_or_default())
+    ))
 }
 
 /// Written last: an interrupted publication can only leave unusable receipts.
@@ -448,6 +517,31 @@ pub(crate) fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
 mod tests {
     use super::*;
     use sail_api::output::CrateReport;
+
+    #[test]
+    fn malformed_cargo_kind_fields_are_not_silently_projected_away() {
+        let unit = TargetIdentity {
+            manifest: "Cargo.toml".into(),
+            name: "demo_name".into(),
+            crate_type: "rlib".into(),
+            rustc_args_sha256: "arguments".into(),
+            cargo_name: None,
+        };
+        let mut package = serde_json::json!({"manifest_path":"Cargo.toml",
+            "targets":[{"name":"demo-name","kind":["lib"]}]});
+        assert!(unit.cargo_target(&package).is_some());
+        for kinds in [
+            serde_json::json!(["lib", null]),
+            serde_json::json!(["lib", {}]),
+            serde_json::json!("lib"),
+        ] {
+            package["targets"][0]["kind"] = kinds;
+            assert!(unit.cargo_target(&package).is_none());
+        }
+        package["targets"][0]["kind"] = serde_json::json!(["bin"]);
+        assert!(unit.cargo_target(&package).is_none());
+    }
+
     #[test]
     fn artifact_read_results_keep_actual_keys_when_reordered()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -516,7 +610,7 @@ mod tests {
         Receipt {
             version: RECEIPT_VERSION,
             partial_args: None,
-            committed,
+            producer_archive: None,
             checksum: String::new(),
             package_id: "input".to_owned(),
             name: "input".to_owned(),
@@ -525,6 +619,21 @@ mod tests {
             input_revision: "inputs".to_owned(),
             invocation: Invocation {
                 retained_from: None,
+                retained_history: None,
+                selected_attempt: crate::adapter::attempts::fixture_history(
+                    committed.parent().unwrap_or(Path::new("")),
+                    "run",
+                    &TargetIdentity {
+                        manifest: "Cargo.toml".into(),
+                        name: "input".into(),
+                        crate_type: "lib".into(),
+                        rustc_args_sha256: "args".into(),
+                        cargo_name: None,
+                    },
+                    b"fixture",
+                    b"",
+                    0,
+                ),
                 identity: TargetIdentity {
                     manifest: PathBuf::from("Cargo.toml"),
                     name: "input".to_owned(),
@@ -541,6 +650,7 @@ mod tests {
             },
             artifact_hashes: artifact_hashes(&[path.to_owned()]).unwrap_or_default(),
             declared_environment: BTreeMap::new(),
+            committed,
         }
         .seal()
     }
@@ -548,13 +658,15 @@ mod tests {
     #[test]
     fn partial_receipt_cannot_authorize_a_whole_or_different_scope()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let path = std::env::temp_dir().join(format!("sail-scope-receipt-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("sail-scope-receipt-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("run"))?;
+        let path = root.join("artifact");
         let args = vec![
             "--".to_owned(),
             "--verify-module".to_owned(),
             "selected".to_owned(),
         ];
-        let mut receipt = fixture(&path, path.with_extension("commit"));
+        let mut receipt = fixture(&path, root.join("run/committed.json"));
         receipt.partial_args = Some(args.clone());
         receipt.invocation.report.command.clone_from(&args);
         receipt.invocation.success = false;
@@ -584,13 +696,16 @@ mod tests {
         assert!(!check(Some(&args)));
         std::fs::remove_file(&path)?;
         std::fs::remove_file(&receipt.committed)?;
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 
     #[test]
     fn receipt_rejects_corruption_changed_artifact_and_wrong_context() {
-        let path = std::env::temp_dir().join(format!("sail-receipt-test-{}", std::process::id()));
-        let receipt = fixture(&path, path.with_extension("committed.json"));
+        let root = std::env::temp_dir().join(format!("sail-receipt-test-{}", std::process::id()));
+        assert!(std::fs::create_dir_all(root.join("run")).is_ok());
+        let path = root.join("artifact");
+        let receipt = fixture(&path, root.join("run/committed.json"));
         assert!(!receipt.valid("ctx"));
         assert!(
             json(
@@ -657,6 +772,7 @@ mod tests {
         assert!(!receipt.valid("ctx"));
         assert!(std::fs::remove_file(&receipt.committed).is_ok());
         assert!(std::fs::remove_file(path).is_ok());
+        assert!(std::fs::remove_dir_all(root).is_ok());
     }
     #[test]
     fn interrupted_publisher_helper() {

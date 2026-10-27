@@ -16,9 +16,10 @@ use super::InputSnapshot;
 use super::files::{digest, json};
 use super::input::proposed_order;
 use crate::{Error, Result};
-use sail_acceptance::inputs::{InputFact, InputValue, compare_readback};
+use sail_acceptance::inputs::{
+    GuardedReadback, InputFact, InputValue, OriginalCapture, guard_readback,
+};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest as _, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -53,7 +54,7 @@ pub(super) fn record(
     json(
         &context.join(FILE),
         &Record {
-            version: 2,
+            version: 3,
             revision: revision.to_owned(),
             files,
             bindings,
@@ -106,21 +107,15 @@ fn observe(path: &Path, expected_absent: bool) -> Observation {
             Err(_) => Observation::Unreadable,
         };
     }
-    let mut file = match std::fs::File::open(path) {
-        Ok(file) => file,
+    match std::fs::metadata(path) {
+        Ok(_) => {}
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Observation::Absent,
         Err(_) => return Observation::Unreadable,
-    };
-    let mut hasher = Sha256::new();
-    let mut buffer = vec![0u8; 65536];
-    loop {
-        match file.read(&mut buffer) {
-            Ok(0) => break,
-            Ok(count) => hasher.update(&buffer[..count]),
-            Err(_) => return Observation::Unreadable,
-        }
     }
-    Observation::Present(format!("{:x}", hasher.finalize()).into_bytes())
+    match super::files::file_digest(path) {
+        Ok(hash) => Observation::Present(hash.into_bytes()),
+        Err(_) => Observation::Unreadable,
+    }
 }
 
 /// Rechecks the latest Current record of `context` against the files now.
@@ -133,6 +128,39 @@ fn observe(path: &Path, expected_absent: bool) -> Observation {
 /// # Errors
 /// `SAIL3108` when the context has no readable record (no Current run yet).
 pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<InputSnapshot> {
+    with_guarded_readback(cache, workspace, context, |snapshot, _| snapshot)
+}
+
+/// Supplies the actual scoped readback while its original observed facts are
+/// alive. Callers cannot retain or recreate this token from a saved revision.
+pub(super) fn with_guarded_readback<T>(
+    cache: &Path,
+    workspace: &Path,
+    context: &str,
+    consume: impl FnOnce(InputSnapshot, &GuardedReadback<'_>) -> T,
+) -> Result<T> {
+    with_observer(cache, workspace, context, &observe, consume)
+}
+
+// This narrow seam permits a real writer to run between actual per-file reads.
+// The production instantiation always uses `observe` above.
+#[cfg(test)]
+fn check_with(
+    cache: &Path,
+    workspace: &Path,
+    context: &str,
+    observe: &(impl Fn(&Path, bool) -> Observation + Sync),
+) -> Result<InputSnapshot> {
+    with_observer(cache, workspace, context, observe, |snapshot, _| snapshot)
+}
+
+fn with_observer<T>(
+    cache: &Path,
+    workspace: &Path,
+    context: &str,
+    observe: &(impl Fn(&Path, bool) -> Observation + Sync),
+    consume: impl FnOnce(InputSnapshot, &GuardedReadback<'_>) -> T,
+) -> Result<T> {
     let missing = || Error::new("SAIL3108", "no current input record for this context");
     if context.is_empty()
         || context.len() > 128
@@ -155,9 +183,19 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
         return Err(missing());
     }
     let record: Record = serde_json::from_slice(&bytes).map_err(|_| missing())?;
-    if record.version != 2 || record.files.is_empty() {
+    if record.version != 3 || record.files.is_empty() {
         return Err(missing());
     }
+    let guarded_paths: BTreeSet<_> = record
+        .files
+        .iter()
+        .map(|(path, _)| path)
+        .chain(record.bindings.keys())
+        .chain(record.bindings.values())
+        .cloned()
+        .collect();
+    let before = super::input::readback_stamp(&guarded_paths);
+    let capture = OriginalCapture::begin(before.as_deref().map(str::as_bytes));
     let files: Vec<_> = record
         .files
         .iter()
@@ -175,30 +213,47 @@ pub(super) fn check(cache: &Path, workspace: &Path, context: &str) -> Result<Inp
         (1, alias, value)
     });
     let observed: Vec<_> = reads.into_iter().chain(alias_reads).collect();
-    let (changed, mut unreadable) = compare_observed(&record, &observed);
-    if !changed && !unreadable && !super::runner::runtime_current(cache, context) {
-        // A changed toolchain is not an input change the record can name,
-        // but the stored result no longer describes this installation.
-        unreadable = true;
-    }
-    Ok(InputSnapshot {
-        workspace: workspace.to_owned(),
-        revision: if changed {
-            format!("changed-since-{}", record.revision)
-        } else {
-            record.revision
+    let after = super::input::readback_stamp(&guarded_paths);
+    Ok(with_comparison(
+        &record,
+        &observed,
+        capture,
+        after.as_deref().map(str::as_bytes),
+        |comparison| {
+            let changed = comparison.changed();
+            let mut unreadable = comparison.unknown();
+            if !changed && !unreadable && !super::runner::runtime_current(cache, context) {
+                // A changed toolchain is not an input change the record can name,
+                // but the stored result no longer describes this installation.
+                unreadable = true;
+            }
+            let snapshot = InputSnapshot {
+                workspace: workspace.to_owned(),
+                revision: if changed {
+                    format!("changed-since-{}", record.revision)
+                } else {
+                    record.revision.clone()
+                },
+                roots: Vec::new(),
+                excluded: Vec::new(),
+                complete: changed || !unreadable,
+                observation_paths: BTreeSet::new(),
+                digests: BTreeMap::new(),
+                bindings: BTreeMap::new(),
+                capture: None,
+            };
+            consume(snapshot, comparison)
         },
-        roots: Vec::new(),
-        excluded: Vec::new(),
-        complete: changed || !unreadable,
-        observation_paths: BTreeSet::new(),
-        digests: BTreeMap::new(),
-        bindings: BTreeMap::new(),
-        capture: None,
-    })
+    ))
 }
 
-fn compare_observed(record: &Record, reads: &[(u8, &Path, Observation)]) -> (bool, bool) {
+fn with_comparison<T>(
+    record: &Record,
+    reads: &[(u8, &Path, Observation)],
+    capture: OriginalCapture,
+    after: Option<&[u8]>,
+    consume: impl FnOnce(&GuardedReadback<'_>) -> T,
+) -> T {
     let expected: Vec<_> = record
         .files
         .iter()
@@ -225,20 +280,34 @@ fn compare_observed(record: &Record, reads: &[(u8, &Path, Observation)]) -> (boo
         .collect();
     let (before_order, before_inverse) = proposed_order(&expected);
     let (after_order, after_inverse) = proposed_order(&observed);
-    let comparison = compare_readback(
+    let comparison = guard_readback(
         &expected,
         &observed,
         &before_order,
         &before_inverse,
         &after_order,
         &after_inverse,
+        capture,
+        after,
+        record.revision.as_bytes(),
     );
-    (comparison.changed(), comparison.unknown())
+    consume(&comparison)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Descriptor-only controls exercise key association, not physical stamps.
+    fn compare_descriptors(record: &Record, reads: &[(u8, &Path, Observation)]) -> (bool, bool) {
+        with_comparison(
+            record,
+            reads,
+            OriginalCapture::begin(Some(b"descriptor-control")),
+            Some(b"descriptor-control"),
+            |comparison| (comparison.changed(), comparison.unknown()),
+        )
+    }
+
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 
     fn fixture(name: &str) -> std::io::Result<PathBuf> {
@@ -319,7 +388,7 @@ mod tests {
         std::fs::write(&a, "first")?;
         std::fs::write(&b, "second")?;
         let record = Record {
-            version: 2,
+            version: 3,
             revision: "rev".into(),
             files: vec![
                 (a.clone(), Some(super::super::files::file_digest(&a)?)),
@@ -338,23 +407,23 @@ mod tests {
         };
         let mut unchanged = read();
         unchanged.reverse();
-        assert_eq!(compare_observed(&record, &unchanged), (false, false));
+        assert_eq!(compare_descriptors(&record, &unchanged), (false, false));
         unchanged.pop();
-        assert_ne!(compare_observed(&record, &unchanged), (false, false));
+        assert_ne!(compare_descriptors(&record, &unchanged), (false, false));
         let mut extra = read();
         extra.push((0, root.as_path(), Observation::Absent));
-        assert_ne!(compare_observed(&record, &extra), (false, false));
+        assert_ne!(compare_descriptors(&record, &extra), (false, false));
         let duplicate = vec![
             (0, a.as_path(), observe(&a, false)),
             (0, a.as_path(), observe(&a, false)),
             (0, missing.as_path(), Observation::Absent),
         ];
-        assert_eq!(compare_observed(&record, &duplicate), (false, true));
+        assert_eq!(compare_descriptors(&record, &duplicate), (false, true));
         std::fs::write(&a, "second")?;
         std::fs::write(&b, "first")?;
         let mut swapped = read();
         swapped.reverse();
-        assert_eq!(compare_observed(&record, &swapped), (true, false));
+        assert_eq!(compare_descriptors(&record, &swapped), (true, false));
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
@@ -366,6 +435,81 @@ mod tests {
         let snapshot = check(&root.join("cache"), &root.join("ws"), "ctx")?;
         assert_eq!(snapshot.revision, "rev");
         assert!(snapshot.complete);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn retained_readback_refuses_a_torn_two_file_revision() -> TestResult {
+        use std::sync::Barrier;
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let root = fixture("torn-readback")?;
+        let workspace = root.join("ws");
+        std::fs::create_dir_all(&workspace)?;
+        let a = workspace.join("a.rs");
+        let b = workspace.join("b.rs");
+        std::fs::write(&a, b"a0")?;
+        std::fs::write(&b, b"b0")?;
+        let context = root
+            .join("cache/projects")
+            .join(digest(workspace.as_os_str().as_encoded_bytes()))
+            .join("ctx");
+        std::fs::create_dir_all(&context)?;
+        record(
+            &context,
+            "old-a0-b0",
+            vec![
+                (a.clone(), Some(super::super::files::file_digest(&a)?)),
+                (b.clone(), Some(super::super::files::file_digest(&b)?)),
+            ],
+            BTreeMap::new(),
+        )?;
+        // No point during the later read has the old pair: a0/b1 -> a1/b1
+        // -> a1/b0. Distinct lengths make the metadata changes deterministic.
+        std::fs::write(&b, b"b1-longer")?;
+        let a_read = Barrier::new(2);
+        let written = AtomicBool::new(false);
+        let snapshot = std::thread::scope(
+            |scope| -> std::result::Result<_, Box<dyn std::error::Error>> {
+                let writer = scope.spawn(|| {
+                    a_read.wait();
+                    let result = (|| {
+                        std::fs::write(&a, b"a1-longer")?;
+                        std::fs::write(&b, b"b0")
+                    })();
+                    written.store(true, Ordering::Release);
+                    result
+                });
+                let observed =
+                    check_with(&root.join("cache"), &workspace, "ctx", &|path, absent| {
+                        let first = if path == a {
+                            Some(observe(path, absent))
+                        } else {
+                            None
+                        };
+                        if first.is_some() {
+                            a_read.wait();
+                        }
+                        let deadline =
+                            std::time::Instant::now() + std::time::Duration::from_secs(5);
+                        while !written.load(Ordering::Acquire) {
+                            if std::time::Instant::now() >= deadline {
+                                return Observation::Unreadable;
+                            }
+                            std::thread::yield_now();
+                        }
+                        first.unwrap_or_else(|| observe(path, absent))
+                    });
+                writer.join().map_err(|_| "readback writer panicked")??;
+                Ok(observed?)
+            },
+        )?;
+        assert_eq!(std::fs::read(&a)?, b"a1-longer");
+        assert_eq!(std::fs::read(&b)?, b"b0");
+        assert!(
+            snapshot.revision != "old-a0-b0" || !snapshot.complete,
+            "a torn read must not establish the old complete revision"
+        );
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
@@ -457,6 +601,11 @@ mod tests {
             .join("cache/projects")
             .join(digest(root.join("ws").as_os_str().as_encoded_bytes()))
             .join("ctx");
+        let mut legacy: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(context.join(FILE))?)?;
+        legacy["version"] = serde_json::json!(2);
+        std::fs::write(context.join(FILE), serde_json::to_vec(&legacy)?)?;
+        assert!(check(&root.join("cache"), &root.join("ws"), "ctx").is_err());
         std::fs::write(context.join(FILE), b"{\"version\":1")?;
         assert!(check(&root.join("cache"), &root.join("ws"), "ctx").is_err());
         std::fs::remove_dir_all(root)?;

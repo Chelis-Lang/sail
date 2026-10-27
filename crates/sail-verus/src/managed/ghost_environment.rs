@@ -114,7 +114,10 @@ impl Observation {
     }
 
     /// Request the observation from the child; [`OPTIONS`] travel separately.
-    pub(crate) fn configure(&self, command: &mut std::process::Command) {
+    pub(crate) fn configure(
+        &self,
+        command: &mut impl super::command_environment::ConfigureCommand,
+    ) {
         command
             .env(DIRECTORY, &self.directory)
             .env(BINDING, &self.binding);

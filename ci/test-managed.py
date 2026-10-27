@@ -654,7 +654,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             # `--output json` run that reuses its proof says the obligation detail
             # was not recorded, with Verus's own verdicts.
             source.write_text(good + "// plain sail verify establishes this proof\n")
-            logs_before = set(root.glob("cache/projects/*/*/runs/*/sidecars/*/logs"))
+            logs_before = set(root.glob("cache/projects/*/*/runs/*/sidecars/*/**/logs"))
             # The second run reuses the first's proof when the first was Current
             # (and then, like Cargo's no-op, prints nothing), or establishes it.
             for attempt in range(2):
@@ -662,7 +662,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 assert human.returncode == 0, human.stderr.decode()
                 if attempt == 0:
                     assert b"verification results:: 1 verified, 0 errors" in human.stdout, human.stdout.decode()
-            assert set(root.glob("cache/projects/*/*/runs/*/sidecars/*/logs")) == logs_before, "plain sail verify wrote attribution logs"
+            assert set(root.glob("cache/projects/*/*/runs/*/sidecars/*/**/logs")) == logs_before, "plain sail verify wrote attribution logs"
             detail_run, detail, detail_target = managed()
             assert detail_run.returncode == 0 and detail_target["reused"], diagnostic(detail)
             attribution = detail_target["report"]["attribution"]

@@ -1327,7 +1327,14 @@ pub(super) fn bind_paths(hasher: &mut Sha256, bindings: &BTreeMap<PathBuf, PathB
 // A run-local mutation stamp is separate from logical proof keys: reverting an
 // edit between completed runs may reuse a proof, reverting during a run may not.
 pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
-    stamp_paths(&mutation_paths(snapshot))
+    stamp_paths(&mutation_paths(snapshot)?)
+}
+
+fn mutation_paths(snapshot: &InputSnapshot) -> Option<BTreeSet<PathBuf>> {
+    stamp_root_paths(
+        snapshot.roots.iter().map(PathBuf::as_path),
+        snapshot.observation_paths.clone(),
+    )
 }
 
 /// The complete stat-stamp vector behind `expected`, this snapshot's mutation
@@ -1339,7 +1346,7 @@ pub(super) fn mutation_vector(
     snapshot: &InputSnapshot,
     expected: &str,
 ) -> Option<Vec<(PathBuf, Option<super::noop::Stamp>)>> {
-    let paths = mutation_paths(snapshot);
+    let paths = mutation_paths(snapshot)?;
     let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
     let stats = crate::parallel::in_order(&names, |&path| (path, std::fs::symlink_metadata(path)));
     if stamp_readback(&paths, &stats)? != expected {
@@ -1365,16 +1372,33 @@ pub(super) fn mutation_vector(
     None
 }
 
-/// Every path a mutation stamp of `snapshot` covers.
-fn mutation_paths(snapshot: &InputSnapshot) -> BTreeSet<PathBuf> {
-    let mut paths = snapshot.observation_paths.clone();
-    // Compiler declarations may add an alternate spelling (src/../file) of a
-    // file already observed. Stamp the resolved file once; actual aliases
-    // remain separately stamped below and bound in the snapshot.
-    let roots: Vec<&Path> = snapshot.roots.iter().map(PathBuf::as_path).collect();
-    paths.extend(crate::parallel::in_order(&roots, |&path| {
-        path.canonicalize().unwrap_or_else(|_| path.to_owned())
-    }));
+// The retained readback brackets the entire exact recorded domain, independent
+// of the content-read executor. A supplied inventory is not a compiler-closure
+// proof; this only guards the paths that the original record actually binds.
+pub(super) fn readback_stamp(roots: &BTreeSet<PathBuf>) -> Option<String> {
+    stamp_roots(roots.iter().map(PathBuf::as_path), roots.clone())
+}
+
+fn stamp_roots<'a>(
+    roots: impl IntoIterator<Item = &'a Path>,
+    paths: BTreeSet<PathBuf>,
+) -> Option<String> {
+    stamp_paths(&stamp_root_paths(roots, paths)?)
+}
+
+fn stamp_root_paths<'a>(
+    roots: impl IntoIterator<Item = &'a Path>,
+    mut paths: BTreeSet<PathBuf>,
+) -> Option<BTreeSet<PathBuf>> {
+    let roots: Vec<&Path> = roots.into_iter().collect();
+    // Preserve the same exact root domain and conservative error policy while
+    // overlapping independent path observations.
+    let resolved = crate::parallel::in_order(&roots, |&path| match path.canonicalize() {
+        Ok(resolved) => Some(resolved),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Some(path.to_owned()),
+        Err(_) => None,
+    });
+    paths.extend(resolved.into_iter().collect::<Option<Vec<_>>>()?);
     // Package roots share most ancestors (the registry source directory, the
     // home directory): each ancestor is examined once. The resolutions and
     // link checks are independent, so they overlap; the stamped set is the
@@ -1386,8 +1410,14 @@ fn mutation_paths(snapshot: &InputSnapshot) -> BTreeSet<PathBuf> {
         .filter(|alias| examined.insert(*alias))
         .collect();
     let links = crate::parallel::in_order(&ancestors, |&alias| {
-        std::fs::symlink_metadata(alias).is_ok_and(|m| m.file_type().is_symlink())
-    });
+        match std::fs::symlink_metadata(alias) {
+            Ok(metadata) => Some(metadata.file_type().is_symlink()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Some(false),
+            Err(_) => None,
+        }
+    })
+    .into_iter()
+    .collect::<Option<Vec<_>>>()?;
     paths.extend(
         ancestors
             .iter()
@@ -1395,7 +1425,7 @@ fn mutation_paths(snapshot: &InputSnapshot) -> BTreeSet<PathBuf> {
             .filter(|(_, link)| *link)
             .map(|(alias, _)| (*alias).to_owned()),
     );
-    paths
+    Some(paths)
 }
 
 // The `lstat` calls overlap (about 13,000 paths per vest snapshot); the stamp
@@ -1429,11 +1459,12 @@ fn stamp_readback(
         let metadata = match by_name.get(name)? {
             Ok(metadata) => metadata,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                stamp.update(b"missing");
+                stamp.update([0u8]);
                 continue;
             }
             Err(_) => return None,
         };
+        stamp.update([1u8]);
         for number in [
             metadata.dev(),
             metadata.ino(),

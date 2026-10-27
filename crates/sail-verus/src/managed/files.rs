@@ -12,27 +12,146 @@ pub(crate) fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
+struct ObservedDigest {
+    hash: String,
+    seal: sail_acceptance::inputs::ReadSeal,
+}
+
 pub(crate) fn file_digest(path: &Path) -> Result<String> {
-    // One read buffer per thread: a snapshot reads thousands of small files,
-    // and zeroing a new 64 KiB buffer for each cost more than reading it.
-    thread_local! {
-        static BUFFER: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(vec![0u8; 65536]);
+    file_digest_observed(path).map(|observed| observed.hash)
+}
+
+thread_local! {
+    // One allocation per reader thread; no whole-file buffer is introduced.
+    static DIGEST_BUFFER: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(vec![0u8; 65536]);
+}
+
+/// The only production file-read provider for the checked transaction. These
+/// methods are narrow standard-library/SHA forwarders, not a complete-input
+/// inventory or an atomic-filesystem-version claim.
+struct NativeFileHost<'a> {
+    path: &'a Path,
+}
+
+impl sail_acceptance::inputs::FileReadHost<std::fs::File, Sha256, String, Error>
+    for NativeFileHost<'_>
+{
+    sail_acceptance::sail_trait_impl_spec! {
+        open spec fn scripted_file(&self) -> Option<sail_acceptance::inputs::ScriptedReadFile> { None }
+        open spec fn scripted_handle(_handle: &std::fs::File) -> Option<sail_acceptance::inputs::ScriptedReadFile> { None }
     }
-    let mut input = std::fs::File::open(path)
-        .map_err(|e| Error::new("SAIL3101", format!("cannot read {}: {e}", path.display())))?;
-    let mut hasher = Sha256::new();
-    BUFFER.with_borrow_mut(|buf| -> Result<()> {
-        loop {
-            let n = input
-                .read(buf)
-                .map_err(|e| Error::new("SAIL3101", e.to_string()))?;
-            if n == 0 {
-                return Ok(());
-            }
-            hasher.update(&buf[..n]);
-        }
+
+    fn path_stamp(&mut self) -> Result<sail_acceptance::inputs::ObjectStamp> {
+        object_stamp(&std::fs::metadata(self.path).map_err(|error| {
+            Error::new(
+                "SAIL3101",
+                format!("cannot read {}: {error}", self.path.display()),
+            )
+        })?)
+    }
+
+    fn open(&mut self) -> Result<std::fs::File> {
+        std::fs::File::open(self.path).map_err(|error| {
+            Error::new(
+                "SAIL3101",
+                format!("cannot read {}: {error}", self.path.display()),
+            )
+        })
+    }
+
+    fn handle_stamp(
+        &mut self,
+        input: &std::fs::File,
+    ) -> Result<sail_acceptance::inputs::ObjectStamp> {
+        object_stamp(
+            &input
+                .metadata()
+                .map_err(|error| Error::new("SAIL3101", error.to_string()))?,
+        )
+    }
+
+    fn read(&mut self, input: &mut std::fs::File, buffer: &mut [u8]) -> Result<usize> {
+        input
+            .read(buffer)
+            .map_err(|error| Error::new("SAIL3101", error.to_string()))
+    }
+
+    fn hash_start(&mut self) -> Sha256 {
+        Sha256::new()
+    }
+
+    fn hash_update(&mut self, hasher: &mut Sha256, bytes: &[u8]) {
+        hasher.update(bytes);
+    }
+
+    fn hash_finish(&mut self, hasher: Sha256) -> String {
+        format!("{:x}", hasher.finalize())
+    }
+
+    fn changed(&self) -> Error {
+        Error::new(
+            "SAIL3101",
+            format!(
+                "opened input changed or could not be observed completely: {}",
+                self.path.display()
+            ),
+        )
+    }
+}
+
+fn file_digest_observed(path: &Path) -> Result<ObservedDigest> {
+    let mut host = NativeFileHost { path };
+    let completed = DIGEST_BUFFER.with_borrow_mut(|buffer| {
+        sail_acceptance::inputs::open_read_digest::<_, std::fs::File, Sha256, String, Error>(
+            &mut host, buffer,
+        )
     })?;
-    Ok(format!("{:x}", hasher.finalize()))
+    // The owned file is dropped per read, never accumulated across a snapshot.
+    let (hash, seal) = completed.into_parts();
+    Ok(ObservedDigest { hash, seal })
+}
+
+/// The fixture seam adopts a real existing descriptor, including partial reads.
+/// Production always enters through the checked path/open transaction above.
+#[cfg(test)]
+fn digest_opened(
+    path: &Path,
+    input: std::fs::File,
+    original: sail_acceptance::inputs::ObjectStamp,
+) -> Result<ObservedDigest> {
+    let mut host = NativeFileHost { path };
+    let completed = DIGEST_BUFFER.with_borrow_mut(|buffer| {
+        sail_acceptance::inputs::read_opened_digest::<_, std::fs::File, Sha256, String, Error>(
+            &mut host, input, original, buffer,
+        )
+    })?;
+    let (hash, seal) = completed.into_parts();
+    Ok(ObservedDigest { hash, seal })
+}
+
+#[cfg(unix)]
+fn object_stamp(metadata: &std::fs::Metadata) -> Result<sail_acceptance::inputs::ObjectStamp> {
+    use std::os::unix::fs::MetadataExt as _;
+    Ok(sail_acceptance::inputs::ObjectStamp {
+        device: metadata.dev(),
+        object: metadata.ino(),
+        length: usize::try_from(metadata.size())
+            .map_err(|e| Error::new("SAIL3101", e.to_string()))?,
+        mode: metadata.mode(),
+        modified_seconds: metadata.mtime(),
+        modified_nanos: metadata.mtime_nsec(),
+        changed_seconds: metadata.ctime(),
+        changed_nanos: metadata.ctime_nsec(),
+        kind: u8::from(metadata.is_file()),
+    })
+}
+
+#[cfg(not(unix))]
+fn object_stamp(_metadata: &std::fs::Metadata) -> Result<sail_acceptance::inputs::ObjectStamp> {
+    Err(Error::new(
+        "SAIL3101",
+        "opened object identity is unavailable on this platform",
+    ))
 }
 
 /// Whether two files hold the same bytes, read completely from both. A
@@ -81,17 +200,32 @@ fn fill(file: &mut std::fs::File, buf: &mut [u8]) -> Result<usize> {
 
 /// Deduplicates alias reads within one hash phase, never across observations.
 #[derive(Default)]
-pub(super) struct FileDigests(BTreeMap<PathBuf, String>);
+pub(super) struct FileDigests(BTreeMap<PathBuf, ObservedDigest>);
 
 impl FileDigests {
     pub(super) fn hash(&mut self, path: &Path) -> Result<String> {
         let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
-        if let Some(hash) = self.0.get(&canonical) {
-            return Ok(hash.clone());
+        if let Some(hash) = self.cached_hash(path, &canonical) {
+            return Ok(hash);
         }
-        let hash = file_digest(path)?;
-        self.0.insert(canonical, hash.clone());
+        self.0.remove(&canonical);
+        let observed = file_digest_observed(path)?;
+        if !matches_cache_binding(&observed, &canonical, path) {
+            return Err(Error::new(
+                "SAIL3101",
+                "canonical input changed before cache admission",
+            ));
+        }
+        let hash = observed.hash.clone();
+        self.0.insert(canonical, observed);
         Ok(hash)
+    }
+
+    /// A separately testable actual hit stage: canonical discovery is only a
+    /// proposal, and cannot replace the requested pathname's own observation.
+    fn cached_hash(&self, requested: &Path, canonical: &Path) -> Option<String> {
+        let observed = self.0.get(canonical)?;
+        matches_cache_binding(observed, canonical, requested).then(|| observed.hash.clone())
     }
 
     /// Reads files concurrently into this phase-local map, exactly as `hash`
@@ -112,7 +246,7 @@ impl FileDigests {
             .map(|(canonical, path)| (canonical.as_path(), *path))
             .collect();
         let reads = crate::parallel::in_order(&descriptors, |&(canonical, path)| {
-            (canonical, path, file_digest(path))
+            (canonical, path, file_digest_observed(path))
         });
         self.retain_prefetched(&pending, reads);
     }
@@ -120,7 +254,7 @@ impl FileDigests {
     fn retain_prefetched(
         &mut self,
         pending: &[(PathBuf, &Path)],
-        reads: Vec<(&Path, &Path, Result<String>)>,
+        reads: Vec<(&Path, &Path, Result<ObservedDigest>)>,
     ) {
         let required: Vec<_> = pending
             .iter()
@@ -153,12 +287,28 @@ impl FileDigests {
         }
         // Successful records retain their own canonical/lexical descriptor and
         // digest. Failed or missing prefetches remain uncached for hash().
-        for (canonical, _, read) in reads {
-            if let Ok(hash) = read {
-                self.0.insert(canonical.to_owned(), hash);
+        for (canonical, requested, read) in reads {
+            if let Ok(observed) = read
+                && matches_cache_binding(&observed, canonical, requested)
+            {
+                self.0.insert(canonical.to_owned(), observed);
             }
         }
     }
+}
+
+fn matches_cache_binding(observed: &ObservedDigest, canonical: &Path, requested: &Path) -> bool {
+    let (Ok(canonical), Ok(requested)) = (canonical_stamp(canonical), canonical_stamp(requested))
+    else {
+        return false;
+    };
+    observed.seal.matches_binding(&canonical, &requested)
+}
+
+fn canonical_stamp(path: &Path) -> Result<sail_acceptance::inputs::ObjectStamp> {
+    object_stamp(
+        &std::fs::metadata(path).map_err(|error| Error::new("SAIL3101", error.to_string()))?,
+    )
 }
 
 /// Complete reads retain the actual requested path inside each worker result;
@@ -286,6 +436,74 @@ mod tests {
     use super::*;
 
     #[test]
+    fn opened_digest_accounts_exact_chunks_and_rejects_partial_or_unreadable_handles()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-opened-digest-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let path = root.join("source.rs");
+        let bytes: Vec<u8> = (0..700_000u32).map(|i| (i % 251) as u8).collect();
+        std::fs::write(&path, &bytes)?;
+        assert_eq!(file_digest(&path)?, digest(&bytes));
+        let original = object_stamp(&std::fs::metadata(&path)?)?;
+        let mut partial = std::fs::File::open(&path)?;
+        partial.read_exact(&mut [0u8; 1])?;
+        assert_eq!(
+            digest_opened(&path, partial, original)
+                .err()
+                .map(|e| e.code),
+            Some("SAIL3101")
+        );
+        let original = object_stamp(&std::fs::metadata(&path)?)?;
+        let unreadable = std::fs::OpenOptions::new().write(true).open(&path)?;
+        assert_eq!(
+            digest_opened(&path, unreadable, original)
+                .err()
+                .map(|e| e.code),
+            Some("SAIL3101")
+        );
+        let empty = root.join("empty.rs");
+        std::fs::write(&empty, [])?;
+        assert_eq!(file_digest(&empty)?, digest(&[]));
+        let original = object_stamp(&std::fs::metadata(&empty)?)?;
+        let unreadable_empty = std::fs::OpenOptions::new().write(true).open(&empty)?;
+        assert_eq!(
+            digest_opened(&empty, unreadable_empty, original)
+                .err()
+                .map(|e| e.code),
+            Some("SAIL3101")
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn opened_digest_does_not_relabel_a_retained_handle_after_path_retarget()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-opened-retarget-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let first = root.join("first.rs");
+        let second = root.join("second.rs");
+        let alias = root.join("alias.rs");
+        std::fs::write(&first, "same bytes")?;
+        std::fs::write(&second, "same bytes")?;
+        std::os::unix::fs::symlink(&first, &alias)?;
+        let original = object_stamp(&std::fs::metadata(&alias)?)?;
+        let input = std::fs::File::open(&alias)?;
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(&second, &alias)?;
+        assert_eq!(
+            digest_opened(&alias, input, original).err().map(|e| e.code),
+            Some("SAIL3101")
+        );
+        // A genuinely fresh open of the newly selected object remains usable.
+        assert_eq!(file_digest(&alias)?, digest(b"same bytes"));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn prefetched_records_preserve_their_read_descriptors()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root =
@@ -302,7 +520,7 @@ mod tests {
         let descriptors = [(a.as_path(), a.as_path()), (b.as_path(), b.as_path())];
         let read = || {
             crate::parallel::in_order(&descriptors, |&(canonical, path)| {
-                (canonical, path, file_digest(path))
+                (canonical, path, file_digest_observed(path))
             })
         };
         let mut reads = read();
@@ -313,18 +531,25 @@ mod tests {
         assert_eq!(phase.hash(&b)?, file_digest(&b)?);
         for invalid in [
             vec![
-                (a.as_path(), a.as_path(), file_digest(&a)),
-                (a.as_path(), a.as_path(), file_digest(&a)),
+                (a.as_path(), a.as_path(), file_digest_observed(&a)),
+                (a.as_path(), a.as_path(), file_digest_observed(&a)),
             ],
-            vec![(extra.as_path(), extra.as_path(), file_digest(&extra))],
-            vec![(a.as_path(), b.as_path(), file_digest(&b))],
+            vec![(
+                extra.as_path(),
+                extra.as_path(),
+                file_digest_observed(&extra),
+            )],
+            vec![(a.as_path(), b.as_path(), file_digest_observed(&b))],
         ] {
             let mut phase = FileDigests::default();
             phase.retain_prefetched(&pending, invalid);
             assert!(phase.0.is_empty());
         }
         let mut partial = FileDigests::default();
-        partial.retain_prefetched(&pending, vec![(a.as_path(), a.as_path(), file_digest(&a))]);
+        partial.retain_prefetched(
+            &pending,
+            vec![(a.as_path(), a.as_path(), file_digest_observed(&a))],
+        );
         assert!(!partial.0.contains_key(&b));
         assert_eq!(partial.hash(&b)?, file_digest(&b)?);
         std::fs::write(&a, "second")?;
@@ -335,6 +560,71 @@ mod tests {
         fresh.retain_prefetched(&pending, swapped);
         assert_eq!(fresh.hash(&a)?, file_digest(&a)?);
         assert_eq!(fresh.hash(&b)?, file_digest(&b)?);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn phase_cache_validates_canonical_objects_before_admission_and_reuse()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-opened-cache-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        let alias = root.join("alias.rs");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "other")?;
+        std::os::unix::fs::symlink(&a, &alias)?;
+        let canonical = alias.canonicalize()?;
+        let pending = [(canonical.clone(), alias.as_path())];
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(&b, &alias)?;
+        let observed = file_digest_observed(&alias)?;
+        let mut phase = FileDigests::default();
+        phase.retain_prefetched(
+            &pending,
+            vec![(canonical.as_path(), alias.as_path(), Ok(observed))],
+        );
+        assert!(
+            !phase.0.contains_key(&canonical),
+            "a successful read of B cannot fill A's old canonical slot"
+        );
+        assert_eq!(phase.hash(&a)?, digest(b"first"));
+        let replacement = root.join("replacement.rs");
+        std::fs::write(&replacement, "later")?;
+        std::fs::rename(&replacement, &a)?;
+        assert_eq!(
+            phase.hash(&a)?,
+            digest(b"later"),
+            "cached old object must be reread after replacement"
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cache_hit_checks_requested_path_after_canonical_discovery()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-cache-hit-retarget-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let a = root.join("a.rs");
+        let b = root.join("b.rs");
+        let alias = root.join("alias.rs");
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "other")?;
+        std::os::unix::fs::symlink(&a, &alias)?;
+        let mut phase = FileDigests::default();
+        assert_eq!(phase.hash(&alias)?, digest(b"first"));
+        let earlier_canonical = alias.canonicalize()?;
+        std::fs::remove_file(&alias)?;
+        std::os::unix::fs::symlink(&b, &alias)?;
+        // Execute the actual hit stage after a deterministic filesystem change
+        // at the canonical-lookup/cache-validation seam. A itself is unchanged.
+        assert_eq!(phase.cached_hash(&alias, &earlier_canonical), None);
+        assert_eq!(phase.hash(&alias)?, digest(b"other"));
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

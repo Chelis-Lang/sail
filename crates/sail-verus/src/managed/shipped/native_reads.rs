@@ -71,7 +71,10 @@ impl Observation {
         self.pid
     }
 
-    pub(super) fn configure(&self, command: &mut std::process::Command) {
+    pub(super) fn configure(
+        &self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         command
             .env("SAIL_NATIVE_COMPILER_INPUTS", &self.directory)
             .env("SAIL_NATIVE_COMPILER_INPUTS_BINDING", &self.binding);

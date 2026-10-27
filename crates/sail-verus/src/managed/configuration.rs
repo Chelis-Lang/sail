@@ -179,14 +179,23 @@ pub(super) fn check_cache_inputs(data: &serde_json::Value, cache: &Path) -> Resu
     Ok(())
 }
 
-/// [`check`] for an explicit process environment.
+/// [`check`] for an explicit process environment, including its configuration homes.
 fn check_environment(
     environment: impl Iterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
     workspace: &Path,
     args: &[String],
 ) -> Result<Option<String>> {
     let mut loader_set = None;
+    let mut provided_cargo_home = None;
+    let mut provided_user_home = None;
     for (key, value) in environment {
+        // Keep native path bytes and resolve both selectors from this same
+        // observation, rather than resampling an unrelated ambient environment.
+        if key == "CARGO_HOME" {
+            provided_cargo_home = Some(PathBuf::from(&value));
+        } else if key == "HOME" {
+            provided_user_home = Some(PathBuf::from(&value));
+        }
         let key = key.to_string_lossy();
         let value = value.to_string_lossy();
         let compiler = [
@@ -219,10 +228,10 @@ fn check_environment(
             "Cargo `--config` overrides are not bound to a proof receipt",
         ));
     }
-    let home = std::env::var_os("CARGO_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".cargo")));
-    for path in paths(workspace, home.as_deref()).into_iter().filter(|p| {
+    let configuration_home =
+        provided_cargo_home.or_else(|| provided_user_home.map(|path| path.join(".cargo")));
+    let configuration_paths = paths(workspace, configuration_home.as_deref());
+    for path in configuration_paths.into_iter().filter(|p| {
         p.is_file()
             && p.file_name().is_some_and(|name| {
                 name == "config" || (name == "config.toml" && !p.with_file_name("config").is_file())

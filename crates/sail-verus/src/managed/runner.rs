@@ -11,6 +11,7 @@ use crate::{Error, Result};
 use sail_api::project::{
     Currentness, Execution, NoReuse, ProjectResult, SCHEMA_VERSION, TargetResult, VerifiedAs,
 };
+use sail_api::request_targets::OriginalTargets;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
@@ -59,6 +60,8 @@ pub struct Config {
     /// which prints only Verus's own output, does not (ADR 0047).
     /// Interactive-engine runs always log.
     pub attribution_logs: bool,
+    /// Parent-owned request capture; consumed by Sail, never compiler argv or environment.
+    pub request_capture: Option<super::request::RequestCaptureDestination>,
 }
 
 #[derive(Clone)]
@@ -457,18 +460,148 @@ struct Context {
     identity_paths: Vec<PathBuf>,
 }
 
+/// Independently resolved unchanged-call setup. Saved no-op records never
+/// choose its workspace, proof context, family ownership or target inventory.
+pub(super) struct ReplayPreflight {
+    pub config: Config,
+    pub workspace: PathBuf,
+    pub context: PathBuf,
+    pub family: PathBuf,
+    pub workspace_lock: PathBuf,
+    hash: String,
+    run_id: String,
+    expected: OriginalTargets,
+}
+
+impl ReplayPreflight {
+    pub(super) fn with_current_request<T>(
+        &self,
+        consume: impl FnOnce(
+            &sail_api::project::ResolvedRequest,
+            &sail_api::acceptance::RequestPathBinding<'_>,
+            &sail_acceptance::inputs::GuardedReadback<'_>,
+        ) -> T,
+    ) -> Result<Option<T>> {
+        super::read_check::with_guarded_readback(
+            &self.config.cache,
+            &self.workspace,
+            &self.hash,
+            |snapshot, readback| {
+                if !snapshot.complete {
+                    return None;
+                }
+                let resolution = super::request::Resolution {
+                    run_id: &self.run_id,
+                    invocation: &self.config.workspace,
+                    workspace: &self.workspace,
+                    context: &self.hash,
+                    revision: &snapshot.revision,
+                    args: &self.config.args,
+                    engine: None,
+                    targets: &self.expected,
+                };
+                let native_paths = resolution.capture_paths();
+                let current = resolution.resolve().ok()?;
+                let paths = native_paths.bind(&current)?;
+                Some(consume(paths.request(), &paths, readback))
+            },
+        )
+    }
+}
+
+/// Actual metadata and runtime preflight, performed before opening a saved
+/// report. Any unavailable resolver takes the ordinary managed path.
+pub(super) fn replay_preflight(config: &Config) -> Result<ReplayPreflight> {
+    let config = resolved_config(config, None)?;
+    if super::configuration::check(&config.workspace, &config.args)?.is_some()
+        || std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_some()
+    {
+        return Err(Error::new(
+            "SAIL3112",
+            "unchanged-call replay has unbound compiler configuration",
+        ));
+    }
+    let (data, identity) = std::thread::scope(|scope| {
+        let data = scope.spawn(|| {
+            metadata(
+                &config.workspace,
+                &config.args,
+                &config.cargo,
+                &config.cargo_toolchain,
+                &config.cache,
+            )
+        });
+        let identity = context(&config, None);
+        (
+            data.join()
+                .unwrap_or_else(|_| Err(Error::new("SAIL3103", "Cargo metadata reader failed"))),
+            identity,
+        )
+    });
+    let data = data?;
+    super::configuration::check_cache_inputs(&data, &config.cache)?;
+    let expected = expected_targets(&data, &config.args);
+    let workspace = data["workspace_root"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from)
+        .ok_or_else(|| Error::new("SAIL3103", "Cargo metadata has no workspace root"))?;
+    if expected.is_empty() {
+        return Err(Error::new(
+            "SAIL3112",
+            "no independently selected verification target",
+        ));
+    }
+    let identity = identity?;
+    let root = config
+        .cache
+        .join("projects")
+        .join(digest(workspace.as_os_str().as_encoded_bytes()));
+    Ok(ReplayPreflight {
+        config,
+        workspace,
+        context: root.join(&identity.hash),
+        family: root.join("compiler-artifacts").join(identity.compiler_hash),
+        workspace_lock: root.join(super::projects::WORKSPACE_LOCK),
+        hash: identity.hash,
+        run_id: fresh_run_id(),
+        expected,
+    })
+}
+
+fn resolved_config(config: &Config, engine: Option<&crate::engine::Request>) -> Result<Config> {
+    let mut owned = config.clone();
+    owned.workspace =
+        std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
+    owned.cache = owned.workspace.join(&owned.cache);
+    if let Some(engine) = engine {
+        owned.cargo_verus.clone_from(&engine.cargo_verus);
+    }
+    Ok(owned)
+}
+
+fn fresh_run_id() -> String {
+    format!(
+        "{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos())
+    )
+}
+
 fn context_hashes(
     args: &[String],
     engine: Option<&crate::engine::Request>,
     identity: &[(String, String)],
     environment: &[(Vec<u8>, Vec<u8>)],
 ) -> Result<(String, String)> {
-    // Focus selectors still bind reports, receipts, runtime validation and
-    // prepared invocation contexts. Encoding 2: contexts before it compiled
-    // with Sail's private settings and observation options visible to the
-    // program (#385, #393); nothing established there is reused.
+    // Encoding three combines exact declaration-name observation with private
+    // settings and option isolation (#385, #393). Both previous lineages used
+    // encoding two for different contracts, so neither may authorize reuse.
+    // Compiler-family artifacts stay separate from proof receipt authority.
     let hash = digest(
-        &serde_json::to_vec(&(2, args, engine, identity, environment))
+        &serde_json::to_vec(&(3, args, engine, identity, environment))
             .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
     );
     let compiler_engine = engine.map(crate::engine::Request::artifact_identity);
@@ -494,12 +627,8 @@ fn context_hashes(
 }
 
 /// The manifest and target name of every selected target.
-fn selected_targets(
-    data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
-) -> Vec<(PathBuf, String)> {
-    expected
-        .iter()
+fn selected_targets(data: &Value, expected: &OriginalTargets) -> Vec<(PathBuf, String)> {
+    super::request::original_rows(expected)
         .filter_map(|(id, name, _)| {
             let package = data["packages"]
                 .as_array()?
@@ -882,16 +1011,18 @@ fn invocation_command(
     show_output: bool,
     request: Option<&Path>,
     visible: Option<&Path>,
-) -> Result<Command> {
+) -> Result<super::command_environment::Command> {
     let split = config
         .args
         .iter()
         .position(|a| a == "--")
         .unwrap_or(config.args.len());
-    let mut cmd = Command::new(&config.cargo_verus);
+    let mut cmd = super::command_environment::Command::new(&config.cargo_verus);
     // Cargo-Verus, the Cargo it runs through Sail's adapter and every compiler
     // below inherit the selection.
-    config.cargo_toolchain.apply(&mut cmd);
+    if let Some(toolchain) = config.cargo_toolchain.selected() {
+        cmd.env(super::cargo_toolchain::ENV, toolchain);
+    }
     // The adapters' private settings go beside them, never into the
     // environment Cargo hands to build scripts and compilers (#385).
     let mut transport = super::transport::Transport::new(std::env::var_os("CARGO").as_deref());
@@ -982,7 +1113,7 @@ fn build_environment(
     config: &Config,
     paths: &Paths,
     data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     context: &str,
 ) -> Option<UnitEnvironment> {
     if !data["packages"].as_array()?.iter().any(|package| {
@@ -1014,7 +1145,8 @@ fn build_environment(
     let output = invocation_command(config, paths, false, Some(&directory), None)
         .ok()?
         .output()
-        .ok()?;
+        .ok()?
+        .into_observed_output()?;
     std::fs::write(directory.join("frontend.stdout"), &output.stdout).ok()?;
     std::fs::write(directory.join("frontend.stderr"), &output.stderr).ok()?;
     output.status.success().then_some(())?;
@@ -1042,7 +1174,7 @@ fn build_environment_key(
     )
 }
 
-fn selected_scripts(data: &Value, expected: &BTreeSet<(String, String, String)>) -> bool {
+fn selected_scripts(data: &Value, expected: &OriginalTargets) -> bool {
     let closure = selected_closure(data, expected);
     data["packages"]
         .as_array()
@@ -1078,7 +1210,11 @@ mod cargo_protocol_tests {
                 {"id":"script","dependencies":[]}
             ]}
         });
-        let expected = BTreeSet::from([("root".to_owned(), "root".to_owned(), "lib".to_owned())]);
+        let expected = crate::managed::request::original_targets([(
+            "root".to_owned(),
+            "root".to_owned(),
+            "lib".to_owned(),
+        )]);
         assert!(!selected_scripts(&data, &expected));
         data["resolve"]["nodes"][0]["dependencies"] = serde_json::json!(["script"]);
         assert!(selected_scripts(&data, &expected));
@@ -1091,7 +1227,7 @@ fn invoke(
     out: &mut Option<&mut dyn Write>,
     err: &mut dyn Write,
     seeded: &[super::store::Seeded],
-) -> Result<Option<i32>> {
+) -> Result<(Option<i32>, bool)> {
     #[cfg(unix)]
     let visible = super::visible_output::Receiver::bind()
         .map_err(|error| Error::new("SAIL3106", error.to_string()))?;
@@ -1123,10 +1259,28 @@ fn invoke(
         .wait()
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?
         .code();
+    // Preserve the observation in memory through owned wait. No new optional
+    // metadata file appears while the verifier is executing.
+    let environment_complete = child.environment().is_some_and(|environment| {
+        let path = paths
+            .run
+            .join(format!("cargo-environment-{}.json", child.id()));
+        let bytes = serde_json::to_vec(
+            &serde_json::json!({"version":1,"pid":child.id(),"environment":environment}),
+        );
+        bytes.is_ok_and(|bytes| {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(path)
+                .and_then(|mut file| file.write_all(&bytes).and_then(|()| file.sync_data()))
+                .is_ok()
+        })
+    });
     std::fs::write(paths.run.join("cargo.stdout"), stdout)
         .and_then(|()| std::fs::write(paths.run.join("cargo.stderr"), captured))
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
-    Ok(code)
+    Ok((code, environment_complete))
 }
 
 /// Whether Sail's stderr is a terminal on which plain Cargo would print
@@ -1166,6 +1320,31 @@ enum Output {
 #[path = "output_readers.rs"]
 mod output_readers;
 
+/// The two owned Cargo pipes; production has no mutable raw-child escape.
+trait CargoPipes {
+    fn take_stdout(&mut self) -> Option<std::process::ChildStdout>;
+    fn take_stderr(&mut self) -> Option<std::process::ChildStderr>;
+}
+impl CargoPipes for super::command_environment::Spawned {
+    fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
+        self.take_cargo_stdout()
+    }
+    fn take_stderr(&mut self) -> Option<std::process::ChildStderr> {
+        self.take_cargo_stderr()
+    }
+}
+// Original relay cancellation/fault controls retain their real native children
+// and unchanged assertions. This adapter does not exist in production builds.
+#[cfg(test)]
+impl CargoPipes for std::process::Child {
+    fn take_stdout(&mut self) -> Option<std::process::ChildStdout> {
+        self.stdout.take()
+    }
+    fn take_stderr(&mut self) -> Option<std::process::ChildStderr> {
+        self.stderr.take()
+    }
+}
+
 /// Preserve Cargo's original diagnostic rendering and stdout records. Only a
 /// fresh completion marker is removed, after earlier same-pipe records have
 /// been forwarded or intentionally suppressed for a structured caller. The ACK
@@ -1175,7 +1354,7 @@ mod output_readers;
     reason = "Original reader setup, completion handling and unconditional owned cleanup stay together."
 )]
 fn relay(
-    child: &mut std::process::Child,
+    child: &mut impl CargoPipes,
     out: &mut Option<&mut dyn Write>,
     err: &mut dyn Write,
     seeded: &[super::store::Seeded],
@@ -1189,7 +1368,7 @@ fn relay(
     let readers = output_readers::Readers::start(child, &tx).map_err(failed)?;
     #[cfg(not(unix))]
     let readers = [
-        child.stdout.take().map(|pipe| {
+        child.take_stdout().map(|pipe| {
             let tx = tx.clone();
             std::thread::spawn(move || {
                 let mut reader = std::io::BufReader::new(pipe);
@@ -1211,7 +1390,7 @@ fn relay(
                 let _ = tx.send(Ok(Output::Closed));
             })
         }),
-        child.stderr.take().map(|mut pipe| {
+        child.take_stderr().map(|mut pipe| {
             let tx = tx.clone();
             std::thread::spawn(move || {
                 let mut buffer = vec![0; 65536];
@@ -1425,7 +1604,7 @@ fn invocations(paths: &Paths) -> Vec<Invocation> {
 fn negative_compiler_generation(
     paths: &Paths,
     data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     result: &ProjectResult,
     script_coverage: bool,
     engine: bool,
@@ -1491,8 +1670,7 @@ fn negative_compiler_generation(
         // other call must have verified its whole crate.
         let focus = focused(args);
         let selected = |call: &Invocation| {
-            expected
-                .iter()
+            super::request::original_rows(expected)
                 .any(|(id, name, kind)| selected_call(data, (id, name, kind), call))
         };
         let completed = |call: &Invocation| {
@@ -1510,13 +1688,15 @@ fn negative_compiler_generation(
         {
             return Some(false);
         }
-        Some(expected.iter().all(|(id, name, kind)| {
-            calls
-                .values()
-                .filter(|call| selected_call(data, (id, name, kind), call))
-                .count()
-                == 1
-        }))
+        Some(
+            super::request::original_rows(expected).all(|(id, name, kind)| {
+                calls
+                    .values()
+                    .filter(|call| selected_call(data, (id, name, kind), call))
+                    .count()
+                    == 1
+            }),
+        )
     };
     check() == Some(true)
 }
@@ -1571,13 +1751,12 @@ fn observed_target<'a>(data: &'a Value, call: &Invocation) -> Option<(&'a Value,
 fn confined_compile_failure<'a>(
     paths: &Paths,
     data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     calls: impl Iterator<Item = &'a Invocation> + Clone,
     completed: impl Fn(&Invocation) -> bool,
 ) -> bool {
     let selected = |call: &Invocation| {
-        expected
-            .iter()
+        super::request::original_rows(expected)
             .any(|(id, name, kind)| selected_call(data, (id, name, kind), call))
     };
     let compile_error = |call: &Invocation| {
@@ -1631,7 +1810,7 @@ struct CompilerGeneration<'a> {
 fn publish_compiler_generation(
     paths: &Paths,
     data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     result: &ProjectResult,
     generation: &CompilerGeneration<'_>,
 ) {
@@ -1674,10 +1853,7 @@ fn artifacts(paths: &Paths) -> Vec<Value> {
 }
 
 fn receipt_path(paths: &Paths, package: &str, name: &str, kind: &[String]) -> PathBuf {
-    paths.receipts.join(format!(
-        "{}.json",
-        digest(&serde_json::to_vec(&(package, name, kind)).unwrap_or_default())
-    ))
+    super::receipts::target_path(&paths.receipts, package, name, kind)
 }
 
 /// The receipt directories of the other proof contexts in this compiler
@@ -1722,12 +1898,12 @@ struct ReceiptRevision {
 /// decoded revision and must retain the plan after any cleanup or uncertainty.
 fn receipt_covered_targets(
     paths: &Paths,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     context: &str,
     revisions: &BTreeMap<PathBuf, ReceiptRevision>,
 ) -> bool {
     !expected.is_empty()
-        && expected.iter().all(|(package, name, kind)| {
+        && super::request::original_rows(expected).all(|(package, name, kind)| {
             // Multi-kind targets conservatively keep the optional plan.
             let kinds = vec![kind.clone()];
             revisions
@@ -1785,12 +1961,13 @@ fn dirty_receipt_packages(
         .collect()
 }
 
+#[cfg(test)]
 fn target_records(
     paths: &Paths,
     data: &Value,
     context: &str,
     force: bool,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     seeded: &[super::store::Seeded],
     partial_args: Option<&[String]>,
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
@@ -1804,6 +1981,7 @@ fn target_records(
         partial_args,
         None,
     )
+    .map(|(results, missing, _)| (results, missing))
 }
 
 #[allow(
@@ -1816,11 +1994,11 @@ fn target_records_in(
     data: &Value,
     context: &str,
     force: bool,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     seeded: &[super::store::Seeded],
     partial_args: Option<&[String]>,
     observation: Option<RevisionObservation<'_>>,
-) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
+) -> Result<(Vec<TargetResult>, BTreeSet<String>, bool)> {
     let scoped_run = partial_args.is_some();
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
@@ -1840,9 +2018,9 @@ fn target_records_in(
     let siblings = sibling_receipts(paths, context);
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
-    // Unknown declarations (an unreadable unit record) publish no receipt.
-    let declared = super::environment::declared_names(&paths.target)
-        .map(|names| super::environment::values(&names));
+    let fresh_declarations = super::environment::declaration_files(&paths.target);
+    let declaration_owners =
+        super::environment::declaration_owners(&paths.run.join("artifacts.jsonl"), data);
     let artifacts = artifacts(paths);
     let verified = |artifact: &Value| {
         let package = data["packages"]
@@ -1917,6 +2095,73 @@ fn target_records_in(
         current.join().ok()
     })
     .unwrap_or_default();
+    // Successful erasure can shrink dep-info. Preserve original names only
+    // within the SAME Cargo target, after independent receipt validation.
+    // Every current value is sampled afresh; a failed scan stays unavailable.
+    // Read sibling receipts once for this phase; target-specific filtering
+    // must not multiply disk reads by the number of observed targets.
+    let sibling_declarations: Vec<_> = siblings
+        .iter()
+        .flat_map(|(sibling, directory)| {
+            stored.keys().filter_map(move |path| {
+                let receipt = read::<Receipt>(&directory.join(path.file_name()?))?;
+                Some((sibling.as_str(), receipt))
+            })
+        })
+        .collect();
+    let declarations = fresh_declarations.map(|files| {
+        let mut declarations = BTreeMap::new();
+        for artifact in &artifacts {
+            if verified(artifact).is_none() {
+                continue;
+            }
+            let package_id = artifact["package_id"].as_str().unwrap_or_default();
+            let name = artifact["target"]["name"].as_str().unwrap_or_default();
+            let kind: Vec<String> = artifact["target"]["kind"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect();
+            let mut names = files.for_target(data, declaration_owners.as_ref(), package_id);
+            let scope = ReceiptDeclarationScope {
+                data,
+                expected,
+                revisions: &revisions,
+                partial_args,
+                digests: &digests,
+                package_id,
+                name,
+                kind: &kind,
+            };
+            for receipt in stored.values().flatten() {
+                preserve_receipt_declarations(&mut names, receipt, context, &scope, true);
+            }
+            for (sibling, receipt) in &sibling_declarations {
+                preserve_receipt_declarations(&mut names, receipt, sibling, &scope, false);
+            }
+            for seed in seeded {
+                let old_context = &seed.receipt.context;
+                if old_context == context {
+                    preserve_receipt_declarations(&mut names, &seed.receipt, context, &scope, true);
+                } else if siblings.iter().any(|(sibling, _)| sibling == old_context) {
+                    preserve_receipt_declarations(
+                        &mut names,
+                        &seed.receipt,
+                        old_context,
+                        &scope,
+                        false,
+                    );
+                }
+            }
+            declarations.insert(
+                (package_id.to_owned(), name.to_owned(), kind),
+                super::environment::values(&names),
+            );
+        }
+        declarations
+    });
     for artifact in artifacts {
         let Some(package) = verified(&artifact) else {
             continue;
@@ -1930,7 +2175,13 @@ fn target_records_in(
             .map(str::to_owned)
             .collect();
         let package_id = artifact["package_id"].as_str().unwrap_or_default();
-        let requested = expected.iter().any(|(id, target, target_kind)| {
+        let declared = declarations
+            .as_ref()
+            .and_then(|declarations| {
+                declarations.get(&(package_id.to_owned(), name.to_owned(), kind.clone()))
+            })
+            .cloned();
+        let requested = super::request::original_rows(expected).any(|(id, target, target_kind)| {
             id == package_id && target == name && kind.contains(target_kind)
         });
         let partial_args = partial_args.filter(|_| requested);
@@ -1975,6 +2226,7 @@ fn target_records_in(
             // may have read a ghost-only variable that no dep-info declares
             // (#386); it publishes no receipt.
             let reusable = paths.reuse
+                && call.producer_available(&paths.run)
                 && call.successful_for(partial_args)
                 && call.environment_observed()
                 && !input_revision.is_empty()
@@ -1997,6 +2249,7 @@ fn target_records_in(
                     &Receipt {
                         version: RECEIPT_VERSION,
                         partial_args: partial_args.map(<[String]>::to_vec),
+                        producer_archive: None,
                         committed: paths.run.join("committed.json"),
                         checksum: String::new(),
                         package_id: package_id.to_owned(),
@@ -2024,6 +2277,7 @@ fn target_records_in(
                 scope_reuse: None,
                 requested,
                 complete: partial_args.is_none()
+                    && call.producer_available(&paths.run)
                     && call.success
                     && sail_api::acceptance::complete_whole_report(&call.report).is_some(),
                 report: call.report.clone(),
@@ -2045,6 +2299,7 @@ fn target_records_in(
             );
             let matches = |r: &Receipt, context: &str| {
                 paths.reuse
+                    && declared.as_ref() == Some(&r.declared_environment)
                     && artifact["fresh"] == true
                     && !force
                     && !input_revision.is_empty()
@@ -2094,7 +2349,8 @@ fn target_records_in(
                     }
                     seeded.iter().find_map(|seed| {
                         let r = &seed.receipt;
-                        (artifact["fresh"] == true
+                        (declared.as_ref() == Some(&r.declared_environment)
+                            && artifact["fresh"] == true
                             && r.package_id == package_id
                             && r.invocation.identity.manifest
                                 == Path::new(package["manifest_path"].as_str().unwrap_or_default())
@@ -2153,7 +2409,7 @@ fn target_records_in(
                 .map(str::to_owned)
                 .collect();
             let requested = {
-                expected.iter().any(|(id, name, kind)| {
+                super::request::original_rows(expected).any(|(id, name, kind)| {
                     package["id"].as_str() == Some(id.as_str())
                         && target["name"] == *name
                         && target["kind"]
@@ -2172,6 +2428,7 @@ fn target_records_in(
                 kind,
                 requested,
                 complete: partial_args.is_none()
+                    && call.producer_available(&paths.run)
                     && call.success
                     && sail_api::acceptance::complete_whole_report(&call.report).is_some(),
                 report: call.report,
@@ -2191,7 +2448,7 @@ fn target_records_in(
             "multiple proof reports name one Cargo target",
         ));
     }
-    Ok((results, missing))
+    Ok((results, missing, declarations.is_some()))
 }
 
 /// Package ids reachable from `roots` through every resolved dependency kind.
@@ -2225,12 +2482,13 @@ pub(super) fn dependency_closure<'a>(
 
 /// The packages Cargo can compile for the selected targets, or `None` when
 /// the selection is not known exactly (then every resolved package counts).
-fn selected_closure(
-    data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
-) -> Option<BTreeSet<String>> {
-    (!expected.is_empty())
-        .then(|| dependency_closure(data, expected.iter().map(|(id, _, _)| id.as_str())))
+fn selected_closure(data: &Value, expected: &OriginalTargets) -> Option<BTreeSet<String>> {
+    (!expected.is_empty()).then(|| {
+        dependency_closure(
+            data,
+            super::request::original_rows(expected).map(|(id, _, _)| id.as_str()),
+        )
+    })
 }
 
 /// Whether every unit Cargo reported in this run belongs to `closure`. An
@@ -2294,6 +2552,75 @@ fn target_revisions(
     // own target only (that receipt is dirty), never for the whole batch.
     let fresh = crate::parallel::in_order(&requested, |&id| (id, target_revision(data, id)));
     target_revision_entries(&requested, fresh).unwrap_or_default()
+}
+
+/// Evidence from the same admitted receipt policy, independently of the
+/// current declaration-inventory equality that these additional reads support.
+struct ReceiptDeclarationScope<'a> {
+    data: &'a Value,
+    expected: &'a OriginalTargets,
+    revisions: &'a HashMap<String, String>,
+    partial_args: Option<&'a [String]>,
+    digests: &'a PhaseDigests,
+    package_id: &'a str,
+    name: &'a str,
+    kind: &'a [String],
+}
+
+fn preserve_receipt_declarations(
+    names: &mut BTreeSet<String>,
+    receipt: &Receipt,
+    context: &str,
+    scope: &ReceiptDeclarationScope<'_>,
+    local: bool,
+) {
+    if receipt.package_id != scope.package_id
+        || receipt.name != scope.name
+        || receipt.kind != scope.kind
+    {
+        return;
+    }
+    let requested = super::request::original_rows(scope.expected).any(|(package, name, kind)| {
+        package == &receipt.package_id && name == &receipt.name && receipt.kind.contains(kind)
+    });
+    // Sibling scopes can supply dependencies, never a requesting scope's proof.
+    if requested && !local {
+        return;
+    }
+    if receipt.input_revision.is_empty()
+        || scope.revisions.get(&revision_key(
+            &receipt.package_id,
+            &receipt.name,
+            &receipt.kind,
+        )) != Some(&receipt.input_revision)
+    {
+        return;
+    }
+    let Some(package) = scope.data["packages"].as_array().and_then(|packages| {
+        packages
+            .iter()
+            .find(|package| package["id"] == receipt.package_id)
+    }) else {
+        return;
+    };
+    if receipt.invocation.identity.manifest
+        != Path::new(package["manifest_path"].as_str().unwrap_or_default())
+    {
+        return;
+    }
+    let Some(target) = receipt.invocation.identity.cargo_target(package) else {
+        return;
+    };
+    if target["name"] != receipt.name || target["kind"] != serde_json::json!(receipt.kind) {
+        return;
+    }
+    let partial = scope.partial_args.filter(|_| requested);
+    // Complete original scope, version, checksum, commit, live values and all
+    // artifact/dependency bytes remain mandatory. Old names only ADD fresh
+    // observations; they never replace a scan, import old values or mint reuse.
+    if receipt.valid_scoped_in(context, scope.digests, partial) {
+        names.extend(receipt.declared_environment.keys().cloned());
+    }
 }
 
 /// The complete batch, or `None` when any returned record is missing,
@@ -2566,50 +2893,16 @@ fn target_revision_with(
     clippy::too_many_lines,
     reason = "All supported Cargo target selectors are resolved explicitly before complete coverage can be claimed."
 )]
-fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, String)> {
-    let workspace = args.iter().any(|a| a == "--workspace" || a == "--all");
-    let mut selected_names = Vec::new();
-    let mut excluded = Vec::new();
-    let mut bins = Vec::new();
-    let mut lib = false;
-    let mut all_bins = false;
-    let mut it = args.iter().take_while(|a| a.as_str() != "--");
-    while let Some(a) = it.next() {
-        match a.as_str() {
-            "-p" | "--package" => {
-                if let Some(v) = it.next() {
-                    selected_names.push(v.as_str());
-                }
-            }
-            "--exclude" => {
-                if let Some(v) = it.next() {
-                    excluded.push(v.as_str());
-                }
-            }
-            "--bin" => {
-                if let Some(v) = it.next() {
-                    bins.push(v.as_str());
-                }
-            }
-            "--lib" => lib = true,
-            "--bins" => all_bins = true,
-            _ => {
-                if let Some(v) = a.strip_prefix("--package=") {
-                    selected_names.push(v);
-                } else if let Some(v) = a.strip_prefix("-p") {
-                    selected_names.push(v.strip_prefix('=').unwrap_or(v));
-                }
-                if let Some(v) = a.strip_prefix("--exclude=") {
-                    excluded.push(v);
-                }
-                if let Some(v) = a.strip_prefix("--bin=") {
-                    bins.push(v);
-                }
-            }
-        }
-    }
+fn expected_targets(data: &Value, args: &[String]) -> OriginalTargets {
+    let workspace = sail_api::acceptance::cargo_workspace_selected(args);
+    let selectors = sail_api::request_selectors::scan_original_selectors(args);
+    let selected_names = &selectors.packages;
+    let excluded = &selectors.excluded;
+    let bins = &selectors.bins;
+    let lib = selectors.library;
+    let all_bins = selectors.all_bins;
     let default = data["resolve"]["root"].as_str();
-    let mut expected = BTreeSet::new();
+    let mut expected = OriginalTargets::new();
     for package in data["packages"].as_array().into_iter().flatten() {
         let id = package["id"].as_str().unwrap_or_default();
         let name = package["name"].as_str().unwrap_or_default();
@@ -2617,12 +2910,14 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, 
             .as_array()
             .is_some_and(|m| m.contains(&package["id"]));
         let chosen = if !selected_names.is_empty() {
-            selected_names.iter().any(|n| {
-                *n == name
-                    || *n == id
-                    || n.split_once('@').is_some_and(|(selected, version)| {
-                        selected == name && package["version"].as_str() == Some(version)
-                    })
+            selected_names.iter().any(|span| {
+                sail_api::request_selectors::original_package_matches(
+                    args,
+                    span,
+                    name,
+                    id,
+                    package["version"].as_str(),
+                )
             })
         } else if workspace {
             member
@@ -2634,7 +2929,9 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, 
                 .is_some_and(|m| m.contains(&package["id"]))
         };
         if !chosen
-            || excluded.contains(&name)
+            || excluded.iter().any(|span| {
+                sail_api::request_selectors::original_span_matches_str(args, span, name)
+            })
             || package
                 .pointer("/metadata/verus/verify")
                 .and_then(Value::as_bool)
@@ -2661,7 +2958,14 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, 
             });
             let name = target["name"].as_str().unwrap_or_default();
             let selected_kind = if lib || all_bins || !bins.is_empty() {
-                (lib && library) || (bin && (all_bins || bins.contains(&name)))
+                (lib && library)
+                    || (bin
+                        && (all_bins
+                            || bins.iter().any(|span| {
+                                sail_api::request_selectors::original_span_matches_str(
+                                    args, span, name,
+                                )
+                            })))
             } else {
                 library || bin
             };
@@ -2678,15 +2982,18 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, 
             {
                 continue;
             }
-            expected.insert((
-                id.to_owned(),
-                name.to_owned(),
-                kinds
-                    .and_then(|k| k.first())
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_owned(),
-            ));
+            sail_api::request_targets::insert_original_target(
+                &mut expected,
+                (
+                    id.to_owned(),
+                    name.to_owned(),
+                    kinds
+                        .and_then(|k| k.first())
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_owned(),
+                ),
+            );
         }
     }
     expected
@@ -2846,7 +3153,11 @@ pub fn run_for_replay(
     key: &str,
 ) -> Result<(ProjectResult, Option<super::noop::Pending>)> {
     let mut pending = None;
-    let result = run_recorded(config, out, err, None, Some((key, &mut pending)));
+    let record = config
+        .request_capture
+        .is_none()
+        .then_some((key, &mut pending));
+    let result = run_recorded(config, out, err, None, record);
     result.map(|(result, _)| (result, pending))
 }
 
@@ -2862,13 +3173,7 @@ fn run_recorded(
     record: Option<(&str, &mut Option<super::noop::Pending>)>,
 ) -> Result<(ProjectResult, File)> {
     let research = super::research::selected()?;
-    let mut owned = config.clone();
-    owned.workspace =
-        std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
-    owned.cache = owned.workspace.join(&owned.cache);
-    if let Some(engine) = &engine {
-        owned.cargo_verus.clone_from(&engine.cargo_verus);
-    }
+    let owned = resolved_config(config, engine.as_ref())?;
     let config = &owned;
     // Cargo options that change what Cargo prints (its message format and
     // verbose command lines, which would show Sail's driver and flags) are
@@ -3001,13 +3306,7 @@ fn run_recorded(
         identity_paths,
     } = context_result?;
 
-    let run_id = format!(
-        "{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos())
-    );
+    let run_id = fresh_run_id();
     let inputs = diagnostics.phase(Phase::Inputs);
     let (mut paths, ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
     paths.reuse = loader.is_none();
@@ -3196,8 +3495,9 @@ fn run_recorded(
         &data,
     )?;
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
+    let source_observed_before = paths.input_state.exists();
     let (sources, source_coverage) =
-        super::source_inputs::load(&source_state, paths.input_state.exists());
+        super::source_inputs::load(&source_state, source_observed_before);
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
     data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
@@ -3328,7 +3628,7 @@ fn run_recorded(
     super::files::json(&paths.input_state, &data)?;
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
-        "targets":expected.iter().map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
+        "targets":super::request::original_rows(&expected).map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
         "context_sha256":hash, "input_revision":before.revision,
         "complete":before.complete && script_coverage && absent.ready(),
         "source_observation":source_state.is_file()
@@ -3380,6 +3680,25 @@ fn run_recorded(
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);
+    // Capture the independently resolved original request before starting
+    // Cargo. Never rebuild this scope or its input revision from result rows.
+    let (original_request, original_path_observation) = {
+        let resolution = super::request::Resolution {
+            run_id: &run_id,
+            invocation: &invocation,
+            workspace: &before.workspace,
+            context: &hash,
+            revision: &before.revision,
+            args: &config.args,
+            engine: engine.as_ref(),
+            targets: &expected,
+        };
+        (resolution.resolve()?, resolution.capture_paths())
+    };
+    // Preserve the pre-Cargo native bytes independently of the String fields.
+    // Lossy display/capture conversion cannot supply positive path authority.
+    let original_path_binding = original_path_observation.bind(&original_request);
+    super::request::capture(&original_request, config.request_capture.as_ref())?;
     let source_engine = engine.is_some();
     // A header may only avoid optional restoration work. Unexpected Cargo
     // rebuilds still run the genuine verifier, and the ordinary complete
@@ -3496,7 +3815,8 @@ fn run_recorded(
             .collect();
         super::store::attach(&config.cache, &paths.target, &unowned, &data)
     };
-    let mut exit = invoke(config, &paths, &mut out, err, &seeded)?;
+    let (mut exit, mut invocation_environment_complete) =
+        invoke(config, &paths, &mut out, err, &seeded)?;
     drop(invocation_phase);
     if let Some(plan) = &shipped_plan {
         super::shipped::finish_record(plan, &config.cargo_verus, &workspace_root)?;
@@ -3514,8 +3834,13 @@ fn run_recorded(
             &paths.run.join("artifacts.jsonl"),
             &data,
         )?;
-        let (sources, source_coverage) =
-            super::source_inputs::update(&source_state, &paths.run.join("artifacts.jsonl"), &data)?;
+        let (sources, source_coverage) = super::source_inputs::update_with_history(
+            &source_state,
+            &paths.run.join("artifacts.jsonl"),
+            &data,
+            source_observed_before,
+            source_coverage,
+        )?;
         // Coverage after the run needs a contract for every script Cargo ran.
         let mut unscheduled = super::build_inputs::unscheduled(
             &paths.run.join("cargo.stdout"),
@@ -3642,7 +3967,7 @@ fn run_recorded(
     });
     let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
     let mut overlapped = Some(after_thread.unwrap_or_else(|_| Err(reader_failed())));
-    let (mut targets, missing) = records?;
+    let (mut targets, missing, mut declarations_complete) = records?;
     let retried = retry_possible && !missing.is_empty();
     if retried {
         overlapped = None;
@@ -3653,9 +3978,12 @@ fn run_recorded(
         std::fs::remove_dir_all(paths.run.join("pending-receipts"))
             .and_then(|()| std::fs::create_dir_all(paths.run.join("pending-receipts")))
             .map_err(|e| Error::new("SAIL3107", e.to_string()))?;
-        exit = invoke(config, &paths, &mut out, err, &[])?;
+        let (retried_exit, retried_environment_complete) =
+            invoke(config, &paths, &mut out, err, &[])?;
+        exit = retried_exit;
+        invocation_environment_complete &= retried_environment_complete;
         outside_scope |= !units_in_scope(&paths);
-        let (retried, missing) = target_records(
+        let (retried, missing, retried_declarations) = target_records_in(
             &paths,
             &data,
             &hash,
@@ -3663,8 +3991,10 @@ fn run_recorded(
             &expected,
             &seeded,
             focused(&config.args).then_some(config.args.as_slice()),
+            None,
         )?;
         targets = retried;
+        declarations_complete = retried_declarations;
         if !missing.is_empty() {
             return Err(Error::new(
                 "SAIL3107",
@@ -3718,10 +4048,12 @@ fn run_recorded(
     let stamp_after = super::input::mutation_stamp(&after_run);
     let absent = absent.finish();
     let currentness = if !paths.reuse
+        || !invocation_environment_complete
         || !before.complete
         || !after.complete
         || !after_coverage
         || !source_coverage
+        || !declarations_complete
         || !absent.complete
         || outside_scope
         || !scheduling_confirmed
@@ -3754,8 +4086,7 @@ fn run_recorded(
         && !shown
         && exit == Some(0)
         && !sail_api::acceptance::requested_coverage(
-            &expected
-                .iter()
+            &super::request::original_rows(&expected)
                 .map(|(package, name, kind)| {
                     sail_api::acceptance::requested_target(package, name, kind)
                 })
@@ -3858,7 +4189,7 @@ fn run_recorded(
             "SAIL3123: the interactive engine faulted for {fallbacks} target(s); their exact stock Verus results are reported and publish no proof receipt"
         ));
     }
-    let result = ProjectResult {
+    let mut result = ProjectResult {
         kind: "sail-project-result".to_owned(),
         schema_version: SCHEMA_VERSION,
         run_id,
@@ -3885,6 +4216,31 @@ fn run_recorded(
             verified_as: VerifiedAs::Managed,
         }),
     };
+    let paths_match = sail_api::acceptance::withhold_unmatched_request_paths(
+        &mut result,
+        &original_request,
+        original_path_binding.as_ref(),
+    );
+    let request_matches = sail_api::acceptance::request_corresponds(&original_request, &result);
+    if !paths_match
+        || !request_matches
+        || !invocation_environment_complete
+        || !sail_api::acceptance::verification_enabled_command(&original_request.args)
+        || sail_api::acceptance::focused_command(&original_request.args)
+        || (result.currentness == Currentness::Current
+            && result.exit_code == Some(0)
+            && sail_api::acceptance::complete_request(&original_request, &result).is_none())
+    {
+        for target in &mut result.targets {
+            target.complete = false;
+        }
+        if !request_matches {
+            result.notes.push("SAIL3115: retained original request does not match the observed target inventory; whole-request proof authority is withheld".to_owned());
+        }
+    }
+    if !paths_match {
+        result.notes.push("SAIL3115: native invocation/workspace path bytes do not match the original request; whole and exact-partial proof authority is withheld".to_owned());
+    }
     let publication = diagnostics.phase(Phase::Publication);
     if result.currentness == Currentness::Current
         && let Some(context) = paths.input_state.parent()
@@ -3995,35 +4351,54 @@ fn run_recorded(
     // An unchanged call that ended Current without starting a verifier and
     // without help from the dependency store can be replayed (ADR 0082).
     if let Some((key, pending)) = record {
-        *pending = (result.currentness == Currentness::Current
-            && result.exit_code.is_some()
-            && result.execution.verifier_invocations == 0
-            && !retried
-            && !forced
-            && paths.reuse
-            && runtime.engine.is_none()
-            && research == super::research::Mode::Off
-            && seeded.is_empty())
-        .then(|| {
-            Some(super::noop::Facts {
-                key,
-                cache: &config.cache,
-                start: started_wall,
-                workspace_lock: paths.projects.join(super::projects::WORKSPACE_LOCK),
-                family: paths.target.parent()?,
-                context: paths.receipts.parent()?,
-                target: &paths.target,
-                observation: super::input::mutation_vector(&after_run, stamp_after.as_ref()?)?,
-                identity: &identity_paths,
-                siblings: sibling_receipts(&paths, &result.context_sha256)
-                    .into_iter()
-                    .map(|(_, receipts)| receipts)
-                    .collect(),
-                result: &result,
+        let refusal = if result.currentness != Currentness::Current {
+            Some("result currentness is not Current")
+        } else if result.exit_code.is_none() {
+            Some("original exit status is unavailable")
+        } else if result.execution.verifier_invocations != 0 {
+            Some("the run invoked a verifier")
+        } else if retried {
+            Some("the run retried missing proof receipts")
+        } else if forced {
+            Some("fresh verification was forced")
+        } else if !paths.reuse {
+            Some("proof reuse is disabled")
+        } else if runtime.engine.is_some() {
+            Some("the run used the interactive engine")
+        } else if research != super::research::Mode::Off {
+            Some("the run used a research mode")
+        } else if !seeded.is_empty() {
+            Some("dependency store candidates participated")
+        } else {
+            None
+        };
+        if let Some(reason) = refusal {
+            super::noop::unrecorded(reason);
+        }
+        *pending = refusal
+            .is_none()
+            .then(|| {
+                Some(super::noop::Facts {
+                    key,
+                    cache: &config.cache,
+                    start: started_wall,
+                    workspace_lock: paths.projects.join(super::projects::WORKSPACE_LOCK),
+                    family: paths.target.parent()?,
+                    context: paths.receipts.parent()?,
+                    target: &paths.target,
+                    observation: super::input::mutation_vector(&after_run, stamp_after.as_ref()?)?,
+                    identity: &identity_paths,
+                    siblings: sibling_receipts(&paths, &result.context_sha256)
+                        .into_iter()
+                        .map(|(_, receipts)| receipts)
+                        .collect(),
+                    result: &result,
+                    original_request: &original_request,
+                    human: shown,
+                })
             })
-        })
-        .flatten()
-        .and_then(super::noop::prepare);
+            .flatten()
+            .and_then(super::noop::prepare);
     }
     drop(publication);
     // Freeing the metadata and snapshots (tens of thousands of allocations on
@@ -4119,13 +4494,14 @@ fn store_dependencies(
         .filter(|r| r.valid(&result.context_sha256)) else {
             continue;
         };
-        let sidecar = paths
+        let original_run = paths
             .projects
             .join(&receipt.context)
             .join("runs")
-            .join(&receipt.invocation.run_id)
-            .join("sidecars")
-            .join(receipt.invocation.identity.key());
+            .join(&receipt.invocation.run_id);
+        let Some(sidecar) = receipt.invocation.selected_directory(&original_run) else {
+            continue;
+        };
         super::store::publish(
             candidate,
             &super::store::Publication {
@@ -4246,6 +4622,7 @@ mod tests {
                 args: Vec::new(),
                 force: false,
                 attribution_logs: false,
+                request_capture: None,
             };
             let error = super::run_engine_held(&config, None, &mut Vec::new(), None)
                 .err()
@@ -4325,8 +4702,11 @@ mod tests {
     include!("runner_artifact_isolation_tests.rs");
     #[cfg(unix)]
     include!("runner_cargo_toolchain_tests.rs");
+    #[cfg(unix)]
+    include!("runner_request_capture_tests.rs");
     fn compiler_request(function: Option<&str>) -> crate::engine::Request {
         crate::engine::Request {
+            selection: None,
             function: function.map(str::to_owned),
             cargo_verus: PathBuf::from("engine/cargo-verus"),
             manifest: PathBuf::from("engine/sail-build.json"),
@@ -4353,10 +4733,20 @@ mod tests {
             context_hashes(&args, request, &identity, &environment)
         };
         let (proof, compiler) = hashes(Some(&selected))?;
-        assert_eq!(
+        assert_ne!(
             proof,
             digest(&serde_json::to_vec(&(
                 2,
+                &args,
+                &selected,
+                &identity,
+                &environment
+            ))?)
+        );
+        assert_eq!(
+            proof,
+            digest(&serde_json::to_vec(&(
+                3,
                 &args,
                 &selected,
                 &identity,
@@ -4501,6 +4891,7 @@ mod tests {
             args: Vec::new(),
             force: true,
             attribution_logs: true,
+            request_capture: None,
         })
     }
 
@@ -4640,6 +5031,29 @@ mod tests {
         Ok(())
     }
 
+    fn fixture_producer(
+        paths: &Paths,
+        identity: &super::super::receipts::TargetIdentity,
+    ) -> Option<crate::adapter::attempts::SelectedAttempt> {
+        let unit = identity.compiler_unit();
+        let attempts = paths
+            .run
+            .join("sidecars")
+            .join(identity.key())
+            .join("attempts");
+        let mut journal = crate::adapter::attempts::Journal::new(b"run", &unit, &attempts);
+        let allocation = journal.allocate()?;
+        let mut command = Command::new("/bin/sh");
+        command.args(["-c", "printf '%s' '{\"func-details\":{},\"verification-results\":{\"success\":true,\"verified\":0,\"errors\":0,\"encountered-error\":false,\"encountered-vir-error\":false,\"is-verifying-entire-crate\":true}}'"])
+            .stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
+        let reserved = journal.configure(allocation, &command);
+        let child = command.spawn().ok()?;
+        let running = journal.started(reserved, &child);
+        let output = child.wait_with_output().ok()?;
+        let captured = journal.capture(running, output);
+        captured.selected_attempt(identity)
+    }
+
     pub(super) fn compiler_receipt(paths: &Paths, data: &Value, artifact: &Path) -> Receipt {
         let mut report = crate::report::setup_failure(&[], "SAIL3100", "fixture");
         report.error = None;
@@ -4657,6 +5071,7 @@ mod tests {
         Receipt {
             version: RECEIPT_VERSION,
             partial_args: None,
+            producer_archive: None,
             checksum: String::new(),
             committed: paths.run.join("committed.json"),
             package_id: "input".to_owned(),
@@ -4666,6 +5081,21 @@ mod tests {
             input_revision: target_revision(data, "input"),
             invocation: Invocation {
                 retained_from: None,
+                retained_history: None,
+                selected_attempt: fixture_producer(
+                    paths,
+                    &super::super::receipts::TargetIdentity {
+                        manifest: PathBuf::from(
+                            data["packages"][0]["manifest_path"]
+                                .as_str()
+                                .unwrap_or_default(),
+                        ),
+                        name: "input".into(),
+                        crate_type: "lib".into(),
+                        rustc_args_sha256: "args".into(),
+                        cargo_name: None,
+                    },
+                ),
                 identity: super::super::receipts::TargetIdentity {
                     manifest: PathBuf::from(
                         data["packages"][0]["manifest_path"]
@@ -4704,7 +5134,11 @@ mod tests {
             "packages":[{"id":"input", "manifest_path":root.join("Cargo.toml")}],
             "resolve":{"nodes":[{"id":"input","dependencies":[]}]}
         });
-        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
         let path = receipt_path(&paths, "input", "input", &["lib".into()]);
         let load = || -> BTreeMap<PathBuf, ReceiptRevision> {
             read(&path)
@@ -4749,7 +5183,10 @@ mod tests {
             Vec::<String>::new()
         );
         let mut missing = expected.clone();
-        missing.insert(("other".into(), "other".into(), "lib".into()));
+        sail_api::request_targets::insert_original_target(
+            &mut missing,
+            ("other".into(), "other".into(), "lib".into()),
+        );
         assert!(!receipt_covered_targets(
             &paths,
             &missing,
@@ -4775,7 +5212,11 @@ mod tests {
             std::env::temp_dir().join(format!("sail-retained-header-{}", std::process::id()));
         let config = compiler_fixture(&root)?;
         let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
-        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
         let path = receipt_path(&paths, "input", "input", &["lib".into()]);
         let original = serde_json::json!({"version":RECEIPT_VERSION,"package_id":"input",
             "name":"input","kind":["lib"],"context":"selected","input_revision":"revision"});
@@ -4868,14 +5309,26 @@ mod tests {
         root: PathBuf,
         paths: Paths,
         data: Value,
-        expected: BTreeSet<(String, String, String)>,
+        expected: OriginalTargets,
         call: Invocation,
         result: ProjectResult,
         _ownership: Ownership,
+        directory: PathBuf,
+        engine: bool,
     }
 
     impl NegativeGeneration {
         fn new(label: &str) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+            Self::with_document(
+                label,
+                include_bytes!("../../tests/fixtures/engine-terminal/failed-proof.json"),
+            )
+        }
+
+        fn with_document(
+            label: &str,
+            stdout: &[u8],
+        ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
             // Cargo reports canonical manifest paths; macOS's temporary
             // directory is reached through the `/var` symlink.
             let root = std::env::temp_dir().canonicalize()?.join(format!(
@@ -4890,6 +5343,7 @@ mod tests {
             }]});
             let mut call = compiler_receipt(&paths, &data, &root.join("absent")).invocation;
             call.success = false;
+            call.selected_attempt = None;
             call.report.exit_code = Some(1);
             call.report.crates[0].verus.verified = Some(1);
             call.report.crates[0].verus.errors = Some(1);
@@ -4914,38 +5368,80 @@ mod tests {
                 engine: None,
                 no_reuse: None,
             };
-            let fixture = Self {
+            let mut fixture = Self {
+                directory: PathBuf::new(),
+                engine: label != "stock",
                 root,
                 paths,
                 data,
                 call,
                 result,
                 _ownership: ownership,
-                expected: BTreeSet::from([(
+                expected: crate::managed::request::original_targets([(
                     "input".to_owned(),
                     "input".to_owned(),
                     "lib".to_owned(),
                 )]),
             };
-            fixture.seal()?;
+            fixture.seal_document(stdout)?;
             Ok(fixture)
         }
 
-        fn seal(&self) -> std::io::Result<()> {
+        fn seal(&mut self) -> std::io::Result<()> {
+            self.seal_document(include_bytes!(
+                "../../tests/fixtures/engine-terminal/failed-proof.json"
+            ))
+        }
+
+        fn seal_document(&mut self, stdout: &[u8]) -> std::io::Result<()> {
             let sidecar = self
                 .paths
                 .run
                 .join("sidecars")
                 .join(self.call.identity.key());
             std::fs::create_dir_all(&sidecar)?;
-            std::fs::write(
-                sidecar.join("verus.stdout"),
-                include_bytes!("../../tests/fixtures/engine-terminal/failed-proof.json"),
-            )?;
-            std::fs::write(
-                sidecar.join("engine.events.jsonl"),
-                include_bytes!("../../tests/fixtures/engine-terminal/terminal-failure.jsonl"),
-            )?;
+            let events =
+                include_bytes!("../../tests/fixtures/engine-terminal/terminal-failure.jsonl");
+            if self.call.selected_attempt.is_none() {
+                let unit = self.call.identity.compiler_unit();
+                let attempts = sidecar.join("attempts");
+                let mut journal = crate::adapter::attempts::Journal::new(b"run", &unit, &attempts);
+                let allocation = journal
+                    .allocate()
+                    .ok_or_else(|| std::io::Error::other("fixture allocation refused"))?;
+                self.directory = allocation.directory().to_owned();
+                let input = self.directory.join("fixture.stdout");
+                let terminal = self.directory.join("fixture.events");
+                std::fs::write(&input, stdout)?;
+                std::fs::write(&terminal, events)?;
+                let mut command = Command::new("/bin/sh");
+                command
+                    .args([
+                        "-c",
+                        "cat \"$1\"; if [ \"$3\" = yes ]; then cat \"$2\" > \"$4\"; fi; exit 1",
+                        "fixture",
+                    ])
+                    .arg(input)
+                    .arg(terminal)
+                    .arg(if self.engine { "yes" } else { "no" })
+                    .arg(self.directory.join("engine.events.jsonl"))
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped());
+                let reserved = journal.configure(allocation, &command);
+                let child = command.spawn()?;
+                let running = journal.started(reserved, &child);
+                let output = child.wait_with_output()?;
+                let captured = journal.capture(running, output);
+                assert_eq!(captured.stdout(), stdout);
+                assert_eq!(captured.status().code(), Some(1));
+                self.call.selected_attempt = captured.selected_attempt(&self.call.identity);
+                assert!(self.call.selected_attempt.is_some());
+            } else {
+                std::fs::write(self.directory.join("verus.stdout"), stdout)?;
+                if self.engine {
+                    std::fs::write(self.directory.join("engine.events.jsonl"), events)?;
+                }
+            }
             std::fs::write(
                 self.paths
                     .run
@@ -4998,17 +5494,19 @@ mod tests {
         };
         // A whole-crate document is not the outcome of a focused call.
         assert!(!eligible(&f, &focus));
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
         let mut document: Value = serde_json::from_slice(include_bytes!(
             "../../tests/fixtures/engine-terminal/failed-proof.json"
         ))?;
         document["verification-results"]["is-verifying-entire-crate"] = Value::Bool(false);
-        std::fs::write(sidecar.join("verus.stdout"), serde_json::to_vec(&document)?)?;
+        // Establish the partial document through its own original producer;
+        // editing another path cannot change an owned attempt's output.
+        let f =
+            NegativeGeneration::with_document("focused-partial", &serde_json::to_vec(&document)?)?;
         assert!(eligible(&f, &focus));
         // An unfocused run must still have verified its entire crate.
         assert!(!eligible(&f, &[]));
         // Interrupted or failed-to-seal verifiers still refuse.
-        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        std::fs::remove_file(f.directory.join("engine.events.jsonl"))?;
         assert!(!eligible(&f, &focus));
         Ok(())
     }
@@ -5060,13 +5558,16 @@ mod tests {
             true,
             &["--".to_owned(), "--verify-function=selected".to_owned()]
         ));
-        f.expected.insert((
-            "input".to_owned(),
-            "unattempted".to_owned(),
-            "bin".to_owned(),
-        ));
+        sail_api::request_targets::insert_original_target(
+            &mut f.expected,
+            (
+                "input".to_owned(),
+                "unattempted".to_owned(),
+                "bin".to_owned(),
+            ),
+        );
         assert!(!f.eligible());
-        f.expected.retain(|(_, name, _)| name == "input");
+        f.expected.retain(|key| key.as_tuple().1 == "input");
         let original_call = f.call.clone();
         for field in [
             "error",
@@ -5109,7 +5610,7 @@ mod tests {
         )?;
         assert!(!f.eligible(), "started invocation missing its completion");
         f.seal()?;
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        let sidecar = f.directory.clone();
         for field in [
             "encountered-vir-error",
             "is-verifying-entire-crate",
@@ -5161,8 +5662,8 @@ mod tests {
                 &[],
             )
         };
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
-        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        let sidecar = f.directory.clone();
+        assert!(!sidecar.join("engine.events.jsonl").exists());
         assert!(stock(&f), "stock needs no engine terminal");
         assert!(!f.eligible(), "the engine still needs its terminal");
         // A crash exit, a truncated or doubled document, or a document that
@@ -5170,11 +5671,11 @@ mod tests {
         let original_call = f.call.clone();
         f.call.report.exit_code = Some(101);
         f.seal()?;
-        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        assert!(!sidecar.join("engine.events.jsonl").exists());
         assert!(!stock(&f), "panic exit");
         f.call = original_call;
         f.seal()?;
-        std::fs::remove_file(sidecar.join("engine.events.jsonl"))?;
+        assert!(!sidecar.join("engine.events.jsonl").exists());
         let document = std::fs::read(sidecar.join("verus.stdout"))?;
         for bytes in [
             document[..document.len() / 2].to_vec(),
@@ -5383,7 +5884,7 @@ mod tests {
         assert!(records.iter().any(|r| r["reason"] == "compiler-artifact"
             && r["target"]["name"] == "input"
             && r["fresh"] == false));
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        let sidecar = f.directory.clone();
         for field in ["encountered-vir-error", "is-verifying-entire-crate"] {
             f.seal()?;
             let mut doc: Value =
@@ -5547,7 +6048,7 @@ mod tests {
         f.call.report.crates[0].verus.verified = Some(0);
         f.call.report.crates[0].verus.errors = Some(0);
         f.seal()?;
-        let sidecar = f.paths.run.join("sidecars").join(f.call.identity.key());
+        let sidecar = f.directory.clone();
         std::fs::write(
             sidecar.join("verus.stdout"),
             serde_json::to_vec(
@@ -5680,12 +6181,14 @@ mod tests {
         let package = f
             .expected
             .first()
-            .map(|(id, _, _)| id.clone())
+            .map(|key| key.as_tuple().0.clone())
             .unwrap_or_default();
-        f.expected
-            .insert((package, "unstarted".to_owned(), "bin".to_owned()));
+        sail_api::request_targets::insert_original_target(
+            &mut f.expected,
+            (package, "unstarted".to_owned(), "bin".to_owned()),
+        );
         assert!(!stock(&f, &[]), "an unstarted selected target");
-        f.expected.retain(|(_, name, _)| name != "unstarted");
+        f.expected.retain(|key| key.as_tuple().1 != "unstarted");
         assert!(stock(&f, &[]));
         // A compile error stops a focused selection the same way (#441).
         assert!(stock(
@@ -5749,7 +6252,11 @@ mod tests {
                 "target":{"name":"input","kind":["lib"]}, "filenames":[artifact]
             }))?,
         )?;
-        let expected = BTreeSet::from([("input".to_owned(), "input".to_owned(), "lib".to_owned())]);
+        let expected = crate::managed::request::original_targets([(
+            "input".to_owned(),
+            "input".to_owned(),
+            "lib".to_owned(),
+        )]);
         let (targets, missing) =
             target_records(&paths, &data, "missing", false, &expected, &[], None)?;
         assert_eq!(targets, Vec::<TargetResult>::new());
@@ -5811,6 +6318,412 @@ mod tests {
     }
 
     #[test]
+    fn incomplete_environment_provider_preserves_fresh_reports_and_refuses_receipts()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-env-receipt-loss-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
+        let data = serde_json::json!({"workspace_root":root, "sail_cache_directory":config.cache,
+            "workspace_members":["input"], "resolve":{"nodes":[{"id":"input","dependencies":[]}]},
+            "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
+            "source":null,"metadata":{"verus":{"verify":true}},
+            "targets":[{"name":"input","kind":["lib"],"src_path":root.join("lib.rs")}]}]});
+        let deps = paths.target.join("debug/deps");
+        std::fs::create_dir_all(&deps)?;
+        let artifact = paths.target.join("input.rlib");
+        std::fs::write(&artifact, "actual artifact")?;
+        let artifact_record = |fresh| {
+            serde_json::json!({"reason":"compiler-artifact", "package_id":"input", "fresh":fresh,
+            "target":{"name":"input","kind":["lib"]}, "filenames":[artifact]})
+        };
+        json(&paths.run.join("artifacts.jsonl"), &artifact_record(false))?;
+        let receipt = compiler_receipt(&paths, &data, &artifact);
+        let call_path = paths.run.join("invocations/call.json");
+        json(&call_path, &receipt.invocation)?;
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
+        let pending = paths.run.join("pending-receipts");
+        let declaration = deps.join("actual.d");
+        std::fs::write(&declaration, b"# env-dep:ACTUAL_FLAG=present\n\xff")?;
+        let (targets, missing, declared) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(!declared && missing.is_empty());
+        assert_eq!(targets.len(), 1);
+        assert!(targets[0].complete && !targets[0].reused);
+        assert_eq!(targets[0].report, receipt.invocation.report);
+        assert_eq!(std::fs::read_dir(&pending)?.count(), 0);
+        std::fs::remove_file(&declaration)?;
+        let (_, _, declared) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(declared);
+        assert_eq!(std::fs::read_dir(&pending)?.count(), 1);
+        super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+        std::fs::remove_file(&call_path)?;
+        json(&paths.run.join("artifacts.jsonl"), &artifact_record(true))?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(targets[0].reused && missing.is_empty());
+        std::fs::write(&declaration, "# env-dep:NEW_DECLARED_FLAG\n")?;
+        let (targets, missing, declared) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(declared && targets.is_empty());
+        assert_eq!(missing, BTreeSet::from(["input".into()]));
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keep establishment, shrink, scan-loss and invalid-original controls on one unchanged receipt fixture."
+    )]
+    fn admissible_receipt_names_survive_erasure_without_rehabilitating_a_failed_scan()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-env-domain-shrink-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
+        let data = serde_json::json!({"workspace_root":root, "sail_cache_directory":config.cache,
+            "workspace_members":["input"], "resolve":{"nodes":[{"id":"input","dependencies":[]}]},
+            "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
+            "source":null,"metadata":{"verus":{"verify":true}},
+            "targets":[{"name":"input","kind":["lib"],"src_path":root.join("lib.rs")}]}]});
+        let deps = paths.target.join("debug/deps");
+        std::fs::create_dir_all(&deps)?;
+        let artifact = paths.target.join("input.rlib");
+        std::fs::write(&artifact, "actual artifact")?;
+        let record = |fresh| {
+            serde_json::json!({"reason":"compiler-artifact", "package_id":"input", "fresh":fresh,
+            "target":{"name":"input","kind":["lib"]}, "filenames":[artifact]})
+        };
+        let declaration = deps.join("actual.d");
+        let dropped = format!("SAIL_ENV_DOMAIN_DROPPED_{}", std::process::id());
+        std::fs::write(
+            &declaration,
+            format!("# env-dep:{dropped}\n# env-dep: __VERUS_DRIVER_ARGS__\n"),
+        )?;
+        json(&paths.run.join("artifacts.jsonl"), &record(false))?;
+        let invocation = paths.run.join("invocations/call.json");
+        json(
+            &invocation,
+            &compiler_receipt(&paths, &data, &artifact).invocation,
+        )?;
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
+        let (fresh, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(missing.is_empty() && fresh[0].complete && !fresh[0].reused);
+        super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+        let path = receipt_path(&paths, "input", "input", &["lib".into()]);
+        let original: Receipt = read(&path).ok_or("original receipt absent")?;
+        assert!(original.valid("selected"));
+        assert_eq!(
+            original
+                .declared_environment
+                .keys()
+                .cloned()
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([dropped.clone(), " __VERUS_DRIVER_ARGS__".into()])
+        );
+        std::fs::remove_file(invocation)?;
+        json(&paths.run.join("artifacts.jsonl"), &record(true))?;
+        // Successful erasure overwrites the declaration-bearing file. The
+        // provider genuinely succeeds, but its current name set is now empty.
+        std::fs::write(&declaration, "")?;
+        assert_eq!(
+            super::super::environment::declared_names(&paths.target),
+            Some(BTreeSet::new())
+        );
+        for _ in 0..2 {
+            let (reused, missing, covered) =
+                target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+            assert!(covered && missing.is_empty() && reused[0].reused && reused[0].complete);
+            assert_eq!(reused[0].report, original.invocation.report);
+        }
+        // A lossy fresh provider still refuses: old names cannot repair None.
+        std::fs::write(&declaration, [0xff])?;
+        let (targets, missing, covered) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(!covered && targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        std::fs::write(
+            &declaration,
+            format!("# env-dep:{}\n", dropped.to_lowercase()),
+        )?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        // Independently valid checksum/commit/scope do not permit importing
+        // a changed original value or an original absence that is now present.
+        std::fs::write(&declaration, "")?;
+        assert_eq!(
+            std::env::var("CARGO_PKG_NAME").ok().as_deref(),
+            Some(env!("CARGO_PKG_NAME"))
+        );
+        let pending = paths
+            .run
+            .join("pending-receipts")
+            .join(path.file_name().ok_or("receipt filename")?);
+        let kind = vec!["lib".into()];
+        let key = revision_key("input", "input", &kind);
+        let current_revision = target_revision(&data, &key);
+        assert_eq!(current_revision, original.input_revision);
+        let revisions = HashMap::from([(key.clone(), current_revision)]);
+        let digests = PhaseDigests::default();
+        let scope = ReceiptDeclarationScope {
+            data: &data,
+            expected: &expected,
+            revisions: &revisions,
+            partial_args: None,
+            digests: &digests,
+            package_id: "input",
+            name: "input",
+            kind: &kind,
+        };
+        let mut preserved = BTreeSet::new();
+        preserve_receipt_declarations(&mut preserved, &original, "selected", &scope, true);
+        assert_eq!(
+            preserved,
+            original.declared_environment.keys().cloned().collect()
+        );
+        for unavailable in [
+            HashMap::new(),
+            HashMap::from([(key, "different revision".into())]),
+        ] {
+            let unavailable_scope = ReceiptDeclarationScope {
+                revisions: &unavailable,
+                ..scope
+            };
+            let mut refused = BTreeSet::new();
+            preserve_receipt_declarations(
+                &mut refused,
+                &original,
+                "selected",
+                &unavailable_scope,
+                true,
+            );
+            assert!(
+                refused.is_empty(),
+                "missing or changed revision cannot supply names"
+            );
+        }
+        for old_value in [None, Some(b"not-the-current-package".to_vec())] {
+            let mut changed = original.clone();
+            changed
+                .declared_environment
+                .insert("CARGO_PKG_NAME".into(), old_value);
+            let changed = changed.seal();
+            json(&pending, &changed)?;
+            super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+            assert!(!changed.valid("selected"));
+            let mut preserved = BTreeSet::new();
+            preserve_receipt_declarations(&mut preserved, &changed, "selected", &scope, true);
+            assert!(
+                preserved.is_empty(),
+                "a changed original cannot supply names"
+            );
+            let (targets, missing) =
+                target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+            assert!(targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        }
+        // A corrupted original is never a source of retained declaration names.
+        let mut corrupt = original;
+        corrupt.checksum.push('0');
+        json(&path, &corrupt)?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Establishment, unrelated growth, erasure, same-target retention and failed-scan controls use one unchanged receipt."
+    )]
+    fn unrelated_script_declarations_do_not_expand_a_dependency_receipt()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-env-target-growth-{}", std::process::id()));
+        let config = compiler_fixture(&root)?;
+        let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "pub fn input() {}")?;
+        std::fs::write(root.join("sibling.rs"), "fn main() {}")?;
+        let app = root.join("application");
+        std::fs::create_dir_all(&app)?;
+        std::fs::write(
+            app.join("Cargo.toml"),
+            "[package]\nname='application'\nversion='0.1.0'\n",
+        )?;
+        std::fs::write(app.join("build.rs"), "fn main() {}")?;
+        let data = serde_json::json!({"workspace_root":root,"sail_cache_directory":config.cache,
+            "workspace_members":["input","application"],
+            "resolve":{"nodes":[{"id":"input","dependencies":[]},{"id":"application","dependencies":["input"]}]},
+            "packages":[{"id":"input","name":"input","manifest_path":root.join("Cargo.toml"),
+                "source":null,"metadata":{"verus":{"verify":true}},"targets":[
+                    {"name":"input","kind":["lib"],"src_path":root.join("lib.rs")},
+                    {"name":"sibling","kind":["bin"],"src_path":root.join("sibling.rs")}]},
+                {"id":"application","name":"application","manifest_path":app.join("Cargo.toml"),
+                    "targets":[{"name":"build-script-build","kind":["custom-build"],"src_path":app.join("build.rs")}]}]});
+        let deps = paths.target.join("debug/deps");
+        let script = paths.target.join("debug/build/application-1");
+        std::fs::create_dir_all(&deps)?;
+        std::fs::create_dir_all(&script)?;
+        let artifact = deps.join("libinput-1.rlib");
+        std::fs::write(&artifact, "actual artifact")?;
+        let original_name = format!("SAIL_ENV_DOMAIN_ORIGINAL_{}", std::process::id());
+        let unrelated_name = format!("SAIL_ENV_DOMAIN_UNRELATED_{}", std::process::id());
+        let declaration = deps.join("input-1.d");
+        std::fs::write(&declaration, format!("# env-dep:{original_name}\n"))?;
+        std::fs::write(script.join("output"), "")?;
+        let record = |fresh| {
+            serde_json::json!({"reason":"compiler-artifact","package_id":"input","fresh":fresh,
+            "target":{"name":"input","kind":["lib"]},"filenames":[artifact]})
+        };
+        let write_artifacts = |fresh| -> std::io::Result<()> {
+            std::fs::write(
+                paths.run.join("artifacts.jsonl"),
+                super::super::source_inputs::fixture_journal(&[
+                    record(fresh),
+                    serde_json::json!({"reason":"build-script-executed","package_id":"application","out_dir":script.join("out")}),
+                ])?,
+            )
+        };
+        write_artifacts(false)?;
+        let invocation = paths.run.join("invocations/call.json");
+        json(
+            &invocation,
+            &compiler_receipt(&paths, &data, &artifact).invocation,
+        )?;
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
+        let (fresh, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(missing.is_empty() && fresh[0].complete && !fresh[0].reused);
+        super::super::receipts::publish(&paths.run, &paths.receipts, "selected")?;
+        let path = receipt_path(&paths, "input", "input", &["lib".into()]);
+        let original: Receipt = read(&path).ok_or("original absent")?;
+        assert!(original.valid("selected"));
+        assert_eq!(
+            original
+                .declared_environment
+                .keys()
+                .cloned()
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([original_name.clone()])
+        );
+        std::fs::remove_file(invocation)?;
+        write_artifacts(true)?;
+        std::fs::write(
+            script.join("output"),
+            format!("cargo:rerun-if-env-changed={unrelated_name}\n"),
+        )?;
+        assert_eq!(
+            super::super::environment::declared_names(&paths.target),
+            Some(BTreeSet::from([
+                original_name.clone(),
+                unrelated_name.clone()
+            ]))
+        );
+        for _ in 0..2 {
+            let (reused, missing, covered) =
+                target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+            assert!(
+                covered
+                    && missing.is_empty()
+                    && reused.len() == 1
+                    && reused[0].reused
+                    && reused[0].complete
+            );
+            assert_eq!(reused[0].report, original.invocation.report);
+        }
+        // A complete later erasure cannot drop original names or import an
+        // unrelated target's independently valid original declaration domain.
+        std::fs::write(&declaration, "")?;
+        let (reused, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(missing.is_empty() && reused[0].reused);
+        let library_kind = vec!["lib".into()];
+        let library_key = revision_key("input", "input", &library_kind);
+        let library_revision = target_revision(&data, &library_key);
+        assert_eq!(library_revision, original.input_revision);
+        let digests = PhaseDigests::default();
+        let sibling_kind = vec!["bin".into()];
+        let sibling_key = revision_key("input", "sibling", &sibling_kind);
+        let revisions = HashMap::from([
+            (library_key, library_revision),
+            (sibling_key.clone(), target_revision(&data, &sibling_key)),
+        ]);
+        let original_scope = ReceiptDeclarationScope {
+            data: &data,
+            expected: &expected,
+            revisions: &revisions,
+            partial_args: None,
+            digests: &digests,
+            package_id: "input",
+            name: "input",
+            kind: &library_kind,
+        };
+        let mut preserved = BTreeSet::new();
+        preserve_receipt_declarations(&mut preserved, &original, "selected", &original_scope, true);
+        assert_eq!(preserved, BTreeSet::from([original_name.clone()]));
+        let scope = ReceiptDeclarationScope {
+            data: &data,
+            expected: &expected,
+            revisions: &revisions,
+            partial_args: None,
+            digests: &digests,
+            package_id: "input",
+            name: "sibling",
+            kind: &sibling_kind,
+        };
+        let mut names = BTreeSet::new();
+        preserve_receipt_declarations(&mut names, &original, "selected", &scope, true);
+        assert!(
+            names.is_empty(),
+            "a valid library receipt cannot supply another target's domain"
+        );
+        // A relevant new name still changes the exact domain and refuses reuse.
+        std::fs::write(&declaration, "# env-dep:SAIL_ENV_DOMAIN_NEW_RELEVANT\n")?;
+        let (targets, missing) =
+            target_records(&paths, &data, "selected", false, &expected, &[], None)?;
+        assert!(targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        std::fs::write(&declaration, [0xff])?;
+        let (targets, missing, covered) =
+            target_records_in(&paths, &data, "selected", false, &expected, &[], None, None)?;
+        assert!(!covered && targets.is_empty() && missing == BTreeSet::from(["input".into()]));
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn shipped_proof_origin_survives_receipt_and_store_reuse()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!("sail-shipped-origin-{}", std::process::id()));
@@ -5839,6 +6752,9 @@ mod tests {
         };
         json(&paths.run.join("artifacts.jsonl"), &artifact_record(false))?;
         let mut call = compiler_receipt(&paths, &data, &artifact).invocation;
+        // A bundled transfer retains its original manifest provenance and
+        // creates no live process observation for this invocation.
+        call.selected_attempt = None;
         call.dependency_build = Some(sail_api::project::DependencyBuildOrigin {
             kind: sail_api::project::DependencyBuildKind::Release,
             identity: "build/entry".to_owned(),
@@ -5992,6 +6908,7 @@ mod tests {
         manifest.save(&root)?;
         let path = root.join(crate::source_build::MANIFEST);
         let request = crate::engine::Request {
+            selection: None,
             function: None,
             cargo_verus: runtime.join("cargo-verus"),
             manifest_sha256: file_digest(&path)?,
@@ -6012,6 +6929,7 @@ mod tests {
             args: Vec::new(),
             force: true,
             attribution_logs: true,
+            request_capture: None,
         };
         std::fs::write(runtime.join("z3"), b"tampered")?;
         let error = context(&config, Some(&request))
@@ -6050,6 +6968,7 @@ mod tests {
         let receipt = Receipt {
             version: RECEIPT_VERSION,
             partial_args: None,
+            producer_archive: None,
             checksum: String::new(),
             package_id: "vstd".to_owned(),
             name: "vstd".to_owned(),
@@ -6058,6 +6977,8 @@ mod tests {
             input_revision: target_revision(&data, "vstd"),
             invocation: Invocation {
                 retained_from: None,
+                retained_history: None,
+                selected_attempt: None,
                 identity: super::super::receipts::TargetIdentity {
                     manifest: dependency.join("Cargo.toml"),
                     name: "vstd".to_owned(),
@@ -6557,7 +7478,8 @@ mod tests {
         assert!(
             std::fs::write(
                 &artifact_path,
-                super::super::source_inputs::closed_journal(&artifacts)
+                super::super::source_inputs::fixture_journal(&artifacts)
+                    .unwrap_or_else(|e| unreachable!("provider fixture: {e}"))
             )
             .is_ok()
         );
@@ -6715,6 +7637,24 @@ mod tests {
     }
 
     #[test]
+    fn forwarded_workspace_words_do_not_expand_the_original_cargo_selection() {
+        let data = serde_json::json!({"workspace_members":["a","b"],"workspace_default_members":["a"],
+            "resolve":{"root":null,"nodes":[]},"packages":[
+                {"id":"a","name":"a","metadata":{"verus":{"verify":true}},"targets":[{"name":"a","kind":["lib"]}]},
+                {"id":"b","name":"b","metadata":{"verus":{"verify":true}},"targets":[{"name":"b","kind":["lib"]}]}]});
+        let original =
+            crate::managed::request::original_targets([("a".into(), "a".into(), "lib".into())]);
+        assert_eq!(expected_targets(&data, &[]), original);
+        for flag in ["--workspace", "--all"] {
+            assert_eq!(expected_targets(&data, &[flag.into()]).len(), 2);
+            assert_eq!(
+                expected_targets(&data, &["--".into(), flag.into()]),
+                original
+            );
+        }
+    }
+
+    #[test]
     fn expected_target_coverage_respects_packages_and_target_selection() {
         let data = serde_json::json!({"workspace_members":["a","b"],"workspace_default_members":["a","b"],"resolve":{"root":null,"nodes":[]},"packages":[
             {"id":"a","name":"a","metadata":{"verus":{"verify":true}},"targets":[{"name":"a","kind":["lib"]},{"name":"a","kind":["bin"]}]},
@@ -6726,11 +7666,19 @@ mod tests {
                 &data,
                 &["-p".to_owned(), "a".to_owned(), "--lib".to_owned()]
             ),
-            BTreeSet::from([("a".to_owned(), "a".to_owned(), "lib".to_owned())])
+            crate::managed::request::original_targets([(
+                "a".to_owned(),
+                "a".to_owned(),
+                "lib".to_owned()
+            )])
         );
         assert_eq!(
             expected_targets(&data, &["--bin".to_owned(), "a".to_owned()]),
-            BTreeSet::from([("a".to_owned(), "a".to_owned(), "bin".to_owned())])
+            crate::managed::request::original_targets([(
+                "a".to_owned(),
+                "a".to_owned(),
+                "bin".to_owned()
+            )])
         );
         assert!(expected_targets(&data, &["-p".to_owned(), "missing".to_owned()]).is_empty());
     }
@@ -6747,7 +7695,11 @@ mod tests {
                     "metadata":{"verus":{"verify":true}},
                     "targets":[{"name":"b","kind":["lib"]}]}]});
         let names = BTreeSet::from(["a".to_owned(), "b".to_owned()]);
-        let wanted = BTreeSet::from([("b".to_owned(), "b".to_owned(), "lib".to_owned())]);
+        let wanted = crate::managed::request::original_targets([(
+            "b".to_owned(),
+            "b".to_owned(),
+            "lib".to_owned(),
+        )]);
         for (argument, spec) in [("-pb", "b"), ("-p=b", "b"), ("-pb@2.0.0", "b@2.0.0")] {
             let args = vec![argument.to_owned(), "--lib".to_owned()];
             assert_eq!(expected_targets(&data, &args), wanted);
@@ -6755,7 +7707,11 @@ mod tests {
         }
         assert_eq!(
             expected_targets(&data, &[]),
-            BTreeSet::from([("a".to_owned(), "a".to_owned(), "lib".to_owned())])
+            crate::managed::request::original_targets([(
+                "a".to_owned(),
+                "a".to_owned(),
+                "lib".to_owned()
+            )])
         );
         let repeated = vec!["-pb".to_owned(), "--package=a".to_owned()];
         assert_eq!(expected_targets(&data, &repeated).len(), 2);
@@ -6786,7 +7742,11 @@ mod tests {
             {"id": "syn", "dependencies": []},
             {"id": "bench", "dependencies": ["lib", "criterion"]},
             {"id": "criterion", "dependencies": []}]}});
-        let expected = BTreeSet::from([("lib".to_owned(), "lib".to_owned(), "lib".to_owned())]);
+        let expected = crate::managed::request::original_targets([(
+            "lib".to_owned(),
+            "lib".to_owned(),
+            "lib".to_owned(),
+        )]);
         let closure = selected_closure(&data, &expected);
         assert_eq!(
             closure,
@@ -6848,6 +7808,7 @@ mod tests {
             args: args.iter().map(|&a| a.to_owned()).collect(),
             force: true,
             attribution_logs: true,
+            request_capture: None,
         };
         let focus = config(&["-p", "input", "--", "--verify-function", "input"]);
         let full = config(&["-p", "input"]);
@@ -6911,7 +7872,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn lifecycle_only_job_environment_does_not_partition_proofs() {
+    fn lifecycle_keys_do_not_duplicate_named_context_entries() {
         for key in [
             "SAIL_JOB_EVENTS",
             "SAIL_JOB_GUARD_PARENT",
@@ -6955,12 +7916,19 @@ mod tests {
                 .map(|p| p.with_file_name("verus"))
         );
         let mut hashes = super::super::files::FileDigests::default();
-        assert_eq!(hashes.hash(&alias), hashes.hash(&executable));
+        let initial = hashes.hash(&alias);
+        assert_eq!(initial, hashes.hash(&executable));
         assert!(std::fs::write(&executable, "changed").is_ok());
+        let current = hashes.hash(&alias);
         assert_ne!(
-            hashes.hash(&alias),
+            initial, current,
+            "a changed original seal forces a new read"
+        );
+        assert_eq!(current, Ok(super::super::files::digest(b"changed")));
+        assert_eq!(
+            current,
             super::super::files::FileDigests::default().hash(&alias),
-            "independent phases must re-read content"
+            "both phases must describe the changed content"
         );
         assert!(std::fs::remove_dir_all(root).is_ok());
     }

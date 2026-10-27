@@ -119,9 +119,9 @@ pub(crate) fn file_backed() -> bool {
 /// Removes one private setting from `command`'s environment when settings
 /// travel there (no transport file). With a file, a variable of that name
 /// is the caller's own and passes through.
-pub(crate) fn clear(command: &mut std::process::Command, name: &str) {
+pub(crate) fn clear(command: &mut impl super::command_environment::RemoveEnvironment, name: &str) {
     if !file_backed() {
-        command.env_remove(name);
+        command.remove_env(name);
     }
 }
 

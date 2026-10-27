@@ -19,6 +19,8 @@
 //!   Cargo-Verus, Verus and its engine, the solver, rustc, rustup, sysroot
 //!   libraries), and rustup's settings;
 //! - the proof context's and compiler family's cache records, by content;
+//! - the original whole/exact-partial receipts and their selected or archived
+//!   producer histories, revalidated through the ordinary receipt reader;
 //! - the values of every variable a unit declares (`env-dep`,
 //!   `rerun-if-env-changed`).
 //!
@@ -37,16 +39,24 @@
 //! guard), and its directory by its identity and complete entry names.
 
 use super::Config;
-use sail_api::project::ProjectResult;
+use sail_api::project::{ProjectResult, ResolvedRequest};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+#[cfg(test)]
+use std::time::UNIX_EPOCH;
+use std::time::{Duration, SystemTime};
 
-const VERSION: u32 = 2;
+// Version six retains original requests/origins and content-bound Cargo script copies.
+const VERSION: u32 = 6;
+const HUMAN_VERSION: u32 = 1;
+const HUMAN_KIND: &str = "sail-empty-human-output";
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
+
+#[path = "noop_origins.rs"]
+mod origins;
 
 /// The complete stat stamp and its settle rule are shared with the daemon's
 /// solver identity.
@@ -75,9 +85,21 @@ struct Record {
     directories: Vec<Directory>,
     /// Declared variables and their values.
     environment: BTreeMap<String, Option<Vec<u8>>>,
+    /// Original whole/exact-partial receipts; every replay rechecks their producers.
+    origins: Vec<super::receipts::Receipt>,
+    original_request: ResolvedRequest,
     result: ProjectResult,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
+}
+
+/// Separate storage envelope and namespace. A proof-record reader cannot
+/// deserialize this as its flat Record, and this reader never returns a report.
+#[derive(Serialize, Deserialize)]
+struct HumanRecord {
+    kind: String,
+    version: u32,
+    observation: Record,
 }
 
 /// Cargo's uplifted copy of a build-script executable (#437). Cargo
@@ -244,7 +266,22 @@ fn copies_mismatch(copies: &[Copied], directories: &[Directory]) -> Option<Strin
 /// its output, which its caller adds with [`Pending::commit`].
 pub struct Pending {
     path: PathBuf,
+    other_path: PathBuf,
+    human_only: bool,
     record: Record,
+}
+
+/// Validated empty human output. It has no `ProjectResult` or proof accessor.
+pub struct HumanReplay {
+    stderr: Vec<u8>,
+}
+
+impl HumanReplay {
+    /// One validated ordinary Cargo completion line, with elapsed time updated.
+    #[must_use]
+    pub fn stderr(&self) -> &[u8] {
+        &self.stderr
+    }
 }
 
 /// An unchanged call's replayed output.
@@ -272,6 +309,12 @@ pub(super) struct Facts<'a> {
     /// dependency's reuse may consult.
     pub siblings: Vec<PathBuf>,
     pub result: &'a ProjectResult,
+    /// The ordinary runner's original pre-Cargo resolution, never rebuilt
+    /// from the stored result or its target rows.
+    pub original_request: &'a ResolvedRequest,
+    /// The original caller actually displayed human stdout. JSON, job and MCP
+    /// consumers cannot record a byte-only human replay.
+    pub human: bool,
 }
 
 fn disabled() -> bool {
@@ -301,6 +344,11 @@ fn trace(line: &str) {
     }
 }
 
+/// Retain the exact recording refusal in the existing optional decision trace.
+pub(super) fn unrecorded(reason: &str) {
+    trace(&format!("not recorded: {reason}"));
+}
+
 /// Variables that make up the invocation's key: every variable the context
 /// binds, every Sail variable, and the ones that select tools and terminal
 /// rendering.
@@ -326,7 +374,7 @@ fn key_environment(
 #[must_use]
 pub fn key(config: &Config, json: bool) -> Option<String> {
     use std::io::IsTerminal as _;
-    if disabled() || config.force {
+    if disabled() || config.force || config.request_capture.is_some() {
         return None;
     }
     if super::research::selected().ok()? != super::research::Mode::Off {
@@ -358,6 +406,12 @@ pub fn key(config: &Config, json: bool) -> Option<String> {
 
 fn record_path(cache: &Path, key: &str) -> PathBuf {
     cache.join("noop").join(format!("{key}.json"))
+}
+
+fn human_record_path(cache: &Path, key: &str) -> PathBuf {
+    cache
+        .join("noop")
+        .join(format!("human-empty-v{HUMAN_VERSION}-{key}.json"))
 }
 
 /// Every entry below `root`, without following links, sorted; `skip` names
@@ -454,7 +508,45 @@ fn rustup_settings() -> Option<PathBuf> {
 
 /// Gather a record at the end of a run that ended Current without starting a
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep both admission policies beside the complete original observation vector."
+)]
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
+    let human_only = sail_api::acceptance::empty_human_candidate(
+        facts.original_request,
+        facts.result,
+        facts.human,
+    );
+    // Both branches bind the independently captured original request. Partial
+    // evidence uses its own scope contract and cannot acquire whole authority.
+    if human_only {
+        // This candidate cannot supply proof authority. Actual output bytes are
+        // checked after the caller finishes teeing them, before any write.
+    } else if sail_api::acceptance::focused_command(&facts.original_request.args) {
+        if sail_api::acceptance::complete_exact_partial_request(
+            facts.original_request,
+            facts.result,
+        )
+        .is_none()
+        {
+            unrecorded("original exact-partial request has no admitted result");
+            return None;
+        }
+    } else if sail_api::acceptance::complete_request(facts.original_request, facts.result).is_none()
+    {
+        unrecorded("original whole request has no admitted result");
+        return None;
+    }
+    let origins = if human_only {
+        Vec::new()
+    } else {
+        let Some(origins) = origins::capture(facts.context, facts.result) else {
+            unrecorded("original proof producers unavailable or mismatched");
+            return None;
+        };
+        origins
+    };
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
     let target_stamps = crate::parallel::in_order(&target, |path| lstat(path));
@@ -504,7 +596,17 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
     let environment =
         super::environment::values(&super::environment::declared_names(facts.target)?);
     Some(Pending {
-        path: record_path(facts.cache, facts.key),
+        path: if human_only {
+            human_record_path(facts.cache, facts.key)
+        } else {
+            record_path(facts.cache, facts.key)
+        },
+        other_path: if human_only {
+            record_path(facts.cache, facts.key)
+        } else {
+            human_record_path(facts.cache, facts.key)
+        },
+        human_only,
         record: Record {
             version: VERSION,
             key: facts.key.to_owned(),
@@ -517,6 +619,8 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             copies,
             directories,
             environment,
+            origins,
+            original_request: facts.original_request.clone(),
             result: facts.result.clone(),
             stdout: Vec::new(),
             stderr: Vec::new(),
@@ -530,25 +634,50 @@ impl Pending {
     pub fn commit(mut self, stdout: Vec<u8>, stderr: Vec<u8>) {
         self.record.stdout = stdout;
         self.record.stderr = stderr;
-        let Ok(bytes) = serde_json::to_vec(&self.record) else {
+        if self.human_only
+            && !sail_api::acceptance::empty_human_bytes(&self.record.stdout, &self.record.stderr)
+        {
+            unrecorded("human no-op output is not empty stdout plus one Cargo footer");
+            let _ = std::fs::remove_file(&self.path);
+            let _ = std::fs::remove_file(&self.other_path);
+            return;
+        }
+        let description = format!(
+            "recorded: {} stamps, {} contents, {} copies{}",
+            self.record.lstat.len() + self.record.stat.len(),
+            self.record.contents.len(),
+            self.record.copies.len(),
+            if self.human_only {
+                ", empty human output only"
+            } else {
+                ""
+            }
+        );
+        let temporary_name = format!(".{}.{}", self.record.key, std::process::id());
+        let serialized = if self.human_only {
+            serde_json::to_vec(&HumanRecord {
+                kind: HUMAN_KIND.to_owned(),
+                version: HUMAN_VERSION,
+                observation: self.record,
+            })
+        } else {
+            serde_json::to_vec(&self.record)
+        };
+        let Ok(bytes) = serialized else {
             return;
         };
         let Some(parent) = self.path.parent() else {
             return;
         };
-        let temporary = parent.join(format!(".{}.{}", self.record.key, std::process::id()));
+        let temporary = parent.join(temporary_name);
         if std::fs::create_dir_all(parent).is_err()
             || std::fs::write(&temporary, bytes).is_err()
             || std::fs::rename(&temporary, &self.path).is_err()
         {
             let _ = std::fs::remove_file(&temporary);
         } else {
-            trace(&format!(
-                "recorded: {} stamps, {} contents, {} copies",
-                self.record.lstat.len() + self.record.stat.len(),
-                self.record.contents.len(),
-                self.record.copies.len()
-            ));
+            let _ = std::fs::remove_file(&self.other_path);
+            trace(&description);
         }
     }
 }
@@ -557,6 +686,7 @@ impl Pending {
 /// must not leave an older record behind.
 pub fn forget(cache: &Path, key: &str) {
     let _ = std::fs::remove_file(record_path(cache, key));
+    let _ = std::fs::remove_file(human_record_path(cache, key));
 }
 
 /// Cargo's elapsed-time rendering (`cargo::util::elapsed`).
@@ -626,13 +756,154 @@ fn lock(path: &Path, shared: bool) -> Option<std::fs::File> {
     .ok()
 }
 
+/// Replays only empty human stdout and one validated Cargo completion line.
+/// Callers receive bytes, never a `ProjectResult` or verification authority.
+/// JSON, jobs, MCP, independent-request capture and engine paths keep their
+/// ordinary result-producing execution or checked whole/partial proof replay.
+#[must_use]
+pub fn replay_empty_human_output(
+    config: &Config,
+    started: std::time::Instant,
+) -> Option<HumanReplay> {
+    if config.request_capture.is_some() {
+        return None;
+    }
+    let key = key(config, false)?;
+    let workspace = std::path::absolute(&config.workspace).ok()?;
+    if !human_record_path(&workspace.join(&config.cache), &key).is_file() {
+        return None;
+    }
+    let mut reason = None;
+    let replay = (|| {
+        let preflight = super::runner::replay_preflight(config).ok()?;
+        let location = ReplayLocation {
+            cache: &preflight.config.cache,
+            context: &preflight.context,
+            workspace_lock: &preflight.workspace_lock,
+            family: &preflight.family,
+        };
+        let _workspace = lock(location.workspace_lock, true)?;
+        let _family = lock(&location.family.join("ownership.lock"), false)?;
+        preflight
+            .with_current_request(|current, paths, readback| {
+                let bytes = std::fs::read(human_record_path(location.cache, &key)).ok()?;
+                let saved: HumanRecord = serde_json::from_slice(&bytes).ok()?;
+                let record = &saved.observation;
+                if saved.kind != HUMAN_KIND
+                    || saved.version != HUMAN_VERSION
+                    || record.version != VERSION
+                    || record.key != key
+                    || !record.origins.is_empty()
+                    || record.locks.0 != location.workspace_lock
+                    || record.locks.1 != location.family.join("ownership.lock")
+                    || record.runs != location.context.join("runs")
+                {
+                    return None;
+                }
+                if let Some(changed) = mismatch(record) {
+                    reason = Some(changed);
+                    return None;
+                }
+                let admitted = sail_api::acceptance::admit_empty_human_output(
+                    &record.original_request,
+                    current,
+                    &record.result,
+                    true,
+                    &record.stdout,
+                    &record.stderr,
+                    Some(paths),
+                    Some(readback),
+                )?;
+                let mut duration = elapsed(started.elapsed()).into_bytes();
+                duration.push(b'\n');
+                let stderr = sail_api::acceptance::render_empty_human_output(&admitted, &duration)?;
+                if !sail_api::acceptance::empty_human_bytes(&[], &stderr) {
+                    return None;
+                }
+                Some(HumanReplay { stderr })
+            })
+            .ok()??
+    })();
+    trace("replay kind: empty human output only");
+    if replay.is_some() {
+        trace("hit");
+    } else {
+        trace(&format!(
+            "miss: {}",
+            reason
+                .as_deref()
+                .unwrap_or("human-output request or readback unavailable")
+        ));
+    }
+    replay
+}
+
+/// Whether this invocation has a byte-only candidate to attempt. Presence
+/// grants no authority: an unreadable, changed or invalid candidate still runs
+/// ordinary verification. It only prevents a second proof-cache miss from
+/// overwriting the decision trace of the candidate already checked.
+#[must_use]
+pub fn has_empty_human_candidate(config: &Config) -> bool {
+    let Some(key) = key(config, false) else {
+        return false;
+    };
+    let Ok(workspace) = std::path::absolute(&config.workspace) else {
+        return false;
+    };
+    human_record_path(&workspace.join(&config.cache), &key).is_file()
+}
+
 /// The replay for an unchanged call of `key`, when every recorded
 /// observation still matches.
 #[must_use]
 pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option<Replay> {
+    // The caller requires a new independent request record. A saved result
+    // cannot create that observation, even when its output could be replayed.
+    if config.request_capture.is_some() {
+        return None;
+    }
     let workspace = std::path::absolute(&config.workspace).ok()?;
     let cache = workspace.join(&config.cache);
-    let Ok(bytes) = std::fs::read(record_path(&cache, key)) else {
+    if !record_path(&cache, key).is_file() {
+        trace("miss: no record");
+        return None;
+    }
+    // Independently resolve scope and current runtime before deserializing any
+    // saved result. Unavailable metadata or readback falls through normally.
+    let preflight = super::runner::replay_preflight(config).ok()?;
+    let location = ReplayLocation {
+        cache: &preflight.config.cache,
+        context: &preflight.context,
+        workspace_lock: &preflight.workspace_lock,
+        family: &preflight.family,
+    };
+    // Match ordinary execution's workspace -> family lock order. The saved
+    // record is not allowed to choose either lock or the new run directory.
+    let _workspace = lock(location.workspace_lock, true)?;
+    let _family = lock(&location.family.join("ownership.lock"), false)?;
+    preflight
+        .with_current_request(|current, paths, readback| {
+            replay_bound(&location, key, started, current, paths, readback)
+        })
+        .ok()??
+}
+
+struct ReplayLocation<'a> {
+    cache: &'a Path,
+    context: &'a Path,
+    workspace_lock: &'a Path,
+    family: &'a Path,
+}
+
+fn replay_bound(
+    location: &ReplayLocation<'_>,
+    key: &str,
+    started: std::time::Instant,
+    current: &ResolvedRequest,
+    paths: &sail_api::acceptance::RequestPathBinding<'_>,
+    readback: &sail_acceptance::inputs::GuardedReadback<'_>,
+) -> Option<Replay> {
+    let Ok(bytes) = std::fs::read(record_path(location.cache, key)) else {
         trace("miss: no record");
         return None;
     };
@@ -641,27 +912,38 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
         trace("miss: record version");
         return None;
     }
-    // The same order as a full run: the shared workspace lock, then the
-    // exclusive family ownership, so no run or prune changes the state
-    // while it is compared.
-    let _workspace = lock(&record.locks.0, true)?;
-    let _family = lock(&record.locks.1, false)?;
+    if record.locks.0 != location.workspace_lock
+        || record.locks.1 != location.family.join("ownership.lock")
+        || record.runs != location.context.join("runs")
+    {
+        trace("miss: independently resolved proof location differs");
+        return None;
+    }
     if let Some(reason) = mismatch(&record) {
         trace(&format!("miss: {reason}"));
         return None;
     }
-    let run_id = format!(
-        "{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos())
-    );
-    let mut result = record.result;
-    result.run_id.clone_from(&run_id);
+    if !origins::intact(&record.origins, &record.result) {
+        trace("miss: original proof producers unavailable or mismatched");
+        return None;
+    }
+    // Consume the independently scoped current-path/readback witnesses through
+    // the shared conjunction after the unchanged ordinary origin/history gate.
+    // The admitted token is declared-domain evidence, not full service authority.
+    let Some(admitted) = sail_api::acceptance::admit_declared_replay(
+        record.result,
+        &record.original_request,
+        current,
+        Some(paths),
+        Some(readback),
+    ) else {
+        trace("miss: independent request or guarded original revision differs");
+        return None;
+    };
+    let mut result = sail_api::acceptance::present_declared_replay(admitted);
     result.execution.wall_ms = started.elapsed().as_secs_f64() * 1000.0;
     // Keep the project's last-use time, as a full run's result does.
-    let directory = record.runs.join(&run_id);
+    let directory = location.context.join("runs").join(&current.run_id);
     if std::fs::create_dir_all(&directory).is_err()
         || super::files::json(&directory.join("result.json"), &result).is_err()
     {
@@ -778,6 +1060,54 @@ mod tests {
         let mut moved = base();
         moved[0].1 = "/opt/bin".into();
         assert_ne!(key_environment(moved), plain);
+    }
+
+    #[test]
+    fn original_request_capture_cannot_replay_without_a_new_capture() {
+        let mut config = Config {
+            workspace: PathBuf::from("/fixture/workspace"),
+            cache: PathBuf::from("/fixture/cache"),
+            sail: PathBuf::from("/fixture/sail"),
+            cargo_verus: PathBuf::from("/fixture/cargo-verus"),
+            cargo: PathBuf::from("/fixture/cargo"),
+            cargo_toolchain: super::super::CargoToolchain::Caller,
+            shim: PathBuf::from("/fixture/sail-z3"),
+            z3: PathBuf::from("/fixture/z3"),
+            socket: None,
+            args: Vec::new(),
+            force: false,
+            attribution_logs: false,
+            request_capture: None,
+        };
+        assert!(
+            key(&config, false).is_some(),
+            "ordinary fixture must be replay eligible"
+        );
+        config.request_capture = Some(super::super::RequestCaptureDestination {
+            path: PathBuf::from("/fixture/new-request.json"),
+            worker_id: "new-request-worker".into(),
+        });
+        assert!(
+            key(&config, false).is_none(),
+            "a replay cannot supply this original request capture"
+        );
+    }
+
+    #[test]
+    fn recent_status_changes_are_not_settled() -> Result<(), Box<dyn std::error::Error>> {
+        let start = SystemTime::now();
+        let at = |age: Duration| {
+            let time = start - age;
+            let since = time.duration_since(UNIX_EPOCH).unwrap_or_default();
+            let mut fields = [0i64; 8];
+            fields[6] = i64::try_from(since.as_secs()).unwrap_or_default();
+            fields[7] = i64::from(since.subsec_nanos());
+            serde_json::from_value::<Stamp>(serde_json::json!(fields))
+        };
+        assert!(at(Duration::from_secs(3))?.settled(start));
+        assert!(!at(Duration::from_millis(1500))?.settled(start));
+        assert!(!at(Duration::ZERO)?.settled(start));
+        Ok(())
     }
 
     /// A Cargo target with one build-script unit: the original, its
@@ -1000,3 +1330,7 @@ mod tests {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "noop_authority_tests.rs"]
+mod authority_tests;

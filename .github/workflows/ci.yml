@@ -1,13 +1,11 @@
 name: ci
 
 # Every push and PR to main or the release branch runs the six required checks.
-# Jobs after the authorship check run inside the CI image
-# (ci/Dockerfile, ADR 0013), through ci/run.sh, the same steps `ci/local.sh`
-# runs locally. CI serves rapid iteration: each job should finish in about
-# four minutes and must stay well under its 10-minute limit. Long, release
-# and acceptance-style runs (standard and deep conformance tiers, `release`,
-# benchmarks, acceptance-model proofs, production refinements, the macOS
-# `host` check) are local-only.
+# This draft retains model and production proof jobs in CI completion;
+# their final placement awaits owner question 41. Jobs after the authorship
+# check run inside ci/Dockerfile through ci/run.sh, also used by ci/local.sh.
+# CI jobs target about four minutes and must stay below ten minutes. Standard
+# and deep conformance, release, benchmarks and the macOS host gate are local.
 
 on:
   push:
@@ -31,7 +29,7 @@ jobs:
   completion:
     name: CI completion
     if: ${{ always() }}
-    needs: [no-ai-authorship, image, workspace-gate, solver-tests, end-to-end, conformance]
+    needs: [no-ai-authorship, image, workspace-gate, solver-tests, end-to-end, conformance, acceptance-proofs, acceptance-refinements]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -46,7 +44,149 @@ jobs:
           SOLVER: ${{ needs.solver-tests.result }}
           E2E: ${{ needs.end-to-end.result }}
           CONFORMANCE: ${{ needs.conformance.result }}
-        run: bash ci/check-completion.sh "$AUTHORSHIP" "$IMAGE" "$GATE" "$SOLVER" "$E2E" "$CONFORMANCE"
+          PROOFS: ${{ needs.acceptance-proofs.result }}
+          REFINEMENTS: ${{ needs.acceptance-refinements.result }}
+        run: bash ci/check-completion.sh "$AUTHORSHIP" "$IMAGE" "$GATE" "$SOLVER" "$E2E" "$CONFORMANCE" "$PROOFS" "$REFINEMENTS"
+
+  acceptance-proofs:
+    name: Acceptance model proofs
+    needs: [no-ai-authorship, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: ci/run.sh proofs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() }}
+        with:
+          name: acceptance-model-proof-failure
+          path: target/acceptance-proofs/
+          if-no-files-found: warn
+          retention-days: 7
+
+  acceptance-refinements:
+    # Preserve the aggregate check; every fixed component must succeed.
+    name: Acceptance production refinements
+    if: ${{ always() }}
+    needs: [refinement-query, refinement-inputs, refinement-authority]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require all production refinement roots and their controls
+        env:
+          QUERY: ${{ needs.refinement-query.result }}
+          INPUTS: ${{ needs.refinement-inputs.result }}
+          AUTHORITY: ${{ needs.refinement-authority.result }}
+        run: bash ci/check-refinements.sh "$QUERY" "$INPUTS" "$AUTHORITY"
+
+  refinement-query:
+    name: Acceptance production refinements (query ${{ matrix.partition }})
+    needs: [no-ai-authorship, image]
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: ["0/4", "1/4", "2/4", "3/4"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: ci/run.sh refinements query "$PARTITION"
+        env:
+          PARTITION: ${{ matrix.partition }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() }}
+        with:
+          name: acceptance-production-refinement-query-${{ strategy.job-index }}-failure
+          path: target/acceptance-refinements/
+          if-no-files-found: warn
+          retention-days: 7
+
+  refinement-inputs:
+    name: Acceptance production refinements (inputs ${{ matrix.partition }})
+    needs: [no-ai-authorship, image]
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: ["0/4", "1/4", "2/4", "3/4"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: ci/run.sh refinements inputs "$PARTITION"
+        env:
+          PARTITION: ${{ matrix.partition }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() }}
+        with:
+          name: acceptance-production-refinement-inputs-${{ strategy.job-index }}-failure
+          path: target/acceptance-refinements/
+          if-no-files-found: warn
+          retention-days: 7
+
+  refinement-authority:
+    name: Acceptance production refinements (authority ${{ matrix.partition }})
+    needs: [no-ai-authorship, image]
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: ["0/4", "1/4", "2/4", "3/4"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: ci/run.sh refinements authority "$PARTITION"
+        env:
+          PARTITION: ${{ matrix.partition }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() }}
+        with:
+          name: acceptance-production-refinement-authority-${{ strategy.job-index }}-failure
+          path: target/acceptance-refinements/
+          if-no-files-found: warn
+          retention-days: 7
 
   no-ai-authorship:
     # Required check name; must match `cargo xtask protect-main`.

@@ -115,6 +115,7 @@ fn output_matches(record: &BuildInput, target: &Path) -> bool {
     let mut paths = Vec::new();
     let mut keys = std::collections::BTreeSet::new();
     for line in text.lines() {
+        let line = line.trim();
         let line = line
             .strip_prefix("cargo::")
             .or_else(|| line.strip_prefix("cargo:"))
@@ -1152,7 +1153,7 @@ mod tests {
         json(
             &source_state,
             &crate::managed::source_inputs::Inputs {
-                version: 2,
+                version: crate::managed::source_inputs::VERSION,
                 paths,
                 covered: true,
                 by_package: Some(by_package),

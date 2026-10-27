@@ -175,3 +175,1112 @@ sail_verified! {
         true
     }
 }
+
+sail_code! {
+    /// Exact raw compiler-unit fields, before Cargo/source resolution.
+    /// This record does not certify that the compiler consumed a source tree.
+    #[derive(Debug)]
+    pub struct CompilerUnit {
+        /// Original manifest path bytes supplied to the compiler driver.
+        pub manifest: Vec<u8>,
+        /// Actual Rust crate name, preserving its distinction from Cargo names.
+        pub name: Vec<u8>,
+        /// Actual rustc crate-type bytes.
+        pub crate_type: Vec<u8>,
+        /// Exact Cargo binary name when the launcher supplied one.
+        pub cargo_name: Option<Vec<u8>>,
+    }
+
+    /// Command observations captured independently before the corresponding spawn.
+    #[derive(Debug)]
+    pub struct ProcessDescriptor {
+        /// Program bytes passed to `Command`, before OS path resolution.
+        pub program: Vec<u8>,
+        /// Exact ordered child argument bytes.
+        pub arguments: Vec<Vec<u8>>,
+        /// Explicit current directory, absent when inherited.
+        pub directory: Option<Vec<u8>>,
+        /// Explicit environment overrides/removals, not the inherited environment.
+        pub overrides: Vec<(Vec<u8>, Option<Vec<u8>>)>,
+    }
+
+    /// A monotone attempt namespace independent of PID allocation and reuse.
+    pub struct AttemptLedger<'a> {
+        run: &'a [u8],
+        unit: &'a CompilerUnit,
+        next: usize,
+    }
+
+    /// Pre-spawn slot whose request paths can be prepared before argv is sealed.
+    pub struct UnconfiguredAttempt<'a> {
+        run: &'a [u8],
+        unit: &'a CompilerUnit,
+        slot: usize,
+    }
+
+    /// Allocated before spawn; constructing a `Child` cannot choose this slot.
+    pub struct ReservedAttempt<'a> {
+        run: &'a [u8],
+        unit: &'a CompilerUnit,
+        slot: usize,
+        descriptor: ProcessDescriptor,
+    }
+
+    enum WaitObservation { Pending, Exited(i32), Signaled }
+
+    /// One child and its independent stream/termination observations.
+    pub struct RunningAttempt<'a> {
+        reserved: ReservedAttempt<'a>,
+        pid: u32,
+        stdout: Option<Vec<u8>>,
+        stderr: Option<Vec<u8>>,
+        exit: WaitObservation,
+        invalid: bool,
+    }
+
+    /// Complete process observations, never a verifier-proof authority token.
+    pub struct ObservedAttempt<'a> {
+        running: RunningAttempt<'a>,
+    }
+
+    /// Raw output recovered when event ambiguity withholds its observation seal.
+    #[derive(Debug)]
+    pub struct UnsealedOutput {
+        /// Original stdout bytes.
+        pub stdout: Vec<u8>,
+        /// Original stderr bytes.
+        pub stderr: Vec<u8>,
+        /// Actual normal exit code, absent on a signal.
+        pub exit: Option<i32>,
+    }
+
+    impl<'a> AttemptLedger<'a> {
+        sail_method! {
+            /// Creates an empty namespace for independently retained run/unit bytes.
+            pub fn new(run: &'a [u8], unit: &'a CompilerUnit) -> (out: Self)
+                requires(true)
+                ensures(ledger_run(&out) == run, ledger_unit(&out) == unit, ledger_next(&out) == 0)
+            { Self { run, unit, next: 0 } }
+        }
+        sail_method! {
+            /// Allocates a fresh slot before configuring a command.
+            pub fn allocate(&mut self) -> (out: Option<UnconfiguredAttempt<'a>>)
+                requires(true)
+                ensures(ledger_run(final(self)) == ledger_run(old(self)), ledger_unit(final(self)) == ledger_unit(old(self)),
+                    out.is_some() == (ledger_next(old(self)) < usize::MAX),
+                    out.is_some() ==> ledger_next(final(self)) == ledger_next(old(self)) + 1,
+                    out.is_none() ==> ledger_next(final(self)) == ledger_next(old(self)),
+                    out.is_some() ==> unconfigured_run(&out.unwrap()) == ledger_run(final(self)),
+                    out.is_some() ==> unconfigured_unit(&out.unwrap()) == ledger_unit(final(self)),
+                    out.is_some() ==> unconfigured_slot(&out.unwrap()) == ledger_next(old(self)))
+            {
+                if self.next == usize::MAX { return None; }
+                let slot = self.next;
+                self.next += 1;
+                Some(UnconfiguredAttempt { run: self.run, unit: self.unit, slot })
+            }
+        }
+        sail_method! {
+            /// Allocates and configures an ordinary command in one checked step.
+            #[allow(clippy::question_mark, reason = "Keep explicit refusal in the source checked by stock Verus.")]
+            pub fn reserve(&mut self, descriptor: ProcessDescriptor) -> (out: Option<ReservedAttempt<'a>>)
+                requires(true)
+                ensures(ledger_run(final(self)) == ledger_run(old(self)), ledger_unit(final(self)) == ledger_unit(old(self)),
+                    out.is_some() == (ledger_next(old(self)) < usize::MAX),
+                    out.is_some() ==> ledger_next(final(self)) == ledger_next(old(self)) + 1,
+                    out.is_none() ==> ledger_next(final(self)) == ledger_next(old(self)),
+                    out.is_some() ==> reserved_run(&out.unwrap()) == ledger_run(final(self)),
+                    out.is_some() ==> reserved_unit(&out.unwrap()) == ledger_unit(final(self)),
+                    out.is_some() ==> reserved_slot(&out.unwrap()) == ledger_next(old(self)),
+                    out.is_some() ==> reserved_descriptor(&out.unwrap()) == descriptor)
+            {
+                let Some(allocation) = self.allocate() else { return None; };
+                Some(allocation.configure(descriptor))
+            }
+        }
+    }
+
+    impl<'a> UnconfiguredAttempt<'a> {
+        sail_method! {
+            /// Returns the independently allocated run bytes before request preparation.
+            #[must_use]
+            pub fn run(&self) -> (out: &'a [u8]) requires(true) ensures(out == unconfigured_run(self)) { self.run }
+        }
+        sail_method! {
+            /// Returns the raw unit whose observation paths are being prepared.
+            #[must_use]
+            pub fn unit(&self) -> (out: &'a CompilerUnit) requires(true) ensures(out == unconfigured_unit(self)) { self.unit }
+        }
+        sail_method! {
+            /// Returns the slot without claiming that a command or child exists.
+            #[must_use]
+            pub fn slot(&self) -> (out: usize) requires(true) ensures(out == unconfigured_slot(self)) { self.slot }
+        }
+        sail_method! {
+            /// Seals the final command after operational request paths are added.
+            pub fn configure(self, descriptor: ProcessDescriptor) -> (out: ReservedAttempt<'a>)
+                requires(true)
+                ensures(reserved_run(&out) == unconfigured_run(&self), reserved_unit(&out) == unconfigured_unit(&self),
+                    reserved_slot(&out) == unconfigured_slot(&self), reserved_descriptor(&out) == descriptor)
+            { ReservedAttempt { run: self.run, unit: self.unit, slot: self.slot, descriptor } }
+        }
+    }
+
+    impl<'a> ReservedAttempt<'a> {
+        sail_method! {
+            /// Returns the immutable run bytes for durable launch attribution.
+            #[must_use]
+            pub fn run(&self) -> (out: &'a [u8]) requires(true) ensures(out == reserved_run(self)) { self.run }
+        }
+        sail_method! {
+            /// Returns the original raw compiler-unit record.
+            #[must_use]
+            pub fn unit(&self) -> (out: &'a CompilerUnit) requires(true) ensures(out == reserved_unit(self)) { self.unit }
+        }
+        sail_method! {
+            /// Returns the slot allocated before this child was started.
+            #[must_use]
+            pub fn slot(&self) -> (out: usize) requires(true) ensures(out == reserved_slot(self)) { self.slot }
+        }
+        sail_method! {
+            /// Returns exactly the pre-spawn command observation.
+            #[must_use]
+            pub fn descriptor(&self) -> (out: &ProcessDescriptor) requires(true) ensures(out == &reserved_descriptor(self)) { &self.descriptor }
+        }
+        sail_method! {
+            /// Attaches the actual returned child PID; zero is not a child handle.
+            pub fn started(self, pid: u32) -> (out: Option<RunningAttempt<'a>>)
+                requires(true)
+                ensures(out.is_some() == (pid != 0),
+                    out.is_some() ==> running_reserved(&out.unwrap()) == self,
+                    out.is_some() ==> running_pid(&out.unwrap()) == pid,
+                    out.is_some() ==> running_stdout(&out.unwrap()).is_none(),
+                    out.is_some() ==> running_stderr(&out.unwrap()).is_none(),
+                    out.is_some() ==> running_exit(&out.unwrap()).is_none(),
+                    out.is_some() ==> !running_invalid(&out.unwrap()))
+            {
+                if pid == 0 { return None; }
+                Some(RunningAttempt { reserved: self, pid, stdout: None, stderr: None, exit: WaitObservation::Pending, invalid: false })
+            }
+        }
+    }
+
+    impl<'a> RunningAttempt<'a> {
+        sail_method! {
+            /// Records a complete stdout read from this child's pipe.
+            #[must_use]
+            pub fn stdout_eof(mut self, bytes: Vec<u8>) -> (out: Self)
+                requires(true)
+                ensures(running_reserved(&out) == running_reserved(&self), running_pid(&out) == running_pid(&self),
+                    running_stdout(&out).is_some(),
+                    running_stdout(&self).is_none() ==> running_stdout(&out).unwrap() == bytes,
+                    running_stdout(&self).is_some() ==> running_stdout(&out) == running_stdout(&self),
+                    running_invalid(&out) == (running_invalid(&self) || running_stdout(&self).is_some()),
+                    running_stderr(&out) == running_stderr(&self), running_exit(&out) == running_exit(&self))
+            {
+                if self.stdout.is_some() { self.invalid = true; }
+                else { self.stdout = Some(bytes); }
+                self
+            }
+        }
+        sail_method! {
+            /// Records a complete stderr read from this child's pipe.
+            #[must_use]
+            pub fn stderr_eof(mut self, bytes: Vec<u8>) -> (out: Self)
+                requires(true)
+                ensures(running_reserved(&out) == running_reserved(&self), running_pid(&out) == running_pid(&self),
+                    running_stderr(&out).is_some(),
+                    running_stderr(&self).is_none() ==> running_stderr(&out).unwrap() == bytes,
+                    running_stderr(&self).is_some() ==> running_stderr(&out) == running_stderr(&self),
+                    running_invalid(&out) == (running_invalid(&self) || running_stderr(&self).is_some()),
+                    running_stdout(&out) == running_stdout(&self), running_exit(&out) == running_exit(&self))
+            {
+                if self.stderr.is_some() { self.invalid = true; }
+                else { self.stderr = Some(bytes); }
+                self
+            }
+        }
+        sail_method! {
+            /// Records the actual wait result, distinguishing signal from no wait.
+            #[must_use]
+            pub fn exited(mut self, exit: Option<i32>) -> (out: Self)
+                requires(true)
+                ensures(running_reserved(&out) == running_reserved(&self), running_pid(&out) == running_pid(&self),
+                    running_exit(&out).is_some(),
+                    running_exit(&self).is_none() ==> running_exit(&out).unwrap() == exit,
+                    running_exit(&self).is_some() ==> running_exit(&out) == running_exit(&self),
+                    running_invalid(&out) == (running_invalid(&self) || running_exit(&self).is_some()),
+                    running_stdout(&out) == running_stdout(&self), running_stderr(&out) == running_stderr(&self))
+            {
+                if matches!(self.exit, WaitObservation::Pending) {
+                    self.exit = match exit { Some(code) => WaitObservation::Exited(code), None => WaitObservation::Signaled };
+                } else { self.invalid = true; }
+                self
+            }
+        }
+        sail_method! {
+            /// Seals only complete, unambiguous child observations.
+            pub fn finish(self) -> (out: Option<ObservedAttempt<'a>>)
+                requires(true)
+                ensures(out.is_some() == observation_complete(&self),
+                    out.is_some() ==> observed_running(&out.unwrap()) == self,
+                    out.is_some() ==> observation_complete(&observed_running(&out.unwrap())))
+            {
+                if self.invalid || self.stdout.is_none() || self.stderr.is_none() || matches!(self.exit, WaitObservation::Pending) { return None; }
+                Some(ObservedAttempt { running: self })
+            }
+        }
+        sail_method! {
+            /// Preserves complete raw output when ambiguous events refuse admission.
+            ///
+            /// # Errors
+            /// Returns the original output when repeated events invalidated admission.
+            #[allow(clippy::manual_unwrap_or_default, reason = "Keep the explicit cases in the source checked by stock Verus.")]
+            pub fn finish_or_output(self) -> (out: Result<ObservedAttempt<'a>, UnsealedOutput>)
+                requires(true)
+                ensures(out.is_ok() == observation_complete(&self),
+                    out.is_ok() ==> observed_running(&out.unwrap()) == self,
+                    match out { Err(bytes) => (running_stdout(&self).is_some() ==> bytes.stdout == running_stdout(&self).unwrap())
+                        && (running_stderr(&self).is_some() ==> bytes.stderr == running_stderr(&self).unwrap())
+                        && (running_exit(&self).is_some() ==> bytes.exit == running_exit(&self).unwrap()), _ => true })
+            {
+                if matches!(self.exit, WaitObservation::Pending) || self.stdout.is_none() || self.stderr.is_none() || self.invalid {
+                    let stdout = match self.stdout { Some(bytes) => bytes, None => Vec::new() };
+                    let stderr = match self.stderr { Some(bytes) => bytes, None => Vec::new() };
+                    let exit = match self.exit { WaitObservation::Exited(code) => Some(code), _ => None };
+                    Err(UnsealedOutput { stdout, stderr, exit })
+                } else { Ok(ObservedAttempt { running: self }) }
+            }
+        }
+    }
+
+    impl<'a> ObservedAttempt<'a> {
+        sail_method! {
+            /// Returns the exact reservation whose child produced these observations.
+            #[must_use]
+            pub fn reserved(&self) -> (out: &ReservedAttempt<'a>)
+                requires(true) ensures(out == &running_reserved(&observed_running(self)))
+            { &self.running.reserved }
+        }
+        sail_method! {
+            /// Returns the PID attached to this reserved attempt.
+            #[must_use]
+            pub fn pid(&self) -> (out: u32)
+                requires(true) ensures(out == running_pid(&observed_running(self)))
+            { self.running.pid }
+        }
+        sail_method! {
+            /// Borrows the exact complete observed stdout bytes.
+            #[must_use]
+            pub fn stdout(&self) -> (out: &[u8])
+                requires(observation_complete(&observed_running(self)))
+                ensures(out@ == running_stdout(&observed_running(self)).unwrap()@)
+            { match &self.running.stdout { Some(bytes) => bytes.as_slice(), None => &[] } }
+        }
+        sail_method! {
+            /// Borrows the exact complete observed stderr bytes.
+            #[must_use]
+            pub fn stderr(&self) -> (out: &[u8])
+                requires(observation_complete(&observed_running(self)))
+                ensures(out@ == running_stderr(&observed_running(self)).unwrap()@)
+            { match &self.running.stderr { Some(bytes) => bytes.as_slice(), None => &[] } }
+        }
+        sail_method! {
+            /// Returns the actual observed normal status, absent on a signal.
+            #[must_use]
+            pub fn exit(&self) -> (out: Option<i32>)
+                requires(observation_complete(&observed_running(self)))
+                ensures(out == running_exit(&observed_running(self)).unwrap())
+            { match self.running.exit { WaitObservation::Exited(code) => Some(code), _ => None } }
+        }
+        sail_method! {
+            /// A normal process success is distinct from successful verification.
+            #[must_use]
+            pub fn normal_success(&self) -> (out: bool)
+                requires(observation_complete(&observed_running(self)))
+                ensures(out == (running_exit(&observed_running(self)).unwrap() == Some(0)))
+            { self.exit() == Some(0) }
+        }
+        sail_method! {
+            /// Returns the complete raw observations after callers bind their history.
+            #[allow(clippy::manual_unwrap_or_default, reason = "Keep the explicit constructor cases in the source checked by stock Verus.")]
+            pub fn into_output(self) -> (out: (Vec<u8>, Vec<u8>, Option<i32>))
+                requires(observation_complete(&observed_running(&self)))
+                ensures(out.0 == running_stdout(&observed_running(&self)).unwrap(),
+                    out.1 == running_stderr(&observed_running(&self)).unwrap(),
+                    out.2 == running_exit(&observed_running(&self)).unwrap())
+            {
+                let stdout = match self.running.stdout { Some(bytes) => bytes, None => Vec::new() };
+                let stderr = match self.running.stderr { Some(bytes) => bytes, None => Vec::new() };
+                let exit = match self.running.exit { WaitObservation::Exited(code) => Some(code), _ => None };
+                (stdout, stderr, exit)
+            }
+        }
+    }
+}
+
+sail_spec! {
+    pub closed spec fn ledger_run<'a>(a: &AttemptLedger<'a>) -> &'a [u8] { a.run }
+    pub closed spec fn ledger_unit<'a>(a: &AttemptLedger<'a>) -> &'a CompilerUnit { a.unit }
+    pub closed spec fn ledger_next(a: &AttemptLedger) -> usize { a.next }
+    pub closed spec fn unconfigured_run<'a>(a: &UnconfiguredAttempt<'a>) -> &'a [u8] { a.run }
+    pub closed spec fn unconfigured_unit<'a>(a: &UnconfiguredAttempt<'a>) -> &'a CompilerUnit { a.unit }
+    pub closed spec fn unconfigured_slot(a: &UnconfiguredAttempt) -> usize { a.slot }
+    pub closed spec fn reserved_run<'a>(a: &ReservedAttempt<'a>) -> &'a [u8] { a.run }
+    pub closed spec fn reserved_unit<'a>(a: &ReservedAttempt<'a>) -> &'a CompilerUnit { a.unit }
+    pub closed spec fn reserved_slot(a: &ReservedAttempt) -> usize { a.slot }
+    pub closed spec fn reserved_descriptor(a: &ReservedAttempt) -> ProcessDescriptor { a.descriptor }
+    pub closed spec fn running_reserved<'a>(a: &RunningAttempt<'a>) -> ReservedAttempt<'a> { a.reserved }
+    pub closed spec fn running_pid(a: &RunningAttempt) -> u32 { a.pid }
+    pub closed spec fn running_stdout(a: &RunningAttempt) -> Option<Vec<u8>> { a.stdout }
+    pub closed spec fn running_stderr(a: &RunningAttempt) -> Option<Vec<u8>> { a.stderr }
+    pub closed spec fn running_exit(a: &RunningAttempt) -> Option<Option<i32>> {
+        match a.exit { WaitObservation::Pending => None, WaitObservation::Exited(code) => Some(Some(code)), WaitObservation::Signaled => Some(None) }
+    }
+    pub closed spec fn running_invalid(a: &RunningAttempt) -> bool { a.invalid }
+    pub closed spec fn observed_running<'a>(a: &ObservedAttempt<'a>) -> RunningAttempt<'a> { a.running }
+    pub open spec fn observation_complete(a: &RunningAttempt) -> bool {
+        !running_invalid(a) && running_stdout(a).is_some() && running_stderr(a).is_some() && running_exit(a).is_some()
+    }
+}
+
+sail_verified! {
+    /// Binds downstream report input to the same complete child observations.
+    pub fn observed_payload_matches(observed: &ObservedAttempt, stdout: &[u8], stderr: &[u8], exit: Option<i32>) -> (out: bool)
+        requires(observation_complete(&observed_running(observed)))
+        ensures(out == (running_stdout(&observed_running(observed)).unwrap()@ == stdout@
+            && running_stderr(&observed_running(observed)).unwrap()@ == stderr@
+            && running_exit(&observed_running(observed)).unwrap() == exit))
+    {
+        exact_bytes(observed.stdout(), stdout) && exact_bytes(observed.stderr(), stderr) && observed.exit() == exit
+    }
+}
+
+sail_spec! {
+    pub open spec fn rust_crate_name(cargo: Seq<u8>, rust: Seq<u8>) -> bool {
+        cargo.len() == rust.len() && forall |i: int| 0 <= i < cargo.len() ==>
+            rust[i] == if cargo[i] == 45u8 { 95u8 } else { cargo[i] }
+    }
+
+    pub open spec fn compatible_target_kind(cargo: Seq<u8>, rust: Seq<u8>) -> bool {
+        cargo == rust || (cargo == b"lib"@ && rust == b"rlib"@)
+    }
+
+    /// Name/kind correspondence only; manifest, source and input closure are separate.
+    pub open spec fn compiler_target_name_kind(unit: &CompilerUnit, name: Seq<u8>, kinds: Seq<Vec<u8>>) -> bool {
+        rust_crate_name(name, unit.name@)
+            && (unit.cargo_name.is_some() ==> unit.cargo_name.unwrap()@ == name)
+            && exists |i: int| 0 <= i < kinds.len() && compatible_target_kind(kinds[i]@, unit.crate_type@)
+    }
+}
+
+sail_verified! {
+    /// Checks the existing Cargo hyphen-to-underscore Rust-name mapping bytewise.
+    pub fn cargo_crate_name_matches(cargo: &[u8], rust: &[u8]) -> (out: bool)
+        requires(true)
+        ensures(out == rust_crate_name(cargo@, rust@))
+    {
+        if cargo.len() != rust.len() { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < cargo.len())
+            invariant(i <= cargo.len(), cargo.len() == rust.len(),
+                forall |j: int| 0 <= j < i ==> rust@[j] == if cargo@[j] == 45u8 { 95u8 } else { cargo@[j] })
+            decreases(cargo.len() - i)
+            {
+                let expected = if cargo[i] == b'-' { b'_' } else { cargo[i] };
+                if rust[i] != expected { return false; }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Checks exact Cargo identity when supplied, including normalized-name collisions.
+    pub fn compiler_unit_matches_target(unit: &CompilerUnit, name: &[u8], kinds: &[Vec<u8>]) -> (out: bool)
+        requires(true)
+        ensures(out == compiler_target_name_kind(unit, name@, kinds@))
+    {
+        if !cargo_crate_name_matches(name, &unit.name) { return false; }
+        let exact_name = match &unit.cargo_name { Some(exact) => exact_bytes(exact, name), None => true };
+        if !exact_name { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < kinds.len())
+            invariant(i <= kinds.len(), rust_crate_name(name@, unit.name@),
+                unit.cargo_name.is_some() ==> unit.cargo_name.unwrap()@ == name@,
+                forall |j: int| 0 <= j < i ==> !compatible_target_kind(kinds@[j]@, unit.crate_type@))
+            decreases(kinds.len() - i)
+            {
+                if exact_bytes(&kinds[i], &unit.crate_type)
+                    || (exact_bytes(&kinds[i], b"lib") && exact_bytes(&unit.crate_type, b"rlib")) { return true; }
+                i += 1;
+            }
+        }
+        false
+    }
+}
+
+sail_code! {
+    /// Structural kind of the actual parsed function-details field.
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum EngineFieldShape {
+        /// The parsed JSON field is an object.
+        Object,
+        /// Missing or another JSON type.
+        Other,
+    }
+
+    /// The optional JSON success field retains missing versus invalid types.
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum EngineSuccessField {
+        /// Field is absent from the object.
+        Missing,
+        /// Explicit Boolean field.
+        Boolean(bool),
+        /// Present field with another JSON type.
+        Other,
+    }
+
+    /// Untrusted decoded final event fields; none is completion authority.
+    #[derive(Debug)]
+    pub struct EngineTerminalFields {
+        /// Actual decoded event version.
+        pub version: u64,
+        /// Actual decoded event name bytes.
+        pub event: Vec<u8>,
+        /// Actual decoded phase bytes.
+        pub phase: Vec<u8>,
+        /// Actual optional normal-termination field.
+        pub normal: Option<bool>,
+        /// Actual optional success field.
+        pub success: Option<bool>,
+    }
+
+    /// Original event bytes and one decoded version per physical JSONL record.
+    #[derive(Debug)]
+    pub struct EngineProtocolCandidate {
+        /// Exact bounded bytes read from the engine side channel.
+        pub raw: Vec<u8>,
+        /// A malformed JSON record or wrong version type maps to None.
+        pub versions: Vec<Option<u64>>,
+        /// Original final record decoded with duplicate-field refusal.
+        pub terminal: Option<EngineTerminalFields>,
+    }
+
+    /// Actual selected JSON fields from one original verifier result document.
+    #[derive(Debug)]
+    pub struct EngineDocumentFields {
+        /// Kind of the original function-details value.
+        pub functions: EngineFieldShape,
+        /// Original non-normalized version text when it is a string.
+        pub version: Option<Vec<u8>>,
+        /// Original build profile text when it is a string.
+        pub profile: Option<Vec<u8>>,
+        /// Original toolchain text when it is a string.
+        pub toolchain: Option<Vec<u8>>,
+        /// Original commit text when it is a string.
+        pub commit: Option<Vec<u8>>,
+        /// Original platform OS text when it is a string.
+        pub os: Option<Vec<u8>>,
+        /// Original platform architecture text when it is a string.
+        pub arch: Option<Vec<u8>>,
+        /// Original encountered-error Boolean, preserving absence/type refusal.
+        pub error: Option<bool>,
+        /// Original encountered-VIR-error Boolean.
+        pub vir_error: Option<bool>,
+        /// Original success field, including missing versus wrong type.
+        pub success: EngineSuccessField,
+        /// Original nonnegative integral verified count, when correctly typed.
+        pub verified: Option<u64>,
+        /// Original nonnegative integral error count, when correctly typed.
+        pub errors: Option<u64>,
+        /// Original whole-invocation Boolean, when correctly typed.
+        pub whole: Option<bool>,
+    }
+
+    /// Parsed result candidates and untouched bytes outside their JSON frames.
+    #[derive(Debug)]
+    pub struct EngineDocumentCandidates {
+        /// Every parsed JSON document, in its original order.
+        pub documents: Vec<EngineDocumentFields>,
+        /// Exact original remainder from the result framing decoder.
+        pub remainder: Vec<u8>,
+    }
+
+    /// Completion or the concrete guard that refuses engine completion.
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum EngineCompletion {
+        /// Consistent normal terminal, process status and result document.
+        Complete,
+        /// Process status is outside the normal verifier result protocol.
+        ProcessStatus,
+        /// The observed result exceeds the existing resource bound.
+        ResultSize,
+        /// Side-channel bytes are absent, incomplete, malformed or unsealed.
+        Terminal,
+        /// Process status contradicts the original terminal success field.
+        ExitMismatch,
+        /// Original result document fields or framing refuse completion.
+        Document,
+        /// An original observed diagnostic requires an unavailable runtime feature.
+        MissingFeature,
+    }
+}
+
+sail_spec! {
+    pub open spec fn engine_text_present(value: &Option<Vec<u8>>) -> bool {
+        value.is_some() && value.unwrap()@.len() > 0
+    }
+    pub open spec fn engine_ascii_space(byte: u8) -> bool {
+        byte == 9 || byte == 10 || byte == 12 || byte == 13 || byte == 32
+    }
+    pub open spec fn engine_terminal_fields_valid(t: &EngineTerminalFields) -> bool {
+        t.version == 1 && t.event@ == b"compiler-sealed"@ && t.phase@ == b"full"@
+    }
+    pub open spec fn engine_terminal_valid(p: &EngineProtocolCandidate) -> bool {
+        p.raw@.len() > 0 && p.raw@.len() <= 16_777_216 && p.raw@[p.raw@.len() - 1] == 10
+            && p.versions@.len() > 0
+            && (forall |i: int| 0 <= i < p.versions@.len() ==> p.versions@[i] == Some(1u64))
+            && p.terminal.is_some() && engine_terminal_fields_valid(&p.terminal.unwrap())
+    }
+    pub open spec fn engine_document_valid(d: &EngineDocumentFields, success: bool) -> bool {
+        matches!(d.functions, EngineFieldShape::Object)
+            && engine_text_present(&d.version) && engine_text_present(&d.profile)
+            && engine_text_present(&d.toolchain) && engine_text_present(&d.commit)
+            && engine_text_present(&d.os) && engine_text_present(&d.arch)
+            && d.error.is_some() && d.vir_error.is_some()
+            && (match d.success { EngineSuccessField::Boolean(value) => value == success,
+                EngineSuccessField::Missing => true, EngineSuccessField::Other => false })
+            && !(d.vir_error.unwrap() && success)
+            && (success ==> d.error == Some(false) && d.errors == Some(0u64))
+            && (d.vir_error.unwrap() || (d.verified.is_some() && d.errors.is_some() && d.whole.is_some()
+                && (d.whole != Some(true) || matches!(d.success, EngineSuccessField::Boolean(_)))))
+    }
+    pub open spec fn engine_document_stream_valid(d: &EngineDocumentCandidates, success: bool) -> bool {
+        d.documents@.len() == 1 && engine_document_valid(&d.documents@[0], success)
+            && forall |i: int| 0 <= i < d.remainder@.len() ==> engine_ascii_space(d.remainder@[i])
+    }
+    pub open spec fn engine_completion_valid(p: &Option<EngineProtocolCandidate>, d: &EngineDocumentCandidates,
+        stdout: Seq<u8>, exit: Option<i32>) -> bool {
+        (exit == Some(0i32) || exit == Some(1i32)) && stdout.len() <= 33_554_432
+            && p.is_some() && engine_terminal_valid(&p.unwrap())
+            && p.unwrap().terminal.unwrap().normal == Some(true)
+            && p.unwrap().terminal.unwrap().success.is_some()
+            && (exit == Some(0i32)) == p.unwrap().terminal.unwrap().success.unwrap()
+            && engine_document_stream_valid(d, p.unwrap().terminal.unwrap().success.unwrap())
+    }
+}
+
+sail_verified! {
+    /// Checks a decoded string field without filling absent or wrong-typed data.
+    pub fn engine_has_text(value: &Option<Vec<u8>>) -> (out: bool)
+        requires(true)
+        ensures(out == engine_text_present(value))
+    {
+        match value { Some(bytes) => !bytes.is_empty(), None => false }
+    }
+}
+
+sail_verified! {
+    /// Checks original terminal fields, without trusting an event label alone.
+    pub fn engine_terminal_complete(p: &EngineProtocolCandidate) -> (out: bool)
+        requires(true)
+        ensures(out == engine_terminal_valid(p))
+    {
+        if p.raw.is_empty() || p.raw.len() > 16_777_216 || p.raw[p.raw.len() - 1] != b'\n' || p.versions.is_empty() { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < p.versions.len())
+            invariant(i <= p.versions.len(),
+                forall |j: int| 0 <= j < i ==> p.versions@[j] == Some(1u64))
+            decreases(p.versions.len() - i)
+            {
+                if p.versions[i] != Some(1u64) { return false; }
+                i += 1;
+            }
+        }
+        match &p.terminal {
+            Some(t) => t.version == 1 && exact_bytes(&t.event, b"compiler-sealed") && exact_bytes(&t.phase, b"full"),
+            None => false,
+        }
+    }
+}
+
+sail_verified! {
+    /// Checks the actual header, scalar types and exit-correlated result fields.
+    pub fn engine_document_complete(d: &EngineDocumentFields, success: bool) -> (out: bool)
+        requires(true)
+        ensures(out == engine_document_valid(d, success))
+    {
+        if !matches!(d.functions, EngineFieldShape::Object) || !engine_has_text(&d.version)
+            || !engine_has_text(&d.profile) || !engine_has_text(&d.toolchain)
+            || !engine_has_text(&d.commit) || !engine_has_text(&d.os) || !engine_has_text(&d.arch) {
+            return false;
+        }
+        let Some(vir_error) = d.vir_error else { return false; };
+        if d.error.is_none() { return false; }
+        match d.success {
+            EngineSuccessField::Boolean(value) => { if value != success { return false; } },
+            EngineSuccessField::Other => return false,
+            EngineSuccessField::Missing => (),
+        }
+        if vir_error && success { return false; }
+        if success && (d.error != Some(false) || d.errors != Some(0u64)) { return false; }
+        vir_error || (d.verified.is_some() && d.errors.is_some() && d.whole.is_some()
+            && (d.whole != Some(true) || matches!(d.success, EngineSuccessField::Boolean(_))))
+    }
+}
+
+sail_verified! {
+    /// Classifies completion from original field candidates and observed status.
+    pub fn engine_completion(p: &Option<EngineProtocolCandidate>, d: &EngineDocumentCandidates,
+        stdout: &[u8], exit: Option<i32>) -> (out: EngineCompletion)
+        requires(true)
+        ensures((out == EngineCompletion::Complete) == engine_completion_valid(p, d, stdout@, exit),
+            out != EngineCompletion::MissingFeature)
+    {
+        if exit != Some(0i32) && exit != Some(1i32) { return EngineCompletion::ProcessStatus; }
+        if stdout.len() > 33_554_432 { return EngineCompletion::ResultSize; }
+        let Some(protocol) = p else { return EngineCompletion::Terminal; };
+        if !engine_terminal_complete(protocol) { return EngineCompletion::Terminal; }
+        let Some(terminal) = &protocol.terminal else { return EngineCompletion::Terminal; };
+        if terminal.normal != Some(true) { return EngineCompletion::Terminal; }
+        let Some(success) = terminal.success else { return EngineCompletion::Terminal; };
+        if (exit == Some(0i32)) != success { return EngineCompletion::ExitMismatch; }
+        if !engine_document_stream_complete(d, success) { return EngineCompletion::Document; }
+        EngineCompletion::Complete
+    }
+}
+
+sail_verified! {
+    /// Validates one complete original document and its exact framing remainder.
+    pub fn engine_document_stream_complete(d: &EngineDocumentCandidates, success: bool) -> (out: bool)
+        requires(true)
+        ensures(out == engine_document_stream_valid(d, success))
+    {
+        if d.documents.len() != 1 || !engine_document_complete(&d.documents[0], success) {
+            return false;
+        }
+        let mut i = 0usize;
+        sail_while! { (i < d.remainder.len())
+            invariant(i <= d.remainder.len(),
+                engine_document_valid(&d.documents@[0], success), d.documents@.len() == 1,
+                forall |j: int| 0 <= j < i ==> engine_ascii_space(d.remainder@[j]))
+            decreases(d.remainder.len() - i)
+            {
+                let byte = d.remainder[i];
+                if byte != b'\t' && byte != b'\n' && byte != 12 && byte != b'\r' && byte != b' ' {
+                    return false;
+                }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_spec! {
+    pub open spec fn engine_prefix_at(bytes: Seq<u8>, pattern: Seq<u8>, at: int) -> bool {
+        0 <= at <= bytes.len() && at + pattern.len() <= bytes.len()
+            && bytes.subrange(at, at + pattern.len()) == pattern
+    }
+    pub open spec fn engine_contains_pattern(bytes: Seq<u8>, pattern: Seq<u8>) -> bool {
+        exists |at: int| 0 <= at <= bytes.len() && engine_prefix_at(bytes, pattern, at)
+    }
+    pub open spec fn engine_feature_byte(byte: u8) -> bool {
+        (48 <= byte <= 57) || (65 <= byte <= 90) || (97 <= byte <= 122)
+            || byte == 95 || byte == 45
+    }
+    pub open spec fn engine_feature_name(feature: Seq<u8>) -> bool {
+        feature.len() > 0 && forall |i: int| 0 <= i < feature.len() ==> engine_feature_byte(feature[i])
+    }
+    pub open spec fn engine_feature_pattern(feature: Seq<u8>) -> Seq<u8> {
+        b"Please cargo build with `--features "@ + feature + seq![96u8]
+    }
+}
+
+sail_verified! {
+    /// Checks an exact byte pattern at one candidate original offset.
+    pub fn engine_pattern_at(bytes: &[u8], pattern: &[u8], at: usize) -> (out: bool)
+        requires(true)
+        ensures(out == engine_prefix_at(bytes@, pattern@, at as int))
+    {
+        if at > bytes.len() || pattern.len() > bytes.len() - at { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < pattern.len())
+            invariant(i <= pattern.len(), at <= bytes.len(), pattern.len() <= bytes.len() - at,
+                forall |j: int| 0 <= j < i ==> bytes@[at as int + j] == pattern@[j])
+            decreases(pattern.len() - i)
+            {
+                if bytes[at + i] != pattern[i] { return false; }
+                i += 1;
+            }
+        }
+        sail_proof! { assert(bytes@.subrange(at as int, at as int + pattern@.len()) =~= pattern@); }
+        true
+    }
+}
+
+sail_verified! {
+    /// Searches original bytes without decoding, normalization or candidate offsets.
+    pub fn engine_contains(bytes: &[u8], pattern: &[u8]) -> (out: bool)
+        requires(true)
+        ensures(out == engine_contains_pattern(bytes@, pattern@))
+    {
+        let mut at = 0usize;
+        sail_while! { (at < bytes.len())
+            invariant(at <= bytes.len(),
+                forall |j: int| 0 <= j < at ==> !engine_prefix_at(bytes@, pattern@, j))
+            decreases(bytes.len() - at)
+            {
+                if engine_pattern_at(bytes, pattern, at) { return true; }
+                at += 1;
+            }
+        }
+        engine_pattern_at(bytes, pattern, at)
+    }
+}
+
+sail_verified! {
+    /// Checks the exact ASCII feature-name grammar used by the native decoder.
+    #[allow(clippy::manual_range_contains,
+        reason = "The explicit byte comparisons are shared with the stock-checked grammar, without a range-library adapter.")]
+    pub fn engine_valid_feature_name(feature: &[u8]) -> (out: bool)
+        requires(true)
+        ensures(out == engine_feature_name(feature@))
+    {
+        if feature.is_empty() { return false; }
+        let mut i = 0usize;
+        sail_while! { (i < feature.len())
+            invariant(i <= feature.len(), feature@.len() > 0,
+                forall |j: int| 0 <= j < i ==> engine_feature_byte(feature@[j]))
+            decreases(feature.len() - i)
+            {
+                let byte = feature[i];
+                if !((48 <= byte && byte <= 57) || (65 <= byte && byte <= 90)
+                    || (97 <= byte && byte <= 122) || byte == 95 || byte == 45) { return false; }
+                i += 1;
+            }
+        }
+        true
+    }
+}
+
+sail_verified! {
+    /// Constructs the complete unchanged diagnostic spelling, including its delimiter.
+    pub fn engine_diagnostic_pattern(feature: &[u8]) -> (out: Vec<u8>)
+        requires(true)
+        ensures(out@ == engine_feature_pattern(feature@))
+    {
+        let mut out = copy_bytes(b"Please cargo build with `--features ");
+        let mut i = 0usize;
+        sail_while! { (i < feature.len())
+            invariant(i <= feature.len(),
+                out@ == b"Please cargo build with `--features "@ + feature@.take(i as int))
+            decreases(feature.len() - i)
+            { out.push(feature[i]); i += 1; }
+        }
+        out.push(b'`');
+        out
+    }
+}
+
+sail_code! {
+    /// A concrete missing-feature diagnostic in this exact observed child's raw
+    /// output, absent from its declared available feature inventory. It is a
+    /// refusal, never proof authority or a trusted runtime-image certificate.
+    pub struct MissingEngineFeature<'a, 'b> {
+        observed: &'a ObservedAttempt<'b>,
+        feature: &'a [u8],
+        available: &'a [Vec<u8>],
+    }
+    impl<'a, 'b> MissingEngineFeature<'a, 'b> {
+        sail_impl_spec! {
+            pub closed spec fn observed(&self) -> &'a ObservedAttempt<'b> { self.observed }
+            pub closed spec fn feature(&self) -> &'a [u8] { self.feature }
+            pub closed spec fn available(&self) -> &'a [Vec<u8>] { self.available }
+            pub open spec fn valid(&self) -> bool { missing_engine_feature_valid(self) }
+        }
+        sail_method! {
+            /// Borrows the original actual process observation.
+            pub fn observed_attempt(&self) -> (out: &'a ObservedAttempt<'b>)
+                requires(true) ensures(out == self.observed()) { self.observed }
+        }
+        sail_method! {
+            /// Exact validated feature-name bytes from its original diagnostic.
+            pub fn feature_name(&self) -> (out: &'a [u8])
+                requires(true) ensures(out == self.feature()) { self.feature }
+        }
+        sail_method! {
+            /// Exact runtime-feature candidates used by the refusal factory.
+            pub fn available_features(&self) -> (out: &'a [Vec<u8>])
+                requires(true) ensures(out == self.available()) { self.available }
+        }
+    }
+}
+
+sail_spec! {
+    pub open spec fn feature_refusal_fields(stdout: Seq<u8>, stderr: Seq<u8>, feature: Seq<u8>, available: Seq<Vec<u8>>) -> bool {
+        engine_feature_name(feature)
+            && (forall |i: int| 0 <= i < available.len() ==> available[i]@ != feature)
+            && (engine_contains_pattern(stdout, engine_feature_pattern(feature))
+                || engine_contains_pattern(stderr, engine_feature_pattern(feature)))
+    }
+    pub open spec fn missing_engine_feature_valid(f: &MissingEngineFeature) -> bool {
+        observation_complete(&observed_running(f.observed()))
+            && feature_refusal_fields(running_stdout(&observed_running(f.observed())).unwrap()@,
+                running_stderr(&observed_running(f.observed())).unwrap()@, f.feature()@, f.available()@)
+    }
+}
+
+sail_verified! {
+    /// Validates a candidate against the actual observed byte streams and the
+    /// exact declared feature inventory. A caller-supplied feature name alone
+    /// cannot authorize a missing-feature restart.
+    pub fn missing_engine_feature<'a, 'b>(observed: &'a ObservedAttempt<'b>, feature: &'a [u8],
+        available: &'a [Vec<u8>]) -> (out: Option<MissingEngineFeature<'a, 'b>>)
+        requires(observation_complete(&observed_running(observed)))
+        ensures(out.is_some() == feature_refusal_fields(
+                running_stdout(&observed_running(observed)).unwrap()@,
+                running_stderr(&observed_running(observed)).unwrap()@, feature@, available@),
+            out.is_some() ==> out.unwrap().valid(),
+            out.is_some() ==> out.unwrap().observed() == observed,
+            out.is_some() ==> out.unwrap().feature() == feature,
+            out.is_some() ==> out.unwrap().available() == available)
+    {
+        if !engine_valid_feature_name(feature) { return None; }
+        let mut i = 0usize;
+        sail_while! { (i < available.len())
+            invariant(i <= available.len(), engine_feature_name(feature@),
+                forall |j: int| 0 <= j < i ==> available@[j]@ != feature@)
+            decreases(available.len() - i)
+            {
+                if exact_bytes(&available[i], feature) { return None; }
+                i += 1;
+            }
+        }
+        let pattern = engine_diagnostic_pattern(feature);
+        if !engine_contains(observed.stderr(), &pattern) && !engine_contains(observed.stdout(), &pattern) { return None; }
+        Some(MissingEngineFeature { observed, feature, available })
+    }
+}
+
+sail_code! {
+    /// A normally exited observed child whose typed engine-protocol candidates
+    /// refuse completion. Engine image/target and physical file attribution
+    /// remain separate native joins. This is not a process failure or a proof.
+    pub struct DeclinedEngine<'a, 'b> {
+        observed: &'a ObservedAttempt<'b>,
+        protocol: &'a Option<EngineProtocolCandidate>,
+        documents: &'a EngineDocumentCandidates,
+        missing: Option<MissingEngineFeature<'a, 'b>>,
+        reason: EngineCompletion,
+    }
+
+    impl<'a, 'b> DeclinedEngine<'a, 'b> {
+        sail_impl_spec! {
+            pub closed spec fn observed(&self) -> &'a ObservedAttempt<'b> { self.observed }
+            pub closed spec fn protocol(&self) -> &'a Option<EngineProtocolCandidate> { self.protocol }
+            pub closed spec fn documents(&self) -> &'a EngineDocumentCandidates { self.documents }
+            pub closed spec fn reason(&self) -> EngineCompletion { self.reason }
+            pub closed spec fn missing(&self) -> Option<MissingEngineFeature<'a, 'b>> { self.missing }
+            pub open spec fn valid(&self) -> bool { declined_origin_valid(self) }
+        }
+        sail_method! {
+            /// Returns the independently observed child, retaining its actual exit.
+            pub fn observed_attempt(&self) -> (out: &'a ObservedAttempt<'b>)
+                requires(true) ensures(out == self.observed())
+            { self.observed }
+        }
+        sail_method! {
+            /// Borrows the original side-channel candidate, including absence.
+            pub fn protocol_candidate(&self) -> (out: &'a Option<EngineProtocolCandidate>)
+                requires(true) ensures(out == self.protocol())
+            { self.protocol }
+        }
+        sail_method! {
+            /// Borrows every decoded original result candidate and remainder.
+            pub fn document_candidates(&self) -> (out: &'a EngineDocumentCandidates)
+                requires(true) ensures(out == self.documents())
+            { self.documents }
+        }
+        sail_method! {
+            /// Borrows the concrete raw-output feature refusal, when present.
+            pub fn feature_refusal(&self) -> (out: &Option<MissingEngineFeature<'a, 'b>>)
+                requires(true) ensures(*out == self.missing()) { &self.missing }
+        }
+        sail_method! {
+            /// Borrows the refusal reason derived from the actual typed candidates.
+            pub fn completion_reason(&self) -> (out: &EngineCompletion)
+                requires(true) ensures(*out == self.reason())
+            { &self.reason }
+        }
+    }
+}
+
+sail_verified! {
+    /// Seals actual normal exit-zero and engine-protocol refusal facts.
+    /// Missing process observations cannot call this path; the factory does not
+    /// establish the child's trusted image or the side-channel file's author.
+    pub fn decline_engine<'a, 'b>(observed: &'a ObservedAttempt<'b>,
+        protocol: &'a Option<EngineProtocolCandidate>, documents: &'a EngineDocumentCandidates)
+        -> (out: Option<DeclinedEngine<'a, 'b>>)
+        requires(observation_complete(&observed_running(observed)))
+        ensures(out.is_some() == (running_exit(&observed_running(observed)).unwrap() == Some(0i32)
+                && !engine_completion_valid(protocol, documents,
+                    running_stdout(&observed_running(observed)).unwrap()@, Some(0i32))),
+            out.is_some() ==> out.unwrap().valid(),
+            out.is_some() ==> out.unwrap().observed() == observed,
+            out.is_some() ==> out.unwrap().protocol() == protocol,
+            out.is_some() ==> out.unwrap().documents() == documents,
+            out.is_some() ==> out.unwrap().missing().is_none())
+    {
+        if observed.exit() != Some(0i32) { return None; }
+        let reason = engine_completion(protocol, documents, observed.stdout(), observed.exit());
+        if matches!(reason, EngineCompletion::Complete) { return None; }
+        Some(DeclinedEngine { observed, protocol, documents, missing: None, reason })
+    }
+}
+
+sail_verified! {
+    /// Derives a normal-zero engine decline from a concrete original missing-
+    /// feature diagnostic even when its protocol and result are well formed.
+    pub fn decline_engine_missing_feature<'a, 'b>(feature: MissingEngineFeature<'a, 'b>,
+        protocol: &'a Option<EngineProtocolCandidate>, documents: &'a EngineDocumentCandidates)
+        -> (out: Option<DeclinedEngine<'a, 'b>>)
+        requires(feature.valid())
+        ensures(out.is_some() == (running_exit(&observed_running(feature.observed())).unwrap() == Some(0i32)),
+            out.is_some() ==> out.unwrap().valid(),
+            out.is_some() ==> out.unwrap().observed() == feature.observed(),
+            out.is_some() ==> out.unwrap().protocol() == protocol,
+            out.is_some() ==> out.unwrap().documents() == documents,
+            out.is_some() ==> out.unwrap().missing() == Some(feature),
+            out.is_some() ==> out.unwrap().reason() == EngineCompletion::MissingFeature)
+    {
+        let observed = feature.observed_attempt();
+        if observed.exit() != Some(0i32) { return None; }
+        Some(DeclinedEngine { observed, protocol, documents, missing: Some(feature), reason: EngineCompletion::MissingFeature })
+    }
+}
+
+sail_code! {
+    /// Original candidate decision; completion is protocol completion only, not
+    /// mathematical proof authority or a physical loaded-image certificate.
+    pub enum EngineDecision<'a, 'b> {
+        /// No decoded missing feature and consistent original completion fields.
+        Complete,
+        /// An actual normal-zero child supplies a checked concrete refusal.
+        Declined(DeclinedEngine<'a, 'b>),
+        /// Other process, parser, diagnostic or observation failure needs fallback.
+        Refused,
+    }
+}
+
+sail_verified! {
+    /// Makes the actual native engine/fallback choice from original observed
+    /// output and decoder candidates. The decoder's absence/completeness and
+    /// runtime feature inventory attribution remain explicit native joins.
+    pub fn engine_decision<'a, 'b>(observed: &'a ObservedAttempt<'b>,
+        protocol: &'a Option<EngineProtocolCandidate>, documents: &'a EngineDocumentCandidates,
+        missing: Option<&'a [u8]>, available: &'a [Vec<u8>]) -> (out: EngineDecision<'a, 'b>)
+        requires(observation_complete(&observed_running(observed)))
+        ensures((out is Complete) == (missing.is_none() && engine_completion_valid(protocol, documents,
+                running_stdout(&observed_running(observed)).unwrap()@, running_exit(&observed_running(observed)).unwrap())),
+            out is Declined ==> out->Declined_0.valid() && out->Declined_0.observed() == observed,
+            missing.is_some() && running_exit(&observed_running(observed)).unwrap() == Some(0i32)
+                && feature_refusal_fields(running_stdout(&observed_running(observed)).unwrap()@,
+                    running_stderr(&observed_running(observed)).unwrap()@, missing.unwrap()@, available@)
+                ==> out is Declined)
+    {
+        if let Some(name) = missing {
+            let Some(feature) = missing_engine_feature(observed, name, available) else { return EngineDecision::Refused; };
+            return match decline_engine_missing_feature(feature, protocol, documents) {
+                Some(declined) => EngineDecision::Declined(declined), None => EngineDecision::Refused,
+            };
+        }
+        if matches!(engine_completion(protocol, documents, observed.stdout(), observed.exit()), EngineCompletion::Complete) {
+            return EngineDecision::Complete;
+        }
+        match decline_engine(observed, protocol, documents) {
+            Some(declined) => EngineDecision::Declined(declined), None => EngineDecision::Refused,
+        }
+    }
+}
+
+sail_spec! {
+    pub open spec fn declined_origin_valid(d: &DeclinedEngine) -> bool {
+        observation_complete(&observed_running(d.observed()))
+            && running_exit(&observed_running(d.observed())).unwrap() == Some(0i32)
+            && (match d.missing() {
+                Some(feature) => feature.valid() && feature.observed() == d.observed()
+                    && d.reason() == EngineCompletion::MissingFeature,
+                None => !engine_completion_valid(d.protocol(), d.documents(),
+                    running_stdout(&observed_running(d.observed())).unwrap()@, Some(0i32))
+                    && d.reason() != EngineCompletion::Complete && d.reason() != EngineCompletion::MissingFeature,
+            })
+    }
+}
+
+sail_code! {
+    /// Owned identity copied from one complete child observation. It preserves
+    /// history; it grants no new live, Current, input-domain or proof authority.
+    /// Persisted copies cannot be converted into a new `ObservedAttempt`.
+    #[derive(Debug)]
+    pub struct AttemptIdentity {
+        run: Vec<u8>, unit: CompilerUnit, slot: usize, descriptor: ProcessDescriptor,
+        pid: u32, exit: Option<i32>,
+    }
+
+    impl AttemptIdentity {
+        sail_impl_spec! {
+            pub closed spec fn run_view(&self) -> Seq<u8> { self.run@ }
+            pub closed spec fn unit_view(&self) -> CompilerUnit { self.unit }
+            pub closed spec fn slot_view(&self) -> usize { self.slot }
+            pub closed spec fn descriptor_view(&self) -> ProcessDescriptor { self.descriptor }
+            pub closed spec fn pid_view(&self) -> u32 { self.pid }
+            pub closed spec fn exit_view(&self) -> Option<i32> { self.exit }
+        }
+        sail_method! {
+            /// Copies the actual sealed child's immutable origin fields.
+            pub fn from_observed(observed: &ObservedAttempt<'_>) -> (out: Self)
+                requires(observation_complete(&observed_running(observed)))
+                ensures(out.run_view() == reserved_run(&running_reserved(&observed_running(observed)))@,
+                    super::phase_inputs::same_unit(out.unit_view(), *reserved_unit(&running_reserved(&observed_running(observed)))),
+                    out.slot_view() == reserved_slot(&running_reserved(&observed_running(observed))),
+                    super::phase_inputs::same_descriptor(out.descriptor_view(), reserved_descriptor(&running_reserved(&observed_running(observed)))),
+                    out.pid_view() == running_pid(&observed_running(observed)),
+                    out.exit_view() == running_exit(&observed_running(observed)).unwrap())
+            {
+                let reserved = observed.reserved();
+                Self { run: copy_bytes(reserved.run()),
+                    unit: super::phase_inputs::copy_compiler_unit(reserved.unit()), slot: reserved.slot(),
+                    descriptor: super::phase_inputs::copy_descriptor(reserved.descriptor()),
+                    pid: observed.pid(), exit: observed.exit() }
+            }
+        }
+        sail_method! {
+            /// Original enclosing run bytes, not a decoded label.
+            pub fn run(&self) -> (out: &[u8]) requires(true) ensures(out@ == self.run_view()) { &self.run }
+        }
+        sail_method! {
+            /// Every original raw compiler-unit field.
+            pub fn unit(&self) -> (out: &CompilerUnit) requires(true) ensures(*out == self.unit_view()) { &self.unit }
+        }
+        sail_method! {
+            /// Original exclusively allocated attempt slot.
+            pub fn slot(&self) -> (out: usize) requires(true) ensures(out == self.slot_view()) { self.slot }
+        }
+        sail_method! {
+            /// Every original final command field and ordered operation.
+            pub fn descriptor(&self) -> (out: &ProcessDescriptor) requires(true) ensures(*out == self.descriptor_view()) { &self.descriptor }
+        }
+        sail_method! {
+            /// Actual child identity recorded at its start.
+            pub fn pid(&self) -> (out: u32) requires(true) ensures(out == self.pid_view()) { self.pid }
+        }
+        sail_method! {
+            /// Actual normal status or signal observation, without normalization.
+            pub fn exit(&self) -> (out: Option<i32>) requires(true) ensures(out == self.exit_view()) { self.exit }
+        }
+    }
+}

@@ -70,6 +70,24 @@ controls. [Production refinements](design/acceptance-production-refinements.md)
 connect source-shared operations and typed factories to native callers; their
 [qualification record](validation/acceptance-production-refinements.md) states
 the remaining integration and service-wide proof obligations.
+[Acceptance boundary refinements](design/acceptance-boundary-refinements.md)
+tracks the follow-up work on raw transcripts, evidence providers, independently
+retained requests and concrete service composition.
+The [cache-origin admission choices](design/cache-origin-admission.md) map the
+remaining writer/recovery gap to owned execution or independent validation.
+The [candidate-write refinement plan](design/cache-write-candidate-refinement.md)
+separates actual writer/settlement fidelity from admission and records the
+direct-stock allocation-identity support gap and source-only generation replacement.
+The [acceptance proof WIP handoff](acceptance-proof-handoff.md) identifies the
+published work branches, existing evidence and unfinished integration work.
+The [compiler-input observation proposal](design/compiler-input-observation.md)
+separates the next loader/decoder implementation slice from unsupported opaque
+I/O and the native observation/launch architecture decisions.
+The [source lexer qualification plan](design/acceptance-source-lexer.md) covers
+exact Git-blob differential checks and separate native preflight measurements.
+The [owned compiler pipe candidate](design/acceptance-compiler-pipes.md) connects
+actual endpoint reads and EOF to completion, with its remaining qualification
+and physical-origin limits.
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs

@@ -6,6 +6,7 @@
 use super::super::{dependency_snapshot, files, input, receipts};
 use super::{archive, compiler, eligibility, skipped_note};
 use dependency_snapshot::{Content, Snapshot};
+use sail_api::request_targets::OriginalTargets;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
@@ -45,7 +46,7 @@ impl Plan {
     pub(crate) fn prepare(
         metadata: &Value,
         target: &Path,
-        selected: &BTreeSet<(String, String, String)>,
+        selected: &OriginalTargets,
         launcher: &Path,
         z3: &Path,
         run: &str,
@@ -78,7 +79,7 @@ impl Plan {
         let registry = registry_manifest.parent()?.parent()?;
         let mut roots = BTreeSet::new();
         let mut closure = None;
-        for (id, _, kind) in selected {
+        for (id, _, kind) in super::super::request::original_rows(selected) {
             if kind != "lib" {
                 return None;
             }
@@ -216,7 +217,10 @@ impl Plan {
             {
                 continue;
             }
-            let directory = runtime.sidecars.join(receipt.invocation.identity.key());
+            let run = runtime.sidecars.parent()?;
+            let Some(directory) = receipt.invocation.selected_directory(run) else {
+                continue;
+            };
             let Some(candidate): Option<Candidate> =
                 receipts::read(&directory.join("retained-candidate.json"))
             else {
@@ -437,6 +441,7 @@ impl Plan {
             observation,
             original_arguments: args.to_vec(),
             directory: directory.to_owned(),
+            invocations: runtime.invocations.clone(),
         })
     }
 }
@@ -491,6 +496,9 @@ pub(super) fn publish_graph(root: &Path, graph: Snapshot, args: &[OsString]) -> 
 /// A checked older proof; compiler invocations remain zero for this restore.
 pub(crate) struct Restored {
     pub(crate) establishing_run: String,
+    pub(crate) history: String,
+    pub(crate) report: sail_api::output::Report,
+    pub(crate) selected_attempt: Option<crate::adapter::attempts::SelectedAttempt>,
     /// The establishing run's observed compiler environment (#386).
     pub(crate) compiler_environment: Option<super::super::ghost_environment::Environment>,
     pub(crate) stdout: Vec<u8>,
@@ -508,6 +516,7 @@ pub(crate) struct Attempt {
     original_arguments: Vec<OsString>,
     observation: compiler::Observation,
     directory: PathBuf,
+    invocations: PathBuf,
 }
 
 impl Attempt {
@@ -525,13 +534,16 @@ impl Attempt {
             .iter()
             .filter_map(|path| path.file_name().map(std::ffi::OsStr::to_owned))
             .collect();
+        let Some(run_directory) = runtime.sidecars.parent() else {
+            return Ok(None);
+        };
         archive::restore(
             &self.plan.root,
             &self.basis,
             directory,
             &names,
             &self.plan.caller_environment,
-            &runtime.run_id,
+            (&runtime.run_id, run_directory),
             || self.unchanged(),
         )
         .map(|restored| {
@@ -544,6 +556,9 @@ impl Attempt {
             }
             restored.map(|restored| Restored {
                 establishing_run: restored.receipt.invocation.establishing_run().to_owned(),
+                history: restored.history,
+                report: restored.receipt.invocation.report.clone(),
+                selected_attempt: restored.receipt.invocation.selected_attempt.clone(),
                 compiler_environment: restored.receipt.invocation.compiler_environment.clone(),
                 stdout: restored.stdout,
                 stderr: restored.stderr,
@@ -564,7 +579,10 @@ impl Attempt {
         self.graph.arguments()
     }
 
-    pub(crate) fn configure(&self, command: &mut std::process::Command) {
+    pub(crate) fn configure(
+        &self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         self.observation.configure(command);
     }
 
@@ -642,10 +660,7 @@ impl Attempt {
         }
         let invocation: receipts::Invocation = receipts::read(
             &self
-                .directory
-                .parent()?
-                .parent()?
-                .join("invocations")
+                .invocations
                 .join(format!("{}.json", self.basis.identity.key())),
         )?;
         if !invocation.success || !receipts::complete(&invocation.report) {

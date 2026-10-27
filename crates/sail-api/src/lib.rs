@@ -32,6 +32,20 @@ pub mod project;
 pub mod proof;
 pub mod protocol;
 pub mod repair;
+/// Internal checked worker journal selection; native origin remains separate.
+#[doc(hidden)]
+pub mod request_capture;
+/// Internal checked report-command construction from observed effective options.
+#[doc(hidden)]
+pub mod request_mode;
+/// Internal immutable original-target dictionary ordering and projection.
+#[doc(hidden)]
+pub mod request_order;
+#[doc(hidden)]
+pub mod request_selectors;
+/// Internal checked construction and projection of the original target set.
+#[doc(hidden)]
+pub mod request_targets;
 pub mod runtime;
 pub mod schema;
 pub mod stamp;
@@ -42,3 +56,11 @@ pub mod client;
 
 /// Neutral source job requests and source-bound contract evidence.
 pub mod contracts;
+
+#[cfg(test)]
+mod request_order_tests;
+#[cfg(test)]
+mod request_targets_tests;
+
+#[cfg(test)]
+mod request_selectors_tests;

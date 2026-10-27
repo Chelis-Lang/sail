@@ -28,6 +28,8 @@ COMPONENTS = {
     "authority": "authority",
     "composition": "composition",
 }
+# Every committed original and new guard control is mandatory.
+REQUIRED_CONTROLS = {'query-association': ['wrong-command-pair', 'wrong-suppression-boundary', 'noisy-publication', 'altered-disk-payload', 'unrecorded-recovery-origin'], 'input-binding': ['omit-alias-destination', 'omit-scope-bounds', 'stale-original-epoch', 'incomplete-required-domain', 'changed-projection-solver', 'restamped-retained-capture'], 'authority': ['whole-scope-guard', 'confirmed-function-guard', 'missing-target-coverage', 'incomplete-invocation', 'stale-context', 'wrong-document-context', 'started-child-omitted', 'verification-enabled', 'fallback-subject', 'mixed-selected-fallback'], 'composition': ['stale-input-token', 'wrong-observation-point', 'opt-in-mode-promotion', 'omitted-solver-inventory', 'repeated-old-read-point', 'missing-fresh-read-witness']}
 SUPPORT = "proofs/acceptance/context.rs"
 MANIFEST = Path("proofs/acceptance/manifest.json")
 
@@ -92,6 +94,8 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes] | None = N
     require(not support.is_symlink() and support.resolve().is_relative_to(root.resolve()), "shared proof path escapes root")
     standalone(support.read_text() if snapshots is None else snapshots[SUPPORT].decode())
     for entry, source in zip(entries, sources, strict=True):
+        require([control["name"] for control in entry["negative_controls"]] == REQUIRED_CONTROLS[entry["id"]],
+            "required model guard control omitted or reordered")
         require(not source.is_absolute() and ".." not in source.parts, "invalid proof path")
         require(source.parts[:2] == ("proofs", "acceptance"), "proof outside inventory")
         require(str(source) == "proofs/acceptance/" + COMPONENTS[entry["id"]] + ".rs", "wrong component source")

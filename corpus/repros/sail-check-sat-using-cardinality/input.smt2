@@ -1,0 +1,5 @@
+(set-logic QF_UF)
+(check-sat-using smt)
+(assert false)
+(check-sat)
+(exit)

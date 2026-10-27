@@ -3,11 +3,49 @@
 //! The maps interpret owned Rust payloads as exact model bindings/bytes. The
 //! shim's parser, key derivation and process observations must establish that
 //! interpretation; this module does not replace those obligations with axioms.
-use crate::query_core::{BoundPair, CorrelatedQueue, PublicationBatch, PublicationGate, ReplayCursor};
+use crate::query_core::{BoundPair, CorrelatedQueue, PublicationBatch, PublicationGate, PrefixFeed, RawTranscript, ReplayCursor};
 use crate::query_association as model;
 use vstd::prelude::*;
 
 verus! {
+
+/// An inductive history of actual comparison inputs, distinct from the stdout
+/// cursor's frame count and from any solver-semantic equivalence relation.
+pub open spec fn comparisons_match<Owner>(
+    replay: &crate::query_replay::Replay<'_,Owner>, actual: Seq<Seq<u8>>,
+) -> bool {
+    replay.well_formed() && replay.checked_view() == actual.len()
+        && forall|i:int| 0 <= i < actual.len() ==>
+            replay.served_view()[i].reproduces(actual[i])
+}
+
+pub fn initial_comparison<'a,Owner>(served: &'a [crate::query_replay::ServedReply], owner: Owner)
+    -> (replay: crate::query_replay::Replay<'a,Owner>)
+    ensures comparisons_match(&replay,Seq::empty()), replay.owner_view() == owner,
+{
+    crate::query_replay::Replay::new(served,owner)
+}
+
+/// Calls the actual shared mechanical comparison and retains each successful
+/// fresh byte input at its original served position in the inductive relation.
+pub fn comparison_step<Owner>(replay: &mut crate::query_replay::Replay<'_,Owner>,
+    actual: &[u8], Ghost(previous): Ghost<Seq<Seq<u8>>>) -> (accepted: bool)
+    requires comparisons_match(old(replay),previous),
+    ensures accepted ==> comparisons_match(final(replay),previous.push(actual@)),
+        !accepted ==> comparisons_match(final(replay),previous),
+        final(replay).owner_view() == old(replay).owner_view(),
+{
+    let accepted = replay.compare(actual);
+    proof {
+        if accepted {
+            assert forall|i:int| 0 <= i < previous.push(actual@).len()
+                implies replay.served_view()[i].reproduces(previous.push(actual@)[i]) by {
+                if i < previous.len() {} else { assert(i == previous.len()); }
+            }
+        }
+    }
+    accepted
+}
 
 /// Exact pending suffix relation; neither stream may drop an unmatched head.
 pub open spec fn queue_refines<E, R>(
@@ -397,6 +435,574 @@ pub fn held_release_permutation_is_nonempty() -> (published: Vec<BoundPair<u8, u
         Some(published) => published,
         None => Vec::new(),
     }
+}
+
+
+/// Exact received bytes and the already-fed contiguous prefix, never a digest.
+pub open spec fn transcript_refines(raw: &RawTranscript, received: Seq<u8>, fed: Seq<u8>) -> bool {
+    raw.view() == received && raw.fed_view() == fed.len()
+        && fed.len() <= received.len() && fed == received.take(fed.len() as int)
+}
+
+pub fn transcript_initially_refines() -> (raw: RawTranscript)
+    ensures transcript_refines(&raw, Seq::empty(), Seq::empty()), raw.active(),
+{
+    let raw = RawTranscript::empty();
+    proof { assert(raw.view().take(0) =~= Seq::<u8>::empty()); }
+    raw
+}
+
+/// Arbitrary input fragmentation extends only received bytes; it cannot drop,
+/// reorder or re-feed an already consumed prefix.
+pub fn transcript_append_refines(raw: &mut RawTranscript, bytes: &[u8],
+    Ghost(received): Ghost<Seq<u8>>, Ghost(fed): Ghost<Seq<u8>>)
+    requires transcript_refines(old(raw), received, fed),
+    ensures transcript_refines(final(raw), received + bytes@, fed),
+        final(raw).active() == old(raw).active(),
+{
+    raw.append(bytes);
+    proof { assert((received + bytes@).take(fed.len() as int) =~= received.take(fed.len() as int)); }
+}
+
+/// The returned model binding is constructed from the actual accepted bytes.
+/// Caller context metadata is retained exactly; matching it to the launched
+/// solver/header remains a separate process/encoder refinement obligation.
+pub fn command_bytes_refine_binding<'a>(raw: &'a mut RawTranscript,
+    offset: usize, command: &[u8], Ghost(received): Ghost<Seq<u8>>,
+    Ghost(fed): Ghost<Seq<u8>>, Ghost(context): Ghost<crate::context::ModelContext>)
+    -> (result: (Option<PrefixFeed<'a>>, Ghost<Option<model::Binding>>))
+    requires transcript_refines(old(raw), received, fed),
+    ensures result.0.is_some() == result.1@.is_some(),
+        result.0.is_some() == (old(raw).active() && command@.len() > 0
+            && old(raw).fed_view() <= offset
+            && offset as nat + command@.len() <= old(raw).view().len()
+            && old(raw).view().subrange(offset as int, offset as int + command@.len() as int) == command@
+            && crate::query_core::trivia_after(old(raw).view().subrange(old(raw).fed_view() as int, offset as int), false) == Some(false)),
+        result.0.is_some() ==> (
+            final(raw).active()
+            && model::binding_wf(result.1@.unwrap())
+            && result.1@.unwrap().solver == context.solver
+            && result.1@.unwrap().mode == context.mode
+            && result.1@.unwrap().endpoint == offset as nat + command@.len()
+            && result.1@.unwrap().prefix == received.take(result.1@.unwrap().endpoint as int)
+            && fed + result.0.unwrap().view() == result.1@.unwrap().prefix
+            && transcript_refines(final(raw), received, result.1@.unwrap().prefix)
+        ),
+        result.0.is_none() ==> (!final(raw).active()
+            && transcript_refines(final(raw), received, fed)),
+{
+    let feed = raw.command(offset, command);
+    let ghost binding = if feed.is_some() {
+        Some(model::Binding { solver: context.solver, mode: context.mode,
+            prefix: fed + feed.unwrap().view(), endpoint: feed.unwrap().to() })
+    } else { None };
+    proof {
+        if feed.is_some() {
+            let end = feed.unwrap().to();
+            assert(fed + feed.unwrap().view() =~= received.take(end as int));
+        }
+    }
+    (feed, Ghost(binding))
+}
+
+/// The final feed completes the exact same raw bytes used by solver replay.
+pub fn tail_bytes_complete_replay<'a>(raw: &'a mut RawTranscript,
+    Ghost(received): Ghost<Seq<u8>>, Ghost(fed): Ghost<Seq<u8>>)
+    -> (feed: Option<PrefixFeed<'a>>)
+    requires transcript_refines(old(raw), received, fed),
+    ensures feed.is_some() == (old(raw).active() && old(raw).fed_view() <= old(raw).view().len()),
+        feed.is_some() ==> fed + feed.unwrap().view() == received,
+        feed.is_some() ==> transcript_refines(final(raw), received, received),
+        feed.is_none() ==> !final(raw).active(),
+{
+    let feed = raw.tail();
+    proof {
+        if feed.is_some() {
+            assert(fed + feed.unwrap().view() =~= received);
+            assert(received.take(received.len() as int) =~= received);
+        }
+    }
+    feed
+}
+
+/// Nonempty comments, CR/LF, quoted parentheses and fragmented commands all
+/// reach the hash stream unchanged, in the exact order used for solver replay.
+pub fn fragmented_prefixes_preserve_all_bytes() -> (hashed: Vec<u8>)
+    ensures hashed@ == seq![b' ', b';', b'h', b'e', b'a', b'd', b'\r', b'\n', b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'a', b';', b'(', b')', b'"', b')', b'\t', b';', b'g', b'a', b'p', b'\n', b'(', b'c', b'h', b'e', b'c', b'k', b'-', b's', b'a', b't', b')', b'\n', b';', b't', b'a', b'i', b'l'],
+{
+    let mut raw = transcript_initially_refines();
+    let mut hashed = Vec::new();
+    let ghost context = model::example_context(1, 2);
+    let first = vec![b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'a', b';', b'(', b')', b'"', b')'];
+    let second = vec![b'(', b'c', b'h', b'e', b'c', b'k', b'-', b's', b'a', b't', b')'];
+    let chunk1 = vec![b' ', b';', b'h', b'e', b'a', b'd', b'\r'];
+    let chunk2 = vec![b'\n', b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'a', b';', b'(', b')', b'"', b')'];
+    let chunk3 = vec![b'\t', b';', b'g', b'a', b'p', b'\n', b'(', b'c', b'h', b'e', b'c', b'k', b'-'];
+    let chunk4 = vec![b's', b'a', b't', b')', b'\n', b';', b't', b'a', b'i', b'l'];
+    transcript_append_refines(&mut raw, &chunk1, Ghost(Seq::<u8>::empty()), Ghost(Seq::<u8>::empty()));
+    let ghost r1 = chunk1@;
+    transcript_append_refines(&mut raw, &chunk2, Ghost(r1), Ghost(Seq::<u8>::empty()));
+    let ghost r2 = r1 + chunk2@;
+    proof {
+        reveal_with_fuel(crate::query_core::trivia_after, 20);
+        assert(r2.subrange(8, 8 + first@.len() as int) =~= first@);
+    }
+    let (feed, Ghost(binding)) = command_bytes_refine_binding(&mut raw, 8, &first,
+        Ghost(r2), Ghost(Seq::<u8>::empty()), Ghost(context));
+    let feed = match feed { Some(feed) => feed, None => return Vec::new() };
+    hashed.extend_from_slice(feed.bytes());
+    let ghost fed1 = binding.unwrap().prefix;
+    proof { assert(fed1 =~= r2); assert(hashed@ == fed1); }
+    transcript_append_refines(&mut raw, &chunk3, Ghost(r2), Ghost(fed1));
+    let ghost r3 = r2 + chunk3@;
+    transcript_append_refines(&mut raw, &chunk4, Ghost(r3), Ghost(fed1));
+    let ghost r4 = r3 + chunk4@;
+    let offset = 8 + first.len() + 6;
+    proof {
+        reveal_with_fuel(crate::query_core::trivia_after, 20);
+        assert(r4.subrange(offset as int, offset as int + second@.len() as int) =~= second@);
+    }
+    let (feed, Ghost(binding)) = command_bytes_refine_binding(&mut raw, offset, &second,
+        Ghost(r4), Ghost(fed1), Ghost(context));
+    let feed = match feed { Some(feed) => feed, None => return Vec::new() };
+    hashed.extend_from_slice(feed.bytes());
+    let ghost fed2 = binding.unwrap().prefix;
+    proof { assert(hashed@ == fed2); }
+    let tail = tail_bytes_complete_replay(&mut raw, Ghost(r4), Ghost(fed2));
+    let tail = match tail { Some(tail) => tail, None => return Vec::new() };
+    hashed.extend_from_slice(tail.bytes());
+    proof { assert(hashed@ == r4); assert(r4 =~= seq![b' ', b';', b'h', b'e', b'a', b'd', b'\r', b'\n', b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'a', b';', b'(', b')', b'"', b')', b'\t', b';', b'g', b'a', b'p', b'\n', b'(', b'c', b'h', b'e', b'c', b'k', b'-', b's', b'a', b't', b')', b'\n', b';', b't', b'a', b'i', b'l']); }
+    hashed
+}
+
+/// A skipped nontrivia command, wrong item bytes or overlap cannot be relabeled
+/// as a clean prefix, and appending later input cannot restore validity.
+pub fn malformed_prefix_candidates_are_permanently_refused() {
+    let prefix = vec![b'(', b's', b'e', b't', b'-', b'o', b'p', b't', b'i', b'o', b'n', b' ', b':', b'p', b'r', b'i', b'n', b't', b'-', b's', b'u', b'c', b'c', b'e', b's', b's', b' ', b'f', b'a', b'l', b's', b'e', b')', b'\n'];
+    let command = vec![b'(', b'c', b'h', b'e', b'c', b'k', b'-', b's', b'a', b't', b')'];
+    let mut omitted = RawTranscript::empty();
+    omitted.append(&prefix);
+    omitted.append(&command);
+    let offset = prefix.len();
+    proof { reveal_with_fuel(crate::query_core::trivia_after, 2); }
+    let rejected = omitted.command(offset, &command);
+    proof { assert(rejected.is_none()); }
+    let newline = vec![b'\n'];
+    omitted.append(&newline);
+    let again = omitted.command(0, &prefix);
+    proof { assert(again.is_none()); assert(!omitted.active()); }
+    let mut changed = RawTranscript::empty();
+    changed.append(&command);
+    let wrong = vec![b'(', b'c', b'h', b'e', b'c', b'k', b'-', b'b', b'a', b'd', b')'];
+    let rejected = changed.command(0, &wrong);
+    proof { assert(rejected.is_none()); }
+    let mut overflow = RawTranscript::empty();
+    let byte = vec![b'x'];
+    overflow.append(&byte);
+    let rejected = overflow.command(usize::MAX, &byte);
+    proof { assert(rejected.is_none()); }
+}
+
+
+/// A first-newline partition is unique even when the reply contains newlines.
+/// This relates actual byte framing; it grants no meaning to header metadata.
+pub proof fn record_partition_unique(header: Seq<u8>, reply: Seq<u8>,
+    decoded_header: Seq<u8>, decoded_reply: Seq<u8>)
+    requires crate::query_core::record_header(header),
+        crate::query_core::record_header(decoded_header),
+        header + seq![b'\n'] + reply == decoded_header + seq![b'\n'] + decoded_reply,
+    ensures decoded_header == header, decoded_reply == reply,
+{
+    let whole = header + seq![b'\n'] + reply;
+    if header.len() < decoded_header.len() {
+        assert(whole[header.len() as int] == b'\n');
+        assert(whole[header.len() as int] == decoded_header[header.len() as int]);
+    } else if decoded_header.len() < header.len() {
+        assert(whole[decoded_header.len() as int] == b'\n');
+        assert(whole[decoded_header.len() as int] == header[decoded_header.len() as int]);
+    }
+    assert(header.len() == decoded_header.len());
+    assert(whole.take(header.len() as int) =~= header);
+    assert(whole.take(decoded_header.len() as int) =~= decoded_header);
+    assert(header == decoded_header);
+    assert(whole.subrange(header.len() as int + 1, whole.len() as int) =~= reply);
+    assert(whole.subrange(decoded_header.len() as int + 1, whole.len() as int) =~= decoded_reply);
+    assert(reply == decoded_reply);
+}
+
+/// The actual writer encoding and actual reader split preserve arbitrary payload
+/// bytes. Metadata interpretation, digest computation and OS writes stay outside.
+pub fn record_bytes_roundtrip(header: Vec<u8>, reply: &[u8])
+    -> (decoded: Option<(Vec<u8>, Vec<u8>)>)
+    ensures decoded.is_some() == crate::query_core::record_header(header@),
+        decoded.is_some() ==> decoded.unwrap().0@ == header@
+            && decoded.unwrap().1@ == reply@,
+{
+    let ghost original_header = header@;
+    let encoded = crate::query_core::encode_record(header, reply);
+    let encoded = match encoded { Some(encoded) => encoded, None => return None };
+    let parts = crate::query_core::split_record(&encoded);
+    proof { assert(!crate::query_core::record_header(encoded@)) by {
+        assert(encoded@[original_header.len() as int] == b'\n');
+    } }
+    let (header, decoded_reply) = match parts { Some(parts) => parts, None => return None };
+    proof { record_partition_unique(original_header, reply@, header@, decoded_reply@); }
+    let mut header_copy = Vec::new();
+    header_copy.extend_from_slice(header);
+    let mut reply_copy = Vec::new();
+    reply_copy.extend_from_slice(decoded_reply);
+    Some((header_copy, reply_copy))
+}
+
+/// Nonempty multiline/binary reply survives exact framing; an embedded newline
+/// in a purported serialized header is refused before it can relabel payloads.
+pub fn record_payload_and_header_refusal_witness() {
+    let header = vec![b'{', b'}'];
+    let reply = vec![b'u', b'n', b's', b'a', b't', b'\n', 0u8, 255u8];
+    let decoded = record_bytes_roundtrip(header, &reply);
+    proof {
+        assert(decoded.is_some());
+        assert(decoded.unwrap().0@ == seq![b'{', b'}']);
+        assert(decoded.unwrap().1@ == reply@);
+    }
+    let malformed_header = vec![b'{', b'\n', b'}'];
+    let refused = crate::query_core::encode_record(malformed_header, &reply);
+    proof { assert(refused.is_none()); }
+    let unterminated = vec![b'{', b'}'];
+    let refused = crate::query_core::split_record(&unterminated);
+    proof { assert(refused.is_none()); }
+}
+
+
+/// A completed raw prefix resets lexical nesting before the next exact bytes.
+pub proof fn scan_reset_join(left: Seq<u8>, right: Seq<u8>, comments: bool)
+    requires crate::query_core::frame_scan(left, comments) == (0, crate::query_core::FrameLex::Plain),
+    ensures crate::query_core::frame_scan(left + right, comments) == crate::query_core::frame_scan(right, comments),
+    decreases right.len(),
+{
+    if right.len() == 0 { assert(left + right =~= left); }
+    else {
+        scan_reset_join(left, right.drop_last(), comments);
+        assert((left + right).drop_last() =~= left + right.drop_last());
+        assert((left + right).last() == right.last());
+        reveal_with_fuel(crate::query_core::frame_scan, 1);
+    }
+}
+
+/// Actual semicolon-trivia bytes preserve zero nesting, including quoted or
+/// parenthesis bytes hidden in comments and CR/LF split across fragments.
+pub proof fn trivia_framing_state(bytes: Seq<u8>, comment: bool)
+    requires crate::query_core::trivia_after(bytes, false) == Some(comment),
+    ensures crate::query_core::frame_scan(bytes, true)
+        == (0, if comment { crate::query_core::FrameLex::Comment } else { crate::query_core::FrameLex::Plain }),
+    decreases bytes.len(),
+{
+    if bytes.len() > 0 {
+        let prefix = bytes.drop_last();
+        let byte = bytes.last();
+        crate::query_core::trivia_join(prefix, seq![byte], false);
+        assert(prefix + seq![byte] =~= bytes);
+        match crate::query_core::trivia_after(prefix, false) {
+            Some(previous) => {
+                trivia_framing_state(prefix, previous);
+                reveal_with_fuel(crate::query_core::trivia_after, 2);
+                reveal_with_fuel(crate::query_core::frame_scan, 1);
+            },
+            None => {},
+        }
+    }
+}
+
+/// Two forms cannot be substituted for one admitted command/reply frame.
+pub proof fn complete_forms_cannot_coalesce(first: Seq<u8>, suffix: Seq<u8>, comments: bool)
+    requires crate::query_core::single_list(first, comments), suffix.len() > 0,
+    ensures !crate::query_core::single_list(first + suffix, comments),
+{
+    assert((first + suffix).take(first.len() as int) =~= first);
+    if crate::query_core::single_list(first + suffix, comments) {
+        assert(crate::query_core::frame_scan((first + suffix).take(first.len() as int), comments).0 > 0);
+    }
+}
+
+/// The actual framed-command operation extends the exact model binding and
+/// preserves the inductive top-level lexical boundary of the entire prefix.
+pub fn framed_prefix_refines_binding<'a>(raw: &'a mut RawTranscript, offset: usize,
+    command: &'a [u8], Ghost(received): Ghost<Seq<u8>>, Ghost(fed): Ghost<Seq<u8>>,
+    Ghost(context): Ghost<crate::context::ModelContext>)
+    -> (result: (Option<(PrefixFeed<'a>, &'a [u8])>, Ghost<Option<model::Binding>>))
+    requires transcript_refines(old(raw), received, fed),
+        crate::query_core::frame_scan(fed, true) == (0, crate::query_core::FrameLex::Plain),
+    ensures result.0.is_some() == result.1@.is_some(),
+        result.0.is_some() ==> (
+            model::binding_wf(result.1@.unwrap())
+            && result.1@.unwrap().solver == context.solver && result.1@.unwrap().mode == context.mode
+            && result.1@.unwrap().endpoint == offset as nat + command@.len()
+            && result.1@.unwrap().prefix == received.take(result.1@.unwrap().endpoint as int)
+            && fed + result.0.unwrap().0.view() == result.1@.unwrap().prefix
+            && transcript_refines(final(raw), received, result.1@.unwrap().prefix)
+            && final(raw).active() && crate::query_core::single_list(command@, true)
+            && crate::query_core::frame_scan(result.1@.unwrap().prefix, true) == (0, crate::query_core::FrameLex::Plain)
+            && exists|a: int, b: int| crate::query_core::head_span(command@, a, b)
+                && result.0.unwrap().1@ == command@.subrange(a, b)),
+        result.0.is_none() ==> !final(raw).active() && transcript_refines(final(raw), received, fed),
+        old(raw).active() && crate::query_core::single_list(command@, true) && crate::query_core::symbol_first(command@[1])
+            && fed.len() <= offset && offset as nat + command@.len() <= received.len()
+            && received.subrange(offset as int, offset as int + command@.len() as int) == command@
+            && crate::query_core::trivia_after(received.subrange(fed.len() as int, offset as int), false) == Some(false)
+            ==> result.0.is_some(),
+{
+    let accepted = crate::query_core::framed_command(raw, offset, command);
+    let ghost binding = if accepted.is_some() {
+        Some(model::Binding { solver: context.solver, mode: context.mode,
+            prefix: fed + accepted.unwrap().0.view(), endpoint: accepted.unwrap().0.to() })
+    } else { None };
+    proof {
+        if accepted.is_some() {
+            let gap = received.subrange(fed.len() as int, offset as int);
+            trivia_framing_state(gap, false);
+            scan_reset_join(fed, gap, true);
+            scan_reset_join(fed + gap, command@, true);
+            assert(binding.unwrap().prefix =~= fed + gap + command@);
+            assert(binding.unwrap().prefix =~= received.take(binding.unwrap().endpoint as int));
+        }
+    }
+    (accepted, Ghost(binding))
+}
+
+/// Checked one-byte induction avoids repeatedly unfolding an entire literal trace.
+pub proof fn scan_after_byte(prefix: Seq<u8>, byte: u8, comments: bool)
+    ensures crate::query_core::frame_scan(prefix.push(byte), comments)
+        == (crate::query_core::frame_scan(prefix, comments).0
+            + if crate::query_core::structural(crate::query_core::frame_scan(prefix, comments).1, byte) && byte == b'(' { 1int }
+            else if crate::query_core::structural(crate::query_core::frame_scan(prefix, comments).1, byte) && byte == b')' { -1int } else { 0int },
+            crate::query_core::frame_lex(crate::query_core::frame_scan(prefix, comments).1, byte, comments)),
+{
+    assert(prefix.push(byte).drop_last() =~= prefix);
+    assert(prefix.push(byte).last() == byte);
+    reveal_with_fuel(crate::query_core::frame_scan, 1);
+}
+
+/// A concrete nonempty witness of the generic lexical framing theorem.
+pub proof fn quoted_frame_grammar(bytes: Seq<u8>, comments: bool)
+    requires bytes == seq![b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'(', b')', b'"', b'"', b'x', b'"', b')'],
+    ensures crate::query_core::single_list(bytes, comments),
+{
+    assert(bytes.take(0) =~= Seq::<u8>::empty());
+    scan_after_byte(bytes.take(0), bytes[0], comments);
+    assert(bytes.take(1) =~= bytes.take(0).push(bytes[0]));
+    assert(crate::query_core::frame_scan(bytes.take(1), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(1), bytes[1], comments);
+    assert(bytes.take(2) =~= bytes.take(1).push(bytes[1]));
+    assert(crate::query_core::frame_scan(bytes.take(2), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(2), bytes[2], comments);
+    assert(bytes.take(3) =~= bytes.take(2).push(bytes[2]));
+    assert(crate::query_core::frame_scan(bytes.take(3), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(3), bytes[3], comments);
+    assert(bytes.take(4) =~= bytes.take(3).push(bytes[3]));
+    assert(crate::query_core::frame_scan(bytes.take(4), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(4), bytes[4], comments);
+    assert(bytes.take(5) =~= bytes.take(4).push(bytes[4]));
+    assert(crate::query_core::frame_scan(bytes.take(5), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(5), bytes[5], comments);
+    assert(bytes.take(6) =~= bytes.take(5).push(bytes[5]));
+    assert(crate::query_core::frame_scan(bytes.take(6), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(6), bytes[6], comments);
+    assert(bytes.take(7) =~= bytes.take(6).push(bytes[6]));
+    assert(crate::query_core::frame_scan(bytes.take(7), comments) == (1, crate::query_core::FrameLex::String));
+    scan_after_byte(bytes.take(7), bytes[7], comments);
+    assert(bytes.take(8) =~= bytes.take(7).push(bytes[7]));
+    assert(crate::query_core::frame_scan(bytes.take(8), comments) == (1, crate::query_core::FrameLex::String));
+    scan_after_byte(bytes.take(8), bytes[8], comments);
+    assert(bytes.take(9) =~= bytes.take(8).push(bytes[8]));
+    assert(crate::query_core::frame_scan(bytes.take(9), comments) == (1, crate::query_core::FrameLex::String));
+    scan_after_byte(bytes.take(9), bytes[9], comments);
+    assert(bytes.take(10) =~= bytes.take(9).push(bytes[9]));
+    assert(crate::query_core::frame_scan(bytes.take(10), comments) == (1, crate::query_core::FrameLex::Quote));
+    scan_after_byte(bytes.take(10), bytes[10], comments);
+    assert(bytes.take(11) =~= bytes.take(10).push(bytes[10]));
+    assert(crate::query_core::frame_scan(bytes.take(11), comments) == (1, crate::query_core::FrameLex::String));
+    scan_after_byte(bytes.take(11), bytes[11], comments);
+    assert(bytes.take(12) =~= bytes.take(11).push(bytes[11]));
+    assert(crate::query_core::frame_scan(bytes.take(12), comments) == (1, crate::query_core::FrameLex::String));
+    scan_after_byte(bytes.take(12), bytes[12], comments);
+    assert(bytes.take(13) =~= bytes.take(12).push(bytes[12]));
+    assert(crate::query_core::frame_scan(bytes.take(13), comments) == (1, crate::query_core::FrameLex::Quote));
+    scan_after_byte(bytes.take(13), bytes[13], comments);
+    assert(bytes.take(14) =~= bytes.take(13).push(bytes[13]));
+    assert(crate::query_core::frame_scan(bytes.take(14), comments) == (0, crate::query_core::FrameLex::Plain));
+    assert forall|i: int| 1 <= i < bytes.len() implies crate::query_core::frame_scan(bytes.take(i), comments).0 > 0 by {
+        if i == 1 {}
+        else if i == 2 {}
+        else if i == 3 {}
+        else if i == 4 {}
+        else if i == 5 {}
+        else if i == 6 {}
+        else if i == 7 {}
+        else if i == 8 {}
+        else if i == 9 {}
+        else if i == 10 {}
+        else if i == 11 {}
+        else if i == 12 {}
+        else if i == 13 {}
+    }
+    assert(bytes.take(bytes.len() as int) =~= bytes);
+}
+
+/// A concrete nonempty witness of the generic lexical framing theorem.
+pub proof fn bar_frame_grammar(bytes: Seq<u8>, comments: bool)
+    requires bytes == seq![b'(', b'a', b' ', b'|', b')', b'|', b')'],
+    ensures crate::query_core::single_list(bytes, comments),
+{
+    assert(bytes.take(0) =~= Seq::<u8>::empty());
+    scan_after_byte(bytes.take(0), bytes[0], comments);
+    assert(bytes.take(1) =~= bytes.take(0).push(bytes[0]));
+    assert(crate::query_core::frame_scan(bytes.take(1), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(1), bytes[1], comments);
+    assert(bytes.take(2) =~= bytes.take(1).push(bytes[1]));
+    assert(crate::query_core::frame_scan(bytes.take(2), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(2), bytes[2], comments);
+    assert(bytes.take(3) =~= bytes.take(2).push(bytes[2]));
+    assert(crate::query_core::frame_scan(bytes.take(3), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(3), bytes[3], comments);
+    assert(bytes.take(4) =~= bytes.take(3).push(bytes[3]));
+    assert(crate::query_core::frame_scan(bytes.take(4), comments) == (1, crate::query_core::FrameLex::Symbol));
+    scan_after_byte(bytes.take(4), bytes[4], comments);
+    assert(bytes.take(5) =~= bytes.take(4).push(bytes[4]));
+    assert(crate::query_core::frame_scan(bytes.take(5), comments) == (1, crate::query_core::FrameLex::Symbol));
+    scan_after_byte(bytes.take(5), bytes[5], comments);
+    assert(bytes.take(6) =~= bytes.take(5).push(bytes[5]));
+    assert(crate::query_core::frame_scan(bytes.take(6), comments) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(6), bytes[6], comments);
+    assert(bytes.take(7) =~= bytes.take(6).push(bytes[6]));
+    assert(crate::query_core::frame_scan(bytes.take(7), comments) == (0, crate::query_core::FrameLex::Plain));
+    assert forall|i: int| 1 <= i < bytes.len() implies crate::query_core::frame_scan(bytes.take(i), comments).0 > 0 by {
+        if i == 1 {}
+        else if i == 2 {}
+        else if i == 3 {}
+        else if i == 4 {}
+        else if i == 5 {}
+        else if i == 6 {}
+    }
+    assert(bytes.take(bytes.len() as int) =~= bytes);
+}
+
+/// A concrete nonempty witness of the generic lexical framing theorem.
+pub proof fn comment_frame_grammar(bytes: Seq<u8>)
+    requires bytes == seq![b'(', b'a', b' ', b';', b')', b'\r', b'\n', b')'],
+    ensures crate::query_core::single_list(bytes, true),
+{
+    assert(bytes.take(0) =~= Seq::<u8>::empty());
+    scan_after_byte(bytes.take(0), bytes[0], true);
+    assert(bytes.take(1) =~= bytes.take(0).push(bytes[0]));
+    assert(crate::query_core::frame_scan(bytes.take(1), true) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(1), bytes[1], true);
+    assert(bytes.take(2) =~= bytes.take(1).push(bytes[1]));
+    assert(crate::query_core::frame_scan(bytes.take(2), true) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(2), bytes[2], true);
+    assert(bytes.take(3) =~= bytes.take(2).push(bytes[2]));
+    assert(crate::query_core::frame_scan(bytes.take(3), true) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(3), bytes[3], true);
+    assert(bytes.take(4) =~= bytes.take(3).push(bytes[3]));
+    assert(crate::query_core::frame_scan(bytes.take(4), true) == (1, crate::query_core::FrameLex::Comment));
+    scan_after_byte(bytes.take(4), bytes[4], true);
+    assert(bytes.take(5) =~= bytes.take(4).push(bytes[4]));
+    assert(crate::query_core::frame_scan(bytes.take(5), true) == (1, crate::query_core::FrameLex::Comment));
+    scan_after_byte(bytes.take(5), bytes[5], true);
+    assert(bytes.take(6) =~= bytes.take(5).push(bytes[5]));
+    assert(crate::query_core::frame_scan(bytes.take(6), true) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(6), bytes[6], true);
+    assert(bytes.take(7) =~= bytes.take(6).push(bytes[6]));
+    assert(crate::query_core::frame_scan(bytes.take(7), true) == (1, crate::query_core::FrameLex::Plain));
+    scan_after_byte(bytes.take(7), bytes[7], true);
+    assert(bytes.take(8) =~= bytes.take(7).push(bytes[7]));
+    assert(crate::query_core::frame_scan(bytes.take(8), true) == (0, crate::query_core::FrameLex::Plain));
+    assert forall|i: int| 1 <= i < bytes.len() implies crate::query_core::frame_scan(bytes.take(i), true).0 > 0 by {
+        if i == 1 {}
+        else if i == 2 {}
+        else if i == 3 {}
+        else if i == 4 {}
+        else if i == 5 {}
+        else if i == 6 {}
+        else if i == 7 {}
+    }
+    assert(bytes.take(bytes.len() as int) =~= bytes);
+}
+
+/// An actual fragmented receive, checked lexical boundary and exact model
+/// binding preserve comment/quote bytes, rather than only checking opaque tags.
+pub fn framed_fragment_binding_and_response_witness() -> (feed_bytes: Vec<u8>)
+    ensures feed_bytes@ == seq![b';', b'x', b'(', b'\r', b'\n', b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'(', b')', b'"', b'"', b'x', b'"', b')'],
+{
+    let command = vec![b'(', b'e', b'c', b'h', b'o', b' ', b'"', b'(', b')', b'"', b'"', b'x', b'"', b')'];
+    let prefix = vec![b';', b'x', b'(', b'\r', b'\n'];
+    let mut raw = RawTranscript::empty();
+    raw.append(&prefix);
+    raw.append(&command[..10]);
+    raw.append(&command[10..]);
+    let ghost received = prefix@ + command@;
+    let ghost context = model::example_context(1, 2);
+    proof {
+        quoted_frame_grammar(command@, true);
+        reveal_with_fuel(crate::query_core::trivia_after, 6);
+        assert(raw.view() =~= received);
+        assert(received.subrange(prefix@.len() as int, received.len() as int) =~= command@);
+        assert(received.subrange(0, prefix@.len() as int) =~= prefix@);
+        assert(received.take(0) =~= Seq::<u8>::empty());
+    }
+    let (framed, Ghost(binding)) = framed_prefix_refines_binding(&mut raw, prefix.len(), &command,
+        Ghost(received), Ghost(Seq::<u8>::empty()), Ghost(context));
+    let (feed, _) = match framed { Some(framed) => framed, None => return Vec::new() };
+    let mut feed_bytes = Vec::new();
+    feed_bytes.extend_from_slice(feed.bytes());
+    proof { assert(feed_bytes@ =~= received); }
+    let bar = vec![b'(', b'a', b' ', b'|', b')', b'|', b')'];
+    let comment = vec![b'(', b'a', b' ', b';', b')', b'\r', b'\n', b')'];
+    proof { bar_frame_grammar(bar@, true); comment_frame_grammar(comment@); }
+    let bar_ok = crate::query_core::complete_list(&bar, true);
+    let comment_ok = crate::query_core::complete_list(&comment, true);
+    proof { assert(bar_ok); assert(comment_ok); }
+    let mut response = Vec::new();
+    response.extend_from_slice(&bar); response.push(b'\n');
+    proof {
+        bar_frame_grammar(bar@, false);
+        assert(response@.subrange(0, bar@.len() as int) =~= bar@);
+        assert(crate::query_core::response_span(response@, 0, bar@.len() as int));
+        assert(crate::query_core::response_shape(response@));
+    }
+    let response_ok = crate::query_core::response_frame(&response);
+    let status = vec![b'u', b'n', b's', b'a', b't', b'\r', b'\n'];
+    proof {
+        assert(crate::query_core::response_span(status@, 0, 5));
+        assert(crate::query_core::response_shape(status@));
+    }
+    let status_ok = crate::query_core::response_frame(&status);
+    proof { assert(response_ok); assert(status_ok); }
+    feed_bytes
+}
+
+/// Actual admission refuses two balanced replies pretending to be one, as well
+/// as an atom lacking its line terminator. No injected assertion is needed.
+pub fn coalesced_and_partial_response_witness() {
+    let form = vec![b'(', b'a', b' ', b'|', b')', b'|', b')'];
+    let mut coalesced = Vec::new(); coalesced.extend_from_slice(&form); coalesced.extend_from_slice(&form);
+    proof {
+        bar_frame_grammar(form@, false);
+        complete_forms_cannot_coalesce(form@, form@, false);
+        assert(coalesced@ == form@ + form@);
+        assert(crate::query_core::response_trim(coalesced@, 0, coalesced@.len() as int));
+        crate::query_core::response_at_trim(coalesced@, 0, coalesced@.len() as int);
+        assert(coalesced@.subrange(0, coalesced@.len() as int) =~= coalesced@);
+        assert(!crate::query_core::response_span(coalesced@, 0, coalesced@.len() as int));
+    }
+    let refused = crate::query_core::response_frame(&coalesced);
+    proof { assert(!refused); }
+    let partial = vec![b'u', b'n', b's', b'a', b't'];
+    proof {
+        assert(crate::query_core::response_trim(partial@, 0, partial@.len() as int));
+        crate::query_core::response_at_trim(partial@, 0, partial@.len() as int);
+    }
+    let refused = crate::query_core::response_frame(&partial);
+    proof { assert(!refused); }
 }
 
 }

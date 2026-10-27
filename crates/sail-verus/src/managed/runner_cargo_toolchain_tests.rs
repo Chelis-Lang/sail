@@ -130,7 +130,7 @@ fn clean_and_invocation_run_with_the_selected_toolchain() -> ToolchainResult {
         let (paths, owner) = prepare(&config, &root, "context", "family", "run")?;
         cargo_clean(&config, &paths.target, &[])?;
         let mut err = Vec::new();
-        assert_eq!(invoke(&config, &paths, &mut None, &mut err, &[])?, Some(0));
+        assert_eq!(invoke(&config, &paths, &mut None, &mut err, &[])?, (Some(0), true));
         drop(owner);
         let calls = std::fs::read_to_string(&log)?;
         let calls = calls.lines().collect::<Vec<_>>();

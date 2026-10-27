@@ -2093,7 +2093,6 @@ impl<'a> Call<'a> {
             .is_none_or(|source| source.current(self.plan).is_some())
     }
 
-    /// Request observations only for this actual admitted compiler invocation.
     /// Whether this call requested the fork's compiler-input observation.
     pub(crate) fn observes_compiler(&self) -> bool {
         self.compiler_observation.is_some()
@@ -2105,7 +2104,10 @@ impl<'a> Call<'a> {
         self.compiler_observation.as_ref()?.observed()
     }
 
-    pub(crate) fn observe_compiler(&mut self, command: &mut std::process::Command) {
+    pub(crate) fn observe_compiler(
+        &mut self,
+        command: &mut impl crate::managed::command_environment::ConfigureCommand,
+    ) {
         self.compiler_observation = compiler::Observation::begin(self);
         if let Some(observation) = &self.compiler_observation {
             observation.configure(command);
