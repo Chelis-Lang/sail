@@ -137,7 +137,7 @@ standard ordered-set sequence specification explicitly. Finite witnesses reveal
 both a complete partial-selector literal and its real accepted prefix. These are
 erased facts about existing operations; the default Stock resource limits,
 original contracts and all admission guards remain unchanged. The latest failed
-complete-root attempt has five ordinary obligations left and supplies no new
+complete-root attempt has three ordinary obligations left and supplies no new
 qualified function inventory or native validation; the owning
 [qualification record](../validation/acceptance-boundary-refinements.md) records
 its exact source and archive.

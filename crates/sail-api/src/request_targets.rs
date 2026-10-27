@@ -96,7 +96,10 @@ sail_spec! {
         vstd::std_specs::btree::axiom_increasing_seq_meaning::<&OriginalTargetKey>(keys);
         assert forall |i: int, j: int| 0 <= i < j < keys.len() implies
             crate::request_order::key_order(&*keys[i], &*keys[j]) == std::cmp::Ordering::Less by {
-            assert(keys[i].cmp_spec(&keys[j]) == std::cmp::Ordering::Less);
+            assert(<&OriginalTargetKey as OrdSpec>::cmp_spec(&keys[i], &keys[j]) is Less);
+            assert(<&OriginalTargetKey as OrdSpec>::cmp_spec(&keys[i], &keys[j])
+                == <OriginalTargetKey as OrdSpec>::cmp_spec(keys[i], keys[j]));
+            assert(crate::request_order::key_order(&*keys[i], &*keys[j]) is Less);
         }
     }
 
