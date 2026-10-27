@@ -357,6 +357,43 @@ fn prepare_pending(
     }))
 }
 
+fn prepare_human_pending(
+    fixture: &Fixture,
+    key: &str,
+) -> Result<Option<Pending>, Box<dyn std::error::Error>> {
+    // Real wall-clock settling, not a fabricated old stamp or future start.
+    std::thread::sleep(SETTLED + Duration::from_millis(50));
+    let observation = fixture
+        .observed
+        .iter()
+        .map(|path| Some((path.clone(), lstat(path).ok()?)))
+        .collect::<Option<Vec<_>>>()
+        .ok_or("actual source observations")?;
+    assert_eq!(observation.len(), fixture.observed.len());
+    assert_eq!(observation.len(), 3);
+    let identity = vec![PathBuf::from("/bin/sh")];
+    let original_request = fixture.request("warm-noop-record")?;
+    Ok(prepare(Facts {
+        key,
+        cache: &fixture.config.cache,
+        start: SystemTime::now(),
+        workspace_lock: fixture
+            .context
+            .parent()
+            .ok_or("project root")?
+            .join("workspace.lock"),
+        family: &fixture.family,
+        context: &fixture.context,
+        target: &fixture.family.join("target"),
+        observation,
+        identity: &identity,
+        siblings: Vec::new(),
+        result: &fixture.project,
+        original_request: &original_request,
+        human: true,
+    }))
+}
+
 fn prepare_record(fixture: &Fixture, key: &str) -> Result<(), Box<dyn std::error::Error>> {
     let pending = prepare_pending(fixture, key)?.ok_or("actual replay preparation")?;
     pending.commit(b"original stdout".to_vec(), Vec::new());
@@ -508,5 +545,107 @@ fn replay_refuses_changed_history_or_mismatched_cached_producer_metadata()
     assert_eq!(restored.stdout, b"original stdout");
     assert_eq!(restored.result.targets, fixture.project.targets);
     assert_eq!(restored.result.targets[0].establishing_run, "original");
+    Ok(())
+}
+
+#[test]
+fn colored_human_footer_exact_byte_grammar() {
+    let prefixes: [&[u8]; 4] = [
+        b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in ",
+        b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized] target(s) in ",
+        b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in ",
+        b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in ",
+    ];
+    for prefix in prefixes {
+        for duration in [b"0.01s\n".as_slice(), b"12m 59s\n"] {
+            let stderr = [prefix, duration].concat();
+            assert!(sail_api::acceptance::colored_empty_human_bytes(
+                b"", &stderr
+            ));
+            assert!(sail_api::acceptance::supported_empty_human_bytes(
+                b"", &stderr
+            ));
+            assert!(!sail_api::acceptance::empty_human_bytes(b"", &stderr));
+            assert_eq!(
+                sail_api::acceptance::cargo_colored_footer_boundary(&stderr),
+                Some(prefix.len())
+            );
+            assert!(!sail_api::acceptance::colored_empty_human_bytes(
+                b"verified",
+                &stderr
+            ));
+            let trailing = [stderr.as_slice(), b"verified\n"].concat();
+            assert!(!sail_api::acceptance::supported_empty_human_bytes(
+                b"", &trailing
+            ));
+            let mut wrong_color = stderr.clone();
+            wrong_color[7] = b'1';
+            assert_ne!(wrong_color, stderr);
+            assert!(!sail_api::acceptance::supported_empty_human_bytes(
+                b"",
+                &wrong_color
+            ));
+        }
+    }
+    assert!(!sail_api::acceptance::supported_empty_human_bytes(b"", b""));
+}
+
+#[test]
+fn colored_human_record_preserves_bytes_without_proof_authority()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut fixture = Fixture::new("colored-human-record")?;
+    fixture.project.targets.clear();
+    fixture.project.execution.reused_targets = 0;
+    let key = key(&fixture.config, false).ok_or("human replay key")?;
+    let stderr = b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n";
+    prepare_human_pending(&fixture, &key)?
+        .ok_or("actual human preparation")?
+        .commit(Vec::new(), stderr.to_vec());
+    let record: HumanRecord = serde_json::from_slice(&std::fs::read(human_record_path(
+        &fixture.config.cache,
+        &key,
+    ))?)?;
+    assert_eq!(record.observation.stderr, stderr);
+    assert!(record.observation.stdout.is_empty());
+    assert!(record.observation.origins.is_empty());
+    assert!(sail_api::acceptance::complete_selection(&record.observation.result).is_none());
+    assert!(!record_path(&fixture.config.cache, &key).exists());
+    let current = fixture.request("independent-current-human")?;
+    let paths = sail_api::acceptance::bind_request_paths(
+        &current,
+        fixture.config.workspace.as_os_str().as_encoded_bytes(),
+        fixture.config.workspace.as_os_str().as_encoded_bytes(),
+    )
+    .ok_or("actual native workspace binding")?;
+    let rendered = super::super::read_check::with_guarded_readback(
+        &fixture.config.cache,
+        &fixture.config.workspace,
+        "context",
+        |snapshot, readback| {
+            if !snapshot.complete {
+                return None;
+            }
+            let admitted = sail_api::acceptance::admit_colored_empty_human_output(
+                &record.observation.original_request,
+                &current,
+                &record.observation.result,
+                true,
+                &record.observation.stdout,
+                &record.observation.stderr,
+                Some(&paths),
+                Some(readback),
+            )?;
+            sail_api::acceptance::render_colored_empty_human_output(&admitted, b"12m 59s\n")
+        },
+    )?
+    .ok_or("guarded colored byte replay")?;
+    assert_eq!(rendered, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in 12m 59s\n");
+
+    // A real invalid-output recording must remove the prior byte record.
+    prepare_human_pending(&fixture, &key)?
+        .ok_or("actual second human preparation")?
+        .commit(b"verified".to_vec(), stderr.to_vec());
+    assert!(!human_record_path(&fixture.config.cache, &key).exists());
+    assert!(!record_path(&fixture.config.cache, &key).exists());
     Ok(())
 }

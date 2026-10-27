@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add exact colored Cargo completion prefixes to the byte-only unchanged-call
+  candidate (#506), preserving the original color/profile bytes and checking
+  the entire replacement duration. Arbitrary ANSI, nonempty stdout and proof
+  authority remain outside this path. Qualification is pending.
+
 - Separate exact human-footer byte copying from replay admission metadata,
   preserving the original output, validation order, loop obligations and
   complete rendering contract. The change addresses a full-control proof

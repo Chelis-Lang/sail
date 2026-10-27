@@ -635,7 +635,10 @@ impl Pending {
         self.record.stdout = stdout;
         self.record.stderr = stderr;
         if self.human_only
-            && !sail_api::acceptance::empty_human_bytes(&self.record.stdout, &self.record.stderr)
+            && !sail_api::acceptance::supported_empty_human_bytes(
+                &self.record.stdout,
+                &self.record.stderr,
+            )
         {
             unrecorded("human no-op output is not empty stdout plus one Cargo footer");
             let _ = std::fs::remove_file(&self.path);
@@ -804,7 +807,7 @@ pub fn replay_empty_human_output(
                     reason = Some(changed);
                     return None;
                 }
-                let admitted = sail_api::acceptance::admit_empty_human_output(
+                let plain = sail_api::acceptance::admit_empty_human_output(
                     &record.original_request,
                     current,
                     &record.result,
@@ -813,11 +816,27 @@ pub fn replay_empty_human_output(
                     &record.stderr,
                     Some(paths),
                     Some(readback),
-                )?;
-                let mut duration = elapsed(started.elapsed()).into_bytes();
-                duration.push(b'\n');
-                let stderr = sail_api::acceptance::render_empty_human_output(&admitted, &duration)?;
-                if !sail_api::acceptance::empty_human_bytes(&[], &stderr) {
+                );
+                let stderr = if let Some(admitted) = plain {
+                    let mut duration = elapsed(started.elapsed()).into_bytes();
+                    duration.push(b'\n');
+                    sail_api::acceptance::render_empty_human_output(&admitted, &duration)?
+                } else {
+                    let admitted = sail_api::acceptance::admit_colored_empty_human_output(
+                        &record.original_request,
+                        current,
+                        &record.result,
+                        true,
+                        &record.stdout,
+                        &record.stderr,
+                        Some(paths),
+                        Some(readback),
+                    )?;
+                    let mut duration = elapsed(started.elapsed()).into_bytes();
+                    duration.push(b'\n');
+                    sail_api::acceptance::render_colored_empty_human_output(&admitted, &duration)?
+                };
+                if !sail_api::acceptance::supported_empty_human_bytes(&[], &stderr) {
                     return None;
                 }
                 Some(HumanReplay { stderr })

@@ -3450,3 +3450,188 @@ sail_verified! {
         Some(EmptyHumanOutput { context, stderr })
     }
 }
+
+sail_code! {
+    /// Byte-only checked replay of one exact ordinary colored Cargo footer.
+    /// This cannot expose a report or whole/partial proof authority.
+    pub struct ColoredEmptyHumanOutput<'a, 'b> {
+        context: EmptyHumanContext<'a, 'b>,
+        stderr: &'a [u8],
+    }
+    impl<'a> ColoredEmptyHumanOutput<'a, '_> {
+        sail_method! {
+            /// Borrows only the exact original colored Cargo footer bytes.
+            pub fn stderr(&self) -> (out: &'a [u8])
+                requires(true) ensures(out == colored_empty_human_stderr(self))
+            {
+                let _ = (&self.context.original, &self.context.current, &self.context.observed, &self.context.paths, &self.context.readback);
+                self.stderr
+            }
+        }
+    }
+}
+
+sail_spec! {
+    pub open spec fn cargo_colored_footer(bytes: Seq<u8>) -> bool {
+        cargo_footer_prefix(bytes, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in "@)
+            || cargo_footer_prefix(bytes, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized] target(s) in "@)
+            || cargo_footer_prefix(bytes, b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in "@)
+            || cargo_footer_prefix(bytes, b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in "@)
+    }
+
+    pub open spec fn cargo_colored_footer_boundary_at(bytes: Seq<u8>, end: int) -> bool {
+        0 <= end <= bytes.len() && cargo_duration(bytes.skip(end))
+            && ((end == b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in "@.len()
+                    && bytes.take(end) == b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in "@)
+                || (end == b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized] target(s) in "@.len()
+                    && bytes.take(end) == b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized] target(s) in "@)
+                || (end == b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in "@.len()
+                    && bytes.take(end) == b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in "@)
+                || (end == b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in "@.len()
+                    && bytes.take(end) == b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in "@))
+    }
+
+    pub closed spec fn colored_empty_human_stderr<'a, 'b>(a: &ColoredEmptyHumanOutput<'a, 'b>) -> &'a [u8] { a.stderr }
+    pub closed spec fn colored_empty_human_context<'a, 'b>(a: &ColoredEmptyHumanOutput<'a, 'b>) -> EmptyHumanContext<'a, 'b> { a.context }
+    pub closed spec fn colored_empty_human_valid(a: &ColoredEmptyHumanOutput) -> bool {
+        empty_human_context_valid(&a.context) && cargo_colored_footer(a.stderr@)
+    }
+}
+sail_verified! {
+    /// Accepts only empty stdout and one fully parsed ordinary Cargo footer.
+    pub fn colored_empty_human_bytes(stdout: &[u8], stderr: &[u8]) -> (out: bool)
+        requires(true) ensures(out == (stdout@.len() == 0 && cargo_colored_footer(stderr@)))
+    {
+        if !stdout.is_empty() { return false; }
+        (
+            cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in ")
+            || cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized] target(s) in ")
+            || cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in ")
+            || cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in "))
+    }
+}
+
+sail_verified! {
+    /// Accepts the exact supported plain or colored footer, with empty stdout.
+    pub fn supported_empty_human_bytes(stdout: &[u8], stderr: &[u8]) -> (out: bool)
+        requires(true)
+        ensures(out == (stdout@.len() == 0
+            && (cargo_footer(stderr@) || cargo_colored_footer(stderr@))))
+    { empty_human_bytes(stdout, stderr) || colored_empty_human_bytes(stdout, stderr) }
+}
+sail_verified! {
+    /// Locates the duration of one complete footer, preserving its exact prefix.
+    pub fn cargo_colored_footer_boundary(stderr: &[u8]) -> (out: Option<usize>)
+        requires(true)
+        ensures(out.is_some() == cargo_colored_footer(stderr@),
+            out.is_some() ==> cargo_colored_footer_boundary_at(stderr@, out.unwrap() as int),
+            out.is_some() ==> out.unwrap() <= 81)
+    {
+        if cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in ") {
+            return Some(b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in ".len());
+        }
+        if cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized] target(s) in ") {
+            return Some(b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized] target(s) in ".len());
+        }
+        if cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in ") {
+            return Some(b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in ".len());
+        }
+        if cargo_footer_with_prefix(stderr, b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in ") {
+            return Some(b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in ".len());
+        }
+        None
+    }
+}
+sail_verified! {
+    /// Copies the original footer prefix and the complete replacement duration.
+    /// Keeping this byte loop separate retains its complete invariants without
+    /// bringing the unrelated request/readback context into each loop check.
+    fn copy_colored_footer_duration(stderr: &[u8], end: usize, duration: &[u8]) -> (bytes: Vec<u8>)
+        requires(end <= stderr.len(), end <= 81,
+            duration.len() as int + end as int <= usize::MAX,
+            cargo_colored_footer_boundary_at(stderr@, end as int), cargo_duration(duration@))
+        ensures(bytes@ == stderr@.take(end as int) + duration@)
+    {
+        let mut bytes = copy_bytes(&stderr[..end]);
+        let mut i = 0usize;
+        sail_while! { (i < duration.len())
+            invariant(i <= duration.len(), end <= stderr.len(), end <= 81,
+                duration.len() as int + end as int <= usize::MAX,
+                cargo_colored_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),
+                bytes@ == stderr@.take(end as int) + duration@.take(i as int))
+            decreases(duration.len() - i)
+            { bytes.push(duration[i]); i += 1; }
+        }
+        sail_proof! { assert(duration@.take(i as int) =~= duration@); }
+        bytes
+    }
+}
+sail_verified! {
+    /// Produces the byte-only replay by copying the admitted original prefix
+    /// and exactly the supplied complete numeric duration. This cannot replace
+    /// the original profile/header or insert report/diagnostic bytes.
+    #[allow(clippy::question_mark, reason = "Keep refusal explicit in the source shared with stock Verus.")]
+    pub fn render_colored_empty_human_output(admitted: &ColoredEmptyHumanOutput, duration: &[u8]) -> (out: Option<Vec<u8>>)
+        requires(true)
+        ensures(out.is_some() ==> cargo_colored_footer(out.unwrap()@),
+            out.is_some() ==> exists |end: int| cargo_colored_footer_boundary_at(colored_empty_human_stderr(admitted)@, end)
+                && out.unwrap()@ == colored_empty_human_stderr(admitted)@.take(end) + duration@,
+            cargo_colored_footer(colored_empty_human_stderr(admitted)@) && cargo_duration(duration@)
+                && duration@.len() + 81 <= usize::MAX ==> out.is_some())
+    {
+        if !cargo_duration_only(duration) { return None; }
+        let stderr = admitted.stderr();
+        let Some(end) = cargo_colored_footer_boundary(stderr) else { return None; };
+        if duration.len() > usize::MAX - end { return None; }
+        let bytes = copy_colored_footer_duration(stderr, end, duration);
+        sail_proof! {
+            assert(bytes@.take(end as int) =~= stderr@.take(end as int));
+            assert(bytes@.skip(end as int) =~= duration@);
+            assert(cargo_colored_footer_boundary_at(bytes@, end as int));
+            assert(cargo_colored_footer(bytes@));
+        }
+        Some(bytes)
+    }
+}
+sail_verified! {
+    /// Composes exact original/current requests, native path bytes, guarded
+    /// revision readback and byte-only output. The only public data accessor is
+    /// stderr; no report, refreshed result, or proof token can be obtained.
+    #[allow(clippy::too_many_arguments, reason = "Each original witness remains explicit at this admission boundary.")]
+    #[allow(clippy::question_mark, reason = "Keep explicit refusal branches in the source shared with stock Verus.")]
+    pub fn admit_colored_empty_human_output<'a, 'b>(original: &'a ResolvedRequest, current: &'a ResolvedRequest,
+        observed: &'a ProjectResult, human: bool, stdout: &[u8], stderr: &'a [u8],
+        paths: Option<&RequestPathBinding<'a>>, readback: Option<&'a sail_acceptance::inputs::GuardedReadback<'b>>)
+        -> (out: Option<ColoredEmptyHumanOutput<'a, 'b>>)
+        requires(true)
+        ensures(out.is_some() ==> colored_empty_human_valid(&out.unwrap()),
+            out.is_some() ==> human && stdout@.len() == 0,
+            out.is_some() ==> colored_empty_human_stderr(&out.unwrap()) == stderr,
+            out.is_some() ==> empty_human_observation(original, observed, human)
+                && replay_request_payload(current, original),
+            out.is_some() == (empty_human_observation(original, observed, human)
+                && replay_request_payload(current, original) && stdout@.len() == 0 && cargo_colored_footer(stderr@)
+                && paths.is_some() && request_paths_correspond(current,
+                    path_binding_invocation(paths.unwrap())@, path_binding_workspace(paths.unwrap())@)
+                && readback.is_some() && readback.unwrap().unchanged_view() && readback.unwrap().guard_view().is_some()
+                && readback.unwrap().guard_view().unwrap().revision_view() == string_bytes(&current.input_revision)))
+    {
+        let Some(context) = admit_empty_human_context(original, current, observed, human, paths, readback) else { return None; };
+        attach_colored_empty_human_output(context, stdout, stderr)
+    }
+}
+sail_verified! {
+    /// Consumes checked metadata and validates only the actual output bytes.
+    /// Metadata validity is a checked constructor result, never a caller flag.
+    pub fn attach_colored_empty_human_output<'a, 'b>(context: EmptyHumanContext<'a, 'b>,
+        stdout: &[u8], stderr: &'a [u8]) -> (out: Option<ColoredEmptyHumanOutput<'a, 'b>>)
+        requires(empty_human_context_valid(&context))
+        ensures(out.is_some() == (stdout@.len() == 0 && cargo_colored_footer(stderr@)),
+            out.is_some() ==> colored_empty_human_valid(&out.unwrap()),
+            out.is_some() ==> colored_empty_human_context(&out.unwrap()) == context,
+            out.is_some() ==> colored_empty_human_stderr(&out.unwrap()) == stderr)
+    {
+        if !colored_empty_human_bytes(stdout, stderr) { return None; }
+        Some(ColoredEmptyHumanOutput { context, stderr })
+    }
+}

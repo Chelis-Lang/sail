@@ -10,6 +10,18 @@ the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
+## Colored human-footer candidate
+
+The current candidate adds exact colored Cargo byte grammars, checked
+boundaries/copy/render/admission and native recording through the same guarded
+context as the plain path (#506). It retains all 676 prior controls and adds
+18 executable controls, plus two constructive proof witnesses and native
+grammar/actual record/readback fixtures. Assembly and unique mutation-selector
+inspection pass locally; that is source inspection, not direct proof or
+native acceptance. The full three-root Stock discovery, native gate/solver,
+ordinary negative controls and output end-to-end phase remain required.
+The source-fixture correction for #513 also requires the fresh native gate.
+
 ## Owned query publication candidate
 
 Whole positive discovery at `f8d61408` passes all three complete stock roots

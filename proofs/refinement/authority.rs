@@ -1397,6 +1397,86 @@ pub fn empty_human_replay_constructive<'a, 'b>(original: &'a crate::project::Res
     }
 }
 
+/// Exact colored bytes obey the same byte-only authority boundary.
+pub fn colored_empty_human_footer_examples() -> (accepted: bool)
+    ensures accepted,
+{
+    proof {
+        reveal_byteslit(b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in ");
+        reveal_byteslit(b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized] target(s) in ");
+        reveal_byteslit(b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in ");
+        reveal_byteslit(b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized + debuginfo] target(s) in ");
+        reveal_byteslit(b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n");
+        reveal_byteslit(b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in 12m 59s\n");
+        reveal_byteslit(b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\nverified\n");
+        reveal_byteslit(b"0.01s\n");
+        reveal_byteslit(b"12m 59s\n");
+        reveal_byteslit(b"0.01s\nverified\n");
+        let dev = b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in "@;
+        let release = b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in "@;
+        let first = b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n"@;
+        let second = b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in 12m 59s\n"@;
+        assert(first.take(dev.len() as int) =~= dev);
+        assert(first.skip(dev.len() as int) =~= b"0.01s\n"@);
+        assert(second.take(release.len() as int) =~= release);
+        assert(second.skip(release.len() as int) =~= b"12m 59s\n"@);
+        assert(acceptance::cargo_duration_tail(b"0.01s\n"@, 1));
+        assert(acceptance::cargo_duration(b"0.01s\n"@)) by { assert(acceptance::cargo_duration_tail(b"0.01s\n"@, 1)); }
+        assert(acceptance::cargo_duration_tail(b"12m 59s\n"@, 2));
+        assert(acceptance::cargo_duration(b"12m 59s\n"@)) by { assert(acceptance::cargo_duration_tail(b"12m 59s\n"@, 2)); }
+        assert(acceptance::cargo_colored_footer(first));
+        assert(acceptance::cargo_colored_footer(second));
+        let trailing = b"0.01s\nverified\n"@;
+        assert forall |end: int| !acceptance::cargo_duration_tail(trailing, end) by {
+            if acceptance::cargo_duration_tail(trailing, end) {
+                assert(end == trailing.len() - 5 || end == trailing.len() - 6);
+                assert(!acceptance::decimal_byte(trailing[1]));
+            }
+        }
+        let wrong = b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\nverified\n"@;
+        assert(wrong.skip(dev.len() as int) =~= trailing);
+        assert(!acceptance::cargo_colored_footer(wrong));
+    }
+    acceptance::colored_empty_human_bytes(b"", b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n")
+        && acceptance::colored_empty_human_bytes(b"", b"\x1b[1m\x1b[92m    Finished\x1b[0m `release` profile [optimized] target(s) in 12m 59s\n")
+        && !acceptance::colored_empty_human_bytes(b"verified", b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n")
+        && !acceptance::colored_empty_human_bytes(b"", b"\x1b[1m\x1b[92m    Finished\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\nverified\n")
+}
+
+/// A valid declared-domain human observation reaches the byte-only factory.
+/// No complete-report/request predicate is a premise of this witness.
+pub fn colored_empty_human_replay_constructive<'a, 'b>(original: &'a crate::project::ResolvedRequest,
+    current: &'a crate::project::ResolvedRequest, observed: &'a crate::project::ProjectResult,
+    paths: &acceptance::RequestPathBinding<'a>, readback: &'a crate::inputs::GuardedReadback<'b>,
+    stderr: &'a [u8]) -> (accepted: bool)
+    requires acceptance::empty_human_observation(original, observed, true),
+        acceptance::replay_request_payload(current, original), acceptance::cargo_colored_footer(stderr@),
+        acceptance::request_paths_correspond(current,
+            acceptance::path_binding_invocation(paths)@, acceptance::path_binding_workspace(paths)@),
+        readback.unchanged_view(), readback.guard_view().is_some(),
+        readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision),
+    ensures accepted,
+{
+    let admitted = acceptance::admit_colored_empty_human_output(original, current, observed, true,
+        b"", stderr, Some(paths), Some(readback));
+    match admitted {
+        Some(admitted) => {
+            let actual = admitted.stderr();
+            proof {
+                assert(actual == stderr);
+                reveal_byteslit(b"0.01s\n");
+                assert(acceptance::cargo_duration_tail(b"0.01s\n"@, 1));
+                assert(acceptance::cargo_duration(b"0.01s\n"@)) by {
+                    assert(acceptance::cargo_duration_tail(b"0.01s\n"@, 1));
+                }
+            }
+            acceptance::render_colored_empty_human_output(&admitted, b"0.01s\n").is_some()
+        },
+        None => false,
+    }
+}
+
+
 /// Even Current, exit-zero empty observations cannot establish the independently
 /// requested whole proof. Currentness and human output remain separate facts.
 pub proof fn empty_observation_has_no_whole_authority(request: &crate::project::ResolvedRequest,

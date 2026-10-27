@@ -73,6 +73,16 @@ prefix and checks the complete supplied duration. No ProjectResult, verified
 label or proof token is exposed by this path; JSON, jobs, repair and MCP retain
 their proof-authority admission.
 
+The colored-footer candidate adds a separate exact grammar for Cargo's
+`ESC[1m ESC[92m` prefix and `ESC[0m` reset around `Finished`. It supports the
+same four dev/release profile forms as the plain path. It preserves those
+bytes when replacing the numeric duration; it does not strip arbitrary ANSI
+escapes. Both factories require the same checked request, path and readback
+context. The plain contracts and controls remain intact. Constructive witnesses,
+eighteen additional executable failure controls and native record/readback
+fixtures accompany the candidate. Direct proof, native tests and the actual
+output phase must qualify it before #506 can be considered addressed.
+
 The renderer delegates its original prefix/duration copy loop to a checked
 helper, retaining every loop invariant and decrease. The helper's exact byte
 postcondition keeps request and readback metadata outside that loop's proof;

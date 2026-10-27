@@ -6942,6 +6942,114 @@
           "source": "crates/sail-api/src/request_selectors.rs",
           "before": "if bytes[at] == b'@' {",
           "after": "if bytes[at] == b':' {"
+        },
+        {
+          "name": "colored-empty-human-factory-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        let Some(context) = admit_empty_human_context(original, current, observed, human, paths, readback) else { return None; };\n        attach_colored_empty_human_output(context, stdout, stderr)\n    }",
+          "after": "{ None }"
+        },
+        {
+          "name": "colored-human-footer-boundary-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \".len());\n        }\n        None\n    }",
+          "after": "{ None }"
+        },
+        {
+          "name": "colored-human-footer-boundary-replaces-original-prefix-end",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \".len());\n        }\n        None\n    }",
+          "after": "{\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \".len() - 1);\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \".len());\n        }\n        None\n    }"
+        },
+        {
+          "name": "colored-human-footer-render-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if !cargo_duration_only(duration) { return None; }\n        let stderr = admitted.stderr();\n        let Some(end) = cargo_colored_footer_boundary(stderr) else { return None; };\n        if duration.len() > usize::MAX - end { return None; }\n        let bytes = copy_colored_footer_duration(stderr, end, duration);\n        sail_proof! {\n            assert(bytes@.take(end as int) =~= stderr@.take(end as int));\n            assert(bytes@.skip(end as int) =~= duration@);\n            assert(cargo_colored_footer_boundary_at(bytes@, end as int));\n            assert(cargo_colored_footer(bytes@));\n        }\n        Some(bytes)\n    }",
+          "after": "{\n        if !cargo_duration_only(duration) { return None; }\n        let stderr = admitted.stderr();\n        let Some(end) = cargo_colored_footer_boundary(stderr) else { return None; };\n        if duration.len() > usize::MAX - end { return None; }\n        let bytes = copy_colored_footer_duration(stderr, end, duration);\n        sail_proof! {\n            assert(bytes@.take(end as int) =~= stderr@.take(end as int));\n            assert(bytes@.skip(end as int) =~= duration@);\n            assert(cargo_colored_footer_boundary_at(bytes@, end as int));\n            assert(cargo_colored_footer(bytes@));\n        }\n        None\n    }"
+        },
+        {
+          "name": "colored-human-footer-render-omits-original-prefix",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        let mut bytes = copy_bytes(&stderr[..end]);\n        let mut i = 0usize;\n        sail_while! { (i < duration.len())\n            invariant(i <= duration.len(), end <= stderr.len(), end <= 81,\n                duration.len() as int + end as int <= usize::MAX,\n                cargo_colored_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),\n                bytes@ == stderr@.take(end as int) + duration@.take(i as int))\n            decreases(duration.len() - i)\n            { bytes.push(duration[i]); i += 1; }\n        }\n        sail_proof! { assert(duration@.take(i as int) =~= duration@); }\n        bytes\n    }",
+          "after": "{\n        let mut bytes = copy_bytes(duration);\n        let mut i = 0usize;\n        sail_while! { (i < duration.len())\n            invariant(i <= duration.len(), end <= stderr.len(), end <= 81,\n                duration.len() as int + end as int <= usize::MAX,\n                cargo_colored_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),\n                bytes@ == stderr@.take(end as int) + duration@.take(i as int))\n            decreases(duration.len() - i)\n            { bytes.push(duration[i]); i += 1; }\n        }\n        sail_proof! { assert(duration@.take(i as int) =~= duration@); }\n        bytes\n    }"
+        },
+        {
+          "name": "colored-human-footer-render-replaces-supplied-duration-byte",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        let mut bytes = copy_bytes(&stderr[..end]);\n        let mut i = 0usize;\n        sail_while! { (i < duration.len())\n            invariant(i <= duration.len(), end <= stderr.len(), end <= 81,\n                duration.len() as int + end as int <= usize::MAX,\n                cargo_colored_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),\n                bytes@ == stderr@.take(end as int) + duration@.take(i as int))\n            decreases(duration.len() - i)\n            { bytes.push(duration[i]); i += 1; }\n        }\n        sail_proof! { assert(duration@.take(i as int) =~= duration@); }\n        bytes\n    }",
+          "after": "{\n        let mut bytes = copy_bytes(&stderr[..end]);\n        let mut i = 0usize;\n        sail_while! { (i < duration.len())\n            invariant(i <= duration.len(), end <= stderr.len(), end <= 81,\n                duration.len() as int + end as int <= usize::MAX,\n                cargo_colored_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),\n                bytes@ == stderr@.take(end as int) + duration@.take(i as int))\n            decreases(duration.len() - i)\n            { bytes.push(b'0'); i += 1; }\n        }\n        sail_proof! { assert(duration@.take(i as int) =~= duration@); }\n        bytes\n    }"
+        },
+        {
+          "name": "colored-human-footer-render-repeats-first-duration-byte",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        let mut bytes = copy_bytes(&stderr[..end]);\n        let mut i = 0usize;\n        sail_while! { (i < duration.len())\n            invariant(i <= duration.len(), end <= stderr.len(), end <= 81,\n                duration.len() as int + end as int <= usize::MAX,\n                cargo_colored_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),\n                bytes@ == stderr@.take(end as int) + duration@.take(i as int))\n            decreases(duration.len() - i)\n            { bytes.push(duration[i]); i += 1; }\n        }\n        sail_proof! { assert(duration@.take(i as int) =~= duration@); }\n        bytes\n    }",
+          "after": "{\n        let mut bytes = copy_bytes(&stderr[..end]);\n        let mut i = 0usize;\n        sail_while! { (i < duration.len())\n            invariant(i <= duration.len(), end <= stderr.len(), end <= 81,\n                duration.len() as int + end as int <= usize::MAX,\n                cargo_colored_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),\n                bytes@ == stderr@.take(end as int) + duration@.take(i as int))\n            decreases(duration.len() - i)\n            { bytes.push(duration[0]); i += 1; }\n        }\n        sail_proof! { assert(duration@.take(i as int) =~= duration@); }\n        bytes\n    }"
+        },
+        {
+          "name": "colored-human-footer-render-returns-duration-without-original-prefix",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if !cargo_duration_only(duration) { return None; }\n        let stderr = admitted.stderr();\n        let Some(end) = cargo_colored_footer_boundary(stderr) else { return None; };\n        if duration.len() > usize::MAX - end { return None; }\n        let bytes = copy_colored_footer_duration(stderr, end, duration);\n        sail_proof! {\n            assert(bytes@.take(end as int) =~= stderr@.take(end as int));\n            assert(bytes@.skip(end as int) =~= duration@);\n            assert(cargo_colored_footer_boundary_at(bytes@, end as int));\n            assert(cargo_colored_footer(bytes@));\n        }\n        Some(bytes)\n    }",
+          "after": "{\n        if !cargo_duration_only(duration) { return None; }\n        let stderr = admitted.stderr();\n        let Some(end) = cargo_colored_footer_boundary(stderr) else { return None; };\n        if duration.len() > usize::MAX - end { return None; }\n        let bytes = copy_colored_footer_duration(stderr, end, duration);\n        sail_proof! {\n            assert(bytes@.take(end as int) =~= stderr@.take(end as int));\n            assert(bytes@.skip(end as int) =~= duration@);\n            assert(cargo_colored_footer_boundary_at(bytes@, end as int));\n            assert(cargo_colored_footer(bytes@));\n        }\n        Some(copy_bytes(duration))\n    }"
+        },
+        {
+          "name": "colored-human-footer-render-skips-complete-duration-grammar",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if !cargo_duration_only(duration) { return None; }\n        let stderr = admitted.stderr();\n        let Some(end) = cargo_colored_footer_boundary(stderr) else { return None; };\n        if duration.len() > usize::MAX - end { return None; }\n        let bytes = copy_colored_footer_duration(stderr, end, duration);\n        sail_proof! {\n            assert(bytes@.take(end as int) =~= stderr@.take(end as int));\n            assert(bytes@.skip(end as int) =~= duration@);\n            assert(cargo_colored_footer_boundary_at(bytes@, end as int));\n            assert(cargo_colored_footer(bytes@));\n        }\n        Some(bytes)\n    }",
+          "after": "{\n        if false { return None; }\n        let stderr = admitted.stderr();\n        let Some(end) = cargo_colored_footer_boundary(stderr) else { return None; };\n        if duration.len() > usize::MAX - end { return None; }\n        let bytes = copy_colored_footer_duration(stderr, end, duration);\n        sail_proof! {\n            assert(bytes@.take(end as int) =~= stderr@.take(end as int));\n            assert(bytes@.skip(end as int) =~= duration@);\n            assert(cargo_colored_footer_boundary_at(bytes@, end as int));\n            assert(cargo_colored_footer(bytes@));\n        }\n        Some(bytes)\n    }"
+        },
+        {
+          "name": "colored-human-footer-boundary-ignores-original-byte-grammar",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \".len());\n        }\n        None\n    }",
+          "after": "{\n        if true {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \".len());\n        }\n        if cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \") {\n            return Some(b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \".len());\n        }\n        None\n    }"
+        },
+        {
+          "name": "colored-empty-human-attachment-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if !colored_empty_human_bytes(stdout, stderr) { return None; }\n        Some(ColoredEmptyHumanOutput { context, stderr })\n    }",
+          "after": "{ None }"
+        },
+        {
+          "name": "colored-empty-human-footer-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if !stdout.is_empty() { return false; }\n        (\n            cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \"))\n    }",
+          "after": "{ false }"
+        },
+        {
+          "name": "colored-empty-human-footer-allows-nonempty-stdout",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if !stdout.is_empty() { return false; }\n        (\n            cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \"))\n    }",
+          "after": "{\n        if false { return false; }\n        (\n            cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized + debuginfo] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `dev` profile [unoptimized] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"\\x1b[1m\\x1b[92m    Finished\\x1b[0m `release` profile [optimized + debuginfo] target(s) in \"))\n    }"
+        },
+        {
+          "name": "colored-empty-human-attachment-ignores-original-stdout",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if !colored_empty_human_bytes(stdout, stderr) { return None; }\n        Some(ColoredEmptyHumanOutput { context, stderr })\n    }",
+          "after": "{\n        if !colored_empty_human_bytes(b\"\", stderr) { return None; }\n        Some(ColoredEmptyHumanOutput { context, stderr })\n    }"
+        },
+        {
+          "name": "supported-empty-human-footer-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ empty_human_bytes(stdout, stderr) || colored_empty_human_bytes(stdout, stderr) }",
+          "after": "{ false }"
+        },
+        {
+          "name": "supported-empty-human-footer-accepts-arbitrary-bytes",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ empty_human_bytes(stdout, stderr) || colored_empty_human_bytes(stdout, stderr) }",
+          "after": "{ true }"
+        },
+        {
+          "name": "supported-empty-human-footer-drops-colored-path",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ empty_human_bytes(stdout, stderr) || colored_empty_human_bytes(stdout, stderr) }",
+          "after": "{ empty_human_bytes(stdout, stderr) }"
+        },
+        {
+          "name": "supported-empty-human-footer-drops-plain-path",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ empty_human_bytes(stdout, stderr) || colored_empty_human_bytes(stdout, stderr) }",
+          "after": "{ colored_empty_human_bytes(stdout, stderr) }"
         }
       ]
     }

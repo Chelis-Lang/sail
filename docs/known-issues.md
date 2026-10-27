@@ -40,7 +40,10 @@
   retains empty stdout and one ordinary colored Cargo footer, but byte-only
   replay recognizes plain prefixes only. The exact ANSI bytes are preserved;
   arbitrary escape stripping or broad stdout acceptance is not a correction.
-  Exact colored-prefix support and full output qualification remain open.
+  A candidate adds four exact colored prefixes through separate checked
+  byte-only factories/rendering, eighteen executable failure controls and
+  actual native record/readback fixtures. Direct proof, native and full output
+  qualification remain open; this is not yet a qualified fix.
 
 - [#507](https://github.com/Chelis-Lang/sail/issues/507): the managed ghost-only
   include case remains Unknown after both existing allowed verification calls.
