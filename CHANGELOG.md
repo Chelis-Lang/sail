@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Replay unchanged calls on macOS. Cargo copies each build script to
+  `build-script-build` again on every macOS run, so the copy never looked
+  settled and no unchanged call was recorded (#437); unchanged Anvil took
+  1.6 s and Vest 0.6 s. Replay now binds that copy by its bytes, which must
+  equal the compiled script's, and its directory by its exact entries.
+  Existing replay records are not used after this upgrade.
+
 - Stop reusing a proof after a file read only in ghost code changes. An
   `include!`, `include_str!` or `include_bytes!` inside a `proof fn`, spec or
   assertion left its file out of the crate's dep-info, so editing that file

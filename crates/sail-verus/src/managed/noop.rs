@@ -27,6 +27,14 @@
 //! record's key. A stamp is recorded only when its ctime is at least
 //! 2 s older than the run's start, so a later change to the file
 //! moves its ctime past the recorded one even on coarse clocks.
+//!
+//! One exception is bound by content instead (ADR 0082, amendment of
+//! 2026-10-26): Cargo's uplifted build-script copy
+//! `build/<package>-<hash>/build-script-<stem>`, which Cargo removes and
+//! copies again on every run where it does not hard-link it (macOS, #437).
+//! The copy is bound by its type, size and mode and by bytes equal to its
+//! original `build_script_<stem>-<hash>` (whose stamp keeps the ordinary
+//! guard), and its directory by its identity and complete entry names.
 
 use super::Config;
 use sail_api::project::ProjectResult;
@@ -35,7 +43,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
@@ -61,11 +69,175 @@ struct Record {
     trees: Vec<Tree>,
     /// Cache records compared by content.
     contents: Vec<(PathBuf, String)>,
+    /// Cargo's uplifted build-script copies, bound by content.
+    copies: Vec<Copied>,
+    /// The directories holding them, bound by identity and entry names.
+    directories: Vec<Directory>,
     /// Declared variables and their values.
     environment: BTreeMap<String, Option<Vec<u8>>>,
     result: ProjectResult,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
+}
+
+/// Cargo's uplifted copy of a build-script executable (#437). Cargo
+/// re-creates it on every run where it copies rather than hard-links, so
+/// its stamp is never settled; its bytes must equal the original's, whose
+/// own stamp is recorded under the ordinary guard.
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct Copied {
+    path: PathBuf,
+    original: PathBuf,
+    size: u64,
+    mode: u32,
+}
+
+/// A directory whose stamp churns only from its copy's re-creation: bound by
+/// device, inode and mode and its complete sorted entry names. Every other
+/// entry keeps its own stamp.
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct Directory {
+    path: PathBuf,
+    identity: (u64, u64, u32),
+    names: Vec<String>,
+}
+
+/// The prefix of Cargo's name for an uplifted build-script executable,
+/// `build-script-<stem of the build file>`.
+const UPLIFTED_SCRIPT: &str = "build-script-";
+
+/// Device, inode and mode; `None` where there is no such identity.
+#[cfg(unix)]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "other platforms have no identity and bind nothing"
+)]
+fn identity(metadata: &std::fs::Metadata) -> Option<(u64, u64, u32)> {
+    use std::os::unix::fs::MetadataExt as _;
+    Some((metadata.dev(), metadata.ino(), metadata.mode()))
+}
+
+#[cfg(not(unix))]
+fn identity(_metadata: &std::fs::Metadata) -> Option<(u64, u64, u32)> {
+    None
+}
+
+/// The sorted entry names of `directory`, `None` when unreadable or not
+/// UTF-8.
+fn entry_names(directory: &Path) -> Option<Vec<String>> {
+    let mut names = std::fs::read_dir(directory)
+        .ok()?
+        .map(|entry| entry.ok()?.file_name().into_string().ok())
+        .collect::<Option<Vec<_>>>()?;
+    names.sort();
+    Some(names)
+}
+
+/// The content binding of `path` if it is Cargo's uplifted build-script copy:
+/// `build/<package>-<hash>/build-script-<stem>`, a regular file with the same
+/// bytes as the regular `build_script_<stem>-<hash>` Cargo compiled next to
+/// it. `None` otherwise, or when anything is unreadable.
+fn uplifted_copy(path: &Path) -> Option<(Copied, Directory)> {
+    let directory = path.parent()?;
+    let name = path.file_name()?.to_str()?;
+    let (_, hash) = directory.file_name()?.to_str()?.rsplit_once('-')?;
+    if !name.starts_with(UPLIFTED_SCRIPT)
+        || name.contains('.')
+        || hash.is_empty()
+        || directory.parent()?.file_name()? != "build"
+    {
+        return None;
+    }
+    let copy = std::fs::symlink_metadata(path).ok()?;
+    let names = entry_names(directory)?;
+    let original = format!("{}-{hash}", name.replace('-', "_"));
+    if !names.contains(&original) {
+        return None;
+    }
+    let original = directory.join(original);
+    let source = std::fs::symlink_metadata(&original).ok()?;
+    if !copy.is_file()
+        || !source.is_file()
+        || copy.len() != source.len()
+        || !super::files::same_content(path, &original).ok()?
+    {
+        return None;
+    }
+    let entry = Copied {
+        path: path.to_owned(),
+        original,
+        size: copy.len(),
+        mode: identity(&copy)?.2,
+    };
+    let held = std::fs::symlink_metadata(directory).ok()?;
+    if !held.is_dir() {
+        return None;
+    }
+    let directory = Directory {
+        path: directory.to_owned(),
+        identity: identity(&held)?,
+        names,
+    };
+    Some((entry, directory))
+}
+
+/// Stamps, content-bound copies and their directories.
+type Bound = (Vec<(PathBuf, Option<Stamp>)>, Vec<Copied>, Vec<Directory>);
+
+/// Cargo target stamps with the uplifted build-script copies whose stamps
+/// are too recent (and their directories) moved to content bindings. Any
+/// other recent stamp stays for the ordinary guard to refuse.
+fn bind_copies(entries: Vec<(PathBuf, Option<Stamp>)>, start: SystemTime) -> Bound {
+    let recent = |stamp: &Option<Stamp>| stamp.is_some_and(|stamp| !stamp.settled(start));
+    let mut copies = Vec::new();
+    let mut directories = Vec::new();
+    for (path, stamp) in &entries {
+        if recent(stamp)
+            && let Some((copy, directory)) = uplifted_copy(path)
+        {
+            copies.push(copy);
+            directories.push(directory);
+        }
+    }
+    if copies.is_empty() {
+        return (entries, copies, directories);
+    }
+    let bound: std::collections::BTreeSet<&Path> = copies
+        .iter()
+        .map(|copy| copy.path.as_path())
+        .chain(directories.iter().map(|directory| directory.path.as_path()))
+        .collect();
+    let rest = entries
+        .iter()
+        .filter(|(path, _)| !bound.contains(path.as_path()))
+        .cloned()
+        .collect();
+    (rest, copies, directories)
+}
+
+/// The first content-bound copy or directory that no longer holds.
+fn copies_mismatch(copies: &[Copied], directories: &[Directory]) -> Option<String> {
+    for directory in directories {
+        let held = std::fs::symlink_metadata(&directory.path).ok();
+        if held.as_ref().filter(|m| m.is_dir()).and_then(identity) != Some(directory.identity)
+            || entry_names(&directory.path).as_ref() != Some(&directory.names)
+        {
+            return Some(format!("changed: {}", directory.path.display()));
+        }
+    }
+    let same = crate::parallel::in_order(copies, |copy| {
+        let metadata = std::fs::symlink_metadata(&copy.path).ok()?;
+        (metadata.is_file()
+            && metadata.len() == copy.size
+            && identity(&metadata)?.2 == copy.mode
+            && super::files::same_content(&copy.path, &copy.original).ok()?)
+        .then_some(())
+    });
+    copies
+        .iter()
+        .zip(same)
+        .find(|(_, same)| same.is_none())
+        .map(|(copy, _)| format!("changed: {}", copy.path.display()))
 }
 
 /// What a recorded run still needs to know at its end: everything except
@@ -286,9 +458,13 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
     let target_stamps = crate::parallel::in_order(&target, |path| lstat(path));
-    for (path, stamp) in target.into_iter().zip(target_stamps) {
-        lstat_entries.push((path, stamp.ok()?));
-    }
+    let target = target
+        .into_iter()
+        .zip(target_stamps)
+        .map(|(path, stamp)| Some((path, stamp.ok()?)))
+        .collect::<Option<Vec<_>>>()?;
+    let (target, copies, directories) = bind_copies(target, facts.start);
+    lstat_entries.extend(target);
     if let Some(settings) = rustup_settings() {
         lstat_entries.push((settings.clone(), lstat(&settings).ok()?));
     }
@@ -338,6 +514,8 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             stat: stat_entries,
             trees,
             contents,
+            copies,
+            directories,
             environment,
             result: facts.result.clone(),
             stdout: Vec::new(),
@@ -366,9 +544,10 @@ impl Pending {
             let _ = std::fs::remove_file(&temporary);
         } else {
             trace(&format!(
-                "recorded: {} stamps, {} contents",
+                "recorded: {} stamps, {} contents, {} copies",
                 self.record.lstat.len() + self.record.stat.len(),
-                self.record.contents.len()
+                self.record.contents.len(),
+                self.record.copies.len()
             ));
         }
     }
@@ -496,13 +675,20 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     })
 }
 
+/// The first recorded `lstat` stamp that no longer holds.
+fn stamps_mismatch(recorded: &[(PathBuf, Option<Stamp>)]) -> Option<String> {
+    let now = crate::parallel::in_order(recorded, |(path, _)| lstat(path));
+    recorded
+        .iter()
+        .zip(now)
+        .find(|((_, recorded), now)| now.as_ref().ok() != Some(recorded))
+        .map(|((path, _), _)| format!("changed: {}", path.display()))
+}
+
 /// The first recorded observation that no longer holds.
 fn mismatch(record: &Record) -> Option<String> {
-    let now = crate::parallel::in_order(&record.lstat, |(path, _)| lstat(path));
-    for ((path, recorded), now) in record.lstat.iter().zip(now) {
-        if now.ok().as_ref() != Some(recorded) {
-            return Some(format!("changed: {}", path.display()));
-        }
+    if let Some(reason) = stamps_mismatch(&record.lstat) {
+        return Some(reason);
     }
     let now = crate::parallel::in_order(&record.stat, |(path, _)| {
         std::fs::metadata(path).ok().map(|m| Stamp::of(&m))
@@ -511,6 +697,9 @@ fn mismatch(record: &Record) -> Option<String> {
         if now.as_ref() != Some(recorded) {
             return Some(format!("changed: {}", path.display()));
         }
+    }
+    if let Some(reason) = copies_mismatch(&record.copies, &record.directories) {
+        return Some(reason);
     }
     for (root, skip, entries) in &record.trees {
         let skip: Vec<&str> = skip.iter().map(String::as_str).collect();
@@ -589,5 +778,225 @@ mod tests {
         let mut moved = base();
         moved[0].1 = "/opt/bin".into();
         assert_ne!(key_environment(moved), plain);
+    }
+
+    /// A Cargo target with one build-script unit: the original, its
+    /// dep-info and the uplifted copy.
+    struct Unit {
+        root: PathBuf,
+        directory: PathBuf,
+        original: PathBuf,
+        copy: PathBuf,
+    }
+
+    impl Unit {
+        fn new(name: &str) -> std::io::Result<Self> {
+            Self::script(name, "build")
+        }
+
+        /// A unit whose build file has the stem `stem` (`build = "build/main.rs"`).
+        fn script(name: &str, stem: &str) -> std::io::Result<Self> {
+            let root =
+                std::env::temp_dir().join(format!("sail-noop-copy-{name}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&root);
+            let directory = root.join("debug/build/proc-macro2-e4fc813f5dbf0dcb");
+            std::fs::create_dir_all(&directory)?;
+            let original = directory.join(format!("build_script_{stem}-e4fc813f5dbf0dcb"));
+            std::fs::write(&original, b"\x7fELF build script")?;
+            std::fs::write(
+                directory.join(format!("build_script_{stem}-e4fc813f5dbf0dcb.d")),
+                b"deps",
+            )?;
+            let copy = directory.join(format!("build-script-{stem}"));
+            Ok(Self {
+                root,
+                directory,
+                original,
+                copy,
+            })
+        }
+
+        /// What Cargo does on every macOS run: remove the copy, copy again.
+        fn recopy(&self) -> std::io::Result<()> {
+            let _ = std::fs::remove_file(&self.copy);
+            std::fs::copy(&self.original, &self.copy).map(|_| ())
+        }
+
+        /// The target's stamps, bound as a recording run binds them. Every
+        /// stamp here is as recent as Cargo's re-created copy.
+        fn bind(&self) -> std::io::Result<Bound> {
+            let mut entries = Vec::new();
+            for path in walk(&self.root, &[]).ok_or_else(|| std::io::Error::other("walk"))? {
+                let stamp = lstat(&path)?;
+                entries.push((path, stamp));
+            }
+            Ok(bind_copies(
+                entries,
+                SystemTime::now() + Duration::from_secs(1),
+            ))
+        }
+    }
+
+    fn replayed(bound: &Bound) -> Option<String> {
+        stamps_mismatch(&bound.0).or_else(|| copies_mismatch(&bound.1, &bound.2))
+    }
+
+    impl Drop for Unit {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_recopied_build_script_with_the_same_bytes_replays() -> std::io::Result<()> {
+        let unit = Unit::new("same")?;
+        unit.recopy()?;
+        let bound = unit.bind()?;
+        // The copy and its directory are bound by content; the original,
+        // its dep-info and the other directories keep their stamps.
+        assert_eq!(bound.1.len(), 1);
+        assert_eq!(bound.1[0].path, unit.copy);
+        assert_eq!(bound.1[0].original, unit.original);
+        assert_eq!(bound.2.len(), 1);
+        assert_eq!(bound.2[0].path, unit.directory);
+        let stamped: Vec<&Path> = bound.0.iter().map(|(path, _)| path.as_path()).collect();
+        assert!(!stamped.contains(&unit.copy.as_path()));
+        assert!(!stamped.contains(&unit.directory.as_path()));
+        assert!(stamped.contains(&unit.original.as_path()));
+        assert!(stamped.contains(&unit.root.join("debug/build").as_path()));
+        assert_eq!(replayed(&bound), None);
+        // Cargo's next run re-creates the copy: a new inode and ctime, and
+        // a changed directory stamp, but the same bytes.
+        unit.recopy()?;
+        assert_eq!(replayed(&bound), None);
+        // A build file other than `build.rs` (openssl-sys's `build/main.rs`).
+        let unit = Unit::script("main", "main")?;
+        unit.recopy()?;
+        let bound = unit.bind()?;
+        assert_eq!(bound.1.len(), 1);
+        assert_eq!(bound.1[0].original, unit.original);
+        unit.recopy()?;
+        assert_eq!(replayed(&bound), None);
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_changed_copy_misses() -> std::io::Result<()> {
+        use std::os::unix::fs::PermissionsExt as _;
+        let unit = Unit::new("changed")?;
+        unit.recopy()?;
+        let bound = unit.bind()?;
+        // Same size, different bytes.
+        std::fs::write(&unit.copy, b"\x7fELF build scrip!")?;
+        assert_eq!(
+            replayed(&bound),
+            Some(format!("changed: {}", unit.copy.display()))
+        );
+        // Another size.
+        std::fs::write(&unit.copy, b"\x7fELF")?;
+        assert!(replayed(&bound).is_some());
+        // The same bytes with another mode.
+        unit.recopy()?;
+        assert_eq!(replayed(&bound), None);
+        std::fs::set_permissions(&unit.copy, std::fs::Permissions::from_mode(0o600))?;
+        assert!(replayed(&bound).is_some());
+        // A link to the original in place of the copy.
+        std::fs::remove_file(&unit.copy)?;
+        std::os::unix::fs::symlink(&unit.original, &unit.copy)?;
+        assert!(replayed(&bound).is_some());
+        // No copy at all.
+        std::fs::remove_file(&unit.copy)?;
+        assert!(replayed(&bound).is_some());
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_changed_original_misses() -> std::io::Result<()> {
+        let unit = Unit::new("original")?;
+        unit.recopy()?;
+        let bound = unit.bind()?;
+        // A rebuilt script, uplifted again: both change together.
+        std::fs::write(&unit.original, b"\x7fELF other script!")?;
+        unit.recopy()?;
+        assert_eq!(
+            replayed(&bound),
+            Some(format!("changed: {}", unit.original.display()))
+        );
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn any_other_change_in_the_directory_misses() -> std::io::Result<()> {
+        let unit = Unit::new("extra")?;
+        unit.recopy()?;
+        let bound = unit.bind()?;
+        let extra = unit.directory.join("extra");
+        std::fs::write(&extra, b"")?;
+        assert_eq!(
+            replayed(&bound),
+            Some(format!("changed: {}", unit.directory.display()))
+        );
+        std::fs::remove_file(&extra)?;
+        assert_eq!(replayed(&bound), None);
+        // A renamed entry.
+        let info = unit.directory.join("build_script_build-e4fc813f5dbf0dcb.d");
+        std::fs::rename(&info, unit.directory.join("renamed.d"))?;
+        assert!(replayed(&bound).is_some());
+        // The directory replaced by one with the same entries.
+        let unit = Unit::new("replaced")?;
+        unit.recopy()?;
+        let bound = unit.bind()?;
+        let moved = unit.root.join("moved");
+        std::fs::rename(&unit.directory, &moved)?;
+        std::fs::create_dir(&unit.directory)?;
+        for name in [
+            "build_script_build-e4fc813f5dbf0dcb",
+            "build_script_build-e4fc813f5dbf0dcb.d",
+            "build-script-build",
+        ] {
+            std::fs::rename(moved.join(name), unit.directory.join(name))?;
+        }
+        assert!(replayed(&bound).is_some());
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_copy_without_its_original_keeps_the_ordinary_guard() -> std::io::Result<()> {
+        let unit = Unit::new("missing")?;
+        unit.recopy()?;
+        std::fs::remove_file(&unit.original)?;
+        let bound = unit.bind()?;
+        assert!(bound.1.is_empty() && bound.2.is_empty());
+        assert!(bound.0.iter().any(|(path, _)| *path == unit.copy));
+        assert!(bound.0.iter().any(|(path, _)| *path == unit.directory));
+        // An original of another unit is not this copy's.
+        let unit = Unit::new("another")?;
+        unit.recopy()?;
+        std::fs::rename(
+            &unit.original,
+            unit.directory.join("build_script_build-0000"),
+        )?;
+        assert_eq!(unit.bind()?.1, []);
+        // Different bytes are not Cargo's copy.
+        let unit = Unit::new("different")?;
+        std::fs::write(&unit.copy, b"something else")?;
+        assert_eq!(unit.bind()?.1, []);
+        // Nor is a file of that name outside `build/<unit>/`.
+        let unit = Unit::new("elsewhere")?;
+        let other = unit.root.join("debug/deps");
+        std::fs::create_dir_all(&other)?;
+        std::fs::copy(
+            &unit.original,
+            other.join("build_script_build-e4fc813f5dbf0dcb"),
+        )?;
+        std::fs::copy(&unit.original, other.join("build-script-build"))?;
+        let bound = unit.bind()?;
+        assert_eq!(bound.1.len(), 0);
+        Ok(())
     }
 }
