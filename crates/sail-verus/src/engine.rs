@@ -978,14 +978,18 @@ fn completed_driver(run: &Path, sidecar: &Path) -> bool {
     valid() == Some(true)
 }
 
-/// Complete full verifier outcome for ordinary compiler-output retention only.
+/// Complete verifier outcome for ordinary compiler-output retention only.
 /// Failed proofs remain failed and never gain a successful proof receipt.
 /// `engine` selects the source engine's sealed terminal; a stock driver has no
 /// seal and is judged by its normal exit and whole structured document.
+/// `whole` is whether the call must have verified its entire crate; a focused
+/// selection (`--verify-module`) reports exactly that it did not. A focused
+/// success still needs a complete report, so only failures retain anything.
 pub(crate) fn completed_compiler_output(
     run: &Path,
     call: &crate::managed::Invocation,
     engine: bool,
+    whole: bool,
 ) -> bool {
     let sidecar = run.join("sidecars").join(call.identity.key());
     let driver = if engine {
@@ -1008,7 +1012,8 @@ pub(crate) fn completed_compiler_output(
         return false;
     };
     let success = errors == 0;
-    results["is-verifying-entire-crate"] == true
+    results["is-verifying-entire-crate"] == whole
+        && (whole || !success)
         && results["encountered-vir-error"] == false
         && results["encountered-error"] == !success
         && results["success"] == success

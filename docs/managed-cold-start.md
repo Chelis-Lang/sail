@@ -72,9 +72,11 @@ not proof: an intact, matching verification receipt is still required.
 
 A run that ends in ordinary proof errors keeps vstd and the other compiled
 dependencies, as plain `cargo verus verify` does, so the passing run after a
-fix verifies only the edited crate. This needs a Current, unfocused run in
-which every selected target's verifier finished normally with a complete
-result. It holds for a project's first managed run too, which records the
+fix verifies only the edited crate. This needs a Current run in which every
+selected target's verifier finished normally with a complete result, or, for a
+focused run (`--verify-module`, `--verify-function`), with a result that says
+it verified part of the crate. Before focused runs qualified, the passing call
+after a failing focused one rebuilt the whole dependency closure (#441). It holds for a project's first managed run too, which records the
 build scripts' declared inputs: there Sail also requires that Cargo finished
 its build and ran every build script it keeps a record for. Before this, a
 project whose first runs failed verified vstd again on every run until one
