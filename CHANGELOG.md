@@ -90,6 +90,13 @@ semantic versioning once the API is published.
   public splitter APIs and malformed finish behavior. New proof/native and
   conformance qualification remain pending; outer stream/solver interpretation
   remains open under #371 (proposed ADR 0086).
+- Route the actual per-package report-command construction through checked
+  source, retaining its existing removal/append rules and original token bytes
+  and order. Missing effective options remain unknown. Physical compiler inputs,
+  packed-option origin and full metadata selection remain separate boundaries;
+  complete production Stock discovery, strict native Clippy and 23 selected
+  native fixtures pass. New ordinary controls, conformance and cost remain pending.
+
 - Route decoded worker-journal selection through checked source, retaining the
   original version, worker, run, uniqueness, invocation, arguments, mode and
   project checks. Return the selected owned original request as data; decoding,

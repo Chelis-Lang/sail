@@ -4185,6 +4185,7 @@
         "crates/sail-api/src/request_order.rs",
         "crates/sail-api/src/request_targets.rs",
         "crates/sail-api/src/request_capture.rs",
+        "crates/sail-api/src/request_mode.rs",
         "crates/sail-api/src/output.rs",
         "crates/sail-api/src/project.rs",
         "crates/sail-api/src/jobs.rs",
@@ -5027,11 +5028,14 @@
         "check_authority::refinement::constructed_partial_refuses",
         "check_authority::refinement::declared_replay_missing_native_paths_refused",
         "check_authority::refinement::declared_replay_missing_readback_refused",
+        "check_authority::refinement::disabled_report_adds_only_missing_markers",
         "check_authority::refinement::duplicate_process_stream_refused",
         "check_authority::refinement::duplicate_worker_journal_run_refuses",
         "check_authority::refinement::empty_human_footer_examples",
         "check_authority::refinement::empty_human_replay_constructive",
         "check_authority::refinement::empty_observation_has_no_whole_authority",
+        "check_authority::refinement::enabled_report_argument_is_retained",
+        "check_authority::refinement::enabled_report_keeps_nonempty_forwarded_payload",
         "check_authority::refinement::engine_completion_fields_refine",
         "check_authority::refinement::engine_document_fields_refine",
         "check_authority::refinement::exact_partial_request_cannot_complete_selection",
@@ -5046,6 +5050,7 @@
         "check_authority::refinement::exact_partial_transfer_refuses_bad_readback",
         "check_authority::refinement::focused_report_refused",
         "check_authority::refinement::forwarded_all_is_not_selected",
+        "check_authority::refinement::forwarded_effective_flag_preserves_report_mode",
         "check_authority::refinement::forwarded_incremental_is_retained",
         "check_authority::refinement::forwarded_workspace_is_not_selected",
         "check_authority::refinement::function_refines",
@@ -5055,6 +5060,7 @@
         "check_authority::refinement::matching_repair_selection_accepts",
         "check_authority::refinement::mismatched_paths_withhold_whole_and_partial",
         "check_authority::refinement::mismatched_request_path_binding_refused",
+        "check_authority::refinement::missing_effective_options_cannot_enable_report",
         "check_authority::refinement::missing_feature_fields_refine",
         "check_authority::refinement::missing_process_wait_refused",
         "check_authority::refinement::missing_repair_function_refused",
@@ -5111,6 +5117,12 @@
         "check_authority::request_capture::original_capture_run",
         "check_authority::request_capture::select_original_request",
         "check_authority::request_capture::selected_original_capture",
+        "check_authority::request_mode::construct_report_verification_arguments",
+        "check_authority::request_mode::has_report_separator",
+        "check_authority::request_mode::kept_report_arguments",
+        "check_authority::request_mode::report_marker_literals",
+        "check_authority::request_mode::report_mode_projection",
+        "check_authority::request_mode::report_prefix_push",
         "check_authority::request_order::OriginalTargetKey::as_tuple",
         "check_authority::request_order::OriginalTargetKey::clone",
         "check_authority::request_order::OriginalTargetKey::cmp",
@@ -6458,6 +6470,90 @@
           "name": "capture-journal-full-factory-always-refuses",
           "source": "crates/sail-api/src/request_capture.rs",
           "before": "Some(rows.remove(index).request)",
+          "after": "None"
+        },
+        {
+          "name": "report-mode-missing-options-refuse",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "None => return None",
+          "after": "None => return Some(Vec::new())"
+        },
+        {
+          "name": "report-mode-effective-enabled",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "let enabled = verification_enabled_options(effective);",
+          "after": "let enabled = true;"
+        },
+        {
+          "name": "report-mode-effective-disabled",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "let enabled = verification_enabled_options(effective);",
+          "after": "let enabled = false;"
+        },
+        {
+          "name": "report-mode-original-separator",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "if exact_bytes(bytes, b\"--\") { forwarded = true; }",
+          "after": "if exact_bytes(bytes, b\"--\") { forwarded = false; }"
+        },
+        {
+          "name": "report-mode-preserves-prefix-no-verify",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "if !(enabled && forwarded && exact_bytes(bytes, b\"--no-verify\")) {",
+          "after": "if !(enabled && exact_bytes(bytes, b\"--no-verify\")) {"
+        },
+        {
+          "name": "report-mode-keeps-disabled-original-flag",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "if !(enabled && forwarded && exact_bytes(bytes, b\"--no-verify\")) {",
+          "after": "if !(forwarded && exact_bytes(bytes, b\"--no-verify\")) {"
+        },
+        {
+          "name": "report-mode-exact-original-token",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "arguments.push(argument.clone());",
+          "after": "arguments.push(String::new());"
+        },
+        {
+          "name": "report-mode-no-wrong-enabled-append",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "if !enabled && verification_enabled_command(&arguments) {",
+          "after": "if enabled && verification_enabled_command(&arguments) {"
+        },
+        {
+          "name": "report-mode-no-spurious-append",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "if !enabled && verification_enabled_command(&arguments) {",
+          "after": "if !enabled {"
+        },
+        {
+          "name": "report-mode-required-separator-append",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "arguments.push(separator);",
+          "after": "let _ = separator;"
+        },
+        {
+          "name": "report-mode-required-disable-append",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "arguments.push(no_verify);",
+          "after": "let _ = no_verify;"
+        },
+        {
+          "name": "report-mode-exact-separator-marker",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "let separator = \"--\".to_owned();",
+          "after": "let separator = \"-p\".to_owned();"
+        },
+        {
+          "name": "report-mode-exact-disable-marker",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "let no_verify = \"--no-verify\".to_owned();",
+          "after": "let no_verify = \"--verify\".to_owned();"
+        },
+        {
+          "name": "report-mode-full-operation-always-refuses",
+          "source": "crates/sail-api/src/request_mode.rs",
+          "before": "Some(arguments)",
           "after": "None"
         }
       ]
