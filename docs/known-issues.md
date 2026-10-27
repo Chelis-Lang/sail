@@ -4,6 +4,14 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The next `cc98352f` pass refuses opaque public predicates and unsupported
+`mem::replace` (#481). Exact state projections and the already-modeled
+Option::take preserve the real owned transfer without a new trusted primitive.
+The copy contract also needs exact continuation because input Idle and Comment
+have the same raw-history predicate (#482); the actual copy implementation is
+correct. Source corrections, nonempty copy witness and whole-copy control are
+implemented; new whole-root/native/control qualification remains pending.
+
 The `0ef78997` outer/owner whole-query capture refuses proof-program
 compilation at erased match grouping and Seq index projections
 ([#481](https://github.com/Chelis-Lang/sail/issues/481)). The correction preserves

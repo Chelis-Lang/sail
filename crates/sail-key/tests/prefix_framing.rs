@@ -57,6 +57,7 @@ fn native_shared_primitive_controls_execute() {
     assert!(sail_acceptance::query_split::outer_atom_offsets_control());
     assert!(sail_acceptance::query_split::outer_crlf_finish_control());
     assert!(sail_acceptance::query_split::outer_chunks_control());
+    assert!(sail_acceptance::query_split::outer_clone_initial_control());
 }
 
 #[test]

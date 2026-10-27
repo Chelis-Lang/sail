@@ -27,7 +27,7 @@ sail_code! {
     pub struct QueryPrefix<Host> {
         raw: RawTranscript,
         prefix: Prefix<Host>,
-        splitter: crate::query_split::StreamSplitter,
+        splitter: Option<crate::query_split::StreamSplitter>,
     }
 }
 
@@ -148,14 +148,19 @@ sail_code! {
     impl<Host: HashHost> QueryPrefix<Host> {
         sail_impl_spec! {
             pub closed spec fn view(&self) -> Seq<u8> { self.raw.view() }
-            pub closed spec fn parser_view(&self) -> (u8,Seq<u8>,int) { self.splitter.transition_view() }
+            pub closed spec fn parser_view(&self) -> (u8,Seq<u8>,int) {
+                match self.splitter { Some(splitter) => splitter.transition_view(),None => (0u8,Seq::<u8>::empty(),0int) }
+            }
+            pub closed spec fn pending_item_view(&self) -> bool {
+                match self.splitter { Some(splitter) => splitter.has_pending_item_spec(),None => false }
+            }
             pub closed spec fn fed(&self) -> nat { self.raw.fed_view() }
             pub closed spec fn material(&self) -> Seq<u8> { self.prefix.material() }
             pub closed spec fn active(&self) -> bool { self.raw.active() && self.prefix.exact() }
             pub closed spec fn coherent(&self) -> bool {
                 self.fed() <= self.view().len() && self.prefix.exact() && self.prefix.length() == self.fed()
-                    && self.splitter.input_view() && self.splitter.matches(self.view())
-                    && self.splitter.well_formed() && self.splitter.position_view() == self.view().len()
+                    && match self.splitter { Some(splitter) => splitter.input_view() && splitter.matches(self.view())
+                        && splitter.well_formed() && splitter.position_view() == self.view().len(),None => false }
             }
             pub open spec fn matches(&self, binding: (Seq<u8>, Seq<u8>, Seq<u8>, Seq<u8>, Option<Seq<u8>>)) -> bool {
                 self.coherent() && self.material() == crate::key_prefix::header(binding.0,binding.1,binding.2,binding.3,binding.4)
@@ -167,11 +172,11 @@ sail_code! {
             pub fn new(prefix: Prefix<Host>) -> (out: Self)
                 requires (prefix.exact(), prefix.length() == 0)
                 ensures (out.coherent(), out.active(), out.view().len() == 0, out.fed() == 0,
-                    out.splitter.fresh(),out.parser_view() == (0u8,Seq::<u8>::empty(),0int),
+                    out.parser_view() == (0u8,Seq::<u8>::empty(),0int),
                     out.material() == prefix.material(),
                     forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
                         prefix.material() == crate::key_prefix::header(binding.0,binding.1,binding.2,binding.3,binding.4) ==> out.matches(binding))
-            { Self { raw: RawTranscript::empty(), prefix, splitter:crate::query_split::StreamSplitter::start(true) } }
+            { Self { raw: RawTranscript::empty(), prefix, splitter:Some(crate::query_split::StreamSplitter::start(true)) } }
         }
         sail_method! {
             /// Appends every original byte without granting any command/key interpretation.
@@ -204,13 +209,23 @@ sail_code! {
             {
                 self.raw.append(bytes);
                 let _retained_len=self.raw.bytes().len();
-                let splitter=std::mem::replace(&mut self.splitter,crate::query_split::StreamSplitter::start(true));
-                let (next,items)=splitter.push_items(bytes,Vec::new());
-                self.splitter=next;
-                sail_proof! {
-                    assert(self.view().take(self.fed() as int) =~= old(self).view().take(old(self).fed() as int));
+                match self.splitter.take() {
+                    Some(splitter) => {
+                        let (next,items)=splitter.push_items(bytes,Vec::new());
+                        self.splitter=Some(next);
+                        sail_proof! {
+                            assert(self.view().take(self.fed() as int) =~= old(self).view().take(old(self).fed() as int));
+                        }
+                        items
+                    }
+                    None => {
+                        // Coherent private constructors retain Some; this
+                        // defensive unreachable branch retains original bytes
+                        // and refuses interpretation instead of minting items.
+                        self.raw.refuse();
+                        Vec::new()
+                    }
                 }
-                items
             }
         }
         sail_method! {
@@ -218,8 +233,8 @@ sail_code! {
             /// input stream. It grants no physical read or EOF authority.
             pub fn has_pending_item(&self) -> (out: bool)
                 requires (self.coherent())
-                ensures (out == self.splitter.has_pending_item_spec())
-            { self.splitter.has_pending_item() }
+                ensures (out == self.pending_item_view())
+            { match &self.splitter { Some(splitter) => splitter.has_pending_item(),None => false } }
         }
         sail_method! {
             /// Exposes only this owner's exact replay bytes.
