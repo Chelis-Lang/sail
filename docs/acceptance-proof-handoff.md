@@ -236,6 +236,17 @@ framing decision is renumbered to 0084.
 
 ## Resume and acceptance
 
+The served-byte replay candidate appends `query_replay.rs`, actual comparison
+history refinement functions and a same-owner stdout completion join. Query now
+has 156 ordinary controls (the 134 option/inherited controls plus 22 replay
+controls); no positive/function count has been guessed. Whole-root discovery
+must retain all old functions and derive the expanded inventory from Stock.
+The lead's #454 full-body/loop-preserving mutant correction is merged; do not
+restore earlier truncated control objects. Statistics interpretation/origins,
+numeric effort/reason policy and native slice/owner correspondence remain open.
+See the [mechanical replay boundary](design/acceptance-query.md#original-served-byte-replay-comparison-candidate)
+for exact data retention, refusal behavior, accounting and pending cost gates.
+
 The scalar-option source candidate adds `query_options.rs` to the actual query
 driver, preserving every earlier function and all 115 inherited controls and
 appending 19 controls. Native Session and SMT parser helpers are separately

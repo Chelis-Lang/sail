@@ -126,6 +126,12 @@ checks original raw option fields and persistent native Session readback for
 pending. It does not establish pinned-solver defaults, option/alias/reset
 semantics or the complete SMT interpretation required by #371.
 
+The [served-byte replay candidate](design/acceptance-query.md#original-served-byte-replay-comparison-candidate)
+adds the actual mechanical comparison/count transition and a same-owner stdout
+completion join. Qualification remains pending. Its statistics shape exception
+does not establish arbitrary statistics equivalence, truthful origins or numeric
+effort/reason semantics; these remain part of #371/#372.
+
 ## Performance
 
 Current numbers are in [performance](performance.md).

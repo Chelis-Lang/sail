@@ -34,4 +34,6 @@ pub mod query_policy;
 pub mod query_prefix;
 /// Typed local publication over owned delivered input and complete stdout.
 pub mod query_publication;
+/// Original served bytes and the mechanical replay-comparison transition.
+pub mod query_replay;
 pub mod stream_capture;

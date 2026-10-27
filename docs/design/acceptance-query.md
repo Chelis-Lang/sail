@@ -214,6 +214,69 @@ against feeding the original unmodified input directly, and compare native
 splitter items with the checked grammar at every chunk width of quoted,
 commented and CR/LF examples.
 
+### Original served-byte replay comparison candidate
+
+`query_replay` owns each actual served cache-hit byte vector and a checked copy
+of its complete original command. A private statistics tag is minted only from
+validated raw `get-info`/`:all-statistics` intervals, complete framing and trivia,
+and exactly one keyword. Native classification/lexer output only proposes the
+intervals. Unsupported statistics-command argument forms refuse cache serving
+in the plausibility check; the original input then follows live fallback.
+The option-state candidate is unchanged.
+
+The actual native `ReplayCheck` delegates to the shared `Replay` controller.
+For ordinary positions the decision compares the retained served bytes to the
+actual stdout slice exactly. For a minted statistics position it applies the
+existing broad complete `(:...)` list-shape policy. The independent native
+`is_single_response` refusal check remains in front of that statistics
+comparison: checked `response_frame` alone permits leading transport trivia,
+whereas the native predicate also requires the first emitted item at offset
+zero. Neither check is removed or replaced by a supplied success Boolean.
+
+The controller advances exactly one original served position after an accepted
+comparison, exposes the remaining count, latches divergence, and preserves the
+existing clean-short-replay decision. `comparison_step` calls that same body
+and inductively relates successful steps to their actual byte inputs in original
+order. Native framing refusal calls its checked permanent-refusal operation.
+`CompletedStream::with_replay` consumes the actual completed stdout observation
+only when comparisons are complete, its original drained suppression count
+equals the original served count, and the original opaque owners match through
+the existing `OwnerIdentity` contract. Equal counts from another child cannot
+substitute. The native caller still must supply its real buffer slice and lease;
+that process/read correspondence remains unproved native source.
+
+This theorem is correspondence to the existing mechanical comparison policy.
+It does not assert semantic equivalence of arbitrary `(:...)` lists. Charter
+rule 3 and ADR 0011 retain actual stored bytes, including statistics. ADR 0011
+permits stored time/memory figures; ADR 0017 permits publisher resource counts;
+ADR 0009 treats rlimit drift as output. Their shape guards do not establish
+truthful origins or statistics-field meaning. Pinned-solver interpretation,
+complete protected cache origins (#371/#372), rlimit-count extraction, reason
+conversion, counter reset/monotonicity and `unknown_servable` remain separate.
+No continuation-oracle normalization is authorized by this refinement
+(ADR 0051 and open question 31).
+
+The serving budget charges actual retained command and payload vector
+capacities, receipt-vector capacity, and fixed receipt/controller carriers.
+Those charges transfer into the solver recording budget when the prefix starts
+replaying. Exhaustion retains mandatory replay comparisons and live forwarding
+while withholding recording through existing bounds. Allocation capacities are
+native accounting facts, not a proved RSS bound; allocator overhead and runtime
+cost remain unmeasured. Retaining commands and checking their framing adds work
+and can reach the existing recording/overflow bounds earlier.
+
+The candidate appends 22 ordinary controls to the 134 inherited query controls,
+including complete mint/comparison/join always-refuse controls, original byte
+and order substitutions, sticky divergence and wrong-owner/count joins.
+Constructive paths exercise a nonempty exact/statistics history and the actual
+stdout completion join. Three native tests cover minting, owner/count/comparison
+joins and retained allocation accounting. They are not executed evidence.
+The query driver now has twenty actual files; its old verified count and full
+function list remain intentionally unchanged pending actual whole-positive
+discovery. Inputs/authority controls and inventories remain unchanged, including
+the lead's inherited full-scope mutant corrections (#454). Native compilation,
+all ordinary controls, differential behavior and cost qualification are pending.
+
 Publication now refuses an otherwise successful, quiet producer session if
 its input is incomplete, correlation stopped or expectations/replies remain
 unmatched. It also latches every solver-stdin write/flush failure and carries

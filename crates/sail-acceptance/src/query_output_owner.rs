@@ -228,6 +228,23 @@ sail_code! {
         }
     }
     impl<Owner> CompletedStream<Owner> {
+        sail_method! {
+            /// Join completed comparisons to this actual stdout suppression
+            /// cursor. Equal counts alone cannot replace comparison completion.
+            pub fn with_replay<Identity>(self, replay: &crate::query_replay::Replay<'_, Owner>, identity: &Identity) -> (out: Option<Self>)
+                where (Identity: OwnerIdentity<Owner>)
+                requires (true)
+                ensures (out.is_some() == (replay.complete_view()
+                    && self.replayed_view() == Some(replay.served_view().len())
+                    && Identity::identity(&self.owner_view()) == Identity::identity(&replay.owner_view())),
+                    out.is_some() ==> out.unwrap() == self)
+            {
+                if !replay.complete() || !identity.same_owner(&self.owner,replay.owner()) { return None; }
+                let Some(original) = &self.replayed else { return None; };
+                if original.count() as u128 != replay.total() as u128 { return None; }
+                Some(self)
+            }
+        }
         sail_impl_spec! {
             pub closed spec fn owner_view(&self) -> Owner { self.owner }
             pub closed spec fn output_view(&self) -> CompleteOutput { self.output }
@@ -583,4 +600,29 @@ sail_verified! {
         requires (output.complete(), Identity::identity(&input_owner) != Identity::identity(&output.owner_view()))
         ensures (refused)
     { observe_owned_publication(Some(input),input_owner,Some(output),gate,identity).is_none() }
+}
+sail_verified! {
+    /// One original served payload is compared against the actual completed
+    /// stdout frame, then joined to that same owner's drained replay cursor.
+    #[allow(clippy::byte_char_slices, reason = "Literal bytes provide the nonempty whole-operation replay join witness.")]
+    pub fn compared_stdout_control<Identity>(owner: u64, identity: &Identity) -> (accepted: bool)
+        where (Identity: OwnerIdentity<u64>)
+        requires (true) ensures (accepted)
+    {
+        let bytes = [b'(',b'x',b')'];
+        let served = [crate::query_replay::ServedReply::new(&bytes,crate::inputs::copy_bytes(&bytes),None)];
+        let mut replay = crate::query_replay::Replay::new(&served,owner);
+        let mut output = StreamOutput::new_replayed(owner,1);
+        output.append(&bytes);
+        sail_proof! {
+            crate::query_prefix::flat_list_frame(seq![b'x']);
+            assert(bytes@ =~= seq![b'(']+seq![b'x']+seq![b')']);
+            assert(crate::query::response_span(bytes@,0,3));
+        }
+        if output.frame(0,3).is_none() || output.advance_replay() { return false; }
+        output.end();
+        let Some(output) = output.seal() else { return false; };
+        if !replay.compare(&bytes) { return false; }
+        output.with_replay(&replay,identity).is_some()
+    }
 }
