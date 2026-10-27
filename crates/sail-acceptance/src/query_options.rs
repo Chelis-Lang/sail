@@ -97,6 +97,10 @@ sail_verified! {
             assert(crate::query::head_span(ordinary@,1,7));
             assert(crate::query::head_span(retained@,1,17));
             assert(crate::query::head_span(reset@,1,6));
+            assert(reset@.subrange(1,6) =~= vstd::utf8::encode_utf8("reset"@));
+            assert(next_options(ordinary@,None,Some(no@),Some(ten@),Some(no@),Some(ten@)));
+            assert(next_options(retained@,None,Some(no@),Some(ten@),Some(no@),Some(ten@)));
+            assert(next_options(reset@,None,Some(no@),Some(ten@),None,None));
         }
         let mut state = OptionState::new();
         if !state.matches(None,None) { return false; }
