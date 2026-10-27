@@ -7,6 +7,28 @@ refinement remains separate; a report field does not prove the physical
 observation occurred. The [acceptance design](evidence-acceptance-core.md) and
 [proof checker](acceptance-proof-checker.md) describe the owning scope.
 
+## Engine completion and fallback model
+
+The model distinguishes engine failure from normal exit with unusable engine
+evidence. `EngineDecline` retains the original protocol, verifier-document and
+missing-feature observations; exit zero alone cannot establish completion.
+The model checks protocol versions, terminal fields, document shape and counts,
+bounded raw streams and trailing bytes. Missing-feature refusal binds the actual
+diagnostic name to the modeled runtime feature inventory.
+
+Both fallback paths preserve the original request subject, runtime, mode and
+effective inputs. A whole-target restart may widen a failed partial selection;
+it cannot switch to a sibling target or different runtime. Mixed direct, engine
+and fallback completions retain per-target origins, and repair cannot select a
+requested target established only through fallback.
+
+The model checker retains every prior control and requires the complete ordered
+control registry. The existing engine-protocol, decline, repair-origin and
+feature-admission mutations from the larger candidate also run as standalone
+model controls. This is a model-only extraction: actual engine decoding,
+process observation, native fallback and service composition retain their
+separate refinement obligations. Production Rust is unchanged.
+
 ## Production report and scope validation
 
 `crates/sail-api/src/acceptance.rs` checks actual public `Report`, `CrateReport`,

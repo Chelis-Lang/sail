@@ -7,6 +7,22 @@ have separate [current native qualification](acceptance-production-refinements.m
 hosted checks and the service-wide theorem remain open. This record owns the actual scope of
 [checking](../design/acceptance-proof-checker.md).
 
+## Standalone authority-model delivery candidate
+
+This extraction takes the already-written engine completion, normal-decline,
+same-subject fallback and mixed-origin model changes from the broader #378
+candidate. It preserves the existing model controls and adds six existing
+candidate controls: fallback subject, selected fallback repair, engine protocol,
+decline refusal, repair decline and feature admission. The resulting manifest
+contains four positive roots and 31 ordinary negative controls.
+
+All twelve local checker tests pass, including omission of each required model
+control. Fresh native Stock qualification and the production-refinement count
+discovery are pending. The larger candidate's receipts do not qualify this
+main-based extraction. Native Rust, Cargo assembly, solver input generation and
+the broader service-proof boundary are unchanged; no native process or input
+closure is established by these model rules.
+
 ## Expanded model qualification
 
 The captured-source manifest contains four roots and one shared context.

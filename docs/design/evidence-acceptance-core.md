@@ -4,7 +4,7 @@
 now use source-shared concrete refinements. Native and hosted integration gates
 pass; the service-wide safety theorem remains open.**
 See the [production refinement guide](acceptance-production-refinements.md). Tracked in
-[#346](https://github.com/Chelis-Lang/sail/issues/346).
+[#368](https://github.com/Chelis-Lang/sail/issues/368).
 
 This proposal targets silent false acceptance in Sail's existing Verus path.
 It takes Verus's translation and obligation generation as trusted, including
