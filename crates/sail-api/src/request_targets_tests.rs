@@ -1,4 +1,4 @@
-//! Native differential fixtures for the actual request_targets operations.
+//! Native differential fixtures for the actual `request_targets` operations.
 
 use crate::request_targets::{
     OriginalRequestHeader, OriginalTargets, construct_original_request, insert_original_target,
@@ -27,10 +27,10 @@ fn actual_dictionary_projection_retains_old_order_scope_and_duplicates()
         .collect();
     let expected: BTreeSet<_> = original.into_iter().collect();
     assert_eq!(actual, expected.into_iter().collect::<Vec<_>>());
-    assert!(
+    assert_eq!(
         project_original_targets(&OriginalTargets::new())
-            .ok_or("empty original set projection refused")?
-            .is_empty()
+            .ok_or("empty original set projection refused")?,
+        Vec::<crate::project::RequestTarget>::new()
     );
     Ok(())
 }
