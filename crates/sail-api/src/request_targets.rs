@@ -93,6 +93,7 @@ sail_spec! {
         broadcast use vstd::laws_cmp::lemma_ref_obeys_cmp_spec;
         broadcast use vstd::std_specs::btree::axiom_increasing_seq_meaning;
         assert(vstd::laws_cmp::obeys_cmp::<&OriginalTargetKey>());
+        vstd::std_specs::btree::axiom_increasing_seq_meaning::<&OriginalTargetKey>(keys);
         assert forall |i: int, j: int| 0 <= i < j < keys.len() implies
             crate::request_order::key_order(&*keys[i], &*keys[j]) == std::cmp::Ordering::Less by {
             assert(keys[i].cmp_spec(&keys[j]) == std::cmp::Ordering::Less);
