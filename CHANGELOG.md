@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Source-share the actual pending-list byte/chunk framing and word delimiter
+  used by the SMT stream splitters. Preserve original bytes, chunk boundaries,
+  public splitter APIs and malformed finish behavior. New proof/native and
+  conformance qualification remain pending; outer stream/solver interpretation
+  remains open under #371 (proposed ADR 0086).
+
 - Distinguish the completed-view fixture's original whole-request evidence from
   its retained Unknown projection when freshness is unavailable (#464). Preserve
   both cases and all original baseline assertions; runtime behavior is unchanged.

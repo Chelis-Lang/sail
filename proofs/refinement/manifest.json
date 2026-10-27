@@ -22,6 +22,7 @@
         "crates/sail-acceptance/src/query_checkpoints.rs",
         "crates/sail-acceptance/src/query_options.rs",
         "crates/sail-acceptance/src/query_replay.rs",
+        "crates/sail-acceptance/src/query_split.rs",
         "proofs/refinement/query.rs",
         "crates/sail-key/src/lib.rs",
         "crates/sail-key/src/prefix_factory.rs",
@@ -1827,6 +1828,66 @@
           "source": "crates/sail-acceptance/src/query_replay.rs",
           "before": "self.served[ordinal].reproduced_by(actual)",
           "after": "true"
+        },
+        {
+          "name": "split-list-opening-byte",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "bytes.push(b'(');",
+          "after": "bytes.push(b'[');"
+        },
+        {
+          "name": "split-list-original-byte",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "self.bytes.push(byte);",
+          "after": "self.bytes.push(b' ');"
+        },
+        {
+          "name": "split-list-comment-domain",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "crate::query::frame_step(self.depth,self.lex,byte,self.comments)",
+          "after": "crate::query::frame_step(self.depth,self.lex,byte,!self.comments)"
+        },
+        {
+          "name": "split-list-completion-edge",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "if next.0 == 0 {",
+          "after": "if next.0 == 1 {"
+        },
+        {
+          "name": "split-list-chunk-cursor",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "return (ListStep::Complete(bytes),i+1);",
+          "after": "return (ListStep::Complete(bytes),i);"
+        },
+        {
+          "name": "split-list-chunk-original-order",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "match frame.push(data[i]) {",
+          "after": "match frame.push(data[0]) {"
+        },
+        {
+          "name": "split-list-incomplete-bytes",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "        sail_method! {\n            /// Ends this pending list without certifying completion. The\n            /// native splitter returns these original bytes as a stray item.\n            pub fn finish(self) -> (bytes: Vec<u8>)\n                requires (self.well_formed())\n                ensures (bytes@ == self.bytes_view(), !crate::query::single_list(bytes@,self.comments_view()))\n            { self.bytes }\n        }",
+          "after": "        sail_method! {\n            /// Ends this pending list without certifying completion. The\n            /// native splitter returns these original bytes as a stray item.\n            pub fn finish(self) -> (bytes: Vec<u8>)\n                requires (self.well_formed())\n                ensures (bytes@ == self.bytes_view(), !crate::query::single_list(bytes@,self.comments_view()))\n            { Vec::new() }\n        }"
+        },
+        {
+          "name": "split-list-full-push-always-pending",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "        sail_method! {\n            /// Appends the actual next byte. The returned completion owns all\n            /// original bytes through the first root close, without trimming.\n            pub fn push(mut self, byte: u8) -> (out: ListStep)\n                requires (self.well_formed(), self.bytes_view().len() < usize::MAX)\n                ensures (match out {\n                    ListStep::Pending(next) => next.well_formed()\n                        && next.bytes_view() == self.bytes_view().push(byte)\n                        && next.comments_view() == self.comments_view(),\n                    ListStep::Complete(bytes) => bytes@ == self.bytes_view().push(byte)\n                        && crate::query::single_list(bytes@,self.comments_view()),\n                })\n            {\n                let next = crate::query::frame_step(self.depth,self.lex,byte,self.comments);\n                self.bytes.push(byte);\n                sail_proof! {\n                    assert(crate::query::frame_scan(self.bytes@.drop_last(),self.comments)\n                        == (self.depth as int,self.lex));\n                    assert(self.bytes@.last() == byte);\n                    reveal_with_fuel(crate::query::frame_scan,1);\n                    assert forall|i: int| 1 <= i < self.bytes@.len() implies\n                        crate::query::frame_scan(self.bytes@.take(i),self.comments).0 > 0 by {\n                        assert(self.bytes@.take(i) =~= self.bytes@.drop_last().take(i));\n                    }\n                }\n                self.depth = next.0;\n                self.lex = next.1;\n                if next.0 == 0 {\n                    ListStep::Complete(self.bytes)\n                } else {\n                    ListStep::Pending(self)\n                }\n            }\n        }",
+          "after": "        sail_method! {\n            /// Appends the actual next byte. The returned completion owns all\n            /// original bytes through the first root close, without trimming.\n            pub fn push(mut self, byte: u8) -> (out: ListStep)\n                requires (self.well_formed(), self.bytes_view().len() < usize::MAX)\n                ensures (match out {\n                    ListStep::Pending(next) => next.well_formed()\n                        && next.bytes_view() == self.bytes_view().push(byte)\n                        && next.comments_view() == self.comments_view(),\n                    ListStep::Complete(bytes) => bytes@ == self.bytes_view().push(byte)\n                        && crate::query::single_list(bytes@,self.comments_view()),\n                })\n            {\n                let next = crate::query::frame_step(self.depth,self.lex,byte,self.comments);\n                self.bytes.push(byte);\n                sail_proof! {\n                    assert(crate::query::frame_scan(self.bytes@.drop_last(),self.comments)\n                        == (self.depth as int,self.lex));\n                    assert(self.bytes@.last() == byte);\n                    reveal_with_fuel(crate::query::frame_scan,1);\n                    assert forall|i: int| 1 <= i < self.bytes@.len() implies\n                        crate::query::frame_scan(self.bytes@.take(i),self.comments).0 > 0 by {\n                        assert(self.bytes@.take(i) =~= self.bytes@.drop_last().take(i));\n                    }\n                }\n                self.depth = next.0;\n                self.lex = next.1;\n                if next.0 == 0 {\n                    ListStep::Pending(self)\n                } else {\n                    ListStep::Pending(self)\n                }\n            }\n        }"
+        },
+        {
+          "name": "split-list-full-chunk-overconsumes-suffix",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "        sail_method! {\n            /// Consumes exactly the next contiguous chunk prefix through a\n            /// first root close, or all bytes when the root remains pending.\n            /// The native push loop advances its cursor by this exact count.\n            pub fn push_chunk(self, data: &[u8]) -> (out: (ListStep, usize))\n                requires (self.well_formed(), self.bytes_view().len() + data@.len() <= usize::MAX)\n                ensures (out.1 <= data.len(), data.len() > 0 ==> out.1 > 0,\n                    match out.0 {\n                        ListStep::Pending(next) => out.1 == data.len() && next.well_formed()\n                            && next.bytes_view() == self.bytes_view() + data@.take(out.1 as int)\n                            && next.comments_view() == self.comments_view(),\n                        ListStep::Complete(bytes) => out.1 > 0\n                            && bytes@ == self.bytes_view() + data@.take(out.1 as int)\n                            && crate::query::single_list(bytes@,self.comments_view()),\n                    })\n            {\n                let mut frame = self;\n                let mut i = 0usize;\n                sail_while! { (i < data.len())\n                    invariant (i <= data.len(), frame.well_formed(),\n                        frame.bytes_view() == self.bytes_view() + data@.take(i as int),\n                        frame.comments_view() == self.comments_view(),\n                        self.bytes_view().len() + data@.len() <= usize::MAX)\n                    decreases (data.len() - i)\n                    {\n                        match frame.push(data[i]) {\n                            ListStep::Complete(bytes) => {\n                                sail_proof! {\n                                    assert(data@.take(i as int).push(data@[i as int])\n                                        =~= data@.take(i as int + 1));\n                                }\n                                return (ListStep::Complete(bytes),i+1);\n                            }\n                            ListStep::Pending(next) => { frame = next; }\n                        }\n                        sail_proof! {\n                            assert(data@.take(i as int).push(data@[i as int])\n                                =~= data@.take(i as int + 1));\n                        }\n                        i += 1;\n                    }\n                }\n                (ListStep::Pending(frame),i)\n            }\n        }",
+          "after": "        sail_method! {\n            /// Consumes exactly the next contiguous chunk prefix through a\n            /// first root close, or all bytes when the root remains pending.\n            /// The native push loop advances its cursor by this exact count.\n            pub fn push_chunk(self, data: &[u8]) -> (out: (ListStep, usize))\n                requires (self.well_formed(), self.bytes_view().len() + data@.len() <= usize::MAX)\n                ensures (out.1 <= data.len(), data.len() > 0 ==> out.1 > 0,\n                    match out.0 {\n                        ListStep::Pending(next) => out.1 == data.len() && next.well_formed()\n                            && next.bytes_view() == self.bytes_view() + data@.take(out.1 as int)\n                            && next.comments_view() == self.comments_view(),\n                        ListStep::Complete(bytes) => out.1 > 0\n                            && bytes@ == self.bytes_view() + data@.take(out.1 as int)\n                            && crate::query::single_list(bytes@,self.comments_view()),\n                    })\n            {\n                let mut frame = self;\n                let mut i = 0usize;\n                sail_while! { (i < data.len())\n                    invariant (i <= data.len(), frame.well_formed(),\n                        frame.bytes_view() == self.bytes_view() + data@.take(i as int),\n                        frame.comments_view() == self.comments_view(),\n                        self.bytes_view().len() + data@.len() <= usize::MAX)\n                    decreases (data.len() - i)\n                    {\n                        match frame.push(data[i]) {\n                            ListStep::Complete(bytes) => {\n                                sail_proof! {\n                                    assert(data@.take(i as int).push(data@[i as int])\n                                        =~= data@.take(i as int + 1));\n                                }\n                                return (ListStep::Complete(bytes),data.len());\n                            }\n                            ListStep::Pending(next) => { frame = next; }\n                        }\n                        sail_proof! {\n                            assert(data@.take(i as int).push(data@[i as int])\n                                =~= data@.take(i as int + 1));\n                        }\n                        i += 1;\n                    }\n                }\n                (ListStep::Pending(frame),i)\n            }\n        }"
+        },
+        {
+          "name": "split-list-copy-original-bytes",
+          "source": "crates/sail-acceptance/src/query_split.rs",
+          "before": "let bytes = self.bytes.clone();",
+          "after": "let bytes = Vec::new();"
         }
       ]
     },

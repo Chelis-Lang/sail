@@ -36,4 +36,6 @@ pub mod query_prefix;
 pub mod query_publication;
 /// Original served bytes and the mechanical replay-comparison transition.
 pub mod query_replay;
+/// Actual owned pending-list bytes and first-root streaming completion.
+pub mod query_split;
 pub mod stream_capture;

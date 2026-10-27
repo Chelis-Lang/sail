@@ -57,10 +57,7 @@ impl Token {
 /// True for bytes that end a word: whitespace, parentheses, and the bytes
 /// that start strings, quoted symbols and comments.
 pub(crate) fn is_delimiter(b: u8) -> bool {
-    matches!(
-        b,
-        b' ' | b'\t' | b'\n' | b'\r' | b'(' | b')' | b'"' | b'|' | b';'
-    )
+    sail_acceptance::query::delimiter(b)
 }
 
 /// An iterator over the tokens of `src`. After the first error it yields

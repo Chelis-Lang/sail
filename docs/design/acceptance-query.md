@@ -143,13 +143,50 @@ a partial list, multiple non-list lines or an unterminated atom cannot pass as
 one response. Echo response meaning remains command-dependent and the existing
 exact echo-text check remains required.
 
-The native splitters still propose items. Their complete emission inventory,
+The native splitters still propose top-level items. Their complete emission inventory,
 command-kind/output-count semantics, option extraction, replay-frame counting,
 concrete solver/mode encoding and process correspondence remain obligations
 under [#371](https://github.com/Chelis-Lang/sail/issues/371). In particular,
 these admission validators do not prove that every actual solver stream or
 command is observed. An independent launch inventory and a complete concrete
 stream history are required for that service-level refinement.
+
+### Actual owned streaming-list kernel candidate
+
+`query_split::ListFrame` now owns the actual pending list used by both native
+splitters. Its checked constructor begins with `(`; the native opener arm calls
+it for the byte it just consumed. The native
+splitter passes each actual contiguous chunk to `push_chunk`, which calls the existing
+checked `frame_step` for each actual byte and stops at the first root close.
+Completion returns the same owned original byte vector; a pending result retains
+exactly the old bytes followed by the entire consumed chunk. The returned count
+identifies the exact chunk prefix consumed, leaving the next form untouched.
+Input comments, doubled quotes, quoted symbols and output non-comment behavior
+use the existing byte grammar. Pending finish returns unchanged bytes for the
+native stray item, and does not claim completion or physical EOF. The native
+lexer also calls the existing checked `delimiter` operation directly.
+
+These actual production operations enter the complete query Stock assembly,
+rather than remaining native hash bindings. Nonempty constructive checks cover
+real completion and stopping before a second form; ten ordinary controls cover
+original bytes, comment domain, completion, chunk cursor/order, finish, checked
+copy and full-body always-pending/overconsuming substitutions. The native public
+splitter `Clone` API delegates its list state to the checked exact-copy operation.
+All older functions and controls remain required. Native original tests remain,
+with additional unexecuted chunk-width cases for literals/comments/CRLF and
+incomplete finish. No passing verifier, native or conformance claim is made for
+this source candidate; new positive/function discovery is pending.
+
+The theorem is conditional on representable buffer append; it adds no trusted
+Boolean or grammar premise on supplied bytes. The outer native `u64` offset
+accounting, copying into `Item`, top-level atom/trivia emission inventory and
+all callers' capacity obligations are still unproved. The native atom/CRLF and
+stray behavior is preserved but remains outside this checked kernel. Full lexer
+spans/classification, SMT/Session/solver semantics, launch completeness and cache
+origins remain separate. The proposed dependency edge is recorded by
+[ADR 0086](../decisions/0086-checked-stream-framing.md), with no third-party
+dependency, reverse edge or runtime selection. Actual runtime cost remains
+unmeasured; no extra full-frame validation scan is introduced by the kernel.
 
 ### Scalar policy-option readback candidate
 
@@ -179,7 +216,7 @@ map; the first use also checks that actual map.
 
 | Source | Concrete responsibility and remaining boundary |
 |---|---|
-| `sail-smtlib` `command.rs`, `lex.rs`, `split.rs` | Propose head/kind/value intervals and command/response items. Full stream-emission inventory, command arity/type semantics and classification remain native obligations. |
+| `sail-smtlib` `command.rs`, `lex.rs`, `split.rs` | Propose head/kind/value intervals and top-level items. Actual list buffer/byte/chunk operations and delimiter calls delegate to the checked leaf; outer stream-emission inventory, command arity/type semantics and classification remain native obligations. |
 | `sail-session/src/lib.rs` | Applies the native option map, resets and output policy. This candidate checks its two actual readbacks against raw transitions; the rest of Session remains unproved. |
 | `query.rs`, `query_policy.rs`, `query_options.rs` | Check whole command framing, bare head, default head policy and the two raw scalar-option transitions. The new option component still needs direct-stock qualification. |
 | `sail-shim/src/cached.rs` | Supplies original command bytes and actual Session readback, preserves forwarding, and crosschecks native head/output policy. This caller is hash-bound native source, not a stock-compiled body. |

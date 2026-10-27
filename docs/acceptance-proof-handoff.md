@@ -85,9 +85,26 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
-## Current proof scope and qualification
+## Streaming-list source candidate and scope
 
-The current source plans 400 unique cases: three whole positive roots and
+The isolated candidate from `4c43e5a9` adds the actual pending-list byte/chunk
+controller and delimiter delegation described in the
+[query design](design/acceptance-query.md#actual-owned-streaming-list-kernel-candidate).
+Its proposed parser-to-leaf edge is ADR 0086. Ten ordinary controls append to
+the existing query list (171 total); inputs/authority remain 115/121. The plan
+is 410 unique cases (three positives plus 407 negatives), or 419 calls with four
+partitions per component. Actual source assembly adds one compiled query file
+(21/9/14). Every earlier function/control remains; new whole-positive/function
+discovery is pending. Previous 471/821, 308/538 and 510/895 inventories remain
+bootstrap requirements, not predictions or qualification of this kernel.
+No native or verifier execution was performed locally. Native outer offsets,
+top-level emission inventory, lexical/classifier/solver semantics and physical
+origins stay open; the kernel's representable-append premise stays explicit.
+No complete #371 or service theorem is claimed. CI policy remains unresolved.
+
+## Frozen pre-kernel proof scope and qualification
+
+The frozen pre-kernel source plans 400 unique cases: three whole positive roots and
 397 ordinary negatives (161 query, 115 input and 121 authority). Four partitions
 per component schedule 409 actual calls: twelve repeated whole positives and
 all 397 distinct negatives. Actual Stock assemblies contain 20, 9 and 14 files.

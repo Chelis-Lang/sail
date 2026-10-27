@@ -4,6 +4,13 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The [actual owned streaming-list source candidate](design/acceptance-query.md#actual-owned-streaming-list-kernel-candidate)
+needs whole-root positive discovery, all new/inherited controls, native and
+conformance qualification. It moves actual list bytes/chunk completion and the
+delimiter operation into the checked leaf, but leaves native top-level emission,
+absolute offset/capacity correspondence and lexical/solver interpretation open
+under #371. It introduces no solver-origin claim or runtime selection.
+
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
 read path correctly projects absent freshness to Unknown
