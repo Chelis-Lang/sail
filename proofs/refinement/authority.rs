@@ -98,6 +98,8 @@ pub fn original_dictionary_partial_refuses(header: crate::request_targets::Origi
     proof {
         reveal_byteslit(b"--");
         reveal_byteslit(b"--verify-module=selected");
+        reveal_byteslit(b"--verify-module");
+        acceptance::request_literal_lengths();
         assert(string_bytes(&request.args@[0]) == b"--"@);
         assert(string_bytes(&request.args@[1]) == b"--verify-module=selected"@);
         assert(acceptance::partial_command(request.args@));
@@ -148,6 +150,8 @@ pub fn constructed_partial_refuses(source: acceptance::RequestConstruction<'_>,
     proof {
         reveal_byteslit(b"--");
         reveal_byteslit(b"--verify-module=selected");
+        reveal_byteslit(b"--verify-module");
+        acceptance::request_literal_lengths();
         assert(string_bytes(&request.args@[0]) == b"--"@);
         assert(string_bytes(&request.args@[1]) == b"--verify-module=selected"@);
         assert(acceptance::partial_command(request.args@));
@@ -166,6 +170,7 @@ pub fn normalized_original_submission(arguments: &[String]) -> (actual: Vec<Stri
     proof {
         reveal_byteslit(b"--");
         reveal_byteslit(b"--incremental");
+        acceptance::request_literal_lengths();
         reveal_with_fuel(acceptance::normalized_arguments, 3);
         acceptance::argument_byte_projection_properties(actual@);
         assert(acceptance::normalized_arguments(arguments@, arguments@.len())
@@ -187,6 +192,8 @@ pub fn forwarded_incremental_is_retained(arguments: &[String]) -> (actual: Vec<S
     proof {
         reveal_byteslit(b"--");
         reveal_byteslit(b"--incremental");
+        acceptance::request_literal_lengths();
+        assert(exists |i: int| 0 <= i < 1 && string_bytes(&arguments@[i]) == b"--"@);
         reveal_with_fuel(acceptance::normalized_arguments, 3);
         acceptance::argument_byte_projection_properties(actual@);
         assert(acceptance::normalized_arguments(arguments@, arguments@.len())
@@ -207,6 +214,7 @@ pub fn prefix_incremental_only_is_removed(arguments: &[String]) -> (actual: Vec<
     proof {
         reveal_byteslit(b"--");
         reveal_byteslit(b"--incremental");
+        acceptance::request_literal_lengths();
         reveal_with_fuel(acceptance::normalized_arguments, 3);
         acceptance::argument_byte_projection_properties(actual@);
         assert(acceptance::normalized_arguments(arguments@, arguments@.len())

@@ -132,6 +132,16 @@ separate known `4c43e5a9` query control 151 selector failure is corrected by
 importing the exact reviewed full-method control from `00352b64`; it still needs
 ordinary negative qualification. All other inherited controls are unchanged.
 
+The current proof guidance interprets actual fixed byte-array lengths and the
+standard ordered-set sequence specification explicitly. Finite witnesses reveal
+both a complete partial-selector literal and its real accepted prefix. These are
+erased facts about existing operations; the default Stock resource limits,
+original contracts and all admission guards remain unchanged. The latest failed
+complete-root attempt has five ordinary obligations left and supplies no new
+qualified function inventory or native validation; the owning
+[qualification record](../validation/acceptance-boundary-refinements.md) records
+its exact source and archive.
+
 Set iteration remains a distinct operation. The earlier original
 `BTreeSet<(String, String, String)>` supplied the target vector. Current vstd
 source makes set-domain

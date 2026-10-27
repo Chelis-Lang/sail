@@ -802,12 +802,28 @@ sail_spec! {
             && forall |j: int| 0 <= j < i ==> string_bytes(&args[j]) != b"--"@
     }
 
+    /// The standard array view preserves these actual fixed literal lengths.
+    /// Byte contents are revealed separately at the finite consuming witness.
+    pub proof fn request_literal_lengths()
+        ensures b"--"@.len() == 2, b"--workspace"@.len() == 11, b"--all"@.len() == 5,
+            b"--incremental"@.len() == 13, b"--verify-module"@.len() == 15,
+            b"--verify-module=selected"@.len() == 24,
+    {
+        vstd::array::array_len_matches_n(b"--");
+        vstd::array::array_len_matches_n(b"--workspace");
+        vstd::array::array_len_matches_n(b"--all");
+        vstd::array::array_len_matches_n(b"--incremental");
+        vstd::array::array_len_matches_n(b"--verify-module");
+        vstd::array::array_len_matches_n(b"--verify-module=selected");
+    }
+
     /// The actual Cargo-prefix rule cannot select a workspace after an initial
     /// separator. This says nothing about Cargo option/value interpretation.
     pub proof fn initial_separator_excludes_workspace(args: Seq<String>)
         requires args.len() > 0, string_bytes(&args[0]) == b"--"@,
         ensures !cargo_workspace_requested(args),
     {
+        request_literal_lengths();
         reveal_byteslit(b"--");
         reveal_byteslit(b"--workspace");
         reveal_byteslit(b"--all");
