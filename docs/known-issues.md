@@ -18,6 +18,19 @@ fixture passes; the combined native workspace still requires qualification.
 
 ## Owned query publication control qualification
 
+The option-state candidate adds nineteen ordinary controls to the inherited
+115 query controls. Complete discovery at `069e91f6` passes query 441/776,
+inputs 308/538 and authority 498/878 with all previous functions and final
+source/runtime rechecks. The expanded ordinary-control matrix remains pending.
+Its existing assembly/private-token source fixture
+omits the required option module (#458); the source correction adds that
+fixture input and retains every original mutation. Native integration exposes a missing production
+`Duration` import (#455) and an inline entry budget undercharge (#456).
+The narrow source corrections preserve forwarding and the original bound.
+The actual parser/delivery budget regression fails ordinarily with the old
+formula and passes after charging the complete carrier; this focused native
+test does not qualify the workspace, solver suite or source-shared proof root.
+
 Whole positive discovery at `f8d61408` passes query 431/0, inputs 308/0 and
 authority 498/0, preserving all earlier functions. The first `35373419` query
 control run remains unqualified: one partition completes, one refuses a

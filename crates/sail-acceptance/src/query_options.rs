@@ -72,11 +72,46 @@ sail_verified! {
             vstd::string::is_ascii_spec_bytes(":rlimit");
             vstd::string::is_ascii_spec_bytes("reset");
             reveal_with_fuel(crate::query::trivia_after,2);
+            assert forall|i: int| 12 <= i < 26 implies
+                !crate::query::word_delimiter(print@[i]) by { }
+            assert forall|i: int| 27 <= i < 32 implies
+                !crate::query::word_delimiter(print@[i]) by { }
+            assert forall|i: int| 12 <= i < 19 implies
+                !crate::query::word_delimiter(limit@[i]) by { }
+            assert forall|i: int| 20 <= i < 22 implies
+                !crate::query::word_delimiter(limit@[i]) by { }
+            assert(print@.subrange(1,11) =~= vstd::utf8::encode_utf8("set-option"@));
+            assert(limit@.subrange(1,11) =~= vstd::utf8::encode_utf8("set-option"@));
+            assert(keyword_fields(print@,print_spans));
+            assert(keyword_fields(limit@,limit_spans));
             assert(scalar_fields(print@,print_spans));
             assert(scalar_fields(limit@,limit_spans));
+            assert(crate::query::head_span(print@,1,11));
+            assert(crate::query::head_span(limit@,1,11));
+            assert(print@.subrange(12,26) =~= vstd::utf8::encode_utf8(":print-success"@));
+            assert(limit@.subrange(12,19) =~= vstd::utf8::encode_utf8(":rlimit"@));
+            assert(print@.subrange(27,32) =~= no@);
+            assert(limit@.subrange(20,22) =~= ten@);
+            assert(next_options(print@,Some(print_spans),None,None,Some(no@),None));
+            assert(next_options(limit@,Some(limit_spans),Some(no@),None,Some(no@),Some(ten@)));
             assert(crate::query::head_span(ordinary@,1,7));
             assert(crate::query::head_span(retained@,1,17));
             assert(crate::query::head_span(reset@,1,6));
+            assert(reset@.subrange(1,6) =~= vstd::utf8::encode_utf8("reset"@));
+            assert(!crate::query_policy::named(ordinary@.subrange(1,7),"reset"@));
+            assert(!crate::query_policy::named(ordinary@.subrange(1,7),"set-option"@));
+            assert(!crate::query_policy::named(retained@.subrange(1,17),"reset"@));
+            assert(!crate::query_policy::named(retained@.subrange(1,17),"set-option"@));
+            assert(exists|start: int, end: int| crate::query::head_span(ordinary@,start,end)
+                && ordinary@.subrange(1,7) == ordinary@.subrange(start,end));
+            assert(exists|start: int, end: int| crate::query::head_span(retained@,start,end)
+                && retained@.subrange(1,17) == retained@.subrange(start,end));
+            assert(next_options(ordinary@,None,Some(no@),Some(ten@),Some(no@),Some(ten@)));
+            assert(next_options(retained@,None,Some(no@),Some(ten@),Some(no@),Some(ten@)));
+            assert(crate::query_policy::named(reset@.subrange(1,6),"reset"@));
+            assert(exists|start: int, end: int| crate::query::head_span(reset@,start,end)
+                && reset@.subrange(1,6) == reset@.subrange(start,end));
+            assert(next_options(reset@,None,Some(no@),Some(ten@),None,None));
         }
         let mut state = OptionState::new();
         if !state.matches(None,None) { return false; }

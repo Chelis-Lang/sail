@@ -75,7 +75,6 @@ pub(crate) trait CommandView {
 
 /// Narrow configuration supported by actual compiler observation requests.
 pub(crate) trait ConfigureCommand {
-    fn arg(&mut self, argument: impl AsRef<OsStr>) -> &mut Self;
     fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self;
 }
 
@@ -580,9 +579,6 @@ impl CommandView for Command {
 }
 
 impl ConfigureCommand for Command {
-    fn arg(&mut self, argument: impl AsRef<OsStr>) -> &mut Self {
-        Self::arg(self, argument)
-    }
     fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
         Self::env(self, name, value)
     }
@@ -608,9 +604,6 @@ impl CommandView for std::process::Command {
 
 #[cfg(test)]
 impl ConfigureCommand for std::process::Command {
-    fn arg(&mut self, argument: impl AsRef<OsStr>) -> &mut Self {
-        self.arg(argument)
-    }
     fn env(&mut self, name: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Self {
         self.env(name, value)
     }

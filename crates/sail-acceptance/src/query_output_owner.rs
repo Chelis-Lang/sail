@@ -231,6 +231,7 @@ sail_code! {
         sail_method! {
             /// Join completed comparisons to this actual stdout suppression
             /// cursor and recheck every actual retained suppressed frame.
+            #[allow(clippy::question_mark, reason = "Explicit refusal exits preserve the shared stock-Verus contracts and full-body mutation controls.")]
             pub fn with_replay<Identity>(self, replay: &crate::query_replay::Replay<'_, Owner>, identity: &Identity) -> (out: Option<Self>)
                 where (Identity: OwnerIdentity<Owner>)
                 requires (true)
