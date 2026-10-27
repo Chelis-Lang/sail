@@ -696,6 +696,16 @@ sail_verified! {
         output.end();
         sail_proof! { crate::query_output::transcript_partition_facts(&output.output_view()); }
         let Some(output) = output.seal() else { return false; };
+        sail_proof! {
+            assert(output.output_view().view() =~= actual@);
+            assert(output.output_view().endpoints() =~= seq![4usize]);
+            assert(replay.served_view().len() == 1);
+            assert(!replay.served_view()[0].statistics_view());
+            assert(replay.served_view()[0].bytes_view() == cached@);
+            assert(!replay.served_view()[0].reproduces(actual@));
+            assert(!output.replay_frame_matches(&replay,0));
+            assert(!output.replay_prefix_matches(&replay));
+        }
         output.with_replay(&replay,identity).is_none()
     }
 }
