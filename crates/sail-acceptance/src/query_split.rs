@@ -584,6 +584,22 @@ sail_spec! {
             model_scan_join(first.0,input,position+1,left.drop_first(),right);
         } else { assert(left+right =~= right); }
     }
+    /// Exact loop cut: connect one actual emitted chunk to the original scan
+    /// without carrying the whole native/vector/history context into induction.
+    proof fn scan_prefix_step(state:(u8,Seq<u8>,int),input:bool,position:int,data:Seq<u8>,
+        start:int,end:int,next:(u8,Seq<u8>,int),first:Option<Item>,second:Option<Item>)
+        requires 0 <= start <= end <= data.len(),
+            next == model_scan(model_scan(state,input,position,data.take(start)).0,
+                input,position+start,data.subrange(start,end)).0,
+            option_models(first)+option_models(second) == model_scan(
+                model_scan(state,input,position,data.take(start)).0,input,position+start,data.subrange(start,end)).1,
+        ensures next == model_scan(state,input,position,data.take(end)).0,
+            model_scan(state,input,position,data.take(start)).1+option_models(first)+option_models(second)
+                == model_scan(state,input,position,data.take(end)).1,
+    {
+        assert(data.take(end) =~= data.take(start)+data.subrange(start,end));
+        model_scan_join(state,input,position,data.take(start),data.subrange(start,end));
+    }
     spec fn open_list_bytes(bytes:Seq<u8>,input:bool) -> bool {
         bytes.len()>0 && bytes[0] == b'(' && forall|i:int| 1 <= i <= bytes.len() ==>
             crate::query::frame_scan(bytes.take(i),input).0 > 0
@@ -990,6 +1006,8 @@ sail_code! {
                                 assert((history+data@.take(_chunk_start as int))+data@.subrange(_chunk_start as int,cursor as int)
                                     =~= history+data@.take(cursor as int));
                             }
+                            scan_prefix_step(model(self.state),self.input,self.position_view(),data@,
+                                _chunk_start as int,cursor as int,model(next.state),first,second);
                             item_models_facts(appended@);
                         }
                         if let Some(item)=first { appended.push(item); }
@@ -999,8 +1017,6 @@ sail_code! {
                         sail_proof! {
                             assert(data@.take(cursor as int) =~= data@.take(_chunk_start as int)
                                 +data@.subrange(_chunk_start as int,cursor as int));
-                            model_scan_join(model(self.state),self.input,self.position_view(),
-                                data@.take(_chunk_start as int),data@.subrange(_chunk_start as int,cursor as int));
                             assert forall|history:Seq<u8>| self.matches(history) implies
                                 current.matches(history+data@.take(cursor as int)) by {
                                 assert((history+data@.take(_chunk_start as int))+data@.subrange(_chunk_start as int,cursor as int)

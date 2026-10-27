@@ -1175,3 +1175,11 @@ unqualified; no evidence is inherited merely from matching source hashes.
   well-formed facet explicit in the private owner's invariant, without exposing
   private fields, replacing a native body, adding a trust premise or changing
   any public input precondition.
+
+- `29acd4de`, 2026-10-27: complete chunk/item candidate still refuses. The
+  actual begin/frame/settle operations clear their earlier VCs; append's new
+  private invariant needs an explicit already-proved output facet from the
+  separate module, and constructive map/literal facts remain. The inherited
+  splitter loop again records a resource refusal. No actual inventory is
+  locked; full scope/default resources and every control remain mandatory.
+  The closed-predicate candidate compiler refusal is tracked as #502.
