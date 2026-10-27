@@ -13,6 +13,7 @@ Q40 architecture is selected.
 | `37a38135` first native attempt | Model/source suites pass 12+62; full query Stock stops at executable endpoint getter inside ghost assertion; ordinary Clippy stops at two explicit-refusal style lints; final source/runtime guards pass | Inputs/authority discovery and native tests unrun. No new inventory, proof, negative or complete-component credit ([#483](https://github.com/Chelis-Lang/sail/issues/483)) |
 | Owned accounting follow-up | Actual native counters and install/apply/remove/disable paths use shared Accounting; two nonempty witnesses, 13 additional Stock controls and one additional actual native omission control prepared | Source only, unrun. Supplied-charge accounting is distinct from native map/lock/LRU/charge correspondence and solver origin |
 | `494c091c` shared operations | Source suites pass 12+62; all three complete Stock roots pass: query 519 obligations/908 functions, inputs 308/538, authority 510/895. Every previous function is retained; final source/runtime guards pass | Positive proofs only. All 214 query ordinary controls remain unrun; native Clippy stops at explicit guarded subtraction's style lint, so native tests are unrun. No complete component/service theorem |
+| `a6e5208e` native preflight | Shared/native production compilation clears the prior errors; Clippy stops at cfg(test) settle helper's intentional owned-handle argument; final source/runtime guards pass | Source suites, fresh proofs and native tests unrun at this head. A reasoned fixture-only allowance preserves every statement/assertion and the consumed original handle; correction needs qualification |
 
 The closed `37a38135` attempt is reconstructable from the source bundle and raw
 logs in object `experiments/2026-10-27/acceptance-candidate-write-37a38135-native.tgz`,
@@ -36,6 +37,14 @@ There is no function focus. The manifest locks the actual observed inventories;
 the subsequent source adds only a reasoned local lint allowance to the proved
 accounting body, retaining all mutation contexts. That new head requires its own
 fresh full-root/final-guard and native qualification before controls launch.
+
+The closed `a6e5208e` preflight is object
+`experiments/2026-10-27/acceptance-candidate-write-a6e5208e-native.tgz`,
+7,090,063 bytes, SHA-256
+`21b017c803cb4b5de1de1d45097c8e524588d0d6d41a10a56ce65795d0b27bf7`.
+The source bundle, exact native stop and final guards are retained; PUT/exact GET
+readback pass. It stops before the remaining suites, so it earns no fresh proof
+or native-test credit and does not replace the historical `494c091c` positives.
 
 The Arc probe is `proofs/support/candidate_write_arc.rs` at source
 `f9fc1d34bc156a3749dc0c26359cddf75a352a69`, SHA-256
