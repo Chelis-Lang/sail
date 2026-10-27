@@ -3608,7 +3608,7 @@
         "crates/sail-mcp/Cargo.toml",
         "crates/sail-cli/src/managed_cli.rs"
       ],
-      "verified": 520,
+      "verified": 523,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
@@ -3664,6 +3664,8 @@
         "check_authority::acceptance::cargo_duration_only",
         "check_authority::acceptance::cargo_duration_tail",
         "check_authority::acceptance::cargo_footer",
+        "check_authority::acceptance::cargo_footer_boundary",
+        "check_authority::acceptance::cargo_footer_boundary_at",
         "check_authority::acceptance::cargo_footer_prefix",
         "check_authority::acceptance::cargo_footer_with_prefix",
         "check_authority::acceptance::classify_submission_mode",
@@ -3749,6 +3751,7 @@
         "check_authority::acceptance::presentation_value",
         "check_authority::acceptance::presentation_verdict",
         "check_authority::acceptance::provenance_valid",
+        "check_authority::acceptance::render_empty_human_output",
         "check_authority::acceptance::repair_function_at",
         "check_authority::acceptance::repair_function_present",
         "check_authority::acceptance::repair_request_matches",
