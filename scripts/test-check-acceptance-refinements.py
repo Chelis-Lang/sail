@@ -601,6 +601,26 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaises(CHECKER.Refusal):
             CHECKER.compiled_subset(CHECKER.SYNTAX, changed)
 
+    def test_cached_tokens_do_not_share_a_callers_mutable_list(self):
+        source = 'sail_verified! { pub fn guard() -> (out: bool) requires(true) ensures(out) { true } }'
+        expected = CHECKER.SOURCE.tokens(source)
+        first = CHECKER.SOURCE.tokens(source)
+        first.clear()
+        first.append(CHECKER.SOURCE.Token("false", 0, 5))
+        self.assertEqual(CHECKER.SOURCE.tokens(source), expected)
+        self.assertIsNot(CHECKER.SOURCE.tokens(source), CHECKER.SOURCE.tokens(source))
+
+    def test_cached_tokens_keep_each_exact_sources_original_spans(self):
+        first = 'fn guard() { "body" }'
+        second = '/* earlier source */ ' + first
+        CHECKER.SOURCE.tokens(first)
+        changed = CHECKER.SOURCE.tokens(second)
+        self.assertEqual([t.value for t in changed], [t.value for t in CHECKER.SOURCE.tokens(first)])
+        self.assertEqual(changed[0].begin, second.index("fn"))
+        for token in changed:
+            self.assertEqual(second[token.begin:token.end], token.value)
+        self.assertEqual(CHECKER.SOURCE.tokens(first)[0].begin, 0)
+
     def test_human_noop_counters_use_actual_project_declarations(self):
         snapshots = {"crates/sail-api/src/" + name + ".rs":
             (ROOT / "crates/sail-api/src" / (name + ".rs")).read_bytes()

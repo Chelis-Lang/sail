@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `0df9c812` whole authority positive | Direct pinned Stock passes 520 verified/0 errors and all 912 actual entries, including all 895 prior functions (22.623 s). Final inner source/runtime checks pass; lead independently reads the completed raw verifier JSON and locks that observed inventory | One complete positive only. Outer native/output/source qualification is still running; all 136 authority controls, other component unions and full service qualification remain required |
 | `3717e932` empty human-output candidate | Whole authority reaches 519 verified/1 failed function, retains all prior entries, no resource marker and final source/runtime checks pass (21.350 s). Native strict Clippy passes all targets in API/Verus/CLI; all 15 selected no-op/human-output tests pass; source suites pass 12/12 and 65/65. Final source/image checks pass (414.112 s total) | The sole remaining proof failure is finite byte-string prefix/suffix content in the constructive footer witness. No whole-positive lock, negative or e2e/conformance credit. The follow-up uses the pinned verifier's scoped reveal_byteslit builtin; runtime bytes, checks, witness assertions and resource limits are unchanged |
 | `594cce06` empty human-output candidate | Whole authority checks every prior function and reaches 518 verified/2 failed obligations (22.080 s), no resource marker, final source/runtime checks pass. The two failures are duration-existential guidance and finite footer examples. Native Clippy refuses two rustdoc spellings and the expanded preparation function's line limit | No whole-positive/count lock, native tests or negative/e2e credit. Follow-up adds explicit original duration witnesses and finite sequence facts, corrects rustdoc and documents the existing observation collector's lint allowance; predicates, scope and resources remain unchanged |
 | `8aabc3b8` empty human-output candidate | Full source inventory/assembly checks pass; Stock refuses six accesses to execution/no-reuse fields absent from its prior declaration projection (zero VCs/function credit, 1.827 s). Native strict Clippy then refuses dead witness fields and an elidable lifetime; final source/image guards pass | No native tests, negatives or e2e run. The correction captures the actual counter/NoReuse declarations, retains witness borrows in the byte accessor and elides the unused implementation lifetime; admission contracts and resources are unchanged |
@@ -72,8 +73,17 @@ token/contract/loop parse; all original comparisons and Stock inventories remain
 required. The bounded 16-entry cache changes no production Rust, proof control,
 deadline or solver resource. A regression warms a real executable selector,
 then moves that same selector into another source's contract and requires its
-refusal. Five focused source tests pass in 0.001 seconds; full native source
-qualification is pending. No production-runtime speedup is claimed.
+refusal. Native `6c94911f` passes the full 12/64 source suites; it shows no clear
+speed improvement. No production-runtime speedup is claimed.
+
+The next source-tooling candidate also caches immutable lexical token tuples,
+keyed by complete source text in a bounded 32-entry process-local cache. Public
+token reads return fresh lists, so one caller cannot edit another parse or reuse
+another source's character spans. The original tokenizer's scan and all
+envelope, mutation, loop, source-closure and Stock checks remain unchanged.
+Mutable-list isolation and shifted-source span regressions pass in the focused
+tiny tests; complete native source qualification and any timing claim remain
+pending. This has no production query-parser or solver-input behavior.
 
 The #468 correction retains the complete original `Replay::compare` signature,
 contracts and executable method body, changing only its final `true` to `false`.
