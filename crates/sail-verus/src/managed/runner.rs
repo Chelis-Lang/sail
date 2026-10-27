@@ -229,7 +229,6 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
         .collect();
     let tools = super::tool_digests::ToolDigests::open(&config.cache);
     let digests = tools.identities(&read);
-    tools.save();
     for (path, digest) in named.into_iter().zip(digests) {
         identity.push((path.to_string_lossy().into_owned(), digest?));
     }
@@ -239,12 +238,24 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
     let home = std::env::var_os("CARGO_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".cargo")));
-    for path in super::input::configuration_paths(&invocation, home.as_deref())
-        .into_iter()
-        .filter(|p| p.is_file())
-    {
-        identity.push((path.to_string_lossy().into_owned(), hashed.hash(&path)?));
+    let configuration: Vec<PathBuf> =
+        super::input::configuration_paths(&invocation, home.as_deref())
+            .into_iter()
+            .filter(|p| p.is_file())
+            .collect();
+    for path in &configuration {
+        identity.push((path.to_string_lossy().into_owned(), hashed.hash(path)?));
     }
+    // Seeding a stored closure skips the native link and C compilation fresh
+    // Cargo would run, so the store family binds those tools' bytes (#187).
+    // Without an established identity the store is not used.
+    let native = super::store::enabled()
+        .then(|| {
+            let vars: Vec<_> = std::env::vars_os().collect();
+            super::native_tools::identities(&vars, &invocation, &configuration, &tools)
+        })
+        .flatten();
+    tools.save();
     for parent in invocation.ancestors() {
         for file in [
             ".cargo/config",
@@ -292,7 +303,9 @@ fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<C
     );
     let environment = environment.into_iter().collect::<Vec<_>>();
     let (hash, compiler_hash) = context_hashes(&config.args, engine, &identity, &environment)?;
-    let store_hash = store_family_hash(&config.args, engine, &identity, &environment)?;
+    let store_hash = native
+        .map(|native| store_family_hash(&config.args, engine, &identity, &native, &environment))
+        .transpose()?;
     super::files::json(&state.join(format!("{hash}.link")), &identity_sha)?;
     Ok(Context {
         rust_src,
@@ -349,16 +362,19 @@ fn store_family_hash(
     args: &[String],
     engine: Option<&crate::engine::Request>,
     identity: &[(String, String)],
+    native: &[(String, String)],
     environment: &[(Vec<u8>, Vec<u8>)],
 ) -> Result<String> {
     Ok(digest(
         &serde_json::to_vec(&(
             // v2: earlier entries were built with Sail's private settings and
             // observation options visible to the program (#385, #393).
-            "sail-dependency-store-family-v2",
+            // v3: the native tools' bytes join the family (#187).
+            "sail-dependency-store-family-v3",
             without_selection(args),
             engine.map(crate::engine::Request::artifact_identity),
             identity,
+            native,
             environment,
         ))
         .map_err(|e| Error::new("SAIL3104", e.to_string()))?,
@@ -450,8 +466,9 @@ struct Context {
     hash: String,
     compiler_hash: String,
     /// The dependency store's view of the compiler family
-    /// ([`store_family_hash`]).
-    store_hash: String,
+    /// ([`store_family_hash`]), or `None` when the native tools have no
+    /// established identity and the store is not used (#187).
+    store_hash: Option<String>,
     /// Every installed file the context identifies (executables, engine
     /// files, sysroot libraries, configuration files).
     identity_paths: Vec<PathBuf>,
@@ -3015,10 +3032,11 @@ fn run_recorded(
     // after a prune) may start from the machine's dependency store (ADR 0045).
     // Focused runs build in a separate directory and verify no dependency. A
     // run without proof reuse neither reads nor fills the store (ADR 0046).
-    let store_candidates = if paths.reuse && super::store::enabled() && !focused(&config.args) {
-        super::store::candidates(&data, &expected, &store_hash)
-    } else {
-        Vec::new()
+    let store_candidates = match &store_hash {
+        Some(store_hash) if paths.reuse && super::store::enabled() && !focused(&config.args) => {
+            super::store::candidates(&data, &expected, store_hash)
+        }
+        _ => Vec::new(),
     };
     // The family is exclusively owned. The pinned metadata query creates no
     // compiled outputs, and seeding happens after cleanup. A fresh family has
@@ -4444,7 +4462,7 @@ mod tests {
         let environment = vec![(b"RUSTFLAGS".to_vec(), b"flags".to_vec())];
         let family = |args: &[&str]| {
             let args: Vec<String> = args.iter().map(|&a| a.to_owned()).collect();
-            store_family_hash(&args, None, &identity, &environment)
+            store_family_hash(&args, None, &identity, &[], &environment)
         };
         let plain = family(&[])?;
         for selection in [
@@ -4473,12 +4491,18 @@ mod tests {
         );
         assert_ne!(
             plain,
-            store_family_hash(&[], None, &[], &environment)?,
+            store_family_hash(&[], None, &[], &[], &environment)?,
             "the toolchain identity stays bound"
+        );
+        let linker = vec![("/private/bin/cc".to_owned(), "sha256:other".to_owned())];
+        assert_ne!(
+            plain,
+            store_family_hash(&[], None, &identity, &linker, &environment)?,
+            "the native tools stay bound (#187)"
         );
         assert_ne!(
             plain,
-            store_family_hash(&[], None, &identity, &[])?,
+            store_family_hash(&[], None, &identity, &[], &[])?,
             "the environment stays bound"
         );
         Ok(())

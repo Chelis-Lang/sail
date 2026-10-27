@@ -65,7 +65,7 @@ fn the_selected_toolchain_joins_the_context_environment_and_hashes() -> Toolchai
         let environment = environment.into_iter().collect::<Vec<_>>();
         (
             context_hashes(&[], None, &[], &environment),
-            store_family_hash(&[], None, &[], &environment),
+            store_family_hash(&[], None, &[], &[], &environment),
         )
     };
     let (caller_hashes, caller_store) = hashes(caller_environment);
