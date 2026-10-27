@@ -245,6 +245,33 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
             SOURCE.runtime_mutation(source, "let nested = true", "let nested = false")
 
+    def test_runtime_control_preserves_loop_contracts_and_selects_actual_loop_code(self):
+        source = """sail_method! {
+            fn checked() -> (ok: bool) requires (true) ensures (ok)
+            { let mut n = 0; sail_while! { (n < 1)
+                invariant(n <= 1, if n == 0 {true} else {n == 1})
+                decreases(1 - n) { n += 1; } } n == 1 }
+        }"""
+        for before, after in (
+            ("n <= 1", "n < 1"),
+            ("1 - n", "2 - n"),
+            ("{true} else", "{false} else"),
+            ("invariant(n <= 1", "invariant(n <= 2"),
+        ):
+            with self.subTest(before=before), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "loop contract"):
+                SOURCE.runtime_mutation(source, before, after)
+        SOURCE.runtime_mutation(source, "(n < 1)", "(n < 0)")
+        SOURCE.runtime_mutation(source, "n += 1;", "n += 2;")
+        SOURCE.runtime_mutation(source, "} n == 1 }", "} n == 0 }")
+
+    def test_runtime_control_refuses_loop_contract_changes_inside_whole_method(self):
+        method = "fn f() -> (ok: bool) requires (true) ensures (ok) { sail_while! { (false) invariant(true) decreases(0) { } } true }"
+        source = "sail_method! { " + method + " }"
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "loop contract"):
+            SOURCE.runtime_mutation(source, method, method.replace("invariant(true)", "invariant(false)").replace("} true }", "} false }"))
+        SOURCE.runtime_mutation(source, method, method.replace("} true }", "} false }"))
+
     def test_inventory_refuses_historical_contract_selector_before_stock(self):
         import copy
         import json
