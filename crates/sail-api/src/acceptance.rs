@@ -37,6 +37,130 @@ use vstd::prelude::*;
 #[cfg(sail_verus)]
 use vstd::string::StringSliceAdditionalSpecFns;
 
+sail_code! {
+    /// Original fields supplied to pre-execution request construction. These
+    /// values are data, not authority over metadata, paths, launches or inputs.
+    pub struct RequestConstruction<'a> {
+        /// Run allocated before execution.
+        pub run_id: &'a str,
+        /// Original native invocation's rendered path; raw-path binding is separate.
+        pub invocation: &'a str,
+        /// Original metadata workspace's rendered path; raw-path binding is separate.
+        pub workspace: &'a str,
+        /// Independently resolved execution context.
+        pub context: &'a str,
+        /// Original declared input revision.
+        pub revision: &'a str,
+        /// Actual arguments entering the managed runner, in original order.
+        pub arguments: &'a [String],
+        /// Independently selected engine identity, without reinterpreting a result.
+        pub engine: Option<EngineIdentity>,
+        /// Original requested repair function, if any.
+        pub function: Option<&'a str>,
+        /// Original repair package selector or the empty non-repair value.
+        pub repair_package: &'a str,
+        /// Original repair binary selector, if any.
+        pub repair_target: Option<&'a str>,
+        /// Original repair target kind or the empty non-repair value.
+        pub repair_kind: &'a str,
+        /// Actual pre-execution target projection. This supplies no certificate
+        /// that the native metadata selection or set iteration was exhaustive.
+        pub targets: Vec<crate::project::RequestTarget>,
+    }
+}
+
+sail_spec! {
+    pub open spec fn optional_original_text(actual: &Option<String>, original: Option<&str>) -> bool {
+        match (actual, original) {
+            (None, None) => true,
+            (Some(value), Some(source)) => string_bytes(value) == vstd::utf8::encode_utf8(source@),
+            _ => false,
+        }
+    }
+
+    pub open spec fn request_construction_matches(source: &RequestConstruction, request: &ResolvedRequest) -> bool {
+        string_bytes(&request.run_id) == vstd::utf8::encode_utf8(source.run_id@)
+            && string_bytes(&request.invocation) == vstd::utf8::encode_utf8(source.invocation@)
+            && string_bytes(&request.workspace) == vstd::utf8::encode_utf8(source.workspace@)
+            && string_bytes(&request.context_sha256) == vstd::utf8::encode_utf8(source.context@)
+            && string_bytes(&request.input_revision) == vstd::utf8::encode_utf8(source.revision@)
+            && request.args@.map_values(|s: String| string_bytes(&s))
+                == source.arguments@.map_values(|s: String| string_bytes(&s))
+            && request.engine == source.engine
+            && optional_original_text(&request.function, source.function)
+            && string_bytes(&request.repair_package) == vstd::utf8::encode_utf8(source.repair_package@)
+            && optional_original_text(&request.repair_target, source.repair_target)
+            && string_bytes(&request.repair_kind) == vstd::utf8::encode_utf8(source.repair_kind@)
+            && request.targets@ == source.targets@
+    }
+}
+
+sail_verified! {
+    /// Copies the actual original Cargo target triple without renaming a target
+    /// or substituting a report-selected kind. Set-domain coverage is separate.
+    pub fn construct_request_target(original: &(String, String, String))
+        -> (target: crate::project::RequestTarget)
+        requires(true)
+        ensures(target.package_id == original.0, target.target == original.1, target.kind == original.2)
+    {
+        crate::project::RequestTarget {
+            package_id: original.0.clone(),
+            target: original.1.clone(),
+            kind: original.2.clone(),
+        }
+    }
+}
+
+sail_verified! {
+    /// Constructs the actual managed pre-execution record from original fields.
+    /// This copies data; positive scope/currentness authority is checked later.
+    pub fn construct_resolved_request(source: RequestConstruction<'_>) -> (request: ResolvedRequest)
+        requires(true)
+        ensures(request_construction_matches(&source, &request))
+    {
+        let mut arguments: Vec<String> = Vec::with_capacity(source.arguments.len());
+        let mut i = 0usize;
+        sail_while! { (i < source.arguments.len())
+            invariant(i <= source.arguments.len(), arguments.len() == i,
+                forall |j: int| 0 <= j < i ==> string_bytes(&arguments@[j])
+                    == string_bytes(&source.arguments@[j]))
+            decreases(source.arguments.len() - i)
+            {
+                arguments.push(source.arguments[i].clone());
+                i += 1;
+            }
+        }
+        let function = match source.function { Some(value) => Some(value.to_owned()), None => None };
+        let repair_target = match source.repair_target { Some(value) => Some(value.to_owned()), None => None };
+        ResolvedRequest {
+            run_id: source.run_id.to_owned(),
+            invocation: source.invocation.to_owned(),
+            workspace: source.workspace.to_owned(),
+            context_sha256: source.context.to_owned(),
+            input_revision: source.revision.to_owned(),
+            args: arguments,
+            engine: source.engine,
+            function,
+            repair_package: source.repair_package.to_owned(),
+            repair_target,
+            repair_kind: source.repair_kind.to_owned(),
+            targets: source.targets,
+        }
+    }
+}
+
+sail_verified! {
+    /// Constructs the actual selected interactive identity from its original
+    /// manifest digest, without treating that digest as physical launch proof.
+    pub fn construct_interactive_identity(manifest: &String) -> (identity: EngineIdentity)
+        requires(true)
+        ensures(string_bytes(&identity.name) == b"interactive"@,
+            identity.manifest_sha256 == *manifest)
+    {
+        EngineIdentity { name: "interactive".to_owned(), manifest_sha256: manifest.clone() }
+    }
+}
+
 sail_spec! {
     /// Presentation only; confirmed establishment does not itself prove a verdict.
     pub open spec fn presentation_value(verdict: &VerdictName, establishment: &EstablishmentName) -> VerdictName {
@@ -649,6 +773,12 @@ sail_spec! {
         else { normalized_arguments(args, (end - 1) as nat).push(string_bytes(&args[end - 1])) }
     }
 
+    pub open spec fn cargo_workspace_requested(args: Seq<String>) -> bool {
+        exists |i: int| 0 <= i < args.len()
+            && (string_bytes(&args[i]) == b"--workspace"@ || string_bytes(&args[i]) == b"--all"@)
+            && forall |j: int| 0 <= j < i ==> string_bytes(&args[j]) != b"--"@
+    }
+
     pub open spec fn repair_function_at(r: &ResolvedRequest, p: &ProjectResult,
         t: int, c: int, f: int) -> bool {
         r.function.is_some() && 0 <= t < p.targets@.len() && p.targets@[t].requested
@@ -957,6 +1087,80 @@ sail_verified! {
                 && exact_bytes(x.manifest_sha256.as_str().as_bytes(), y.manifest_sha256.as_str().as_bytes()),
             _ => false,
         }
+    }
+}
+
+sail_verified! {
+    /// Detects the whole-workspace flag spellings before the first `--`.
+    /// Forwarded arguments cannot expand this selection predicate. Full Cargo
+    /// option/value parsing and metadata attribution remain separate boundaries.
+    pub fn cargo_workspace_selected(args: &[String]) -> (selected: bool)
+        requires(true)
+        ensures(selected == cargo_workspace_requested(args@))
+    {
+        let mut i = 0usize;
+        sail_while! { (i < args.len())
+            invariant(i <= args.len(), forall |j: int| 0 <= j < i ==>
+                string_bytes(&args@[j]) != b"--"@ && string_bytes(&args@[j]) != b"--workspace"@
+                    && string_bytes(&args@[j]) != b"--all"@)
+            decreases(args.len() - i)
+            {
+                let bytes = args[i].as_str().as_bytes();
+                if exact_bytes(bytes, b"--") {
+                    sail_proof! {
+                        if cargo_workspace_requested(args@) {
+                            let k = choose |k: int| 0 <= k < args@.len()
+                                && (string_bytes(&args@[k]) == b"--workspace"@
+                                    || string_bytes(&args@[k]) == b"--all"@)
+                                && forall |j: int| 0 <= j < k ==> string_bytes(&args@[j]) != b"--"@;
+                            if k < i { assert(string_bytes(&args@[k]) != b"--workspace"@
+                                && string_bytes(&args@[k]) != b"--all"@); }
+                            else if k > i { assert(string_bytes(&args@[i as int]) != b"--"@); }
+                            else { assert(string_bytes(&args@[k]).len() == 2); }
+                        }
+                        assert(!cargo_workspace_requested(args@));
+                    }
+                    return false;
+                }
+                if exact_bytes(bytes, b"--workspace") || exact_bytes(bytes, b"--all") {
+                    sail_proof! { assert(cargo_workspace_requested(args@)); }
+                    return true;
+                }
+                i += 1;
+            }
+        }
+        false
+    }
+}
+
+sail_verified! {
+    /// Constructs the actual CLI argument sequence after removing the deprecated
+    /// no-op flag before the first `--`. Every forwarded argument stays exact.
+    pub fn normalize_submitted_arguments(submitted: &[String]) -> (out: Vec<String>)
+        requires(true)
+        ensures(out@.map_values(|s: String| string_bytes(&s))
+            == normalized_arguments(submitted@, submitted@.len()),
+            out.len() <= submitted.len())
+    {
+        let mut out: Vec<String> = Vec::new();
+        let mut i = 0usize;
+        let mut forwarded = false;
+        sail_while! { (i < submitted.len())
+            invariant(i <= submitted.len(), out.len() <= i,
+                out@.map_values(|s: String| string_bytes(&s))
+                    == normalized_arguments(submitted@, i as nat),
+                forwarded == (exists |k: int| 0 <= k < i
+                    && string_bytes(&submitted@[k]) == b"--"@))
+            decreases(submitted.len() - i)
+            {
+                if forwarded || !exact_bytes(submitted[i].as_str().as_bytes(), b"--incremental") {
+                    out.push(submitted[i].clone());
+                }
+                if exact_bytes(submitted[i].as_str().as_bytes(), b"--") { forwarded = true; }
+                i += 1;
+            }
+        }
+        out
     }
 }
 

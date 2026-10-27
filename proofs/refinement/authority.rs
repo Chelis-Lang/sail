@@ -10,6 +10,123 @@ use crate::authority::CompletionPolicy;
 
 verus! {
 
+/// An actual nonempty Cargo-side workspace selector is not always refused.
+pub fn original_workspace_is_selected(arguments: &[String]) -> (selected: bool)
+    requires arguments@.len() == 1, string_bytes(&arguments@[0]) == b"--workspace"@,
+    ensures selected,
+{
+    acceptance::cargo_workspace_selected(arguments)
+}
+
+/// The same selector bytes after the real separator remain Verus arguments.
+pub fn forwarded_workspace_is_not_selected(arguments: &[String]) -> (selected: bool)
+    requires arguments@.len() == 2, string_bytes(&arguments@[0]) == b"--"@,
+        string_bytes(&arguments@[1]) == b"--workspace"@,
+    ensures !selected,
+{
+    acceptance::cargo_workspace_selected(arguments)
+}
+
+/// The legacy all-workspace spelling obeys the same original Cargo boundary.
+pub fn forwarded_all_is_not_selected(arguments: &[String]) -> (selected: bool)
+    requires arguments@.len() == 2, string_bytes(&arguments@[0]) == b"--"@,
+        string_bytes(&arguments@[1]) == b"--all"@,
+    ensures !selected,
+{
+    acceptance::cargo_workspace_selected(arguments)
+}
+
+/// The actual pre-execution constructor retains a nonempty original target
+/// inventory and arguments. Native set/metadata completeness stays separate.
+pub fn constructed_original_request(source: acceptance::RequestConstruction<'_>)
+    -> (request: crate::project::ResolvedRequest)
+    requires source.targets@.len() > 0, source.arguments@.len() > 0,
+    ensures acceptance::request_construction_matches(&source,&request),
+        request.targets@.len() == source.targets@.len(),
+        request.args@.len() == source.arguments@.len(),
+{
+    acceptance::construct_resolved_request(source)
+}
+
+/// Every field of a real pre-execution target triple survives the constructor.
+pub fn constructed_original_target(source: &(String,String,String))
+    -> (target: crate::project::RequestTarget)
+    requires string_bytes(&source.0).len() > 0,
+        string_bytes(&source.1).len() > 0, string_bytes(&source.2).len() > 0,
+    ensures target.package_id == source.0, target.target == source.1, target.kind == source.2,
+{
+    acceptance::construct_request_target(source)
+}
+
+/// Copying original compile-only arguments never constructs whole authority,
+/// even if the supplied project later presents successful selected rows.
+pub fn constructed_compile_only_refuses(source: acceptance::RequestConstruction<'_>,
+    project: &crate::project::ProjectResult, orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires source.arguments@.len() == 2,
+        string_bytes(&source.arguments@[0]) == b"--"@,
+        string_bytes(&source.arguments@[1]) == b"--no-verify"@,
+    ensures refused,
+{
+    let request = acceptance::construct_resolved_request(source);
+    proof {
+        assert(string_bytes(&request.args@[0]) == b"--"@);
+        assert(string_bytes(&request.args@[1]) == b"--no-verify"@);
+        assert(acceptance::verification_disabled(request.args@));
+    }
+    acceptance::complete_request_ordered(&request,project,orders).is_none()
+}
+
+/// Original partial selectors cannot be erased by request construction and
+/// thereby acquire a whole-request witness from later successful rows.
+pub fn constructed_partial_refuses(source: acceptance::RequestConstruction<'_>,
+    project: &crate::project::ProjectResult, orders: &[acceptance::ReportOrder]) -> (refused: bool)
+    requires source.arguments@.len() == 2,
+        string_bytes(&source.arguments@[0]) == b"--"@,
+        string_bytes(&source.arguments@[1]) == b"--verify-module=selected"@,
+    ensures refused,
+{
+    let request = acceptance::construct_resolved_request(source);
+    proof {
+        assert(string_bytes(&request.args@[0]) == b"--"@);
+        assert(string_bytes(&request.args@[1]) == b"--verify-module=selected"@);
+        assert(acceptance::partial_command(request.args@));
+    }
+    acceptance::complete_request_ordered(&request,project,orders).is_none()
+}
+
+/// A genuine nonempty submitted argument survives the actual constructor.
+pub fn normalized_original_submission(arguments: &[String]) -> (actual: Vec<String>)
+    requires arguments@.len() == 1,
+        string_bytes(&arguments@[0]) != b"--incremental"@,
+    ensures actual@.len() == 1,
+        string_bytes(&actual@[0]) == string_bytes(&arguments@[0]),
+{
+    acceptance::normalize_submitted_arguments(arguments)
+}
+
+/// Removal is exactly prefix-scoped: the same bytes after `--` remain present.
+pub fn forwarded_incremental_is_retained(arguments: &[String]) -> (actual: Vec<String>)
+    requires arguments@.len() == 2,
+        string_bytes(&arguments@[0]) == b"--"@,
+        string_bytes(&arguments@[1]) == b"--incremental"@,
+    ensures actual@.len() == 2,
+        string_bytes(&actual@[0]) == b"--"@,
+        string_bytes(&actual@[1]) == b"--incremental"@,
+{
+    acceptance::normalize_submitted_arguments(arguments)
+}
+
+/// Prefix removal cannot erase a later genuine argument or create a selector.
+pub fn prefix_incremental_only_is_removed(arguments: &[String]) -> (actual: Vec<String>)
+    requires arguments@.len() == 2,
+        string_bytes(&arguments@[0]) == b"--incremental"@,
+        string_bytes(&arguments@[1]) != b"--incremental"@,
+    ensures actual@.len() == 1,
+        string_bytes(&actual@[0]) == string_bytes(&arguments@[1]),
+{
+    acceptance::normalize_submitted_arguments(arguments)
+}
+
 /// A nonempty declared whole request reaches the real optional facet while
 /// both returned data borrows remain the exact original pair.
 pub fn positive_nonempty_completed_presentation(request: &crate::project::ResolvedRequest,

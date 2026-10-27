@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Route actual CLI no-op normalization and pre-execution request, target and
+  engine-identity construction through shared checked source candidates,
+  retaining every original field and argument position. Scope workspace flag
+  detection to the Cargo prefix (#467). Direct-stock, native, differential and
+  cost qualification are pending; metadata/input/launch completeness is not
+  established.
+
 - Distinguish the completed-view fixture's original whole-request evidence from
   its retained Unknown projection when freshness is unavailable (#464). Preserve
   both cases and all original baseline assertions; runtime behavior is unchanged.

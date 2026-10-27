@@ -88,6 +88,59 @@ the amended proof checks the acceptance rule over its stated inputs. Native
 option decoding and the complete service correspondence retain their explicit
 refinement boundaries.
 
+## Pre-execution request construction candidate
+
+The source candidate for [#375](https://github.com/Chelis-Lang/sail/issues/375)
+connects actual production construction operations to shared executable bodies:
+
+- The CLI's `without_incremental` delegates to
+  `normalize_submitted_arguments`. Its contract removes only the deprecated
+  no-op spelling before the first `--`; every remaining original argument is
+  copied in order, including forwarded `--incremental` text.
+- `managed/request.rs::Resolution::resolve` calls
+  `construct_resolved_request` with original run, rendered invocation/workspace,
+  context, revision, arguments, engine, repair selection and target fields.
+  The shared constructor retains every field and argument position. Its input
+  record is ordinary data, not request, currentness or input-domain authority.
+- Each actual native target-map step calls `construct_request_target`, preserving
+  the original package ID, target and kind. The actual engine identity method
+  delegates to `construct_interactive_identity`, preserving the selected digest
+  without treating it as physical launch evidence.
+- `expected_targets` calls `cargo_workspace_selected`. The shared iff predicate
+  counts the two existing workspace flag spellings only before the first `--`,
+  correcting the native scan that also counted forwarded text
+  ([#467](https://github.com/Chelis-Lang/sail/issues/467)). This checks that
+  actual prefix-selection operation, not the entire Cargo argument grammar.
+
+Erased constructive controls cover nonempty original arguments and target
+triples, prefix versus forwarded no-op flags, and original versus forwarded
+workspace spellings. Compile-only and partial arguments produced by the actual
+constructor still refuse the existing whole-request factory for arbitrary later
+project rows. Normal native regressions exercise the actual nonempty resolution
+builder and independent Cargo prefix selection. All are source-only candidates:
+direct stock-Verus checking, actual inventory discovery, ordinary negatives,
+native gates and differential/cost qualification remain pending.
+
+Set iteration remains a distinct operation. The original
+`BTreeSet<(String, String, String)>` is still selected, and its actual native
+iteration supplies the target vector. Current vstd source makes set-domain
+coverage conditional on comparator laws; source review alone does not establish
+those laws for String keys. Dedicated complete-file support diagnostics are
+separate from acceptance qualification. If necessary, a reviewed internal key
+with an actual checked bytewise lexicographic comparator can preserve the old
+String-tuple ordering while enabling checked set construction/iteration. That
+conversion remains a proposal until valid support results and source review;
+there is no assumed ordering or supplied completeness Boolean.
+
+Native path rendering still uses the old `to_string_lossy` operation and the
+independent raw-path binding, including invalid-byte refusal. Cargo metadata
+decoding/selection, argument option/value state, per-unit effective options,
+original submission/mode transport and native compiler launch remain explicit
+joins. The constructor does not derive expected targets from result rows or
+prove that its supplied projection exhausts Cargo's real selection. Physical
+compiler-input/provider questions 38 and 39 and all six service obligations
+remain open. No schema, dependency, runtime or provider is selected by this slice.
+
 ## Independent checking
 
 Commit the source first, then run Python 3.11 or newer:

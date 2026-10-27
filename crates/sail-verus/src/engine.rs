@@ -559,10 +559,7 @@ impl Request {
 
     /// Project-level engine identity.
     pub(crate) fn identity(&self) -> sail_api::project::EngineIdentity {
-        sail_api::project::EngineIdentity {
-            name: "interactive".to_owned(),
-            manifest_sha256: self.manifest_sha256.clone(),
-        }
+        sail_api::acceptance::construct_interactive_identity(&self.manifest_sha256)
     }
 }
 
