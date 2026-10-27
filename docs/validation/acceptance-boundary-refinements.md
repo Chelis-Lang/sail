@@ -6,8 +6,8 @@ The integrated candidate adds actual `OutputTail`/`SealedOrder` operations and
 24 mandatory query controls while preserving every prior root control object,
 the #505 renderer corrections, #513 native handover selector and all 18 colored
 footer controls. The current required union is 338 query, 115 input and 265
-authority negatives. Function inventories remain lower bounds until fresh
-complete-root discovery; component counts are not added together.
+authority negatives. Complete-root discovery below locks the actual combined
+function inventories; component counts are not added together.
 
 Independent archive/raw review passes for
 `experiments/2026-10-27/acceptance-output-tail-closed-20261027-v5.tgz`, SHA-256
@@ -55,6 +55,22 @@ Failed attempt: `6a1a8fcf`, 2026-10-27, closed-spec reveal refused before
 verification; archive
 `experiments/2026-10-27/acceptance-tail-typed-6a1a8fcf-native.tgz`, SHA-256
 `ea7316b4b0ff65e557548d2eb59326ad0ef8684a667651516689eb918db65a43`.
+
+The `cd943127` native attempt confirms exact byte equality of all three
+captured proof programs to `b327ab39`, matching the entire pinned runtime;
+there are no fresh Stock calls in that identity check. The source suite
+then passes 79/80 in 425.189 s and refuses another stale native join selector
+(#519). The correction preserves its unique-match/refusal and original
+framing/budget guards while selecting `sealed.join_replay`; the focused test
+passes and the actual shared framing/prefix/owner controls remain mandatory.
+Rust/solver/ordinary-controls/output phases remain unrun on this attempt.
+
+Failed attempt: `cd943127`, 2026-10-27, replay fixture missing-selector refusal;
+`experiments/2026-10-27/acceptance-native-colored-cd943127-v2.tgz`, SHA-256
+`11fd4d2c84f776d204c8c16b36642b9d83fd7b2e5d9f2ce5fcfb2318ce17e277`.
+Failed preparation: `cd943127`, 2026-10-27, temporary identity-wrapper syntax,
+zero proof/native calls; `experiments/2026-10-27/acceptance-native-colored-cd943127.tgz`,
+SHA-256 `56fee3467fadb00f79cd052a9534969d355b7d3d49efb31f4343b8b5143c0ea4`.
 
 Status: full service qualification remains open. [PR #378](https://github.com/Chelis-Lang/sail/pull/378)
 remains a draft. Coherent implementations and their subsequent control runs

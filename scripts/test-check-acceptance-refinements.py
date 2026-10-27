@@ -255,12 +255,19 @@ class SourceCaptureTests(unittest.TestCase):
         CHECKER.compiled_subset(path, original)
         for before, after in (
             (b"!is_single_response(bytes)", b"false"),
-            (b"output.with_replay(&check.comparison, &SolverOwnerIdentity)", b"Some(output)"),
+            (b"sealed.join_replay(&SolverOwnerIdentity)", b"None"),
             (b"PUBLICATION_FIXED_BYTES.saturating_add(served_storage_bytes(&served))", b"PUBLICATION_FIXED_BYTES"),
         ):
             self.assertEqual(original.count(before), 1)
             with self.subTest(before=before), self.assertRaises(CHECKER.Refusal):
                 CHECKER.compiled_subset(path, original.replace(before, after))
+
+        # The original test-scope framing wrapper stays bound above. Production
+        # now delegates its actual terminal join to checked owned operations;
+        # their framing, exact-prefix and owner faults must remain mandatory.
+        for name in ("output-tail-independent-statistics-framing",
+                "output-terminal-actual-prefix-join", "replay-join-original-output-owner"):
+            self.assertIn(name, CHECKER.REQUIRED_CONTROLS["query"])
 
 
     def test_option_state_is_checked_but_native_parser_and_session_are_only_bound(self):

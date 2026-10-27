@@ -1,5 +1,13 @@
 # Known issues and limits
 
+- [#519](https://github.com/Chelis-Lang/sail/issues/519): the replay framing/
+  owner/budget source fixture still selects the old native `output.with_replay`
+  call after terminal joins moved into checked `SealedOrder`. The full source
+  gate at `cd943127` passes 79/80 and refuses that missing selector. The fix
+  targets the actual delegated join, retains unique-match/refusal, compatibility
+  framing and budget checks, and requires shared framing/prefix/owner controls.
+  Its focused source test passes; the complete native gate remains required.
+
 - [#513](https://github.com/Chelis-Lang/sail/issues/513): the full native source
   gate at `2c2106d8` retains an obsolete shim advancement selector after the
   checked OutputBatch migration. The strict unique-match assertion refuses it;
