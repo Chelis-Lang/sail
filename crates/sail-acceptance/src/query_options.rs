@@ -86,6 +86,14 @@ sail_verified! {
             assert(keyword_fields(limit@,limit_spans));
             assert(scalar_fields(print@,print_spans));
             assert(scalar_fields(limit@,limit_spans));
+            assert(crate::query::head_span(print@,1,11));
+            assert(crate::query::head_span(limit@,1,11));
+            assert(print@.subrange(12,26) =~= vstd::utf8::encode_utf8(":print-success"@));
+            assert(limit@.subrange(12,19) =~= vstd::utf8::encode_utf8(":rlimit"@));
+            assert(print@.subrange(27,32) =~= no@);
+            assert(limit@.subrange(20,22) =~= ten@);
+            assert(next_options(print@,Some(print_spans),None,None,Some(no@),None));
+            assert(next_options(limit@,Some(limit_spans),Some(no@),None,Some(no@),Some(ten@)));
             assert(crate::query::head_span(ordinary@,1,7));
             assert(crate::query::head_span(retained@,1,17));
             assert(crate::query::head_span(reset@,1,6));
