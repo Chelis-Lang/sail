@@ -283,6 +283,93 @@ def runtime_mutation(source: str, before: str, after: str) -> None:
         "mutation must change exactly one executable body, not only proof syntax")
 
 
+
+def candidate_memory_policy(source: str) -> None:
+    """Close the reviewed native clock/endpoint construction surface.
+
+    This conservative source policy supplements full native binding hashes and
+    actual tests. It is not a proof of Mutex, map or physical endpoint semantics.
+    Unknown reset/alias syntax requires a fresh explicit review.
+    """
+    stream = tokens(source)
+    marker = ["#", "[", "cfg", "(", "test", ")", "]", "mod", "tests", "{"]
+    starts = [i for i in range(len(stream) - len(marker) + 1)
+        if [token.value for token in stream[i:i + len(marker)]] == marker]
+    require(len(starts) == 1, "candidate memory test boundary changed")
+    require(closing(stream, starts[0] + len(marker) - 1) == len(stream) - 1,
+        "candidate memory source after test boundary")
+    stream = stream[:starts[0]]
+    values = [token.value for token in stream]
+
+    def occurrences(pattern: list[str]) -> int:
+        return sum(values[i:i + len(pattern)] == pattern
+            for i in range(len(values) - len(pattern) + 1))
+
+    require(occurrences(["Clock", ":", ":", "start", "("]) == 1,
+        "candidate clock must initialize only once in fresh Inner")
+    require(occurrences(["Inner", ":", ":", "default", "("]) == 1,
+        "candidate Inner must initialize only once in a fresh endpoint")
+    require(occurrences(["Arc", ":", ":", "new", "("]) == 1,
+        "candidate memory cannot replace or fabricate its endpoint")
+    require(occurrences(["Accounting", ":", ":", "empty", "("]) == 1,
+        "candidate accounting must initialize only once in a fresh Inner")
+    for kind, name in (("enum", "StateBeforeGeneration"), ("struct", "SlotBeforeGeneration")):
+        declarations = [i for i in range(len(stream) - 1)
+            if values[i:i + 2] == [kind, name]]
+        require(len(declarations) == 1 and declarations[0] > 0
+            and stream[declarations[0] - 1].value == "]",
+            "candidate old layout types must remain private attributed declarations")
+        require(values.count(name) == 2,
+            "candidate old layout types may only describe the original carrier for size_of")
+    require(not ({"unsafe", "replace", "swap", "take", "try_unwrap", "into_inner", "cfg", "mod"} & set(values)),
+        "candidate memory reset/alias syntax outside reviewed subset")
+    for prefix in ("Self", "Default"):
+        require(occurrences([prefix, ":", ":", "default", "("]) == 0,
+            "candidate memory cannot reconstruct an existing Inner")
+    for name in ("self", "inner"):
+        require(occurrences(["*", name, "="]) == 0,
+            "candidate memory cannot replace the held Inner")
+    for i, token in enumerate(stream):
+        if i and stream[i - 1].value == "." and token.value in {"clock", "inner", "accounting"}:
+            allowed = {"clock": {"advance", "exhaust", "entry", "prepare"},
+                "inner": {"lock", "as_ref", "is_some"},
+                "accounting": {"apply", "reserve", "clear", "bytes", "pending"}}[token.value]
+            require(i + 2 < len(stream) and stream[i + 1].value == "."
+                and stream[i + 2].value in allowed,
+                "candidate clock/endpoint/accounting assignment or mutable escape")
+    names = [stream[i + 2].value for i in range(len(stream) - 2)
+        if values[i:i + 2] == ["pub", "fn"]]
+    require(names == ["tier_overhead", "candidate_bytes", "key", "charged_bytes", "write",
+        "into_value", "remove_if_current", "new", "lookup", "insert_on_disk", "prepare", "remove", "stats"],
+        "candidate memory public constructor/escape surface changed")
+    for name in ("Inner", "MemoryEndpoint", "PreparedWrite", "ObservedValue", "MemoryTier"):
+        declarations = [i for i in range(len(stream) - 1)
+            if values[i:i + 2] == ["struct", name]]
+        require(len(declarations) == 1, "missing/ambiguous native candidate record")
+        declaration = declarations[0]
+        public = declaration > 0 and stream[declaration - 1].value == "pub"
+        require(public == (name in {"PreparedWrite", "ObservedValue", "MemoryTier"}),
+            "native candidate visibility changed")
+        previous = declaration - (2 if public else 1)
+        require(previous >= 0 and stream[previous].value == "]",
+            "native candidate attribute surface changed")
+        start = previous - 1
+        while start >= 0 and stream[start].value != "[":
+            start -= 1
+        require(start > 0 and stream[start - 1].value == "#"
+            and [item.value for item in stream[start + 1:previous]] == ["derive", "(", "Debug", ")"],
+            "native candidate derives an unchecked constructor")
+        at = declarations[0] + 2
+        while at < len(stream) and stream[at].value != "{":
+            at += 1
+        require(at < len(stream), "missing native candidate fields")
+        end = closing(stream, at)
+        fields = stream[at + 1:end]
+        require(not any(token.value == "pub" and level
+            for token, level in zip(fields, top_level(fields), strict=True)),
+            "native candidate endpoint/state field is public")
+
+
 def top_level(stream: list[Token]) -> list[bool]:
     """Identify declaration positions outside all Rust item/expression groups."""
     result = []

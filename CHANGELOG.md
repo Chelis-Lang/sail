@@ -30,6 +30,24 @@ semantic versioning once the API is published.
   absent from the caller environment. Caller variables cannot override the
   private file; incomplete or unrecognized observations still withhold reuse.
 
+- Include alignment growth in the cache slot's incremental insertion-generation
+  charge, preserving the original logical 128-byte allowance (#486). The native
+  old 80-byte/new 96-byte observation identifies 8 bytes of omitted padding; corrected
+  source uses the portable actual carrier-size delta. This is not an RSS bound.
+- Route actual cache insertion, settlement and removal counters through the
+  source-shared owned-entry accounting operation. Saturating retirement and
+  overflow refusal retain existing behavior; map/lock and supplied-charge
+  correspondence remain separate unqualified obligations.
+- Bind candidate cache completion and stale-read removal to insertion-issued
+  generation handles retained with their original tier. Reinsertions, including
+  the same Arc, refuse old handles; checked lifetime-clock exhaustion leaves
+  memory miss-only (#372, #474). Memory/queue budgets charge the added retained
+  metadata. Source implementation is wired, with Stock/native/conformance and
+  cost qualification pending; solver-origin admission remains open.
+- Drop cache submissions whose public queue-wait Duration cannot form a native
+  Instant deadline, avoiding an arithmetic panic (#478). Normal waits keep their
+  existing behavior; the bounded native regression is not yet run.
+
 - Distinguish the completed-view fixture's original whole-request evidence from
   its retained Unknown projection when freshness is unavailable (#464). Preserve
   both cases and all original baseline assertions; runtime behavior is unchanged.

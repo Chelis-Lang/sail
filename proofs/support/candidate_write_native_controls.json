@@ -1,0 +1,46 @@
+{
+  "schema": "sail-native-candidate-controls-v1",
+  "scope": "unrun actual native mutation controls; preserve source-gate refusal separately from normal Rust test failure; never assign Stock proof credit",
+  "controls": [
+    {
+      "name": "native-candidate-clock-restarts-on-clear",
+      "source": "crates/sail-cache/src/memory.rs",
+      "before": "        self.clock.exhaust();",
+      "after": "        self.clock = Clock::start();",
+      "native_test": "exhausted_clock_never_recovers_after_clearing",
+      "scope": "ordinary native test failure only; no Stock negative credit"
+    },
+    {
+      "name": "native-candidate-completion-replaces-original-endpoint",
+      "source": "crates/sail-cache/src/memory.rs",
+      "before": "                inner: Arc::clone(endpoint),",
+      "after": "                inner: Arc::new(Mutex::new(Inner::default())),",
+      "native_test": "prepared_write_preserves_actual_disk_fields_and_stamp",
+      "scope": "ordinary native test failure only; no Stock negative credit"
+    },
+    {
+      "name": "native-candidate-reallocates-equal-original-value",
+      "source": "crates/sail-acceptance/src/cache_candidate.rs",
+      "before": "                let value = std::sync::Arc::clone(&candidate.value);",
+      "after": "                let value = if candidate.value.effort.is_none() {\n                    std::sync::Arc::new(CandidateValue { mode: candidate.value.mode.clone(),\n                        reply: candidate.value.reply.clone(), effort: None })\n                } else { std::sync::Arc::clone(&candidate.value) };",
+      "native_test": "same_arc_and_equal_bytes_do_not_reuse_an_insertion",
+      "scope": "ordinary native test failure only; no Stock negative credit"
+    },
+    {
+      "name": "native-candidate-owned-accounting-omitted",
+      "source": "crates/sail-cache/src/memory.rs",
+      "before": "match self.accounting.apply(update, cost) {",
+      "after": "match update {",
+      "native_test": "actual_owned_accounting_preserves_stale_replacement_and_retirement",
+      "scope": "ordinary native test failure only; no Stock negative credit; source capture may first refuse"
+    },
+    {
+      "name": "native-candidate-slot-padding-undercharged",
+      "source": "crates/sail-cache/src/memory.rs",
+      "before": "        ENTRY_OVERHEAD.saturating_add(growth)",
+      "after": "        ENTRY_OVERHEAD + 8",
+      "native_test": "actual_carrier_growth_is_charged_before_admission",
+      "scope": "ordinary native test failure only on this measured native layout; no Stock/allocator/RSS credit"
+    }
+  ]
+}
