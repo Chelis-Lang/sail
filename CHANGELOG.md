@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Include recording eligibility and original-request/producer refusals in the
+  optional unchanged-call decision trace (#476), preserving all admission checks.
+  Prioritize the last command and recent producer observations in bounded output
+  failure capture (#477); keep original caps and explicit incomplete indexes.
+
 - Give each physical local-validation checkout its own Cargo target volume
   (#475), preventing prepared worktrees from accidentally executing another
   snapshot's binaries. Repeated runs in one checkout retain the same volume;

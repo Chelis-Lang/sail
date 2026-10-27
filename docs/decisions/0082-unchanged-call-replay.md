@@ -95,6 +95,9 @@ Measured on native c7i.8xlarge (us-east-1), nine alternating rounds with
 plain full-path call. The first unchanged call after a verification still
 takes the full path and records. `SAIL_MANAGED_NOOP=0` disables replay;
 `SAIL_MANAGED_NOOP_TRACE=FILE` logs each hit, miss reason and recording.
+When an ordinary run cannot record, the trace also names its eligibility,
+original-request admission or original-producer refusal. This optional file
+does not change stdout, stderr, the recorded result or replay eligibility.
 Revisit if Sail adds per-run side effects that consumers rely on (job events,
 watch state) to the managed path. Replay is excluded wherever those are
 requested.

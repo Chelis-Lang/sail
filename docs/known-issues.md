@@ -4,6 +4,18 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The frozen `3dbebad5` full native end-to-end run passes contracts, legacy and the
+initial output comparisons, then fails unchanged-call recording
+([#476](https://github.com/Chelis-Lang/sail/issues/476)). Its trace only says
+`miss: no record`; the exact refused predicate remains under investigation.
+Optional tracing now identifies recording eligibility, original-request
+admission and original-producer refusals without changing any guard. The same
+failure's evidence collector reaches its file cap before producer state
+([#477](https://github.com/Chelis-Lang/sail/issues/477)). Selection now prioritizes
+the last issued command and recent producers under the original caps; truncation
+or omission still fails capture completeness. These source changes require
+native qualification. No false Sail verdict has been demonstrated.
+
 The frozen `4c43e5a9` full native end-to-end gate stops on the neutral-contract
 positive with backend currentness Unknown and `NotProved`
 ([#471](https://github.com/Chelis-Lang/sail/issues/471)). Its journal records the

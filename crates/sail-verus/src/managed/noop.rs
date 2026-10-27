@@ -315,6 +315,11 @@ fn trace(line: &str) {
     }
 }
 
+/// Retain the exact recording refusal in the existing optional decision trace.
+pub(super) fn unrecorded(reason: &str) {
+    trace(&format!("not recorded: {reason}"));
+}
+
 /// Variables that make up the invocation's key: every variable the context
 /// binds, every Sail variable, and the ones that select tools and terminal
 /// rendering.
@@ -472,11 +477,24 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
     // Both branches bind the independently captured original request. Partial
     // evidence uses its own scope contract and cannot acquire whole authority.
     if sail_api::acceptance::focused_command(&facts.original_request.args) {
-        sail_api::acceptance::complete_exact_partial_request(facts.original_request, facts.result)?;
-    } else {
-        sail_api::acceptance::complete_request(facts.original_request, facts.result)?;
+        if sail_api::acceptance::complete_exact_partial_request(
+            facts.original_request,
+            facts.result,
+        )
+        .is_none()
+        {
+            unrecorded("original exact-partial request has no admitted result");
+            return None;
+        }
+    } else if sail_api::acceptance::complete_request(facts.original_request, facts.result).is_none()
+    {
+        unrecorded("original whole request has no admitted result");
+        return None;
     }
-    let origins = origins::capture(facts.context, facts.result)?;
+    let Some(origins) = origins::capture(facts.context, facts.result) else {
+        unrecorded("original proof producers unavailable or mismatched");
+        return None;
+    };
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
     let target_stamps = crate::parallel::in_order(&target, |path| lstat(path));
