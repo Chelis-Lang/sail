@@ -20,6 +20,19 @@ native source-suite evidence; this combined extension and actual request/domain
 construction still require fresh native source checks and complete-root Stock
 discovery. No function or obligation counts are inferred from the support probe.
 
+The first original-selector source qualifier at `b51373b6` is refused by the
+strict mandatory-control inventory before Stock or native compilation. All 23
+new control objects exist in the manifest, but the independently captured
+`REQUIRED_CONTROLS` name list was not extended; omission/late-build-script tests
+therefore fail at that earlier refusal. The follow-up explicitly appends all 23
+names while retaining every prior mandatory name/object and every guard. The
+failed attempt's final source/image/runtime checks pass. Its authenticated archive
+is `experiments/2026-10-27/acceptance-request-domain-b51373b6-native.tgz`,
+7,100,357 bytes, SHA256
+`517b651ba4355d494a407bb5d6c1c7aa304e9e1c8d4bfb8642fb01ac3b4e4f51`.
+This is a candidate inventory-integration defect tracked with #479, not a
+false-verdict witness; no proof/native/negative credit follows from the attempt.
+
 An original-selector source candidate now connects the real `expected_targets`
 scan and name/id/version matching to checked original byte ranges. It adds the
 actual `ArgumentSpan`/`OriginalSelectors` declarations, original-prefix scanner,
