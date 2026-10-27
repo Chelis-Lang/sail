@@ -3196,7 +3196,8 @@
         "crates/sail-api/src/evidence.rs",
         "crates/sail-mcp/src/summary.rs",
         "crates/sail-mcp/src/lib.rs",
-        "crates/sail-mcp/Cargo.toml"
+        "crates/sail-mcp/Cargo.toml",
+        "crates/sail-cli/src/managed_cli.rs"
       ],
       "verified": 510,
       "functions": [
@@ -4822,6 +4823,96 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "\n        let whole = match request {\n            Some(request) => complete_request_ordered(request,project,orders),\n            None => None,\n        };\n        CompletedPresentation { project,request,whole }\n    ",
           "after": "\n        let _ = orders; CompletedPresentation { project,request,whole:None }\n    "
+        },
+        {
+          "name": "empty-human-candidate-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        human && request_headers_match(request, project) && !request.targets.is_empty() && project.targets.is_empty()\n            && !focused_command(&request.args) && verification_enabled_command(&request.args)\n            && verification_enabled_options(&request.args)\n            && request.engine.is_none() && project.engine.is_none() && request.function.is_none()\n            && request.repair_package.is_empty() && request.repair_target.is_none() && request.repair_kind.is_empty()\n            && matches!(project.currentness, Currentness::Current) && project.exit_code == Some(0)\n            && project.error.is_none() && project.no_reuse.is_none()\n            && project.execution.verifier_invocations == 0 && project.execution.reused_targets == 0\n    }",
+          "after": "{ false }"
+        },
+        {
+          "name": "empty-human-footer-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        stdout.is_empty() && (\n            cargo_footer_with_prefix(stderr, b\"    Finished `dev` profile [unoptimized + debuginfo] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"    Finished `dev` profile [unoptimized] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"    Finished `release` profile [optimized] target(s) in \")\n            || cargo_footer_with_prefix(stderr, b\"    Finished `release` profile [optimized + debuginfo] target(s) in \"))\n    }",
+          "after": "{ false }"
+        },
+        {
+          "name": "empty-human-footer-allows-nonempty-stdout",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "stdout.is_empty() && (",
+          "after": "true && ("
+        },
+        {
+          "name": "empty-human-duration-ignores-complete-suffix",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "bytes[i + 3] == b's' && bytes[i + 4] == b'\\n'",
+          "after": "true"
+        },
+        {
+          "name": "empty-human-candidate-ignores-json-consumer",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "human && request_headers_match(request, project)",
+          "after": "request_headers_match(request, project)"
+        },
+        {
+          "name": "empty-human-candidate-ignores-original-header",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "human && request_headers_match(request, project)",
+          "after": "human"
+        },
+        {
+          "name": "empty-human-candidate-allows-observed-reports",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "&& project.targets.is_empty()",
+          "after": "&& true"
+        },
+        {
+          "name": "empty-human-candidate-allows-compile-only",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        human && request_headers_match(request, project) && !request.targets.is_empty() && project.targets.is_empty()\n            && !focused_command(&request.args) && verification_enabled_command(&request.args)\n            && verification_enabled_options(&request.args)\n            && request.engine.is_none() && project.engine.is_none() && request.function.is_none()\n            && request.repair_package.is_empty() && request.repair_target.is_none() && request.repair_kind.is_empty()\n            && matches!(project.currentness, Currentness::Current) && project.exit_code == Some(0)\n            && project.error.is_none() && project.no_reuse.is_none()\n            && project.execution.verifier_invocations == 0 && project.execution.reused_targets == 0\n    }",
+          "after": "{\n        human && request_headers_match(request, project) && !request.targets.is_empty() && project.targets.is_empty()\n            && !focused_command(&request.args) && true\n            && verification_enabled_options(&request.args)\n            && request.engine.is_none() && project.engine.is_none() && request.function.is_none()\n            && request.repair_package.is_empty() && request.repair_target.is_none() && request.repair_kind.is_empty()\n            && matches!(project.currentness, Currentness::Current) && project.exit_code == Some(0)\n            && project.error.is_none() && project.no_reuse.is_none()\n            && project.execution.verifier_invocations == 0 && project.execution.reused_targets == 0\n    }"
+        },
+        {
+          "name": "empty-human-candidate-allows-focused-command",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        human && request_headers_match(request, project) && !request.targets.is_empty() && project.targets.is_empty()\n            && !focused_command(&request.args) && verification_enabled_command(&request.args)\n            && verification_enabled_options(&request.args)\n            && request.engine.is_none() && project.engine.is_none() && request.function.is_none()\n            && request.repair_package.is_empty() && request.repair_target.is_none() && request.repair_kind.is_empty()\n            && matches!(project.currentness, Currentness::Current) && project.exit_code == Some(0)\n            && project.error.is_none() && project.no_reuse.is_none()\n            && project.execution.verifier_invocations == 0 && project.execution.reused_targets == 0\n    }",
+          "after": "{\n        human && request_headers_match(request, project) && !request.targets.is_empty() && project.targets.is_empty()\n            && true && verification_enabled_command(&request.args)\n            && verification_enabled_options(&request.args)\n            && request.engine.is_none() && project.engine.is_none() && request.function.is_none()\n            && request.repair_package.is_empty() && request.repair_target.is_none() && request.repair_kind.is_empty()\n            && matches!(project.currentness, Currentness::Current) && project.exit_code == Some(0)\n            && project.error.is_none() && project.no_reuse.is_none()\n            && project.execution.verifier_invocations == 0 && project.execution.reused_targets == 0\n    }"
+        },
+        {
+          "name": "empty-human-candidate-allows-real-verifier-invocations",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "&& project.execution.verifier_invocations == 0",
+          "after": "&& true"
+        },
+        {
+          "name": "empty-human-factory-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{\n        if !empty_human_candidate(original, observed, human) || !replay_requests_match(current, original)\n            || !empty_human_bytes(stdout, stderr) { return None; }\n        let Some(paths) = paths else { return None; };\n        let Some(paths) = bind_request_paths(current, paths.invocation(), paths.workspace()) else { return None; };\n        let Some(readback) = readback else { return None; };\n        let Some(readback) = seal_replay_readback(current, readback) else { return None; };\n        sail_proof! {\n            if resolved_coverage(original, observed) { resolved_coverage_has_requested_target(original, observed); }\n            if resolved_coverage(current, observed) { resolved_coverage_has_requested_target(current, observed); }\n            assert(!supplied_selection_authorized(observed));\n        }\n        Some(EmptyHumanOutput { original, current, observed, stderr, paths, readback })\n    }",
+          "after": "{ None }"
+        },
+        {
+          "name": "empty-human-factory-ignores-current-request",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "|| !replay_requests_match(current, original)",
+          "after": "|| false"
+        },
+        {
+          "name": "empty-human-factory-ignores-original-stdout",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "|| !empty_human_bytes(stdout, stderr)",
+          "after": "|| !empty_human_bytes(b\"\", stderr)"
+        },
+        {
+          "name": "empty-human-factory-constructs-unchecked-native-paths",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "let Some(paths) = bind_request_paths(current, paths.invocation(), paths.workspace()) else { return None; };",
+          "after": "let paths = RequestPathBinding { request: current, invocation: paths.invocation(), workspace: paths.workspace() };"
+        },
+        {
+          "name": "empty-human-factory-constructs-unchecked-readback",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "let Some(readback) = seal_replay_readback(current, readback) else { return None; };",
+          "after": "let readback = ReplayReadback { request: current, readback };"
         }
       ]
     }

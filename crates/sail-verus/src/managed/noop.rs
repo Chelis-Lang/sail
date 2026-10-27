@@ -49,6 +49,8 @@ use std::time::{Duration, SystemTime};
 
 // Version six retains original requests/origins and content-bound Cargo script copies.
 const VERSION: u32 = 6;
+const HUMAN_VERSION: u32 = 1;
+const HUMAN_KIND: &str = "sail-empty-human-output";
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
@@ -89,6 +91,15 @@ struct Record {
     result: ProjectResult,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
+}
+
+/// Separate storage envelope and namespace. A proof-record reader cannot
+/// deserialize this as its flat Record, and this reader never returns a report.
+#[derive(Serialize, Deserialize)]
+struct HumanRecord {
+    kind: String,
+    version: u32,
+    observation: Record,
 }
 
 /// Cargo's uplifted copy of a build-script executable (#437). Cargo
@@ -255,7 +266,22 @@ fn copies_mismatch(copies: &[Copied], directories: &[Directory]) -> Option<Strin
 /// its output, which its caller adds with [`Pending::commit`].
 pub struct Pending {
     path: PathBuf,
+    other_path: PathBuf,
+    human_only: bool,
     record: Record,
+}
+
+/// Validated empty human output. It has no ProjectResult or proof accessor.
+pub struct HumanReplay {
+    stderr: Vec<u8>,
+}
+
+impl HumanReplay {
+    /// One validated ordinary Cargo completion line, with elapsed time updated.
+    #[must_use]
+    pub fn stderr(&self) -> &[u8] {
+        &self.stderr
+    }
 }
 
 /// An unchanged call's replayed output.
@@ -286,6 +312,9 @@ pub(super) struct Facts<'a> {
     /// The ordinary runner's original pre-Cargo resolution, never rebuilt
     /// from the stored result or its target rows.
     pub original_request: &'a ResolvedRequest,
+    /// The original caller actually displayed human stdout. JSON, job and MCP
+    /// consumers cannot record a byte-only human replay.
+    pub human: bool,
 }
 
 fn disabled() -> bool {
@@ -377,6 +406,12 @@ pub fn key(config: &Config, json: bool) -> Option<String> {
 
 fn record_path(cache: &Path, key: &str) -> PathBuf {
     cache.join("noop").join(format!("{key}.json"))
+}
+
+fn human_record_path(cache: &Path, key: &str) -> PathBuf {
+    cache
+        .join("noop")
+        .join(format!("human-empty-v{HUMAN_VERSION}-{key}.json"))
 }
 
 /// Every entry below `root`, without following links, sorted; `skip` names
@@ -474,9 +509,17 @@ fn rustup_settings() -> Option<PathBuf> {
 /// Gather a record at the end of a run that ended Current without starting a
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
+    let human_only = sail_api::acceptance::empty_human_candidate(
+        facts.original_request,
+        facts.result,
+        facts.human,
+    );
     // Both branches bind the independently captured original request. Partial
     // evidence uses its own scope contract and cannot acquire whole authority.
-    if sail_api::acceptance::focused_command(&facts.original_request.args) {
+    if human_only {
+        // This candidate cannot supply proof authority. Actual output bytes are
+        // checked after the caller finishes teeing them, before any write.
+    } else if sail_api::acceptance::focused_command(&facts.original_request.args) {
         if sail_api::acceptance::complete_exact_partial_request(
             facts.original_request,
             facts.result,
@@ -491,9 +534,14 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         unrecorded("original whole request has no admitted result");
         return None;
     }
-    let Some(origins) = origins::capture(facts.context, facts.result) else {
-        unrecorded("original proof producers unavailable or mismatched");
-        return None;
+    let origins = if human_only {
+        Vec::new()
+    } else {
+        let Some(origins) = origins::capture(facts.context, facts.result) else {
+            unrecorded("original proof producers unavailable or mismatched");
+            return None;
+        };
+        origins
     };
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
@@ -544,7 +592,17 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
     let environment =
         super::environment::values(&super::environment::declared_names(facts.target)?);
     Some(Pending {
-        path: record_path(facts.cache, facts.key),
+        path: if human_only {
+            human_record_path(facts.cache, facts.key)
+        } else {
+            record_path(facts.cache, facts.key)
+        },
+        other_path: if human_only {
+            record_path(facts.cache, facts.key)
+        } else {
+            human_record_path(facts.cache, facts.key)
+        },
+        human_only,
         record: Record {
             version: VERSION,
             key: facts.key.to_owned(),
@@ -572,25 +630,50 @@ impl Pending {
     pub fn commit(mut self, stdout: Vec<u8>, stderr: Vec<u8>) {
         self.record.stdout = stdout;
         self.record.stderr = stderr;
-        let Ok(bytes) = serde_json::to_vec(&self.record) else {
+        if self.human_only
+            && !sail_api::acceptance::empty_human_bytes(&self.record.stdout, &self.record.stderr)
+        {
+            unrecorded("human no-op output is not empty stdout plus one Cargo footer");
+            let _ = std::fs::remove_file(&self.path);
+            let _ = std::fs::remove_file(&self.other_path);
+            return;
+        }
+        let description = format!(
+            "recorded: {} stamps, {} contents, {} copies{}",
+            self.record.lstat.len() + self.record.stat.len(),
+            self.record.contents.len(),
+            self.record.copies.len(),
+            if self.human_only {
+                ", empty human output only"
+            } else {
+                ""
+            }
+        );
+        let temporary_name = format!(".{}.{}", self.record.key, std::process::id());
+        let serialized = if self.human_only {
+            serde_json::to_vec(&HumanRecord {
+                kind: HUMAN_KIND.to_owned(),
+                version: HUMAN_VERSION,
+                observation: self.record,
+            })
+        } else {
+            serde_json::to_vec(&self.record)
+        };
+        let Ok(bytes) = serialized else {
             return;
         };
         let Some(parent) = self.path.parent() else {
             return;
         };
-        let temporary = parent.join(format!(".{}.{}", self.record.key, std::process::id()));
+        let temporary = parent.join(temporary_name);
         if std::fs::create_dir_all(parent).is_err()
             || std::fs::write(&temporary, bytes).is_err()
             || std::fs::rename(&temporary, &self.path).is_err()
         {
             let _ = std::fs::remove_file(&temporary);
         } else {
-            trace(&format!(
-                "recorded: {} stamps, {} contents, {} copies",
-                self.record.lstat.len() + self.record.stat.len(),
-                self.record.contents.len(),
-                self.record.copies.len()
-            ));
+            let _ = std::fs::remove_file(&self.other_path);
+            trace(&description);
         }
     }
 }
@@ -599,6 +682,7 @@ impl Pending {
 /// must not leave an older record behind.
 pub fn forget(cache: &Path, key: &str) {
     let _ = std::fs::remove_file(record_path(cache, key));
+    let _ = std::fs::remove_file(human_record_path(cache, key));
 }
 
 /// Cargo's elapsed-time rendering (`cargo::util::elapsed`).
@@ -666,6 +750,72 @@ fn lock(path: &Path, shared: bool) -> Option<std::fs::File> {
         std::time::Instant::now() + Duration::from_mins(30),
     )
     .ok()
+}
+
+/// Replays only empty human stdout and one validated Cargo completion line.
+/// Callers receive bytes, never a ProjectResult or verification authority.
+/// JSON, jobs, MCP, independent-request capture and engine paths keep their
+/// ordinary result-producing execution or checked whole/partial proof replay.
+#[must_use]
+pub fn replay_empty_human_output(
+    config: &Config,
+    started: std::time::Instant,
+) -> Option<HumanReplay> {
+    if config.request_capture.is_some() {
+        return None;
+    }
+    let key = key(config, false)?;
+    let workspace = std::path::absolute(&config.workspace).ok()?;
+    if !human_record_path(&workspace.join(&config.cache), &key).is_file() {
+        return None;
+    }
+    let preflight = super::runner::replay_preflight(config).ok()?;
+    let location = ReplayLocation {
+        cache: &preflight.config.cache,
+        context: &preflight.context,
+        workspace_lock: &preflight.workspace_lock,
+        family: &preflight.family,
+    };
+    let _workspace = lock(location.workspace_lock, true)?;
+    let _family = lock(&location.family.join("ownership.lock"), false)?;
+    preflight
+        .with_current_request(|current, paths, readback| {
+            let bytes = std::fs::read(human_record_path(location.cache, &key)).ok()?;
+            let saved: HumanRecord = serde_json::from_slice(&bytes).ok()?;
+            let record = &saved.observation;
+            if saved.kind != HUMAN_KIND
+                || saved.version != HUMAN_VERSION
+                || record.version != VERSION
+                || record.key != key
+                || !record.origins.is_empty()
+                || record.locks.0 != location.workspace_lock
+                || record.locks.1 != location.family.join("ownership.lock")
+                || record.runs != location.context.join("runs")
+            {
+                return None;
+            }
+            if let Some(reason) = mismatch(record) {
+                trace(&format!("miss: empty human output: {reason}"));
+                return None;
+            }
+            let admitted = sail_api::acceptance::admit_empty_human_output(
+                &record.original_request,
+                current,
+                &record.result,
+                true,
+                &record.stdout,
+                &record.stderr,
+                Some(paths),
+                Some(readback),
+            )?;
+            let stderr = regenerate_finished(admitted.stderr(), started.elapsed());
+            if !sail_api::acceptance::empty_human_bytes(&[], &stderr) {
+                return None;
+            }
+            trace("hit: empty human output only");
+            Some(HumanReplay { stderr })
+        })
+        .ok()??
 }
 
 /// The replay for an unchanged call of `key`, when every recorded

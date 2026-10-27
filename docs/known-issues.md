@@ -6,15 +6,20 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
 The frozen `3dbebad5` full native end-to-end run passes contracts, legacy and the
 initial output comparisons, then fails unchanged-call recording
-([#476](https://github.com/Chelis-Lang/sail/issues/476)). Its trace only says
-`miss: no record`; the exact refused predicate remains under investigation.
-Optional tracing now identifies recording eligibility, original-request
-admission and original-producer refusals without changing any guard. The same
+([#476](https://github.com/Chelis-Lang/sail/issues/476)). Native diagnostic
+`a73d13c2` identifies the preceding proof as Historical and the following Current
+Cargo no-ops as empty observed target inventories. Whole-request admission
+correctly refuses those no-ops. A separate human-output candidate retains that
+refusal and exposes only empty stdout plus a parsed Cargo footer, with exact
+request/path/readback checks and no ProjectResult or proof authority. Its new
+direct-stock controls and native qualification remain pending. The same
 failure's evidence collector reaches its file cap before producer state
 ([#477](https://github.com/Chelis-Lang/sail/issues/477)). Selection now prioritizes
 the last issued command and recent producers under the original caps; truncation
-or omission still fails capture completeness. These source changes require
-native qualification. No false Sail verdict has been demonstrated.
+or omission still fails capture completeness. Native collector controls and the
+real failing output run confirm the prioritization under the unchanged cap;
+the output phase still fails recording before the byte-only candidate.
+No false Sail verdict has been demonstrated.
 
 The frozen `4c43e5a9` full native end-to-end gate stops on the neutral-contract
 positive with backend currentness Unknown and `NotProved`
@@ -38,8 +43,9 @@ failure; explicit per-source package rebuilds produce the intended red/green.
 The local wrappers now select a target volume per physical checkout and expose
 its name for evidence collection. Real wrapper-command tests reject the old
 cross-checkout sharing and pass the correction, same-checkout warmth and symlink
-aliases. Real Docker/native qualification of this wrapper change remains open;
-custom qualification runners must independently bind their compiled artifacts.
+aliases. Frozen `fa1b7e74` passes the full actual native workspace gate using a
+fresh physical-checkout volume, including all 1,279 tests; custom qualification
+runners must independently bind their compiled artifacts.
 Direct-source stock proofs are unaffected.
 
 The frozen `4c43e5a9` ordinary-control matrix stops at query control 151:

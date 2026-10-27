@@ -323,6 +323,16 @@ pub(crate) fn verify(
         // partial report, which says so in its notes.
         return crate::verify::plain_verify(&config.args, err);
     }
+    // This consumer is selected before result-producing execution. Empty
+    // human-output replay exposes no ProjectResult, JSON, job or MCP verdict.
+    if !worker
+        && !interactive
+        && !options.json
+        && let Some(replay) = sail_verus::managed::noop::replay_empty_human_output(&config, started)
+    {
+        let _ = err.write_all(replay.stderr()).and_then(|()| err.flush());
+        return ExitCode::SUCCESS;
+    }
     let result = if interactive && options.json {
         sail_verus::engine::verify(&config, err)
     } else if interactive {

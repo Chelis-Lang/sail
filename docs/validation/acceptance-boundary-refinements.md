@@ -9,6 +9,8 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `6c94911f` exact-source projection cache | Native model-source 12/12 and production-source 64/64 pass (262.020 s), final source/image guards pass. Cache entries are immutable and keyed by the complete source text | Source-tooling checks only; no measured speed improvement, new Stock/runtime result or service theorem |
+| `a73d13c2` recording diagnosis | Native collector controls, strict package Clippy and all 13 selected no-op tests pass. The unchanged output phase still fails recording; trace and captured original producer results show a Historical include-discovery proof followed by Current empty Cargo observations (197.367 s total); final source/image guards pass | Empty observations cannot establish nonempty requested whole coverage. Full e2e/conformance remain unrun after this failure; capture still explicitly reports its original file cap |
 | `fa1b7e74` native workspace | Actual `ci/local.sh gate` creates its fresh physical-checkout Docker target, passes all source suites (12 model-source, 63 production-source), all 1,279 Rust tests with 57 configured skips, doctests and workspace checks; final source/image guards pass (408.644 s) | Workspace/source-tooling qualification only. No complete production-control matrix, solver/e2e/conformance or service theorem claim |
 | `3dbebad5` full e2e follow-up | After the #471 fix, contracts and legacy complete, and output/edit-loop, seeded mutations and physical argv comparisons pass. The unchanged-call recording assertion then fails after 379.659 s with three `miss: no record` traces (#476); final source/image guards pass | Full e2e fails; later phases and PR/full fast/standard conformance unrun. Bounded collector explicitly refuses its file-limit truncation (#477); missing captured producer state cannot establish the original cause |
 | `3dbebad5` fresh native output control | Baseline `1a6df52b` fails the intended original-marker assertion; correction passes the same real file-backed alias regression and strict `sail-verus` package Clippy. Each source has an explicit package clean and actual compilation; final source/image guards pass | One selected native test, 598 unselected; no full workspace/e2e/conformance or complete production proof claim |
@@ -456,6 +458,26 @@ conformance and added-cost qualification remain pending. Local builds and
 verifier jobs remain stopped while the owner's machine is busy.
 
 ## Source and actual scope
+
+The human-empty-output candidate for #476 adds actual tee-output validation,
+separate kind/version/filename storage and an opaque byte-only CLI return. The
+shared admission checks the original empty observation, original/current request
+payload, native path bytes, guarded revision readback and strict complete footer
+grammar. It does not call, expose or mint CompleteRequest, DeclaredReplayAdmission,
+ProjectResult or any proof receipt. JSON/jobs/MCP remain outside this consumer.
+Fifteen new ordinary executable controls are appended to the inherited controls;
+whole-root function/VC discovery, every new negative, native tests and the
+unchanged positive recording/hit assertions remain required. No new inventory or
+qualification is inferred from source inspection.
+
+The diagnostic and source-tooling archives are retained under
+`experiments/2026-10-27/acceptance-recording-a73d13c2-native.tgz`
+(SHA-256 `a62760bcbdebfcecda2c57652d21f683e44d4dda459f1bd38e17b19aaec8ff61`,
+8,907,472 bytes) and
+`experiments/2026-10-27/acceptance-source-6c94911f-native.tgz`
+(SHA-256 `87d49f9cffe99df92f0f64daedae3ee75844c2300e916510dc2ab4d982b6fd61`,
+6,866,252 bytes). Each has controller PUT/GET equality, independent lead GET/hash
+and raw report/log review; neither establishes the new human-output candidate.
 
 The `c70169a3` native gate passes strict clippy, then runs 1,228 workspace
 tests: 1,227 pass and one new declared-replay constructive fixture fails.

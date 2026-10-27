@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve unchanged human Cargo output when the run observes no target reports
+  (#476). A separate byte-only replay checks the original/current requests,
+  recorded observations, native paths and guarded readback, and admits only empty
+  stdout plus one parsed Cargo completion line. It cannot return a verified
+  report or proof token; JSON, job and MCP authority checks remain unchanged.
+
 - Include recording eligibility and original-request/producer refusals in the
   optional unchanged-call decision trace (#476), preserving all admission checks.
   Prioritize the last command and recent producer observations in bounded output
