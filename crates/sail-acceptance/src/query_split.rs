@@ -1275,6 +1275,7 @@ sail_verified! {
         requires (true)
         ensures (accepted == split_single_response(reply@))
     {
+        let _reply_len=reply.len();
         let (splitter,items)=StreamSplitter::start(false).push_items(reply,Vec::new());
         let single=items.len() == 1 && items[0].offset == 0;
         single && splitter.finish().is_none()
