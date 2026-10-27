@@ -524,16 +524,16 @@ sail_spec! {
             SplitState::List(frame,start) => (3u8,frame.bytes_view(),start as int),
         }
     }
-    spec fn item_model(item:Item) -> (ItemKind,int,Seq<u8>) {
+    pub open spec fn item_model(item:Item) -> (ItemKind,int,Seq<u8>) {
         (item.kind,item.offset as int,item.bytes@)
     }
-    spec fn item_models(items:Seq<Item>) -> Seq<(ItemKind,int,Seq<u8>)> {
+    pub open spec fn item_models(items:Seq<Item>) -> Seq<(ItemKind,int,Seq<u8>)> {
         items.map(|i:int,item:Item| item_model(item))
     }
     spec fn option_models(item:Option<Item>) -> Seq<(ItemKind,int,Seq<u8>)> {
         match item { Some(item) => seq![item_model(item)],None => seq![] }
     }
-    spec fn idle_model(byte:u8,input:bool,position:int) -> ((u8,Seq<u8>,int),Seq<(ItemKind,int,Seq<u8>)>) {
+    pub open spec fn idle_model(byte:u8,input:bool,position:int) -> ((u8,Seq<u8>,int),Seq<(ItemKind,int,Seq<u8>)>) {
         if byte == b' ' || byte == b'\t' || byte == b'\n' || byte == b'\r' {
             ((0u8,Seq::<u8>::empty(),0int),seq![])
         } else if input && byte == b';' { ((1u8,Seq::<u8>::empty(),0int),seq![]) }
@@ -544,7 +544,7 @@ sail_spec! {
     }
     /// Exact scalar transition used only as a specification of the actual
     /// executable outer operations. List grammar remains frame_scan.
-    spec fn model_step(state:(u8,Seq<u8>,int),input:bool,position:int,byte:u8) -> ((u8,Seq<u8>,int),Seq<(ItemKind,int,Seq<u8>)>) {
+    pub open spec fn model_step(state:(u8,Seq<u8>,int),input:bool,position:int,byte:u8) -> ((u8,Seq<u8>,int),Seq<(ItemKind,int,Seq<u8>)>) {
         if state.0 == 0 { idle_model(byte,input,position) }
         else if state.0 == 1 {
             (if byte != b'\n' && byte != b'\r' { (1u8,Seq::<u8>::empty(),0int) }
@@ -560,7 +560,7 @@ sail_spec! {
         } else { ((3u8,state.1.push(byte),state.2),seq![]) }
     }
     /// Complete ordered emission inventory, independent of runtime chunking.
-    spec fn model_scan(state:(u8,Seq<u8>,int),input:bool,position:int,data:Seq<u8>) -> ((u8,Seq<u8>,int),Seq<(ItemKind,int,Seq<u8>)>)
+    pub open spec fn model_scan(state:(u8,Seq<u8>,int),input:bool,position:int,data:Seq<u8>) -> ((u8,Seq<u8>,int),Seq<(ItemKind,int,Seq<u8>)>)
         decreases data.len(),
     {
         if data.len() == 0 { (state,seq![]) }
@@ -698,6 +698,10 @@ sail_code! {
         sail_impl_spec! {
             pub closed spec fn input_view(&self) -> bool { self.input }
             pub closed spec fn has_pending_item_spec(&self) -> bool { self.state is Atom || self.state is List }
+            pub closed spec fn fresh(&self) -> bool { self.state is Idle && self.position_view() == 0 }
+            /// Logical projection of the actual owned state, with no
+            /// runtime copy and no supplied parse-success flag.
+            pub closed spec fn transition_view(&self) -> (u8,Seq<u8>,int) { model(self.state) }
             pub closed spec fn position_view(&self) -> int { self.position.view() }
             pub closed spec fn matches(&self, history: Seq<u8>) -> bool {
                 state_matches(self.state,self.input,self.position.view(),history)
@@ -710,7 +714,7 @@ sail_code! {
             /// Starts the actual input/output splitter before any bytes.
             pub fn start(input: bool) -> (out: Self)
                 requires (true)
-                ensures (out.input_view() == input,out.matches(Seq::<u8>::empty()),out.well_formed())
+                ensures (out.input_view() == input,out.matches(Seq::<u8>::empty()),out.well_formed(),out.fresh(),out.transition_view() == (0u8,Seq::<u8>::empty(),0int))
             { Self { input,state:SplitState::Idle,position:StreamPosition::start() } }
         }
         sail_method! {
@@ -764,9 +768,9 @@ sail_code! {
                 ensures (out.0.input_view() == self.input_view(),out.0.well_formed(),
                     out.0.position_view() == self.position_view()+data@.len(),
                     out.1@.take(items@.len()) == items@,out.1@.len() >= items@.len(),
-                    model(out.0.state) == model_scan(model(self.state),self.input,self.position_view(),data@).0,
+                    out.0.transition_view() == model_scan(self.transition_view(),self.input_view(),self.position_view(),data@).0,
                     item_models(out.1@) == item_models(items@)
-                        + model_scan(model(self.state),self.input,self.position_view(),data@).1,
+                        + model_scan(self.transition_view(),self.input_view(),self.position_view(),data@).1,
                     forall|history:Seq<u8>| self.matches(history) ==>
                         out.0.matches(history+data@)
                         && forall|i:int| items@.len() <= i < out.1@.len() ==>

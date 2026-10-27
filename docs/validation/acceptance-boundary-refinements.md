@@ -20,6 +20,8 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `9c3b4ea6` bounded parser controls | All eleven canonical query partitions pass: corrected 151 plus 162–171, each repeating the whole 482/837 positive and one ordinary negative at 120 s/one thread; final source/runtime checks pass | Bounded diagnostic only, complete_component_controls=false and complete_suite=false. Does not qualify the newer outer/owner source or waive the full controls/native/conformance gates |
+| Owner-inventory correction candidate (#480) | Exact initial-state, continuation and complete ordered-emission contracts now reach the actual raw-owner wrapper; concrete shared witness and two full-operation controls are added | Source only; preserved f5a179d5 was unlaunched and did not claim this stronger relation. New actual discovery/native/189-query-control qualification remains pending |
 | Outer-stream/input-tape source candidate | Actual outer states, cursor, chunk loop and paired raw append are implemented; 16 ordinary controls append to the unchanged 171 query controls | Source only: new positive/function discovery, native paired fixture, complete 187-query-control qualification and conformance pending; historical 482/837 does not qualify the new bodies |
 | `e6e0e67a` native dependency graph | Actual `xtask check-layering` passes for 20 crates/three extension crates, then all six selected layering unit tests pass; final source checks pass | Qualifies the implemented dependency graph and selected tests, not an architectural acceptance/runtime selection, full workspace gate or parser semantics theorem |
 | `e6e0e67a` native SMT package | All 22 package tests pass, zero skips (0.566 s test time), then strict all-target/all-feature package Clippy passes; final source checks pass | Native SMT package only. No ordinary-negative, full workspace, solver, conformance or service credit. Architecture graph and bounded whole-root control diagnostics remain separate |
@@ -67,6 +69,15 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The closed bounded archive is
+`experiments/2026-10-27/acceptance-parser-9c3b4e-bounded11-native.tgz`, SHA-256
+`92142dec29aa54739d6dffc17f9106165a4834a33a11291080e852140b323c4f`
+(2,399,543 bytes). Host creation and independent local SCP/hash agree; all eleven
+canonical reports were independently read. Private object upload/readback remains
+pending. Their 1,852.773 s summed controller duration is a gate duration, not a
+performance measurement. Every positive retains the actual 482/837 inventory;
+this is not discovery or qualification of the newer outer/owner candidate.
 
 Native graph checks are retained as
 `experiments/2026-10-27/acceptance-parser-e6e0-layering-native.tgz`, SHA-256

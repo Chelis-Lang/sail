@@ -4,6 +4,14 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The newer outer-stream candidate's owner wrapper initially exposed only the
+raw-byte relation, which allowed an empty returned inventory in its contract
+([#480](https://github.com/Chelis-Lang/sail/issues/480)). The correction retains
+exact parser continuation and complete ordered emissions through the actual raw
+owner, with a concrete nonempty shared witness and drop/reorder controls. This
+is a candidate refinement gap, not a demonstrated native wrong verdict. Fresh
+whole-root/control/native qualification remains pending.
+
 The [actual owned streaming-list kernel](design/acceptance-query.md#actual-owned-streaming-list-kernel-candidate)
 passes the complete query positive at `a182c1e4` (482/837, all earlier functions,
 final identity checks). The `e6e0e67a` native package passes all 22 SMT tests,
@@ -20,7 +28,9 @@ failed proof attempts and the corrected proof-pattern (#469) and native-style
 151 target actual executable operations and await whole-root diagnostics.
 The root-qualified `9099f673` correction also excludes loop-contract-only
 selectors and preserves loop annotations. All eleven actual runtime edits pass
-that stricter source guard; their entire-root verification remains pending.
+that stricter source guard; the bounded 9c3b4ea6 run now passes all eleven complete-positive/ordinary-negative
+pairs with final checks. The new outer/owner source and full matrix remain
+unqualified.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

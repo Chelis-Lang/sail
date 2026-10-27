@@ -249,6 +249,22 @@ composition, launch/EOF and cache-origin obligations stay open under #371/#372.
 Runtime cost is unmeasured; no new full-frame scan, normalization, trust axiom,
 wire token, verdict or cache policy is introduced. ADR 0086 remains proposed.
 
+The review of `f5a179d5` found a candidate wrapper-contract gap
+([#480](https://github.com/Chelis-Lang/sail/issues/480)): although its actual
+body returned all items, its postcondition allowed an empty return after parser
+advancement. No native wrong verdict or violated existing postcondition is
+claimed. The correction preserves the exact parser continuation **and** the
+complete ordered emitted inventory across `QueryPrefix::append_items`, exposes
+the actual logical state projection, and carries the real initial idle state
+through both checked native key factories. No runtime statement changes. A
+nonempty concrete RecordingHash-seeded witness checks a pending atom across two
+actual owner appends and all four ordered atom/stray outputs. Two full-operation
+controls drop or reorder those returned items. All 187 earlier controls remain;
+one new full-chunk descriptor is rebound to its strengthened, identical
+before/after contract while keeping its loop and mutation. There are now 189
+query controls, with 115/121 inputs/authority: 428 planned unique cases or 437
+four-partition calls. Actual new positive/function discovery remains pending.
+
 ### Scalar policy-option readback candidate
 
 `query_options.rs` adds a source-shared candidate for the raw `:print-success`
