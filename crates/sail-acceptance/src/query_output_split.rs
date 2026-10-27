@@ -212,7 +212,7 @@ sail_verified! {
         let mut output=ParsedOutput::new_replayed(7u64,2);
         if !output.append_items(&first).is_empty() { return false; }
         let items=output.append_items(&second);
-        sail_proof! { crate::query_split::item_models_facts(items@); }
+        sail_proof! { assert(crate::query_split::item_models(items@).len() == items@.len()); }
         if items.len() != 2 || items[0].offset != 0 || items[1].offset != 7
             || items[0].bytes.len() != 5 || items[1].bytes.len() != 3
             || !crate::inputs::byte_eq(output.bytes(),&raw) { return false; }

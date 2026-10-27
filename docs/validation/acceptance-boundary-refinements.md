@@ -1070,3 +1070,30 @@ All previous operations/contracts remain; two nonempty constructive candidates
 and twelve ordinary full-method controls append (225 query, 23/9/14 assembly).
 Whole-root counts, native new fixtures and full controls are unqualified; the
 553/951 lexical checkpoint is not evidence for these newly added functions.
+
+The initial stdout-owned source `4701ed90` is refused before verification:
+its new constructive witness ([#490](https://github.com/Chelis-Lang/sail/issues/490))
+calls the split module's private
+`item_models_facts` lemma (E0603). The bounded correction asserts the public
+actual item-model projection's length directly in that witness; existing pure
+parser bodies/visibility, native operations, contracts and 225 controls stay
+unchanged. No positive/function/native credit follows from this refusal.
+
+The frozen lexical `2a332fb0` bounded diagnostic closes five canonical pairs
+(controls 193–197): each whole positive verifies 553/0 and its ordinary negative
+552/1, entire crate/no VIR, with the canonical final guards. Scheduling then
+prioritizes the actual stdout-owned source milestone: control 198's source
+preparation is interrupted before any verifier starts; 198–213 remain verifier
+unrun. No active Stock call is killed/restarted. The controller exits 130 for
+this scheduling stop, recorded separately from all completed case results.
+Closed archive `acceptance-parser-2a332f-bounded5-closed.tgz`: 1,123,083 bytes,
+SHA-256 `d420535704d4c28d21fe14d183369bd557b12be8b37f53f0277d756dc50b44c2`.
+All 225 inherited/new controls remain required for the final source union.
+
+The complete lexical positive archive `acceptance-parser-1f3566-positive-closed.tgz`
+is 317,353 bytes, SHA-256
+`90814c68f331f38709a402b3f494122e0c975184bae793070cfd9d86ca6bc3ab`.
+Its native package archive `acceptance-parser-1f3566-native-smt-closed.tgz` is
+3,971 bytes, SHA-256
+`c7e25b5c800a947e4cad4a5f9384fc683ca20fa76124a9733d03b08f24ae459b`.
+Independent lead archive verification remains pending for these newer artifacts.
