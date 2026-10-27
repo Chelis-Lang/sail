@@ -1614,3 +1614,12 @@ inventory. This proves paired append/complete emitted inventory and the named
 controller facets; the native per-item loop's frame/replay advancement/handover
 ordering remains bound/unverified. Full 225 controls, broader native/conformance,
 physical I/O/EOF, Session/Z3 interpretation and cache origin stay open.
+
+
+The raw-owner fixture distinguishes **input** atom delimiters (including CR)
+from **output** atom-line termination (LF, trimming one prior CR). The explicit
+native old/current baseline probe in #500 agrees at every tested fragment
+boundary. Pending-input coverage uses an unterminated `foo`; a separate
+CR-terminated input case checks four original items, no pending/no extra LF
+emission and exact raw/hash retention. This test correction changes no parser
+rule or mathematical/production capture.

@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep the input-owner pending-atom fixture genuinely unterminated, and cover
+  CR termination separately at every raw boundary (#500). Native pre-refinement
+  and current splitters agree on four items/no pending for CR; production grammar,
+  original pending/raw/hash assertions and existing goldens remain unchanged.
+
 - Share actual cache accounting/LRU retirement over the original owned update
   and ordered index, preserving the native slot-map behavior. This source slice
   still requires full qualification and does not establish global map/lock/history

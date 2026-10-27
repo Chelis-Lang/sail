@@ -44,7 +44,7 @@
         "crates/sail-daemon/src/writer.rs",
         "crates/sail-daemon/src/server.rs"
       ],
-      "verified": 616,
+      "verified": 618,
       "functions": [
         "check_query::cache_candidate::Accounting::apply",
         "check_query::cache_candidate::Accounting::bytes",
@@ -4196,7 +4196,7 @@
         "crates/sail-mcp/Cargo.toml",
         "crates/sail-cli/src/managed_cli.rs"
       ],
-      "verified": 574,
+      "verified": 581,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
