@@ -76,22 +76,30 @@ allowance retains all fixture statements/assertions; fresh native qualification
 remains pending. No production body or checked proof body changes.
 Frozen `e91627d0` workspace records 1,271 run, 1,269 pass, two fail and 56 skip
 in 303.35 s; initial cause was unknown, with a later source diagnosis of the
-#390 target-key mismatch awaiting focused correction qualification. Solver is unrun. The [owning record](validation/acceptance-boundary-refinements.md)
+#390 target-key mismatch. Both focused regressions pass at `fbab3fd0`; full
+combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
-## Frozen integration proof scope and qualification
+## Current proof scope and qualification
 
-The combined planned matrix is 395 cases: three whole positive roots and
-161 query, 115 input and 116 authority ordinary negative controls. Actual Stock
-assemblies contain 20, 9 and 14 compiled files. Every inherited function and
-control remains required. The manifest locks combined discovery at `e57f065f`: 471/821, 308/538 and
-502/883 verified/function entries, retaining every prior function. Exact-head
-`720e461e` repeats those sets after the lossless conversion, with final
-source/runtime checks. Its four query partitions are terminal: three pass and
-one refuses control 111 for an additional resource-limit diagnostic; input and
-authority matrix arms were not launched. The long matrix is held for the
-combined view/main/receipt source and new inventory. No complete negative union
-is established; inventory mismatches must never be waived.
+The current source plans 400 unique cases: three whole positive roots and
+397 ordinary negatives (161 query, 115 input and 121 authority). Four partitions
+per component schedule 409 actual calls: twelve repeated whole positives and
+all 397 distinct negatives. Actual Stock assemblies contain 20, 9 and 14 files.
+Fresh complete discovery at `e36c749b` observes query 471/821, inputs 308/538 and
+authority 510/895 verified/function entries, retaining every earlier function
+and passing final source/runtime checks. The manifest locks these observed
+inventories; no prediction, scope reduction or control removal supplies a lock.
+
+Frozen `e57f065f`/`720e461e` instead planned 395 unique cases, with 116 authority
+negatives and an observed authority inventory of 502/883. At `720e461e`, all
+four query partitions terminate: three pass, one refuses control 111 for an
+additional resource-limit diagnostic, and inputs/authority matrix arms are
+unlaunched. At `53757913`, all three old positives and a bounded original
+control-111 diagnostic pass at unchanged limits with ordinary failure. Those
+historical receipts remain separate from the new presentation-view union.
+The long 400-case matrix is held for the final native compile/Clippy clearance;
+no complete negative union or service theorem is established.
 
 Actual existing evidence remains separate:
 

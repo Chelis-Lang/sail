@@ -74,13 +74,41 @@ Both complete source suites pass at the preceding `0a3a7f2c` checkpoint:
 12 model and 53 production tests, retaining every earlier test. Later changes
 only instantiate literal/framing/partition facts in the full constructive
 witnesses, leaving executable operations, contracts and all control objects
-unchanged. The manifest locks the actual combined inventories. Its 395 unique
+unchanged. That checkpoint locks its actual combined inventories. Its 395 unique
 planned cases (three whole positives plus 161/115/116 ordinary negatives) remain
 pending. Qualification uses four existing partitions per component, components
 sequenced: 404 actual calls include twelve repeated whole positives. Each
 individual report remains incomplete; the exact all-component union requires
 separate identity, function, obligation and ordinary-failure audits. This is
 not a single unpartitioned run or a service theorem.
+
+The reconciled main, completed-presentation and receipt-key source passes
+complete discovery at `e36c749b`: query 471/821, inputs 308/538 and authority
+510/895 (verified obligations/function entries), retaining every earlier
+function. Final source/runtime checks pass under the unchanged direct-stock
+120-second limit, one thread and default resources. The report SHA-256 is
+`08dec98c65e5205cbf5ff1fa072f87282ae38f1384466c2d37e8a0112b806384`.
+The current manifest freezes these observed sets. The current plan is 400
+unique cases: three whole positives plus 397 ordinary negatives (161 query,
+115 input and 121 authority). Four partitions per component, components
+sequenced, schedule 409 actual calls, including twelve repeated positives.
+The full matrix remains held until native compile/Clippy checks clear; no
+complete component, combined matrix or service theorem is claimed.
+
+The closed guidance archive is retained privately at
+`experiments/2026-10-27/acceptance-query-guidance-53757913-native.tgz`:
+35,998,012 bytes, SHA-256
+`401dedc0486abdb70273e5f98cfaa263881cff489b22540c4988a0087dadd42a`.
+Independent S3 GET/hash and raw-call audits pass. It includes every closed
+query-host development attempt, failed `720e461e` workers and reconstructable
+source bundles. At `53757913`, all three positives repeat 471/821, 308/538
+and 502/883 with final checks. Its bounded control-111 diagnostic checks the
+whole query positive, then 470 verified obligations plus one ordinary error
+across all 821 functions, with no resource marker. The audit checks all five
+calls against pins, exact Git source blobs, compiled mutation identity and
+runtime/compiler correspondence. Both diagnostic completeness flags remain
+false; this is one negative and does not qualify either the historical
+395-case plan or the current 400-case plan.
 
 Native integration corrects the production `Duration` import (#455), renames
 two payload locals and uses `AtomicUsize::try_update` with the same SeqCst
@@ -167,6 +195,8 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `788f6bf6` | Bounded replay witness discovery | Scoped list framing proves, but the positive factory needs explicit whole-subrange equality and response-trim facts. No new count/control credit; the erased correction preserves execution, contracts, controls and limits |
+| 2026-10-26 | `720e461e` | Combined query partitions | Three partitions finish; partition 2 refuses control 111 because intended binding failures are accompanied by rlimit in the new positive stdout witness. Inputs/authority unlaunched and no complete query/matrix credit. Local erased unfolding and exact prefix facts qualify separately at `53757913` |
 | 2026-10-26 | `fdd05dcc` | Combined replay/presentation discovery | Literal framing/statistics and positive compared-stdout factory witnesses pass; only the final different-output refusal postcondition remains unproved. Instantiate the original exact receipt and sealed frame interval/bytes; no executable, predicate, control or resource change and no expanded inventory locked |
 | 2026-10-26 | `0a3a7f2c` | Combined replay/presentation discovery | All 12 model and 53 production source selftests pass; whole query reports six constructive-witness diagnostics in three new replay/output factories. Instantiate exact literal name/list framing and existing transcript partition facts without changing execution, contracts, controls or limits; input/authority discovery and the planned 395-case matrix remain unrun |
 | 2026-10-26 | `c87877d8` | Expanded whole-positive discovery | Ordinary and reset-assertions preservation witnesses pass. The final reset relation still needs the same explicit original-head existential instance; no expanded inventory, negative matrix or final-root qualification claimed |
