@@ -1,5 +1,14 @@
 # Known issues and limits
 
+- [#505](https://github.com/Chelis-Lang/sail/issues/505): the combined authority
+  control `request-verification-enabled` produces its intended postcondition
+  failure but also exhausts the unrelated human-footer renderer at default
+  Stock resources. Whole scope and all 1,011 authority functions remain, so
+  the strict runner refuses qualification. The candidate moves the unchanged
+  byte-copy loop and every invariant into a checked helper; the renderer keeps
+  its complete original contract. Six controls follow their actual moved
+  operations. Complete positive/control/native qualification remains pending.
+
 - [#496](https://github.com/Chelis-Lang/sail/issues/496): combined runner `eaf51208` drops three parser import-binding hash entries during table reconciliation; existing native source tests catch the lost hidden-import refusal. The correction restores the exact parent-table union. Canonical source/Stock barriers remain independent; no false proof is demonstrated.
 
 - [#495](https://github.com/Chelis-Lang/sail/issues/495): first parser/cache/service composition `eaf51208` preserves both dependency sets but orders them differently from the fixed driver. The native source preflight correctly refuses before Stock; the correction retains the exact set in canonical order, without weakening closure checking.
