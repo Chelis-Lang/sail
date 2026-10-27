@@ -85,6 +85,15 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+At `3f7779b4`, complete query verification observes 505 verified/11 failed
+functions and 908 actual query entries, with all 837 prior entries retained, no
+resource marker and final guards passing. No new inventory is locked. Exact
+history/suffix/trace/cardinality guidance and nonempty finite trace facts target
+those remaining obligations without relaxing contracts or resource settings;
+all 190 controls remain required. The 12 closed archives now have PUT/GET/local
+hash verification in the combined object recorded by the owning gate; independent
+lead audit is pending.
+
 The next lowering pass at `cc98352f` refuses opaque public predicates and
 unsupported mem::replace (#481), with final guards passing and no VC/count
 credit. Public closed projections keep the exact predicates; modeled Option::take

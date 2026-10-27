@@ -612,6 +612,7 @@ sail_spec! {
             == ((0u8,Seq::<u8>::empty(),0int),seq![(ItemKind::List,start,bytes+data)]),
         decreases data.len(),
     {
+        reveal_with_fuel(model_scan,2);
         assert(bytes.push(data[0])+data.drop_first() =~= bytes+data);
         if data.len()>1 {
             assert((bytes+data).take(bytes.len() as int+1) =~= bytes.push(data[0]));
@@ -619,11 +620,51 @@ sail_spec! {
                 crate::query::frame_scan(bytes.push(data[0]).take(i),input).0 > 0 by {
                 assert(bytes.push(data[0]).take(i) =~= (bytes+data).take(i));
             }
+            assert(bytes.push(data[0]).take(bytes.push(data[0]).len() as int) =~= bytes.push(data[0]));
+            assert(crate::query::frame_scan(bytes.push(data[0]),input).0 > 0);
             list_model_complete(bytes.push(data[0]),start,input,position+1,data.drop_first());
         } else {
             assert(data.drop_first().len() == 0);
             assert(bytes.push(data[0]) =~= bytes+data);
+            assert(crate::query::frame_scan(bytes+data,input).0 == 0);
         }
+    }
+    proof fn model_scan_one(state:(u8,Seq<u8>,int),input:bool,position:int,byte:u8)
+        ensures model_scan(state,input,position,seq![byte]) == model_step(state,input,position,byte),
+    {
+        reveal_with_fuel(model_scan,2);
+        assert(seq![byte].drop_first() =~= Seq::<u8>::empty());
+    }
+    proof fn item_models_facts(items:Seq<Item>)
+        ensures item_models(items).len() == items.len(),
+            forall|item:Item| item_models(items.push(item)) == item_models(items).push(item_model(item)),
+    {
+        assert forall|item:Item| item_models(items.push(item)) == item_models(items).push(item_model(item)) by {
+            assert(item_models(items.push(item)) =~= item_models(items).push(item_model(item)));
+        }
+    }
+    /// Original suffixes extend by exactly the actually appended bytes.
+    proof fn suffix_append(history:Seq<u8>,start:int,tail:Seq<u8>)
+        requires 0 <= start <= history.len(),
+        ensures (history+tail).subrange(start,(history.len()+tail.len()) as int)
+            == history.subrange(start,history.len() as int)+tail,
+    {
+        assert((history+tail).subrange(start,(history.len()+tail.len()) as int)
+            =~= history.subrange(start,history.len() as int)+tail);
+    }
+    /// Already-consumed original intervals are stable under a later append.
+    proof fn prefix_slice_append(history:Seq<u8>,start:int,end:int,tail:Seq<u8>)
+        requires 0 <= start <= end <= history.len(),
+        ensures (history+tail).subrange(start,end) == history.subrange(start,end),
+    { assert((history+tail).subrange(start,end) =~= history.subrange(start,end)); }
+    /// The original delimiter-only CR trim removes one final suffix byte.
+    proof fn suffix_drop_last(history:Seq<u8>,start:int)
+        requires 0 <= start < history.len(),
+        ensures history.subrange(start,history.len() as int).drop_last()
+            == history.subrange(start,history.len() as int-1),
+    {
+        assert(history.subrange(start,history.len() as int).drop_last()
+            =~= history.subrange(start,history.len() as int-1));
     }
     /// Pending bytes are the actual suffix of this same original raw stream.
     spec fn state_matches(state: SplitState, input: bool, position: int,
@@ -726,8 +767,16 @@ sail_code! {
             /// Starts the actual input/output splitter before any bytes.
             pub fn start(input: bool) -> (out: Self)
                 requires (true)
-                ensures (out.input_view() == input,out.matches(Seq::<u8>::empty()),out.well_formed(),out.fresh(),out.transition_view() == (0u8,Seq::<u8>::empty(),0int))
-            { Self { input,state:SplitState::Idle,position:StreamPosition::start() } }
+                ensures (out.input_view() == input,out.matches(Seq::<u8>::empty()),out.well_formed(),out.fresh(),out.position_view() == 0,out.transition_view() == (0u8,Seq::<u8>::empty(),0int))
+            {
+                let out=Self { input,state:SplitState::Idle,position:StreamPosition::start() };
+                sail_proof! {
+                    assert(out.matches(Seq::<u8>::empty()));
+                    assert(exists|history:Seq<u8>| out.matches(history));
+                    reveal(StreamSplitter::well_formed);
+                }
+                out
+            }
         }
         sail_method! {
             /// Copies the same actual pending state and original cursor.
@@ -744,7 +793,15 @@ sail_code! {
                     SplitState::Atom(atom) => SplitState::Atom(atom.duplicate()),
                     SplitState::List(frame,start) => SplitState::List(frame.duplicate(),*start),
                 };
-                Self { input:self.input,state,position:self.position.duplicate() }
+                let out=Self { input:self.input,state,position:self.position.duplicate() };
+                sail_proof! {
+                    reveal(StreamSplitter::well_formed);
+                    let ghost history=choose|history:Seq<u8>| self.matches(history);
+                    assert(out.matches(history));
+                    assert(exists|history:Seq<u8>| out.matches(history));
+                    reveal(StreamSplitter::well_formed);
+                }
+                out
             }
         }
         sail_method! {
@@ -767,7 +824,15 @@ sail_code! {
                 let position=self.position.offset();
                 let (state,first,second)=split_step(self.state,self.input,position,byte);
                 let mut next_position=self.position; next_position.advance(1);
-                (Self { input:self.input,state,position:next_position },first,second)
+                let out=(Self { input:self.input,state,position:next_position },first,second);
+                sail_proof! {
+                    reveal(StreamSplitter::well_formed);
+                    let ghost history=choose|history:Seq<u8>| self.matches(history);
+                    assert(out.0.matches(history.push(byte)));
+                    assert(exists|history:Seq<u8>| out.0.matches(history));
+                    reveal(StreamSplitter::well_formed);
+                }
+                out
             }
         }
         sail_method! {
@@ -813,12 +878,19 @@ sail_code! {
                         let _chunk_start=cursor;
                         match current.state {
                             SplitState::List(frame,start) => {
-                                let (step,consumed)=frame.push_chunk(&data[cursor..]);
+                                let (step,consumed)=frame.push_chunk(&data[_chunk_start..]);
                                 cursor += consumed;
+                                sail_proof! {
+                                    assert(data@.subrange(_chunk_start as int,data@.len() as int).take(consumed as int)
+                                        =~= data@.subrange(_chunk_start as int,cursor as int));
+                                }
                                 let mut position=current.position; position.advance(consumed as u64);
                                 let state=match step {
                                     ListStep::Pending(next) => {
                                         sail_proof! {
+                                            assert(frame.comments_view() == self.input);
+                                            reveal(ListFrame::well_formed);
+                                            assert(next.bytes_view() == frame.bytes_view()+data@.subrange(_chunk_start as int,cursor as int));
                                             list_model_pending(frame.bytes_view(),start as int,self.input,
                                                 current.position.view(),data@.subrange(_chunk_start as int,cursor as int));
                                         }
@@ -826,9 +898,12 @@ sail_code! {
                                     }
                                     ListStep::Complete(bytes) => {
                                         sail_proof! {
+                                            assert(frame.comments_view() == self.input);
+                                            assert(bytes@ == frame.bytes_view()+data@.subrange(_chunk_start as int,cursor as int));
                                             list_model_complete(frame.bytes_view(),start as int,self.input,
                                                 current.position.view(),data@.subrange(_chunk_start as int,cursor as int));
                                         }
+                                        sail_proof! { item_models_facts(appended@); }
                                         appended.push(Item { kind:ItemKind::List,offset:start,bytes });
                                         SplitState::Idle
                                     }
@@ -843,12 +918,15 @@ sail_code! {
                             }
                             state => {
                                 let (next,first,second)=Self { input:current.input,state,position:current.position }.step(data[cursor]);
+                                sail_proof! { item_models_facts(appended@); }
                                 if let Some(item)=first { appended.push(item); }
+                                sail_proof! { item_models_facts(appended@); }
                                 if let Some(item)=second { appended.push(item); }
                                 current=next;
                                 cursor += 1;
                                 sail_proof! {
                                     assert(data@.take(cursor as int) =~= data@.take(_chunk_start as int)+seq![data@[_chunk_start as int]]);
+                                    model_scan_one(model(state),self.input,self.position_view()+_chunk_start,data@[_chunk_start as int]);
                                     model_scan_join(model(self.state),self.input,self.position_view(),
                                         data@.take(_chunk_start as int),seq![data@[_chunk_start as int]]);
                                 }
@@ -856,6 +934,7 @@ sail_code! {
                         }
                     }
                 }
+                sail_proof! { assert(data@.take(cursor as int) =~= data@); }
                 (current,appended)
             }
         }
@@ -932,17 +1011,26 @@ sail_verified! {
         requires (true) ensures (passed)
     {
         sail_proof! {
-            reveal_with_fuel(model_scan,4);
+            assert(model_scan((0u8,Seq::<u8>::empty(),0int),true,0,b";c\r"@)
+                == ((0u8,Seq::<u8>::empty(),0int),seq![])) by { reveal_with_fuel(model_scan,4); }
+            assert(model_scan((0u8,Seq::<u8>::empty(),0int),true,3,b"\n("@)
+                == ((3u8,seq![b'('],4int),seq![])) by { reveal_with_fuel(model_scan,3); }
             assert(crate::query::frame_scan(seq![b'(',b')'],true)
                 == (0int,crate::query::FrameLex::Plain)) by {
                 reveal_with_fuel(crate::query::frame_scan,3);
             }
+            assert(model_scan((3u8,seq![b'('],4int),true,5,b")a)"@)
+                == ((0u8,Seq::<u8>::empty(),0int),seq![(ItemKind::List,4int,b"()"@),
+                    (ItemKind::Atom,6int,b"a"@),(ItemKind::Stray,7int,b")"@)])) by { reveal_with_fuel(model_scan,4); }
         }
         let (first,items)=StreamSplitter::start(true).push_items(b";c\r",Vec::new());
+        sail_proof! { item_models_facts(items@); }
         if !items.is_empty() { return false; }
         let (second,items)=first.push_items(b"\n(",items);
+        sail_proof! { item_models_facts(items@); }
         if !items.is_empty() { return false; }
         let (last,items)=second.push_items(b")a)",items);
+        sail_proof! { item_models_facts(items@); }
         if items.len() != 3 { return false; }
         matches!(items[0].kind,ItemKind::List) && items[0].offset == 4 && items[0].bytes.len() == 2 && items[0].bytes[0] == b'(' && items[0].bytes[1] == b')'
             && matches!(items[1].kind,ItemKind::Atom) && items[1].offset == 6 && items[1].bytes.len() == 1 && items[1].bytes[0] == b'a'
@@ -960,7 +1048,7 @@ sail_verified! {
             state_matches(out.0,input,position as int+1,history.push(byte))
             && optional_original(out.1,history.push(byte),input))
     {
-        match outer_byte(byte,input) {
+        let out=match outer_byte(byte,input) {
             OuterByte::Whitespace => (SplitState::Idle,None),
             OuterByte::Comment => (SplitState::Comment,None),
             OuterByte::List => (SplitState::List(ListFrame::start(input),position),None),
@@ -969,7 +1057,17 @@ sail_verified! {
                 (SplitState::Idle,Some(Item { kind:ItemKind::Stray,offset:position,bytes:buffer }))
             }
             OuterByte::Atom => (SplitState::Atom(AtomFrame::start(byte,position)),None),
+        };
+        sail_proof! {
+            assert forall|history:Seq<u8>| history.len() == position implies
+                state_matches(out.0,input,position as int+1,history.push(byte))
+                && optional_original(out.1,history.push(byte),input) by {
+                assert(history.push(byte) =~= history+seq![byte]);
+                suffix_append(history,position as int,seq![byte]);
+                assert(history.subrange(position as int,position as int) =~= Seq::<u8>::empty());
+            }
         }
+        out
     }
 }
 
@@ -986,7 +1084,7 @@ sail_verified! {
             && optional_original(out.1,history.push(byte),input)
             && optional_original(out.2,history.push(byte),input))
     {
-        match state {
+        let out=match state {
             SplitState::Idle => {
                 let (next,item)=begin_outer(byte,input,position);
                 (next,item,None)
@@ -1008,7 +1106,26 @@ sail_verified! {
                 ListStep::Pending(next) => (SplitState::List(next,offset),None,None),
                 ListStep::Complete(bytes) => (SplitState::Idle,Some(Item { kind:ItemKind::List,offset,bytes }),None),
             },
+        };
+        sail_proof! {
+            assert forall|history:Seq<u8>| state_matches(state,input,position as int,history) implies
+                state_matches(out.0,input,position as int+1,history.push(byte))
+                && optional_original(out.1,history.push(byte),input)
+                && optional_original(out.2,history.push(byte),input) by {
+                assert(history.push(byte) =~= history+seq![byte]);
+                if model(state).0 == 2 || model(state).0 == 3 {
+                    let start=model(state).2;
+                    assert(0 <= start < history.len());
+                    suffix_append(history,start,seq![byte]);
+                    prefix_slice_append(history,start,history.len() as int,seq![byte]);
+                    if model(state).0 == 2 && model(state).1.last() == b'\r' {
+                        suffix_drop_last(history,start);
+                        prefix_slice_append(history,start,history.len() as int-1,seq![byte]);
+                    }
+                }
+            }
         }
+        out
     }
 }
 
