@@ -243,7 +243,7 @@ sail_code! {
             {
                 if !replay.complete() || !identity.same_owner(&self.owner,replay.owner()) { return None; }
                 let Some(original) = &self.replayed else { return None; };
-                if original.count() as u128 != replay.total() as u128 { return None; }
+                if u128::from(original.count()) != replay.total() as u128 { return None; }
                 let total = replay.total();
                 if total > self.output.frames() { return None; }
                 let mut ordinal = 0usize;
