@@ -167,7 +167,7 @@ sail_code! {
             #[allow(clippy::single_match_else, reason = "Explicit owned Option transfer preserves the checked original parser and unreachable defensive branch.")]
             pub fn append_items(&mut self,bytes:&[u8]) -> (out:Vec<crate::query_split::Item>)
                 requires (old(self).coherent())
-                ensures (final(self).coherent(),final(self).owner_view() == old(self).owner_view(),
+                ensures (final(self).coherent(),final(self).output_view().well_formed(),final(self).owner_view() == old(self).owner_view(),
                     final(self).replay_view() == old(self).replay_view(),
                     final(self).output_view().view() == old(self).output_view().view()+bytes@,
                     final(self).output_view().endpoints() == old(self).output_view().endpoints(),

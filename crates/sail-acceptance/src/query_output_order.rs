@@ -555,6 +555,8 @@ sail_verified! {
             reveal_byteslit(b"unsat\n");reveal_byteslit(b"sat\nsat\n");
             assert(crate::query_split::item_models(first.items_view()).len()==first.items_view().len());
             assert(first.items_view().len()==1);
+            assert(crate::query_split::item_models(first.items_view()) == seq![(crate::query_split::ItemKind::Atom,0int,b"unsat"@)]);
+            assert(crate::query_split::item_models(first.items_view())[0] == crate::query_split::item_model(first.items_view()[0]));
             assert(first.items_view()[0].offset==0);
         }
         if !first.begin_next() || first.previous().is_some() {return None;}
@@ -566,6 +568,8 @@ sail_verified! {
             reveal_byteslit(b"unsat\nsat\nsat\n");
             assert(batch.order_view().view() =~= b"unsat\nsat\nsat\n"@);
             assert(batch.items_view().len()==2);
+            assert(crate::query_split::item_models(batch.items_view())[0] == crate::query_split::item_model(batch.items_view()[0]));
+            assert(crate::query_split::item_models(batch.items_view())[1] == crate::query_split::item_model(batch.items_view()[1]));
             assert(batch.items_view()[0].offset==6);
             assert(batch.items_view()[1].offset==10);
         }
@@ -579,6 +583,7 @@ sail_verified! {
         if !batch.begin_next() || batch.previous()!=Some((true,4)) {return None;}
         sail_proof! {
             crate::query_output::transcript_partition_facts(&batch.order_view().output_view().output_view());
+            reveal_byteslit(b"sat\n");reveal_byteslit(b"unsat\nsat\nsat\n");
             assert(batch.interval_view() =~= b"sat\n"@);
         }
         Some((batch,queue))
@@ -594,7 +599,7 @@ sail_verified! {
     {
         let served=[crate::query_replay::ServedReply::new(b"(check-sat)",crate::inputs::copy_bytes(b"unsat\n"),None)];
         let Some((mut batch,mut queue))=prepared_fresh_control(&served,identity) else {return false;};
-        sail_proof! {crate::query_output::transcript_partition_facts(&batch.order_view().output_view().output_view());}
+        sail_proof! {control_lines();crate::query_output::transcript_partition_facts(&batch.order_view().output_view().output_view());}
         let Some(frame)=batch.frame_previous() else {return false;};
         let Some(payload)=frame.into_owned(7u64,identity) else {return false;};
         if !batch.settle_current(&mut queue,Some(payload),identity) || batch.begin_next() {return false;}
@@ -618,7 +623,7 @@ sail_verified! {
     {
         let served=[crate::query_replay::ServedReply::new(b"(check-sat)",crate::inputs::copy_bytes(b"unsat\n"),None)];
         let Some((mut batch,mut queue))=prepared_fresh_control(&served,identity) else {return false;};
-        sail_proof! {crate::query_output::transcript_partition_facts(&batch.order_view().output_view().output_view());}
+        sail_proof! {control_lines();crate::query_output::transcript_partition_facts(&batch.order_view().output_view().output_view());}
         if batch.frame_previous().is_none() {return false;}
         let mut other=crate::query_output_owner::StreamOutput::new(7u64);
         other.append(b"unsat\nbad\n");
