@@ -38,7 +38,7 @@
         "crates/sail-session/Cargo.toml",
         "crates/sail-smtlib/Cargo.toml"
       ],
-      "verified": 471,
+      "verified": 482,
       "functions": [
         "check_query::cache_write::PersistenceHost::close",
         "check_query::cache_write::PersistenceHost::closed_image",
@@ -823,6 +823,22 @@
         "check_query::query_replay::statistics_fields",
         "check_query::query_replay::statistics_reply",
         "check_query::query_replay::statistics_shape",
+        "check_query::query_split::ListFrame::bytes_view",
+        "check_query::query_split::ListFrame::comments_view",
+        "check_query::query_split::ListFrame::duplicate",
+        "check_query::query_split::ListFrame::finish",
+        "check_query::query_split::ListFrame::push",
+        "check_query::query_split::ListFrame::push_chunk",
+        "check_query::query_split::ListFrame::start",
+        "check_query::query_split::ListFrame::well_formed",
+        "check_query::query_split::ListStep::arrow_Complete_0",
+        "check_query::query_split::ListStep::arrow_Pending_0",
+        "check_query::query_split::append_list",
+        "check_query::query_split::chunk_endpoint_control",
+        "check_query::query_split::command_chunks_control",
+        "check_query::query_split::nonempty_list_control",
+        "check_query::query_split::pending_append_facts",
+        "check_query::query_split::pending_list",
         "check_query::refinement::bar_frame_grammar",
         "check_query::refinement::coalesced_and_partial_response_witness",
         "check_query::refinement::command_bytes_refine_binding",
@@ -1766,8 +1782,8 @@
         {
           "name": "replay-full-comparison-always-refuses",
           "source": "crates/sail-acceptance/src/query_replay.rs",
-          "before": "1nat",
-          "after": "\n                let _ = actual; self.diverged = true; false\n            "
+          "before": "            pub fn compare(&mut self, actual: &[u8]) -> (accepted: bool)\n                requires (old(self).well_formed())\n                ensures (final(self).well_formed(),final(self).owner_view() == old(self).owner_view(),final(self).served_view() == old(self).served_view(),\n                    accepted == (!old(self).diverged_view() && old(self).checked_view() < old(self).served_view().len()\n                        && old(self).served_view()[old(self).checked_view() as int].reproduces(actual@)),\n                    final(self).checked_view() == old(self).checked_view() + if accepted {1nat} else {0nat},\n                    final(self).diverged_view() == !accepted)\n            {\n                if self.diverged || self.checked == self.served.len()\n                    || !self.served[self.checked].reproduced_by(actual) {\n                    self.diverged = true; return false;\n                }\n                self.checked += 1;\n                true\n            }",
+          "after": "            pub fn compare(&mut self, actual: &[u8]) -> (accepted: bool)\n                requires (old(self).well_formed())\n                ensures (final(self).well_formed(),final(self).owner_view() == old(self).owner_view(),final(self).served_view() == old(self).served_view(),\n                    accepted == (!old(self).diverged_view() && old(self).checked_view() < old(self).served_view().len()\n                        && old(self).served_view()[old(self).checked_view() as int].reproduces(actual@)),\n                    final(self).checked_view() == old(self).checked_view() + if accepted {1nat} else {0nat},\n                    final(self).diverged_view() == !accepted)\n            {\n                if self.diverged || self.checked == self.served.len()\n                    || !self.served[self.checked].reproduced_by(actual) {\n                    self.diverged = true; return false;\n                }\n                self.checked += 1;\n                false\n            }"
         },
         {
           "name": "replay-full-statistics-mint-always-refuses",

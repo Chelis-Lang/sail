@@ -97,19 +97,25 @@ partitions per component. Actual source assembly adds one compiled query file
 (21/9/14). Every earlier function/control remains. Whole query discovery at
 `a182c1e4` observes 482/837; the earlier 471/821 set is retained in full.
 Inputs 308/538 and authority 510/895 remain historical component evidence.
-Canonical locking follows the reviewed runtime-body guard union; the annotated
-native follow-up and ordinary controls still require qualification.
+The manifest locks only that observed query set/count. The reviewed runtime-body
+guard union fixes comparison control 151's contract-only selector; the other
+170 query controls remain unchanged, including all ten new runtime controls.
+Native SMT package checks pass at `e6e0e67a`; ordinary controls still require qualification.
 No native or verifier execution was performed locally. Native outer offsets,
 top-level emission inventory, lexical/classifier/solver semantics and physical
 origins stay open; the kernel's representable-append premise stays explicit.
 No complete #371 or service theorem is claimed. CI policy remains unresolved.
 The `a182c1e4` whole query root now passes 482 obligations/all 837 entries with
 all old functions retained and final identity checks. Native SMT package tests
-pass all 22 cases, but strict package Clippy refuses three candidate style lints
-(#470). Local documented annotations preserve the source statements and need
-the same native rerun; no ordinary controls, workspace or service qualify yet.
-The earlier bootstrap count remains until the reviewed runtime-body guard union
-locks only these actual observed values.
+pass all 22 cases, followed initially by three strict Clippy style refusals
+(#470). The annotated `e6e0e67a` rerun passes all 22 tests and strict package
+Clippy. No ordinary controls, workspace or service qualify yet.
+The actual dependency graph check and all six selected layering unit tests
+also pass at `e6e0e67a`; ADR 0086 remains proposed, with no runtime selection.
+The next bounded queue is the ten new controls plus corrected 151, each with the entire query
+positive root and its ordinary negative; all 171 remain required for the later
+coherent bridge matrix. The loop-annotation source-guard recurrence remains
+tracked under #468 and is not used by these executable edits.
 The first whole query run at `48f09fa7` refuses: 477 verified/three failed
 functions across all 835 entries, with an additional resource-limit marker.
 Final source/runtime checks pass. No inventory is locked from that refusal.

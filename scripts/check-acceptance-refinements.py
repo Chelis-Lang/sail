@@ -386,6 +386,8 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[d
             require(bool(before) and before != after and snapshots[path].count(before) == 1,
                 "empty or ambiguous executable mutation")
             check_control_loops(before, after)
+            if path.startswith("crates/"):
+                SOURCE.runtime_mutation(snapshots[path].decode(), before.decode(), after.decode())
             compiled_subset(path, snapshots[path].replace(before, after))
     SOURCE.api_stencils(snapshots, manifest.get("api_declarations"))
     require(manifest.get("api_declarations") is not None, "missing API representation inventory")
