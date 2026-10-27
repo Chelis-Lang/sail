@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `199e7587` native output and bounded controls | Source suites 12/67, strict API/Verus/CLI Clippy, all 15 selected native tests and the complete original output phase pass. The bounded authority positive and controls 122–133 qualify with full 520/912 scope; final source/image/runtime guards pass | Control 134 reaches default rlimit inside admit_empty_human_output (519 verified/1 failed function, 912 entries) and earns zero credit (#485); 135–136 are unrun. Full authority, e2e/conformance and service qualification remain open |
 | `0df9c812` human-output candidate | Direct pinned Stock passes 520 verified/0 errors and all 912 actual entries, including all 895 prior functions (22.623 s). Strict API/Verus/CLI Clippy, all 15 selected native tests and source suites 12/65 pass; final source/image/runtime checks pass. The original output phase now records and replays empty human output | Output then fails the restored-mtime trace assertion: the specific human invalidation refusal is overwritten by a second proof-cache `miss: no record`. The follow-up preserves that first decision and ordinary fallback. All 136 authority controls, full e2e/conformance and service qualification remain open |
 | `3717e932` empty human-output candidate | Whole authority reaches 519 verified/1 failed function, retains all prior entries, no resource marker and final source/runtime checks pass (21.350 s). Native strict Clippy passes all targets in API/Verus/CLI; all 15 selected no-op/human-output tests pass; source suites pass 12/12 and 65/65. Final source/image checks pass (414.112 s total) | The sole remaining proof failure is finite byte-string prefix/suffix content in the constructive footer witness. No whole-positive lock, negative or e2e/conformance credit. The follow-up uses the pinned verifier's scoped reveal_byteslit builtin; runtime bytes, checks, witness assertions and resource limits are unchanged |
 | `594cce06` empty human-output candidate | Whole authority checks every prior function and reaches 518 verified/2 failed obligations (22.080 s), no resource marker, final source/runtime checks pass. The two failures are duration-existential guidance and finite footer examples. Native Clippy refuses two rustdoc spellings and the expanded preparation function's line limit | No whole-positive/count lock, native tests or negative/e2e credit. Follow-up adds explicit original duration witnesses and finite sequence facts, corrects rustdoc and documents the existing observation collector's lint allowance; predicates, scope and resources remain unchanged |
@@ -505,6 +506,13 @@ a footer. Nine new executable controls retain complete loop contracts; positive
 inventory discovery, ordinary negatives, native tests and conformance remain
 pending. Human-mode selection, complete physical observations and saved-output
 origin remain separate open joins; no full-service claim follows from this source.
+
+The #485 follow-up evaluates the same actual stdout/footer check before the
+unchanged request metadata/readback conjunction, retaining the exact original
+contracts. Its stdout-omission control still substitutes an empty slice for the
+same original supplied stdout; no check, model, resource or expected rejection
+is removed. New qualification must establish an ordinary failure at default
+resources; source ordering alone is not evidence of a repaired control.
 
 The diagnostic and source-tooling archives are retained under
 `experiments/2026-10-27/acceptance-recording-a73d13c2-native.tgz`
