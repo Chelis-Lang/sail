@@ -118,6 +118,11 @@ marker; the sole failed function is push's postappend relation (479 verified,
 835 entries). A private owned-Vec helper now performs the same actual append
 behind the unchanged public contract. The byte/comment/full-operation mutants
 retain their intent against that actual helper; a fresh whole root is required.
+The `ff4676cb` helper run still refuses its scan/prefix assertions (480 verified,
+one failed, 836 entries), without a resource marker. The next source guidance
+establishes the immutable future sequence before append and relates the actual
+post-state to its full scan; it preserves the same runtime byte operation,
+contracts and ordinary controls. No inventory is predicted or locked from failure.
 
 ## Frozen pre-kernel proof scope and qualification
 

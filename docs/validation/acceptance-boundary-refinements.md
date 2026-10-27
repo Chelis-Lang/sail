@@ -19,6 +19,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `ff4676cb` parser query positive | Full root retains 480 verified/one failed function across 836 query entries in 32.978 s, no resource marker; final source/runtime guards pass. The owned-Vec helper still refuses the same predecessor-scan/proper-prefix assertions | No positive or inventory lock. Next guidance proves the future appended sequence's scan/prefix facts before mutation, then asserts the stronger actual full-buffer scan against checked `frame_step`; runtime operations and original contracts remain unchanged |
 | `8752d3c6` parser query positive | Full-root compilation clears the borrowed-pattern defect; verification retains 479 verified/one failed function across all 835 entries in 32.564 s. Only push's postappend scan/prefix assertions refuse, without a resource marker; final source/runtime guards pass | No positive/control/native qualification or inventory lock. The next source candidate moves that same owned Vec append into a private checked helper, preserving the public operation/contract and full-root obligations |
 | `668be5f2` parser query positive | Complete query capture refuses compilation at three E0382 proof-pattern moves after 3.156 s (#469), with final source/runtime guards passing | Verification never starts: no function/obligation inventory, control or native credit. Borrowed proof-pattern correction preserves executable operations/contracts and must repeat the whole root at unchanged resources |
 | `48f09fa7` parser query positive | Native full-query attempt checks all 835 function entries and retains 477 verified plus three failed functions in 39.006 s, with final source/runtime guards passing. Diagnostics include push's missing preappend scan fact/postcondition, chunk endpoint constructiveness and a resource refusal in the long-command witness | No positive/control/native credit and no inventory lock. Separate source guidance explicitly unfolds the original invariant and scopes finite-prefix/flat-list facts; contracts, runtime operations, resources and all controls remain mandatory |
@@ -60,6 +61,19 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The separate `ff4676cb` attempt is retained as
+`experiments/2026-10-27/acceptance-parser-ff4676-native.tgz`, SHA-256
+`f15f993a0183fa0f2262d534aa31560388551163b4cc7f8e65463ddf2abe7f9b`
+(299,725 bytes); host creation and independent local SCP/hash agree, with
+private upload/readback pending. Its append assertions still refuse even after
+separating the vector from its containing record; that refactor alone does not
+explain or close the proof gap. The next checked framing lemma derives scan and
+proper-prefix facts for the immutable exact `bytes.push(byte)` sequence before
+the actual append. The executable post-state is related to that stronger full
+scan, preserving the existing exact-byte/first-close contracts and controls.
+No parser behavior, resource limit or proof scope is relaxed; the whole root
+must pass before any inventory or negative-control credit.
 
 The next closed parser attempt is retained as
 `experiments/2026-10-27/acceptance-parser-8752d3-native.tgz`, SHA-256
