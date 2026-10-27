@@ -354,6 +354,45 @@ transport, Cargo metadata/option semantics and physical compiler-input closure
 remain explicit native joins. Selecting a matching data row does not establish
 that those providers observed the original physical execution.
 
+## Effective report-mode construction candidate
+
+The next source slice moves the actual adapter's
+`report_verification_arguments` loop to
+`request_mode.rs::construct_report_verification_arguments`. The real adapter
+passes the same original report tokens and optional decoded per-package options
+to that operation. The existing common/current-package lookup, packed decoder and
+checked `effective_driver_arguments_match` remain unchanged; no new environment,
+transport, runtime or physical argument selector is introduced.
+
+The checked operation derives its mode from the provided options through
+`verification_enabled_options`. Missing options return absence, while present
+options construct a command. It retains every original token in order except the
+existing removal of forwarded `--no-verify` for an enabled package. A disabled
+package retains its original command and gets only the existing necessary final
+`--no-verify` marker (plus `--` when absent). The contract records that exact
+projection and equates the reported verification predicate with the observed
+option-mode predicate. This prevents the construction step from turning an
+observed compile-only mode into a verified-looking command or silently dropping
+other original tokens, including focus flags.
+
+The command's Cargo separator and the effective options' Rust separator keep
+their existing different interpretations. Constructive witnesses cover nonempty
+enabled, disabled, forwarded payload and forwarded effective-option examples;
+an unknown-option witness refuses. The real native fixture retains all original
+assertions and adds prefix/focus, Unicode and embedded-NUL data preservation.
+Fourteen executable controls cover mode and separator guards, exact original
+argument retention, missing observations, necessary/exact marker appends,
+unnecessary appends and a full always-refusing operation with its loop intact.
+All existing 63 request controls remain required. No new verified/function counts
+are guessed; whole-root, native and ordinary-negative qualification are pending.
+
+The proposed guarantee is conditional on the provided observed options. Their origin and
+identity relative to the compiler's actual consumed arguments remain native
+joins, as do original launch, metadata decoding/enumeration and full Cargo
+option/value semantics. In particular, the native `expected_targets` package,
+feature and target filters and its actual selector scan remain mandatory later
+work in #375. This slice completes none of the physical/provider obligations.
+
 ## Independent checking
 
 Commit the source first, then run Python 3.11 or newer:

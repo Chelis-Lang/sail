@@ -1372,4 +1372,79 @@ pub fn duplicate_worker_journal_run_refuses(
         arguments, mode, project).is_none()
 }
 
+
+/// A real nonempty enabled command keeps its original token unchanged.
+pub fn enabled_report_argument_is_retained(original: &[String], effective: &[String])
+    -> (out: Option<Vec<String>>)
+    requires original@.len() == 1,
+        string_bytes(&original@[0]) != b"--no-verify"@, effective@.len() == 0,
+    ensures out.is_some(), out.unwrap()@ == original@,
+{
+    let out = crate::request_mode::construct_report_verification_arguments(original, Some(effective));
+    proof {
+        crate::request_mode::report_marker_literals();
+        reveal_with_fuel(crate::request_mode::kept_report_arguments, 2);
+    }
+    out
+}
+
+/// A disabled package with no original separator gets exactly two markers.
+pub fn disabled_report_adds_only_missing_markers(original: &[String], effective: &[String])
+    -> (out: Option<Vec<String>>)
+    requires original@.len() == 1, string_bytes(&original@[0]) != b"--"@,
+        effective@.len() == 1, string_bytes(&effective@[0]) == b"--no-verify"@,
+    ensures out.is_some(), out.unwrap()@.len() == 3,
+        out.unwrap()@[0] == original@[0],
+        string_bytes(&out.unwrap()@[1]) == b"--"@,
+        string_bytes(&out.unwrap()@[2]) == b"--no-verify"@,
+{
+    let out = crate::request_mode::construct_report_verification_arguments(original, Some(effective));
+    proof {
+        crate::request_mode::report_marker_literals();
+        reveal_with_fuel(crate::request_mode::kept_report_arguments, 2);
+    }
+    out
+}
+
+/// Enabled package construction removes only the forwarded no-verify token.
+pub fn enabled_report_keeps_nonempty_forwarded_payload(original: &[String], effective: &[String])
+    -> (out: Option<Vec<String>>)
+    requires original@.len() == 3, string_bytes(&original@[0]) == b"--"@,
+        string_bytes(&original@[1]) == b"--no-verify"@,
+        string_bytes(&original@[2]) != b"--no-verify"@, effective@.len() == 0,
+    ensures out.is_some(), out.unwrap()@ == seq![original@[0], original@[2]],
+{
+    let out = crate::request_mode::construct_report_verification_arguments(original, Some(effective));
+    proof {
+        crate::request_mode::report_marker_literals();
+        reveal_with_fuel(crate::request_mode::kept_report_arguments, 4);
+    }
+    out
+}
+
+/// A token after the effective Rust separator cannot disable this package.
+pub fn forwarded_effective_flag_preserves_report_mode(original: &[String], effective: &[String])
+    -> (out: Option<Vec<String>>)
+    requires original@.len() == 1, string_bytes(&original@[0]) != b"--no-verify"@,
+        effective@.len() == 2, string_bytes(&effective@[0]) == b"--"@,
+        string_bytes(&effective@[1]) == b"--no-verify"@,
+    ensures out.is_some(), out.unwrap()@ == original@,
+        !acceptance::verification_disabled(out.unwrap()@),
+{
+    let out = crate::request_mode::construct_report_verification_arguments(original, Some(effective));
+    proof {
+        crate::request_mode::report_marker_literals();
+        reveal_with_fuel(crate::request_mode::kept_report_arguments, 2);
+    }
+    out
+}
+
+/// Unknown effective options remain unknown on the actual report path.
+pub fn missing_effective_options_cannot_enable_report(original: &[String]) -> (refused: bool)
+    requires original@.len() > 0,
+    ensures refused,
+{
+    crate::request_mode::construct_report_verification_arguments(original, None).is_none()
+}
+
 }

@@ -20,6 +20,14 @@ native source-suite evidence; this combined extension and actual request/domain
 construction still require fresh native source checks and complete-root Stock
 discovery. No function or obligation counts are inferred from the support probe.
 
+A separate report-mode construction source slice delegates the actual adapter
+operation to checked `request_mode.rs`. Its original packed option matcher and
+native lookup remain; fourteen mandatory executable controls and nonempty
+mode/preservation witnesses are added without changing any of the existing 63
+request controls or their minimum function inventories. This new slice is
+source-only pending full source, complete-root, native and ordinary-negative
+qualification. Supplied option values establish no physical compiler origin.
+
 The later captured-worker selection source candidate is separate from the frozen
 request/domain qualifier. It adds the actual decoded `RequestCapture` declaration
 and version constant, the checked consuming selection loop, native caller binding
