@@ -166,6 +166,10 @@ new key only after the kernel is checked and the conversion reviewed. That
 later projection must iterate the real original set, not certify a supplied
 list or mint a physical compiler-input domain. New comparator primitives add
 no String-order axiom, dependency, public record schema or provider selection.
+The follow-up key interface exposes closed original-tuple projections and
+constructor/borrow round-trip postconditions. Later projection proofs can use
+those checked relations without exposing private fields or assuming a digest
+or String-view injection law. Comparator runtime bodies remain unchanged.
 
 Native path rendering still uses the old `to_string_lossy` operation and the
 independent raw-path binding, including invalid-byte refusal. Cargo metadata

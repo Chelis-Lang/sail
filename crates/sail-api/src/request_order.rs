@@ -203,27 +203,35 @@ sail_code! {
         sail_method! {
             /// Retains every original String without normalization or copying.
             pub fn new(original: (String, String, String)) -> (key: Self)
-                requires(true) ensures(key.original == original)
+                requires(true) ensures(key_original(&key) == original,
+                    key == original_key_value(original))
             { Self { original } }
         }
         sail_method! {
             /// Borrows the original immutable tuple used by request construction.
             pub fn as_tuple(&self) -> (original: &(String, String, String))
-                requires(true) ensures(*original == self.original)
+                requires(true) ensures(*original == key_original(self),
+                    original_key_value(*original) == *self)
             { &self.original }
         }
     }
 }
 
 sail_spec! {
+    pub closed spec fn key_original(key: &OriginalTargetKey) -> (String, String, String) {
+        key.original
+    }
+    pub closed spec fn original_key_value(original: (String, String, String)) -> OriginalTargetKey {
+        OriginalTargetKey { original }
+    }
     pub open spec fn key_package(key: &OriginalTargetKey) -> Seq<u8> {
-        vstd::utf8::encode_utf8(key.original.0@)
+        vstd::utf8::encode_utf8(key_original(key).0@)
     }
     pub open spec fn key_target(key: &OriginalTargetKey) -> Seq<u8> {
-        vstd::utf8::encode_utf8(key.original.1@)
+        vstd::utf8::encode_utf8(key_original(key).1@)
     }
     pub open spec fn key_kind(key: &OriginalTargetKey) -> Seq<u8> {
-        vstd::utf8::encode_utf8(key.original.2@)
+        vstd::utf8::encode_utf8(key_original(key).2@)
     }
     pub open spec fn key_equal(left: &OriginalTargetKey, right: &OriginalTargetKey) -> bool {
         key_package(left) == key_package(right) && key_target(left) == key_target(right)
@@ -289,7 +297,7 @@ sail_code! {
     impl Clone for OriginalTargetKey {
         sail_method! {
         fn clone(&self) -> (key: Self)
-            requires(true) ensures(key.original == self.original)
+            requires(true) ensures(key_original(&key) == key_original(self), key == *self)
         {
             Self { original: (self.original.0.clone(), self.original.1.clone(), self.original.2.clone()) }
         }
