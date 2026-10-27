@@ -22,6 +22,8 @@ pub mod query_checkpoints;
 pub mod query_delivery;
 /// Actual immutable held payloads and independently mutable effort metadata.
 pub mod query_holding;
+/// Exact raw scalar option transitions and persistent native Session readback.
+pub mod query_options;
 /// Exact stdout coverage and same-owner response intervals.
 pub mod query_output;
 /// Original opaque stream leases retained through frame copies and publication.
@@ -32,4 +34,6 @@ pub mod query_policy;
 pub mod query_prefix;
 /// Typed local publication over owned delivered input and complete stdout.
 pub mod query_publication;
+/// Original served bytes and the mechanical replay-comparison transition.
+pub mod query_replay;
 pub mod stream_capture;

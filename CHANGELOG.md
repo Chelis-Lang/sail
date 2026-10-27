@@ -5,6 +5,32 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Strengthen the replay candidate's completion join to recheck every actual
+  retained suppressed stdout frame against its original served receipt (#457).
+  Same-owner/count comparisons against unrelated bytes cannot substitute for
+  that relation. The source correction and refusal witness await qualification;
+  its additional prefix scan has no cost measurement.
+
+- Share the existing provisional presentation override between MCP summaries
+  and API evidence comparisons. Every verdict/establishment combination and
+  the evidence-tier behavior are preserved. The shared borrowed-field/report
+  operations and controls await direct-stock and native qualification; they
+  grant no request or proof authority.
+
+- Add a source candidate that retains original served command/reply bytes in a
+  shared replay-comparison controller and joins completion to the same stdout
+  owner's original suppression count. Statistics exceptions require a checked
+  raw command mint and keep the native framing refusal. Retained allocation
+  accounting includes commands and carriers. Proof/native/cost qualification
+  and statistics semantics remain pending; emitted bytes are unchanged.
+
+- Add a source candidate that validates scalar `:print-success` and `:rlimit`
+  values from original SMT commands and retains their bytes across commands and
+  resets, comparing actual Session readback before policy use and after every
+  transition. Unsupported sensitive values or a mismatch use live fallback.
+  Direct-stock proofs, native qualification and pinned-solver option semantics
+  remain pending; forwarded bytes and raw cache keys are unchanged.
+
 - Refuse incompatible proof receipts and contexts from the two integration
   lineages. The combined contract records both original producer history and
   the observed compiler environment and ghost-only file declarations under

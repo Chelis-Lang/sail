@@ -24,9 +24,93 @@ use sail_acceptance::query::{
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
 use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
-use sail_session::Session;
+use sail_session::Session as NativeSession;
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
+
+/// Native Session plus independently retained raw policy-option bytes.
+/// Map readback agreement does not prove the pinned solver's option semantics.
+struct ObservedSession {
+    native: NativeSession,
+    options: sail_acceptance::query_options::OptionState,
+}
+
+impl ObservedSession {
+    fn new() -> Self {
+        Self {
+            native: NativeSession::new(),
+            options: sail_acceptance::query_options::OptionState::new(),
+        }
+    }
+
+    fn option(&self, keyword: &[u8]) -> Option<&[u8]> {
+        self.native.option(keyword)
+    }
+
+    fn readback_matches(&self) -> bool {
+        self.options.matches(
+            self.native.option(b":print-success"),
+            self.native.option(b":rlimit"),
+        )
+    }
+
+    fn expects_output(&self, command: &[u8]) -> Output {
+        self.native.expects_output(command)
+    }
+
+    fn apply(&mut self, command: &[u8]) -> bool {
+        let spans = option_spans(command);
+        self.native.apply(command);
+        self.options.advance(
+            command,
+            spans,
+            self.native.option(b":print-success"),
+            self.native.option(b":rlimit"),
+        )
+    }
+}
+
+/// Lexer offsets are candidates only; the shared operation checks original bytes.
+fn option_spans(command: &[u8]) -> Option<sail_acceptance::query_options::OptionSpans> {
+    let mut lexer = sail_smtlib::lex::Lexer::new(command);
+    let _open = lexer.next()?.ok()?;
+    let head = lexer.next()?.ok()?;
+    if command.get(head.start..head.end)? != b"set-option" {
+        return None;
+    }
+    let keyword = lexer.next()?.ok()?;
+    let value = lexer.next()?.ok()?;
+    Some(sail_acceptance::query_options::OptionSpans {
+        head_start: head.start,
+        head_end: head.end,
+        keyword_start: keyword.start,
+        keyword_end: keyword.end,
+        value_start: value.start,
+        value_end: value.end,
+    })
+}
+
+/// Preserve native classification as a candidate, then check all original
+/// head/keyword/remaining bytes in the shared statistics-command mint.
+fn statistics_spans(command: &[u8]) -> Option<sail_acceptance::query_replay::KeywordSpans> {
+    if classify(command).ok()?.kind
+        != (CommandKind::GetInfo {
+            keyword: b":all-statistics",
+        })
+    {
+        return None;
+    }
+    let mut lexer = sail_smtlib::lex::Lexer::new(command);
+    let _open = lexer.next()?.ok()?;
+    let head = lexer.next()?.ok()?;
+    let keyword = lexer.next()?.ok()?;
+    Some(sail_acceptance::query_replay::KeywordSpans {
+        head_start: head.start,
+        head_end: head.end,
+        keyword_start: keyword.start,
+        keyword_end: keyword.end,
+    })
+}
 
 /// A strongly retained allocation minted only beside the actual child/pipe
 /// extraction below; PID and equal stream values cannot substitute for it.
@@ -191,7 +275,11 @@ fn plausible(command: &[u8], reply: &[u8]) -> bool {
         } => body.starts_with(b"(:reason-unknown "),
         CommandKind::GetInfo {
             keyword: b":all-statistics",
-        } => body.starts_with(b"(:") && body.ends_with(b")"),
+        } => {
+            sail_acceptance::query_replay::statistics_command(command, statistics_spans(command))
+                && body.starts_with(b"(:")
+                && body.ends_with(b")")
+        }
         _ => !body.is_empty() && !body.starts_with(b"(error"),
     }
 }
@@ -725,7 +813,7 @@ fn output_side(
     // byte is forwarded as read, exactly as pass-through forwards it.
     let mut streaming = false;
     let mut splitter = ResponseSplitter::new();
-    let mut check = ReplayCheck::new(served);
+    let mut check = ReplayCheck::new(served, Arc::clone(&owner));
     let mut forward_from: Option<usize> = all.forwarding().then_some(0);
     let mut forwarded = 0usize;
     let mut forwarding_ok = true;
@@ -801,7 +889,7 @@ fn output_side(
             }
             prev = Some((fresh, start));
         }
-        if check.diverged {
+        if check.diverged() {
             break;
         }
         if let Some(f) = forward_from
@@ -837,11 +925,11 @@ fn output_side(
     // Stop reading first: a solver blocked writing to a closed pipe then
     // fails and exits instead of waiting forever.
     drop(from);
-    if check.diverged {
+    if check.diverged() {
         let _ = process.child.kill(); // it may wait for input that will never come
     }
     // End of output. Deliver what is left, as pass-through would.
-    if !check.diverged && forward_from.is_some() && all.len() > forwarded {
+    if !check.diverged() && forward_from.is_some() && all.len() > forwarded {
         forwarding_ok &= write_out(all.bytes().get(forwarded..).unwrap_or_default());
     }
     let (_, mut code) = match process.child.wait() {
@@ -850,7 +938,7 @@ fn output_side(
     };
     // The last reply runs to the end of the stream, and is complete only if
     // the solver exited cleanly.
-    if !check.diverged
+    if !check.diverged()
         && let Some((fresh, s)) = prev.take()
         && code == 0
     {
@@ -883,6 +971,13 @@ fn output_side(
     if check.finish(forwarding_ok && code == 0) {
         pairer.stop();
         code = 1;
+    }
+    // Completion of the actual stdout suppression cursor is distinct from
+    // completing comparisons against every original served payload.
+    let output =
+        output.and_then(|output| output.with_replay(&check.comparison, &SolverOwnerIdentity));
+    if output.is_none() {
+        pairer.stop();
     }
     let input_done = input.done.load(Ordering::SeqCst);
     // Once the input has ended, every expectation is queued or about to be.
@@ -958,7 +1053,9 @@ fn start_solver(
     let input = Arc::new(InputStatus {
         done: AtomicBool::new(false),
         valid: AtomicBool::new(true),
-        recorded_bytes: AtomicUsize::new(PUBLICATION_FIXED_BYTES),
+        recorded_bytes: AtomicUsize::new(
+            PUBLICATION_FIXED_BYTES.saturating_add(served_storage_bytes(&served)),
+        ),
     });
     // Queued before the solver sees any input, so it precedes its reply.
     input.send_expectation(&tx, first);
@@ -1077,10 +1174,15 @@ fn connect(socket: &Path, solver: &Path) -> Option<(Client, SessionPrefix)> {
 }
 
 fn observe(
-    session: &mut Session,
+    session: &mut ObservedSession,
     item: &Item,
     prefix: &mut SessionPrefix,
 ) -> (Output, String, Expect) {
+    // A prior native mutation cannot silently change the next command's policy.
+    if !session.readback_matches() {
+        prefix.refuse();
+        return (Output::Unknown, String::new(), Expect::Stop);
+    }
     // The splitter proposes an interval. Exact bytes, monotonicity and complete
     // inter-item trivia are checked before the proposal can drive a cache key.
     let Some(offset) = usize::try_from(item.offset).ok() else {
@@ -1107,7 +1209,10 @@ fn observe(
     } else {
         Output::Unknown
     };
-    session.apply(&item.bytes);
+    if !session.apply(&item.bytes) {
+        prefix.refuse();
+        return (Output::Unknown, String::new(), Expect::Stop);
+    }
     // print-success changes the option command's own output as well as later
     // replies. Its non-default protocol always replays live, without recording.
     if session
@@ -1131,94 +1236,107 @@ fn observe(
 }
 
 /// The replies a session served from the cache before any solver started.
-#[derive(Default)]
 struct Served {
     /// The replies, until a solver takes them to check its replay.
     replies: Vec<ServedReply>,
     /// How many there were.
     count: u64,
-    /// The retained replies' total length.
+    /// Retained allocation capacities and fixed receipt/controller carriers.
     bytes: usize,
+}
+
+impl Default for Served {
+    fn default() -> Self {
+        let replies = Vec::new();
+        let bytes = served_storage_bytes(&replies);
+        Self {
+            replies,
+            count: 0,
+            bytes,
+        }
+    }
+}
+
+type ServedReply = sail_acceptance::query_replay::ServedReply;
+
+/// Actual retained command/payload capacities and fixed receipt/vector/controller
+/// carriers. Allocator overhead and runtime cost are not RSS measurements.
+#[allow(
+    clippy::ptr_arg,
+    reason = "The actual receipt-vector capacity is part of the retained allocation charge."
+)]
+fn served_storage_bytes(replies: &Vec<ServedReply>) -> usize {
+    replies.iter().fold(
+        (std::mem::size_of::<Served>() + std::mem::size_of::<ReplayCheck<'_>>()).saturating_add(
+            replies
+                .capacity()
+                .saturating_mul(std::mem::size_of::<ServedReply>()),
+        ),
+        |cost, reply| {
+            cost.saturating_add(reply.command_storage().capacity())
+                .saturating_add(reply.reply_storage().capacity())
+        },
+    )
 }
 
 impl Served {
     fn push(&mut self, command: &[u8], reply: Vec<u8>) {
-        let statistics = classify(command).is_ok_and(|c| {
-            c.kind
-                == CommandKind::GetInfo {
-                    keyword: b":all-statistics",
-                }
-        });
-        self.bytes = self.bytes.saturating_add(reply.len());
-        self.replies.push(ServedReply {
-            bytes: reply,
-            statistics,
-        });
+        let reply = ServedReply::new(command, reply, statistics_spans(command));
+        self.bytes = self
+            .bytes
+            .saturating_add(reply.command_storage().capacity())
+            .saturating_add(reply.reply_storage().capacity());
+        let prior_capacity = self.replies.capacity();
+        self.replies.push(reply);
+        self.bytes = self.bytes.saturating_add(
+            self.replies
+                .capacity()
+                .saturating_sub(prior_capacity)
+                .saturating_mul(std::mem::size_of::<ServedReply>()),
+        );
         self.count += 1;
     }
 
     fn take(&mut self) -> Vec<ServedReply> {
-        self.bytes = 0;
-        std::mem::take(&mut self.replies)
-    }
-}
-
-/// One reply served from the cache.
-struct ServedReply {
-    bytes: Vec<u8>,
-    /// Whether it answers `(get-info :all-statistics)`.
-    statistics: bool,
-}
-
-impl ServedReply {
-    /// Whether the replay's reply in this position reproduces it: the same
-    /// bytes, or for statistics, one well-formed statistics response. Their
-    /// times, memory and even resource counts vary from run to run on the
-    /// same input (`corpus/repros/z3-resource-count-variation`), and they
-    /// carry no verdict.
-    fn reproduced_by(&self, replay: &[u8]) -> bool {
-        if self.statistics {
-            plausible(b"(get-info :all-statistics)", replay)
-        } else {
-            self.bytes == replay
-        }
+        let replies = std::mem::take(&mut self.replies);
+        self.bytes = served_storage_bytes(&self.replies);
+        replies
     }
 }
 
 /// Checks a replay's suppressed replies against those already served.
 struct ReplayCheck<'a> {
-    served: &'a [ServedReply],
-    checked: usize,
-    diverged: bool,
+    comparison: sail_acceptance::query_replay::Replay<'a, SolverLease>,
 }
 
 impl<'a> ReplayCheck<'a> {
-    fn new(served: &'a [ServedReply]) -> Self {
+    fn new(served: &'a [ServedReply], owner: SolverLease) -> Self {
         Self {
-            served,
-            checked: 0,
-            diverged: false,
+            comparison: sail_acceptance::query_replay::Replay::new(served, owner),
         }
     }
 
     /// Whether every served reply has been compared with its replay.
     fn complete(&self) -> bool {
-        !self.diverged && self.checked == self.served.len()
+        self.comparison.complete()
+    }
+
+    fn diverged(&self) -> bool {
+        self.comparison.diverged()
     }
 
     /// At the end of the replay: whether it diverged, including a `clean`
     /// replay that gave fewer replies than were served. A divergence is
     /// reported on stderr.
     fn finish(&mut self, clean: bool) -> bool {
-        self.diverged |= clean && self.checked < self.served.len();
-        if self.diverged {
+        if self.comparison.finish(clean) {
             eprintln!(
                 "error[SAIL2005]: sail-z3: the pinned solver's replay differs from reply {} \
                  served from the cache; stopping",
-                self.checked + 1
+                self.comparison.checked() + 1
             );
         }
-        self.diverged
+        self.comparison.diverged()
     }
 
     /// Settles one complete reply: a fresh one goes to the pairer, a
@@ -1237,23 +1355,23 @@ impl<'a> ReplayCheck<'a> {
             } else {
                 pairer.stop();
             }
-        } else if self
-            .served
-            .get(self.checked)
-            .is_some_and(|r| r.reproduced_by(bytes))
-        {
-            self.checked += 1;
         } else {
-            self.diverged = true;
+            // Keep the native splitter's offset-zero/exact-one-frame refusal
+            // independently of the checked mechanical comparison policy.
+            if self.comparison.next_statistics() && !is_single_response(bytes) {
+                self.comparison.refuse();
+            } else {
+                self.comparison.compare(bytes);
+            }
         }
-        !self.diverged
+        !self.comparison.diverged()
     }
 
     #[cfg(test)]
     fn settle(&mut self, fresh: bool, bytes: &[u8], pairer: &mut Pairer) -> bool {
         if fresh {
             pairer.reply(bytes.to_vec());
-            !self.diverged
+            !self.comparison.diverged()
         } else {
             self.settle_observed(false, bytes, pairer, None)
         }
@@ -1275,7 +1393,7 @@ impl<'a> ReplayCheck<'a> {
 )]
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
     let (client, mut prefix) = connect(socket, solver)?;
-    let mut session = Session::new();
+    let mut session = ObservedSession::new();
     let mut splitter = CommandSplitter::new();
     let mut served = Served::default();
     let mut solving: Option<Solving> = None;
@@ -1567,15 +1685,100 @@ mod tests {
     }
 
     #[test]
+    fn scalar_option_history_matches_actual_session_readback() {
+        assert!(sail_acceptance::query_options::scalar_option_control());
+        let mut session = super::ObservedSession::new();
+        for command in [
+            &b"(set-option ;head\r\n :print-success ;key\n false)"[..],
+            &b"(set-option :rlimit 00010)"[..],
+            &b"(set-option :unrelated (a b))"[..],
+            &b"(assert true)"[..],
+            &b"(push 1)"[..],
+            &b"(pop 1)"[..],
+            &b"(reset-assertions)"[..],
+            &b"(check-sat)"[..],
+        ] {
+            assert!(session.apply(command));
+            assert!(session.readback_matches());
+        }
+        assert_eq!(session.option(b":print-success"), Some(&b"false"[..]));
+        assert_eq!(session.option(b":rlimit"), Some(&b"00010"[..]));
+        assert!(session.apply(b"(reset)"));
+        assert_eq!(session.option(b":print-success"), None);
+        assert_eq!(session.option(b":rlimit"), None);
+    }
+
+    #[test]
+    fn sensitive_option_projection_refuses_omission_trailing_and_compound_values() {
+        for command in [
+            &b"(set-option :rlimit)"[..],
+            &b"(set-option :rlimit 10 20)"[..],
+            &b"(set-option :rlimit (10))"[..],
+            &b"(set-option :print-success \"false\")"[..],
+            &b"(set-option :print-success |false|)"[..],
+        ] {
+            let mut session = super::ObservedSession::new();
+            assert!(!session.apply(command));
+            assert!(!session.apply(b"(reset)"));
+            assert!(!session.readback_matches());
+        }
+    }
+
+    #[test]
+    fn scalar_option_witness_cannot_swap_keyword_and_value_or_truncate_either() {
+        let command = b"(set-option :rlimit 10)";
+        let Some(original) = super::option_spans(command) else {
+            unreachable!("literal set-option supplies candidate intervals");
+        };
+        let mut swapped = original;
+        swapped.keyword_start = original.value_start;
+        swapped.keyword_end = original.value_end;
+        swapped.value_start = original.keyword_start;
+        swapped.value_end = original.keyword_end;
+        let mut omitted_keyword = original;
+        omitted_keyword.keyword_end -= 1;
+        let mut omitted_value = original;
+        omitted_value.value_end -= 1;
+        for spans in [swapped, omitted_keyword, omitted_value] {
+            let mut state = sail_acceptance::query_options::OptionState::new();
+            assert!(!state.advance(command, Some(spans), None, Some(b"10")));
+            assert!(!state.matches(None, Some(b"10")));
+        }
+    }
+
+    #[test]
+    fn native_option_mutation_cannot_change_later_policy_without_checked_transition() {
+        let mut session = super::ObservedSession::new();
+        assert!(session.apply(b"(set-option :print-success false)"));
+        assert!(session.apply(b"(set-option :rlimit 10)"));
+        session.native.apply(b"(set-option :rlimit 20)");
+        let mut prefix = super::SessionPrefix::new(&identity(), &super::Mode::Default);
+        let bytes = b"(check-sat)";
+        prefix.append(bytes);
+        let item = super::Item {
+            kind: super::ItemKind::List,
+            offset: 0,
+            bytes: bytes.to_vec(),
+        };
+        let (policy, _, expectation) = super::observe(&mut session, &item, &mut prefix);
+        assert_eq!(policy, super::Output::Unknown);
+        assert!(matches!(expectation, super::Expect::Stop));
+        let mut state = sail_acceptance::query_options::OptionState::new();
+        let command = b"(set-option :rlimit 10)";
+        assert!(!state.advance(command, super::option_spans(command), None, Some(b"20")));
+        assert!(!state.advance(b"(reset)", None, None, None));
+    }
+
+    #[test]
     fn checked_raw_prefixes_preserve_existing_keys_and_replay_bytes() {
-        use super::{CommandSplitter, Mode, Session, SessionPrefix, observe};
+        use super::{CommandSplitter, Mode, ObservedSession, SessionPrefix, observe};
         use sail_key::PrefixHasher;
         let input = b" ;head\r\n(set-option :print-success false)\n(echo \"a;()\")\t;gap\n(check-sat)\n;tail";
         for width in [1, 3, 17, input.len()] {
             for mode in [Mode::Default, Mode::OptIn("test-mode".to_owned())] {
                 let mut parser = CommandSplitter::new();
                 let mut prefix = SessionPrefix::new(&identity(), &mode);
-                let mut session = Session::new();
+                let mut session = ObservedSession::new();
                 let mut items = Vec::new();
                 for chunk in input.chunks(width) {
                     prefix.append(chunk);
@@ -1604,7 +1807,7 @@ mod tests {
 
     #[test]
     fn output_expectations_use_the_exact_checked_frame_head() {
-        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        use super::{Item, ItemKind, ObservedSession, Output, SessionPrefix, observe};
         for (command, expected) in [
             (b"( ;head\r\ncheck-sat-using smt)".as_slice(), Output::One),
             (
@@ -1625,7 +1828,7 @@ mod tests {
                 offset: 0,
                 bytes: command.to_vec(),
             };
-            let (actual, _, metadata) = observe(&mut Session::new(), &item, &mut prefix);
+            let (actual, _, metadata) = observe(&mut ObservedSession::new(), &item, &mut prefix);
             assert_eq!(actual, expected);
             assert_eq!(prefix.bytes(), command);
             if expected == Output::One {
@@ -1648,7 +1851,7 @@ mod tests {
 
     #[test]
     fn wrong_missing_or_overlapping_parser_items_disable_only_cache_interpretation() {
-        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        use super::{Item, ItemKind, ObservedSession, Output, SessionPrefix, observe};
         use sail_acceptance::query::RawTranscript;
         let first = b"(set-option :print-success false)\n";
         let input = [first.as_slice(), b"(check-sat)"].concat();
@@ -1671,7 +1874,7 @@ mod tests {
         ] {
             let mut prefix = SessionPrefix::new(&identity(), &super::Mode::Default);
             prefix.append(&input);
-            let mut session = Session::new();
+            let mut session = ObservedSession::new();
             let (output, name, expectation) = observe(&mut session, &item, &mut prefix);
             assert_eq!(output, Output::Unknown);
             assert_eq!(name, "");
@@ -1729,7 +1932,7 @@ mod tests {
 
     #[test]
     fn framing_refuses_quoted_heads_partial_forms_and_coalesced_replies() {
-        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        use super::{Item, ItemKind, ObservedSession, Output, SessionPrefix, observe};
         for bytes in [
             b"(check-sat)(check-sat)".as_slice(),
             b"(|check-sat|)",
@@ -1743,7 +1946,7 @@ mod tests {
                 offset: 0,
                 bytes: bytes.to_vec(),
             };
-            let (output, name, expected) = observe(&mut Session::new(), &item, &mut prefix);
+            let (output, name, expected) = observe(&mut ObservedSession::new(), &item, &mut prefix);
             assert_eq!(output, Output::Unknown);
             assert_eq!(name, "");
             assert!(matches!(expected, Expect::Stop));
@@ -1917,7 +2120,7 @@ mod tests {
         if splitter.finish().is_some() {
             return Err("complete original parser input");
         }
-        let mut session = super::Session::new();
+        let mut session = super::ObservedSession::new();
         let mut expectations = Vec::new();
         for item in items {
             match super::observe(&mut session, &item, &mut prefix) {
@@ -2510,7 +2713,7 @@ mod tests {
         assert!(!replies[1].reproduced_by(b"(:rlimit-count 5)\n(:x 1)\n"));
         assert!(!replies[1].reproduced_by(b"unsat\n"));
         assert!(!replies[1].reproduced_by(b"(error \"x\")\n"));
-        let mut check = super::ReplayCheck::new(&replies);
+        let mut check = super::ReplayCheck::new(&replies, std::sync::Arc::new(()));
         let mut pairer = Pairer::default();
         assert!(check.settle(false, b"(model)\n", &mut pairer));
         assert!(!check.finish(false), "an unclean end is not judged");
@@ -2518,9 +2721,114 @@ mod tests {
             check.finish(true),
             "a clean replay one reply short diverged"
         );
-        let mut check = super::ReplayCheck::new(&replies);
+        let mut check = super::ReplayCheck::new(&replies, std::sync::Arc::new(()));
         assert!(!check.settle(false, b"(model 1)\n", &mut pairer));
-        assert!(check.diverged);
+        assert!(check.diverged());
+    }
+
+    #[test]
+    fn raw_statistics_mint_requires_the_original_complete_keyword_command() {
+        use sail_acceptance::query_replay::{ServedReply, statistics_command};
+        for command in [
+            &b"(get-info :all-statistics)"[..],
+            &b"( ;head\nget-info;gap\r\n :all-statistics ;tail\n)"[..],
+        ] {
+            assert!(statistics_command(
+                command,
+                super::statistics_spans(command)
+            ));
+        }
+        for command in [
+            &b"(get-info :all-statistics extra)"[..],
+            &b"(get-info :all-statistics-more)"[..],
+            &b"(get-info |:all-statistics|)"[..],
+            &b"(get-model :all-statistics)"[..],
+        ] {
+            let receipt = ServedReply::new(
+                command,
+                b"(:x 1)\n".to_vec(),
+                super::statistics_spans(command),
+            );
+            assert!(!receipt.statistics());
+            assert!(!receipt.reproduced_by(b"(:x 2)\n"));
+        }
+        assert!(!super::plausible(
+            b"(get-info :all-statistics extra)",
+            b"(:x 1)\n"
+        ));
+        assert!(sail_acceptance::query_replay::replay_comparison_control());
+    }
+
+    #[test]
+    fn replay_join_requires_complete_comparisons_original_count_and_same_owner() {
+        use sail_acceptance::query_output_owner::StreamOutput;
+        use sail_acceptance::query_replay::{Replay, ServedReply};
+        let owner = std::sync::Arc::new(());
+        let served = [ServedReply::new(b"(check-sat)", b"unsat\n".to_vec(), None)];
+        for (count, actual_owner, compare, accepted) in [
+            (1, std::sync::Arc::clone(&owner), true, true),
+            (1, std::sync::Arc::clone(&owner), false, false),
+            (0, std::sync::Arc::clone(&owner), true, false),
+            (1, std::sync::Arc::new(()), true, false),
+        ] {
+            let mut replay = Replay::new(&served, std::sync::Arc::clone(&owner));
+            let mut output = StreamOutput::new_replayed(actual_owner, count);
+            output.append(b"unsat\n");
+            assert!(output.frame(0, 6).is_some());
+            assert_eq!(output.advance_replay(), count == 0);
+            output.end();
+            let Some(output) = output.seal() else {
+                unreachable!("complete literal output frame");
+            };
+            if compare {
+                assert!(replay.compare(b"unsat\n"));
+            }
+            assert_eq!(
+                output
+                    .with_replay(&replay, &super::SolverOwnerIdentity)
+                    .is_some(),
+                accepted
+            );
+        }
+    }
+
+    #[test]
+    fn served_receipt_budget_counts_original_commands_payloads_and_carriers() {
+        let mut served = super::Served::default();
+        assert_eq!(served.bytes, super::served_storage_bytes(&served.replies));
+        served.push(b"(check-sat)", b"unsat\n".to_vec());
+        served.push(b"(get-info :all-statistics)", b"(:x 1)\n".to_vec());
+        assert_eq!(served.count, 2);
+        assert_eq!(served.bytes, super::served_storage_bytes(&served.replies));
+        let retained = served.take();
+        assert_eq!(served.bytes, super::served_storage_bytes(&Vec::new()));
+        assert_eq!(retained.len(), 2);
+        assert_eq!(retained[0].command(), b"(check-sat)");
+        assert_eq!(retained[1].bytes(), b"(:x 1)\n");
+    }
+
+    #[test]
+    fn replay_join_refuses_same_owner_count_with_different_retained_stdout() {
+        use sail_acceptance::query_output_owner::StreamOutput;
+        use sail_acceptance::query_replay::{Replay, ServedReply};
+        let owner = std::sync::Arc::new(());
+        let served = [ServedReply::new(b"(check-sat)", b"unsat\n".to_vec(), None)];
+        let mut replay = Replay::new(&served, std::sync::Arc::clone(&owner));
+        assert!(replay.compare(b"unsat\n"));
+        assert!(replay.complete());
+        let mut output = StreamOutput::new_replayed(std::sync::Arc::clone(&owner), 1);
+        output.append(b"sat\n");
+        assert!(output.frame(0, 4).is_some());
+        assert!(!output.advance_replay());
+        output.end();
+        let Some(output) = output.seal() else {
+            unreachable!("complete literal actual stdout frame");
+        };
+        assert!(
+            output
+                .with_replay(&replay, &super::SolverOwnerIdentity)
+                .is_none()
+        );
     }
 
     #[test]

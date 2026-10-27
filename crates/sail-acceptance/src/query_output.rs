@@ -11,6 +11,10 @@ sail_spec! {
         forall|i: int| 0 <= i < ends.len() ==> 0 <= frame_start(ends,i) < ends[i] <= bytes.len()
             && crate::query::response_shape(bytes.subrange(frame_start(ends,i),ends[i] as int))
     }
+    /// Total bounds predicate for one original retained frame interval.
+    pub open spec fn frame_interval(bytes: Seq<u8>, ends: Seq<usize>, ordinal: int) -> bool {
+        0 <= ordinal < ends.len() && 0 <= frame_start(ends,ordinal) < ends[ordinal] <= bytes.len()
+    }
     /// Exposes the original closed partition relationships without exposing
     /// private fields or changing the admitted-output/EOF predicates.
     pub proof fn transcript_partition_facts(output: &Transcript)
@@ -315,6 +319,21 @@ sail_code! {
                     && frame.start_view() == frame_start(self.endpoints(), frame.ordinal_view() as int)
                     && frame.end_view() == self.endpoints()[frame.ordinal_view() as int]
                     && frame.view() == self.view().subrange(frame.start_view() as int,frame.end_view() as int)
+            }
+        }
+        sail_method! {
+            /// Borrows the exact original ordinal interval, with checked bounds.
+            pub fn frame_bytes(&self, ordinal: usize) -> (out: Option<&[u8]>)
+                requires (true)
+                ensures (out.is_some() == frame_interval(self.view(),self.endpoints(),ordinal as int),
+                    out.is_some() ==> out.unwrap()@ == self.view().subrange(
+                        frame_start(self.endpoints(),ordinal as int),self.endpoints()[ordinal as int] as int))
+            {
+                if ordinal >= self.ends.len() { return None; }
+                let start = if ordinal == 0 { 0 } else { self.ends[ordinal-1] };
+                let end = self.ends[ordinal];
+                if start >= end || end > self.bytes.len() { return None; }
+                Some(&self.bytes[start..end])
             }
         }
         sail_method! {

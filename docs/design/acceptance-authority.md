@@ -292,6 +292,33 @@ gates or corpus conformance.
 
 ## Success presentation call graph
 
+`acceptance::presentation_verdict` source-shares the existing provisional
+override over borrowed actual `VerdictName` and `EstablishmentName` fields.
+Provisional establishment returns `Provisional` for all four verdicts;
+confirmed establishment returns the same original verdict, including Unknown
+and Provisional. Explicit matching constructs fresh variants, so the captured
+declarations need no `Copy` derive. `present_function_verdict` reads those
+two fields from the actual `FunctionReport` and applies that operation.
+Both MCP `summary::effective_verdict` and API `evidence::effective` delegate
+to this wrapper. MCP evidence-tier presentation retains its existing call
+through `effective_verdict`; no evidence-tier rule or other behavior changes.
+
+This is a presentation theorem over supplied fields. It does not establish
+confirmed evidence, cache/process origin, request scope, current inputs or
+whole-proof authority. Native caller shaping and serialization remain separate
+obligations under #376. Their full source/module/dependency bindings are
+recorded as unproved native source, not stock-compiled bodies.
+
+Constructive functions cover all eight field combinations and construct
+Verified+Provisional then Verified+Confirmed states in an actual report.
+Nine ordinary controls cover provisional override, all confirmed verdicts,
+the original report fields, and whole-function always-provisional substitutes.
+The native MCP regression checks the same eight combinations. These additions
+are source-only and need direct-stock/native qualification. All 107 earlier
+authority controls remain (116 total); the prior 498-obligation/full-function
+inventory remains intentionally unchanged until actual whole-root discovery.
+The existing actual declaration projections are unchanged.
+
 This is a source inventory of actual consumers and producing guards. It is not
 a checked full-service refinement. A serializer, `complete_target` call or
 confirmed function field cannot establish independent request scope, original
