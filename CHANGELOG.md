@@ -16,6 +16,23 @@ semantic versioning once the API is published.
   drops the write instead of panicking (#478). The (still disabled)
   dependency store's family key binds the native tools' bytes and fails
   closed when a linker is chosen by configuration or flags (#187).
+- Track every input the compiler and build scripts declare under its exact
+  name. The dep-info reader split file names at non-ASCII whitespace such
+  as U+00A0 and dropped literal backslashes, so an included file could go
+  untracked (#408); it now decodes rustc's own escaping and refuses a
+  dep-info whose rules disagree. Ghost-only files are now added to every
+  output rule of a dep-info, not only the first. Declared environment names were trimmed
+  and rustc's `\n`, `\r` and `\\` escapes were not decoded, so another
+  variable was sampled (#383); build-script lines now follow Cargo's own
+  framing, so indented instructions count and bare `rerun-if-changed=`
+  lines do not. A build-script output or artifact journal that cannot be
+  read now leaves the run without a receipt instead of an empty contract
+  (#382). Within one run a cached tool digest is used only while the path
+  still resolves to the same file (#381), and a read-back check whose files
+  changed while it read them reports Unknown instead of Current (#387). A
+  `--workspace` or `--all` after `--` no longer widens the targets Sail
+  expects Cargo to build (#467). Existing receipts, read-back records and
+  replay records are not used after this upgrade.
 - Replay unchanged calls on macOS. Cargo copies each build script to
   `build-script-build` again on every macOS run, so the copy never looked
   settled and no unchanged call was recorded (#437); unchanged Anvil took

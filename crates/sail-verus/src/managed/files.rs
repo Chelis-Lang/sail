@@ -83,14 +83,36 @@ fn fill(file: &mut std::fs::File, buf: &mut [u8]) -> Result<usize> {
 #[derive(Default)]
 pub(super) struct FileDigests(BTreeMap<PathBuf, String>);
 
+fn canonical(path: &Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_owned())
+}
+
 impl FileDigests {
     pub(super) fn hash(&mut self, path: &Path) -> Result<String> {
-        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
-        if let Some(hash) = self.0.get(&canonical) {
-            return Ok(hash.clone());
+        self.hash_with(path, || {})
+    }
+
+    /// As [`Self::hash`]; `discovered` runs between the canonical lookup and
+    /// its confirmation, where an alias can be retargeted.
+    fn hash_with(&mut self, path: &Path, discovered: impl FnOnce()) -> Result<String> {
+        let key = canonical(path);
+        let hit = self.0.get(&key).cloned();
+        discovered();
+        // The requested path must still name the object the digest is of: an
+        // alias retargeted after the canonical lookup would otherwise receive
+        // its old destination's digest (#381). A changed binding reads the
+        // requested path itself.
+        if let Some(hash) = hit
+            && canonical(path) == key
+        {
+            return Ok(hash);
         }
         let hash = file_digest(path)?;
-        self.0.insert(canonical, hash.clone());
+        // A read whose alias moved during the read is still a read of the
+        // requested path, but it is not cached under either destination.
+        if canonical(path) == key {
+            self.0.insert(key, hash.clone());
+        }
         Ok(hash)
     }
 
@@ -111,8 +133,17 @@ impl FileDigests {
             .iter()
             .map(|(canonical, path)| (canonical.as_path(), *path))
             .collect();
-        let reads = crate::parallel::in_order(&descriptors, |&(canonical, path)| {
-            (canonical, path, file_digest(path))
+        // A prefetched digest is kept only if its path still resolves to the
+        // canonical key after the read; otherwise `hash` reads it again.
+        let reads = crate::parallel::in_order(&descriptors, |&(key, path)| {
+            let read = file_digest(path).and_then(|hash| {
+                if canonical(path) == key {
+                    Ok(hash)
+                } else {
+                    Err(Error::new("SAIL3101", "the path was retargeted while read"))
+                }
+            });
+            (key, path, read)
         });
         self.retain_prefetched(&pending, reads);
     }
@@ -335,6 +366,39 @@ mod tests {
         fresh.retain_prefetched(&pending, swapped);
         assert_eq!(fresh.hash(&a)?, file_digest(&a)?);
         assert_eq!(fresh.hash(&b)?, file_digest(&b)?);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cache_hit_checks_requested_path_after_canonical_discovery()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-alias-digest-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let (a, b, alias) = (root.join("a"), root.join("b"), root.join("alias"));
+        std::fs::write(&a, "first")?;
+        std::fs::write(&b, "second")?;
+        std::os::unix::fs::symlink(&a, &alias)?;
+        let mut phase = FileDigests::default();
+        assert_eq!(phase.hash(&alias)?, file_digest(&a)?);
+        // The alias is retargeted after its canonical key (A) is found in the
+        // phase map; A itself is unchanged.
+        let retarget = || {
+            let next = root.join("next");
+            let _ = std::os::unix::fs::symlink(&b, &next);
+            let _ = std::fs::rename(&next, &alias);
+        };
+        assert_eq!(phase.hash_with(&alias, retarget)?, file_digest(&b)?);
+        assert_eq!(phase.hash(&a)?, file_digest(&a)?);
+        assert_eq!(phase.hash(&alias)?, file_digest(&b)?);
+        // Prefetch keeps the same binding.
+        let mut prefetched = FileDigests::default();
+        prefetched.prefetch([alias.as_path()]);
+        assert_eq!(prefetched.0.get(&b), Some(&file_digest(&b)?));
+        assert!(!prefetched.0.contains_key(&a));
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

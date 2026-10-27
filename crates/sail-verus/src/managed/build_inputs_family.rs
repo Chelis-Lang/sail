@@ -106,24 +106,17 @@ fn output_matches(record: &BuildInput, target: &Path) -> bool {
     let Some(bytes) = bytes(&actual).filter(|bytes| digest(bytes) == *sha) else {
         return false;
     };
-    let Ok(text) = std::str::from_utf8(&bytes) else {
-        return false;
-    };
     let Some(directory) = record.manifest.parent() else {
         return false;
     };
     let mut paths = Vec::new();
     let mut keys = std::collections::BTreeSet::new();
-    for line in text.lines() {
-        let line = line
-            .strip_prefix("cargo::")
-            .or_else(|| line.strip_prefix("cargo:"))
-            .unwrap_or(line);
-        if let Some(path) = line.strip_prefix("rerun-if-changed=") {
-            paths.push(directory.join(path));
+    for (instruction, value) in crate::managed::environment::script_instructions(&bytes) {
+        if instruction == "rerun-if-changed" {
+            paths.push(directory.join(value));
         }
-        if let Some(key) = line.strip_prefix("rerun-if-env-changed=") {
-            keys.insert(key.to_owned());
+        if instruction == "rerun-if-env-changed" {
+            keys.insert(value.to_owned());
         }
     }
     if paths.is_empty() && keys.is_empty() {

@@ -318,27 +318,28 @@ fn escape_file(name: &str) -> String {
 }
 
 /// Add `files` to every output rule of the dep-info `text` and give each its
-/// own empty rule, as rustc writes them. `None` when the text does not have
-/// rustc's layout: output rules, a blank line, then the file rules.
+/// own empty rule after the existing ones, as rustc writes them. `None` when
+/// the text does not have rustc's layout (see
+/// [`super::source_inputs::rule_layout`]). Rustc separates its output rules
+/// with blank lines, so every output rule is found by its file list, not by
+/// its position before the first blank line.
 fn declare_files(text: &str, files: &[String]) -> Option<String> {
     if files.is_empty() {
         return Some(text.to_owned());
     }
-    let mut lines: Vec<String> = text.split('\n').map(str::to_owned).collect();
-    let outputs = lines.iter().position(String::is_empty)?;
-    let rules = outputs + 1 + lines[outputs + 1..].iter().position(String::is_empty)?;
-    if outputs == 0 || !lines[..outputs].iter().all(|line| line.contains(':')) {
-        return None;
-    }
+    let original: Vec<&str> = text.split('\n').collect();
+    let (outputs, rules) = super::source_inputs::rule_layout(&original)?;
+    let insert = 1 + rules.last().or(outputs.last()).copied()?;
+    let mut lines: Vec<String> = original.into_iter().map(str::to_owned).collect();
     let escaped: Vec<String> = files.iter().map(|file| escape_file(file)).collect();
-    for line in &mut lines[..outputs] {
+    for index in outputs {
         for file in &escaped {
-            line.push(' ');
-            line.push_str(file);
+            lines[index].push(' ');
+            lines[index].push_str(file);
         }
     }
     for (offset, file) in escaped.iter().enumerate() {
-        lines.insert(rules + offset, format!("{file}:"));
+        lines.insert(insert + offset, format!("{file}:"));
     }
     Some(lines.join("\n"))
 }
@@ -638,6 +639,26 @@ mod tests {
         assert_eq!(std::fs::read_dir(&deps)?.count(), 1, "no temporary is left");
         assert!(merge(&deps.join("missing.d"), &observed).is_none());
         Ok(())
+    }
+
+    /// Rustc writes a blank line after every output rule; each one gains the
+    /// files, and the reader sees one consistent document.
+    #[test]
+    fn declared_files_join_every_blank_separated_output_rule() {
+        let original = "/t/demo.d: lib.rs\n\n/t/libdemo.rmeta: lib.rs\n\nlib.rs:\n\n# env-dep:X\n";
+        let merged = declare_files(original, &["a b.rs".to_owned()]);
+        assert_eq!(
+            merged.as_deref(),
+            Some(
+                "/t/demo.d: lib.rs a\\ b.rs\n\n/t/libdemo.rmeta: lib.rs a\\ b.rs\n\nlib.rs:\na\\ b.rs:\n\n# env-dep:X\n"
+            )
+        );
+        assert_eq!(
+            merged
+                .as_deref()
+                .and_then(super::super::source_inputs::dependencies),
+            Some(vec!["lib.rs".to_owned(), "a b.rs".to_owned()])
+        );
     }
 
     #[test]

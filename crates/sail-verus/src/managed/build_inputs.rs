@@ -392,9 +392,18 @@ pub(super) fn executed(path: &Path, artifacts: &Path) -> bool {
     })
 }
 
-pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> {
+/// Records the declared inputs of every build script this run's artifact
+/// journal reports. `Ok(false)` when the journal is missing, unreadable or
+/// incomplete, or a reported script's output cannot be read: the scripts'
+/// declarations are then unknown, and nothing this run observed may be
+/// reused on them (#382). A script whose output was read and declares
+/// nothing keeps Cargo's whole-package contract.
+pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<bool> {
     let mut previous = read::<Vec<BuildInput>>(path).unwrap_or_default();
-    for value in std::fs::read_to_string(artifacts)
+    let journal = std::fs::read_to_string(artifacts).ok();
+    let mut complete = super::source_inputs::completed_journal(artifacts).is_some();
+    for value in journal
+        .as_deref()
         .unwrap_or_default()
         .lines()
         .filter_map(|line| serde_json::from_str::<Value>(line).ok())
@@ -418,7 +427,10 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
             .parent()
             .unwrap_or(Path::new("."))
             .join("output");
-        let text = std::fs::read_to_string(&output).unwrap_or_default();
+        let read = std::fs::read(&output);
+        let observed = read.is_ok();
+        complete &= observed;
+        let text = read.unwrap_or_default();
         let mut record = BuildInput {
             package_id: package["id"].as_str().unwrap_or_default().to_owned(),
             package_name: package["name"].as_str().unwrap_or_default().to_owned(),
@@ -427,18 +439,15 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
             env: BTreeMap::new(),
             digest: String::new(),
             covered: true,
-            output: Some((output, digest(text.as_bytes()))),
+            output: Some((output, digest(&text))),
             unit_out_dir: value["out_dir"].as_str().map(str::to_owned),
         };
-        for line in text.lines() {
-            let line = line
-                .strip_prefix("cargo::")
-                .or_else(|| line.strip_prefix("cargo:"))
-                .unwrap_or(line);
-            if let Some(p) = line.strip_prefix("rerun-if-changed=") {
-                record.paths.push(package_dir.join(p));
+        for (instruction, value) in super::environment::script_instructions(&text) {
+            if instruction == "rerun-if-changed" {
+                record.paths.push(package_dir.join(value));
             }
-            if let Some(key) = line.strip_prefix("rerun-if-env-changed=") {
+            if instruction == "rerun-if-env-changed" {
+                let key = value;
                 let value = if generated_environment(key) {
                     generated_value(&record, data, key).flatten()
                 } else {
@@ -452,9 +461,9 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
         if record.paths.is_empty() && record.env.is_empty() {
             record.paths.push(package_dir.clone());
         }
-        let (hash, complete) = current(&record, None, data);
+        let (hash, snapshot_complete) = current(&record, None, data);
         record.digest = hash;
-        record.covered = complete;
+        record.covered = observed && snapshot_complete;
         // Cargo can emit separate host/target units for one package. Keep
         // every distinct output contract; the last unit cannot certify others.
         previous.retain(|r| {
@@ -480,7 +489,8 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<()> 
             .as_ref()
             .is_none_or(|(output, _)| output.parent().is_some_and(Path::is_dir))
     });
-    super::files::json(path, &previous)
+    super::files::json(path, &previous)?;
+    Ok(complete)
 }
 
 #[cfg(test)]
@@ -860,6 +870,103 @@ mod tests {
                 .collect()
         );
         assert_eq!(stale(&state, &data).0, Vec::<String>::new());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    /// Issue #382: an output Cargo reports but Sail cannot read is not an
+    /// empty contract, and a lost or partial journal is not a complete one.
+    #[test]
+    fn script_output_read_failure_does_not_establish_an_empty_contract()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-unread-script-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let package = root.join("pkg");
+        let unit = root.join("target/debug/build/pkg-1");
+        std::fs::create_dir_all(unit.join("out"))?;
+        std::fs::create_dir_all(&package)?;
+        std::fs::write(package.join("Cargo.toml"), "[package]\n")?;
+        let data = serde_json::json!({"packages": [{"id": "pkg", "name": "pkg",
+            "manifest_path": package.join("Cargo.toml"),
+            "targets": [{"kind": ["custom-build"]}]}]});
+        let executed = serde_json::json!({"reason": "build-script-executed",
+            "package_id": "pkg", "out_dir": unit.join("out")});
+        let state = root.join("build-inputs.json");
+        let artifacts = root.join("artifacts.jsonl");
+        let journal = super::super::source_inputs::closed_journal(std::slice::from_ref(&executed));
+        let covered =
+            || -> Option<bool> { Some(read::<Vec<BuildInput>>(&state)?.iter().all(|r| r.covered)) };
+        std::fs::write(package.join("build.rs"), "fn main() {}")?;
+        std::fs::write(&artifacts, &journal)?;
+        // A valid empty output is observed: Cargo's whole-package contract.
+        std::fs::write(unit.join("output"), "")?;
+        assert!(update(&state, &artifacts, &data)?);
+        let records = read::<Vec<BuildInput>>(&state).ok_or("records")?;
+        assert_eq!(records[0].paths, vec![package.clone()]);
+        // A readable declaration is a complete contract.
+        std::fs::write(unit.join("output"), "cargo:rerun-if-changed=build.rs\n")?;
+        assert!(update(&state, &artifacts, &data)?);
+        assert_eq!(covered(), Some(true));
+        assert!(stale_after(&state, &data, &BTreeSet::new()).2);
+        // The output exists in Cargo's report but cannot be read (here: it
+        // is a directory), so its declarations are unknown.
+        std::fs::remove_file(unit.join("output"))?;
+        std::fs::create_dir(unit.join("output"))?;
+        assert!(!update(&state, &artifacts, &data)?);
+        assert_eq!(covered(), Some(false));
+        assert!(!stale_after(&state, &data, &BTreeSet::new()).2);
+        std::fs::remove_dir(unit.join("output"))?;
+        std::fs::write(unit.join("output"), "cargo:rerun-if-changed=build.rs\n")?;
+        // A missing or unclosed journal is never complete.
+        std::fs::remove_file(&artifacts)?;
+        assert!(!update(&state, &artifacts, &data)?);
+        std::fs::write(&artifacts, format!("{executed}\n"))?;
+        assert!(!update(&state, &artifacts, &data)?);
+        std::fs::write(&artifacts, &journal)?;
+        assert!(update(&state, &artifacts, &data)?);
+        assert_eq!(covered(), Some(true));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    /// Cargo's own framing of instruction lines (#383): an indented line is
+    /// an instruction, a bare `rerun-if-changed=` line is not, and a script
+    /// whose only such line is bare keeps the whole-package contract.
+    #[test]
+    fn script_contracts_follow_cargo_instruction_framing()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-script-framing-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let package = root.join("pkg");
+        let unit = root.join("target/debug/build/pkg-1");
+        std::fs::create_dir_all(unit.join("out"))?;
+        std::fs::create_dir_all(&package)?;
+        std::fs::write(package.join("Cargo.toml"), "[package]\n")?;
+        let data = serde_json::json!({"packages": [{"id": "pkg", "name": "pkg",
+            "manifest_path": package.join("Cargo.toml"),
+            "targets": [{"kind": ["custom-build"]}]}]});
+        let executed = serde_json::json!({"reason": "build-script-executed",
+            "package_id": "pkg", "out_dir": unit.join("out")});
+        let state = root.join("build-inputs.json");
+        let artifacts = root.join("artifacts.jsonl");
+        std::fs::write(
+            &artifacts,
+            super::super::source_inputs::closed_journal(&[executed]),
+        )?;
+        let record = |output: &str| -> std::result::Result<BuildInput, Box<dyn std::error::Error>> {
+            std::fs::write(unit.join("output"), output)?;
+            let _ = std::fs::remove_file(&state);
+            assert!(update(&state, &artifacts, &data)?);
+            let mut records = read::<Vec<BuildInput>>(&state).ok_or("records")?;
+            Ok(records.pop().ok_or("record")?)
+        };
+        let indented =
+            record("  cargo:rerun-if-changed=data.txt  \n\tcargo::rerun-if-env-changed= FLAG \n")?;
+        assert_eq!(indented.paths, vec![package.join("data.txt")]);
+        assert_eq!(indented.env.keys().collect::<Vec<_>>(), [" FLAG"]);
+        let bare = record("rerun-if-changed=data.txt\n")?;
+        assert_eq!(bare.paths, vec![package.clone()]);
+        assert!(bare.env.is_empty());
         std::fs::remove_dir_all(root)?;
         Ok(())
     }

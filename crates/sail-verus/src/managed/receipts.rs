@@ -170,7 +170,10 @@ pub(crate) struct Receipt {
 /// may be of a different program; none is reused.
 /// Version 7 requires the invocation's observed compiler environment (#386).
 /// Version 8 also requires its ghost-only files declared (#439).
-pub(crate) const RECEIPT_VERSION: u32 = 8;
+/// Version 9: earlier receipts bound declared environment names after
+/// trimming or without decoding them (#383), and source inputs from a
+/// dep-info reader that split or rewrote some file names (#408).
+pub(crate) const RECEIPT_VERSION: u32 = 9;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
