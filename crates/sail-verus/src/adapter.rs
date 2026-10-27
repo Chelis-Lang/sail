@@ -2025,6 +2025,89 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn file_backed_cargo_provider_uses_original_output_control()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        use crate::managed::visible_output::{Receiver, send_test};
+        const CHILD: &str = "SAIL_FILE_BACKED_PROVIDER_TEST";
+        if let Some(root) = std::env::var_os(CHILD) {
+            assert!(crate::managed::transport::file_backed());
+            let wire = std::fs::read(std::path::Path::new(&root).join("wire"))?;
+            let mut command = std::process::Command::new("sh");
+            command
+                .args(["-c", "cat \"$1\"", "fixture"])
+                .arg(std::path::Path::new(&root).join("wire"))
+                .stdout(std::process::Stdio::piped());
+            let mut journal = Vec::new();
+            let mut forwarded = Vec::new();
+            assert_eq!(
+                super::cargo_messages(&mut command, &mut journal, &mut forwarded)?,
+                std::process::ExitCode::SUCCESS
+            );
+            assert_eq!(forwarded, wire, "accounting preserves original forwarding");
+            assert!(
+                crate::managed::source_inputs::fixture_complete(&journal),
+                "the live original output marker must not poison provider completion"
+            );
+            return Ok(());
+        }
+        let root = std::env::temp_dir().join(format!("sail-file-provider-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let alias = root.join("sail-cargo");
+        std::os::unix::fs::symlink(std::env::current_exe()?, &alias)?;
+        let receiver = Receiver::bind()?;
+        crate::managed::transport::Transport::new(None)
+            .set(crate::managed::visible_output::ENV, receiver.path())
+            .write(&root)?;
+        let endpoint = receiver.path().to_owned();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let sender = std::thread::spawn(move || {
+            send_test(
+                &endpoint,
+                b"{\"reason\":\"build-script-executed\",\"package_id\":\"demo\"}\n",
+                &mut MarkerWriter(tx),
+            )
+        });
+        let payload = rx.recv_timeout(std::time::Duration::from_secs(5))?;
+        let marker = rx.recv_timeout(std::time::Duration::from_secs(5))?;
+        std::fs::write(root.join("wire"), [payload, marker.clone()].concat())?;
+        // Each child has its own transport OnceLock. A caller variable cannot
+        // override the file, and no private endpoint need appear in its environment.
+        let results = [None, Some("/sail-no-such-caller-output-control")].map(|caller| {
+            let mut command = std::process::Command::new(&alias);
+            command
+                .args([
+                    "--exact",
+                    "adapter::tests::file_backed_cargo_provider_uses_original_output_control",
+                    "--nocapture",
+                ])
+                .env(CHILD, &root)
+                .env_remove(crate::managed::visible_output::ENV);
+            if let Some(value) = caller {
+                command.env(crate::managed::visible_output::ENV, value);
+            }
+            command.output()
+        });
+        receiver
+            .decode(&marker)?
+            .completion
+            .ok_or("completion missing")?
+            .acknowledge()?;
+        sender.join().map_err(|_| "sender thread")??;
+        receiver.finish()?;
+        std::fs::remove_dir_all(root)?;
+        for result in results {
+            let result = result?;
+            assert!(
+                result.status.success(),
+                "{}",
+                String::from_utf8_lossy(&result.stdout)
+            );
+        }
+        Ok(())
+    }
+
     #[test]
     fn cargo_provider_capture_budget_poison_is_sticky() {
         let mut observed = Some(Vec::new());
