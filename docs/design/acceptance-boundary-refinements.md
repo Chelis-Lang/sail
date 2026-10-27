@@ -81,6 +81,15 @@ replace full logical input equality in a theorem. Public report headers do not
 establish an observed launch, an exhaustive compiler inventory, an admitted
 solver origin or the original request by themselves.
 
+The `typed_model_*` candidate in `proofs/refinement/query.rs` connects the actual
+typed key constructor, raw append, command validation and checkpoint freeze
+to the abstract binding's solver, mode, original prefix and endpoint. It derives
+the model fields from the original `SolverIdentity` and `Mode` rather than a
+separately supplied context. A constructive generic witness requires only the
+existing narrow hash primitive and a supported command. The key relation is
+to the exact framed hash input; it assumes neither digest injectivity nor
+physical solver origin. Direct full-root qualification remains pending.
+
 ## Composition and review criteria
 
 The composed model already proves its conditional invariant over its permitted

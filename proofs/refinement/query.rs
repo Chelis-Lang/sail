@@ -1005,4 +1005,111 @@ pub fn coalesced_and_partial_response_witness() {
     proof { assert(!refused); }
 }
 
+
+/// The actual typed identity's byte interpretation, without physical-launch
+/// authority or a digest-injectivity premise.
+pub open spec fn typed_model_solver(solver: &crate::SolverIdentity) -> crate::context::SolverId {
+    crate::context::SolverId {
+        name: vstd::utf8::encode_utf8(solver.name@),
+        version: vstd::utf8::encode_utf8(solver.version@),
+        binary: solver.binary_sha256@,
+        platform: vstd::utf8::encode_utf8(solver.platform@),
+    }
+}
+
+pub open spec fn typed_model_mode(mode: &crate::Mode) -> crate::context::Mode {
+    match mode {
+        crate::Mode::Default => crate::context::Mode::Default,
+        crate::Mode::OptIn(name) => crate::context::Mode::OptIn(vstd::utf8::encode_utf8(name@)),
+    }
+}
+
+pub open spec fn typed_model_fields(solver: &crate::SolverIdentity, mode: &crate::Mode)
+    -> (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)
+{
+    (vstd::utf8::encode_utf8(solver.name@), vstd::utf8::encode_utf8(solver.version@),
+        solver.binary_sha256@, vstd::utf8::encode_utf8(solver.platform@),
+        match mode { crate::Mode::Default => None,
+            crate::Mode::OptIn(name) => Some(vstd::utf8::encode_utf8(name@)) })
+}
+
+/// Calls actual typed construction, original input append, checked command and
+/// checkpoint freeze. Its model binding is derived from those same fields and
+/// bytes rather than an independently supplied ModelContext.
+pub fn typed_model_command<Host: crate::key_prefix::HashHost>(
+    host: Host, solver: &crate::SolverIdentity, mode: &crate::Mode,
+    input: &[u8], start: usize, command: &[u8],
+) -> (out: (Option<crate::query_prefix::FrozenCommand<Host>>, Ghost<Option<model::Binding>>))
+    requires host.bytes().len() == 0,
+    ensures out.0.is_some() == out.1@.is_some(),
+        out.0.is_some() ==> (
+            out.0.unwrap().coherent()
+            && out.0.unwrap().command_view() == command@
+            && out.0.unwrap().offset_view() == start
+            && model::binding_wf(out.1@.unwrap())
+            && out.1@.unwrap().solver == typed_model_solver(solver)
+            && out.1@.unwrap().mode == typed_model_mode(mode)
+            && out.1@.unwrap().endpoint == out.0.unwrap().endpoint_view()
+            && out.1@.unwrap().endpoint == start as nat + command@.len()
+            && out.1@.unwrap().endpoint <= input@.len()
+            && out.1@.unwrap().prefix == input@.take(out.1@.unwrap().endpoint as int)
+            && out.0.unwrap().material_view()
+                == crate::key_prefix::header(typed_model_fields(solver,mode).0,
+                    typed_model_fields(solver,mode).1,typed_model_fields(solver,mode).2,
+                    typed_model_fields(solver,mode).3,typed_model_fields(solver,mode).4)
+                    + out.1@.unwrap().prefix
+            && out.0.unwrap().key_view() == Host::digest(crate::key_prefix::end(
+                out.0.unwrap().material_view(),out.1@.unwrap().endpoint as u64))),
+        (exists|a:int,b:int| crate::query_core::head_span(command@,a,b))
+            && start as nat + command@.len() <= input@.len()
+            && input@.subrange(start as int,start as int+command@.len() as int) == command@
+            && crate::query_core::trivia_after(input@.subrange(0,start as int),false) == Some(false)
+            ==> out.0.is_some(),
+{
+    let mut prefix = crate::prefix_factory::new_query_prefix(host,solver,mode);
+    let ghost fields = typed_model_fields(solver,mode);
+    prefix.append(input);
+    let accepted = prefix.command(start,command);
+    match accepted {
+        Some(frame) => {
+            let frozen = frame.freeze();
+            let ghost binding = model::Binding {
+                solver: typed_model_solver(solver), mode: typed_model_mode(mode),
+                prefix: input@.take(frozen.endpoint_view() as int),
+                endpoint: frozen.endpoint_view(),
+            };
+            proof {
+                assert(prefix.matches(fields));
+                assert(prefix.view() == input@);
+                assert(prefix.fed() == frozen.endpoint_view());
+                assert(binding.prefix.len() == binding.endpoint);
+            }
+            (Some(frozen),Ghost(Some(binding)))
+        },
+        None => (None,Ghost(None)),
+    }
+}
+
+/// Constructive universal admission for a real supported nonempty command.
+/// The only environment boundary is the existing narrow hash primitive.
+pub fn typed_model_supported_command_constructive<Host: crate::key_prefix::HashHost>(
+    host: Host, solver: &crate::SolverIdentity, mode: &crate::Mode, command: &[u8],
+) -> (out: crate::query_prefix::FrozenCommand<Host>)
+    requires host.bytes().len() == 0, command@.len() > 0,
+        exists|a:int,b:int| crate::query_core::head_span(command@,a,b),
+    ensures out.coherent(), out.command_view() == command@, out.offset_view() == 0,
+        out.endpoint_view() == command@.len(),
+        out.material_view() == crate::key_prefix::header(typed_model_fields(solver,mode).0,
+            typed_model_fields(solver,mode).1,typed_model_fields(solver,mode).2,
+            typed_model_fields(solver,mode).3,typed_model_fields(solver,mode).4)+command@,
+{
+    proof {
+        assert(command@.subrange(0,0) =~= Seq::<u8>::empty());
+        assert(command@.subrange(0,command@.len() as int) =~= command@);
+        assert(crate::query_core::trivia_after(Seq::<u8>::empty(),false) == Some(false));
+    }
+    let (accepted,Ghost(binding)) = typed_model_command(host,solver,mode,command,0,command);
+    accepted.unwrap()
+}
+
 }
