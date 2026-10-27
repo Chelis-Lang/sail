@@ -340,6 +340,49 @@ transports scalar push/append equality and both returned options to the actual
 new raw prefix before moving their original items into the existing vector.
 No body scope, invariant, predicate, control or resource is relaxed.
 
+### Actual lexical state and borrowed command-head candidate
+
+`query_lex` now contains the actual lexer trivia/word/string/quoted-symbol
+cursor operations, ASCII word classification, original `Token`/`TokenKind`
+declarations and total text projection. The same borrowed source, cursor and
+sticky error live in a private shared `Lexer`; native `sail-smtlib::lex::Lexer`
+is a thin Iterator/error-code facade. Exact lexical transition contracts retain
+both token inventory and error/cursor state, including unterminated strings/bars,
+doubled quotes, CRLF comments, permissive non-ASCII simple symbols, numeric and
+keyword spellings, and the first-error terminal behavior. No token is checked
+against a separately selected byte buffer in command-head interpretation.
+
+The actual shallow `command::classify` now obtains its original borrowed head
+from the shared `Lexer::command_head`, retaining that same iterator after the
+first two tokens for existing argument parsing. Its mechanical transition and
+conditional full-frame `head_span` theorem use the original source bytes, not a
+supplied native kind or success flag. Classification remains shallow: valid
+existing `(assert` head handling is preserved even without a complete body;
+leading trivia and original errors/offsets remain unchanged. Raw command/key
+bytes are never normalized, copied into another transcript or rewritten.
+Native ErrorCode mapping, argument/value-span walking, Session effects, response
+cardinality semantics and the pinned solver's interpretation remain explicit
+unverified adapters/obligations. Structural spans do not establish SMT validity,
+solver truth, physical delivery/EOF or cache origin.
+
+Twenty-one ordinary controls append to all 192 outer controls (213 total),
+including full-next/full-head/text always-refusal, sticky/copy behavior, wrong
+source/span/open offset, kind acceptance, delimiter/comment/quote endpoints and
+numeric domains. Three nonempty constructive candidates cover original borrowed
+heads across comment CRLF, doubled-quote/bar/binary spans and real invalid-word
+sticky failure plus copy. All earlier functions/controls/assertions remain;
+positive/function counts are undiscovered. Closed source assembly is 22/9/14
+files. Planned scope is 452 unique cases or 461 calls with four partitions per
+component; these are plans, not qualified cases. New native controls and the
+unchanged original tests are unexecuted. Three targeted source-guard tests pass
+locally; no local compiler/verifier execution is used. The exact native lexer
+and classify source is bound/unverified, while the shared actual lexer bodies
+enter Stock; no native helper is merely relabeled as proved.
+
+This is still proposed ADR 0086's single existing parser-to-leaf edge, with no
+new third-party or workspace edge. Actual cost, all new whole-root/native/control
+qualification and later output-tape/Session/solver/origin joins remain pending.
+
 ### Scalar policy-option readback candidate
 
 `query_options.rs` adds a source-shared candidate for the raw `:print-success`

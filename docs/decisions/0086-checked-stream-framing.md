@@ -21,6 +21,10 @@ its original owned completion bytes. Pair the input controller with the existing
 owned raw transcript in QueryPrefix, returning command items from its actual
 append operation.
 Delegate the native word-delimiter operation to the existing checked function.
+The newer candidate also moves actual lexical endpoint/classification/state
+operations and the original shallow head borrow into the leaf. Native iterator
+and error-code conversion remain explicit adapters; raw fields and diagnostics
+are preserved without broadening grammar or solver semantics.
 No cross-crate source includes or third-party dependencies are introduced.
 
 Preserve the public splitter/item API, original byte order, arbitrary chunking,
