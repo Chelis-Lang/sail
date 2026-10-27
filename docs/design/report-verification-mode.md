@@ -26,6 +26,9 @@ options; existing native assertions remain.
 This is a report-mode operation, not complete request construction or Cargo
 selection. The surrounding adapter and packed-option decoder remain native
 boundaries, separately hash-bound and excluded from checked-body metadata.
+The main-relative compiler driver-argument binding gap remains open in
+[#551](https://github.com/Chelis-Lang/sail/issues/551); this constructor proof
+does not establish receipt freshness or physical compiler-input closure.
 Original effective-option/launch provenance, selector scanning, dictionary/header
 construction and captured-request consumption remain separate work under
 [#368](https://github.com/Chelis-Lang/sail/issues/368). Raw metadata/DOM and the

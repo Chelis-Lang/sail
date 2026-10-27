@@ -1936,7 +1936,7 @@
         "crates/sail-api/src/project.rs",
         "crates/sail-verus/src/adapter.rs"
       ],
-      "verified": 174,
+      "verified": 184,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
@@ -2232,15 +2232,26 @@
         "check_authority::project::SCHEMA_VERSION",
         "check_authority::refinement::checked_factory_refines_function",
         "check_authority::refinement::compile_only_report_refused",
+        "check_authority::refinement::disabled_report_adds_only_missing_markers",
+        "check_authority::refinement::enabled_report_argument_is_retained",
+        "check_authority::refinement::enabled_report_keeps_nonempty_forwarded_payload",
         "check_authority::refinement::focused_report_refused",
+        "check_authority::refinement::forwarded_effective_flag_preserves_report_mode",
         "check_authority::refinement::function_refines",
         "check_authority::refinement::interrupted_report_refused",
+        "check_authority::refinement::missing_effective_options_cannot_enable_report",
         "check_authority::refinement::model_establishment",
         "check_authority::refinement::model_tier",
         "check_authority::refinement::model_verdict",
         "check_authority::refinement::positive_nonempty_factory",
         "check_authority::refinement::positive_zero_function_factory",
-        "check_authority::refinement::project_function"
+        "check_authority::refinement::project_function",
+        "check_authority::request_mode::construct_report_verification_arguments",
+        "check_authority::request_mode::has_report_separator",
+        "check_authority::request_mode::kept_report_arguments",
+        "check_authority::request_mode::report_marker_literals",
+        "check_authority::request_mode::report_mode_projection",
+        "check_authority::request_mode::report_prefix_push"
       ],
       "negative_controls": [
         {
