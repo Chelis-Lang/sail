@@ -48,12 +48,13 @@ method and Drop envelopes. Native and Stock profiles use the same executable
 bodies. No host-trait interface, assumed specification, unsafe code, new crate
 edge or source-token memoization is added by this extraction.
 
-The main-context qualification must discover its own complete function and
+The main-context qualification records its own complete observed function and
 obligation inventories. The earlier larger branch's input module differs;
 its 355-function tally is not transplanted. Every cache operation, constructive
 witness and control is retained, and the one imported `inputs::byte_eq` body and
 contract match main exactly. The [validation record](../validation/cache-ownership-core.md)
-separates that historical evidence from this delivery's pending checks.
+separates that historical evidence from this delivery's scoped qualification
+and remaining merge requirements.
 
 A successful candidate transition does not prove a solver produced its claimed
 reply. Arbitrary PUT, initial disk contents, restart, shared/bundled writers,

@@ -1,52 +1,73 @@
 # Cache ownership core qualification
 
-Status: main-based extraction, pending qualification in its final delivery
-context. It depends on the reviewed proof-interval guard in PR 542. The
-independent authority-model delivery must be incorporated before the final
-freeze so its manifest/function counts are retained.
+Status: the staged library passes its scoped native Linux qualification.
+Production cache adoption remains separate. The delivery stacks the audited
+35-case authority-model baseline and preserves its observed production
+174-obligation/303-function inventory. PR review, current-main reconciliation
+and hosted required checks remain merge requirements.
 
-| Gate | Current evidence | Required next |
+| Gate | Current evidence | Remaining requirement |
 |---|---|---|
-| Source/capture | All 53 source tests pass (38.877s on the local Mac), including every former45 and eight added private-owner/macro regressions; all132 descriptors, seven module envelopes and157 complete captures pass source-only checks | Committed-source/assembly checks pass; fresh Stock discovery and native gates remain |
-| Direct stock | Historical f14 has a full 72-control indexed-owner union | Fresh main-context three-root whole positives, exact observed query function/obligation lock, all 139 query negatives (132 cache + original7), unchanged other component controls and final source/runtime/Rust checks |
-| Native core build | Historical larger branch compiles/runs generic witnesses and passes focused native checks | Fresh strict workspace/build/test checks and unchanged main acceptance suites on the final extraction |
-| Product adoption | No native cache, daemon or disk implementation changes | Separate PR; full native/solver/E2E, fast/standard conformance and measured carrier/cost behavior before selecting its representation |
+| Source/capture | All 53 source tests pass on the Mac and native Linux, retaining the former 45 plus eight private-owner/macro regressions; all 132 cache descriptors and seven module envelopes are bound | Keep exact source/API/control inventories on integration |
+| Direct production refinements | Frozen `c0957b92`: 160 full-root calls, six positives and 154 distinct ordinary negatives; 157 unique cases. Four disjoint query partitions cover all 139 query negatives; complete inputs/authority cover four/eleven. Whole positives are query 282/464, inputs 54/91, authority 174/303 obligations/functions | No partition alone or single unpartitioned 157-case run is claimed |
+| Models | All 35 cases pass: four positives and 31 ordinary negatives | Retain the independently delivered model scope |
+| Native fast tier | Strict workspace gate, 1,161/1,161 nextest tests, examples/doctests/rustdoc/layering/deny; 51/51 solver tests; full E2E including extra, managed copies/native/scripts/MCP and repair; PR conformance passes | Hosted checks and exact-head review remain |
+| Product adoption | No native cache, daemon, disk or solver-path implementation changes | Separate PR with caller/lock refinement, native/solver/E2E, applicable conformance and measured carrier/cost behavior before representation selection |
 
-Historical source `f14ca0117188206112694331288315f5a3e8c227` completes four
-disjoint full-root partitions: four 225/0 positives and 72 distinct 224/1
-ordinary negatives, all 355 actual functions/default resources/final guards.
-Its executable/native inputs match `46ff756c`: strict cache/daemon Clippy,
-110 selected tests, independent layout and eleven separately compiled native
-assertion faults pass. Those native faults are not Stock negative credit, and
-those native hooks are not introduced by this extraction.
+The four PR-conformance arms each report 33 same units and 311 function
+comparisons, zero unstable/different/infrastructure failures and no skipped
+projects. Each records five units with rlimit drift; the engine arm also checks
+32 focused units. These are conformance results, not performance measurements.
+Full fast/standard corpus acceptance is not required for this unselected library
+cut under [ADR 0087](../decisions/0087-scoped-merge-conformance.md).
 
-Closed artifact: `experiments/2026-10-27/acceptance-cache-indexed-f14ca011-native.tgz`,
-29,488,376 bytes, SHA-256
-`877dc31e4db5b22a485cf5a98291d19989d575994ccca4af257bd8b8e1c6ab72`.
-It preserves 94 actual Stock calls, including failed prototypes and the complete
-76-call indexed matrix, source bundles, exact compiled inputs and native logs.
-PUT/GET and exact readback pass; independent lead audit is pending. The earlier
-source's expanded input context is historical, not this head's proof inventory.
+Qualification uses native x86-64 Linux on c7i.4xlarge in us-east-1, the current
+`c4710b7fd3ca282a` CI inputs, Rust 1.99.0 and the pinned stock Verus
+`0.2026.10.18.7d82994` with its Rust 1.99.1. Each refinement call retains the
+full function/VC inventory, default 120-second/one-thread settings and
+`--no-cheating`, with final source/runtime/archive/Rust guards. The native gate
+uses actual `ci/local.sh`, its checkout-specific target volume and no global
+`CARGO_TARGET_DIR`. Core image ID starts `5a6b6db857d0`; MCP starts
+`9dd02bdf2422`, with the complete core layer prefix preserved.
 
-The new extraction does not import the later Resident API or claim its full
-mutation/lock/accounting invariant. It does not establish cache origin, physical
-allocation/RSS bounds, whole-service refinement or performance acceptance.
+Closed artifact:
+`experiments/2026-10-27/acceptance-cache-core-c0957b92-native.tgz`,
+39,507,851 bytes, SHA-256
+`bc75e9542cbb38db0dfb64ee0577213b83d9b5cd1b861a60e66936df0608f26b`.
+PUT/GET and exact readback pass. The lead independently checks all 4,238 indexed
+files, reconstructs all 160 production candidates/drivers and 35 model calls,
+and audits raw whole-root function/count/resource results plus native receipts.
+The archive contains full source bundles, compiled inputs, exact commands and
+raw reports. The successful ordinary temporary contract-project directories
+are not retained after the normal E2E container exits; its complete log remains.
 
 | Date | Source | Attempt | Result |
 |---|---|---|---|
-| 2026-10-27 | Uncommitted extraction from PR542 | Initial source suite | 43/45 pass; old native-macro selector needs its same-body where-bound spelling, and the final-build-script fixture sees only committed files until the new modules are committed. No Stock calls or negative credit |
+| 2026-10-27 | Uncommitted extraction | Initial source suite | 43/45 pass; the same-body native-macro selector needed its Copy-bound spelling, and a final-build-script fixture initially saw only committed files. Indexed observation only; raw local output was not separately retained; zero proof/control credit |
+| 2026-10-27 | `16afedff` | First whole discovery | E0433 for missing cache_bucket/cache_counted/cache_slots imports in relocated witnesses; zero verified VCs and zero credit; later roots and original final runtime guard unrun. Raw commands/compiled files remain; a separate final source audit supplies no runtime credit |
+| 2026-10-27 | `978096fe` | Corrected whole discovery | Import-only correction; all three complete roots pass with actual query 282/464, inputs 54/91 and authority 174/303 inventories; all prior main and retained cache functions remain; final identities pass |
+| 2026-10-27 | `c0957b92` | First native aggregate | Workspace/solver/models pass. Nondefault contract evidence path beneath the checkout triggers the fixture's correct SAIL3140 Cargo-configuration refusal; full E2E fails and PR conformance is unrun. This aggregate remains incomplete |
+| 2026-10-27 | `c0957b92` | Normal-path continuation | Only unfinished full E2E and PR conformance run, both pass; normal `ci/local.sh` temporary contract path restored. Earlier completed gates are reused by exact source and target identity; the first aggregate is not renamed PASS |
 
-The extraction initially retains the previous query count/function array only
-as an explicitly marked unqualified prior inventory. Normal checking cannot
-accept the enlarged root against that old array. Final qualification must
-replace it with the complete successful discovery result, preserving every
-main query function and all cache functions; no count is inferred from the
-former larger input context.
+The inventory lock retains the former query function/count set as required
+minima, then records the actually observed complete enlarged root. No count is
+inferred from the earlier, larger input context. Restacking the existing feature
+commits onto the current model delivery changes parent policy/documentation;
+compiled Rust, proof inputs, checker and manifest bytes remain identical to
+frozen `c0957b92`. The current parent also inherits the three CI failure-evidence
+observer scripts from merged PR 545; that change has its own parent review/CI
+receipt. All other 736 tracked non-documentation files remain byte-identical;
+the older native receipt does not claim to execute the newer observer scripts.
 
-`7d19f1d1` resolves both extraction fixture mismatches: the native-erasure
-mutation targets the same executable macro expansion with its Copy-bound
-spelling, and committing the new source makes the final-build-script fixture
-exercise the full real leaf inventory. All 53 assertions/tests pass; no
-Stock result or native service acceptance is inferred from that source suite.
+Historical indexed evidence remains separate: source
+`f14ca0117188206112694331288315f5a3e8c227` has four 225/0 positives and 72
+ordinary 224/1 negatives, all 355 actual functions/default resources. Its
+110 selected native tests and eleven separately compiled native assertion
+faults are not introduced by this extraction or substituted for this delivery.
+Artifact `experiments/2026-10-27/acceptance-cache-indexed-f14ca011-native.tgz`
+contains 29,488,376 bytes, SHA-256
+`877dc31e4db5b22a485cf5a98291d19989d575994ccca4af257bd8b8e1c6ab72`.
 
-| 2026-10-27 | `16afedff` | First main-context whole discovery | Query compilation refuses missing cache_bucket/cache_counted/cache_slots imports in relocated witnesses (E0433); zero verified/errors, zero proof/control credit; later roots unrun. Import-only correction retains every witness body |
+The later Resident API remains excluded. No cache-origin, physical
+allocation/RSS, Mutex/global-owner, full-service or performance acceptance is
+established by this staged core.
