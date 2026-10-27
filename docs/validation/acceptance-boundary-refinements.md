@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `fa1b7e74` native workspace | Actual `ci/local.sh gate` creates its fresh physical-checkout Docker target, passes all source suites (12 model-source, 63 production-source), all 1,279 Rust tests with 57 configured skips, doctests and workspace checks; final source/image guards pass (408.644 s) | Workspace/source-tooling qualification only. No complete production-control matrix, solver/e2e/conformance or service theorem claim |
 | `3dbebad5` full e2e follow-up | After the #471 fix, contracts and legacy complete, and output/edit-loop, seeded mutations and physical argv comparisons pass. The unchanged-call recording assertion then fails after 379.659 s with three `miss: no record` traces (#476); final source/image guards pass | Full e2e fails; later phases and PR/full fast/standard conformance unrun. Bounded collector explicitly refuses its file-limit truncation (#477); missing captured producer state cannot establish the original cause |
 | `3dbebad5` fresh native output control | Baseline `1a6df52b` fails the intended original-marker assertion; correction passes the same real file-backed alias regression and strict `sail-verus` package Clippy. Each source has an explicit package clean and actual compilation; final source/image guards pass | One selected native test, 598 unselected; no full workspace/e2e/conformance or complete production proof claim |
 | `3dbebad5` shared-target attempt | Baseline builds/fails; corrected command performs no compilation (Cargo reports 0.05 s) and repeats the baseline failure despite different source bytes (#475) | Corrected runtime qualification refused. A later explicit rebuild separates this build-cache defect from product behavior; direct Stock proofs are unaffected |
@@ -52,6 +53,22 @@ observation guarantee or service theorem is claimed. All six rows of the
 | `00a501c7` | Whole authority root passes 489/0 with all 830 function entries and final frozen source/runtime checks. The byte-identical query/input assemblies pass separately at `11f3be8c`: 353/0 (637), 283/0 (469); every previous function retained | Component development evidence, not one combined canonical pass. Workspace stops at twelve style/lint diagnostics; corrected local annotations retain proved bodies and require rerun |
 | `b8775f8f` | Native whole positive roots: query 343/0 (621 function entries), inputs 264/0 (438), authority 430/0 (736); every prior function retained, final source/runtime identity checked. Workspace passes (475.68 s) | Development positive evidence only: 16 new stdout controls and its complete 229-case canonical matrix remain unqualified |
 | `cc8c24a1` | Complete macOS canonical query component: 288 obligations, 503 function entries and all 39 ordinary controls. Native full e2e union including extra and PR conformance pass | Earlier checkpoint, not qualification of later code; e2e/PR gate durations 1,175.78 s/122.67 s include image/build work |
+
+The `fa1b7e74` native workspace receipt is retained at
+`experiments/2026-10-27/acceptance-fa1b7e74-native-workspace.tgz`, SHA-256
+`15ccb30173fd840feed6096025db2b4184f62e526eddb08f89a12b9f494cd8fb`
+(6,919,629 bytes). Lead independent GET/hash and raw report/log review pass,
+including the actual Docker target identity and original 1,279/57 test summary.
+
+The mutation preflight now reuses immutable full-source projections within one
+process, keyed by the complete source text. It never keys by path, function
+name or a truncated digest. Each changed source still receives its complete
+token/contract/loop parse; all original comparisons and Stock inventories remain
+required. The bounded 16-entry cache changes no production Rust, proof control,
+deadline or solver resource. A regression warms a real executable selector,
+then moves that same selector into another source's contract and requires its
+refusal. Five focused source tests pass in 0.001 seconds; full native source
+qualification is pending. No production-runtime speedup is claimed.
 
 The #468 correction retains the complete original `Replay::compare` signature,
 contracts and executable method body, changing only its final `true` to `false`.
