@@ -62,6 +62,14 @@ def require(condition: bool, message: str) -> None:
 
 def tokens(source: str) -> list[Token]:
     """Tokenize delimiters without treating comments or literals as code."""
+    # Every caller owns its list. Only immutable token tuples are shared, and
+    # their cache key is the complete exact source, including original spans.
+    return list(_token_tuple(source))
+
+
+@lru_cache(maxsize=32)
+def _token_tuple(source: str) -> tuple[Token, ...]:
+    """Retain exact-source lexical work without sharing mutable parser state."""
     result: list[Token] = []
     at = 0
     while at < len(source):
@@ -109,7 +117,7 @@ def tokens(source: str) -> list[Token]:
             word = _WORD.match(source, at)
             at = word.end() if word else at + 1
         result.append(Token(source[start:at], start, at))
-    return result
+    return tuple(result)
 
 
 def closing(stream: list[Token], start: int) -> int:
