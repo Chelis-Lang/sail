@@ -94,10 +94,13 @@ sail_verified! {
 sail_verified! {
     /// Projects every entry of the actual immutable original dictionary once,
     /// in its native order. This proves no upstream Cargo-selection completeness.
-    pub fn project_original_targets(source: &OriginalTargets) -> (targets: Vec<RequestTarget>)
+    pub fn project_original_targets(source: &OriginalTargets) -> (projection: Option<Vec<RequestTarget>>)
         requires(true)
-        ensures(targets.len() == source@.len(), projected_keys(targets@).to_set() == source@,
-            projected_keys(targets@).no_duplicates(), ordered_keys(projected_keys(targets@)))
+        ensures(projection.is_some(), projection.is_some() ==> {
+            let targets = projection.unwrap();
+            targets.len() == source@.len() && projected_keys(targets@).to_set() == source@
+                && projected_keys(targets@).no_duplicates() && ordered_keys(projected_keys(targets@))
+        })
     {
         sail_proof! { original_target_key_order_is_lawful(); }
         let total = source.len();
@@ -115,13 +118,13 @@ sail_verified! {
                 sail_proof! { join_original_head(projected_keys(targets@), iterator.remaining()); }
                 let target = match next_original_target(&mut iterator) {
                     Some(target) => target,
-                    None => return targets,
+                    None => return None,
                 };
                 targets.push(target);
             }
         }
         sail_proof! { assert(iterator.remaining().len() == 0); }
-        targets
+        Some(targets)
     }
 }
 
@@ -131,7 +134,8 @@ mod tests {
     use std::collections::BTreeSet;
 
     #[test]
-    fn actual_dictionary_projection_retains_old_order_scope_and_duplicates() {
+    fn actual_dictionary_projection_retains_old_order_scope_and_duplicates()
+    -> Result<(), Box<dyn std::error::Error>> {
         let original: Vec<(String, String, String)> = vec![
             ("package-b".into(), "sibling".into(), "bin".into()),
             ("package-a".into(), "original".into(), "lib".into()),
@@ -143,13 +147,19 @@ mod tests {
         for original in &original {
             insert_original_target(&mut source, original.clone());
         }
-        let projected = project_original_targets(&source);
+        let projected =
+            project_original_targets(&source).ok_or("original set projection refused")?;
         let actual: Vec<_> = projected
             .into_iter()
             .map(|target| (target.package_id, target.target, target.kind))
             .collect();
         let expected: BTreeSet<_> = original.into_iter().collect();
         assert_eq!(actual, expected.into_iter().collect::<Vec<_>>());
-        assert!(project_original_targets(&OriginalTargets::new()).is_empty());
+        assert!(
+            project_original_targets(&OriginalTargets::new())
+                .ok_or("empty original set projection refused")?
+                .is_empty()
+        );
+        Ok(())
     }
 }
