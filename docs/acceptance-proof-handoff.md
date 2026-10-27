@@ -221,14 +221,18 @@ Session/argument/solver/output/physical/origin semantics remain open. See the
 
 All 192 outer controls remain; 21 ordinary lexical controls append (213 query,
 452 planned unique cases/461 partitioned calls). Closed assembly adds one actual
-compiled file (22/9/14). New positive/function counts await actual discovery;
-none are inferred. Original assertions and source guards remain, with LEX_CORE
+compiled file (22/9/14). Frozen `1f356624` passes actual whole-query
+discovery at 553 verified/0 errors and 951 query entries, retaining all 918
+prior entries at default 120-second/one-thread/no-cheating settings with final
+source/runtime guards. Only this observed inventory is locked. Original assertions and source guards remain, with LEX_CORE
 added to the explicit constructor/import snapshot fixture and current native
 facade guard. The native error mapping and remaining classify argument helpers
 remain bound/unverified; shared functions are actual Stock input. No local
 compiler/verifier, consumer/provider or excluded reproduction action runs.
-Three targeted textual source-guard tests pass; native new witness/classifier
-checks remain unexecuted. ADR 0086 stays proposed; no new dependency edge or
+Three targeted textual source-guard tests pass. The exact frozen lexical
+native run explicitly cleans and recompiles both touched packages: all 24 SMT
+tests and strict package Clippy pass, with final source checks. Full controls,
+workspace/solver/conformance and output-owned composition remain unqualified. ADR 0086 stays proposed; no new dependency edge or
 runtime/CI-policy selection occurs.
 
 ## Streaming-list source candidate and scope
