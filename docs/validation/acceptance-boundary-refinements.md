@@ -9,6 +9,8 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `c44cdcfa` | Four native query partitions pass all 115 ordinary controls plus four complete query-positive runs (431 verified, 759 function entries); an independent audit checks exact disjoint union and identical source/runtime/compiler identity | Each partition remains an incomplete component; the audited union covers query only. Native workspace reaches strict clippy and stops at eight shared-kernel style diagnostics; ordinary workspace/solver tests remain unrun |
+| `7f08ce1d` | Complete native whole-positive discovery repeats query 431/0 (759 function entries), inputs 308/0 (538), authority 498/0 (878), with final source/runtime rechecks; three formerly refused query controls then pass strict full-root diagnostics | Diagnostics do not replace the complete control matrix. Later style annotations and main reconciliation require fresh exact-head qualification; all six service obligations remain open |
 | `573b6e0b` input component | 2026-10-26: all 116 direct-stock cases pass: whole positive 308/0 (538 function entries), all 95 inherited and all 20 new pipe negatives, including both full-factory always-refuse controls; final source/runtime checks pass | `complete_component_controls=true`, `complete_suite=false`; exact control list retained. Report labels need the separate #449 scope correction below; native adapter bodies are not proved |
 | `573b6e0b` workspace attempt 1 | 2026-10-26: gate stops after 178.38 s at private D.I.V.E. dependency authentication | The controller started before its read-only credential was staged; native tests unrun. Original log/status preserved |
 | `573b6e0b` workspace attempt 2 | 2026-10-26: authenticated unchanged gate stops after 183.44 s at one `manual_unwrap_or_default` lint in `complete_owned_compiler_pipes` | Native tests unrun. A documented local allowance preserves the explicit checked wait projection; the correction needs new qualification |
@@ -63,18 +65,23 @@ construct full physical-input or solver-origin authority. Closed capture binds
 native adapter sources explicitly without claiming those bodies are proved.
 
 The proposed complete matrix retains every inherited control and requires
-303 cases: three whole positive roots and 300 ordinary failing controls.
-The manifest freezes the complete successful `86c1c5cf` discovery inventories:
-query 353/637, inputs 308/538 and authority 498/878 (verified/function entries).
-All earlier function entries and all existing controls are retained; input
-qualification includes 115 ordinary controls. The discovery report SHA-256 is
-`f2b810aa4402b54a960a7c6501f4715ac19e9721f48117fb87d43e002b768aa5`.
+340 cases: three whole positive roots and 337 ordinary failing controls
+(115 query, 115 input and 107 authority). The manifest freezes the successful
+whole-positive inventories: query 431/759, inputs 308/538 and authority 498/878
+(verified/function entries), retaining every earlier function. The complete
+`f8d61408` positive report SHA-256 is
+`30822d09dcc90b76c315fd3ec8fa392af478b7b20def6d9e56e7d5e60cc36876`;
+`7f08ce1d` repeats all three roots with final source/runtime checks.
+The `c44cdcfa` audited four-partition union qualifies all 115 query controls,
+including full validator refusals with their original loop obligations retained.
+It does not qualify the complete 340-case union, native bodies, main integration
+or service theorem. See the [query qualification record](acceptance-production-refinements.md).
 The complete input report SHA-256 is
 `0130f32c8a3e1f3fca24429dffee7cd4261bd0f8e34d85a4d1c397298076f900`;
 its runtime/Rust compiler identities match discovery and all 115 control names
-and their order match the manifest.
-This does not replace the required coherent canonical run or any ordinary
-failure control. Four inherited short mutation anchors
+and their order match the manifest. Input controls qualify separately at
+`573b6e0b`; neither component result replaces the coherent canonical run.
+Four inherited short mutation anchors
 now use their unchanged original function envelopes because new functions share
 the former short needles; guard changes and contracts remain intact. Both full
 whole/partial binder always-refuse controls remain required.

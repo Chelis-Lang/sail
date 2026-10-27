@@ -4,6 +4,19 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+## Owned query publication control qualification
+
+Whole positive discovery at `f8d61408` passes query 431/0, inputs 308/0 and
+authority 498/0, preserving all earlier functions. The first `35373419` query
+control run remains unqualified: one partition completes, one refuses a
+resource-limit hit, and two refuse mutations that removed loop obligations.
+The corrected `c44cdcfa` four-partition union passes all 115 query controls with
+full verifier/function counts and final source/runtime checks. Native workspace
+then stops on eight style diagnostics; reasoned local annotations retain the
+checked bodies and need a fresh native rerun. The complete 340-case three-root
+matrix, final main integration and service theorem remain unqualified. See the
+[owning record](validation/acceptance-production-refinements.md).
+
 ## Owned-compiler refinement qualification
 
 The report classification fix in

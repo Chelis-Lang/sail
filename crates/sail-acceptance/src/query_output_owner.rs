@@ -138,6 +138,7 @@ sail_code! {
         }
         sail_method! {
             /// Borrows the actual next admitted interval and its original lease.
+            #[allow(clippy::question_mark, reason = "Explicit refusal exits retain the shared stock-Verus contracts and full-body mutation controls.")]
             pub fn frame<'a>(&'a mut self, start: usize, end: usize) -> (out: Option<StreamFrame<'a, Owner>>)
                 requires (old(self).output_view().well_formed())
                 ensures (final(self).owner_view() == old(self).owner_view(), final(self).replay_view() == old(self).replay_view(), final(self).output_view().well_formed(),
@@ -161,6 +162,7 @@ sail_code! {
         }
         sail_method! {
             /// Consumes the exact original controller and retains its owner.
+            #[allow(clippy::question_mark, reason = "Explicit refusal exits retain the shared stock-Verus contracts and full-body mutation controls.")]
             pub fn seal(self) -> (out: Option<CompletedStream<Owner>>)
                 requires (self.output_view().well_formed())
                 ensures (out.is_some() == self.output_view().complete(),
@@ -176,6 +178,7 @@ sail_code! {
             }
         }
     }
+    #[allow(clippy::elidable_lifetime_names, reason = "The named lifetime binds the proof-only owner selector to the original borrowed stream.")]
     impl<'a, Owner> StreamFrame<'a, Owner> {
         sail_impl_spec! {
             pub closed spec fn owner_view(&self) -> &'a Owner { self.owner }
@@ -248,6 +251,7 @@ sail_code! {
 sail_verified! {
     /// Requires actual typed stream owners and one common opaque child lease;
     /// equal bytes or a PID cannot replace the ownership comparison.
+    #[allow(clippy::question_mark, reason = "Explicit refusal exits retain the shared stock-Verus contracts and full-body mutation controls.")]
     pub fn observe_owned_publication<Host, Owner, Identity>(input: Option<Delivered<Host>>, input_owner: Owner,
         output: Option<CompletedStream<Owner>>, gate: PublicationGate, identity: Identity)
         -> (out: Option<OwnedPublication<Host, Owner, Identity>>)
@@ -515,11 +519,11 @@ sail_verified! {
             assert(crate::query::response_shape(output.output_view().view().subrange(0,6)));
         }
         let Some(frame) = output.frame(0,6) else { return false; };
-        let Some(owned) = frame.into_owned(retained,identity) else { return false; };
+        let Some(payload) = frame.into_owned(retained,identity) else { return false; };
         output.end();
         sail_proof! {crate::query_output::transcript_partition_facts(&output.output_view());}
         let Some(completed) = output.seal() else { return false; };
-        completed.contains_frame(&owned,identity)
+        completed.contains_frame(&payload,identity)
     }
 }
 

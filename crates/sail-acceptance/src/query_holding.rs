@@ -46,6 +46,7 @@ sail_code! {
         sail_method! {
             /// Releases exactly the original held payload once, clearing both
             /// storage fields. A second release cannot duplicate it.
+            #[allow(clippy::manual_map, reason = "Explicit Option cases preserve the original payload and metadata transition checked directly with stock Verus.")]
             pub fn take(&mut self) -> (out: Option<(Payload, Option<Metadata>)>)
                 requires (old(self).well_formed())
                 ensures (final(self).well_formed(), final(self).payload_view().is_none(), final(self).metadata_view().is_none(),
