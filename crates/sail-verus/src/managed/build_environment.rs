@@ -16,7 +16,42 @@ use std::process::{Command, ExitCode, Stdio};
 
 pub(crate) const REQUEST: &str = "SAIL_MANAGED_BUILD_ENVIRONMENT";
 const VERSION: u64 = 1;
-const CARGO_COMMIT: &str = "commit-hash: 5f94df4789f005f9a352888e8355ffc645b7ed0e";
+
+/// Cargo releases whose build-script protocol is qualified (ADR 0084), as
+/// (releases, source commit). Each commit's build-script environment,
+/// target-info cfg query and parser, script output rules and unit-graph
+/// fields match what [`derive`] and the package-environment authority model,
+/// by source audit (`scripts/cargo-protocol-audit.py`) and by the real-Cargo
+/// self-test (`ci/run.sh cargo-range`). Cargo 1.92 and earlier derive
+/// `CARGO_CFG_DEBUG_ASSERTIONS` by a different code path, so they stay
+/// outside until that path is audited; 1.87 and earlier
+/// report unit-graph package IDs that never match metadata. Identity is the
+/// reported commit alone.
+pub(crate) const QUALIFIED_CARGO: &[(&str, &str)] = &[
+    ("1.93.0, 1.93.1", "083ac5135f967fd9dc906ab057a2315861c7a80d"),
+    ("1.94.0", "85eff7c80277b57f78b11e28d14154ab12fcf643"),
+    ("1.94.1", "29ea6fb6a5db279426f4cc4e17aa385f05a0cfbc"),
+    ("1.95.0", "f2d3ce0bd7f24a49f8f72d9000448f8838c4e850"),
+    ("1.96.0", "30a34c6821b57de0aaec83a901aca39f88f6778c"),
+    ("1.96.1", "356927216a2d746168cf76e5e88cc3f4b58e029d"),
+    ("1.97.0, 1.97.1", "c980f4866141969fab6254a680546a277789d6f0"),
+    ("1.98.0, 1.98.1", "797e8a9bca276c1c9f9f738d2a20f484fa4eea9d"),
+    ("1.99.0, 1.99.1", "5f94df4789f005f9a352888e8355ffc645b7ed0e"),
+];
+
+/// The qualified releases, for messages.
+pub(crate) const QUALIFIED_RANGE: &str = "1.93.0 to 1.99.1";
+
+/// Whether `cargo --version --verbose` output names a qualified commit.
+fn qualified(text: &str) -> bool {
+    text.lines().any(|line| {
+        line.strip_prefix("commit-hash: ").is_some_and(|commit| {
+            QUALIFIED_CARGO
+                .iter()
+                .any(|(_, qualified)| *qualified == commit)
+        })
+    })
+}
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -156,10 +191,7 @@ fn target(arguments: &[Vec<u8>]) -> Option<Option<String>> {
 
 pub(super) fn load(directory: &Path, metadata: &Value) -> Option<Value> {
     let version = std::fs::read_to_string(directory.join("cargo-version.txt")).ok()?;
-    version
-        .lines()
-        .any(|line| line == CARGO_COMMIT)
-        .then_some(())?;
+    qualified(&version).then_some(())?;
     let graph: Value =
         serde_json::from_slice(&std::fs::read(directory.join("graph.json")).ok()?).ok()?;
     let mut observations = Vec::new();
@@ -179,7 +211,7 @@ pub(super) fn load(directory: &Path, metadata: &Value) -> Option<Value> {
 /// Missing or malformed observations do not identify an unsupported Cargo.
 pub(super) fn unsupported_cargo(directory: &Path) -> Option<String> {
     let text = std::fs::read_to_string(directory.join("cargo-version.txt")).ok()?;
-    if text.lines().any(|line| line == CARGO_COMMIT) {
+    if qualified(&text) {
         return None;
     }
     let commit = text
@@ -282,8 +314,9 @@ fn platform(value: &Value) -> Option<Option<String>> {
     }
 }
 
-// Match Cargo 5f94df4789f005f9a352888e8355ffc645b7ed0e:
-// src/compiler/custom_build.rs and build_context/target_info.rs.
+// Match every QUALIFIED_CARGO commit: `build_work` in custom_build.rs and
+// build_context/target_info.rs (under src/compiler/ from 1.99, earlier
+// src/cargo/core/compiler/).
 fn generated(
     features: &[&str],
     debug_assertions: bool,
@@ -880,19 +913,41 @@ mod tests {
         assert_eq!(cfg_arguments(&[b"--print=sysroot".to_vec()]), None);
         assert_eq!(target(&[b"--target".to_vec()]), None);
     }
+
+    /// Keys the package-environment authority derives (`build_inputs`).
+    const PACKAGE_KEYS: [&str; 9] = [
+        "CARGO_MANIFEST_DIR",
+        "CARGO_MANIFEST_LINKS",
+        "CARGO_PKG_NAME",
+        "CARGO_PKG_VERSION",
+        "CARGO_PKG_VERSION_MAJOR",
+        "CARGO_PKG_VERSION_MINOR",
+        "CARGO_PKG_VERSION_PATCH",
+        "CARGO_PKG_VERSION_PRE",
+        "OUT_DIR",
+    ];
+
+    /// A one-package Cargo project whose build script records the environment
+    /// Cargo gave it, built by a real Cargo (the ambient one, or a rustup
+    /// toolchain) with a wrapper that records Cargo's own cfg queries.
+    #[cfg(unix)]
     struct CargoFixture {
         root: std::path::PathBuf,
         cargo: OsString,
+        toolchain: Option<String>,
     }
 
+    #[cfg(unix)]
     impl Drop for CargoFixture {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.root);
         }
     }
 
+    #[cfg(unix)]
     impl CargoFixture {
-        fn new() -> std::result::Result<Self, Box<dyn std::error::Error>> {
+        fn new(toolchain: Option<&str>) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+            use std::os::unix::fs::PermissionsExt as _;
             static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
             let fixture = Self {
                 root: std::env::temp_dir().join(format!(
@@ -900,20 +955,32 @@ mod tests {
                     std::process::id(),
                     NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
                 )),
-                cargo: std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()),
+                // A selected toolchain runs through the rustup proxy, as a
+                // project's toolchain file selects it.
+                cargo: match toolchain {
+                    Some(_) => "cargo".into(),
+                    None => std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into()),
+                },
+                toolchain: toolchain.map(str::to_owned),
             };
             std::fs::create_dir_all(fixture.root.join("src"))?;
+            std::fs::create_dir_all(fixture.root.join("queries"))?;
             std::fs::write(
                 fixture.root.join("Cargo.toml"),
-                "[package]\nname='environment-fixture'\nversion='0.1.0'\nedition='2024'\n\
-                 [features]\nfast-path=[]\nunused=[]\n[workspace]\n",
+                "[package]\nname='environment-fixture'\nversion='0.3.10-beta.2+sail.1'\n\
+                 edition='2021'\nlinks='sail_environment_fixture'\n\
+                 [features]\nfast-path=[]\n\"straße\"=[]\nunused=[]\n[workspace]\n",
             )?;
             std::fs::write(fixture.root.join("src/lib.rs"), "")?;
             std::fs::write(
                 fixture.root.join("build.rs"),
-                r#"fn main() {
+                r#"const PACKAGE: [&str; 9] = ["CARGO_MANIFEST_DIR", "CARGO_MANIFEST_LINKS",
+    "CARGO_PKG_NAME", "CARGO_PKG_VERSION", "CARGO_PKG_VERSION_MAJOR",
+    "CARGO_PKG_VERSION_MINOR", "CARGO_PKG_VERSION_PATCH", "CARGO_PKG_VERSION_PRE", "OUT_DIR"];
+fn main() {
     let mut values: Vec<_> = std::env::vars().filter(|(key, _)| {
         key.starts_with("CARGO_FEATURE_") || key.starts_with("CARGO_CFG_")
+            || PACKAGE.contains(&key.as_str())
     }).collect();
     values.sort();
     let mut text = String::new();
@@ -928,6 +995,16 @@ mod tests {
 }
 "#,
             )?;
+            // Records each cfg query exactly as Cargo issues it (one file per
+            // process), as Sail's managed wrapper observes it.
+            let wrapper = fixture.root.join("rustc-wrapper");
+            std::fs::write(
+                &wrapper,
+                "#!/bin/sh\nfor arg in \"$@\"; do\n  if [ \"$arg\" = --print=cfg ]; then\n    \
+                 printf '%s\\0' \"$@\" > \"$SAIL_FIXTURE_QUERIES/query-$$\"\n    break\n  fi\n\
+                 done\nexec \"$@\"\n",
+            )?;
+            std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))?;
             Ok(fixture)
         }
 
@@ -945,131 +1022,327 @@ mod tests {
                                 | "RUSTFLAGS"
                                 | "RUSTDOCFLAGS"
                                 | "RUSTC_LOG"
+                                | "RUSTUP_TOOLCHAIN"
                         )
                     )
                 {
                     command.env_remove(key);
                 }
             }
+            if let Some(toolchain) = &self.toolchain {
+                command.env("RUSTUP_TOOLCHAIN", toolchain);
+            }
             command
                 .env("CARGO_HOME", self.root.join("cargo-home"))
+                .env("CARGO_CACHE_RUSTC_INFO", "0")
                 .env("RUSTC_BOOTSTRAP", "1")
+                .env("RUSTC_WRAPPER", self.root.join("rustc-wrapper"))
+                .env("SAIL_FIXTURE_QUERIES", self.root.join("queries"))
                 .env("RUSTFLAGS", "--cfg=sail_environment_fixture=\"native\"");
             command
         }
 
-        fn cargo(&self, args: &[&str]) -> std::result::Result<Vec<u8>, Box<dyn std::error::Error>> {
-            let output = self.command(&self.cargo).args(args).output()?;
-            assert!(
-                output.status.success(),
-                "{}",
-                String::from_utf8_lossy(&output.stderr)
-            );
+        fn run(
+            &self,
+            program: &std::ffi::OsStr,
+            args: &[&str],
+        ) -> std::result::Result<Vec<u8>, String> {
+            let output = self
+                .command(program)
+                .args(args)
+                .stdin(Stdio::null())
+                .output()
+                .map_err(|error| format!("{program:?} {args:?}: {error}"))?;
+            if !output.status.success() {
+                return Err(format!(
+                    "{program:?} {args:?}: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ));
+            }
             Ok(output.stdout)
+        }
+
+        fn cargo(&self, args: &[&str]) -> std::result::Result<Vec<u8>, String> {
+            self.run(&self.cargo, args)
+        }
+
+        fn version(&self) -> std::result::Result<String, String> {
+            String::from_utf8(self.cargo(&["--version", "--verbose"])?)
+                .map_err(|error| error.to_string())
+        }
+
+        /// Every cfg query Cargo issued since the last call, re-run with
+        /// `--print=cfg` alone as Sail's managed wrapper re-runs it.
+        fn observations(&self) -> std::result::Result<Vec<Observation>, String> {
+            let mut observations = Vec::new();
+            let directory = self.root.join("queries");
+            for entry in std::fs::read_dir(&directory).map_err(|error| error.to_string())? {
+                let path = entry.map_err(|error| error.to_string())?.path();
+                let bytes = std::fs::read(&path).map_err(|error| error.to_string())?;
+                std::fs::remove_file(&path).map_err(|error| error.to_string())?;
+                let arguments: Vec<Vec<u8>> = bytes
+                    .split(|byte| *byte == 0)
+                    .filter(|argument| !argument.is_empty())
+                    .map(<[u8]>::to_vec)
+                    .collect();
+                let retained = cfg_arguments(&arguments).ok_or("query without --print=cfg")?;
+                let [program, rest @ ..] = retained.as_slice() else {
+                    return Err("empty cfg query".to_owned());
+                };
+                let os = |index: &usize| {
+                    OsString::from(String::from_utf8_lossy(&arguments[*index]).into_owned())
+                };
+                let mut command = self.command(&os(program));
+                command.env_remove("RUSTC_WRAPPER");
+                let output = command
+                    .args(rest.iter().map(os))
+                    .arg("--print=cfg")
+                    .stdin(Stdio::null())
+                    .output()
+                    .map_err(|error| error.to_string())?;
+                if !output.status.success() {
+                    return Err(String::from_utf8_lossy(&output.stderr).into_owned());
+                }
+                observations.push(Observation {
+                    version: VERSION,
+                    success: true,
+                    target: target(&arguments)
+                        .flatten()
+                        .map_or(Value::Null, Value::String),
+                    arguments,
+                    cfg_stdout: output.stdout,
+                });
+            }
+            if observations.is_empty() {
+                return Err("Cargo issued no cfg query".to_owned());
+            }
+            Ok(observations)
+        }
+
+        fn host(&self) -> std::result::Result<String, String> {
+            let text = String::from_utf8(self.run(std::ffi::OsStr::new("rustc"), &["-vV"])?)
+                .map_err(|error| error.to_string())?;
+            text.lines()
+                .find_map(|line| line.strip_prefix("host: "))
+                .map(str::to_owned)
+                .ok_or_else(|| "rustc reported no host".to_owned())
+        }
+
+        /// The protocol self-test: for development and release profiles,
+        /// with and without an explicit target, Sail's unit authority and
+        /// package values must equal what Cargo gave the build script.
+        fn self_test(&self) -> std::result::Result<(), String> {
+            let json = |bytes: Vec<u8>| -> std::result::Result<Value, String> {
+                serde_json::from_slice(&bytes).map_err(|error| error.to_string())
+            };
+            let metadata =
+                json(self.cargo(&["metadata", "--offline", "--format-version=1", "--no-deps"])?)?;
+            let package = &metadata["packages"][0];
+            let id = package["id"].as_str().ok_or("package ID absent")?;
+            let manifest = Path::new(
+                package["manifest_path"]
+                    .as_str()
+                    .ok_or("manifest path absent")?,
+            );
+            let host = self.host()?;
+            for explicit_target in [false, true] {
+                for release in [false, true] {
+                    let case = format!("target {explicit_target}, release {release}");
+                    let mut args = vec!["build", "--offline", "--features=fast-path,straße"];
+                    if release {
+                        args.push("--release");
+                    }
+                    if explicit_target {
+                        args.extend(["--target", host.as_str()]);
+                    }
+                    let mut query = args.clone();
+                    query.extend(["--unit-graph", "-Z", "unstable-options"]);
+                    let graph = json(self.cargo(&query)?)?;
+                    args.push("--message-format=json");
+                    let messages = self.cargo(&args)?;
+                    let observations = self.observations()?;
+                    let authority = derive(&graph, &metadata, &observations)
+                        .ok_or_else(|| format!("{case}: unit authority absent"))?;
+                    let mut data = metadata.clone();
+                    data["sail_build_environment"] = authority.clone();
+                    let message = std::str::from_utf8(&messages)
+                        .map_err(|error| error.to_string())?
+                        .lines()
+                        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                        .find(|message| message["reason"] == "build-script-executed")
+                        .ok_or_else(|| format!("{case}: script output absent"))?;
+                    let out_dir = message["out_dir"]
+                        .as_str()
+                        .ok_or("script directory absent")?;
+                    let text = std::fs::read_to_string(Path::new(out_dir).join("environment.txt"))
+                        .map_err(|error| error.to_string())?;
+                    let mut actual = BTreeMap::new();
+                    for line in text.lines() {
+                        let (key, value) = line.split_once('\t').ok_or("invalid environment")?;
+                        actual.insert(key.to_owned(), value.to_owned());
+                    }
+                    let generated: BTreeMap<&String, &String> = actual
+                        .iter()
+                        .filter(|(key, _)| generated_key(key))
+                        .collect();
+                    let expected = &authority["packages"][id]["values"];
+                    if serde_json::to_value(&generated).ok().as_ref() != Some(expected) {
+                        return Err(format!(
+                            "{case}: Cargo gave {generated:?}, Sail derives {expected}"
+                        ));
+                    }
+                    for key in PACKAGE_KEYS {
+                        let derived = super::super::build_inputs::qualification_package_value(
+                            id, manifest, out_dir, &data, key,
+                        );
+                        if derived != Some(actual.get(key).cloned()) {
+                            return Err(format!(
+                                "{case}: {key}: Cargo gave {:?}, Sail derives {derived:?}",
+                                actual.get(key)
+                            ));
+                        }
+                    }
+                    // The fixture exercises what the protocol distinguishes.
+                    // Rustc's own query always reports debug_assertions; a
+                    // release script must never see it.
+                    let has = |key: &str| actual.contains_key(key);
+                    if !(has("CARGO_FEATURE_FAST_PATH")
+                        && has("CARGO_FEATURE_STRASSE")
+                        && !has("CARGO_FEATURE_UNUSED")
+                        && !(release && has("CARGO_CFG_DEBUG_ASSERTIONS"))
+                        && has("CARGO_CFG_SAIL_ENVIRONMENT_FIXTURE")
+                        && has("CARGO_CFG_TARGET_OS")
+                        && has("CARGO_PKG_VERSION_PRE"))
+                    {
+                        return Err(format!("{case}: fixture coverage lost: {actual:?}"));
+                    }
+                }
+            }
+            Ok(())
         }
     }
 
+    #[cfg(unix)]
     #[test]
-    fn real_cargo_script_values_match_exact_unit_authority()
-    -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let fixture = CargoFixture::new()?;
-        let metadata: Value = serde_json::from_slice(&fixture.cargo(&[
-            "metadata",
-            "--offline",
-            "--format-version=1",
-            "--no-deps",
-        ])?)?;
-        let id = metadata["packages"][0]["id"]
-            .as_str()
-            .ok_or("package ID absent")?;
-        let query_arguments: Vec<OsString> = [
-            "-",
-            "--crate-name",
-            "___",
-            "--crate-type=bin",
-            "--crate-type=rlib",
-            "--crate-type=dylib",
-            "--crate-type=cdylib",
-            "--crate-type=staticlib",
-            "--crate-type=proc-macro",
-            "--cfg=sail_environment_fixture=\"native\"",
-            "--print=cfg",
-            "-Wwarnings",
-        ]
-        .into_iter()
-        .map(OsString::from)
-        .collect();
-        let cfg = fixture
-            .command(std::ffi::OsStr::new("rustc"))
-            .args(&query_arguments)
-            .stdin(Stdio::null())
-            .output()?;
-        assert!(
-            cfg.status.success(),
-            "{}",
-            String::from_utf8_lossy(&cfg.stderr)
-        );
-        let observed = Observation {
-            version: VERSION,
-            success: true,
-            target: Value::Null,
-            arguments: query_arguments
-                .into_iter()
-                .map(OsString::into_encoded_bytes)
-                .collect(),
-            cfg_stdout: cfg.stdout,
-        };
-        for release in [false, true] {
-            let mut args = vec!["build", "--offline", "--features=fast-path"];
-            if release {
-                args.push("--release");
-            }
-            let mut query = args.clone();
-            query.extend(["--unit-graph", "-Z", "unstable-options"]);
-            let graph: Value = serde_json::from_slice(&fixture.cargo(&query)?)?;
-            let authority = derive(&graph, &metadata, std::slice::from_ref(&observed))
-                .ok_or("unit authority absent")?;
-            args.push("--message-format=json");
-            let messages = fixture.cargo(&args)?;
-            let output = std::str::from_utf8(&messages)?
-                .lines()
-                .filter_map(|line| serde_json::from_str::<Value>(line).ok())
-                .find(|message| message["reason"] == "build-script-executed")
-                .ok_or("script output absent")?;
-            let actual = std::fs::read_to_string(
-                Path::new(
-                    output["out_dir"]
-                        .as_str()
-                        .ok_or("script directory absent")?,
-                )
-                .join("environment.txt"),
-            )?;
-            let actual: BTreeMap<String, String> = actual
-                .lines()
-                .map(|line| {
-                    let (key, value) = line.split_once('\t').ok_or("invalid script environment")?;
-                    Ok((key.to_owned(), value.to_owned()))
-                })
-                .collect::<std::result::Result<_, &str>>()?;
-            assert_eq!(
-                serde_json::to_value(&actual)?,
-                authority["packages"][id]["values"]
-            );
-            assert_eq!(
-                actual.get("CARGO_FEATURE_FAST_PATH").map(String::as_str),
-                Some("1")
-            );
-            assert!(!actual.contains_key("CARGO_FEATURE_UNUSED"));
-            assert_eq!(actual.contains_key("CARGO_CFG_DEBUG_ASSERTIONS"), !release);
-            assert!(actual.contains_key("CARGO_CFG_TARGET_ARCH"));
-            assert!(actual.contains_key("CARGO_CFG_TARGET_OS"));
-        }
+    fn real_cargo_script_values_match_exact_unit_authority() -> TestResult {
+        CargoFixture::new(None)?.self_test()?;
         Ok(())
     }
 
+    /// `ci/run.sh cargo-range`: every named rustup toolchain's Cargo must be
+    /// qualified and pass the self-test; every toolchain named as divergent
+    /// must be unqualified and fail it (the self-test's own control).
+    #[cfg(unix)]
+    #[test]
+    #[ignore = "needs the named rustup toolchains; run by ci/run.sh cargo-range"]
+    fn qualified_cargo_range_self_test() -> TestResult {
+        let qualified_toolchains = std::env::var("SAIL_CARGO_RANGE_TOOLCHAINS")
+            .map_err(|_| "SAIL_CARGO_RANGE_TOOLCHAINS must name the toolchains to qualify")?;
+        let divergent = std::env::var("SAIL_CARGO_RANGE_DIVERGENT").unwrap_or_default();
+        let mut failures = Vec::new();
+        for toolchain in qualified_toolchains.split_whitespace() {
+            let fixture = CargoFixture::new(Some(toolchain))?;
+            let version = fixture.version()?;
+            let outcome = if qualified(&version) {
+                fixture.self_test()
+            } else {
+                Err(format!("Cargo is not in QUALIFIED_CARGO: {version}"))
+            };
+            match outcome {
+                Ok(()) => eprintln!("cargo-range: {toolchain}: qualified, self-test passed"),
+                Err(error) => failures.push(format!("{toolchain}: {error}")),
+            }
+        }
+        for toolchain in divergent.split_whitespace() {
+            let fixture = CargoFixture::new(Some(toolchain))?;
+            let version = fixture.version()?;
+            match (qualified(&version), fixture.self_test()) {
+                (false, Err(error)) => {
+                    eprintln!("cargo-range: {toolchain}: unqualified, self-test detects: {error}");
+                }
+                (true, _) => failures.push(format!("{toolchain}: divergent Cargo is qualified")),
+                (false, Ok(())) => failures.push(format!(
+                    "{toolchain}: the self-test cannot distinguish this divergent Cargo"
+                )),
+            }
+        }
+        // Candidates for qualification: the self-test alone, reported and
+        // never asserted. Qualifying one also needs the source audit.
+        for toolchain in std::env::var("SAIL_CARGO_RANGE_CANDIDATES")
+            .unwrap_or_default()
+            .split_whitespace()
+        {
+            let fixture = CargoFixture::new(Some(toolchain))?;
+            let version = fixture.version()?;
+            let commit = version
+                .lines()
+                .find_map(|line| line.strip_prefix("commit-hash: "))
+                .unwrap_or("unknown");
+            match fixture.self_test() {
+                Ok(()) => {
+                    eprintln!("cargo-range: candidate {toolchain} ({commit}): self-test passed");
+                }
+                Err(error) => {
+                    eprintln!(
+                        "cargo-range: candidate {toolchain} ({commit}): self-test fails: {error}"
+                    );
+                }
+            }
+        }
+        if failures.is_empty() {
+            Ok(())
+        } else {
+            Err(failures.join("\n").into())
+        }
+    }
+
+    #[test]
+    fn qualified_cargo_table_is_exact() {
+        let mut commits = BTreeSet::new();
+        for (releases, commit) in QUALIFIED_CARGO {
+            assert_ne!(*releases, "");
+            assert!(
+                commit.len() == 40 && commit.bytes().all(|byte| byte.is_ascii_hexdigit()),
+                "{commit}"
+            );
+            assert!(commits.insert(commit), "{commit} listed twice");
+            assert!(qualified(&format!(
+                "cargo {releases}\ncommit-hash: {commit}\n"
+            )));
+        }
+        assert!(
+            QUALIFIED_CARGO
+                .iter()
+                .any(|(releases, _)| releases.contains("1.98.0"))
+        );
+        // Only the exact line names the source.
+        assert!(!qualified(
+            "cargo 1.98.0\ncommit-hash: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9\n"
+        ));
+        assert!(!qualified(
+            "cargo 1.98.0\nrelease: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d\n"
+        ));
+        assert!(!qualified(
+            "cargo 1.92.0\ncommit-hash: 344c4567c634a25837e3c3476aac08af84cf9203\n"
+        ));
+        assert_eq!(
+            QUALIFIED_RANGE,
+            format!(
+                "{} to {}",
+                QUALIFIED_CARGO[0].0.split(", ").next().unwrap_or_default(),
+                QUALIFIED_CARGO[QUALIFIED_CARGO.len() - 1]
+                    .0
+                    .rsplit(", ")
+                    .next()
+                    .unwrap_or_default()
+            )
+        );
+    }
+
+    #[cfg(unix)]
     #[test]
     fn unknown_cargo_source_cannot_authorize_complete_unit_evidence() -> TestResult {
-        let fixture = CargoFixture::new()?;
+        let fixture = CargoFixture::new(None)?;
         std::fs::write(
             fixture.root.join("graph.json"),
             serde_json::to_vec(&graph(vec![unit(&[], Value::Null)]))?,
@@ -1085,15 +1358,29 @@ mod tests {
         )?;
         assert!(load(&fixture.root, &metadata()).is_none());
         assert_eq!(unsupported_cargo(&fixture.root).as_deref(), Some("1.98.0"));
+        // Cargo 1.92's script environment comes from different source.
         std::fs::write(
             &version,
-            "commit-hash: 5f94df4789f005f9a352888e8355ffc645b7ed0e\n",
+            "cargo 1.92.0 (344c4567c 2025-10-21)\n\
+             commit-hash: 344c4567c634a25837e3c3476aac08af84cf9203\n",
         )?;
-        let authority = load(&fixture.root, &metadata()).ok_or("known Cargo source refused")?;
-        assert!(unsupported_cargo(&fixture.root).is_none());
-        let current = json!({"sail_build_environment":authority});
-        assert_eq!(get(&current, "CARGO_CFG_UNIX"), Some(Some(String::new())));
-        assert_eq!(get(&current, "CARGO_FEATURE_ABSENT"), Some(None));
+        assert!(load(&fixture.root, &metadata()).is_none());
+        assert_eq!(unsupported_cargo(&fixture.root).as_deref(), Some("1.92.0"));
+        for text in [
+            "commit-hash: 5f94df4789f005f9a352888e8355ffc645b7ed0e\n",
+            "cargo 1.98.0 (797e8a9bc 2026-08-05)\n\
+             commit-hash: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d\n",
+            "cargo 1.93.1 (083ac5135 2026-01-08)\n\
+             commit-hash: 083ac5135f967fd9dc906ab057a2315861c7a80d\n",
+        ] {
+            std::fs::write(&version, text)?;
+            let authority =
+                load(&fixture.root, &metadata()).ok_or("qualified Cargo source refused")?;
+            assert!(unsupported_cargo(&fixture.root).is_none());
+            let current = json!({"sail_build_environment":authority});
+            assert_eq!(get(&current, "CARGO_CFG_UNIX"), Some(Some(String::new())));
+            assert_eq!(get(&current, "CARGO_FEATURE_ABSENT"), Some(None));
+        }
         Ok(())
     }
 
@@ -1121,14 +1408,15 @@ mod tests {
         )?;
         std::fs::write(
             directory.join("cargo-version.txt"),
-            format!("{CARGO_COMMIT}\n"),
+            format!("commit-hash: {}\n", QUALIFIED_CARGO[0].1),
         )?;
         Ok(())
     }
 
+    #[cfg(unix)]
     #[test]
     fn retained_query_restores_only_under_its_exact_key() -> TestResult {
-        let fixture = CargoFixture::new()?;
+        let fixture = CargoFixture::new(None)?;
         let root = fixture.root.clone();
         let metadata = cached_metadata(&root);
         let config = vec![root.join(".cargo/config.toml")];
@@ -1175,9 +1463,10 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(unix)]
     #[test]
     fn custom_target_specifications_and_incomplete_queries_are_not_retained() -> TestResult {
-        let fixture = CargoFixture::new()?;
+        let fixture = CargoFixture::new(None)?;
         let root = fixture.root.clone();
         let metadata = cached_metadata(&root);
         let context = root.join("context");
@@ -1205,9 +1494,10 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(unix)]
     #[test]
     fn missing_or_malformed_cargo_observation_does_not_identify_an_old_toolchain() -> TestResult {
-        let fixture = CargoFixture::new()?;
+        let fixture = CargoFixture::new(None)?;
         assert!(unsupported_cargo(&fixture.root).is_none());
         for text in [
             "cargo 1.98.0\n",
