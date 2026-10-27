@@ -601,6 +601,19 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaises(CHECKER.Refusal):
             CHECKER.compiled_subset(CHECKER.SYNTAX, changed)
 
+    def test_human_noop_counters_use_actual_project_declarations(self):
+        snapshots = {"crates/sail-api/src/" + name + ".rs":
+            (ROOT / "crates/sail-api/src" / (name + ".rs")).read_bytes()
+            for name in CHECKER.SOURCE.API_MODULES}
+        files, declarations = CHECKER.SOURCE.api_stencils(snapshots)
+        selected = [t.value for t in CHECKER.SOURCE.tokens(files["project.rs"].decode())]
+        for field in ("execution", "no_reuse", "verifier_invocations", "reused_targets"):
+            self.assertIn(field, selected)
+        self.assertNotIn("wall_ms", selected)
+        original = next(d for d in declarations["project"]["declarations"] if d["name"] == "Execution")
+        self.assertEqual(original["fields"]["verifier_invocations"], ["u64"])
+        self.assertIn("wall_ms", original["fields"])
+
     def test_cargo_paths_and_private_token_fields_cannot_change_without_review(self):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",

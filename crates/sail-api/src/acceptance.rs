@@ -215,12 +215,17 @@ sail_code! {
         readback: ReplayReadback<'a, 'b>,
     }
 
-    impl<'a, 'b> EmptyHumanOutput<'a, 'b> {
+    impl<'a> EmptyHumanOutput<'a, '_> {
         sail_method! {
             /// The only data projection: the exact validated Cargo footer.
             pub fn stderr(&self) -> (out: &'a [u8])
                 requires(true) ensures(out == empty_human_stderr(self))
-            { self.stderr }
+            {
+                // Retain the original witness borrows without exposing their
+                // report or allowing a caller to obtain proof authority.
+                let _ = (&self.original, &self.current, &self.observed, &self.paths, &self.readback);
+                self.stderr
+            }
         }
     }
 
