@@ -9,6 +9,44 @@ use vstd::prelude::*;
 
 verus! {
 
+/// An inductive history of actual comparison inputs, distinct from the stdout
+/// cursor's frame count and from any solver-semantic equivalence relation.
+pub open spec fn comparisons_match<Owner>(
+    replay: &crate::query_replay::Replay<'_,Owner>, actual: Seq<Seq<u8>>,
+) -> bool {
+    replay.well_formed() && replay.checked_view() == actual.len()
+        && forall|i:int| 0 <= i < actual.len() ==>
+            replay.served_view()[i].reproduces(actual[i])
+}
+
+pub fn initial_comparison<'a,Owner>(served: &'a [crate::query_replay::ServedReply], owner: Owner)
+    -> (replay: crate::query_replay::Replay<'a,Owner>)
+    ensures comparisons_match(&replay,Seq::empty()), replay.owner_view() == owner,
+{
+    crate::query_replay::Replay::new(served,owner)
+}
+
+/// Calls the actual shared mechanical comparison and retains each successful
+/// fresh byte input at its original served position in the inductive relation.
+pub fn comparison_step<Owner>(replay: &mut crate::query_replay::Replay<'_,Owner>,
+    actual: &[u8], Ghost(previous): Ghost<Seq<Seq<u8>>>) -> (accepted: bool)
+    requires comparisons_match(old(replay),previous),
+    ensures accepted ==> comparisons_match(final(replay),previous.push(actual@)),
+        !accepted ==> comparisons_match(final(replay),previous),
+        final(replay).owner_view() == old(replay).owner_view(),
+{
+    let accepted = replay.compare(actual);
+    proof {
+        if accepted {
+            assert forall|i:int| 0 <= i < previous.push(actual@).len()
+                implies replay.served_view()[i].reproduces(previous.push(actual@)[i]) by {
+                if i < previous.len() {} else { assert(i == previous.len()); }
+            }
+        }
+    }
+    accepted
+}
+
 /// Exact pending suffix relation; neither stream may drop an unmatched head.
 pub open spec fn queue_refines<E, R>(
     queue: &CorrelatedQueue<E, R>,

@@ -236,6 +236,41 @@ framing decision is renumbered to 0084.
 
 ## Resume and acceptance
 
+The presentation candidate source-shares MCP/API provisional override through
+actual borrowed enum fields and `FunctionReport` without assuming projected
+enums are Copy. It preserves all eight combinations and the MCP tier path.
+Authority controls now total 116 (107 inherited plus nine); actual whole-root
+positive/function discovery remains pending with the prior inventory unchanged.
+Native MCP/API callers are hash-bound source, not stock-compiled bodies.
+This does not establish request/process/cache authority or full #376 shaping
+and serialization correspondence. See the
+[presentation boundary](design/acceptance-authority.md#success-presentation-call-graph).
+
+The served-byte replay candidate appends `query_replay.rs`, actual comparison
+history refinement functions and a same-owner stdout completion join. The
+#457 followup rechecks every original retained suppressed frame against its
+served receipt; comparison completion plus owner/count alone is insufficient.
+Query now has 161 ordinary controls (the 134 option/inherited controls plus
+27 replay/prefix controls); no positive/function count has been guessed. Whole-root discovery
+must retain all old functions and derive the expanded inventory from Stock.
+The lead's #454 full-body/loop-preserving mutant correction is merged; do not
+restore earlier truncated control objects. Statistics interpretation/origins,
+numeric effort/reason policy and native slice/owner correspondence remain open.
+See the [mechanical replay boundary](design/acceptance-query.md#original-served-byte-replay-comparison-candidate)
+for exact data retention, refusal behavior, accounting and pending cost gates.
+
+The scalar-option source candidate adds `query_options.rs` to the actual query
+driver, preserving every earlier function and all 115 inherited controls and
+appending 19 controls. Native Session and SMT parser helpers are separately
+hash-bound native source, never promoted to stock-compiled bodies. Whole-root
+positive discovery must replace the intentionally retained old query count and
+function inventory with actual verifier output before qualification. Then run
+every old and new ordinary control, the native lexer/Session bridge tests and
+full raw-output conformance. Inputs/authority proof bodies, expected counts,
+function lists and 115/107 controls remain unchanged. See the
+[raw option/readback boundary](design/acceptance-query.md#scalar-policy-option-readback-candidate)
+for concrete syntax and unresolved pinned-solver interpretation premises.
+
 The merged transport uses a dedicated remove-only configuration interface for
 the outer Cargo command and the owned compiler builder. The ordinary Cargo
 alias needs that operation in production; the broader mutable standard-command

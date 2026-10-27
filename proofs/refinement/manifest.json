@@ -20,12 +20,22 @@
         "crates/sail-acceptance/src/query_output_owner.rs",
         "crates/sail-acceptance/src/query_holding.rs",
         "crates/sail-acceptance/src/query_checkpoints.rs",
+        "crates/sail-acceptance/src/query_options.rs",
+        "crates/sail-acceptance/src/query_replay.rs",
         "proofs/refinement/query.rs",
         "crates/sail-key/src/lib.rs",
         "crates/sail-key/src/prefix_factory.rs",
         "crates/sail-cache/src/lib.rs",
         "crates/sail-cache/src/persist.rs",
-        "crates/sail-shim/src/cached.rs"
+        "crates/sail-shim/src/cached.rs",
+        "crates/sail-session/src/lib.rs",
+        "crates/sail-smtlib/src/lib.rs",
+        "crates/sail-smtlib/src/command.rs",
+        "crates/sail-smtlib/src/lex.rs",
+        "crates/sail-smtlib/src/split.rs",
+        "crates/sail-smtlib/src/error.rs",
+        "crates/sail-session/Cargo.toml",
+        "crates/sail-smtlib/Cargo.toml"
       ],
       "verified": 431,
       "functions": [
@@ -1479,6 +1489,282 @@
           "source": "crates/sail-acceptance/src/query.rs",
           "before": "                if self.remaining != 0 { return None; }",
           "after": ""
+        },
+        {
+          "name": "option-head-original-bytes",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "crate::query_policy::word_eq(&command[spans.head_start..spans.head_end], \"set-option\")",
+          "after": "true"
+        },
+        {
+          "name": "option-keyword-whole-atom",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "&& scalar_atom(&command[spans.keyword_start..spans.keyword_end])",
+          "after": ""
+        },
+        {
+          "name": "option-keyword-complete-boundary",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "&& crate::query::delimiter(command[spans.keyword_end])",
+          "after": ""
+        },
+        {
+          "name": "option-keyword-colon",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "&& command[spans.keyword_start] == b':'",
+          "after": ""
+        },
+        {
+          "name": "option-keyword-leading-trivia",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "&& crate::query::trivia(&command[spans.head_end..spans.keyword_start], false)",
+          "after": ""
+        },
+        {
+          "name": "option-value-leading-trivia",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "crate::query::trivia(&command[spans.keyword_end..spans.value_start], false)",
+          "after": "true"
+        },
+        {
+          "name": "option-value-whole-atom",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "&& scalar_atom(&command[spans.value_start..spans.value_end])",
+          "after": ""
+        },
+        {
+          "name": "option-value-trailing-data",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "&& crate::query::trivia(&command[spans.value_end..command.len() - 1], false)",
+          "after": ""
+        },
+        {
+          "name": "option-keyword-value-swap",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "let value = crate::inputs::copy_bytes(&command[spans.value_start..spans.value_end]);",
+          "after": "let value = crate::inputs::copy_bytes(&command[spans.keyword_start..spans.keyword_end]);"
+        },
+        {
+          "name": "option-keyword-omission",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "if !option_keyword(command, spans) { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "option-scalar-value-omission",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "if !option_scalar(command, spans) { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "option-post-readback-mismatch",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "if !option_readback(&self.print_success, print)\n                    || !option_readback(&self.resource_limit, limit) { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "option-use-print-readback",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "self.active && option_readback(&self.print_success, print)",
+          "after": "self.active"
+        },
+        {
+          "name": "option-use-limit-readback",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "&& option_readback(&self.resource_limit, limit)",
+          "after": ""
+        },
+        {
+          "name": "option-refusal-sticky",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "if !self.active { return false; }",
+          "after": "if false { return false; }"
+        },
+        {
+          "name": "option-reset-clears-both",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "self.resource_limit = None;",
+          "after": ""
+        },
+        {
+          "name": "option-ordinary-retains-state",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "self.active = false;\n                let head",
+          "after": "self.active = false;\n                self.resource_limit = None;\n                let head"
+        },
+        {
+          "name": "option-actual-byte-comparison",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "(Some(before), Some(after)) => crate::inputs::byte_eq(before, after),",
+          "after": "(Some(_before), Some(_after)) => true,"
+        },
+        {
+          "name": "option-state-full-transition-always-refuses",
+          "source": "crates/sail-acceptance/src/query_options.rs",
+          "before": "\n                if !self.active { return false; }\n                self.active = false;\n                let head = crate::query::command_head(command);\n                let Some(head) = head else { return false; };\n                if crate::query_policy::word_eq(head, \"reset\") {\n                    self.print_success = None;\n                    self.resource_limit = None;\n                } else if crate::query_policy::word_eq(head, \"set-option\") {\n                    let Some(spans) = spans else { return false; };\n                    if !option_keyword(command, spans) { return false; }\n                    let key = &command[spans.keyword_start..spans.keyword_end];\n                    let print_setting = crate::query_policy::word_eq(key, \":print-success\");\n                    let limit_setting = crate::query_policy::word_eq(key, \":rlimit\");\n                    if print_setting || limit_setting {\n                        if !option_scalar(command, spans) { return false; }\n                        let value = crate::inputs::copy_bytes(&command[spans.value_start..spans.value_end]);\n                        if print_setting { self.print_success = Some(value); }\n                        else { self.resource_limit = Some(value); }\n                    }\n                }\n                if !option_readback(&self.print_success, print)\n                    || !option_readback(&self.resource_limit, limit) { return false; }\n                self.active = true;\n                true\n            ",
+          "after": "\n                let _ = (command,spans,print,limit); self.active = false; false\n            "
+        },
+        {
+          "name": "replay-statistics-original-head",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "&& crate::query_policy::word_eq(&command[s.head_start..s.head_end],\"get-info\")",
+          "after": ""
+        },
+        {
+          "name": "replay-statistics-original-keyword",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "&& crate::query_policy::word_eq(&command[s.keyword_start..s.keyword_end],\":all-statistics\")",
+          "after": ""
+        },
+        {
+          "name": "replay-statistics-trailing-arguments",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "&& crate::query::trivia(&command[s.keyword_end..command.len()-1],false)",
+          "after": ""
+        },
+        {
+          "name": "replay-statistics-complete-command",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "crate::query::complete_list(command,true)",
+          "after": "true"
+        },
+        {
+          "name": "replay-statistics-keyword-gap",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "&& crate::query::trivia(&command[s.head_end..s.keyword_start],false)",
+          "after": ""
+        },
+        {
+          "name": "replay-statistics-forged-exception",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "let statistics = statistics_command(command,spans);",
+          "after": "let statistics = true;"
+        },
+        {
+          "name": "replay-original-command-retention",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "let command = crate::inputs::copy_bytes(command);",
+          "after": "let command = Vec::new();"
+        },
+        {
+          "name": "replay-original-cache-bytes-retention",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "Self { command,bytes,statistics }",
+          "after": "Self { command,bytes:Vec::new(),statistics }"
+        },
+        {
+          "name": "replay-statistics-full-framing",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "&& crate::query::response_frame(bytes)",
+          "after": ""
+        },
+        {
+          "name": "replay-exact-original-bytes",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "else { crate::inputs::byte_eq(&self.bytes,actual) }",
+          "after": "else { true }"
+        },
+        {
+          "name": "replay-original-served-order",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "!self.served[self.checked].reproduced_by(actual)",
+          "after": "!self.served[0].reproduced_by(actual)"
+        },
+        {
+          "name": "replay-exact-one-comparison",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "self.checked += 1;",
+          "after": "self.checked += 2;"
+        },
+        {
+          "name": "replay-sticky-divergence",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "if self.diverged || self.checked == self.served.len()",
+          "after": "if self.checked == self.served.len()"
+        },
+        {
+          "name": "replay-clean-short-prefix",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "self.diverged |= clean && self.checked < self.served.len();",
+          "after": "self.diverged |= false;"
+        },
+        {
+          "name": "replay-refusal-latched",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "{ self.diverged = true; }",
+          "after": "{ self.diverged = false; }"
+        },
+        {
+          "name": "replay-original-remaining-count",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "{ self.served.len()-self.checked }",
+          "after": "{ self.served.len() }"
+        },
+        {
+          "name": "replay-full-comparison-always-refuses",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "1nat",
+          "after": "\n                let _ = actual; self.diverged = true; false\n            "
+        },
+        {
+          "name": "replay-full-statistics-mint-always-refuses",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "\n        let Some(s) = spans else { return false; };\n        if command.len() < 2 || s.head_start < 1 || s.head_start >= s.head_end\n            || s.head_end >= s.keyword_start || s.keyword_start >= s.keyword_end\n            || s.keyword_end >= command.len() { return false; }\n        crate::query::complete_list(command,true)\n            && crate::query::trivia(&command[1..s.head_start],false)\n            && crate::query_policy::word_eq(&command[s.head_start..s.head_end],\"get-info\")\n            && crate::query::trivia(&command[s.head_end..s.keyword_start],false)\n            && crate::query_policy::word_eq(&command[s.keyword_start..s.keyword_end],\":all-statistics\")\n            && crate::query::trivia(&command[s.keyword_end..command.len()-1],false)\n    ",
+          "after": "\n        let _ = (command,spans); false\n    "
+        },
+        {
+          "name": "replay-join-requires-comparisons",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "if !replay.complete() || !identity.same_owner(&self.owner,replay.owner())",
+          "after": "if !identity.same_owner(&self.owner,replay.owner())"
+        },
+        {
+          "name": "replay-join-original-output-owner",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "if !replay.complete() || !identity.same_owner(&self.owner,replay.owner())",
+          "after": "if !replay.complete()"
+        },
+        {
+          "name": "replay-join-original-cursor-count",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "if original.count() as u128 != replay.total() as u128 { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "replay-full-output-join-always-refuses",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "\n                if !replay.complete() || !identity.same_owner(&self.owner,replay.owner()) { return None; }\n                let Some(original) = &self.replayed else { return None; };\n                if original.count() as u128 != replay.total() as u128 { return None; }\n                let total = replay.total();\n                if total > self.output.frames() { return None; }\n                let mut ordinal = 0usize;\n                sail_while! { (ordinal < total)\n                    invariant (ordinal <= total, total == replay.served_view().len(),\n                        total <= self.output_view().endpoints().len(),\n                        forall|i:int| 0 <= i < ordinal ==> self.replay_frame_matches(replay,i))\n                    decreases (total-ordinal)\n                    {\n                        let Some(bytes) = self.output.frame_bytes(ordinal) else {\n                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }\n                            return None;\n                        };\n                        if !replay.reproduces_at(ordinal,bytes) {\n                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }\n                            return None;\n                        }\n                        sail_proof! { assert(self.replay_frame_matches(replay,ordinal as int)); }\n                        ordinal += 1;\n                    }\n                }\n                Some(self)\n            ",
+          "after": "\n                if !replay.complete() || !identity.same_owner(&self.owner,replay.owner()) { return None; }\n                let Some(original) = &self.replayed else { return None; };\n                if original.count() as u128 != replay.total() as u128 { return None; }\n                let total = replay.total();\n                if total > self.output.frames() { return None; }\n                let mut ordinal = 0usize;\n                sail_while! { (ordinal < total)\n                    invariant (ordinal <= total, total == replay.served_view().len(),\n                        total <= self.output_view().endpoints().len(),\n                        forall|i:int| 0 <= i < ordinal ==> self.replay_frame_matches(replay,i))\n                    decreases (total-ordinal)\n                    {\n                        let Some(bytes) = self.output.frame_bytes(ordinal) else {\n                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }\n                            return None;\n                        };\n                        if !replay.reproduces_at(ordinal,bytes) {\n                            sail_proof! { assert(!self.replay_frame_matches(replay,ordinal as int)); }\n                            return None;\n                        }\n                        sail_proof! { assert(self.replay_frame_matches(replay,ordinal as int)); }\n                        ordinal += 1;\n                    }\n                }\n                None\n            "
+        },
+        {
+          "name": "replay-prefix-retained-reproduction",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "if !replay.reproduces_at(ordinal,bytes)",
+          "after": "if false"
+        },
+        {
+          "name": "replay-prefix-original-output-ordinal",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "self.output.frame_bytes(ordinal)",
+          "after": "self.output.frame_bytes(0)"
+        },
+        {
+          "name": "replay-prefix-original-served-ordinal",
+          "source": "crates/sail-acceptance/src/query_output_owner.rs",
+          "before": "replay.reproduces_at(ordinal,bytes)",
+          "after": "replay.reproduces_at(0,bytes)"
+        },
+        {
+          "name": "replay-prefix-original-frame-bytes",
+          "source": "crates/sail-acceptance/src/query_output.rs",
+          "before": "Some(&self.bytes[start..end])",
+          "after": "Some(&self.bytes[0..end-start])"
+        },
+        {
+          "name": "replay-prefix-reproduction-cannot-ignore-bytes",
+          "source": "crates/sail-acceptance/src/query_replay.rs",
+          "before": "self.served[ordinal].reproduced_by(actual)",
+          "after": "true"
         }
       ]
     },
@@ -2844,7 +3130,11 @@
         "crates/sail-api/src/project.rs",
         "crates/sail-api/src/jobs.rs",
         "crates/sail-api/src/repair.rs",
-        "crates/sail-daemon/src/jobs/store.rs"
+        "crates/sail-daemon/src/jobs/store.rs",
+        "crates/sail-api/src/evidence.rs",
+        "crates/sail-mcp/src/summary.rs",
+        "crates/sail-mcp/src/lib.rs",
+        "crates/sail-mcp/Cargo.toml"
       ],
       "verified": 498,
       "functions": [
@@ -4369,6 +4659,60 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "    { admitted.project }",
           "after": "    { let mut project = admitted.project; project.run_id = admitted.original.run_id.clone(); project }"
+        },
+        {
+          "name": "presentation-provisional-override",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "EstablishmentName::Provisional => VerdictName::Provisional,",
+          "after": "EstablishmentName::Provisional => VerdictName::Verified,"
+        },
+        {
+          "name": "presentation-confirmed-verified",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "VerdictName::Verified => VerdictName::Verified,",
+          "after": "VerdictName::Verified => VerdictName::Unknown,"
+        },
+        {
+          "name": "presentation-confirmed-failed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "VerdictName::Failed => VerdictName::Failed,",
+          "after": "VerdictName::Failed => VerdictName::Verified,"
+        },
+        {
+          "name": "presentation-confirmed-unknown",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "VerdictName::Unknown => VerdictName::Unknown,",
+          "after": "VerdictName::Unknown => VerdictName::Verified,"
+        },
+        {
+          "name": "presentation-confirmed-provisional",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "VerdictName::Provisional => VerdictName::Provisional,",
+          "after": "VerdictName::Provisional => VerdictName::Verified,"
+        },
+        {
+          "name": "presentation-report-original-establishment",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ presentation_verdict(&report.verdict,&report.establishment) }",
+          "after": "{ presentation_verdict(&report.verdict,&EstablishmentName::Confirmed) }"
+        },
+        {
+          "name": "presentation-report-original-verdict",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ presentation_verdict(&report.verdict,&report.establishment) }",
+          "after": "{ presentation_verdict(&VerdictName::Verified,&report.establishment) }"
+        },
+        {
+          "name": "presentation-full-fields-always-provisional",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "\n        match establishment {\n            EstablishmentName::Provisional => VerdictName::Provisional,\n            EstablishmentName::Confirmed => match verdict {\n                VerdictName::Verified => VerdictName::Verified,\n                VerdictName::Failed => VerdictName::Failed,\n                VerdictName::Unknown => VerdictName::Unknown,\n                VerdictName::Provisional => VerdictName::Provisional,\n            },\n        }\n    ",
+          "after": " VerdictName::Provisional "
+        },
+        {
+          "name": "presentation-full-report-always-provisional",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": " presentation_verdict(&report.verdict,&report.establishment) ",
+          "after": " VerdictName::Provisional "
         }
       ]
     }

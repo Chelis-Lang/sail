@@ -93,6 +93,99 @@ class SourceLexerTests(unittest.TestCase):
 class SourceCaptureTests(unittest.TestCase):
     """Mistaken source/representation selection cannot become proof evidence."""
 
+    def test_presentation_callers_are_native_bindings_and_enum_projection_does_not_supply_copy(self):
+        entry = {"id": "authority", "source": "proofs/refinement/authority.rs",
+            "dependencies": CHECKER.dependency_paths("authority")}
+        roles = CHECKER.source_roles(entry)
+        self.assertEqual(set(roles["reviewed_presentation_callers"]), set(CHECKER.PRESENTATION_NATIVE_BINDINGS))
+        self.assertFalse(set(CHECKER.PRESENTATION_NATIVE_BINDINGS) & set(roles["checked_source"]))
+        snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+        _, _, files = CHECKER.captured_driver(entry, snapshots)
+        self.assertNotIn(b"derive", files["output.rs"])
+        self.assertIn(b"presentation_verdict", files["api_acceptance.rs"])
+        for path, before in (
+            ("crates/sail-api/src/evidence.rs", b"crate::acceptance::present_function_verdict(report)"),
+            ("crates/sail-mcp/src/summary.rs", b"sail_api::acceptance::present_function_verdict(f)"),
+            ("crates/sail-mcp/src/lib.rs", b"mod summary;"),
+        ):
+            self.assertEqual(snapshots[path].count(before), 1)
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, snapshots[path].replace(before, b"unreviewed_presentation"))
+
+    def test_replay_receipts_and_controller_have_only_checked_private_construction(self):
+        paths = {path for component in CHECKER.COMPONENTS
+            for path in CHECKER.dependency_paths(component)}
+        paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs",
+            "crates/sail-acceptance/Cargo.toml", "crates/sail-api/src/lib.rs"])
+        paths.update("crates/" + name + "/Cargo.toml" for name in
+            ("sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
+        original = {path: (ROOT / path).read_bytes() for path in paths}
+        for before, after in (
+            (b"        statistics: bool,", b"        pub statistics: bool,"),
+            (b"        checked: usize,", b"        pub checked: usize,"),
+            (b"    pub struct ServedReply {", b"    #[derive(Default)]\n    pub struct ServedReply {"),
+            (b"    pub struct Replay<'a, Owner> {", b"    #[derive(Default)]\n    pub struct Replay<'a, Owner> {"),
+        ):
+            snapshots = dict(original)
+            self.assertEqual(snapshots[CHECKER.REPLAY_CORE].count(before), 1)
+            snapshots[CHECKER.REPLAY_CORE] = snapshots[CHECKER.REPLAY_CORE].replace(before, after)
+            with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
+                CHECKER.validate_assembly(snapshots)
+
+    def test_replay_native_framing_owner_join_and_budget_forwarders_remain_bound(self):
+        path = "crates/sail-shim/src/cached.rs"
+        original = (ROOT / path).read_bytes()
+        CHECKER.compiled_subset(path, original)
+        for before, after in (
+            (b"!is_single_response(bytes)", b"false"),
+            (b"output.with_replay(&check.comparison, &SolverOwnerIdentity)", b"Some(output)"),
+            (b"PUBLICATION_FIXED_BYTES.saturating_add(served_storage_bytes(&served))", b"PUBLICATION_FIXED_BYTES"),
+        ):
+            self.assertEqual(original.count(before), 1)
+            with self.subTest(before=before), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original.replace(before, after))
+
+
+    def test_option_state_is_checked_but_native_parser_and_session_are_only_bound(self):
+        helpers = {
+            "crates/sail-session/src/lib.rs", "crates/sail-session/Cargo.toml",
+            "crates/sail-smtlib/Cargo.toml",
+            *{"crates/sail-smtlib/src/" + stem + ".rs" for stem in
+                ("lib", "command", "lex", "split", "error")},
+        }
+        entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),
+            "source": "proofs/refinement/query.rs"}
+        roles = CHECKER.source_roles(entry)
+        self.assertIn(CHECKER.OPTIONS_CORE, roles["checked_source"])
+        self.assertTrue(helpers <= set(roles["reviewed_query_io"]))
+        self.assertFalse(helpers & set(roles["checked_source"]))
+        snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+        _, _, files = CHECKER.captured_driver(entry, snapshots)
+        self.assertIn("core_query_options.rs", files)
+        for stem in ("lib", "command", "lex", "split", "error"):
+            self.assertNotIn(stem + ".rs", files)
+        for path in helpers:
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, snapshots[path] + b"\n// drift\n")
+
+    def test_option_state_has_no_unchecked_public_or_derived_constructor(self):
+        paths = {path for component in CHECKER.COMPONENTS
+            for path in CHECKER.dependency_paths(component)}
+        paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs",
+            "crates/sail-acceptance/Cargo.toml", "crates/sail-api/src/lib.rs"])
+        paths.update("crates/" + name + "/Cargo.toml" for name in
+            ("sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
+        original = {path: (ROOT / path).read_bytes() for path in paths}
+        for before, after in (
+            (b"        active: bool,", b"        pub active: bool,"),
+            (b"    pub struct OptionState {", b"    #[derive(Default)]\n    pub struct OptionState {"),
+        ):
+            snapshots = dict(original)
+            self.assertEqual(snapshots[CHECKER.OPTIONS_CORE].count(before), 1)
+            snapshots[CHECKER.OPTIONS_CORE] = snapshots[CHECKER.OPTIONS_CORE].replace(before, after)
+            with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
+                CHECKER.validate_assembly(snapshots)
+
     def test_full_body_control_cannot_remove_checked_loop_syntax(self):
         original = b"{ sail_while! { (i < n) invariant(i <= n) { i += 1; } } true }"
         CHECKER.check_control_loops(original, original[:-6] + b"false }")
@@ -525,13 +618,13 @@ class SourceCaptureTests(unittest.TestCase):
     def test_owned_query_modules_keep_actual_imports_and_checked_constructors(self):
         for path in ("crates/sail-acceptance/src/query_prefix.rs",
                 "crates/sail-acceptance/src/query_policy.rs",
-                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.KEY_FACTORY):
+                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             CHECKER.compiled_subset(path, original)
             for addition in (b"\nuse hidden::*;", b"\n#[cfg(sail_verus)] use hidden::*;"):
                 with self.subTest(path=path, addition=addition), self.assertRaises(CHECKER.Refusal):
                     CHECKER.compiled_subset(path, original + addition)
-        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.KEY_FACTORY):
+        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.REPLAY_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
                 CHECKER.compiled_subset(path, original + b"\npub fn unchecked_factory() -> bool { true }")

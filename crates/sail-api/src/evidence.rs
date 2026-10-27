@@ -451,11 +451,7 @@ fn comparison_notes(compatible: bool, tally: &Tally) -> Vec<String> {
 }
 
 fn effective(report: &FunctionReport) -> VerdictName {
-    if report.establishment == crate::output::EstablishmentName::Provisional {
-        VerdictName::Provisional
-    } else {
-        report.verdict
-    }
+    crate::acceptance::present_function_verdict(report)
 }
 
 fn inventory(project: &ProjectResult, id: &Target) -> bool {
