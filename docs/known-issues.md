@@ -1,5 +1,13 @@
 # Known issues and limits
 
+- [#522](https://github.com/Chelis-Lang/sail/issues/522): the colored renderer's
+  full-operation always-refusing control exhausts default Stock resources at
+  `6214824a` (whole 618/1). The complete positive, 17 other selected negatives,
+  native workspace gate, solver53 and actual output e2e pass; the selected
+  aggregate remains failed. A byte-only checked rendering helper retains the
+  original complete wrapper contract, checks and loops; three moved fault
+  selectors and two new wrapper controls await fresh qualification.
+
 - [#517](https://github.com/Chelis-Lang/sail/issues/517) and
   [#518](https://github.com/Chelis-Lang/sail/issues/518): classifier proof/native
   compilation and strict lint refusals are retained in the closed component

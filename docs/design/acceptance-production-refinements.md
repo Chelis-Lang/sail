@@ -83,6 +83,16 @@ eighteen additional executable failure controls and native record/readback
 fixtures accompany the candidate. Direct proof, native tests and the actual
 output phase must qualify it before #506 can be considered addressed.
 
+The colored renderer additionally delegates its complete byte operation to
+`render_colored_footer_duration`, passing the admitted original stderr and
+supplied duration directly. The public wrapper retains every original
+postcondition, including exact prefix/duration output and successful rendering
+for supported complete inputs. The byte helper retains the actual checks,
+copy loop and all loop obligations. Three full-body control descriptors follow
+the moved byte operation with the same faults; two additional controls alter
+the wrapper's return/duration. This is a candidate correction for #522, not a
+qualified proof pass.
+
 The renderer delegates its original prefix/duration copy loop to a checked
 helper, retaining every loop invariant and decrease. The helper's exact byte
 postcondition keeps request and readback metadata outside that loop's proof;

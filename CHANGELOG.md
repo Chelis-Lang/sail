@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Isolate colored-footer byte rendering from replay-context records while
+  retaining its complete contract, validation, original prefix and duration
+  copying. New controls cover the delegating wrapper; qualification is pending
+  after the earlier full-operation fault reaches Stock's resource limit (#522).
+
 - Share the actual shallow SMT command classifier, borrowed option-value walk
   and Session response prediction with the checked production core. Preserve
   original command bytes, error offsets and conservative unknown results.

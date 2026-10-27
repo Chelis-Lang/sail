@@ -1,5 +1,34 @@
 # Acceptance boundary refinement qualification
 
+## Colored renderer resource correction candidate
+
+Frozen `6214824a` completes the native gate and 53 solver/fault tests, then
+executes all 19 selected authority calls: the complete positive and 17 ordinary
+negative controls pass, while
+`colored-human-footer-render-full-operation-always-refuses` exhausts default
+Stock resources in the renderer (whole 618/1, no VIR error). It earns zero
+ordinary-control credit. The actual output e2e subsequently passes, including
+unchanged plain output, edit/mtime/file/binary/environment/dep-info/lockfile/
+fingerprint invalidation, JSON and partial scope. The aggregate remains failed
+solely on the selected-control refusal, now tracked as
+[#522](https://github.com/Chelis-Lang/sail/issues/522).
+
+The terminal archive passes independent GET/hash:
+`experiments/2026-10-27/acceptance-native-colored-6214824a.tgz`, SHA-256
+`71980648d6d733dc148ba05522462d902c18022016f15f9c12f46b736eff1300`.
+Final source/runtime/image guards pass. Exact proof-program byte identity to
+`b327ab39` involves no fresh three-root Stock calls. The selected authority
+positive is a fresh complete Stock call. Other e2e phases, conformance, cost
+and the entire production-negative union remain unrun here.
+
+The correction candidate moves the actual colored byte-render operation into a
+checked byte-only helper. Every original public postcondition, byte check and
+loop obligation remains. Three moved full-body control descriptors retain
+exactly the same runtime faults; two additional controls cover the direct
+wrapper return and original duration binding. The current required union is
+360 query, 115 input and 267 authority negatives (742 total). Fresh whole-root
+and ordinary-control qualification is required; no resource limit is increased.
+
 ## Actual command kernel integration
 
 The current candidate integrates the actual shallow command declarations,
@@ -7,7 +36,7 @@ head/argument classifier, decimal conversion, borrowed value walk and native
 Session response decision from `c6b46500`. All 718 prior control names remain;
 three lexical descriptors follow the strengthened true final-cursor postcondition
 with the same executable faults, and 22 command controls are added. The required
-union is now 360 query, 115 input and 265 authority negatives. The expected query
+frozen union is 360 query, 115 input and 265 authority negatives. The expected query
 function-name union retains all prior entries; fresh whole-root discovery must
 establish the actual combined obligation/function counts.
 
@@ -40,8 +69,8 @@ SHA-256 `6dde4bd3b922a2cdee9c09874e289fdc370051eab78f7c2fe4f306e7b84d5daa`.
 Frozen `6214824a` passes the full native workspace gate: all 80 production-source
 tests, all 12 model-source tests, 1,310 Rust tests with 57 skips, strict Clippy,
 doctests, rustdoc, layering, dependency policy and generated benchmarks page.
-The normal solver/fault suite passes 53/53. Selected reporting controls and
-actual output e2e are still running in the immutable named native qualifier.
+The normal solver/fault suite passes 53/53. The subsequent selected-control refusal and passing output e2e are recorded
+above with their terminal archive.
 These observations do not qualify the subsequently changed command/cache source.
 
 ## Terminal output integration

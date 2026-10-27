@@ -3566,20 +3566,19 @@ sail_verified! {
     }
 }
 sail_verified! {
-    /// Produces the byte-only replay by copying the admitted original prefix
-    /// and exactly the supplied complete numeric duration. This cannot replace
-    /// the original profile/header or insert report/diagnostic bytes.
+    /// Renders only the original colored footer bytes and complete replacement
+    /// duration. Keeping this boundary byte-only excludes unrelated request and
+    /// readback records from the full rendering proof and its failure controls.
     #[allow(clippy::question_mark, reason = "Keep refusal explicit in the source shared with stock Verus.")]
-    pub fn render_colored_empty_human_output(admitted: &ColoredEmptyHumanOutput, duration: &[u8]) -> (out: Option<Vec<u8>>)
+    fn render_colored_footer_duration(stderr: &[u8], duration: &[u8]) -> (out: Option<Vec<u8>>)
         requires(true)
         ensures(out.is_some() ==> cargo_colored_footer(out.unwrap()@),
-            out.is_some() ==> exists |end: int| cargo_colored_footer_boundary_at(colored_empty_human_stderr(admitted)@, end)
-                && out.unwrap()@ == colored_empty_human_stderr(admitted)@.take(end) + duration@,
-            cargo_colored_footer(colored_empty_human_stderr(admitted)@) && cargo_duration(duration@)
+            out.is_some() ==> exists |end: int| cargo_colored_footer_boundary_at(stderr@, end)
+                && out.unwrap()@ == stderr@.take(end) + duration@,
+            cargo_colored_footer(stderr@) && cargo_duration(duration@)
                 && duration@.len() + 81 <= usize::MAX ==> out.is_some())
     {
         if !cargo_duration_only(duration) { return None; }
-        let stderr = admitted.stderr();
         let Some(end) = cargo_colored_footer_boundary(stderr) else { return None; };
         if duration.len() > usize::MAX - end { return None; }
         let bytes = copy_colored_footer_duration(stderr, end, duration);
@@ -3591,6 +3590,19 @@ sail_verified! {
         }
         Some(bytes)
     }
+}
+sail_verified! {
+    /// Produces the byte-only replay by copying the admitted original prefix
+    /// and exactly the supplied complete numeric duration. This cannot replace
+    /// the original profile/header or insert report/diagnostic bytes.
+    pub fn render_colored_empty_human_output(admitted: &ColoredEmptyHumanOutput, duration: &[u8]) -> (out: Option<Vec<u8>>)
+        requires(true)
+        ensures(out.is_some() ==> cargo_colored_footer(out.unwrap()@),
+            out.is_some() ==> exists |end: int| cargo_colored_footer_boundary_at(colored_empty_human_stderr(admitted)@, end)
+                && out.unwrap()@ == colored_empty_human_stderr(admitted)@.take(end) + duration@,
+            cargo_colored_footer(colored_empty_human_stderr(admitted)@) && cargo_duration(duration@)
+                && duration@.len() + 81 <= usize::MAX ==> out.is_some())
+    { render_colored_footer_duration(admitted.stderr(), duration) }
 }
 sail_verified! {
     /// Composes exact original/current requests, native path bytes, guarded
