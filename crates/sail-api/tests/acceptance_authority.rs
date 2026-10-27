@@ -112,6 +112,21 @@ fn empty_human_footer_cannot_carry_verifier_text() {
     assert!(!empty_human_bytes(b"verified", footer));
 }
 
+fn rendered_human_footer_preserves_prefix(
+    admitted: &sail_api::acceptance::EmptyHumanOutput<'_, '_>,
+) {
+    assert_eq!(
+        sail_api::acceptance::render_empty_human_output(admitted, b"12m 59s\n").as_deref(),
+        Some(
+            b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12m 59s\n"
+                .as_slice()
+        )
+    );
+    assert!(
+        sail_api::acceptance::render_empty_human_output(admitted, b"0.01s\nverified\n").is_none()
+    );
+}
+
 #[test]
 fn empty_human_replay_never_mints_requested_proof_authority() -> TestResult {
     use sail_acceptance::inputs::{InputFact, InputValue};
@@ -206,6 +221,7 @@ fn empty_human_replay_never_mints_requested_proof_authority() -> TestResult {
         assert_eq!(admitted.is_some(), variant == "positive", "{variant}");
         if let Some(admitted) = admitted {
             assert_eq!(admitted.stderr(), footer);
+            rendered_human_footer_preserves_prefix(&admitted);
             assert!(empty_human_candidate(&original, &observed, true));
             assert!(complete_request(&original, &observed).is_none());
             assert!(complete_request(&current, &observed).is_none());

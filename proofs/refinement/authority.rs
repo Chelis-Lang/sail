@@ -1157,7 +1157,21 @@ pub fn empty_human_replay_constructive<'a, 'b>(original: &'a crate::project::Res
 {
     let admitted = acceptance::admit_empty_human_output(original, current, observed, true,
         b"", stderr, Some(paths), Some(readback));
-    match admitted { Some(admitted) => { let actual = admitted.stderr(); proof { assert(actual == stderr); } true }, None => false }
+    match admitted {
+        Some(admitted) => {
+            let actual = admitted.stderr();
+            proof {
+                assert(actual == stderr);
+                reveal_byteslit(b"0.01s\n");
+                assert(acceptance::cargo_duration_tail(b"0.01s\n"@, 1));
+                assert(acceptance::cargo_duration(b"0.01s\n"@)) by {
+                    assert(acceptance::cargo_duration_tail(b"0.01s\n"@, 1));
+                }
+            }
+            acceptance::render_empty_human_output(&admitted, b"0.01s\n").is_some()
+        },
+        None => false,
+    }
 }
 
 /// Even Current, exit-zero empty observations cannot establish the independently

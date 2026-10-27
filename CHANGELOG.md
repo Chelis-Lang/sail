@@ -10,6 +10,9 @@ semantic versioning once the API is published.
   recorded observations, native paths and guarded readback, and admits only empty
   stdout plus one parsed Cargo completion line. It cannot return a verified
   report or proof token; JSON, job and MCP authority checks remain unchanged.
+  The byte-only renderer copies its admitted original footer prefix and checks
+  the complete supplied duration; its additional direct proof qualification is
+  pending.
 
 - Include recording eligibility and original-request/producer refusals in the
   optional unchanged-call decision trace (#476), preserving all admission checks.

@@ -814,7 +814,9 @@ pub fn replay_empty_human_output(
                     Some(paths),
                     Some(readback),
                 )?;
-                let stderr = regenerate_finished(admitted.stderr(), started.elapsed());
+                let mut duration = elapsed(started.elapsed()).into_bytes();
+                duration.push(b'\n');
+                let stderr = sail_api::acceptance::render_empty_human_output(&admitted, &duration)?;
                 if !sail_api::acceptance::empty_human_bytes(&[], &stderr) {
                     return None;
                 }

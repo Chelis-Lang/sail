@@ -494,6 +494,18 @@ successful replay still consumes the same checked request/path/readback/bytes
 admission. One final miss reason survives unavailable preflight or changed
 observations, while JSON and other proof-record consumers keep their original path.
 
+The next #376 presentation candidate source-shares the actual byte-only footer
+renderer. It finds the admitted original duration boundary, copies that exact
+original prefix and appends exactly the supplied fully parsed numeric duration.
+The real byte-only reader calls this operation instead of the native generic
+stderr renderer; whole/partial report replay retains its existing renderer.
+The checked contract preserves original profile/header and supplied duration
+association, rather than merely checking that the transformed output looks like
+a footer. Nine new executable controls retain complete loop contracts; positive
+inventory discovery, ordinary negatives, native tests and conformance remain
+pending. Human-mode selection, complete physical observations and saved-output
+origin remain separate open joins; no full-service claim follows from this source.
+
 The diagnostic and source-tooling archives are retained under
 `experiments/2026-10-27/acceptance-recording-a73d13c2-native.tgz`
 (SHA-256 `a62760bcbdebfcecda2c57652d21f683e44d4dda459f1bd38e17b19aaec8ff61`,
