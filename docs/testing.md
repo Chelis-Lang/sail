@@ -5,6 +5,18 @@ Run Linux checks on a native EC2 host with `ci/local.sh`; use `ci/run.sh host`
 for the macOS platform check. Performance measurements require a quiet native
 host, separate from builds and gates.
 
+Local containers keep a Cargo target volume per physical checkout (#475).
+Two prepared worktrees cannot reuse one another's binaries merely because both
+are mounted at `/work`; normal edits and symlink aliases of the same checkout
+retain its warm target. The first run in a new checkout builds its own target.
+`ci/local.sh target-volume` prints the selected Docker volume for evidence
+collection. `ci/local-singular.sh target-volume` prints its separate Singular
+target. The shared `sail-ci-cache` and `sail-singular-cache` volumes are unchanged.
+The former global target volumes are not selected automatically. Custom Docker
+qualification runners must also isolate prepared snapshots or explicitly rebuild
+the changed packages before switching sources; a clean Git checkout alone does
+not establish which binary Cargo executed.
+
 Actual compiler-boundary witnesses run separately from the pinned-Z3 solver
 fixtures. An owning bounded runner supplies frozen inputs to `ci/run.sh
 boundary-witness admission|shapes|phases`. The `phases` case requires
