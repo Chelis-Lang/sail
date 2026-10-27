@@ -230,6 +230,103 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(CHECKER.Refusal, "checked loop syntax"):
             CHECKER.check_control_loops(original, b"{ false }")
 
+    def test_runtime_control_skips_nested_contract_braces(self):
+        source = """sail_method! {
+            fn compare(x: bool) -> (accepted: bool)
+                requires ({ let nested = true; nested })
+                ensures (accepted == x, if accepted {1nat} else {0nat} == 0nat)
+            { if !x { return false; } true }
+        }"""
+        SOURCE.runtime_mutation(source, "{ if !x { return false; } true }",
+            "{ if !x { return false; } false }")
+        # The historical #468 selector must refuse before invoking Stock.
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, "1nat", "false")
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, "let nested = true", "let nested = false")
+
+    def test_runtime_control_preserves_loop_contracts_and_selects_actual_loop_code(self):
+        source = """sail_method! {
+            fn checked() -> (ok: bool) requires (true) ensures (ok)
+            { let mut n = 0; sail_while! { (n < 1)
+                invariant(n <= 1, if n == 0 {true} else {n == 1})
+                decreases(1 - n) { n += 1; } } n == 1 }
+        }"""
+        for before, after in (
+            ("n <= 1", "n < 1"),
+            ("1 - n", "2 - n"),
+            ("{true} else", "{false} else"),
+            ("invariant(n <= 1", "invariant(n <= 2"),
+        ):
+            with self.subTest(before=before), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "loop contract"):
+                SOURCE.runtime_mutation(source, before, after)
+        SOURCE.runtime_mutation(source, "(n < 1)", "(n < 0)")
+        SOURCE.runtime_mutation(source, "n += 1;", "n += 2;")
+        SOURCE.runtime_mutation(source, "} n == 1 }", "} n == 0 }")
+
+    def test_runtime_control_refuses_loop_contract_changes_inside_whole_method(self):
+        method = "fn f() -> (ok: bool) requires (true) ensures (ok) { sail_while! { (false) invariant(true) decreases(0) { } } true }"
+        source = "sail_method! { " + method + " }"
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "loop contract"):
+            SOURCE.runtime_mutation(source, method, method.replace("invariant(true)", "invariant(false)").replace("} true }", "} false }"))
+        SOURCE.runtime_mutation(source, method, method.replace("} true }", "} false }"))
+
+    def test_inventory_refuses_historical_contract_selector_before_stock(self):
+        import copy
+        import json
+        manifest = copy.deepcopy(json.loads((ROOT / CHECKER.MANIFEST).read_text()))
+        controls = manifest["components"][0]["negative_controls"]
+        control = next(item for item in controls
+            if item["name"] == "replay-full-comparison-always-refuses")
+        control["before"], control["after"] = "1nat", "false"
+        snapshots = {path: (ROOT / path).read_bytes() for component in CHECKER.COMPONENTS
+            for path in CHECKER.dependency_paths(component)}
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            CHECKER.inventory(ROOT, manifest, snapshots)
+
+    def test_runtime_control_refuses_erased_and_proof_only_selectors(self):
+        source = """sail_spec! { spec fn ghost() -> bool { true } }
+        sail_method! {
+            fn checked() -> (answer: bool) requires (true) ensures (answer)
+            { sail_proof! { assert(true); } true }
+        }"""
+        for before, after in (
+            ("spec fn ghost() -> bool { true }", "spec fn ghost() -> bool { false }"),
+            ("assert(true)", "assert(false)"),
+            ("sail_proof! { assert(true); }", "sail_proof! { assert(false); }"),
+        ):
+            with self.subTest(before=before), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.runtime_mutation(source, before, after)
+        SOURCE.runtime_mutation(source,
+            "{ sail_proof! { assert(true); } true }",
+            "{ sail_proof! { assert(true); } false }")
+
+    def test_runtime_control_cannot_hide_an_envelope_in_ghost_code(self):
+        method = "sail_method! { fn hidden() -> (x: bool) requires (true) ensures (x) { true } }"
+        for wrapper in ("sail_spec! { %s }", "sail_proof! { %s }", "proof { %s }"):
+            source = wrapper % method
+            self.assertEqual(SOURCE.executable_envelopes(source), [])
+            with self.subTest(wrapper=wrapper), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.runtime_mutation(source, "{ true }", "{ false }")
+
+    def test_runtime_control_refuses_nested_runtime_declarations(self):
+        for nested in (
+            "sail_method! { fn hidden() -> (x: bool) requires (true) ensures (if x {1nat} else {0nat} == 0nat) { true } }",
+            "fn hidden() -> bool requires true ensures if result {1nat} else {0nat} == 0nat { true }",
+        ):
+            source = "sail_method! { fn outer() -> (ok: bool) requires (true) ensures (ok) { " + nested + " true } }"
+            with self.subTest(nested=nested), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "nested runtime function"):
+                SOURCE.runtime_mutation(source, "1nat", "false")
+
+    def test_runtime_control_keeps_contracts_even_with_whole_method_selector(self):
+        source = "sail_verified! { fn f() -> (ok: bool) requires (true) ensures (ok) { true } }"
+        method = "fn f() -> (ok: bool) requires (true) ensures (ok) { true }"
+        SOURCE.runtime_mutation(source, method, method[:-6] + "false }")
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, method, method.replace("ensures (ok)", "ensures (true)"))
+
     def test_report_does_not_promote_bound_input_adapters_to_proved_bodies(self):
         for component, definition in CHECKER.COMPONENTS.items():
             entry = {"dependencies": CHECKER.dependency_paths(component)}
@@ -757,6 +854,15 @@ class SourceCaptureTests(unittest.TestCase):
         ):
             with self.subTest(body=body), self.assertRaises(SOURCE.SourceRefusal):
                 SOURCE.checked_item_envelopes("sail_code! { impl PartialEq for Key { " + body + " } }")
+
+    def test_inherited_trait_method_mutation_preserves_its_postcondition(self):
+        source = "sail_inherited_method! { fn eq(&self, other: &Self) -> (same: bool) ensures(if same {1nat} else {0nat} == 1nat) { true } }"
+        SOURCE.runtime_mutation(source, "{ true }", "{ false }")
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, "same {1nat}", "same {2nat}")
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.runtime_mutation(source,
+                "ensures(if same {1nat} else {0nat} == 1nat)", "requires(true) ensures(same)")
 
     def test_untrusted_ordering_cannot_substitute_the_report_being_authorized(self):
         source = (ROOT / "crates/sail-api/src/acceptance_sort.rs").read_text()
