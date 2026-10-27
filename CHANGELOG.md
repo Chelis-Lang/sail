@@ -5,6 +5,17 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Fail safe on several cache and daemon edge cases. The disk cache creates
+  its temporary entry file exclusively, so a preexisting file or symlink at
+  that name is refused rather than followed and truncated, and a name the
+  writer did not create is never removed (#412). `check-sat-using` is framed
+  as producing one response, so its reply is stored and served like
+  `check-sat`'s instead of ending reuse for the session (#397). The memory
+  tier's recency counter renumbers at exhaustion instead of overflowing
+  under its lock (#474), and a daemon `queue_wait` too large for the clock
+  drops the write instead of panicking (#478). The (still disabled)
+  dependency store's family key binds the native tools' bytes and fails
+  closed when a linker is chosen by configuration or flags (#187).
 - Replay unchanged calls on macOS. Cargo copies each build script to
   `build-script-build` again on every macOS run, so the copy never looked
   settled and no unchanged call was recorded (#437); unchanged Anvil took

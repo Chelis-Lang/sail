@@ -68,9 +68,32 @@ struct Inner {
 }
 
 impl Inner {
+    /// The next recency tick. The counter is a lifetime operation count, so
+    /// at exhaustion the held slots are renumbered densely in their current
+    /// order instead of overflowing (#474): recency order is preserved and
+    /// nothing panics while the tier lock is held.
     fn next_tick(&mut self) -> u64 {
-        self.tick += 1;
+        if let Some(tick) = self.tick.checked_add(1) {
+            self.tick = tick;
+            return tick;
+        }
+        self.renumber();
+        self.tick = self.tick.saturating_add(1);
         self.tick
+    }
+
+    /// Reassigns ticks `1..=n` to the held slots, least recently used first.
+    fn renumber(&mut self) {
+        let order = std::mem::take(&mut self.order);
+        let mut tick = 0u64;
+        for key in order.into_values() {
+            if let Some(slot) = self.slots.get_mut(&key) {
+                tick = tick.saturating_add(1);
+                slot.tick = tick;
+                self.order.insert(tick, key);
+            }
+        }
+        self.tick = tick;
     }
 
     fn remove(&mut self, key: &[u8; 32]) {
@@ -287,6 +310,33 @@ mod tests {
         let s = t.stats();
         assert_eq!(s.entries, 5);
         assert!(s.bytes <= s.capacity_bytes);
+    }
+
+    #[test]
+    fn exhausted_tick_renumbers_without_panicking_or_losing_order() {
+        // #474: the lifetime tick at u64::MAX must neither overflow (a panic
+        // under the tier lock) nor wrap (making a fresh touch look oldest).
+        let t = MemoryTier::new(5 * (100 + SLOT_OVERHEAD) + 10);
+        for i in 0..5u8 {
+            t.insert_on_disk(&QueryKey([i; 32]), val(100, i), stamp());
+        }
+        assert_eq!(t.stats().entries, 5);
+        if let Ok(mut inner) = t.inner.lock() {
+            inner.tick = u64::MAX;
+        }
+        // A miss and a hit at exhaustion: key 0 becomes most recent.
+        assert!(t.lookup(&QueryKey([9; 32])).is_none());
+        assert!(t.lookup(&QueryKey([0; 32])).is_some());
+        if let Ok(inner) = t.inner.lock() {
+            assert!(inner.tick < 10, "ticks were renumbered: {}", inner.tick);
+            assert_eq!(inner.order.len(), 5);
+        }
+        // Key 1 is now the oldest and is the one evicted.
+        t.insert_on_disk(&QueryKey([5; 32]), val(100, 5), stamp());
+        assert!(t.lookup(&QueryKey([1; 32])).is_none());
+        for i in [0u8, 2, 3, 4, 5] {
+            assert!(t.lookup(&QueryKey([i; 32])).is_some(), "{i}");
+        }
     }
 
     #[test]

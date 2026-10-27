@@ -223,7 +223,9 @@ pub fn shape_ok(command: &str, reply: &[u8]) -> bool {
     }
     let body = reply.trim_ascii();
     match command {
-        "check-sat" | "check-sat-assuming" => matches!(body, b"sat" | b"unsat" | b"unknown"),
+        "check-sat" | "check-sat-assuming" | "check-sat-using" => {
+            matches!(body, b"sat" | b"unsat" | b"unknown")
+        }
         "echo" => reply.ends_with(b"\n"),
         "get-info" => body.starts_with(b"(:") && body.ends_with(b")"),
         _ => !body.is_empty() && !body.starts_with(b"(error"),
@@ -454,8 +456,14 @@ impl DiskCache {
         // must not write into the same temporary file.
         let seq = TMP_SEQ.fetch_add(1, Ordering::Relaxed);
         let tmp = dir.join(format!(".tmp-{}-{seq}-{key}", std::process::id()));
+        // Exclusive creation: a preexisting name (another writer's file or a
+        // symlink) is refused rather than followed and truncated, and a name
+        // this call did not create is never removed (#412).
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&tmp)?;
         let written = (|| {
-            let mut f = std::fs::File::create(&tmp)?;
             let mut buf = serde_json::to_vec(&meta).map_err(std::io::Error::other)?;
             buf.push(b'\n');
             buf.extend_from_slice(reply);
@@ -593,6 +601,56 @@ mod tests {
                 "round {round}: no valid entry"
             );
         }
+        let _ = std::fs::remove_dir_all(c.root());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn put_refuses_a_preexisting_temporary_name() {
+        // #412: a symlink at the next temporary name must not be followed
+        // (truncating its target), renamed into place, or removed.
+        let c = DiskCache::new(scratch("tmp-symlink"));
+        let k = QueryKey([5; 32]);
+        let dir = c.entry_path(&k).parent().map(Path::to_path_buf);
+        let dir = dir.unwrap_or_else(|| c.root().to_path_buf());
+        assert!(std::fs::create_dir_all(&dir).is_ok());
+        let target = c.root().join("owned-by-someone-else");
+        assert!(std::fs::write(&target, b"sentinel").is_ok());
+        let seq = TMP_SEQ.load(Ordering::Relaxed);
+        // Other tests in this process may take sequence numbers concurrently,
+        // so plant the link at a run of upcoming names.
+        let links: Vec<PathBuf> = (seq..seq + 64)
+            .map(|n| dir.join(format!(".tmp-{}-{n}-{k}", std::process::id())))
+            .collect();
+        for l in &links {
+            assert!(std::os::unix::fs::symlink(&target, l).is_ok());
+        }
+        let mut refused = false;
+        for _ in 0..64 {
+            match c.put(&k, b"unsat\n", "check-sat", "z3", "pinned-solver", None) {
+                Err(e) => {
+                    assert_eq!(e.kind(), std::io::ErrorKind::AlreadyExists);
+                    refused = true;
+                }
+                Ok(()) => break,
+            }
+        }
+        assert!(refused, "a preexisting temporary name must be refused");
+        assert_eq!(
+            std::fs::read(&target).ok().as_deref(),
+            Some(&b"sentinel"[..])
+        );
+        let entry = c.entry_path(&k);
+        assert!(
+            std::fs::symlink_metadata(&entry).map_or(true, |m| !m.file_type().is_symlink()),
+            "the entry must never be a renamed symlink"
+        );
+        assert!(
+            links
+                .iter()
+                .all(|l| std::fs::symlink_metadata(l).is_ok_and(|m| m.file_type().is_symlink())),
+            "a name this writer did not create must not be removed"
+        );
         let _ = std::fs::remove_dir_all(c.root());
     }
 

@@ -14,6 +14,7 @@ mod freshness;
 pub(crate) mod ghost_environment;
 mod input;
 mod native_include_hints;
+mod native_tools;
 pub mod noop;
 pub mod projects;
 mod read_check;

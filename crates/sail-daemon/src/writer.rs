@@ -112,7 +112,13 @@ impl Writer {
             return Submitted::Duplicate;
         }
         let cost = job.cost();
-        let deadline = Instant::now() + wait;
+        // A wait the platform clock cannot represent (for example
+        // `Duration::MAX` from the public `Config::queue_wait`) drops the
+        // write rather than panicking: a dropped write only costs a later
+        // miss (#478).
+        let Some(deadline) = Instant::now().checked_add(wait) else {
+            return Submitted::Dropped;
+        };
         // An empty queue takes any one job, however large.
         while !q.closed && !q.keys.is_empty() && q.bytes.saturating_add(cost) > self.capacity {
             let left = deadline.saturating_duration_since(Instant::now());
@@ -199,5 +205,46 @@ impl Writer {
             }
             self.space.notify_all();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn job(byte: u8) -> Job {
+        Job {
+            key: QueryKey([byte; 32]),
+            value: Arc::new(Value {
+                mode: "default".to_owned(),
+                reply: b"unsat\n".to_vec(),
+                effort: None,
+            }),
+            command: "check-sat".to_owned(),
+            provenance: "pinned-solver".to_owned(),
+            solver: String::new(),
+        }
+    }
+
+    #[test]
+    fn an_unrepresentable_wait_drops_the_write_without_panicking() {
+        // #478: `Config::queue_wait` is public and unconstrained, so
+        // `Duration::MAX` must drop the write, never overflow the deadline.
+        let writer = Writer::new(1 << 20);
+        let memory = MemoryTier::new(1 << 20);
+        assert_eq!(
+            writer.submit(&memory, job(1), Duration::MAX),
+            Submitted::Dropped
+        );
+        assert_eq!(writer.load(), (0, 0));
+        assert_eq!(memory.stats().pending, 0);
+        assert_eq!(memory.stats().entries, 0);
+        // An ordinary wait still queues.
+        assert_eq!(
+            writer.submit(&memory, job(2), Duration::from_secs(1)),
+            Submitted::Queued
+        );
+        assert_eq!(writer.load().0, 1);
+        assert_eq!(memory.stats().pending, 1);
     }
 }
