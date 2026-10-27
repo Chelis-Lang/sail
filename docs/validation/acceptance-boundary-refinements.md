@@ -19,6 +19,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `48f09fa7` parser query positive | Native full-query attempt checks all 835 function entries and retains 477 verified plus three failed functions in 39.006 s, with final source/runtime guards passing. Diagnostics include push's missing preappend scan fact/postcondition, chunk endpoint constructiveness and a resource refusal in the long-command witness | No positive/control/native credit and no inventory lock. Separate source guidance explicitly unfolds the original invariant and scopes finite-prefix/flat-list facts; contracts, runtime operations, resources and all controls remain mandatory |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
 | `e36c749b` | Complete native discovery passes query 471/0 (821 functions), inputs 308/0 (538), authority 510/0 (895); every earlier function retained and final source/runtime checks pass | Actual inventories locked for 400 unique planned cases: 397 negatives plus three positives. The 409-call partition schedule remains held for native compile/Clippy clearance; no combined matrix, native completion or service theorem |
@@ -57,6 +58,23 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The closed parser attempt is retained as
+`experiments/2026-10-27/acceptance-parser-48f09-native.tgz`, SHA-256
+`1a9e779c6dacf9c4597dd5cc01813ccc792609a9eecbfdfc1bbabebb1c18ebfa`
+(348,993 bytes). Host creation and an independent local SCP/hash agree; object
+upload/readback remains pending. It preserves the first controller's root/Ubuntu
+Git-ownership preflight refusal (no verifier call), then the Ubuntu system
+service's whole-query refusal, exact command, source bundle, captured driver/files,
+raw JSON/stderr and terminal unit states. Native Linux uses freshly rebuilt core
+image ID `sha256:920da549f02ad2b6e7305b49fe5444f3c8fcb8e54ea36d5ea8e85c3a434f00e6`.
+Stock uses the pinned runtime, 120 s timeout, one thread and unchanged resources.
+All original functions are retained, but the failed 477 count is not an accepted
+inventory. Explicit preappend invariant facts and scoped finite-list proof
+guidance replace eager recursive unfolding; the full-push mutant is rebound to
+that complete body with the same wrong acceptance exit and all proof obligations.
+No native SMT tests or negative controls have run. A new frozen whole root must
+pass before proceeding; parser interpretation and service obligations stay open.
 
 The stopped `6e239d212182e3b6595de52d335acf765974d7b5` native attempt is retained
 at `experiments/2026-10-27/acceptance-combined-6e239d21-native-early.tgz`, SHA-256

@@ -101,6 +101,14 @@ No native or verifier execution was performed locally. Native outer offsets,
 top-level emission inventory, lexical/classifier/solver semantics and physical
 origins stay open; the kernel's representable-append premise stays explicit.
 No complete #371 or service theorem is claimed. CI policy remains unresolved.
+The first whole query run at `48f09fa7` refuses: 477 verified/three failed
+functions across all 835 entries, with an additional resource-limit marker.
+Final source/runtime checks pass. No inventory is locked from that refusal.
+The next candidate adds explicit invariant/scan facts before append and uses
+scoped finite-prefix/flat-list guidance for the unchanged constructive cases;
+runtime operations, contracts, resources and control intent are preserved.
+The closed failed archive and controller preflight refusal remain in the
+[owning record](validation/acceptance-boundary-refinements.md).
 
 ## Frozen pre-kernel proof scope and qualification
 
