@@ -178,6 +178,10 @@ consumes only actual `Iterator::next` outcomes and calls the same actual target
 record constructor. Its loop relates produced keys plus the iterator's remaining
 keys to the immutable original dictionary: exact cardinality, set coverage,
 uniqueness and order. There is no supplied complete-list or success Boolean.
+An unexpected iterator end returns explicit absence, never a truncated row
+list. The constructive postcondition additionally requires a present complete
+projection for every valid original standard-library dictionary, so an
+always-refusing implementation must fail verification.
 The ordinary native fixture compares insertion, duplicate handling and complete
 projection with the original String-tuple set. These bodies, their contracts
 and the fixture remain unqualified and unselected by managed execution.
