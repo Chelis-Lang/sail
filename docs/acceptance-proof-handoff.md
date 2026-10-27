@@ -411,3 +411,8 @@ workspace/conformance/cost and physical/parser/Session/Z3/origin composition sta
 open. Two targeted lightweight source guards pass; no local native/proof build
 or excluded consumer/provider action is used. ADR 0086 and CI policy remain
 unselected; this slice adds no graph edge or new trusted premise.
+
+The actual native output loop's once-per-item replay-cursor advancement and
+frame handover remain bound/unverified caller event-order relations. The paired
+append theorem does not by itself compile that for-loop or authenticate physical
+reads/end/wait, comparison, solver origin or presentation authority.
