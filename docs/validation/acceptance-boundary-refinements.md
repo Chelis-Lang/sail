@@ -55,8 +55,19 @@ sequence interpretation. It introduces no new axiom, host premise, executable
 behavior, weakened contract or resource setting. Fresh complete-root and native
 qualification remain required.
 
+The `e3515b8c` follow-up is retained at
+`experiments/2026-10-27/acceptance-request-domain-e3515b8c-native.tgz`, SHA-256
+`4f45406a90ad82569acacb7a8ff75297ccc0dfe92c5b9ba1bfa8d7f19809b346`
+(7,566,981 bytes), with authenticated PUT/GET agreement. Literal length guidance
+resolves the separator and forwarded-normalization failures. Its follow-up
+constructs the finite prefix equality explicitly and disambiguates the standard
+reference-trait comparison from the owned key comparison, using the actual
+standard implementation's relation. These remain checked proof steps; no
+predicate, guard, contract or resource limit changes.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `e3515b8c` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass. Whole authority reaches 556 verified and three ordinary errors with no resource diagnostic. Controller finishes in 470.888 s; final source/image/runtime checks pass | Two finite partial-selector witnesses and the reference-iterator ordering assertion remain. Native compilation, request tests and negatives are unrun; no authority inventory is frozen from the partial output |
 | `bfae0ec4` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass and retain earlier functions. Whole authority reaches 553 verified and five ordinary errors across 960 function entries, with no resource diagnostic. Controller finishes in 470.384 s; final source/image/runtime checks pass | Remaining failures are the initial-separator literal distinction, two partial-selector witnesses, forwarded incremental normalization and the actual reference-iterator ordering interpretation. No authority inventory or negative credit; native compilation and request tests are unrun |
 | `8b62f6fe` request/domain candidate | Source suites pass, including all 66 production tests. Query 471/0 (821 functions) and inputs 308/0 (538) pass again. Whole authority reaches verification: 541 verified and 14 errors, including resource exhaustion in four new refusal witnesses; 20 diagnostics total. Controller finishes in 474.190 s with final source/image/runtime checks | Remaining failures concern argument/literal projection, finite normalization witnesses, reference-order interpretation and the real dictionary projection loop. Partial authority output supplies no qualified inventory or negative credit; native compilation and request tests are unrun |
 | `c9c971ab` request/domain candidate | Native source suites pass, including all 66 production source tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass and retain every earlier function. Whole authority stops after 2.802 s at two VIR errors; overall controller finishes in 438.226 s with final source/image/runtime checks | The zero-argument broadcast lemma needs a broadcast-use directive, and final iterator state needs explicit dereference before its spec method. Authority has no proof credit or discovered inventory; native compilation, request tests and negative controls are unrun |

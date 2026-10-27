@@ -102,6 +102,11 @@ pub fn original_dictionary_partial_refuses(header: crate::request_targets::Origi
         acceptance::request_literal_lengths();
         assert(string_bytes(&request.args@[0]) == b"--"@);
         assert(string_bytes(&request.args@[1]) == b"--verify-module=selected"@);
+        assert(b"--verify-module=selected"@.take(b"--verify-module"@.len() as int)
+            =~= b"--verify-module"@);
+        assert(sail_acceptance::authority::flag_matches(b"--verify-module=selected"@,
+            b"--verify-module"@));
+        assert(acceptance::focused_argument(string_bytes(&request.args@[1])));
         assert(acceptance::partial_command(request.args@));
     }
     acceptance::complete_request_ordered(&request, project, orders).is_none()
@@ -154,6 +159,11 @@ pub fn constructed_partial_refuses(source: acceptance::RequestConstruction<'_>,
         acceptance::request_literal_lengths();
         assert(string_bytes(&request.args@[0]) == b"--"@);
         assert(string_bytes(&request.args@[1]) == b"--verify-module=selected"@);
+        assert(b"--verify-module=selected"@.take(b"--verify-module"@.len() as int)
+            =~= b"--verify-module"@);
+        assert(sail_acceptance::authority::flag_matches(b"--verify-module=selected"@,
+            b"--verify-module"@));
+        assert(acceptance::focused_argument(string_bytes(&request.args@[1])));
         assert(acceptance::partial_command(request.args@));
     }
     acceptance::complete_request_ordered(&request,project,orders).is_none()
