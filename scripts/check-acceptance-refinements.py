@@ -54,7 +54,7 @@ INPUT_NATIVE_SHA256 = {
     'crates/sail-verus/src/adapter_attempts.rs': '6eb4411659b547a86f093c80f3f5b9f4cb28316821576646a85db385e4fe3e58',
     'crates/sail-verus/src/engine.rs': 'c95a32e3b60cdfe9c8cf768a56e22a5fc2aa4c3aa47dad86028a242b42153213',
     'crates/sail-verus/src/managed/mod.rs': '7d1a4092e364b466a4da4247fb91418af8930fbd8316e83b8641d8f1b8b9cff9',
-    'crates/sail-verus/src/managed/command_environment.rs': 'd66a54bc20f8550e89e1078ce4db22ff9ab5b744268a2991630a5f89e3a804e6',
+    'crates/sail-verus/src/managed/command_environment.rs': 'a41e7b8cf40c50597dad49e1e9afdb703a452c1fc58a8102ee0b9f2267895afc',
     'crates/sail-verus/src/managed/runner.rs': '9040276ef2a0be9fd740c769d4d603e4c91ea5339e30f989f7dfd9ee7d938e1e',
     'crates/sail-verus/src/managed/request.rs': 'dc079a01a60d64ee482540f5023deba9025cbc45010b6b2d1b56f2f7519bbaba',
     'crates/sail-verus/src/managed/noop.rs': '5144183f5739a0141dd16e8a1341ebbe9d2c33872e9504c74be7ce0bb1ba9b60',

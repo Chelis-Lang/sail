@@ -22,13 +22,27 @@ The positive-only report SHA-256 is
 `30822d09dcc90b76c315fd3ec8fa392af478b7b20def6d9e56e7d5e60cc36876`.
 
 The capture retains 115 query, 115 input and 107 authority ordinary-Verus
-controls. Query control qualification, native workspace/solver checks and
-independent artifact review remain pending. Source-control selftests pass
+controls. The corrected `c44cdcfa` query run passes all four partitions:
+119 full-scope calls, comprising four whole query positives and the exact
+disjoint union of 115 ordinary failures. Independent archive review checks
+every verifier stdout/stderr, all 759 functions, the 431-obligation scope,
+direct stock commands, source/runtime/compiler identity and absence of resource
+markers. Individual reports remain incomplete-component partitions; the
+audited union covers query only. Native workspace/solver checks, the complete
+340-case matrix and final main integration remain pending. Source-control selftests pass
 43/43 at `0247a13e`, retaining all 41 original tests plus two new tests; the
 final combined gate must rerun them. Development refusals below remain visible.
 Native Rust mutation results are separate from ordinary-Verus negative credit.
 Parser semantics, physical origin, protected writers/recovery and full service
 composition remain open. This candidate precedes the lead's main reconciliation.
+
+The closed proof archive is preserved privately at
+`experiments/2026-10-27/acceptance-query-c44cdcfa-stock-controls.tar`:
+64,061,440 bytes, SHA-256
+`d54d73f49d80adf58600bc2d14868eaa0706fab6e0c629c622698f74de85d0ef`.
+Independent S3 GET/hash verification and the full query-scope audit pass.
+It includes development refusals and the final control reports; no live native
+logs or native-body qualification are included.
 
 ## Checked source and runtime
 
@@ -91,6 +105,7 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `9f6dfd52` | Native workspace gate | Shared-kernel lint corrections pass; strict clippy next refuses the native completion adapter's optional-environment guard. Use the equivalent optional borrow and retain the same raw output, with an explicitly reviewed native source binding; ordinary tests/solver remain unrun |
 | 2026-10-26 | `c44cdcfa` | Native workspace gate | Source selftests complete before strict clippy refuses eight shared-kernel style diagnostics. Reasoned local annotations retain checked Option branches/lifetimes, and a local payload name changes; no executable transition or contract changes. Ordinary workspace tests and solver suite remain unrun at this checkpoint |
 | 2026-10-26 | `35373419` | Initial four query-control partitions | Partition 0 completes 30 cases; partition 2 refuses an rlimit hit in `output-exact-appended-bytes`, and partitions 1/3 refuse whole-validator mutations that removed a loop VC. No aggregate qualification: retain full validator bodies/loops with terminal acceptance forced false, and add an exact-byte proof cut without changing executable append, contracts, count checks or limits |
 | 2026-10-26 | `6b7b9c49` | Expanded query whole-positive discovery | Two constructive checkpoint-rank assertions remain unproved; expose the already checked frozen key/material relation directly in its factory postcondition and instantiate the original literal header/span equalities. No completed positive inventory or negative qualification claimed |
