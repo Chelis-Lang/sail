@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Give each physical local-validation checkout its own Cargo target volume
+  (#475), preventing prepared worktrees from accidentally executing another
+  snapshot's binaries. Repeated runs in one checkout retain the same volume;
+  `ci/local.sh target-volume` exposes its name for evidence collection.
+
 - Read managed Cargo's output-control endpoint from its private transport file
   when classifying artifact output (#471). Valid completion markers no longer
   prevent the artifact provider from sealing solely because the endpoint is

@@ -9,6 +9,8 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `3dbebad5` fresh native output control | Baseline `1a6df52b` fails the intended original-marker assertion; correction passes the same real file-backed alias regression and strict `sail-verus` package Clippy. Each source has an explicit package clean and actual compilation; final source/image guards pass | One selected native test, 598 unselected; no full workspace/e2e/conformance or complete production proof claim |
+| `3dbebad5` shared-target attempt | Baseline builds/fails; corrected command performs no compilation (Cargo reports 0.05 s) and repeats the baseline failure despite different source bytes (#475) | Corrected runtime qualification refused. A later explicit rebuild separates this build-cache defect from product behavior; direct Stock proofs are unaffected |
 | `ed26f794` output-control baseline | Focused native test fails, but its parent assertion retains only child stdout and hides the original refusal in stderr; controller denies baseline credit with `baseline:wrong-refusal` | Corrected implementation and Clippy unrun. The fixture now retains both child streams; rerun requires new frozen baseline/corrected sources |
 | `9099f673` source controls | Native model-source tests pass 12/12 and production-source tests pass 63/63 (259.807 s), including exact original control inventory, protected loop annotations and real runtime selectors; final source/image guards pass | Source-tooling qualification only, no Stock call or runtime test. Rust bodies, proof resources and 397 descriptors remain unchanged |
 | `4c43e5a9` native gates | Workspace passes all 1,278 tests with 57 configured skips, plus doctests and workspace checks; solver suite passes 53/53. Separate direct model suite passes all 31 cases | Frozen-source gates, not automatic qualification of later source or a complete production-control matrix |
@@ -97,8 +99,8 @@ formal obligations, existing mutation descriptors or verifier limits.
 That complete source qualification now passes at frozen `9099f673`; the
 private archive `experiments/2026-10-27/acceptance-source-9099f673-native.tgz`
 is SHA-256 `689480751efc40e823b66e6ff05892e3bde457a20611ebc28f1a7a42fe1fb82e`
-(6,828,538 bytes), with controller upload/readback checked. Lead independent
-GET/hash and raw report review remain pending. The earlier full native workspace
+(6,828,538 bytes), with controller upload/readback and lead independent
+GET/hash plus raw report review checked. The earlier full native workspace
 and solver pass at `4c43e5a9` is retained separately as
 `experiments/2026-10-27/acceptance-combined-4c43e5a9-native-early.tgz`, SHA-256
 `7cedd3c40dd0ea9de271800e98aa5c088e4c6f83fdec2e52c2211a88e6028d75`;
@@ -124,6 +126,30 @@ fails in 28.726 s including build time, but the original child stderr is absent
 from its failure message. The controller refuses attribution and runs neither
 the corrected test nor Clippy; final source/image checks pass. Capturing both
 child streams changes no assertion or production predicate.
+
+The fresh-package red/green at frozen `3dbebad5` is retained at
+`experiments/2026-10-27/acceptance-output-control-3dbebad5-fresh-native.tgz`,
+SHA-256 `c76a3f8d8da0cb556c8a0c3d340cb1619bf071531d28d85b89da6b0909f9b3b8`
+(6,876,667 bytes). Each selected source is clean and actually compiled after
+an explicit `cargo clean -p sail-verus`. The original lookup fails the exact
+marker-completion assertion; the corrected lookup passes the unchanged test
+and strict all-target package Clippy. Total gate duration is 69.923 s, not a
+performance result. Lead independent GET/hash and raw report/log review pass.
+
+The preceding shared-target attempt is separately preserved as
+`experiments/2026-10-27/acceptance-output-control-3dbebad5-native.tgz`, SHA-256
+`336597e24f6ffdfb7fb0797dbf2171e3f086953dde48b992a4599bf45f30e84f`
+(6,875,962 bytes), with lead independent GET/hash checked. It runs both prepared
+clones against the same Docker target volume and `/work` mount. The corrected
+command performs no compilation, so source cleanliness supplies no corrected
+binary receipt. #475 tracks this concrete qualification gap. The wrapper
+correction derives its target volume from the physical checkout and keeps
+normal same-checkout reuse. A lightweight real-wrapper test with a recording
+Docker stand-in fails the original cross-checkout isolation assertion and passes
+the new behavior, repeated calls, physical symlink aliases and separate Singular
+targets. This checks command construction, not real Docker/Cargo acceptance of
+the new wrapper or any production theorem. Full native wrapper qualification
+remains required.
 
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace

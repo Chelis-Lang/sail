@@ -8,13 +8,27 @@ The frozen `4c43e5a9` full native end-to-end gate stops on the neutral-contract
 positive with backend currentness Unknown and `NotProved`
 ([#471](https://github.com/Chelis-Lang/sail/issues/471)). Its journal records the
 actual provider intent/start and artifacts but omits the provider completion.
-The accounting observer still reads its endpoint directly from the environment,
+The accounting observer read its endpoint directly from the environment,
 while the original managed driver uses the private transport file. The source
-correction uses that same transport accessor and adds real file-backed alias
-regressions for absent and conflicting caller variables. Red/green native
-qualification and unchanged full end-to-end/conformance gates remain pending.
+correction uses that same transport accessor. A freshly rebuilt native baseline
+fails the intended assertion; the correction passes the real file-backed alias
+regression for absent and conflicting caller variables and strict package
+Clippy. Full end-to-end/conformance qualification remains pending.
 The conservative incomplete-observation refusal and positive expectation stay
 unchanged; no false proof has been demonstrated.
+
+Local containers previously shared one Cargo target volume across prepared
+checkouts mounted at `/work`, allowing Cargo to reuse a different snapshot's
+binary when both source trees predated its build
+([#475](https://github.com/Chelis-Lang/sail/issues/475)). A controlled native
+attempt performs no corrected-source compilation and reruns the baseline
+failure; explicit per-source package rebuilds produce the intended red/green.
+The local wrappers now select a target volume per physical checkout and expose
+its name for evidence collection. Real wrapper-command tests reject the old
+cross-checkout sharing and pass the correction, same-checkout warmth and symlink
+aliases. Real Docker/native qualification of this wrapper change remains open;
+custom qualification runners must independently bind their compiled artifacts.
+Direct-source stock proofs are unaffected.
 
 The frozen `4c43e5a9` ordinary-control matrix stops at query control 151:
 its mutation selector replaces `1nat` in an ensures clause instead of changing
