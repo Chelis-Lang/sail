@@ -398,6 +398,42 @@ option/value semantics. In particular, the native `expected_targets` package,
 feature and target filters and its actual selector scan remain mandatory later
 work in #375. This slice completes none of the physical/provider obligations.
 
+## Original selector scan candidate
+
+The actual `expected_targets` caller delegates its original argument scan to
+`request_selectors.rs::scan_original_selectors`. The constructor records package,
+exclusion and binary values as original argument indices plus ASCII byte offsets,
+with original repetition/order and library/all-binary state. It stops at the
+actual first Cargo separator. A pending flag consumes the next original prefix
+value, including another recognized flag spelling; a missing final value adds
+nothing. Compact `--package=`, `-p`, `-p=`, `--exclude=` and `--bin=` keep their
+existing suffix rules. No String copy, normalization or `strip_prefix` premise
+constructs these ranges.
+
+The same actual native caller uses checked byte-window/suffix and package
+name/id/first-at-version matching over those original ranges. Exact window length
+prevents prefix matches from becoming full matches. Unknown metadata versions
+cannot satisfy a version-qualified selector, and invalid indices/offsets refuse.
+These functions return selection data and match booleans, never a Current or
+proof-authority token. Nonempty constructive witnesses and 23 executable
+mutations accompany the source. Every prior 77 request control remains required;
+no new verified or function counts are guessed.
+
+Ordinary native differential fixtures independently retain the old scanner and
+its old name/id/`split_once('@')` rule. The fixtures cover Unicode, embedded NUL,
+repetitions, original positions, empty and missing values, compact spellings,
+flag words consumed as values and forwarded selectors. They are source-only
+until native qualification; no output or verifier transport is exercised.
+
+The original Cargo JSON member/default/root lists, package/version/verify data,
+full target kinds and required/enabled feature Values still feed the existing
+native metadata filters unchanged. JSON decoding/enumeration and those actual
+selection/filter loops remain open. The separate original workspace helper also
+retains its existing raw prefix-word interpretation; this slice does not prove
+Cargo's complete option/value parser or physical launch/input origin. The next
+metadata move must retain raw observation domains and their decode relation,
+not replace membership/kind/feature predicates with supplied success booleans.
+
 ## Independent checking
 
 Commit the source first, then run Python 3.11 or newer:

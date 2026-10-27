@@ -20,6 +20,17 @@ native source-suite evidence; this combined extension and actual request/domain
 construction still require fresh native source checks and complete-root Stock
 discovery. No function or obligation counts are inferred from the support probe.
 
+An original-selector source candidate now connects the real `expected_targets`
+scan and name/id/version matching to checked original byte ranges. It adds the
+actual `ArgumentSpan`/`OriginalSelectors` declarations, original-prefix scanner,
+exact byte-window/suffix/package matchers, five constructive witnesses and 23
+mandatory executable controls. Static envelope inspection locates every mutation
+inside actual executable code and preserves signatures/contracts/loop annotations;
+this earns no proof or negative credit. All prior 77 request controls and actual
+function minima remain required. New complete-root, source and native gates are
+pending. Existing Cargo JSON filters, full Cargo option/value semantics, decoder
+and physical/provider joins remain open.
+
 A separate report-mode construction source slice delegates the actual adapter
 operation to checked `request_mode.rs`. Its original packed option matcher and
 native lookup remain; fourteen mandatory executable controls and nonempty
