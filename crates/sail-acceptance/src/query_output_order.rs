@@ -170,12 +170,13 @@ sail_code! {
         sail_method! {
             /// Transfers the same original fields back to the unchanged native
             /// EOF/drop/wait/tail/seal/finish/replay-join block. No status is minted.
+            #[allow(clippy::type_complexity, reason = "The returned tuple exposes the four original owned native fields together, rather than introducing another opaque constructor or losing their exact transfer contract.")]
             pub fn into_parts(self) -> (out:(crate::query_output_split::ParsedOutput<Owner>,crate::query_replay::Replay<'a,Owner>,Option<(bool,usize)>,Option<usize>))
                 requires (self.coherent())
                 ensures (out.0 == self.output_view(),out.1 == self.replay_view(),out.3 == self.forwarding_view(),
                     match out.2 {Some((fresh,start))=>self.pending_view()==Some((fresh,start as int)),None=>self.pending_view().is_none()})
             {
-                let pending=match self.pending {Some(p)=>Some((p.fresh,p.start)),None=>None};
+                let pending=self.pending.map(|p| (p.fresh,p.start));
                 (self.output,self.comparison,pending,self.forward_from)
             }
         }
@@ -298,7 +299,7 @@ sail_code! {
             {
                 let Some(current)=&self.current else {return None;};
                 let Some(previous)=&current.previous else {return None;};
-                Some((previous.fresh,if previous.start <= current.end {current.end-previous.start}else{0}))
+                Some((previous.fresh,current.end.saturating_sub(previous.start)))
             }
         }
         sail_method! {
@@ -532,6 +533,7 @@ sail_spec! {
 }
 
 sail_verified! {
+    #[allow(clippy::type_complexity, reason = "The constructive fixture returns its actual owned controller and real queue together so the subsequent fresh handover exercises both without an abstract replacement.")]
     fn prepared_fresh_control<'a,Identity>(served:&'a [crate::query_replay::ServedReply],identity:&Identity)
         -> (out:Option<(OutputBatch<'a,u64>,crate::query::CorrelatedQueue<u8,crate::query_output_owner::OwnedFrame<u64>>)>)
         where (Identity:crate::inputs::OwnerIdentity<u64>)
@@ -578,7 +580,7 @@ sail_verified! {
             crate::query_output::transcript_partition_facts(&batch.order_view().output_view().output_view());
             assert(batch.interval_view() =~= b"unsat\n"@);
         }
-        if batch.frame_previous().is_none() {return None;}
+        batch.frame_previous()?;
         if !batch.settle_current(&mut queue,None,identity) {return None;}
         if !batch.begin_next() || batch.previous()!=Some((true,4)) {return None;}
         sail_proof! {
