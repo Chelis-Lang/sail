@@ -104,6 +104,7 @@ sail_verified! {
                 } else { return position; }
                 sail_proof! {
                     crate::query::trivia_join(bytes@.subrange(start as int,position as int),seq![byte],false);
+                    reveal_with_fuel(crate::query::trivia_after,2);
                     assert(bytes@.subrange(start as int,position as int+1)
                         =~= bytes@.subrange(start as int,position as int)+seq![byte]);
                 }
@@ -276,6 +277,16 @@ sail_verified! {
                     if bytes[dot] == b'.' { break; }
                     dot += 1;
                 }
+            }
+            sail_proof! {
+                assert(bytes@.subrange(0,dot as int) =~= bytes@.take(dot as int));
+                if dot < bytes.len() {
+                    assert(bytes@[dot as int] == b'.');
+                    reveal_with_fuel(first_dot,1);
+                } else {
+                    assert(first_dot(bytes@,dot as int) == dot as int);
+                }
+                assert(first_dot(bytes@,0) == dot as int);
             }
             if dot < bytes.len() {
                 if all_digits(&bytes[..dot],0,0) && all_digits(bytes,dot+1,0) { Some(TokenKind::Decimal) } else { None }
@@ -512,6 +523,14 @@ sail_verified! {
     {
         let src=[b'(',b';',b'c',b'\r',b'\n',b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't',b')'];
         let expected=[b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't'];
+        sail_proof! {
+            assert(head_transition(src@) == (14int,false,Ok((0usize,expected@)))) by {
+                reveal_with_fuel(head_transition,1);
+                reveal_with_fuel(lex_transition,2);
+                reveal_with_fuel(trivia_stop,7);
+                reveal_with_fuel(word_stop,11);
+            }
+        }
         let mut lexer=Lexer::new(&src);
         let Ok((open,name))=lexer.command_head() else { return false; };
         if open != 0 || !crate::inputs::byte_eq(name,&expected) { return false; }
@@ -529,6 +548,19 @@ sail_verified! {
         requires (true) ensures (passed)
     {
         let src=[b'"',b'a',b'"',b'"',b'b',b'"',b' ',b'|',b'x',b')',b'|',b' ',b'#',b'b',b'0',b'1'];
+        sail_proof! {
+            assert(lex_transition(src@,0,false).2 == Some(Ok(Token { kind:TokenKind::String,start:0,end:6 }))) by {
+                reveal_with_fuel(string_after,6);
+            }
+            assert(lex_transition(src@,6,false).2 == Some(Ok(Token { kind:TokenKind::QuotedSymbol,start:7,end:11 }))) by {
+                reveal_with_fuel(trivia_stop,3);
+                reveal_with_fuel(quoted_after,4);
+            }
+            assert(lex_transition(src@,11,false).2 == Some(Ok(Token { kind:TokenKind::Binary,start:12,end:16 }))) by {
+                reveal_with_fuel(trivia_stop,3);
+                reveal_with_fuel(word_stop,5);
+            }
+        }
         let mut lexer=Lexer::new(&src);
         let Some(Ok(string))=lexer.next_token() else { return false; };
         let Some(Ok(symbol))=lexer.next_token() else { return false; };

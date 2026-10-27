@@ -1535,3 +1535,10 @@ pairing gates remain necessary. This source candidate has constructive and
 refusal source controls but no completed proof, native test, canonical capture,
 differential or cost qualification. It does not close #371/#372 or the service
 composition. No compiler context is supplied by an empty placeholder.
+
+The first lexical full-root attempt (`a0e2f74d`) leaves four proof functions
+unsatisfied: actual trivia composition and decimal span identities, plus two
+finite constructive paths. The actual next-token and borrowed-head operations
+have no reported failures in this incomplete attempt. Scoped proof-only facts
+address these VCs without changing executable bytes, contracts or resources;
+whole-root discovery and all controls remain required.
