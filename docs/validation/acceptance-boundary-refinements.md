@@ -20,6 +20,20 @@ native source-suite evidence; this combined extension and actual request/domain
 construction still require fresh native source checks and complete-root Stock
 discovery. No function or obligation counts are inferred from the support probe.
 
+The first-at guidance candidate `c1b7ee30` proves the new split lemma and both
+nonempty suffix/name witnesses. Its complete query and input roots pass; the
+whole authority root retains one ordinary postcondition failure at the actual
+version-branch return, without resource exhaustion. The native stages remain
+unrun. The follow-up retains the original optional version as an explicitly named
+parameter and derives the loop's Some/value relation, preserving the actual
+missing-version guard, every predicate and all 23 control objects. This is a
+plain copy of the provided optional reference, never an authority/completeness
+flag. Frozen `c1b7ee30` remains unchanged and separately qualified only as failed.
+Its final source/image/runtime checks pass; authenticated archive:
+`experiments/2026-10-27/acceptance-request-domain-c1b7ee30-native.tgz`,
+7,622,507 bytes, SHA256
+`8161148d8f9c524edf9a713ab038ee24880236b9f33d92edb4920094e4a6e6d6`.
+
 The corrected selector qualifier at `e92200f1` passes all 67 production source
 tests and the complete query 471/0 (821 functions) and input 308/0 (538) roots.
 Whole authority reports 588 verified and three ordinary failed functions, with no
