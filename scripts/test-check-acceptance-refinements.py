@@ -298,6 +298,55 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
             SOURCE.runtime_mutation(source, "let nested = true", "let nested = false")
 
+    def test_reused_projection_does_not_reuse_another_sources_runtime_location(self):
+        warm = "sail_method! { fn f() -> (ok: bool) requires (false) ensures (ok) { true } }"
+        SOURCE.runtime_mutation(warm, "true", "false")
+        # Same method and selector, but the only selected token is now a contract.
+        different = "sail_method! { fn f() -> (ok: bool) requires (true) ensures (ok) { false } }"
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(different, "true", "false")
+        SOURCE.runtime_mutation(warm, "true", "false")
+
+    def test_runtime_control_preserves_loop_contracts_and_selects_actual_loop_code(self):
+        source = """sail_method! {
+            fn checked() -> (ok: bool) requires (true) ensures (ok)
+            { let mut n = 0; sail_while! { (n < 1)
+                invariant(n <= 1, if n == 0 {true} else {n == 1})
+                decreases(1 - n) { n += 1; } } n == 1 }
+        }"""
+        for before, after in (
+            ("n <= 1", "n < 1"),
+            ("1 - n", "2 - n"),
+            ("{true} else", "{false} else"),
+            ("invariant(n <= 1", "invariant(n <= 2"),
+        ):
+            with self.subTest(before=before), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "loop contract"):
+                SOURCE.runtime_mutation(source, before, after)
+        SOURCE.runtime_mutation(source, "(n < 1)", "(n < 0)")
+        SOURCE.runtime_mutation(source, "n += 1;", "n += 2;")
+        SOURCE.runtime_mutation(source, "} n == 1 }", "} n == 0 }")
+
+    def test_runtime_control_refuses_loop_contract_changes_inside_whole_method(self):
+        method = "fn f() -> (ok: bool) requires (true) ensures (ok) { sail_while! { (false) invariant(true) decreases(0) { } } true }"
+        source = "sail_method! { " + method + " }"
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "loop contract"):
+            SOURCE.runtime_mutation(source, method, method.replace("invariant(true)", "invariant(false)").replace("} true }", "} false }"))
+        SOURCE.runtime_mutation(source, method, method.replace("} true }", "} false }"))
+
+    def test_inventory_refuses_historical_contract_selector_before_stock(self):
+        import copy
+        import json
+        manifest = copy.deepcopy(json.loads((ROOT / CHECKER.MANIFEST).read_text()))
+        controls = manifest["components"][0]["negative_controls"]
+        control = next(item for item in controls
+            if item["name"] == "replay-full-comparison-always-refuses")
+        control["before"], control["after"] = "1nat", "false"
+        snapshots = {path: (ROOT / path).read_bytes() for component in CHECKER.COMPONENTS
+            for path in CHECKER.dependency_paths(component)}
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            CHECKER.inventory(ROOT, manifest, snapshots)
+
     def test_runtime_control_refuses_erased_and_proof_only_selectors(self):
         source = """sail_spec! { spec fn ghost() -> bool { true } }
         sail_method! {
@@ -322,6 +371,16 @@ class SourceCaptureTests(unittest.TestCase):
             self.assertEqual(SOURCE.executable_envelopes(source), [])
             with self.subTest(wrapper=wrapper), self.assertRaises(SOURCE.SourceRefusal):
                 SOURCE.runtime_mutation(source, "{ true }", "{ false }")
+
+    def test_runtime_control_refuses_nested_runtime_declarations(self):
+        for nested in (
+            "sail_method! { fn hidden() -> (x: bool) requires (true) ensures (if x {1nat} else {0nat} == 0nat) { true } }",
+            "fn hidden() -> bool requires true ensures if result {1nat} else {0nat} == 0nat { true }",
+        ):
+            source = "sail_method! { fn outer() -> (ok: bool) requires (true) ensures (ok) { " + nested + " true } }"
+            with self.subTest(nested=nested), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "nested runtime function"):
+                SOURCE.runtime_mutation(source, "1nat", "false")
 
     def test_runtime_control_keeps_contracts_even_with_whole_method_selector(self):
         source = "sail_verified! { fn f() -> (ok: bool) requires (true) ensures (ok) { true } }"
@@ -595,6 +654,39 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaises(CHECKER.Refusal):
             CHECKER.compiled_subset(CHECKER.SYNTAX, changed)
 
+    def test_cached_tokens_do_not_share_a_callers_mutable_list(self):
+        source = 'sail_verified! { pub fn guard() -> (out: bool) requires(true) ensures(out) { true } }'
+        expected = CHECKER.SOURCE.tokens(source)
+        first = CHECKER.SOURCE.tokens(source)
+        first.clear()
+        first.append(CHECKER.SOURCE.Token("false", 0, 5))
+        self.assertEqual(CHECKER.SOURCE.tokens(source), expected)
+        self.assertIsNot(CHECKER.SOURCE.tokens(source), CHECKER.SOURCE.tokens(source))
+
+    def test_cached_tokens_keep_each_exact_sources_original_spans(self):
+        first = 'fn guard() { "body" }'
+        second = '/* earlier source */ ' + first
+        CHECKER.SOURCE.tokens(first)
+        changed = CHECKER.SOURCE.tokens(second)
+        self.assertEqual([t.value for t in changed], [t.value for t in CHECKER.SOURCE.tokens(first)])
+        self.assertEqual(changed[0].begin, second.index("fn"))
+        for token in changed:
+            self.assertEqual(second[token.begin:token.end], token.value)
+        self.assertEqual(CHECKER.SOURCE.tokens(first)[0].begin, 0)
+
+    def test_human_noop_counters_use_actual_project_declarations(self):
+        snapshots = {"crates/sail-api/src/" + name + ".rs":
+            (ROOT / "crates/sail-api/src" / (name + ".rs")).read_bytes()
+            for name in CHECKER.SOURCE.API_MODULES}
+        files, declarations = CHECKER.SOURCE.api_stencils(snapshots)
+        selected = [t.value for t in CHECKER.SOURCE.tokens(files["project.rs"].decode())]
+        for field in ("execution", "no_reuse", "verifier_invocations", "reused_targets"):
+            self.assertIn(field, selected)
+        self.assertNotIn("wall_ms", selected)
+        original = next(d for d in declarations["project"]["declarations"] if d["name"] == "Execution")
+        self.assertEqual(original["fields"]["verifier_invocations"], ["u64"])
+        self.assertIn("wall_ms", original["fields"])
+
     def test_cargo_paths_and_private_token_fields_cannot_change_without_review(self):
         paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
@@ -628,6 +720,8 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-api/src/acceptance.rs", b"pub struct CompleteReport", b"#[derive(Default)] pub struct CompleteReport"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct ExactScopeReport", b"#[derive(Default)] pub struct ExactScopeReport"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct ReplayReadback", b"#[derive(Deserialize)] pub struct ReplayReadback"),
+            ("crates/sail-api/src/acceptance.rs", b"pub struct EmptyHumanOutput", b"#[derive(Deserialize)] pub struct EmptyHumanOutput"),
+            ("crates/sail-api/src/acceptance.rs", b"stderr: &'a [u8],", b"pub stderr: &'a [u8],"),
             (CHECKER.OUTPUT_CORE, b"pub struct Transcript", b"#[derive(Default)] pub struct Transcript"),
             (CHECKER.OUTPUT_CORE, b"pub struct Frame", b"#[derive(Deserialize)] pub struct Frame"),
             (CHECKER.OUTPUT_CORE, b"pub struct CompleteOutput", b"#[derive(Default)] pub struct CompleteOutput"),

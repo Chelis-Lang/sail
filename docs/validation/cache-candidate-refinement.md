@@ -18,6 +18,7 @@ Q40 architecture is selected.
 | `a6e5208e` native preflight | Shared/native production compilation clears the prior errors; Clippy stops at cfg(test) settle helper's intentional owned-handle argument; final source/runtime guards pass | Source suites, fresh proofs and native tests unrun at this head. A reasoned fixture-only allowance preserves every statement/assertion and the consumed original handle; correction needs qualification |
 | `cb2e685a` bounded qualification | Strict all-target Clippy, source suites 12+62, fresh full roots 519/908, 308/538, 510/895 and cache/daemon library tests 104/104 pass (two configured skips). All 53 new exact ordinary negatives pass alongside 53 whole-root positives; source/runtime/rustc equality and exact-name union audit pass. Four separate native mutants compile and fail at intended original assertions | 106 canonical Stock calls in bounded 214-way partitions, no full 214-query/component/suite credit. Native controls never count as Stock negatives. Workspace/solver/conformance/performance/service gates remain open |
 | Exact native layout observation | Complete original `58806916` module and actual current aliases measure slot 80→96 bytes, align16; state64/16, FileStamp48/16, Value104 and Inner96 unchanged. Fixed-tier24 and queued-carrier48 measurements match their existing charges | Observation only; the original128 is logical, not an allocator/RSS bound. Incremental slot charge was8 versus measured16, tracked in #486. Portable actual-carrier delta correction and fifth native control are source-only pending qualification |
+| `fe8c9188` layout correction | Strict all-target Clippy, source12+62, fresh complete Stock roots519/908,308/538,510/895 and cache/daemon105/105 tests pass (two configured skips), with final source/runtime guards. Actual-layout admission regression passes; a separately compiled undercharged8-byte mutant fails its intended actual-size assertion | Native-only correction; all shared proof bodies and214 query control objects remain byte-identical cb2. Historical53 bounded ordinary controls stay scoped to cb2; full combined214/workspace/solver/conformance/performance/service qualification remains open |
 
 The closed `37a38135` attempt is reconstructable from the source bundle and raw
 logs in object `experiments/2026-10-27/acceptance-candidate-write-37a38135-native.tgz`,
@@ -117,10 +118,12 @@ The 13 additional runtime descriptors are also retained independently in
 `proofs/support/candidate_write_accounting_controls.json`. All 40 generation
 descriptors remain present, with identical lint attributes applied to original
 and mutant contexts. Four native controls pass separately; the fifth layout
-control is prepared and unrun. No native case counts as Stock credit.
+control passes separately at `fe8c9188`. No native case counts as Stock credit.
 
 The [design](../design/cache-write-candidate-refinement.md) identifies the real
 callers, expected ABA refusal, metadata charges and pending native/proof gates.
 Source-support roots and planned controls are not canonical acceptance cases.
 No branch freshness, source hash, payload equality or plausible reply shape
 supplies a solver-origin fact.
+
+The closed `fe8c9188` correction is object `experiments/2026-10-27/acceptance-candidate-write-fe8c9188-native.tgz`,7,623,421 bytes,SHA-256 `76872375c4c5d21a1b2091cdc58371a70bde0e53e7a9a7bf6acbf3640581888f`. Exact PUT/GET readback passes; independent lead audit remains separate. It includes the full source bundle, fresh three-root raw positives/source/native suite and selected fifth ordinary native failure. No Stock-control, allocator/RSS or full service credit is inferred from that native failure.

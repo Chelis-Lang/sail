@@ -1,5 +1,32 @@
 # 0082: Replay unchanged calls from a complete stat-stamp vector
 
+## Amendment: empty human Cargo output (2026-10-27)
+
+A Current Cargo no-op can contain no observed targets when its preceding proof
+was Historical and supplied no reusable receipt (#476). Such an observation
+cannot satisfy the independently requested nonempty whole-proof inventory.
+Whole and exact-partial proof replay keep their request and producer checks.
+
+Human CLI calls have a separate byte-only record, `human-empty-v1-<key>.json`,
+with a distinct kind/version envelope. Recording retains the original request
+and observation vector, requires no verifier invocation or reused target, and
+checks the actual tee output before writing. Replay rechecks the ordinary
+workspace/family locks and complete recorded vector, the original result header,
+independently resolved current request, raw native path binding and typed guarded
+revision readback. Its shared parser admits empty stdout and exactly one plain
+standard `dev`/`release` Cargo footer with a fully parsed numeric duration.
+Warnings, extra lines, escapes and other profile renderings take the ordinary path.
+
+The process-local admission exposes only those footer bytes. The actual human
+consumer is selected before result-producing execution; it creates no refreshed
+ProjectResult, verified label, receipt, run result or whole/partial proof token.
+JSON, jobs, MCP, engine and independent-request-capture consumers cannot select
+this path. Persistent protection, complete physical observations and real launch
+origin retain their existing assumptions and open refinement obligations.
+
+Implementation and direct-stock/native qualification are tracked separately in
+the [owning record](../validation/acceptance-boundary-refinements.md).
+
 - **Status:** accepted (owner approval, 2026-10-26)
 - **Date:** 2026-10-26
 
@@ -95,6 +122,9 @@ Measured on native c7i.8xlarge (us-east-1), nine alternating rounds with
 plain full-path call. The first unchanged call after a verification still
 takes the full path and records. `SAIL_MANAGED_NOOP=0` disables replay;
 `SAIL_MANAGED_NOOP_TRACE=FILE` logs each hit, miss reason and recording.
+When an ordinary run cannot record, the trace also names its eligibility,
+original-request admission or original-producer refusal. This optional file
+does not change stdout, stderr, the recorded result or replay eligibility.
 Revisit if Sail adds per-run side effects that consumers rely on (job events,
 watch state) to the managed path. Replay is excluded wherever those are
 requested.

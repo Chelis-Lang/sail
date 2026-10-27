@@ -4,6 +4,55 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The frozen `3dbebad5` full native end-to-end run passes contracts, legacy and the
+initial output comparisons, then fails unchanged-call recording
+([#476](https://github.com/Chelis-Lang/sail/issues/476)). Native diagnostic
+`a73d13c2` identifies the preceding proof as Historical and the following Current
+Cargo no-ops as empty observed target inventories. Whole-request admission
+correctly refuses those no-ops. A separate human-output candidate retains that
+refusal and exposes only empty stdout plus a parsed Cargo footer, with exact
+request/path/readback checks and no ProjectResult or proof authority. Frozen
+`0df9c812` passes the complete authority positive (520/912), strict package
+Clippy, all 15 selected replay tests and source suites. Actual end-to-end output
+now records/replays it, then fails an invalidation trace assertion because the
+subsequent proof-cache lookup overwrites the original human refusal. The source
+correction retains that refusal and ordinary execution; new negative controls
+and complete end-to-end/conformance qualification remain pending. The same
+failure's evidence collector reaches its file cap before producer state
+([#477](https://github.com/Chelis-Lang/sail/issues/477)). Selection now prioritizes
+the last issued command and recent producers under the original caps; truncation
+or omission still fails capture completeness. Native collector controls and the
+real failing output run confirm the prioritization under the unchanged cap;
+the output phase still fails recording before the byte-only candidate.
+No false Sail verdict has been demonstrated.
+
+The frozen `4c43e5a9` full native end-to-end gate stops on the neutral-contract
+positive with backend currentness Unknown and `NotProved`
+([#471](https://github.com/Chelis-Lang/sail/issues/471)). Its journal records the
+actual provider intent/start and artifacts but omits the provider completion.
+The accounting observer read its endpoint directly from the environment,
+while the original managed driver uses the private transport file. The source
+correction uses that same transport accessor. A freshly rebuilt native baseline
+fails the intended assertion; the correction passes the real file-backed alias
+regression for absent and conflicting caller variables and strict package
+Clippy. Full end-to-end/conformance qualification remains pending.
+The conservative incomplete-observation refusal and positive expectation stay
+unchanged; no false proof has been demonstrated.
+
+Local containers previously shared one Cargo target volume across prepared
+checkouts mounted at `/work`, allowing Cargo to reuse a different snapshot's
+binary when both source trees predated its build
+([#475](https://github.com/Chelis-Lang/sail/issues/475)). A controlled native
+attempt performs no corrected-source compilation and reruns the baseline
+failure; explicit per-source package rebuilds produce the intended red/green.
+The local wrappers now select a target volume per physical checkout and expose
+its name for evidence collection. Real wrapper-command tests reject the old
+cross-checkout sharing and pass the correction, same-checkout warmth and symlink
+aliases. Frozen `fa1b7e74` passes the full actual native workspace gate using a
+fresh physical-checkout volume, including all 1,279 tests; custom qualification
+runners must independently bind their compiled artifacts.
+Direct-source stock proofs are unaffected.
+
 The frozen `4c43e5a9` ordinary-control matrix stops at query control 151:
 its mutation selector replaces `1nat` in an ensures clause instead of changing
 the executable comparison method ([#468](https://github.com/Chelis-Lang/sail/issues/468)).

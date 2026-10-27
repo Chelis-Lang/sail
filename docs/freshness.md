@@ -31,6 +31,14 @@ These labels describe your inputs, not the solver's verdict. A Current result
 can contain a failed proof. Only a Current, successful result can be reused as a
 proof receipt or accept a repair. CLI and MCP clients receive the same label.
 
+A human `sail verify` call that Cargo leaves unchanged can print only its
+`Finished` line, with no target reports. Sail can replay that empty human output
+when its original request, current request and recorded observations still
+match. This stores no proof receipt and creates no verified report. JSON, jobs
+and MCP use their ordinary result-producing paths. The byte-only replay accepts
+one plain `dev` or `release` completion line and empty stdout; other output,
+including warnings, colors or custom profile renderings, takes the ordinary path.
+
 Any doubt makes a result Historical or Unknown, never Current. The cost of a
 wrong "not current" is one re-run; a wrong "Current" is never acceptable.
 

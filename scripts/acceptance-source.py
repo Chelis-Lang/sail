@@ -9,6 +9,7 @@ authority adapters. Unknown syntax refuses the gate.
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
 import re
 from typing import NamedTuple
 
@@ -61,6 +62,14 @@ def require(condition: bool, message: str) -> None:
 
 def tokens(source: str) -> list[Token]:
     """Tokenize delimiters without treating comments or literals as code."""
+    # Every caller owns its list. Only immutable token tuples are shared, and
+    # their cache key is the complete exact source, including original spans.
+    return list(_token_tuple(source))
+
+
+@lru_cache(maxsize=32)
+def _token_tuple(source: str) -> tuple[Token, ...]:
+    """Retain exact-source lexical work without sharing mutable parser state."""
     result: list[Token] = []
     at = 0
     while at < len(source):
@@ -108,7 +117,7 @@ def tokens(source: str) -> list[Token]:
             word = _WORD.match(source, at)
             at = word.end() if word else at + 1
         result.append(Token(source[start:at], start, at))
-    return result
+    return tuple(result)
 
 
 def closing(stream: list[Token], start: int) -> int:
@@ -183,13 +192,76 @@ def _executable_envelopes(stream: list[Token]) -> list[tuple[int, int]]:
     return bodies
 
 
+@lru_cache(maxsize=16)
+def _runtime_projection(text: str) -> tuple[tuple[str, ...], tuple[tuple[str, ...], ...], tuple[tuple[int, int], ...], tuple[tuple[str, ...], ...]]:
+    """Cache immutable projections by complete source text, never path or identity.
+
+    Every changed source still receives its own full parse. Repeated original
+    files reuse the same checked token projection within this process only.
+    """
+    stream = tokens(text)
+    bodies = _executable_envelopes(stream)
+    skeleton: list[str] = []
+    executable: list[list[str]] = []
+    spans: list[tuple[int, int]] = []
+    loop_contracts: list[list[str]] = []
+    cursor = 0
+    for begin, end in bodies:
+        skeleton.extend(token.value for token in stream[cursor:begin])
+        skeleton.append("<checked-runtime-body>")
+        values: list[str] = []
+        annotations: dict[int, int] = {}
+        at = begin
+        while at <= end:
+            token = stream[at]
+            if at in annotations:
+                at = annotations[at]
+                continue
+            macro = at + 2 <= end and stream[at + 1].value == "!"
+            ghost = (macro and token.value in {"sail_proof", "sail_spec", "sail_impl_spec"})
+            ghost_group = (token.value in {"proof", "spec", "by"}
+                and at + 1 <= end and stream[at + 1].value == "{")
+            if ghost or ghost_group:
+                at = closing(stream, at + (2 if ghost else 1)) + 1
+                continue
+            require(token.value != "fn" and not (macro
+                and token.value in {"sail_verified", "sail_method"}),
+                "nested runtime function outside mutation capture subset")
+            if macro and token.value == "sail_while":
+                require(stream[at + 2].value == "{" and stream[at + 3].value == "(",
+                    "unsupported checked loop contract")
+                loop_end = closing(stream, at + 2)
+                contract_begin = closing(stream, at + 3) + 1
+                body_begin = contract_begin
+                for clause in ("invariant", "decreases"):
+                    require(body_begin + 1 < loop_end and stream[body_begin].value == clause
+                        and stream[body_begin + 1].value == "(",
+                        "unsupported checked loop contract")
+                    body_begin = closing(stream, body_begin + 1) + 1
+                require(body_begin < loop_end and stream[body_begin].value == "{"
+                    and closing(stream, body_begin) == loop_end - 1,
+                    "missing or trailing checked loop body")
+                loop_contracts.append([item.value for item in stream[contract_begin:body_begin]])
+                annotations[contract_begin] = body_begin
+            values.append(token.value)
+            spans.append((token.begin, token.end))
+            at += 1
+        executable.append(values)
+        cursor = end + 1
+    skeleton.extend(token.value for token in stream[cursor:])
+    return (tuple(skeleton), tuple(tuple(body) for body in executable),
+        tuple(spans), tuple(tuple(contract) for contract in loop_contracts))
+
+
 def runtime_mutation(source: str, before: str, after: str) -> None:
     """Require a mutation of runtime code with unchanged signatures/contracts.
 
     Erasing whole bodies yields an exact token skeleton: contracts, erased
     items and every other surrounding declaration must remain identical. The
     selected envelope must include runtime tokens; selecting only a proof
-    block is refused even if a broader executable body contains it. This is an
+    block is refused even if a broader executable body contains it. Checked
+    loop invariants and decreases clauses must also remain identical and do
+    not supply runtime selector spans. This is an
     early source check; Stock's actual full function/obligation inventory still
     determines ordinary negative credit.
     """
@@ -197,39 +269,11 @@ def runtime_mutation(source: str, before: str, after: str) -> None:
         "empty or ambiguous executable mutation")
     changed = source.replace(before, after)
 
-    def projection(text: str) -> tuple[list[str], list[list[str]], list[tuple[int, int]]]:
-        stream = tokens(text)
-        bodies = _executable_envelopes(stream)
-        skeleton: list[str] = []
-        executable: list[list[str]] = []
-        spans: list[tuple[int, int]] = []
-        cursor = 0
-        for begin, end in bodies:
-            skeleton.extend(token.value for token in stream[cursor:begin])
-            skeleton.append("<checked-runtime-body>")
-            values: list[str] = []
-            at = begin
-            while at <= end:
-                token = stream[at]
-                macro = at + 2 <= end and stream[at + 1].value == "!"
-                ghost = (macro and token.value in {"sail_proof", "sail_spec", "sail_impl_spec"})
-                ghost_group = (token.value in {"proof", "spec", "by"}
-                    and at + 1 <= end and stream[at + 1].value == "{")
-                if ghost or ghost_group:
-                    at = closing(stream, at + (2 if ghost else 1)) + 1
-                    continue
-                values.append(token.value)
-                spans.append((token.begin, token.end))
-                at += 1
-            executable.append(values)
-            cursor = end + 1
-        skeleton.extend(token.value for token in stream[cursor:])
-        return skeleton, executable, spans
-
-    original_skeleton, original_runtime, spans = projection(source)
-    changed_skeleton, changed_runtime, _ = projection(changed)
+    original_skeleton, original_runtime, spans, original_loops = _runtime_projection(source)
+    changed_skeleton, changed_runtime, _, changed_loops = _runtime_projection(changed)
     require(original_skeleton == changed_skeleton,
         "mutation changes signature, contract or non-runtime source")
+    require(original_loops == changed_loops, "mutation changes checked loop contract")
     begin = source.index(before)
     end = begin + len(before)
     require(any(begin <= lo and hi <= end for lo, hi in spans),
@@ -675,10 +719,12 @@ OUTPUT_FIELDS = {
 }
 PROJECT_FIELDS = {
     "TargetResult": "package_id target kind establishing_run reused requested complete scope_reuse report",
-    "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
+    "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine execution no_reuse",
     "RequestTarget": "package_id target kind",
     "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
     "EngineIdentity": "name manifest_sha256",
+    "Execution": "verifier_invocations reused_targets",
+    "NoReuse": "code reason verified_as",
 }
 OUTPUT_ENUMS = ("VerdictName", "EstablishmentName", "EvidenceTierName", "SourceSummaryName", "EngineEstablishment")
 API_MODULES = ("output", "project", "jobs", "repair")
@@ -806,7 +852,7 @@ def api_stencils(snapshots: dict[str, bytes], expected: dict | None = None) -> t
     inventory: dict = {}
     for module, selected, enums in (
         ("output", OUTPUT_FIELDS, OUTPUT_ENUMS),
-        ("project", PROJECT_FIELDS, ("Currentness",)),
+        ("project", PROJECT_FIELDS, ("Currentness", "VerifiedAs")),
         ("jobs", {}, ("Mode", "Currentness")),
         ("repair", {"Selection": "package target kind function"}, ()),
     ):

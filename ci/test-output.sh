@@ -63,7 +63,7 @@ output_cleanup() {
     bounded --signal=TERM --kill-after=5s 60s python3 \
       "$sail_output_checkout/ci/capture-output-evidence.py" \
       --work "$work" --out "$sail_output_evidence" --part "$sail_output_phase" \
-      --exit "$original_exit" --sail "$sail"
+      --exit "$original_exit" --sail "$sail" ${sail_output_last_label:+--last-command "$sail_output_last_label"}
     capture_exit=$?
     if [ "$capture_exit" -ne 0 ]; then
       echo "e2e: failure evidence collector exited $capture_exit; original test exit $original_exit retained" >&2
@@ -77,6 +77,7 @@ trap output_cleanup EXIT
 # Failure to record metadata never changes a verifier command or its exit code.
 record_start() {
   local label="$1" sail_output_source record_failed=0; shift
+  sail_output_last_label="$label"
   mkdir -p "$work/commands" || record_failed=1
   printf '%s\0' "$@" > "$work/commands/$label.argv" || record_failed=1
   printf '%s\n' "$PWD" > "$work/commands/$label.cwd" || record_failed=1
