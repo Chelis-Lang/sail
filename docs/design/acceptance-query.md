@@ -307,8 +307,8 @@ chunk prefix and scoped scalar facts. Its two constructive byte carriers become
 explicit arrays with identical bytes and assertions, following the qualified
 kernel pattern; no production byte, policy, predicate or resource is changed.
 All 190 controls remain, with full-mutant scopes and loop annotations preserved.
-A documented function-local line-count allowance keeps the actual chunk
-transition and its long source proof together; it changes no math check.
+The later chunk-transition extraction keeps the actual operations in smaller
+checked functions and removes that intermediate function-local line allowance.
 
 At `19482b13`, the whole query root observes 519 verified/4 failed functions,
 915 query entries, no resource marker and final guards passing. No positive lock
@@ -317,6 +317,21 @@ initial-object well-formedness in the actual loop, list chunk suffix transport
 and concrete returned-item projections explicit. Literal byte carriers and all
 assertions remain nonempty and unchanged in value. Actual predicates, default
 resources and all 190 ordinary controls remain required.
+
+The `e36f9681` whole root reaches 522 verified/1 failed function across 915
+query entries, with final guards passing. All scalar/constructive witnesses now
+clear; the actual outer loop still has a raw-state carry failure and a default
+rlimit refusal, so no positive lock or qualification follows. The next source
+candidate extracts the actual list-fast-path/one-byte operation into
+`consume_chunk`, preserving original owned payloads, exact consumed prefixes,
+continuation and ordered outputs. The outer loop composes this same operation.
+A checked pending-item slot bound carries the existing vector-capacity argument;
+no caller trust flag, parser-result assumption or resource increase is added.
+All 190 controls remain. The old non-list output-drop mutant preserves list
+outputs after extraction, retaining its original meaning; two new whole-method
+controls drop the transition outputs or zero its consumed count. There are 192
+query controls: 431 planned unique cases or 440 four-partition calls. Whole-root
+actual discovery/control/native qualification remains pending.
 
 ### Scalar policy-option readback candidate
 

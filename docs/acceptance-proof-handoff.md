@@ -85,6 +85,17 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+The `e36f9681` complete query run observes 522 verified/1 failed function and
+915 query entries with final guards passing; the remaining outer-loop raw-state
+carry includes a default rlimit refusal. No positive inventory is locked.
+Actual list/one-byte advancement is now extracted as a checked chunk transition,
+preserving the same owned payloads and exact consumed-prefix/ordered-inventory
+relations. A pending-item slot invariant retains capacity accounting. All 190
+controls remain, with the prior non-list drop mutant preserving list outputs;
+two full transition-method controls append (192 query, 431 planned unique cases,
+440 partitioned calls). No resource/precondition weakening or extra byte copy is
+introduced. Fresh whole-root/native/ordinary-control qualification is required.
+
 The `19482b13` whole query run observes 519 verified/4 failed functions and 915
 query entries in 38.300 s with no resource marker and final guards passing.
 No new positive lock follows. Pending-frame suffix equality, initial-object
