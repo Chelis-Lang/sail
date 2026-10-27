@@ -74,6 +74,45 @@ canonical proof qualification remain pending. No pure executable body, proof,
 control or golden is changed by this rebinding, and the CI policy conflict
 above remains unresolved.
 
+## Ghost-file integration on newer main
+
+The source-only follow-up combines frozen `9b4ceea2` with main `1f0ecd30`.
+Main's #445 adds ghost-only file declarations from both compiler phases to the
+unit dep-info, including the checksum rustc computed of consumed bytes when
+Cargo uses checksum freshness. Missing required checksums or an unmergeable
+report refuse receipt publication. Its original managed cold/warm/edit/revert
+assertions and minimal VI-0037 reproduction remain intact. Main owns VI-0036
+for ghost environment and VI-0037 for ghost files; any later consumer
+interpreter record must use the next free number. Imported VIR stays
+under the existing extern/dependency checks rather than this file-list merge.
+
+Main independently assigns receipt revision 8 to that file requirement, while
+the integration already assigns 8 to producer history plus observed environment
+(#446 recurrence). The combined source therefore uses receipt 9, preserving
+both original guards and requiring the new ghost-file merge before publication.
+No old-record acceptance or current-main false verdict is inferred from this
+source comparison. Context encoding 3 and the strict inventory/archive policies
+remain in force.
+
+Only seven reviewed native hashes change: the compiler adapter, ghost reader,
+receipts, retained compiler/driver and shipped compiler/call adapters. The
+48-file bound-native closure, generated stock driver/file bytes, exact positive
+counts/functions and 115/115/107 controls remain unchanged. Source-role reports
+continue to classify these producers as bound native code rather than
+Stock-compiled bodies. The checked compiler command, actual EOF ownership,
+selected/predecessor histories and independent fallback directories are retained.
+The remove-only interface correction from `9b4ceea2`
+([#452](https://github.com/Chelis-Lang/sail/issues/452)) remains intact: outer
+Cargo can remove private settings while production compiler configuration stays
+on the owned builder. Its native compilation is still pending; the source
+finding supplies no reproduced compiler diagnostic.
+
+The new main implementation and its performance-documentation/tooling changes
+do not resolve the direct-proof CI policy conflict; the draft eight-status
+wiring stays in place pending owner resolution. Frozen `9b4ceea2` qualification
+does not qualify this later union: executable, proof, solver, conformance and
+cost gates remain separate and unrun for it.
+
 ## Published source and worktrees
 
 The PR branch is `proof/acceptance-followup`. Its implementation checkpoint

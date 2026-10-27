@@ -2098,10 +2098,10 @@ impl<'a> Call<'a> {
         self.compiler_observation.is_some()
     }
 
-    /// Both phases' tracked environment of the compiler child, read without
-    /// this call's source admission (#386).
-    pub(crate) fn compiler_environment(&self) -> Option<super::ghost_environment::Environment> {
-        self.compiler_observation.as_ref()?.environment()
+    /// Both phases' reads of the compiler child, without this call's source
+    /// admission (#386, #439).
+    pub(crate) fn observed_reads(&self) -> Option<super::ghost_environment::Observed> {
+        self.compiler_observation.as_ref()?.observed()
     }
 
     pub(crate) fn observe_compiler(

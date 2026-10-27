@@ -53,6 +53,7 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0034](VI-0034-spec-formal-solver-context.md) | Positional spec-formal names change a later HumanEval proof from verified to failed on Mac | fork defect; release blocker #337 | signature-size correction passes installed Mac regression and both ordinary-undo controls; full qualification pending | `corpus/repros/verus-spec-formal-context/` |
 | [VI-0035](VI-0035-no-verify-success.md) | Compile-only invocations report successful whole-crate JSON | Reproduced option boundary; no upstream defect claim | No fork change proposed | `corpus/repros/verus-no-verify-success/` |
 | [VI-0036](VI-0036-ghost-env-reads-missing-from-dep-info.md) | Ghost-only environment reads are missing from the final dep-info | open; Sail workaround (#386) | not fixed: Sail declares the verification phase's reads the fork reports | `corpus/repros/verus-ghost-env-dep-info/` |
+| [VI-0037](VI-0037-ghost-file-reads-missing-from-dep-info.md) | Files read only by ghost code are missing from the final dep-info | open; Sail workaround (#439) | not fixed: Sail declares the verification phase's files the fork reports | `corpus/repros/verus-ghost-file-dep-info/` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The

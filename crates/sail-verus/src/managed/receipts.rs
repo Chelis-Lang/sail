@@ -217,12 +217,12 @@ pub(crate) struct Receipt {
     pub declared_environment: BTreeMap<String, Option<Vec<u8>>>,
 }
 
-/// Version eight requires both original selected-producer history and the
-/// observed compiler environment. The two unmerged lineages independently used
-/// version seven for different contracts; neither older encoding is reusable.
-/// Earlier receipts also predate private-settings and option isolation
+/// Version nine combines original selected-producer history, observed compiler
+/// environment and ghost-only file declarations. Both lineages independently
+/// used revision eight for different contracts (#446); neither older encoding
+/// is reusable. Earlier receipts also predate private-settings/option isolation
 /// (#385, #393). Preserve historical reports while requiring a fresh proof.
-pub(crate) const RECEIPT_VERSION: u32 = 8;
+pub(crate) const RECEIPT_VERSION: u32 = 9;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
