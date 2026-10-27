@@ -28,6 +28,11 @@ to correspond to observed executions. Its `Publish` transition extends
 `recorded`; recovery requires that prior membership. Arbitrary initial disk
 and shared/bundled claims do not supply that membership.
 
+The architecture-independent [candidate-write refinement plan](cache-write-candidate-refinement.md)
+traces the actual job, disk arguments and same-original-Arc settlement. Its
+stock-library support probe is unrun; candidate fidelity cannot establish
+solver origin or supply the missing admission capability.
+
 ## Two concrete architectures
 
 **A. The daemon owns the observing solver path.** The daemon launches the
