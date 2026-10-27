@@ -68,6 +68,7 @@ sail_code! {
         sail_method! {
             /// Starts exactly at the actual opening parenthesis consumed by
             /// the native splitter. No bytes precede it in this owned frame.
+            #[allow(clippy::vec_init_then_push, reason = "Keep the actual opening-byte push explicit for the checked constructor and its ordinary byte-substitution control.")]
             pub fn start(comments: bool) -> (out: Self)
                 requires (true)
                 ensures (out.well_formed(), out.bytes_view() == seq![b'('],
@@ -83,6 +84,7 @@ sail_code! {
         sail_method! {
             /// Copies the same pending bytes/state for the native splitter's
             /// existing Clone API; it cannot mint a different framing history.
+            #[must_use]
             pub fn duplicate(&self) -> (out: Self)
                 requires (self.well_formed())
                 ensures (out.well_formed(), out.bytes_view() == self.bytes_view(),
@@ -213,6 +215,7 @@ sail_verified! {
 
 sail_verified! {
     /// A chunk cannot consume the second form after the original root closes.
+    #[allow(clippy::byte_char_slices, reason = "Concrete byte arrays retain an explicit first-root endpoint witness for whole-query checking.")]
     pub fn chunk_endpoint_control() -> (passed: bool)
         requires (true) ensures (passed)
     {

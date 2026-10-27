@@ -175,7 +175,11 @@ splitter `Clone` API delegates its list state to the checked exact-copy operatio
 All older functions and controls remain required. Native original tests remain,
 with additional unexecuted chunk-width cases for literals/comments/CRLF and
 incomplete finish. No passing verifier, native or conformance claim is made for
-this source candidate; new positive/function discovery is pending.
+the latest annotated source. Whole query discovery at `a182c1e4` passes 482/837
+with all old functions retained. Native SMT tests pass 22 cases; strict package
+Clippy then refuses three new-kernel style lints (#470). Narrow annotations
+preserve the actual statements and require a fresh native rerun; all ordinary
+controls and broader parser/solver joins remain pending.
 
 The theorem is conditional on representable buffer append; it adds no trusted
 Boolean or grammar premise on supplied bytes. The outer native `u64` offset

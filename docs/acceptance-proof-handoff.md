@@ -94,13 +94,22 @@ Its proposed parser-to-leaf edge is ADR 0086. Ten ordinary controls append to
 the existing query list (171 total); inputs/authority remain 115/121. The plan
 is 410 unique cases (three positives plus 407 negatives), or 419 calls with four
 partitions per component. Actual source assembly adds one compiled query file
-(21/9/14). Every earlier function/control remains; new whole-positive/function
-discovery is pending. Previous 471/821, 308/538 and 510/895 inventories remain
-bootstrap requirements, not predictions or qualification of this kernel.
+(21/9/14). Every earlier function/control remains. Whole query discovery at
+`a182c1e4` observes 482/837; the earlier 471/821 set is retained in full.
+Inputs 308/538 and authority 510/895 remain historical component evidence.
+Canonical locking follows the reviewed runtime-body guard union; the annotated
+native follow-up and ordinary controls still require qualification.
 No native or verifier execution was performed locally. Native outer offsets,
 top-level emission inventory, lexical/classifier/solver semantics and physical
 origins stay open; the kernel's representable-append premise stays explicit.
 No complete #371 or service theorem is claimed. CI policy remains unresolved.
+The `a182c1e4` whole query root now passes 482 obligations/all 837 entries with
+all old functions retained and final identity checks. Native SMT package tests
+pass all 22 cases, but strict package Clippy refuses three candidate style lints
+(#470). Local documented annotations preserve the source statements and need
+the same native rerun; no ordinary controls, workspace or service qualify yet.
+The earlier bootstrap count remains until the reviewed runtime-body guard union
+locks only these actual observed values.
 The first whole query run at `48f09fa7` refuses: 477 verified/three failed
 functions across all 835 entries, with an additional resource-limit marker.
 Final source/runtime checks pass. No inventory is locked from that refusal.

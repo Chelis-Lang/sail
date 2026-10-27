@@ -10,15 +10,18 @@ observation guarantee or service theorem is claimed. All six rows of the
 The isolated source candidate from `4c43e5a9` additionally source-shares the
 actual owned streaming-list byte/chunk/copy/finish operations and the native
 delimiter call (proposed ADR 0086). Source assembly includes 21/9/14 compiled
-files and 171/115/121 ordinary controls. Earlier positive inventories remain
-mandatory bootstrap sets; actual expanded positive/function discovery, native
-tests, full controls, conformance and cost qualification are unrun for this
-candidate. This is an implementation scope statement, not execution evidence.
+files and 171/115/121 ordinary controls. Discovery at `a182c1e4` passes the whole
+query positive at 482/837, retaining the earlier sets. Its 22 native SMT tests
+pass, followed by strict Clippy refusal; corrected-source native qualification,
+ordinary controls, conformance and cost qualification remain pending. Input and
+authority evidence remains historical; those components are not rerun here.
 Native outer offsets/top-level emission inventory and solver interpretation stay
 open under #371; no physical EOF, complete parser inventory or origin claim is made.
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `a182c1e4` parser query positive | Entire query Stock root passes 482/0 with all 837 query function entries, retaining every earlier qualified function and all 835 initial candidate entries; final source/runtime checks pass (34.038 s) | Positive discovery only; no ordinary-negative, full parser/solver interpretation or service credit. Observed counts await the stricter runtime-descriptor guard union and canonical locking |
+| `a182c1e4` native SMT package | All 22 tests pass, zero skips (0.561 s test time; 11.141 s command), then strict package Clippy refuses three new-kernel style diagnostics in 3.574 s (#470); final source checks pass | Local method/witness annotations preserve every statement/contract/control and require the same native tests/Clippy rerun. No complete package gate, workspace, solver or conformance qualification |
 | `ff4676cb` parser query positive | Full root retains 480 verified/one failed function across 836 query entries in 32.978 s, no resource marker; final source/runtime guards pass. The owned-Vec helper still refuses the same predecessor-scan/proper-prefix assertions | No positive or inventory lock. Next guidance proves the future appended sequence's scan/prefix facts before mutation, then asserts the stronger actual full-buffer scan against checked `frame_step`; runtime operations and original contracts remain unchanged |
 | `8752d3c6` parser query positive | Full-root compilation clears the borrowed-pattern defect; verification retains 479 verified/one failed function across all 835 entries in 32.564 s. Only push's postappend scan/prefix assertions refuse, without a resource marker; final source/runtime guards pass | No positive/control/native qualification or inventory lock. The next source candidate moves that same owned Vec append into a private checked helper, preserving the public operation/contract and full-root obligations |
 | `668be5f2` parser query positive | Complete query capture refuses compilation at three E0382 proof-pattern moves after 3.156 s (#469), with final source/runtime guards passing | Verification never starts: no function/obligation inventory, control or native credit. Borrowed proof-pattern correction preserves executable operations/contracts and must repeat the whole root at unchanged resources |
@@ -61,6 +64,30 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The successful parser positive is retained as
+`experiments/2026-10-27/acceptance-parser-a182c1-positive-native.tgz`, SHA-256
+`d0ad7fa8747d87f8ba96d83890e55d48d80f7f442b30833fcbb3759b1f53b7f1`
+(304,783 bytes); host creation and independent local SCP/hash agree. Its exact
+837-entry set includes all 821 earlier qualified query entries and every one of
+the 835 initial candidate entries; observed verified obligations are 482, with
+no errors/resource marker and final source/runtime checks passing. Native
+wrappers remain bound unproved source; the list kernel's representable-capacity
+caller and outer stream/lexical joins remain open. Private upload/readback is pending.
+
+The separate native package archive is
+`experiments/2026-10-27/acceptance-parser-a182c1-smt-native.tgz`, SHA-256
+`94beb2d9ecbb12662e49b6983da3c11102c04eba26e62425b213f48cd09dce99`
+(9,235 bytes); host creation and independent local SCP/hash agree, while private
+object upload/readback is pending. All 22 original/new SMT tests pass, including
+arbitrary chunking, exact spans and malformed finish cases. Strict package
+Clippy then reports `vec_init_then_push` in start, `return_self_not_must_use`
+in duplicate and `byte_char_slices` in the endpoint witness
+([#470](https://github.com/Chelis-Lang/sail/issues/470)). The correction adds
+`must_use` to duplicate and documented local style allowances to preserve the
+actual opening push and concrete whole-root byte witness. No executable
+statement, contract, assertion, control or global lint setting changes. Package
+tests/Clippy must repeat on corrected source before negative-control qualification.
 
 The separate `ff4676cb` attempt is retained as
 `experiments/2026-10-27/acceptance-parser-ff4676-native.tgz`, SHA-256
