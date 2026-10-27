@@ -5,8 +5,10 @@
 
 use std::collections::{BTreeSet, btree_set::Iter};
 
-use crate::acceptance::construct_request_target;
-use crate::project::RequestTarget;
+use crate::acceptance::{
+    RequestConstruction, construct_request_target, construct_resolved_request,
+};
+use crate::project::{EngineIdentity, RequestTarget, ResolvedRequest};
 use crate::request_order::OriginalTargetKey;
 #[cfg(sail_verus)]
 use crate::request_order::original_target_key_order_is_lawful;
@@ -23,9 +25,47 @@ sail_code! {
     /// The actual pre-execution target dictionary; keys retain original Strings.
     /// It is an in-memory record domain, not a physical compiler-input token.
     pub type OriginalTargets = BTreeSet<OriginalTargetKey>;
+
+    /// Borrowed pre-execution header used with the actual original dictionary.
+    /// This is construction data, not a second request or an authority token;
+    /// only `ResolvedRequest` records the resulting request.
+    pub struct OriginalRequestHeader<'a> {
+        /// Run allocated before execution.
+        pub run_id: &'a str,
+        /// Original invocation rendering; its native byte binding is separate.
+        pub invocation: &'a str,
+        /// Original workspace rendering; its native byte binding is separate.
+        pub workspace: &'a str,
+        /// Independently resolved execution context.
+        pub context: &'a str,
+        /// Independently observed declared input revision.
+        pub revision: &'a str,
+        /// Actual managed arguments, before interpreting any verifier result.
+        pub arguments: &'a [String],
+        /// Original selected engine identity.
+        pub engine: Option<EngineIdentity>,
+        /// Original requested repair function, if any.
+        pub function: Option<&'a str>,
+        /// Original repair package or the empty non-repair value.
+        pub repair_package: &'a str,
+        /// Original repair binary, if any.
+        pub repair_target: Option<&'a str>,
+        /// Original repair kind or the empty non-repair value.
+        pub repair_kind: &'a str,
+    }
 }
 
 sail_spec! {
+    pub open spec fn original_header_matches(header: &OriginalRequestHeader, request: &ResolvedRequest) -> bool {
+        crate::acceptance::request_construction_matches(&RequestConstruction {
+            run_id: header.run_id, invocation: header.invocation, workspace: header.workspace,
+            context: header.context, revision: header.revision, arguments: header.arguments,
+            engine: header.engine, function: header.function, repair_package: header.repair_package,
+            repair_target: header.repair_target, repair_kind: header.repair_kind,
+            targets: request.targets,
+        }, request)
+    }
+
     pub open spec fn projected_keys(targets: Seq<RequestTarget>) -> Seq<OriginalTargetKey> {
         targets.map_values(|target: RequestTarget| crate::request_order::original_key_value(
             (target.package_id, target.target, target.kind)))
@@ -128,9 +168,49 @@ sail_verified! {
     }
 }
 
+sail_verified! {
+    /// Constructs one request from its original borrowed header and the actual
+    /// immutable dictionary. No caller supplies a target row list or success bit.
+    /// Metadata enumeration, physical path identity and launch closure are separate.
+    pub fn construct_original_request(header: OriginalRequestHeader<'_>, source: &OriginalTargets)
+        -> (request: Option<ResolvedRequest>)
+        requires(true)
+        ensures(request.is_some(), request.is_some() ==> {
+            let resolved = request.unwrap();
+            original_header_matches(&header, &resolved)
+                && resolved.targets.len() == source@.len()
+                && projected_keys(resolved.targets@).to_set() == source@
+                && projected_keys(resolved.targets@).no_duplicates()
+                && ordered_keys(projected_keys(resolved.targets@))
+        })
+    {
+        let targets = match project_original_targets(source) {
+            Some(targets) => targets,
+            None => return None,
+        };
+        Some(construct_resolved_request(RequestConstruction {
+            run_id: header.run_id,
+            invocation: header.invocation,
+            workspace: header.workspace,
+            context: header.context,
+            revision: header.revision,
+            arguments: header.arguments,
+            engine: header.engine,
+            function: header.function,
+            repair_package: header.repair_package,
+            repair_target: header.repair_target,
+            repair_kind: header.repair_kind,
+            targets,
+        }))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{OriginalTargets, insert_original_target, project_original_targets};
+    use super::{
+        OriginalRequestHeader, OriginalTargets, construct_original_request, insert_original_target,
+        project_original_targets,
+    };
     use std::collections::BTreeSet;
 
     #[test]
@@ -159,6 +239,77 @@ mod tests {
             project_original_targets(&OriginalTargets::new())
                 .ok_or("empty original set projection refused")?
                 .is_empty()
+        );
+        Ok(())
+    }
+
+    /// Actual construction data only: the borrowed header is not a proof-state
+    /// token, and compile-only remains compile-only after original-set projection.
+    #[test]
+    fn actual_original_request_preserves_nonempty_header_and_domain()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let arguments = vec![
+            "--package".into(),
+            "original".into(),
+            "--".into(),
+            "--no-verify".into(),
+        ];
+        let mut original = OriginalTargets::new();
+        insert_original_target(
+            &mut original,
+            ("package-b".into(), "sibling".into(), "lib".into()),
+        );
+        insert_original_target(
+            &mut original,
+            ("package-a".into(), "original".into(), "bin".into()),
+        );
+        let request = construct_original_request(
+            OriginalRequestHeader {
+                run_id: "original-run",
+                invocation: "original-invocation",
+                workspace: "original-workspace",
+                context: "original-context",
+                revision: "original-revision",
+                arguments: &arguments,
+                engine: Some(crate::project::EngineIdentity {
+                    name: "original-engine".into(),
+                    manifest_sha256: "original-engine-digest".into(),
+                }),
+                function: Some("original-function"),
+                repair_package: "original-package",
+                repair_target: Some("original-binary"),
+                repair_kind: "bin",
+            },
+            &original,
+        )
+        .ok_or("original request construction refused")?;
+        assert_eq!(request.run_id, "original-run");
+        assert_eq!(request.invocation, "original-invocation");
+        assert_eq!(request.workspace, "original-workspace");
+        assert_eq!(request.context_sha256, "original-context");
+        assert_eq!(request.input_revision, "original-revision");
+        assert_eq!(request.args, arguments);
+        let engine = request.engine.as_ref().ok_or("original engine missing")?;
+        assert_eq!(engine.name, "original-engine");
+        assert_eq!(engine.manifest_sha256, "original-engine-digest");
+        assert_eq!(request.function.as_deref(), Some("original-function"));
+        assert_eq!(request.repair_package, "original-package");
+        assert_eq!(request.repair_target.as_deref(), Some("original-binary"));
+        assert_eq!(request.repair_kind, "bin");
+        assert!(!crate::acceptance::verification_enabled_command(
+            &request.args
+        ));
+        let actual: Vec<_> = request
+            .targets
+            .into_iter()
+            .map(|target| (target.package_id, target.target, target.kind))
+            .collect();
+        assert_eq!(
+            actual,
+            vec![
+                ("package-a".into(), "original".into(), "bin".into()),
+                ("package-b".into(), "sibling".into(), "lib".into()),
+            ]
         );
         Ok(())
     }
