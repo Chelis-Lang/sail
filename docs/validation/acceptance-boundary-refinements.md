@@ -9,6 +9,23 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| Cache/service source union (`fe8c9188` + `b94a9f3e`) | Source assembly retains exact 214 query, 115 input and 145 authority control objects, root byte-only renderer/native bindings and cache generation/accounting/layout implementation. Historical manifest arrays are required discovery minima only: query519/908, inputs308/538, authority520/912 | Source-only union, not observed combined proof counts. A capped 15-second local metadata audit is interrupted without qualification credit; no builds/tests/Stock run locally. Lead must discover all combined whole-root inventories with unchanged resources/final checks and lock actual counts before the complete control union/native/differential gates |
+| `199e7587` native output and bounded controls | Source suites 12/67, strict API/Verus/CLI Clippy, all 15 selected native tests and the complete original output phase pass. The bounded authority positive and controls 122–133 qualify with full 520/912 scope; final source/image/runtime guards pass | Control 134 reaches default rlimit inside admit_empty_human_output (519 verified/1 failed function, 912 entries) and earns zero credit (#485); 135–136 are unrun. Full authority, e2e/conformance and service qualification remain open |
+| `0df9c812` human-output candidate | Direct pinned Stock passes 520 verified/0 errors and all 912 actual entries, including all 895 prior functions (22.623 s). Strict API/Verus/CLI Clippy, all 15 selected native tests and source suites 12/65 pass; final source/image/runtime checks pass. The original output phase now records and replays empty human output | Output then fails the restored-mtime trace assertion: the specific human invalidation refusal is overwritten by a second proof-cache `miss: no record`. The follow-up preserves that first decision and ordinary fallback. All 136 authority controls, full e2e/conformance and service qualification remain open |
+| `3717e932` empty human-output candidate | Whole authority reaches 519 verified/1 failed function, retains all prior entries, no resource marker and final source/runtime checks pass (21.350 s). Native strict Clippy passes all targets in API/Verus/CLI; all 15 selected no-op/human-output tests pass; source suites pass 12/12 and 65/65. Final source/image checks pass (414.112 s total) | The sole remaining proof failure is finite byte-string prefix/suffix content in the constructive footer witness. No whole-positive lock, negative or e2e/conformance credit. The follow-up uses the pinned verifier's scoped reveal_byteslit builtin; runtime bytes, checks, witness assertions and resource limits are unchanged |
+| `594cce06` empty human-output candidate | Whole authority checks every prior function and reaches 518 verified/2 failed obligations (22.080 s), no resource marker, final source/runtime checks pass. The two failures are duration-existential guidance and finite footer examples. Native Clippy refuses two rustdoc spellings and the expanded preparation function's line limit | No whole-positive/count lock, native tests or negative/e2e credit. Follow-up adds explicit original duration witnesses and finite sequence facts, corrects rustdoc and documents the existing observation collector's lint allowance; predicates, scope and resources remain unchanged |
+| `8aabc3b8` empty human-output candidate | Full source inventory/assembly checks pass; Stock refuses six accesses to execution/no-reuse fields absent from its prior declaration projection (zero VCs/function credit, 1.827 s). Native strict Clippy then refuses dead witness fields and an elidable lifetime; final source/image guards pass | No native tests, negatives or e2e run. The correction captures the actual counter/NoReuse declarations, retains witness borrows in the byte accessor and elides the unused implementation lifetime; admission contracts and resources are unchanged |
+| `6c94911f` exact-source projection cache | Native model-source 12/12 and production-source 64/64 pass (262.020 s), final source/image guards pass. Cache entries are immutable and keyed by the complete source text | Source-tooling checks only; no measured speed improvement, new Stock/runtime result or service theorem |
+| `a73d13c2` recording diagnosis | Native collector controls, strict package Clippy and all 13 selected no-op tests pass. The unchanged output phase still fails recording; trace and captured original producer results show a Historical include-discovery proof followed by Current empty Cargo observations (197.367 s total); final source/image guards pass | Empty observations cannot establish nonempty requested whole coverage. Full e2e/conformance remain unrun after this failure; capture still explicitly reports its original file cap |
+| `fa1b7e74` native workspace | Actual `ci/local.sh gate` creates its fresh physical-checkout Docker target, passes all source suites (12 model-source, 63 production-source), all 1,279 Rust tests with 57 configured skips, doctests and workspace checks; final source/image guards pass (408.644 s) | Workspace/source-tooling qualification only. No complete production-control matrix, solver/e2e/conformance or service theorem claim |
+| `3dbebad5` full e2e follow-up | After the #471 fix, contracts and legacy complete, and output/edit-loop, seeded mutations and physical argv comparisons pass. The unchanged-call recording assertion then fails after 379.659 s with three `miss: no record` traces (#476); final source/image guards pass | Full e2e fails; later phases and PR/full fast/standard conformance unrun. Bounded collector explicitly refuses its file-limit truncation (#477); missing captured producer state cannot establish the original cause |
+| `3dbebad5` fresh native output control | Baseline `1a6df52b` fails the intended original-marker assertion; correction passes the same real file-backed alias regression and strict `sail-verus` package Clippy. Each source has an explicit package clean and actual compilation; final source/image guards pass | One selected native test, 598 unselected; no full workspace/e2e/conformance or complete production proof claim |
+| `3dbebad5` shared-target attempt | Baseline builds/fails; corrected command performs no compilation (Cargo reports 0.05 s) and repeats the baseline failure despite different source bytes (#475) | Corrected runtime qualification refused. A later explicit rebuild separates this build-cache defect from product behavior; direct Stock proofs are unaffected |
+| `ed26f794` output-control baseline | Focused native test fails, but its parent assertion retains only child stdout and hides the original refusal in stderr; controller denies baseline credit with `baseline:wrong-refusal` | Corrected implementation and Clippy unrun. The fixture now retains both child streams; rerun requires new frozen baseline/corrected sources |
+| `9099f673` source controls | Native model-source tests pass 12/12 and production-source tests pass 63/63 (259.807 s), including exact original control inventory, protected loop annotations and real runtime selectors; final source/image guards pass | Source-tooling qualification only, no Stock call or runtime test. Rust bodies, proof resources and 397 descriptors remain unchanged |
+| `4c43e5a9` native gates | Workspace passes all 1,278 tests with 57 configured skips, plus doctests and workspace checks; solver suite passes 53/53. Separate direct model suite passes all 31 cases | Frozen-source gates, not automatic qualification of later source or a complete production-control matrix |
+| `4c43e5a9` full e2e | Isolated evidence-root run stops after 35.909 s: neutral positive has 2,061 unsat checks but Unknown backend currentness and `NotProved`; provider completion is absent (#471). Final source/image guards pass | No positive authority or full e2e credit. PR/full fast/standard conformance unrun. Earlier nested evidence-root attempt correctly refused repository Cargo configuration and is separate |
+| `8b3432c4` corrected control | Both native source suites pass (12 model-source, 59 production-source). Complete Stock positives retain query 471/821, inputs 308/538, authority 510/895. Bounded query partition `150/161` passes its whole positive and corrected control 151 at 470 verified plus one ordinary error, all 821 functions, with final source/runtime checks and no resource marker | Five actual verifier calls; only one ordinary negative. `complete_component_controls=false` and `complete_suite=false`. No complete query union, 400-case matrix or service theorem |
 | `4c43e5a9` controls | Fresh complete positives repeat 471/821, 308/538 and 510/895 with final source/runtime checks. Four query workers terminate with exits 0, 0, 1, 0; control 151 selects `1nat` inside `compare`'s ensures clause and produces a pre-verification type error, zero obligations and an empty function inventory (#468) | The strict inventory check refuses it. No ordinary-negative credit, complete query union or 400-case completion; inputs/authority never launch. The durable continuation correctly stops on the actual query failure before the reserved unstarted-component boundary |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
@@ -45,6 +62,31 @@ observation guarantee or service theorem is claimed. All six rows of the
 | `b8775f8f` | Native whole positive roots: query 343/0 (621 function entries), inputs 264/0 (438), authority 430/0 (736); every prior function retained, final source/runtime identity checked. Workspace passes (475.68 s) | Development positive evidence only: 16 new stdout controls and its complete 229-case canonical matrix remain unqualified |
 | `cc8c24a1` | Complete macOS canonical query component: 288 obligations, 503 function entries and all 39 ordinary controls. Native full e2e union including extra and PR conformance pass | Earlier checkpoint, not qualification of later code; e2e/PR gate durations 1,175.78 s/122.67 s include image/build work |
 
+The `fa1b7e74` native workspace receipt is retained at
+`experiments/2026-10-27/acceptance-fa1b7e74-native-workspace.tgz`, SHA-256
+`15ccb30173fd840feed6096025db2b4184f62e526eddb08f89a12b9f494cd8fb`
+(6,919,629 bytes). Lead independent GET/hash and raw report/log review pass,
+including the actual Docker target identity and original 1,279/57 test summary.
+
+The mutation preflight now reuses immutable full-source projections within one
+process, keyed by the complete source text. It never keys by path, function
+name or a truncated digest. Each changed source still receives its complete
+token/contract/loop parse; all original comparisons and Stock inventories remain
+required. The bounded 16-entry cache changes no production Rust, proof control,
+deadline or solver resource. A regression warms a real executable selector,
+then moves that same selector into another source's contract and requires its
+refusal. Native `6c94911f` passes the full 12/64 source suites; it shows no clear
+speed improvement. No production-runtime speedup is claimed.
+
+The next source-tooling candidate also caches immutable lexical token tuples,
+keyed by complete source text in a bounded 32-entry process-local cache. Public
+token reads return fresh lists, so one caller cannot edit another parse or reuse
+another source's character spans. The original tokenizer's scan and all
+envelope, mutation, loop, source-closure and Stock checks remain unchanged.
+Mutable-list isolation and shifted-source span regressions pass in the focused
+tiny tests; complete native source qualification and any timing claim remain
+pending. This has no production query-parser or solver-input behavior.
+
 The #468 correction retains the complete original `Replay::compare` signature,
 contracts and executable method body, changing only its final `true` to `false`.
 All earlier exits already refuse. A balanced-token macro parser skips entire
@@ -63,10 +105,86 @@ that orchestration failure receives zero proof credit. The follow-up reuses
 one token list and advances a balanced-group cursor past complete erased and
 runtime envelopes instead of rescanning every prior erased range. This keeps
 the same contracts, runtime projection and regression assertions; fresh source
-suites and the repaired whole-root control remain required. Existing
+suites and the repaired whole-root control remain required. The corrected `8b3432c4` diagnostic report is SHA-256
+`0ccfd4021724888b643010dd6d1924f2e77f4b49da2ec4253c4c0e88fb2dff15`;
+its five raw calls include the three-root discovery and repeated query positive.
+The follow-up inventory regression restores the actual historical `1nat`/`false`
+descriptor and requires refusal through the real checker inventory, before any
+Stock call; it supplements the four helper fixtures and remains unrun until the
+next source suite. The closed selector subset also explicitly refuses nested
+runtime function declarations/envelopes inside an executable body, preventing
+an inner function contract from being mistaken for its enclosing runtime code;
+a separate regression covers both nested checked macros and direct functions.
+No current production control requires nested runtime declarations. Existing
 loop checks, exact function/obligation counts, controls and resource limits stay
 required. The failed matrix and nondurable original launcher remain indexed;
 its orchestration guard and correctly aborted service receive zero proof credit.
+
+A further source-only #468 witness finds that a selector editing only a
+`sail_while!` invariant or termination clause was still accepted as runtime
+syntax. The source projection now balances the actual loop macro grammar,
+retains the complete invariant/decreases groups as protected contracts, and
+excludes them from executable selector spans. Whole-method edits that change
+both runtime code and loop annotations refuse as well. Real loop conditions,
+bodies and post-loop returns remain eligible mutation targets. Four focused
+source tests pass locally in 0.002 seconds; complete native source/inventory
+qualification remains pending. This changes the checker, not production Rust,
+formal obligations, existing mutation descriptors or verifier limits.
+
+That complete source qualification now passes at frozen `9099f673`; the
+private archive `experiments/2026-10-27/acceptance-source-9099f673-native.tgz`
+is SHA-256 `689480751efc40e823b66e6ff05892e3bde457a20611ebc28f1a7a42fe1fb82e`
+(6,828,538 bytes), with controller upload/readback and lead independent
+GET/hash plus raw report review checked. The earlier full native workspace
+and solver pass at `4c43e5a9` is retained separately as
+`experiments/2026-10-27/acceptance-combined-4c43e5a9-native-early.tgz`, SHA-256
+`7cedd3c40dd0ea9de271800e98aa5c088e4c6f83fdec2e52c2211a88e6028d75`;
+lead independent GET/hash and raw status/log review pass.
+
+The isolated e2e failure is retained at
+`experiments/2026-10-27/acceptance-4c43e5a9-isolated-gates.tgz`, SHA-256
+`930fa2d6cb7108ad5e4804131a00ed97c31f1334763df5ca35872f987e778705`
+(126,953,807 bytes); lead independent GET/hash passes. Source tracing identifies
+the mismatched endpoint lookup: `cargo_messages` reads the raw environment,
+although the original driver and runner use the private transport file.
+The correction uses `transport::var`, preserving marker authentication, forwarded
+bytes, complete provider accounting and the conservative proof/currentness
+policy. A focused regression executes a real `sail-cargo` alias with its own
+transport file, a live original output marker, actual child output and both
+absent/conflicting caller variables. Its unchanged baseline and corrected
+native runs are pending; this is not a claim that #471 or full e2e is qualified.
+The first baseline-only attempt is preserved as
+`experiments/2026-10-27/acceptance-output-control-06cf8ba8-native.tgz`, SHA-256
+`0cb2255af7e880bdda10be7de7a51622a5931927d8fb179c7d35f7b0ab8756ec`
+(6,835,032 bytes). Native compilation succeeds and the single selected test
+fails in 28.726 s including build time, but the original child stderr is absent
+from its failure message. The controller refuses attribution and runs neither
+the corrected test nor Clippy; final source/image checks pass. Capturing both
+child streams changes no assertion or production predicate.
+
+The fresh-package red/green at frozen `3dbebad5` is retained at
+`experiments/2026-10-27/acceptance-output-control-3dbebad5-fresh-native.tgz`,
+SHA-256 `c76a3f8d8da0cb556c8a0c3d340cb1619bf071531d28d85b89da6b0909f9b3b8`
+(6,876,667 bytes). Each selected source is clean and actually compiled after
+an explicit `cargo clean -p sail-verus`. The original lookup fails the exact
+marker-completion assertion; the corrected lookup passes the unchanged test
+and strict all-target package Clippy. Total gate duration is 69.923 s, not a
+performance result. Lead independent GET/hash and raw report/log review pass.
+
+The preceding shared-target attempt is separately preserved as
+`experiments/2026-10-27/acceptance-output-control-3dbebad5-native.tgz`, SHA-256
+`336597e24f6ffdfb7fb0797dbf2171e3f086953dde48b992a4599bf45f30e84f`
+(6,875,962 bytes), with lead independent GET/hash checked. It runs both prepared
+clones against the same Docker target volume and `/work` mount. The corrected
+command performs no compilation, so source cleanliness supplies no corrected
+binary receipt. #475 tracks this concrete qualification gap. The wrapper
+correction derives its target volume from the physical checkout and keeps
+normal same-checkout reuse. A lightweight real-wrapper test with a recording
+Docker stand-in fails the original cross-checkout isolation assertion and passes
+the new behavior, repeated calls, physical symlink aliases and separate Singular
+targets. This checks command construction, not real Docker/Cargo acceptance of
+the new wrapper or any production theorem. Full native wrapper qualification
+remains required.
 
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
@@ -355,6 +473,56 @@ conformance and added-cost qualification remain pending. Local builds and
 verifier jobs remain stopped while the owner's machine is busy.
 
 ## Source and actual scope
+
+The human-empty-output candidate for #476 adds actual tee-output validation,
+separate kind/version/filename storage and an opaque byte-only CLI return. The
+shared admission checks the original empty observation, original/current request
+payload, native path bytes, guarded revision readback and strict complete footer
+grammar. It does not call, expose or mint CompleteRequest, DeclaredReplayAdmission,
+ProjectResult or any proof receipt. JSON/jobs/MCP remain outside this consumer.
+Fifteen new ordinary executable controls are appended to the inherited controls;
+whole-root function/VC discovery, every new negative, native tests and the
+unchanged positive recording/hit assertions remain required. No new inventory or
+qualification is inferred from source inspection.
+
+The byte-only reader preserves the established exact `hit` decision trace and
+records its distinct replay kind on a separate line. The unchanged original
+end-to-end recording/hit assertions remain required; a new diagnostic spelling
+does not replace those assertions.
+After an existing human candidate refuses, the actual CLI takes ordinary
+execution directly rather than asking the separate proof-record reader to
+overwrite its diagnostic. Candidate presence itself grants no authority; every
+successful replay still consumes the same checked request/path/readback/bytes
+admission. One final miss reason survives unavailable preflight or changed
+observations, while JSON and other proof-record consumers keep their original path.
+
+The next #376 presentation candidate source-shares the actual byte-only footer
+renderer. It finds the admitted original duration boundary, copies that exact
+original prefix and appends exactly the supplied fully parsed numeric duration.
+The real byte-only reader calls this operation instead of the native generic
+stderr renderer; whole/partial report replay retains its existing renderer.
+The checked contract preserves original profile/header and supplied duration
+association, rather than merely checking that the transformed output looks like
+a footer. Nine new executable controls retain complete loop contracts; positive
+inventory discovery, ordinary negatives, native tests and conformance remain
+pending. Human-mode selection, complete physical observations and saved-output
+origin remain separate open joins; no full-service claim follows from this source.
+
+The #485 follow-up evaluates the same actual stdout/footer check before the
+unchanged request metadata/readback conjunction, retaining the exact original
+contracts. Its stdout-omission control still substitutes an empty slice for the
+same original supplied stdout; no check, model, resource or expected rejection
+is removed. New qualification must establish an ordinary failure at default
+resources; source ordering alone is not evidence of a repaired control.
+
+The diagnostic and source-tooling archives are retained under
+`experiments/2026-10-27/acceptance-recording-a73d13c2-native.tgz`
+(SHA-256 `a62760bcbdebfcecda2c57652d21f683e44d4dda459f1bd38e17b19aaec8ff61`,
+8,907,472 bytes) and
+`experiments/2026-10-27/acceptance-source-6c94911f-native.tgz`
+(SHA-256 `87d49f9cffe99df92f0f64daedae3ee75844c2300e916510dc2ab4d982b6fd61`,
+6,866,252 bytes). Each has controller PUT/GET equality, independent lead GET/hash
+and raw report/log review; neither establishes the new human-output candidate.
 
 The `c70169a3` native gate passes strict clippy, then runs 1,228 workspace
 tests: 1,227 pass and one new declared-replay constructive fixture fails.

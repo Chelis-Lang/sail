@@ -12,6 +12,12 @@
 # volumes, so they never mix with the host's own `target/`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+sail_target_volume="$(ci/target-volume.sh)"
+if [ "${1:-}" = target-volume ]; then
+  [ "$#" -eq 1 ] || { echo 'usage: ci/local.sh target-volume' >&2; exit 2; }
+  echo "$sail_target_volume"
+  exit 0
+fi
 # Only these phases invoke the real external MCP client. The core target keeps
 # every pinned Rust, verifier, solver and corpus tool unchanged.
 sail_image_target=core
@@ -41,6 +47,6 @@ if [ "${1:-}" = solver ]; then
 fi
 docker run --rm ${tty[@]+"${tty[@]}"} ${sail_runtime_env[@]+"${sail_runtime_env[@]}"} ${sail_fault_options[@]+"${sail_fault_options[@]}"} --platform linux/amd64 \
   -v "$PWD:/work" -w /work \
-  -v sail-ci-target:/work/target \
+  -v "$sail_target_volume:/work/target" \
   -v sail-ci-cache:/root/.cache/sail \
   "$image" ci/run.sh "$@"

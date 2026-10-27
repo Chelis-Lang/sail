@@ -91,6 +91,147 @@ fn original_request() -> ResolvedRequest {
 }
 
 #[test]
+fn empty_human_footer_cannot_carry_verifier_text() {
+    use sail_api::acceptance::empty_human_bytes;
+    let footer = b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n";
+    assert!(empty_human_bytes(&[], footer));
+    assert!(empty_human_bytes(
+        &[],
+        b"    Finished `release` profile [optimized] target(s) in 12m 59s\n"
+    ));
+    for stderr in [
+        b"verification results:: 1 verified, 0 errors\n".as_slice(),
+        b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\nverified\n",
+        b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in .01s\n",
+        b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s",
+        b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 60s\n",
+        b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n\n",
+    ] {
+        assert!(!empty_human_bytes(&[], stderr));
+    }
+    assert!(!empty_human_bytes(b"verified", footer));
+}
+
+fn rendered_human_footer_preserves_prefix(
+    admitted: &sail_api::acceptance::EmptyHumanOutput<'_, '_>,
+) {
+    assert_eq!(
+        sail_api::acceptance::render_empty_human_output(admitted, b"12m 59s\n").as_deref(),
+        Some(
+            b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12m 59s\n"
+                .as_slice()
+        )
+    );
+    assert!(
+        sail_api::acceptance::render_empty_human_output(admitted, b"0.01s\nverified\n").is_none()
+    );
+}
+
+#[test]
+fn empty_human_replay_never_mints_requested_proof_authority() -> TestResult {
+    use sail_acceptance::inputs::{InputFact, InputValue};
+    use sail_api::acceptance::{
+        admit_empty_human_output, bind_request_paths, empty_human_candidate,
+    };
+    let facts = [InputFact {
+        namespace: 0,
+        name: b"source",
+        value: InputValue::Present(b"original bytes"),
+    }];
+    let footer = b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n";
+    for variant in [
+        "positive",
+        "json",
+        "stdout",
+        "stderr",
+        "original-owner",
+        "current-scope",
+        "stale",
+        "paths",
+        "compile-only",
+        "focus",
+        "report",
+        "verifier",
+        "reused",
+        "empty-request",
+        "exit",
+        "historical",
+    ] {
+        let mut original = original_request();
+        let mut observed = project(Vec::new());
+        match variant {
+            "compile-only" => original.args = vec!["--".into(), "--no-verify".into()],
+            "focus" => original.args = vec!["--".into(), "--verify-module".into(), "m".into()],
+            "report" => observed.targets.push(target("app", passing_report()?)),
+            "verifier" => observed.execution.verifier_invocations = 1,
+            "reused" => observed.execution.reused_targets = 1,
+            "empty-request" => original.targets.clear(),
+            "exit" => observed.exit_code = Some(1),
+            "historical" => observed.currentness = Currentness::Historical,
+            _ => (),
+        }
+        let mut current = original.clone();
+        current.run_id = "new independently allocated request".into();
+        if variant == "original-owner" {
+            original.context_sha256.push('x');
+        }
+        if variant == "current-scope" {
+            current.targets[0].target.push('x');
+        }
+        let mut path_request = current.clone();
+        if variant == "paths" {
+            path_request.workspace.push('x');
+        }
+        let paths = bind_request_paths(
+            &path_request,
+            path_request.invocation.as_bytes(),
+            path_request.workspace.as_bytes(),
+        )
+        .ok_or("native path binding")?;
+        let readback = replay_declared_readback(
+            &facts,
+            &facts,
+            Some(b"original observation stamp"),
+            if variant == "stale" {
+                b"stale revision"
+            } else {
+                b"revision"
+            },
+        );
+        let stdout = if variant == "stdout" {
+            b"verified".as_slice()
+        } else {
+            &[]
+        };
+        let stderr = if variant == "stderr" {
+            b"verified\n".as_slice()
+        } else {
+            footer.as_slice()
+        };
+        let admitted = admit_empty_human_output(
+            &original,
+            &current,
+            &observed,
+            variant != "json",
+            stdout,
+            stderr,
+            Some(&paths),
+            Some(&readback),
+        );
+        assert_eq!(admitted.is_some(), variant == "positive", "{variant}");
+        if let Some(admitted) = admitted {
+            assert_eq!(admitted.stderr(), footer);
+            rendered_human_footer_preserves_prefix(&admitted);
+            assert!(empty_human_candidate(&original, &observed, true));
+            assert!(complete_request(&original, &observed).is_none());
+            assert!(complete_request(&current, &observed).is_none());
+            assert!(sail_api::acceptance::complete_selection(&observed).is_none());
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn original_request_binds_nonempty_scope_and_all_identity_fields() -> TestResult {
     let request = original_request();
     let actual = project(vec![target("app", passing_report()?)]);

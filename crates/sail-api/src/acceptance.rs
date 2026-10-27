@@ -203,6 +203,32 @@ sail_code! {
         readback: ReplayReadback<'a, 'b>,
     }
 
+    /// Byte-only replay of a human Cargo no-op. This exposes neither a report
+    /// nor any whole/partial proof token. Empty observed coverage cannot supply
+    /// the independently requested, nonempty verification inventory.
+    pub struct EmptyHumanOutput<'a, 'b> {
+        original: &'a ResolvedRequest,
+        current: &'a ResolvedRequest,
+        observed: &'a ProjectResult,
+        stderr: &'a [u8],
+        paths: RequestPathBinding<'a>,
+        readback: ReplayReadback<'a, 'b>,
+    }
+
+    impl<'a> EmptyHumanOutput<'a, '_> {
+        sail_method! {
+            /// The only data projection: the exact validated Cargo footer.
+            pub fn stderr(&self) -> (out: &'a [u8])
+                requires(true) ensures(out == empty_human_stderr(self))
+            {
+                // Retain the original witness borrows without exposing their
+                // report or allowing a caller to obtain proof authority.
+                let _ = (&self.original, &self.current, &self.observed, &self.paths, &self.readback);
+                self.stderr
+            }
+        }
+    }
+
     impl<'a, 'b> DeclaredReplayAdmission<'a, 'b> {
         sail_method! {
             /// Borrows the retained original request, without reminting it.
@@ -2835,4 +2861,251 @@ sail_verified! {
         requires(declared_replay_valid(&admitted))
         ensures(out == declared_replay_project(&admitted))
     { admitted.project }
+}
+
+sail_spec! {
+    pub open spec fn decimal_byte(b: u8) -> bool { b'0' <= b <= b'9' }
+
+    pub open spec fn cargo_duration_tail(bytes: Seq<u8>, end: int) -> bool {
+        0 < end <= bytes.len()
+            && (forall |i: int| 0 <= i < end ==> decimal_byte(bytes[i]))
+            && ((bytes.len() - end == 5 && bytes[end] == b'.'
+                    && decimal_byte(bytes[end + 1]) && decimal_byte(bytes[end + 2])
+                    && bytes[end + 3] == b's' && bytes[end + 4] == b'\n')
+                || (bytes.len() - end == 6 && bytes[end] == b'm' && bytes[end + 1] == b' '
+                    && b'0' <= bytes[end + 2] <= b'5' && decimal_byte(bytes[end + 3])
+                    && bytes[end + 4] == b's' && bytes[end + 5] == b'\n'))
+    }
+
+    pub open spec fn cargo_duration(bytes: Seq<u8>) -> bool {
+        exists |end: int| cargo_duration_tail(bytes, end)
+    }
+
+    pub open spec fn cargo_footer_prefix(bytes: Seq<u8>, prefix: Seq<u8>) -> bool {
+        prefix.len() <= bytes.len() && bytes.take(prefix.len() as int) == prefix
+            && cargo_duration(bytes.skip(prefix.len() as int))
+    }
+
+    /// A deliberately strict plain Cargo footer grammar, with no arbitrary
+    /// diagnostic text or ANSI escape path. Other renderings run normally.
+    pub open spec fn cargo_footer(bytes: Seq<u8>) -> bool {
+        cargo_footer_prefix(bytes, b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in "@)
+            || cargo_footer_prefix(bytes, b"    Finished `dev` profile [unoptimized] target(s) in "@)
+            || cargo_footer_prefix(bytes, b"    Finished `release` profile [optimized] target(s) in "@)
+            || cargo_footer_prefix(bytes, b"    Finished `release` profile [optimized + debuginfo] target(s) in "@)
+    }
+
+    pub open spec fn cargo_footer_boundary_at(bytes: Seq<u8>, end: int) -> bool {
+        0 <= end <= bytes.len() && cargo_duration(bytes.skip(end))
+            && ((end == b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in "@.len()
+                    && bytes.take(end) == b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in "@)
+                || (end == b"    Finished `dev` profile [unoptimized] target(s) in "@.len()
+                    && bytes.take(end) == b"    Finished `dev` profile [unoptimized] target(s) in "@)
+                || (end == b"    Finished `release` profile [optimized] target(s) in "@.len()
+                    && bytes.take(end) == b"    Finished `release` profile [optimized] target(s) in "@)
+                || (end == b"    Finished `release` profile [optimized + debuginfo] target(s) in "@.len()
+                    && bytes.take(end) == b"    Finished `release` profile [optimized + debuginfo] target(s) in "@))
+    }
+
+    pub open spec fn empty_human_observation(r: &ResolvedRequest, p: &ProjectResult, human: bool) -> bool {
+        human && request_header_matches(r, p) && r.targets@.len() > 0 && p.targets@.len() == 0
+            && !partial_command(r.args@) && !verification_disabled(r.args@)
+            && !options_disable_verification(r.args@)
+            && r.engine.is_none() && p.engine.is_none() && r.function.is_none()
+            && string_bytes(&r.repair_package).len() == 0 && r.repair_target.is_none()
+            && string_bytes(&r.repair_kind).len() == 0
+            && p.currentness is Current && p.exit_code == Some(0i32)
+            && p.error.is_none() && p.no_reuse.is_none()
+            && p.execution.verifier_invocations == 0 && p.execution.reused_targets == 0
+    }
+
+    pub closed spec fn empty_human_stderr<'a, 'b>(a: &EmptyHumanOutput<'a, 'b>) -> &'a [u8] { a.stderr }
+    pub closed spec fn empty_human_valid(a: &EmptyHumanOutput) -> bool {
+        empty_human_observation(a.original, a.observed, true)
+            && replay_request_payload(a.current, a.original) && cargo_footer(a.stderr@)
+            && request_path_binding_valid(&a.paths) && path_binding_request(&a.paths) == a.current
+            && replay_readback_valid(&a.readback) && replay_readback_request(&a.readback) == a.current
+            && !request_authorized(a.original, a.observed)
+            && !request_authorized(a.current, a.observed)
+            && !supplied_selection_authorized(a.observed)
+    }
+}
+
+sail_verified! {
+    /// Checks one complete numeric Cargo duration, including its final newline.
+    pub fn cargo_duration_only(bytes: &[u8]) -> (out: bool)
+        requires(true) ensures(out == cargo_duration(bytes@))
+    {
+        let mut i = 0usize;
+        sail_while! { (i < bytes.len() && b'0' <= bytes[i] && bytes[i] <= b'9')
+            invariant(i <= bytes.len(), forall |j: int| 0 <= j < i ==> decimal_byte(bytes@[j]))
+            decreases(bytes.len() - i)
+            { i += 1; }
+        }
+        sail_proof! {
+            if cargo_duration(bytes@) {
+                let end = choose |end: int| cargo_duration_tail(bytes@, end);
+                if end < i { assert(decimal_byte(bytes@[end])); }
+                if i < end { assert(decimal_byte(bytes@[i as int])); }
+                assert(end == i);
+            }
+        }
+        if i == 0 { return false; }
+        let valid = if bytes.len() - i == 5 {
+            bytes[i] == b'.' && b'0' <= bytes[i + 1] && bytes[i + 1] <= b'9'
+                && b'0' <= bytes[i + 2] && bytes[i + 2] <= b'9'
+                && bytes[i + 3] == b's' && bytes[i + 4] == b'\n'
+        } else if bytes.len() - i == 6 {
+            bytes[i] == b'm' && bytes[i + 1] == b' '
+                && b'0' <= bytes[i + 2] && bytes[i + 2] <= b'5'
+                && b'0' <= bytes[i + 3] && bytes[i + 3] <= b'9'
+                && bytes[i + 4] == b's' && bytes[i + 5] == b'\n'
+        } else { false };
+        sail_proof! {
+            assert(valid == cargo_duration_tail(bytes@, i as int));
+            if valid { assert(cargo_duration(bytes@)) by { assert(cargo_duration_tail(bytes@, i as int)); } }
+            if cargo_duration(bytes@) { assert(cargo_duration_tail(bytes@, i as int)); }
+        }
+        valid
+    }
+}
+
+sail_verified! {
+    /// Checks the complete prefix and duration without trimming or substring matches.
+    pub fn cargo_footer_with_prefix(bytes: &[u8], prefix: &[u8]) -> (out: bool)
+        requires(true) ensures(out == cargo_footer_prefix(bytes@, prefix@))
+    {
+        if prefix.len() > bytes.len() { return false; }
+        exact_bytes(&bytes[..prefix.len()], prefix) && cargo_duration_only(&bytes[prefix.len()..])
+    }
+}
+
+sail_verified! {
+    /// Accepts only empty stdout and one fully parsed ordinary Cargo footer.
+    pub fn empty_human_bytes(stdout: &[u8], stderr: &[u8]) -> (out: bool)
+        requires(true) ensures(out == (stdout@.len() == 0 && cargo_footer(stderr@)))
+    {
+        stdout.is_empty() && (
+            cargo_footer_with_prefix(stderr, b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in ")
+            || cargo_footer_with_prefix(stderr, b"    Finished `dev` profile [unoptimized] target(s) in ")
+            || cargo_footer_with_prefix(stderr, b"    Finished `release` profile [optimized] target(s) in ")
+            || cargo_footer_with_prefix(stderr, b"    Finished `release` profile [optimized + debuginfo] target(s) in "))
+    }
+}
+
+sail_verified! {
+    /// Locates the duration of one complete footer, preserving its exact prefix.
+    pub fn cargo_footer_boundary(stderr: &[u8]) -> (out: Option<usize>)
+        requires(true)
+        ensures(out.is_some() == cargo_footer(stderr@),
+            out.is_some() ==> cargo_footer_boundary_at(stderr@, out.unwrap() as int),
+            out.is_some() ==> out.unwrap() <= 80)
+    {
+        if cargo_footer_with_prefix(stderr, b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in ") {
+            return Some(b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in ".len());
+        }
+        if cargo_footer_with_prefix(stderr, b"    Finished `dev` profile [unoptimized] target(s) in ") {
+            return Some(b"    Finished `dev` profile [unoptimized] target(s) in ".len());
+        }
+        if cargo_footer_with_prefix(stderr, b"    Finished `release` profile [optimized] target(s) in ") {
+            return Some(b"    Finished `release` profile [optimized] target(s) in ".len());
+        }
+        if cargo_footer_with_prefix(stderr, b"    Finished `release` profile [optimized + debuginfo] target(s) in ") {
+            return Some(b"    Finished `release` profile [optimized + debuginfo] target(s) in ".len());
+        }
+        None
+    }
+}
+
+sail_verified! {
+    /// Produces the byte-only replay by copying the admitted original prefix
+    /// and exactly the supplied complete numeric duration. This cannot replace
+    /// the original profile/header or insert report/diagnostic bytes.
+    #[allow(clippy::question_mark, reason = "Keep refusal explicit in the source shared with stock Verus.")]
+    pub fn render_empty_human_output(admitted: &EmptyHumanOutput, duration: &[u8]) -> (out: Option<Vec<u8>>)
+        requires(true)
+        ensures(out.is_some() ==> cargo_footer(out.unwrap()@),
+            out.is_some() ==> exists |end: int| cargo_footer_boundary_at(empty_human_stderr(admitted)@, end)
+                && out.unwrap()@ == empty_human_stderr(admitted)@.take(end) + duration@,
+            cargo_footer(empty_human_stderr(admitted)@) && cargo_duration(duration@)
+                && duration@.len() + 80 <= usize::MAX ==> out.is_some())
+    {
+        if !cargo_duration_only(duration) { return None; }
+        let stderr = admitted.stderr();
+        let Some(end) = cargo_footer_boundary(stderr) else { return None; };
+        if duration.len() > usize::MAX - end { return None; }
+        let mut bytes = copy_bytes(&stderr[..end]);
+        let mut i = 0usize;
+        sail_while! { (i < duration.len())
+            invariant(i <= duration.len(), end <= stderr.len(), end <= 80,
+                duration.len() as int + end as int <= usize::MAX,
+                cargo_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),
+                bytes@ == stderr@.take(end as int) + duration@.take(i as int))
+            decreases(duration.len() - i)
+            { bytes.push(duration[i]); i += 1; }
+        }
+        sail_proof! {
+            assert(duration@.take(i as int) =~= duration@);
+            assert(bytes@.take(end as int) =~= stderr@.take(end as int));
+            assert(bytes@.skip(end as int) =~= duration@);
+            assert(cargo_footer_boundary_at(bytes@, end as int));
+            assert(cargo_footer(bytes@));
+        }
+        Some(bytes)
+    }
+}
+
+sail_verified! {
+    /// Checks an original human no-op observation. This deliberately does not
+    /// call a complete-request factory or derive a verdict from exit zero.
+    pub fn empty_human_candidate(request: &ResolvedRequest, project: &ProjectResult, human: bool) -> (out: bool)
+        requires(true) ensures(out == empty_human_observation(request, project, human))
+    {
+        human && request_headers_match(request, project) && !request.targets.is_empty() && project.targets.is_empty()
+            && !focused_command(&request.args) && verification_enabled_command(&request.args)
+            && verification_enabled_options(&request.args)
+            && request.engine.is_none() && project.engine.is_none() && request.function.is_none()
+            && request.repair_package.is_empty() && request.repair_target.is_none() && request.repair_kind.is_empty()
+            && matches!(project.currentness, Currentness::Current) && project.exit_code == Some(0)
+            && project.error.is_none() && project.no_reuse.is_none()
+            && project.execution.verifier_invocations == 0 && project.execution.reused_targets == 0
+    }
+}
+
+sail_verified! {
+    /// Composes exact original/current requests, native path bytes, guarded
+    /// revision readback and byte-only output. The only public data accessor is
+    /// stderr; no report, refreshed result, or proof token can be obtained.
+    #[allow(clippy::too_many_arguments, reason = "Each original witness remains explicit at this admission boundary.")]
+    #[allow(clippy::question_mark, reason = "Keep explicit refusal branches in the source shared with stock Verus.")]
+    pub fn admit_empty_human_output<'a, 'b>(original: &'a ResolvedRequest, current: &'a ResolvedRequest,
+        observed: &'a ProjectResult, human: bool, stdout: &[u8], stderr: &'a [u8],
+        paths: Option<&RequestPathBinding<'a>>, readback: Option<&'a sail_acceptance::inputs::GuardedReadback<'b>>)
+        -> (out: Option<EmptyHumanOutput<'a, 'b>>)
+        requires(true)
+        ensures(out.is_some() ==> empty_human_valid(&out.unwrap()),
+            out.is_some() ==> human && stdout@.len() == 0,
+            out.is_some() ==> empty_human_stderr(&out.unwrap()) == stderr,
+            out.is_some() ==> empty_human_observation(original, observed, human)
+                && replay_request_payload(current, original),
+            out.is_some() == (empty_human_observation(original, observed, human)
+                && replay_request_payload(current, original) && stdout@.len() == 0 && cargo_footer(stderr@)
+                && paths.is_some() && request_paths_correspond(current,
+                    path_binding_invocation(paths.unwrap())@, path_binding_workspace(paths.unwrap())@)
+                && readback.is_some() && readback.unwrap().unchanged_view() && readback.unwrap().guard_view().is_some()
+                && readback.unwrap().guard_view().unwrap().revision_view() == string_bytes(&current.input_revision)))
+    {
+        if !empty_human_bytes(stdout, stderr) { return None; }
+        if !empty_human_candidate(original, observed, human) || !replay_requests_match(current, original) { return None; }
+        let Some(paths) = paths else { return None; };
+        let Some(paths) = bind_request_paths(current, paths.invocation(), paths.workspace()) else { return None; };
+        let Some(readback) = readback else { return None; };
+        let Some(readback) = seal_replay_readback(current, readback) else { return None; };
+        sail_proof! {
+            if resolved_coverage(original, observed) { resolved_coverage_has_requested_target(original, observed); }
+            if resolved_coverage(current, observed) { resolved_coverage_has_requested_target(current, observed); }
+            assert(!supplied_selection_authorized(observed));
+        }
+        Some(EmptyHumanOutput { original, current, observed, stderr, paths, readback })
+    }
 }

@@ -354,6 +354,7 @@ fn prepare_pending(
         siblings: Vec::new(),
         result: &fixture.project,
         original_request: &original_request,
+        human: false,
     }))
 }
 

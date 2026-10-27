@@ -5,6 +5,31 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve unchanged human Cargo output when the run observes no target reports
+  (#476). A separate byte-only replay checks the original/current requests,
+  recorded observations, native paths and guarded readback, and admits only empty
+  stdout plus one parsed Cargo completion line. It cannot return a verified
+  report or proof token; JSON, job and MCP authority checks remain unchanged.
+  The byte-only renderer copies its admitted original footer prefix and checks
+  the complete supplied duration; its additional direct proof qualification is
+  pending.
+
+- Include recording eligibility and original-request/producer refusals in the
+  optional unchanged-call decision trace (#476), preserving all admission checks.
+  Prioritize the last command and recent producer observations in bounded output
+  failure capture (#477); keep original caps and explicit incomplete indexes.
+
+- Give each physical local-validation checkout its own Cargo target volume
+  (#475), preventing prepared worktrees from accidentally executing another
+  snapshot's binaries. Repeated runs in one checkout retain the same volume;
+  `ci/local.sh target-volume` exposes its name for evidence collection.
+
+- Read managed Cargo's output-control endpoint from its private transport file
+  when classifying artifact output (#471). Valid completion markers no longer
+  prevent the artifact provider from sealing solely because the endpoint is
+  absent from the caller environment. Caller variables cannot override the
+  private file; incomplete or unrecognized observations still withhold reuse.
+
 - Include alignment growth in the cache slot's incremental insertion-generation
   charge, preserving the original logical 128-byte allowance (#486). The native
   old 80-byte/new 96-byte observation identifies 8 bytes of omitted padding; corrected
