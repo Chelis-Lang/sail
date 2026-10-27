@@ -141,6 +141,7 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `7a1cf36c` | Expanded whole-positive discovery | Literal atom obligations pass, but two constructive keyword-field assertions remain unproved (440 verified, one failing function). Add explicit extensional equality between original literal head bytes and the existing UTF-8 name predicate; no executable, predicate or resource change and no expanded inventory qualified |
 | 2026-10-26 | `90e2329f` | Expanded whole-positive discovery | All 50 source selftests pass, then the whole query root reports two unproved literal scalar-field assertions in its constructive option-history witness (440 verified, one failing function). No expanded inventory or later root/control qualification; add erased literal atom/span guidance without changing executable transitions or predicates |
 | 2026-10-26 | `b572bc99` | Expanded capture selftests | 49/50 pass; existing assembly/private-token fixture omits newly required `query_options.rs` and raises `KeyError` before its mutations (#458). Add that source to the fixture, preserving every assertion; no whole-positive discovery or ordinary-Verus control started |
 | 2026-10-26 | `03725fea` | Native workspace gate | Strict clippy next refuses two owner/payload similar-name locals, deprecated atomic alias and the enlarged inline entry variant; ordinary workspace tests and solver remain unrun. The correction preserves inline ownership and charges its complete carrier (#456) |
