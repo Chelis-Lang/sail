@@ -95,7 +95,7 @@ sail_verified! {
                 },
                 constructive_original_capture(records@, worker, invocation, arguments@, mode, project)
                     ==> if i < rows.len() { found.is_none() }
-                        else { found == Some(rows.len() - 1) })
+                        else { found.is_some() && found.unwrap() as int == rows.len() - 1 })
             decreases(rows.len() - i)
             {
                 let capture = &rows[i];

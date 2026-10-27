@@ -148,8 +148,25 @@ SHA-256 `8abc099c9bc4564c69ff91892908b9bceed52bcf1bc2b92189495c2dd05da3f6`
 (7,079,958 bytes), authenticated PUT/GET agreement, complete source bundle.
 Source refusal correctly prevents any Stock/native credit at that head.
 
+The corrected captured-worker preflight at `f12c50c4` passes all 67 source tests
+and both complete query/input roots, then authority compilation refuses a mixed
+`Option<usize>`/`Option<int>` loop annotation before verification (#492). The
+correction states the same intended index relation with an explicit integer
+projection: a present actual stored index equals the final original row index.
+No executable statement, contract condition, control, resource or checked source
+boundary changes. A nonzero compiler exit is refused even though its JSON
+verification-error counter is zero; this head has no authority verification credit.
+
+Evidence is `experiments/2026-10-27/acceptance-request-domain-f12c50c4-native.tgz`,
+SHA-256 `2ec608b06f5f743aecef193b7f9a7481646601f7c8c27d239ed1dbedc97321b8`
+(7,562,663 bytes), authenticated upload/readback agreement and complete source
+bundle. The unchanged source harness retains its actual `f12c50c4` test receipt;
+a subsequent whole-root diagnostic still checks the current canonical assembly,
+declaration/import/control inventory and final source/runtime identity.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `f12c50c4` captured-worker candidate | Source suites pass, including all 67 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass. Authority Rust compilation refuses one mixed Option index type (E0277) before verification; controller stops in 451.615 s, final source/image/runtime checks pass | Zero authority verification credit despite a JSON error counter of zero: compiler exit is nonzero. Native compilation/tests and new ordinary negatives are unrun |
 | `9478b711` captured-worker candidate | Model source suite passes. Production source suite runs 67 tests: one failure and four errors from a query dependency mismatch and four witnesses outside the Verus envelope (#479, #492). Controller stops in 28.912 s; final source/image/runtime checks pass | All Stock roots, native compilation/tests and ordinary negatives are unrun. Correcting the actual program/closure leaves every safeguard and control intact |
 | `ba7e816b` native-only follow-up | All three complete driver/source files match passed `dcf94ef7` raw bytes and inventories; runtime identity matches (57.609 s). Full workspace/all-target strict Clippy passes (92.926 s). Actual nextest summary: 16 run, 16 pass, 671 skips; step 103.691 s including build, test runtime 6.235 s. Total 263.160 s; final source/image/runtime checks pass | Mathematical receipts remain `dcf94ef7`; no new Stock, negative, full native workspace, conformance or service credit. The separate captured-worker selector requires fresh qualification |
 | `dcf94ef7` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961) repeat at the locked inventories. Native Clippy clears the three #489 compilation errors and stops after 91.955 s on six API fixture style diagnostics. Controller finishes in 569.868 s; final source/image/runtime checks pass | Native request tests, ordinary negatives, conformance and cost checks are unrun. The native fixture style correction changes no captured proof body or adapter |
