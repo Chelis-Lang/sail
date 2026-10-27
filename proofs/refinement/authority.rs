@@ -1559,4 +1559,71 @@ pub fn missing_effective_options_cannot_enable_report(original: &[String]) -> (r
     crate::request_mode::construct_report_verification_arguments(original, None).is_none()
 }
 
+/// Actual separate-value selection retains the original second argument.
+pub fn original_package_selector_retains_nonempty_value(arguments: &[String])
+    -> (selection: crate::request_selectors::OriginalSelectors)
+    requires arguments@.len() == 2, string_bytes(&arguments@[0]) == b"-p"@,
+        string_bytes(&arguments@[1]) != b"--"@,
+    ensures selection.prefix_end == 2, selection.packages@.len() == 1,
+        selection.packages@[0].argument == 1, selection.packages@[0].offset == 0,
+        selection.excluded@.len() == 0, selection.bins@.len() == 0,
+        !selection.library, !selection.all_bins,
+{
+    let selection = crate::request_selectors::scan_original_selectors(arguments);
+    proof {
+        crate::request_selectors::selector_marker_lengths();
+        reveal_with_fuel(crate::request_selectors::selector_prefix, 3);
+    }
+    selection
+}
+
+/// A consumed library spelling remains the selected original package value.
+pub fn original_consumed_library_word_is_not_a_library_selector(arguments: &[String])
+    -> (selection: crate::request_selectors::OriginalSelectors)
+    requires arguments@.len() == 2, string_bytes(&arguments@[0]) == b"-p"@,
+        string_bytes(&arguments@[1]) == b"--lib"@,
+    ensures selection.packages@.len() == 1,
+        selection.packages@[0].argument == 1, !selection.library,
+{
+    proof { crate::request_selectors::selector_marker_lengths(); }
+    original_package_selector_retains_nonempty_value(arguments)
+}
+
+/// Cargo's actual separator prevents later package words entering this scan.
+pub fn original_forwarded_package_selector_is_not_selected(arguments: &[String])
+    -> (selection: crate::request_selectors::OriginalSelectors)
+    requires arguments@.len() > 0, string_bytes(&arguments@[0]) == b"--"@,
+    ensures selection.prefix_end == 0, selection.packages@.len() == 0,
+        selection.excluded@.len() == 0, selection.bins@.len() == 0,
+        !selection.library, !selection.all_bins,
+{
+    let selection = crate::request_selectors::scan_original_selectors(arguments);
+    proof { reveal_with_fuel(crate::request_selectors::selector_prefix, 1); }
+    selection
+}
+
+/// The raw selected suffix itself is a constructive match, never always refused.
+pub fn original_nonempty_selected_suffix_matches(arguments: &[String], candidate: &str)
+    -> (matched: bool)
+    requires arguments@.len() == 1, string_bytes(&arguments@[0]).len() > 0,
+        string_bytes(&arguments@[0]) == vstd::utf8::encode_utf8(candidate@),
+    ensures matched,
+{
+    proof { vstd::seq_lib::lemma_seq_skip_nothing(string_bytes(&arguments@[0]), 0); }
+    crate::request_selectors::original_span_matches_str(arguments,
+        &crate::request_selectors::ArgumentSpan { argument: 0, offset: 0 }, candidate)
+}
+
+/// Exact metadata name identity is accepted on the actual original value.
+pub fn original_nonempty_package_name_matches(arguments: &[String], name: &str, id: &str)
+    -> (matched: bool)
+    requires arguments@.len() == 1, string_bytes(&arguments@[0]).len() > 0,
+        string_bytes(&arguments@[0]) == vstd::utf8::encode_utf8(name@),
+    ensures matched,
+{
+    proof { vstd::seq_lib::lemma_seq_skip_nothing(string_bytes(&arguments@[0]), 0); }
+    crate::request_selectors::original_package_matches(arguments,
+        &crate::request_selectors::ArgumentSpan { argument: 0, offset: 0 }, name, id, None)
+}
+
 }

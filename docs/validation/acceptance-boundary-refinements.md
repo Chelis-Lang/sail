@@ -20,6 +20,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| Original-selector/output-order/renderer source union (`304fb200` + `39612384`) | Actual original package/exclusion/bin selection and byte-window/name/id/first-@-version matches now feed the native target filter, alongside the new output-order controller and corrected renderer. Every lead control object survives and 23 selector controls append once: 314 query/115 input/247 authority negatives, 676 total plus three positive roots. Required function sets are 1,114/538/1,030. Lightweight source assembly/import, canonical order, exact required names and unique-selector checks pass | Source integration only. Required 618/308/592 obligation floors come from observed parents; no combined count is inferred. Complete new discovery, controls/native/e2e/conformance/cost and service/provider correspondence remain required. Metadata JSON filters and full raw-value construction remain separate work |
 | Output-order/coherent source union (`ad019e9a` + `fa6b5b62`) | Actual chunk/item/frame/replay/queue operations are integrated with the current cache/request/renderer source. All 314 query/115 input/224 authority controls remain mandatory, including six reviewed query selector updates carrying stronger append facts and the lead's six renderer retargets. Required function sets are 1,114/538/1,012 | Source integration only; 618/308/592 are inherited required floors, not predicted combined results. Fresh complete-root discovery, full controls/native/e2e/conformance/cost and service correspondence remain required |
 | `ad019e9a` footer-copy decomposition (#505) | Complete authority positive passes 592/1,012, retaining all prior functions. Original resource controls 14/71/80 and all six renderer mutations fail ordinarily with exact complete scope and default resources. Strict API/Verus/CLI Clippy and all 15 retained human-output tests pass; final source/runtime/image guards pass | Bounded nine-negative qualification only; no full component, e2e/conformance or service credit. Original byte loop/invariants/decrease and renderer contract remain. Archive `acceptance-footer-copy-ad019e9a-native.tgz`, SHA256 `77a9a1d481229fd7c95e3eeeb0671d8353a8222e931dcbd22552bd04e52ad163`; independent GET/hash passes, detailed raw audit pending |
 | `ee4e684f` hosted e2e/conformance | PR conformance and eight end-to-end phases pass: contracts, legacy, flags, loader, managed copies, managed native, scripts and repair | Output fails on directly observed colored Cargo footer bytes (#506). Managed fails when the ghost-only include stays Unknown after its existing second call (#507), cause unconfirmed. Full e2e and CI completion fail; extra and full fast/standard conformance remain required. Full original logs/artifacts/source are retained at `acceptance-coherent-ee4e684f-hosted-e2e-failures.tgz`, SHA256 `9aa73869b4f21e0764cfd2138f3329ab564545448763644070a1badd2dcf2c4b`, independent GET/hash passes |
@@ -91,6 +92,79 @@ All other inherited controls remain unchanged. The imported base has separate
 native source-suite evidence; this combined extension and actual request/domain
 construction still require fresh native source checks and complete-root Stock
 discovery. No function or obligation counts are inferred from the support probe.
+
+The successful original-selector qualifier is frozen `8ec59f7f`. Complete query
+471/0 (821 function entries), inputs 308/0 (538) and authority 592/0 (1,001) pass,
+retaining every previous function. Strict full-workspace/all-target Clippy passes
+in 93.358 s; all 25 selected native fixtures pass, with 803 skipped (6.243 s test
+time; 151.250 s including compilation). Final source/image/pinned-runtime checks
+pass; total controller time is 417.731 s. Actual scanned arguments, original span
+indices/offsets, first-at package matching and their real native caller are in
+scope. Source-unit results stay `e92200f1` (67 tests), with raw harness/manifest
+identity checked before the fresh complete-root runs; no new unit-suite or
+compiled-byte equality claim is made. The ready lock changes only actual discovered
+minima and documentation and does not relabel the frozen program. All 23 new
+ordinary negatives, conformance, cost and complete metadata/physical joins remain
+open. Authenticated byte-identical PUT/GET archive:
+`experiments/2026-10-27/acceptance-request-domain-8ec59f7f-native.tgz`,
+7,635,319 bytes, SHA256
+`424c81b14d3714d9e6e600d993d180db915f7e35db2f088df286542c58cffe24`.
+
+The first-at guidance candidate `c1b7ee30` proves the new split lemma and both
+nonempty suffix/name witnesses. Its complete query and input roots pass; the
+whole authority root retains one ordinary postcondition failure at the actual
+version-branch return, without resource exhaustion. The native stages remain
+unrun. The follow-up retains the original optional version as an explicitly named
+parameter and derives the loop's Some/value relation, preserving the actual
+missing-version guard, every predicate and all 23 control objects. This is a
+plain copy of the provided optional reference, never an authority/completeness
+flag. Frozen `c1b7ee30` remains unchanged and separately qualified only as failed.
+Its final source/image/runtime checks pass; authenticated archive:
+`experiments/2026-10-27/acceptance-request-domain-c1b7ee30-native.tgz`,
+7,622,507 bytes, SHA256
+`8161148d8f9c524edf9a713ab038ee24880236b9f33d92edb4920094e4a6e6d6`.
+
+The corrected selector qualifier at `e92200f1` passes all 67 production source
+tests and the complete query 471/0 (821 functions) and input 308/0 (538) roots.
+Whole authority reports 588 verified and three ordinary failed functions, with no
+resource diagnostic: two nonempty suffix/name examples need `skip(0)` framing,
+and the actual package-version return needs first-at uniqueness/existential
+framing. The scanner, separator, complete-window and suffix operations themselves
+prove. Native stages and all 23 new ordinary negatives remain unrun; no new
+inventory is frozen. Final source/image/runtime checks pass. The authenticated
+archive is `experiments/2026-10-27/acceptance-request-domain-e92200f1-native.tgz`,
+7,620,479 bytes, SHA256
+`88f2a40d6d6d4e7fd782258be37fa87af078f33932bb858445dbf6ec7bfd8fe6`.
+The follow-up adds only proved first-at/sequence guidance and derived loop facts,
+retaining predicates, executable guards and every constructive/refusal check.
+
+The first original-selector source qualifier at `b51373b6` is refused by the
+strict mandatory-control inventory before Stock or native compilation. All 23
+new control objects exist in the manifest, but the independently captured
+`REQUIRED_CONTROLS` name list was not extended; omission/late-build-script tests
+therefore fail at that earlier refusal. The follow-up explicitly appends all 23
+names while retaining every prior mandatory name/object and every guard. The
+failed attempt's final source/image/runtime checks pass. Its authenticated archive
+is `experiments/2026-10-27/acceptance-request-domain-b51373b6-native.tgz`,
+7,100,357 bytes, SHA256
+`517b651ba4355d494a407bb5d6c1c7aa304e9e1c8d4bfb8642fb01ac3b4e4f51`.
+This is a candidate inventory-integration defect tracked with #479, not a
+false-verdict witness; no proof/native/negative credit follows from the attempt.
+
+An original-selector source candidate now connects the real `expected_targets`
+scan and name/id/version matching to checked original byte ranges. It adds the
+actual `ArgumentSpan`/`OriginalSelectors` declarations, original-prefix scanner,
+exact byte-window/suffix/package matchers, five constructive witnesses and 23
+mandatory executable controls. Static envelope inspection locates every mutation
+inside actual executable code and preserves signatures/contracts/loop annotations;
+this alone earns no proof or negative credit. All prior 77 request controls and
+actual function minima remain required. Frozen `8ec59f7f` now passes all three
+complete Stock roots (authority 592/0, 1,001 function entries), strict workspace
+Clippy and all 25 selected native fixtures. The source-suite receipt is
+`e92200f1` (67 tests), with raw unchanged harness/manifest validation before fresh
+complete-root proofs. All 23 new ordinary negatives, conformance and cost remain
+pending. Existing Cargo JSON filters, full Cargo option/value semantics, decoder
+and physical/provider joins remain open.
 
 A separate report-mode construction source slice delegates the actual adapter
 operation to checked `request_mode.rs`. Its original packed option matcher and
