@@ -1209,3 +1209,13 @@ Actual driver SHA-256: `5fa538c31cd023383fcffb575e111ec5fa5c825b5aed81fa56a9357a
   and restores the explicit owned Option branches with a narrowly documented
   `manual_map` allowance for this observed proof boundary. It adds no trusted
   closure contract and preserves the complete original transfer postcondition.
+
+- `35daadcc`, 2026-10-27: whole-query Stock passes 596/1,025 with all old
+  functions retained, no VIR/resource refusal and final source/runtime checks.
+  Actual clean/recompile passes all 26 retained native SMT tests, zero skipped.
+  Acceptance/SMT strict Clippy clears; shim Clippy then refuses only the newly
+  elidable production impl lifetime (#504) after the borrowing initializer became
+  test-only. The source correction splits the named-lifetime test initializer
+  impl from the anonymous production impl, preserving every method body and
+  assertion. Native rerun, full controls/workspace/solver/conformance and the
+  separate tail candidate remain pending.

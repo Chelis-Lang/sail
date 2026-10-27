@@ -467,3 +467,15 @@ records the partial-frame fixture byte-array lint after all 25 native SMT tests
 pass. Empty-tape/coherence and finite witness VCs remain pending under #371.
 These are candidate proof/style failures, without a demonstrated native false
 verdict. All predicates, assertions and ordinary controls remain required.
+
+[#503](https://github.com/Chelis-Lang/sail/issues/503) tracks the output-owner
+candidate's native Clippy refusals after all 26 retained SMT tests pass. The
+source uses verified saturating subtraction and question-mark syntax; the exact
+pending-field Option map trial leaves one proof postcondition unproved, so its
+explicit owned branches retain a documented local allowance. Tuple signatures
+keep the actual field/queue transfer visible.
+[#504](https://github.com/Chelis-Lang/sail/issues/504) separately records the
+subsequent shim lifetime lint, corrected by splitting the test-only borrowing
+initializer from the anonymous production impl. These are candidate style/proof
+qualification limits, without a demonstrated native false verdict; strict
+native rerun and complete integrated controls/gates remain required.
