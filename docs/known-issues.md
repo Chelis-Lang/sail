@@ -459,3 +459,11 @@ records strict native lint/rustdoc refusal after all 24 SMT package tests pass.
 Scoped reveal, native lint documentation and exact endpoint facts are being
 qualified without relaxing parser contracts or controls. Neither finding is a
 native incorrect verdict. Whole-root and full controls remain pending.
+
+The paired stdout candidate has separate qualification findings:
+[#490](https://github.com/Chelis-Lang/sail/issues/490) corrects an inaccessible
+proof-only projection helper call; [#491](https://github.com/Chelis-Lang/sail/issues/491)
+records the partial-frame fixture byte-array lint after all 25 native SMT tests
+pass. Empty-tape/coherence and finite witness VCs remain pending under #371.
+These are candidate proof/style failures, without a demonstrated native false
+verdict. All predicates, assertions and ordinary controls remain required.

@@ -39,7 +39,12 @@ sail_code! {
                     out.output_view().healthy(), !out.output_view().eof(), out.output_view().view().len() == 0,
                     out.output_view().endpoints().len() == 0,
                     out.replay_view().original() == served, out.replay_view().left() == served)
-            { Self { controller:crate::query_output_owner::StreamOutput::new_replayed(owner,served), splitter:Some(crate::query_split::StreamSplitter::start(false)) } }
+            {
+                let controller=crate::query_output_owner::StreamOutput::new_replayed(owner,served);
+                let splitter=crate::query_split::StreamSplitter::start(false);
+                sail_proof! { assert(controller.output_view().view() =~= Seq::<u8>::empty()); }
+                Self { controller,splitter:Some(splitter) }
+            }
         }
         sail_method! {
             /// Original forwarding decision from this stdout owner's cursor.
@@ -87,7 +92,11 @@ sail_code! {
                 requires (old(self).coherent())
                 ensures (final(self).coherent(), final(self).owner_view() == old(self).owner_view(), final(self).replay_view() == old(self).replay_view(), final(self).output_view().well_formed(),
                     !final(self).output_view().healthy(), final(self).output_view().view().len() == 0)
-            { self.controller.discard(); self.splitter=Some(crate::query_split::StreamSplitter::start(false)); }
+            {
+                self.controller.discard();
+                self.splitter=Some(crate::query_split::StreamSplitter::start(false));
+                sail_proof! { assert(self.output_view().view() =~= Seq::<u8>::empty()); }
+            }
         }
         sail_method! {
             /// Borrows the retained original stdout bytes.
@@ -206,6 +215,11 @@ sail_verified! {
                     (crate::query_split::ItemKind::Atom,7int,seq![b's',b'a',b't'])])) by {
                 reveal(crate::query_split::model_step); reveal(crate::query_split::idle_model);
                 reveal(crate::query_split::atom_ends); reveal(crate::query_split::terminated_atom);
+                assert(seq![b'u',b'n'].push(b's').push(b'a').push(b't').push(b'\r')
+                    =~= seq![b'u',b'n',b's',b'a',b't',b'\r']);
+                assert(seq![b'u',b'n',b's',b'a',b't',b'\r'].drop_last()
+                    =~= seq![b'u',b'n',b's',b'a',b't']);
+                assert(seq![b's'].push(b'a').push(b't') =~= seq![b's',b'a',b't']);
                 reveal_with_fuel(crate::query_split::model_scan,10);
             }
         }
@@ -213,6 +227,7 @@ sail_verified! {
         if !output.append_items(&first).is_empty() { return false; }
         let items=output.append_items(&second);
         sail_proof! { assert(crate::query_split::item_models(items@).len() == items@.len()); }
+        sail_proof! { assert(raw@ =~= first@+second@); }
         if items.len() != 2 || items[0].offset != 0 || items[1].offset != 7
             || items[0].bytes.len() != 5 || items[1].bytes.len() != 3
             || !crate::inputs::byte_eq(output.bytes(),&raw) { return false; }
@@ -240,6 +255,7 @@ sail_verified! {
 sail_verified! {
     /// An actual nonempty unfinished list remains raw data; neither a supplied
     /// interval nor the explicit end event bypasses independent frame refusal.
+    #[allow(clippy::byte_char_slices, reason = "The explicit incomplete-list byte keeps the constructive refusal witness concrete for pinned Stock.")]
     pub fn parsed_output_partial_refused() -> (refused:bool)
         requires (true) ensures (refused)
     {
@@ -258,6 +274,7 @@ sail_verified! {
             assert(output.output_view().view().subrange(0,1) =~= bytes@);
         }
         if output.frame(0,1).is_some() { return false; }
+        sail_proof! { crate::query_output::transcript_partition_facts(&output.output_view()); }
         output.seal().is_none()
     }
 }
