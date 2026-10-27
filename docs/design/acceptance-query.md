@@ -307,6 +307,8 @@ chunk prefix and scoped scalar facts. Its two constructive byte carriers become
 explicit arrays with identical bytes and assertions, following the qualified
 kernel pattern; no production byte, policy, predicate or resource is changed.
 All 190 controls remain, with full-mutant scopes and loop annotations preserved.
+A documented function-local line-count allowance keeps the actual chunk
+transition and its now 111-line source proof together; it changes no math check.
 
 ### Scalar policy-option readback candidate
 

@@ -854,6 +854,7 @@ sail_code! {
             /// Executes the original chunk loop over the actual owned state.
             /// In-list chunks retain the first-close fast path; outer bytes
             /// advance once even when their delimiter is reconsidered.
+            #[allow(clippy::too_many_lines, reason = "Keep the actual owned state, consumed cursor, ordered emissions and their checked loop facts in one coherent production transition.")]
             pub fn push_items(self, data: &[u8], items: Vec<Item>) -> (out: (Self,Vec<Item>))
                 requires (self.well_formed(),self.position_view()+data@.len() <= usize::MAX,
                     items@.len()+data@.len()+(if self.position_view()>0 {1int} else {0int}) <= usize::MAX,
