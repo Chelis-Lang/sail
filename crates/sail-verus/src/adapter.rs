@@ -1443,25 +1443,7 @@ fn report_verification_arguments(
     report_args: &[String],
     effective: Option<&[String]>,
 ) -> Option<Vec<String>> {
-    let effective = effective?;
-    let enabled = sail_api::acceptance::verification_enabled_options(effective);
-    let mut forwarded = false;
-    let mut arguments = Vec::with_capacity(report_args.len());
-    for argument in report_args {
-        if argument == "--" {
-            forwarded = true;
-        }
-        if !(enabled && forwarded && argument == "--no-verify") {
-            arguments.push(argument.clone());
-        }
-    }
-    if !enabled && sail_api::acceptance::verification_enabled_command(&arguments) {
-        if !forwarded {
-            arguments.push("--".into());
-        }
-        arguments.push("--no-verify".into());
-    }
-    Some(arguments)
+    sail_api::request_mode::construct_report_verification_arguments(report_args, effective)
 }
 
 /// Records whether the target's origin evidence is bound and Verus remains
@@ -2565,6 +2547,55 @@ mod tests {
                 "--".into(),
                 "--rlimit=30".into()
             ])
+        );
+    }
+
+    #[test]
+    fn report_mode_construction_preserves_prefix_focus_and_original_bytes() {
+        let original: Vec<String> = [
+            "--no-verify",
+            "left\0value",
+            "--",
+            "--no-verify",
+            "--verify-function=original::lemma",
+            "λ payload",
+            "--no-verify",
+        ]
+        .map(str::to_owned)
+        .to_vec();
+        let enabled = Vec::new();
+        let disabled = vec!["--no-verify".to_owned()];
+        assert_eq!(
+            report_verification_arguments(&original, Some(&enabled)),
+            Some(
+                [
+                    "--no-verify",
+                    "left\0value",
+                    "--",
+                    "--verify-function=original::lemma",
+                    "λ payload"
+                ]
+                .map(str::to_owned)
+                .to_vec()
+            )
+        );
+        assert_eq!(
+            report_verification_arguments(&original, Some(&disabled)),
+            Some(original)
+        );
+        let unforwarded = vec!["λ payload".to_owned(), "--no-verify".to_owned()];
+        assert_eq!(
+            report_verification_arguments(&unforwarded, Some(&disabled)),
+            Some(
+                ["λ payload", "--no-verify", "--", "--no-verify"]
+                    .map(str::to_owned)
+                    .to_vec()
+            )
+        );
+        assert_eq!(report_verification_arguments(&unforwarded, None), None);
+        assert_eq!(
+            report_verification_arguments(&[], Some(&disabled)),
+            Some(["--", "--no-verify"].map(str::to_owned).to_vec())
         );
     }
 
