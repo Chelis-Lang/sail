@@ -121,6 +121,16 @@ builder and independent Cargo prefix selection. All are source-only candidates:
 direct stock-Verus checking, actual inventory discovery, ordinary negatives,
 native gates and differential/cost qualification remain pending.
 
+The candidate registers 22 mandatory ordinary mutations over the actual
+construction, normalization and workspace-prefix bodies. Their changed source
+spans are inside the named executable functions and outside their contracts and
+erased proof blocks; original loop scaffolding remains. All 397 inherited
+mutation objects remain unchanged. Actual verifier/function counts are not
+guessed: the older inventories remain until new complete-root discovery, and
+every new mutation still needs an ordinary failure at the full scope. The
+separate known `4c43e5a9` query control 151 selector failure remains unqualified;
+these additions neither repair nor discard that inherited control.
+
 Set iteration remains a distinct operation. The original
 `BTreeSet<(String, String, String)>` is still selected, and its actual native
 iteration supplies the target vector. Current vstd source makes set-domain
