@@ -137,20 +137,24 @@ def executable_envelopes(source: str) -> list[tuple[int, int]]:
     Erased macro/proof groups cannot introduce an executable envelope.
     Spans index tokens, including the executable body's outer braces.
     """
-    stream = tokens(source)
-    erased: list[tuple[int, int]] = []
+    return _executable_envelopes(tokens(source))
+
+
+def _executable_envelopes(stream: list[Token]) -> list[tuple[int, int]]:
+    """Walk each balanced envelope once using the caller's exact token list."""
     bodies: list[tuple[int, int]] = []
-    for i, token in enumerate(stream):
-        if any(begin <= i <= end for begin, end in erased):
-            continue
+    i = 0
+    while i < len(stream):
+        token = stream[i]
         macro = i + 2 < len(stream) and stream[i + 1].value == "!"
         if macro and token.value in {"sail_spec", "sail_impl_spec", "sail_proof"}:
-            erased.append((i, closing(stream, i + 2)))
+            i = closing(stream, i + 2) + 1
             continue
         if token.value in {"proof", "spec", "by"} and i + 1 < len(stream) and stream[i + 1].value == "{":
-            erased.append((i, closing(stream, i + 1)))
+            i = closing(stream, i + 1) + 1
             continue
         if not macro or token.value not in {"sail_verified", "sail_method"}:
+            i += 1
             continue
         end = closing(stream, i + 2)
         at = i + 3
@@ -175,6 +179,7 @@ def executable_envelopes(source: str) -> list[tuple[int, int]]:
         require(at < end and stream[at].value == "{" and closing(stream, at) == end - 1,
             "missing or trailing checked runtime body")
         bodies.append((at, end - 1))
+        i = end + 1
     return bodies
 
 
@@ -194,7 +199,7 @@ def runtime_mutation(source: str, before: str, after: str) -> None:
 
     def projection(text: str) -> tuple[list[str], list[list[str]], list[tuple[int, int]]]:
         stream = tokens(text)
-        bodies = executable_envelopes(text)
+        bodies = _executable_envelopes(stream)
         skeleton: list[str] = []
         executable: list[list[str]] = []
         spans: list[tuple[int, int]] = []
