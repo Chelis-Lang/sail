@@ -80,6 +80,8 @@ sail_verified! {
                 !crate::query::word_delimiter(limit@[i]) by { }
             assert forall|i: int| 20 <= i < 22 implies
                 !crate::query::word_delimiter(limit@[i]) by { }
+            assert(print@.subrange(1,11) =~= vstd::utf8::encode_utf8("set-option"@));
+            assert(limit@.subrange(1,11) =~= vstd::utf8::encode_utf8("set-option"@));
             assert(keyword_fields(print@,print_spans));
             assert(keyword_fields(limit@,limit_spans));
             assert(scalar_fields(print@,print_spans));
