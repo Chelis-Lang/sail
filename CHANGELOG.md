@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Charge the complete retained inline entry, including enum padding, against
+  the existing recording budget; exhaustion still stops recording while
+  preserving forwarding (#456). Fix the production no-op replay time import
+  needed for ordinary compilation (#455). Combined native qualification remains
+  pending.
+
 - Add a source candidate that validates scalar `:print-success` and `:rlimit`
   values from original SMT commands and retains their bytes across commands and
   resets, comparing actual Session readback before policy use and after every

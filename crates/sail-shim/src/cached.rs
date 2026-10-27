@@ -149,14 +149,16 @@ impl StoreCommand {
         }
     }
     fn retained_bytes(&self) -> Option<usize> {
-        let command = match self {
-            Self::Original(command) => command.retained_bytes()?,
+        let payload = match self {
+            Self::Original(command) => command
+                .retained_bytes()?
+                .checked_sub(std::mem::size_of::<sail_key::OwnedCommand>())?,
             #[cfg(test)]
-            Self::Symbolic { command, text, .. } => std::mem::size_of::<Self>()
-                .checked_add(command.len())?
-                .checked_add(text.len())?,
+            Self::Symbolic { command, text, .. } => command.len().checked_add(text.len())?,
         };
-        command.checked_add(std::mem::size_of::<SolverFrame>())
+        // Entry contains the largest expectation variant, frame, effort and
+        // enum padding. Charging its parts separately misses that padding.
+        payload.checked_add(std::mem::size_of::<Entry>())
     }
     fn observed_by(&self, publication: &SolverPublication) -> bool {
         match self {
@@ -292,6 +294,10 @@ fn unservable(command: &[u8], reply: &[u8], effort: Option<&Effort>) -> bool {
 
 /// A paired reply keeps its complete expectation and bytes together until PUT.
 /// Silence certificates have a separate complete-session origin.
+#[allow(
+    clippy::large_enum_variant,
+    reason = "Original command/frame witnesses stay inline; boxing would add a fallible allocation to the forwarding and recording path, and the full carrier is charged to its budget."
+)]
 enum Entry {
     Paired {
         pair: BoundPair<Expect, SolverFrame>,
@@ -326,9 +332,9 @@ impl Entry {
                     .len()
                     .checked_add(command.retained_bytes()?)
             }
-            Self::Silence { .. } => {
-                Some(b"sail-session-silent/v1\n".len() + "sail-session-silence".len())
-            }
+            Self::Silence { .. } => std::mem::size_of::<Self>()
+                .checked_add(b"sail-session-silent/v1\n".len())?
+                .checked_add("sail-session-silence".len()),
         }
     }
 
@@ -598,7 +604,7 @@ impl InputStatus {
         let accepted = self.valid.load(Ordering::SeqCst)
             && self
                 .recorded_bytes
-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |used| {
+                .try_update(Ordering::SeqCst, Ordering::SeqCst, |used| {
                     used.checked_add(cost)
                         .filter(|next| *next <= PUBLICATION_LIMIT)
                 })
@@ -836,7 +842,7 @@ fn output_side(
                 if frame.is_none() {
                     pairer.stop();
                 }
-                let owned = if fresh && input.charge(start.saturating_sub(s)) {
+                let payload = if fresh && input.charge(start.saturating_sub(s)) {
                     frame.and_then(|frame| {
                         frame.into_owned(Arc::clone(&owner), &SolverOwnerIdentity)
                     })
@@ -852,7 +858,7 @@ fn output_side(
                     fresh,
                     all.bytes().get(s..start).unwrap_or_default(),
                     &mut pairer,
-                    owned,
+                    payload,
                 ) {
                     break;
                 }
@@ -921,7 +927,7 @@ fn output_side(
         if frame.is_none() {
             pairer.stop();
         }
-        let owned = if fresh && input.charge(end.saturating_sub(s)) {
+        let payload = if fresh && input.charge(end.saturating_sub(s)) {
             frame.and_then(|frame| frame.into_owned(Arc::clone(&owner), &SolverOwnerIdentity))
         } else {
             if fresh {
@@ -933,7 +939,7 @@ fn output_side(
             fresh,
             all.bytes().get(s..).unwrap_or_default(),
             &mut pairer,
-            owned,
+            payload,
         );
     }
     // This consumes the actual stdout owner. It attests EOF and complete
@@ -1955,6 +1961,28 @@ mod tests {
             status.recorded_bytes.load(Ordering::SeqCst),
             super::PUBLICATION_LIMIT - 1
         );
+    }
+
+    #[test]
+    fn recording_charge_covers_the_inline_carrier_and_owned_payload() -> Result<(), &'static str> {
+        let (_, command) = terminal_checkpoint(b"(check-sat)\n")?;
+        let payload = command.command().len() + command.head().len();
+        let actual = super::StoreCommand::Original(command)
+            .retained_bytes()
+            .ok_or("bounded carrier charge")?;
+        let required = std::mem::size_of::<Entry>() + payload + 6 * std::mem::size_of::<usize>();
+        assert!(
+            actual >= required,
+            "charged {actual}, required {required}, inline carrier {}",
+            std::mem::size_of::<Entry>()
+        );
+        let silent = Entry::Silence {
+            key: QueryKey([0; 32]),
+        };
+        assert!(
+            silent.wire_cost().ok_or("bounded silence charge")? >= std::mem::size_of::<Entry>()
+        );
+        Ok(())
     }
 
     struct TestPipe;

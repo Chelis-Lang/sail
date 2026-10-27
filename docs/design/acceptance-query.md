@@ -522,6 +522,13 @@ the existing 64 MiB recording/publication bound. The bound is not raised.
 Exhaustion permanently withholds recording and can reduce reuse; original
 delivery/forwarding and independently selected fallback remain unchanged.
 Allocator bookkeeping is outside this existing logical payload budget.
+The native charge includes the complete inline `Entry` carrier (including the
+largest expectation variant, effort and enum padding), rather than adding the
+command and frame sizes separately. Silence entries also pay their carrier
+cost. An ordinary native regression for #456 fails with the earlier formula
+(356 charged versus 476 required for one actual `check-sat` checkpoint on
+x86-64) and passes with the corrected charge. This is object and logical-payload
+accounting, not a hard bound on allocator capacity or total process memory.
 Capture/key controls, native tests, complete-source proofs, default conformance
 and the added validation/retention cost remain unrun/unqualified. Actual parser emission/semantic coverage,
 physical I/O/image contracts, protected writers and restart still need their
