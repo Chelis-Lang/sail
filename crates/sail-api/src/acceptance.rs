@@ -124,6 +124,8 @@ sail_verified! {
 sail_verified! {
     /// Constructs the actual managed pre-execution record from original fields.
     /// This copies data; positive scope/currentness authority is checked later.
+    #[allow(clippy::manual_map,
+        reason = "Keep explicit option cases and their copy relation in the source shared with stock Verus.")]
     pub fn construct_resolved_request(source: RequestConstruction<'_>) -> (request: ResolvedRequest)
         requires(true)
         ensures(request_construction_matches(&source, &request), request.args@ == source.arguments@)
@@ -168,6 +170,8 @@ sail_verified! {
 sail_verified! {
     /// Constructs the actual selected interactive identity from its original
     /// manifest digest, without treating that digest as physical launch proof.
+    #[allow(clippy::ptr_arg,
+        reason = "The actual engine stores an owned manifest String whose exact original view and copy this constructor preserves.")]
     pub fn construct_interactive_identity(manifest: &String) -> (identity: EngineIdentity)
         requires(true)
         ensures(string_bytes(&identity.name) == b"interactive"@,

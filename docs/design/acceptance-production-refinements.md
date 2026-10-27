@@ -117,9 +117,12 @@ triples, prefix versus forwarded no-op flags, and original versus forwarded
 workspace spellings. Compile-only and partial arguments produced by the actual
 constructor still refuse the existing whole-request factory for arbitrary later
 project rows. Normal native regressions exercise the actual nonempty resolution
-builder and independent Cargo prefix selection. All are source-only candidates:
-direct stock-Verus checking, actual inventory discovery, ordinary negatives,
-native gates and differential/cost qualification remain pending.
+builder and independent Cargo prefix selection. The complete production Stock
+roots pass at `f98ea578`, including the actual constructor, key/set operations and
+these constructive/refusal witnesses. Actual inventories retain every prior
+function. Ordinary mutation qualification, native tests and differential/cost
+qualification remain pending; native Clippy reports the style diagnostics in the
+owning qualification record.
 
 The candidate registers 22 mandatory ordinary mutations over the actual
 construction, normalization and workspace-prefix bodies. Their changed source
@@ -136,11 +139,11 @@ The current proof guidance interprets actual fixed byte-array lengths and the
 standard ordered-set sequence specification explicitly. Finite witnesses reveal
 both a complete partial-selector literal and its real accepted prefix. These are
 erased facts about existing operations; the default Stock resource limits,
-original contracts and all admission guards remain unchanged. The latest failed
-complete-root attempt has three ordinary obligations left and supplies no new
-qualified function inventory or native validation; the owning
+original contracts and all admission guards remain unchanged. Complete-root
+discovery now passes at `f98ea578`, locking only the actual verified/function
+inventories. It supplies no ordinary-negative or native-test credit; the owning
 [qualification record](../validation/acceptance-boundary-refinements.md) records
-its exact source and archive.
+the exact source, subsequent lint stop and archive.
 
 Set iteration remains a distinct operation. The earlier original
 `BTreeSet<(String, String, String)>` supplied the target vector. Current vstd
@@ -224,7 +227,7 @@ projection for every valid original standard-library dictionary, so an
 always-refusing implementation must fail verification.
 The ordinary native fixture compares insertion, duplicate handling and complete
 projection with the original String-tuple set. These bodies, their contracts
-and the fixture remain unqualified; the source candidate's managed callers now
+pass complete-root Stock discovery; the native fixture remains unrun. The managed callers now
 use these operations, while no publication or runtime selection is implied.
 
 The same candidate adds `OriginalRequestHeader`, a borrowed construction input
@@ -236,8 +239,9 @@ and order. `ResolvedRequest` remains the single resulting request type; the
 borrowed header carries no authority. A nonempty ordinary fixture retains every
 header/engine/repair field and compile-only arguments across two actual original
 targets. The operation, fixture and actual `Resolution` caller conversion
-still need checking; no result-selected list, input-domain provider or metadata
-enumeration completeness is inferred from this constructor.
+pass complete-root Stock discovery; the native fixture and surrounding caller
+behavior still need native checks. No result-selected list, input-domain provider
+or metadata enumeration completeness is inferred from this constructor.
 
 The candidate caller conversion changes the actual requested-target set type,
 delegates each real metadata insertion to `insert_original_target`, and makes

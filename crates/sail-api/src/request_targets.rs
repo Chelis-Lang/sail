@@ -130,6 +130,8 @@ sail_verified! {
 sail_verified! {
     /// Decodes only the actual standard iterator outcome and copies that
     /// returned entry. No caller supplies a success or completeness token.
+    #[allow(clippy::manual_map,
+        reason = "Retain explicit actual iterator outcomes in the checked operation and its refusal controls.")]
     fn next_original_target(iterator: &mut Iter<'_, OriginalTargetKey>) -> (target: Option<RequestTarget>)
         requires(true)
         ensures(target.is_some() == (old(iterator).remaining().len() > 0),
@@ -149,6 +151,8 @@ sail_verified! {
 sail_verified! {
     /// Projects every entry of the actual immutable original dictionary once,
     /// in its native order. This proves no upstream Cargo-selection completeness.
+    #[allow(clippy::manual_let_else, clippy::question_mark,
+        reason = "Preserve explicit checked iterator-refusal branches and their ordinary full-body mutation contexts.")]
     pub fn project_original_targets(source: &OriginalTargets) -> (projection: Option<Vec<RequestTarget>>)
         requires(true)
         ensures(projection.is_some(), projection.is_some() ==> {
@@ -188,6 +192,8 @@ sail_verified! {
     /// Constructs one request from its original borrowed header and the actual
     /// immutable dictionary. No caller supplies a target row list or success bit.
     /// Metadata enumeration, physical path identity and launch closure are separate.
+    #[allow(clippy::manual_let_else, clippy::question_mark,
+        reason = "Preserve the checked projection-refusal branch and the full-constructor mutation context.")]
     pub fn construct_original_request(header: OriginalRequestHeader<'_>, source: &OriginalTargets)
         -> (request: Option<ResolvedRequest>)
         requires(true)
