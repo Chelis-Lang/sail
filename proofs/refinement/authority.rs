@@ -10,6 +10,64 @@ use crate::authority::CompletionPolicy;
 
 verus! {
 
+/// A nonempty declared whole request reaches the real optional facet while
+/// both returned data borrows remain the exact original pair.
+pub fn positive_nonempty_completed_presentation(request: &crate::project::ResolvedRequest,
+    project: &crate::project::ProjectResult) -> (accepted: bool)
+    requires acceptance::small_positive_request(request,project),
+        project.targets@[0].report.crates@[0].functions@.len() == 1,
+    ensures accepted,
+{
+    let mut orders = Vec::new();
+    orders.push(acceptance::ReportOrder {forward:Vec::new(),inverse:Vec::new()});
+    let view = acceptance::completed_presentation_ordered(project,Some(request),&orders);
+    let actual_project = view.project();
+    let actual_request = view.request();
+    proof {
+        assert(actual_project == project);
+        assert(actual_request == Some(request));
+    }
+    view.whole().is_some()
+}
+
+/// Missing original request never discards arbitrary recorded data or supplies
+/// a whole-request witness, including nonempty failing/partial observations.
+pub fn unbound_completed_presentation(project: &crate::project::ProjectResult)
+    -> (view: acceptance::CompletedPresentation<'_>)
+    ensures acceptance::completed_presentation_project(&view) == project,
+        acceptance::completed_presentation_request(&view).is_none(),
+        acceptance::completed_presentation_whole(&view).is_none(),
+{
+    let orders = Vec::new();
+    acceptance::completed_presentation_ordered(project,None,&orders)
+}
+
+/// Recorded Historical/Unknown and non-successful data remain unchanged even
+/// with a paired request; the Current whole facet cannot relabel those records.
+pub fn recorded_completed_presentation<'a>(project: &'a crate::project::ProjectResult,
+    request: &'a crate::project::ResolvedRequest, orders: &[acceptance::ReportOrder])
+    -> (view: acceptance::CompletedPresentation<'a>)
+    requires !(project.currentness is Current) || project.exit_code != Some(0i32) || project.error.is_some(),
+    ensures acceptance::completed_presentation_project(&view) == project,
+        acceptance::completed_presentation_request(&view) == Some(request),
+        acceptance::completed_presentation_whole(&view).is_none(),
+{
+    acceptance::completed_presentation_ordered(project,Some(request),orders)
+}
+
+/// Partial scope keeps its exact original records and request without gaining
+/// the separate whole-request facet.
+pub fn partial_completed_presentation<'a>(project: &'a crate::project::ProjectResult,
+    request: &'a crate::project::ResolvedRequest, orders: &[acceptance::ReportOrder])
+    -> (view: acceptance::CompletedPresentation<'a>)
+    requires acceptance::partial_command(request.args@),
+    ensures acceptance::completed_presentation_project(&view) == project,
+        acceptance::completed_presentation_request(&view) == Some(request),
+        acceptance::completed_presentation_whole(&view).is_none(),
+{
+    acceptance::completed_presentation_ordered(project,Some(request),orders)
+}
+
 /// Fresh enum values witness both sides of the presentation rule without Copy
 /// derives or an assumed positive report/solver observation.
 pub fn presentation_cases() -> (passed: bool)

@@ -292,6 +292,54 @@ gates or corpus conformance.
 
 ## Success presentation call graph
 
+### Paired completed-observation view candidate
+
+`CompletedPresentation` is a private-field process-local view of the exact
+borrowed `ProjectResult` and optional original `ResolvedRequest` from one
+`CompletedObservation`. Its total constructor preserves both borrows for every
+failed, partial, Historical, Unknown or unbound result. It optionally retains
+the existing `CompleteRequest` returned by the checked declared-scope factory.
+That facet states only the same conditional declared-record relation as the
+existing factory; it creates no physical currentness, solver origin, repair
+acceptance or full-service authority. Absence does not suppress or alter data.
+The view has no serialization/deserialization or default constructor.
+
+The actual daemon explanation and comparison paths keep the native observation
+alive while borrowing the view's exact project. Baseline comparison retains
+the original request alongside the already-loaded baseline instead of dropping
+it or resolving its job/path again. Publication performs its existing
+Historical downgrade and note first, then serializes the same baseline and the
+view's paired original request. Borrowed and owned request serialization use
+the existing wire contract; neither the view nor its optional facet crosses
+that boundary. Public Baseline data, errors, labels, records and protocol/schema
+versions are unchanged. The existing serde roundtrip and its errors remain in
+the completed-job read path (ADRs 0016, 0044 and 0075).
+The generic private wrapper uses the explicit `Option::default` field default,
+preserving absence as `None` without deriving a new default request bound.
+This source correction is tracked by #462; native compilation remains pending.
+
+Constructive checks exercise a nonempty declared whole request, unchanged
+unbound data, partial scope, Historical/Unknown observations and unsuccessful
+data. Five ordinary controls cover exact request preservation, unchecked facet
+construction, projection and a whole-factory always-withhold substitute. All
+116 earlier authority controls and all earlier proof functions remain; the
+authority inventory is intentionally left at its previous qualified counts
+until actual whole-root discovery. Native fixture assertions additionally
+exercise the real moved-path baseline observation and compare complete bytes
+from owned versus borrowed request serialization. These tests/proofs are
+source candidates, not executed qualification.
+
+This slice does not turn decoded CLI/MCP records into the Rust view. Native
+producer/request provenance, serde/RPC/decode preservation and frontend
+summary/targets/full shaping remain separate under #375/#376. Query/physical
+origin and complete observation depend separately on #371–#374 and the
+architecture choices in open questions 38–40. Retaining the original request
+longer and checking the optional facet adds read-side work; its cost remains
+unmeasured. No new trust assumption, wire authority token or architecture is
+introduced. Native producer bodies are hash-bound unproved source.
+
+### Provisional presentation
+
 `acceptance::presentation_verdict` source-shares the existing provisional
 override over borrowed actual `VerdictName` and `EstablishmentName` fields.
 Provisional establishment returns `Provisional` for all four verdicts;

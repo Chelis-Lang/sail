@@ -495,6 +495,12 @@ def candidate_forwarders(source: str) -> None:
     is reviewed runner logic, not a claim that std sorting is formally proved.
     """
     expected = {
+        "completed_presentation": """let orders: Vec<_> = if request.is_some()
+            && matches!(project.currentness, crate::project::Currentness::Current)
+            && project.exit_code == Some(0) {
+                project.targets.iter().map(|target| candidate_order(&target.report)).collect()
+            } else { Vec::new() };
+            completed_presentation_ordered(project, request, &orders)""",
         "admit_declared_replay": """let orders = project.targets.iter()
             .map(|target| candidate_order(&target.report)).collect::<Vec<_>>();
             admit_declared_replay_ordered(project, original, current, &orders, paths, readback)""",
@@ -533,6 +539,7 @@ def candidate_forwarders(source: str) -> None:
             }).collect(); complete_selection_ordered(project, &orders)""",
     }
     signatures = {
+        "completed_presentation": "fn completed_presentation<'a>(project: &'a ProjectResult, request: Option<&'a ResolvedRequest>,) -> CompletedPresentation<'a>",
         "admit_declared_replay": "fn admit_declared_replay<'a, 'b>(project: ProjectResult, original: &'a ResolvedRequest, current: &'a ResolvedRequest, paths: Option<&RequestPathBinding<'a>>, readback: Option<&'a sail_acceptance::inputs::GuardedReadback<'b>>,) -> Option<DeclaredReplayAdmission<'a, 'b>>",
         "withhold_unbound_request_authority": "fn withhold_unbound_request_authority(project: &mut ProjectResult, request: Option<&ResolvedRequest>,) -> bool",
         "complete_submitted_request": "fn complete_submitted_request<'a>(arguments: &'a [String], mode: &'a Mode, request: &'a ResolvedRequest, project: &'a ProjectResult,) -> Option<SubmittedAuthority<'a>>",
@@ -549,7 +556,7 @@ def candidate_forwarders(source: str) -> None:
     }
     imports = [
         "use sail_acceptance::authority::CompletionPolicy;",
-        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, DeclaredReplayAdmission, ExactPartialRequest, ExactScopeReport, ReportOrder, RequestPathBinding, SubmittedAuthority, admit_declared_replay_ordered, bind_replayed_exact_partial_project_ordered, bind_replayed_project_ordered, complete_exact_partial_request_ordered, complete_exact_scope_report_ordered, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered, withhold_unbound_request_authority_ordered,};",
+        "use crate::acceptance::{CompleteReport, CompleteRequest, CompleteSelection, CompletedPresentation, DeclaredReplayAdmission, ExactPartialRequest, ExactScopeReport, ReportOrder, RequestPathBinding, SubmittedAuthority, admit_declared_replay_ordered, bind_replayed_exact_partial_project_ordered, bind_replayed_project_ordered, complete_exact_partial_request_ordered, complete_exact_scope_report_ordered, complete_report_ordered, complete_request_ordered, complete_selection_ordered, complete_submitted_request_ordered, complete_target_ordered, complete_whole_report_ordered, completed_presentation_ordered, withhold_unbound_request_authority_ordered,};",
         "use crate::jobs::Mode;",
         "use crate::output::Report;", "use crate::project::{ProjectResult, ResolvedRequest, TargetResult};",
     ]
@@ -584,7 +591,7 @@ def candidate_forwarders(source: str) -> None:
             actual = [token.value for token in stream[begin + 1:end]]
             wanted = [token.value for token in tokens(expected[name])]
             require(actual == wanted, "untrusted authority forwarding changed: " + name)
-    require(len(found) == 13 and set(found) == {*expected, "candidate_order"},
+    require(len(found) == 14 and set(found) == {*expected, "candidate_order"},
         "authority candidate adapter function inventory changed")
     require(actual_imports == [[t.value for t in tokens(text)] for text in imports],
         "candidate forwarding binding environment changed")

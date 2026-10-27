@@ -45,7 +45,30 @@ capabilities. The outer Cargo command retains its separate remove-only interface
 (#452). Native binding hashes reflect the reviewed merged files; hashes are not
 proofs of those native bodies.
 
-## Proof scope and qualification
+## Paired completed-observation source candidate
+
+The isolated candidate adds total process-local `CompletedPresentation`, with
+unchanged project/request borrows and optional existing declared
+`CompleteRequest`. Actual explanation/comparison consumers retain their paired
+observation; baseline comparison keeps its already-loaded request, and
+publication retains the existing Historical downgrade. No wire field/token,
+rejection or label rule is added. Five ordinary controls follow all 116 earlier
+authority controls (121 total). New positive/function discovery and
+native/serde/cost qualification remain pending; the previous 502/883 authority
+inventory is retained as a bootstrap requirement, not claimed for changed
+bodies. The #461 native fixture failure/source fix remains separate from this
+process-local theorem and from delivery/qualification. See the
+[local view boundary](design/acceptance-authority.md#paired-completed-observation-view-candidate).
+Serde/RPC/frontend preservation and physical/origin premises remain open.
+The candidate's generic wrapper uses explicit `Option::default` to avoid the
+pinned derive's unintended generic `Default` bound (#462); missing request
+still decodes as `None`. This is source-reviewed, not native-reproduced.
+Frozen `e91627d0` workspace records 1,271 run, 1,269 pass, two fail and 56 skip
+in 303.35 s; first failure cause is unknown pending receipt diagnostics and
+solver is unrun. The [owning record](validation/acceptance-boundary-refinements.md)
+retains its independently hash-checked archive.
+
+## Frozen integration proof scope and qualification
 
 The combined planned matrix is 395 cases: three whole positive roots and
 161 query, 115 input and 116 authority ordinary negative controls. Actual Stock
@@ -53,7 +76,8 @@ assemblies contain 20, 9 and 14 compiled files. Every inherited function and
 control remains required. The manifest locks combined discovery at `e57f065f`: 471/821, 308/538 and
 502/883 verified/function entries, retaining every prior function. Exact-head
 `720e461e` repeats those sets after the lossless conversion, with final
-source/runtime checks. Its partition matrix is still running; no complete
+source/runtime checks. The long matrix is held for the combined view/main/receipt
+source and new inventory; no complete
 negative union is established yet. Inventory mismatches must never be waived.
 
 Actual existing evidence remains separate:
