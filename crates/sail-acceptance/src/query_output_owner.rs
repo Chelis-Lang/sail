@@ -653,10 +653,17 @@ sail_verified! {
         sail_proof! {
             crate::query_prefix::flat_list_frame(seq![b'x']);
             assert(bytes@ =~= seq![b'(']+seq![b'x']+seq![b')']);
+            reveal_with_fuel(crate::query::frame_scan,4);
+            assert(crate::query::single_list(bytes@,false));
             assert(crate::query::response_span(bytes@,0,3));
+            assert(crate::query::response_shape(bytes@));
+            crate::query_output::transcript_partition_facts(&output.output_view());
+            assert(output.output_view().view() =~= bytes@);
+            assert(output.output_view().view().subrange(0,3) =~= bytes@);
         }
         if output.frame(0,3).is_none() || output.advance_replay() { return false; }
         output.end();
+        sail_proof! { crate::query_output::transcript_partition_facts(&output.output_view()); }
         let Some(output) = output.seal() else { return false; };
         if !replay.compare(&bytes) { return false; }
         output.with_replay(&replay,identity).is_some()
@@ -683,9 +690,11 @@ sail_verified! {
             assert(crate::query::response_span(actual@,0,3));
             assert(crate::query::response_shape(actual@));
             assert(output.output_view().view().subrange(0,4) =~= actual@);
+            crate::query_output::transcript_partition_facts(&output.output_view());
         }
         if output.frame(0,4).is_none() || output.advance_replay() { return false; }
         output.end();
+        sail_proof! { crate::query_output::transcript_partition_facts(&output.output_view()); }
         let Some(output) = output.seal() else { return false; };
         output.with_replay(&replay,identity).is_none()
     }
