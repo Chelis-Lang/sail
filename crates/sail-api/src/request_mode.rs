@@ -73,33 +73,68 @@ sail_spec! {
                 (crate::acceptance::verification_disabled(prefix)
                     || (has_report_separator(prefix) && crate::acceptance::string_bytes(&argument) == b"--no-verify"@)),
     {
-        if has_report_separator(prefix.push(argument)) {
-            let i = choose |i: int| 0 <= i < prefix.len() + 1
-                && crate::acceptance::string_bytes(&prefix.push(argument)[i]) == b"--"@;
-            if i < prefix.len() { assert(has_report_separator(prefix)); }
+        let pushed = prefix.push(argument);
+        assert(pushed.len() == prefix.len() + 1);
+        assert(pushed[prefix.len() as int] == argument);
+        assert forall |k: int| 0 <= k < prefix.len() implies pushed[k] == prefix[k] by {};
+        if has_report_separator(pushed) {
+            let i = choose |i: int| 0 <= i < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[i]) == b"--"@;
+            if i < prefix.len() {
+                assert(exists |j: int| j == i && 0 <= j < prefix.len()
+                    && crate::acceptance::string_bytes(&prefix[j]) == b"--"@);
+                assert(has_report_separator(prefix));
+            } else {
+                assert(i == prefix.len());
+                assert(crate::acceptance::string_bytes(&argument) == b"--"@);
+            }
         }
         if has_report_separator(prefix) {
             let i = choose |i: int| 0 <= i < prefix.len()
                 && crate::acceptance::string_bytes(&prefix[i]) == b"--"@;
-            assert(crate::acceptance::string_bytes(&prefix.push(argument)[i]) == b"--"@);
+            assert(exists |j: int| j == i && 0 <= j < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[j]) == b"--"@);
+            assert(has_report_separator(pushed));
         }
-        if crate::acceptance::verification_disabled(prefix.push(argument)) {
-            let (i, j) = choose |i: int, j: int| 0 <= i < j < prefix.len() + 1
-                && crate::acceptance::string_bytes(&prefix.push(argument)[i]) == b"--"@
-                && crate::acceptance::string_bytes(&prefix.push(argument)[j]) == b"--no-verify"@;
-            if j < prefix.len() { assert(crate::acceptance::verification_disabled(prefix)); }
-            else { assert(has_report_separator(prefix)); }
+        if crate::acceptance::string_bytes(&argument) == b"--"@ {
+            assert(exists |j: int| j == prefix.len() && 0 <= j < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[j]) == b"--"@);
+            assert(has_report_separator(pushed));
+        }
+        if crate::acceptance::verification_disabled(pushed) {
+            let (i, j) = choose |i: int, j: int| 0 <= i < j < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[i]) == b"--"@
+                && crate::acceptance::string_bytes(&pushed[j]) == b"--no-verify"@;
+            if j < prefix.len() {
+                assert(exists |a: int, b: int| a == i && b == j && 0 <= a < b < prefix.len()
+                    && crate::acceptance::string_bytes(&prefix[a]) == b"--"@
+                    && crate::acceptance::string_bytes(&prefix[b]) == b"--no-verify"@);
+                assert(crate::acceptance::verification_disabled(prefix));
+            } else {
+                assert(j == prefix.len());
+                assert(crate::acceptance::string_bytes(&argument) == b"--no-verify"@);
+                assert(exists |a: int| a == i && 0 <= a < prefix.len()
+                    && crate::acceptance::string_bytes(&prefix[a]) == b"--"@);
+                assert(has_report_separator(prefix));
+            }
         }
         if crate::acceptance::verification_disabled(prefix) {
             let (i, j) = choose |i: int, j: int| 0 <= i < j < prefix.len()
                 && crate::acceptance::string_bytes(&prefix[i]) == b"--"@
                 && crate::acceptance::string_bytes(&prefix[j]) == b"--no-verify"@;
-            assert(crate::acceptance::verification_disabled(prefix.push(argument)));
+            assert(exists |a: int, b: int| a == i && b == j && 0 <= a < b < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[a]) == b"--"@
+                && crate::acceptance::string_bytes(&pushed[b]) == b"--no-verify"@);
+            assert(crate::acceptance::verification_disabled(pushed));
         }
         if has_report_separator(prefix) && crate::acceptance::string_bytes(&argument) == b"--no-verify"@ {
             let i = choose |i: int| 0 <= i < prefix.len()
                 && crate::acceptance::string_bytes(&prefix[i]) == b"--"@;
-            assert(crate::acceptance::verification_disabled(prefix.push(argument)));
+            assert(exists |a: int, b: int| a == i && b == prefix.len()
+                && 0 <= a < b < pushed.len()
+                && crate::acceptance::string_bytes(&pushed[a]) == b"--"@
+                && crate::acceptance::string_bytes(&pushed[b]) == b"--no-verify"@);
+            assert(crate::acceptance::verification_disabled(pushed));
         }
     }
 }
@@ -130,7 +165,8 @@ sail_verified! {
                 arguments@ == kept_report_arguments(report_args@, enabled, i as nat),
                 forwarded == has_report_separator(report_args@.take(i as int)),
                 forwarded == has_report_separator(arguments@),
-                enabled ==> !crate::acceptance::verification_disabled(arguments@))
+                enabled ==> !crate::acceptance::verification_disabled(arguments@),
+                b"--"@ != b"--no-verify"@)
             decreases(report_args.len() - i)
             {
                 let argument = &report_args[i];
@@ -152,12 +188,24 @@ sail_verified! {
         if !enabled && verification_enabled_command(&arguments) {
             if !forwarded {
                 let separator = "--".to_owned();
-                sail_proof! { report_prefix_push(arguments@, separator); }
+                sail_proof! {
+                    report_marker_literals();
+                    assert(crate::acceptance::string_bytes(&separator) == b"--"@);
+                    report_prefix_push(arguments@, separator);
+                }
                 arguments.push(separator);
             }
             let no_verify = "--no-verify".to_owned();
-            sail_proof! { report_prefix_push(arguments@, no_verify); }
+            sail_proof! {
+                report_marker_literals();
+                assert(crate::acceptance::string_bytes(&no_verify) == b"--no-verify"@);
+                report_prefix_push(arguments@, no_verify);
+            }
             arguments.push(no_verify);
+        }
+        sail_proof! {
+            assert(report_mode_projection(report_args@, enabled, arguments@));
+            assert(!crate::acceptance::verification_disabled(arguments@) == enabled);
         }
         Some(arguments)
     }

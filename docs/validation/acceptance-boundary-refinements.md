@@ -200,8 +200,26 @@ no program body. Conformance/cost, ordinary negatives and native
 metadata/original-launch/journal/provider joins remain open; this is no service
 or physical-input closure claim.
 
+The first report-mode qualifier at `30846bfe` passes all 67 production source
+tests and the complete query/input roots. Whole authority reaches ordinary
+verification with 571 verified and five failed functions, without resource
+exhaustion. The remaining obligations are generic pushed-sequence existential
+framing, the filtered separator invariant, final mode/projection composition and
+two finite examples. The follow-up supplies concrete old/new indices, preserves
+actual marker distinction in the loop, and frames the same marker appends. These
+are checked proof steps and a stronger invariant; no runtime statement, public
+contract, source control or resource changes.
+
+Evidence is `experiments/2026-10-27/acceptance-request-domain-30846bfe-native.tgz`,
+SHA-256 `5e00d3677d94ff61a905fa4af33c89f3cc4881f321f768311e9b930214c4be3c`
+(7,600,707 bytes), authenticated PUT/GET agreement and complete source bundle.
+No new authority inventory, native or ordinary-negative credit is frozen from
+this failed root. Subsequent whole-root diagnostics keep the source-suite receipt
+labeled `30846bfe` when its harness/manifest bytes remain unchanged.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `30846bfe` report-mode candidate | Source suites pass, including all 67 production tests. Complete query 471/0 (821 functions), inputs 308/0 (538) pass; whole authority reaches571 verified and5 failed functions with no resource diagnostic. Controller stops in485.476 s; final source/image/runtime checks pass | Pushed-prefix/mode framing and two finite examples need proof guidance. Native compilation/tests and all14 new controls are unrun; no new authority inventory or negative credit |
 | `83627504-stock2` captured-worker candidate | Unchanged f12 source-harness/manifest and exact annotation delta pass identity checks. Whole query 471/0 (821 functions), inputs 308/0 (538), authority 566/0 (972) pass with every old function retained; whole step158.071 s. Full workspace/all-target strict Clippy passes92.030 s. Actual nextest18 run/18 pass/807 skips,148.940 s including build and6.239 s tests. Total408.378 s; final source/image/runtime checks pass | Source-unit receipt remainsf12; all12 new controls, complete native workspace tests, conformance/cost and physical/provider/origin joins remain unqualified |
 | `83627504` external-tool attempt | Canonical-Git ownership guard refuses raw external-helper reads before Stock (#497); total9.188 s, final source/image/runtime checks pass | No Stock, native or source-unit credit; distinct corrected stock2 attempt preserves this failure unchanged |
 | `f12c50c4` captured-worker candidate | Source suites pass, including all 67 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass. Authority Rust compilation refuses one mixed Option index type (E0277) before verification; controller stops in 451.615 s, final source/image/runtime checks pass | Zero authority verification credit despite a JSON error counter of zero: compiler exit is nonzero. Native compilation/tests and new ordinary negatives are unrun |

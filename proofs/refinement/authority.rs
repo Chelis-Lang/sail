@@ -1402,6 +1402,12 @@ pub fn disabled_report_adds_only_missing_markers(original: &[String], effective:
     proof {
         crate::request_mode::report_marker_literals();
         reveal_with_fuel(crate::request_mode::kept_report_arguments, 2);
+        assert(acceptance::options_disable_verification(effective@));
+        assert(!crate::request_mode::has_report_separator(original@));
+        assert(crate::request_mode::kept_report_arguments(original@, false, 1) =~= original@);
+        assert(!acceptance::verification_disabled(original@));
+        assert(out.unwrap()@.take(1) == original@);
+        assert(out.unwrap()@[0] == out.unwrap()@.take(1)[0]);
     }
     out
 }
@@ -1418,6 +1424,14 @@ pub fn enabled_report_keeps_nonempty_forwarded_payload(original: &[String], effe
     proof {
         crate::request_mode::report_marker_literals();
         reveal_with_fuel(crate::request_mode::kept_report_arguments, 4);
+        assert(exists |i: int| i == 0 && 0 <= i < original@.take(1).len()
+            && string_bytes(&original@.take(1)[i]) == b"--"@);
+        assert(exists |i: int| i == 0 && 0 <= i < original@.take(2).len()
+            && string_bytes(&original@.take(2)[i]) == b"--"@);
+        assert(crate::request_mode::has_report_separator(original@.take(1)));
+        assert(crate::request_mode::has_report_separator(original@.take(2)));
+        assert(crate::request_mode::kept_report_arguments(original@, true, 3)
+            =~= seq![original@[0], original@[2]]);
     }
     out
 }
