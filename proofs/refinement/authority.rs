@@ -1100,6 +1100,16 @@ pub fn empty_human_footer_examples() -> (accepted: bool)
     ensures accepted,
 {
     proof {
+        reveal_byteslit(b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in ");
+        reveal_byteslit(b"    Finished `dev` profile [unoptimized] target(s) in ");
+        reveal_byteslit(b"    Finished `release` profile [optimized] target(s) in ");
+        reveal_byteslit(b"    Finished `release` profile [optimized + debuginfo] target(s) in ");
+        reveal_byteslit(b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n");
+        reveal_byteslit(b"    Finished `release` profile [optimized] target(s) in 12m 59s\n");
+        reveal_byteslit(b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\nverified\n");
+        reveal_byteslit(b"0.01s\n");
+        reveal_byteslit(b"12m 59s\n");
+        reveal_byteslit(b"0.01s\nverified\n");
         let dev = b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in "@;
         let release = b"    Finished `release` profile [optimized] target(s) in "@;
         let first = b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n"@;
