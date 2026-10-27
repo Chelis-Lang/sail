@@ -340,6 +340,23 @@ transports scalar push/append equality and both returned options to the actual
 new raw prefix before moving their original items into the existing vector.
 No body scope, invariant, predicate, control or resource is relaxed.
 
+The completed outer/raw-owner whole-positive run at `88ab662d` passes all 524
+functions/918 query entries and retains every prior 837 entry, with no resource
+or VIR error and final frozen guards passing. The manifest locks only this
+observed inventory. It checks the actual outer/list/atom/cursor/chunk transitions,
+exact raw-history and ordered item relations, owned QueryPrefix append, clone
+continuation and constructive paths. All 192 ordinary controls and the new
+native/conformance gates remain required; no source/runtime/API-wide or #371
+solver/origin completion is claimed. Later lexical source requires separate
+actual discovery.
+
+The actual `88ab662d` native SMT package rebuild passes all 22 existing tests;
+strict Clippy then refuses four new outer-code style diagnostics (#470). Narrow
+function-local annotations and doc backticks retain token-identical checked
+executable bodies and unchanged predicates/controls. The annotation-only `9ecf7de5` rerun explicitly recompiles both touched
+packages after cleaning: all 22 SMT tests and strict package Clippy pass, with
+final source checks. This supplies no workspace, solver or service claim.
+
 ### Actual lexical state and borrowed command-head candidate
 
 `query_lex` now contains the actual lexer trivia/word/string/quoted-symbol
