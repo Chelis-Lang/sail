@@ -1,5 +1,6 @@
 //! Pre-execution request capture, separate from verifier result construction.
 
+use sail_api::request_targets::OriginalTargets;
 use std::fs::OpenOptions;
 use std::io::Write as _;
 
@@ -16,7 +17,28 @@ pub(super) struct Resolution<'a> {
     pub revision: &'a str,
     pub args: &'a [String],
     pub engine: Option<&'a crate::engine::Request>,
-    pub targets: &'a std::collections::BTreeSet<(String, String, String)>,
+    pub targets: &'a OriginalTargets,
+}
+
+/// Borrows unchanged tuple fields for native dependency/cleanup predicates.
+/// This adapter supplies no metadata completeness or request authority.
+pub(super) fn original_rows(
+    targets: &OriginalTargets,
+) -> impl Iterator<Item = &(String, String, String)> {
+    targets
+        .iter()
+        .map(sail_api::request_order::OriginalTargetKey::as_tuple)
+}
+
+#[cfg(test)]
+pub(super) fn original_targets<const N: usize>(
+    rows: [(String, String, String); N],
+) -> OriginalTargets {
+    let mut targets = OriginalTargets::new();
+    for row in rows {
+        sail_api::request_targets::insert_original_target(&mut targets, row);
+    }
+    targets
 }
 
 /// A native value observation made from the resolution inputs, never from a
@@ -43,17 +65,12 @@ impl Resolution<'_> {
         }
     }
 
-    pub(super) fn resolve(&self) -> ResolvedRequest {
+    pub(super) fn resolve(&self) -> crate::Result<ResolvedRequest> {
         let selection = self.engine.and_then(|engine| engine.selection.as_ref());
         let invocation = self.invocation.to_string_lossy();
         let workspace = self.workspace.to_string_lossy();
-        let targets = self
-            .targets
-            .iter()
-            .map(sail_api::acceptance::construct_request_target)
-            .collect();
-        sail_api::acceptance::construct_resolved_request(
-            sail_api::acceptance::RequestConstruction {
+        sail_api::request_targets::construct_original_request(
+            sail_api::request_targets::OriginalRequestHeader {
                 run_id: self.run_id,
                 invocation: invocation.as_ref(),
                 workspace: workspace.as_ref(),
@@ -65,9 +82,15 @@ impl Resolution<'_> {
                 repair_package: selection.map_or("", |s| s.package.as_str()),
                 repair_target: selection.and_then(|s| s.target.as_deref()),
                 repair_kind: selection.map_or("", |s| s.kind.as_str()),
-                targets,
             },
+            self.targets,
         )
+        .ok_or_else(|| {
+            crate::Error::new(
+                "SAIL3115",
+                "original target dictionary could not be projected",
+            )
+        })
     }
 }
 
@@ -108,7 +131,6 @@ pub(super) fn capture(
 #[cfg(all(test, unix))]
 mod native_path_tests {
     use super::*;
-    use std::collections::BTreeSet;
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt as _;
     use std::path::Path;
@@ -116,14 +138,14 @@ mod native_path_tests {
     /// Exercises the actual pre-execution builder with independent sibling
     /// targets and compile-only arguments; no result rows supply its domain.
     #[test]
-    fn nonempty_resolution_keeps_original_scope_and_compile_only_arguments() {
+    fn nonempty_resolution_keeps_original_scope_and_compile_only_arguments() -> crate::Result<()> {
         let args = vec![
             "-p".into(),
             "original".into(),
             "--".into(),
             "--no-verify".into(),
         ];
-        let targets = BTreeSet::from([
+        let targets = original_targets([
             ("package-a".into(), "original".into(), "lib".into()),
             ("package-b".into(), "sibling".into(), "bin".into()),
         ]);
@@ -137,7 +159,7 @@ mod native_path_tests {
             engine: None,
             targets: &targets,
         };
-        let request = resolution.resolve();
+        let request = resolution.resolve()?;
         assert_eq!(request.run_id, "original-run");
         assert_eq!(request.invocation, "/original/invocation");
         assert_eq!(request.workspace, "/original/workspace");
@@ -159,18 +181,19 @@ mod native_path_tests {
         assert!(request.repair_target.is_none());
         assert_eq!(request.repair_kind, "");
         assert!(resolution.capture_paths().bind(&request).is_some());
+        Ok(())
     }
 
     /// Path values only: no filesystem, Cargo, verifier or global input-domain
     /// qualification is implied by this native byte-projection regression.
     #[test]
-    fn native_path_observation_never_reencodes_invalid_bytes() {
+    fn native_path_observation_never_reencodes_invalid_bytes() -> crate::Result<()> {
         let valid_invocation = Path::new("/native/invocation");
         let valid_workspace = Path::new("/native/workspace");
         let invalid_invocation = Path::new(OsStr::from_bytes(b"/native/invocation-\xff"));
         let invalid_workspace = Path::new(OsStr::from_bytes(b"/native/workspace-\xff"));
         let args = Vec::new();
-        let targets = BTreeSet::new();
+        let targets = OriginalTargets::new();
         for (invocation, workspace, expected) in [
             (valid_invocation, valid_workspace, true),
             (invalid_invocation, valid_workspace, false),
@@ -189,8 +212,9 @@ mod native_path_tests {
             let native = resolution.capture_paths();
             assert_eq!(native.invocation, invocation.as_os_str().as_encoded_bytes());
             assert_eq!(native.workspace, workspace.as_os_str().as_encoded_bytes());
-            let request = resolution.resolve();
+            let request = resolution.resolve()?;
             assert_eq!(native.bind(&request).is_some(), expected);
         }
+        Ok(())
     }
 }

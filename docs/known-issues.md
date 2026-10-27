@@ -9,8 +9,11 @@ VIR errors because its Eq/Ord/Clone methods use an envelope that emits an explic
 `requires(true)` instead of inheriting the trait preconditions
 ([#472](https://github.com/Chelis-Lang/sail/issues/472)). A separate checked
 trait-method envelope preserves every native body and postcondition without an
-implementation precondition clause. Corrected-source proof checking remains
-pending; the stopped probe establishes no ordering law or request-domain closure.
+implementation precondition clause. A later whole-file library support probe
+passes 17 verified functions and all 333 actual function details after three
+native-equivalent enum variant tests become direct matches. The complete
+production request/domain proof and native caller/ordering checks remain pending;
+the library support result establishes no full request or physical-input closure.
 
 The original requested-target scan counts raw `--workspace` and `--all` text
 after the Cargo/Verus separator

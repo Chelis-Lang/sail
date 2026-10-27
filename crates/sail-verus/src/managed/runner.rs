@@ -11,6 +11,7 @@ use crate::{Error, Result};
 use sail_api::project::{
     Currentness, Execution, NoReuse, ProjectResult, SCHEMA_VERSION, TargetResult, VerifiedAs,
 };
+use sail_api::request_targets::OriginalTargets;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::File;
@@ -469,7 +470,7 @@ pub(super) struct ReplayPreflight {
     pub workspace_lock: PathBuf,
     hash: String,
     run_id: String,
-    expected: BTreeSet<(String, String, String)>,
+    expected: OriginalTargets,
 }
 
 impl ReplayPreflight {
@@ -500,7 +501,7 @@ impl ReplayPreflight {
                     targets: &self.expected,
                 };
                 let native_paths = resolution.capture_paths();
-                let current = resolution.resolve();
+                let current = resolution.resolve().ok()?;
                 let paths = native_paths.bind(&current)?;
                 Some(consume(paths.request(), &paths, readback))
             },
@@ -626,12 +627,8 @@ fn context_hashes(
 }
 
 /// The manifest and target name of every selected target.
-fn selected_targets(
-    data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
-) -> Vec<(PathBuf, String)> {
-    expected
-        .iter()
+fn selected_targets(data: &Value, expected: &OriginalTargets) -> Vec<(PathBuf, String)> {
+    super::request::original_rows(expected)
         .filter_map(|(id, name, _)| {
             let package = data["packages"]
                 .as_array()?
@@ -1116,7 +1113,7 @@ fn build_environment(
     config: &Config,
     paths: &Paths,
     data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     context: &str,
 ) -> Option<UnitEnvironment> {
     if !data["packages"].as_array()?.iter().any(|package| {
@@ -1177,7 +1174,7 @@ fn build_environment_key(
     )
 }
 
-fn selected_scripts(data: &Value, expected: &BTreeSet<(String, String, String)>) -> bool {
+fn selected_scripts(data: &Value, expected: &OriginalTargets) -> bool {
     let closure = selected_closure(data, expected);
     data["packages"]
         .as_array()
@@ -1213,7 +1210,11 @@ mod cargo_protocol_tests {
                 {"id":"script","dependencies":[]}
             ]}
         });
-        let expected = BTreeSet::from([("root".to_owned(), "root".to_owned(), "lib".to_owned())]);
+        let expected = crate::managed::request::original_targets([(
+            "root".to_owned(),
+            "root".to_owned(),
+            "lib".to_owned(),
+        )]);
         assert!(!selected_scripts(&data, &expected));
         data["resolve"]["nodes"][0]["dependencies"] = serde_json::json!(["script"]);
         assert!(selected_scripts(&data, &expected));
@@ -1603,7 +1604,7 @@ fn invocations(paths: &Paths) -> Vec<Invocation> {
 fn negative_compiler_generation(
     paths: &Paths,
     data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     result: &ProjectResult,
     script_coverage: bool,
     engine: bool,
@@ -1669,8 +1670,7 @@ fn negative_compiler_generation(
         // other call must have verified its whole crate.
         let focus = focused(args);
         let selected = |call: &Invocation| {
-            expected
-                .iter()
+            super::request::original_rows(expected)
                 .any(|(id, name, kind)| selected_call(data, (id, name, kind), call))
         };
         let completed = |call: &Invocation| {
@@ -1688,13 +1688,15 @@ fn negative_compiler_generation(
         {
             return Some(false);
         }
-        Some(expected.iter().all(|(id, name, kind)| {
-            calls
-                .values()
-                .filter(|call| selected_call(data, (id, name, kind), call))
-                .count()
-                == 1
-        }))
+        Some(
+            super::request::original_rows(expected).all(|(id, name, kind)| {
+                calls
+                    .values()
+                    .filter(|call| selected_call(data, (id, name, kind), call))
+                    .count()
+                    == 1
+            }),
+        )
     };
     check() == Some(true)
 }
@@ -1749,13 +1751,12 @@ fn observed_target<'a>(data: &'a Value, call: &Invocation) -> Option<(&'a Value,
 fn confined_compile_failure<'a>(
     paths: &Paths,
     data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     calls: impl Iterator<Item = &'a Invocation> + Clone,
     completed: impl Fn(&Invocation) -> bool,
 ) -> bool {
     let selected = |call: &Invocation| {
-        expected
-            .iter()
+        super::request::original_rows(expected)
             .any(|(id, name, kind)| selected_call(data, (id, name, kind), call))
     };
     let compile_error = |call: &Invocation| {
@@ -1809,7 +1810,7 @@ struct CompilerGeneration<'a> {
 fn publish_compiler_generation(
     paths: &Paths,
     data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     result: &ProjectResult,
     generation: &CompilerGeneration<'_>,
 ) {
@@ -1897,12 +1898,12 @@ struct ReceiptRevision {
 /// decoded revision and must retain the plan after any cleanup or uncertainty.
 fn receipt_covered_targets(
     paths: &Paths,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     context: &str,
     revisions: &BTreeMap<PathBuf, ReceiptRevision>,
 ) -> bool {
     !expected.is_empty()
-        && expected.iter().all(|(package, name, kind)| {
+        && super::request::original_rows(expected).all(|(package, name, kind)| {
             // Multi-kind targets conservatively keep the optional plan.
             let kinds = vec![kind.clone()];
             revisions
@@ -1966,7 +1967,7 @@ fn target_records(
     data: &Value,
     context: &str,
     force: bool,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     seeded: &[super::store::Seeded],
     partial_args: Option<&[String]>,
 ) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
@@ -1993,7 +1994,7 @@ fn target_records_in(
     data: &Value,
     context: &str,
     force: bool,
-    expected: &BTreeSet<(String, String, String)>,
+    expected: &OriginalTargets,
     seeded: &[super::store::Seeded],
     partial_args: Option<&[String]>,
     observation: Option<RevisionObservation<'_>>,
@@ -2180,7 +2181,7 @@ fn target_records_in(
                 declarations.get(&(package_id.to_owned(), name.to_owned(), kind.clone()))
             })
             .cloned();
-        let requested = expected.iter().any(|(id, target, target_kind)| {
+        let requested = super::request::original_rows(expected).any(|(id, target, target_kind)| {
             id == package_id && target == name && kind.contains(target_kind)
         });
         let partial_args = partial_args.filter(|_| requested);
@@ -2408,7 +2409,7 @@ fn target_records_in(
                 .map(str::to_owned)
                 .collect();
             let requested = {
-                expected.iter().any(|(id, name, kind)| {
+                super::request::original_rows(expected).any(|(id, name, kind)| {
                     package["id"].as_str() == Some(id.as_str())
                         && target["name"] == *name
                         && target["kind"]
@@ -2481,12 +2482,13 @@ pub(super) fn dependency_closure<'a>(
 
 /// The packages Cargo can compile for the selected targets, or `None` when
 /// the selection is not known exactly (then every resolved package counts).
-fn selected_closure(
-    data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
-) -> Option<BTreeSet<String>> {
-    (!expected.is_empty())
-        .then(|| dependency_closure(data, expected.iter().map(|(id, _, _)| id.as_str())))
+fn selected_closure(data: &Value, expected: &OriginalTargets) -> Option<BTreeSet<String>> {
+    (!expected.is_empty()).then(|| {
+        dependency_closure(
+            data,
+            super::request::original_rows(expected).map(|(id, _, _)| id.as_str()),
+        )
+    })
 }
 
 /// Whether every unit Cargo reported in this run belongs to `closure`. An
@@ -2556,7 +2558,7 @@ fn target_revisions(
 /// current declaration-inventory equality that these additional reads support.
 struct ReceiptDeclarationScope<'a> {
     data: &'a Value,
-    expected: &'a BTreeSet<(String, String, String)>,
+    expected: &'a OriginalTargets,
     revisions: &'a HashMap<String, String>,
     partial_args: Option<&'a [String]>,
     digests: &'a PhaseDigests,
@@ -2578,7 +2580,7 @@ fn preserve_receipt_declarations(
     {
         return;
     }
-    let requested = scope.expected.iter().any(|(package, name, kind)| {
+    let requested = super::request::original_rows(scope.expected).any(|(package, name, kind)| {
         package == &receipt.package_id && name == &receipt.name && receipt.kind.contains(kind)
     });
     // Sibling scopes can supply dependencies, never a requesting scope's proof.
@@ -2891,7 +2893,7 @@ fn target_revision_with(
     clippy::too_many_lines,
     reason = "All supported Cargo target selectors are resolved explicitly before complete coverage can be claimed."
 )]
-fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, String)> {
+fn expected_targets(data: &Value, args: &[String]) -> OriginalTargets {
     let workspace = sail_api::acceptance::cargo_workspace_selected(args);
     let mut selected_names = Vec::new();
     let mut excluded = Vec::new();
@@ -2934,7 +2936,7 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, 
         }
     }
     let default = data["resolve"]["root"].as_str();
-    let mut expected = BTreeSet::new();
+    let mut expected = OriginalTargets::new();
     for package in data["packages"].as_array().into_iter().flatten() {
         let id = package["id"].as_str().unwrap_or_default();
         let name = package["name"].as_str().unwrap_or_default();
@@ -3003,15 +3005,18 @@ fn expected_targets(data: &Value, args: &[String]) -> BTreeSet<(String, String, 
             {
                 continue;
             }
-            expected.insert((
-                id.to_owned(),
-                name.to_owned(),
-                kinds
-                    .and_then(|k| k.first())
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_owned(),
-            ));
+            sail_api::request_targets::insert_original_target(
+                &mut expected,
+                (
+                    id.to_owned(),
+                    name.to_owned(),
+                    kinds
+                        .and_then(|k| k.first())
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_owned(),
+                ),
+            );
         }
     }
     expected
@@ -3646,7 +3651,7 @@ fn run_recorded(
     super::files::json(&paths.input_state, &data)?;
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
-        "targets":expected.iter().map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
+        "targets":super::request::original_rows(&expected).map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
         "context_sha256":hash, "input_revision":before.revision,
         "complete":before.complete && script_coverage && absent.ready(),
         "source_observation":source_state.is_file()
@@ -3711,7 +3716,7 @@ fn run_recorded(
             engine: engine.as_ref(),
             targets: &expected,
         };
-        (resolution.resolve(), resolution.capture_paths())
+        (resolution.resolve()?, resolution.capture_paths())
     };
     // Preserve the pre-Cargo native bytes independently of the String fields.
     // Lossy display/capture conversion cannot supply positive path authority.
@@ -4104,8 +4109,7 @@ fn run_recorded(
         && !shown
         && exit == Some(0)
         && !sail_api::acceptance::requested_coverage(
-            &expected
-                .iter()
+            &super::request::original_rows(&expected)
                 .map(|(package, name, kind)| {
                     sail_api::acceptance::requested_target(package, name, kind)
                 })
@@ -5135,7 +5139,11 @@ mod tests {
             "packages":[{"id":"input", "manifest_path":root.join("Cargo.toml")}],
             "resolve":{"nodes":[{"id":"input","dependencies":[]}]}
         });
-        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
         let path = receipt_path(&paths, "input", "input", &["lib".into()]);
         let load = || -> BTreeMap<PathBuf, ReceiptRevision> {
             read(&path)
@@ -5206,7 +5214,11 @@ mod tests {
             std::env::temp_dir().join(format!("sail-retained-header-{}", std::process::id()));
         let config = compiler_fixture(&root)?;
         let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
-        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
         let path = receipt_path(&paths, "input", "input", &["lib".into()]);
         let original = serde_json::json!({"version":RECEIPT_VERSION,"package_id":"input",
             "name":"input","kind":["lib"],"context":"selected","input_revision":"revision"});
@@ -5299,7 +5311,7 @@ mod tests {
         root: PathBuf,
         paths: Paths,
         data: Value,
-        expected: BTreeSet<(String, String, String)>,
+        expected: OriginalTargets,
         call: Invocation,
         result: ProjectResult,
         _ownership: Ownership,
@@ -5367,7 +5379,7 @@ mod tests {
                 call,
                 result,
                 _ownership: ownership,
-                expected: BTreeSet::from([(
+                expected: crate::managed::request::original_targets([(
                     "input".to_owned(),
                     "input".to_owned(),
                     "lib".to_owned(),
@@ -5548,13 +5560,16 @@ mod tests {
             true,
             &["--".to_owned(), "--verify-function=selected".to_owned()]
         ));
-        f.expected.insert((
-            "input".to_owned(),
-            "unattempted".to_owned(),
-            "bin".to_owned(),
-        ));
+        sail_api::request_targets::insert_original_target(
+            &mut f.expected,
+            (
+                "input".to_owned(),
+                "unattempted".to_owned(),
+                "bin".to_owned(),
+            ),
+        );
         assert!(!f.eligible());
-        f.expected.retain(|(_, name, _)| name == "input");
+        f.expected.retain(|key| key.as_tuple().1 == "input");
         let original_call = f.call.clone();
         for field in [
             "error",
@@ -6168,12 +6183,14 @@ mod tests {
         let package = f
             .expected
             .first()
-            .map(|(id, _, _)| id.clone())
+            .map(|key| key.as_tuple().0.clone())
             .unwrap_or_default();
-        f.expected
-            .insert((package, "unstarted".to_owned(), "bin".to_owned()));
+        sail_api::request_targets::insert_original_target(
+            &mut f.expected,
+            (package, "unstarted".to_owned(), "bin".to_owned()),
+        );
         assert!(!stock(&f, &[]), "an unstarted selected target");
-        f.expected.retain(|(_, name, _)| name != "unstarted");
+        f.expected.retain(|key| key.as_tuple().1 != "unstarted");
         assert!(stock(&f, &[]));
         // A compile error stops a focused selection the same way (#441).
         assert!(stock(
@@ -6237,7 +6254,11 @@ mod tests {
                 "target":{"name":"input","kind":["lib"]}, "filenames":[artifact]
             }))?,
         )?;
-        let expected = BTreeSet::from([("input".to_owned(), "input".to_owned(), "lib".to_owned())]);
+        let expected = crate::managed::request::original_targets([(
+            "input".to_owned(),
+            "input".to_owned(),
+            "lib".to_owned(),
+        )]);
         let (targets, missing) =
             target_records(&paths, &data, "missing", false, &expected, &[], None)?;
         assert_eq!(targets, Vec::<TargetResult>::new());
@@ -6327,7 +6348,11 @@ mod tests {
         let receipt = compiler_receipt(&paths, &data, &artifact);
         let call_path = paths.run.join("invocations/call.json");
         json(&call_path, &receipt.invocation)?;
-        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
         let pending = paths.run.join("pending-receipts");
         let declaration = deps.join("actual.d");
         std::fs::write(&declaration, b"# env-dep:ACTUAL_FLAG=present\n\xff")?;
@@ -6400,7 +6425,11 @@ mod tests {
             &invocation,
             &compiler_receipt(&paths, &data, &artifact).invocation,
         )?;
-        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
         let (fresh, missing) =
             target_records(&paths, &data, "selected", false, &expected, &[], None)?;
         assert!(missing.is_empty() && fresh[0].complete && !fresh[0].reused);
@@ -6591,7 +6620,11 @@ mod tests {
             &invocation,
             &compiler_receipt(&paths, &data, &artifact).invocation,
         )?;
-        let expected = BTreeSet::from([("input".into(), "input".into(), "lib".into())]);
+        let expected = crate::managed::request::original_targets([(
+            "input".into(),
+            "input".into(),
+            "lib".into(),
+        )]);
         let (fresh, missing) =
             target_records(&paths, &data, "selected", false, &expected, &[], None)?;
         assert!(missing.is_empty() && fresh[0].complete && !fresh[0].reused);
@@ -7611,7 +7644,8 @@ mod tests {
             "resolve":{"root":null,"nodes":[]},"packages":[
                 {"id":"a","name":"a","metadata":{"verus":{"verify":true}},"targets":[{"name":"a","kind":["lib"]}]},
                 {"id":"b","name":"b","metadata":{"verus":{"verify":true}},"targets":[{"name":"b","kind":["lib"]}]}]});
-        let original = BTreeSet::from([("a".into(), "a".into(), "lib".into())]);
+        let original =
+            crate::managed::request::original_targets([("a".into(), "a".into(), "lib".into())]);
         assert_eq!(expected_targets(&data, &[]), original);
         for flag in ["--workspace", "--all"] {
             assert_eq!(expected_targets(&data, &[flag.into()]).len(), 2);
@@ -7634,11 +7668,19 @@ mod tests {
                 &data,
                 &["-p".to_owned(), "a".to_owned(), "--lib".to_owned()]
             ),
-            BTreeSet::from([("a".to_owned(), "a".to_owned(), "lib".to_owned())])
+            crate::managed::request::original_targets([(
+                "a".to_owned(),
+                "a".to_owned(),
+                "lib".to_owned()
+            )])
         );
         assert_eq!(
             expected_targets(&data, &["--bin".to_owned(), "a".to_owned()]),
-            BTreeSet::from([("a".to_owned(), "a".to_owned(), "bin".to_owned())])
+            crate::managed::request::original_targets([(
+                "a".to_owned(),
+                "a".to_owned(),
+                "bin".to_owned()
+            )])
         );
         assert!(expected_targets(&data, &["-p".to_owned(), "missing".to_owned()]).is_empty());
     }
@@ -7655,7 +7697,11 @@ mod tests {
                     "metadata":{"verus":{"verify":true}},
                     "targets":[{"name":"b","kind":["lib"]}]}]});
         let names = BTreeSet::from(["a".to_owned(), "b".to_owned()]);
-        let wanted = BTreeSet::from([("b".to_owned(), "b".to_owned(), "lib".to_owned())]);
+        let wanted = crate::managed::request::original_targets([(
+            "b".to_owned(),
+            "b".to_owned(),
+            "lib".to_owned(),
+        )]);
         for (argument, spec) in [("-pb", "b"), ("-p=b", "b"), ("-pb@2.0.0", "b@2.0.0")] {
             let args = vec![argument.to_owned(), "--lib".to_owned()];
             assert_eq!(expected_targets(&data, &args), wanted);
@@ -7663,7 +7709,11 @@ mod tests {
         }
         assert_eq!(
             expected_targets(&data, &[]),
-            BTreeSet::from([("a".to_owned(), "a".to_owned(), "lib".to_owned())])
+            crate::managed::request::original_targets([(
+                "a".to_owned(),
+                "a".to_owned(),
+                "lib".to_owned()
+            )])
         );
         let repeated = vec!["-pb".to_owned(), "--package=a".to_owned()];
         assert_eq!(expected_targets(&data, &repeated).len(), 2);
@@ -7694,7 +7744,11 @@ mod tests {
             {"id": "syn", "dependencies": []},
             {"id": "bench", "dependencies": ["lib", "criterion"]},
             {"id": "criterion", "dependencies": []}]}});
-        let expected = BTreeSet::from([("lib".to_owned(), "lib".to_owned(), "lib".to_owned())]);
+        let expected = crate::managed::request::original_targets([(
+            "lib".to_owned(),
+            "lib".to_owned(),
+            "lib".to_owned(),
+        )]);
         let closure = selected_closure(&data, &expected);
         assert_eq!(
             closure,

@@ -48,3 +48,8 @@ pub mod client;
 
 /// Neutral source job requests and source-bound contract evidence.
 pub mod contracts;
+
+#[cfg(test)]
+mod request_order_tests;
+#[cfg(test)]
+mod request_targets_tests;

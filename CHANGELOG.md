@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Construct the candidate's actual pre-Cargo and replay requests from the
+  original target dictionary through shared checked insertion, iteration and
+  header construction. Preserve target ordering, metadata filters, arguments and
+  engine/repair options; unavailable projection refuses admission. Direct-stock
+  production, native differential, conformance and cost checks remain pending.
+
 - Give the original-target comparator candidate an explicit checked trait-method
   envelope that inherits trait preconditions, retaining its native method bodies
   and checked postconditions (#472). The earlier whole-file probe stopped before

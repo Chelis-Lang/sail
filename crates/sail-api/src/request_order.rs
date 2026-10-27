@@ -227,6 +227,19 @@ sail_spec! {
     pub closed spec fn original_key_value(original: (String, String, String)) -> OriginalTargetKey {
         OriginalTargetKey { original }
     }
+    /// The public closed projections retain the actual immutable tuple.
+    pub proof fn original_key_round_trip(original: (String, String, String))
+        ensures key_original(&original_key_value(original)) == original,
+    {}
+
+    /// Structural key equality retains all original fields; this is neither a
+    /// hash-injection premise nor an assumed String-order/equality law.
+    pub proof fn original_key_value_is_injective(first: (String, String, String), second: (String, String, String))
+        ensures (original_key_value(first) == original_key_value(second)) == (first == second),
+    {
+        original_key_round_trip(first);
+        original_key_round_trip(second);
+    }
     pub open spec fn key_package(key: &OriginalTargetKey) -> Seq<u8> {
         vstd::utf8::encode_utf8(key_original(key).0@)
     }
@@ -355,44 +368,5 @@ sail_spec! {
                 implies key_order(&first, &third) == Ordering::Greater by {
             key_order_laws(&first, &second, &third);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::OriginalTargetKey;
-    use std::collections::BTreeSet;
-
-    #[test]
-    fn byte_key_order_matches_the_original_native_tuple_order() {
-        let tuples: Vec<(String, String, String)> = vec![
-            ("".into(), "".into(), "".into()),
-            ("pkg".into(), "target".into(), "lib".into()),
-            ("pkg".into(), "target".into(), "bin".into()),
-            ("pkg".into(), "t".into(), "lib".into()),
-            ("pkg".into(), "target\0".into(), "lib".into()),
-            ("pkg".into(), "target".into(), "lib\n".into()),
-            ("λ".into(), "target".into(), "lib".into()),
-            ("pkg".into(), "λ".into(), "lib".into()),
-            ("pkg".into(), "target".into(), "lib".into()),
-        ];
-        for left in &tuples {
-            for right in &tuples {
-                let actual_left = OriginalTargetKey::new(left.clone());
-                let actual_right = OriginalTargetKey::new(right.clone());
-                assert_eq!(actual_left.cmp(&actual_right), left.cmp(right));
-                assert_eq!(
-                    actual_left.partial_cmp(&actual_right),
-                    left.partial_cmp(right)
-                );
-                assert_eq!(actual_left == actual_right, left == right);
-                assert_eq!(actual_left.clone().as_tuple(), left);
-            }
-        }
-        let original: BTreeSet<_> = tuples.iter().cloned().collect();
-        let actual: BTreeSet<_> = tuples.into_iter().map(OriginalTargetKey::new).collect();
-        assert_eq!(actual.len(), original.len());
-        let projection: Vec<_> = actual.iter().map(OriginalTargetKey::as_tuple).collect();
-        assert_eq!(projection, original.iter().collect::<Vec<_>>());
     }
 }

@@ -855,6 +855,21 @@ class SourceCaptureTests(unittest.TestCase):
             with self.subTest(body=body), self.assertRaises(SOURCE.SourceRefusal):
                 SOURCE.checked_item_envelopes("sail_code! { impl PartialEq for Key { " + body + " } }")
 
+    def test_actual_original_dictionary_modules_and_native_callers_remain_closed(self):
+        for path in (CHECKER.REQUEST_ORDER, CHECKER.REQUEST_TARGETS):
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            for addition in (b"\nuse hidden::*;", b"\npub fn unchecked() -> bool { true }"):
+                with self.subTest(path=path, addition=addition), self.assertRaises(
+                        (CHECKER.Refusal, SOURCE.SourceRefusal)):
+                    CHECKER.compiled_subset(path, original + addition)
+        for path in CHECKER.REQUEST_NATIVE_BINDINGS:
+            self.assertIn(path, CHECKER.INPUT_NATIVE_SHA256)
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original + b"\nfn unchecked() {}\n")
+
     def test_inherited_trait_method_mutation_preserves_its_postcondition(self):
         source = "sail_inherited_method! { fn eq(&self, other: &Self) -> (same: bool) ensures(if same {1nat} else {0nat} == 1nat) { true } }"
         SOURCE.runtime_mutation(source, "{ true }", "{ false }")
