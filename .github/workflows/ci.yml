@@ -1,13 +1,11 @@
 name: ci
 
 # Every push and PR to main or the release branch runs the six required checks.
-# Jobs after the authorship check run inside the CI image
-# (ci/Dockerfile, ADR 0013), through ci/run.sh, the same steps `ci/local.sh`
-# runs locally. CI serves rapid iteration: each job should finish in about
-# four minutes and must stay well under its 10-minute limit. Long, release
-# and acceptance-style runs (standard and deep conformance tiers, `release`,
-# benchmarks, acceptance-model proofs, production refinements, the macOS
-# `host` check) are local-only.
+# This draft retains model and production proof jobs in CI completion;
+# their final placement awaits owner question 41. Jobs after the authorship
+# check run inside ci/Dockerfile through ci/run.sh, also used by ci/local.sh.
+# CI jobs target about four minutes and must stay below ten minutes. Standard
+# and deep conformance, release, benchmarks and the macOS host gate are local.
 
 on:
   push:
