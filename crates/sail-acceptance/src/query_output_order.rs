@@ -171,12 +171,13 @@ sail_code! {
             /// Transfers the same original fields back to the unchanged native
             /// EOF/drop/wait/tail/seal/finish/replay-join block. No status is minted.
             #[allow(clippy::type_complexity, reason = "The returned tuple exposes the four original owned native fields together, rather than introducing another opaque constructor or losing their exact transfer contract.")]
+            #[allow(clippy::manual_map, reason = "The pinned Stock whole-root Option::map closure attempt leaves the exact original pending-field postcondition unproved; explicit owned Option branches expose both field identities without an extra trusted closure contract.")]
             pub fn into_parts(self) -> (out:(crate::query_output_split::ParsedOutput<Owner>,crate::query_replay::Replay<'a,Owner>,Option<(bool,usize)>,Option<usize>))
                 requires (self.coherent())
                 ensures (out.0 == self.output_view(),out.1 == self.replay_view(),out.3 == self.forwarding_view(),
                     match out.2 {Some((fresh,start))=>self.pending_view()==Some((fresh,start as int)),None=>self.pending_view().is_none()})
             {
-                let pending=self.pending.map(|p| (p.fresh,p.start));
+                let pending=match self.pending {Some(p)=>Some((p.fresh,p.start)),None=>None};
                 (self.output,self.comparison,pending,self.forward_from)
             }
         }
