@@ -1011,3 +1011,13 @@ Clippy pass, with final source checks. Its closed local archive
 `a86bae00653abe85ceb4dad1f6b7899d4678b69db9d4bf719342719bd31ed739`.
 Independent upload/readback and full workspace/solver/conformance remain pending.
 The combined lexical source has separate undiscovered whole-root scope.
+
+The first actual lexical whole-root candidate `a0e2f74d` observes 549 verified/4
+failed functions and 951 query entries in 38.562 seconds (entire crate, no VIR
+error or resource refusal; final source/runtime guards pass). The failed VCs are
+trivia history composition, decimal first-dot/subslice identity and two finite
+nonempty lexer witnesses. No new inventory is locked. The next candidate adds
+scoped erased unfolding and exact slice facts; it preserves all executable
+transitions, contracts, 213 controls and default resources. The closed failed
+archive `acceptance-parser-a0e2f7-positive-native.tgz` is 310,600 bytes, SHA-256
+`6933b26ad0dec19d34a47ea7ea33f9dfc8ac4ed2ab614198f2d614f416bc19b6`.
