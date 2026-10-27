@@ -289,15 +289,16 @@ sail_verified! {
     /// Matches the old name/id/first-at-version package rule on original bytes.
     #[allow(clippy::manual_let_else, clippy::question_mark,
         reason = "Retain explicit missing metadata/version outcomes in the shared source and refusal controls.")]
-    pub fn original_package_matches(arguments: &[String], span: &ArgumentSpan, name: &str, id: &str, version: Option<&str>)
+    pub fn original_package_matches(arguments: &[String], span: &ArgumentSpan, name: &str, id: &str, supplied_version: Option<&str>)
         -> (matched: bool)
         requires(true)
         ensures(matched == (span.argument < arguments.len() && selected_package_bytes(
             crate::acceptance::string_bytes(&arguments@[span.argument as int]), span.offset as int,
             vstd::utf8::encode_utf8(name@), vstd::utf8::encode_utf8(id@),
-            match version { Some(value) => Some(vstd::utf8::encode_utf8(value@)), None => None })))
+            match supplied_version { Some(value) => Some(vstd::utf8::encode_utf8(value@)), None => None })))
     {
         if original_span_matches_str(arguments, span, name) || original_span_matches_str(arguments, span, id) { return true; }
+        let version = supplied_version;
         let version = match version { Some(value) => value, None => return false };
         if span.argument >= arguments.len() { return false; }
         let bytes = arguments[span.argument].as_str().as_bytes();
@@ -305,6 +306,7 @@ sail_verified! {
         let mut at = span.offset;
         sail_while! { (at < bytes.len())
             invariant(span.offset <= at <= bytes.len(), span.argument < arguments.len(),
+                supplied_version == Some(version),
                 bytes@ == crate::acceptance::string_bytes(&arguments@[span.argument as int]),
                 !original_span_matches(arguments@, span, vstd::utf8::encode_utf8(name@)),
                 !original_span_matches(arguments@, span, vstd::utf8::encode_utf8(id@)),
