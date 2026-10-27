@@ -32,6 +32,9 @@ pub mod project;
 pub mod proof;
 pub mod protocol;
 pub mod repair;
+/// Internal immutable original-target dictionary ordering and projection.
+#[doc(hidden)]
+pub mod request_order;
 pub mod runtime;
 pub mod schema;
 pub mod stamp;

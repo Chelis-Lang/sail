@@ -142,6 +142,31 @@ String-tuple ordering while enabling checked set construction/iteration. That
 conversion remains a proposal until valid support results and source review;
 there is no assumed ordering or supplied completeness Boolean.
 
+Native support diagnostics now distinguish the two cases at the same pinned
+Stock setup. The complete String and String-tuple order-law file fails two
+ordinary postconditions; the complete actual String-tuple `BTreeSet` domain file
+fails its two coverage/no-duplicate assertions. Identical numeric `u64` controls
+both pass. The initial two missing-`main` attempts are invalid and earn zero
+support credit. All six attempts are retained at
+`experiments/2026-10-27/acceptance-request-support-4c43-native.tgz`, SHA-256
+`b7860ae37002e2c74e27b8505065a9d6968743bc87bf1a9989ef0fec3c55e9d0`
+(7,284,334 bytes). This is library-support evidence, not acceptance or a false
+verdict finding. Independent storage readback remains separately reported.
+
+The child source candidate adds `request_order.rs`: an immutable original
+String-tuple key, actual bytewise comparison/equality/clone implementations,
+and constructive byte/key order-law bodies for `OrdSpecImpl`. Its byte order
+matches Rust's original String/tuple field order by source review; an ordinary
+native differential fixture covers prefixes, embedded NUL, Unicode, field
+precedence, duplicate keys and actual set iteration against the old tuple set.
+Neither that fixture nor the new complete-file Stock support probe has run yet.
+The managed selection still uses the original String-tuple set. Actual set
+storage/insertion/iteration and request projection must be connected to the
+new key only after the kernel is checked and the conversion reviewed. That
+later projection must iterate the real original set, not certify a supplied
+list or mint a physical compiler-input domain. New comparator primitives add
+no String-order axiom, dependency, public record schema or provider selection.
+
 Native path rendering still uses the old `to_string_lossy` operation and the
 independent raw-path binding, including invalid-byte refusal. Cargo metadata
 decoding/selection, argument option/value state, per-unit effective options,
