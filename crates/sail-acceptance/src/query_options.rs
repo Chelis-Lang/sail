@@ -98,6 +98,14 @@ sail_verified! {
             assert(crate::query::head_span(retained@,1,17));
             assert(crate::query::head_span(reset@,1,6));
             assert(reset@.subrange(1,6) =~= vstd::utf8::encode_utf8("reset"@));
+            assert(!crate::query_policy::named(ordinary@.subrange(1,7),"reset"@));
+            assert(!crate::query_policy::named(ordinary@.subrange(1,7),"set-option"@));
+            assert(!crate::query_policy::named(retained@.subrange(1,17),"reset"@));
+            assert(!crate::query_policy::named(retained@.subrange(1,17),"set-option"@));
+            assert(exists|start: int, end: int| crate::query::head_span(ordinary@,start,end)
+                && ordinary@.subrange(1,7) == ordinary@.subrange(start,end));
+            assert(exists|start: int, end: int| crate::query::head_span(retained@,start,end)
+                && retained@.subrange(1,17) == retained@.subrange(start,end));
             assert(next_options(ordinary@,None,Some(no@),Some(ten@),Some(no@),Some(ten@)));
             assert(next_options(retained@,None,Some(no@),Some(ten@),Some(no@),Some(ten@)));
             assert(next_options(reset@,None,Some(no@),Some(ten@),None,None));

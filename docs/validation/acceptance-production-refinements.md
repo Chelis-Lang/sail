@@ -141,6 +141,7 @@ Raw artifacts remain outside the repository. SHA-256:
 
 | Date | Source | Gate | Result |
 |---|---|---|---|
+| 2026-10-26 | `b74bcb06` | Expanded whole-positive discovery | Exact reset head bytes pass; the two ordinary preservation instances still need explicit original-head existential witnesses and non-setter/non-reset name facts. No contracts or scope are changed; all later roots/controls remain unrun |
 | 2026-10-26 | `fe8d021f` | Expanded whole-positive discovery | Both actual setter witnesses pass; constructive ordinary/reset-assertions success exits remain unproved. Instantiate unchanged preservation/reset relations for the remaining literal history; retain all executable calls and do not weaken the full always-refuse control |
 | 2026-10-26 | `52501686` | Expanded whole-positive discovery | Every literal scalar-field assertion passes, but the two successful setter calls in the constructive history lack instantiated next-state witnesses. Retain the full factory and add erased original head/keyword/value equalities and exact next-state instances; no positive inventory or control credit |
 | 2026-10-26 | `7a1cf36c` | Expanded whole-positive discovery | Literal atom obligations pass, but two constructive keyword-field assertions remain unproved (440 verified, one failing function). Add explicit extensional equality between original literal head bytes and the existing UTF-8 name predicate; no executable, predicate or resource change and no expanded inventory qualified |
