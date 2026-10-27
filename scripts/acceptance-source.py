@@ -782,6 +782,8 @@ def api_stencils(snapshots: dict[str, bytes], expected: dict | None = None) -> t
                 if levels[i] and [t.value for t in stream[i:i + 3]]
                     == ["pub", "const", "REQUEST_CAPTURE_VERSION"]]
             require(len(capture_versions) == 1, "missing or ambiguous request capture version")
+            require(capture_versions[0] == 0 or stream[capture_versions[0] - 1].value != "]",
+                "attributed request capture version outside closed projection")
             capture_constant = [t.value for t in stream[capture_versions[0]:capture_versions[0] + 8]]
             require(capture_constant[:6] == ["pub", "const", "REQUEST_CAPTURE_VERSION", ":", "u32", "="]
                 and capture_constant[7] == ";" and capture_constant[6].isdigit(),

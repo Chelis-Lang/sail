@@ -330,6 +330,9 @@ concrete argument/mode relation outside the defining module. No constructor,
 guard, classification or argument normalization changes. The source closure
 includes the actual `RequestCapture` fields and actual capture-version constant,
 the new module/imports and the native decoder/canonicalization/caller binding.
+Missing, duplicate, changed or attributed capture-version declarations refuse
+the representation guard; conditional constants cannot become an unconditional
+literal in the checked projection.
 Twelve new executable mutations retain all loop contracts and existing controls;
 positive and ordinary refusal witnesses check selected ownership, missing runs,
 invalid ignored-row headers and duplicate matching runs. Native journal fixtures
