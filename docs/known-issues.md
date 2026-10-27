@@ -1,16 +1,5 @@
 # Known issues and limits
 
-The consolidated acceptance-audit bugfix candidate addresses proof-control
-classification (#454/#508/#537), supplied configuration homes (#419), source
-lexer tail copies (#432), exact Set union recognition (#514), proof-import
-digits (#532), local
-checkout target isolation (#475) and full-E2E generated-file fixture isolation
-(#540). Its native gate, solver, model/refinement suites, full local E2E and
-PR conformance pass at `9597caad`. A subsequent source-review correction binds
-runtime edits to one interval between unchanged erased proofs; fresh qualification and
-full fast/standard conformance remain pending. These changes do not complete the service proof. See the
-[owning record](validation/acceptance-production-refinements.md).
-
 Open Sail defects and current product limits on main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
