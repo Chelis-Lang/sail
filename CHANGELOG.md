@@ -18,6 +18,12 @@ semantic versioning once the API is published.
   replay instead of the `SAIL3139` fallback. Each release is qualified by a
   source audit (`scripts/cargo-protocol-audit.py`) and a real-Cargo
   self-test (`ci/run.sh cargo-range`). Any other Cargo still falls back.
+- Keep the dependency build after a failing focused `sail verify`
+  (`--verify-module`, `--verify-function`). The passing call after a failing
+  focused one cleaned every build-script package and rebuilt the dependency
+  closure, re-verifying vstd; a failing focused run whose verifier finished
+  normally now keeps the dependencies' build-script contracts, as an
+  unfocused one already did (#441).
 
 - Stop reusing a proof after a file read only in ghost code changes. An
   `include!`, `include_str!` or `include_bytes!` inside a `proof fn`, spec or

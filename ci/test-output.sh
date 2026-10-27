@@ -595,6 +595,27 @@ assert not requested["complete"] and requested.get("scope_reuse"), requested
 [requested] = [t for t in whole["targets"] if t["requested"]]
 assert requested["complete"] and not requested.get("scope_reuse"), requested
 PY
+# The focused fail -> fix loop (#441): the passing call after a failing one
+# rebuilds only what plain `cargo verus focus` rebuilds, never the dependency
+# closure behind the build-script packages.
+focus_pair() { # label
+  CARGO_TARGET_DIR="$work/target-plain" quiet_run "$1-plain" stock_cargo verus focus -- --verify-module m
+  CARGO_TARGET_DIR="$work/target-sail" quiet_run "$1-sail" "$sail" verify --output json -- --verify-module m
+}
+units() { grep -E '^ *(Compiling|Checking) ' "$work/$1.err" | sed -E 's/^ +//' | sort; }
+focus_pair focus-warm
+cp src/m.rs "$work/m.rs.orig"
+edit_in_place 's/ensures r == 1,/ensures r == 2,/' src/m.rs
+focus_pair focus-fail
+[ "$(cat "$work/focus-fail-plain.rc")" != 0 ] && [ "$(cat "$work/focus-fail-sail.rc")" != 0 ]
+cp "$work/m.rs.orig" src/m.rs
+focus_pair focus-fix
+[ "$(cat "$work/focus-fix-plain.rc")" = 0 ] && [ "$(cat "$work/focus-fix-sail.rc")" = 0 ]
+if ! diff <(units focus-fix-plain) <(units focus-fix-sail) >&2 \
+  || units focus-fix-sail | grep -v ' demo v' >&2; then
+  echo "e2e: the passing focused call after a failing one rebuilt more than plain cargo verus focus" >&2
+  exit 1
+fi
 # A failing project re-verifies on every unchanged call, as plain does.
 edit_in_place 's/ensures r >= x,/ensures r > x,/' src/lib.rs
 plain_run failing-plain stock_cargo verus verify
