@@ -20,6 +20,23 @@ native source-suite evidence; this combined extension and actual request/domain
 construction still require fresh native source checks and complete-root Stock
 discovery. No function or obligation counts are inferred from the support probe.
 
+The successful original-selector qualifier is frozen `8ec59f7f`. Complete query
+471/0 (821 function entries), inputs 308/0 (538) and authority 592/0 (1,001) pass,
+retaining every previous function. Strict full-workspace/all-target Clippy passes
+in 93.358 s; all 25 selected native fixtures pass, with 803 skipped (6.243 s test
+time; 151.250 s including compilation). Final source/image/pinned-runtime checks
+pass; total controller time is 417.731 s. Actual scanned arguments, original span
+indices/offsets, first-at package matching and their real native caller are in
+scope. Source-unit results stay `e92200f1` (67 tests), with raw harness/manifest
+identity checked before the fresh complete-root runs; no new unit-suite or
+compiled-byte equality claim is made. The ready lock changes only actual discovered
+minima and documentation and does not relabel the frozen program. All 23 new
+ordinary negatives, conformance, cost and complete metadata/physical joins remain
+open. Authenticated byte-identical PUT/GET archive:
+`experiments/2026-10-27/acceptance-request-domain-8ec59f7f-native.tgz`,
+7,635,319 bytes, SHA256
+`424c81b14d3714d9e6e600d993d180db915f7e35db2f088df286542c58cffe24`.
+
 The first-at guidance candidate `c1b7ee30` proves the new split lemma and both
 nonempty suffix/name witnesses. Its complete query and input roots pass; the
 whole authority root retains one ordinary postcondition failure at the actual
@@ -67,8 +84,12 @@ actual `ArgumentSpan`/`OriginalSelectors` declarations, original-prefix scanner,
 exact byte-window/suffix/package matchers, five constructive witnesses and 23
 mandatory executable controls. Static envelope inspection locates every mutation
 inside actual executable code and preserves signatures/contracts/loop annotations;
-this earns no proof or negative credit. All prior 77 request controls and actual
-function minima remain required. New complete-root, source and native gates are
+this alone earns no proof or negative credit. All prior 77 request controls and
+actual function minima remain required. Frozen `8ec59f7f` now passes all three
+complete Stock roots (authority 592/0, 1,001 function entries), strict workspace
+Clippy and all 25 selected native fixtures. The source-suite receipt is
+`e92200f1` (67 tests), with raw unchanged harness/manifest validation before fresh
+complete-root proofs. All 23 new ordinary negatives, conformance and cost remain
 pending. Existing Cargo JSON filters, full Cargo option/value semantics, decoder
 and physical/provider joins remain open.
 
