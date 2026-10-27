@@ -44,6 +44,7 @@ REQUEST_ORDER = 'crates/sail-api/src/request_order.rs'
 REQUEST_TARGETS = 'crates/sail-api/src/request_targets.rs'
 REQUEST_CAPTURE = 'crates/sail-api/src/request_capture.rs'
 REQUEST_MODE = 'crates/sail-api/src/request_mode.rs'
+REQUEST_SELECTORS = 'crates/sail-api/src/request_selectors.rs'
 REQUEST_NATIVE_BINDINGS = {
     'crates/sail-verus/src/adapter.rs': ['report_verification_arguments',
         'actual packed effective-option lookup/decoder remains a native join'],
@@ -83,7 +84,7 @@ INPUT_NATIVE_SHA256 = {
     'crates/sail-verus/src/engine.rs': '72883d1f97b10cb9d0b57aabe1ab0833a8189ef41a563231bdfbd3c76b16b45b',
     'crates/sail-verus/src/managed/mod.rs': '7d1a4092e364b466a4da4247fb91418af8930fbd8316e83b8641d8f1b8b9cff9',
     'crates/sail-verus/src/managed/command_environment.rs': '43b34bd36c7c6c2f22a9bc34a39bd77737e65a3c167855143985cbddbe87508f',
-    'crates/sail-verus/src/managed/runner.rs': 'd2cbdf4a7b571aa1ab32f93d4f06675a39f4d70bd66914f330e6b084efcc4cec',
+    'crates/sail-verus/src/managed/runner.rs': '09373710681c953844c5413045de7f16a1c265f00cc15cb74b7442169c6437c6',
     'crates/sail-verus/src/managed/request.rs': '9bde63c21b9be21719c7e3ac050f8e4b756ae33db219d4ea45475932753e46a0',
     'crates/sail-verus/src/managed/noop.rs': 'cf9870294921a9ce51e34db189012cfb9e7373c9aba56409e47e3887ee8a186b',
     'crates/sail-verus/src/managed/shipped.rs': '4785c4450b09daeb049574458adf3dda63f79455ec7a0bff113e86aa4e47709a',
@@ -97,7 +98,7 @@ INPUT_NATIVE_SHA256 = {
     'crates/sail-daemon/src/jobs/product.rs': 'ee923438cae29230e0eef4774655d96c98177abba3d4efa26d58a71b5a986861',
     'crates/sail-daemon/src/jobs/result_cache.rs': '7d63c09a1e623d2204e64f593adc32e1527c04786ca57439aab1e64600680b64',
     'crates/sail-verus/src/managed/command_pipe.rs': 'aaccb4db7cce2648b4a1acdc5da658ea2b53abbcc24956310deac5c7b6e6eb31',
-    'crates/sail-api/src/lib.rs': 'fb116296ecdc0ba0ec31c1e20e5b5ae27ab6574c4b3bf590494eb51ad6cf9ebb',
+    'crates/sail-api/src/lib.rs': '7f5178a5a406c06c4981ec6b96509627806c840f5bfaab1b4c6f6785e62cd093',
     'crates/sail-api/src/stamp.rs': 'fafb1eea946f08ea4a1e534a0b3c634094c862f63eb8b9251b9e76c498d0dda8',
     'crates/sail-verus/src/adapter_verus_channel.rs': '2229526e8081f0d7309a30c4f3acdf04062d19363b6c1152aa98aab44182d421',
     'crates/sail-verus/src/managed/build_environment.rs': 'de6270ac49a38906d99e076ffede26ed9d562e0d4022226254622b4f2d6c34d3',
@@ -143,10 +144,10 @@ RETAINED_BRIDGE_SHA256 = 'f1214b5c3cada2004a55eb359e8ec62724a8fa5349ec50ca7d3b9e
 # merely updating a manifest. Runtime-only implementation drift must refuse.
 SYNTAX_SHA256 = '507cec8fb677180528ff296e1f32352102e9b9578b5bd9b80107bfb61ebbdb9f'
 LIB_SHA256 = '6bd34ec1405ac5e0cead7f66bbf735c095967f242accfd8c019ecfd8f459481a'
-API_LIB_SHA256 = 'fb116296ecdc0ba0ec31c1e20e5b5ae27ab6574c4b3bf590494eb51ad6cf9ebb'
+API_LIB_SHA256 = '7f5178a5a406c06c4981ec6b96509627806c840f5bfaab1b4c6f6785e62cd093'
 # Binding inventories cover both ordinary and proof-only imports. In particular,
 # an erased import cannot shadow a Cargo glob with a different checked callee.
-IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '576fef74ca35801ba882935df4f559431e2b33cb8723d93e022b1ffcc6629979', 'crates/sail-acceptance/src/key_prefix.rs': 'abcb768a7dca61a2e4248956921314487e845306a6335e944610f3c5bb90e5b8', 'crates/sail-key/src/prefix_factory.rs': '22f9a04f035b109591f920519d7423c7de774bfc66315194b3939f291bf62988', 'crates/sail-acceptance/src/query_policy.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_prefix.rs': '6c28aff345658a06686d88714020c77540412e4b5403912081c62141c82059b0', 'crates/sail-acceptance/src/phase_inputs.rs': 'e31c1fd6ae8c583a1fb26630289887e8aa3b0eaae302c997a571085167c83532', 'crates/sail-acceptance/src/cache_write.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_delivery.rs': 'dd5692fc8c75546d449a2c623708ec6748a7be654391385107f4fa20e971d08e', 'crates/sail-acceptance/src/query_output.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_publication.rs': '5b42b5e8b9a5cdc3fc2c046bb501eb353d630a73b668b7a2e6a8ae857cbb8fab', 'crates/sail-acceptance/src/stream_capture.rs': '18c75f1316fdcfe0ddaae6f01a1a4a261ee5a0e48f1aec2d4a0d5649f2e5e9da', 'crates/sail-acceptance/src/query_output_owner.rs': 'a39dc18af6d81e5a8685b606379b6421026478c1544bd33da36231fb10f62a7f', 'crates/sail-acceptance/src/query_holding.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_checkpoints.rs': '3a451c460b5bb877272130b7081c5f715678a4577e4d117e9d516c8558ad935c', 'crates/sail-acceptance/src/query_options.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_replay.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-api/src/request_order.rs': 'd785e3a1b9bab86f8409ece327757e56ff35e52c501d7a322931a05bea8f2ebe', 'crates/sail-api/src/request_targets.rs': '9fe89159a2a16c51c9d60fe3d5c7f4bc2d20a111617ebf268d22b316bf68a06c', 'crates/sail-api/src/request_capture.rs': '0161665b7bae569f2ea504bba4d57b4c0621857d937b75b3cce7622767ceafaf', 'crates/sail-api/src/request_mode.rs': 'a4bfe95fa72922b47e2352be0ec4d3210ba815ef8e9899908981db73b61ad68f'}
+IMPORT_SHA256 = {'crates/sail-acceptance/src/query.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/inputs.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/authority.rs': 'd0adfcd0a1e64a0addc3db112f9f9fc707f3f4c68bd7b907047a00b8d7f4abb4', 'crates/sail-api/src/acceptance.rs': '576fef74ca35801ba882935df4f559431e2b33cb8723d93e022b1ffcc6629979', 'crates/sail-acceptance/src/key_prefix.rs': 'abcb768a7dca61a2e4248956921314487e845306a6335e944610f3c5bb90e5b8', 'crates/sail-key/src/prefix_factory.rs': '22f9a04f035b109591f920519d7423c7de774bfc66315194b3939f291bf62988', 'crates/sail-acceptance/src/query_policy.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_prefix.rs': '6c28aff345658a06686d88714020c77540412e4b5403912081c62141c82059b0', 'crates/sail-acceptance/src/phase_inputs.rs': 'e31c1fd6ae8c583a1fb26630289887e8aa3b0eaae302c997a571085167c83532', 'crates/sail-acceptance/src/cache_write.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_delivery.rs': 'dd5692fc8c75546d449a2c623708ec6748a7be654391385107f4fa20e971d08e', 'crates/sail-acceptance/src/query_output.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_publication.rs': '5b42b5e8b9a5cdc3fc2c046bb501eb353d630a73b668b7a2e6a8ae857cbb8fab', 'crates/sail-acceptance/src/stream_capture.rs': '18c75f1316fdcfe0ddaae6f01a1a4a261ee5a0e48f1aec2d4a0d5649f2e5e9da', 'crates/sail-acceptance/src/query_output_owner.rs': 'a39dc18af6d81e5a8685b606379b6421026478c1544bd33da36231fb10f62a7f', 'crates/sail-acceptance/src/query_holding.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_checkpoints.rs': '3a451c460b5bb877272130b7081c5f715678a4577e4d117e9d516c8558ad935c', 'crates/sail-acceptance/src/query_options.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-acceptance/src/query_replay.rs': '6440b768cb4ee15dd9522af6feee194bf50df30981cbc02a8cb5598b23e6a92d', 'crates/sail-api/src/request_order.rs': 'd785e3a1b9bab86f8409ece327757e56ff35e52c501d7a322931a05bea8f2ebe', 'crates/sail-api/src/request_targets.rs': '9fe89159a2a16c51c9d60fe3d5c7f4bc2d20a111617ebf268d22b316bf68a06c', 'crates/sail-api/src/request_capture.rs': '0161665b7bae569f2ea504bba4d57b4c0621857d937b75b3cce7622767ceafaf', 'crates/sail-api/src/request_mode.rs': 'a4bfe95fa72922b47e2352be0ec4d3210ba815ef8e9899908981db73b61ad68f', 'crates/sail-api/src/request_selectors.rs': 'b0ea584f3d18596b37668cfc49e09f1d5828d4762d97ce650f6528d26bbcd9e2'}
 # Exact reviewed ghost declarations and abstract primitive contracts. These
 # permit no arbitrary erased types or host implementations. The native host
 # implementation is a separate obligation, never discharged by a trait bound.
@@ -289,7 +290,7 @@ def dependency_paths(component: str) -> list[str]:
         result += list(INPUT_NATIVE_SHA256)
     if component == "authority":
         result += ["crates/sail-api/src/acceptance.rs", "crates/sail-api/src/acceptance_sort.rs",
-            REQUEST_ORDER, REQUEST_TARGETS, REQUEST_CAPTURE, REQUEST_MODE,
+            REQUEST_ORDER, REQUEST_TARGETS, REQUEST_CAPTURE, REQUEST_MODE, REQUEST_SELECTORS,
             *["crates/sail-api/src/" + name + ".rs" for name in SOURCE.API_MODULES],
             RETAINED_BRIDGE]
         result += [path for path in PRESENTATION_NATIVE_BINDINGS if path not in result]
@@ -459,13 +460,15 @@ def captured_driver(entry: dict, snapshots: dict[str, bytes], control: dict | No
         files["request_targets.rs"] = sources[REQUEST_TARGETS]
         files["request_capture.rs"] = sources[REQUEST_CAPTURE]
         files["request_mode.rs"] = sources[REQUEST_MODE]
+        files["request_selectors.rs"] = sources[REQUEST_SELECTORS]
         declarations += ["pub mod " + name + ";" for name in SOURCE.API_MODULES]
         declarations += [
             '#[path="api_acceptance.rs"] pub mod acceptance;', "mod acceptance_sort;",
             '#[path="request_order.rs"] pub mod request_order;',
             '#[path="request_targets.rs"] pub mod request_targets;',
             '#[path="request_capture.rs"] pub mod request_capture;',
-            '#[path="request_mode.rs"] pub mod request_mode;']
+            '#[path="request_mode.rs"] pub mod request_mode;',
+            '#[path="request_selectors.rs"] pub mod request_selectors;']
     files["refinement.rs"] = sources[entry["source"]]
     declarations += ['#[path="refinement.rs"] pub mod refinement;']
     if component == "inputs":

@@ -2895,46 +2895,12 @@ fn target_revision_with(
 )]
 fn expected_targets(data: &Value, args: &[String]) -> OriginalTargets {
     let workspace = sail_api::acceptance::cargo_workspace_selected(args);
-    let mut selected_names = Vec::new();
-    let mut excluded = Vec::new();
-    let mut bins = Vec::new();
-    let mut lib = false;
-    let mut all_bins = false;
-    let mut it = args.iter().take_while(|a| a.as_str() != "--");
-    while let Some(a) = it.next() {
-        match a.as_str() {
-            "-p" | "--package" => {
-                if let Some(v) = it.next() {
-                    selected_names.push(v.as_str());
-                }
-            }
-            "--exclude" => {
-                if let Some(v) = it.next() {
-                    excluded.push(v.as_str());
-                }
-            }
-            "--bin" => {
-                if let Some(v) = it.next() {
-                    bins.push(v.as_str());
-                }
-            }
-            "--lib" => lib = true,
-            "--bins" => all_bins = true,
-            _ => {
-                if let Some(v) = a.strip_prefix("--package=") {
-                    selected_names.push(v);
-                } else if let Some(v) = a.strip_prefix("-p") {
-                    selected_names.push(v.strip_prefix('=').unwrap_or(v));
-                }
-                if let Some(v) = a.strip_prefix("--exclude=") {
-                    excluded.push(v);
-                }
-                if let Some(v) = a.strip_prefix("--bin=") {
-                    bins.push(v);
-                }
-            }
-        }
-    }
+    let selectors = sail_api::request_selectors::scan_original_selectors(args);
+    let selected_names = &selectors.packages;
+    let excluded = &selectors.excluded;
+    let bins = &selectors.bins;
+    let lib = selectors.library;
+    let all_bins = selectors.all_bins;
     let default = data["resolve"]["root"].as_str();
     let mut expected = OriginalTargets::new();
     for package in data["packages"].as_array().into_iter().flatten() {
@@ -2944,12 +2910,14 @@ fn expected_targets(data: &Value, args: &[String]) -> OriginalTargets {
             .as_array()
             .is_some_and(|m| m.contains(&package["id"]));
         let chosen = if !selected_names.is_empty() {
-            selected_names.iter().any(|n| {
-                *n == name
-                    || *n == id
-                    || n.split_once('@').is_some_and(|(selected, version)| {
-                        selected == name && package["version"].as_str() == Some(version)
-                    })
+            selected_names.iter().any(|span| {
+                sail_api::request_selectors::original_package_matches(
+                    args,
+                    span,
+                    name,
+                    id,
+                    package["version"].as_str(),
+                )
             })
         } else if workspace {
             member
@@ -2961,7 +2929,9 @@ fn expected_targets(data: &Value, args: &[String]) -> OriginalTargets {
                 .is_some_and(|m| m.contains(&package["id"]))
         };
         if !chosen
-            || excluded.contains(&name)
+            || excluded.iter().any(|span| {
+                sail_api::request_selectors::original_span_matches_str(args, span, name)
+            })
             || package
                 .pointer("/metadata/verus/verify")
                 .and_then(Value::as_bool)
@@ -2988,7 +2958,14 @@ fn expected_targets(data: &Value, args: &[String]) -> OriginalTargets {
             });
             let name = target["name"].as_str().unwrap_or_default();
             let selected_kind = if lib || all_bins || !bins.is_empty() {
-                (lib && library) || (bin && (all_bins || bins.contains(&name)))
+                (lib && library)
+                    || (bin
+                        && (all_bins
+                            || bins.iter().any(|span| {
+                                sail_api::request_selectors::original_span_matches_str(
+                                    args, span, name,
+                                )
+                            })))
             } else {
                 library || bin
             };

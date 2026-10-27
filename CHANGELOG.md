@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Route the actual original package/exclusion/binary selector scan and its
+  name/id/version comparisons through source-shared byte-range operations.
+  Retain original argument indices, byte offsets, repeated order, compact forms,
+  option-value consumption and the first Cargo separator. This candidate awaits
+  complete-root/native/control qualification; metadata filters, full Cargo
+  option semantics and physical/provider joins remain separate.
+
 - Route the actual per-package report-command construction through checked
   source, retaining its existing removal/append rules and original token bytes
   and order. Missing effective options remain unknown. Physical compiler inputs,

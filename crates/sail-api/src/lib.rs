@@ -41,6 +41,8 @@ pub mod request_mode;
 /// Internal immutable original-target dictionary ordering and projection.
 #[doc(hidden)]
 pub mod request_order;
+#[doc(hidden)]
+pub mod request_selectors;
 /// Internal checked construction and projection of the original target set.
 #[doc(hidden)]
 pub mod request_targets;
@@ -59,3 +61,6 @@ pub mod contracts;
 mod request_order_tests;
 #[cfg(test)]
 mod request_targets_tests;
+
+#[cfg(test)]
+mod request_selectors_tests;

@@ -3196,6 +3196,7 @@
         "crates/sail-api/src/request_targets.rs",
         "crates/sail-api/src/request_capture.rs",
         "crates/sail-api/src/request_mode.rs",
+        "crates/sail-api/src/request_selectors.rs",
         "crates/sail-api/src/output.rs",
         "crates/sail-api/src/project.rs",
         "crates/sail-api/src/jobs.rs",
@@ -5380,6 +5381,144 @@
           "source": "crates/sail-api/src/request_mode.rs",
           "before": "Some(arguments)",
           "after": "None"
+        },
+        {
+          "name": "selector-original-separator-required",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "if exact_bytes(arguments[end].as_str().as_bytes(), b\"--\") { return end; }",
+          "after": "if false { return end; }"
+        },
+        {
+          "name": "selector-original-end-preserved",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "        end\n    }\n}",
+          "after": "        0\n    }\n}"
+        },
+        {
+          "name": "selector-package-value-consumption",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "if pending == 1 {",
+          "after": "if false {"
+        },
+        {
+          "name": "selector-excluded-value-consumption",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "} else if pending == 2 {",
+          "after": "} else if false {"
+        },
+        {
+          "name": "selector-bin-value-consumption",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "} else if pending == 3 {",
+          "after": "} else if false {"
+        },
+        {
+          "name": "selector-original-package-value-index",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "packages.push(ArgumentSpan { argument: index, offset: 0 });",
+          "after": "packages.push(ArgumentSpan { argument: 0, offset: 0 });"
+        },
+        {
+          "name": "selector-next-package-value",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "                    pending = 1;",
+          "after": "                    pending = 0;"
+        },
+        {
+          "name": "selector-next-excluded-value",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "                    pending = 2;",
+          "after": "                    pending = 0;"
+        },
+        {
+          "name": "selector-next-bin-value",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "                    pending = 3;",
+          "after": "                    pending = 0;"
+        },
+        {
+          "name": "selector-unconsumed-library",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "                    library = true;",
+          "after": "                    library = false;"
+        },
+        {
+          "name": "selector-unconsumed-all-bins",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "                    all_bins = true;",
+          "after": "                    all_bins = false;"
+        },
+        {
+          "name": "selector-compact-package-required",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "if engine_pattern_at(bytes, b\"--package=\", 0) {",
+          "after": "if false {"
+        },
+        {
+          "name": "selector-compact-package-offset",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "packages.push(ArgumentSpan { argument: index, offset: 10 });",
+          "after": "packages.push(ArgumentSpan { argument: index, offset: 0 });"
+        },
+        {
+          "name": "selector-compact-short-equals-offset",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "if bytes.len() > 2 && bytes[2] == b'=' { 3 } else { 2 }",
+          "after": "if bytes.len() > 2 && bytes[2] == b'=' { 2 } else { 2 }"
+        },
+        {
+          "name": "selector-compact-excluded-offset",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "excluded.push(ArgumentSpan { argument: index, offset: 10 });",
+          "after": "excluded.push(ArgumentSpan { argument: index, offset: 0 });"
+        },
+        {
+          "name": "selector-compact-bin-offset",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "bins.push(ArgumentSpan { argument: index, offset: 6 });",
+          "after": "bins.push(ArgumentSpan { argument: index, offset: 0 });"
+        },
+        {
+          "name": "selector-full-scan-always-empty",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "OriginalSelectors { prefix_end: end, packages, excluded, bins, library, all_bins }",
+          "after": "OriginalSelectors { prefix_end: end, packages: Vec::new(), excluded: Vec::new(), bins: Vec::new(), library: false, all_bins: false }"
+        },
+        {
+          "name": "selector-window-complete-length",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "end - begin != candidate.len()",
+          "after": "false"
+        },
+        {
+          "name": "selector-window-exact-bytes",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "        engine_pattern_at(bytes, candidate, begin)",
+          "after": "        true"
+        },
+        {
+          "name": "selector-original-span-invalid-index-refuses",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "if span.argument >= arguments.len() { return false; }\n        let bytes = arguments[span.argument].as_str().as_bytes();\n        original_window_matches(bytes, span.offset, bytes.len(), candidate.as_bytes())",
+          "after": "if span.argument >= arguments.len() { return true; }\n        let bytes = arguments[span.argument].as_str().as_bytes();\n        original_window_matches(bytes, span.offset, bytes.len(), candidate.as_bytes())"
+        },
+        {
+          "name": "selector-original-span-always-refuses",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "        original_window_matches(bytes, span.offset, bytes.len(), candidate.as_bytes())",
+          "after": "        false"
+        },
+        {
+          "name": "selector-package-missing-version-refuses",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "let version = match version { Some(value) => value, None => return false };",
+          "after": "let version = match version { Some(value) => value, None => return true };"
+        },
+        {
+          "name": "selector-package-first-at-required",
+          "source": "crates/sail-api/src/request_selectors.rs",
+          "before": "if bytes[at] == b'@' {",
+          "after": "if bytes[at] == b':' {"
         }
       ]
     }
