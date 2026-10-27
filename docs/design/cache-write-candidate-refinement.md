@@ -208,6 +208,44 @@ retain all existing control descriptors; the native omission control exercises
 the actual owned-map/counter caller. Complete Stock roots prove the shared
 operations at `494c091c`; ordinary controls and native execution remain required.
 
+## Actual ordered retirement boundary
+
+The next source slice moves the real `Inner::apply` accounting and ordered-index
+retirement into `apply_accounted_order`. It consumes the same owned `EntryUpdate`,
+mutates the actual supplied `Accounting` and `BTreeMap<u64, [u8; 32]>`, and returns
+that exact update. Removed entries delete only their original slot tick;
+Written and Unchanged preserve the entire ordered map. All original accounting
+contracts/bodies remain unchanged and the new operation invokes them directly.
+The native caller forwards its actual two fields exactly once, then restores the
+returned slot or completes retirement. No extra retained object or runtime
+ledger is introduced. The native lock, slot-map selection and global relation
+between slots, ticks, clock and counters remain separate obligations.
+
+Its constructive witness uses two nonempty actual slots issued by the same
+Clock, including an independently retained on-disk slot, and exercises Removed,
+Written and Unchanged transitions. Seven additional full-envelope controls and
+an actual native index-omission control are prepared. The prior native accounting
+omission control is rebased to retain the original LRU removal, so it continues
+to isolate omitted accounting. These additions are unqualified source until
+fresh complete Stock/native runs establish their actual inventories/results.
+
+The next slot-map join must use the actual native key and methods. Pinned
+[hash.rs](https://github.com/verus-lang/verus/blob/7d829946231d6413a398f6e4160cdfe951261dad/source/vstd/std_specs/hash.rs)
+conditions its functional HashMap specifications on `obeys_key_model`; its
+documented primitive/Box axioms do not themselves supply the native byte-array
+key premise. The actual `remove_entry` and `get_mut` calls also need a direct
+support check. `proofs/support/cache_candidate_map.rs` stages those exact
+operations over the production shared Slot shape, plus the same key's model
+obligation and a nonempty primitive-key control. It adds no assumed key model,
+replacement ledger or new specification. The probe is unrun; source review is
+not an unsupported-tool result or native cache defect. Primitive u64 comparison
+laws for ordered retirement are already present in pinned
+[laws_cmp.rs](https://github.com/verus-lang/verus/blob/7d829946231d6413a398f6e4160cdfe951261dad/source/vstd/laws_cmp.rs).
+
+Recovery still cannot reconstruct the model's prior recorded-origin membership
+from a file stamp, checksum or plausible reply. This retirement step neither
+selects a Q40 architecture nor admits a candidate as solver truth.
+
 ## Controls and remaining obligations
 
 After support and source review, require a nonempty end-to-end candidate write

@@ -231,6 +231,8 @@ class SourceCaptureTests(unittest.TestCase):
             ("        self.clock.exhaust();", "        self.clock = Clock::start();"),
             ("        self.slots.clear();", "        *self = Self::default();"),
             ("        self.accounting.clear();", "        self.accounting = Accounting::empty();"),
+            ("            &mut self.accounting,", "            &mut unrelated_accounting,"),
+            ("            &mut self.order,", "            &mut wrong_order,"),
             ("const SLOT_GROWTH: usize =", "type EscapedOldSlot = SlotBeforeGeneration;\nconst SLOT_GROWTH: usize ="),
             ("                inner: Arc::clone(endpoint),", "                inner: Arc::new(Mutex::new(Inner::default())),"),
             ("struct MemoryEndpoint {", "pub struct MemoryEndpoint {"),
@@ -263,6 +265,21 @@ class SourceCaptureTests(unittest.TestCase):
             snapshots[CHECKER.CANDIDATE_CORE] = snapshots[CHECKER.CANDIDATE_CORE].replace(before, after)
             with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
                 CHECKER.validate_assembly(snapshots)
+
+    def test_old_layout_alias_cannot_hide_a_runtime_constructor(self):
+        source = (ROOT / CHECKER.CANDIDATE_NATIVE).read_text()
+        for before in ("    state: StateBeforeGeneration,", "const SLOT_GROWTH: usize =",
+                "        let (key, slot) = entry;"):
+            self.assertEqual(source.count(before), 1)
+        changed = source.replace("    state: StateBeforeGeneration,", "    state: PriorState,")
+        changed = changed.replace("std::mem::size_of::<SlotBeforeGeneration>()", "80", 1)
+        changed = changed.replace("const SLOT_GROWTH: usize =",
+            "type PriorState = StateBeforeGeneration;\nconst SLOT_GROWTH: usize =")
+        changed = changed.replace("        let (key, slot) = entry;",
+            "        let (key, slot) = entry;\n        let _old = SlotBeforeGeneration {\n"
+            "            value: Arc::clone(slot.value()), state: PriorState::Pending, tick: slot.tick(),\n        };")
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.candidate_memory_policy(changed)
 
     def test_candidate_actual_native_callers_are_bound_but_not_all_stock_compiled(self):
         entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),
