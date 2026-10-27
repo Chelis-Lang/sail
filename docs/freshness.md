@@ -375,7 +375,11 @@ the tools or Sail read are the same. Replay also needs the full stat stamp
 directory to match, along with the owned Cargo target's entries and every
 installed tool and sysroot file. The proof context's cache records must match
 by content, and the variables units declare (ghost-only reads included) must
-have the same values.
+have the same values. Cargo's uplifted build-script copy
+(`build/<package>-<hash>/build-script-build`), which Cargo copies again on
+every macOS run, is the one exception: it must hold the same bytes as the
+compiled script beside it, whose stamp must match, and its directory must
+keep its identity and exact entry names.
 Anything else takes the full path. Only Cargo's `Finished` time is
 regenerated.
 
