@@ -1021,3 +1021,11 @@ scoped erased unfolding and exact slice facts; it preserves all executable
 transitions, contracts, 213 controls and default resources. The closed failed
 archive `acceptance-parser-a0e2f7-positive-native.tgz` is 310,600 bytes, SHA-256
 `6933b26ad0dec19d34a47ea7ea33f9dfc8ac4ed2ab614198f2d614f416bc19b6`.
+
+The lexical proof-guidance candidate `cc0edc87` is refused before verification:
+`reveal_with_fuel` was applied to a nonrecursive spec in a finite constructive
+witness. [#487](https://github.com/Chelis-Lang/sail/issues/487) records this candidate
+proof-compiler defect. The correction uses ordinary scoped `reveal` for those nonrecursive
+definitions, retaining fuel only on recursive endpoint scans. This attempt
+supplies no verified-function, native or control credit. Final frozen guards
+and the closed refusal archive are recorded separately when terminal.
