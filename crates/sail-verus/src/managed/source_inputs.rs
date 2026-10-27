@@ -136,33 +136,48 @@ fn decode_file(encoded: &str) -> String {
 /// file name with a newline among them, makes the document malformed:
 /// `None`, and its unit's inputs are unknown.
 pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
-    let rules: Vec<&str> = text
-        .split('\n')
-        .filter(|line| !line.is_empty() && !line.starts_with("# "))
+    let lines: Vec<&str> = text.split('\n').collect();
+    let (_, files) = rule_layout(&lines)?;
+    Some(
+        files
+            .into_iter()
+            .map(|index| decode_file(lines[index].strip_suffix(':').unwrap_or_default()))
+            .collect(),
+    )
+}
+
+/// The line indices of a rustc dep-info's output rules and of its file
+/// rules, in order, as [`dependencies`] reads them. `None` for a document
+/// without exactly one consistent reading.
+pub(super) fn rule_layout(lines: &[&str]) -> Option<(Vec<usize>, Vec<usize>)> {
+    let rules: Vec<usize> = (0..lines.len())
+        .filter(|&index| !lines[index].is_empty() && !lines[index].starts_with("# "))
         .collect();
-    let (first, rest) = rules.split_first()?;
+    if rules.is_empty() {
+        return None;
+    }
     let mut found = None;
-    for outputs in 0..=rest.len().min(MAX_OUTPUT_RULES) {
-        let (more, files) = rest.split_at(outputs);
-        let Some(files) = files
+    for outputs in 1..=rules.len().min(MAX_OUTPUT_RULES + 1) {
+        let (output_rules, file_rules) = rules.split_at(outputs);
+        let Some(files) = file_rules
             .iter()
-            .map(|line| line.strip_suffix(':'))
+            .map(|&index| lines[index].strip_suffix(':'))
             .collect::<Option<Vec<&str>>>()
         else {
             continue;
         };
         let joined = format!(": {}", files.join(" "));
-        if std::iter::once(first)
-            .chain(more)
-            .all(|rule| rule.ends_with(&joined) && rule.len() > joined.len())
+        if output_rules
+            .iter()
+            .all(|&index| lines[index].ends_with(&joined) && lines[index].len() > joined.len())
         {
             if found.is_some() {
                 return None;
             }
-            found = Some(files);
+            found = Some((output_rules.to_vec(), file_rules.to_vec()));
         }
     }
-    Some(found?.into_iter().map(decode_file).collect())
+    found
 }
 
 /// The unit records of a complete artifact journal, without its section
