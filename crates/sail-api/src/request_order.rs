@@ -137,6 +137,8 @@ sail_spec! {
 
 sail_verified! {
     /// Compares the actual original byte slices without allocation or rewriting.
+    #[allow(clippy::comparison_chain,
+        reason = "Keep byte-prefix and length comparisons explicit in the checked lexicographic implementation.")]
     pub fn compare_original_bytes(left: &[u8], right: &[u8]) -> (order: Ordering)
         requires(true)
         ensures(order == byte_order(left@, right@))

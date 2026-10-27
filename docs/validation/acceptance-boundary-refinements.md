@@ -65,8 +65,22 @@ reference-trait comparison from the owned key comparison, using the actual
 standard implementation's relation. These remain checked proof steps; no
 predicate, guard, contract or resource limit changes.
 
+The first complete request/domain discovery passes at `f98ea578`. Its archive is
+`experiments/2026-10-27/acceptance-request-domain-f98ea578-native.tgz`, SHA-256
+`2f511bea21c1f4c8ad16dcc449426323e1244b62612a7f7c023f64e6e5c60c6f`
+(7,578,693 bytes), with authenticated PUT/GET agreement. The actual complete-root
+inventories are query 471 verified / 821 functions, inputs 308 / 538 and authority
+559 / 961; every prior named function remains. Only those actual inventories are
+locked; every inherited and new control object remains unchanged. Native Clippy
+then reports nine style diagnostics in the new source-shared constructors and
+set operations. The implementation correction adds reasoned local allowances for
+explicit option cases/refusals, the actual owned String argument and explicit
+lexicographic length comparisons; no executable statement, contract or control
+changes. Native tests and ordinary negatives still require qualification.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `f98ea578` request/domain candidate | Source suites pass, including all 66 production tests. All complete production roots pass: query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961). All earlier functions retained and final source/image/runtime checks pass. Controller finishes in 487.306 s | Native Clippy stops after 17.296 s on nine new style diagnostics (explicit Option cases/refusals, owned String argument, comparison chain). Request tests and ordinary negatives are unrun. Checked in-memory construction/iteration supplies no complete metadata, physical-input, launch or journal-origin theorem |
 | `e3515b8c` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass. Whole authority reaches 556 verified and three ordinary errors with no resource diagnostic. Controller finishes in 470.888 s; final source/image/runtime checks pass | Two finite partial-selector witnesses and the reference-iterator ordering assertion remain. Native compilation, request tests and negatives are unrun; no authority inventory is frozen from the partial output |
 | `bfae0ec4` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass and retain earlier functions. Whole authority reaches 553 verified and five ordinary errors across 960 function entries, with no resource diagnostic. Controller finishes in 470.384 s; final source/image/runtime checks pass | Remaining failures are the initial-separator literal distinction, two partial-selector witnesses, forwarded incremental normalization and the actual reference-iterator ordering interpretation. No authority inventory or negative credit; native compilation and request tests are unrun |
 | `8b62f6fe` request/domain candidate | Source suites pass, including all 66 production tests. Query 471/0 (821 functions) and inputs 308/0 (538) pass again. Whole authority reaches verification: 541 verified and 14 errors, including resource exhaustion in four new refusal witnesses; 20 diagnostics total. Controller finishes in 474.190 s with final source/image/runtime checks | Remaining failures concern argument/literal projection, finite normalization witnesses, reference-order interpretation and the real dictionary projection loop. Partial authority output supplies no qualified inventory or negative credit; native compilation and request tests are unrun |
