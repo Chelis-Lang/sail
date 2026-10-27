@@ -1,7 +1,10 @@
 # Candidate write refinement
 
-Status: source implementation and primitive-support investigation, not a
-qualified production transition or cache-origin theorem. The native map/lock/accounting proofs remain unfinished; neither Q40 architecture is selected.
+Status: full-root Stock positive proofs cover the shared generation and
+declared-charge accounting operations. Ordinary-negative and native qualification
+remain incomplete; this is not a complete production transition or cache-origin
+theorem. Native map/lock/LRU/charge correspondence remains unfinished; neither
+Q40 architecture is selected.
 
 | Source | Actual result | Limits |
 |---|---|---|
@@ -9,6 +12,7 @@ qualified production transition or cache-origin theorem. The native map/lock/acc
 | Generation replacement | Actual MemoryTier/Slot, writer FIFO, raw PUT/import paths, disk-argument projection, returned-Result dispatch and stale-read removal use the source-shared candidate records and generation operations; nonempty witnesses and 40 full-function controls are prepared | Source only and unrun. Canonical closure is extended with all inherited controls retained; actual new function/count inventories await whole-root discovery. Native map/lock/accounting proofs, three separate native mutation controls and complete ordinary/native/differential gates remain required |
 | `37a38135` first native attempt | Model/source suites pass 12+62; full query Stock stops at executable endpoint getter inside ghost assertion; ordinary Clippy stops at two explicit-refusal style lints; final source/runtime guards pass | Inputs/authority discovery and native tests unrun. No new inventory, proof, negative or complete-component credit ([#483](https://github.com/Chelis-Lang/sail/issues/483)) |
 | Owned accounting follow-up | Actual native counters and install/apply/remove/disable paths use shared Accounting; two nonempty witnesses, 13 additional Stock controls and one additional actual native omission control prepared | Source only, unrun. Supplied-charge accounting is distinct from native map/lock/LRU/charge correspondence and solver origin |
+| `494c091c` shared operations | Source suites pass 12+62; all three complete Stock roots pass: query 519 obligations/908 functions, inputs 308/538, authority 510/895. Every previous function is retained; final source/runtime guards pass | Positive proofs only. All 214 query ordinary controls remain unrun; native Clippy stops at explicit guarded subtraction's style lint, so native tests are unrun. No complete component/service theorem |
 
 The closed `37a38135` attempt is reconstructable from the source bundle and raw
 logs in object `experiments/2026-10-27/acceptance-candidate-write-37a38135-native.tgz`,
@@ -19,6 +23,19 @@ Its first query failure occurs before verification, so no ordinary negative or
 candidate proof result is inferred. The source correction captures the actual
 executable endpoint borrow before ghost code, and adds narrowly documented
 Clippy allowances retaining the exact checked refusal bodies and all controls.
+
+The closed `494c091c` result and complete source bundle are in object
+`experiments/2026-10-27/acceptance-candidate-write-494c091c-native.tgz`,
+7,597,201 bytes, SHA-256
+`82d1baff2fffcfa066f2cebe324bda9d405ea5e4d75fb540cf38c9709d5473a2`.
+PUT/exact GET readback pass; independent raw audit is pending. It uses the same
+native c7i.4xlarge/us-east-1 lane, pinned image/runtime, direct whole-root stock
+command, default resources, one thread and external 120-second limit. Query,
+inputs and authority verifier wall times are 31.9581, 27.5139 and 19.5287 seconds.
+There is no function focus. The manifest locks the actual observed inventories;
+the subsequent source adds only a reasoned local lint allowance to the proved
+accounting body, retaining all mutation contexts. That new head requires its own
+fresh full-root/final-guard and native qualification before controls launch.
 
 The Arc probe is `proofs/support/candidate_write_arc.rs` at source
 `f9fc1d34bc156a3749dc0c26359cddf75a352a69`, SHA-256
@@ -51,9 +68,10 @@ Native actual-Arc preservation mutations are recorded separately in
 failures cannot count as any of the 53 new required Stock negatives. The
 canonical query plan contains all 161 inherited plus 40 generation and 13
 owned-accounting controls (214 planned negatives); inputs
-and authority retain their complete existing lists. Old verified counts and
-function arrays remain historical placeholders until actual complete discovery;
-no long control matrix may use them to qualify this expanded root.
+and authority retain their complete existing lists. Verified counts and
+function arrays now retain the actual complete `494c091c` observations. No long
+control matrix may run before the corrected lint head passes fresh discovery and
+native compilation.
 
 The 13 additional runtime descriptors are also retained independently in
 `proofs/support/candidate_write_accounting_controls.json`. All 40 generation

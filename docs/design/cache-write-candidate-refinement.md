@@ -1,12 +1,13 @@
 # Candidate write fidelity
 
-Status: source plan, an unsupported stock-library probe and a source-only
-generation replacement for
+Status: an unsupported stock-library probe and a generation/accounting
+replacement with full-root Stock positive proofs for
 [#372](https://github.com/Chelis-Lang/sail/issues/372). The implementation candidate
-now wires the actual cache/writer/server paths; it is unqualified and unselected
-for rollout. No transport, dependency edge or origin admission policy is changed.
+now wires the actual cache/writer/server paths; full negative/native qualification
+is incomplete and it is unselected for rollout. No transport, dependency edge or
+origin admission policy is changed.
 The [cache-origin architectures](cache-origin-admission.md) remain an owner
-choice. A `CandidateWrite` would preserve a candidate, not certify that a solver
+choice. A `CandidateWrite` preserves a candidate; it does not certify that a solver
 produced it or authorize its reuse.
 
 The initial source base is `58806916`. The existing native code already carries
@@ -194,8 +195,8 @@ Two nonempty constructive operations exercise the actual shared counter path,
 including stale replacement, written/exists/failed outcomes, retirement,
 overflow refusal and clear. Thirteen additional full-envelope runtime controls
 retain all existing control descriptors; the native omission control exercises
-the actual owned-map/counter caller. These source additions remain unqualified
-until full-root Stock and native execution succeed.
+the actual owned-map/counter caller. Complete Stock roots prove the shared
+operations at `494c091c`; ordinary controls and native execution remain required.
 
 ## Controls and remaining obligations
 
