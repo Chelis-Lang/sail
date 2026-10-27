@@ -336,7 +336,11 @@ mod tests {
         ];
         let encoded: Vec<String> = files.iter().map(|f| f.replace(' ', "\\ ")).collect();
         let list = encoded.join(" ");
-        let empty: String = encoded.iter().map(|f| format!("{f}:\n")).collect();
+        let empty = encoded
+            .iter()
+            .map(|f| format!("{f}:\n"))
+            .collect::<Vec<_>>()
+            .concat();
         let document = format!(
             "/t/a b/demo.d: {list}\n\n/t/a b/libdemo.rmeta: {list}\n\n{empty}\n# env-dep:X=1\n"
         );
@@ -386,15 +390,15 @@ mod tests {
             "tab\tname.txt",
             "trailing\\",
         ];
-        let mut source = String::new();
+        let mut source = Vec::new();
         for (index, name) in names.iter().enumerate() {
             std::fs::write(root.join(name), index.to_string())?;
-            source += &format!(
+            source.push(format!(
                 "pub const F{index}: &str = include_str!({});\n",
                 serde_json::to_string(name).map_err(std::io::Error::other)?
-            );
+            ));
         }
-        std::fs::write(root.join("lib.rs"), source)?;
+        std::fs::write(root.join("lib.rs"), source.concat())?;
         let output =
             std::process::Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()))
                 .current_dir(&root)
