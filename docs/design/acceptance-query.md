@@ -1603,3 +1603,14 @@ new native fixtures, full workspace/conformance and runtime cost remain pending.
 Native output read/forwarding attribution, independently supplied EOF/exit
 truth, downstream Session/solver interpretation and cache origin remain open.
 No dependency edge, solver policy, trust axiom or CI-policy choice changes.
+
+The frozen actual paired stdout controller at `fa1bef13` passes the complete
+query positive: 568 verified/0 errors, 971 actual entries, every previous 951
+entry retained, in 40.334 seconds with unchanged default resources and final
+source/runtime checks. Both nonempty positive and partial-refusal traces pass;
+factory coherence is constructible. The exact source rebuild passes all 25
+native SMT tests and strict package Clippy. The manifest locks that observed
+inventory. This proves paired append/complete emitted inventory and the named
+controller facets; the native per-item loop's frame/replay advancement/handover
+ordering remains bound/unverified. Full 225 controls, broader native/conformance,
+physical I/O/EOF, Session/Z3 interpretation and cache origin stay open.
