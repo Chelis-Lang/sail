@@ -328,6 +328,16 @@ def compiled_subset(path: str, content: bytes) -> None:
             reviewed_trait_impls=KEY_RECORDING_IMPLS if path == KEY_CORE else frozenset(QUERY_SCRIPT_IMPLS.get(path, ())))
 
 
+def check_control_loops(before: bytes, after: bytes) -> None:
+    """Refuse obvious loop removal before spending a native proof run.
+
+    This conservative macro check supplements the authoritative verifier
+    obligation/function counts; it does not establish complete scope equality.
+    """
+    require(before.count(b"sail_while!") == after.count(b"sail_while!"),
+        "mutation changes checked loop syntax")
+
+
 def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[dict]:
     """Validate every root, actual source closure and selected negative control."""
     require(manifest.get("schema") == "sail-production-refinements-v1", "unknown refinement manifest")
@@ -361,6 +371,7 @@ def inventory(root: Path, manifest: dict, snapshots: dict[str, bytes]) -> list[d
             before, after = control["before"].encode(), control["after"].encode()
             require(bool(before) and before != after and snapshots[path].count(before) == 1,
                 "empty or ambiguous executable mutation")
+            check_control_loops(before, after)
             compiled_subset(path, snapshots[path].replace(before, after))
     SOURCE.api_stencils(snapshots, manifest.get("api_declarations"))
     require(manifest.get("api_declarations") is not None, "missing API representation inventory")
