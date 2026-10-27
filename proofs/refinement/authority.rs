@@ -1410,4 +1410,60 @@ pub proof fn empty_observation_has_no_whole_authority(request: &crate::project::
     }
 }
 
+/// The real worker selector retains one original record behind earlier runs.
+/// The selected record remains data; this witness constructs no proof facet.
+pub fn original_worker_journal_preserves_nonempty_input(
+    records: Vec<crate::project::RequestCapture>, worker: &str, invocation: &str,
+    arguments: &[String], mode: &crate::jobs::Mode, project: &crate::project::ProjectResult,
+) -> (out: Option<crate::project::ResolvedRequest>)
+    requires crate::request_capture::constructive_original_capture(records@, worker,
+        invocation, arguments@, mode, project),
+    ensures out.is_some(), out.unwrap() == records@.last().request,
+        crate::request_capture::selected_original_capture(records@, worker, invocation,
+            arguments@, mode, project, &out.unwrap()),
+{
+    crate::request_capture::select_original_request(records, worker, invocation,
+        arguments, mode, project)
+}
+
+/// No original matching run means no selected request, including an empty file.
+pub fn unmatched_worker_journal_refuses(
+    records: Vec<crate::project::RequestCapture>, worker: &str, invocation: &str,
+    arguments: &[String], mode: &crate::jobs::Mode, project: &crate::project::ProjectResult,
+) -> (refused: bool)
+    requires forall |j: int| 0 <= j < records@.len() ==>
+        !crate::request_capture::original_capture_run(&records@[j], project),
+    ensures refused,
+{
+    crate::request_capture::select_original_request(records, worker, invocation,
+        arguments, mode, project).is_none()
+}
+
+/// Even an ignored run's original worker/version header is mandatory.
+pub fn invalid_worker_journal_header_refuses(
+    records: Vec<crate::project::RequestCapture>, worker: &str, invocation: &str,
+    arguments: &[String], mode: &crate::jobs::Mode, project: &crate::project::ProjectResult,
+) -> (refused: bool)
+    requires records@.len() > 0,
+        !crate::request_capture::original_capture_header(&records@[0], worker),
+    ensures refused,
+{
+    crate::request_capture::select_original_request(records, worker, invocation,
+        arguments, mode, project).is_none()
+}
+
+/// Two records for the output run cannot silently choose either request.
+pub fn duplicate_worker_journal_run_refuses(
+    records: Vec<crate::project::RequestCapture>, worker: &str, invocation: &str,
+    arguments: &[String], mode: &crate::jobs::Mode, project: &crate::project::ProjectResult,
+) -> (refused: bool)
+    requires records@.len() == 2,
+        crate::request_capture::original_capture_run(&records@[0], project),
+        crate::request_capture::original_capture_run(&records@[1], project),
+    ensures refused,
+{
+    crate::request_capture::select_original_request(records, worker, invocation,
+        arguments, mode, project).is_none()
+}
+
 }

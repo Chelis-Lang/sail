@@ -80,6 +80,12 @@ semantic versioning once the API is published.
   public splitter APIs and malformed finish behavior. New proof/native and
   conformance qualification remain pending; outer stream/solver interpretation
   remains open under #371 (proposed ADR 0086).
+- Route decoded worker-journal selection through checked source, retaining the
+  original version, worker, run, uniqueness, invocation, arguments, mode and
+  project checks. Return the selected owned original request as data; decoding,
+  path observation and journal origin remain native boundaries. This new slice
+  awaits complete-root, native and ordinary-negative qualification.
+
 - Migrate the remaining original-dictionary test fixtures to checked insertion
   and fallible request construction (#489), retaining their independently
   declared library scope and every positive/refusal assertion. Native test
@@ -93,8 +99,9 @@ semantic versioning once the API is published.
 - Construct the candidate's actual pre-Cargo and replay requests from the
   original target dictionary through shared checked insertion, iteration and
   header construction. Preserve target ordering, metadata filters, arguments and
-  engine/repair options; unavailable projection refuses admission. Direct-stock
-  production, native differential, conformance and cost checks remain pending.
+  engine/repair options; unavailable projection refuses admission. Complete
+  production Stock discovery passes; native differential, ordinary negatives,
+  conformance and cost checks remain pending.
 
 - Give the original-target comparator candidate an explicit checked trait-method
   envelope that inherits trait preconditions, retaining its native method bodies

@@ -189,6 +189,15 @@ defect; no new native reproduction, Verus acceptance of those forwarded flags
 or false verdict is claimed. Option/value-state parsing and full metadata
 selection remain open. See the
 [request-construction boundary](design/acceptance-production-refinements.md#pre-execution-request-construction-candidate).
+Original request selection still needs full Cargo option/value-state and metadata
+coverage correspondence ([#375](https://github.com/Chelis-Lang/sail/issues/375)).
+The candidate's checked prefix scan and native fixture preserve workspace
+selection before `--` (#467); its constructor/dictionary and actual captured-row
+selection pass complete Stock roots and targeted native fixtures. Those checks
+preserve the supplied original data. They do not prove that metadata enumerates
+every real target or that the decoded journal authenticates the physical worker.
+Ordinary controls, conformance/cost and physical/provider joins remain open. See
+the [request boundary](design/acceptance-production-refinements.md#pre-execution-request-construction-candidate).
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
