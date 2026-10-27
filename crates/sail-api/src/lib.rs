@@ -32,6 +32,12 @@ pub mod project;
 pub mod proof;
 pub mod protocol;
 pub mod repair;
+/// Internal immutable original-target dictionary ordering and projection.
+#[doc(hidden)]
+pub mod request_order;
+/// Internal checked construction and projection of the original target set.
+#[doc(hidden)]
+pub mod request_targets;
 pub mod runtime;
 pub mod schema;
 pub mod stamp;
@@ -42,3 +48,8 @@ pub mod client;
 
 /// Neutral source job requests and source-bound contract evidence.
 pub mod contracts;
+
+#[cfg(test)]
+mod request_order_tests;
+#[cfg(test)]
+mod request_targets_tests;

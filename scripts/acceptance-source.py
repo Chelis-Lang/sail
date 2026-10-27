@@ -141,7 +141,7 @@ def closing(stream: list[Token], start: int) -> int:
 def executable_envelopes(source: str) -> list[tuple[int, int]]:
     """Locate checked runtime bodies after balanced macro contract groups.
 
-    This recognizes only sail_verified!/sail_method!'s reviewed grammar. A
+    This recognizes only the three reviewed checked-function envelope grammars. A
     brace inside requires/ensures (including an if expression) is never a body.
     Erased macro/proof groups cannot introduce an executable envelope.
     Spans index tokens, including the executable body's outer braces.
@@ -162,13 +162,14 @@ def _executable_envelopes(stream: list[Token]) -> list[tuple[int, int]]:
         if token.value in {"proof", "spec", "by"} and i + 1 < len(stream) and stream[i + 1].value == "{":
             i = closing(stream, i + 1) + 1
             continue
-        if not macro or token.value not in {"sail_verified", "sail_method"}:
+        if not macro or token.value not in {"sail_verified", "sail_method", "sail_inherited_method"}:
             i += 1
             continue
         end = closing(stream, i + 2)
         at = i + 3
         seen_fn = False
-        while at < end and stream[at].value != "requires":
+        first_clause = "ensures" if token.value == "sail_inherited_method" else "requires"
+        while at < end and stream[at].value != first_clause:
             value = stream[at].value
             require(value != "{", "runtime body before macro contracts")
             if value == "fn":
@@ -178,7 +179,8 @@ def _executable_envelopes(stream: list[Token]) -> list[tuple[int, int]]:
                 at = closing(stream, at)
             at += 1
         require(seen_fn, "missing checked runtime function")
-        for clause in ("requires", "ensures"):
+        clauses = ("ensures",) if first_clause == "ensures" else ("requires", "ensures")
+        for clause in clauses:
             require(at + 1 < end and stream[at].value == clause
                 and stream[at + 1].value == "(", "unsupported checked macro contract")
             at = closing(stream, at + 1) + 1
@@ -225,7 +227,7 @@ def _runtime_projection(text: str) -> tuple[tuple[str, ...], tuple[tuple[str, ..
                 at = closing(stream, at + (2 if ghost else 1)) + 1
                 continue
             require(token.value != "fn" and not (macro
-                and token.value in {"sail_verified", "sail_method"}),
+                and token.value in {"sail_verified", "sail_method", "sail_inherited_method"}),
                 "nested runtime function outside mutation capture subset")
             if macro and token.value == "sail_while":
                 require(stream[at + 2].value == "{" and stream[at + 3].value == "(",
@@ -400,8 +402,10 @@ def checked_item_envelopes(source: str, *, proof: bool = False,
     """
     stream = tokens(source)
     levels = top_level(stream)
-    items = {"sail_code", "sail_spec", "sail_impl_spec", "sail_verified", "sail_method"}
-    functions = {"sail_spec", "sail_impl_spec", "sail_verified", "sail_method"}
+    items = {"sail_code", "sail_spec", "sail_impl_spec", "sail_verified", "sail_method",
+        "sail_inherited_method"}
+    functions = {"sail_spec", "sail_impl_spec", "sail_verified", "sail_method",
+        "sail_inherited_method"}
     if reviewed_host_traits:
         items.add("sail_trait")
         functions.add("sail_trait")

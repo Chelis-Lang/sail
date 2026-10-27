@@ -574,12 +574,7 @@ pub(crate) fn plain_verify(args: &[String], err: &mut dyn std::io::Write) -> Exi
 
 /// `args` without `--incremental` before any `--`.
 fn without_incremental(args: &[String]) -> Vec<String> {
-    let split = args.iter().position(|a| a == "--").unwrap_or(args.len());
-    args.iter()
-        .enumerate()
-        .filter(|(i, a)| *i >= split || a.as_str() != "--incremental")
-        .map(|(_, a)| a.clone())
-        .collect()
+    sail_api::acceptance::normalize_submitted_arguments(args)
 }
 
 /// Whether `args` use a flag only managed verification has.

@@ -124,10 +124,9 @@ impl Fixture {
     // The fixture's independently declared scope is deliberately a single
     // ordinary library. It is not inferred from the saved project and does
     // not qualify Cargo metadata or the complete compiler-input domain.
-    fn request(&self, run_id: &str) -> ResolvedRequest {
-        let targets = [("demo".into(), "demo".into(), "lib".into())]
-            .into_iter()
-            .collect();
+    fn request(&self, run_id: &str) -> crate::Result<ResolvedRequest> {
+        let targets =
+            super::super::request::original_targets([("demo".into(), "demo".into(), "lib".into())]);
         super::super::request::Resolution {
             run_id,
             invocation: &self.config.workspace,
@@ -151,7 +150,7 @@ impl Fixture {
         };
         let _workspace = lock(location.workspace_lock, true)?;
         let _family = lock(&self.family.join("ownership.lock"), false)?;
-        let current = self.request("independent-current-view");
+        let current = self.request("independent-current-view").ok()?;
         // The fixture supplies its actual native workspace bytes separately;
         // it does not derive these observations from the saved result/record.
         let paths = sail_api::acceptance::bind_request_paths(
@@ -336,7 +335,7 @@ fn prepare_pending(
     assert_eq!(observation.len(), fixture.observed.len());
     assert_eq!(observation.len(), 3);
     let identity = vec![PathBuf::from("/bin/sh")];
-    let original_request = fixture.request("warm-noop-record");
+    let original_request = fixture.request("warm-noop-record")?;
     Ok(prepare(Facts {
         key,
         cache: &fixture.config.cache,

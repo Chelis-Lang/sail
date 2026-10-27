@@ -28,6 +28,7 @@
 use super::files::{digest, file_digest, json};
 use super::receipts::{RECEIPT_VERSION, Receipt, complete, digests_match};
 use crate::{Error, Result};
+use sail_api::request_targets::OriginalTargets;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -91,11 +92,7 @@ pub(super) struct Candidate {
 /// than package and target selection, toolchain, runtime and engine identities, relevant environment and Cargo
 /// configuration bytes), the root, the resolved closure (package ids, enabled
 /// features and dependency edges) and the workspace's `[profile]` table.
-pub(super) fn candidates(
-    data: &Value,
-    expected: &BTreeSet<(String, String, String)>,
-    family: &str,
-) -> Vec<Candidate> {
+pub(super) fn candidates(data: &Value, expected: &OriginalTargets, family: &str) -> Vec<Candidate> {
     let packages: BTreeMap<&str, &Value> = data["packages"]
         .as_array()
         .into_iter()
@@ -106,12 +103,14 @@ pub(super) fn candidates(
     let Some(profile) = profile_table(data) else {
         return Vec::new();
     };
-    let selected =
-        super::runner::dependency_closure(data, expected.iter().map(|(id, _, _)| id.as_str()));
+    let selected = super::runner::dependency_closure(
+        data,
+        super::request::original_rows(expected).map(|(id, _, _)| id.as_str()),
+    );
     let mut out = Vec::new();
     for (id, package) in &packages {
         if members.contains(id)
-            || expected.iter().any(|(selected, _, _)| selected == id)
+            || super::request::original_rows(expected).any(|(selected, _, _)| selected == id)
             || !selected.contains(*id)
             || package
                 .pointer("/metadata/verus/verify")
@@ -1466,7 +1465,7 @@ mod tests {
     struct Fixture {
         root: PathBuf,
         data: Value,
-        expected: BTreeSet<(String, String, String)>,
+        expected: OriginalTargets,
     }
 
     const VSTD: &str = "registry+https://example.invalid/index#vstd@1.0.0";
@@ -1527,7 +1526,11 @@ mod tests {
             Self {
                 root,
                 data,
-                expected: BTreeSet::from([(WS.to_owned(), "ws".to_owned(), "lib".to_owned())]),
+                expected: crate::managed::request::original_targets([(
+                    WS.to_owned(),
+                    "ws".to_owned(),
+                    "lib".to_owned(),
+                )]),
             }
         }
 
@@ -2089,7 +2092,11 @@ mod tests {
         data["packages"][2]["source"] = Value::Null;
         assert!(candidates(&data, &fixture.expected, "family").is_empty());
         // Selected targets are verified by the run itself, never stored.
-        let selected = BTreeSet::from([(VSTD.to_owned(), "vstd".to_owned(), "lib".to_owned())]);
+        let selected = crate::managed::request::original_targets([(
+            VSTD.to_owned(),
+            "vstd".to_owned(),
+            "lib".to_owned(),
+        )]);
         assert!(candidates(&fixture.data, &selected, "family").is_empty());
     }
 

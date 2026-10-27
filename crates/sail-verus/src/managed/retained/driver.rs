@@ -6,6 +6,7 @@
 use super::super::{dependency_snapshot, files, input, receipts};
 use super::{archive, compiler, eligibility, skipped_note};
 use dependency_snapshot::{Content, Snapshot};
+use sail_api::request_targets::OriginalTargets;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
@@ -45,7 +46,7 @@ impl Plan {
     pub(crate) fn prepare(
         metadata: &Value,
         target: &Path,
-        selected: &BTreeSet<(String, String, String)>,
+        selected: &OriginalTargets,
         launcher: &Path,
         z3: &Path,
         run: &str,
@@ -78,7 +79,7 @@ impl Plan {
         let registry = registry_manifest.parent()?.parent()?;
         let mut roots = BTreeSet::new();
         let mut closure = None;
-        for (id, _, kind) in selected {
+        for (id, _, kind) in super::super::request::original_rows(selected) {
             if kind != "lib" {
                 return None;
             }

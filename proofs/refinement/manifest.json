@@ -44,7 +44,7 @@
         "crates/sail-daemon/src/writer.rs",
         "crates/sail-daemon/src/server.rs"
       ],
-      "verified": 568,
+      "verified": 616,
       "functions": [
         "check_query::cache_candidate::Accounting::apply",
         "check_query::cache_candidate::Accounting::bytes",
@@ -2836,7 +2836,8 @@
         "crates/sail-verus/src/managed/visible_output.rs",
         "crates/sail-verus/src/parallel.rs",
         "crates/sail-verus/src/lib.rs",
-        "crates/sail-verus/Cargo.toml"
+        "crates/sail-verus/Cargo.toml",
+        "crates/sail-cli/src/verify.rs"
       ],
       "verified": 308,
       "functions": [
@@ -4132,8 +4133,11 @@
         "crates/sail-verus/src/parallel.rs",
         "crates/sail-verus/src/lib.rs",
         "crates/sail-verus/Cargo.toml",
+        "crates/sail-cli/src/verify.rs",
         "crates/sail-api/src/acceptance.rs",
         "crates/sail-api/src/acceptance_sort.rs",
+        "crates/sail-api/src/request_order.rs",
+        "crates/sail-api/src/request_targets.rs",
         "crates/sail-api/src/output.rs",
         "crates/sail-api/src/project.rs",
         "crates/sail-api/src/jobs.rs",
@@ -4145,7 +4149,7 @@
         "crates/sail-mcp/Cargo.toml",
         "crates/sail-cli/src/managed_cli.rs"
       ],
-      "verified": 525,
+      "verified": 559,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
@@ -4186,6 +4190,7 @@
         "check_authority::acceptance::all_owned_ids",
         "check_authority::acceptance::append_obligations",
         "check_authority::acceptance::apply_retained_currentness",
+        "check_authority::acceptance::argument_byte_projection_properties",
         "check_authority::acceptance::attach_empty_human_output",
         "check_authority::acceptance::authority_policy",
         "check_authority::acceptance::authority_report",
@@ -4207,6 +4212,8 @@
         "check_authority::acceptance::cargo_footer_boundary_at",
         "check_authority::acceptance::cargo_footer_prefix",
         "check_authority::acceptance::cargo_footer_with_prefix",
+        "check_authority::acceptance::cargo_workspace_requested",
+        "check_authority::acceptance::cargo_workspace_selected",
         "check_authority::acceptance::classify_submission_mode",
         "check_authority::acceptance::collect_report_ids",
         "check_authority::acceptance::complete_exact_partial_request_ordered",
@@ -4228,6 +4235,9 @@
         "check_authority::acceptance::confirmed",
         "check_authority::acceptance::confirmed_counts",
         "check_authority::acceptance::confirmed_function",
+        "check_authority::acceptance::construct_interactive_identity",
+        "check_authority::acceptance::construct_request_target",
+        "check_authority::acceptance::construct_resolved_request",
         "check_authority::acceptance::crate_completed",
         "check_authority::acceptance::decimal_byte",
         "check_authority::acceptance::declared_replay_current",
@@ -4275,12 +4285,15 @@
         "check_authority::acceptance::focused_command",
         "check_authority::acceptance::function_count",
         "check_authority::acceptance::function_ids",
+        "check_authority::acceptance::initial_separator_excludes_workspace",
         "check_authority::acceptance::interactive_engine",
         "check_authority::acceptance::interactive_engine_matches",
         "check_authority::acceptance::mode_correspondence",
         "check_authority::acceptance::next_driver_delimiter",
+        "check_authority::acceptance::normalize_submitted_arguments",
         "check_authority::acceptance::normalized_arguments",
         "check_authority::acceptance::obligation_ids",
+        "check_authority::acceptance::optional_original_text",
         "check_authority::acceptance::options_disable_verification",
         "check_authority::acceptance::owned_function_ids",
         "check_authority::acceptance::packed_driver_arguments_match",
@@ -4320,10 +4333,12 @@
         "check_authority::acceptance::request_authority_project",
         "check_authority::acceptance::request_authority_request",
         "check_authority::acceptance::request_authorized",
+        "check_authority::acceptance::request_construction_matches",
         "check_authority::acceptance::request_corresponds",
         "check_authority::acceptance::request_covered",
         "check_authority::acceptance::request_header_matches",
         "check_authority::acceptance::request_headers_match",
+        "check_authority::acceptance::request_literal_lengths",
         "check_authority::acceptance::request_path_binding_valid",
         "check_authority::acceptance::request_paths_correspond",
         "check_authority::acceptance::requested_coverage",
@@ -4957,6 +4972,11 @@
         "check_authority::refinement::checked_submitted_request_refines_function",
         "check_authority::refinement::compile_only_original_request_refused",
         "check_authority::refinement::compile_only_report_refused",
+        "check_authority::refinement::constructed_compile_only_refuses",
+        "check_authority::refinement::constructed_original_dictionary_request",
+        "check_authority::refinement::constructed_original_request",
+        "check_authority::refinement::constructed_original_target",
+        "check_authority::refinement::constructed_partial_refuses",
         "check_authority::refinement::declared_replay_missing_native_paths_refused",
         "check_authority::refinement::declared_replay_missing_readback_refused",
         "check_authority::refinement::duplicate_process_stream_refused",
@@ -4976,6 +4996,9 @@
         "check_authority::refinement::exact_partial_target_refuses_whole_labels",
         "check_authority::refinement::exact_partial_transfer_refuses_bad_readback",
         "check_authority::refinement::focused_report_refused",
+        "check_authority::refinement::forwarded_all_is_not_selected",
+        "check_authority::refinement::forwarded_incremental_is_retained",
+        "check_authority::refinement::forwarded_workspace_is_not_selected",
         "check_authority::refinement::function_refines",
         "check_authority::refinement::interrupted_report_refused",
         "check_authority::refinement::matched_request_paths_preserve_observations",
@@ -4989,6 +5012,10 @@
         "check_authority::refinement::model_establishment",
         "check_authority::refinement::model_tier",
         "check_authority::refinement::model_verdict",
+        "check_authority::refinement::normalized_original_submission",
+        "check_authority::refinement::original_dictionary_compile_only_refuses",
+        "check_authority::refinement::original_dictionary_partial_refuses",
+        "check_authority::refinement::original_workspace_is_selected",
         "check_authority::refinement::owned_attempt_identity_keeps_reused_pid_slots_distinct",
         "check_authority::refinement::packed_empty_token_positive",
         "check_authority::refinement::partial_completed_presentation",
@@ -5004,6 +5031,7 @@
         "check_authority::refinement::positive_retained_submission_invocation",
         "check_authority::refinement::positive_zero_function_exact_partial_request",
         "check_authority::refinement::positive_zero_function_factory",
+        "check_authority::refinement::prefix_incremental_only_is_removed",
         "check_authority::refinement::presentation_cases",
         "check_authority::refinement::presentation_report_cases",
         "check_authority::refinement::project_effective_verification",
@@ -5025,6 +5053,48 @@
         "check_authority::refinement::swapped_request_refused",
         "check_authority::refinement::unbound_completed_presentation",
         "check_authority::repair::VERSION",
+        "check_authority::request_order::OriginalTargetKey::as_tuple",
+        "check_authority::request_order::OriginalTargetKey::clone",
+        "check_authority::request_order::OriginalTargetKey::cmp",
+        "check_authority::request_order::OriginalTargetKey::cmp_spec",
+        "check_authority::request_order::OriginalTargetKey::eq",
+        "check_authority::request_order::OriginalTargetKey::eq_spec",
+        "check_authority::request_order::OriginalTargetKey::new",
+        "check_authority::request_order::OriginalTargetKey::obeys_cmp_spec",
+        "check_authority::request_order::OriginalTargetKey::obeys_eq_spec",
+        "check_authority::request_order::OriginalTargetKey::obeys_partial_cmp_spec",
+        "check_authority::request_order::OriginalTargetKey::partial_cmp",
+        "check_authority::request_order::OriginalTargetKey::partial_cmp_spec",
+        "check_authority::request_order::byte_less",
+        "check_authority::request_order::byte_less_strict",
+        "check_authority::request_order::byte_less_transitive",
+        "check_authority::request_order::byte_order",
+        "check_authority::request_order::byte_order_laws",
+        "check_authority::request_order::byte_order_total_from",
+        "check_authority::request_order::compare_original_bytes",
+        "check_authority::request_order::equal_prefix",
+        "check_authority::request_order::key_equal",
+        "check_authority::request_order::key_kind",
+        "check_authority::request_order::key_order",
+        "check_authority::request_order::key_order_laws",
+        "check_authority::request_order::key_original",
+        "check_authority::request_order::key_package",
+        "check_authority::request_order::key_target",
+        "check_authority::request_order::original_bytes_equal",
+        "check_authority::request_order::original_key_round_trip",
+        "check_authority::request_order::original_key_value",
+        "check_authority::request_order::original_key_value_is_injective",
+        "check_authority::request_order::original_target_key_order_is_lawful",
+        "check_authority::request_targets::construct_original_request",
+        "check_authority::request_targets::insert_original_target",
+        "check_authority::request_targets::join_original_head",
+        "check_authority::request_targets::next_original_target",
+        "check_authority::request_targets::ordered_keys",
+        "check_authority::request_targets::original_header_matches",
+        "check_authority::request_targets::original_iterator_order",
+        "check_authority::request_targets::project_original_targets",
+        "check_authority::request_targets::projected_key_push",
+        "check_authority::request_targets::projected_keys",
         "check_authority::stream_capture::CompilerPipeReadHost::fault_kind",
         "check_authority::stream_capture::CompilerPipeReadHost::fault_view",
         "check_authority::stream_capture::CompilerPipeReadHost::kind",
@@ -5953,6 +6023,312 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "{\n        if !empty_human_bytes(stdout, stderr) { return None; }\n        Some(EmptyHumanOutput { context, stderr })\n    }",
           "after": "{ None }"
+        },
+        {
+          "name": "request-normalize-retain-forwarded",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if forwarded || !exact_bytes(submitted[i].as_str().as_bytes(), b\"--incremental\") {\n                    out.push(submitted[i].clone());",
+          "after": "if !exact_bytes(submitted[i].as_str().as_bytes(), b\"--incremental\") {\n                    out.push(submitted[i].clone());"
+        },
+        {
+          "name": "request-normalize-remove-prefix",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if forwarded || !exact_bytes(submitted[i].as_str().as_bytes(), b\"--incremental\") {\n                    out.push(submitted[i].clone());",
+          "after": "if true {\n                    out.push(submitted[i].clone());"
+        },
+        {
+          "name": "request-normalize-original-argument",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "out.push(submitted[i].clone());",
+          "after": "out.push(submitted[0].clone());"
+        },
+        {
+          "name": "request-workspace-no-forwarded-scope",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if exact_bytes(bytes, b\"--\") {\n                    sail_proof! {\n                        if cargo_workspace_requested(args@)",
+          "after": "if false {\n                    sail_proof! {\n                        if cargo_workspace_requested(args@)"
+        },
+        {
+          "name": "request-workspace-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "sail_proof! { assert(cargo_workspace_requested(args@)); }\n                    return true;",
+          "after": "sail_proof! { assert(cargo_workspace_requested(args@)); }\n                    return false;"
+        },
+        {
+          "name": "request-workspace-all-alias",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if exact_bytes(bytes, b\"--workspace\") || exact_bytes(bytes, b\"--all\") {",
+          "after": "if exact_bytes(bytes, b\"--workspace\") {"
+        },
+        {
+          "name": "request-construct-run-id",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "run_id: source.run_id.to_owned(),",
+          "after": "run_id: source.context.to_owned(),"
+        },
+        {
+          "name": "request-construct-invocation",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "invocation: source.invocation.to_owned(),",
+          "after": "invocation: source.workspace.to_owned(),"
+        },
+        {
+          "name": "request-construct-workspace",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "workspace: source.workspace.to_owned(),",
+          "after": "workspace: source.invocation.to_owned(),"
+        },
+        {
+          "name": "request-construct-context-sha256",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "context_sha256: source.context.to_owned(),",
+          "after": "context_sha256: source.revision.to_owned(),"
+        },
+        {
+          "name": "request-construct-input-revision",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "input_revision: source.revision.to_owned(),",
+          "after": "input_revision: source.context.to_owned(),"
+        },
+        {
+          "name": "request-construct-repair-package",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "repair_package: source.repair_package.to_owned(),",
+          "after": "repair_package: source.repair_kind.to_owned(),"
+        },
+        {
+          "name": "request-construct-repair-kind",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "repair_kind: source.repair_kind.to_owned(),",
+          "after": "repair_kind: source.repair_package.to_owned(),"
+        },
+        {
+          "name": "request-construct-original-argument",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "arguments.push(source.arguments[i].clone());",
+          "after": "arguments.push(source.arguments[0].clone());"
+        },
+        {
+          "name": "request-construct-engine",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "engine: source.engine,",
+          "after": "engine: None,"
+        },
+        {
+          "name": "request-construct-function",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "let function = match source.function { Some(value) => Some(value.to_owned()), None => None };",
+          "after": "let function: Option<String> = None;"
+        },
+        {
+          "name": "request-construct-repair-target",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "let repair_target = match source.repair_target { Some(value) => Some(value.to_owned()), None => None };",
+          "after": "let repair_target: Option<String> = None;"
+        },
+        {
+          "name": "request-construct-nonempty-scope",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "targets: source.targets,",
+          "after": "targets: Vec::new(),"
+        },
+        {
+          "name": "request-target-package-id",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "package_id: original.0.clone(),",
+          "after": "package_id: original.1.clone(),"
+        },
+        {
+          "name": "request-target-target",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "target: original.1.clone(),",
+          "after": "target: original.2.clone(),"
+        },
+        {
+          "name": "request-target-kind",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "kind: original.2.clone(),",
+          "after": "kind: original.1.clone(),"
+        },
+        {
+          "name": "request-engine-original-manifest",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "EngineIdentity { name: \"interactive\".to_owned(), manifest_sha256: manifest.clone() }",
+          "after": "EngineIdentity { name: \"interactive\".to_owned(), manifest_sha256: String::new() }"
+        },
+        {
+          "name": "original-bytes-first-difference-reversed",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "return Ordering::Less;",
+          "after": "return Ordering::Greater;"
+        },
+        {
+          "name": "original-bytes-second-difference-reversed",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "return Ordering::Greater;",
+          "after": "return Ordering::Less;"
+        },
+        {
+          "name": "original-bytes-equality-inverted",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "matches!(order, Ordering::Equal)",
+          "after": "!matches!(order, Ordering::Equal)"
+        },
+        {
+          "name": "original-key-constructor-changes-kind",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "{ Self { original } }",
+          "after": "{ Self { original: (original.0, original.2, original.1) } }"
+        },
+        {
+          "name": "original-key-equality-omits-kind",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "&& original_bytes_equal(self.original.2.as_str().as_bytes(), other.original.2.as_str().as_bytes())",
+          "after": "&& true"
+        },
+        {
+          "name": "original-key-partial-order-reversed",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "{ Some(self.cmp(other)) }",
+          "after": "{ Some(other.cmp(self)) }"
+        },
+        {
+          "name": "original-key-order-omits-kind",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "            compare_original_bytes(self.original.2.as_str().as_bytes(), other.original.2.as_str().as_bytes())",
+          "after": "            Ordering::Equal"
+        },
+        {
+          "name": "original-key-clone-changes-kind",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "Self { original: (self.original.0.clone(), self.original.1.clone(), self.original.2.clone()) }",
+          "after": "Self { original: (self.original.0.clone(), self.original.1.clone(), self.original.1.clone()) }"
+        },
+        {
+          "name": "original-dictionary-insert-changes-kind",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "targets.insert(OriginalTargetKey::new(original))",
+          "after": "targets.insert(OriginalTargetKey::new((original.0, original.2, original.1)))"
+        },
+        {
+          "name": "original-dictionary-next-always-refuses",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "Some(original) => Some(construct_request_target(original.as_tuple())),",
+          "after": "Some(original) => None,"
+        },
+        {
+          "name": "original-dictionary-projection-always-refuses",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "        Some(targets)\n",
+          "after": "        None\n"
+        },
+        {
+          "name": "original-dictionary-projection-drops-rows",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "        Some(targets)\n",
+          "after": "        Some(Vec::new())\n"
+        },
+        {
+          "name": "original-bytes-full-factory-always-equal",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "    {\n        let mut i = 0usize;\n        sail_while! { (i < left.len() && i < right.len())\n            invariant(equal_prefix(left@, right@, i as int))\n            decreases(left.len() - i)\n            {\n                if left[i] < right[i] {\n                    sail_proof! { assert(byte_less(left@, right@)); }\n                    return Ordering::Less;\n                }\n                if right[i] < left[i] {\n                    sail_proof! {\n                        assert(equal_prefix(right@, left@, i as int));\n                        assert(byte_less(right@, left@));\n                        byte_less_strict(right@, left@);\n                    }\n                    return Ordering::Greater;\n                }\n                i += 1;\n            }\n        }\n        if left.len() < right.len() {\n            sail_proof! { assert(i == left.len()); assert(byte_less(left@, right@)); }\n            Ordering::Less\n        } else if right.len() < left.len() {\n            sail_proof! {\n                assert(i == right.len());\n                assert(equal_prefix(right@, left@, i as int));\n                assert(byte_less(right@, left@));\n                byte_less_strict(right@, left@);\n            }\n            Ordering::Greater\n        } else {\n            sail_proof! {\n                assert(i == left.len()); assert(left@ =~= right@);\n                byte_less_strict(left@, right@);\n            }\n            Ordering::Equal\n        }\n    }",
+          "after": "    {\n        let mut i = 0usize;\n        sail_while! { (i < left.len() && i < right.len())\n            invariant(equal_prefix(left@, right@, i as int))\n            decreases(left.len() - i)\n            {\n                if left[i] < right[i] {\n                    sail_proof! { assert(byte_less(left@, right@)); }\n                    return Ordering::Equal;\n                }\n                if right[i] < left[i] {\n                    sail_proof! {\n                        assert(equal_prefix(right@, left@, i as int));\n                        assert(byte_less(right@, left@));\n                        byte_less_strict(right@, left@);\n                    }\n                    return Ordering::Equal;\n                }\n                i += 1;\n            }\n        }\n        if left.len() < right.len() {\n            sail_proof! { assert(i == left.len()); assert(byte_less(left@, right@)); }\n            Ordering::Equal\n        } else if right.len() < left.len() {\n            sail_proof! {\n                assert(i == right.len());\n                assert(equal_prefix(right@, left@, i as int));\n                assert(byte_less(right@, left@));\n                byte_less_strict(right@, left@);\n            }\n            Ordering::Equal\n        } else {\n            sail_proof! {\n                assert(i == left.len()); assert(left@ =~= right@);\n                byte_less_strict(left@, right@);\n            }\n            Ordering::Equal\n        }\n    }"
+        },
+        {
+          "name": "original-key-order-package-test-reversed",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "if !matches!(package, Ordering::Equal) { return package; }",
+          "after": "if matches!(package, Ordering::Equal) { return package; }"
+        },
+        {
+          "name": "original-key-order-target-test-reversed",
+          "source": "crates/sail-api/src/request_order.rs",
+          "before": "if !matches!(target, Ordering::Equal) { return target; }",
+          "after": "if matches!(target, Ordering::Equal) { return target; }"
+        },
+        {
+          "name": "original-dictionary-request-changes-run-id",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            run_id: header.run_id,\n",
+          "after": "            run_id: header.context,\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-invocation",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            invocation: header.invocation,\n",
+          "after": "            invocation: header.workspace,\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-workspace",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            workspace: header.workspace,\n",
+          "after": "            workspace: header.invocation,\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-context",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            context: header.context,\n",
+          "after": "            context: header.revision,\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-revision",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            revision: header.revision,\n",
+          "after": "            revision: header.context,\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-arguments",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            arguments: header.arguments,\n",
+          "after": "            arguments: &[],\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-engine",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            engine: header.engine,\n",
+          "after": "            engine: None,\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-function",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            function: header.function,\n",
+          "after": "            function: None,\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-repair-package",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            repair_package: header.repair_package,\n",
+          "after": "            repair_package: header.repair_kind,\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-repair-target",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            repair_target: header.repair_target,\n",
+          "after": "            repair_target: None,\n"
+        },
+        {
+          "name": "original-dictionary-request-changes-repair-kind",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            repair_kind: header.repair_kind,\n",
+          "after": "            repair_kind: header.repair_package,\n"
+        },
+        {
+          "name": "original-dictionary-request-discards-actual-domain",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "            targets,\n",
+          "after": "            targets: Vec::new(),\n"
+        },
+        {
+          "name": "original-dictionary-request-full-factory-always-refuses",
+          "source": "crates/sail-api/src/request_targets.rs",
+          "before": "    {\n        let targets = match project_original_targets(source) {\n            Some(targets) => targets,\n            None => return None,\n        };\n        Some(construct_resolved_request(RequestConstruction {\n            run_id: header.run_id,\n            invocation: header.invocation,\n            workspace: header.workspace,\n            context: header.context,\n            revision: header.revision,\n            arguments: header.arguments,\n            engine: header.engine,\n            function: header.function,\n            repair_package: header.repair_package,\n            repair_target: header.repair_target,\n            repair_kind: header.repair_kind,\n            targets,\n        }))\n    }",
+          "after": "    {\n        let targets = match project_original_targets(source) {\n            Some(targets) => targets,\n            None => return None,\n        };\n        let _ = construct_resolved_request(RequestConstruction {\n            run_id: header.run_id,\n            invocation: header.invocation,\n            workspace: header.workspace,\n            context: header.context,\n            revision: header.revision,\n            arguments: header.arguments,\n            engine: header.engine,\n            function: header.function,\n            repair_package: header.repair_package,\n            repair_target: header.repair_target,\n            repair_kind: header.repair_kind,\n            targets,\n        });\n        None\n    }"
+        },
+        {
+          "name": "request-engine-fixed-name",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "name: \"interactive\".to_owned(), manifest_sha256: manifest.clone()",
+          "after": "name: \"changed\".to_owned(), manifest_sha256: manifest.clone()"
         }
       ]
     }

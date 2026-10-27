@@ -80,6 +80,33 @@ semantic versioning once the API is published.
   public splitter APIs and malformed finish behavior. New proof/native and
   conformance qualification remain pending; outer stream/solver interpretation
   remains open under #371 (proposed ADR 0086).
+- Migrate the remaining original-dictionary test fixtures to checked insertion
+  and fallible request construction (#489), retaining their independently
+  declared library scope and every positive/refusal assertion. Native test
+  qualification remains pending.
+
+- Keep both request-candidate API-library capture bindings and declared source
+  dependency ordering consistent; include the actual immutable key in assembly
+  rejection fixtures (#479). The guards retain strict refusal and report the
+  mismatching native source path. Fresh qualification remains pending.
+
+- Construct the candidate's actual pre-Cargo and replay requests from the
+  original target dictionary through shared checked insertion, iteration and
+  header construction. Preserve target ordering, metadata filters, arguments and
+  engine/repair options; unavailable projection refuses admission. Direct-stock
+  production, native differential, conformance and cost checks remain pending.
+
+- Give the original-target comparator candidate an explicit checked trait-method
+  envelope that inherits trait preconditions, retaining its native method bodies
+  and checked postconditions (#472). The earlier whole-file probe stopped before
+  verification; fresh direct-stock qualification remains pending.
+
+- Route actual CLI no-op normalization and pre-execution request, target and
+  engine-identity construction through shared checked source candidates,
+  retaining every original field and argument position. Scope workspace flag
+  detection to the Cargo prefix (#467). Direct-stock, native, differential and
+  cost qualification are pending; metadata/input/launch completeness is not
+  established.
 
 - Distinguish the completed-view fixture's original whole-request evidence from
   its retained Unknown projection when freshness is unavailable (#464). Preserve

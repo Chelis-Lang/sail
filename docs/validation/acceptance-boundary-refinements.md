@@ -20,6 +20,8 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| Original-request/parser/cache/service source union (`707e2b81` + `ba7e816b`) | Retains all 278 query, 115 input and 198 authority control objects (591 negatives plus three positive roots). Original key/set/header implementations and real request/caller migration match the reviewed request candidate; parser/cache/noop bodies remain unchanged. Canonical dependency order and both parents' complete import guard tables are preserved | Source integration only. Query616/1058, inputs308/538 and authority559/989 are historical required discovery floors, not observed combined counts. Full combined source/Stock/native/control/differential qualification remains pending |
+| `78debc31` corrected parser/cache/service | Native source suites pass 12/73; fresh complete Stock roots pass query616/1058, inputs308/538 and authority525/923, all prior functions retained. Exact equality of 498 Rust/build-configuration files ties native receipts to frozen `eaf51208`, whose strict workspace Clippy and 105 cache/daemon,15 human-output and25 SMT tests pass. Final source/image/runtime checks pass | No fresh native-test or negative-matrix claim. Raw archive `acceptance-cache-service-78debc31-sourcechecks.tgz` sha256 `6444d80558705e6817ebaa3d61a974937f29c44c20d48173c6be40161f2c5ef8`; independent GET/hash and raw three-root scope/inventory/resource audit pass. Full controls, e2e/conformance, current cost and service theorem remain open |
 | `34128e07` checked human context | Whole authority passes 525/0 with all prior functions retained and final source/runtime guards. Stdout omission control 134 now fails ordinarily (524/1, whole crate, unchanged function inventory), with final source/inventory/runtime checks; its actual Stock call takes 22.451 s | Selected proof/control scope only; native wrapper is still finishing. Full 147-control authority matrix, combined parser discovery and service acceptance remain open. This repairs the selected #485 resource refusal without weakening contracts or resources |
 | `eaf51208` parser/cache/service source union | Native source preflight rejects dependency-list order before any Stock invocation (#495); no source or control omitted | Zero combined proof/control credit. The correction preserves the exact inherited dependency sets in fixed-driver order; native strict workspace Clippy, 105 cache/daemon, 15 human-output and 25 SMT tests pass. Source production suite refuses both canonical dependency order and missing parser import guards (#496); model source suite passes. The follow-up restores both original parent import-table entries and canonical ordering |
 | Parser/cache/human source union (`34128e07` + `4127e34f`) | Retains all 278 query, 115 input and 147 authority controls as exact inherited objects; query discovery requires all 1,058 inherited functions. Actual cache bodies match the reviewed cache candidate, and parser/lexer/output bodies match their qualified milestone | Source integration only; 568 is a historical required query obligation floor, not an observed combined count. Complete combined inventories, controls and native/differential acceptance remain pending |
@@ -67,6 +69,117 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 | `8752d3c6` parser query positive | Full-root compilation clears the borrowed-pattern defect; verification retains 479 verified/one failed function across all 835 entries in 32.564 s. Only push's postappend scan/prefix assertions refuse, without a resource marker; final source/runtime guards pass | No positive/control/native qualification or inventory lock. The next source candidate moves that same owned Vec append into a private checked helper, preserving the public operation/contract and full-root obligations |
 | `668be5f2` parser query positive | Complete query capture refuses compilation at three E0382 proof-pattern moves after 3.156 s (#469), with final source/runtime guards passing | Verification never starts: no function/obligation inventory, control or native credit. Borrowed proof-pattern correction preserves executable operations/contracts and must repeat the whole root at unchanged resources |
 | `48f09fa7` parser query positive | Native full-query attempt checks all 835 function entries and retains 477 verified plus three failed functions in 39.006 s, with final source/runtime guards passing. Diagnostics include push's missing preappend scan fact/postcondition, chunk endpoint constructiveness and a resource refusal in the long-command witness | No positive/control/native credit and no inventory lock. Separate source guidance explicitly unfolds the original invariant and scopes finite-prefix/flat-list facts; contracts, runtime operations, resources and all controls remain mandatory |
+The request-construction candidate imports the reviewed `9099f673` runtime
+mutation projection: selectors must change one actual executable body while
+preserving signatures, postconditions and every checked loop annotation. Its
+extension recognizes the exact inherited-trait-method grammar without an
+implementation precondition clause. Ordinary controls retain refusal of
+postcondition-only, erased, nested-function and loop-contract mutations. The
+historical query control 151's contract-only selector is replaced by the exact
+reviewed full-method control from `00352b64`, preserving its contracts and loop.
+All other inherited controls remain unchanged. The imported base has separate
+native source-suite evidence; this combined extension and actual request/domain
+construction still require fresh native source checks and complete-root Stock
+discovery. No function or obligation counts are inferred from the support probe.
+
+The failed `23ccd443` capture attempt is retained at
+`experiments/2026-10-27/acceptance-request-domain-23ccd443-native.tgz`, SHA-256
+`fa07fe39b732e64700ffe0f9aabd7f3acc6e79f69e037bff6caace61a384f7b4`
+(262,182 bytes), with authenticated PUT/GET agreement. Its explicit source bundle
+has base prerequisite `4c43e5a987e757bf514a21eff6fbb5cf55c83a86`.
+
+The `c9c971ab` follow-up is retained at
+`experiments/2026-10-27/acceptance-request-domain-c9c971ab-native.tgz`, SHA-256
+`e5737322c30cfc8e430cb13758c3e75bfdb47433cb7e63d8ed922f30cdbcf1e9`
+(7,540,913 bytes), with authenticated PUT/GET agreement and a complete explicit-ref
+source bundle. Source, image and pinned runtime final checks pass. Its ordinary
+reference-order guidance and final-iterator snapshot syntax are corrected without
+changing executable bodies, contract meaning, controls or resources.
+
+The `8b62f6fe` attempt is retained at
+`experiments/2026-10-27/acceptance-request-domain-8b62f6fe-native.tgz`, SHA-256
+`01261089cc653915214be6999d52678e4df4ccddb4dcf9119ea147443e3b482e`
+(7,572,353 bytes), with authenticated PUT/GET agreement and complete source bundle.
+The next source increment strengthens actual argument-copy summaries to exact
+sequence equality and adds checked projection/push facts, the existing standard
+iterator-order interpretation and scoped literal/recursive-definition guidance.
+Every runtime guard, existing contract condition, control and default resource
+limit remains; fresh complete-root and native qualification is required.
+
+The `bfae0ec4` attempt is retained at
+`experiments/2026-10-27/acceptance-request-domain-bfae0ec4-native.tgz`, SHA-256
+`b7d29cbbb6576ff645636373864866311a6f258d266d482449b097b70b3968d6`
+(7,574,706 bytes), with authenticated PUT/GET agreement and a complete source
+bundle. The follow-up adds only erased guidance: the existing standard fixed-array
+length interpretation for actual byte literals, a revealed partial-selector
+prefix, an explicit separator witness, and the existing standard increasing-set
+sequence interpretation. It introduces no new axiom, host premise, executable
+behavior, weakened contract or resource setting. Fresh complete-root and native
+qualification remain required.
+
+The `e3515b8c` follow-up is retained at
+`experiments/2026-10-27/acceptance-request-domain-e3515b8c-native.tgz`, SHA-256
+`4f45406a90ad82569acacb7a8ff75297ccc0dfe92c5b9ba1bfa8d7f19809b346`
+(7,566,981 bytes), with authenticated PUT/GET agreement. Literal length guidance
+resolves the separator and forwarded-normalization failures. Its follow-up
+constructs the finite prefix equality explicitly and disambiguates the standard
+reference-trait comparison from the owned key comparison, using the actual
+standard implementation's relation. These remain checked proof steps; no
+predicate, guard, contract or resource limit changes.
+
+The first complete request/domain discovery passes at `f98ea578`. Its archive is
+`experiments/2026-10-27/acceptance-request-domain-f98ea578-native.tgz`, SHA-256
+`2f511bea21c1f4c8ad16dcc449426323e1244b62612a7f7c023f64e6e5c60c6f`
+(7,578,693 bytes), with authenticated PUT/GET agreement. The actual complete-root
+inventories are query 471 verified / 821 functions, inputs 308 / 538 and authority
+559 / 961; every prior named function remains. Only those actual inventories are
+locked; every inherited and new control object remains unchanged. Native Clippy
+then reports nine style diagnostics in the new source-shared constructors and
+set operations. The implementation correction adds reasoned local allowances for
+explicit option cases/refusals, the actual owned String argument and explicit
+lexicographic length comparisons; no executable statement, contract or control
+changes. Native tests and ordinary negatives still require qualification.
+
+The `206c077f` qualifier repeats all three complete roots at their actual locked
+counts and passes the earlier nine style diagnostics. Its native test build then
+finds three missed fixture migrations (#489). The independent one-library helper
+now uses the existing original-key insertion helper and returns its actual
+`Result`; the two original callers propagate errors in their existing Option or
+Result domains. The missing-target negative still inserts the same additional
+triple through checked insertion. No assertion, scope or production body changes;
+only the reviewed runner native binding changes. The separate ordinary fixture
+file is not represented as a proved input adapter.
+
+Evidence is `experiments/2026-10-27/acceptance-request-domain-206c077f-native.tgz`,
+SHA-256 `2b7a697adae7d30f09abfbb5e2e0b0277e57d590a4c19c0e2328b72ac63191bb`
+(7,582,203 bytes), authenticated upload/readback agreement, with exact immutable
+source bundle. Native tests and negatives remain pending at the corrected source.
+
+The `dcf94ef7` source repeats every complete root at the locked counts and clears
+the three fixture compilation errors. Native Clippy then reports six style
+diagnostics in the two ordinary API differential fixture files. Their correction
+adds rustdoc code spans, spells the same three empty String values as
+`String::new()`, and compares the actual empty projection with an empty vector,
+retaining the same strict predicate and exposing the value on failure. These two
+fixture files are outside captured proof bodies and native adapter bindings; no
+production body, contract, manifest inventory, control or binding changes.
+
+Evidence is `experiments/2026-10-27/acceptance-request-domain-dcf94ef7-native.tgz`,
+SHA-256 `f9125c1023ee1b47a863bcc89f3cd831f5213cfbc9eface98b040a817535daf5`
+(7,584,463 bytes), authenticated upload/readback agreement and a complete source
+bundle. The native follow-up remains pending; earlier Stock receipts retain their
+actual frozen source labels rather than being relabeled as a new-head run.
+
+| Frozen source | Actual result | Limits |
+|---|---|---|
+| `dcf94ef7` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961) repeat at the locked inventories. Native Clippy clears the three #489 compilation errors and stops after 91.955 s on six API fixture style diagnostics. Controller finishes in 569.868 s; final source/image/runtime checks pass | Native request tests, ordinary negatives, conformance and cost checks are unrun. The native fixture style correction changes no captured proof body or adapter |
+| `206c077f` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961) pass again at the locked inventories. Native Clippy passes the earlier nine diagnostics and stops after 83.208 s at three lib-test compilation errors in two unmigrated fixtures (#489). Controller finishes in 560.684 s; final source/image/runtime checks pass | Native tests, ordinary negatives, conformance and cost checks are unrun; no selected-runtime or false-verdict finding |
+| `f98ea578` request/domain candidate | Source suites pass, including all 66 production tests. All complete production roots pass: query 471/0 (821 functions), inputs 308/0 (538), authority 559/0 (961). All earlier functions retained and final source/image/runtime checks pass. Controller finishes in 487.306 s | Native Clippy stops after 17.296 s on nine new style diagnostics (explicit Option cases/refusals, owned String argument, comparison chain). Request tests and ordinary negatives are unrun. Checked in-memory construction/iteration supplies no complete metadata, physical-input, launch or journal-origin theorem |
+| `e3515b8c` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass. Whole authority reaches 556 verified and three ordinary errors with no resource diagnostic. Controller finishes in 470.888 s; final source/image/runtime checks pass | Two finite partial-selector witnesses and the reference-iterator ordering assertion remain. Native compilation, request tests and negatives are unrun; no authority inventory is frozen from the partial output |
+| `bfae0ec4` request/domain candidate | Source suites pass, including all 66 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass and retain earlier functions. Whole authority reaches 553 verified and five ordinary errors across 960 function entries, with no resource diagnostic. Controller finishes in 470.384 s; final source/image/runtime checks pass | Remaining failures are the initial-separator literal distinction, two partial-selector witnesses, forwarded incremental normalization and the actual reference-iterator ordering interpretation. No authority inventory or negative credit; native compilation and request tests are unrun |
+| `8b62f6fe` request/domain candidate | Source suites pass, including all 66 production tests. Query 471/0 (821 functions) and inputs 308/0 (538) pass again. Whole authority reaches verification: 541 verified and 14 errors, including resource exhaustion in four new refusal witnesses; 20 diagnostics total. Controller finishes in 474.190 s with final source/image/runtime checks | Remaining failures concern argument/literal projection, finite normalization witnesses, reference-order interpretation and the real dictionary projection loop. Partial authority output supplies no qualified inventory or negative credit; native compilation and request tests are unrun |
+| `c9c971ab` request/domain candidate | Native source suites pass, including all 66 production source tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass and retain every earlier function. Whole authority stops after 2.802 s at two VIR errors; overall controller finishes in 438.226 s with final source/image/runtime checks | The zero-argument broadcast lemma needs a broadcast-use directive, and final iterator state needs explicit dereference before its spec method. Authority has no proof credit or discovered inventory; native compilation, request tests and negative controls are unrun |
+| `23ccd443` request/domain candidate | Native model source guards pass; production source guards run 66 tests with one failure and five errors. Controller stops after 36.687 s; final source-byte, image and pinned runtime checks pass | Three confirmed capture wiring defects (#479): API library's second native binding stayed stale, CLI dependency order disagrees with the declared closure, and the assembly fixture omits the new protected key. All Stock roots, Rust compilation and native request tests are unrun; correction preserves every source/control and adds the real key's public-field negative |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
 | `e36c749b` | Complete native discovery passes query 471/0 (821 functions), inputs 308/0 (538), authority 510/0 (895); every earlier function retained and final source/runtime checks pass | Actual inventories locked for 400 unique planned cases: 397 negatives plus three positives. The 409-call partition schedule remains held for native compile/Clippy clearance; no combined matrix, native completion or service theorem |
