@@ -4,6 +4,15 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The request/domain candidate passes all complete production Stock roots but
+native test compilation at `206c077f` stops on three old-interface uses in the
+noop and runner fixtures ([#489](https://github.com/Chelis-Lang/sail/issues/489)).
+The correction uses the independently declared original library tuple through
+checked insertion, propagates request-construction errors, and inserts the real
+additional missing target. Every original assertion remains; native tests and
+ordinary negatives are still pending. The fixture-only file is not a proved
+input adapter; only the reviewed surrounding runner binding is refreshed.
+
 The original request/domain candidate's first complete native source check
 refuses inconsistent capture bindings, dependency ordering and an incomplete
 assembly fixture ([#479](https://github.com/Chelis-Lang/sail/issues/479)). The
