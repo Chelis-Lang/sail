@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Distinguish the completed-view fixture's original whole-request evidence from
+  its retained Unknown projection when freshness is unavailable (#464). Preserve
+  both cases and all original baseline assertions; runtime behavior is unchanged.
+
 - Preserve the coherent completed-baseline request fixture under the strict
   line-limit lint with a documented test-local allowance (#463); all assertions
   and production behavior remain unchanged, with fresh native qualification pending.

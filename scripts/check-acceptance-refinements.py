@@ -50,7 +50,7 @@ QUERY_HOST_TRAITS = {'crates/sail-acceptance/src/cache_write.rs': ['e1f217be8798
 QUERY_SCRIPT_IMPLS = {'crates/sail-acceptance/src/cache_write.rs': ['b14cfdbc045ce226b03452823bf1706890c04c58817293134e9d1f2fc1ce12b4'], 'crates/sail-acceptance/src/query_delivery.rs': ['8378afe345bf6880d519cf675e3b5db5e4b01f6900781bef674f6c1fd7019d72']}
 # Presentation callers are bound native source; only their shared API helper compiles.
 PRESENTATION_NATIVE_BINDINGS = {'crates/sail-api/src/evidence.rs': ['effective'], 'crates/sail-mcp/src/summary.rs': ['effective_verdict', 'effective_evidence_tier'], 'crates/sail-mcp/src/lib.rs': ['native summary module assembly'], 'crates/sail-mcp/Cargo.toml': ['native MCP API dependency assembly'], 'crates/sail-daemon/src/jobs/product.rs': ['CompletedObservation::presentation', 'completed_with_request', 'explain', 'compare', 'publish_baseline', 'baseline_with_request']}
-PRESENTATION_NATIVE_SHA256 = {'crates/sail-api/src/evidence.rs': '0f6234f0bf8339986e5f29aa0a5c198908252cb85af10b8c9714769aafa0fab9', 'crates/sail-mcp/src/summary.rs': 'bd23b43209cbc51ac2108716bbd3d2d45643c7dda817140e0b60bd574f07f772', 'crates/sail-mcp/src/lib.rs': '7d11b1436211816863d21905ab030a4840b1795ad92f64b973033ec19807e217', 'crates/sail-mcp/Cargo.toml': '2a42a3c1ec74362a4a62233ffe88eab6952c90882a1e9695744fa6a1d3b650c0', 'crates/sail-daemon/src/jobs/product.rs': '86910ae24620e9483c6fa1c2b2833fe9f9103e94b2d5e7ed0a182c30a9e8eaf6'}
+PRESENTATION_NATIVE_SHA256 = {'crates/sail-api/src/evidence.rs': '0f6234f0bf8339986e5f29aa0a5c198908252cb85af10b8c9714769aafa0fab9', 'crates/sail-mcp/src/summary.rs': 'bd23b43209cbc51ac2108716bbd3d2d45643c7dda817140e0b60bd574f07f772', 'crates/sail-mcp/src/lib.rs': '7d11b1436211816863d21905ab030a4840b1795ad92f64b973033ec19807e217', 'crates/sail-mcp/Cargo.toml': '2a42a3c1ec74362a4a62233ffe88eab6952c90882a1e9695744fa6a1d3b650c0', 'crates/sail-daemon/src/jobs/product.rs': 'ee923438cae29230e0eef4774655d96c98177abba3d4efa26d58a71b5a986861'}
 # These closed native compiler/request/store adapters are bound in full and
 # remain outside the stock-compiled bodies. Their OS/process provenance remains open.
 INPUT_NATIVE_SHA256 = {
@@ -70,7 +70,7 @@ INPUT_NATIVE_SHA256 = {
     'crates/sail-verus/src/managed/retained/compiler.rs': '6f75bff2863f40c58b7b9d331bdcb10852993808a01984f31cc94757f151fe2f',
     'crates/sail-verus/src/managed/retained/native.rs': '7b4bf88dc3fabc99497de450d6f99a0f6d39b6da60f653f63deaade7910992fa',
     'crates/sail-verus/src/managed/retained/producers.rs': '501246e0ccd8ec5bd5025fb985cb104adf8c40a540d4b93b03b4b645ac18ba4c',
-    'crates/sail-daemon/src/jobs/product.rs': '86910ae24620e9483c6fa1c2b2833fe9f9103e94b2d5e7ed0a182c30a9e8eaf6',
+    'crates/sail-daemon/src/jobs/product.rs': 'ee923438cae29230e0eef4774655d96c98177abba3d4efa26d58a71b5a986861',
     'crates/sail-daemon/src/jobs/result_cache.rs': '7d63c09a1e623d2204e64f593adc32e1527c04786ca57439aab1e64600680b64',
     'crates/sail-verus/src/managed/command_pipe.rs': 'aaccb4db7cce2648b4a1acdc5da658ea2b53abbcc24956310deac5c7b6e6eb31',
     'crates/sail-api/src/lib.rs': 'c0d86d594bb374650fae43024f49264a4c6f840c8b0f73ab8092d620afdc7fed',

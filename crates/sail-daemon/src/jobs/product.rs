@@ -370,7 +370,7 @@ mod baseline_request_tests {
     fn completed_job(
         state: &State,
         invocation: &std::path::Path,
-    ) -> TestResult<(String, ProjectResult)> {
+    ) -> TestResult<(String, CompletedObservation)> {
         let project = project(invocation)?;
         let request = sail_api::project::ResolvedRequest {
             run_id: project.run_id.clone(),
@@ -391,6 +391,10 @@ mod baseline_request_tests {
             }],
         };
         assert!(sail_api::acceptance::complete_request(&request, &project).is_some());
+        let original = CompletedObservation {
+            result: project,
+            request: Some(request),
+        };
         let mut job = store::Stored::new(sail_api::jobs::Submission {
             mode: sail_api::jobs::Mode::Stock,
             project_dir: invocation.to_owned(),
@@ -400,9 +404,11 @@ mod baseline_request_tests {
             input_revision: None,
         });
         job.status.state = sail_api::jobs::Lifecycle::Completed;
-        let bytes = serde_json::to_vec(&project)?;
-        job.projection =
-            Some(store::Projection::validated(&bytes, &project).with_request(Some(request)));
+        let bytes = serde_json::to_vec(&original.result)?;
+        job.projection = Some(
+            store::Projection::validated(&bytes, &original.result)
+                .with_request(original.request.clone()),
+        );
         let directory = state.root.join(&job.status.id);
         std::fs::create_dir_all(&directory)?;
         std::fs::write(directory.join("stdout"), bytes)?;
@@ -412,7 +418,7 @@ mod baseline_request_tests {
             .lock()
             .map_err(|_| io::Error::other("fixture jobs lock poisoned"))?
             .insert(id.clone(), job);
-        Ok((id, project))
+        Ok((id, original))
     }
 
     /// Exercises the actual retrieval/publication boundary. Reports are
@@ -436,16 +442,33 @@ mod baseline_request_tests {
             std::path::Path::new("/bin/true"),
         )?;
         let state = &server.state;
-        let (id, original) = completed_job(state, &invocation)?;
+        let (id, original_observation) = completed_job(state, &invocation)?;
+        let original = &original_observation.result;
+        // The original paired fixture passes the actual whole-request factory.
+        // It precedes the native read path's separate freshness projection.
+        {
+            let view = original_observation.presentation();
+            assert_eq!(original.targets.len(), 1);
+            assert_eq!(view.project(), original);
+            assert_eq!(view.request(), original_observation.request.as_ref());
+            assert!(view.whole().is_some());
+        }
         let admitted = completed_with_request(state, &id)?;
         assert!(admitted.result.targets[0].complete);
         assert!(admitted.request.is_some());
+        assert_eq!(admitted.request, original_observation.request);
+        // No cache location/readback was supplied in this stored submission.
+        // Original proof flags survive, but native currentness is unavailable.
+        assert_eq!(
+            admitted.result.currentness,
+            sail_api::project::Currentness::Unknown
+        );
         let original_request = admitted.request.clone();
         {
             let view = admitted.presentation();
             assert_eq!(view.project(), &admitted.result);
             assert_eq!(view.request(), admitted.request.as_ref());
-            assert!(view.whole().is_some());
+            assert!(view.whole().is_none());
         }
         for (currentness, exit_code) in [
             (sail_api::project::Currentness::Historical, Some(0)),
