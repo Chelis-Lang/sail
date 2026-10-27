@@ -2837,7 +2837,8 @@
         "crates/sail-verus/src/parallel.rs",
         "crates/sail-verus/src/lib.rs",
         "crates/sail-verus/Cargo.toml",
-        "crates/sail-cli/src/verify.rs"
+        "crates/sail-cli/src/verify.rs",
+        "crates/sail-daemon/src/jobs/worker.rs"
       ],
       "verified": 308,
       "functions": [
@@ -4134,10 +4135,12 @@
         "crates/sail-verus/src/lib.rs",
         "crates/sail-verus/Cargo.toml",
         "crates/sail-cli/src/verify.rs",
+        "crates/sail-daemon/src/jobs/worker.rs",
         "crates/sail-api/src/acceptance.rs",
         "crates/sail-api/src/acceptance_sort.rs",
         "crates/sail-api/src/request_order.rs",
         "crates/sail-api/src/request_targets.rs",
+        "crates/sail-api/src/request_capture.rs",
         "crates/sail-api/src/output.rs",
         "crates/sail-api/src/project.rs",
         "crates/sail-api/src/jobs.rs",
@@ -4149,7 +4152,7 @@
         "crates/sail-mcp/Cargo.toml",
         "crates/sail-cli/src/managed_cli.rs"
       ],
-      "verified": 559,
+      "verified": 574,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
@@ -4957,6 +4960,7 @@
         "check_authority::phase_inputs::subset",
         "check_authority::phase_inputs::tracked_row",
         "check_authority::phase_inputs::union_only",
+        "check_authority::project::REQUEST_CAPTURE_VERSION",
         "check_authority::project::SCHEMA_VERSION",
         "check_authority::refinement::ambiguous_observations_preserve_output",
         "check_authority::refinement::attempt_slots_are_independent_of_pid",
@@ -4980,6 +4984,7 @@
         "check_authority::refinement::declared_replay_missing_native_paths_refused",
         "check_authority::refinement::declared_replay_missing_readback_refused",
         "check_authority::refinement::duplicate_process_stream_refused",
+        "check_authority::refinement::duplicate_worker_journal_run_refuses",
         "check_authority::refinement::empty_human_footer_examples",
         "check_authority::refinement::empty_human_replay_constructive",
         "check_authority::refinement::empty_observation_has_no_whole_authority",
@@ -5001,6 +5006,7 @@
         "check_authority::refinement::forwarded_workspace_is_not_selected",
         "check_authority::refinement::function_refines",
         "check_authority::refinement::interrupted_report_refused",
+        "check_authority::refinement::invalid_worker_journal_header_refuses",
         "check_authority::refinement::matched_request_paths_preserve_observations",
         "check_authority::refinement::matching_repair_selection_accepts",
         "check_authority::refinement::mismatched_paths_withhold_whole_and_partial",
@@ -5015,6 +5021,7 @@
         "check_authority::refinement::normalized_original_submission",
         "check_authority::refinement::original_dictionary_compile_only_refuses",
         "check_authority::refinement::original_dictionary_partial_refuses",
+        "check_authority::refinement::original_worker_journal_preserves_nonempty_input",
         "check_authority::refinement::original_workspace_is_selected",
         "check_authority::refinement::owned_attempt_identity_keeps_reused_pid_slots_distinct",
         "check_authority::refinement::packed_empty_token_positive",
@@ -5052,7 +5059,14 @@
         "check_authority::refinement::swapped_repair_function_refused",
         "check_authority::refinement::swapped_request_refused",
         "check_authority::refinement::unbound_completed_presentation",
+        "check_authority::refinement::unmatched_worker_journal_refuses",
         "check_authority::repair::VERSION",
+        "check_authority::request_capture::constructive_original_capture",
+        "check_authority::request_capture::original_capture_header",
+        "check_authority::request_capture::original_capture_payload",
+        "check_authority::request_capture::original_capture_run",
+        "check_authority::request_capture::select_original_request",
+        "check_authority::request_capture::selected_original_capture",
         "check_authority::request_order::OriginalTargetKey::as_tuple",
         "check_authority::request_order::OriginalTargetKey::clone",
         "check_authority::request_order::OriginalTargetKey::cmp",
@@ -6329,6 +6343,78 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "name: \"interactive\".to_owned(), manifest_sha256: manifest.clone()",
           "after": "name: \"changed\".to_owned(), manifest_sha256: manifest.clone()"
+        },
+        {
+          "name": "capture-journal-version-required",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "capture.version != REQUEST_CAPTURE_VERSION",
+          "after": "false"
+        },
+        {
+          "name": "capture-journal-worker-required",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "!exact_bytes(capture.worker_id.as_str().as_bytes(), worker.as_bytes())",
+          "after": "false"
+        },
+        {
+          "name": "capture-journal-skips-only-other-runs",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "if !exact_bytes(capture.request.run_id.as_str().as_bytes(), project.run_id.as_str().as_bytes()) {",
+          "after": "if false {"
+        },
+        {
+          "name": "capture-journal-unique-current-run",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "if found.is_some()",
+          "after": "if false"
+        },
+        {
+          "name": "capture-journal-invocation-required",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "!exact_bytes(capture.request.invocation.as_str().as_bytes(), invocation.as_bytes())",
+          "after": "false"
+        },
+        {
+          "name": "capture-journal-submission-required",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "if binding.is_none() { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "capture-journal-result-correspondence-required",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "if !request_corresponds(&capture.request, project) { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "capture-journal-original-arguments",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "let binding = bind_submission(arguments, mode, &capture.request);",
+          "after": "let binding = bind_submission(&[], mode, &capture.request);"
+        },
+        {
+          "name": "capture-journal-original-mode",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "let binding = bind_submission(arguments, mode, &capture.request);",
+          "after": "let changed_mode = Mode::Interactive;\n                let binding = bind_submission(arguments, &changed_mode, &capture.request);"
+        },
+        {
+          "name": "capture-journal-selected-index",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "found = Some(i);",
+          "after": "found = Some(0);"
+        },
+        {
+          "name": "capture-journal-owned-original-request",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "Some(rows.remove(index).request)",
+          "after": "Some(rows.remove(0).request)"
+        },
+        {
+          "name": "capture-journal-full-factory-always-refuses",
+          "source": "crates/sail-api/src/request_capture.rs",
+          "before": "Some(rows.remove(index).request)",
+          "after": "None"
         }
       ]
     }
@@ -7054,6 +7140,23 @@
           "declaration_sha256": "0f1b9e060ba2b84554d53e29332cff207ac81c3066bbdd6f23596ada842cf5e3"
         },
         {
+          "name": "RequestCapture",
+          "kind": "struct",
+          "fields": {
+            "version": [
+              "u32"
+            ],
+            "worker_id": [
+              "String"
+            ],
+            "request": [
+              "ResolvedRequest"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "18d98e66239bfa3f2d954279e1c0f9457fa11617a6709e9708abf26d215d45ef"
+        },
+        {
           "name": "EngineIdentity",
           "kind": "struct",
           "fields": {
@@ -7138,10 +7241,21 @@
         "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine execution no_reuse",
         "RequestTarget": "package_id target kind",
         "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
+        "RequestCapture": "version worker_id request",
         "EngineIdentity": "name manifest_sha256",
         "Execution": "verifier_invocations reused_targets",
         "NoReuse": "code reason verified_as"
-      }
+      },
+      "request_capture_constant": [
+        "pub",
+        "const",
+        "REQUEST_CAPTURE_VERSION",
+        ":",
+        "u32",
+        "=",
+        "1",
+        ";"
+      ]
     },
     "jobs": {
       "source_sha256": "1a98c11aad004d75eb7ba508f4035004de558875f253e33664f9fdac3fa894e2",
