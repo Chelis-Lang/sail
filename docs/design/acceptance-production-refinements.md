@@ -416,14 +416,18 @@ prevents prefix matches from becoming full matches. Unknown metadata versions
 cannot satisfy a version-qualified selector, and invalid indices/offsets refuse.
 These functions return selection data and match booleans, never a Current or
 proof-authority token. Nonempty constructive witnesses and 23 executable
-mutations accompany the source. Every prior 77 request control remains required;
-no new verified or function counts are guessed.
+mutations accompany the source. Every prior 77 request control remains required.
+Frozen `8ec59f7f` passes all three complete Stock roots, with authority 592/0 and
+1,001 function entries and every older function retained. Strict workspace Clippy
+and all 25 selected native fixtures pass. The 67-test source-suite receipt remains
+`e92200f1`, with raw harness/manifest identity checked before fresh whole proofs.
+All 23 new ordinary negatives, conformance and cost remain pending.
 
 Ordinary native differential fixtures independently retain the old scanner and
 its old name/id/`split_once('@')` rule. The fixtures cover Unicode, embedded NUL,
 repetitions, original positions, empty and missing values, compact spellings,
-flag words consumed as values and forwarded selectors. They are source-only
-until native qualification; no output or verifier transport is exercised.
+flag words consumed as values and forwarded selectors. Both new fixtures pass in
+the selected native union; no output or verifier transport is exercised.
 
 The original Cargo JSON member/default/root lists, package/version/verify data,
 full target kinds and required/enabled feature Values still feed the existing
