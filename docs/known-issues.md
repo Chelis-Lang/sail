@@ -1,5 +1,22 @@
 # Known issues and limits
 
+- [#508](https://github.com/Chelis-Lang/sail/issues/508): a proof-only false
+  assertion plus an erased empty statement could masquerade as a runtime
+  mutation. The correction erases every consecutive empty statement after an
+  erased group; regressions cover zero/one/multiple separators and keep real
+  runtime mutations accepted. The first single-separator correction remains
+  recorded as incomplete. Native metadata qualification passes all 676 current
+  descriptors and four focused source tests at `2c2106d8`; all three captured
+  proof programs match qualified `f8b26511` byte-for-byte. This does not execute
+  the negative suite or prove semantic inequivalence from token differences.
+
+- [#510](https://github.com/Chelis-Lang/sail/issues/510): the earlier complete
+  query suite refuses four controls because the unchanged nonempty stdout
+  comparison witness reaches default Stock resources. No query partition earns
+  full qualification from that attempt. Exact proof cuts and the four original
+  negatives remain required on the expanded source; no witness or assertion
+  may be removed to make the suite pass.
+
 - [#505](https://github.com/Chelis-Lang/sail/issues/505): the combined authority
   control `request-verification-enabled` produces its intended postcondition
   failure but also exhausts the unrelated human-footer renderer at default

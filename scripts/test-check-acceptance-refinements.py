@@ -457,6 +457,20 @@ class SourceCaptureTests(unittest.TestCase):
             "{ sail_proof! { assert(true); } true }",
             "{ sail_proof! { assert(true); } false }")
 
+    def test_erased_proof_semicolon_cannot_masquerade_as_a_runtime_fault(self):
+        for wrapper in ("sail_proof!", "proof"):
+            for count in range(4):
+                before = "{ " + wrapper + " { assert(true); }" + ";" * count + " true }"
+                source = "sail_method! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"
+                for remaining in range(4):
+                    after = "{ " + wrapper + " { assert(false); }" + ";" * remaining + " true }"
+                    with self.subTest(wrapper=wrapper, count=count, remaining=remaining), self.assertRaises(SOURCE.SourceRefusal):
+                        SOURCE.runtime_mutation(source, before, after)
+                with self.subTest(wrapper=wrapper, count=count), self.assertRaises(SOURCE.SourceRefusal):
+                    SOURCE.runtime_mutation(source, before, "{ true }")
+                # Real runtime mutations stay accepted with every empty tail.
+                SOURCE.runtime_mutation(source, before, before[:-6] + "false }")
+
     def test_runtime_control_cannot_hide_an_envelope_in_ghost_code(self):
         method = "sail_method! { fn hidden() -> (x: bool) requires (true) ensures (x) { true } }"
         for wrapper in ("sail_spec! { %s }", "sail_proof! { %s }", "proof { %s }"):

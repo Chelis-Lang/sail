@@ -225,6 +225,10 @@ def _runtime_projection(text: str) -> tuple[tuple[str, ...], tuple[tuple[str, ..
                 and at + 1 <= end and stream[at + 1].value == "{")
             if ghost or ghost_group:
                 at = closing(stream, at + (2 if ghost else 1)) + 1
+                # Its trailing empty statements are erased too; otherwise a
+                # proof-only false assertion can masquerade as runtime (#508).
+                while at <= end and stream[at].value == ";":
+                    at += 1
                 continue
             require(token.value != "fn" and not (macro
                 and token.value in {"sail_verified", "sail_method", "sail_inherited_method"}),
