@@ -262,6 +262,14 @@ remains pending; the failed attempt and exact retained source/runtime evidence
 are indexed in the
 [owning validation record](../validation/acceptance-boundary-refinements.md).
 
+The corrected capture attempt passes the ordinary source suites and complete
+query/input proof roots, then the full authority root refuses two unsupported
+annotation forms: a direct call to the zero-argument reference-order broadcast
+lemma and an undereferenced final iterator snapshot before a spec-method call.
+The correction uses the standard broadcast directive and explicit snapshot
+dereference. Runtime bodies and the relations they must prove stay unchanged;
+the complete authority root and native stages still need qualification.
+
 Native path rendering still uses the old `to_string_lossy` operation and the
 independent raw-path binding, including invalid-byte refusal. Cargo metadata
 decoding/selection, argument option/value state, per-unit effective options,
