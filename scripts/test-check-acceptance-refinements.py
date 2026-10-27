@@ -667,6 +667,7 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-api/src/acceptance.rs", b"pub struct ExactScopeReport", b"#[derive(Default)] pub struct ExactScopeReport"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct ReplayReadback", b"#[derive(Deserialize)] pub struct ReplayReadback"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct EmptyHumanOutput", b"#[derive(Deserialize)] pub struct EmptyHumanOutput"),
+            ("crates/sail-api/src/acceptance.rs", b"pub struct EmptyHumanContext", b"#[derive(Deserialize)] pub struct EmptyHumanContext"),
             ("crates/sail-api/src/acceptance.rs", b"stderr: &'a [u8],", b"pub stderr: &'a [u8],"),
             (CHECKER.OUTPUT_CORE, b"pub struct Transcript", b"#[derive(Default)] pub struct Transcript"),
             (CHECKER.OUTPUT_CORE, b"pub struct Frame", b"#[derive(Deserialize)] pub struct Frame"),

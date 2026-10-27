@@ -207,10 +207,16 @@ sail_code! {
     /// nor any whole/partial proof token. Empty observed coverage cannot supply
     /// the independently requested, nonempty verification inventory.
     pub struct EmptyHumanOutput<'a, 'b> {
+        context: EmptyHumanContext<'a, 'b>,
+        stderr: &'a [u8],
+    }
+
+    /// Checked original metadata for a byte-only human consumer. This has no
+    /// output/report/proof accessor and cannot authorize whole verification.
+    pub struct EmptyHumanContext<'a, 'b> {
         original: &'a ResolvedRequest,
         current: &'a ResolvedRequest,
         observed: &'a ProjectResult,
-        stderr: &'a [u8],
         paths: RequestPathBinding<'a>,
         readback: ReplayReadback<'a, 'b>,
     }
@@ -223,7 +229,7 @@ sail_code! {
             {
                 // Retain the original witness borrows without exposing their
                 // report or allowing a caller to obtain proof authority.
-                let _ = (&self.original, &self.current, &self.observed, &self.paths, &self.readback);
+                let _ = (&self.context.original, &self.context.current, &self.context.observed, &self.context.paths, &self.context.readback);
                 self.stderr
             }
         }
@@ -2920,14 +2926,23 @@ sail_spec! {
     }
 
     pub closed spec fn empty_human_stderr<'a, 'b>(a: &EmptyHumanOutput<'a, 'b>) -> &'a [u8] { a.stderr }
-    pub closed spec fn empty_human_valid(a: &EmptyHumanOutput) -> bool {
+    pub closed spec fn empty_human_context(a: &EmptyHumanOutput) -> EmptyHumanContext { a.context }
+    pub closed spec fn empty_human_context_original<'a, 'b>(a: &EmptyHumanContext<'a, 'b>) -> &'a ResolvedRequest { a.original }
+    pub closed spec fn empty_human_context_current<'a, 'b>(a: &EmptyHumanContext<'a, 'b>) -> &'a ResolvedRequest { a.current }
+    pub closed spec fn empty_human_context_observed<'a, 'b>(a: &EmptyHumanContext<'a, 'b>) -> &'a ProjectResult { a.observed }
+    pub closed spec fn empty_human_context_readback<'a, 'b>(a: &EmptyHumanContext<'a, 'b>) -> ReplayReadback<'a, 'b> { a.readback }
+    #[verifier::opaque]
+    pub closed spec fn empty_human_context_valid(a: &EmptyHumanContext) -> bool {
         empty_human_observation(a.original, a.observed, true)
-            && replay_request_payload(a.current, a.original) && cargo_footer(a.stderr@)
+            && replay_request_payload(a.current, a.original)
             && request_path_binding_valid(&a.paths) && path_binding_request(&a.paths) == a.current
             && replay_readback_valid(&a.readback) && replay_readback_request(&a.readback) == a.current
             && !request_authorized(a.original, a.observed)
             && !request_authorized(a.current, a.observed)
             && !supplied_selection_authorized(a.observed)
+    }
+    pub closed spec fn empty_human_valid(a: &EmptyHumanOutput) -> bool {
+        empty_human_context_valid(&a.context) && cargo_footer(a.stderr@)
     }
 }
 
@@ -3095,17 +3110,58 @@ sail_verified! {
                 && readback.is_some() && readback.unwrap().unchanged_view() && readback.unwrap().guard_view().is_some()
                 && readback.unwrap().guard_view().unwrap().revision_view() == string_bytes(&current.input_revision)))
     {
-        if !empty_human_bytes(stdout, stderr) { return None; }
+        let Some(context) = admit_empty_human_context(original, current, observed, human, paths, readback) else { return None; };
+        attach_empty_human_output(context, stdout, stderr)
+    }
+}
+
+sail_verified! {
+    /// Checks the same original metadata independently of the final byte gate.
+    /// This grants no report or proof facet and stores the exact original borrows.
+    #[allow(clippy::question_mark, reason = "Keep explicit source-shared refusal transitions.")]
+    pub fn admit_empty_human_context<'a, 'b>(original: &'a ResolvedRequest, current: &'a ResolvedRequest,
+        observed: &'a ProjectResult, human: bool, paths: Option<&RequestPathBinding<'a>>,
+        readback: Option<&'a sail_acceptance::inputs::GuardedReadback<'b>>) -> (out: Option<EmptyHumanContext<'a, 'b>>)
+        requires(true)
+        ensures(out.is_some() ==> empty_human_context_valid(&out.unwrap()),
+            out.is_some() ==> empty_human_context_original(&out.unwrap()) == original,
+            out.is_some() ==> empty_human_context_current(&out.unwrap()) == current,
+            out.is_some() ==> empty_human_context_observed(&out.unwrap()) == observed,
+            out.is_some() ==> readback.is_some() && replay_readback_observation(&empty_human_context_readback(&out.unwrap())) == readback.unwrap(),
+            out.is_some() == (empty_human_observation(original, observed, human)
+                && replay_request_payload(current, original)
+                && paths.is_some() && request_paths_correspond(current,
+                    path_binding_invocation(paths.unwrap())@, path_binding_workspace(paths.unwrap())@)
+                && readback.is_some() && readback.unwrap().unchanged_view() && readback.unwrap().guard_view().is_some()
+                && readback.unwrap().guard_view().unwrap().revision_view() == string_bytes(&current.input_revision)))
+    {
         if !empty_human_candidate(original, observed, human) || !replay_requests_match(current, original) { return None; }
         let Some(paths) = paths else { return None; };
         let Some(paths) = bind_request_paths(current, paths.invocation(), paths.workspace()) else { return None; };
         let Some(readback) = readback else { return None; };
         let Some(readback) = seal_replay_readback(current, readback) else { return None; };
         sail_proof! {
+            reveal(empty_human_context_valid);
             if resolved_coverage(original, observed) { resolved_coverage_has_requested_target(original, observed); }
             if resolved_coverage(current, observed) { resolved_coverage_has_requested_target(current, observed); }
             assert(!supplied_selection_authorized(observed));
         }
-        Some(EmptyHumanOutput { original, current, observed, stderr, paths, readback })
+        Some(EmptyHumanContext { original, current, observed, paths, readback })
+    }
+}
+
+sail_verified! {
+    /// Consumes checked metadata and validates only the actual output bytes.
+    /// Metadata validity is a checked constructor result, never a caller flag.
+    pub fn attach_empty_human_output<'a, 'b>(context: EmptyHumanContext<'a, 'b>,
+        stdout: &[u8], stderr: &'a [u8]) -> (out: Option<EmptyHumanOutput<'a, 'b>>)
+        requires(empty_human_context_valid(&context))
+        ensures(out.is_some() == (stdout@.len() == 0 && cargo_footer(stderr@)),
+            out.is_some() ==> empty_human_valid(&out.unwrap()),
+            out.is_some() ==> empty_human_context(&out.unwrap()) == context,
+            out.is_some() ==> empty_human_stderr(&out.unwrap()) == stderr)
+    {
+        if !empty_human_bytes(stdout, stderr) { return None; }
+        Some(EmptyHumanOutput { context, stderr })
     }
 }
