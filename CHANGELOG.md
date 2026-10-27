@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add a source candidate that retains original served command/reply bytes in a
+  shared replay-comparison controller and joins completion to the same stdout
+  owner's original suppression count. Statistics exceptions require a checked
+  raw command mint and keep the native framing refusal. Retained allocation
+  accounting includes commands and carriers. Proof/native/cost qualification
+  and statistics semantics remain pending; emitted bytes are unchanged.
+
 - Add a source candidate that validates scalar `:print-success` and `:rlimit`
   values from original SMT commands and retains their bytes across commands and
   resets, comparing actual Session readback before policy use and after every
