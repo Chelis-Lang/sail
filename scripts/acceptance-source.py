@@ -9,6 +9,7 @@ authority adapters. Unknown syntax refuses the gate.
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
 import re
 from typing import NamedTuple
 
@@ -437,6 +438,29 @@ def candidate_indexed_policy(source: str) -> None:
 
 
 def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
+    """Validate exact source under the complete current envelope policy.
+
+    Only built-in string and boolean inputs share successful results.
+    Unusual argument subclasses retain the original uncached behavior.
+    """
+    if type(source) is not str or type(proof) is not bool:
+        return _checked_item_envelopes(source, proof=proof)
+    return _cached_item_envelopes(source, proof=proof)
+
+
+@lru_cache(maxsize=128)
+def _cached_item_envelopes(source: str, *, proof: bool) -> None:
+    """Reuse successful syntax checks, retaining every other admission check.
+
+    The validator reads literal local syntax sets and immutable tokenizer
+    patterns. It does not read mutable binding or derive policies. Exceptions
+    leave no cached success. Source discovery, declaration/import bindings,
+    compiled programs, file hashes and final drift checks are not cached here.
+    """
+    return _checked_item_envelopes(source, proof=proof)
+
+
+def _checked_item_envelopes(source: str, *, proof: bool = False) -> None:
     """Privileged modules cannot hide ordinary unchecked Rust constructors.
 
     Stock Verus intentionally ignores ordinary Rust outside its envelopes.

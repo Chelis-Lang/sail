@@ -178,8 +178,6 @@ Current numbers are in [performance](performance.md).
 - **Verifier wait under amd64 emulation.** Verification sometimes stalls
   under emulation, which is not used for performance or Linux validation
   ([reproduction](../corpus/repros/linux-emulation-verus-stall/)).
-- The configuration selector unit test reads the developer's own Cargo home
-  ([#419](https://github.com/Chelis-Lang/sail/issues/419)).
 
 ## Verus and Z3
 

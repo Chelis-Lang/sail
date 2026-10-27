@@ -12,6 +12,58 @@ This record owns the scope of the
 
 ## Consolidated acceptance-audit bugfix candidate
 
+The separate source-envelope optimization (#534) at `a891b3a0` passes the
+complete native 48-test source suite and fresh 25-case direct Stock refinement
+matrix: query 134 checks/263 functions, inputs 54/91 and authority 174/303.
+All 22 negative controls fail ordinary verification under the unchanged
+120-second deadline, one thread and normal resource limits. The complete
+25 captured programs are byte-identical to parent `b61603bc`. No new model
+mathematics, production Rust, proof source, manifest or runtime is introduced.
+The retained source tests cover all 45 baseline controls plus exact source/proof
+mode separation, spoofed string-subclass refusal and mutable truth values.
+
+On the dedicated native EC2 `c7i.4xlarge` in `us-east-1`, four cold paired runs
+compare the identical complete 25-program capture/validation workload. Each
+sample runs in a fresh process with explicitly empty syntax caches; pair order
+alternates. Git capture, assembly/import checks, full initial/final inventories,
+all complete generated programs and both filesystem drift checks remain active.
+
+| Pair | Order | Parent seconds | Cached seconds |
+|---|---|---:|---:|
+| 1 | Parent, cached | 5.919557 | 5.012783 |
+| 2 | Cached, parent | 6.067294 | 4.920863 |
+| 3 | Parent, cached | 6.035451 | 4.932509 |
+| 4 | Cached, parent | 5.932582 | 4.944062 |
+
+All samples are retained. Median paired cached/parent ratio is 0.825315,
+about 17.47% lower time for this proof-tooling workload. Each cached sample
+records 135 hits and 34 misses in the bounded 128-entry successful-syntax cache.
+This is not a product verification-speed or full source-suite timing claim.
+The full refinement matrix takes 236.775 seconds; the complete qualifier,
+including source tests, all paired runs and final validation, takes 306.734
+seconds. Core image SHA256 is
+`338fdef13e0182ca8433ab65db9f17eabc6500639c36ec527417fdcfb3e33fa1`.
+Final Git source, image and every pinned Stock runtime file are rechecked.
+
+Raw native evidence is preserved by byte-identical authenticated PUT/GET:
+`experiments/2026-10-27/acceptance-envelope-a891b3a0-paired-native.tgz`,
+6,402,364 bytes, SHA256
+`307efa10456a8b70c0b02f00148086bff08f4a1535bf38505bb0d374d7932468`.
+This source-only optimization changes no corpus entry, query generation or
+runtime selection. Historical larger-branch timings are not reused for this cut.
+
+After the cache-core merge `06f0eceb`, the complete source-only comparison at
+`d4499697` reconstructs all 157 current production programs, including every
+registered control. Drivers and every compiled file are byte-identical with
+and without this optimization; both complete inventories and source guards
+pass. The underlying validator's parsed function is identical to the parent's
+after accounting for its private name. All 56 current source tests pass,
+retaining the parent's 53 controls and the three cache-specific tests.
+This comparison makes zero Stock calls. The unchanged compiled programs retain
+the parent's independently audited [cache-core proof qualification](cache-ownership-core.md);
+the original 25-program native timing above remains scoped to that workload.
+No new 157-program timing or whole-head native execution is claimed.
+
 The main-based bugfix extraction changes qualification tooling and fixture
 isolation independently of the broader #378 production refinements. Its
 current implemented scope is:
