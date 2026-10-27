@@ -85,6 +85,18 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+The next lowering pass at `cc98352f` refuses opaque public predicates and
+unsupported mem::replace (#481), with final guards passing and no VC/count
+credit. Public closed projections keep the exact predicates; modeled Option::take
+moves/restores the actual owned parser without an axiom or second buffer.
+Copy now retains exact continuation as well as raw-history correspondence
+(#482), with a nonempty copied-parser witness and whole-copy control. Query
+controls are 190 (429 planned unique cases, 438 four-partition calls); all189
+previous controls/mutations remain, with three full-function descriptors rebound
+to their actual unchanged predicate meaning/transfer. The older 482/837 is still
+historical. The generated Item Clone warning is retained without claiming its
+missing specification or complete public-API correctness.
+
 The first wider outer/owner whole-query attempt at `0ef78997` refuses Stock
 compilation after 1.928 s with six erased expression/index diagnostics (#481).
 Final source/runtime checks pass; no new inventory is locked. Parentheses and

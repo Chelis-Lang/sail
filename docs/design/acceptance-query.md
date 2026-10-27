@@ -265,6 +265,29 @@ before/after contract while keeping its loop and mutation. There are now 189
 query controls, with 115/121 inputs/authority: 428 planned unique cases or 437
 four-partition calls. Actual new positive/function discovery remains pending.
 
+The next pinned Stock compiler pass at `cc98352f` reaches source lowering but
+refuses four public predicates that directly mention opaque fields/private
+helpers and the unsupported `core::mem::replace` call (#481). Public closed
+projections now retain those exact predicates without publishing mutable fields.
+The owned transfer uses the existing modeled `Option::take`: coherent private
+constructors retain Some, the actual parser moves once, and Some is restored
+with its actual continuation. The unreachable None branch retains raw bytes and
+refuses interpretation. No new assumption/specification or copied parser is
+introduced; valid-path emitted/forwarded bytes and hash behavior are unchanged.
+
+Review also found that raw-history preservation alone did not distinguish Idle
+from input Comment across the public clone contract
+([#482](https://github.com/Chelis-Lang/sail/issues/482)). Actual copying was
+correct; no native wrong verdict is demonstrated. Duplicate now retains exact
+transition-view equality, with a real copied-parser nonempty witness and ordinary
+whole-copy Idle→Comment control. All 189 prior controls remain, with the three
+existing full-function descriptors rebound to their identical actual predicate/
+transfer contracts and same mutations. Query controls are now 190: 429 planned
+unique cases or 438 four-partition calls. Fresh whole-root/native/control
+qualification is required. The pinned derived-Item Clone warning is retained in
+the failed raw log; no specification for that generated general-data clone or
+complete public parser API theorem is claimed.
+
 ### Scalar policy-option readback candidate
 
 `query_options.rs` adds a source-shared candidate for the raw `:print-success`

@@ -530,7 +530,7 @@ sail_spec! {
     pub open spec fn item_models(items:Seq<Item>) -> Seq<(ItemKind,int,Seq<u8>)> {
         items.map(|i:int,item:Item| item_model(item))
     }
-    spec fn option_models(item:Option<Item>) -> Seq<(ItemKind,int,Seq<u8>)> {
+    pub open spec fn option_models(item:Option<Item>) -> Seq<(ItemKind,int,Seq<u8>)> {
         match item { Some(item) => seq![item_model(item)],None => seq![] }
     }
     pub open spec fn idle_model(byte:u8,input:bool,position:int) -> ((u8,Seq<u8>,int),Seq<(ItemKind,int,Seq<u8>)>) {
@@ -645,7 +645,7 @@ sail_spec! {
             && item.bytes@ == history.subrange(item.offset as int,item.offset as int + item.bytes@.len())
             && (item.kind is List ==> crate::query::single_list(item.bytes@,input))
     }
-    spec fn optional_original(item: Option<Item>, history: Seq<u8>, input: bool) -> bool {
+    pub open spec fn optional_original(item: Option<Item>, history: Seq<u8>, input: bool) -> bool {
         match item { Some(item) => original_item(item,history,input), None => true }
     }
     spec fn idle_shape(state: SplitState, item: Option<Item>, byte: u8, input: bool, position: u64) -> bool {
@@ -697,11 +697,23 @@ sail_code! {
     impl StreamSplitter {
         sail_impl_spec! {
             pub closed spec fn input_view(&self) -> bool { self.input }
-            pub closed spec fn has_pending_item_spec(&self) -> bool { self.state is Atom || self.state is List }
+            pub open spec fn has_pending_item_spec(&self) -> bool { self.transition_view().0 == 2 || self.transition_view().0 == 3 }
             pub closed spec fn fresh(&self) -> bool { self.state is Idle && self.position_view() == 0 }
             /// Logical projection of the actual owned state, with no
             /// runtime copy and no supplied parse-success flag.
             pub closed spec fn transition_view(&self) -> (u8,Seq<u8>,int) { model(self.state) }
+            pub closed spec fn step_result(&self,after:Self,first:Option<Item>,second:Option<Item>,byte:u8) -> bool {
+                step_shape(self.state,after.state,first,second,byte,self.input,self.position.offset)
+            }
+            pub closed spec fn finish_result(&self,out:Option<Item>) -> bool {
+                match self.state {
+                    SplitState::Atom(atom) => match out { Some(item) => item.kind is Atom
+                        && item.offset == atom.start_view() && item.bytes@ == atom.bytes_view(),None => false },
+                    SplitState::List(frame,start) => match out { Some(item) => item.kind is Stray
+                        && item.offset == start && item.bytes@ == frame.bytes_view(),None => false },
+                    _ => out.is_none(),
+                }
+            }
             pub closed spec fn position_view(&self) -> int { self.position.view() }
             pub closed spec fn matches(&self, history: Seq<u8>) -> bool {
                 state_matches(self.state,self.input,self.position.view(),history)
@@ -723,6 +735,7 @@ sail_code! {
             pub fn duplicate(&self) -> (out: Self)
                 requires (self.well_formed())
                 ensures (out.input_view() == self.input_view(),out.position_view() == self.position_view(),out.well_formed(),
+                    out.transition_view() == self.transition_view(),
                     forall|history:Seq<u8>| self.matches(history) ==> out.matches(history))
             {
                 let state=match &self.state {
@@ -742,10 +755,10 @@ sail_code! {
                     self.position_view() < usize::MAX)
                 ensures (out.0.input_view() == self.input_view(),out.0.position_view() == self.position_view()+1,
                     out.0.well_formed(),
-                    step_shape(self.state,out.0.state,out.1,out.2,byte,self.input,self.position.offset),
-                    model(out.0.state) == model_step(model(self.state),self.input,self.position_view(),byte).0,
+                    self.step_result(out.0,out.1,out.2,byte),
+                    out.0.transition_view() == model_step(self.transition_view(),self.input_view(),self.position_view(),byte).0,
                     option_models(out.1)+option_models(out.2)
-                        == model_step(model(self.state),self.input,self.position_view(),byte).1,
+                        == model_step(self.transition_view(),self.input_view(),self.position_view(),byte).1,
                     forall|history:Seq<u8>| self.matches(history) ==>
                         out.0.matches(history.push(byte))
                         && optional_original(out.1,history.push(byte),self.input_view())
@@ -860,13 +873,7 @@ sail_code! {
             pub fn finish(self) -> (out: Option<Item>)
                 requires (self.well_formed())
                 ensures (out.is_some() == self.has_pending_item_spec(),
-                    match self.state {
-                        SplitState::Atom(atom) => match out { Some(item) => item.kind is Atom
-                            && item.offset == atom.start_view() && item.bytes@ == atom.bytes_view(),None => false },
-                        SplitState::List(frame,start) => match out { Some(item) => item.kind is Stray
-                            && item.offset == start && item.bytes@ == frame.bytes_view(),None => false },
-                        _ => out.is_none(),
-                    },
+                    self.finish_result(out),
                     forall|history:Seq<u8>| self.matches(history) ==>
                     optional_original(out,history,self.input_view()))
             {
@@ -1002,5 +1009,25 @@ sail_verified! {
                 ListStep::Complete(bytes) => (SplitState::Idle,Some(Item { kind:ItemKind::List,offset,bytes }),None),
             },
         }
+    }
+}
+
+sail_verified! {
+    /// A real copied input splitter retains Idle rather than becoming a
+    /// comment parser: the original following atom and closer both emit.
+    pub fn outer_clone_initial_control() -> (passed:bool)
+        requires (true) ensures (passed)
+    {
+        let copied=StreamSplitter::start(true).duplicate();
+        let (first,none,also_none)=copied.step(b'a');
+        if none.is_some() || also_none.is_some() { return false; }
+        let (last,atom,stray)=first.step(b')');
+        let Some(atom)=atom else { return false; };
+        let Some(stray)=stray else { return false; };
+        matches!(atom.kind,ItemKind::Atom) && atom.offset == 0
+            && atom.bytes.len() == 1 && atom.bytes[0] == b'a'
+            && matches!(stray.kind,ItemKind::Stray) && stray.offset == 1
+            && stray.bytes.len() == 1 && stray.bytes[0] == b')'
+            && last.finish().is_none()
     }
 }

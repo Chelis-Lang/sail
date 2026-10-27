@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve exact parser continuation across copying (#482) and express the
+  private owned input transfer with modeled Option::take (#481), retaining raw
+  bytes, ordered items and all existing checks. Qualification remains pending.
+
 - Correct erased outer-stream proof expression grouping and Seq index projections
   (#481), preserving runtime operations and contract meaning. Whole-root
   verification of the wider parser candidate remains pending.
