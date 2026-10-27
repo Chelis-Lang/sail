@@ -18,6 +18,10 @@ The follow-up `668be5f2` refuses Stock compilation because proof-only patterns
 move values later used by executable matches (#469). Borrowed proof patterns
 correct that candidate defect without changing native behavior; no verification
 or control credit is obtained until the complete rerun passes.
+The `8752d3c6` rerun clears that compilation defect and the constructive paths,
+but still refuses the owned append's scan/prefix facts (479 verified/one failed,
+835 entries). Moving the same append through a private checked owned-Vec helper
+preserves its contract and ordinary controls; whole-root qualification remains pending.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

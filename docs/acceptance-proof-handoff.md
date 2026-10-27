@@ -113,6 +113,11 @@ The complete `668be5f2` follow-up stops at three proof-only moved-value compiler
 errors (#469), before verification. Borrowing those inspected values preserves
 the original runtime operations and obligations; a fresh whole root remains
 required, with no credit from either refusal.
+At `8752d3c6`, compilation and constructive witnesses clear, with no resource
+marker; the sole failed function is push's postappend relation (479 verified,
+835 entries). A private owned-Vec helper now performs the same actual append
+behind the unchanged public contract. The byte/comment/full-operation mutants
+retain their intent against that actual helper; a fresh whole root is required.
 
 ## Frozen pre-kernel proof scope and qualification
 
