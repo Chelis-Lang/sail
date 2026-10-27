@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Share the existing provisional presentation override between MCP summaries
+  and API evidence comparisons. Every verdict/establishment combination and
+  the evidence-tier behavior are preserved. The shared borrowed-field/report
+  operations and controls await direct-stock and native qualification; they
+  grant no request or proof authority.
+
 - Add a source candidate that retains original served command/reply bytes in a
   shared replay-comparison controller and joins completion to the same stdout
   owner's original suppression count. Statistics exceptions require a checked
