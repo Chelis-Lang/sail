@@ -4,6 +4,14 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The first captured-worker selector source preflight stops before Stock: four new
+witnesses are outside the existing Verus wrapper
+([#492](https://github.com/Chelis-Lang/sail/issues/492)), and the query manifest
+contains a worker dependency outside its declared component closure (#479).
+The correction keeps all four witnesses inside the checked wrapper and retains
+the actual worker binding in inputs/authority. No source guard, function,
+contract or ordinary control is omitted; fresh qualification remains pending.
+
 The request/domain candidate passes all complete production Stock roots but
 native test compilation at `206c077f` stops on three old-interface uses in the
 noop and runner fixtures ([#489](https://github.com/Chelis-Lang/sail/issues/489)).

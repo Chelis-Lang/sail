@@ -35,8 +35,7 @@
         "crates/sail-smtlib/src/split.rs",
         "crates/sail-smtlib/src/error.rs",
         "crates/sail-session/Cargo.toml",
-        "crates/sail-smtlib/Cargo.toml",
-        "crates/sail-daemon/src/jobs/worker.rs"
+        "crates/sail-smtlib/Cargo.toml"
       ],
       "verified": 471,
       "functions": [
