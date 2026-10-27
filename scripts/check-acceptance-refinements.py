@@ -91,7 +91,7 @@ INPUT_NATIVE_SHA256 = {
     'crates/sail-daemon/src/jobs/product.rs': 'ee923438cae29230e0eef4774655d96c98177abba3d4efa26d58a71b5a986861',
     'crates/sail-daemon/src/jobs/result_cache.rs': '7d63c09a1e623d2204e64f593adc32e1527c04786ca57439aab1e64600680b64',
     'crates/sail-verus/src/managed/command_pipe.rs': 'aaccb4db7cce2648b4a1acdc5da658ea2b53abbcc24956310deac5c7b6e6eb31',
-    'crates/sail-api/src/lib.rs': 'd125499bff460a71d9bfb7410d012fcd32be242ff450544997280d5004050f1c',
+    'crates/sail-api/src/lib.rs': '13b7afa9fbb3f9751e6b72ec620f8eb3ef03f6b07a1d2cd29711ad9159e51485',
     'crates/sail-api/src/stamp.rs': 'fafb1eea946f08ea4a1e534a0b3c634094c862f63eb8b9251b9e76c498d0dda8',
     'crates/sail-verus/src/adapter_verus_channel.rs': '2229526e8081f0d7309a30c4f3acdf04062d19363b6c1152aa98aab44182d421',
     'crates/sail-verus/src/managed/build_environment.rs': 'de6270ac49a38906d99e076ffede26ed9d562e0d4022226254622b4f2d6c34d3',
@@ -310,7 +310,7 @@ def compiled_subset(path: str, content: bytes) -> None:
         return
     if path in INPUT_NATIVE_SHA256:
         require(hashlib.sha256(content).hexdigest() == INPUT_NATIVE_SHA256[path],
-            "native compiler/request/store adapter changed; explicit source/binding review required")
+            "native compiler/request/store adapter changed; explicit source/binding review required: " + path)
         return
     if path in QUERY_NATIVE_SHA256:
         require(hashlib.sha256(content).hexdigest() == QUERY_NATIVE_SHA256[path],

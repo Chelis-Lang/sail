@@ -20,8 +20,15 @@ native source-suite evidence; this combined extension and actual request/domain
 construction still require fresh native source checks and complete-root Stock
 discovery. No function or obligation counts are inferred from the support probe.
 
+The failed `23ccd443` capture attempt is retained at
+`experiments/2026-10-27/acceptance-request-domain-23ccd443-native.tgz`, SHA-256
+`fa07fe39b732e64700ffe0f9aabd7f3acc6e79f69e037bff6caace61a384f7b4`
+(262,182 bytes), with authenticated PUT/GET agreement. Its explicit source bundle
+has base prerequisite `4c43e5a987e757bf514a21eff6fbb5cf55c83a86`.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `23ccd443` request/domain candidate | Native model source guards pass; production source guards run 66 tests with one failure and five errors. Controller stops after 36.687 s; final source-byte, image and pinned runtime checks pass | Three confirmed capture wiring defects (#479): API library's second native binding stayed stale, CLI dependency order disagrees with the declared closure, and the assembly fixture omits the new protected key. All Stock roots, Rust compilation and native request tests are unrun; correction preserves every source/control and adds the real key's public-field negative |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
 | `e36c749b` | Complete native discovery passes query 471/0 (821 functions), inputs 308/0 (538), authority 510/0 (895); every earlier function retained and final source/runtime checks pass | Actual inventories locked for 400 unique planned cases: 397 negatives plus three positives. The 409-call partition schedule remains held for native compile/Clippy clearance; no combined matrix, native completion or service theorem |

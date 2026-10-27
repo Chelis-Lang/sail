@@ -600,12 +600,14 @@ class SourceCaptureTests(unittest.TestCase):
             CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
             "crates/sail-acceptance/src/phase_inputs.rs",
-            "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
+            "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs", CHECKER.REQUEST_ORDER]
         paths += ["crates/" + name + "/Cargo.toml" for name in
             ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         CHECKER.validate_assembly(snapshots)
         for path, before, after in (
+            (CHECKER.REQUEST_ORDER, b"        original: (String, String, String),",
+                b"        pub original: (String, String, String),"),
             ("crates/sail-acceptance/Cargo.toml", b"[lints]", b'[lib]\npath="../../elsewhere.rs"\n\n[lints]'),
             ("crates/sail-api/Cargo.toml", b"[lints]", b'[lib]\npath="alternate.rs"\n\n[lints]'),
             ("Cargo.toml", b'sail-api = { path = "crates/sail-api" }', b'sail-api = { path = "alternate/sail-api" }'),
