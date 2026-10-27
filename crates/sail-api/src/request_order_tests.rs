@@ -1,4 +1,4 @@
-//! Native differential fixtures for the actual request_order operations.
+//! Native differential fixtures for the actual `request_order` operations.
 
 use crate::request_order::OriginalTargetKey;
 use std::collections::BTreeSet;
@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 #[test]
 fn byte_key_order_matches_the_original_native_tuple_order() {
     let tuples: Vec<(String, String, String)> = vec![
-        ("".into(), "".into(), "".into()),
+        (String::new(), String::new(), String::new()),
         ("pkg".into(), "target".into(), "lib".into()),
         ("pkg".into(), "target".into(), "bin".into()),
         ("pkg".into(), "t".into(), "lib".into()),
