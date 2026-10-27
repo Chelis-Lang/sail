@@ -41,7 +41,7 @@
         "crates/sail-daemon/src/writer.rs",
         "crates/sail-daemon/src/server.rs"
       ],
-      "verified": 519,
+      "verified": 521,
       "functions": [
         "check_query::cache_candidate::Accounting::apply",
         "check_query::cache_candidate::Accounting::bytes",
@@ -121,8 +121,10 @@
         "check_query::cache_candidate::WriteArguments::reply_view",
         "check_query::cache_candidate::WriteArguments::solver",
         "check_query::cache_candidate::WriteArguments::solver_view",
+        "check_query::cache_candidate::accounted_order_control",
         "check_query::cache_candidate::accounting_overflow_control",
         "check_query::cache_candidate::accounting_transition_control",
+        "check_query::cache_candidate::apply_accounted_order",
         "check_query::cache_candidate::bound_factory_control",
         "check_query::cache_candidate::complete",
         "check_query::cache_candidate::generation_transition_control",
@@ -3650,7 +3652,7 @@
         "crates/sail-mcp/Cargo.toml",
         "crates/sail-cli/src/managed_cli.rs"
       ],
-      "verified": 520,
+      "verified": 523,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
@@ -3706,6 +3708,8 @@
         "check_authority::acceptance::cargo_duration_only",
         "check_authority::acceptance::cargo_duration_tail",
         "check_authority::acceptance::cargo_footer",
+        "check_authority::acceptance::cargo_footer_boundary",
+        "check_authority::acceptance::cargo_footer_boundary_at",
         "check_authority::acceptance::cargo_footer_prefix",
         "check_authority::acceptance::cargo_footer_with_prefix",
         "check_authority::acceptance::classify_submission_mode",
@@ -3791,6 +3795,7 @@
         "check_authority::acceptance::presentation_value",
         "check_authority::acceptance::presentation_verdict",
         "check_authority::acceptance::provenance_valid",
+        "check_authority::acceptance::render_empty_human_output",
         "check_authority::acceptance::repair_function_at",
         "check_authority::acceptance::repair_function_present",
         "check_authority::acceptance::repair_request_matches",

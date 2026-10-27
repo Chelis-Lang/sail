@@ -96,7 +96,15 @@ protected name counts remain unchanged
 ([#494](https://github.com/Chelis-Lang/sail/issues/494)). Full native SHA binding
 continues to refuse the drift; no complete-gate or false-verdict bypass is shown.
 Exact old-field/variant and sizeof-position checks plus a direct source
-counterexample regression are prepared and unqualified.
+counterexample regression pass the frozen `d6f3d144` production-source suite.
+Full inherited/service qualification remains separate.
+
+Pinned Stock rejects actual native byte-key HashMap remove_entry/get_mut
+([#498](https://github.com/Chelis-Lang/sail/issues/498)). Its whole-file support
+probe stops before verification without a resource failure; no new assumed
+specification or ordinary-negative credit is adopted. The separate supported-API
+and key-model probe is unrun. This is a proof-support gap, not a native HashMap
+bug or complete cache-origin result.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

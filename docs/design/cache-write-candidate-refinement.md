@@ -233,12 +233,17 @@ The next slot-map join must use the actual native key and methods. Pinned
 [hash.rs](https://github.com/verus-lang/verus/blob/7d829946231d6413a398f6e4160cdfe951261dad/source/vstd/std_specs/hash.rs)
 conditions its functional HashMap specifications on `obeys_key_model`; its
 documented primitive/Box axioms do not themselves supply the native byte-array
-key premise. The actual `remove_entry` and `get_mut` calls also need a direct
+key premise. The actual `remove_entry` and `get_mut` calls have a direct
 support check. `proofs/support/cache_candidate_map.rs` stages those exact
 operations over the production shared Slot shape, plus the same key's model
 obligation and a nonempty primitive-key control. It adds no assumed key model,
-replacement ledger or new specification. The probe is unrun; source review is
-not an unsupported-tool result or native cache defect. Primitive u64 comparison
+replacement ledger or new specification. At `d6f3d144` the whole file exits
+before verification because both methods are unsupported
+([#498](https://github.com/Chelis-Lang/sail/issues/498)); it earns no proof/control
+credit and does not determine the separate key-model obligation. The follow-up
+`cache_candidate_map_key.rs` support root uses specified APIs and requests that
+prerequisite independently, without granting it. No native HashMap defect is
+claimed. Primitive u64 comparison
 laws for ordered retirement are already present in pinned
 [laws_cmp.rs](https://github.com/verus-lang/verus/blob/7d829946231d6413a398f6e4160cdfe951261dad/source/vstd/laws_cmp.rs).
 
