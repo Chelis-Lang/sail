@@ -621,3 +621,19 @@ records the partial-frame fixture byte-array lint after all 25 native SMT tests
 pass. Empty-tape/coherence and finite witness VCs remain pending under #371.
 These are candidate proof/style failures, without a demonstrated native false
 verdict. All predicates, assertions and ordinary controls remain required.
+
+
+[#500](https://github.com/Chelis-Lang/sail/issues/500) records the authored
+input-owner fixture's output-line expectation on trailing CR. Actual old
+`4c43e5a9` and current `efd3fb3e` native splitters produce byte-identical traces
+at all boundaries: CR terminates the fourth input atom, with no pending item or
+extra LF emission. The corrected test retains every pending/raw/hash assertion
+on genuinely unterminated `foo` and adds the separate CR/raw/hash case. This is
+a fixture defect, without a demonstrated production parser regression or false
+verdict; focused and full native qualification of the correction remain pending.
+
+[#501](https://github.com/Chelis-Lang/sail/issues/501) records the subsequent
+strict key Clippy refusal of the new CR fixture after all five native prefix
+tests pass. Its correction retains the zero-item assertion as explicit empty
+array equality; this is a test-style failure, without a production parser
+failure or false verdict. Focused rerun and full workspace gates remain pending.

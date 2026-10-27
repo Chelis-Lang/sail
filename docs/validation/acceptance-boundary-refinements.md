@@ -20,6 +20,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `efd3fb3e` coherent production roots and full-gate attempt | Fresh complete Stock roots pass618/1060,308/538,581/1000, all prior functions retained, default resources and final source/runtime/image guards. Source suites12/78 and strict workspace Clippy pass. Native nextest runs1302:1301 pass,1 fail,57 skip | Full gate stops at the new CR input fixture (#500); no full-gate credit. Independent old4c/EFD native traces are identical at all29 boundaries and establish baseline CR input termination. The correction preserves every pending-atom assertion with nonterminated input and adds separate CR/raw/hash coverage; its focused five-test/Clippy receipt is labeled6ef. Remaining gate steps/solver are running independently on unchanged EFD. Raw full attempt SHA256 `400f074a074432418f660e80a3e7a3ff243d1f0b532c85987147962b7ac6ff55`; root GET/raw scope/inventory/resource audit passes |
 | Full request/capture/parser/ordered-cache source union (`869ed6cc` + `419886a2`) | Actual cache accounting now consumes the same real BTreeMap retirement operation. All285 query,115 input and210 authority controls remain mandatory (610 negatives plus three positive roots), with inherited function requirements1060/538/1000. Request/journal/parser/human code remains byte-identical to the lead parent; cache bodies match the reviewed candidate. #494 exact old-layout guards and regression survive | Source integration only; no inferred combined count. The earlier human-factory always-refusing selector retains its checked-context full-wrapper form from68 rather than reverting to the obsolete b94 body. Exact default contracts/guard meaning remain unchanged. Full Stock/source/native/control/differential/cost/service qualification stays open |
 | Captured-request/parser/cache/service source union (`53883f7f` + `f12b23ec`) | Retains exact 278 query,115 input and210 authority controls:603 negatives plus three whole roots. The real consuming selector, RequestCapture/version projection and native worker delegate match the reviewed capture candidate; original dictionary, parser/cache and human replay bodies remain intact. Both parent function inventories and all older schema fields survive | Source integration only. Required floors616/1058,308/538,574/1000 are historical requirements, not observed combined counts. Native journal/path/metadata/launch origin and full service/control/differential acceptance remain open |
 | `53883f7f` original-request integration | Fresh complete direct Stock roots pass616/1058,308/538,574/989 with every prior function retained and final source/runtime/image guards. Raw archive `acceptance-cache-service-53883f7f-positive.tgz`, SHA256 `89ae1b1723e31a3177253c06ecbc9363b803383cfa89372a7f86d11718523db7`; independent GET/hash/rawscope/function/resource audit passes | Whole positives only: no new source-unit/native/ordinary-negative/e2e/conformance/cost or service credit. The journal selector is a later source integration |
@@ -1485,3 +1486,24 @@ SHA-256 `8c1663d1cf99541c3af852fb5ae85edefe3fac7b370ba34c978304c97a8e8b03`,
 nested SHA/size checks pass; independent lead GET/raw audit remains pending.
 The indexed originals include both full lexical/output positives and native
 gates, all intervening refusals and the bounded five-pair scheduling stop.
+
+
+- `efd3fb3e`, 2026-10-27: native workspace reports 1,302 run/1,301 passed/1 failed/
+  57 skipped; sole failure is the input-owner fixture's three-item expectation
+  on a CR-terminated fourth atom (#500), not a demonstrated parser regression.
+  A separately rebuilt native old/current probe (`4c43e5a9`/`efd3fb3e`) confirms
+  byte-identical 29-row traces: all 15 CR boundaries emit four/no pending/LF no
+  extra; all 14 genuinely unterminated boundaries emit three/pending `foo`, then
+  LF emits one. Exact source/image/commands/rebuild/final-source checks are in
+  `acceptance-input-cr-native-baseline-probe.tgz`, 5,894 bytes, SHA-256
+  `d0888b546099f4dc4d544a0eeec996bede57850d2acb5222145c31b78f29a7be`.
+  Upload/independent lead audit and corrected focused/full native gates remain
+  pending. The code-associated correction preserves every old assertion and
+  adds CR coverage; all production bodies, captures and proof controls stay fixed.
+
+- `90d70f80`, 2026-10-27: actual clean/recompile of acceptance, SMT and key crates;
+  all five `prefix_framing` tests pass, zero skipped. Strict key Clippy then
+  refuses only the new CR fixture's `assert_is_empty` spelling (#501). Exact
+  source/image/final-source checks pass. The local correction uses diagnostic
+  empty-array equality for the same zero-item assertion; focused native rerun
+  and full workspace/solver qualification remain pending.
