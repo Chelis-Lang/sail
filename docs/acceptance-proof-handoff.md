@@ -236,6 +236,18 @@ framing decision is renumbered to 0084.
 
 ## Resume and acceptance
 
+The scalar-option source candidate adds `query_options.rs` to the actual query
+driver, preserving every earlier function and all 115 inherited controls and
+appending 19 controls. Native Session and SMT parser helpers are separately
+hash-bound native source, never promoted to stock-compiled bodies. Whole-root
+positive discovery must replace the intentionally retained old query count and
+function inventory with actual verifier output before qualification. Then run
+every old and new ordinary control, the native lexer/Session bridge tests and
+full raw-output conformance. Inputs/authority proof bodies, expected counts,
+function lists and 115/107 controls remain unchanged. See the
+[raw option/readback boundary](design/acceptance-query.md#scalar-policy-option-readback-candidate)
+for concrete syntax and unresolved pinned-solver interpretation premises.
+
 The merged transport uses a dedicated remove-only configuration interface for
 the outer Cargo command and the owned compiler builder. The ordinary Cargo
 alias needs that operation in production; the broader mutable standard-command

@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Add a source candidate that validates scalar `:print-success` and `:rlimit`
+  values from original SMT commands and retains their bytes across commands and
+  resets, comparing actual Session readback before policy use and after every
+  transition. Unsupported sensitive values or a mismatch use live fallback.
+  Direct-stock proofs, native qualification and pinned-solver option semantics
+  remain pending; forwarded bytes and raw cache keys are unchanged.
+
 - Refuse incompatible proof receipts and contexts from the two integration
   lineages. The combined contract records both original producer history and
   the observed compiler environment and ghost-only file declarations under

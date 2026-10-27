@@ -151,6 +151,62 @@ these admission validators do not prove that every actual solver stream or
 command is observed. An independent launch inventory and a complete concrete
 stream history are required for that service-level refinement.
 
+### Scalar policy-option readback candidate
+
+`query_options.rs` adds a source-shared candidate for the raw `:print-success`
+and `:rlimit` state used by `cached::observe`. A native lexer supplies candidate
+head, keyword and value intervals. The shared operation validates them against
+the complete original command: exact `set-option` head, a complete colon-led
+keyword, ordered intervals, complete whitespace/comment gaps, one nonempty
+bare scalar value and only complete trivia before the final close. It copies
+the original value bytes, including numeral spelling, without normalization.
+Strings, quoted symbols, compound values, omitted values and trailing
+arguments for these two keys refuse cache interpretation. Unrelated options
+retain the two tracked values; their compound values are still supported by
+the existing native Session. Forwarded input, raw keys and live fallback use
+the original bytes in every case.
+
+Private `OptionState` retains those raw values through every accepted command.
+The full original bare head determines whether a transition updates one key,
+clears both at `reset`, or preserves both, including `reset-assertions`.
+`ObservedSession::apply` passes the actual post-apply
+`Session::option` readbacks to that transition. A mismatch permanently refuses
+the state. `observe` also compares the actual map to the retained state before
+using `expects_output` or reading the effort limit. Ordinary-command
+preservation is checked against real readback each time; it is not an assumed
+property of native Session. The constructor's absent values describe the native
+map; the first use also checks that actual map.
+
+| Source | Concrete responsibility and remaining boundary |
+|---|---|
+| `sail-smtlib` `command.rs`, `lex.rs`, `split.rs` | Propose head/kind/value intervals and command/response items. Full stream-emission inventory, command arity/type semantics and classification remain native obligations. |
+| `sail-session/src/lib.rs` | Applies the native option map, resets and output policy. This candidate checks its two actual readbacks against raw transitions; the rest of Session remains unproved. |
+| `query.rs`, `query_policy.rs`, `query_options.rs` | Check whole command framing, bare head, default head policy and the two raw scalar-option transitions. The new option component still needs direct-stock qualification. |
+| `sail-shim/src/cached.rs` | Supplies original command bytes and actual Session readback, preserves forwarding, and crosschecks native head/output policy. This caller is hash-bound native source, not a stock-compiled body. |
+| `query_output`, `query_output_owner`, `query_checkpoints` | Check response framing/coverage, owner/ordinal and original acknowledged-input checkpoints. They do not establish SMT command or option semantics. |
+
+The theorem concerns raw bytes and native map readback. It does not establish
+that pinned Z3 interprets these two map keys as the policy assumes. Initial
+solver defaults, process arguments, aliases, other options and reset behavior
+can affect solver output without changing these two map keys. Successful
+command semantics, the existing native `u64` rlimit conversion and its relation
+to actual solver effort also remain separate obligations under #371. No
+all-command or all-option completeness premise is introduced.
+
+The capture adds the option source plus eight native Session/parser/assembly
+bindings; those native files are explicitly excluded from checked bodies.
+All 115 inherited query controls remain, followed by 19 ordinary option
+controls, including whole-transition refusal, swapped/omitted fields, trailing
+data, readback mismatch, reset and persistence. A concrete nonempty history
+exercises both updates, ordinary input, reset-assertions and reset. Four native
+tests exercise the real lexer/Session bridge and refusal paths. These tests and
+the new positive/negative proofs are source candidates, not executed evidence.
+The old 431-obligation/759-function query inventory is intentionally retained
+until whole-positive discovery supplies the actual expanded inventory; it
+cannot qualify the changed driver. Inputs/authority bodies and their
+308/498 inventories and 115/107 controls are unchanged. Native compilation,
+solver tests, full differential checks and cost qualification remain pending.
+
 Trailing EOF input must be only whitespace or line comments, or caching is
 refused. A valid explicit exit retains its existing logical completion and
 exact ignored-suffix behavior. The tests compare actual prefix and silence keys

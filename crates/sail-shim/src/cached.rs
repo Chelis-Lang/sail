@@ -24,9 +24,71 @@ use sail_acceptance::query::{
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
 use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
-use sail_session::Session;
+use sail_session::Session as NativeSession;
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
+
+/// Native Session plus independently retained raw policy-option bytes.
+/// Map readback agreement does not prove the pinned solver's option semantics.
+struct ObservedSession {
+    native: NativeSession,
+    options: sail_acceptance::query_options::OptionState,
+}
+
+impl ObservedSession {
+    fn new() -> Self {
+        Self {
+            native: NativeSession::new(),
+            options: sail_acceptance::query_options::OptionState::new(),
+        }
+    }
+
+    fn option(&self, keyword: &[u8]) -> Option<&[u8]> {
+        self.native.option(keyword)
+    }
+
+    fn readback_matches(&self) -> bool {
+        self.options.matches(
+            self.native.option(b":print-success"),
+            self.native.option(b":rlimit"),
+        )
+    }
+
+    fn expects_output(&self, command: &[u8]) -> Output {
+        self.native.expects_output(command)
+    }
+
+    fn apply(&mut self, command: &[u8]) -> bool {
+        let spans = option_spans(command);
+        self.native.apply(command);
+        self.options.advance(
+            command,
+            spans,
+            self.native.option(b":print-success"),
+            self.native.option(b":rlimit"),
+        )
+    }
+}
+
+/// Lexer offsets are candidates only; the shared operation checks original bytes.
+fn option_spans(command: &[u8]) -> Option<sail_acceptance::query_options::OptionSpans> {
+    let mut lexer = sail_smtlib::lex::Lexer::new(command);
+    let _open = lexer.next()?.ok()?;
+    let head = lexer.next()?.ok()?;
+    if command.get(head.start..head.end)? != b"set-option" {
+        return None;
+    }
+    let keyword = lexer.next()?.ok()?;
+    let value = lexer.next()?.ok()?;
+    Some(sail_acceptance::query_options::OptionSpans {
+        head_start: head.start,
+        head_end: head.end,
+        keyword_start: keyword.start,
+        keyword_end: keyword.end,
+        value_start: value.start,
+        value_end: value.end,
+    })
+}
 
 /// A strongly retained allocation minted only beside the actual child/pipe
 /// extraction below; PID and equal stream values cannot substitute for it.
@@ -1077,10 +1139,15 @@ fn connect(socket: &Path, solver: &Path) -> Option<(Client, SessionPrefix)> {
 }
 
 fn observe(
-    session: &mut Session,
+    session: &mut ObservedSession,
     item: &Item,
     prefix: &mut SessionPrefix,
 ) -> (Output, String, Expect) {
+    // A prior native mutation cannot silently change the next command's policy.
+    if !session.readback_matches() {
+        prefix.refuse();
+        return (Output::Unknown, String::new(), Expect::Stop);
+    }
     // The splitter proposes an interval. Exact bytes, monotonicity and complete
     // inter-item trivia are checked before the proposal can drive a cache key.
     let Some(offset) = usize::try_from(item.offset).ok() else {
@@ -1107,7 +1174,10 @@ fn observe(
     } else {
         Output::Unknown
     };
-    session.apply(&item.bytes);
+    if !session.apply(&item.bytes) {
+        prefix.refuse();
+        return (Output::Unknown, String::new(), Expect::Stop);
+    }
     // print-success changes the option command's own output as well as later
     // replies. Its non-default protocol always replays live, without recording.
     if session
@@ -1275,7 +1345,7 @@ impl<'a> ReplayCheck<'a> {
 )]
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
     let (client, mut prefix) = connect(socket, solver)?;
-    let mut session = Session::new();
+    let mut session = ObservedSession::new();
     let mut splitter = CommandSplitter::new();
     let mut served = Served::default();
     let mut solving: Option<Solving> = None;
@@ -1567,15 +1637,100 @@ mod tests {
     }
 
     #[test]
+    fn scalar_option_history_matches_actual_session_readback() {
+        assert!(sail_acceptance::query_options::scalar_option_control());
+        let mut session = super::ObservedSession::new();
+        for command in [
+            &b"(set-option ;head\r\n :print-success ;key\n false)"[..],
+            &b"(set-option :rlimit 00010)"[..],
+            &b"(set-option :unrelated (a b))"[..],
+            &b"(assert true)"[..],
+            &b"(push 1)"[..],
+            &b"(pop 1)"[..],
+            &b"(reset-assertions)"[..],
+            &b"(check-sat)"[..],
+        ] {
+            assert!(session.apply(command));
+            assert!(session.readback_matches());
+        }
+        assert_eq!(session.option(b":print-success"), Some(&b"false"[..]));
+        assert_eq!(session.option(b":rlimit"), Some(&b"00010"[..]));
+        assert!(session.apply(b"(reset)"));
+        assert_eq!(session.option(b":print-success"), None);
+        assert_eq!(session.option(b":rlimit"), None);
+    }
+
+    #[test]
+    fn sensitive_option_projection_refuses_omission_trailing_and_compound_values() {
+        for command in [
+            &b"(set-option :rlimit)"[..],
+            &b"(set-option :rlimit 10 20)"[..],
+            &b"(set-option :rlimit (10))"[..],
+            &b"(set-option :print-success \"false\")"[..],
+            &b"(set-option :print-success |false|)"[..],
+        ] {
+            let mut session = super::ObservedSession::new();
+            assert!(!session.apply(command));
+            assert!(!session.apply(b"(reset)"));
+            assert!(!session.readback_matches());
+        }
+    }
+
+    #[test]
+    fn scalar_option_witness_cannot_swap_keyword_and_value_or_truncate_either() {
+        let command = b"(set-option :rlimit 10)";
+        let Some(original) = super::option_spans(command) else {
+            unreachable!("literal set-option supplies candidate intervals");
+        };
+        let mut swapped = original;
+        swapped.keyword_start = original.value_start;
+        swapped.keyword_end = original.value_end;
+        swapped.value_start = original.keyword_start;
+        swapped.value_end = original.keyword_end;
+        let mut omitted_keyword = original;
+        omitted_keyword.keyword_end -= 1;
+        let mut omitted_value = original;
+        omitted_value.value_end -= 1;
+        for spans in [swapped, omitted_keyword, omitted_value] {
+            let mut state = sail_acceptance::query_options::OptionState::new();
+            assert!(!state.advance(command, Some(spans), None, Some(b"10")));
+            assert!(!state.matches(None, Some(b"10")));
+        }
+    }
+
+    #[test]
+    fn native_option_mutation_cannot_change_later_policy_without_checked_transition() {
+        let mut session = super::ObservedSession::new();
+        assert!(session.apply(b"(set-option :print-success false)"));
+        assert!(session.apply(b"(set-option :rlimit 10)"));
+        session.native.apply(b"(set-option :rlimit 20)");
+        let mut prefix = super::SessionPrefix::new(&identity(), &super::Mode::Default);
+        let bytes = b"(check-sat)";
+        prefix.append(bytes);
+        let item = super::Item {
+            kind: super::ItemKind::List,
+            offset: 0,
+            bytes: bytes.to_vec(),
+        };
+        let (policy, _, expectation) = super::observe(&mut session, &item, &mut prefix);
+        assert_eq!(policy, super::Output::Unknown);
+        assert!(matches!(expectation, super::Expect::Stop));
+        let mut state = sail_acceptance::query_options::OptionState::new();
+        let command = b"(set-option :rlimit 10)";
+        assert!(!state.advance(command, super::option_spans(command), None, Some(b"20")));
+        assert!(!state.advance(b"(reset)", None, None, None));
+    }
+
+    #[test]
     fn checked_raw_prefixes_preserve_existing_keys_and_replay_bytes() {
-        use super::{CommandSplitter, Mode, Session, SessionPrefix, observe};
+        use super::{CommandSplitter, Mode, ObservedSession, SessionPrefix, observe};
         use sail_key::PrefixHasher;
         let input = b" ;head\r\n(set-option :print-success false)\n(echo \"a;()\")\t;gap\n(check-sat)\n;tail";
         for width in [1, 3, 17, input.len()] {
             for mode in [Mode::Default, Mode::OptIn("test-mode".to_owned())] {
                 let mut parser = CommandSplitter::new();
                 let mut prefix = SessionPrefix::new(&identity(), &mode);
-                let mut session = Session::new();
+                let mut session = ObservedSession::new();
                 let mut items = Vec::new();
                 for chunk in input.chunks(width) {
                     prefix.append(chunk);
@@ -1604,7 +1759,7 @@ mod tests {
 
     #[test]
     fn output_expectations_use_the_exact_checked_frame_head() {
-        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        use super::{Item, ItemKind, ObservedSession, Output, SessionPrefix, observe};
         for (command, expected) in [
             (b"( ;head\r\ncheck-sat-using smt)".as_slice(), Output::One),
             (
@@ -1625,7 +1780,7 @@ mod tests {
                 offset: 0,
                 bytes: command.to_vec(),
             };
-            let (actual, _, metadata) = observe(&mut Session::new(), &item, &mut prefix);
+            let (actual, _, metadata) = observe(&mut ObservedSession::new(), &item, &mut prefix);
             assert_eq!(actual, expected);
             assert_eq!(prefix.bytes(), command);
             if expected == Output::One {
@@ -1648,7 +1803,7 @@ mod tests {
 
     #[test]
     fn wrong_missing_or_overlapping_parser_items_disable_only_cache_interpretation() {
-        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        use super::{Item, ItemKind, ObservedSession, Output, SessionPrefix, observe};
         use sail_acceptance::query::RawTranscript;
         let first = b"(set-option :print-success false)\n";
         let input = [first.as_slice(), b"(check-sat)"].concat();
@@ -1671,7 +1826,7 @@ mod tests {
         ] {
             let mut prefix = SessionPrefix::new(&identity(), &super::Mode::Default);
             prefix.append(&input);
-            let mut session = Session::new();
+            let mut session = ObservedSession::new();
             let (output, name, expectation) = observe(&mut session, &item, &mut prefix);
             assert_eq!(output, Output::Unknown);
             assert_eq!(name, "");
@@ -1729,7 +1884,7 @@ mod tests {
 
     #[test]
     fn framing_refuses_quoted_heads_partial_forms_and_coalesced_replies() {
-        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        use super::{Item, ItemKind, ObservedSession, Output, SessionPrefix, observe};
         for bytes in [
             b"(check-sat)(check-sat)".as_slice(),
             b"(|check-sat|)",
@@ -1743,7 +1898,7 @@ mod tests {
                 offset: 0,
                 bytes: bytes.to_vec(),
             };
-            let (output, name, expected) = observe(&mut Session::new(), &item, &mut prefix);
+            let (output, name, expected) = observe(&mut ObservedSession::new(), &item, &mut prefix);
             assert_eq!(output, Output::Unknown);
             assert_eq!(name, "");
             assert!(matches!(expected, Expect::Stop));
@@ -1917,7 +2072,7 @@ mod tests {
         if splitter.finish().is_some() {
             return Err("complete original parser input");
         }
-        let mut session = super::Session::new();
+        let mut session = super::ObservedSession::new();
         let mut expectations = Vec::new();
         for item in items {
             match super::observe(&mut session, &item, &mut prefix) {

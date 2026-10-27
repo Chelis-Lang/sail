@@ -93,6 +93,46 @@ class SourceLexerTests(unittest.TestCase):
 class SourceCaptureTests(unittest.TestCase):
     """Mistaken source/representation selection cannot become proof evidence."""
 
+    def test_option_state_is_checked_but_native_parser_and_session_are_only_bound(self):
+        helpers = {
+            "crates/sail-session/src/lib.rs", "crates/sail-session/Cargo.toml",
+            "crates/sail-smtlib/Cargo.toml",
+            *{"crates/sail-smtlib/src/" + stem + ".rs" for stem in
+                ("lib", "command", "lex", "split", "error")},
+        }
+        entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),
+            "source": "proofs/refinement/query.rs"}
+        roles = CHECKER.source_roles(entry)
+        self.assertIn(CHECKER.OPTIONS_CORE, roles["checked_source"])
+        self.assertTrue(helpers <= set(roles["reviewed_query_io"]))
+        self.assertFalse(helpers & set(roles["checked_source"]))
+        snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+        _, _, files = CHECKER.captured_driver(entry, snapshots)
+        self.assertIn("core_query_options.rs", files)
+        for stem in ("lib", "command", "lex", "split", "error"):
+            self.assertNotIn(stem + ".rs", files)
+        for path in helpers:
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, snapshots[path] + b"\n// drift\n")
+
+    def test_option_state_has_no_unchecked_public_or_derived_constructor(self):
+        paths = {path for component in CHECKER.COMPONENTS
+            for path in CHECKER.dependency_paths(component)}
+        paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs",
+            "crates/sail-acceptance/Cargo.toml", "crates/sail-api/src/lib.rs"])
+        paths.update("crates/" + name + "/Cargo.toml" for name in
+            ("sail-api", "sail-key", "sail-cache", "sail-shim", "sail-verus", "sail-daemon"))
+        original = {path: (ROOT / path).read_bytes() for path in paths}
+        for before, after in (
+            (b"        active: bool,", b"        pub active: bool,"),
+            (b"    pub struct OptionState {", b"    #[derive(Default)]\n    pub struct OptionState {"),
+        ):
+            snapshots = dict(original)
+            self.assertEqual(snapshots[CHECKER.OPTIONS_CORE].count(before), 1)
+            snapshots[CHECKER.OPTIONS_CORE] = snapshots[CHECKER.OPTIONS_CORE].replace(before, after)
+            with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
+                CHECKER.validate_assembly(snapshots)
+
     def test_report_does_not_promote_bound_input_adapters_to_proved_bodies(self):
         for component, definition in CHECKER.COMPONENTS.items():
             entry = {"dependencies": CHECKER.dependency_paths(component)}
@@ -519,13 +559,13 @@ class SourceCaptureTests(unittest.TestCase):
     def test_owned_query_modules_keep_actual_imports_and_checked_constructors(self):
         for path in ("crates/sail-acceptance/src/query_prefix.rs",
                 "crates/sail-acceptance/src/query_policy.rs",
-                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.KEY_FACTORY):
+                "crates/sail-acceptance/src/phase_inputs.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             CHECKER.compiled_subset(path, original)
             for addition in (b"\nuse hidden::*;", b"\n#[cfg(sail_verus)] use hidden::*;"):
                 with self.subTest(path=path, addition=addition), self.assertRaises(CHECKER.Refusal):
                     CHECKER.compiled_subset(path, original + addition)
-        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.KEY_FACTORY):
+        for path in ("crates/sail-acceptance/src/query_prefix.rs", CHECKER.OUTPUT_OWNER_CORE, CHECKER.HOLDING_CORE, CHECKER.CHECKPOINT_CORE, CHECKER.OPTIONS_CORE, CHECKER.KEY_FACTORY):
             original = (ROOT / path).read_bytes()
             with self.subTest(path=path), self.assertRaises(SOURCE.SourceRefusal):
                 CHECKER.compiled_subset(path, original + b"\npub fn unchecked_factory() -> bool { true }")
