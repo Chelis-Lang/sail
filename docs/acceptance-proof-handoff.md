@@ -114,8 +114,8 @@ The actual dependency graph check and all six selected layering unit tests
 also pass at `e6e0e67a`; ADR 0086 remains proposed, with no runtime selection.
 The next bounded queue is the ten new controls plus corrected 151, each with the entire query
 positive root and its ordinary negative; all 171 remain required for the later
-coherent bridge matrix. The loop-annotation source-guard recurrence remains
-tracked under #468 and is not used by these executable edits.
+coherent bridge matrix. The root-qualified `9099f673` loop-annotation correction
+is included; all eleven executable edits pass its stricter source guard.
 The first whole query run at `48f09fa7` refuses: 477 verified/three failed
 functions across all 835 entries, with an additional resource-limit marker.
 Final source/runtime checks pass. No inventory is locked from that refusal.

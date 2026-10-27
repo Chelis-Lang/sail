@@ -95,9 +95,10 @@ is granted before their entire-root ordinary failures. Actual query inventory
 is locked only from the successful `a182c1e4` report: 482/837, retaining every old
 function. Input/authority inventories remain historical and unchanged. The
 assembled driver and 20 compiled file hashes match that report; the remaining
-kernel file differs only by the three reviewed native annotations. Loop-only
-invariant/decreases selector acceptance is a separate source-reproduced #468
-recurrence owned by the lead; it is not used by these eleven runtime edits.
+kernel file differs only by the three reviewed native annotations. The
+source-reproduced #468 loop-contract recurrence is corrected by the included
+root-qualified `9099f673` delta; loop contracts remain identical under mutation.
+All ten new controls and corrected 151 also pass that stricter source guard.
 
 The successful parser positive is retained as
 `experiments/2026-10-27/acceptance-parser-a182c1-positive-native.tgz`, SHA-256
