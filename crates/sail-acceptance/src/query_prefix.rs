@@ -27,6 +27,7 @@ sail_code! {
     pub struct QueryPrefix<Host> {
         raw: RawTranscript,
         prefix: Prefix<Host>,
+        splitter: crate::query_split::StreamSplitter,
     }
 }
 
@@ -152,6 +153,7 @@ sail_code! {
             pub closed spec fn active(&self) -> bool { self.raw.active() && self.prefix.exact() }
             pub closed spec fn coherent(&self) -> bool {
                 self.fed() <= self.view().len() && self.prefix.exact() && self.prefix.length() == self.fed()
+                    && self.splitter.input_view() && self.splitter.matches(self.view())
             }
             pub open spec fn matches(&self, binding: (Seq<u8>, Seq<u8>, Seq<u8>, Seq<u8>, Option<Seq<u8>>)) -> bool {
                 self.coherent() && self.material() == crate::key_prefix::header(binding.0,binding.1,binding.2,binding.3,binding.4)
@@ -166,7 +168,7 @@ sail_code! {
                     out.material() == prefix.material(),
                     forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
                         prefix.material() == crate::key_prefix::header(binding.0,binding.1,binding.2,binding.3,binding.4) ==> out.matches(binding))
-            { Self { raw: RawTranscript::empty(), prefix } }
+            { Self { raw: RawTranscript::empty(), prefix, splitter:crate::query_split::StreamSplitter::start(true) } }
         }
         sail_method! {
             /// Appends every original byte without granting any command/key interpretation.
@@ -178,11 +180,41 @@ sail_code! {
                     forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
                         old(self).matches(binding) ==> final(self).matches(binding))
             {
+                let _items=self.append_items(bytes);
+            }
+        }
+        sail_method! {
+            /// Appends actual raw bytes and runs their owned command splitter
+            /// in the same operation. Items refer to this transcript, without
+            /// a separately supplied history, origin flag or copied raw tape.
+            pub fn append_items(&mut self, bytes: &[u8]) -> (out: Vec<crate::query_split::Item>)
+                requires (old(self).coherent())
+                ensures (final(self).coherent(),final(self).active() == old(self).active(),
+                    final(self).view() == old(self).view()+bytes@,final(self).fed() == old(self).fed(),
+                    final(self).material() == old(self).material(),
+                    forall|i:int| 0 <= i < out@.len() ==>
+                        crate::query_split::original_item(out@[i],final(self).view(),true),
+                    forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
+                        old(self).matches(binding) ==> final(self).matches(binding))
+            {
                 self.raw.append(bytes);
+                let _retained_len=self.raw.bytes().len();
+                let splitter=std::mem::replace(&mut self.splitter,crate::query_split::StreamSplitter::start(true));
+                let (next,items)=splitter.push_items(bytes,Vec::new());
+                self.splitter=next;
                 sail_proof! {
                     assert(self.view().take(self.fed() as int) =~= old(self).view().take(old(self).fed() as int));
                 }
+                items
             }
+        }
+        sail_method! {
+            /// The original incomplete-trailing-item test on this same owned
+            /// input stream. It grants no physical read or EOF authority.
+            pub fn has_pending_item(&self) -> (out: bool)
+                requires (self.coherent())
+                ensures (out == self.splitter.has_pending_item_spec())
+            { self.splitter.has_pending_item() }
         }
         sail_method! {
             /// Exposes only this owner's exact replay bytes.

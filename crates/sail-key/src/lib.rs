@@ -349,6 +349,17 @@ impl SessionPrefix {
     pub fn append(&mut self, bytes: &[u8]) {
         self.session.append(bytes);
     }
+    /// Appends received input and returns the same owned stream's exact
+    /// command items, with offsets checked against its actual raw transcript.
+    pub fn append_items(&mut self, bytes: &[u8]) -> Vec<sail_acceptance::query_split::Item> {
+        self.session.append_items(bytes)
+    }
+    /// Whether the same owned input parser retains an unfinished atom or list.
+    /// This read-only test does not assert physical EOF.
+    #[must_use]
+    pub fn has_pending_item(&self) -> bool {
+        self.session.has_pending_item()
+    }
     /// Interprets only an exact command interval of this owner's bytes.
     pub fn command<'a, 'b>(
         &'b mut self,
