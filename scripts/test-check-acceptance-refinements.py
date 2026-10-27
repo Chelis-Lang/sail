@@ -101,8 +101,10 @@ class SourceCaptureTests(unittest.TestCase):
         self.assertEqual(files["core_query_split.rs"], snapshots[CHECKER.SPLIT_CORE])
         self.assertIn(CHECKER.SPLIT_CORE, CHECKER.source_roles(entry)["checked_source"])
         for path, before, after in (
-            ("crates/sail-smtlib/src/split.rs", b"frame.push_chunk(&data[cursor..])", b"frame.push_chunk(&data[..])"),
-            ("crates/sail-smtlib/src/split.rs", b"bytes: frame.finish(),", b"bytes: Vec::new(),"),
+            ("crates/sail-smtlib/src/split.rs",
+                b"let current = std::mem::replace(&mut self.0, StreamSplitter::start(true));\n        let (next, items) = current.push_items(data, std::mem::take(out));",
+                b"let current = std::mem::replace(&mut self.0, StreamSplitter::start(true));\n        let (next, items) = current.push_items(&[], std::mem::take(out));"),
+            ("crates/sail-smtlib/src/split.rs", b"self.0.finish()\n    }\n}\n\n/// Splits solver output", b"None\n    }\n}\n\n/// Splits solver output"),
             ("crates/sail-smtlib/src/lex.rs", b"sail_acceptance::query::delimiter(b)", b"false"),
             ("crates/sail-smtlib/Cargo.toml", b"sail-acceptance.workspace = true", b"sail-acceptance = { path = \"../alternate\" }"),
         ):
