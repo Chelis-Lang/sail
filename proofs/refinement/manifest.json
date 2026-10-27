@@ -5126,6 +5126,12 @@
           "source": "crates/sail-api/src/request_targets.rs",
           "before": "    {\n        let targets = match project_original_targets(source) {\n            Some(targets) => targets,\n            None => return None,\n        };\n        Some(construct_resolved_request(RequestConstruction {\n            run_id: header.run_id,\n            invocation: header.invocation,\n            workspace: header.workspace,\n            context: header.context,\n            revision: header.revision,\n            arguments: header.arguments,\n            engine: header.engine,\n            function: header.function,\n            repair_package: header.repair_package,\n            repair_target: header.repair_target,\n            repair_kind: header.repair_kind,\n            targets,\n        }))\n    }",
           "after": "    {\n        let targets = match project_original_targets(source) {\n            Some(targets) => targets,\n            None => return None,\n        };\n        let _ = construct_resolved_request(RequestConstruction {\n            run_id: header.run_id,\n            invocation: header.invocation,\n            workspace: header.workspace,\n            context: header.context,\n            revision: header.revision,\n            arguments: header.arguments,\n            engine: header.engine,\n            function: header.function,\n            repair_package: header.repair_package,\n            repair_target: header.repair_target,\n            repair_kind: header.repair_kind,\n            targets,\n        });\n        None\n    }"
+        },
+        {
+          "name": "request-engine-fixed-name",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "name: \"interactive\".to_owned(), manifest_sha256: manifest.clone()",
+          "after": "name: \"changed\".to_owned(), manifest_sha256: manifest.clone()"
         }
       ]
     }

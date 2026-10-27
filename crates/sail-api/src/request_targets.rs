@@ -91,11 +91,21 @@ sail_spec! {
     {
         original_target_key_order_is_lawful();
         broadcast use vstd::laws_cmp::lemma_ref_obeys_cmp_spec;
+        broadcast use vstd::std_specs::btree::axiom_increasing_seq_meaning;
         assert(vstd::laws_cmp::obeys_cmp::<&OriginalTargetKey>());
         assert forall |i: int, j: int| 0 <= i < j < keys.len() implies
             crate::request_order::key_order(&*keys[i], &*keys[j]) == std::cmp::Ordering::Less by {
             assert(keys[i].cmp_spec(&keys[j]) == std::cmp::Ordering::Less);
         }
+    }
+
+    /// Frames the real row-vector push through its exact key projection.
+    pub proof fn projected_key_push(targets: Seq<RequestTarget>, target: RequestTarget)
+        ensures projected_keys(targets.push(target)) == projected_keys(targets).push(
+            crate::request_order::original_key_value((target.package_id, target.target, target.kind))),
+    {
+        assert(projected_keys(targets.push(target)) =~= projected_keys(targets).push(
+            crate::request_order::original_key_value((target.package_id, target.target, target.kind))));
     }
 }
 
@@ -161,6 +171,7 @@ sail_verified! {
                     Some(target) => target,
                     None => return None,
                 };
+                sail_proof! { projected_key_push(targets@, target); }
                 targets.push(target);
             }
         }
@@ -179,6 +190,7 @@ sail_verified! {
         ensures(request.is_some(), request.is_some() ==> {
             let resolved = request.unwrap();
             original_header_matches(&header, &resolved)
+                && resolved.args@ == header.arguments@
                 && resolved.targets.len() == source@.len()
                 && projected_keys(resolved.targets@).to_set() == source@
                 && projected_keys(resolved.targets@).no_duplicates()
