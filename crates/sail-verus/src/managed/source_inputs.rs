@@ -408,6 +408,10 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<(Vec
     update_with_history(path, artifacts, data, false, true)
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep declaration coverage, prior-unit retention and the persisted inventory in one unchanged update"
+)]
 pub(super) fn update_with_history(
     path: &Path,
     artifacts: &Path,

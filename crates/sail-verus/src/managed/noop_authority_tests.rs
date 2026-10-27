@@ -4,6 +4,7 @@
 use super::*;
 use crate::managed::{files, receipts};
 use sail_api::project::{Currentness, Execution, TargetResult};
+use sail_api::stamp::SETTLED;
 
 struct Fixture {
     root: PathBuf,

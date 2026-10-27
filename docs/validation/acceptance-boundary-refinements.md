@@ -10,6 +10,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 | Frozen source | Actual result | Limits |
 |---|---|---|
 | `720e461e` | Lossless-conversion follow-up repeats all three complete positives at the exact locked sets: 471/821, 308/538 and 502/883, with final source/runtime checks | The component-sequenced partition matrix is running; no complete-control union, native workspace, conformance or service result yet |
+| `720e461e` native workspace | 2026-10-27: unchanged native gate exits 101 after 248.95 s at two fixture compile errors (#459, #460), three style-limit diagnostics and one unused import; final source/image checks pass | Native tests and solver are unrun. The source correction imports the actual settle constant, retains the fixture's supplied empty declared-environment domain and original assertions, and adds narrow style allowances; fresh qualification remains required |
 | `e57f065f` | Complete combined native positives pass: query 471/0 (821 functions), inputs 308/0 (538), authority 502/0 (883); every earlier function retained and final source/runtime checks pass | Actual inventories locked. All 392 ordinary negatives in the 395 unique planned cases remain pending; component partitions repeat positives and require an exact union audit. Native/differential gates and all six service obligations remain open |
 | `0a3a7f2c` native workspace | Strict gate reaches compilation and refuses one `cast_lossless` diagnostic at the replay join's u64-to-u128 comparison | No native tests or solver stage ran. The source correction uses the equivalent supported `u128::from` conversion and retains every guard and exact mutation context; fresh qualification remains required |
 | `6a4e5b86` authority diagnostics | 2026-10-27: all three canonical selected partitions pass, each with the entire authority positive 498/0 and all 878 functions; controls 76, 97 and 98 each fail ordinary verification at 497 verified plus one error | Identical source/runtime/compiler across six calls; default resources and final checks retained. Three of 107 controls only, not a complete component or suite; no native/workspace or broader service credit |
@@ -39,6 +40,34 @@ observation guarantee or service theorem is claimed. All six rows of the
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The stopped `720e461ed4f0287d4343922ef0ade8e83b6db935` attempt is retained at
+`experiments/2026-10-27/acceptance-combined-720e461e-native-early.tgz`, SHA-256
+`29fcad02a5d005c47d5c472f181e6759c710d12a9f1263df306d70ed55aa705d`
+(6,763,252 bytes); upload and independent HTTP GET/hash pass. The environment is
+native Linux x86-64 (`Linux-7.0.0-1014-aws-x86_64-with-glibc2.39`), using core
+image `sail-ci:c4710b7fd3ca282a-core`, ID
+`sha256:b520a475caa587db8d35847b989cb588c256b6bff16cd57644005298645765f9`.
+The unchanged workspace gate reaches strict compilation/lint checks and reports
+the missing shared `SETTLED` import in the replay fixture
+([#459](https://github.com/Chelis-Lang/sail/issues/459)) and the selected-attempt
+fixture's missing eighth `finish` argument
+([#460](https://github.com/Chelis-Lang/sail/issues/460)). It also reports `finish`
+arity/line limits, `update_with_history`'s line limit and an unused test-only
+`Read` import. Native tests and the queued solver gate never run.
+
+The correction leaves production bodies, guards and all original fixture
+expectations unchanged. The replay fixture imports `sail_api::stamp::SETTLED`,
+the actual rule used by `Stamp::settled`. The report/selected-attempt fixture
+supplies an explicitly empty declared compiler-environment map and checks its
+exact persistence; this supplied fixture domain does not establish physical
+environment coverage or an actual compiler observation. Local lint allowances
+keep the completion handoff and declaration update intact; the unused import
+is removed. Only the three changed, reviewed native source bindings are
+refreshed. Those hash-bound adapters and the test-only module are not proved
+native input bodies. The correction has source review and ordinary formatting
+only; fresh native workspace/solver qualification remains pending. No later
+gate, consumer/provider action, runtime selection or service theorem is claimed.
 
 The terminal `7493c04e` diagnostic is retained at
 `experiments/2026-10-27/acceptance-authority-controls-7493c04e-native.tgz`,

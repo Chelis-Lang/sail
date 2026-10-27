@@ -54,8 +54,8 @@ PRESENTATION_NATIVE_SHA256 = {'crates/sail-api/src/evidence.rs': '0f6234f0bf8339
 # These closed native compiler/request/store adapters are bound in full and
 # remain outside the stock-compiled bodies. Their OS/process provenance remains open.
 INPUT_NATIVE_SHA256 = {
-    'crates/sail-verus/src/adapter.rs': '84f301e5e98e213f7f474cc469bdef2b897ea6e25f8ae1717cc372908018b01d',
-    'crates/sail-verus/src/adapter_attempts.rs': '6eb4411659b547a86f093c80f3f5b9f4cb28316821576646a85db385e4fe3e58',
+    'crates/sail-verus/src/adapter.rs': 'b4ee6100eb224b2063127c1d6cf7769ce801308500ef7b18bf472b0461e917b2',
+    'crates/sail-verus/src/adapter_attempts.rs': 'f8713751833e4de1bd17a3b97ac2e4b801c1c8137281eb2939d3b6849f528777',
     'crates/sail-verus/src/engine.rs': 'c95a32e3b60cdfe9c8cf768a56e22a5fc2aa4c3aa47dad86028a242b42153213',
     'crates/sail-verus/src/managed/mod.rs': '7d1a4092e364b466a4da4247fb91418af8930fbd8316e83b8641d8f1b8b9cff9',
     'crates/sail-verus/src/managed/command_environment.rs': '43b34bd36c7c6c2f22a9bc34a39bd77737e65a3c167855143985cbddbe87508f',
@@ -94,7 +94,7 @@ INPUT_NATIVE_SHA256 = {
     'crates/sail-verus/src/managed/retained/history.rs': '40c15b7834f07a242ef300674cad6c27d0126746db2bb98a25ede0b8c665040e',
     'crates/sail-verus/src/managed/retained/mod.rs': 'da72364cd1759a0bd577fae9803fc34a0de323dad1ab9c5943a4e6e54328fc4f',
     'crates/sail-verus/src/managed/retained/phase_fields.rs': '594552f03e3f3a7742b5ad75964b1f90f830325c1d06abdf18b178d09c503664',
-    'crates/sail-verus/src/managed/source_inputs.rs': 'd78183cfce373378eb2a929ad3f34f2ac517e8ac91f3180b4d609516d59ed892',
+    'crates/sail-verus/src/managed/source_inputs.rs': '15ce88b850f577b14372eb8586000e4c15e4ec8958a65dbef02e56d8e73d5395',
     'crates/sail-verus/src/managed/store.rs': '3cf8473ed05acb46c8b5bcbe7a23b18886188087e52dd5cea1abe5e225112c9e',
     'crates/sail-verus/src/managed/tool_digests.rs': 'c53d675ab062eafb6ba29b97e753d8630d5aef69c663cf91eae2016dc3565329',
     'crates/sail-verus/src/managed/transport.rs': '8d602d2b84a9b517a1d281b0ed3fd4f586cb68c1c45692970721b103c6d0c416',
