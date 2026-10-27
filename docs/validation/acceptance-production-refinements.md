@@ -42,9 +42,22 @@ unchanged erased assertion could move past a runtime assignment when a separate
 runtime edit was present. The original 22 registered controls do not do this.
 The candidate now allows runtime edits in only one exact interval between
 unchanged proof groups, with bidirectional relocation and ambiguous repeated-token
-regressions. Multi-interval controls are conservatively refused. Fresh native
-qualification of this correction and full fast/standard conformance are pending;
-the earlier aggregate does not qualify the later checker change.
+regressions. Multi-interval controls are conservatively refused. The final
+`ef655f82` correction passes fresh native qualification: workspace gate (1,161
+tests), solver51, model29, refinement25, full local E2E including extras,
+PR conformance, full fast and standard conformance. Each of four fast arms
+reports 147 Same / 3,451 functions; each standard arm reports 159 Same /
+13,166 functions, with zero unstable/different/infrastructure errors or skipped
+projects. Resource-count drift is reported separately (11 fast units, 17
+standard units), without changing verdict or diagnostic comparisons.
+
+The host is c7i.4xlarge, native x86-64 Linux, us-east-1; the core image is
+the same `85ce0f27` image identified above. Final source/image guards pass.
+Artifact `acceptance-audit-bugs-ef655f82-native.tgz`, 53,670,168 bytes, SHA-256
+`34c5b337329930e332a7c03c14564a54ba47232e7203a75ac2afb8a5b7e0c7ed`,
+passes upload/readback and independent download digest checks. #542 is merged
+as `9702cfdd`, with the exact same tree as `ef655f82`. The earlier `9597caad`
+aggregate remains evidence only for its own source.
 
 The #540 failed aggregate passes native gate (1,160 Rust tests), solver51,
 model29 and production refinement25 before the full managed sequence fails;

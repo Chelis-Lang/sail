@@ -260,8 +260,15 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   production bodies they refine, or their checkers.
 - *Standard (local):* `ci/local.sh conformance fast`, then
   `ci/local.sh conformance standard` (includes anvil). Run it before merging
-  changes to the shim, cache, daemon, keys or harness, and put the summary
-  lines in the PR.
+  changes to selected runtime verification behavior: solver interaction,
+  query/reply handling, cache reuse or keys, parsers, verdict/diagnostic
+  production, or the differential conformance oracle. Scope follows behavior,
+  not a crate or filename alone. Proof/model-only, documentation and diagnostic
+  tooling changes use fast CI plus their affected proofs and focused tests;
+  they do not automatically require the long corpus. Adopting previously
+  unselected proved code into those runtime paths does require it. State the
+  classification, actual results and any reused identical-source evidence in
+  the PR; never label an unrun suite passed. See ADR 0087.
 - *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
   Run it before pushing changes that touch platform-specific code.
 - *Temporal extension (local):* `ci/local.sh extension` (or `ci/run.sh

@@ -7,6 +7,64 @@ have separate [current native qualification](acceptance-production-refinements.m
 hosted checks and the service-wide theorem remain open. This record owns the actual scope of
 [checking](../design/acceptance-proof-checker.md).
 
+## Standalone authority-model delivery candidate
+
+This extraction takes the already-written engine completion, normal-decline,
+same-subject fallback and mixed-origin model changes from the broader #378
+candidate. It preserves the existing model controls and adds six existing
+candidate controls: fallback subject, selected fallback repair, engine protocol,
+decline refusal, repair decline and feature admission. The resulting manifest
+contains four positive roots and 31 ordinary negative controls.
+
+Frozen `21d95289` passes all 35 native Stock model cases and all three complete
+production-positive roots: query 134/263, inputs 54/91 and authority 174/303
+(verified obligations/function entries). The authority inventory is independently
+derived from unchanged production functions and the checked new model inventory.
+All twelve local checker tests pass, including omission of each required control.
+The production manifest now locks the observed counts and exact function names;
+all 22 original production controls remain unchanged. Their fresh full matrix and
+the complete native fast tier pass at `03665cd9`, as recorded below. The larger candidate's receipts do
+not qualify this extraction. Native Rust, Cargo assembly, solver input generation and
+the broader service-proof boundary are unchanged; no native process or input
+closure is established by these model rules.
+
+Host: native Linux x86-64 c7i.4xlarge, us-east-1. This initial proof run uses
+image `sha256:cedda935f85ad7dd87d871344b163ea03318becbebc8a5b487a21bf40de3689a`
+and validates the pinned Stock archive, runtime files and Rust compiler. It is
+not current CI-image packaging qualification. Artifact
+`acceptance-model-delivery-21d95289-native.tgz`, 6,387,094 bytes, SHA-256
+`49a717eb6e2482b7664ae18d83f69d9a85b47f55e0a99dfb14937a99d8eab25c`;
+final source/image/runtime guards and byte-identical upload/readback pass.
+Independent review reconstructs all 35 model candidates/drivers and all three
+production programs, checking raw whole-crate results and exact inventories.
+
+The complete native run at `03665cd9` passes the workspace gate (1,161 tests),
+51 solver tests, all 35 model cases, all 25 production-refinement cases,
+full local E2E including extras, and PR conformance. Each of the four conformance
+arms reports 33 same units and 311 functions, with zero differences, unstable
+units or infrastructure errors. The run uses current core image
+`sha256:338fdef13e0182ca8433ab65db9f17eabc6500639c36ec527417fdcfb3e33fa1`
+and MCP image
+`sha256:041d8eeacdabc2dddf37af751af6e57d1d8f990574ff0f80d02a8cc7f5dd72e2`
+on native Linux x86-64, c7i.4xlarge, us-east-1. Source-boundary checks retain
+all original controls and confirm 374 native Rust, Cargo and pin files are
+byte-identical to qualified bug-fix source `ef655f82`.
+
+Artifact `acceptance-model-delivery-03665cd9-v2-full-native.tgz`, 6,900,620 bytes,
+SHA-256 `d02431908553d5c63f88aa4af2bb0bbb87b848bc81a9111b4c887924a9de0aaf`,
+retains all raw results and final source/image guards. Independent review
+reconstructs all 60 complete programs and checks their raw Stock results,
+including 53 ordinary negative controls, against canonical source blobs and
+the pinned runtime. Subsequent restacking and policy/documentation edits retain
+these exact proof, checker, manifest and production sources; this is evidence
+reuse for identical inputs, rather than a new execution at each metadata head.
+Hosted checks remain an independent merge requirement. No standard-corpus
+rerun is required for this model-only change under ADR 0087.
+
+| Date | Source | Gate | Result |
+|---|---|---|---|
+| 2026-10-27 | `03665cd9` | Initial complete-native attempt | Source-equivalence helper refused Git ownership at its mounted candidate path before tests; no proof credit. Artifact SHA-256 `367823a9ede2558af6dcfde6079c85741e2a2a9eb8dd9a897fcd9c21691046d2`; corrected helper uses each checkout's canonical Git directory. |
+
 ## Expanded model qualification
 
 The captured-source manifest contains four roots and one shared context.

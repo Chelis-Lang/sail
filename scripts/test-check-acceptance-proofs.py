@@ -122,8 +122,16 @@ class SourceInventory(unittest.TestCase):
             for name in sorted(CHECKER.COMPONENTS):
                 source = directory / (CHECKER.COMPONENTS[name] + ".rs")
                 source.write_text("required_check")
-                manifest["components"].append({"id": name, "source": str(source.relative_to(root)), "dependencies": CHECKER.dependency_paths(name), "verified": 1, "functions": ["lemma"], "negative_controls": [{"name": "remove-check", "before": "required_check", "after": "false"}]})
+                controls = [{"name": control, "before": "required_check", "after": "false"}
+                            for control in CHECKER.REQUIRED_CONTROLS[name]]
+                manifest["components"].append({"id": name, "source": str(source.relative_to(root)), "dependencies": CHECKER.dependency_paths(name), "verified": 1, "functions": ["lemma"], "negative_controls": controls})
             CHECKER.inventory(root, manifest)
+            for index, entry in enumerate(manifest["components"]):
+                for control_index in range(len(entry["negative_controls"])):
+                    missing = copy.deepcopy(manifest)
+                    del missing["components"][index]["negative_controls"][control_index]
+                    with self.subTest(component=entry["id"], control=control_index), self.assertRaises(CHECKER.Refusal):
+                        CHECKER.inventory(root, missing)
             for changed in [manifest["components"][:-1], [manifest["components"][0]] * 3]:
                 with self.assertRaises(CHECKER.Refusal):
                     CHECKER.inventory(root, {**manifest, "components": changed})

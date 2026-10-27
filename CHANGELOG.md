@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Extend acceptance-model checks for engine completion, normal declines,
+  same-subject fallback and per-target repair origins; require every enrolled
+  model failure control.
+
 - Resolve managed configuration homes from the supplied environment, keeping
   CARGO_HOME precedence and native path bytes from that observation.
 - Validate source tokens without repeatedly copying the remaining input;
