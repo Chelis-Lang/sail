@@ -60,10 +60,9 @@ unchanged project/request borrows and optional existing declared
 observation; baseline comparison keeps its already-loaded request, and
 publication retains the existing Historical downgrade. No wire field/token,
 rejection or label rule is added. Five ordinary controls follow all 116 earlier
-authority controls (121 total). New positive/function discovery and
-native/serde/cost qualification remain pending; the previous 502/883 authority
-inventory is retained as a bootstrap requirement, not claimed for changed
-bodies. The #461 native fixture failure/source fix remains separate from this
+authority controls (121 total). Whole authority discovery at `e36c749b` passes
+510/895 with all earlier functions retained; native/serde/cost and full-control
+qualification remain pending. The #461 native fixture failure/source fix remains separate from this
 process-local theorem and from delivery/qualification. See the
 [local view boundary](design/acceptance-authority.md#paired-completed-observation-view-candidate).
 Serde/RPC/frontend preservation and physical/origin premises remain open.
@@ -74,6 +73,12 @@ The later `e36c749b` native gate refuses only this candidate's coherent baseline
 fixture line-limit lint (#463), before native tests/solver. A documented local
 allowance retains all fixture statements/assertions; fresh native qualification
 remains pending. No production body or checked proof body changes.
+Native tests at `6e239d21` then expose the fixture's missing freshness premise
+(#464): the original valid pair is projected Unknown on actual retained readback.
+The corrected fixture preserves the whole-positive assertion on that exact
+original pair and explicitly checks the received Unknown/data-only case, keeping
+every earlier assertion. No production policy or currentness is changed; the
+fresh native focused/workspace run remains pending.
 Frozen `e91627d0` workspace records 1,271 run, 1,269 pass, two fail and 56 skip
 in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 #390 target-key mismatch. Both focused regressions pass at `fbab3fd0`; full

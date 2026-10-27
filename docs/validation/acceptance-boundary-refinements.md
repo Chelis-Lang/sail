@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
 | `e36c749b` | Complete native discovery passes query 471/0 (821 functions), inputs 308/0 (538), authority 510/0 (895); every earlier function retained and final source/runtime checks pass | Actual inventories locked for 400 unique planned cases: 397 negatives plus three positives. The 409-call partition schedule remains held for native compile/Clippy clearance; no combined matrix, native completion or service theorem |
 | `53757913` query guidance | All three complete positive roots repeat 471/821, 308/538 and 502/883 with final source/runtime checks. A bounded original control-111 diagnostic passes: query positive 471/0, then 470 verified plus one ordinary error across all 821 functions, with no resource marker | One ordinary negative only; incomplete component/suite. All 392 controls remain required. The integrated source changes only erased finite-frame/prefix proof guidance; native bodies and the original mutation remain unchanged, and broader combined qualification remains pending |
@@ -46,6 +47,27 @@ observation guarantee or service theorem is claimed. All six rows of the
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The stopped `6e239d212182e3b6595de52d335acf765974d7b5` native attempt is retained
+at `experiments/2026-10-27/acceptance-combined-6e239d21-native-early.tgz`, SHA-256
+`07bab270d471d9649b719bd31f2bb4dc86ddda1378bf99b586090e701d413f5b`
+(6,853,276 bytes); agent preservation and independent lead GET/hash review pass.
+The lead's raw status/log audit confirms the 1,278/1,276/2/57 summary and both
+assertion failures, at product line 448 and runner line 5478, with final
+source/image guards passing. Native tests expose the baseline fixture's whole-positive expectation
+without freshness input ([#464](https://github.com/Chelis-Lang/sail/issues/464)).
+Its submission environment is empty: `store::cache` and `refresh` therefore
+return `None`, and actual retained-currentness policy returns Unknown while
+preserving the target proof flags. Whole-request admission correctly refuses.
+The correction retains the exact original request/project pair already checked
+by `complete_request`, exercises its nonempty whole-positive view before native
+freshness projection, and separately checks the retrieved pair's Unknown state,
+absent whole facet and unchanged data. All prior target, request, report,
+path-movement, Historical baseline and serde assertions remain. Only test code
+and both enclosing unproved native bindings change; no currentness rewrite,
+freshness-provider substitute or runtime policy is added. The other native
+runner failure is independently investigated; no cause or correction is claimed
+here. Fresh native qualification and solver remain pending.
 
 The stopped `e36c749bb061554a07f4b896f464c6d4dfb73cce` workspace attempt is
 retained at `experiments/2026-10-27/acceptance-combined-e36c749b-native-early.tgz`,

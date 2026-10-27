@@ -4,6 +4,16 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
+skip. Its baseline fixture expects a whole-request facet after the real retained
+read path correctly projects absent freshness to Unknown
+([#464](https://github.com/Chelis-Lang/sail/issues/464)). The correction preserves
+the independently checked original pair for the whole-positive assertion and
+explicitly retains the retrieved Unknown/data-only case and all old assertions.
+The separate runner failure remains under investigation; corrected combined
+native qualification and solver remain pending in the
+[owning record](validation/acceptance-boundary-refinements.md).
+
 The later `e36c749b` native workspace stops before tests and solver at one
 test-only line-limit lint in the coherent baseline observed-request fixture
 ([#463](https://github.com/Chelis-Lang/sail/issues/463)). A documented local
