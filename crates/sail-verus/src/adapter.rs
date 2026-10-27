@@ -293,7 +293,7 @@ fn cargo_messages(
     )
     .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
     #[cfg(unix)]
-    let markers = std::env::var_os(crate::managed::visible_output::ENV).map_or(Ok(None), |path| {
+    let markers = transport::var(crate::managed::visible_output::ENV).map_or(Ok(None), |path| {
         crate::managed::visible_output::MarkerObserver::open(Path::new(&path)).map(Some)
     });
     #[cfg(unix)]

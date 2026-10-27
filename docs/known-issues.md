@@ -4,6 +4,18 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The frozen `4c43e5a9` full native end-to-end gate stops on the neutral-contract
+positive with backend currentness Unknown and `NotProved`
+([#471](https://github.com/Chelis-Lang/sail/issues/471)). Its journal records the
+actual provider intent/start and artifacts but omits the provider completion.
+The accounting observer still reads its endpoint directly from the environment,
+while the original managed driver uses the private transport file. The source
+correction uses that same transport accessor and adds real file-backed alias
+regressions for absent and conflicting caller variables. Red/green native
+qualification and unchanged full end-to-end/conformance gates remain pending.
+The conservative incomplete-observation refusal and positive expectation stay
+unchanged; no false proof has been demonstrated.
+
 The frozen `4c43e5a9` ordinary-control matrix stops at query control 151:
 its mutation selector replaces `1nat` in an ensures clause instead of changing
 the executable comparison method ([#468](https://github.com/Chelis-Lang/sail/issues/468)).
