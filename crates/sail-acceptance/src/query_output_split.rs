@@ -236,12 +236,20 @@ sail_verified! {
         sail_proof! {
             assert(raw@ =~= first@+second@);
             crate::query_output::transcript_partition_facts(&output.output_view());
+            assert(raw@.subrange(0,7) =~= seq![b'u',b'n',b's',b'a',b't',b'\r',b'\n']);
+            assert(crate::query::response_trim(raw@.subrange(0,7),0,5));
+            assert(raw@.subrange(0,7)[6] == b'\n');
+            assert(exists|j:int| 5 <= j < 7 && raw@.subrange(0,7)[j] == b'\n');
             assert(crate::query::response_span(raw@.subrange(0,7),0,5));
             assert(crate::query::response_shape(output.output_view().view().subrange(0,7)));
         }
         if output.frame(0,7).is_none() { return false; }
         sail_proof! {
             crate::query_output::transcript_partition_facts(&output.output_view());
+            assert(raw@.subrange(7,11) =~= seq![b's',b'a',b't',b'\n']);
+            assert(crate::query::response_trim(raw@.subrange(7,11),0,3));
+            assert(raw@.subrange(7,11)[3] == b'\n');
+            assert(exists|j:int| 3 <= j < 4 && raw@.subrange(7,11)[j] == b'\n');
             assert(crate::query::response_span(raw@.subrange(7,11),0,3));
             assert(crate::query::response_shape(output.output_view().view().subrange(7,11)));
         }
