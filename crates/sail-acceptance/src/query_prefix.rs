@@ -399,6 +399,13 @@ sail_code! {
 }
 
 sail_spec! {
+    /// Exposes the checked endpoint bound without opening the owner's private
+    /// representation to callers or changing any executable command contract.
+    pub proof fn coherent_prefix_bound<Host: HashHost>(prefix: &QueryPrefix<Host>)
+        requires prefix.coherent(),
+        ensures prefix.fed() <= prefix.view().len(),
+    {}
+
     pub open spec fn flat_byte(byte: u8) -> bool {
         byte != b'(' && byte != b')' && byte != b'"' && byte != b'|' && byte != b';'
     }

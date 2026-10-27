@@ -23,14 +23,21 @@ native execution at the final source.
 The root's typed solver/mode-to-model bridge also enters this integration.
 Its first whole query attempt (`fa947cb7`) reaches 647 verified/one failed
 obligation: the bridge lacks an explicit bound before taking the original
-input prefix. The correction reveals the existing owned-prefix invariant
-and states that bound. All original contracts and runtime operations remain.
+input prefix. The first correction tries to reveal a closed representation
+outside its module and is refused before verification (`6a1a8fcf`). The next
+candidate exposes the bound through a checked proof lemma in the actual
+owning module. All original contracts and runtime operations remain.
 No proof/native acceptance is claimed for the integrated source yet.
 
 Failed attempt: `fa947cb7`, 2026-10-27, whole query 647/1 at unchanged
 resources; archive
 `experiments/2026-10-27/acceptance-colored-typed-fa947cb7-native.tgz`, SHA-256
 `44ab69e789de66e1d7c5961a88b94cea47029cc4286710857c09b9e377e3e158`.
+
+Failed attempt: `6a1a8fcf`, 2026-10-27, closed-spec reveal refused before
+verification; archive
+`experiments/2026-10-27/acceptance-tail-typed-6a1a8fcf-native.tgz`, SHA-256
+`ea7316b4b0ff65e557548d2eb59326ad0ef8684a667651516689eb918db65a43`.
 
 Status: full service qualification remains open. [PR #378](https://github.com/Chelis-Lang/sail/pull/378)
 remains a draft. Coherent implementations and their subsequent control runs
