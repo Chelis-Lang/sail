@@ -45,7 +45,7 @@ PIPE_GHOST_ITEMS = frozenset(['6fcc1d7016aa6a4e7715d36438bf650ee7ccb2408a8d21d4b
 PIPE_HOST_TRAITS = frozenset(['78590e0391f7573656049a517dd0fb8c8adcd1587e82e6de2987b4648919ca28'])
 # These exact native adapters are reviewed/bound, not compiled proof bodies.
 QUERY_NATIVE_BINDINGS = {'crates/sail-cache/src/lib.rs': ['DiskCache::put_scoped'], 'crates/sail-cache/src/persist.rs': ['NativeWriteHost', 'write_record'], 'crates/sail-shim/src/cached.rs': ['SolverPipe', 'Solving', 'start_solver', 'Pairer', 'output_side', 'Storing', 'spawn_storer', 'SolverOwnerIdentity', 'SolverProcess', 'TerminalInput', 'StoreCommand', 'Entry', 'HeldMetadata', 'held_entry', 'batch_observed', 'InputStatus', 'queue_stores', 'observe', 'ObservedSession', 'option_spans', 'statistics_spans', 'Served', 'ServedReply native alias', 'ReplayCheck', 'served_storage_bytes'], 'crates/sail-session/src/lib.rs': ['Session::new', 'Session::option', 'Session::expects_output', 'Session::apply', 'Session::apply_inner'], 'crates/sail-smtlib/src/lib.rs': ['native module and error assembly'], 'crates/sail-smtlib/src/command.rs': ['classify', 'value_span', 'CommandKind::output'], 'crates/sail-smtlib/src/lex.rs': ['Lexer', 'Token', 'is_delimiter'], 'crates/sail-smtlib/src/split.rs': ['CommandSplitter', 'ResponseSplitter', 'is_single_response'], 'crates/sail-smtlib/src/error.rs': ['Error', 'ErrorCode'], 'crates/sail-session/Cargo.toml': ['native Session dependency assembly'], 'crates/sail-smtlib/Cargo.toml': ['native SMT helper dependency assembly']}
-QUERY_NATIVE_SHA256 = {'crates/sail-cache/src/lib.rs': '106f1bd0fff663e6302be566de7b9e9c789e1e8433d354192e20f13db14b09dc', 'crates/sail-cache/src/persist.rs': '956ec4c117fb2b722a9a2454a9f1a60adf76e58a5a61397b1f144d4894d23260', 'crates/sail-shim/src/cached.rs': 'df15d8998759d449d20034ca185cdf13b5c0f1f659aaa6bd3607aab333fb4791', 'crates/sail-session/src/lib.rs': 'fd830d2d2c57a809104e1d0a7c28f92859e96717325a4eb62fea3d2c66a6d5b1', 'crates/sail-smtlib/src/lib.rs': '067e315883f7fc17a4609cab43e15ff83d2efa10b7d52164df366779a136e462', 'crates/sail-smtlib/src/command.rs': 'c0a25df1643c702bdf641148f427a693dbcefb3392792f04752375dc9cbede2f', 'crates/sail-smtlib/src/lex.rs': '703af8b5867b1c17906af7ab9018b8a69c4342ebe7fa01725eac342c68d0122d', 'crates/sail-smtlib/src/split.rs': 'fb5a7973f51ad628d9651a4568cd629cb26b833c8a50041c8ca5edc60e209a44', 'crates/sail-smtlib/src/error.rs': '7403bf10fcc8dc7e4e199dcd1deda767717423ccbec42235b648c9005f5892e2', 'crates/sail-session/Cargo.toml': '4d1c12f98e87f7e40cf46febe3e667d9d5576e88b5e28ba5d8856bdc18e6ba65', 'crates/sail-smtlib/Cargo.toml': '383de243765b26d92dcf01ea604911e9b254ce9014a9da5deb8ab3872be19587'}
+QUERY_NATIVE_SHA256 = {'crates/sail-cache/src/lib.rs': '106f1bd0fff663e6302be566de7b9e9c789e1e8433d354192e20f13db14b09dc', 'crates/sail-cache/src/persist.rs': '956ec4c117fb2b722a9a2454a9f1a60adf76e58a5a61397b1f144d4894d23260', 'crates/sail-shim/src/cached.rs': '4d90c3f5712c6f189d50747379aa179f1712b046e9ad33ffdb20ebb0996cbb9e', 'crates/sail-session/src/lib.rs': 'fd830d2d2c57a809104e1d0a7c28f92859e96717325a4eb62fea3d2c66a6d5b1', 'crates/sail-smtlib/src/lib.rs': '067e315883f7fc17a4609cab43e15ff83d2efa10b7d52164df366779a136e462', 'crates/sail-smtlib/src/command.rs': 'c0a25df1643c702bdf641148f427a693dbcefb3392792f04752375dc9cbede2f', 'crates/sail-smtlib/src/lex.rs': '703af8b5867b1c17906af7ab9018b8a69c4342ebe7fa01725eac342c68d0122d', 'crates/sail-smtlib/src/split.rs': 'fb5a7973f51ad628d9651a4568cd629cb26b833c8a50041c8ca5edc60e209a44', 'crates/sail-smtlib/src/error.rs': '7403bf10fcc8dc7e4e199dcd1deda767717423ccbec42235b648c9005f5892e2', 'crates/sail-session/Cargo.toml': '4d1c12f98e87f7e40cf46febe3e667d9d5576e88b5e28ba5d8856bdc18e6ba65', 'crates/sail-smtlib/Cargo.toml': '383de243765b26d92dcf01ea604911e9b254ce9014a9da5deb8ab3872be19587'}
 QUERY_HOST_TRAITS = {'crates/sail-acceptance/src/cache_write.rs': ['e1f217be87981cbd3d19140f85d8c7e8434568bd092cee9555efab9da58cf851'], 'crates/sail-acceptance/src/query_delivery.rs': ['127030cacff4e231147ffc843933effa0c754b3ad1963e460c5e981bcde92220']}
 QUERY_SCRIPT_IMPLS = {'crates/sail-acceptance/src/cache_write.rs': ['b14cfdbc045ce226b03452823bf1706890c04c58817293134e9d1f2fc1ce12b4'], 'crates/sail-acceptance/src/query_delivery.rs': ['8378afe345bf6880d519cf675e3b5db5e4b01f6900781bef674f6c1fd7019d72']}
 # Presentation callers are bound native source; only their shared API helper compiles.
@@ -56,12 +56,12 @@ PRESENTATION_NATIVE_SHA256 = {'crates/sail-api/src/evidence.rs': '0f6234f0bf8339
 INPUT_NATIVE_SHA256 = {
     'crates/sail-verus/src/adapter.rs': 'b4ee6100eb224b2063127c1d6cf7769ce801308500ef7b18bf472b0461e917b2',
     'crates/sail-verus/src/adapter_attempts.rs': 'f8713751833e4de1bd17a3b97ac2e4b801c1c8137281eb2939d3b6849f528777',
-    'crates/sail-verus/src/engine.rs': 'c95a32e3b60cdfe9c8cf768a56e22a5fc2aa4c3aa47dad86028a242b42153213',
+    'crates/sail-verus/src/engine.rs': 'a6ca795294e29f76b8f7647713da1ef1d8b79e2f1df7281f1fc7fe5869c1f0d2',
     'crates/sail-verus/src/managed/mod.rs': '7d1a4092e364b466a4da4247fb91418af8930fbd8316e83b8641d8f1b8b9cff9',
     'crates/sail-verus/src/managed/command_environment.rs': '43b34bd36c7c6c2f22a9bc34a39bd77737e65a3c167855143985cbddbe87508f',
-    'crates/sail-verus/src/managed/runner.rs': '9040276ef2a0be9fd740c769d4d603e4c91ea5339e30f989f7dfd9ee7d938e1e',
+    'crates/sail-verus/src/managed/runner.rs': 'e9bdbfb26e444591de2c14a9eabe376138add97a0a8cf8cc3dfd2af5d485b06e',
     'crates/sail-verus/src/managed/request.rs': 'dc079a01a60d64ee482540f5023deba9025cbc45010b6b2d1b56f2f7519bbaba',
-    'crates/sail-verus/src/managed/noop.rs': '05899875e4dbf03b683d8619725f27f1f649438f8c3055b569a9ceaa557de879',
+    'crates/sail-verus/src/managed/noop.rs': 'cf9870294921a9ce51e34db189012cfb9e7373c9aba56409e47e3887ee8a186b',
     'crates/sail-verus/src/managed/shipped.rs': '4785c4450b09daeb049574458adf3dda63f79455ec7a0bff113e86aa4e47709a',
     'crates/sail-verus/src/managed/shipped/compiler.rs': '3006fbb0015519b56a12c8ec30bc2da0f4d47593d5b603cd602e0d8a3e7900ca',
     'crates/sail-verus/src/managed/shipped/native.rs': '7acc4ef691a8128ff22b0a1dc3e94af33b6e0037b550681ad35229323f3b5a0f',
@@ -76,11 +76,11 @@ INPUT_NATIVE_SHA256 = {
     'crates/sail-api/src/lib.rs': 'c0d86d594bb374650fae43024f49264a4c6f840c8b0f73ab8092d620afdc7fed',
     'crates/sail-api/src/stamp.rs': 'fafb1eea946f08ea4a1e534a0b3c634094c862f63eb8b9251b9e76c498d0dda8',
     'crates/sail-verus/src/adapter_verus_channel.rs': '2229526e8081f0d7309a30c4f3acdf04062d19363b6c1152aa98aab44182d421',
-    'crates/sail-verus/src/managed/build_environment.rs': 'ee5fa359e0ca7265dc736b409e08bb0f45333d65ac9e2e44e80cc928a1ec0714',
-    'crates/sail-verus/src/managed/build_inputs.rs': 'b1f57a1f943d9c015a39e9ffabf77bfe7cee5d490c97b19eb1d97f8f445d2966',
+    'crates/sail-verus/src/managed/build_environment.rs': 'de6270ac49a38906d99e076ffede26ed9d562e0d4022226254622b4f2d6c34d3',
+    'crates/sail-verus/src/managed/build_inputs.rs': '75c53c32c2775d52eb652cbd52b8518e1956779e0623302c2970b8b56e33a00c',
     'crates/sail-verus/src/managed/build_inputs_family.rs': 'ad22f4e115f9644243c429462cae1f2563e11fb338c50944116ca42acdda33e3',
     'crates/sail-verus/src/managed/build_inputs_sources.rs': '04dc4ef8b47f360d486dcb5524c1288ec036f5936b5a74866b72dc4306058411',
-    'crates/sail-verus/src/managed/build_inputs_package_environment.rs': '1155e253a1ccfb9607f01273522af32775cafd1ee8f7d93769a6501633d1ecf4',
+    'crates/sail-verus/src/managed/build_inputs_package_environment.rs': '9eb5e5550b8ea76287cd0d8c717c9a0b494db3b0ae8196dd908429704b8adc6b',
     'crates/sail-verus/src/managed/build_unit_plan.rs': '3e76d01766dcc3d92d3af6538cacf834bce210f2d1a9a6a2273c31b764dd874d',
     'crates/sail-verus/src/managed/dependency_snapshot.rs': '5f9af1aaf0cfc8eeaf2611ee84d878e5a21e95a5dd05b1377bb9f40cb924c2b2',
     'crates/sail-verus/src/managed/environment.rs': '41e37d497023ccd874af84e95318f80c83e3a2e4f6c6eb613ac02d93fb0ddb6f',

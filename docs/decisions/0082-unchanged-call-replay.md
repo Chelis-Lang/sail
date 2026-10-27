@@ -140,3 +140,64 @@ main: a fresh project's first `sail verify` takes 30.46 s (main 31.13 s,
 faster in every pair), with 366 sessions in both arms. A Vest edit's wall
 time overlaps (22.55 s against 22.69 s), and the daemon's CPU per edit falls
 from 3.40 to 1.04 s ([record](../validation/solver-identity.md)).
+
+## Amendment: Cargo's copied build-script uplift (2026-10-26)
+
+**Context.** On macOS no unchanged call was ever recorded (#437). Cargo
+uplifts each compiled build script, `build/<package>-<hash>/build_script_<stem>-<hash>`,
+to `build-script-<stem>` in the same directory. On Linux this is a hard link
+that Cargo leaves alone when it is already the same file. On macOS Cargo
+copies instead (rust-lang/cargo#10060), so on every run, fresh units included,
+it removes the copy and copies it again. The copy and its directory then
+carry a ctime from inside the run, and the 2 s rule refused the record.
+Unchanged Anvil took 1.6 s and Vest 0.6 s, where Linux replays in about
+26 ms.
+
+**Decision.** Such a copy is bound by content instead of by stamp. A target
+entry whose stamp is too recent is treated as an uplifted copy only when its
+name is `build-script-<stem>` without an extension, its directory is
+`build/<package>-<hash>/`, the directory holds `build_script_<stem>-<hash>`
+with the same hash, both are regular files, and their bytes are equal. The
+record then holds:
+
+- the original's full stamp, under the ordinary 2 s rule;
+- the copy's size and mode, with replay requiring a regular file of that size
+  and mode whose bytes equal the original's;
+- for the directory, its device, inode and mode and its complete sorted
+  entry names in place of its stamp. Every other entry keeps its own stamp.
+
+Anything else that is too recent, including a copy whose original is
+missing, named for another hash, unreadable or different, still refuses the
+record. Replay compares the copy with the original byte for byte instead of
+recording a digest: reading both from the page cache and comparing them
+costs less than hashing one (`same_content`), and the result is the same
+because the original's stamp is bound. On Linux the hard links are settled,
+so no path changes there.
+
+**Soundness.** No file a call read can change undetected. The original is
+bound as before. The copy's bytes are compared on every replay, so any change
+to the copy (a rewrite, a replacement, a link in its place, another mode or
+size) misses whatever its ctime. In the directory, any added, removed or
+renamed entry changes the name set. A replaced directory changes the inode,
+and a changed entry changes its own stamp. What the directory's stamp
+recorded beyond that (its size and times) changes only through those events.
+The comparison runs under the family lock, so no Sail run or prune changes
+the target meanwhile, as for every other replay observation.
+
+**Consequences.** Vest and Anvil unchanged calls replay on macOS. Measured
+on EC2 mac-m4.metal (us-east-1, macOS 27.0, load average 9 to 14 from other
+work), four unchanged calls 5 s apart after a cold run, with `cargo verus`
+and the main stage:
+
+| Project | Branch replay | Main | Stock |
+|---|---|---|---|
+| Vest (`-- --rlimit 100`) | 0.093 s | 0.638 s | 0.260 s |
+| Anvil (`--lib -- --verify-module vdeployment_controller`) | 0.060 s | 1.643 s | 0.246 s |
+
+Medians over the replayed calls; main never records, so its median is over
+calls 2 to 4. The first unchanged call still takes the full path and records
+(Vest 4 copies, Anvil 41). Anvil's copies hold 30.9 MB; on the same host,
+reading and comparing them with their originals takes 4.4 ms single-threaded
+against 10.9 ms for hashing the copies alone, and replay spreads the
+comparisons over worker threads. CI runs on Linux, where the copies are hard
+links, so the unit tests in `noop.rs` carry the copy cases.

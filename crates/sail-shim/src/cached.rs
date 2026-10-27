@@ -481,6 +481,10 @@ impl Pairer {
     }
 
     #[cfg(test)]
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "Preserve the legacy owned-payload fixture interface while each test constructs its separate original typed stream."
+    )]
     fn reply(&mut self, reply: Vec<u8>) {
         // Legacy value-domain fixtures each declare their own original stream;
         // they do not qualify actual producer ownership or full publication.

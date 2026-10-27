@@ -99,17 +99,13 @@ matched stock's.
   CapybaraKV's `--no-default-features` resolution and Anvil's patched Verus
   sources each miss the proof, and those projects verify vstd themselves.
   Anvil cold ties stock: its median is 0.1 s slower, inside the ranges.
-- **Unchanged calls are slower on macOS, because replay never happens there.**
-  Unchanged-call replay ([ADR 0082](decisions/0082-unchanged-call-replay.md))
-  takes about 26 ms on Linux. On macOS it never records a call
-  ([#437](https://github.com/Chelis-Lang/sail/issues/437)). Each unchanged call
-  takes the full managed path, which costs 0.24–0.56 s on the small and medium
-  projects and 1.6 s on Anvil, against 0.20–0.28 s with stock. The second call
-  and the `SAIL_MANAGED_NOOP=0` call cost the same, which confirms that the
-  second call does not replay either. The cause is Cargo itself: on macOS it
-  copies, rather than hard-links, every build script's `build-script-build`, so
-  it re-creates that file on every run. Replay's ctime guard then refuses to
-  record the call.
+- **Unchanged calls in this table predate the macOS replay fix.** These runs
+  never replayed on macOS ([#437](https://github.com/Chelis-Lang/sail/issues/437)):
+  Cargo copies rather than hard-links each build script's binary there, so
+  replay's ctime guard refused to record. With the fix
+  ([ADR 0082](decisions/0082-unchanged-call-replay.md), amended 2026-10-26),
+  unchanged Vest takes 0.093 s and Anvil 0.060 s on the same host, against
+  stock's 0.26 s and 0.25 s.
 
 The load average during these runs was 5–27, mostly from the runs' own Verus
 and Sail work, with nothing else on the machine. Raw logs are kept outside the
