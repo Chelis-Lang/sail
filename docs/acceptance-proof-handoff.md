@@ -85,6 +85,13 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+The existing native-delegation source fixture is corrected after the outer
+extraction (#484): actual thin input and finish calls replace removed native
+implementation snippets. All four baseline/uniqueness/refusal assertions stay;
+the same targeted source unit fails before and passes after the correction.
+No mathematical assertion/control, runtime byte behavior or qualification claim
+changes.
+
 The `e36f9681` complete query run observes 522 verified/1 failed function and
 915 query entries with final guards passing; the remaining outer-loop raw-state
 carry includes a default rlimit refusal. No positive inventory is locked.

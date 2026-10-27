@@ -18,6 +18,14 @@ compilation at erased match grouping and Seq index projections
 runtime code and contract meaning; actual whole-root verification has not yet
 begun for this wider candidate. No new inventory or native/verdict claim follows.
 
+The outer extraction left two native-delegation source-fixture selectors
+pointing at removed implementation text
+([#484](https://github.com/Chelis-Lang/sail/issues/484)). The targeted source
+unit reproduces 0 != 1; its correction mutates the actual thin input/finish
+adapters while retaining all four baseline, unique-selection and refusal
+assertions. The same targeted source test passes; no native/proof/service credit
+is implied.
+
 The newer outer-stream candidate's owner wrapper initially exposed only the
 raw-byte relation, which allowed an empty returned inventory in its contract
 ([#480](https://github.com/Chelis-Lang/sail/issues/480)). The correction retains
