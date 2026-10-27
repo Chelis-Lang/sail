@@ -229,6 +229,17 @@ impl CommandFrame<'_, '_> {
     pub fn policy(&self) -> sail_acceptance::query_policy::ResponsePolicy {
         self.frame.policy()
     }
+    /// Executes the original pre-apply interpretation using this frame's own
+    /// raw bytes and head plus the caller's actual native option readback.
+    /// None/Unknown are control/data results and grant no cache authority.
+    #[must_use]
+    pub fn pre_apply(
+        &self,
+        kind: sail_acceptance::query_split::ItemKind,
+        print_success: Option<&[u8]>,
+    ) -> Option<sail_acceptance::query_command::Output> {
+        self.frame.pre_apply(kind, print_success)
+    }
     /// The exact endpoint at this command transition.
     #[must_use]
     pub fn end(&self) -> usize {

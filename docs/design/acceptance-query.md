@@ -43,6 +43,31 @@ stronger lexical postcondition selectors join the integration's required
 registry. Current combined proof discovery and the complete negative suite
 remain required; component counts are not added to claim a combined pass.
 
+## Actual original-frame pre-apply decision
+
+`FramedCommand::pre_apply` reads its own private original command/head and
+checks classification, head agreement, head-policy conversion and the response
+prediction from the actual borrowed print-success readback. Native
+`CommandFrame` delegates directly; shim `observe` calls it before the original
+Session application. `None` retains early prefix refusal and Stop, while
+`Some(Unknown)` retains the original continue/apply behavior without granting
+cache or proof authority. Name allocation and forwarding order remain.
+
+The finite `Output` comparison uses a checked three-variant match rather than
+relying on an unspecified derived-trait comparison contract. Native tests cover
+all nine original equality pairs. SolverIdentity/Mode declarations and generated
+key types are unchanged; both whole-key-file source anchors bind the new native
+forwarder. The public Session expectation API remains intact.
+
+Frozen component `86e4edb0` passes whole-query Stock642/1,104, all 53 native
+SMT/session/key tests, 33 shim library tests and strict package Clippy. Its 14
+new executable controls remain mandatory in the combined source. Actual
+post-apply print-success/numeric-limit handling, private Session map maintenance,
+public snapshot transfer, solver interpretation and physical/origin observations
+remain separate unfinished joins. The proposed sorted private option store is
+an unqualified implementation candidate; native costs and conformance are
+required before selection.
+
 ## The proved boundary
 
 [`query_association.rs`](../../proofs/acceptance/query_association.rs) no longer

@@ -1,5 +1,58 @@
 # Acceptance boundary refinement qualification
 
+## Original-frame pre-apply integration
+
+The current candidate integrates the actual pre-apply decision from
+`86e4edb0`. All 742 prior control objects remain unchanged; 14 complete runtime
+controls are added, making the required union 374 query, 115 input and 267
+authority negatives (756 total). Eight observed component function names join
+the expected query inventory. Frozen combined `124bf3a1` passes complete
+Stock695/1,199,308/538 and620/1,046, retaining all inherited functions at
+unchanged default resources with final guards. The numeric manifest lock leaves
+all three complete captured programs byte-identical; native gates and the
+complete756-negative union remain required. Archive
+`experiments/2026-10-27/acceptance-preapply-union-124bf3a1-positive.tgz`, SHA-256
+`597349c7fde376aa13e4e7924a6bc1ebbea6af3ba69e14733177d79388963379`.
+Both native-key source anchors bind the reviewed wrapper, while projected
+SolverIdentity/Mode declarations remain identical. Original root typed-model
+proofs, checked prefix bounds, renderer controls, compiler-layout policies and
+#513/#519 source fixtures remain. Four focused native-handover/key-projection/
+source-fixture tests pass locally.
+
+Independent archive/raw audit passes for
+`experiments/2026-10-27/acceptance-frame-preapply-closed-20261027-v7.tgz`, SHA-256
+`7436a48b65d7902ad9c4d33bbd593c8b776f5e3f24434ada84230456726cf649`.
+All ten nested hashes match. Frozen `86e4edb0` passes the full query root at
+642/1,104 with inherited functions, default resources and final source/runtime
+guards. All 53 SMT/session/key and 33 shim library tests pass, zero skips,
+with strict package Clippy and final source checks. The audit checks all 25
+compiled files and 327 canonical source hashes. These results execute none
+of the 14 new ordinary controls and do not qualify this combined source.
+The closed archive preserves the preceding capture/contract/lint refusals,
+including #521/#525/#526; none earns ordinary-negative credit.
+
+## Command and colored rendering qualification
+
+Frozen `9d8f8e49` completes its entire bounded native qualifier successfully:
+whole Stock query689/1,191, inputs308/538 and authority620/1,046; all 25 selected
+query/lexical ordinary negatives and all 20 colored/support ordinary negatives,
+plus their complete authority positive, pass under unchanged full scope and
+default resources. Both the original #522 fault and the two new wrapper faults
+fail ordinarily. Full native gate passes production-source84 (374.179 s),
+model-source12, Rust1,311 with 58 skips, strict Clippy, doctests/rustdoc/layering/
+dependency policy; solver54 and actual output e2e also pass. Final source,
+runtime and image guards pass.
+
+Independent GET/hash/raw audit checks all 49 actual Stock calls, 344 canonical
+source hashes and 1,103 compiled-file hashes, including exact reconstruction
+of every whole-root captured program from that frozen Git source. Archive:
+`experiments/2026-10-27/acceptance-command-render-union-9d8f8e49-native.tgz`,
+SHA-256 `2011664550f0fe0e6de594e13c28991089603b7c28a19d581135dc83be9f3b4d`.
+This is a passing bounded qualifier, not the full 742-negative matrix or
+all-e2e/conformance/cost/service acceptance. The subsequent compiler-layout and
+pre-apply integrations require their own evidence. All six deliverables remain
+open; the PR remains a draft.
+
 ## Complete compiler declaration layout integration
 
 The source ports main `67b8b95d`'s complete dep-info layout and all-output ghost

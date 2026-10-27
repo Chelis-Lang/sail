@@ -27,8 +27,10 @@ use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, Sol
 use sail_session::Session as NativeSession;
 use sail_smtlib::command::{CommandKind, Output, classify};
 #[cfg(test)]
+use sail_smtlib::split::ItemKind;
+#[cfg(test)]
 use sail_smtlib::split::{CommandSplitter, ResponseSplitter};
-use sail_smtlib::split::{Item, ItemKind, is_single_response};
+use sail_smtlib::split::{Item, is_single_response};
 
 /// Native Session plus independently retained raw policy-option bytes.
 /// Map readback agreement does not prove the pinned solver's option semantics.
@@ -54,10 +56,6 @@ impl ObservedSession {
             self.native.option(b":print-success"),
             self.native.option(b":rlimit"),
         )
-    }
-
-    fn expects_output(&self, command: &[u8]) -> Output {
-        self.native.expects_output(command)
     }
 
     fn apply(&mut self, command: &[u8]) -> bool {
@@ -1186,20 +1184,9 @@ fn observe(
     };
     let head = frame.head();
     let name = String::from_utf8_lossy(head).into_owned();
-    if !classify(&item.bytes).is_ok_and(|command| command.name == head) {
+    let Some(mut output) = frame.pre_apply(item.kind, session.option(b":print-success")) else {
         prefix.refuse();
         return (Output::Unknown, String::new(), Expect::Stop);
-    }
-    let policy = match frame.policy() {
-        sail_acceptance::query_policy::ResponsePolicy::None => Output::None,
-        sail_acceptance::query_policy::ResponsePolicy::One => Output::One,
-        sail_acceptance::query_policy::ResponsePolicy::Unknown => Output::Unknown,
-    };
-    let mut output = if item.kind == ItemKind::List && session.expects_output(&item.bytes) == policy
-    {
-        policy
-    } else {
-        Output::Unknown
     };
     if !session.apply(&item.bytes) {
         prefix.refuse();

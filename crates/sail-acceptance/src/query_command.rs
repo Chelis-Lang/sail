@@ -510,7 +510,7 @@ sail_verified! {
 }
 
 sail_spec! {
-    proof fn push_trace(raw:Seq<u8>,name:Seq<u8>)
+    pub(crate) proof fn push_trace(raw:Seq<u8>,name:Seq<u8>)
         requires raw==seq![b'(',b'p',b'u',b's',b'h',b')'],name==seq![b'p',b'u',b's',b'h'],
         ensures classification(raw)==Ok((name,(0u8,1u64,seq![],seq![]))),
     {
@@ -599,5 +599,64 @@ sail_verified! {
         }
         matches!(expects_output(&raw,None),Output::None)
             && matches!(expects_output(&raw,Some(&yes)),Output::One)
+    }
+}
+
+sail_spec! {
+    /// Exact existing successful-head policy, expressed in the actual public
+    /// command response type. It has no establishment/origin interpretation.
+    pub open spec fn head_output(head:Seq<u8>) -> Output {
+        if crate::query_policy::one_head(head) {Output::One}
+        else if crate::query_policy::silent_head(head) {Output::None}
+        else {Output::Unknown}
+    }
+    /// Actual pre-apply observe decision. None is the existing early refusal;
+    /// Some(Unknown) retains the existing continue/apply path, not authority.
+    pub open spec fn pre_apply_decision(command:Seq<u8>,head:Seq<u8>,kind:crate::query_split::ItemKind,
+        print_success:Option<Seq<u8>>) -> Option<Output> {
+        match classification(command) {
+            Err(_)=>None,
+            Ok((name,_))=>if name!=head {None} else {
+                let policy=head_output(head);
+                Some(if kind is List && response_expectation(command,print_success)==policy {policy} else {Output::Unknown})
+            },
+        }
+    }
+}
+
+sail_spec! {
+    pub proof fn push_output_facts(head:Seq<u8>)
+        requires head==seq![b'p',b'u',b's',b'h'],
+        ensures head_output(head) is None,
+    {
+        reveal(crate::query_policy::named);reveal(crate::query_policy::prefixed);
+        reveal_strlit("push");reveal_strlit("check-sat");reveal_strlit("check-sat-assuming");
+        reveal_strlit("check-sat-using");reveal_strlit("echo");reveal_strlit("get-");
+        assert(vstd::string::is_ascii("push"));vstd::string::is_ascii_spec_bytes("push");
+        assert(vstd::string::is_ascii("check-sat"));vstd::string::is_ascii_spec_bytes("check-sat");
+        assert(vstd::string::is_ascii("check-sat-assuming"));vstd::string::is_ascii_spec_bytes("check-sat-assuming");
+        assert(vstd::string::is_ascii("check-sat-using"));vstd::string::is_ascii_spec_bytes("check-sat-using");
+        assert(vstd::string::is_ascii("echo"));vstd::string::is_ascii_spec_bytes("echo");
+        assert(vstd::string::is_ascii("get-"));vstd::string::is_ascii_spec_bytes("get-");
+        assert(head =~= vstd::utf8::encode_utf8("push"@));
+        assert(seq![b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't'] =~= vstd::utf8::encode_utf8("check-sat"@));
+        assert(seq![b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't',b'-',b'a',b's',b's',b'u',b'm',b'i',b'n',b'g'] =~= vstd::utf8::encode_utf8("check-sat-assuming"@));
+        assert(seq![b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't',b'-',b'u',b's',b'i',b'n',b'g'] =~= vstd::utf8::encode_utf8("check-sat-using"@));
+        assert(seq![b'e',b'c',b'h',b'o'] =~= vstd::utf8::encode_utf8("echo"@));
+        assert(seq![b'g',b'e',b't',b'-'] =~= vstd::utf8::encode_utf8("get-"@));
+        assert(!crate::query_policy::one_head(head)) by {reveal(crate::query_policy::one_head);}
+        assert(crate::query_policy::silent_head(head));
+    }
+}
+
+sail_verified! {
+    /// Actual finite response-category equality, using explicit variant
+    /// matching rather than an unspecified derived-trait call in the proof.
+    /// Equal categories remain data and confer no result authority.
+    pub fn output_equal(left:Output,right:Output) -> (same:bool)
+        requires (true) ensures (same==(left==right))
+    {
+        matches!((left,right),(Output::None,Output::None) | (Output::One,Output::One)
+            | (Output::Unknown,Output::Unknown))
     }
 }

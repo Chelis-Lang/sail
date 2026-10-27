@@ -61,6 +61,41 @@ sail_code! {
             { crate::query_policy::response_policy(self.head) }
         }
         sail_method! {
+            /// Executes observe's original pre-apply classify/head/category
+            /// decision over this frame's own raw command and head. None is
+            /// an early refusal and Unknown is a data/control result only;
+            /// neither establishes a truthful solver result or admission.
+            pub fn pre_apply(&self,kind:crate::query_split::ItemKind,print_success:Option<&[u8]>)
+                -> (out:Option<crate::query_command::Output>)
+                requires (self.coherent())
+                ensures (out==crate::query_command::pre_apply_decision(self.command_view(),self.head_view(),kind,
+                    match print_success {Some(value)=>Some(value@),None=>None}))
+            {
+                let Ok(parsed)=crate::query_command::classify(self.command) else {return None;};
+                if !crate::inputs::byte_eq(parsed.name,self.head) {return None;}
+                sail_proof! {
+                    assert(crate::query_command::classification(self.command_view()).is_ok());
+                    assert(crate::query_command::classification(self.command_view()).unwrap().0==self.head_view());
+                }
+                let policy=match self.policy() {
+                    crate::query_policy::ResponsePolicy::None=>crate::query_command::Output::None,
+                    crate::query_policy::ResponsePolicy::One=>crate::query_command::Output::One,
+                    crate::query_policy::ResponsePolicy::Unknown=>crate::query_command::Output::Unknown,
+                };
+                sail_proof! {assert(policy==crate::query_command::head_output(self.head_view())) by {
+                    reveal(crate::query_command::head_output);
+                }}
+                let expected=crate::query_command::expects_output(self.command,print_success);
+                let agrees=crate::query_command::output_equal(expected,policy);
+                sail_proof! {
+                    assert(agrees==(expected==policy));
+                    reveal(crate::query_command::pre_apply_decision);
+                }
+                Some(if matches!(kind,crate::query_split::ItemKind::List) && agrees {policy}
+                    else {crate::query_command::Output::Unknown})
+            }
+        }
+        sail_method! {
             /// The exact raw endpoint whose state produced this key.
             pub fn end(&self) -> (out: usize)
                 requires (true) ensures (out == self.endpoint())
@@ -493,5 +528,64 @@ sail_verified! {
             && matches!(items[3].kind,crate::query_split::ItemKind::Stray)
             && items[3].offset == 4 && items[3].bytes.len() == 1 && items[3].bytes[0] == b')'
             && !owner.has_pending_item() && crate::inputs::byte_eq(owner.bytes(),&expected)
+    }
+}
+
+sail_spec! {
+    proof fn push_head_facts(raw:Seq<u8>)
+        requires raw==seq![b'(',b'p',b'u',b's',b'h',b')'],
+        ensures forall|start:int,end:int| crate::query::head_span(raw,start,end) ==> start==1 && end==5,
+    {
+        assert forall|start:int,end:int| crate::query::head_span(raw,start,end) implies start==1 && end==5 by {
+            if start>1 {
+                assert(raw.subrange(1,start)[0]==b'p');
+                assert(crate::query::trivia_after(raw.subrange(1,start),false).is_none()) by {
+                    reveal_with_fuel(crate::query::trivia_after,1);
+                }
+            }
+            assert forall|i:int| 1<=i<5 implies !crate::query::word_delimiter(raw[i]) by {};
+            assert(end==5);
+        }
+    }
+}
+
+sail_verified! {
+    /// Actual nonempty raw-prefix factory produces the frame used by the new
+    /// pre-apply operation. List/default silence and both conservative Unknown
+    /// paths are checked; None and Unknown grant no admission authority.
+    #[allow(clippy::byte_char_slices, reason = "Concrete original bytes keep the factory/head/readback witness scoped and nonempty.")]
+    pub fn pre_apply_control<Host>(prefix:Prefix<Host>) -> (passed:bool)
+        where (Host:HashHost)
+        requires (prefix.exact(),prefix.length()==0)
+        ensures (passed)
+    {
+        let command=[b'(',b'p',b'u',b's',b'h',b')'];
+        let head=[b'p',b'u',b's',b'h'];
+        let yes=[b't',b'r',b'u',b'e'];
+        let mut owner=QueryPrefix::new(prefix);
+        owner.append(&command);
+        sail_proof! {
+            flat_list_frame(head@);
+            assert(command@ =~= seq![b'(']+head@+seq![b')']);
+            assert(owner.view()==command@ && owner.fed()==0 && owner.active());
+            assert(crate::query::single_list(command@,true));
+            assert(crate::query::symbol_first(command@[1]));
+            assert(owner.view().subrange(0,command@.len() as int)==command@);
+            assert(owner.view().subrange(0,0)==Seq::<u8>::empty());
+            assert(crate::query::trivia_after(Seq::<u8>::empty(),false)==Some(false));
+            push_head_facts(command@);
+            crate::query_command::push_trace(command@,head@);
+            crate::query_command::push_output_facts(head@);
+            reveal_strlit("true");assert(vstd::string::is_ascii("true"));
+            vstd::string::is_ascii_spec_bytes("true");
+            assert(yes@ =~= vstd::utf8::encode_utf8("true"@));
+            assert(crate::query_policy::named(yes@,"true"@)) by {reveal(crate::query_policy::named);}
+        }
+        let Some(frame)=owner.command(0,&command) else {return false;};
+        sail_proof! {assert(frame.head_view()==head@);}
+        crate::inputs::byte_eq(frame.head(),&head)
+            && matches!(frame.pre_apply(crate::query_split::ItemKind::List,None),Some(crate::query_command::Output::None))
+            && matches!(frame.pre_apply(crate::query_split::ItemKind::Atom,None),Some(crate::query_command::Output::Unknown))
+            && matches!(frame.pre_apply(crate::query_split::ItemKind::List,Some(&yes)),Some(crate::query_command::Output::Unknown))
     }
 }

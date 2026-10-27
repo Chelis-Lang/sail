@@ -1,5 +1,13 @@
 # Known issues and limits
 
+- [#521](https://github.com/Chelis-Lang/sail/issues/521),
+  [#525](https://github.com/Chelis-Lang/sail/issues/525) and
+  [#526](https://github.com/Chelis-Lang/sail/issues/526): candidate pre-apply
+  source-anchor, comparison-proof and strict lint refusals are preserved in
+  the closed component archive. Final `86e4edb0` passes whole642/1,104,
+  native53+33 and strict package Clippy. Its source is integrated; all14 new
+  ordinary controls and combined qualification remain required.
+
 - [#507](https://github.com/Chelis-Lang/sail/issues/507): the root's old ghost
   writer joins only the output rules before the first blank line, while its
   reader requires equal file lists across every output rule. A port of main's
@@ -14,7 +22,9 @@
   native workspace gate, solver53 and actual output e2e pass; the selected
   aggregate remains failed. A byte-only checked rendering helper retains the
   original complete wrapper contract, checks and loops; three moved fault
-  selectors and two new wrapper controls await fresh qualification.
+  selectors and two new wrapper controls all pass ordinarily at `9d8f8e49`,
+  alongside the full native gate/solver/output qualifier. The complete expanded
+  authority matrix and later integrations remain unqualified.
 
 - [#517](https://github.com/Chelis-Lang/sail/issues/517) and
   [#518](https://github.com/Chelis-Lang/sail/issues/518): classifier proof/native

@@ -580,3 +580,15 @@ sail_verified! {
         crate::query_prefix::append_items_control(prefix)
     }
 }
+
+sail_verified! {
+    /// Discharges the framed pre-apply witness's exact empty-prefix premise
+    /// using the existing real executable recording primitive and constructor.
+    pub fn framed_pre_apply_control() -> (passed:bool)
+        requires (true) ensures (passed)
+    {
+        sail_proof! {reveal(<RecordingHash as HashHost>::bytes);}
+        let prefix=Prefix::new(RecordingHash {bytes:Vec::new()},b"z3",b"4",b"binary",b"platform",None);
+        crate::query_prefix::pre_apply_control(prefix)
+    }
+}

@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Connect the shim's actual pre-apply command/head/category decision to the
+  checked original frame and borrowed print-success value. Preserve early
+  refusal, conservative unknown, session application and forwarding behavior.
+
 - Read compiler-declared paths from the complete rustc file-rule inventory and
   require every output rule to bind that same list. Join ghost-only files into
   every output rule, including blank-separated outputs. Preserve exact checked

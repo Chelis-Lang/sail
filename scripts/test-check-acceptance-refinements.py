@@ -190,6 +190,20 @@ class SourceCaptureTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
                 CHECKER.compiled_subset(path,original.replace(before,after))
 
+    def test_actual_framed_pre_apply_native_handover_remains_bound(self):
+        manifest=CHECKER.json.loads((ROOT/CHECKER.MANIFEST).read_bytes())
+        SOURCE.key_stencil({CHECKER.KEY_NATIVE:(ROOT/CHECKER.KEY_NATIVE).read_bytes()},manifest["key_declarations"])
+        for path,before,after in (
+            (CHECKER.KEY_NATIVE,b"self.frame.pre_apply(kind, print_success)",b"self.frame.pre_apply(kind, None)"),
+            ("crates/sail-shim/src/cached.rs",b'frame.pre_apply(item.kind, session.option(b":print-success"))',b'frame.pre_apply(item.kind, Some(b"true"))'),
+        ):
+            original=(ROOT/path).read_bytes()
+            CHECKER.compiled_subset(path,original)
+            self.assertEqual(original.count(before),1)
+            with self.subTest(path=path),self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path,original.replace(before,after))
+
+
     def test_completed_presentation_has_no_public_or_derived_mint(self):
         paths = {path for component in CHECKER.COMPONENTS
             for path in CHECKER.dependency_paths(component)}

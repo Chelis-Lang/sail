@@ -18,7 +18,7 @@ colored byte-only replay and the typed solver/mode-to-model bridge.
 The subsequent checked bound lemma replaces an invalid external closed-spec
 reveal; complete Stock qualification passes at `b327ab39`.
 
-The current required inventory is 360 query, 115 input and 267 authority
+The current required inventory is 374 query, 115 input and 267 authority
 negatives, plus three complete positive roots. These are required cases, not
 passing-case counts. Discover actual combined function/obligation inventories;
 never add component counts or remove inherited functions. Compiler, type, VIR,
@@ -30,7 +30,9 @@ timeout and resource refusals earn zero ordinary-negative credit.
 | `ee4e684f` | All31 model cases and all115 input-record negatives across four canonical partitions | Complete compiler/physical input closure; query/authority partitions from that attempt refuse resources |
 | `d2bef2d0` | Whole Stock query646/1,114, inputs308/538, authority619/1,045; all12 model/80 production source tests | Native gate stops at colored predicate parentheses; Rust tests/solver unrun |
 | `b327ab39` | Whole Stock666/1,151,308/538,619/1,045 and all17 selected native replay tests | Strict workspace Clippy refuses one new fixture assertion style; corrected full native/control/e2e gates pending |
-| `9d8f8e49` combined | Whole Stock689/1,191,308/538 and620/1,046, all inherited functions retained | Native gate/selected command25+colored20/output active; later complete-layout source needs fresh qualification |
+| `124bf3a1` pre-apply/layout union | Complete Stock695/1,199,308/538 and620/1,046; numeric lock preserves every captured byte | All756 negatives/native/managed/conformance/cost/service gates |
+| `9d8f8e49` combined | Whole Stock689/1,191,308/538,620/1,046; all45 selected ordinary negatives; native source84/Rust1,311, solver54 and output e2e; independent49-call audit | Complete756-negative union, later compiler-layout/pre-apply source and remaining service gates |
+| `86e4edb0` pre-apply component | Whole642/1,104, native SMT/session/key53+shim33 and strict Clippy; independent10-archive/raw/hash audit | All14 new controls and combined discovery/gates |
 | `c6b46500` command component | Whole query636/1,096; native SMT/session32 and strict acceptance/SMT/session/shim Clippy; independent nine-archive/raw/hash audit | Combined whole discovery, all22 new controls and complete expanded union |
 | `6214824a` integrated native | Full native gate: source80/model12, Rust1,310; solver53; actual output e2e; authority positive and17 selected ordinary negatives | One colored renderer fault exhausts default Stock resources (#522), aggregate fails; byte-only helper correction and later source need new qualification |
 | `561c1570` parser component | Whole613/1,056 and four full-positive/ordinary-negative pairs for earlier resource failures | Complete expanded query-control union and current integration gates |
@@ -46,7 +48,8 @@ exact limits. Raw logs and source bundles stay outside Git.
 ## Active component work
 
 - Parser: actual classifier/value-span/output-category and Session expectation
-  code is integrated; the actual pre-apply observation join is being proved, using the existing
+  and actual pre-apply observation code are integrated; checked private map
+  maintenance is the next candidate, using the existing
   Session → smtlib → acceptance dependency path. Preserve main's
   `check-sat-using` fix and pinned-solver regression. Root owns the disjoint
   `typed_model_*` bridge; do not copy an older query proof over it.
@@ -63,7 +66,7 @@ exact limits. Raw logs and source bundles stay outside Git.
   renumberable recency; preserve main's dense ordered renumber and exhaustion
   regression. Retained bucket capacity and actual carrier changes need charges
   and native measurements. A truthful cache origin is a separate requirement.
-- Integration: qualify the byte-only colored renderer correction for #522,
+- Integration: qualify the combined pre-apply and compiler-layout source,
   the typed model bridge and full combined gates. Preserve conservative Unknown
   and both allowed calls in the managed ghost-include case (#507); cause is
   unconfirmed until the actual combined run identifies it.

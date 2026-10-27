@@ -216,3 +216,48 @@ fn joint_owner_retains_raw_bytes_and_command_keys_across_fragmentation() {
         }
     }
 }
+
+#[test]
+fn framed_pre_apply_uses_original_command_kind_and_readback() {
+    use sail_acceptance::query_command::Output;
+    use sail_acceptance::query_split::ItemKind;
+    assert!(sail_acceptance::key_prefix::framed_pre_apply_control());
+    for left in [Output::None, Output::One, Output::Unknown] {
+        for right in [Output::None, Output::One, Output::Unknown] {
+            assert_eq!(
+                sail_acceptance::query_command::output_equal(left, right),
+                left == right
+            );
+        }
+    }
+    let solver = SolverIdentity {
+        name: "z3".into(),
+        version: "4.16.0".into(),
+        binary_sha256: [7; 32],
+        platform: "linux-x86_64".into(),
+    };
+    for (raw, expected) in [
+        (b"(push)".as_slice(), Some(Output::None)),
+        (b"(check-sat-using smt)".as_slice(), Some(Output::One)),
+        (b"(push x)".as_slice(), None),
+    ] {
+        let mut owner = SessionPrefix::new(&solver, &Mode::Default);
+        owner.append(raw);
+        let Some(frame) = owner.command(0, raw) else {
+            unreachable!("complete original frame")
+        };
+        let key = frame.key();
+        assert_eq!(frame.pre_apply(ItemKind::List, None), expected);
+        if expected.is_some() {
+            assert_eq!(frame.pre_apply(ItemKind::Atom, None), Some(Output::Unknown));
+        }
+        if expected == Some(Output::None) {
+            assert_eq!(
+                frame.pre_apply(ItemKind::List, Some(b"true")),
+                Some(Output::Unknown)
+            );
+        }
+        assert_eq!(frame.key(), key);
+        assert_eq!(frame.freeze().key(), key);
+    }
+}
