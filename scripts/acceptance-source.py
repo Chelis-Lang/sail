@@ -624,10 +624,12 @@ OUTPUT_FIELDS = {
 }
 PROJECT_FIELDS = {
     "TargetResult": "package_id target kind establishing_run reused requested complete scope_reuse report",
-    "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
+    "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine execution no_reuse",
     "RequestTarget": "package_id target kind",
     "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
     "EngineIdentity": "name manifest_sha256",
+    "Execution": "verifier_invocations reused_targets",
+    "NoReuse": "code reason verified_as",
 }
 OUTPUT_ENUMS = ("VerdictName", "EstablishmentName", "EvidenceTierName", "SourceSummaryName", "EngineEstablishment")
 API_MODULES = ("output", "project", "jobs", "repair")
@@ -755,7 +757,7 @@ def api_stencils(snapshots: dict[str, bytes], expected: dict | None = None) -> t
     inventory: dict = {}
     for module, selected, enums in (
         ("output", OUTPUT_FIELDS, OUTPUT_ENUMS),
-        ("project", PROJECT_FIELDS, ("Currentness",)),
+        ("project", PROJECT_FIELDS, ("Currentness", "VerifiedAs")),
         ("jobs", {}, ("Mode", "Currentness")),
         ("repair", {"Selection": "package target kind function"}, ()),
     ):

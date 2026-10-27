@@ -5652,6 +5652,40 @@
           "declaration_sha256": "4fef1313d15cd68c36ed4a30d68c5f7d236c751e94c26a7ee52d8617131a7646"
         },
         {
+          "name": "Execution",
+          "kind": "struct",
+          "fields": {
+            "verifier_invocations": [
+              "u64"
+            ],
+            "reused_targets": [
+              "u64"
+            ],
+            "wall_ms": [
+              "f64"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "c64a2e44601bbfb89543e57afc25eeb9a565f6899f895debd299e340ff7859e3"
+        },
+        {
+          "name": "NoReuse",
+          "kind": "struct",
+          "fields": {
+            "code": [
+              "String"
+            ],
+            "reason": [
+              "String"
+            ],
+            "verified_as": [
+              "VerifiedAs"
+            ]
+          },
+          "variants": [],
+          "declaration_sha256": "7c35d6ef870e607f2964daae25216e4dfbc65b291702d6530988a4bbcee1a438"
+        },
+        {
           "name": "Currentness",
           "kind": "enum",
           "fields": {},
@@ -5661,6 +5695,16 @@
             "Unknown"
           ],
           "declaration_sha256": "ad039b21a4c41449bc9c2e656c974edce1d37acf3853a15a70c0957222339bc8"
+        },
+        {
+          "name": "VerifiedAs",
+          "kind": "enum",
+          "fields": {},
+          "variants": [
+            "PlainCargoVerus",
+            "Managed"
+          ],
+          "declaration_sha256": "68a30d597c60e0c12b0030588506bfeb13d278cb0d6de4d562ecd75d34f8104c"
         }
       ],
       "schema_constant": [
@@ -5675,10 +5719,12 @@
       ],
       "retained_fields": {
         "TargetResult": "package_id target kind establishing_run reused requested complete scope_reuse report",
-        "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
+        "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine execution no_reuse",
         "RequestTarget": "package_id target kind",
         "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
-        "EngineIdentity": "name manifest_sha256"
+        "EngineIdentity": "name manifest_sha256",
+        "Execution": "verifier_invocations reused_targets",
+        "NoReuse": "code reason verified_as"
       }
     },
     "jobs": {
