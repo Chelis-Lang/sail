@@ -11,6 +11,11 @@ semantic versioning once the API is published.
   path observation and journal origin remain native boundaries. This new slice
   awaits complete-root, native and ordinary-negative qualification.
 
+- Migrate the remaining original-dictionary test fixtures to checked insertion
+  and fallible request construction (#489), retaining their independently
+  declared library scope and every positive/refusal assertion. Native test
+  qualification remains pending.
+
 - Keep both request-candidate API-library capture bindings and declared source
   dependency ordering consistent; include the actual immutable key in assembly
   rejection fixtures (#479). The guards retain strict refusal and report the
