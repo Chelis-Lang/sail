@@ -4,32 +4,22 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
-The [actual owned streaming-list source candidate](design/acceptance-query.md#actual-owned-streaming-list-kernel-candidate)
-needs whole-root positive discovery, all new/inherited controls, native and
-conformance qualification. It moves actual list bytes/chunk completion and the
-delimiter operation into the checked leaf, but leaves native top-level emission,
-absolute offset/capacity correspondence and lexical/solver interpretation open
-under #371. It introduces no solver-origin claim or runtime selection.
-Its first full query run at `48f09fa7` refuses with missing append/endpoint proof
-facts and a resource marker in constructiveness; final identity checks pass,
-but no positive or control qualifies. Explicit scoped proof guidance retains
-the original byte/frame relation and default limits; rerun remains required.
-The follow-up `668be5f2` refuses Stock compilation because proof-only patterns
-move values later used by executable matches (#469). Borrowed proof patterns
-correct that candidate defect without changing native behavior; no verification
-or control credit is obtained until the complete rerun passes.
-The `8752d3c6` rerun clears that compilation defect and the constructive paths,
-but still refuses the owned append's scan/prefix facts (479 verified/one failed,
-835 entries). Moving the same append through a private checked owned-Vec helper
-preserves its contract and ordinary controls; whole-root qualification remains pending.
-That helper run at `ff4676cb` also refuses (480 verified/one failed, 836 entries).
-The next guidance derives the future exact sequence before mutation and checks
-the actual full-buffer scan afterward, without relaxing byte/prefix contracts.
-The complete query root then passes at `a182c1e4` (482/837, all earlier functions,
-final identity checks). Its native SMT package passes 22/22 tests, then strict
-Clippy refuses three style diagnostics (#470). Method/witness-local annotations
-retain the actual byte push/copy/witness and all checks; corrected-source native
-qualification and all ordinary controls remain pending.
+The [actual owned streaming-list kernel](design/acceptance-query.md#actual-owned-streaming-list-kernel-candidate)
+passes the complete query positive at `a182c1e4` (482/837, all earlier functions,
+final identity checks). The `e6e0e67a` native package passes all 22 SMT tests,
+strict Clippy, the actual dependency graph and six layering unit tests. Ordinary
+controls, conformance and the broader parser/solver joins remain unqualified:
+actual top-level emission inventory, absolute offsets/capacity and lexical
+classification still need production refinement under #371. No origin or
+full-service authority follows from this structural kernel.
+
+The [owning record](validation/acceptance-boundary-refinements.md) retains all
+failed proof attempts and the corrected proof-pattern (#469) and native-style
+(#470) defects. The reviewed #468 runtime-body guard repairs comparison control
+151 without changing the other 170 descriptors; the ten new edits and corrected
+151 target actual executable operations and await whole-root diagnostics.
+A source-only recurrence still accepts loop-contract-only selectors; the lead
+owns that separate #468 correction, and these eleven edits do not use it.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

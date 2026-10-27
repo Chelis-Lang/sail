@@ -20,6 +20,8 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `e6e0e67a` native dependency graph | Actual `xtask check-layering` passes for 20 crates/three extension crates, then all six selected layering unit tests pass; final source checks pass | Qualifies the implemented dependency graph and selected tests, not an architectural acceptance/runtime selection, full workspace gate or parser semantics theorem |
+| `e6e0e67a` native SMT package | All 22 package tests pass, zero skips (0.566 s test time), then strict all-target/all-feature package Clippy passes; final source checks pass | Native SMT package only. No ordinary-negative, full workspace, solver, conformance or service credit. Architecture graph and bounded whole-root control diagnostics remain separate |
 | `a182c1e4` parser query positive | Entire query Stock root passes 482/0 with all 837 query function entries, retaining every earlier qualified function and all 835 initial candidate entries; final source/runtime checks pass (34.038 s) | Positive discovery only; no ordinary-negative, full parser/solver interpretation or service credit. Observed counts await the stricter runtime-descriptor guard union and canonical locking |
 | `a182c1e4` native SMT package | All 22 tests pass, zero skips (0.561 s test time; 11.141 s command), then strict package Clippy refuses three new-kernel style diagnostics in 3.574 s (#470); final source checks pass | Local method/witness annotations preserve every statement/contract/control and require the same native tests/Clippy rerun. No complete package gate, workspace, solver or conformance qualification |
 | `ff4676cb` parser query positive | Full root retains 480 verified/one failed function across 836 query entries in 32.978 s, no resource marker; final source/runtime guards pass. The owned-Vec helper still refuses the same predecessor-scan/proper-prefix assertions | No positive or inventory lock. Next guidance proves the future appended sequence's scan/prefix facts before mutation, then asserts the stronger actual full-buffer scan against checked `frame_step`; runtime operations and original contracts remain unchanged |
@@ -64,6 +66,38 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+Native graph checks are retained as
+`experiments/2026-10-27/acceptance-parser-e6e0-layering-native.tgz`, SHA-256
+`c9f7b75a307b07222850d28008704f75c467784b1ca3f3a4b79d1824d2fba480`
+(7,830 bytes); host creation and independent local SCP/hash agree, with private
+upload/readback pending. The actual current graph passes, including the one
+proposed parser-to-leaf edge and all six layering unit tests (20 unrelated
+xtask tests filtered). ADR 0086 remains proposed; this check is not an owner
+architecture/runtime-selection decision or qualification of outer parser joins.
+
+The corrected native package archive is
+`experiments/2026-10-27/acceptance-parser-e6e0-smt-native.tgz`, SHA-256
+`0c983752977b8a7ab8d64d48e46d5c3b3d263b6ee0c3ef8a6289adfc92c65895`
+(10,612 bytes); host creation and independent local SCP/hash agree, with
+private object upload/readback pending. The same 22 native SMT tests and strict
+package Clippy pass after only three method/witness annotations; the failed
+earlier style run remains indexed. This establishes the package scope, not the
+remaining outer parser/offset/capacity relation or full service behavior.
+
+The coherent controller union incorporates the reviewed #468 source guard and
+balanced-cursor regressions (`4eeb4c95`, `8b3432c4`, `44b249c6`). Only comparison
+control 151 changes: it now selects the full unchanged method and substitutes
+the actual final false return, retaining every signature/contract. All 170
+other query control objects remain byte-identical. All ten new list controls
+and corrected 151 pass the executable-span source guard; no negative credit
+is granted before their entire-root ordinary failures. Actual query inventory
+is locked only from the successful `a182c1e4` report: 482/837, retaining every old
+function. Input/authority inventories remain historical and unchanged. The
+assembled driver and 20 compiled file hashes match that report; the remaining
+kernel file differs only by the three reviewed native annotations. Loop-only
+invariant/decreases selector acceptance is a separate source-reproduced #468
+recurrence owned by the lead; it is not used by these eleven runtime edits.
 
 The successful parser positive is retained as
 `experiments/2026-10-27/acceptance-parser-a182c1-positive-native.tgz`, SHA-256
