@@ -7,6 +7,19 @@ No complete compiler-input closure, physical
 observation guarantee or service theorem is claimed. All six rows of the
 [obligation ledger](../design/acceptance-boundary-refinements.md) remain open.
 
+The request-construction candidate imports the reviewed `9099f673` runtime
+mutation projection: selectors must change one actual executable body while
+preserving signatures, postconditions and every checked loop annotation. Its
+extension recognizes the exact inherited-trait-method grammar without an
+implementation precondition clause. Ordinary controls retain refusal of
+postcondition-only, erased, nested-function and loop-contract mutations. The
+historical query control 151's contract-only selector is replaced by the exact
+reviewed full-method control from `00352b64`, preserving its contracts and loop.
+All other inherited controls remain unchanged. The imported base has separate
+native source-suite evidence; this combined extension and actual request/domain
+construction still require fresh native source checks and complete-root Stock
+discovery. No function or obligation counts are inferred from the support probe.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
