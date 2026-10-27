@@ -4413,6 +4413,7 @@ fn run_recorded(
                         .collect(),
                     result: &result,
                     original_request: &original_request,
+                    human: shown,
                 })
             })
             .flatten()

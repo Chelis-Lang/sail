@@ -1093,4 +1093,48 @@ pub fn declared_replay_missing_native_paths_refused(project: crate::project::Pro
     acceptance::admit_declared_replay_ordered(project, original, current, orders, None, Some(readback)).is_none()
 }
 
+
+/// Constructive byte witnesses reject an always-refusing footer parser without
+/// requiring any report, verifier event or positive proof assumption.
+pub fn empty_human_footer_examples() -> (accepted: bool)
+    ensures accepted,
+{
+    acceptance::empty_human_bytes(b"", b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n")
+        && acceptance::empty_human_bytes(b"", b"    Finished `release` profile [optimized] target(s) in 12m 59s\n")
+        && !acceptance::empty_human_bytes(b"verified", b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\n")
+        && !acceptance::empty_human_bytes(b"", b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.01s\nverified\n")
+}
+
+/// A valid declared-domain human observation reaches the byte-only factory.
+/// No complete-report/request predicate is a premise of this witness.
+pub fn empty_human_replay_constructive<'a, 'b>(original: &'a crate::project::ResolvedRequest,
+    current: &'a crate::project::ResolvedRequest, observed: &'a crate::project::ProjectResult,
+    paths: &acceptance::RequestPathBinding<'a>, readback: &'a crate::inputs::GuardedReadback<'b>,
+    stderr: &'a [u8]) -> (accepted: bool)
+    requires acceptance::empty_human_observation(original, observed, true),
+        acceptance::replay_request_payload(current, original), acceptance::cargo_footer(stderr@),
+        acceptance::request_paths_correspond(current,
+            acceptance::path_binding_invocation(paths)@, acceptance::path_binding_workspace(paths)@),
+        readback.unchanged_view(), readback.guard_view().is_some(),
+        readback.guard_view().unwrap().revision_view() == string_bytes(&current.input_revision),
+    ensures accepted,
+{
+    let admitted = acceptance::admit_empty_human_output(original, current, observed, true,
+        b"", stderr, Some(paths), Some(readback));
+    match admitted { Some(admitted) => { let actual = admitted.stderr(); proof { assert(actual == stderr); } true }, None => false }
+}
+
+/// Even Current, exit-zero empty observations cannot establish the independently
+/// requested whole proof. Currentness and human output remain separate facts.
+pub proof fn empty_observation_has_no_whole_authority(request: &crate::project::ResolvedRequest,
+    observed: &crate::project::ProjectResult)
+    requires observed.targets@.len() == 0,
+    ensures !acceptance::request_authorized(request, observed),
+        !acceptance::supplied_selection_authorized(observed),
+{
+    if acceptance::resolved_coverage(request, observed) {
+        acceptance::resolved_coverage_has_requested_target(request, observed);
+    }
+}
+
 }
