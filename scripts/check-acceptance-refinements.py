@@ -117,7 +117,7 @@ RETAINED_BRIDGE_SHA256 = 'f1214b5c3cada2004a55eb359e8ec62724a8fa5349ec50ca7d3b9e
 # This reviewed source uses the identical argument/type/body metavariables in
 # Cargo and stock profiles. Changes require an explicit runner review, beyond
 # merely updating a manifest. Runtime-only implementation drift must refuse.
-SYNTAX_SHA256 = 'deb8606ce9d123997dd286ae3e184c7496bdaf5e659543a7be724baffd9adc70'
+SYNTAX_SHA256 = '507cec8fb677180528ff296e1f32352102e9b9578b5bd9b80107bfb61ebbdb9f'
 LIB_SHA256 = '6bd34ec1405ac5e0cead7f66bbf735c095967f242accfd8c019ecfd8f459481a'
 API_LIB_SHA256 = 'c0d86d594bb374650fae43024f49264a4c6f840c8b0f73ab8092d620afdc7fed'
 # Binding inventories cover both ordinary and proof-only imports. In particular,

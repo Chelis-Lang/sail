@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Give the original-target comparator candidate an explicit checked trait-method
+  envelope that inherits trait preconditions, retaining its native method bodies
+  and checked postconditions (#472). The earlier whole-file probe stopped before
+  verification; fresh direct-stock qualification remains pending.
+
 - Route actual CLI no-op normalization and pre-execution request, target and
   engine-identity construction through shared checked source candidates,
   retaining every original field and argument position. Scope workspace flag
