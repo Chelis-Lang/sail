@@ -2926,7 +2926,7 @@ sail_spec! {
     }
 
     pub closed spec fn empty_human_stderr<'a, 'b>(a: &EmptyHumanOutput<'a, 'b>) -> &'a [u8] { a.stderr }
-    pub closed spec fn empty_human_context(a: &EmptyHumanOutput) -> EmptyHumanContext { a.context }
+    pub closed spec fn empty_human_context<'a, 'b>(a: &EmptyHumanOutput<'a, 'b>) -> EmptyHumanContext<'a, 'b> { a.context }
     pub closed spec fn empty_human_context_original<'a, 'b>(a: &EmptyHumanContext<'a, 'b>) -> &'a ResolvedRequest { a.original }
     pub closed spec fn empty_human_context_current<'a, 'b>(a: &EmptyHumanContext<'a, 'b>) -> &'a ResolvedRequest { a.current }
     pub closed spec fn empty_human_context_observed<'a, 'b>(a: &EmptyHumanContext<'a, 'b>) -> &'a ProjectResult { a.observed }
