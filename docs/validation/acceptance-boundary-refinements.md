@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `069e91f6` | Complete native whole positives pass: expanded option query 441/0 (776 functions), inputs 308/0 (538), authority 498/0 (878), every prior function retained and final source/runtime checks pass | Actual inventories frozen; all 134 expanded query controls and the current 359-case matrix remain pending, along with full native/differential gates and all six service obligations |
 | `7ac1c3d9` | Native source guards and all three whole positives pass (431/759, 308/538, 498/878). Workspace then stops in 0.51 s at a stale eleven-phase completion fixture, while the actual workflow and guard require ten (#453) | No compilation, ordinary tests or later gates run. The corrected fixture exercises all ten required positions and rejects eleven; the proof-job policy remains a separate unresolved choice |
 | `40d14854` | Native workspace passes (all 1,228 tests), all 31 models pass, then the production runner refuses authority control 76: 487 verified plus one error, all 830 functions, against 489 required obligations | The full-body mutation removed a loop obligation (#454). No negative credit or complete production pass; solver, e2e and conformance unrun. Corrected mutations retain complete loops and change only acceptance exits |
 | `9b4ceea2` | Native source guard suites and all three whole positives pass: query 431/0 (759 functions), inputs 308/0 (538), authority 498/0 (878); all previous functions retained and final source/runtime/image identities checked | Initial discovery only. No workspace, ordinary negative matrix, solver or conformance qualification; later main integration and lint fixes need fresh gates |
@@ -93,10 +94,13 @@ construct full physical-input or solver-origin authority. Closed capture binds
 native adapter sources explicitly without claiming those bodies are proved.
 
 The proposed complete matrix retains every inherited control and requires
-340 cases: three whole positive roots and 337 ordinary failing controls
-(115 query, 115 input and 107 authority). The manifest freezes the successful
-whole-positive inventories: query 431/759, inputs 308/538 and authority 498/878
-(verified/function entries), retaining every earlier function. The complete
+359 cases: three whole positive roots and 356 ordinary failing controls
+(134 query, 115 input and 107 authority). The manifest freezes successful
+whole-positive discovery at `069e91f6`: query 441/776, inputs 308/538 and
+authority 498/878 (verified/function entries), with final source/runtime checks
+and every prior function retained. Its report SHA-256 is
+`80829df588f1cad425d1249ab606017c5551a80a9dfd68ec185bbeffa6b817cf`.
+The prior 340-case candidate used query 431/759. Its complete
 `f8d61408` positive report SHA-256 is
 `30822d09dcc90b76c315fd3ec8fa392af478b7b20def6d9e56e7d5e60cc36876`;
 `7f08ce1d` repeats all three roots with final source/runtime checks.
