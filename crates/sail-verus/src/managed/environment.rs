@@ -388,14 +388,14 @@ mod tests {
             "TAB\tKEY",
             "NBSP\u{a0}",
         ];
-        let mut program = String::new();
+        let mut program = Vec::new();
         for (index, name) in names.iter().enumerate() {
-            program += &format!(
+            program.push(format!(
                 "pub const FLAG_{index}: &str = env!({});\n",
                 serde_json::to_string(name)?
-            );
+            ));
         }
-        std::fs::write(&source, program)?;
+        std::fs::write(&source, program.concat())?;
         let mut command =
             std::process::Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()));
         command

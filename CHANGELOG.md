@@ -20,7 +20,8 @@ semantic versioning once the API is published.
   name. The dep-info reader split file names at non-ASCII whitespace such
   as U+00A0 and dropped literal backslashes, so an included file could go
   untracked (#408); it now decodes rustc's own escaping and refuses a
-  dep-info whose rules disagree. Declared environment names were trimmed
+  dep-info whose rules disagree. Ghost-only files are now added to every
+  output rule of a dep-info, not only the first. Declared environment names were trimmed
   and rustc's `\n`, `\r` and `\\` escapes were not decoded, so another
   variable was sampled (#383); build-script lines now follow Cargo's own
   framing, so indented instructions count and bare `rerun-if-changed=`
