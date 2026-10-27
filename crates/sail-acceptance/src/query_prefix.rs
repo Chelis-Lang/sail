@@ -195,6 +195,7 @@ sail_code! {
             /// Appends actual raw bytes and runs their owned command splitter
             /// in the same operation. Items refer to this transcript, without
             /// a separately supplied history, origin flag or copied raw tape.
+            #[allow(clippy::single_match_else, reason = "Keep the checked owned Option transfer and its unreachable fail-safe branch explicit without changing the qualified operation.")]
             pub fn append_items(&mut self, bytes: &[u8]) -> (out: Vec<crate::query_split::Item>)
                 requires (old(self).coherent())
                 ensures (final(self).coherent(),final(self).active() == old(self).active(),
