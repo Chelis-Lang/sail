@@ -271,7 +271,7 @@ pub struct Pending {
     record: Record,
 }
 
-/// Validated empty human output. It has no ProjectResult or proof accessor.
+/// Validated empty human output. It has no `ProjectResult` or proof accessor.
 pub struct HumanReplay {
     stderr: Vec<u8>,
 }
@@ -508,6 +508,10 @@ fn rustup_settings() -> Option<PathBuf> {
 
 /// Gather a record at the end of a run that ended Current without starting a
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep both admission policies beside the complete original observation vector."
+)]
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
     let human_only = sail_api::acceptance::empty_human_candidate(
         facts.original_request,
@@ -753,7 +757,7 @@ fn lock(path: &Path, shared: bool) -> Option<std::fs::File> {
 }
 
 /// Replays only empty human stdout and one validated Cargo completion line.
-/// Callers receive bytes, never a ProjectResult or verification authority.
+/// Callers receive bytes, never a `ProjectResult` or verification authority.
 /// JSON, jobs, MCP, independent-request capture and engine paths keep their
 /// ordinary result-producing execution or checked whole/partial proof replay.
 #[must_use]

@@ -2939,7 +2939,7 @@ sail_verified! {
             }
         }
         if i == 0 { return false; }
-        if bytes.len() - i == 5 {
+        let valid = if bytes.len() - i == 5 {
             bytes[i] == b'.' && b'0' <= bytes[i + 1] && bytes[i + 1] <= b'9'
                 && b'0' <= bytes[i + 2] && bytes[i + 2] <= b'9'
                 && bytes[i + 3] == b's' && bytes[i + 4] == b'\n'
@@ -2948,7 +2948,13 @@ sail_verified! {
                 && b'0' <= bytes[i + 2] && bytes[i + 2] <= b'5'
                 && b'0' <= bytes[i + 3] && bytes[i + 3] <= b'9'
                 && bytes[i + 4] == b's' && bytes[i + 5] == b'\n'
-        } else { false }
+        } else { false };
+        sail_proof! {
+            assert(valid == cargo_duration_tail(bytes@, i as int));
+            if valid { assert(cargo_duration(bytes@)) by { assert(cargo_duration_tail(bytes@, i as int)); } }
+            if cargo_duration(bytes@) { assert(cargo_duration_tail(bytes@, i as int)); }
+        }
+        valid
     }
 }
 
