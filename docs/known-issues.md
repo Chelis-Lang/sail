@@ -30,10 +30,10 @@ reuse depends on.
   recorded path (#387). A concurrent edit that restores every stamped
   field, including the inode change time, is not detected; that needs a
   privileged clock change or a filesystem without change times.
-- Native-artifact store seeding can hide a changed native linker at the same
-  `PATH` ([#187](https://github.com/Chelis-Lang/sail/issues/187)). The store
-  is disabled under [ADR 0053](decisions/0053-disable-unqualified-native-store.md),
-  so main is not affected. Its family key now binds the bytes of the native
+- Native-artifact store seeding could hide a changed native linker at the
+  same `PATH`. The store is disabled under
+  [ADR 0053](decisions/0053-disable-unqualified-native-store.md), so main is
+  not affected. Its family key now binds the bytes of the native
   tools (`cc`, `c++`, `ar`, `ld` on `PATH` and any linker or C compiler named
   by the environment) and refuses the store when a linker is chosen by Cargo
   configuration or compiler flags. Re-enabling the store is still not
@@ -47,21 +47,25 @@ The service-wide acceptance theorem is not complete
 
 Current numbers are in [performance](performance.md).
 
-- **Unchanged calls that miss replay pay setup cost**
-  ([#314](https://github.com/Chelis-Lang/sail/issues/314)). An unchanged
-  `sail verify` replays in about 26 ms on Linux (60 ms on macOS) when every
-  recorded stamp matches
-  ([ADR 0082](decisions/0082-unchanged-call-replay.md)). When replay does not
-  apply (for example after a `touch`, a recent ctime or a different
-  argument), unchanged Anvil takes about 1.7 s against stock's 0.3 s, with no
-  verifier run.
-- **Tiny edits cost more than stock**
-  ([#156](https://github.com/Chelis-Lang/sail/issues/156)). Input checks,
-  receipts and complete reports add a fraction of a second to small edits.
+- **The first unchanged call, and any unchanged call that misses replay,
+  pays setup cost** ([#232](https://github.com/Chelis-Lang/sail/issues/232)).
+  A recorded unchanged `sail verify` replays in 0.03–0.06 s on Linux and
+  0.04–0.09 s on macOS when every recorded stamp matches
+  ([ADR 0082](decisions/0082-unchanged-call-replay.md)). The first unchanged
+  call after a verification takes the full path and records the replay, as
+  does any call replay does not apply to (for example after a `touch`, a
+  recent ctime or a different argument), with no verifier run: Anvil takes
+  2.21 s against stock's 0.34 s on Linux and 2.07 s against 0.30 s on
+  macOS; Vest and CapybaraKV about 0.55–0.8 s against 0.14–0.26 s.
+- **Small edits on small projects gain little**
+  ([#232](https://github.com/Chelis-Lang/sail/issues/232)). On IronKV a
+  one-line edit, fail and fix are 1.08–1.24× faster than stock on Linux and
+  1.28–1.45× on macOS; input checks, receipts and complete reports are part
+  of every managed run.
 - **macOS cold Anvil is slightly slower than stock**
-  ([#278](https://github.com/Chelis-Lang/sail/issues/278),
-  [#232](https://github.com/Chelis-Lang/sail/issues/232)): about 0.1 s on
-  100 s, within run-to-run range. Linux cold runs are at parity or faster.
+  ([#232](https://github.com/Chelis-Lang/sail/issues/232)): 99.5 → 100.2 s,
+  with ranges that do not overlap. Linux cold runs are at parity or faster on
+  every measured project (Anvil 175.9 → 169.0 s).
 - **A miss re-solves the whole bucket**
   ([#158](https://github.com/Chelis-Lang/sail/issues/158)). Editing one
   function re-sends its module's whole solver session; on Anvil one bucket
