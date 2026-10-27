@@ -85,6 +85,21 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+## Raw-owner inventory correction candidate (#480)
+
+Review of preserved `f5a179d5` found its actual owner append returned all items
+but did not retain the splitter's complete ordered-inventory postcondition.
+The correction adds that universal inventory and exact continuation relation,
+carries real initial idle state through both checked key factories, and adds a
+concrete nonempty shared witness plus full-operation drop/reorder controls.
+Runtime bytes, fields and statements are unchanged. No native wrong verdict is
+demonstrated. All 187 previous controls remain; one new full-chunk descriptor is
+rebound to the strengthened contract with its same loop/body mutation. Query
+controls are now 189 (428 planned unique cases, 437 four-partition calls).
+The 482/837 lock remains historical until actual discovery. The source-only
+closure check remains 21/9/14 files; full-root/native/control qualification and
+remaining lexical/output/solver/origin obligations stay open.
+
 ## Outer-stream and paired input source candidate
 
 The isolated `proof/acceptance-stream-outer` child of `9c3b4ea6` now contains the
@@ -106,8 +121,9 @@ new inventory; new whole-root discovery and all old-function retention must
 succeed before replacing it. No local build/test/verifier execution is used.
 Native paired-owner and unchanged original fixtures, complete controls,
 conformance and runtime cost remain unqualified. CI policy remains unresolved.
-The frozen 9c3b4ea6 bounded eleven-case job continues independently and does not
-qualify this new source.
+The frozen 9c3b4ea6 bounded eleven-case job passes all selected whole-root
+positive/ordinary-negative pairs, with final checks. Its independently read
+closed reports do not qualify this new source or the full component matrix.
 
 ## Streaming-list source candidate and scope
 

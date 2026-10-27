@@ -568,3 +568,15 @@ sail_verified! {
         completed && valid && same
     }
 }
+
+sail_verified! {
+    /// Supplies a concrete constructible exact seed to the raw-owner ordered
+    /// emission witness; the generic factory premise is nonempty.
+    pub fn owner_append_items_control() -> (passed: bool)
+        requires (true) ensures (passed)
+    {
+        sail_proof! { reveal(<RecordingHash as HashHost>::bytes); }
+        let prefix=Prefix::new(RecordingHash { bytes:Vec::new() },b"z3",b"4",b"binary",b"platform",None);
+        crate::query_prefix::append_items_control(prefix)
+    }
+}

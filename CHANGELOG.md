@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Retain complete ordered parser emissions and continuation in the checked
+  input-owner append contract (#480), with nonempty constructive and drop/reorder
+  controls. Runtime bytes and returned data are unchanged; qualification is pending.
+
 - Source-share the actual outer SMT stream states, atom/CRLF/finish rules,
   absolute cursor and chunk loop. Pair input splitting with its owned raw
   transcript append while preserving public fields, original bytes and keys.

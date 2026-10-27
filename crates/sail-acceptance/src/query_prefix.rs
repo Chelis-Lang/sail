@@ -148,12 +148,14 @@ sail_code! {
     impl<Host: HashHost> QueryPrefix<Host> {
         sail_impl_spec! {
             pub closed spec fn view(&self) -> Seq<u8> { self.raw.view() }
+            pub closed spec fn parser_view(&self) -> (u8,Seq<u8>,int) { self.splitter.transition_view() }
             pub closed spec fn fed(&self) -> nat { self.raw.fed_view() }
             pub closed spec fn material(&self) -> Seq<u8> { self.prefix.material() }
             pub closed spec fn active(&self) -> bool { self.raw.active() && self.prefix.exact() }
             pub closed spec fn coherent(&self) -> bool {
                 self.fed() <= self.view().len() && self.prefix.exact() && self.prefix.length() == self.fed()
                     && self.splitter.input_view() && self.splitter.matches(self.view())
+                    && self.splitter.well_formed() && self.splitter.position_view() == self.view().len()
             }
             pub open spec fn matches(&self, binding: (Seq<u8>, Seq<u8>, Seq<u8>, Seq<u8>, Option<Seq<u8>>)) -> bool {
                 self.coherent() && self.material() == crate::key_prefix::header(binding.0,binding.1,binding.2,binding.3,binding.4)
@@ -165,6 +167,7 @@ sail_code! {
             pub fn new(prefix: Prefix<Host>) -> (out: Self)
                 requires (prefix.exact(), prefix.length() == 0)
                 ensures (out.coherent(), out.active(), out.view().len() == 0, out.fed() == 0,
+                    out.splitter.fresh(),out.parser_view() == (0u8,Seq::<u8>::empty(),0int),
                     out.material() == prefix.material(),
                     forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
                         prefix.material() == crate::key_prefix::header(binding.0,binding.1,binding.2,binding.3,binding.4) ==> out.matches(binding))
@@ -192,6 +195,8 @@ sail_code! {
                 ensures (final(self).coherent(),final(self).active() == old(self).active(),
                     final(self).view() == old(self).view()+bytes@,final(self).fed() == old(self).fed(),
                     final(self).material() == old(self).material(),
+                    final(self).parser_view() == crate::query_split::model_scan(old(self).parser_view(),true,old(self).view().len() as int,bytes@).0,
+                    crate::query_split::item_models(out@) == crate::query_split::model_scan(old(self).parser_view(),true,old(self).view().len() as int,bytes@).1,
                     forall|i:int| 0 <= i < out@.len() ==>
                         crate::query_split::original_item(out@[i],final(self).view(),true),
                     forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
@@ -411,5 +416,32 @@ sail_spec! {
             assert(full.take(i) =~= seq![b'('] + prefix);
             flat_contents_prefix(prefix);
         }
+    }
+}
+
+sail_verified! {
+    /// Nonempty actual owner append preserves complete ordered emissions
+    /// across a pending-atom chunk boundary, including delimiter reprocessing.
+    pub fn append_items_control<Host>(prefix: Prefix<Host>) -> (passed: bool)
+        where (Host: HashHost)
+        requires (prefix.exact(),prefix.length() == 0)
+        ensures (passed)
+    {
+        sail_proof! { reveal_with_fuel(crate::query_split::model_scan,4); }
+        let mut owner=QueryPrefix::new(prefix);
+        let none=owner.append_items(b"ab");
+        if !none.is_empty() { return false; }
+        let items=owner.append_items(b")c)");
+        if items.len() != 4 { return false; }
+        matches!(items[0].kind,crate::query_split::ItemKind::Atom)
+            && items[0].offset == 0 && items[0].bytes.len() == 2
+            && items[0].bytes[0] == b'a' && items[0].bytes[1] == b'b'
+            && matches!(items[1].kind,crate::query_split::ItemKind::Stray)
+            && items[1].offset == 2 && items[1].bytes.len() == 1 && items[1].bytes[0] == b')'
+            && matches!(items[2].kind,crate::query_split::ItemKind::Atom)
+            && items[2].offset == 3 && items[2].bytes.len() == 1 && items[2].bytes[0] == b'c'
+            && matches!(items[3].kind,crate::query_split::ItemKind::Stray)
+            && items[3].offset == 4 && items[3].bytes.len() == 1 && items[3].bytes[0] == b')'
+            && !owner.has_pending_item() && crate::inputs::byte_eq(owner.bytes(),b"ab)c)")
     }
 }
