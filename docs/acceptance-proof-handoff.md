@@ -85,6 +85,14 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+The actual outer/raw-owner source at `88ab662d` passes complete query discovery:
+524 verified/0 errors, 918 actual query entries, all 837 earlier entries retained,
+37.812 s, no resource/VIR failure and final source/runtime checks passing. The
+manifest locks only that observed set/count. This is a complete positive root,
+not full controls/native/service qualification. All 192 query controls and new
+native/conformance gates remain required; later lexical source stays separate.
+The positive's exact raw archive/report/hash is in the owning gate record.
+
 The first actual extracted chunk run at `2bf6c63a` observes 522 verified/2 failed
 functions and 918 query entries, with final guards passing; a default outer-loop
 rlimit marker remains. No new positive inventory is locked. The next candidate

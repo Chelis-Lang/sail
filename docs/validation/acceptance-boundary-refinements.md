@@ -21,6 +21,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 | Frozen source | Actual result | Limits |
 |---|---|---|
 | Outer native-delegation fixture (#484) | One lightweight source test at `2bf6c63a` reproduces stale native-body selector failure 0!=1 in 0.294 s; retargeting the same four meaningful native guards passes the same test in 0.240 s | Test fixture only: mathematical controls/assertions and runtime code unchanged; no native/proof/service qualification |
+| `88ab662d` outer/raw-owner whole query positive | Entire query root passes 524 verified/0 errors with 918 actual entries, all 837 prior entries retained, no VIR/resource failure, 37.812 s, final frozen source/runtime checks pass | Positive only: exact observed inventory locked; all 192 query controls, new native/conformance and later lexical/output/solver/origin joins remain unqualified |
 | `2bf6c63a` extracted chunk query attempt | Complete query observes 522 verified/2 failed functions across 918 query entries in 39.445 s; final frozen source/runtime guards pass, with the outer loop's default rlimit marker retained | No qualification/count lock. Explicit scalar push/append and returned-option raw-prefix equalities target the remaining chunk/outer transport facts; all 192 controls/contracts/default resources remain required |
 | `e36f9681` outer/owner query attempt | Full query observes 522 verified/1 failed function and 915 query entries, 38.232 s, final guards passing. Sole outer-loop raw-state carry includes a default rlimit refusal; scalar/constructive obligations clear | No inventory lock/qualification. Actual chunk-transition extraction retains payloads/contracts/old190 controls and adds two full-method controls, without raising resources |
 | `19482b13` outer/owner query attempt | Full query observes 519 verified/4 failed functions across 915 query entries, no resource marker, 38.300 s, final source/runtime checks pass | No positive lock/qualification. Remaining pending-frame suffix, chunk raw-state carry and concrete returned-data witnesses receive exact equality/invariant facts, without changing predicate meaning, bytes or resources |
@@ -77,6 +78,15 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The whole-query positive is retained as
+`acceptance-parser-88ab66-positive-native.tgz`, SHA-256
+`22503dadc8744753d399904a65694c9d036c4726b3bffadae70e89ae9440c250`
+(310,412 bytes). Host creation and independent local SCP/hash/full report agree;
+object upload/readback is pending. Actual driver hash remains
+`cab0c74526facdb3cce470441aa9ed45e9956f3bc1fc69ca7450a5b8116a0557`;
+the expanded actual core files have their separate complete captured hashes.
+No declaration/function count is guessed from this driver hash.
 
 The next closed proof refusal, separately from the immutable twelve-archive
 object, is `acceptance-parser-3c3725-positive-native.tgz`, SHA-256
