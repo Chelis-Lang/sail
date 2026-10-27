@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Connect actual terminal output framing, replay settlement and complete-stream
+  joining to checked production operations, preserving the original native
+  close/wait/forwarding sequence. Complete combined qualification remains open.
+
 - Add exact colored Cargo completion prefixes to the byte-only unchanged-call
   candidate (#506), preserving the original color/profile bytes and checking
   the entire replacement duration. Arbitrary ANSI, nonempty stdout and proof

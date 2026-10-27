@@ -142,6 +142,9 @@ class SourceCaptureTests(unittest.TestCase):
         for path, before, after in (
             ("crates/sail-shim/src/cached.rs", b"order.append_batch(chunk)", b"order.append_batch(&[])"),
             ("crates/sail-shim/src/cached.rs", b"batch.settle_current(&mut pairer.pending, payload, &SolverOwnerIdentity)", b"true"),
+            ("crates/sail-shim/src/cached.rs", b"let mut tail = order.prepare_tail(code);", b"let mut tail = order.prepare_tail(0);"),
+            ("crates/sail-shim/src/cached.rs", b"tail.settle_tail(&mut pairer.pending, payload, &SolverOwnerIdentity)", b"true"),
+            ("crates/sail-shim/src/cached.rs", b"sealed.join_replay(&SolverOwnerIdentity)", b"None"),
             ("crates/sail-smtlib/src/split.rs", b"sail_acceptance::query_split::single_response(reply)", b"true"),
         ):
             original = snapshots[path]
@@ -150,7 +153,7 @@ class SourceCaptureTests(unittest.TestCase):
             with self.subTest(before=before), self.assertRaises(CHECKER.Refusal):
                 CHECKER.compiled_subset(path, original.replace(before, after))
         self.assertEqual(snapshots[CHECKER.OUTPUT_ORDER_CORE].count(
-            b"self.order.comparison.next_statistics() && !crate::query_split::single_response(actual)"), 1)
+            b"self.order.comparison.next_statistics() && !crate::query_split::single_response(actual)"), 2)
 
     def test_actual_lexer_state_and_head_are_checked_with_bound_native_calls(self):
         entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),

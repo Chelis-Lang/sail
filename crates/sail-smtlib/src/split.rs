@@ -133,6 +133,13 @@ mod tests {
     }
 
     #[test]
+    fn shared_output_tail_uses_actual_queue_replay_and_coverage() {
+        assert!(sail_acceptance::query_output_order::output_tail_replay_constructive(&SameOwner));
+        assert!(sail_acceptance::query_output_order::output_tail_fresh_constructive(&SameOwner));
+        assert!(sail_acceptance::query_output_order::output_tail_refusal_control(&SameOwner));
+    }
+
+    #[test]
     fn shared_owned_stdout_parser_controls_execute() {
         assert!(sail_acceptance::query_output_split::parsed_output_constructive_control());
         assert!(sail_acceptance::query_output_split::parsed_output_partial_refused());

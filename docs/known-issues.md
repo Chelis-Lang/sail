@@ -6,7 +6,9 @@
   79/80 production source tests pass and native Rust/solver steps remain unrun.
   The correction checks the real native settlement handover and retains the
   required shared single-cursor-advance fault. Its focused local source test
-  passes; full native qualification is still required.
+  passes, and all 80 production source tests pass at `d2bef2d0`. That full
+  gate then stops on the new colored-footer Clippy lint; native Rust/solver
+  qualification is still required.
 
 - [#508](https://github.com/Chelis-Lang/sail/issues/508): a proof-only false
   assertion plus an erased empty statement could masquerade as a runtime
@@ -21,9 +23,11 @@
 - [#510](https://github.com/Chelis-Lang/sail/issues/510): the earlier complete
   query suite refuses four controls because the unchanged nonempty stdout
   comparison witness reaches default Stock resources. No query partition earns
-  full qualification from that attempt. Exact proof cuts and the four original
-  negatives remain required on the expanded source; no witness or assertion
-  may be removed to make the suite pass.
+  full qualification from that attempt. Exact checked proof cuts retain all
+  original assertions; `561c1570` passes all four original controls through
+  ordinary failures, each alongside a complete 613/1,056 positive at unchanged
+  limits. Their integration and the entire expanded query suite still require
+  qualification.
 
 - [#505](https://github.com/Chelis-Lang/sail/issues/505): the combined authority
   control `request-verification-enabled` produces its intended postcondition
@@ -42,8 +46,11 @@
   arbitrary escape stripping or broad stdout acceptance is not a correction.
   A candidate adds four exact colored prefixes through separate checked
   byte-only factories/rendering, eighteen executable failure controls and
-  actual native record/readback fixtures. Direct proof, native and full output
-  qualification remain open; this is not yet a qualified fix.
+  actual native record/readback fixtures. The whole authority root passes
+  619/1,045 at `d2bef2d0`; its native gate stops at a redundant-parentheses
+  lint. That correction and private-token source protections need fresh
+  proof/native qualification, all eighteen ordinary controls and the actual
+  output phase. This is not yet a qualified fix.
 
 - [#507](https://github.com/Chelis-Lang/sail/issues/507): the managed ghost-only
   include case remains Unknown after both existing allowed verification calls.

@@ -8,6 +8,17 @@ not establish a whole-service origin or I/O theorem.** This component of the
 boundary and dependency edges are recorded in [ADR 0079](../decisions/0079-source-shared-acceptance-refinements.md).
 Solver input and corpus sources are unchanged.
 
+The terminal-output candidate now calls checked `OutputTail` and `SealedOrder`
+operations for the original pending interval, owner/range/byte handover,
+comparison completion and original-prefix join. Native pipe close, kill,
+forwarding and child wait stay in their original order. No supplied clean-exit
+flag establishes physical solver origin. The component passes whole-root
+Stock checking at `4d53e10a` (613 obligations, 1,056 function entries); four
+previously resource-limited controls pass ordinary full-root failures at
+`561c1570`. The earlier native `a694e30c` passes 27 SMT tests and strict
+SMT/shim Clippy; later cuts change only erased proof syntax. The combined
+root and full control union still need their own qualification.
+
 ## The proved boundary
 
 [`query_association.rs`](../../proofs/acceptance/query_association.rs) no longer

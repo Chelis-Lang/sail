@@ -1,5 +1,37 @@
 # Acceptance boundary refinement qualification
 
+## Terminal output integration
+
+The integrated candidate adds actual `OutputTail`/`SealedOrder` operations and
+24 mandatory query controls while preserving every prior root control object,
+the #505 renderer corrections, #513 native handover selector and all 18 colored
+footer controls. The current required union is 338 query, 115 input and 265
+authority negatives. Function inventories remain lower bounds until fresh
+complete-root discovery; component counts are not added together.
+
+Independent archive/raw review passes for
+`experiments/2026-10-27/acceptance-output-tail-closed-20261027-v5.tgz`, SHA-256
+`ca36a909f153a76ed355fc14aaa4e9fac877bd21fbfd2c8bbef3d091f08afb83`:
+eight nested archives, sixteen helper hashes, whole Stock 613/1,056 at
+`4d53e10a`, and all eight raw calls for the four positive/ordinary-negative
+pairs at `561c1570`. Each retains the full function inventory and default
+resources without VIR/resource errors. This covers those four controls only.
+Native `a694e30c` passes 27 SMT tests and strict package Clippy; subsequent
+proof-only changes have an equal erased token projection. It is not another
+native execution at the final source.
+
+The root's typed solver/mode-to-model bridge also enters this integration.
+Its first whole query attempt (`fa947cb7`) reaches 647 verified/one failed
+obligation: the bridge lacks an explicit bound before taking the original
+input prefix. The correction reveals the existing owned-prefix invariant
+and states that bound. All original contracts and runtime operations remain.
+No proof/native acceptance is claimed for the integrated source yet.
+
+Failed attempt: `fa947cb7`, 2026-10-27, whole query 647/1 at unchanged
+resources; archive
+`experiments/2026-10-27/acceptance-colored-typed-fa947cb7-native.tgz`, SHA-256
+`44ab69e789de66e1d7c5961a88b94cea47029cc4286710857c09b9e377e3e158`.
+
 Status: full service qualification remains open. [PR #378](https://github.com/Chelis-Lang/sail/pull/378)
 remains a draft. Coherent implementations and their subsequent control runs
 have separate evidence below; ongoing updates use the owner's WIP publication waiver.

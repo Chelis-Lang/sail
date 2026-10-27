@@ -1079,9 +1079,12 @@ pub fn typed_model_command<Host: crate::key_prefix::HashHost>(
                 endpoint: frozen.endpoint_view(),
             };
             proof {
+                reveal(crate::query_prefix::QueryPrefix::coherent);
                 assert(prefix.matches(fields));
                 assert(prefix.view() == input@);
                 assert(prefix.fed() == frozen.endpoint_view());
+                assert(frozen.endpoint_view() <= input@.len());
+                assert(input@.take(frozen.endpoint_view() as int).len() == frozen.endpoint_view());
                 assert(binding.prefix.len() == binding.endpoint);
             }
             (Some(frozen),Ghost(Some(binding)))

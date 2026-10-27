@@ -643,6 +643,51 @@ sail_verified! {
         ensures (refused)
     { observe_owned_publication(Some(input),input_owner,Some(output),gate,identity).is_none() }
 }
+sail_spec! {
+    /// Literal-only cut for the original nonempty replay witness. The actual
+    /// framing predicates and all original witness assertions remain checked.
+    proof fn compared_frame_facts(bytes:Seq<u8>)
+        requires bytes == seq![b'(',b'x',b')'],
+        ensures crate::query::single_list(bytes,false),
+            bytes.subrange(0,3) == bytes,
+            crate::query::response_trim(bytes,0,3),
+            crate::query::response_span(bytes,0,3),
+            crate::query::response_shape(bytes),
+    {
+        crate::query_prefix::flat_list_frame(seq![b'x']);
+        assert(bytes =~= seq![b'(']+seq![b'x']+seq![b')']);
+        assert(crate::query::single_list(bytes,false)) by {
+            reveal_with_fuel(crate::query::frame_scan,4);
+        }
+        assert(bytes.subrange(0,3) =~= bytes);
+        assert(crate::query::response_trim(bytes,0,3));
+        assert(crate::query::response_span(bytes,0,3));
+        assert(crate::query::response_shape(bytes));
+    }
+    /// Exact original retained-prefix cut over the actual completed owner and
+    /// original served payload; it grants no physical or solver-origin fact.
+    proof fn compared_prefix_facts(output:&CompletedStream<u64>,
+        replay:&crate::query_replay::Replay<'_,u64>,bytes:Seq<u8>)
+        requires bytes == seq![b'(',b'x',b')'],
+            output.output_view().view() == bytes,
+            output.output_view().endpoints() == seq![3usize],
+            replay.served_view().len() == 1,
+            !replay.served_view()[0].statistics_view(),
+            replay.served_view()[0].bytes_view() == bytes,
+        ensures output.replay_frame_matches(replay,0),
+            forall|i:int| 0 <= i < replay.served_view().len() ==> output.replay_frame_matches(replay,i),
+            output.replay_prefix_matches(replay),
+    {
+        compared_frame_facts(bytes);
+        assert(output.output_view().view().subrange(0,3) =~= bytes);
+        assert(replay.served_view()[0].reproduces(bytes));
+        assert(output.replay_frame_matches(replay,0));
+        assert forall|i:int| 0 <= i < replay.served_view().len() implies
+            output.replay_frame_matches(replay,i) by {assert(i==0);}
+        assert(output.replay_prefix_matches(replay));
+    }
+}
+
 sail_verified! {
     /// One original served payload is compared against the actual completed
     /// stdout frame, then joined to that same owner's drained replay cursor.
@@ -657,11 +702,9 @@ sail_verified! {
         let mut output = StreamOutput::new_replayed(owner,1);
         output.append(&bytes);
         sail_proof! {
-            crate::query_prefix::flat_list_frame(seq![b'x']);
+            compared_frame_facts(bytes@);
             assert(bytes@ =~= seq![b'(']+seq![b'x']+seq![b')']);
-            assert(crate::query::single_list(bytes@,false)) by {
-                reveal_with_fuel(crate::query::frame_scan,4);
-            }
+            assert(crate::query::single_list(bytes@,false));
             assert(bytes@.subrange(0,3) =~= bytes@);
             assert(crate::query::response_trim(bytes@,0,3));
             assert(crate::query::response_span(bytes@,0,3));
@@ -682,6 +725,7 @@ sail_verified! {
             assert(!replay.served_view()[0].statistics_view());
             assert(replay.served_view()[0].bytes_view() == bytes@);
             assert(replay.served_view()[0].reproduces(bytes@));
+            compared_prefix_facts(&output,&replay,bytes@);
             assert(output.replay_frame_matches(&replay,0));
             assert forall|i: int| 0 <= i < replay.served_view().len() implies
                 output.replay_frame_matches(&replay,i) by { assert(i == 0); }

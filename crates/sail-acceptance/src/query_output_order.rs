@@ -14,6 +14,15 @@ sail_code! {
         pending:Option<Pending>,
         forward_from:Option<usize>,
     }
+
+    /// Owns the original final pending response after the native wait observation.
+    pub struct OutputTail<'a,Owner> { order:OutputOrder<'a,Owner>,current:Option<Prepared> }
+    /// Retains the actual sealed stdout and original replay through finish/join.
+    /// Presence proves output coverage only, separately from native exit/origin.
+    pub struct SealedOrder<'a,Owner> {
+        output:Option<crate::query_output_owner::CompletedStream<Owner>>,
+        comparison:crate::query_replay::Replay<'a,Owner>,
+    }
     /// Owns the actual emitted vector and its original controller while one
     /// read chunk is consumed. Its cursor never removes/reorders payloads.
     pub struct OutputBatch<'a,Owner> {
@@ -124,7 +133,13 @@ sail_code! {
             pub fn end(&mut self) -> (out:()) requires (old(self).coherent())
                 ensures (final(self).coherent(),final(self).view() == old(self).view(),
                     final(self).pending_view() == old(self).pending_view(),final(self).replay_view() == old(self).replay_view(),
-                    final(self).forwarding_view() == old(self).forwarding_view(),final(self).output_view().output_view().eof())
+                    final(self).forwarding_view() == old(self).forwarding_view(),final(self).output_view().output_view().eof(),
+                    final(self).output_view().owner_view() == old(self).output_view().owner_view(),
+                    final(self).output_view().replay_view() == old(self).output_view().replay_view(),
+                    final(self).output_view().parser_view() == old(self).output_view().parser_view(),
+                    final(self).output_view().output_view().endpoints() == old(self).output_view().output_view().endpoints(),
+                    final(self).output_view().output_view().healthy() == (old(self).output_view().output_view().healthy()
+                        && !old(self).output_view().output_view().eof()))
             {self.output.end();}
         }
         sail_method! {
@@ -677,5 +692,482 @@ sail_verified! {
         sail_proof! {assert(crate::query_split::item_models(second.items_view()).len()==second.items_view().len());}
         if !second.begin_next() || second.begin_next() {return false;}
         second.finish().diverged()
+    }
+}
+
+sail_code! {
+    impl<'a,Owner> OutputOrder<'a,Owner> {
+        sail_method! {
+            /// Selects only this owner's original pending tail on the existing
+            /// nondivergent, zero-native-status branch. Physical wait stays native.
+            #[allow(clippy::manual_map, reason = "Explicit pending-ownership branches expose each original interval field; the preceding whole-root Option-map trial did not establish the exact transferred-field relation without another closure contract.")]
+            pub fn prepare_tail(mut self,code:u8) -> (out:OutputTail<'a,Owner>)
+                requires (self.coherent())
+                ensures (out.well_formed(),out.order_view().output_view() == self.output_view(),
+                    out.order_view().replay_view() == self.replay_view(),
+                    out.order_view().forwarding_view() == self.forwarding_view(),
+                    out.tail_view().is_some() == (!self.replay_view().diverged_view() && code==0 && self.pending_view().is_some()),
+                    out.tail_view().is_some() ==> out.tail_view() == Some((self.view().len() as int,self.pending_view(),None))
+                        && out.order_view().pending_view().is_none(),
+                    out.tail_view().is_none() ==> out.order_view().pending_view() == self.pending_view())
+            {
+                let current=if !self.comparison.diverged() && code==0 {
+                    let end=self.output.len();
+                    match self.pending.take() {
+                        Some(previous)=>Some(Prepared {end,previous:Some(previous),frame:FrameStage::Unframed}),
+                        None=>None,
+                    }
+                } else {None};
+                OutputTail {order:self,current}
+            }
+        }
+        sail_method! {
+            /// Consumes this exact output owner through the existing coverage
+            /// seal; it does not manufacture native EOF, exit or origin evidence.
+            pub fn seal(self) -> (out:SealedOrder<'a,Owner>)
+                requires (self.coherent())
+                ensures (out.replay_view() == self.replay_view(),
+                    out.output_view().is_some() == self.output_view().output_view().complete(),
+                    out.output_view().is_some() ==> out.output_view().unwrap().complete()
+                        && out.output_view().unwrap().owner_view() == self.output_view().owner_view()
+                        && out.output_view().unwrap().output_view().view() == self.view()
+                        && out.output_view().unwrap().output_view().endpoints() == self.output_view().output_view().endpoints()
+                        && out.output_view().unwrap().replayed_view() == if self.output_view().replay_view().left()==0 {
+                            Some(self.output_view().replay_view().original())
+                        } else {None})
+            {
+                SealedOrder {output:self.output.seal(),comparison:self.comparison}
+            }
+        }
+    }
+    impl<'a,Owner> OutputTail<'a,Owner> {
+        sail_impl_spec! {
+            pub closed spec fn order_view(&self) -> OutputOrder<'a,Owner> {self.order}
+            pub closed spec fn tail_view(&self) -> Option<(int,Option<(bool,int)>,Option<Option<int>>)> {
+                match self.current {Some(c)=>Some((c.end as int,pending_view(c.previous),stage_view(c.frame))),None=>None}
+            }
+            pub closed spec fn tail_bytes_view(&self) -> Seq<u8> {
+                match self.tail_view() {
+                    Some((end,Some((_,start)),_)) => if 0 <= start <= end <= self.order.view().len() {
+                        self.order.view().subrange(start,end)
+                    } else {Seq::<u8>::empty()},
+                    _ => Seq::<u8>::empty(),
+                }
+            }
+            pub closed spec fn tail_shape(&self) -> bool {
+                match self.tail_view() {
+                    Some((end,Some((_,start)),Some(Some(ordinal)))) =>
+                        0 <= ordinal < self.order.output_view().output_view().endpoints().len()
+                        && 0 <= start < end <= self.order.view().len()
+                        && crate::query_output::frame_start(self.order.output_view().output_view().endpoints(),ordinal) == start
+                        && self.order.output_view().output_view().endpoints()[ordinal] == end
+                        && crate::query::response_shape(self.tail_bytes_view()),
+                    _ => true,
+                }
+            }
+
+            pub closed spec fn well_formed(&self) -> bool {
+                self.order.base() && self.tail_shape() && match self.tail_view() {
+                    None => self.order.coherent(),
+                    Some((end,previous,_)) => end == self.order.view().len()
+                        && previous.is_some() && self.order.pending_view().is_none()
+                        && self.order.matches_pending(previous)
+                        && 0 <= previous.unwrap().1 <= self.order.view().len(),
+                }
+            }
+            pub closed spec fn tail_ready(&self) -> bool {
+                self.tail_view().is_some() && (self.tail_view().unwrap().1.is_none()
+                    || self.tail_view().unwrap().2.is_some())
+            }
+            pub closed spec fn tail_accepts(&self) -> bool {
+                let replay=self.order.replay_view();
+                self.tail_ready() && !replay.diverged_view() && match self.tail_view() {
+                    Some((_,Some((false,_)),_)) => replay.checked_view() < replay.served_view().len()
+                        && (!replay.served_view()[replay.checked_view() as int].statistics_view()
+                            || crate::query_split::split_single_response(self.tail_bytes_view()))
+                        && replay.served_view()[replay.checked_view() as int].reproduces(self.tail_bytes_view()),
+                    _ => true,
+                }
+            }
+            pub closed spec fn tail_matches<Identity>(&self,frame:crate::query_output_owner::OwnedFrame<Owner>) -> bool
+                where Identity:crate::inputs::OwnerIdentity<Owner>
+            {
+                match self.tail_view() {
+                    Some((end,Some((_,start)),Some(Some(ordinal)))) =>
+                        Identity::identity(&self.order.output_view().owner_view()) == Identity::identity(&frame.owner_view())
+                        && frame.frame_view().start_view() == start && frame.frame_view().end_view() == end
+                        && frame.frame_view().ordinal_view() == ordinal && frame.frame_view().view() == self.tail_bytes_view(),
+                    _ => false,
+                }
+            }
+            pub closed spec fn tail_payload<Identity>(&self,payload:Option<crate::query_output_owner::OwnedFrame<Owner>>)
+                -> Option<crate::query_output_owner::OwnedFrame<Owner>>
+                where Identity:crate::inputs::OwnerIdentity<Owner>
+            {
+                match (self.tail_view(),payload) {
+                    (Some((_,Some((true,_)),_)),Some(frame)) => if self.tail_matches::<Identity>(frame) {Some(frame)}else{None},
+                    _ => None,
+                }
+            }
+            pub closed spec fn tail_stops<Identity>(&self,payload:Option<crate::query_output_owner::OwnedFrame<Owner>>) -> bool
+                where Identity:crate::inputs::OwnerIdentity<Owner>
+            {
+                self.tail_ready() && match self.tail_view() {
+                    Some((_,Some((fresh,_)),stage)) => stage == Some(None)
+                        || fresh && self.tail_payload::<Identity>(payload).is_none(),
+                    _ => false,
+                }
+            }
+            pub closed spec fn suppressed_tail(&self) -> bool {
+                match self.tail_view() {Some((_,Some((false,_)),_))=>true,_=>false}
+            }
+        }
+        sail_method! {
+            /// Actual prior classification and saturating interval charge, for
+            /// the unchanged native budget/copy branch before settlement.
+            pub fn pending_tail(&self) -> (out:Option<(bool,usize)>)
+                requires (self.well_formed())
+                ensures (match out {
+                    Some((fresh,cost)) => match self.tail_view() {
+                        Some((end,Some((expected,start)),_)) => fresh == expected
+                            && cost as int == if start <= end {end-start}else{0int},_=>false},
+                    None => self.tail_view().is_none() || self.tail_view().unwrap().1.is_none(),
+                })
+            {
+                let Some(current)=&self.current else {return None;};
+                let Some(pending_tail)=&current.previous else {return None;};
+                Some((pending_tail.fresh,current.end.saturating_sub(pending_tail.start)))
+            }
+        }
+        sail_method! {
+            /// Calls the unchanged independent frame check at the actual prior
+            /// start and current original item boundary, recording its result.
+            pub fn frame_tail<'b>(&'b mut self) -> (out:Option<crate::query_output_owner::StreamFrame<'b,Owner>>)
+                requires (old(self).well_formed(),old(self).tail_view().is_some(),
+                    old(self).tail_view().unwrap().1.is_some(),old(self).tail_view().unwrap().2.is_none())
+                ensures (final(self).well_formed(),
+                    final(self).order_view().view() == old(self).order_view().view(),
+                    final(self).order_view().pending_view() == old(self).order_view().pending_view(),
+                    final(self).order_view().replay_view() == old(self).order_view().replay_view(),
+                    final(self).order_view().forwarding_view() == old(self).order_view().forwarding_view(),
+                    final(self).order_view().output_view().owner_view() == old(self).order_view().output_view().owner_view(),
+                    final(self).order_view().output_view().replay_view() == old(self).order_view().output_view().replay_view(),
+                    final(self).order_view().output_view().parser_view() == old(self).order_view().output_view().parser_view(),
+                    final(self).order_view().output_view().output_view().eof() == old(self).order_view().output_view().output_view().eof(),
+                    final(self).tail_view().is_some() && final(self).tail_view().unwrap().0 == old(self).tail_view().unwrap().0
+                        && final(self).tail_view().unwrap().1 == old(self).tail_view().unwrap().1,
+                    out.is_some() == (old(self).order_view().output_view().output_view().healthy()
+                        && old(self).tail_view().unwrap().1.unwrap().1 == old(self).order_view().output_view().output_view().consumed()
+                        && 0 <= old(self).tail_view().unwrap().1.unwrap().1 < old(self).tail_view().unwrap().0 <= old(self).order_view().view().len()
+                        && crate::query::response_shape(old(self).tail_bytes_view())),
+                    out.is_some() ==> final(self).tail_view().unwrap().2
+                        == Some(Some(old(self).order_view().output_view().output_view().endpoints().len() as int))
+                        && out.unwrap().frame_view().view() == old(self).tail_bytes_view()
+                        && *out.unwrap().owner_view() == old(self).order_view().output_view().owner_view()
+                        && out.unwrap().frame_view().start_view() == old(self).tail_view().unwrap().1.unwrap().1
+                        && out.unwrap().frame_view().end_view() == old(self).tail_view().unwrap().0
+                        && out.unwrap().frame_view().ordinal_view() == old(self).order_view().output_view().output_view().endpoints().len()
+                        && final(self).order_view().output_view().output_view().endpoints()
+                            == old(self).order_view().output_view().output_view().endpoints().push(old(self).tail_view().unwrap().0 as usize)
+                        && final(self).order_view().output_view().output_view().healthy(),
+                    out.is_none() ==> final(self).order_view().output_view().output_view().endpoints() == old(self).order_view().output_view().output_view().endpoints()
+                        && !final(self).order_view().output_view().output_view().healthy(),
+                    out.is_none() ==> final(self).tail_view().unwrap().2 == Some(None))
+            {
+                sail_proof! {
+                    crate::query_output::transcript_partition_facts(&self.order.output_view().output_view());
+                }
+                let Some(current)=&mut self.current else {return None;};
+                let Some(pending_tail)=&current.previous else {return None;};
+                let ordinal=self.order.output.frames();
+                current.frame=FrameStage::Refused;
+                let frame=self.order.output.frame(pending_tail.start,current.end);
+                if frame.is_some() {current.frame=FrameStage::Admitted(ordinal);}
+                frame
+            }
+        }
+        sail_method! {
+            /// Rechecks a copied payload against this exact admitted original
+            /// owner/ordinal/range and raw bytes before actual queue insertion.
+            /// The additional linear byte comparison has unmeasured runtime cost.
+            pub fn validate_tail<Identity>(&self,frame:&crate::query_output_owner::OwnedFrame<Owner>,identity:&Identity) -> (matched:bool)
+                where (Identity:crate::inputs::OwnerIdentity<Owner>)
+                requires (self.well_formed())
+                ensures (matched == self.tail_matches::<Identity>(*frame))
+            {
+                let Some(current)=&self.current else {return false;};
+                let Some(pending_tail)=&current.previous else {return false;};
+                let FrameStage::Admitted(ordinal)=&current.frame else {return false;};
+                let payload=frame.payload();
+                if payload.start() != pending_tail.start || payload.end() != current.end || payload.ordinal() != *ordinal
+                    || !identity.same_owner(self.order.output.owner(),frame.owner()) {return false;}
+                let bytes=self.order.output.bytes();
+                if pending_tail.start > current.end || current.end > bytes.len() {return false;}
+                crate::inputs::byte_eq(frame.bytes(),&bytes[pending_tail.start..current.end])
+            }
+        }
+        sail_method! {
+            /// Settles the actual prepared interval, then starts exactly this
+            /// original item. It cannot compare caller-selected bytes/classification.
+            /// Fresh handover uses the real correlated queue operations; invalid
+            /// payload bindings stop pairing without changing forwarded data.
+            pub fn settle_tail<E,Identity>(&mut self,pending:&mut crate::query::CorrelatedQueue<E,crate::query_output_owner::OwnedFrame<Owner>>,
+                payload:Option<crate::query_output_owner::OwnedFrame<Owner>>,identity:&Identity) -> (continued:bool)
+                where (Identity:crate::inputs::OwnerIdentity<Owner>)
+                requires (old(self).well_formed())
+                ensures (final(self).well_formed(),continued == old(self).tail_accepts(),
+                    final(self).order_view().view() == old(self).order_view().view(),
+                    final(self).order_view().output_view().owner_view() == old(self).order_view().output_view().owner_view(),
+                    final(self).order_view().output_view().parser_view() == old(self).order_view().output_view().parser_view(),
+                    final(self).order_view().output_view().replay_view().original() == old(self).order_view().output_view().replay_view().original(),
+                    final(self).order_view().output_view().replay_view() == old(self).order_view().output_view().replay_view(),
+                    final(self).order_view().output_view().output_view() == old(self).order_view().output_view().output_view(),
+                    final(self).order_view().replay_view().owner_view() == old(self).order_view().replay_view().owner_view(),
+                    final(self).order_view().replay_view().served_view() == old(self).order_view().replay_view().served_view(),
+                    final(self).order_view().replay_view().diverged_view() == !continued,
+                    final(self).order_view().replay_view().checked_view() == old(self).order_view().replay_view().checked_view()
+                        + if old(self).suppressed_tail() && continued {1nat}else{0nat},
+                    final(pending).expectations() == old(pending).expectations(),
+                    final(pending).halted() == (old(pending).halted() || old(self).tail_stops::<Identity>(payload)),
+                    final(pending).responses() == if !old(pending).halted() && old(self).tail_payload::<Identity>(payload).is_some() {
+                        old(pending).responses().push(old(self).tail_payload::<Identity>(payload).unwrap())
+                    } else {old(pending).responses()},
+                    continued ==> final(self).tail_view().is_none() && final(self).order_view().coherent()
+                        && final(self).order_view().pending_view().is_none(),
+                    !continued ==> final(self).tail_view() == old(self).tail_view(),
+                    final(self).order_view().pending_view() == old(self).order_view().pending_view(),
+                    final(self).order_view().forwarding_view() == old(self).order_view().forwarding_view())
+            {
+                let Some(current)=&self.current else {self.order.comparison.refuse();return false;};
+                let end=current.end;
+                if let Some(pending_tail)=&current.previous {
+                    if matches!(&current.frame,FrameStage::Unframed) {self.order.comparison.refuse();return false;}
+                    if matches!(&current.frame,FrameStage::Refused) {pending.stop();}
+                    if pending_tail.fresh {
+                        match payload {
+                            Some(frame) => {
+                                if !pending.is_stopped() {
+                                    if self.validate_tail(&frame,identity) {pending.reply(frame);}
+                                    else {pending.stop();}
+                                }
+                            }
+                            None => pending.stop(),
+                        }
+                    } else {
+                        let start=pending_tail.start;
+                        let bytes=self.order.output.bytes();
+                        let actual=if start <= end && end <= bytes.len() {&bytes[start..end]}else{&[]};
+                        sail_proof! {assert(actual@ == self.tail_bytes_view());}
+                        if self.order.comparison.next_statistics() && !crate::query_split::single_response(actual) {
+                            self.order.comparison.refuse();
+                        } else {
+                            self.order.comparison.compare(actual);
+                        }
+                    }
+                }
+                if self.order.comparison.diverged() {return false;}
+                self.current=None;
+                true
+            }
+        }
+        sail_method! {
+            /// Returns the same controller after settlement. Skipping an active
+            /// tail permanently refuses comparison, without altering raw bytes.
+            pub fn finish(mut self) -> (out:OutputOrder<'a,Owner>)
+                requires (self.well_formed())
+                ensures (out.coherent(),out.output_view() == self.order_view().output_view(),
+                    out.pending_view() == self.order_view().pending_view(),
+                    out.forwarding_view() == self.order_view().forwarding_view(),
+                    out.replay_view().owner_view() == self.order_view().replay_view().owner_view(),
+                    out.replay_view().served_view() == self.order_view().replay_view().served_view(),
+                    out.replay_view().checked_view() == self.order_view().replay_view().checked_view(),
+                    out.replay_view().diverged_view() == (self.order_view().replay_view().diverged_view() || self.tail_view().is_some()))
+            {
+                if self.current.is_some() {self.order.comparison.refuse();}
+                self.order
+            }
+        }
+    }
+    #[allow(clippy::elidable_lifetime_names, reason = "The named lifetime retains the original served-slice type in the checked replay_view specification; Cargo erases that specification but Stock checks its exact borrowed-data relation.")]
+    impl<'a,Owner> SealedOrder<'a,Owner> {
+        sail_impl_spec! {
+            pub closed spec fn output_view(&self) -> Option<crate::query_output_owner::CompletedStream<Owner>> {self.output}
+            pub closed spec fn replay_view(&self) -> crate::query_replay::Replay<'a,Owner> {self.comparison}
+            pub closed spec fn can_join<Identity>(&self) -> bool where Identity:crate::inputs::OwnerIdentity<Owner> {
+                self.output_view().is_some() && self.replay_view().complete_view()
+                    && self.output_view().unwrap().replayed_view() == Some(self.replay_view().served_view().len())
+                    && Identity::identity(&self.output_view().unwrap().owner_view()) == Identity::identity(&self.replay_view().owner_view())
+                    && self.output_view().unwrap().replay_prefix_matches(&self.replay_view())
+            }
+        }
+        sail_method! {
+            /// Coverage presence for the original native stop-pairing branch.
+            pub fn has_output(&self) -> (out:bool) requires (true) ensures (out == self.output_view().is_some())
+            {self.output.is_some()}
+        }
+        sail_method! {
+            /// Actual comparison index retained for the unchanged diagnostic.
+            pub fn checked(&self) -> (out:usize) requires (true) ensures (out == self.replay_view().checked_view())
+            {self.comparison.checked()}
+        }
+        sail_method! {
+            /// Applies the existing mechanical finish rule to the actual replay.
+            /// `clean` remains the native forwarding/status observation, not origin.
+            pub fn finish_replay(&mut self,clean:bool) -> (diverged:bool)
+                requires (old(self).replay_view().well_formed())
+                ensures (final(self).output_view() == old(self).output_view(),
+                    final(self).replay_view().well_formed(),
+                    final(self).replay_view().owner_view() == old(self).replay_view().owner_view(),
+                    final(self).replay_view().served_view() == old(self).replay_view().served_view(),
+                    final(self).replay_view().checked_view() == old(self).replay_view().checked_view(),
+                    diverged == (old(self).replay_view().diverged_view()
+                        || clean && old(self).replay_view().checked_view() < old(self).replay_view().served_view().len()),
+                    final(self).replay_view().diverged_view() == diverged)
+            {self.comparison.finish(clean)}
+        }
+        sail_method! {
+            /// Rechecks the original suppressed raw prefix using the existing
+            /// complete-stream join, after the original finish/diagnostic branch.
+            pub fn join_replay<Identity>(self,identity:&Identity) -> (out:Option<crate::query_output_owner::CompletedStream<Owner>>)
+                where (Identity:crate::inputs::OwnerIdentity<Owner>)
+                requires (true)
+                ensures (out.is_some() == self.can_join::<Identity>(),out.is_some() ==> out == self.output_view())
+            {
+                match self.output {
+                    Some(output)=>output.with_replay(&self.comparison,identity),
+                    None=>None,
+                }
+            }
+        }
+    }
+}
+
+sail_verified! {
+    fn terminal_fixture<'a,Identity>(served:&'a [crate::query_replay::ServedReply],identity:&Identity)
+        -> (out:Option<OutputOrder<'a,u64>>)
+        where (Identity:crate::inputs::OwnerIdentity<u64>)
+        requires (served@.len()<=1,served@.len()==1 ==> !served@[0].statistics_view() && served@[0].bytes_view()==b"unsat\n"@)
+        ensures (out.is_some(),out.unwrap().coherent(),out.unwrap().view()==b"unsat\n"@,
+            out.unwrap().output_view().owner_view()==7u64,out.unwrap().output_view().output_view().healthy(),
+            !out.unwrap().output_view().output_view().eof(),out.unwrap().output_view().output_view().endpoints().len()==0,
+            out.unwrap().output_view().replay_view().original()==served@.len(),out.unwrap().output_view().replay_view().left()==0,
+            out.unwrap().replay_view().owner_view()==7u64,out.unwrap().replay_view().served_view()==served@,
+            out.unwrap().replay_view().checked_view()==0,!out.unwrap().replay_view().diverged_view(),
+            out.unwrap().pending_view()==Some((served@.len()==0,0int)))
+    {
+        sail_proof! {control_lines();reveal_byteslit(b"unsat\n");}
+        let order=OutputOrder::new(served,7u64,7u64);
+        let mut batch=order.append_batch(b"unsat\n");
+        let mut queue:crate::query::CorrelatedQueue<u8,crate::query_output_owner::OwnedFrame<u64>>=crate::query::CorrelatedQueue::empty();
+        sail_proof! {
+            assert(crate::query_split::item_models(batch.items_view()).len()==batch.items_view().len());
+            assert(batch.items_view().len()==1);
+            assert(crate::query_split::item_models(batch.items_view())[0] == crate::query_split::item_model(batch.items_view()[0]));
+            assert(batch.items_view()[0].offset==0);
+        }
+        if !batch.begin_next() || batch.previous().is_some() {return None;}
+        if !batch.settle_current(&mut queue,None,identity) || batch.begin_next() {return None;}
+        Some(batch.finish())
+    }
+}
+
+sail_verified! {
+    /// A nonempty original served reply is settled from the actual final raw
+    /// interval and reaches the existing complete-prefix recheck after EOF.
+    pub fn output_tail_replay_constructive<Identity>(identity:&Identity) -> (passed:bool)
+        where (Identity:crate::inputs::OwnerIdentity<u64>)
+        requires (true) ensures (passed)
+    {
+        let served=[crate::query_replay::ServedReply::new(b"(check-sat)",crate::inputs::copy_bytes(b"unsat\n"),None)];
+        let Some(mut order)=terminal_fixture(&served,identity) else {return false;};
+        order.end();
+        let mut tail=order.prepare_tail(0);
+        sail_proof! {
+            control_lines();reveal_byteslit(b"unsat\n");
+            crate::query_output::transcript_partition_facts(&tail.order_view().output_view().output_view());
+            assert(tail.tail_bytes_view() =~= b"unsat\n"@);
+        }
+        if tail.pending_tail()!=Some((false,6)) || tail.frame_tail().is_none() {return false;}
+        let mut queue:crate::query::CorrelatedQueue<u8,crate::query_output_owner::OwnedFrame<u64>>=crate::query::CorrelatedQueue::empty();
+        if !tail.settle_tail(&mut queue,None,identity) {return false;}
+        sail_proof! {crate::query_output::transcript_partition_facts(&tail.order_view().output_view().output_view());}
+        let mut sealed=tail.finish().seal();
+        if !sealed.has_output() || sealed.finish_replay(true) || sealed.checked()!=1 {return false;}
+        sail_proof! {
+            let output=sealed.output_view().unwrap();
+            assert(output.output_view().view() =~= b"unsat\n"@);
+            assert(output.output_view().view().subrange(0,6) =~= b"unsat\n"@);
+            assert forall|i:int| 0<=i<sealed.replay_view().served_view().len()
+                implies output.replay_frame_matches(&sealed.replay_view(),i) by {assert(i==0);}
+        }
+        sealed.join_replay(identity).is_some() && queue.is_empty() && !queue.is_stopped()
+    }
+}
+
+sail_verified! {
+    /// A nonempty fresh tail enters the real correlated queue with its exact
+    /// original owner/range/bytes before the same coverage and replay join.
+    pub fn output_tail_fresh_constructive<Identity>(identity:&Identity) -> (passed:bool)
+        where (Identity:crate::inputs::OwnerIdentity<u64>)
+        requires (true) ensures (passed)
+    {
+        let served:[crate::query_replay::ServedReply;0]=[];
+        let Some(mut order)=terminal_fixture(&served,identity) else {return false;};
+        order.end();
+        let mut tail=order.prepare_tail(0);
+        sail_proof! {
+            control_lines();reveal_byteslit(b"unsat\n");
+            crate::query_output::transcript_partition_facts(&tail.order_view().output_view().output_view());
+            assert(tail.tail_bytes_view() =~= b"unsat\n"@);
+        }
+        if tail.pending_tail()!=Some((true,6)) {return false;}
+        let Some(frame)=tail.frame_tail() else {return false;};
+        let Some(payload)=frame.into_owned(7u64,identity) else {return false;};
+        let mut queue=crate::query::CorrelatedQueue::empty();queue.expect(9u8);
+        if !tail.settle_tail(&mut queue,Some(payload),identity) {return false;}
+        let Some(pair)=queue.take_pair() else {return false;};
+        if *pair.expectation()!=9 || !crate::inputs::byte_eq(pair.reply().bytes(),b"unsat\n") {return false;}
+        sail_proof! {crate::query_output::transcript_partition_facts(&tail.order_view().output_view().output_view());}
+        let mut sealed=tail.finish().seal();
+        if !sealed.has_output() || sealed.finish_replay(true) {return false;}
+        sealed.join_replay(identity).is_some()
+    }
+}
+
+sail_verified! {
+    /// Missing actual EOF, nonzero native status and an unsettled original
+    /// tail cannot complete the terminal join. Failed status alone does not
+    /// invent a replay mismatch or change the existing clean-finish policy.
+    pub fn output_tail_refusal_control<Identity>(identity:&Identity) -> (refused:bool)
+        where (Identity:crate::inputs::OwnerIdentity<u64>)
+        requires (true) ensures (refused)
+    {
+        let served=[crate::query_replay::ServedReply::new(b"(check-sat)",crate::inputs::copy_bytes(b"unsat\n"),None)];
+        let Some(order)=terminal_fixture(&served,identity) else {return false;};
+        let mut tail=order.prepare_tail(0);
+        sail_proof! {
+            control_lines();reveal_byteslit(b"unsat\n");
+            crate::query_output::transcript_partition_facts(&tail.order_view().output_view().output_view());
+            assert(tail.tail_bytes_view() =~= b"unsat\n"@);
+        }
+        if tail.frame_tail().is_none() {return false;}
+        let mut queue:crate::query::CorrelatedQueue<u8,crate::query_output_owner::OwnedFrame<u64>>=crate::query::CorrelatedQueue::empty();
+        if !tail.settle_tail(&mut queue,None,identity) {return false;}
+        sail_proof! {crate::query_output::transcript_partition_facts(&tail.order_view().output_view().output_view());}
+        let mut sealed=tail.finish().seal();
+        if sealed.has_output() || sealed.finish_replay(true) || sealed.join_replay(identity).is_some() {return false;}
+        let Some(mut order)=terminal_fixture(&served,identity) else {return false;};
+        order.end();
+        let tail=order.prepare_tail(1);
+        if tail.pending_tail().is_some() {return false;}
+        sail_proof! {crate::query_output::transcript_partition_facts(&tail.order_view().output_view().output_view());}
+        let mut sealed=tail.finish().seal();
+        if sealed.has_output() || sealed.finish_replay(false) || sealed.join_replay(identity).is_some() {return false;}
+        let Some(mut order)=terminal_fixture(&served,identity) else {return false;};
+        order.end();
+        let tail=order.prepare_tail(0);
+        sail_proof! {crate::query_output::transcript_partition_facts(&tail.order_view().output_view().output_view());}
+        let mut sealed=tail.finish().seal();
+        !sealed.has_output() && sealed.finish_replay(false) && sealed.join_replay(identity).is_none()
     }
 }

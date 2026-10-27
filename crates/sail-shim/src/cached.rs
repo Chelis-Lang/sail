@@ -475,6 +475,7 @@ impl Default for Pairer {
 }
 
 impl Pairer {
+    #[cfg(test)]
     fn reply_frame(&mut self, reply: SolverFrame) {
         // A stopped pairer never pairs again; retaining payloads only grows.
         if !self.pending.is_stopped() {
@@ -917,19 +918,15 @@ fn output_side(
             forwarded = 0;
         }
     }
-    // Transfer the same actual fields before the unchanged native terminal
-    // path; physical read-end/drop/wait and tail settlement remain separate.
-    let (mut all, comparison, mut prev, forward_from) = order.into_parts();
-    let mut check = ReplayCheck { comparison };
     // Stop reading first: a solver blocked writing to a closed pipe then
     // fails and exits instead of waiting forever.
     drop(from);
-    if check.diverged() {
+    if order.diverged() {
         let _ = process.child.kill(); // it may wait for input that will never come
     }
     // End of output. Deliver what is left, as pass-through would.
-    if !check.diverged() && forward_from.is_some() && all.len() > forwarded {
-        forwarding_ok &= write_out(all.bytes().get(forwarded..).unwrap_or_default());
+    if !order.diverged() && order.forward_from().is_some() && order.len() > forwarded {
+        forwarding_ok &= write_out(order.bytes().get(forwarded..).unwrap_or_default());
     }
     let (_, mut code) = match process.child.wait() {
         Ok(status) => crate::status_code(status),
@@ -937,16 +934,13 @@ fn output_side(
     };
     // The last reply runs to the end of the stream, and is complete only if
     // the solver exited cleanly.
-    if !check.diverged()
-        && let Some((fresh, s)) = prev.take()
-        && code == 0
-    {
-        let end = all.len();
-        let frame = all.frame(s, end);
+    let mut tail = order.prepare_tail(code);
+    if let Some((fresh, cost)) = tail.pending_tail() {
+        let frame = tail.frame_tail();
         if frame.is_none() {
             pairer.stop();
         }
-        let payload = if fresh && input.charge(end.saturating_sub(s)) {
+        let payload = if fresh && input.charge(cost) {
             frame.and_then(|frame| frame.into_owned(Arc::clone(&owner), &SolverOwnerIdentity))
         } else {
             if fresh {
@@ -954,27 +948,26 @@ fn output_side(
             }
             None
         };
-        check.settle_observed(
-            fresh,
-            all.bytes().get(s..).unwrap_or_default(),
-            &mut pairer,
-            payload,
-        );
+        tail.settle_tail(&mut pairer.pending, payload, &SolverOwnerIdentity);
     }
     // This consumes the actual stdout owner. It attests EOF and complete
     // response coverage, separately from the process/input/origin conditions.
-    let output = all.seal();
-    if output.is_none() {
+    let mut sealed = tail.finish().seal();
+    if !sealed.has_output() {
         pairer.stop();
     }
-    if check.finish(forwarding_ok && code == 0) {
+    if sealed.finish_replay(forwarding_ok && code == 0) {
+        eprintln!(
+            "error[SAIL2005]: sail-z3: the pinned solver's replay differs from reply {} \
+             served from the cache; stopping",
+            sealed.checked() + 1
+        );
         pairer.stop();
         code = 1;
     }
     // Completion of the actual stdout suppression cursor is distinct from
     // completing comparisons against every original served payload.
-    let output =
-        output.and_then(|output| output.with_replay(&check.comparison, &SolverOwnerIdentity));
+    let output = sealed.join_replay(&SolverOwnerIdentity);
     if output.is_none() {
         pairer.stop();
     }
@@ -1305,6 +1298,10 @@ impl Served {
 
 /// Checks a replay's suppressed replies against those already served.
 struct ReplayCheck<'a> {
+    #[allow(
+        dead_code,
+        reason = "The original wrapper layout remains in unchanged retained-byte accounting; its operational compatibility fixture stays test-only."
+    )]
     comparison: sail_acceptance::query_replay::Replay<'a, SolverLease>,
 }
 
@@ -1317,6 +1314,7 @@ impl<'a> ReplayCheck<'a> {
     }
 }
 
+#[cfg(test)]
 impl ReplayCheck<'_> {
     /// Whether every served reply has been compared with its replay.
     #[cfg(test)]
