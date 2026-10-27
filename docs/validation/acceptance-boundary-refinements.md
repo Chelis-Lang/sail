@@ -1168,3 +1168,10 @@ unqualified; no evidence is inherited merely from matching source hashes.
   claimed. The source followup adds exact retained-length observations and
   erased projection/literal facts, preserving every contract, default verifier
   resource and all 254 controls. Tail/terminal ownership remains required.
+
+- `5b69092e`, 2026-10-27: whole-query compilation refuses an attempted reveal
+  of the separate module's closed `ParsedOutput::coherent`; no verification
+  inventory or credit. The followup makes the already-established transcript
+  well-formed facet explicit in the private owner's invariant, without exposing
+  private fields, replacing a native body, adding a trust premise or changing
+  any public input precondition.

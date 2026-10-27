@@ -42,7 +42,7 @@ sail_code! {
             pub closed spec fn pending_view(&self) -> Option<(bool,int)> {pending_view(self.pending)}
             pub closed spec fn forwarding_view(&self) -> Option<usize> {self.forward_from}
             pub closed spec fn base(&self) -> bool {
-                self.output.coherent() && self.comparison.well_formed()
+                self.output.coherent() && self.output.output_view().well_formed() && self.comparison.well_formed()
                     && self.output.replay_view().left() <= self.output.replay_view().original()
                     && self.output.replay_view().original() == self.comparison.served_view().len()
             }
@@ -338,7 +338,6 @@ sail_code! {
                     out.is_none() ==> final(self).current_view().unwrap().2 == Some(None))
             {
                 sail_proof! {
-                    reveal(crate::query_output_split::ParsedOutput::coherent);
                     crate::query_output::transcript_partition_facts(&self.order.output_view().output_view());
                 }
                 let Some(current)=&mut self.current else {return None;};
