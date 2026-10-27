@@ -60,6 +60,9 @@ runtime improvement and its installed consumer checks.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
+[Acceptance work and PR findings](design/acceptance-pr-findings.md) separates
+current-main bugs from unmerged development findings and records the single
+proof-work tracker.
 [The proposed evidence-acceptance core](design/evidence-acceptance-core.md)
 defines a conditional safety theorem for query association, input identity,
 requested scope and result authority. It is a design proposal, not an
