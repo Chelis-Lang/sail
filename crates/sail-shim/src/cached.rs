@@ -2737,7 +2737,9 @@ mod tests {
         assert!(!replies[1].reproduced_by(b"(error \"x\")\n"));
         let mut check = super::ReplayCheck::new(&replies, std::sync::Arc::new(()));
         let mut pairer = Pairer::default();
+        assert!(!check.complete());
         assert!(check.settle(false, b"(model)\n", &mut pairer));
+        assert!(!check.complete());
         assert!(!check.finish(false), "an unclean end is not judged");
         assert!(
             check.finish(true),
@@ -2746,6 +2748,18 @@ mod tests {
         let mut check = super::ReplayCheck::new(&replies, std::sync::Arc::new(()));
         assert!(!check.settle(false, b"(model 1)\n", &mut pairer));
         assert!(check.diverged());
+        assert!(!check.complete());
+
+        // The original nonempty served inventory becomes complete only after
+        // both original positions have actually been compared successfully.
+        let mut check = super::ReplayCheck::new(&replies, std::sync::Arc::new(()));
+        let mut pairer = Pairer::default();
+        assert!(!check.complete());
+        assert!(check.settle(false, replies[0].bytes(), &mut pairer));
+        assert!(!check.complete());
+        assert!(check.settle(false, replies[1].bytes(), &mut pairer));
+        assert!(check.complete());
+        assert!(!check.finish(true));
     }
 
     #[test]

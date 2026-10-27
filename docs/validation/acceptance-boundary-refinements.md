@@ -1219,3 +1219,12 @@ Actual driver SHA-256: `5fa538c31cd023383fcffb575e111ec5fa5c825b5aed81fa56a9357a
   impl from the anonymous production impl, preserving every method body and
   assertion. Native rerun, full controls/workspace/solver/conformance and the
   separate tail candidate remain pending.
+
+- `1e739dbc`, 2026-10-27: all 26 retained SMT tests pass after actual clean/
+  rebuild; production shim Clippy clears, but lib-test Clippy refuses only the
+  old completion getter now unused in test scope (#504 recurrence). The source
+  adds incomplete checks and a separate nonempty two-reply completion path to
+  the existing ordinary replay fixture, retaining every prior assertion and
+  byte. No getter, policy or control is removed. Full native rerun remains
+  pending; all checked driver/file bytes still match the complete `35daadcc`
+  596/1,025 positive.
