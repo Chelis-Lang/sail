@@ -4,57 +4,15 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
-The first captured-worker selector source preflight stops before Stock: four new
-witnesses are outside the existing Verus wrapper
-([#492](https://github.com/Chelis-Lang/sail/issues/492)), and the query manifest
-contains a worker dependency outside its declared component closure (#479).
-The correction keeps all four witnesses inside the checked wrapper and retains
-the actual worker binding in inputs/authority. No source guard, function,
-contract or ordinary control is omitted. Corrected source passes all 67 source
-checks; authority compilation then catches a mixed Option index annotation
-before verification (#492). The explicit integer relation retains its intended
-meaning; fresh complete-root/native qualification remains pending.
-
-The request/domain candidate passes all complete production Stock roots but
-native test compilation at `206c077f` stops on three old-interface uses in the
-noop and runner fixtures ([#489](https://github.com/Chelis-Lang/sail/issues/489)).
-The correction uses the independently declared original library tuple through
-checked insertion, propagates request-construction errors, and inserts the real
-additional missing target. Every original assertion remains; native tests and
-ordinary negatives are still pending. The fixture-only file is not a proved
-input adapter; only the reviewed surrounding runner binding is refreshed.
-
-The original request/domain candidate's first complete native source check
-refuses inconsistent capture bindings, dependency ordering and an incomplete
-assembly fixture ([#479](https://github.com/Chelis-Lang/sail/issues/479)). The
-correction binds both roles of the actual API library, retains every dependency
-in its declared order and adds the real immutable key's public-field negative.
-The stopped run reaches no Stock or native compilation stage. Corrected source
-subsequently passes all source guards and complete production Stock discovery;
-native tests and ordinary-negative qualification remain pending in the
-[owning record](validation/acceptance-boundary-refinements.md).
-
-The unselected original-target comparator's first whole-file probe stops at four
-VIR errors because its Eq/Ord/Clone methods use an envelope that emits an explicit
-`requires(true)` instead of inheriting the trait preconditions
-([#472](https://github.com/Chelis-Lang/sail/issues/472)). A separate checked
-trait-method envelope preserves every native body and postcondition without an
-implementation precondition clause. A later whole-file library support probe
-passes 17 verified functions and all 333 actual function details after three
-native-equivalent enum variant tests become direct matches. The complete
-production request/domain root subsequently passes at `f98ea578`; native
-caller/ordering tests and ordinary negatives remain pending. Neither result
-establishes full Cargo selection or physical-input closure.
-
-The original requested-target scan counts raw `--workspace` and `--all` text
-after the Cargo/Verus separator
-([#467](https://github.com/Chelis-Lang/sail/issues/467)). A source candidate
-routes the actual selection operation through a checked prefix scan and adds a
-two-member/default-member regression. This is a source-confirmed request-scope
-defect; no new native reproduction, Verus acceptance of those forwarded flags
-or false verdict is claimed. Option/value-state parsing and full metadata
-selection remain open. See the
-[request-construction boundary](design/acceptance-production-refinements.md#pre-execution-request-construction-candidate).
+Original request selection still needs full Cargo option/value-state and metadata
+coverage correspondence ([#375](https://github.com/Chelis-Lang/sail/issues/375)).
+The candidate's checked prefix scan and native fixture preserve workspace
+selection before `--` (#467); its constructor/dictionary and actual captured-row
+selection pass complete Stock roots and targeted native fixtures. Those checks
+preserve the supplied original data. They do not prove that metadata enumerates
+every real target or that the decoded journal authenticates the physical worker.
+Ordinary controls, conformance/cost and physical/provider joins remain open. See
+the [request boundary](design/acceptance-production-refinements.md#pre-execution-request-construction-candidate).
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

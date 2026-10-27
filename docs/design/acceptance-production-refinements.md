@@ -340,7 +340,11 @@ Twelve new executable mutations retain all loop contracts and existing controls;
 positive and ordinary refusal witnesses check selected ownership, missing runs,
 invalid ignored-row headers and duplicate matching runs. Native journal fixtures
 retain every earlier assertion and add version/invocation and ignored-header
-cases. All new source, native fixtures and negatives remain unqualified.
+cases. Complete-root discovery at `83627504-stock2` passes 566 authority checks
+and all 972 actual authority function entries, retaining every prior function.
+Full workspace/all-target strict Clippy and all 18 selected native fixtures pass.
+The source-suite receipt remains `f12c50c4` with unchanged-harness checks; ordinary
+negative controls and complete service qualification remain pending.
 
 Decoding now retains the full decoded journal until selection, rather than only
 the current row and saved match. Its additional allocation and rejection-path

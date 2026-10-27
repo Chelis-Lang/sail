@@ -164,8 +164,38 @@ bundle. The unchanged source harness retains its actual `f12c50c4` test receipt;
 a subsequent whole-root diagnostic still checks the current canonical assembly,
 declaration/import/control inventory and final source/runtime identity.
 
+The external identity helper's first `83627504` attempt stops before Stock
+because raw Git reads omit the canonical per-command ownership/configuration
+settings (#497). It is retained unchanged at
+`experiments/2026-10-27/acceptance-request-domain-83627504-native.tgz`, SHA-256
+`f8dc241288ce0424d2f185a50a48f98ce7f6abb9a9a22a557aa60bd379fe8c3e`
+(7,078,499 bytes), authenticated PUT/GET agreement. The corrected external helper
+uses existing `COMMON.git_bytes`/`git`; no global Git configuration or repository
+source changes. A new immutable checkout/evidence/service and fresh target retain
+the exact same source commit for the independent `stock2` attempt.
+
+The `83627504-stock2` attempt passes every complete root: query 471/821, inputs
+308/538 and authority 566/972, retaining every earlier function. Full
+workspace/all-target strict Clippy and all 18 selected native fixtures pass,
+including all prior 16 plus the actual daemon journal/repair selection fixtures.
+This locks only the actual 566/972 authority inventory. All twelve capture control
+objects remain mandatory and unchanged; they have no negative credit yet. The
+source-harness/manifest and exact annotation delta are checked before Stock;
+the unchanged 67-test source-suite receipt remains labeled `f12c50c4`.
+
+Evidence is `experiments/2026-10-27/acceptance-request-domain-83627504-stock2-native.tgz`,
+SHA-256 `3551d15c764352f91c355485cf576684c2af6d33e89a338b6faab3f47ed1f050`
+(7,601,699 bytes), authenticated PUT/GET agreement. The source, tooling, measured
+function inventories, pinned runtime, actual nextest summary and final
+source/image/runtime checks are retained. Inventory/documentation locking changes
+no program body. Conformance/cost, ordinary negatives and native
+metadata/original-launch/journal/provider joins remain open; this is no service
+or physical-input closure claim.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `83627504-stock2` captured-worker candidate | Unchanged f12 source-harness/manifest and exact annotation delta pass identity checks. Whole query 471/0 (821 functions), inputs 308/0 (538), authority 566/0 (972) pass with every old function retained; whole step158.071 s. Full workspace/all-target strict Clippy passes92.030 s. Actual nextest18 run/18 pass/807 skips,148.940 s including build and6.239 s tests. Total408.378 s; final source/image/runtime checks pass | Source-unit receipt remainsf12; all12 new controls, complete native workspace tests, conformance/cost and physical/provider/origin joins remain unqualified |
+| `83627504` external-tool attempt | Canonical-Git ownership guard refuses raw external-helper reads before Stock (#497); total9.188 s, final source/image/runtime checks pass | No Stock, native or source-unit credit; distinct corrected stock2 attempt preserves this failure unchanged |
 | `f12c50c4` captured-worker candidate | Source suites pass, including all 67 production tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass. Authority Rust compilation refuses one mixed Option index type (E0277) before verification; controller stops in 451.615 s, final source/image/runtime checks pass | Zero authority verification credit despite a JSON error counter of zero: compiler exit is nonzero. Native compilation/tests and new ordinary negatives are unrun |
 | `9478b711` captured-worker candidate | Model source suite passes. Production source suite runs 67 tests: one failure and four errors from a query dependency mismatch and four witnesses outside the Verus envelope (#479, #492). Controller stops in 28.912 s; final source/image/runtime checks pass | All Stock roots, native compilation/tests and ordinary negatives are unrun. Correcting the actual program/closure leaves every safeguard and control intact |
 | `ba7e816b` native-only follow-up | All three complete driver/source files match passed `dcf94ef7` raw bytes and inventories; runtime identity matches (57.609 s). Full workspace/all-target strict Clippy passes (92.926 s). Actual nextest summary: 16 run, 16 pass, 671 skips; step 103.691 s including build, test runtime 6.235 s. Total 263.160 s; final source/image/runtime checks pass | Mathematical receipts remain `dcf94ef7`; no new Stock, negative, full native workspace, conformance or service credit. The separate captured-worker selector requires fresh qualification |
