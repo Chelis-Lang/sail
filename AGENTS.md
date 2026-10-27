@@ -309,8 +309,19 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
 
 - **Milestones.** GitHub milestones on `Chelis-Lang/sail` track phases, and
   `docs/ROADMAP.md` is the narrative.
-- **Issues.** One issue per deliverable or defect. Every conformance
-  disagreement becomes an issue containing a minimal reproduction.
+- **Main-relative bugs.** File GitHub bug issues for defects established on
+  current `main`, with a minimal reproduction or precise source evidence. If
+  imminent PR work fixes or supersedes a main bug, assign the owner so another
+  implementation does not run in parallel.
+- **PR and local defects.** Fix bugs introduced by an open PR, branch or local
+  refactor in that work. Track them in PR comments or a managed document, not
+  standalone GitHub issues. If an unfixed defect reaches `main`, file it then.
+  Apply the same distinction to conformance disagreements; preserve their
+  reproduction and never weaken the conformance check.
+- **Design work.** Keep unfinished design work in the design document or one
+  umbrella issue. A PR implementing part A needs no separate issues for B, C
+  and D when the design already covers them. Follow-up issues are for remaining
+  work on `main` that is not already represented by the design or its tracker.
 - **Owner questions** live in `docs/open-questions.md`. Add to it rather than
   guessing.
 

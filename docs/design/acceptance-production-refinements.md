@@ -88,6 +88,29 @@ the amended proof checks the acceptance rule over its stated inputs. Native
 option decoding and the complete service correspondence retain their explicit
 refinement boundaries.
 
+## Executable failure controls
+
+Every production failure control must change exactly one checked executable
+body while retaining its signature, contracts, surrounding declarations and
+checked loop invariants/decreases clauses. The runner enforces this both when
+validating the inventory and when constructing captured programs. Balanced
+source-token parsing distinguishes nested contract braces from runtime bodies
+and erases proof groups with their trailing empty statements. Their exact
+tokens and owning executable body must remain unchanged. Runtime edits must
+belong to one exact interval between retained proof groups. Moving an assertion
+past an assignment changes two intervals and is refused, including when repeated
+expression tokens make a token diff ambiguous. Controls requiring edits in
+several intervals need separate review before qualification. Bare verification-only
+statements cannot be introduced as runtime code. A proof-only failure cannot
+qualify as a runtime fault. These source checks supplement the
+full Stock function/obligation inventory and ordinary failure requirement;
+they do not establish semantic inequivalence of arbitrary Rust programs.
+
+Configuration validation uses `HOME` and `CARGO_HOME` from the same supplied
+process-environment observation as the other selectors. An ambient second read
+cannot replace that observation; explicit CARGO_HOME retains precedence. This
+binds the validator's own inputs and does not establish full compiler closure.
+
 ## Independent checking
 
 Commit the source first, then run Python 3.11 or newer:

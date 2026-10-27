@@ -5,6 +5,24 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Resolve managed configuration homes from the supplied environment, keeping
+  CARGO_HOME precedence and native path bytes from that observation.
+- Validate source tokens without repeatedly copying the remaining input;
+  retain exact spans, literal boundaries and refusal behavior. Distinguish
+  reviewed Set union expressions from erased type declarations.
+
+- Restore generated-file E2E inputs before later stock-oracle comparisons in
+  the full local managed suite.
+
+- Keep local container build targets separate between physical checkouts, so
+  prepared worktrees cannot accidentally run one another's stale binaries.
+- Accept reviewed proof-import identifiers containing digits while retaining
+  exact import bindings and executable-configuration refusals.
+
+- Refuse production proof controls that change contracts or loop obligations,
+  change erased proof syntax or alter runtime intervals on both sides of it,
+  instead of introducing an executable fault.
+
 - Fail safe on several cache and daemon edge cases. The disk cache creates
   its temporary entry file exclusively, so a preexisting file or symlink at
   that name is refused rather than followed and truncated, and a name the

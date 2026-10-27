@@ -5,6 +5,15 @@ Run Linux checks on a native EC2 host with `ci/local.sh`; use `ci/run.sh host`
 for the macOS platform check. Performance measurements require a quiet native
 host, separate from builds and gates.
 
+Local containers use a Cargo target volume per physical checkout (#475).
+Distinct worktrees cannot reuse one another's binaries merely because both are
+mounted at `/work`; normal edits and symlink aliases retain the same checkout's
+warm target. `ci/local.sh target-volume` prints its volume; the optional
+`ci/local-singular.sh target-volume` prints its separate Singular volume.
+Shared non-target cache volumes are unchanged. Custom Docker qualification
+runners must also isolate prepared snapshots or rebuild the changed packages;
+a clean Git checkout does not establish which binary Cargo executed.
+
 Real-project benchmarks keep their timings and logs and delete each completed
 arm's temporary source, build artifacts and cache before starting the next arm.
 

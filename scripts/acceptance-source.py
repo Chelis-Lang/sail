@@ -28,6 +28,12 @@ class Token(NamedTuple):
 DERIVES = {"Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord",
     "Default", "Hash", "Serialize", "Deserialize"}
 
+# The reviewed patterns have no anchors or lookbehind; retain exact offsets.
+_RAW_STRING_PREFIX = re.compile(r'(?:br|cr|r)(#*)"')
+_CHAR_LITERAL = re.compile(r"'(?:\\.|[^'\\\n])'")
+_LIFETIME = re.compile(r"'[A-Za-z_][A-Za-z_0-9]*")
+_WORD = re.compile(r"[A-Za-z_][A-Za-z_0-9]*|[0-9][A-Za-z_0-9]*")
+
 
 def checked_attribute(stream: list[Token], start: int, allowed: set[str]) -> int:
     """Accept only reviewed attributes, with no custom derive expansion."""
@@ -79,10 +85,10 @@ def tokens(source: str) -> list[Token]:
                     at += 1
             continue
         start = at
-        raw = re.match(r'(?:br|cr|r)(#*)"', source[at:])
+        raw = _RAW_STRING_PREFIX.match(source, at)
         if raw:
             ending = '"' + raw[1]
-            at += raw.end()
+            at = raw.end()
             end = source.find(ending, at)
             require(end >= 0, "unterminated raw string")
             at = end + len(ending)
@@ -93,13 +99,13 @@ def tokens(source: str) -> list[Token]:
             require(at < len(source), "unterminated string")
             at += 1
         elif source[at] == "'":
-            char = re.match(r"'(?:\\.|[^'\\\n])'", source[at:])
-            lifetime = re.match(r"'[A-Za-z_][A-Za-z_0-9]*", source[at:])
+            char = _CHAR_LITERAL.match(source, at)
+            lifetime = _LIFETIME.match(source, at)
             require(char is not None or lifetime is not None, "unsupported character literal")
-            at += (char or lifetime).end()
+            at = (char or lifetime).end()
         else:
-            word = re.match(r"[A-Za-z_][A-Za-z_0-9]*|[0-9][A-Za-z_0-9]*", source[at:])
-            at += word.end() if word else 1
+            word = _WORD.match(source, at)
+            at = word.end() if word else at + 1
         result.append(Token(source[start:at], start, at))
     return result
 
@@ -138,6 +144,203 @@ def top_level(stream: list[Token]) -> list[bool]:
     return result
 
 
+def executable_envelopes(source: str) -> list[tuple[int, int]]:
+    """Locate checked runtime bodies after balanced macro contract groups.
+
+    This recognizes only the two reviewed checked-function envelope grammars. A
+    brace inside requires/ensures (including an if expression) is never a body.
+    Erased macro/proof groups cannot introduce an executable envelope.
+    Spans index tokens, including the executable body's outer braces.
+    """
+    return _executable_envelopes(tokens(source))
+
+
+def _executable_envelopes(stream: list[Token]) -> list[tuple[int, int]]:
+    """Walk each balanced envelope once using the caller's exact token list."""
+    bodies: list[tuple[int, int]] = []
+    i = 0
+    while i < len(stream):
+        token = stream[i]
+        macro = i + 2 < len(stream) and stream[i + 1].value == "!"
+        if macro and token.value in {"sail_spec", "sail_impl_spec", "sail_proof"}:
+            i = closing(stream, i + 2) + 1
+            continue
+        if token.value in {"proof", "spec", "by"} and i + 1 < len(stream) and stream[i + 1].value == "{":
+            i = closing(stream, i + 1) + 1
+            continue
+        if not macro or token.value not in {"sail_verified", "sail_method"}:
+            i += 1
+            continue
+        end = closing(stream, i + 2)
+        at = i + 3
+        seen_fn = False
+        first_clause = "requires"
+        while at < end and stream[at].value != first_clause:
+            value = stream[at].value
+            require(value != "{", "runtime body before macro contracts")
+            if value == "fn":
+                require(not seen_fn, "multiple functions in checked envelope")
+                seen_fn = True
+            if value in {"(", "["}:
+                at = closing(stream, at)
+            at += 1
+        require(seen_fn, "missing checked runtime function")
+        clauses = ("requires", "ensures")
+        for clause in clauses:
+            require(at + 1 < end and stream[at].value == clause
+                and stream[at + 1].value == "(", "unsupported checked macro contract")
+            at = closing(stream, at + 1) + 1
+        if at < end and stream[at].value == "decreases":
+            require(stream[at + 1].value == "(", "unsupported decreases clause")
+            at = closing(stream, at + 1) + 1
+        require(at < end and stream[at].value == "{" and closing(stream, at) == end - 1,
+            "missing or trailing checked runtime body")
+        bodies.append((at, end - 1))
+        i = end + 1
+    return bodies
+
+
+class RuntimeProjection(NamedTuple):
+    """Exact runtime tokens and their retained verification boundaries."""
+
+    skeleton: tuple[str, ...]
+    runtime: tuple[tuple[str, ...], ...]
+    spans: tuple[tuple[int, int], ...]
+    loops: tuple[tuple[str, ...], ...]
+    proofs: tuple[tuple[tuple[str, ...], ...], ...]
+    proof_positions: tuple[tuple[int, ...], ...]
+
+
+def _runtime_projection(text: str) -> RuntimeProjection:
+    """Project runtime tokens and retain every signature and loop contract.
+
+    Source is parsed on each call; this guard caches no admission result.
+    """
+    stream = tokens(text)
+    bodies = _executable_envelopes(stream)
+    skeleton: list[str] = []
+    executable: list[list[str]] = []
+    spans: list[tuple[int, int]] = []
+    loop_contracts: list[list[str]] = []
+    proof_groups: list[tuple[tuple[str, ...], ...]] = []
+    proof_positions: list[tuple[int, ...]] = []
+    cursor = 0
+    for begin, end in bodies:
+        skeleton.extend(token.value for token in stream[cursor:begin])
+        skeleton.append("<checked-runtime-body>")
+        values: list[str] = []
+        body_proofs: list[tuple[str, ...]] = []
+        body_positions: list[int] = []
+        annotations: dict[int, int] = {}
+        at = begin
+        while at <= end:
+            token = stream[at]
+            if at in annotations:
+                at = annotations[at]
+                continue
+            macro = at + 2 <= end and stream[at + 1].value == "!"
+            ghost = (macro and token.value in {"sail_proof", "sail_spec", "sail_impl_spec"})
+            ghost_group = (token.value in {"proof", "spec", "by"}
+                and at + 1 <= end and stream[at + 1].value == "{")
+            if ghost or ghost_group:
+                proof_end = closing(stream, at + (2 if ghost else 1)) + 1
+                body_proofs.append(tuple(item.value for item in stream[at:proof_end]))
+                body_positions.append(len(values))
+                at = proof_end
+                # Its trailing empty statements are erased too; otherwise a
+                # proof-only false assertion can masquerade as runtime (#508).
+                while at <= end and stream[at].value == ";":
+                    at += 1
+                continue
+            require(token.value != "fn" and not (macro
+                and token.value in {"sail_verified", "sail_method"}),
+                "nested runtime function outside mutation capture subset")
+            verification_only = {"assert", "assert_forall", "assume", "admit",
+                "reveal", "reveal_with_fuel", "hide", "broadcast", "calc"}
+            require(not (token.value in verification_only
+                and at + 1 <= end and stream[at + 1].value != "!"),
+                "verification-only syntax outside erased proof group")
+            if macro and token.value == "sail_while":
+                require(stream[at + 2].value == "{" and stream[at + 3].value == "(",
+                    "unsupported checked loop contract")
+                loop_end = closing(stream, at + 2)
+                contract_begin = closing(stream, at + 3) + 1
+                body_begin = contract_begin
+                for clause in ("invariant", "decreases"):
+                    require(body_begin + 1 < loop_end and stream[body_begin].value == clause
+                        and stream[body_begin + 1].value == "(",
+                        "unsupported checked loop contract")
+                    body_begin = closing(stream, body_begin + 1) + 1
+                require(body_begin < loop_end and stream[body_begin].value == "{"
+                    and closing(stream, body_begin) == loop_end - 1,
+                    "missing or trailing checked loop body")
+                loop_contracts.append([item.value for item in stream[contract_begin:body_begin]])
+                annotations[contract_begin] = body_begin
+            values.append(token.value)
+            spans.append((token.begin, token.end))
+            at += 1
+        executable.append(values)
+        proof_groups.append(tuple(body_proofs))
+        proof_positions.append(tuple(body_positions))
+        cursor = end + 1
+    skeleton.extend(token.value for token in stream[cursor:])
+    return RuntimeProjection(tuple(skeleton), tuple(tuple(body) for body in executable),
+        tuple(spans), tuple(tuple(contract) for contract in loop_contracts), tuple(proof_groups),
+        tuple(proof_positions))
+
+
+def _preserved_proof_positions(original: tuple[str, ...], changed: tuple[str, ...],
+        original_positions: tuple[int, ...], changed_positions: tuple[int, ...]) -> None:
+    """Allow runtime edits in only one interval between unchanged proof groups.
+
+    Comparing exact intervals avoids ambiguous matching of repeated tokens.
+    This deliberately refuses multi-interval controls; their intended faults
+    need separate review rather than admitting relocated proof guidance.
+    """
+    def intervals(values: tuple[str, ...], positions: tuple[int, ...]) -> list[tuple[str, ...]]:
+        boundaries = (0, *positions, len(values))
+        return [values[left:right] for left, right in zip(boundaries, boundaries[1:])]
+
+    old = intervals(original, original_positions)
+    new = intervals(changed, changed_positions)
+    require(sum(left != right for left, right in zip(old, new)) <= 1,
+        "mutation changes runtime intervals on both sides of erased proof code")
+
+
+def runtime_mutation(source: str, before: str, after: str) -> None:
+    """Require a mutation of runtime code with unchanged signatures/contracts.
+
+    Erasing whole bodies yields an exact token skeleton: contracts, erased
+    items and every other surrounding declaration must remain identical. The
+    selected envelope must include runtime tokens; selecting only a proof
+    block is refused even if a broader executable body contains it. Checked
+    loop invariants, decreases clauses and erased proof groups remain identical and do
+    not supply runtime selector spans. This is an
+    early source check; Stock's actual full function/obligation inventory still
+    determines ordinary negative credit.
+    """
+    require(bool(before) and source.count(before) == 1 and before != after,
+        "empty or ambiguous executable mutation")
+    changed = source.replace(before, after)
+
+    original_skeleton, original_runtime, spans, original_loops, original_proofs, original_positions = _runtime_projection(source)
+    changed_skeleton, changed_runtime, _, changed_loops, changed_proofs, changed_positions = _runtime_projection(changed)
+    require(original_skeleton == changed_skeleton,
+        "mutation changes signature, contract or non-runtime source")
+    require(original_loops == changed_loops, "mutation changes checked loop contract")
+    require(original_proofs == changed_proofs, "mutation changes erased proof code")
+    for old_body, new_body, old_positions, new_positions in zip(
+            original_runtime, changed_runtime, original_positions, changed_positions):
+        _preserved_proof_positions(old_body, new_body, old_positions, new_positions)
+    begin = source.index(before)
+    end = begin + len(before)
+    require(any(begin <= lo and hi <= end for lo, hi in spans),
+        "mutation selector contains no executable runtime tokens")
+    require(len(original_runtime) == len(changed_runtime)
+        and sum(left != right for left, right in zip(original_runtime, changed_runtime)) == 1,
+        "mutation must change exactly one executable body, not only proof syntax")
+
+
 def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
     """Privileged modules cannot hide ordinary unchecked Rust constructors.
 
@@ -162,7 +365,12 @@ def checked_item_envelopes(source: str, *, proof: bool = False) -> None:
                 erased = [token.value for token in stream[i + 3:end]]
                 if erased == [token.value for token in tokens("use vstd::prelude::*;")]:
                     continue
-                require(not ({"type", "struct", "enum", "union", "trait", "impl", "const", "static"} & set(erased))
+                declarations = {"type", "struct", "enum", "union", "trait", "impl", "const", "static"}
+                # A Set.union call is an expression, not an erased declaration.
+                require(all(value not in declarations or value == "union"
+                        and position > 0 and erased[position - 1] == "."
+                        and position + 1 < len(erased) and erased[position + 1] == "("
+                        for position, value in enumerate(erased))
                     and all(value != "use" or position > 0 and erased[position - 1] == "broadcast"
                         for position, value in enumerate(erased)),
                     "erased items cannot introduce executable/type bindings")

@@ -179,14 +179,22 @@ pub(super) fn check_cache_inputs(data: &serde_json::Value, cache: &Path) -> Resu
     Ok(())
 }
 
-/// [`check`] for an explicit process environment.
+/// [`check`] for an explicit process environment, including its configuration homes.
 fn check_environment(
     environment: impl Iterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
     workspace: &Path,
     args: &[String],
 ) -> Result<Option<String>> {
     let mut loader_set = None;
+    let mut provided_cargo_home = None;
+    let mut provided_user_home = None;
     for (key, value) in environment {
+        // Keep native path bytes from this same supplied observation.
+        if key == "CARGO_HOME" {
+            provided_cargo_home = Some(PathBuf::from(&value));
+        } else if key == "HOME" {
+            provided_user_home = Some(PathBuf::from(&value));
+        }
         let key = key.to_string_lossy();
         let value = value.to_string_lossy();
         let compiler = [
@@ -219,15 +227,18 @@ fn check_environment(
             "Cargo `--config` overrides are not bound to a proof receipt",
         ));
     }
-    let home = std::env::var_os("CARGO_HOME")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".cargo")));
-    for path in paths(workspace, home.as_deref()).into_iter().filter(|p| {
-        p.is_file()
-            && p.file_name().is_some_and(|name| {
-                name == "config" || (name == "config.toml" && !p.with_file_name("config").is_file())
-            })
-    }) {
+    let configuration_home =
+        provided_cargo_home.or_else(|| provided_user_home.map(|path| path.join(".cargo")));
+    for path in paths(workspace, configuration_home.as_deref())
+        .into_iter()
+        .filter(|p| {
+            p.is_file()
+                && p.file_name().is_some_and(|name| {
+                    name == "config"
+                        || (name == "config.toml" && !p.with_file_name("config").is_file())
+                })
+        })
+    {
         let contents = std::fs::read_to_string(&path)
             .map_err(|e| Error::new("SAIL3112", format!("cannot read {}: {e}", path.display())))?;
         let value: toml::Value = toml::from_str(&contents)
@@ -353,6 +364,55 @@ mod tests {
         );
         let _ = std::fs::remove_dir_all(&dir);
     }
+    #[test]
+    fn configuration_homes_come_only_from_the_supplied_environment()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-provided-homes-{}", std::process::id()));
+        let workspace = root.join("workspace");
+        let bad_cargo = root.join("bad-cargo");
+        let good_cargo = root.join("good-cargo");
+        let user_home = root.join("user");
+        for path in [
+            &workspace,
+            &bad_cargo,
+            &good_cargo,
+            &user_home.join(".cargo"),
+        ] {
+            std::fs::create_dir_all(path)?;
+        }
+        let selector = "[build]\nrustc='unbound-provided-selector'\n";
+        std::fs::write(bad_cargo.join("config.toml"), selector)?;
+        std::fs::write(user_home.join(".cargo/config.toml"), selector)?;
+        let check = |cargo_home: Option<&Path>, provided_home: Option<&Path>| {
+            let mut environment = Vec::new();
+            if let Some(path) = cargo_home {
+                environment.push((
+                    std::ffi::OsString::from("CARGO_HOME"),
+                    path.as_os_str().to_owned(),
+                ));
+            }
+            if let Some(path) = provided_home {
+                environment.push((
+                    std::ffi::OsString::from("HOME"),
+                    path.as_os_str().to_owned(),
+                ));
+            }
+            check_environment(environment.into_iter(), &workspace, &[])
+        };
+        assert_eq!(
+            check(Some(&bad_cargo), None).map_err(|error| error.code),
+            Err("SAIL3112")
+        );
+        assert_eq!(check(Some(&good_cargo), Some(&user_home)), Ok(None));
+        assert_eq!(
+            check(None, Some(&user_home)).map_err(|error| error.code),
+            Err("SAIL3112")
+        );
+        assert_eq!(check(None, None), Ok(None));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
     #[test]
     fn runtime_selectors_and_custom_sysroots_are_refused() {
         for text in [
