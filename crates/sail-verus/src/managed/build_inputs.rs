@@ -83,6 +83,36 @@ fn generated_value(record: &BuildInput, data: &Value, key: &str) -> Option<Optio
     }
 }
 
+/// The package-environment value Sail would bind for a script whose Cargo
+/// unit reported `out_dir`, ignoring the test process's own environment.
+/// Only the real-Cargo protocol self-test uses it.
+#[cfg(test)]
+#[expect(
+    clippy::option_option,
+    reason = "Invalid authority differs from an absent value."
+)]
+pub(super) fn qualification_package_value(
+    package_id: &str,
+    manifest: &Path,
+    out_dir: &str,
+    data: &Value,
+    key: &str,
+) -> Option<Option<String>> {
+    let output = Path::new(out_dir).parent()?.join("output");
+    let record = BuildInput {
+        package_id: package_id.to_owned(),
+        package_name: String::new(),
+        manifest: manifest.to_path_buf(),
+        paths: Vec::new(),
+        env: BTreeMap::new(),
+        digest: String::new(),
+        covered: true,
+        output: Some((output, String::new())),
+        unit_out_dir: Some(out_dir.to_owned()),
+    };
+    package_environment::uninherited(&record, data, key)
+}
+
 fn effective_value(key: &str, environment: Option<&BTreeMap<String, String>>) -> Option<String> {
     // The pinned Cargo-Verus sets this value unconditionally before Cargo.
     // invoke() also binds it explicitly, without changing process environment.

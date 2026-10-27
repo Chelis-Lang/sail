@@ -315,9 +315,11 @@ See [workspace verification](docs/workspace-verification.md#evidence-from-comple
   `cargo verus verify` verifies them, with the solver cache, but no proof
   receipts are recorded or reused (`SAIL3112`, shown with `SAIL_EXPLAIN=1`
   and in `--output json`):
-  - a Cargo other than the pinned 1.99.1, for example one chosen by the
-    project's `rust-toolchain.toml`, `RUSTUP_TOOLCHAIN` or `CARGO`
-    (`SAIL3139`);
+  - a Cargo outside the qualified 1.93.0 to 1.99.1 (for example 1.92 or a
+    release newer than the pin), chosen by the project's
+    `rust-toolchain.toml`, `RUSTUP_TOOLCHAIN` or `CARGO` (`SAIL3139`); a
+    project pinning a qualified Cargo, such as Anvil's 1.98.0, does get
+    receipts;
   - tests, benches and examples, `--target-dir`, Verus's `--log` options,
     `--no-verify`, Cargo `-v`/`--message-format` and `--config` overrides;
   - `LD_LIBRARY_PATH` or another loader variable.
