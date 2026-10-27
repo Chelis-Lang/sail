@@ -20,7 +20,9 @@ fixture passes; the combined native workspace still requires qualification.
 
 The option-state candidate adds nineteen ordinary controls to the inherited
 115 query controls; its expanded whole-positive inventories and full matrix
-have not yet been qualified. Native integration exposes a missing production
+have not yet been qualified. Its existing assembly/private-token source fixture
+omits the required option module (#458); the source correction adds that
+fixture input and retains every original mutation. Native integration exposes a missing production
 `Duration` import (#455) and an inline entry budget undercharge (#456).
 The narrow source corrections preserve forwarding and the original bound.
 The actual parser/delivery budget regression fails ordinarily with the old
