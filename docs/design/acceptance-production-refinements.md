@@ -521,6 +521,16 @@ refuse checking. Omitted presentation fields are not assumptions of validity.
 The stencil generator, syntax envelopes, compiler, ordinary sort forwarders
 and Python runner remain reviewed and tested trust dependencies.
 
+The Python source-envelope validator memoizes only successful checks for the
+same exact source, proof mode and all three immutable approval-policy sets.
+Mutable ordinary sets are copied into the key; unusual argument subclasses
+retain the original uncached behavior. The bounded cache does not memoize
+source discovery, declaration/native bindings, compiled output, filesystem
+state, runtime validation or final drift checks. Its isolated native source
+suite passes 72 tests versus the earlier 69 in 299 s versus 391 s in one run
+each; that measures tooling only. The larger combined registry requires its
+own qualification, recorded in the boundary validation record.
+
 Every selected guard mutation changes the captured production dependency.
 It must fail through ordinary verification errors with complete unchanged
 scope. Syntax errors, missing modules, signals, malformed JSON, resource

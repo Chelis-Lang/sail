@@ -163,7 +163,7 @@ class SourceCaptureTests(unittest.TestCase):
         self.assertEqual(files["core_query_lex.rs"], snapshots[CHECKER.LEX_CORE])
         self.assertIn(CHECKER.LEX_CORE, CHECKER.source_roles(entry)["checked_source"])
         for path, before, after in (
-            ("crates/sail-smtlib/src/command.rs", b"let (open_start, name) = lexer.command_head()?;", b"let (open_start, name) = (0, &text[..0]);"),
+            ("crates/sail-smtlib/src/command.rs", b"sail_acceptance::query_command::classify(text).map_err(crate::lex::native_failure)", b"sail_acceptance::query_command::classify(&text[..0]).map_err(crate::lex::native_failure)"),
             ("crates/sail-smtlib/src/lex.rs", b"Error::new(code, failure.offset)", b"Error::new(code, 0)"),
         ):
             original = snapshots[path]
@@ -171,6 +171,24 @@ class SourceCaptureTests(unittest.TestCase):
             self.assertEqual(original.count(before), 1)
             with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
                 CHECKER.compiled_subset(path, original.replace(before, after))
+
+    def test_actual_command_classification_and_expectation_are_checked(self):
+        entry = {"id": "query", "dependencies": CHECKER.dependency_paths("query"),
+            "source": "proofs/refinement/query.rs"}
+        snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+        _, _, files = CHECKER.captured_driver(entry, snapshots)
+        self.assertEqual(files["core_query_command.rs"], snapshots[CHECKER.COMMAND_CORE])
+        self.assertIn(CHECKER.COMMAND_CORE, CHECKER.source_roles(entry)["checked_source"])
+        CHECKER.compiled_subset(CHECKER.COMMAND_CORE, snapshots[CHECKER.COMMAND_CORE])
+        for path, before, after in (
+            ("crates/sail-smtlib/src/command.rs", b"pub use sail_acceptance::query_command::{Command, CommandKind, Output, expects_output};", b"pub use alternate::{Command, CommandKind, Output, expects_output};"),
+            ("crates/sail-session/src/lib.rs", b'sail_smtlib::command::expects_output(command, self.option(b":print-success"))', b'sail_smtlib::command::expects_output(command, Some(b"true"))'),
+        ):
+            original=snapshots[path]
+            CHECKER.compiled_subset(path,original)
+            self.assertEqual(original.count(before),1)
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path,original.replace(before,after))
 
     def test_completed_presentation_has_no_public_or_derived_mint(self):
         paths = {path for component in CHECKER.COMPONENTS
@@ -1371,6 +1389,65 @@ class SourceCaptureTests(unittest.TestCase):
             }):
                 captured = CHECKER.captured_tree(root, commits[0], ["proof.rs"])
             self.assertEqual(captured["proof.rs"], b"original $Format:%H$")
+
+
+class SourceEnvelopeCacheTests(unittest.TestCase):
+    """An admission for one exact source/policy cannot authorize another."""
+
+    def setUp(self):
+        SOURCE._cached_item_envelopes.cache_clear()
+        self.addCleanup(SOURCE._cached_item_envelopes.cache_clear)
+
+    def test_exact_source_cache_keeps_changed_source_and_proof_refusals(self):
+        ordinary = "sail_verified! { pub fn checked() -> (r:bool) requires(true) ensures(r) { true } }"
+        SOURCE.checked_item_envelopes(ordinary)
+        SOURCE.checked_item_envelopes(ordinary)
+        self.assertEqual(SOURCE._cached_item_envelopes.cache_info().hits, 1)
+        bad = ordinary + "\npub fn hidden() -> bool { true }"
+        for _ in range(2):
+            with self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.checked_item_envelopes(bad)
+        self.assertEqual(SOURCE._cached_item_envelopes.cache_info().currsize, 1)
+        proof = "verus! { pub fn only_in_whole_proof() -> bool { true } }"
+        SOURCE.checked_item_envelopes(proof, proof=True)
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.checked_item_envelopes(proof, proof=False)
+
+    def test_mutated_approval_sets_cannot_reuse_any_old_policy_success(self):
+        ghost = "pub enum GhostValue { A }"
+        host = "trait Primitive { spec { spec fn value(&self) -> bool; } fn read(&self) -> (out:bool) requires(true) ensures(out); }"
+        recording = "impl Primitive for Script { fn read(&self) -> bool { true } }"
+        cases = (
+            ("reviewed_ghost_items", "sail_spec! { " + ghost + " }", ghost),
+            ("reviewed_host_traits", "sail_trait! { " + host + " }", host),
+            ("reviewed_trait_impls", "sail_code! { " + recording + " }", recording),
+        )
+        for keyword, source, approved in cases:
+            identity = hashlib.sha256(repr([t.value for t in SOURCE.tokens(approved)]).encode()).hexdigest()
+            policy = {identity}
+            SOURCE.checked_item_envelopes(source, **{keyword: policy})
+            policy.clear()
+            with self.subTest(policy=keyword), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.checked_item_envelopes(source, **{keyword: policy})
+            policy.add(identity)
+            SOURCE.checked_item_envelopes(source, **{keyword: frozenset(policy)})
+
+    def test_unusual_policy_membership_retains_the_original_uncached_behavior(self):
+        class DenyMembership(set):
+            def __contains__(self, value):
+                return False
+
+        host = "trait Primitive {}"
+        identity = hashlib.sha256(repr([t.value for t in SOURCE.tokens(host)]).encode()).hexdigest()
+        source = "sail_trait! { " + host + " }"
+        SOURCE.checked_item_envelopes(source, reviewed_host_traits={identity})
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.checked_item_envelopes(source, reviewed_host_traits=DenyMembership({identity}))
+        ordinary = "sail_verified! { fn checked() -> (r:bool) requires(true) ensures(r) { true } }"
+        # None is outside the annotated policy type. The old validator did not
+        # consult it for this source, so preserve that behavior rather than
+        # turning a cache-key normalization error into a new refusal.
+        SOURCE.checked_item_envelopes(ordinary, reviewed_ghost_items=None)
 
 
 if __name__ == "__main__":

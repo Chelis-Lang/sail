@@ -414,6 +414,48 @@ def checked_item_envelopes(source: str, *, proof: bool = False,
         reviewed_ghost_items: frozenset[str] = frozenset(),
         reviewed_host_traits: frozenset[str] = frozenset(),
         reviewed_trait_impls: frozenset[str] = frozenset()) -> None:
+    """Validate exact source under the complete current explicit policy.
+
+    Only successful None results for immutable native inputs are memoized.
+    Snapshot ordinary mutable approval sets, so removing an approval never
+    reuses its former success. Unusual argument objects retain the uncached
+    behavior; the cache does not replace their membership/truth semantics.
+    """
+    policies = (reviewed_ghost_items, reviewed_host_traits, reviewed_trait_impls)
+    if (type(source) is not str or type(proof) is not bool
+            or any(type(policy) not in (set, frozenset)
+                or any(type(item) is not str for item in policy) for policy in policies)):
+        return _checked_item_envelopes(source, proof=proof,
+            reviewed_ghost_items=reviewed_ghost_items,
+            reviewed_host_traits=reviewed_host_traits,
+            reviewed_trait_impls=reviewed_trait_impls)
+    return _cached_item_envelopes(source, proof=proof,
+        reviewed_ghost_items=frozenset(reviewed_ghost_items),
+        reviewed_host_traits=frozenset(reviewed_host_traits),
+        reviewed_trait_impls=frozenset(reviewed_trait_impls))
+
+
+@lru_cache(maxsize=128)
+def _cached_item_envelopes(source: str, *, proof: bool,
+        reviewed_ghost_items: frozenset[str], reviewed_host_traits: frozenset[str],
+        reviewed_trait_impls: frozenset[str]) -> None:
+    """Reuse only the same immutable source and complete frozen policy tuple.
+
+    The validator reads local literal syntax sets and immutable tokenizer
+    patterns, not DERIVES or mutable global binding/approval tables. No file,
+    runtime, source discovery or compiled_subset decision is cached here.
+    Exceptions leave no cached admission.
+    """
+    return _checked_item_envelopes(source, proof=proof,
+        reviewed_ghost_items=reviewed_ghost_items,
+        reviewed_host_traits=reviewed_host_traits,
+        reviewed_trait_impls=reviewed_trait_impls)
+
+
+def _checked_item_envelopes(source: str, *, proof: bool = False,
+        reviewed_ghost_items: frozenset[str] = frozenset(),
+        reviewed_host_traits: frozenset[str] = frozenset(),
+        reviewed_trait_impls: frozenset[str] = frozenset()) -> None:
     """Privileged modules cannot hide ordinary unchecked Rust constructors.
 
     Stock Verus intentionally ignores ordinary Rust outside its envelopes.

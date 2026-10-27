@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Share the actual shallow SMT command classifier, borrowed option-value walk
+  and Session response prediction with the checked production core. Preserve
+  original command bytes, error offsets and conservative unknown results.
+
+- Reuse proof-source envelope validation only for identical source and complete
+  immutable approval policies. Changed source or approvals still undergo all
+  checks; filesystem, runtime and final drift checks remain independent.
+
 - Connect actual terminal output framing, replay settlement and complete-stream
   joining to checked production operations, preserving the original native
   close/wait/forwarding sequence. Complete combined qualification remains open.

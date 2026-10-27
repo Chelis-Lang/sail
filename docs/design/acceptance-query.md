@@ -19,6 +19,30 @@ previously resource-limited controls pass ordinary full-root failures at
 SMT/shim Clippy; later cuts change only erased proof syntax. The combined
 root and full control union still need their own qualification.
 
+## Actual command classification
+
+Production `sail-smtlib::command::classify` now delegates to
+`crates/sail-acceptance/src/query_command.rs`, retaining the original native
+error-code/offset mapping. The same shared declarations define `Command`,
+`CommandKind` and `Output`. Checked bodies classify the original head, parse
+unsigned counts with overflow refusal, walk the actual lexer for the first
+option-value expression, and preserve its exact borrowed bytes. They retain
+the existing shallow policy for unused trailing tokens.
+
+`Session::expects_output` calls the checked response decision through the
+existing smtlib dependency, with the actual borrowed `:print-success` value.
+Its theorem establishes the mechanical decision for those exact inputs.
+It does not prove the native option map reflects every earlier solver action,
+or that the pinned solver accepts a command or produces a predicted response.
+The actual pre-apply observation and post-apply option-map joins remain open.
+
+Frozen component `c6b46500` passes whole-query Stock checking at 636 obligations
+and 1,096 function entries, all 32 SMT/session native tests, and strict
+acceptance/SMT/session/shim Clippy. Its 22 new executable controls and three
+stronger lexical postcondition selectors join the integration's required
+registry. Current combined proof discovery and the complete negative suite
+remain required; component counts are not added to claim a combined pass.
+
 ## The proved boundary
 
 [`query_association.rs`](../../proofs/acceptance/query_association.rs) no longer

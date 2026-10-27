@@ -30,12 +30,9 @@ impl<'a> Lexer<'a> {
     pub fn new(src: &'a [u8]) -> Self {
         Self(sail_acceptance::query_lex::Lexer::new(src))
     }
-    pub(crate) fn command_head(&mut self) -> Result<(usize, &'a [u8]), Error> {
-        self.0.command_head().map_err(native_failure)
-    }
 }
 
-fn native_failure(failure: LexFailure) -> Error {
+pub(crate) fn native_failure(failure: LexFailure) -> Error {
     let code = match failure.kind {
         LexFailureKind::Empty => ErrorCode::Empty,
         LexFailureKind::UnclosedList => ErrorCode::UnclosedList,

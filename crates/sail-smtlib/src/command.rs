@@ -4,206 +4,25 @@
 //! for a few commands, their small arguments. It never walks the body of an
 //! `assert`, so it is cheap on the very large assertions Verus sends.
 
-use crate::lex::{Lexer, Token, TokenKind};
-use crate::{Error, ErrorCode};
+use crate::Error;
 
-/// A classified top-level command. Byte slices borrow from the command text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Command<'a> {
-    /// The command name, for example `b"check-sat"`.
-    pub name: &'a [u8],
-    /// What the command does, as far as session modelling is concerned.
-    pub kind: CommandKind<'a>,
-}
-
-/// The session-relevant meaning of a command.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum CommandKind<'a> {
-    /// `(push n)`, with `n` defaulting to 1.
-    Push(u64),
-    /// `(pop n)`, with `n` defaulting to 1.
-    Pop(u64),
-    /// `(assert …)`.
-    Assert,
-    /// `declare-fun`, `declare-const`, `declare-sort`, `declare-datatype(s)`.
-    Declare,
-    /// `define-fun`, `define-fun-rec`, `define-funs-rec`, `define-sort`,
-    /// `define-const`.
-    Define,
-    /// `(set-option :keyword value)`. `value` is the exact text of the value.
-    SetOption {
-        /// The option keyword, including the colon.
-        keyword: &'a [u8],
-        /// The exact text of the value expression.
-        value: &'a [u8],
-    },
-    /// `(set-info …)`.
-    SetInfo,
-    /// `(set-logic …)`.
-    SetLogic,
-    /// `(check-sat)`.
-    CheckSat,
-    /// `(check-sat-assuming …)`.
-    CheckSatAssuming,
-    /// Z3's `(check-sat-using tactic)`.
-    CheckSatUsing,
-    /// `(get-info :keyword)`.
-    GetInfo {
-        /// The requested keyword, including the colon.
-        keyword: &'a [u8],
-    },
-    /// Any other `get-…` query (`get-model`, `get-value`, …).
-    Get,
-    /// `(echo "…")`.
-    Echo,
-    /// `(reset)`.
-    Reset,
-    /// `(reset-assertions)`.
-    ResetAssertions,
-    /// `(exit)`.
-    Exit,
-    /// A command this module does not model. Session models must treat it
-    /// conservatively.
-    Other,
-}
-
-/// Whether a command produces a response when `:print-success` is false.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Output {
-    /// No response unless the command fails.
-    None,
-    /// Exactly one response.
-    One,
-    /// Not known for this command.
-    Unknown,
-}
-
-impl CommandKind<'_> {
-    /// True for commands that ask the solver for a satisfiability answer.
-    #[must_use]
-    pub fn is_check(&self) -> bool {
-        matches!(
-            self,
-            Self::CheckSat | Self::CheckSatAssuming | Self::CheckSatUsing
-        )
-    }
-
-    /// The response this command produces when `:print-success` is false
-    /// and the command succeeds.
-    #[must_use]
-    pub fn output(&self) -> Output {
-        match self {
-            Self::CheckSat
-            | Self::CheckSatAssuming
-            | Self::CheckSatUsing
-            | Self::GetInfo { .. }
-            | Self::Get
-            | Self::Echo => Output::One,
-            Self::Other => Output::Unknown,
-            _ => Output::None,
-        }
-    }
-}
+pub use sail_acceptance::query_command::{Command, CommandKind, Output, expects_output};
 
 /// Classifies one top-level command, given exactly its bytes (as produced by
 /// [`crate::split::CommandSplitter`]).
 ///
 /// # Errors
 ///
-/// [`ErrorCode::InvalidToken`] if the text does not start with `(` and a
+/// [`crate::ErrorCode::InvalidToken`] if the text does not start with `(` and a
 /// symbol, or a lexical error in the tokens it reads.
 pub fn classify(text: &[u8]) -> Result<Command<'_>, Error> {
-    let mut lexer = Lexer::new(text);
-    let (open_start, name) = lexer.command_head()?;
-    let kind = match name {
-        b"push" | b"pop" => {
-            let count = match next(&mut lexer)? {
-                Some(t) if t.kind == TokenKind::Numeral => {
-                    parse_u64(t.text(text)).ok_or(Error::new(ErrorCode::InvalidToken, t.start))?
-                }
-                Some(t) if t.kind == TokenKind::Close => 1,
-                Some(t) => return Err(Error::new(ErrorCode::InvalidToken, t.start)),
-                None => return Err(Error::new(ErrorCode::UnclosedList, open_start)),
-            };
-            if name == b"push" {
-                CommandKind::Push(count)
-            } else {
-                CommandKind::Pop(count)
-            }
-        }
-        b"assert" => CommandKind::Assert,
-        b"declare-fun" | b"declare-const" | b"declare-sort" | b"declare-datatype"
-        | b"declare-datatypes" => CommandKind::Declare,
-        b"define-fun" | b"define-fun-rec" | b"define-funs-rec" | b"define-sort"
-        | b"define-const" => CommandKind::Define,
-        b"set-option" => {
-            let keyword = keyword_after(next(&mut lexer)?, open_start)?;
-            let value = value_span(text, &mut lexer, keyword.end)?;
-            CommandKind::SetOption {
-                keyword: keyword.text(text),
-                value,
-            }
-        }
-        b"set-info" => CommandKind::SetInfo,
-        b"set-logic" => CommandKind::SetLogic,
-        b"check-sat" => CommandKind::CheckSat,
-        b"check-sat-assuming" => CommandKind::CheckSatAssuming,
-        b"check-sat-using" => CommandKind::CheckSatUsing,
-        b"get-info" => CommandKind::GetInfo {
-            keyword: keyword_after(next(&mut lexer)?, open_start)?.text(text),
-        },
-        _ if name.starts_with(b"get-") => CommandKind::Get,
-        b"echo" => CommandKind::Echo,
-        b"reset" => CommandKind::Reset,
-        b"reset-assertions" => CommandKind::ResetAssertions,
-        b"exit" => CommandKind::Exit,
-        _ => CommandKind::Other,
-    };
-    Ok(Command { name, kind })
-}
-
-fn next(lexer: &mut Lexer<'_>) -> Result<Option<Token>, Error> {
-    lexer.next().transpose()
-}
-
-fn keyword_after(token: Option<Token>, open_start: usize) -> Result<Token, Error> {
-    match token {
-        Some(t) if t.kind == TokenKind::Keyword => Ok(t),
-        Some(t) => Err(Error::new(ErrorCode::InvalidToken, t.start)),
-        None => Err(Error::new(ErrorCode::UnclosedList, open_start)),
-    }
-}
-
-/// The exact text of the single expression following offset `after`.
-fn value_span<'a>(text: &'a [u8], lexer: &mut Lexer<'_>, after: usize) -> Result<&'a [u8], Error> {
-    let mut depth = 0usize;
-    let mut start = None;
-    for token in lexer.by_ref() {
-        let token = token?;
-        let begin = *start.get_or_insert(token.start);
-        match token.kind {
-            TokenKind::Open => depth += 1,
-            TokenKind::Close if depth == 0 => {
-                return Err(Error::new(ErrorCode::Empty, token.start));
-            }
-            TokenKind::Close => depth -= 1,
-            _ => {}
-        }
-        if depth == 0 {
-            return Ok(text.get(begin..token.end).unwrap_or_default());
-        }
-    }
-    Err(Error::new(ErrorCode::UnclosedList, after))
-}
-
-fn parse_u64(digits: &[u8]) -> Option<u64> {
-    std::str::from_utf8(digits).ok()?.parse().ok()
+    sail_acceptance::query_command::classify(text).map_err(crate::lex::native_failure)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ErrorCode;
 
     fn kind(src: &str) -> CommandKind<'_> {
         match classify(src.as_bytes()) {
@@ -223,6 +42,75 @@ mod tests {
             (b";c\r\n(push x)".as_slice(), ErrorCode::InvalidToken, 10),
         ] {
             assert_eq!(classify(raw), Err(Error::new(code, offset)));
+        }
+    }
+
+    #[test]
+    fn shared_classifier_preserves_borrowed_values_and_shallow_failures() {
+        assert!(sail_acceptance::query_command::classifier_constructive_control());
+        assert!(sail_acceptance::query_command::value_constructive_control());
+        assert!(sail_acceptance::query_command::expectation_constructive_control());
+        for (raw, value) in [
+            (
+                b"(set-option :x (a (b)) )".as_slice(),
+                b"(a (b))".as_slice(),
+            ),
+            (
+                b"(set-option :x \"a\"\"b\")".as_slice(),
+                b"\"a\"\"b\"".as_slice(),
+            ),
+            (b"(set-option :x |a)b|)".as_slice(), b"|a)b|".as_slice()),
+            (
+                b"(set-option :x ;c\r\n(a)) trailing".as_slice(),
+                b"(a)".as_slice(),
+            ),
+            (b"(set-option :x 1".as_slice(), b"1".as_slice()),
+        ] {
+            let command = classify(raw).unwrap_or_else(|e| unreachable!("{e}"));
+            assert_eq!(
+                command.kind,
+                CommandKind::SetOption {
+                    keyword: b":x",
+                    value
+                }
+            );
+            let CommandKind::SetOption { value: actual, .. } = command.kind else {
+                unreachable!()
+            };
+            assert!(std::ptr::eq(
+                actual.as_ptr(),
+                raw[value_start(raw)..].as_ptr()
+            ));
+        }
+        assert_eq!(
+            kind("(push 18446744073709551615)"),
+            CommandKind::Push(u64::MAX)
+        );
+        for raw in [
+            b"(push 18446744073709551616)".as_slice(),
+            b"(push +1)".as_slice(),
+        ] {
+            assert_eq!(classify(raw), Err(Error::new(ErrorCode::InvalidToken, 6)));
+        }
+        assert_eq!(
+            kind("(get-info :x"),
+            CommandKind::GetInfo { keyword: b":x" }
+        );
+        assert_eq!(expects_output(b"malformed", Some(b"true")), Output::One);
+        assert_eq!(
+            expects_output(b"malformed", Some(b"false")),
+            Output::Unknown
+        );
+    }
+
+    fn value_start(raw: &[u8]) -> usize {
+        let mut lexer = crate::lex::Lexer::new(raw);
+        for _ in 0..3 {
+            assert!(lexer.next().is_some());
+        }
+        match lexer.next() {
+            Some(Ok(t)) => t.start,
+            other => unreachable!("{other:?}"),
         }
     }
 
@@ -262,6 +150,7 @@ mod tests {
     fn output_expectations() {
         assert_eq!(kind("(check-sat)").output(), Output::One);
         assert_eq!(kind("(check-sat-using smt)").output(), Output::One);
+        assert_eq!(kind("(check-sat-assuming (a))").output(), Output::One);
         assert_eq!(kind("(assert true)").output(), Output::None);
         assert_eq!(kind("(simplify x)").output(), Output::Unknown);
     }

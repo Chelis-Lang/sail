@@ -1230,3 +1230,66 @@ fn tactic_check_responses_keep_their_own_keys_and_warm_reuse() {
     }
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+#[ignore = "needs the pinned z3 in SAIL_TEST_Z3"]
+fn check_sat_using_reply_is_framed_stored_and_served() {
+    // #397: `check-sat-using` produces one response, like `check-sat`. The
+    // fill run must store it under its own command and a warm run must serve
+    // every reply in order, byte for byte the pinned Z3's.
+    let dir = scratch();
+    let solver = logging_solver(&dir, &z3());
+    let input = b"(set-logic QF_UF)\n(check-sat-using smt)\n(assert false)\n(check-sat)\n(exit)\n";
+    let direct = input_run(&solver, None, input);
+    assert!(direct.status.success());
+    assert_eq!(direct.stdout, b"sat\nunsat\n");
+    let (socket, cache) = (dir.join("d.sock"), dir.join("cache"));
+    start_daemon(&socket, &cache);
+    let fill = input_run(&solver, Some(&socket), input);
+    assert_eq!(fill.stdout, direct.stdout);
+    assert_eq!(fill.stderr, direct.stderr);
+    assert_eq!(fill.status.code(), direct.status.code());
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let stored = |command: &str| {
+        entry_files(&cache).iter().any(|path| {
+            let data = std::fs::read(path).unwrap_or_default();
+            let header = data.split(|&b| b == b'\n').next().unwrap_or_default();
+            let header: serde_json::Value = serde_json::from_slice(header).unwrap_or_default();
+            path.file_name().and_then(|n| n.to_str()) == header["key"].as_str()
+                && header["command"] == command
+        })
+    };
+    while !(stored("check-sat-using") && stored("check-sat")) {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "both check replies must be stored"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let fresh = dir.join("e.sock");
+    start_daemon(&fresh, &cache);
+    let records = dir.join("provenance");
+    assert!(std::fs::create_dir_all(&records).is_ok());
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_sail-z3"));
+    cmd.args(["-smt2", "-in"])
+        .env("SAIL_Z3_PATH", &solver)
+        .env("SAIL_DAEMON_SOCKET", &fresh)
+        .env("SAIL_PROVENANCE_DIR", &records)
+        .env_remove("SAIL_TRACE_DIR")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn().unwrap_or_else(|e| unreachable!("shim: {e}"));
+    if let Some(mut stdin) = child.stdin.take() {
+        assert!(stdin.write_all(input).is_ok());
+    }
+    let warm = child
+        .wait_with_output()
+        .unwrap_or_else(|e| unreachable!("output: {e}"));
+    assert_eq!(warm.stdout, direct.stdout);
+    assert_eq!(warm.stderr, direct.stderr);
+    assert_eq!(warm.status.code(), direct.status.code());
+    let record = take_record(&records);
+    assert_eq!(record["replies_served"], 2, "both check replies are served");
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -391,6 +391,19 @@ sail_code! {
             { Self { src,position:0,failed:false } }
         }
         sail_method! {
+            /// Borrows exactly the lexer's original source for actual argument
+            /// spans; callers cannot substitute a separately supplied buffer.
+            pub fn source(&self) -> (out:&'a [u8])
+                requires (self.well_formed()) ensures (out@ == self.input_view(),0<=self.position_view()<=out.len())
+            {self.src}
+        }
+        sail_method! {
+            /// Actual cursor used to bound the shared argument-token walk.
+            pub fn position(&self) -> (out:usize)
+                requires (self.well_formed()) ensures (out as int == self.position_view())
+            {self.position}
+        }
+        sail_method! {
             /// Retains original input, cursor and sticky failure under Clone.
             #[must_use]
             pub fn duplicate(&self) -> (out:Self)
@@ -408,6 +421,7 @@ sail_code! {
                     (final(self).position_view(),final(self).failed_view(),out)
                         == lex_transition(old(self).input_view(),old(self).position_view(),old(self).failed_view()),
                     match out { Some(Ok(token)) => old(self).position_view() <= token.start < token.end <= old(self).input_view().len()
+                        && final(self).position_view() == token.end
                         && crate::query::trivia_after(old(self).input_view().subrange(old(self).position_view(),token.start as int),false) == Some(false)
                         && if token.kind is Symbol {
                             crate::query::symbol_first(old(self).input_view()[token.start as int])

@@ -1,12 +1,20 @@
 # Known issues and limits
 
+- [#517](https://github.com/Chelis-Lang/sail/issues/517) and
+  [#518](https://github.com/Chelis-Lang/sail/issues/518): classifier proof/native
+  compilation and strict lint refusals are retained in the closed component
+  archive. Corrected `c6b46500` passes the whole query root, all 32 native
+  SMT/session tests and strict package Clippy. The source is integrated;
+  combined qualification and the full expanded control suite remain required.
+
 - [#519](https://github.com/Chelis-Lang/sail/issues/519): the replay framing/
   owner/budget source fixture still selects the old native `output.with_replay`
   call after terminal joins moved into checked `SealedOrder`. The full source
   gate at `cd943127` passes 79/80 and refuses that missing selector. The fix
   targets the actual delegated join, retains unique-match/refusal, compatibility
   framing and budget checks, and requires shared framing/prefix/owner controls.
-  Its focused source test passes; the complete native gate remains required.
+  Its focused source test and the complete native gate at `6214824a` pass;
+  later source still requires fresh qualification.
 
 - [#513](https://github.com/Chelis-Lang/sail/issues/513): the full native source
   gate at `2c2106d8` retains an obsolete shim advancement selector after the

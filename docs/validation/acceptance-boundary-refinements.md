@@ -1,11 +1,55 @@
 # Acceptance boundary refinement qualification
 
+## Actual command kernel integration
+
+The current candidate integrates the actual shallow command declarations,
+head/argument classifier, decimal conversion, borrowed value walk and native
+Session response decision from `c6b46500`. All 718 prior control names remain;
+three lexical descriptors follow the strengthened true final-cursor postcondition
+with the same executable faults, and 22 command controls are added. The required
+union is now 360 query, 115 input and 265 authority negatives. The expected query
+function-name union retains all prior entries; fresh whole-root discovery must
+establish the actual combined obligation/function counts.
+
+Independent GET/hash and raw archive review passes for
+`experiments/2026-10-27/acceptance-command-kernel-closed-20261027-v6.tgz`, SHA-256
+`ae6bab736c8ca98f6ed9736c4b4a42a0edd7e024df3d152d11b7a435f3d6752a`.
+All nine nested attempt hashes match. At frozen `c6b46500`, the complete query
+root passes 636/1,096 with full inherited inventory and default resources;
+25 compiled-file hashes and 327 canonical Git source hashes match. A clean
+native rebuild passes all 32 SMT/session tests, zero skips, and strict
+acceptance/SMT/session/shim all-target/all-feature Clippy. This does not execute
+the component's 300 negatives or qualify the new integration.
+
+The current source also imports the exact source/policy envelope cache from
+`182c90b3` while retaining the root validator's original body. All six focused
+cache/command/lexer/replay-source tests pass locally. The isolated native
+72-test source suite passes in 298.997 s, compared with 391.065 s for the earlier
+69-test baseline on the same c7i.4xlarge/image; this is a single-run tooling
+comparison, not a service-performance result. Its three captured programs are
+byte-equal to the baseline, whose IEEE bridge remains refused. Its 538-negative
+registry is smaller than this integration's 740 and earns no negative execution
+credit. Final source/image/runtime guards pass. The archive is
+`experiments/2026-10-27/acceptance-source-envelope-cache-182c90b3-capture2-native.tgz`,
+SHA-256 `fec96d442426884706ee776cf76b1bfc58e700d5019d44fa1b254f66d1bef60b`;
+independent GET/hash passes. The initial external helper snapshot-list refusal
+remains preserved separately at
+`experiments/2026-10-27/acceptance-source-envelope-cache-182c90b3-native.tgz`,
+SHA-256 `6dde4bd3b922a2cdee9c09874e289fdc370051eab78f7c2fe4f306e7b84d5daa`.
+
+Frozen `6214824a` passes the full native workspace gate: all 80 production-source
+tests, all 12 model-source tests, 1,310 Rust tests with 57 skips, strict Clippy,
+doctests, rustdoc, layering, dependency policy and generated benchmarks page.
+The normal solver/fault suite passes 53/53. Selected reporting controls and
+actual output e2e are still running in the immutable named native qualifier.
+These observations do not qualify the subsequently changed command/cache source.
+
 ## Terminal output integration
 
 The integrated candidate adds actual `OutputTail`/`SealedOrder` operations and
 24 mandatory query controls while preserving every prior root control object,
 the #505 renderer corrections, #513 native handover selector and all 18 colored
-footer controls. The current required union is 338 query, 115 input and 265
+footer controls. That frozen required union was 338 query, 115 input and 265
 authority negatives. Complete-root discovery below locks the actual combined
 function inventories; component counts are not added together.
 
