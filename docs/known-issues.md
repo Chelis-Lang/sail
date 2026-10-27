@@ -9,8 +9,9 @@ refuses inconsistent capture bindings, dependency ordering and an incomplete
 assembly fixture ([#479](https://github.com/Chelis-Lang/sail/issues/479)). The
 correction binds both roles of the actual API library, retains every dependency
 in its declared order and adds the real immutable key's public-field negative.
-The stopped run reaches no Stock or native compilation stage; corrected-source
-qualification remains pending in the
+The stopped run reaches no Stock or native compilation stage. Corrected source
+subsequently passes all source guards and complete production Stock discovery;
+native tests and ordinary-negative qualification remain pending in the
 [owning record](validation/acceptance-boundary-refinements.md).
 
 The unselected original-target comparator's first whole-file probe stops at four
@@ -21,8 +22,9 @@ trait-method envelope preserves every native body and postcondition without an
 implementation precondition clause. A later whole-file library support probe
 passes 17 verified functions and all 333 actual function details after three
 native-equivalent enum variant tests become direct matches. The complete
-production request/domain proof and native caller/ordering checks remain pending;
-the library support result establishes no full request or physical-input closure.
+production request/domain root subsequently passes at `f98ea578`; native
+caller/ordering tests and ordinary negatives remain pending. Neither result
+establishes full Cargo selection or physical-input closure.
 
 The original requested-target scan counts raw `--workspace` and `--all` text
 after the Cargo/Verus separator

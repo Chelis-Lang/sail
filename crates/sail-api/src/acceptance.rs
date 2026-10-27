@@ -1353,6 +1353,7 @@ sail_verified! {
         request: &'a ResolvedRequest) -> (out: Option<SubmissionBinding<'a>>)
         requires(true)
         ensures(out.is_some() ==> binding_valid(&out.unwrap()),
+            out.is_some() ==> submission_correspondence(arguments@, mode, request, bound_kind(&out.unwrap())),
             out.is_some() ==> bound_arguments(&out.unwrap()) == arguments,
             out.is_some() ==> bound_mode(&out.unwrap()) == mode,
             out.is_some() ==> bound_request(&out.unwrap()) == request,

@@ -622,6 +622,7 @@ PROJECT_FIELDS = {
     "ProjectResult": "kind schema_version run_id workspace context_sha256 input_revision currentness exit_code error targets engine",
     "RequestTarget": "package_id target kind",
     "ResolvedRequest": "run_id invocation workspace context_sha256 input_revision args engine function repair_package repair_target repair_kind targets",
+    "RequestCapture": "version worker_id request",
     "EngineIdentity": "name manifest_sha256",
 }
 OUTPUT_ENUMS = ("VerdictName", "EstablishmentName", "EvidenceTierName", "SourceSummaryName", "EngineEstablishment")
@@ -776,6 +777,17 @@ def api_stencils(snapshots: dict[str, bytes], expected: dict | None = None) -> t
         if module == "project":
             lines.append("use crate::output::{Report,ErrorInfo};")
         lines += ["verus! {", " ".join(constant)]
+        if module == "project":
+            capture_versions = [i for i in range(len(stream) - 7)
+                if levels[i] and [t.value for t in stream[i:i + 3]]
+                    == ["pub", "const", "REQUEST_CAPTURE_VERSION"]]
+            require(len(capture_versions) == 1, "missing or ambiguous request capture version")
+            capture_constant = [t.value for t in stream[capture_versions[0]:capture_versions[0] + 8]]
+            require(capture_constant[:6] == ["pub", "const", "REQUEST_CAPTURE_VERSION", ":", "u32", "="]
+                and capture_constant[7] == ";" and capture_constant[6].isdigit(),
+                "unsupported request capture version")
+            inventory[module]["request_capture_constant"] = capture_constant
+            lines.append(" ".join(capture_constant))
         for declaration in declarations:
             name = declaration["name"]
             lines.append("pub " + declaration["kind"] + " " + name + " {")

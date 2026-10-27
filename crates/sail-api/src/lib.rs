@@ -32,6 +32,9 @@ pub mod project;
 pub mod proof;
 pub mod protocol;
 pub mod repair;
+/// Internal checked worker journal selection; native origin remains separate.
+#[doc(hidden)]
+pub mod request_capture;
 /// Internal immutable original-target dictionary ordering and projection.
 #[doc(hidden)]
 pub mod request_order;

@@ -248,35 +248,23 @@ fn captured_request(
     job: &store::Stored,
     project: &ProjectResult,
 ) -> Option<sail_api::project::ResolvedRequest> {
-    use sail_api::project::{REQUEST_CAPTURE_VERSION, RequestCapture};
+    use sail_api::project::RequestCapture;
     let bytes = store::read_bytes(&directory.join("requests.jsonl")).ok()?;
     let text = std::str::from_utf8(&bytes).ok()?;
     let invocation = job.submission.project_dir.canonicalize().ok()?;
     let invocation = invocation.to_str()?;
-    let mut found = None;
+    let mut records = Vec::new();
     for line in text.lines() {
-        let capture: RequestCapture = serde_json::from_str(line).ok()?;
-        if capture.version != REQUEST_CAPTURE_VERSION || capture.worker_id != job.status.id {
-            return None;
-        }
-        if capture.request.run_id != project.run_id {
-            continue;
-        }
-        if found.is_some()
-            || capture.request.invocation != invocation
-            || sail_api::acceptance::bind_submission(
-                &job.submission.args,
-                &job.submission.mode,
-                &capture.request,
-            )
-            .is_none()
-            || !sail_api::acceptance::request_corresponds(&capture.request, project)
-        {
-            return None;
-        }
-        found = Some(capture.request);
+        records.push(serde_json::from_str::<RequestCapture>(line).ok()?);
     }
-    found
+    sail_api::request_capture::select_original_request(
+        records,
+        &job.status.id,
+        invocation,
+        &job.submission.args,
+        &job.submission.mode,
+        project,
+    )
 }
 
 /// Describes a worker that exited without writing a result, quoting its last
@@ -402,6 +390,10 @@ mod request_capture_tests {
     }
 
     #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Keep real journal selection, ignored-run headers and the original authority assertions in one regression."
+    )]
     fn independent_request_journal_refuses_swaps_omissions_and_truncation()
     -> Result<(), Box<dyn std::error::Error>> {
         let root =
@@ -415,11 +407,21 @@ mod request_capture_tests {
         assert!(sail_api::acceptance::complete_request(&request, &project).is_some());
         assert_ne!(project.targets[0].report.crates[0].functions.len(), 0);
         for change in [
-            "worker", "run", "context", "revision", "scope", "omission", "args",
+            "worker",
+            "version",
+            "invocation",
+            "run",
+            "context",
+            "revision",
+            "scope",
+            "omission",
+            "args",
         ] {
             let mut wrong = capture.clone();
             match change {
                 "worker" => wrong.worker_id.push('x'),
+                "version" => wrong.version += 1,
+                "invocation" => wrong.request.invocation.push('x'),
                 "run" => wrong.request.run_id.push('x'),
                 "context" => wrong.request.context_sha256.push('x'),
                 "revision" => wrong.request.input_revision.push('x'),
@@ -449,7 +451,40 @@ mod request_capture_tests {
             &file,
             format!("{}\n{line}\n", serde_json::to_string(&prior)?),
         )?;
-        assert!(captured_request(&root, &job, &project).is_some());
+        assert_eq!(
+            captured_request(&root, &job, &project),
+            Some(capture.request.clone())
+        );
+        // Every decoded row has a checked header, even if its run is ignored.
+        // Retain exact selected ownership with ignored rows before or after it.
+        prior.request.invocation = "ignored-other-invocation".into();
+        let prior_line = serde_json::to_string(&prior)?;
+        for journal in [
+            format!("{prior_line}\n{line}\n"),
+            format!("{line}\n{prior_line}\n"),
+        ] {
+            std::fs::write(&file, journal)?;
+            assert_eq!(
+                captured_request(&root, &job, &project),
+                Some(capture.request.clone())
+            );
+        }
+        for change in ["version", "worker"] {
+            let mut ignored = prior.clone();
+            if change == "version" {
+                ignored.version += 1;
+            } else {
+                ignored.worker_id.push('x');
+            }
+            let wrong = serde_json::to_string(&ignored)?;
+            for journal in [format!("{wrong}\n{line}\n"), format!("{line}\n{wrong}\n")] {
+                std::fs::write(&file, journal)?;
+                assert!(
+                    captured_request(&root, &job, &project).is_none(),
+                    "{change}"
+                );
+            }
+        }
         let mut refused = project.clone();
         store::withhold_unbound_authority(&mut refused, None);
         assert_eq!(refused.currentness, Currentness::Current);

@@ -258,9 +258,9 @@ feature tests, target kinds and option/value-state handling are preserved.
 Their JSON decoding and upstream selection remain native and unproved. Native
 differential fixtures live in separate test modules, outside the captured proof
 bodies. Closed canonical module/import/spec-trait inventories include both
-actual modules and 29 additional executable mutation controls; complete-root
-function/count discovery, ordinary negatives, native checks and cost measurement
-remain pending. Older source hashes and numeric support probes cannot qualify
+actual modules and 29 additional executable mutation controls. Complete-root
+discovery passes at `f98ea578`; ordinary negatives, native checks and cost
+measurement remain pending. Older source hashes and numeric support probes cannot qualify
 this join.
 
 The first complete native source-capture attempt at `23ccd443` stops before
@@ -305,6 +305,44 @@ joins. The constructor does not derive expected targets from result rows or
 prove that its supplied projection exhausts Cargo's real selection. Physical
 compiler-input/provider questions 38 and 39 and all six service obligations
 remain open. No schema, dependency, runtime or provider is selected by this slice.
+
+## Captured worker request selection candidate
+
+The next source slice moves `jobs/worker.rs::captured_request`'s actual selection
+loop to `request_capture.rs::select_original_request`. The native reader still
+reads the original journal bytes, requires UTF-8, decodes every original
+`RequestCapture` row and obtains the canonical invocation from the submitted
+project directory. The checked operation consumes that actual decoded vector;
+it does not receive an expected request/target list built from result rows.
+
+Every row must retain the actual `REQUEST_CAPTURE_VERSION` and submitted worker
+ID, including rows for ignored earlier runs. Only the output run is eligible;
+there must be exactly one matching row, with the original canonical invocation,
+submission arguments/mode and checked request/project correspondence. The
+operation removes and returns that actual owned request. It grants no whole,
+partial, Current or proof facet: failed result records can still have legitimate
+original request data. Its constructive domain includes a nonempty matching row
+behind arbitrary earlier runs, so an always-refusing selector cannot satisfy its
+contract. Earlier runs' invocation fields remain ignored exactly as before.
+
+The existing `bind_submission` contract additionally exposes its already checked
+concrete argument/mode relation outside the defining module. No constructor,
+guard, classification or argument normalization changes. The source closure
+includes the actual `RequestCapture` fields and actual capture-version constant,
+the new module/imports and the native decoder/canonicalization/caller binding.
+Twelve new executable mutations retain all loop contracts and existing controls;
+positive and ordinary refusal witnesses check selected ownership, missing runs,
+invalid ignored-row headers and duplicate matching runs. Native journal fixtures
+retain every earlier assertion and add version/invocation and ignored-header
+cases. All new source, native fixtures and negatives remain unqualified.
+
+Decoding now retains the full decoded journal until selection, rather than only
+the current row and saved match. Its additional allocation and rejection-path
+parsing cost need measurement before merge; no speed claim is made. JSON decoding,
+canonicalization, journal origin/authentication, original worker launch/mode
+transport, Cargo metadata/option semantics and physical compiler-input closure
+remain explicit native joins. Selecting a matching data row does not establish
+that those providers observed the original physical execution.
 
 ## Independent checking
 
