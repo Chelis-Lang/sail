@@ -631,3 +631,9 @@ extra LF emission. The corrected test retains every pending/raw/hash assertion
 on genuinely unterminated `foo` and adds the separate CR/raw/hash case. This is
 a fixture defect, without a demonstrated production parser regression or false
 verdict; focused and full native qualification of the correction remain pending.
+
+[#501](https://github.com/Chelis-Lang/sail/issues/501) records the subsequent
+strict key Clippy refusal of the new CR fixture after all five native prefix
+tests pass. Its correction retains the zero-item assertion as explicit empty
+array equality; this is a test-style failure, without a production parser
+failure or false verdict. Focused rerun and full workspace gates remain pending.
