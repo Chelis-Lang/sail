@@ -269,12 +269,11 @@ sail_verified! {
             if bytes.len()>1 { Some(TokenKind::Keyword) } else { None }
         } else if bytes[0] >= b'0' && bytes[0] <= b'9' {
             let mut dot=0usize;
-            sail_while! { (dot < bytes.len())
+            sail_while! { (dot < bytes.len() && bytes[dot] != b'.')
                 invariant (dot <= bytes.len(),first_dot(bytes@,0) == first_dot(bytes@,dot as int),
                     forall|i:int| 0 <= i < dot ==> bytes@[i] != b'.')
                 decreases (bytes.len()-dot)
                 {
-                    if bytes[dot] == b'.' { break; }
                     dot += 1;
                 }
             }
@@ -524,11 +523,19 @@ sail_verified! {
         let src=[b'(',b';',b'c',b'\r',b'\n',b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't',b')'];
         let expected=[b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't'];
         sail_proof! {
+            assert(src@.subrange(5,14) =~= expected@);
+            assert(trivia_stop(src@,1,false) == 5) by {
+                reveal_with_fuel(trivia_stop,7);
+            }
+            assert(word_stop(src@,5) == 14) by {
+                reveal_with_fuel(word_stop,11);
+            }
+            assert(lex_transition(src@,0,false)
+                == (1int,false,Some(Ok(Token { kind:TokenKind::Open,start:0,end:1 }))));
+            assert(lex_transition(src@,1,false)
+                == (14int,false,Some(Ok(Token { kind:TokenKind::Symbol,start:5,end:14 }))));
             assert(head_transition(src@) == (14int,false,Ok((0usize,expected@)))) by {
                 reveal(head_transition);
-                reveal(lex_transition);
-                reveal_with_fuel(trivia_stop,7);
-                reveal_with_fuel(word_stop,11);
             }
         }
         let mut lexer=Lexer::new(&src);

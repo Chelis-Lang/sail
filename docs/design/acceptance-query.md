@@ -1542,3 +1542,9 @@ finite constructive paths. The actual next-token and borrowed-head operations
 have no reported failures in this incomplete attempt. Scoped proof-only facts
 address these VCs without changing executable bytes, contracts or resources;
 whole-root discovery and all controls remain required.
+
+The first-dot scan now states its original delimiter stop in the loop condition
+so its checked exit carries the actual delimiter fact; it visits the same bytes
+and returns the same original split point. This is an equivalent production
+loop spelling, distinct from the surrounding erased proof guidance. Native
+package, whole-root and control qualification remain separate requirements.

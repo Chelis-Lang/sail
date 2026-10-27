@@ -1029,3 +1029,13 @@ proof-compiler defect. The correction uses ordinary scoped `reveal` for those no
 definitions, retaining fuel only on recursive endpoint scans. This attempt
 supplies no verified-function, native or control credit. Final frozen guards
 and the closed refusal archive are recorded separately when terminal.
+
+The corrected reveal attempt `352900b0` verifies 551 functions with two failed
+proof functions and 951 query entries in 39.790 seconds, without VIR/resource
+refusal and with final source/runtime checks. Trivia composition and the actual
+literal-span constructive path now clear. The remaining VCs are the decimal
+loop break exit fact and the finite original head-slice identity. The next
+candidate expresses the same first-dot stop in the actual loop condition
+instead of `break`, retaining identical byte visits, classification and returned
+endpoints, and supplies exact scoped witness slice facts. All contracts and 213
+controls remain; no positive inventory is locked from this failed attempt.
