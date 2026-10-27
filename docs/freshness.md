@@ -14,14 +14,17 @@ same jobs through MCP) carries a Currentness label:
 - **Unknown**: Sail could not establish either, for example because a file
   could not be read or the run itself could not watch its inputs. Re-run.
 
-If you explicitly select a Cargo version outside Sail's qualified build-script
-input protocol, Sail verifies projects with build scripts using ordinary Cargo
-freshness and its solver cache. It records no proof receipts and reports
-Unknown with a `no_reuse` reason. Unchanged passing builds can then remain
-Cargo no-ops instead of repeatedly rebuilding to establish receipts that this
-Cargo cannot support. Select the pinned toolchain to enable proof reuse:
+Sail's build-script input protocol is qualified for Cargo 1.93.0 to 1.99.1
+([compatibility](compatibility.md#explicit-cargo-selection)), so a project
+that pins one of those in its `rust-toolchain.toml` gets proof receipts. If
+you select a Cargo version outside that range, Sail verifies projects with
+build scripts using ordinary Cargo freshness and its solver cache. It records
+no proof receipts and reports Unknown with a `no_reuse` reason. Unchanged
+passing builds can then remain Cargo no-ops instead of repeatedly rebuilding
+to establish receipts that this Cargo cannot support. Select a qualified
+toolchain to enable proof reuse, for example
 `RUSTUP_TOOLCHAIN=1.99.1 sail verify`. If `CARGO` names a different Cargo
-binary explicitly, unset it or point it at the pinned Cargo too. Sail does not
+binary explicitly, unset it or point it at a qualified Cargo too. Sail does not
 change your toolchain selection or treat an unsupported protocol as proof authority.
 
 These labels describe your inputs, not the solver's verdict. A Current result
@@ -520,7 +523,11 @@ the tools or Sail read are the same. Replay also needs the full stat stamp
 directory to match, along with the owned Cargo target's entries and every
 installed tool and sysroot file. The proof context's cache records must match
 by content, and the variables units declare (ghost-only reads included) must
-have the same values.
+have the same values. Cargo's uplifted build-script copy
+(`build/<package>-<hash>/build-script-build`), which Cargo copies again on
+every macOS run, is the one exception: it must hold the same bytes as the
+compiled script beside it, whose stamp must match, and its directory must
+keep its identity and exact entry names.
 Anything else takes the full path. Only Cargo's `Finished` time is
 regenerated.
 

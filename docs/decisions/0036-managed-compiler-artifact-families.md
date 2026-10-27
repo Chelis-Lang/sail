@@ -425,3 +425,16 @@ changed inputs and missing observations withhold Current or retain the original
 cleanup path. The full before/after input snapshot and runtime checks still
 apply. This supplies scheduling evidence, never a compiler certificate, proof
 receipt or whole-target verification result.
+
+## Amendment (2026-10-26): focused runs retain contracts too (#441)
+
+The negative retention above, for proof failures and for confined compile
+failures, no longer requires an unfocused run. What it retains is the
+dependencies' build-script contracts, which a `--verify-module` or
+`--verify-function` selection does not change, and the next run revalidates
+each of them before use. Every other condition stands. A focused selected
+call must have finished normally and reported `is-verifying-entire-crate:
+false`; every other call must still report its entire crate; a focused
+success still needs a complete report and is unaffected. Before this, the
+passing call after a failing focused one cleaned every build-script package:
+Anvil's fix after a failing `--verify-module` call rebuilt 156 units.

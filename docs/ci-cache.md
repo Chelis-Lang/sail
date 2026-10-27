@@ -27,8 +27,9 @@ Run `SAIL_EXPLAIN=1 sail verify` once and look at the notes:
 - **`note[SAIL3112]`.** Your project selects its own Cargo (for example a
   `rust-toolchain.toml` pinning another Rust). Sail then verifies as
   `cargo verus verify` does, in your own `target/`, with Sail's solver cache
-  and no proof receipts. Both Anvil (Rust 1.98.0) and CapybaraKV (a nightly)
-  are in this mode as published. Persist `results/` and `target/`.
+  and no proof receipts. CapybaraKV (a nightly) is in this mode as published;
+  Anvil (Rust 1.98.0) was until build-script receipts accepted Cargo 1.93 to
+  1.99 ([ADR 0084](decisions/0084-qualified-cargo-range.md)). Persist `results/` and `target/`.
 - **No such note.** Sail builds in its own managed target under
   `~/.cache/sail/projects/` and records proof receipts. Persist `results/`
   and `projects/`. A restored `projects/` is reused on a new runner because
