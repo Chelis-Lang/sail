@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep the original completed request/result pair through process-local
+  explanation, comparison and baseline presentation. A total borrowed view
+  preserves all recorded data while separately retaining optional declared
+  whole-request evidence. Wire data, errors, labels and Historical baseline
+  behavior are preserved. Direct-stock/native qualification and added-cost
+  measurement remain pending; no authority token is serialized.
+
 - Repair ordinary managed replay and selected-attempt fixture compilation by
   importing the shared settle constant and supplying the fixture's explicitly
   empty declared compiler environment (#459, #460). Keep original assertions

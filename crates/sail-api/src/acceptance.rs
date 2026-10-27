@@ -22,7 +22,7 @@ pub use crate::acceptance_sort::{
     admit_declared_replay, bind_replayed_exact_partial_project, bind_replayed_project,
     complete_exact_partial_request, complete_exact_scope_report, complete_report, complete_request,
     complete_selection, complete_submitted_request, complete_target, complete_whole_report,
-    withhold_unbound_request_authority,
+    completed_presentation, withhold_unbound_request_authority,
 };
 
 use crate::jobs::Mode;
@@ -77,6 +77,39 @@ sail_verified! {
 }
 
 sail_code! {
+    /// Process-local view of one original request/result observation. Data is
+    /// always retained; optional declared whole-request evidence is separate.
+    /// This is neither serializable authority nor a physical/origin witness.
+    pub struct CompletedPresentation<'a> {
+        project: &'a ProjectResult,
+        request: Option<&'a ResolvedRequest>,
+        whole: Option<CompleteRequest<'a>>,
+    }
+
+    impl<'a> CompletedPresentation<'a> {
+        sail_method! {
+            /// Exact original result, including all failure/partial/history data.
+            pub fn project(&self) -> (out: &'a ProjectResult)
+                requires(true) ensures(out == completed_presentation_project(self)) { self.project }
+        }
+        sail_method! {
+            /// Exact paired original request; no report-selected reconstruction.
+            pub fn request(&self) -> (out: Option<&'a ResolvedRequest>)
+                requires(true) ensures(out == completed_presentation_request(self))
+            { match &self.request { Some(request) => Some(*request), None => None } }
+        }
+        sail_method! {
+            /// Optional existing CompleteRequest over supplied declared fields.
+            /// This adds no origin/currentness observation; absence never
+            /// withholds the recorded data projection.
+            pub fn whole(&self) -> (out: Option<&CompleteRequest<'a>>)
+                requires(true)
+                ensures(out.is_some() == completed_presentation_whole(self).is_some(),
+                    out.is_some() ==> *out.unwrap() == completed_presentation_whole(self).unwrap())
+            { match &self.whole { Some(whole) => Some(whole), None => None } }
+        }
+    }
+
     /// Checked immutable report authority, bound to the actual report borrow.
     /// Its fields are private so deserialization and caller flags cannot mint it.
     pub struct CompleteReport<'a> {
@@ -376,6 +409,39 @@ sail_code! {
                 ensures(out == authority_policy(self))
             { self.policy }
         }
+    }
+}
+
+sail_spec! {
+    pub closed spec fn completed_presentation_project<'a>(view: &CompletedPresentation<'a>) -> &'a ProjectResult { view.project }
+    pub closed spec fn completed_presentation_request<'a>(view: &CompletedPresentation<'a>) -> Option<&'a ResolvedRequest> { view.request }
+    pub closed spec fn completed_presentation_whole<'a>(view: &CompletedPresentation<'a>) -> Option<CompleteRequest<'a>> { view.whole }
+    pub open spec fn completed_presentation_valid(view: &CompletedPresentation) -> bool {
+        completed_presentation_whole(view).is_some() ==> completed_presentation_request(view).is_some()
+            && request_authority_request(&completed_presentation_whole(view).unwrap()) == completed_presentation_request(view).unwrap()
+            && request_authority_project(&completed_presentation_whole(view).unwrap()) == completed_presentation_project(view)
+            && request_authorized(completed_presentation_request(view).unwrap(),completed_presentation_project(view))
+    }
+}
+
+sail_verified! {
+    /// Always retains the supplied pair. Only the existing checked factory may
+    /// add declared whole-request evidence; refusal changes no data or label.
+    pub fn completed_presentation_ordered<'a>(project: &'a ProjectResult,
+        request: Option<&'a ResolvedRequest>, orders: &[ReportOrder]) -> (view: CompletedPresentation<'a>)
+        requires(true)
+        ensures(completed_presentation_project(&view) == project,
+            completed_presentation_request(&view) == request, completed_presentation_valid(&view),
+            request.is_none() ==> completed_presentation_whole(&view).is_none(),
+            request.is_some() && small_positive_request(request.unwrap(),project)
+                && orders@.len() == 1 && orders@[0].forward@.len() == 0 && orders@[0].inverse@.len() == 0
+                ==> completed_presentation_whole(&view).is_some())
+    {
+        let whole = match request {
+            Some(request) => complete_request_ordered(request,project,orders),
+            None => None,
+        };
+        CompletedPresentation { project,request,whole }
     }
 }
 

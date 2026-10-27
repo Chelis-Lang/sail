@@ -9,7 +9,8 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
-| `720e461e` | Lossless-conversion follow-up repeats all three complete positives at the exact locked sets: 471/821, 308/538 and 502/883, with final source/runtime checks | The component-sequenced partition matrix is running; no complete-control union, native workspace, conformance or service result yet |
+| `e91627d0` native workspace | 2026-10-27: 1,271 tests run, 1,269 pass, two fail, 56 skip; workspace duration 303.35 s | First failure cause remains unknown pending focused receipt diagnostics. Solver is unrun; this frozen result does not qualify the new view or main union |
+| `720e461e` | Lossless-conversion follow-up repeats all three complete positives at the exact locked sets: 471/821, 308/538 and 502/883, with final source/runtime checks | No complete-control union, native workspace, conformance or service result; the long matrix is held until the new view, main union and receipt correction have a combined inventory |
 | `720e461e` native workspace | 2026-10-27: unchanged native gate exits 101 after 248.95 s at two fixture compile errors (#459, #460), three style-limit diagnostics and one unused import; final source/image checks pass | Native tests and solver are unrun. The source correction imports the actual settle constant, retains the fixture's supplied empty declared-environment domain and original assertions, and adds narrow style allowances; fresh qualification remains required |
 | `e57f065f` | Complete combined native positives pass: query 471/0 (821 functions), inputs 308/0 (538), authority 502/0 (883); every earlier function retained and final source/runtime checks pass | Actual inventories locked. All 392 ordinary negatives in the 395 unique planned cases remain pending; component partitions repeat positives and require an exact union audit. Native/differential gates and all six service obligations remain open |
 | `0a3a7f2c` native workspace | Strict gate reaches compilation and refuses one `cast_lossless` diagnostic at the replay join's u64-to-u128 comparison | No native tests or solver stage ran. The source correction uses the equivalent supported `u128::from` conversion and retains every guard and exact mutation context; fresh qualification remains required |
@@ -40,6 +41,15 @@ observation guarantee or service theorem is claimed. All six rows of the
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The stopped `e91627d0` native attempt is retained at
+`experiments/2026-10-27/acceptance-combined-e91627d0-native-early.tgz`, SHA-256
+`25e2650114c6b0ce2574286e9a33a02f68c70dc26b5c9a17ece4e9ce5981a37d`
+(6,802,873 bytes); the lead independently downloaded and checked the archive
+hash. The native workspace records two failures; their cause remains unknown
+pending focused receipt diagnostics. Solver and later gates are unrun. The
+new presentation view and reviewed main union require their own frozen native
+and proof qualification; the earlier positive inventories remain historical.
 
 The stopped `720e461ed4f0287d4343922ef0ade8e83b6db935` attempt is retained at
 `experiments/2026-10-27/acceptance-combined-720e461e-native-early.tgz`, SHA-256
