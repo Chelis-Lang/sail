@@ -30,8 +30,9 @@ and shared/bundled claims do not supply that membership.
 
 The architecture-independent [candidate-write refinement plan](cache-write-candidate-refinement.md)
 traces the actual job, disk arguments and same-original-Arc settlement. Its
-stock-library support probe is unrun; candidate fidelity cannot establish
-solver origin or supply the missing admission capability.
+stock-library probe rejects the actual Arc identity operation; its replacement
+generation transitions are source-only and unqualified. Candidate fidelity
+cannot establish solver origin or supply the missing admission capability.
 
 ## Two concrete architectures
 

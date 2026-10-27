@@ -77,7 +77,7 @@ The [cache-origin admission choices](design/cache-origin-admission.md) map the
 remaining writer/recovery gap to owned execution or independent validation.
 The [candidate-write refinement plan](design/cache-write-candidate-refinement.md)
 separates actual writer/settlement fidelity from admission and records the
-unrun direct-stock allocation-identity support probe.
+direct-stock allocation-identity support gap and source-only generation replacement.
 The [acceptance proof WIP handoff](acceptance-proof-handoff.md) identifies the
 published work branches, existing evidence and unfinished integration work.
 The [compiler-input observation proposal](design/compiler-input-observation.md)

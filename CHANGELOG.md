@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Bind candidate cache completion and stale-read removal to insertion-issued
+  generation handles retained with their original tier. Reinsertions, including
+  the same Arc, refuse old handles; checked lifetime-clock exhaustion leaves
+  memory miss-only (#372, #474). Memory/queue budgets charge the added retained
+  metadata. Source implementation is wired, with Stock/native/conformance and
+  cost qualification pending; solver-origin admission remains open.
+- Drop cache submissions whose public queue-wait Duration cannot form a native
+  Instant deadline, avoiding an arithmetic panic (#478). Normal waits keep their
+  existing behavior; the bounded native regression is not yet run.
+
 - Distinguish the completed-view fixture's original whole-request evidence from
   its retained Unknown projection when freshness is unavailable (#464). Preserve
   both cases and all original baseline assertions; runtime behavior is unchanged.

@@ -1,105 +1,274 @@
-//! The in-memory tier: a bounded, least-recently-used map from keys to
-//! replies, in front of the disk tier (ADR 0015).
+//! In-memory candidate cache with insertion-issued completion and removal handles.
 //!
-//! A slot is either:
-//! - **on disk**: its bytes were read from a verified disk entry, or were
-//!   written to one, and the slot remembers that file's [`FileStamp`]. The
-//!   owner serves it only while the file still has that stamp, so a memory
-//!   hit is always byte-identical to what the disk tier holds; or
-//! - **pending**: a `PUT` whose disk write is queued (write-behind). No
-//!   entry file exists for the key yet. Once the write finishes the slot
-//!   becomes *on disk* with the new file's stamp, or is dropped if the write
-//!   failed or found another entry already there.
-//!
-//! This module only keeps the map; the daemon applies those rules.
+//! Handles retain their original tier. A replacement gets a fresh generation,
+//! even when its Arc or bytes are identical. No state certifies solver origin.
 
 use std::collections::{BTreeMap, HashMap};
+use std::ops::Deref;
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use sail_acceptance::cache_candidate::{
+    self, CandidateWrite, Clock, Completion, EntryUpdate, Held, Prepared, Slot as CandidateSlot,
+    Ticket,
+};
 use sail_key::QueryKey;
 use serde::{Deserialize, Serialize};
 
-use crate::{Effort, FileStamp};
+use crate::{DiskCache, Effort, FileStamp, PutOutcome, StoreContext};
 
-/// Bytes charged for each slot on top of its reply.
-pub const SLOT_OVERHEAD: u64 = 128;
+/// Original per-entry bookkeeping allowance; new retained carriers are additional.
+pub const ENTRY_OVERHEAD: u64 = 128;
+/// Bytes charged per slot, including its immutable eight-byte insertion generation.
+pub const SLOT_OVERHEAD: u64 = ENTRY_OVERHEAD + 8;
+/// The actual source-shared cache value, with the native effort representation.
+pub type Value = cache_candidate::CandidateValue<Effort>;
+/// The actual source-shared candidate persistence state.
+pub type State = cache_candidate::SlotState<FileStamp>;
+type Slot = CandidateSlot<Arc<Value>, FileStamp>;
+type Update = EntryUpdate<Arc<Value>, FileStamp>;
 
-/// A cached reply with the effort its entry records.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Value {
-    /// The verification namespace, checked before serving.
-    pub mode: String,
-    /// The exact reply bytes.
-    pub reply: Vec<u8>,
-    /// The entry's recorded effort, for `check-sat` replies.
-    pub effort: Option<Effort>,
+fn value_cost(value: &Value) -> u64 {
+    u64::try_from(value.reply.len())
+        .unwrap_or(u64::MAX)
+        .saturating_add(SLOT_OVERHEAD)
 }
 
-impl Value {
-    fn cost(&self) -> u64 {
-        u64::try_from(self.reply.len()).unwrap_or(u64::MAX) + SLOT_OVERHEAD
-    }
+/// Additional retained tier metadata: two Arc strong/weak header words and
+/// the owning pointer. Allocator bookkeeping and RSS are not this logical budget.
+#[must_use]
+pub fn tier_overhead() -> u64 {
+    u64::try_from(std::mem::size_of::<usize>())
+        .unwrap_or(u64::MAX)
+        .saturating_mul(3)
 }
 
-/// Where a slot's bytes stand relative to disk.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum State {
-    /// Identical to the entry file with this stamp.
-    OnDisk(FileStamp),
-    /// Queued for writing; no entry file yet.
-    Pending,
+/// Charge the actual queued carrier in addition to the original entry allowance.
+#[must_use]
+pub fn candidate_bytes(candidate: &CandidateWrite<Effort>) -> u64 {
+    let extra = std::mem::size_of::<PreparedWrite>()
+        .saturating_sub(std::mem::size_of::<CandidateWrite<Effort>>());
+    u64::try_from(candidate.value().reply.len())
+        .unwrap_or(u64::MAX)
+        .saturating_add(ENTRY_OVERHEAD)
+        .saturating_add(u64::try_from(extra).unwrap_or(u64::MAX))
 }
 
 #[derive(Debug)]
-struct Slot {
-    value: Arc<Value>,
-    state: State,
-    tick: u64,
-}
-
-#[derive(Debug, Default)]
 struct Inner {
     slots: HashMap<[u8; 32], Slot>,
     /// Least recently used first.
     order: BTreeMap<u64, [u8; 32]>,
-    tick: u64,
+    /// This same clock issues insertion generations and LRU touch ordinals.
+    clock: Clock,
     bytes: u64,
     pending: u64,
 }
 
+impl Default for Inner {
+    fn default() -> Self {
+        Self {
+            slots: HashMap::new(),
+            order: BTreeMap::new(),
+            clock: Clock::start(),
+            bytes: 0,
+            pending: 0,
+        }
+    }
+}
+
 impl Inner {
-    fn next_tick(&mut self) -> u64 {
-        self.tick += 1;
-        self.tick
+    fn disable(&mut self) {
+        // Preserve exhaustion forever; clearing never reconstructs Inner/Clock.
+        self.clock.exhaust();
+        self.slots.clear();
+        self.order.clear();
+        self.bytes = 0;
+        self.pending = 0;
+    }
+
+    fn next_tick(&mut self) -> Option<u64> {
+        let tick = self.clock.advance();
+        if tick.is_none() {
+            self.disable();
+        }
+        tick
+    }
+
+    fn retire(&mut self, slot: &Slot) {
+        self.order.remove(&slot.tick());
+        self.bytes = self.bytes.saturating_sub(value_cost(slot.value()));
+        if matches!(slot.state(), State::Pending) {
+            self.pending = self.pending.saturating_sub(1);
+        }
     }
 
     fn remove(&mut self, key: &[u8; 32]) {
         if let Some(slot) = self.slots.remove(key) {
-            self.order.remove(&slot.tick);
-            self.bytes = self.bytes.saturating_sub(slot.value.cost());
-            if slot.state == State::Pending {
-                self.pending = self.pending.saturating_sub(1);
-            }
+            self.retire(&slot);
         }
     }
 
-    fn insert(&mut self, key: [u8; 32], value: Arc<Value>, state: State, capacity: u64) {
-        self.remove(&key);
-        let tick = self.next_tick();
-        self.bytes += value.cost();
-        if state == State::Pending {
-            self.pending += 1;
+    fn apply(&mut self, update: Update) {
+        match update {
+            EntryUpdate::Unchanged((key, slot)) => {
+                self.slots.insert(key, slot);
+            }
+            EntryUpdate::Written((key, slot)) => {
+                self.pending = self.pending.saturating_sub(1);
+                self.slots.insert(key, slot);
+            }
+            EntryUpdate::Removed((_, slot)) => self.retire(&slot),
         }
-        self.slots.insert(key, Slot { value, state, tick });
+    }
+
+    fn complete(&mut self, ticket: &Ticket, completion: Completion<FileStamp>) {
+        let Some(entry) = self.slots.remove_entry(&ticket.key()) else {
+            return;
+        };
+        self.apply(cache_candidate::complete(entry, ticket, completion));
+    }
+
+    fn remove_observed(&mut self, ticket: &Ticket) {
+        let Some(entry) = self.slots.remove_entry(&ticket.key()) else {
+            return;
+        };
+        self.apply(cache_candidate::remove_observed(entry, ticket));
+    }
+
+    fn install(&mut self, entry: ([u8; 32], Slot), capacity: u64) -> bool {
+        let (key, slot) = entry;
+        let Some(bytes) = self.bytes.checked_add(value_cost(slot.value())) else {
+            self.disable();
+            return false;
+        };
+        let pending = if matches!(slot.state(), State::Pending) {
+            let Some(pending) = self.pending.checked_add(1) else {
+                self.disable();
+                return false;
+            };
+            pending
+        } else {
+            self.pending
+        };
+        self.bytes = bytes;
+        self.pending = pending;
+        let tick = slot.tick();
+        self.slots.insert(key, slot);
         self.order.insert(tick, key);
         while self.bytes > capacity {
             let Some((_, oldest)) = self.order.pop_first() else {
-                break;
+                self.disable();
+                return false;
             };
-            // `remove` looks the tick up again; it is already gone from
-            // `order`, which is harmless.
             self.remove(&oldest);
         }
+        self.slots.contains_key(&key)
+    }
+
+    fn insert_on_disk(
+        &mut self,
+        key: [u8; 32],
+        value: Arc<Value>,
+        stamp: FileStamp,
+        capacity: u64,
+    ) {
+        self.remove(&key);
+        let Some((entry, _)) = self.clock.entry(key, value, State::OnDisk(stamp)) else {
+            self.disable();
+            return;
+        };
+        self.install(entry, capacity);
+    }
+}
+
+/// An opaque actual tier endpoint. Its fields and completion entry point are
+/// private; public cache data cannot manufacture or redirect this capability.
+#[derive(Debug)]
+struct MemoryEndpoint {
+    inner: Arc<Mutex<Inner>>,
+}
+
+impl MemoryEndpoint {
+    fn complete(&self, ticket: &Ticket, completion: Completion<FileStamp>) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.complete(ticket, completion);
+        }
+    }
+}
+
+/// Owns the original candidate and its insertion-issued endpoint/ticket.
+/// Only the actual disk call below can dispatch completion in production.
+#[derive(Debug)]
+pub struct PreparedWrite {
+    queued: Prepared<MemoryEndpoint, Effort>,
+}
+
+impl PreparedWrite {
+    /// The exact original queue key.
+    #[must_use]
+    pub fn key(&self) -> QueryKey {
+        QueryKey(self.queued.candidate().key())
+    }
+
+    /// The original candidate plus the actual retained queued carrier.
+    #[must_use]
+    pub fn charged_bytes(&self) -> u64 {
+        candidate_bytes(self.queued.candidate())
+    }
+
+    /// Calls the actual disk writer with every original field, then dispatches
+    /// precisely its returned Result to the original insertion endpoint.
+    /// # Errors
+    /// Returns the original disk-operation error unchanged.
+    pub fn write(self, disk: &DiskCache) -> std::io::Result<PutOutcome> {
+        let arguments = self.queued.candidate().arguments();
+        let result = disk.put_scoped(
+            &QueryKey(arguments.key()),
+            arguments.reply(),
+            arguments.command(),
+            &StoreContext {
+                solver: arguments.solver(),
+                provenance: arguments.provenance(),
+                mode: arguments.mode(),
+            },
+            arguments.effort(),
+        );
+        let (_, pending) = self.queued.into_parts();
+        if let Some(held) = pending {
+            held.endpoint()
+                .complete(held.ticket(), cache_candidate::observed_completion(&result));
+        }
+        result
+    }
+}
+
+/// A read observation bound to its actual tier and insertion, without another
+/// owning endpoint clone on the memory-hit path.
+#[derive(Debug)]
+pub struct ObservedValue<'tier> {
+    value: Arc<Value>,
+    held: Held<&'tier MemoryTier>,
+}
+
+impl Deref for ObservedValue<'_> {
+    type Target = Arc<Value>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl ObservedValue<'_> {
+    /// Return the exact value observed from the actual slot.
+    #[must_use]
+    pub fn into_value(self) -> Arc<Value> {
+        self.value
+    }
+
+    /// Remove only that same insertion from the original tier. Replacements,
+    /// including reinsertion of the same Arc, are untouched.
+    pub fn remove_if_current(&self) {
+        self.held.endpoint().remove_observed(self.held.ticket());
     }
 }
 
@@ -110,143 +279,147 @@ pub struct MemoryStats {
     pub capacity_bytes: u64,
     /// Slots held.
     pub entries: u64,
-    /// Bytes charged for them (replies plus [`SLOT_OVERHEAD`] each).
+    /// Charged replies, slots and additional retained tier metadata.
     pub bytes: u64,
     /// Slots whose disk write is still queued.
     pub pending: u64,
 }
 
-/// The in-memory tier.
+/// The actual memory tier. Its endpoint and clock are initialized once and
+/// never replaced by clearing, lookup, insertion or completion.
 #[derive(Debug)]
 pub struct MemoryTier {
     capacity: u64,
-    inner: Mutex<Inner>,
+    inner: Option<Arc<Mutex<Inner>>>,
 }
 
 impl MemoryTier {
-    /// A tier holding at most `capacity` bytes (0 turns it off).
+    /// A tier holding at most `capacity` charged bytes (0 turns it off).
     #[must_use]
     pub fn new(capacity: u64) -> Self {
         Self {
             capacity,
-            inner: Mutex::new(Inner::default()),
+            inner: (capacity > tier_overhead()).then(|| Arc::new(Mutex::new(Inner::default()))),
         }
     }
 
     fn lock(&self) -> Option<MutexGuard<'_, Inner>> {
-        // A poisoned lock means a thread panicked mid-update: treat the
-        // tier as empty from then on (every lookup is a miss).
-        self.inner.lock().ok()
+        self.inner.as_ref()?.lock().ok()
     }
 
-    /// Whether `value` is small enough to hold: at most a quarter of the
-    /// budget, so one large reply cannot flush the whole tier.
+    fn usable_capacity(&self) -> u64 {
+        self.capacity.saturating_sub(tier_overhead())
+    }
+
     fn admits(&self, value: &Value) -> bool {
-        self.capacity > 0 && value.cost() <= self.capacity / 4
+        self.inner.is_some() && value_cost(value) <= self.usable_capacity() / 4
     }
 
-    /// The slot for `key`, marking it most recently used.
+    /// Observe `key` and touch its LRU position while retaining its original
+    /// insertion generation and original tier. Exhaustion is a permanent miss.
     #[must_use]
-    pub fn lookup(&self, key: &QueryKey) -> Option<(Arc<Value>, State)> {
+    pub fn lookup(&self, key: &QueryKey) -> Option<(ObservedValue<'_>, State)> {
         let mut inner = self.lock()?;
-        let tick = inner.next_tick();
+        let tick = inner.next_tick()?;
         let inner = &mut *inner;
         let slot = inner.slots.get_mut(&key.0)?;
-        inner.order.remove(&slot.tick);
-        slot.tick = tick;
+        inner.order.remove(&slot.tick());
+        slot.touch(tick);
         inner.order.insert(tick, key.0);
-        Some((Arc::clone(&slot.value), slot.state))
+        Some((
+            ObservedValue {
+                value: Arc::clone(slot.value()),
+                held: slot.observe_bound(self, key.0),
+            },
+            *slot.state(),
+        ))
     }
 
-    /// Holds `value`, read from or written to the entry file with `stamp`,
-    /// replacing any slot for `key`.
+    /// Retain a candidate read from disk under a newly issued insertion generation.
     pub fn insert_on_disk(&self, key: &QueryKey, value: Arc<Value>, stamp: FileStamp) {
         if !self.admits(&value) {
             self.remove(key);
             return;
         }
         if let Some(mut inner) = self.lock() {
-            inner.insert(key.0, value, State::OnDisk(stamp), self.capacity);
+            inner.insert_on_disk(key.0, value, stamp, self.usable_capacity());
         }
     }
 
-    /// Holds `value` as pending, unless `key` already has a slot or the
-    /// value is too large. Returns whether it was inserted.
-    pub fn insert_pending(&self, key: &QueryKey, value: Arc<Value>) -> bool {
-        if !self.admits(&value) {
-            return false;
-        }
-        let Some(mut inner) = self.lock() else {
-            return false;
+    /// Prepare the actual queued candidate. Memory refusal still permits the
+    /// original disk write, without creating a pending capability.
+    #[must_use]
+    pub fn prepare(&self, candidate: CandidateWrite<Effort>) -> PreparedWrite {
+        let without_memory = |candidate| PreparedWrite {
+            queued: Prepared::without_memory(candidate),
         };
-        if inner.slots.contains_key(&key.0) {
-            return false;
+        if !self.admits(candidate.value()) {
+            return without_memory(candidate);
         }
-        inner.insert(key.0, value, State::Pending, self.capacity);
-        true
-    }
-
-    /// Records the end of `value`'s disk write: with `Some(stamp)` the slot
-    /// becomes on-disk with that stamp; with `None` (the write failed, or
-    /// another entry was already there) it is dropped. Only a pending slot
-    /// still holding this very `value` is affected.
-    pub fn settle(&self, key: &QueryKey, value: &Arc<Value>, stamp: Option<FileStamp>) {
-        let Some(mut inner) = self.lock() else {
-            return;
+        let Some(endpoint) = self.inner.as_ref() else {
+            return without_memory(candidate);
         };
-        let mine = inner
-            .slots
-            .get(&key.0)
-            .is_some_and(|s| s.state == State::Pending && Arc::ptr_eq(&s.value, value));
-        if !mine {
-            return;
+        let Ok(mut inner) = endpoint.lock() else {
+            return without_memory(candidate);
+        };
+        if inner.slots.contains_key(&candidate.key()) {
+            return without_memory(candidate);
         }
-        match stamp {
-            Some(stamp) => {
-                inner.pending = inner.pending.saturating_sub(1);
-                if let Some(slot) = inner.slots.get_mut(&key.0) {
-                    slot.state = State::OnDisk(stamp);
+        let issued = inner.clock.prepare::<_, _, FileStamp>(
+            MemoryEndpoint {
+                inner: Arc::clone(endpoint),
+            },
+            candidate,
+        );
+        match issued {
+            Ok((entry, queued)) => {
+                if inner.install(entry, self.usable_capacity()) {
+                    PreparedWrite { queued }
+                } else {
+                    let (candidate, _) = queued.into_parts();
+                    without_memory(candidate)
                 }
             }
-            None => inner.remove(&key.0),
-        }
-    }
-
-    /// Drops `key`'s slot if it still holds `value`.
-    pub fn remove_if(&self, key: &QueryKey, value: &Arc<Value>) {
-        if let Some(mut inner) = self.lock() {
-            let same = inner
-                .slots
-                .get(&key.0)
-                .is_some_and(|s| Arc::ptr_eq(&s.value, value));
-            if same {
-                inner.remove(&key.0);
+            Err(candidate) => {
+                inner.disable();
+                without_memory(candidate)
             }
         }
     }
 
-    /// Drops `key`'s slot.
+    fn remove_observed(&self, ticket: &Ticket) {
+        if let Some(mut inner) = self.lock() {
+            inner.remove_observed(ticket);
+        }
+    }
+
+    /// Drop any slot for `key`; this administrative removal does not reset time.
     pub fn remove(&self, key: &QueryKey) {
         if let Some(mut inner) = self.lock() {
             inner.remove(&key.0);
         }
     }
 
-    /// The tier's counters.
+    /// Current charged occupancy, including the retained endpoint metadata.
     #[must_use]
     pub fn stats(&self) -> MemoryStats {
-        let (entries, bytes, pending) = self.lock().map_or((0, 0, 0), |i| {
-            (
-                u64::try_from(i.slots.len()).unwrap_or(u64::MAX),
-                i.bytes,
-                i.pending,
-            )
-        });
+        let fixed = if self.inner.is_some() {
+            tier_overhead()
+        } else {
+            0
+        };
+        let Some(inner) = self.lock() else {
+            return MemoryStats {
+                capacity_bytes: self.capacity,
+                bytes: fixed,
+                ..MemoryStats::default()
+            };
+        };
         MemoryStats {
             capacity_bytes: self.capacity,
-            entries,
-            bytes,
-            pending,
+            entries: u64::try_from(inner.slots.len()).unwrap_or(u64::MAX),
+            bytes: inner.bytes.saturating_add(fixed),
+            pending: inner.pending,
         }
     }
 }
@@ -272,8 +445,8 @@ mod tests {
 
     #[test]
     fn evicts_least_recently_used_within_budget() {
-        // Room for five 100-byte replies.
-        let t = MemoryTier::new(5 * (100 + SLOT_OVERHEAD) + 10);
+        // Room for the original five 100-byte slots plus the actual new tier metadata.
+        let t = MemoryTier::new(5 * (100 + SLOT_OVERHEAD) + tier_overhead() + 10);
         for i in 0..5u8 {
             t.insert_on_disk(&QueryKey([i; 32]), val(100, i), stamp());
         }
@@ -289,46 +462,307 @@ mod tests {
         assert!(s.bytes <= s.capacity_bytes);
     }
 
+    // These fixtures dispatch a supplied outcome only after real insertion;
+    // actual DiskCache return dispatch is exercised in separate native tests.
+    fn insert_pending(
+        tier: &MemoryTier,
+        key: &QueryKey,
+        value: Arc<Value>,
+    ) -> Option<Held<MemoryEndpoint>> {
+        let candidate = CandidateWrite::new(
+            key.0,
+            value,
+            "check-sat".to_owned(),
+            "memory-fixture".to_owned(),
+            "fixture-solver".to_owned(),
+        );
+        let (_, pending) = tier.prepare(candidate).queued.into_parts();
+        pending
+    }
+
+    fn settle(pending: Held<MemoryEndpoint>, stamp: Option<FileStamp>) {
+        let result: std::io::Result<PutOutcome> = Ok(match stamp {
+            Some(stamp) => PutOutcome::Written(stamp),
+            None => PutOutcome::Exists,
+        });
+        pending.endpoint().complete(
+            pending.ticket(),
+            cache_candidate::observed_completion(&result),
+        );
+    }
+
+    fn required_pending(
+        pending: Option<Held<MemoryEndpoint>>,
+    ) -> std::io::Result<Held<MemoryEndpoint>> {
+        pending.ok_or_else(|| std::io::Error::other("expected an insertion-issued pending handle"))
+    }
+
     #[test]
     fn off_and_oversized_values_are_not_held() {
         let off = MemoryTier::new(0);
         off.insert_on_disk(&QueryKey([1; 32]), val(1, 1), stamp());
-        assert!(!off.insert_pending(&QueryKey([2; 32]), val(1, 1)));
+        assert!(insert_pending(&off, &QueryKey([2; 32]), val(1, 1)).is_none());
         assert_eq!(off.stats().entries, 0);
         let small = MemoryTier::new(1000);
-        assert!(!small.insert_pending(&QueryKey([2; 32]), val(500, 1)));
-        assert!(small.insert_pending(&QueryKey([2; 32]), val(10, 1)));
+        assert!(insert_pending(&small, &QueryKey([2; 32]), val(500, 1)).is_none());
+        assert!(insert_pending(&small, &QueryKey([2; 32]), val(10, 1)).is_some());
     }
 
     #[test]
-    fn pending_slots_settle_only_for_their_own_value() {
+    fn pending_slots_settle_only_for_their_own_value() -> std::io::Result<()> {
         let t = MemoryTier::new(1 << 20);
         let k = QueryKey([5; 32]);
         let (a, b) = (val(10, b'a'), val(10, b'b'));
-        assert!(t.insert_pending(&k, Arc::clone(&a)));
+        let first = insert_pending(&t, &k, Arc::clone(&a));
+        assert!(first.is_some());
+        let first = required_pending(first)?;
         // A second pending insert for the key is refused.
-        assert!(!t.insert_pending(&k, Arc::clone(&b)));
+        assert!(insert_pending(&t, &k, Arc::clone(&b)).is_none());
         assert_eq!(t.stats().pending, 1);
-        // Settling another value does nothing.
-        t.settle(&k, &b, None);
+        // Another insertion's handle cannot target the original key or endpoint.
+        let unrelated = required_pending(insert_pending(&t, &QueryKey([9; 32]), Arc::clone(&b)))?;
+        settle(unrelated, None);
         assert!(matches!(t.lookup(&k), Some((_, State::Pending))));
-        t.settle(&k, &a, Some(stamp()));
+        settle(first, Some(stamp()));
         assert!(matches!(t.lookup(&k), Some((_, State::OnDisk(_)))));
         assert_eq!(t.stats().pending, 0);
-        // A failed write drops the pending slot.
+        // A refused write drops the pending slot.
         let k2 = QueryKey([6; 32]);
-        assert!(t.insert_pending(&k2, Arc::clone(&b)));
-        t.settle(&k2, &b, None);
+        let second = insert_pending(&t, &k2, Arc::clone(&b));
+        assert!(second.is_some());
+        settle(required_pending(second)?, None);
         assert!(t.lookup(&k2).is_none());
-        // A disk read replaces a pending slot; the late settle is ignored.
+        // A disk read replaces a pending slot; late completion/removal are ignored.
         let k3 = QueryKey([7; 32]);
-        assert!(t.insert_pending(&k3, Arc::clone(&a)));
+        let third = insert_pending(&t, &k3, Arc::clone(&a));
+        assert!(third.is_some());
+        let old = t
+            .lookup(&k3)
+            .ok_or_else(|| std::io::Error::other("missing old observation"))?
+            .0;
         t.insert_on_disk(&k3, Arc::clone(&b), stamp());
-        t.settle(&k3, &a, None);
+        let current = t
+            .lookup(&k3)
+            .ok_or_else(|| std::io::Error::other("missing replacement observation"))?
+            .0;
+        settle(required_pending(third)?, None);
         assert!(t.lookup(&k3).is_some_and(|(v, _)| Arc::ptr_eq(&v, &b)));
-        t.remove_if(&k3, &a);
+        old.remove_if_current();
         assert!(t.lookup(&k3).is_some());
-        t.remove_if(&k3, &b);
+        current.remove_if_current();
         assert!(t.lookup(&k3).is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn same_arc_and_equal_bytes_do_not_reuse_an_insertion() -> std::io::Result<()> {
+        let t = MemoryTier::new(1 << 20);
+        let key = QueryKey([31; 32]);
+        let original = val(10, b'a');
+        let pending = required_pending(insert_pending(&t, &key, Arc::clone(&original)))?;
+        let read = t
+            .lookup(&key)
+            .ok_or_else(|| std::io::Error::other("missing original"))?
+            .0;
+        t.remove(&key);
+        let replacement = required_pending(insert_pending(&t, &key, Arc::clone(&original)))?;
+        settle(pending, Some(stamp()));
+        assert!(matches!(t.lookup(&key), Some((_, State::Pending))));
+        read.remove_if_current();
+        assert!(
+            t.lookup(&key)
+                .is_some_and(|(value, _)| Arc::ptr_eq(&value, &original))
+        );
+        settle(replacement, None);
+        assert!(t.lookup(&key).is_none());
+        let pending = required_pending(insert_pending(&t, &key, Arc::clone(&original)))?;
+        let equal = val(10, b'a');
+        assert_eq!(original.as_ref(), equal.as_ref());
+        assert!(!Arc::ptr_eq(&original, &equal));
+        t.insert_on_disk(&key, Arc::clone(&equal), stamp());
+        settle(pending, None);
+        assert!(
+            t.lookup(&key)
+                .is_some_and(|(value, _)| Arc::ptr_eq(&value, &equal))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn retained_metadata_is_charged_before_quarter_budget_admission() {
+        let key = QueryKey([61; 32]);
+        let slot = SLOT_OVERHEAD + 1;
+        let t = MemoryTier::new(tier_overhead() + 4 * slot);
+        assert!(insert_pending(&t, &key, val(1, b'a')).is_some());
+        assert_eq!(t.stats().bytes, tier_overhead() + slot);
+        // A second key one byte above the actual quarter limit is not retained.
+        assert!(insert_pending(&t, &QueryKey([62; 32]), val(2, b'a')).is_none());
+        assert_eq!(t.stats().entries, 1);
+        assert_eq!(t.stats().pending, 1);
+        assert!(t.stats().bytes <= t.stats().capacity_bytes);
+    }
+
+    #[test]
+    fn handles_keep_their_original_tier_with_equal_local_generations() -> std::io::Result<()> {
+        let first = MemoryTier::new(1 << 20);
+        let second = MemoryTier::new(1 << 20);
+        let key = QueryKey([33; 32]);
+        let a = required_pending(insert_pending(&first, &key, val(10, b'a')))?;
+        let b = required_pending(insert_pending(&second, &key, val(10, b'a')))?;
+        // Both fresh tiers issued generation one; each handle acts only on its endpoint.
+        settle(a, Some(stamp()));
+        assert!(matches!(first.lookup(&key), Some((_, State::OnDisk(_)))));
+        assert!(matches!(second.lookup(&key), Some((_, State::Pending))));
+        settle(b, None);
+        assert!(second.lookup(&key).is_none());
+        assert!(first.lookup(&key).is_some());
+        second.insert_on_disk(&key, val(10, b'a'), stamp());
+        let read = first
+            .lookup(&key)
+            .ok_or_else(|| std::io::Error::other("missing first-tier read"))?
+            .0;
+        read.remove_if_current();
+        assert!(first.lookup(&key).is_none());
+        assert!(second.lookup(&key).is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn exhausted_clock_never_recovers_after_clearing() -> std::io::Result<()> {
+        let t = MemoryTier::new(1 << 20);
+        let key = QueryKey([34; 32]);
+        let pending = required_pending(insert_pending(&t, &key, val(10, b'a')))?;
+        let read = t
+            .lookup(&key)
+            .ok_or_else(|| std::io::Error::other("missing read before exhaustion"))?
+            .0;
+        {
+            let mut inner = t
+                .lock()
+                .ok_or_else(|| std::io::Error::other("poisoned test tier"))?;
+            inner.clock.exhaust();
+        }
+        assert!(t.lookup(&key).is_none());
+        settle(pending, Some(stamp()));
+        read.remove_if_current();
+        t.insert_on_disk(&key, val(10, b'a'), stamp());
+        assert!(insert_pending(&t, &key, val(10, b'a')).is_none());
+        assert!(t.lookup(&key).is_none());
+        assert_eq!(t.stats().entries, 0);
+        assert_eq!(t.stats().pending, 0);
+        let inner = t
+            .lock()
+            .ok_or_else(|| std::io::Error::other("poisoned exhausted tier"))?;
+        // An exhausted clock refuses forever; clearing did not replace it.
+        drop(inner);
+        assert!(t.lookup(&QueryKey([35; 32])).is_none());
+        Ok(())
+    }
+
+    fn scratch(label: &str) -> std::path::PathBuf {
+        let path = std::env::temp_dir().join(format!("sail-memory-{label}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&path);
+        let _ = std::fs::remove_file(&path);
+        path
+    }
+
+    fn candidate(key: QueryKey, value: Arc<Value>) -> CandidateWrite<Effort> {
+        CandidateWrite::new(
+            key.0,
+            value,
+            "check-sat".to_owned(),
+            "original-fixture".to_owned(),
+            "original-solver".to_owned(),
+        )
+    }
+
+    #[test]
+    fn prepared_write_preserves_actual_disk_fields_and_stamp() -> std::io::Result<()> {
+        let path = scratch("written");
+        let disk = DiskCache::new(&path);
+        let t = MemoryTier::new(1 << 20);
+        let key = QueryKey([41; 32]);
+        let effort = Effort {
+            limit: Some(100),
+            used: Some(7),
+            reason: Some("original-reason".to_owned()),
+        };
+        let original = Arc::new(Value {
+            mode: "default".to_owned(),
+            reply: b"unsat\n".to_vec(),
+            effort: Some(effort.clone()),
+        });
+        let prepared = t.prepare(candidate(key, Arc::clone(&original)));
+        assert!(matches!(t.lookup(&key), Some((_, State::Pending))));
+        let result = prepared.write(&disk)?;
+        let PutOutcome::Written(stamp) = result else {
+            return Err(std::io::Error::other("expected actual write"));
+        };
+        assert_eq!(disk.stamp_for_hit(&key), Some(stamp));
+        let (observed, state) = t
+            .lookup(&key)
+            .ok_or_else(|| std::io::Error::other("missing written insertion"))?;
+        assert_eq!(state, State::OnDisk(stamp));
+        assert!(Arc::ptr_eq(&observed, &original));
+        let (metadata, reply) = disk
+            .get(&key)
+            .ok_or_else(|| std::io::Error::other("missing persisted candidate"))?;
+        assert_eq!(metadata.key, key.to_string());
+        assert_eq!(metadata.mode, "default");
+        assert_eq!(metadata.command, "check-sat");
+        assert_eq!(metadata.solver, "original-solver");
+        assert_eq!(metadata.provenance, "original-fixture");
+        assert_eq!(metadata.effort, Some(effort));
+        assert_eq!(reply, b"unsat\n");
+        assert_eq!(t.stats().pending, 0);
+        std::fs::remove_dir_all(path)?;
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_write_exists_and_error_remove_only_original_pending_slot() -> std::io::Result<()> {
+        let path = scratch("refusal");
+        let disk = DiskCache::new(&path);
+        let t = MemoryTier::new(1 << 20);
+        let key = QueryKey([42; 32]);
+        t.prepare(candidate(
+            key,
+            Arc::new(Value {
+                mode: "default".to_owned(),
+                reply: b"unsat\n".to_vec(),
+                effort: None,
+            }),
+        ))
+        .write(&disk)?;
+        t.remove(&key);
+        let refused = t.prepare(candidate(
+            key,
+            Arc::new(Value {
+                mode: "default".to_owned(),
+                reply: b"sat\n".to_vec(),
+                effort: None,
+            }),
+        ));
+        assert!(matches!(t.lookup(&key), Some((_, State::Pending))));
+        assert!(matches!(refused.write(&disk)?, PutOutcome::Exists));
+        assert!(t.lookup(&key).is_none());
+        assert_eq!(
+            disk.get(&key)
+                .ok_or_else(|| std::io::Error::other("lost original disk record"))?
+                .1,
+            b"unsat\n"
+        );
+        let invalid = scratch("invalid-root");
+        std::fs::write(&invalid, b"not a directory")?;
+        let invalid_disk = DiskCache::new(&invalid);
+        let failed_key = QueryKey([43; 32]);
+        let failed = t.prepare(candidate(failed_key, val(10, b'a')));
+        assert!(matches!(t.lookup(&failed_key), Some((_, State::Pending))));
+        assert!(failed.write(&invalid_disk).is_err());
+        assert!(t.lookup(&failed_key).is_none());
+        assert_eq!(t.stats().pending, 0);
+        std::fs::remove_file(invalid)?;
+        std::fs::remove_dir_all(path)?;
+        Ok(())
     }
 }

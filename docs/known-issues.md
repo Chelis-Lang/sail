@@ -17,6 +17,19 @@ other misplaced production selector; native ordinary-negative requalification
 remains required in the [owning record](validation/acceptance-boundary-refinements.md).
 This is a qualification-tool defect, with no demonstrated false Sail verdict.
 
+The pinned stock verifier rejects the actual `Arc::ptr_eq` operation used by
+native memory settlement ([#473](https://github.com/Chelis-Lang/sail/issues/473)).
+Its whole-file nonempty support probe exits before verification with no resource
+marker; this is a proof-support gap, not a native Arc defect or false verdict.
+The replacement insertion-generation operations are source-only and unqualified.
+The existing native LRU clock also increments without an overflow guard
+([#474](https://github.com/Chelis-Lang/sail/issues/474)); its bounded source
+reproduction recipe is unrun. The source candidate uses the checked clock in the actual map paths and
+preserves it across clearing, but native/formal qualification is pending. A separate public Config.queue_wait overflow also has a checked-refusal source
+fix and an unrun native regression ([#478](https://github.com/Chelis-Lang/sail/issues/478)).
+The [owning record](validation/cache-candidate-refinement.md) separates these
+limits from future production and solver-origin proofs.
+
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
 read path correctly projects absent freshness to Unknown

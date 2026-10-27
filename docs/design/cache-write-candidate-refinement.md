@@ -1,8 +1,10 @@
 # Candidate write fidelity
 
-Status: source plan and an unrun stock-library support probe for
-[#372](https://github.com/Chelis-Lang/sail/issues/372). No production writer,
-cache policy, transport, dependency edge or origin admission changes are selected.
+Status: source plan, an unsupported stock-library probe and a source-only
+generation replacement for
+[#372](https://github.com/Chelis-Lang/sail/issues/372). The implementation candidate
+now wires the actual cache/writer/server paths; it is unqualified and unselected
+for rollout. No transport, dependency edge or origin admission policy is changed.
 The [cache-origin architectures](cache-origin-admission.md) remain an owner
 choice. A `CandidateWrite` would preserve a candidate, not certify that a solver
 produced it or authorize its reuse.
@@ -56,9 +58,58 @@ transitions, rather than construct a second snapshot of them:
    mutex ownership, counters, removal and LRU bookkeeping still need their own
    exact joins; do not silently assume them by verifying a toy `Option<Slot>`.
 
-The exact generic signatures and final placement remain subject to source
-review after the primitive support check. No code here changes the current
-production transition. Existing same-slot native tests remain required.
+The Arc support probe has now run and failed before verification. The
+source-only replacement in `sail-acceptance/src/cache_candidate.rs` contains
+an actual checked clock and owned slot/ticket transitions; it is not a parallel
+ledger. The real native map stores its `Slot`, the real writer queue holds a
+sealed `PreparedWrite`, and the server keeps original read observations through
+stale-read removal. Both raw PUT and shared/bundled keep paths construct the
+same immutable `CandidateWrite`. Existing same-slot assertions remain, with
+native tests prepared for equal-byte/different-Arc replacement, same-Arc ABA,
+two tiers with equal local ordinals, permanent exhaustion and actual disk
+Written/Exists/error outcomes. None have run at this candidate, and no
+production writer transition is claimed qualified.
+
+The intended native representation reuses the actual checked LRU clock: an
+insertion snapshots its issued tick as immutable generation; touching changes
+only the LRU tick. Generation values are local to a retained endpoint. Pending
+handles own their original inner endpoint; read/removal handles borrow their
+original tier, avoiding a new endpoint clone on read hits. Kernel endpoint and
+ticket fields stay paired and private, with checked projections rather than an
+identity comparison. The kernel's `matches_ticket` predicate compares only the
+supplied key/generation within that endpoint; it does not assert global owner
+identity. The actual lock/map/accounting joins remain explicit.
+
+A newer insertion is distinct even when it reuses the same Arc. This is a
+conservative difference from the old Arc-based ABA check: an old completion or
+read removal refuses instead of affecting that newer insertion. Existing
+queued-key serialization is preserved. Counter exhaustion must clear/refuse
+memory safely without resetting the clock; disk candidates continue normally.
+The native `PreparedWrite::write` borrows all seven disk-request fields from
+its actual candidate, calls the real `DiskCache::put_scoped`, and feeds that
+exact returned Result through the checked `observed_completion` projection.
+Its private endpoint dispatch is not a public `finish(success)` API. Candidate
+value, slot-state and disk-outcome native names are aliases of the shared real
+records; the disk format and mode/solver/provenance fields are preserved.
+
+Each slot charges the original 128-byte allowance plus its eight-byte insertion
+generation. The configured memory budget also reserves three native pointer
+words for the additional retained tier endpoint metadata (24 bytes on the
+supported 64-bit hosts). Queue cost adds the actual `size_of` carrier difference
+between prepared and raw candidate records; it is not guessed from selected
+fields. Read hits retain the existing value Arc clone but add no endpoint clone.
+The original five-slot LRU fixture includes the newly charged fixed metadata,
+retaining every eviction/count/budget assertion. New boundary tests reject a
+reply just above the usable quarter limit and a second queued record whose
+handle metadata exceeds the original queue budget. These tests are unrun.
+Allocator bookkeeping and RSS are not this logical budget. Layout, cost and
+conformance are unmeasured; no performance result is claimed.
+
+A separate source/native-control family replaces the original value clone with
+an equal-payload allocation. The native Arc comparison assertions must reject
+that change; it receives no Stock-negative credit. Stock's Arc value abstraction
+is not relabeled a pointer-identity theorem. The freshness proof uses insertion
+generation and private endpoint routing, never payload equality.
 
 ## Allocation identity is a prerequisite
 
@@ -75,8 +126,10 @@ The exact sources are [stock smart-pointer specifications](https://github.com/ve
 [stock views](https://github.com/verus-lang/verus/blob/7d829946231d6413a398f6e4160cdfe951261dad/source/vstd/view.rs),
 [stock call translation](https://github.com/verus-lang/verus/blob/7d829946231d6413a398f6e4160cdfe951261dad/source/rust_verify/src/fn_call_to_vir.rs)
 and the [pinned Rust implementation](https://github.com/rust-lang/rust/blob/58cf8f9c35b355199727627d07ae34a4e2846d67/library/alloc/src/sync.rs).
-This source inspection does not establish that every compiler-internal path
-lacks a usable model. A direct full-file probe must resolve actual support.
+The subsequent direct full-file probe confirms that the actual operation is
+unsupported at all five calls ([#473](https://github.com/Chelis-Lang/sail/issues/473)).
+It exits 1 with no resource marker and passing final source/runtime guards,
+so zero proofs qualify. See the [owning record](../validation/cache-candidate-refinement.md).
 
 The [support probe](../../proofs/support/candidate_write_arc.rs) calls actual
 `std::sync::Arc::{new,clone,ptr_eq}`. It requires a nonempty original, a retained
@@ -104,11 +157,12 @@ missing operation/model or failed witness is an unsupported prerequisite,
 not a qualified ordinary negative or proof of the candidate-write theorem.
 The probe is not selected by the canonical component drivers.
 
-If this prerequisite fails, stop the identity-dependent production proof at
-that precise missing contract. Keep the actual native identity check intact.
-Do not replace it with the already conditional `OwnerIdentity` trait. The
-actual map lookup with the native key, mutable slot access, locking and
-bookkeeping also require support checks before claiming full writer coverage.
+The unsupported pointer proof is retained as history, and the native Arc guard
+stays intact until its coherent replacement is wired. No conditional
+`OwnerIdentity` trait is added. The replacement is an actual insertion-issued
+generation guard, not an assertion that pointer identity is now supported.
+The actual map lookup with the native key, mutable slot access, locking and
+bookkeeping also need their real joins before full writer coverage can be claimed.
 
 ## Controls and remaining obligations
 

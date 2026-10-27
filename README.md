@@ -285,8 +285,10 @@ See [workspace verification](docs/workspace-verification.md#evidence-from-comple
 
 - The cache lives in `~/.cache/sail` (or `$SAIL_CACHE_DIR`). The daemon's
   replies are under `results/`, and its log is `results/daemon.log`.
-- `sail status` shows the daemon's state and counters. The daemon stops after
-  30 minutes without work.
+- `sail status` shows the daemon's state and counters. Memory and queue limits
+  charge retained metadata as well as reply bytes, so usable reply capacity is
+  smaller than the configured byte limit. The daemon stops after 30 minutes
+  without work.
 - `sail cache stats|verify|gc --max-bytes N|clear --yes` inspect, check,
   shrink or empty the solver-reply cache.
 - Managed verification keeps compiled targets per project, which can reach
