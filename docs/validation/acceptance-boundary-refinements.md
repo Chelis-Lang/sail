@@ -19,6 +19,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `668be5f2` parser query positive | Complete query capture refuses compilation at three E0382 proof-pattern moves after 3.156 s (#469), with final source/runtime guards passing | Verification never starts: no function/obligation inventory, control or native credit. Borrowed proof-pattern correction preserves executable operations/contracts and must repeat the whole root at unchanged resources |
 | `48f09fa7` parser query positive | Native full-query attempt checks all 835 function entries and retains 477 verified plus three failed functions in 39.006 s, with final source/runtime guards passing. Diagnostics include push's missing preappend scan fact/postcondition, chunk endpoint constructiveness and a resource refusal in the long-command witness | No positive/control/native credit and no inventory lock. Separate source guidance explicitly unfolds the original invariant and scopes finite-prefix/flat-list facts; contracts, runtime operations, resources and all controls remain mandatory |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |
 | `e36c749b` native workspace | Strict gate exits 101 after 253.112 s at one test-only `too_many_lines` diagnostic: baseline observed-request fixture is 121 lines against limit 100 (#463); final source/image guards pass | Native tests and solver are unrun. The narrow fixture allowance preserves every statement/assertion and production behavior; corrected-source native qualification remains required |
@@ -58,6 +59,17 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The separate closed parser guidance attempt is retained as
+`experiments/2026-10-27/acceptance-parser-668be5-native.tgz`, SHA-256
+`3fdec357ed5eac04ee666f79fdcd384e1ab53d4bb5afa5d3b7a6943b2bdf4820`
+(279,744 bytes); host creation and independent local SCP/hash agree, while
+private object upload/readback remain pending. Complete Stock compilation
+reports three moved-value errors in proof-only pattern inspections
+([#469](https://github.com/Chelis-Lang/sail/issues/469)). Their borrowed-pattern
+correction changes no executable parser operation, contract, resource limit or
+control. Final source/runtime checks pass; no verification or inventory lock
+is obtained, and the earlier `48f09fa7` refusals remain unresolved evidence.
 
 The closed parser attempt is retained as
 `experiments/2026-10-27/acceptance-parser-48f09-native.tgz`, SHA-256
