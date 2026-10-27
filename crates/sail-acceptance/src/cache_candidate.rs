@@ -91,6 +91,15 @@ sail_code! {
         /// Only the observed original insertion is removed.
         Removed(([u8; 32], Slot<Value, Stamp>)),
     }
+
+    /// The actual native tier's declared byte and pending-slot counters.
+    /// Costs are supplied by the native charge function for the same owned slot;
+    /// this record does not assert a global map, allocator or origin invariant.
+    #[derive(Debug)]
+    pub struct Accounting {
+        bytes: u64,
+        pending: u64,
+    }
 }
 
 sail_code! {
@@ -134,6 +143,7 @@ sail_code! {
         sail_method! {
             /// Create the actual owned entry and its matching ticket in one
             /// checked operation. The supplied payload is moved without copying.
+            #[allow(clippy::question_mark, reason = "Explicit refusal preserves the source-shared checked transition and its full-body controls.")]
             pub fn entry<Value, Stamp>(&mut self, key: [u8; 32], value: Value,
                 state: SlotState<Stamp>) -> (out: IssuedEntry<Value, Stamp>)
                 requires (true)
@@ -163,6 +173,7 @@ sail_code! {
         sail_method! {
             /// Retain the actual insertion endpoint in the same operation that
             /// creates the entry and ticket. Endpoints are forwarded, not compared.
+            #[allow(clippy::question_mark, reason = "Explicit refusal preserves the source-shared checked transition and its full-body controls.")]
             pub fn entry_bound<Endpoint, Value, Stamp>(&mut self, endpoint: Endpoint,
                 key: [u8; 32], value: Value, state: SlotState<Stamp>)
                 -> (out: BoundEntry<Endpoint, Value, Stamp>)
@@ -298,6 +309,104 @@ sail_code! {
             /// Only this result decrements pending for an installed write stamp.
             pub closed spec fn written_view(&self) -> bool { matches!(self, Self::Written(_)) }
         }
+        sail_method! {
+            /// Borrow the actual owned slot before computing its native charge.
+            pub fn slot(&self) -> (out: &Slot<Value, Stamp>)
+                requires (true) ensures (*out == self.slot_view())
+            {
+                match self {
+                    Self::Unchanged((_, slot)) | Self::Written((_, slot)) | Self::Removed((_, slot)) => slot,
+                }
+            }
+        }
+    }
+
+    impl Accounting {
+        sail_impl_spec! {
+            /// Actual charged payload/slot occupancy, excluding fixed tier metadata.
+            pub closed spec fn bytes_view(&self) -> u64 { self.bytes }
+            /// Actual number of declared pending slots.
+            pub closed spec fn pending_view(&self) -> u64 { self.pending }
+        }
+        sail_method! {
+            /// Initialize the counters of a fresh empty tier.
+            pub fn empty() -> (out: Self)
+                requires (true) ensures (out.bytes_view() == 0, out.pending_view() == 0)
+            { Self { bytes: 0, pending: 0 } }
+        }
+        sail_method! {
+            /// Report the actual charged occupancy used by native eviction/stats.
+            pub fn bytes(&self) -> (out: u64)
+                requires (true) ensures (out == self.bytes_view())
+            { self.bytes }
+        }
+        sail_method! {
+            /// Report the actual pending count used by native stats.
+            pub fn pending(&self) -> (out: u64)
+                requires (true) ensures (out == self.pending_view())
+            { self.pending }
+        }
+        sail_method! {
+            /// Clear occupancy when native disablement clears its actual maps.
+            /// This does not touch or restart the separate lifetime clock.
+            pub fn clear(&mut self) -> (out: ())
+                requires (true)
+                ensures (final(self).bytes_view() == 0, final(self).pending_view() == 0)
+            { self.bytes = 0; self.pending = 0; }
+        }
+        sail_method! {
+            /// Reserve the supplied charge for this actual slot. Both additions
+            /// must fit; either refusal leaves both counters unchanged.
+            pub fn reserve<Value, Stamp>(&mut self, slot: &Slot<Value, Stamp>, cost: u64)
+                -> (out: bool)
+                requires (true)
+                ensures (out == (old(self).bytes_view() as int + cost as int <= u64::MAX
+                        && (!matches!(slot.state_view(), SlotState::Pending)
+                            || old(self).pending_view() < u64::MAX)),
+                    final(self).bytes_view() as int == if out {
+                        old(self).bytes_view() as int + cost as int
+                    } else { old(self).bytes_view() as int },
+                    final(self).pending_view() as int == if out && matches!(slot.state_view(), SlotState::Pending) {
+                        old(self).pending_view() as int + 1
+                    } else { old(self).pending_view() as int })
+            {
+                let Some(bytes) = self.bytes.checked_add(cost) else { return false; };
+                let pending = if matches!(slot.state, SlotState::Pending) {
+                    let Some(pending) = self.pending.checked_add(1) else { return false; };
+                    pending
+                } else { self.pending };
+                self.bytes = bytes;
+                self.pending = pending;
+                true
+            }
+        }
+        sail_method! {
+            /// Account for the actual owned transition and return that exact
+            /// transition to the native map/order operations. No replacement
+            /// payload or separately supplied completion flag is accepted.
+            pub fn apply<Value, Stamp>(&mut self, update: EntryUpdate<Value, Stamp>, cost: u64)
+                -> (out: EntryUpdate<Value, Stamp>)
+                requires (true)
+                ensures (out == update,
+                    final(self).bytes_view() as int == if update.removed_view() {
+                        if old(self).bytes_view() >= cost { old(self).bytes_view() as int - cost as int } else { 0 }
+                    } else { old(self).bytes_view() as int },
+                    final(self).pending_view() as int == if update.written_view()
+                        || (update.removed_view() && matches!(update.slot_view().state_view(), SlotState::Pending)) {
+                        if old(self).pending_view() > 0 { old(self).pending_view() as int - 1 } else { 0 }
+                    } else { old(self).pending_view() as int })
+            {
+                if matches!(update, EntryUpdate::Removed(_)) {
+                    self.bytes = if self.bytes >= cost { self.bytes - cost } else { 0 };
+                }
+                if matches!(update, EntryUpdate::Written(_))
+                    || (matches!(update, EntryUpdate::Removed(_))
+                        && matches!(update.slot().state(), SlotState::Pending)) {
+                    self.pending = if self.pending > 0 { self.pending - 1 } else { 0 };
+                }
+                update
+            }
+        }
     }
 }
 
@@ -368,6 +477,54 @@ sail_verified! {
 }
 
 sail_verified! {
+    /// Nonempty actual owned entries exercise reservation, write settlement,
+    /// stale replacement refusal and retirement through the native-used counters.
+    pub fn accounting_transition_control() -> (out: bool)
+        requires (true) ensures (out)
+    {
+        let key = [19u8; 32];
+        let mut clock = Clock::start();
+        let mut accounting = Accounting::empty();
+        let Some((entry, original)) = clock.entry(key, vec![117u8,110u8,115u8,97u8,116u8,10u8], SlotState::<u64>::Pending)
+            else { return false; };
+        if !accounting.reserve(&entry.1, 142) { return false; }
+        let written = accounting.apply(complete(entry, &original, Completion::Written(11)), 142);
+        let EntryUpdate::Written(entry) = written else { return false; };
+        if entry.1.value().len() != 6 || accounting.bytes() != 142 || accounting.pending() != 0 { return false; }
+        let read = entry.1.observe(entry.0);
+        let retired = accounting.apply(remove_observed(entry, &read), 142);
+        if !matches!(retired, EntryUpdate::Removed(_)) || accounting.bytes() != 0 { return false; }
+        let Some((replacement, newer)) = clock.entry(key, vec![117u8,110u8,115u8,97u8,116u8,10u8], SlotState::<u64>::Pending)
+            else { return false; };
+        if !accounting.reserve(&replacement.1, 142) { return false; }
+        let stale = accounting.apply(complete(replacement, &original, Completion::Written(99)), 142);
+        let EntryUpdate::Unchanged(replacement) = stale else { return false; };
+        if accounting.bytes() != 142 || accounting.pending() != 1 { return false; }
+        let refused = accounting.apply(complete(replacement, &newer, Completion::Exists), 142);
+        matches!(refused, EntryUpdate::Removed(_)) && accounting.bytes() == 0 && accounting.pending() == 0
+    }
+}
+
+sail_verified! {
+    /// Reservation overflow preserves both counters; clear and underflow-safe
+    /// retirement use the same executable operations as actual disablement.
+    pub fn accounting_overflow_control() -> (out: bool)
+        requires (true) ensures (out)
+    {
+        let mut clock = Clock::start();
+        let Some((entry, ticket)) = clock.entry([23u8; 32], vec![1u8], SlotState::<u64>::Pending)
+            else { return false; };
+        let mut accounting = Accounting::empty();
+        if !accounting.reserve(&entry.1, u64::MAX) { return false; }
+        if accounting.reserve(&entry.1, 1) { return false; }
+        if accounting.bytes() != u64::MAX || accounting.pending() != 1 { return false; }
+        accounting.clear();
+        let retired = accounting.apply(complete(entry, &ticket, Completion::Failed), 1);
+        matches!(retired, EntryUpdate::Removed(_)) && accounting.bytes() == 0 && accounting.pending() == 0
+    }
+}
+
+sail_verified! {
     /// Nonempty original and replacement data exercise issuance, real slot
     /// transition, read removal and permanent exhaustion without owner assumptions.
     pub fn generation_transition_control() -> (out: bool)
@@ -413,8 +570,9 @@ sail_verified! {
         let written = complete(entry, held.ticket(), Completion::Written(13));
         let EntryUpdate::Written((key, slot)) = written else { return false; };
         if slot.value().len() != 6 { return false; }
-        let read = slot.observe_bound(held.endpoint(), key);
-        sail_proof! { assert(read.endpoint_view() == held.endpoint()); }
+        let endpoint_borrow = held.endpoint();
+        let read = slot.observe_bound(endpoint_borrow, key);
+        sail_proof! { assert(read.endpoint_view() == endpoint_borrow); }
         let removed = remove_observed((key, slot), read.ticket());
         matches!(removed, EntryUpdate::Removed(_))
     }

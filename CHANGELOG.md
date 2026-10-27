@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Route actual cache insertion, settlement and removal counters through the
+  source-shared owned-entry accounting operation. Saturating retirement and
+  overflow refusal retain existing behavior; map/lock and supplied-charge
+  correspondence remain separate unqualified obligations.
 - Bind candidate cache completion and stale-read removal to insertion-issued
   generation handles retained with their original tier. Reinsertions, including
   the same Arc, refuse old handles; checked lifetime-clock exhaustion leaves

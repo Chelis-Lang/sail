@@ -267,6 +267,8 @@ def candidate_memory_policy(source: str) -> None:
         "candidate Inner must initialize only once in a fresh endpoint")
     require(occurrences(["Arc", ":", ":", "new", "("]) == 1,
         "candidate memory cannot replace or fabricate its endpoint")
+    require(occurrences(["Accounting", ":", ":", "empty", "("]) == 1,
+        "candidate accounting must initialize only once in a fresh Inner")
     require(not ({"unsafe", "replace", "swap", "take", "try_unwrap", "into_inner", "cfg", "mod"} & set(values)),
         "candidate memory reset/alias syntax outside reviewed subset")
     for prefix in ("Self", "Default"):
@@ -276,11 +278,13 @@ def candidate_memory_policy(source: str) -> None:
         require(occurrences(["*", name, "="]) == 0,
             "candidate memory cannot replace the held Inner")
     for i, token in enumerate(stream):
-        if i and stream[i - 1].value == "." and token.value in {"clock", "inner"}:
-            allowed = {"advance", "exhaust", "entry", "prepare"} if token.value == "clock" else {"lock", "as_ref", "is_some"}
+        if i and stream[i - 1].value == "." and token.value in {"clock", "inner", "accounting"}:
+            allowed = {"clock": {"advance", "exhaust", "entry", "prepare"},
+                "inner": {"lock", "as_ref", "is_some"},
+                "accounting": {"apply", "reserve", "clear", "bytes", "pending"}}[token.value]
             require(i + 2 < len(stream) and stream[i + 1].value == "."
                 and stream[i + 2].value in allowed,
-                "candidate clock/endpoint assignment or mutable escape")
+                "candidate clock/endpoint/accounting assignment or mutable escape")
     names = [stream[i + 2].value for i in range(len(stream) - 2)
         if values[i:i + 2] == ["pub", "fn"]]
     require(names == ["tier_overhead", "candidate_bytes", "key", "charged_bytes", "write",

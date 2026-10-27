@@ -8,8 +8,8 @@ use std::ops::Deref;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use sail_acceptance::cache_candidate::{
-    self, CandidateWrite, Clock, Completion, EntryUpdate, Held, Prepared, Slot as CandidateSlot,
-    Ticket,
+    self, Accounting, CandidateWrite, Clock, Completion, EntryUpdate, Held, Prepared,
+    Slot as CandidateSlot, Ticket,
 };
 use sail_key::QueryKey;
 use serde::{Deserialize, Serialize};
@@ -60,8 +60,7 @@ struct Inner {
     order: BTreeMap<u64, [u8; 32]>,
     /// This same clock issues insertion generations and LRU touch ordinals.
     clock: Clock,
-    bytes: u64,
-    pending: u64,
+    accounting: Accounting,
 }
 
 impl Default for Inner {
@@ -70,8 +69,7 @@ impl Default for Inner {
             slots: HashMap::new(),
             order: BTreeMap::new(),
             clock: Clock::start(),
-            bytes: 0,
-            pending: 0,
+            accounting: Accounting::empty(),
         }
     }
 }
@@ -82,8 +80,7 @@ impl Inner {
         self.clock.exhaust();
         self.slots.clear();
         self.order.clear();
-        self.bytes = 0;
-        self.pending = 0;
+        self.accounting.clear();
     }
 
     fn next_tick(&mut self) -> Option<u64> {
@@ -94,30 +91,23 @@ impl Inner {
         tick
     }
 
-    fn retire(&mut self, slot: &Slot) {
-        self.order.remove(&slot.tick());
-        self.bytes = self.bytes.saturating_sub(value_cost(slot.value()));
-        if matches!(slot.state(), State::Pending) {
-            self.pending = self.pending.saturating_sub(1);
-        }
-    }
-
     fn remove(&mut self, key: &[u8; 32]) {
-        if let Some(slot) = self.slots.remove(key) {
-            self.retire(&slot);
+        if let Some(entry) = self.slots.remove_entry(key) {
+            self.apply(EntryUpdate::Removed(entry));
         }
     }
 
     fn apply(&mut self, update: Update) {
-        match update {
-            EntryUpdate::Unchanged((key, slot)) => {
+        // Charge this exact owned slot before the shared operation returns the
+        // same transition. Native maps/lock/LRU still need their separate join.
+        let cost = value_cost(update.slot().value());
+        match self.accounting.apply(update, cost) {
+            EntryUpdate::Unchanged((key, slot)) | EntryUpdate::Written((key, slot)) => {
                 self.slots.insert(key, slot);
             }
-            EntryUpdate::Written((key, slot)) => {
-                self.pending = self.pending.saturating_sub(1);
-                self.slots.insert(key, slot);
+            EntryUpdate::Removed((_, slot)) => {
+                self.order.remove(&slot.tick());
             }
-            EntryUpdate::Removed((_, slot)) => self.retire(&slot),
         }
     }
 
@@ -137,25 +127,14 @@ impl Inner {
 
     fn install(&mut self, entry: ([u8; 32], Slot), capacity: u64) -> bool {
         let (key, slot) = entry;
-        let Some(bytes) = self.bytes.checked_add(value_cost(slot.value())) else {
+        if !self.accounting.reserve(&slot, value_cost(slot.value())) {
             self.disable();
             return false;
-        };
-        let pending = if matches!(slot.state(), State::Pending) {
-            let Some(pending) = self.pending.checked_add(1) else {
-                self.disable();
-                return false;
-            };
-            pending
-        } else {
-            self.pending
-        };
-        self.bytes = bytes;
-        self.pending = pending;
+        }
         let tick = slot.tick();
         self.slots.insert(key, slot);
         self.order.insert(tick, key);
-        while self.bytes > capacity {
+        while self.accounting.bytes() > capacity {
             let Some((_, oldest)) = self.order.pop_first() else {
                 self.disable();
                 return false;
@@ -418,8 +397,8 @@ impl MemoryTier {
         MemoryStats {
             capacity_bytes: self.capacity,
             entries: u64::try_from(inner.slots.len()).unwrap_or(u64::MAX),
-            bytes: inner.bytes.saturating_add(fixed),
-            pending: inner.pending,
+            bytes: inner.accounting.bytes().saturating_add(fixed),
+            pending: inner.accounting.pending(),
         }
     }
 }
@@ -585,6 +564,38 @@ mod tests {
             t.lookup(&key)
                 .is_some_and(|(value, _)| Arc::ptr_eq(&value, &equal))
         );
+        Ok(())
+    }
+
+    #[test]
+    fn actual_owned_accounting_preserves_stale_replacement_and_retirement() -> std::io::Result<()> {
+        let t = MemoryTier::new(1 << 20);
+        let key = QueryKey([71; 32]);
+        let original = val(6, b'a');
+        let pending = required_pending(insert_pending(&t, &key, original))?;
+        let old = t
+            .lookup(&key)
+            .ok_or_else(|| std::io::Error::other("missing accounting observation"))?
+            .0;
+        assert_eq!(t.stats().bytes, tier_overhead() + SLOT_OVERHEAD + 6);
+        assert_eq!(t.stats().pending, 1);
+        // Replacement first retires the original actual pending slot, then
+        // reserves the different-sized actual on-disk slot.
+        t.insert_on_disk(&key, val(17, b'b'), stamp());
+        assert_eq!(t.stats().bytes, tier_overhead() + SLOT_OVERHEAD + 17);
+        assert_eq!(t.stats().pending, 0);
+        settle(pending, None);
+        old.remove_if_current();
+        assert_eq!(t.stats().entries, 1);
+        assert_eq!(t.stats().bytes, tier_overhead() + SLOT_OVERHEAD + 17);
+        assert_eq!(t.stats().pending, 0);
+        t.lookup(&key)
+            .ok_or_else(|| std::io::Error::other("missing accounting replacement"))?
+            .0
+            .remove_if_current();
+        assert_eq!(t.stats().entries, 0);
+        assert_eq!(t.stats().bytes, tier_overhead());
+        assert_eq!(t.stats().pending, 0);
         Ok(())
     }
 
