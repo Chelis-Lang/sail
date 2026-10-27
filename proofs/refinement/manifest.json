@@ -4824,6 +4824,138 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "\n        let whole = match request {\n            Some(request) => complete_request_ordered(request,project,orders),\n            None => None,\n        };\n        CompletedPresentation { project,request,whole }\n    ",
           "after": "\n        let _ = orders; CompletedPresentation { project,request,whole:None }\n    "
+        },
+        {
+          "name": "request-normalize-retain-forwarded",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if forwarded || !exact_bytes(submitted[i].as_str().as_bytes(), b\"--incremental\") {\n                    out.push(submitted[i].clone());",
+          "after": "if !exact_bytes(submitted[i].as_str().as_bytes(), b\"--incremental\") {\n                    out.push(submitted[i].clone());"
+        },
+        {
+          "name": "request-normalize-remove-prefix",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if forwarded || !exact_bytes(submitted[i].as_str().as_bytes(), b\"--incremental\") {\n                    out.push(submitted[i].clone());",
+          "after": "if true {\n                    out.push(submitted[i].clone());"
+        },
+        {
+          "name": "request-normalize-original-argument",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "out.push(submitted[i].clone());",
+          "after": "out.push(submitted[0].clone());"
+        },
+        {
+          "name": "request-workspace-no-forwarded-scope",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if exact_bytes(bytes, b\"--\") {\n                    sail_proof! {\n                        if cargo_workspace_requested(args@)",
+          "after": "if false {\n                    sail_proof! {\n                        if cargo_workspace_requested(args@)"
+        },
+        {
+          "name": "request-workspace-full-operation-always-refuses",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "sail_proof! { assert(cargo_workspace_requested(args@)); }\n                    return true;",
+          "after": "sail_proof! { assert(cargo_workspace_requested(args@)); }\n                    return false;"
+        },
+        {
+          "name": "request-workspace-all-alias",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "if exact_bytes(bytes, b\"--workspace\") || exact_bytes(bytes, b\"--all\") {",
+          "after": "if exact_bytes(bytes, b\"--workspace\") {"
+        },
+        {
+          "name": "request-construct-run-id",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "run_id: source.run_id.to_owned(),",
+          "after": "run_id: source.context.to_owned(),"
+        },
+        {
+          "name": "request-construct-invocation",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "invocation: source.invocation.to_owned(),",
+          "after": "invocation: source.workspace.to_owned(),"
+        },
+        {
+          "name": "request-construct-workspace",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "workspace: source.workspace.to_owned(),",
+          "after": "workspace: source.invocation.to_owned(),"
+        },
+        {
+          "name": "request-construct-context-sha256",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "context_sha256: source.context.to_owned(),",
+          "after": "context_sha256: source.revision.to_owned(),"
+        },
+        {
+          "name": "request-construct-input-revision",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "input_revision: source.revision.to_owned(),",
+          "after": "input_revision: source.context.to_owned(),"
+        },
+        {
+          "name": "request-construct-repair-package",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "repair_package: source.repair_package.to_owned(),",
+          "after": "repair_package: source.repair_kind.to_owned(),"
+        },
+        {
+          "name": "request-construct-repair-kind",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "repair_kind: source.repair_kind.to_owned(),",
+          "after": "repair_kind: source.repair_package.to_owned(),"
+        },
+        {
+          "name": "request-construct-original-argument",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "arguments.push(source.arguments[i].clone());",
+          "after": "arguments.push(source.arguments[0].clone());"
+        },
+        {
+          "name": "request-construct-engine",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "engine: source.engine,",
+          "after": "engine: None,"
+        },
+        {
+          "name": "request-construct-function",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "let function = match source.function { Some(value) => Some(value.to_owned()), None => None };",
+          "after": "let function: Option<String> = None;"
+        },
+        {
+          "name": "request-construct-repair-target",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "let repair_target = match source.repair_target { Some(value) => Some(value.to_owned()), None => None };",
+          "after": "let repair_target: Option<String> = None;"
+        },
+        {
+          "name": "request-construct-nonempty-scope",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "targets: source.targets,",
+          "after": "targets: Vec::new(),"
+        },
+        {
+          "name": "request-target-package-id",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "package_id: original.0.clone(),",
+          "after": "package_id: original.1.clone(),"
+        },
+        {
+          "name": "request-target-target",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "target: original.1.clone(),",
+          "after": "target: original.2.clone(),"
+        },
+        {
+          "name": "request-target-kind",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "kind: original.2.clone(),",
+          "after": "kind: original.1.clone(),"
+        },
+        {
+          "name": "request-engine-original-manifest",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "EngineIdentity { name: \"interactive\".to_owned(), manifest_sha256: manifest.clone() }",
+          "after": "EngineIdentity { name: \"interactive\".to_owned(), manifest_sha256: String::new() }"
         }
       ]
     }
