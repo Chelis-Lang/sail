@@ -1039,3 +1039,13 @@ candidate expresses the same first-dot stop in the actual loop condition
 instead of `break`, retaining identical byte visits, classification and returned
 endpoints, and supplies exact scoped witness slice facts. All contracts and 213
 controls remain; no positive inventory is locked from this failed attempt.
+
+The `352900b0` native SMT package run explicitly recompiles both touched crates
+after cleaning: all 24 tests pass (none skipped), then strict Clippy reports
+three explicit ASCII range lints and two rustdoc defects
+([#488](https://github.com/Chelis-Lang/sail/issues/488)). Final source checks pass.
+Closed archive `acceptance-parser-352900-native-smt.tgz`: 4,911 bytes, SHA-256
+`7adc8dba1e888ae837de060f755026915420741b44dbedbd40c19488c5a4eb40`;
+independent lead archive verification remains pending. The next candidate adds
+one documented local range allowance and complete rustdoc, preserving actual
+operations, contracts and all controls. No workspace/solver/conformance credit.
