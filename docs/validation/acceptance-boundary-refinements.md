@@ -9,6 +9,7 @@ observation guarantee or service theorem is claimed. All six rows of the
 
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `7ac1c3d9` | Native source guards and all three whole positives pass (431/759, 308/538, 498/878). Workspace then stops in 0.51 s at a stale eleven-phase completion fixture, while the actual workflow and guard require ten (#453) | No compilation, ordinary tests or later gates run. The corrected fixture exercises all ten required positions and rejects eleven; the proof-job policy remains a separate unresolved choice |
 | `40d14854` | Native workspace passes (all 1,228 tests), all 31 models pass, then the production runner refuses authority control 76: 487 verified plus one error, all 830 functions, against 489 required obligations | The full-body mutation removed a loop obligation (#454). No negative credit or complete production pass; solver, e2e and conformance unrun. Corrected mutations retain complete loops and change only acceptance exits |
 | `9b4ceea2` | Native source guard suites and all three whole positives pass: query 431/0 (759 functions), inputs 308/0 (538), authority 498/0 (878); all previous functions retained and final source/runtime/image identities checked | Initial discovery only. No workspace, ordinary negative matrix, solver or conformance qualification; later main integration and lint fixes need fresh gates |
 | `c44cdcfa` | Four native query partitions pass all 115 ordinary controls plus four complete query-positive runs (431 verified, 759 function entries); an independent audit checks exact disjoint union and identical source/runtime/compiler identity | Each partition remains an incomplete component; the audited union covers query only. Native workspace reaches strict clippy and stops at eight shared-kernel style diagnostics; ordinary workspace/solver tests remain unrun |
@@ -39,6 +40,13 @@ objects and erased append proof cut omitted during integration. A cheap loop
 syntax refusal catches this known failure before execution; actual stock-Verus
 function and obligation equality remain mandatory. Corrected controls remain
 unqualified until their ordinary full-root failures are observed.
+
+The separate `7ac1c3d9` failed attempt is retained at
+`experiments/2026-10-27/acceptance-main-7ac1c3d9-native.tgz`, SHA-256
+`9119ee4488d744cf4c3e982567f7e2fde8fba9eb1a0a6d4735bb8f6786cdcd00`
+(7,175,554 bytes); independent S3 GET/hash passes. The lightweight corrected
+completion fixture passes locally. This does not qualify native compilation
+or resolve the hosted-proof policy discrepancy.
 
 The limited `9b4ceea2` discovery archive is retained privately at
 `experiments/2026-10-27/acceptance-main-9b4ceea2-native.tgz`, SHA-256
