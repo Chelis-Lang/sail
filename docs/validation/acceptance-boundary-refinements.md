@@ -1201,3 +1201,11 @@ Actual driver SHA-256: `5fa538c31cd023383fcffb575e111ec5fa5c825b5aed81fa56a9357a
   saturating subtraction and question-mark syntax, with narrowly documented
   complex transfer/constructive tuple signatures. Fresh whole-query and native
   qualification is required; no style exemption grants behavioral/proof credit.
+
+- `51d2ba3d`, 2026-10-27: the complete idiomatic-syntax trial refuses only
+  `into_parts`' exact original pending-field postcondition under the native
+  Option-map closure. Saturating subtraction and question-mark obligations clear;
+  no resource or VIR refusal is reported. The followup retains those two idioms
+  and restores the explicit owned Option branches with a narrowly documented
+  `manual_map` allowance for this observed proof boundary. It adds no trusted
+  closure contract and preserves the complete original transfer postcondition.
