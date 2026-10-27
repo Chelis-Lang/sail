@@ -93,6 +93,25 @@ class SourceLexerTests(unittest.TestCase):
 class SourceCaptureTests(unittest.TestCase):
     """Mistaken source/representation selection cannot become proof evidence."""
 
+    def test_presentation_callers_are_native_bindings_and_enum_projection_does_not_supply_copy(self):
+        entry = {"id": "authority", "source": "proofs/refinement/authority.rs",
+            "dependencies": CHECKER.dependency_paths("authority")}
+        roles = CHECKER.source_roles(entry)
+        self.assertEqual(set(roles["reviewed_presentation_callers"]), set(CHECKER.PRESENTATION_NATIVE_BINDINGS))
+        self.assertFalse(set(CHECKER.PRESENTATION_NATIVE_BINDINGS) & set(roles["checked_source"]))
+        snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+        _, _, files = CHECKER.captured_driver(entry, snapshots)
+        self.assertNotIn(b"derive", files["output.rs"])
+        self.assertIn(b"presentation_verdict", files["api_acceptance.rs"])
+        for path, before in (
+            ("crates/sail-api/src/evidence.rs", b"crate::acceptance::present_function_verdict(report)"),
+            ("crates/sail-mcp/src/summary.rs", b"sail_api::acceptance::present_function_verdict(f)"),
+            ("crates/sail-mcp/src/lib.rs", b"mod summary;"),
+        ):
+            self.assertEqual(snapshots[path].count(before), 1)
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, snapshots[path].replace(before, b"unreviewed_presentation"))
+
     def test_replay_receipts_and_controller_have_only_checked_private_construction(self):
         paths = {path for component in CHECKER.COMPONENTS
             for path in CHECKER.dependency_paths(component)}

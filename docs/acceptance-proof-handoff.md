@@ -236,6 +236,16 @@ framing decision is renumbered to 0084.
 
 ## Resume and acceptance
 
+The presentation candidate source-shares MCP/API provisional override through
+actual borrowed enum fields and `FunctionReport` without assuming projected
+enums are Copy. It preserves all eight combinations and the MCP tier path.
+Authority controls now total 116 (107 inherited plus nine); actual whole-root
+positive/function discovery remains pending with the prior inventory unchanged.
+Native MCP/API callers are hash-bound source, not stock-compiled bodies.
+This does not establish request/process/cache authority or full #376 shaping
+and serialization correspondence. See the
+[presentation boundary](design/acceptance-authority.md#success-presentation-call-graph).
+
 The served-byte replay candidate appends `query_replay.rs`, actual comparison
 history refinement functions and a same-owner stdout completion join. Query now
 has 156 ordinary controls (the 134 option/inherited controls plus 22 replay

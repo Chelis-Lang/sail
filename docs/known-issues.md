@@ -138,6 +138,11 @@ completion join. Qualification remains pending. Its statistics shape exception
 does not establish arbitrary statistics equivalence, truthful origins or numeric
 effort/reason semantics; these remain part of #371/#372.
 
+The shared [MCP/API presentation override](design/acceptance-authority.md#success-presentation-call-graph)
+preserves existing verdict/establishment behavior. Proof/native qualification
+is pending; the helper establishes no request/process/cache authority and
+does not close #376's remaining shaping and serialization joins.
+
 ## Performance
 
 Current numbers are in [performance](performance.md).

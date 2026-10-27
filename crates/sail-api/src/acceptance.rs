@@ -4,6 +4,8 @@
 //! flags. The caller with the independently resolved request must additionally
 //! establish [`requested_coverage`](crate::acceptance::requested_coverage). Currentness remains an input property:
 //! a fresh failed verification can be Current without authorizing a repair.
+//! The presentation helpers preserve the provisional override over raw fields;
+//! they do not establish request, process, cache or whole-proof authority.
 #![allow(
     clippy::redundant_as_str,
     reason = "The pinned stock Verus specifies str::as_bytes, not String::as_bytes."
@@ -34,6 +36,45 @@ use crate::project::{Currentness, EngineIdentity, ProjectResult, ResolvedRequest
 use vstd::prelude::*;
 #[cfg(sail_verus)]
 use vstd::string::StringSliceAdditionalSpecFns;
+
+sail_spec! {
+    /// Presentation only; confirmed establishment does not itself prove a verdict.
+    pub open spec fn presentation_value(verdict: &VerdictName, establishment: &EstablishmentName) -> VerdictName {
+        if *establishment is Provisional { VerdictName::Provisional } else { *verdict }
+    }
+}
+
+sail_verified! {
+    /// Provisional establishment always presents provisional; confirmed
+    /// establishment preserves the supplied verdict without granting authority.
+    pub fn presentation_verdict(verdict: &VerdictName, establishment: &EstablishmentName) -> (out: VerdictName)
+        requires(true)
+        ensures(out == presentation_value(verdict,establishment),
+            *establishment is Provisional ==> out is Provisional,
+            *establishment is Confirmed ==> out == *verdict)
+    {
+        match establishment {
+            EstablishmentName::Provisional => VerdictName::Provisional,
+            EstablishmentName::Confirmed => match verdict {
+                VerdictName::Verified => VerdictName::Verified,
+                VerdictName::Failed => VerdictName::Failed,
+                VerdictName::Unknown => VerdictName::Unknown,
+                VerdictName::Provisional => VerdictName::Provisional,
+            },
+        }
+    }
+}
+
+sail_verified! {
+    /// Applies the same presentation rule to the actual report's borrowed fields.
+    /// Evidence tiers, provenance and all other report fields are untouched.
+    pub fn present_function_verdict(report: &FunctionReport) -> (out: VerdictName)
+        requires(true)
+        ensures(out == presentation_value(&report.verdict,&report.establishment),
+            report.establishment is Provisional ==> out is Provisional,
+            report.establishment is Confirmed ==> out == report.verdict)
+    { presentation_verdict(&report.verdict,&report.establishment) }
+}
 
 sail_code! {
     /// Checked immutable report authority, bound to the actual report borrow.

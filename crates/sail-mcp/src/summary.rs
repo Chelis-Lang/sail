@@ -7,9 +7,7 @@
 
 use std::fmt::Write as _;
 
-use sail_api::output::{
-    EstablishmentName, EvidenceTierName, FunctionReport, OutcomeName, Report, VerdictName,
-};
+use sail_api::output::{EvidenceTierName, FunctionReport, OutcomeName, Report, VerdictName};
 
 /// How many names a summary line lists before eliding the rest.
 const MAX_NAMES: usize = 8;
@@ -18,11 +16,7 @@ const MAX_NAMES: usize = 8;
 /// provisional.
 #[must_use]
 pub fn effective_verdict(f: &FunctionReport) -> VerdictName {
-    if f.establishment == EstablishmentName::Provisional {
-        VerdictName::Provisional
-    } else {
-        f.verdict
-    }
+    sail_api::acceptance::present_function_verdict(f)
 }
 
 /// The evidence tier to present: the report's, for a presented verdict
@@ -234,6 +228,7 @@ pub fn report(r: &Report) -> String {
 mod tests {
     use super::*;
     use crate::store::tests::{function, report as make};
+    use sail_api::output::EstablishmentName;
 
     #[test]
     fn provisional_is_never_counted_as_verified() {
@@ -253,6 +248,31 @@ mod tests {
         assert!(text.contains("Provisional, NOT verified"), "{text}");
         assert!(text.contains("Failed: demo::b."), "{text}");
         assert!(function_line(&r.crates[0].functions[2]).contains("NOT verified"));
+    }
+
+    #[test]
+    fn shared_presentation_preserves_all_existing_field_combinations() {
+        for verdict in [
+            VerdictName::Verified,
+            VerdictName::Failed,
+            VerdictName::Unknown,
+            VerdictName::Provisional,
+        ] {
+            for establishment in [EstablishmentName::Provisional, EstablishmentName::Confirmed] {
+                let mut record = function("demo::fields", verdict);
+                record.establishment = establishment;
+                let expected = if establishment == EstablishmentName::Provisional {
+                    VerdictName::Provisional
+                } else {
+                    verdict
+                };
+                assert_eq!(effective_verdict(&record), expected);
+                assert_eq!(
+                    sail_api::acceptance::present_function_verdict(&record),
+                    expected
+                );
+            }
+        }
     }
 
     #[test]

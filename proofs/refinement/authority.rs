@@ -10,6 +10,33 @@ use crate::authority::CompletionPolicy;
 
 verus! {
 
+/// Fresh enum values witness both sides of the presentation rule without Copy
+/// derives or an assumed positive report/solver observation.
+pub fn presentation_cases() -> (passed: bool)
+    ensures passed,
+{
+    matches!(acceptance::presentation_verdict(&VerdictName::Verified,&EstablishmentName::Provisional),VerdictName::Provisional)
+        && matches!(acceptance::presentation_verdict(&VerdictName::Verified,&EstablishmentName::Confirmed),VerdictName::Verified)
+        && matches!(acceptance::presentation_verdict(&VerdictName::Failed,&EstablishmentName::Confirmed),VerdictName::Failed)
+        && matches!(acceptance::presentation_verdict(&VerdictName::Unknown,&EstablishmentName::Confirmed),VerdictName::Unknown)
+        && matches!(acceptance::presentation_verdict(&VerdictName::Provisional,&EstablishmentName::Confirmed),VerdictName::Provisional)
+        && matches!(acceptance::presentation_verdict(&VerdictName::Failed,&EstablishmentName::Provisional),VerdictName::Provisional)
+        && matches!(acceptance::presentation_verdict(&VerdictName::Unknown,&EstablishmentName::Provisional),VerdictName::Provisional)
+        && matches!(acceptance::presentation_verdict(&VerdictName::Provisional,&EstablishmentName::Provisional),VerdictName::Provisional)
+}
+
+/// Construct the two relevant states in an actual FunctionReport. No other
+/// record field or authority premise is required to exercise its wrapper.
+pub fn presentation_report_cases(mut report: FunctionReport) -> (passed: bool)
+    ensures passed,
+{
+    report.verdict = VerdictName::Verified;
+    report.establishment = EstablishmentName::Provisional;
+    if !matches!(acceptance::present_function_verdict(&report),VerdictName::Provisional) { return false; }
+    report.establishment = EstablishmentName::Confirmed;
+    matches!(acceptance::present_function_verdict(&report),VerdictName::Verified)
+}
+
 /// The actual retained guard and readback classifier compose without allowing
 /// a Current frame to upgrade a missing or mismatched original request.
 pub fn retained_current_frame_refines_request(project: &mut crate::project::ProjectResult,

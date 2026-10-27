@@ -3100,7 +3100,11 @@
         "crates/sail-api/src/project.rs",
         "crates/sail-api/src/jobs.rs",
         "crates/sail-api/src/repair.rs",
-        "crates/sail-daemon/src/jobs/store.rs"
+        "crates/sail-daemon/src/jobs/store.rs",
+        "crates/sail-api/src/evidence.rs",
+        "crates/sail-mcp/src/summary.rs",
+        "crates/sail-mcp/src/lib.rs",
+        "crates/sail-mcp/Cargo.toml"
       ],
       "verified": 498,
       "functions": [
@@ -4625,6 +4629,60 @@
           "source": "crates/sail-api/src/acceptance.rs",
           "before": "    { admitted.project }",
           "after": "    { let mut project = admitted.project; project.run_id = admitted.original.run_id.clone(); project }"
+        },
+        {
+          "name": "presentation-provisional-override",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "EstablishmentName::Provisional => VerdictName::Provisional,",
+          "after": "EstablishmentName::Provisional => VerdictName::Verified,"
+        },
+        {
+          "name": "presentation-confirmed-verified",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "VerdictName::Verified => VerdictName::Verified,",
+          "after": "VerdictName::Verified => VerdictName::Unknown,"
+        },
+        {
+          "name": "presentation-confirmed-failed",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "VerdictName::Failed => VerdictName::Failed,",
+          "after": "VerdictName::Failed => VerdictName::Verified,"
+        },
+        {
+          "name": "presentation-confirmed-unknown",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "VerdictName::Unknown => VerdictName::Unknown,",
+          "after": "VerdictName::Unknown => VerdictName::Verified,"
+        },
+        {
+          "name": "presentation-confirmed-provisional",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "VerdictName::Provisional => VerdictName::Provisional,",
+          "after": "VerdictName::Provisional => VerdictName::Verified,"
+        },
+        {
+          "name": "presentation-report-original-establishment",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ presentation_verdict(&report.verdict,&report.establishment) }",
+          "after": "{ presentation_verdict(&report.verdict,&EstablishmentName::Confirmed) }"
+        },
+        {
+          "name": "presentation-report-original-verdict",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "{ presentation_verdict(&report.verdict,&report.establishment) }",
+          "after": "{ presentation_verdict(&VerdictName::Verified,&report.establishment) }"
+        },
+        {
+          "name": "presentation-full-fields-always-provisional",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": "\n        match establishment {\n            EstablishmentName::Provisional => VerdictName::Provisional,\n            EstablishmentName::Confirmed => match verdict {\n                VerdictName::Verified => VerdictName::Verified,\n                VerdictName::Failed => VerdictName::Failed,\n                VerdictName::Unknown => VerdictName::Unknown,\n                VerdictName::Provisional => VerdictName::Provisional,\n            },\n        }\n    ",
+          "after": " VerdictName::Provisional "
+        },
+        {
+          "name": "presentation-full-report-always-provisional",
+          "source": "crates/sail-api/src/acceptance.rs",
+          "before": " presentation_verdict(&report.verdict,&report.establishment) ",
+          "after": " VerdictName::Provisional "
         }
       ]
     }
