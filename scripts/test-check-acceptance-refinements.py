@@ -230,6 +230,7 @@ class SourceCaptureTests(unittest.TestCase):
         for before, after in (
             ("        self.clock.exhaust();", "        self.clock = Clock::start();"),
             ("        self.slots.clear();", "        *self = Self::default();"),
+            ("        self.accounting.clear();", "        self.accounting = Accounting::empty();"),
             ("                inner: Arc::clone(endpoint),", "                inner: Arc::new(Mutex::new(Inner::default())),"),
             ("struct MemoryEndpoint {", "pub struct MemoryEndpoint {"),
             ("    queued: Prepared<MemoryEndpoint, Effort>,", "    pub queued: Prepared<MemoryEndpoint, Effort>,"),
@@ -249,6 +250,7 @@ class SourceCaptureTests(unittest.TestCase):
         original = {path: (ROOT / path).read_bytes() for path in paths}
         for before, after in (
             (b"        last: u64,", b"        pub last: u64,"),
+            (b"        bytes: u64,", b"        pub bytes: u64,"),
             (b"        generation: u64,\n    }", b"        pub generation: u64,\n    }"),
             (b"    pub struct Clock {", b"    #[derive(Default)]\n    pub struct Clock {"),
             (b"    pub struct Ticket {", b"    #[derive(Default)]\n    pub struct Ticket {"),

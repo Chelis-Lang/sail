@@ -25,6 +25,14 @@
       "after": "                let value = if candidate.value.effort.is_none() {\n                    std::sync::Arc::new(CandidateValue { mode: candidate.value.mode.clone(),\n                        reply: candidate.value.reply.clone(), effort: None })\n                } else { std::sync::Arc::clone(&candidate.value) };",
       "native_test": "same_arc_and_equal_bytes_do_not_reuse_an_insertion",
       "scope": "ordinary native test failure only; no Stock negative credit"
+    },
+    {
+      "name": "native-candidate-owned-accounting-omitted",
+      "source": "crates/sail-cache/src/memory.rs",
+      "before": "match self.accounting.apply(update, cost) {",
+      "after": "match update {",
+      "native_test": "actual_owned_accounting_preserves_stale_replacement_and_retirement",
+      "scope": "ordinary native test failure only; no Stock negative credit; source capture may first refuse"
     }
   ]
 }

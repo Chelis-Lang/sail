@@ -30,6 +30,16 @@ fix and an unrun native regression ([#478](https://github.com/Chelis-Lang/sail/i
 The [owning record](validation/cache-candidate-refinement.md) separates these
 limits from future production and solver-origin proofs.
 
+The first generation candidate `37a38135` passes its 12+62 source checks but
+stops before proof/native tests: its constructive witness calls an executable
+endpoint getter in ghost mode, and two explicit-refusal methods trigger strict
+Clippy's question-mark lint
+([#483](https://github.com/Chelis-Lang/sail/issues/483)). Source corrections retain
+the actual endpoint borrow and checked runtime bodies; corrected-source Stock
+and native qualification remain pending in the
+[candidate record](validation/cache-candidate-refinement.md). This candidate-only
+integration stop earns no new proof or ordinary-negative credit.
+
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
 read path correctly projects absent freshness to Unknown

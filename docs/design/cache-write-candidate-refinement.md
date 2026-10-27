@@ -157,12 +157,45 @@ missing operation/model or failed witness is an unsupported prerequisite,
 not a qualified ordinary negative or proof of the candidate-write theorem.
 The probe is not selected by the canonical component drivers.
 
-The unsupported pointer proof is retained as history, and the native Arc guard
-stays intact until its coherent replacement is wired. No conditional
+The unsupported pointer proof is retained as history. The coherent source
+candidate replaces the native Arc guard in its actual callers. No conditional
 `OwnerIdentity` trait is added. The replacement is an actual insertion-issued
 generation guard, not an assertion that pointer identity is now supported.
 The actual map lookup with the native key, mutable slot access, locking and
 bookkeeping also need their real joins before full writer coverage can be claimed.
+
+## Actual owned accounting transition
+
+The next source slice replaces the actual `Inner.bytes` and `Inner.pending`
+fields with a private-field shared `Accounting` record. There is no parallel
+ledger. Installation reserves both additions with overflow refusal before either
+counter changes. Native disablement clears this record while preserving the
+separate exhausted lifetime clock. Eviction and the reported counters read the
+same actual record.
+
+Settlement, stale-read removal and administrative removal all consume the actual
+owned map entry through `EntryUpdate`. Before shared accounting, native `apply`
+computes its existing charge from that same owned slot. `Accounting::apply`
+returns the exact original transition and payload: unchanged/stale entries keep
+both counters; a written pending entry only decrements pending; retirement
+subtracts its supplied charge and decrements pending only for a pending slot.
+The existing saturating subtraction behavior is preserved. The native caller
+then restores that returned entry or removes its actual LRU ordinal.
+
+This theorem covers **declared, supplied-charge accounting**. The native cost
+function, map membership/uniqueness, locking, complete LRU relation and physical
+endpoint correspondence remain distinct joins. It does not prove that an
+arbitrary supplied cost equals allocator usage or global map occupancy. Counter
+initialization is private to a fresh native `Inner`; source policy rejects
+reassignment or unchecked mutable escape. The record has exactly the same two
+u64 counter fields as before and introduces no retained allocation.
+
+Two nonempty constructive operations exercise the actual shared counter path,
+including stale replacement, written/exists/failed outcomes, retirement,
+overflow refusal and clear. Thirteen additional full-envelope runtime controls
+retain all existing control descriptors; the native omission control exercises
+the actual owned-map/counter caller. These source additions remain unqualified
+until full-root Stock and native execution succeed.
 
 ## Controls and remaining obligations
 
