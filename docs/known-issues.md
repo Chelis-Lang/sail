@@ -43,6 +43,10 @@ integration stop earns no new proof or ordinary-negative credit. The subsequent
 then native Clippy stops at the shared accounting body's explicit subtraction
 style. Its narrow documented allowance retains the proved body; native tests and
 ordinary negatives remain unrun.
+The `a6e5208e` native preflight clears production compilation and stops at one
+test-only owned-handle style lint; its local allowance preserves the actual
+issued-handle fixture and all assertions. Fresh corrected-head qualification
+remains required.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

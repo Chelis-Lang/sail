@@ -459,6 +459,10 @@ mod tests {
         pending
     }
 
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "The fixture consumes its original issued handle just as the actual queued operation does; assertions and endpoint dispatch remain unchanged."
+    )]
     fn settle(pending: Held<MemoryEndpoint>, stamp: Option<FileStamp>) {
         let result: std::io::Result<PutOutcome> = Ok(match stamp {
             Some(stamp) => PutOutcome::Written(stamp),
