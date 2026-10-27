@@ -34,8 +34,19 @@ source bundle. Source, image and pinned runtime final checks pass. Its ordinary
 reference-order guidance and final-iterator snapshot syntax are corrected without
 changing executable bodies, contract meaning, controls or resources.
 
+The `8b62f6fe` attempt is retained at
+`experiments/2026-10-27/acceptance-request-domain-8b62f6fe-native.tgz`, SHA-256
+`01261089cc653915214be6999d52678e4df4ccddb4dcf9119ea147443e3b482e`
+(7,572,353 bytes), with authenticated PUT/GET agreement and complete source bundle.
+The next source increment strengthens actual argument-copy summaries to exact
+sequence equality and adds checked projection/push facts, the existing standard
+iterator-order interpretation and scoped literal/recursive-definition guidance.
+Every runtime guard, existing contract condition, control and default resource
+limit remains; fresh complete-root and native qualification is required.
+
 | Frozen source | Actual result | Limits |
 |---|---|---|
+| `8b62f6fe` request/domain candidate | Source suites pass, including all 66 production tests. Query 471/0 (821 functions) and inputs 308/0 (538) pass again. Whole authority reaches verification: 541 verified and 14 errors, including resource exhaustion in four new refusal witnesses; 20 diagnostics total. Controller finishes in 474.190 s with final source/image/runtime checks | Remaining failures concern argument/literal projection, finite normalization witnesses, reference-order interpretation and the real dictionary projection loop. Partial authority output supplies no qualified inventory or negative credit; native compilation and request tests are unrun |
 | `c9c971ab` request/domain candidate | Native source suites pass, including all 66 production source tests. Complete query 471/0 (821 functions) and inputs 308/0 (538) pass and retain every earlier function. Whole authority stops after 2.802 s at two VIR errors; overall controller finishes in 438.226 s with final source/image/runtime checks | The zero-argument broadcast lemma needs a broadcast-use directive, and final iterator state needs explicit dereference before its spec method. Authority has no proof credit or discovered inventory; native compilation, request tests and negative controls are unrun |
 | `23ccd443` request/domain candidate | Native model source guards pass; production source guards run 66 tests with one failure and five errors. Controller stops after 36.687 s; final source-byte, image and pinned runtime checks pass | Three confirmed capture wiring defects (#479): API library's second native binding stayed stale, CLI dependency order disagrees with the declared closure, and the assembly fixture omits the new protected key. All Stock roots, Rust compilation and native request tests are unrun; correction preserves every source/control and adds the real key's public-field negative |
 | `6e239d21` native workspace | 1,278 tests run: 1,276 pass, two fail, 57 skip. The baseline view fixture incorrectly expects whole authority after unavailable freshness has projected its original Current result to Unknown (#464) | Solver unrun. The fixture correction keeps the source-valid original pair's whole-positive assertion separately and explicitly checks the retrieved Unknown/data-only pair; the separate runner failure remains under investigation and fresh combined qualification is required |

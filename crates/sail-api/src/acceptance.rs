@@ -93,6 +93,16 @@ sail_spec! {
             && string_bytes(&request.repair_kind) == vstd::utf8::encode_utf8(source.repair_kind@)
             && request.targets@ == source.targets@
     }
+
+    /// Exposes the actual byte projection's length and indexed values without
+    /// changing the original sequence or assuming String-view injectivity.
+    pub proof fn argument_byte_projection_properties(arguments: Seq<String>)
+        ensures arguments.map_values(|s: String| string_bytes(&s)).len() == arguments.len(),
+            forall |i: int| 0 <= i < arguments.len() ==>
+                arguments.map_values(|s: String| string_bytes(&s))[i] == string_bytes(&arguments[i]),
+    {
+        broadcast use vstd::seq::group_seq_axioms;
+    }
 }
 
 sail_verified! {
@@ -116,12 +126,13 @@ sail_verified! {
     /// This copies data; positive scope/currentness authority is checked later.
     pub fn construct_resolved_request(source: RequestConstruction<'_>) -> (request: ResolvedRequest)
         requires(true)
-        ensures(request_construction_matches(&source, &request))
+        ensures(request_construction_matches(&source, &request), request.args@ == source.arguments@)
     {
         let mut arguments: Vec<String> = Vec::with_capacity(source.arguments.len());
         let mut i = 0usize;
         sail_while! { (i < source.arguments.len())
             invariant(i <= source.arguments.len(), arguments.len() == i,
+                forall |j: int| 0 <= j < i ==> arguments@[j] == source.arguments@[j],
                 forall |j: int| 0 <= j < i ==> string_bytes(&arguments@[j])
                     == string_bytes(&source.arguments@[j]))
             decreases(source.arguments.len() - i)
@@ -129,6 +140,11 @@ sail_verified! {
                 arguments.push(source.arguments[i].clone());
                 i += 1;
             }
+        }
+        sail_proof! {
+            assert(arguments@ =~= source.arguments@);
+            assert(arguments@.map_values(|s: String| string_bytes(&s))
+                =~= source.arguments@.map_values(|s: String| string_bytes(&s)));
         }
         let function = match source.function { Some(value) => Some(value.to_owned()), None => None };
         let repair_target = match source.repair_target { Some(value) => Some(value.to_owned()), None => None };
@@ -157,6 +173,13 @@ sail_verified! {
         ensures(string_bytes(&identity.name) == b"interactive"@,
             identity.manifest_sha256 == *manifest)
     {
+        sail_proof! {
+            reveal_strlit("interactive");
+            reveal_byteslit(b"interactive");
+            assert(vstd::string::is_ascii("interactive"));
+            vstd::string::is_ascii_spec_bytes("interactive");
+            assert("interactive".spec_bytes() =~= b"interactive"@);
+        }
         EngineIdentity { name: "interactive".to_owned(), manifest_sha256: manifest.clone() }
     }
 }
@@ -777,6 +800,28 @@ sail_spec! {
         exists |i: int| 0 <= i < args.len()
             && (string_bytes(&args[i]) == b"--workspace"@ || string_bytes(&args[i]) == b"--all"@)
             && forall |j: int| 0 <= j < i ==> string_bytes(&args[j]) != b"--"@
+    }
+
+    /// The actual Cargo-prefix rule cannot select a workspace after an initial
+    /// separator. This says nothing about Cargo option/value interpretation.
+    pub proof fn initial_separator_excludes_workspace(args: Seq<String>)
+        requires args.len() > 0, string_bytes(&args[0]) == b"--"@,
+        ensures !cargo_workspace_requested(args),
+    {
+        reveal_byteslit(b"--");
+        reveal_byteslit(b"--workspace");
+        reveal_byteslit(b"--all");
+        if cargo_workspace_requested(args) {
+            let i = choose |i: int| 0 <= i < args.len()
+                && (string_bytes(&args[i]) == b"--workspace"@ || string_bytes(&args[i]) == b"--all"@)
+                && forall |j: int| 0 <= j < i ==> string_bytes(&args[j]) != b"--"@;
+            if i == 0 {
+                assert(string_bytes(&args[i]) != b"--workspace"@ && string_bytes(&args[i]) != b"--all"@);
+            } else {
+                assert(0 <= 0 < i);
+                assert(string_bytes(&args[0]) != b"--"@);
+            }
+        }
     }
 
     pub open spec fn repair_function_at(r: &ResolvedRequest, p: &ProjectResult,

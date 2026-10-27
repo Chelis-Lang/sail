@@ -24,6 +24,7 @@ pub fn forwarded_workspace_is_not_selected(arguments: &[String]) -> (selected: b
         string_bytes(&arguments@[1]) == b"--workspace"@,
     ensures !selected,
 {
+    proof { acceptance::initial_separator_excludes_workspace(arguments@); }
     acceptance::cargo_workspace_selected(arguments)
 }
 
@@ -33,6 +34,7 @@ pub fn forwarded_all_is_not_selected(arguments: &[String]) -> (selected: bool)
         string_bytes(&arguments@[1]) == b"--all"@,
     ensures !selected,
 {
+    proof { acceptance::initial_separator_excludes_workspace(arguments@); }
     acceptance::cargo_workspace_selected(arguments)
 }
 
@@ -73,6 +75,8 @@ pub fn original_dictionary_compile_only_refuses(header: crate::request_targets::
     let Some(request) = crate::request_targets::construct_original_request(header, source)
         else { return false; };
     proof {
+        reveal_byteslit(b"--");
+        reveal_byteslit(b"--no-verify");
         assert(string_bytes(&request.args@[0]) == b"--"@);
         assert(string_bytes(&request.args@[1]) == b"--no-verify"@);
         assert(acceptance::verification_disabled(request.args@));
@@ -92,6 +96,8 @@ pub fn original_dictionary_partial_refuses(header: crate::request_targets::Origi
     let Some(request) = crate::request_targets::construct_original_request(header, source)
         else { return false; };
     proof {
+        reveal_byteslit(b"--");
+        reveal_byteslit(b"--verify-module=selected");
         assert(string_bytes(&request.args@[0]) == b"--"@);
         assert(string_bytes(&request.args@[1]) == b"--verify-module=selected"@);
         assert(acceptance::partial_command(request.args@));
@@ -120,6 +126,8 @@ pub fn constructed_compile_only_refuses(source: acceptance::RequestConstruction<
 {
     let request = acceptance::construct_resolved_request(source);
     proof {
+        reveal_byteslit(b"--");
+        reveal_byteslit(b"--no-verify");
         assert(string_bytes(&request.args@[0]) == b"--"@);
         assert(string_bytes(&request.args@[1]) == b"--no-verify"@);
         assert(acceptance::verification_disabled(request.args@));
@@ -138,6 +146,8 @@ pub fn constructed_partial_refuses(source: acceptance::RequestConstruction<'_>,
 {
     let request = acceptance::construct_resolved_request(source);
     proof {
+        reveal_byteslit(b"--");
+        reveal_byteslit(b"--verify-module=selected");
         assert(string_bytes(&request.args@[0]) == b"--"@);
         assert(string_bytes(&request.args@[1]) == b"--verify-module=selected"@);
         assert(acceptance::partial_command(request.args@));
@@ -152,7 +162,16 @@ pub fn normalized_original_submission(arguments: &[String]) -> (actual: Vec<Stri
     ensures actual@.len() == 1,
         string_bytes(&actual@[0]) == string_bytes(&arguments@[0]),
 {
-    acceptance::normalize_submitted_arguments(arguments)
+    let actual = acceptance::normalize_submitted_arguments(arguments);
+    proof {
+        reveal_byteslit(b"--");
+        reveal_byteslit(b"--incremental");
+        reveal_with_fuel(acceptance::normalized_arguments, 3);
+        acceptance::argument_byte_projection_properties(actual@);
+        assert(acceptance::normalized_arguments(arguments@, arguments@.len())
+            == seq![string_bytes(&arguments@[0])]);
+    }
+    actual
 }
 
 /// Removal is exactly prefix-scoped: the same bytes after `--` remain present.
@@ -164,7 +183,16 @@ pub fn forwarded_incremental_is_retained(arguments: &[String]) -> (actual: Vec<S
         string_bytes(&actual@[0]) == b"--"@,
         string_bytes(&actual@[1]) == b"--incremental"@,
 {
-    acceptance::normalize_submitted_arguments(arguments)
+    let actual = acceptance::normalize_submitted_arguments(arguments);
+    proof {
+        reveal_byteslit(b"--");
+        reveal_byteslit(b"--incremental");
+        reveal_with_fuel(acceptance::normalized_arguments, 3);
+        acceptance::argument_byte_projection_properties(actual@);
+        assert(acceptance::normalized_arguments(arguments@, arguments@.len())
+            == seq![b"--"@, b"--incremental"@]);
+    }
+    actual
 }
 
 /// Prefix removal cannot erase a later genuine argument or create a selector.
@@ -175,7 +203,16 @@ pub fn prefix_incremental_only_is_removed(arguments: &[String]) -> (actual: Vec<
     ensures actual@.len() == 1,
         string_bytes(&actual@[0]) == string_bytes(&arguments@[1]),
 {
-    acceptance::normalize_submitted_arguments(arguments)
+    let actual = acceptance::normalize_submitted_arguments(arguments);
+    proof {
+        reveal_byteslit(b"--");
+        reveal_byteslit(b"--incremental");
+        reveal_with_fuel(acceptance::normalized_arguments, 3);
+        acceptance::argument_byte_projection_properties(actual@);
+        assert(acceptance::normalized_arguments(arguments@, arguments@.len())
+            == seq![string_bytes(&arguments@[1])]);
+    }
+    actual
 }
 
 /// A nonempty declared whole request reaches the real optional facet while

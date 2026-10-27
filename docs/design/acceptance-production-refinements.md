@@ -125,7 +125,7 @@ The candidate registers 22 mandatory ordinary mutations over the actual
 construction, normalization and workspace-prefix bodies. Their changed source
 spans are inside the named executable functions and outside their contracts and
 erased proof blocks; original loop scaffolding remains. All 397 inherited
-mutation objects remain unchanged. Actual verifier/function counts are not
+controls remain required. Actual verifier/function counts are not
 guessed: the older inventories remain until new complete-root discovery, and
 every new mutation still needs an ordinary failure at the full scope. The
 separate known `4c43e5a9` query control 151 selector failure is corrected by
@@ -244,7 +244,7 @@ feature tests, target kinds and option/value-state handling are preserved.
 Their JSON decoding and upstream selection remain native and unproved. Native
 differential fixtures live in separate test modules, outside the captured proof
 bodies. Closed canonical module/import/spec-trait inventories include both
-actual modules and 28 additional executable mutation controls; complete-root
+actual modules and 29 additional executable mutation controls; complete-root
 function/count discovery, ordinary negatives, native checks and cost measurement
 remain pending. Older source hashes and numeric support probes cannot qualify
 this join.
@@ -269,6 +269,19 @@ lemma and an undereferenced final iterator snapshot before a spec-method call.
 The correction uses the standard broadcast directive and explicit snapshot
 dereference. Runtime bodies and the relations they must prove stay unchanged;
 the complete authority root and native stages still need qualification.
+
+The next whole-root run reaches actual authority verification and identifies
+missing argument-projection, literal, iterator-order and vector-push guidance.
+The constructor now additionally exposes exact original argument sequence
+equality, proved by its existing clone loop; the header/dictionary join carries
+that fact directly to later scope checks. Checked mathematical helpers frame
+the actual row push and byte projection. Standard-library order interpretation
+and compiler literal reveals expose existing meanings without adding an order,
+digest-injection, metadata-completeness or whole-compiler assumption. The finite
+normalization and compile-only/partial witnesses retain their original claims
+and default proof resources. No runtime body or guard changes; the
+[owning record](../validation/acceptance-boundary-refinements.md) retains the
+failed run and remaining qualification.
 
 Native path rendering still uses the old `to_string_lossy` operation and the
 independent raw-path binding, including invalid-byte refusal. Cargo metadata
