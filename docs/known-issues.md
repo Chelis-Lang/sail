@@ -1,5 +1,7 @@
 # Known issues and limits
 
+- [#496](https://github.com/Chelis-Lang/sail/issues/496): combined runner `eaf51208` drops three parser import-binding hash entries during table reconciliation; existing native source tests catch the lost hidden-import refusal. The correction restores the exact parent-table union. Canonical source/Stock barriers remain independent; no false proof is demonstrated.
+
 - [#495](https://github.com/Chelis-Lang/sail/issues/495): first parser/cache/service composition `eaf51208` preserves both dependency sets but orders them differently from the fixed driver. The native source preflight correctly refuses before Stock; the correction retains the exact set in canonical order, without weakening closure checking.
 
 - [#493](https://github.com/Chelis-Lang/sail/issues/493): `68b84947` human-context spec accessor omits its two retained lifetimes, so direct Stock compilation refuses before proof checking. Native strict Clippy and all 15 focused tests pass because Cargo erases that spec. The follow-up names both lifetimes; complete requalification remains pending.
