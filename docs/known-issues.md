@@ -1,5 +1,13 @@
 # Known issues and limits
 
+- [#513](https://github.com/Chelis-Lang/sail/issues/513): the full native source
+  gate at `2c2106d8` retains an obsolete shim advancement selector after the
+  checked OutputBatch migration. The strict unique-match assertion refuses it;
+  79/80 production source tests pass and native Rust/solver steps remain unrun.
+  The correction checks the real native settlement handover and retains the
+  required shared single-cursor-advance fault. Its focused local source test
+  passes; full native qualification is still required.
+
 - [#508](https://github.com/Chelis-Lang/sail/issues/508): a proof-only false
   assertion plus an erased empty statement could masquerade as a runtime
   mutation. The correction erases every consecutive empty statement after an

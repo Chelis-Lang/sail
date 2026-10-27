@@ -1035,7 +1035,9 @@ class SourceCaptureTests(unittest.TestCase):
             (CHECKER.KEY_NATIVE, b"Arc::ptr_eq(&self.owner, &command.owner)", b"true"),
             (CHECKER.KEY_NATIVE, b".validate_bindings(&checkpoints, &frames, &order, &inverse)", b".validate_bindings(&checkpoints, &frames, &inverse, &order)"),
             ("crates/sail-shim/src/cached.rs", b"    publication.validate_pairs(&pairs)\n}", b"    true\n}"),
-            ("crates/sail-shim/src/cached.rs", b"let fresh = all.advance_replay();", b"let fresh = true;"),
+            ("crates/sail-shim/src/cached.rs",
+                b"if !batch.settle_current(&mut pairer.pending, payload, &SolverOwnerIdentity)",
+                b"if false"),
             ("crates/sail-shim/src/cached.rs", b"self.input.charge(bytes.len())", b"true"),
         ):
             original = (ROOT / path).read_bytes()
@@ -1043,6 +1045,10 @@ class SourceCaptureTests(unittest.TestCase):
             self.assertEqual(original.count(before), 1)
             with self.subTest(path=path, before=before), self.assertRaises(CHECKER.Refusal):
                 CHECKER.compiled_subset(path, original.replace(before, after, 1))
+
+        # The advancement itself now lives in the checked owned operation;
+        # its original runtime fault must remain in the required proof registry.
+        self.assertIn("output-order-settle-single-cursor-advance", CHECKER.REQUIRED_CONTROLS["query"])
 
     def test_checkpoint_ghost_import_does_not_permit_alternate_bindings(self):
         original = (ROOT / CHECKER.CHECKPOINT_CORE).read_bytes()
