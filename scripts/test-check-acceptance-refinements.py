@@ -133,6 +133,12 @@ class SourceCaptureTests(unittest.TestCase):
             with self.subTest(after=after), self.assertRaises(CHECKER.Refusal):
                 CHECKER.validate_assembly(snapshots)
 
+    def test_full_body_control_cannot_remove_checked_loop_syntax(self):
+        original = b"{ sail_while! { (i < n) invariant(i <= n) { i += 1; } } true }"
+        CHECKER.check_control_loops(original, original[:-6] + b"false }")
+        with self.assertRaisesRegex(CHECKER.Refusal, "checked loop syntax"):
+            CHECKER.check_control_loops(original, b"{ false }")
+
     def test_report_does_not_promote_bound_input_adapters_to_proved_bodies(self):
         for component, definition in CHECKER.COMPONENTS.items():
             entry = {"dependencies": CHECKER.dependency_paths(component)}

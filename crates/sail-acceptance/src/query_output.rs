@@ -134,6 +134,7 @@ sail_code! {
                 if self.eof { self.healthy=false; }
                 self.bytes.extend_from_slice(bytes);
                 sail_proof! {
+                    assert(self.bytes@ == old(self).view() + bytes@);
                     assert forall|i: int| 0 <= i < self.ends@.len() implies
                         0 <= frame_start(self.ends@,i) < self.ends@[i] <= self.bytes@.len()
                         && crate::query::response_shape(self.bytes@.subrange(frame_start(self.ends@,i),self.ends@[i] as int)) by {

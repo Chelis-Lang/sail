@@ -4,6 +4,12 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The full production runner refuses loop-dropping negative controls
+([#454](https://github.com/Chelis-Lang/sail/issues/454)). The correction preserves
+complete bodies and loop obligations while changing only acceptance exits,
+and restores qualified query mutations omitted during integration. No count
+check is relaxed; fresh ordinary-control qualification remains pending.
+
 ## Owned query publication control qualification
 
 Whole positive discovery at `f8d61408` passes query 431/0, inputs 308/0 and
