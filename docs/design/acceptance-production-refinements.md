@@ -208,6 +208,18 @@ The ordinary native fixture compares insertion, duplicate handling and complete
 projection with the original String-tuple set. These bodies, their contracts
 and the fixture remain unqualified and unselected by managed execution.
 
+The same candidate adds `OriginalRequestHeader`, a borrowed construction input
+without target rows, and `construct_original_request(header, &OriginalTargets)`.
+Its body projects the actual dictionary and feeds only those rows to the actual
+existing request constructor. Its checked postcondition combines the existing
+original-header relation with actual dictionary coverage, cardinality, uniqueness
+and order. `ResolvedRequest` remains the single resulting request type; the
+borrowed header carries no authority. A nonempty ordinary fixture retains every
+header/engine/repair field and compile-only arguments across two actual original
+targets. The operation, fixture and eventual `Resolution` caller conversion
+still need checking; no result-selected list, input-domain provider or metadata
+enumeration completeness is inferred from this constructor.
+
 The proposed caller conversion changes the actual requested-target set type,
 delegates each real metadata insertion to `insert_original_target`, and makes
 `Resolution` call `project_original_targets` on that original set. Existing
