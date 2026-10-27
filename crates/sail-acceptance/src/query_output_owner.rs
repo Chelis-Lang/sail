@@ -653,8 +653,11 @@ sail_verified! {
         sail_proof! {
             crate::query_prefix::flat_list_frame(seq![b'x']);
             assert(bytes@ =~= seq![b'(']+seq![b'x']+seq![b')']);
-            reveal_with_fuel(crate::query::frame_scan,4);
-            assert(crate::query::single_list(bytes@,false));
+            assert(crate::query::single_list(bytes@,false)) by {
+                reveal_with_fuel(crate::query::frame_scan,4);
+            }
+            assert(bytes@.subrange(0,3) =~= bytes@);
+            assert(crate::query::response_trim(bytes@,0,3));
             assert(crate::query::response_span(bytes@,0,3));
             assert(crate::query::response_shape(bytes@));
             crate::query_output::transcript_partition_facts(&output.output_view());
@@ -666,6 +669,18 @@ sail_verified! {
         sail_proof! { crate::query_output::transcript_partition_facts(&output.output_view()); }
         let Some(output) = output.seal() else { return false; };
         if !replay.compare(&bytes) { return false; }
+        sail_proof! {
+            assert(output.output_view().view() =~= bytes@);
+            assert(output.output_view().endpoints() =~= seq![3usize]);
+            assert(replay.served_view().len() == 1);
+            assert(!replay.served_view()[0].statistics_view());
+            assert(replay.served_view()[0].bytes_view() == bytes@);
+            assert(replay.served_view()[0].reproduces(bytes@));
+            assert(output.replay_frame_matches(&replay,0));
+            assert forall|i: int| 0 <= i < replay.served_view().len() implies
+                output.replay_frame_matches(&replay,i) by { assert(i == 0); }
+            assert(output.replay_prefix_matches(&replay));
+        }
         output.with_replay(&replay,identity).is_some()
     }
 }
