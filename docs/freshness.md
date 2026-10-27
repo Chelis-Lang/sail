@@ -473,6 +473,8 @@ into a fresh observation. This preserves verification-phase declarations lost
 from later dep-info without importing an unrelated target's names. A new relevant
 name or a changed/removed recorded value still refuses exact-map reuse. This
 accounts for declared inputs; it does not discover opaque compiler or macro I/O.
+The independently computed current revision must match under the exact
+package/target/kind key used by the revision batch; a missing entry also refuses.
 
 **Limitation, shared with Cargo.** A build script or proc macro that reads a
 variable without declaring it, including a tool that a build script finds

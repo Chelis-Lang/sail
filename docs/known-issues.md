@@ -4,12 +4,18 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
-The later frozen `e91627d0` native workspace runs 1,271 tests: 1,269 pass,
-two fail and 56 skip (303.35 s). Initial cause was unknown; later source
-diagnosis identifies the #390 target-key mismatch, whose focused correction
-qualification remains pending. Solver is unrun. The archive is
-independently hash-checked in the [owning record](validation/acceptance-boundary-refinements.md).
-Neither this attempt nor earlier positives qualify the new main/view union.
+The combined `e91627d0` native gate passes strict compilation and Clippy, then
+two existing receipt-erasure regressions fail
+([#390](https://github.com/Chelis-Lang/sail/issues/390#issuecomment-6432437950)).
+Declaration retention looks up a package-only revision in a batch keyed by exact
+package/target/kind, so a valid old declaration domain cannot survive erasure.
+The correction uses the actual target key and keeps current-revision, original
+validity, exact-map and fresh-scan checks. Direct controls recompute current
+target revisions independently and exercise matching admission before missing,
+changed, invalid-original and sibling refusals. The two-test baseline reproduces
+both failures; both corrected-source focused tests pass at `fbab3fd0`; the combined native
+gate remains pending. The frozen full workspace result is 1,269 pass, two fail
+and 56 configured skips; later solver stages are unrun.
 
 The frozen `720e461e` combined native workspace stops before native tests at
 two fixture compile errors: an omitted shared settle-constant import

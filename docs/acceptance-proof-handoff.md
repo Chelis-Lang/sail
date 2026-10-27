@@ -163,3 +163,10 @@ durations are not performance measurements. The previously accepted bounded
 cost at `fe8be9ee` does not qualify this implementation's added scans/accounting.
 Final-head review, hosted checks and owner-authorized selection/merge remain
 separate from these component milestones.
+
+The receipt-declaration correction from `fbab3fd0` uses the actual
+package/target/kind revision key (#390). Both unchanged native tests fail at
+`e91627d0` and pass with the correction; direct positive and missing/wrong/sibling
+revision controls retain original admission guards. This focused result is not
+the new main/view union's complete workspace gate. The owning record retains
+the immutable baseline/correction archive and independent download/hash.

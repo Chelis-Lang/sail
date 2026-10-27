@@ -2586,7 +2586,11 @@ fn preserve_receipt_declarations(
         return;
     }
     if receipt.input_revision.is_empty()
-        || scope.revisions.get(&receipt.package_id) != Some(&receipt.input_revision)
+        || scope.revisions.get(&revision_key(
+            &receipt.package_id,
+            &receipt.name,
+            &receipt.kind,
+        )) != Some(&receipt.input_revision)
     {
         return;
     }
@@ -6433,7 +6437,11 @@ mod tests {
             .run
             .join("pending-receipts")
             .join(path.file_name().ok_or("receipt filename")?);
-        let revisions = HashMap::from([("input".into(), target_revision(&data, "input"))]);
+        let kind = vec!["lib".into()];
+        let key = revision_key("input", "input", &kind);
+        let current_revision = target_revision(&data, &key);
+        assert_eq!(current_revision, original.input_revision);
+        let revisions = HashMap::from([(key.clone(), current_revision)]);
         let digests = PhaseDigests::default();
         let scope = ReceiptDeclarationScope {
             data: &data,
@@ -6443,8 +6451,35 @@ mod tests {
             digests: &digests,
             package_id: "input",
             name: "input",
-            kind: &["lib".into()],
+            kind: &kind,
         };
+        let mut preserved = BTreeSet::new();
+        preserve_receipt_declarations(&mut preserved, &original, "selected", &scope, true);
+        assert_eq!(
+            preserved,
+            original.declared_environment.keys().cloned().collect()
+        );
+        for unavailable in [
+            HashMap::new(),
+            HashMap::from([(key, "different revision".into())]),
+        ] {
+            let unavailable_scope = ReceiptDeclarationScope {
+                revisions: &unavailable,
+                ..scope
+            };
+            let mut refused = BTreeSet::new();
+            preserve_receipt_declarations(
+                &mut refused,
+                &original,
+                "selected",
+                &unavailable_scope,
+                true,
+            );
+            assert!(
+                refused.is_empty(),
+                "missing or changed revision cannot supply names"
+            );
+        }
         for old_value in [None, Some(b"not-the-current-package".to_vec())] {
             let mut changed = original.clone();
             changed
@@ -6586,9 +6621,30 @@ mod tests {
         let (reused, missing) =
             target_records(&paths, &data, "selected", false, &expected, &[], None)?;
         assert!(missing.is_empty() && reused[0].reused);
-        let revisions = HashMap::from([("input".into(), target_revision(&data, "input"))]);
+        let library_kind = vec!["lib".into()];
+        let library_key = revision_key("input", "input", &library_kind);
+        let library_revision = target_revision(&data, &library_key);
+        assert_eq!(library_revision, original.input_revision);
         let digests = PhaseDigests::default();
         let sibling_kind = vec!["bin".into()];
+        let sibling_key = revision_key("input", "sibling", &sibling_kind);
+        let revisions = HashMap::from([
+            (library_key, library_revision),
+            (sibling_key.clone(), target_revision(&data, &sibling_key)),
+        ]);
+        let original_scope = ReceiptDeclarationScope {
+            data: &data,
+            expected: &expected,
+            revisions: &revisions,
+            partial_args: None,
+            digests: &digests,
+            package_id: "input",
+            name: "input",
+            kind: &library_kind,
+        };
+        let mut preserved = BTreeSet::new();
+        preserve_receipt_declarations(&mut preserved, &original, "selected", &original_scope, true);
+        assert_eq!(preserved, BTreeSet::from([original_name.clone()]));
         let scope = ReceiptDeclarationScope {
             data: &data,
             expected: &expected,

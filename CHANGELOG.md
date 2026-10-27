@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Preserve an admitted receipt's declaration names after erasure by looking up
+  its exact package/target/kind revision, matching the current revision batch
+  (#390). Missing or changed revisions, unrelated targets, invalid originals
+  and failed fresh scans still refuse; combined native qualification is pending.
 - Keep the original completed request/result pair through process-local
   explanation, comparison and baseline presentation. A total borrowed view
   preserves all recorded data while separately retaining optional declared
