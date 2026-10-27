@@ -16,14 +16,21 @@ are unrun. That failure is preserved in the
 complete production proof pass.
 
 The unpublished integration branch is `proof/acceptance-production-integration`.
-It retains main `1f0ecd30`, including file-backed alias settings, packed
+It retains main `dca5cd43`, including file-backed alias settings, packed
 Cargo-Verus options, ghost-only environment/file declarations, stat stamps and
 content-based tool identities. Receipt revision 9 distinguishes both earlier
-revision-8 contracts; proof-context encoding 3, noop revision 5, retained archive
+revision-8 contracts; proof-context encoding 3, noop revision 6, retained archive
 revision 5 and source-input revision 4 retain their independent history,
 environment and inventory guards. Independent fallback directories and owned
 compiler configuration, actual pipe EOF, wait and selected-attempt histories
-remain intact.
+remain intact. The source integration also preserves main's content-bound
+Cargo build-script copies (#451), qualified Cargo protocol range (#442) and
+normal focused-failure script-contract retention (#450). Noop revision 6
+retains the original request and producer receipts alongside the new copy and
+directory bindings. Both inherited test sets remain. The proposed query-key ADR
+moves to 0085 because main owns 0084 for the Cargo range. These new native bodies
+are reviewed/hash-bound source, with combined native qualification pending;
+earlier frozen component passes do not qualify this integration.
 
 The reviewed source union adds these components:
 
@@ -64,8 +71,8 @@ The candidate's generic wrapper uses explicit `Option::default` to avoid the
 pinned derive's unintended generic `Default` bound (#462); missing request
 still decodes as `None`. This is source-reviewed, not native-reproduced.
 Frozen `e91627d0` workspace records 1,271 run, 1,269 pass, two fail and 56 skip
-in 303.35 s; first failure cause is unknown pending receipt diagnostics and
-solver is unrun. The [owning record](validation/acceptance-boundary-refinements.md)
+in 303.35 s; initial cause was unknown, with a later source diagnosis of the
+#390 target-key mismatch awaiting focused correction qualification. Solver is unrun. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
 ## Frozen integration proof scope and qualification
@@ -76,9 +83,11 @@ assemblies contain 20, 9 and 14 compiled files. Every inherited function and
 control remains required. The manifest locks combined discovery at `e57f065f`: 471/821, 308/538 and
 502/883 verified/function entries, retaining every prior function. Exact-head
 `720e461e` repeats those sets after the lossless conversion, with final
-source/runtime checks. The long matrix is held for the combined view/main/receipt
-source and new inventory; no complete
-negative union is established yet. Inventory mismatches must never be waived.
+source/runtime checks. Its four query partitions are terminal: three pass and
+one refuses control 111 for an additional resource-limit diagnostic; input and
+authority matrix arms were not launched. The long matrix is held for the
+combined view/main/receipt source and new inventory. No complete negative union
+is established; inventory mismatches must never be waived.
 
 Actual existing evidence remains separate:
 

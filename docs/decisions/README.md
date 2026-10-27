@@ -91,4 +91,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0081: The cache checks response framing with the SMT-LIB splitter (accepted)](0081-cache-response-framing.md)
 - [0082: Replay unchanged calls from a complete stat-stamp vector (accepted; amended for solver identity)](0082-unchanged-call-replay.md)
 - [0083: The temporal backend is an extension workspace (accepted)](0083-temporal-extension-workspace.md)
-- [0084: Check query-key framing in the acceptance leaf (proposed)](0084-checked-query-key-framing.md)
+- [0084: Build-script receipts for a qualified range of Cargo releases (proposed)](0084-qualified-cargo-range.md)
+- [0085: Check query-key framing in the acceptance leaf (proposed)](0085-checked-query-key-framing.md)
