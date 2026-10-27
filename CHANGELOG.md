@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Separate exact human-footer byte copying from replay admission metadata,
+  preserving the original output, validation order, loop obligations and
+  complete rendering contract. The change addresses a full-control proof
+  resource refusal (#505); fresh qualification remains pending.
+
 - Keep the input-owner pending-atom fixture genuinely unterminated, and cover
   CR termination separately at every raw boundary (#500). Native pre-refinement
   and current splitters agree on four items/no pending for CR; production grammar,

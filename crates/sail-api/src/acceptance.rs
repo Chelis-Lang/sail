@@ -3303,6 +3303,31 @@ sail_verified! {
 }
 
 sail_verified! {
+    /// Copies the original footer prefix and the complete replacement duration.
+    /// Keeping this byte loop separate retains its complete invariants without
+    /// bringing the unrelated request/readback context into each loop check.
+    fn copy_footer_duration(stderr: &[u8], end: usize, duration: &[u8]) -> (bytes: Vec<u8>)
+        requires(end <= stderr.len(), end <= 80,
+            duration.len() as int + end as int <= usize::MAX,
+            cargo_footer_boundary_at(stderr@, end as int), cargo_duration(duration@))
+        ensures(bytes@ == stderr@.take(end as int) + duration@)
+    {
+        let mut bytes = copy_bytes(&stderr[..end]);
+        let mut i = 0usize;
+        sail_while! { (i < duration.len())
+            invariant(i <= duration.len(), end <= stderr.len(), end <= 80,
+                duration.len() as int + end as int <= usize::MAX,
+                cargo_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),
+                bytes@ == stderr@.take(end as int) + duration@.take(i as int))
+            decreases(duration.len() - i)
+            { bytes.push(duration[i]); i += 1; }
+        }
+        sail_proof! { assert(duration@.take(i as int) =~= duration@); }
+        bytes
+    }
+}
+
+sail_verified! {
     /// Produces the byte-only replay by copying the admitted original prefix
     /// and exactly the supplied complete numeric duration. This cannot replace
     /// the original profile/header or insert report/diagnostic bytes.
@@ -3319,18 +3344,8 @@ sail_verified! {
         let stderr = admitted.stderr();
         let Some(end) = cargo_footer_boundary(stderr) else { return None; };
         if duration.len() > usize::MAX - end { return None; }
-        let mut bytes = copy_bytes(&stderr[..end]);
-        let mut i = 0usize;
-        sail_while! { (i < duration.len())
-            invariant(i <= duration.len(), end <= stderr.len(), end <= 80,
-                duration.len() as int + end as int <= usize::MAX,
-                cargo_footer_boundary_at(stderr@, end as int), cargo_duration(duration@),
-                bytes@ == stderr@.take(end as int) + duration@.take(i as int))
-            decreases(duration.len() - i)
-            { bytes.push(duration[i]); i += 1; }
-        }
+        let bytes = copy_footer_duration(stderr, end, duration);
         sail_proof! {
-            assert(duration@.take(i as int) =~= duration@);
             assert(bytes@.take(end as int) =~= stderr@.take(end as int));
             assert(bytes@.skip(end as int) =~= duration@);
             assert(cargo_footer_boundary_at(bytes@, end as int));
