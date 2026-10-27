@@ -93,3 +93,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0083: The temporal backend is an extension workspace (accepted)](0083-temporal-extension-workspace.md)
 - [0084: Build-script receipts for a qualified range of Cargo releases (proposed)](0084-qualified-cargo-range.md)
 - [0085: Check query-key framing in the acceptance leaf (proposed)](0085-checked-query-key-framing.md)
+- [0086: Share actual streaming list framing with the acceptance leaf (proposed)](0086-checked-stream-framing.md)

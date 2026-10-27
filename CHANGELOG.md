@@ -47,6 +47,39 @@ semantic versioning once the API is published.
 - Drop cache submissions whose public queue-wait Duration cannot form a native
   Instant deadline, avoiding an arithmetic panic (#478). Normal waits keep their
   existing behavior; the bounded native regression is not yet run.
+- Pair actual stdout splitting with the same retained output controller used
+  for forwarding, frame refusal and replay. Keep byte output, independent
+  framing, EOF handling and origin checks unchanged; new source/control/native
+  qualification and broader #371 correspondence remain pending.
+
+- Source-share actual SMT lexical spans, word classification, sticky error state
+  and borrowed shallow command heads. Preserve original bytes, public token
+  fields, diagnostics and supported shallow behavior; new qualification and
+  remaining interpretation/origin obligations stay open under #371.
+
+- Preserve exact parser continuation across copying (#482) and express the
+  private owned input transfer with modeled Option::take (#481), retaining raw
+  bytes, ordered items and all existing checks. Qualification remains pending.
+
+- Correct erased outer-stream proof expression grouping and Seq index projections
+  (#481), preserving runtime operations and contract meaning. Whole-root
+  verification of the wider parser candidate remains pending.
+
+- Retain complete ordered parser emissions and continuation in the checked
+  input-owner append contract (#480), with nonempty constructive and drop/reorder
+  controls. Runtime bytes and returned data are unchanged; qualification is pending.
+
+- Source-share the actual outer SMT stream states, atom/CRLF/finish rules,
+  absolute cursor and chunk loop. Pair input splitting with its owned raw
+  transcript append while preserving public fields, original bytes and keys.
+  New whole-root/native/control qualification and remaining parser/solver
+  correspondence stay open under #371 (proposed ADR 0086).
+
+- Source-share the actual pending-list byte/chunk framing and word delimiter
+  used by the SMT stream splitters. Preserve original bytes, chunk boundaries,
+  public splitter APIs and malformed finish behavior. New proof/native and
+  conformance qualification remain pending; outer stream/solver interpretation
+  remains open under #371 (proposed ADR 0086).
 
 - Distinguish the completed-view fixture's original whole-request evidence from
   its retained Unknown projection when freshness is unavailable (#464). Preserve

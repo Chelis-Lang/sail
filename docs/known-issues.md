@@ -92,6 +92,61 @@ layout/admission regression. Its corrected-source qualification is pending in th
 [candidate record](validation/cache-candidate-refinement.md). This is an
 incremental accounting gap, not a proved total-budget/RSS violation or false
 verdict; the shared accounting proof intentionally covers supplied charges.
+The next `cc98352f` pass refuses opaque public predicates and unsupported
+`mem::replace` (#481). Exact state projections and the already-modeled
+Option::take preserve the real owned transfer without a new trusted primitive.
+The copy contract also needs exact continuation because input Idle and Comment
+have the same raw-history predicate (#482); the actual copy implementation is
+correct. Source corrections, nonempty copy witness and whole-copy control are
+implemented; new whole-root/native/control qualification remains pending.
+
+The `0ef78997` outer/owner whole-query capture refuses proof-program
+compilation at erased match grouping and Seq index projections
+([#481](https://github.com/Chelis-Lang/sail/issues/481)). The correction preserves
+runtime code and contract meaning; actual whole-root verification has not yet
+begun for this wider candidate. No new inventory or native/verdict claim follows.
+
+The outer extraction left two native-delegation source-fixture selectors
+pointing at removed implementation text
+([#484](https://github.com/Chelis-Lang/sail/issues/484)). The targeted source
+unit reproduces 0 != 1; its correction mutates the actual thin input/finish
+adapters while retaining all four baseline, unique-selection and refusal
+assertions. The same targeted source test passes; no native/proof/service credit
+is implied.
+
+The newer outer-stream candidate's owner wrapper initially exposed only the
+raw-byte relation, which allowed an empty returned inventory in its contract
+([#480](https://github.com/Chelis-Lang/sail/issues/480)). The correction retains
+exact parser continuation and complete ordered emissions through the actual raw
+owner, with a concrete nonempty shared witness and drop/reorder controls. This
+is a candidate refinement gap, not a demonstrated native wrong verdict. Fresh
+whole-root/control/native qualification remains pending.
+
+The expanded outer/raw-owner native package at `88ab662d` passes all 22 SMT
+tests after a forced actual rebuild, then refuses four strict style lints
+(#470 recurrence). Documented local annotations/backticks preserve all qualified
+body tokens, predicates and assertions; a fresh strict native rerun is required.
+No native verdict/test failure is demonstrated by these style diagnostics.
+
+The [actual owned streaming-list kernel](design/acceptance-query.md#actual-owned-streaming-list-kernel-candidate)
+passes the complete query positive at `a182c1e4` (482/837, all earlier functions,
+final identity checks). The `e6e0e67a` native package passes all 22 SMT tests,
+strict Clippy, the actual dependency graph and six layering unit tests. Ordinary
+controls, conformance and the broader parser/solver joins remain unqualified:
+actual top-level emission inventory, absolute offsets/capacity and lexical
+classification still need production refinement under #371. No origin or
+full-service authority follows from this structural kernel.
+
+The [owning record](validation/acceptance-boundary-refinements.md) retains all
+failed proof attempts and the corrected proof-pattern (#469) and native-style
+(#470) defects. The reviewed #468 runtime-body guard repairs comparison control
+151 without changing the other 170 descriptors; the ten new edits and corrected
+151 target actual executable operations and await whole-root diagnostics.
+The root-qualified `9099f673` correction also excludes loop-contract-only
+selectors and preserves loop annotations. All eleven actual runtime edits pass
+that stricter source guard; the bounded 9c3b4ea6 run now passes all eleven complete-positive/ordinary-negative
+pairs with final checks. The new outer/owner source and full matrix remain
+unqualified.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
@@ -484,3 +539,19 @@ deep gate compares exactly.
   engine lacks falls back to stock verification (`SAIL3124`), and the engine
   arm counts it as `engine-lacks-feature`
   ([reproduction](../corpus/repros/engine-without-singular/)).
+
+The actual lexical bridge has separate candidate-only qualification findings:
+[#487](https://github.com/Chelis-Lang/sail/issues/487) corrects a nonrecursive
+proof-witness reveal form; [#488](https://github.com/Chelis-Lang/sail/issues/488)
+records strict native lint/rustdoc refusal after all 24 SMT package tests pass.
+Scoped reveal, native lint documentation and exact endpoint facts are being
+qualified without relaxing parser contracts or controls. Neither finding is a
+native incorrect verdict. Whole-root and full controls remain pending.
+
+The paired stdout candidate has separate qualification findings:
+[#490](https://github.com/Chelis-Lang/sail/issues/490) corrects an inaccessible
+proof-only projection helper call; [#491](https://github.com/Chelis-Lang/sail/issues/491)
+records the partial-frame fixture byte-array lint after all 25 native SMT tests
+pass. Empty-tape/coherence and finite witness VCs remain pending under #371.
+These are candidate proof/style failures, without a demonstrated native false
+verdict. All predicates, assertions and ordinary controls remain required.

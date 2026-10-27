@@ -1477,6 +1477,7 @@ name = "sail-smtlib"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "sail-acceptance",
 ]
 
 [[package]]

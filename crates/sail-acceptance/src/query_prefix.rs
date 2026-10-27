@@ -27,6 +27,7 @@ sail_code! {
     pub struct QueryPrefix<Host> {
         raw: RawTranscript,
         prefix: Prefix<Host>,
+        splitter: Option<crate::query_split::StreamSplitter>,
     }
 }
 
@@ -147,11 +148,19 @@ sail_code! {
     impl<Host: HashHost> QueryPrefix<Host> {
         sail_impl_spec! {
             pub closed spec fn view(&self) -> Seq<u8> { self.raw.view() }
+            pub closed spec fn parser_view(&self) -> (u8,Seq<u8>,int) {
+                match self.splitter { Some(splitter) => splitter.transition_view(),None => (0u8,Seq::<u8>::empty(),0int) }
+            }
+            pub closed spec fn pending_item_view(&self) -> bool {
+                match self.splitter { Some(splitter) => splitter.has_pending_item_spec(),None => false }
+            }
             pub closed spec fn fed(&self) -> nat { self.raw.fed_view() }
             pub closed spec fn material(&self) -> Seq<u8> { self.prefix.material() }
             pub closed spec fn active(&self) -> bool { self.raw.active() && self.prefix.exact() }
             pub closed spec fn coherent(&self) -> bool {
                 self.fed() <= self.view().len() && self.prefix.exact() && self.prefix.length() == self.fed()
+                    && match self.splitter { Some(splitter) => splitter.input_view() && splitter.matches(self.view())
+                        && splitter.well_formed() && splitter.position_view() == self.view().len(),None => false }
             }
             pub open spec fn matches(&self, binding: (Seq<u8>, Seq<u8>, Seq<u8>, Seq<u8>, Option<Seq<u8>>)) -> bool {
                 self.coherent() && self.material() == crate::key_prefix::header(binding.0,binding.1,binding.2,binding.3,binding.4)
@@ -163,10 +172,11 @@ sail_code! {
             pub fn new(prefix: Prefix<Host>) -> (out: Self)
                 requires (prefix.exact(), prefix.length() == 0)
                 ensures (out.coherent(), out.active(), out.view().len() == 0, out.fed() == 0,
+                    out.parser_view() == (0u8,Seq::<u8>::empty(),0int),
                     out.material() == prefix.material(),
                     forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
                         prefix.material() == crate::key_prefix::header(binding.0,binding.1,binding.2,binding.3,binding.4) ==> out.matches(binding))
-            { Self { raw: RawTranscript::empty(), prefix } }
+            { Self { raw: RawTranscript::empty(), prefix, splitter:Some(crate::query_split::StreamSplitter::start(true)) } }
         }
         sail_method! {
             /// Appends every original byte without granting any command/key interpretation.
@@ -178,11 +188,54 @@ sail_code! {
                     forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
                         old(self).matches(binding) ==> final(self).matches(binding))
             {
+                let _items=self.append_items(bytes);
+            }
+        }
+        sail_method! {
+            /// Appends actual raw bytes and runs their owned command splitter
+            /// in the same operation. Items refer to this transcript, without
+            /// a separately supplied history, origin flag or copied raw tape.
+            #[allow(clippy::single_match_else, reason = "Keep the checked owned Option transfer and its unreachable fail-safe branch explicit without changing the qualified operation.")]
+            pub fn append_items(&mut self, bytes: &[u8]) -> (out: Vec<crate::query_split::Item>)
+                requires (old(self).coherent())
+                ensures (final(self).coherent(),final(self).active() == old(self).active(),
+                    final(self).view() == old(self).view()+bytes@,final(self).fed() == old(self).fed(),
+                    final(self).material() == old(self).material(),
+                    final(self).parser_view() == crate::query_split::model_scan(old(self).parser_view(),true,old(self).view().len() as int,bytes@).0,
+                    crate::query_split::item_models(out@) == crate::query_split::model_scan(old(self).parser_view(),true,old(self).view().len() as int,bytes@).1,
+                    forall|i:int| 0 <= i < out@.len() ==>
+                        crate::query_split::original_item(out@[i],final(self).view(),true),
+                    forall|binding: (Seq<u8>,Seq<u8>,Seq<u8>,Seq<u8>,Option<Seq<u8>>)|
+                        old(self).matches(binding) ==> final(self).matches(binding))
+            {
                 self.raw.append(bytes);
-                sail_proof! {
-                    assert(self.view().take(self.fed() as int) =~= old(self).view().take(old(self).fed() as int));
+                let _retained_len=self.raw.bytes().len();
+                match self.splitter.take() {
+                    Some(splitter) => {
+                        let (next,items)=splitter.push_items(bytes,Vec::new());
+                        self.splitter=Some(next);
+                        sail_proof! {
+                            assert(self.view().take(self.fed() as int) =~= old(self).view().take(old(self).fed() as int));
+                        }
+                        items
+                    }
+                    None => {
+                        // Coherent private constructors retain Some; this
+                        // defensive unreachable branch retains original bytes
+                        // and refuses interpretation instead of minting items.
+                        self.raw.refuse();
+                        Vec::new()
+                    }
                 }
             }
+        }
+        sail_method! {
+            /// The original incomplete-trailing-item test on this same owned
+            /// input stream. It grants no physical read or EOF authority.
+            pub fn has_pending_item(&self) -> (out: bool)
+                requires (self.coherent())
+                ensures (out == self.pending_item_view())
+            { match &self.splitter { Some(splitter) => splitter.has_pending_item(),None => false } }
         }
         sail_method! {
             /// Exposes only this owner's exact replay bytes.
@@ -379,5 +432,59 @@ sail_spec! {
             assert(full.take(i) =~= seq![b'('] + prefix);
             flat_contents_prefix(prefix);
         }
+    }
+}
+
+sail_verified! {
+    /// Nonempty actual owner append preserves complete ordered emissions
+    /// across a pending-atom chunk boundary, including delimiter reprocessing.
+    #[allow(clippy::byte_char_slices, reason = "Keep explicit original byte carriers visible to Stock and nonempty owner-inventory controls.")]
+    pub fn append_items_control<Host>(prefix: Prefix<Host>) -> (passed: bool)
+        where (Host: HashHost)
+        requires (prefix.exact(),prefix.length() == 0)
+        ensures (passed)
+    {
+        let first=[b'a',b'b'];
+        let following=[b')',b'c',b')'];
+        let expected=[b'a',b'b',b')',b'c',b')'];
+        sail_proof! {
+            assert(crate::query_split::model_scan((0u8,Seq::<u8>::empty(),0int),true,0,first@)
+                == ((2u8,first@,0int),seq![])) by { reveal(crate::query_split::model_step); reveal(crate::query_split::idle_model);
+                reveal(crate::query_split::atom_ends); reveal(crate::query_split::terminated_atom);
+                reveal(crate::query::word_delimiter); reveal_with_fuel(crate::query_split::model_scan,3); }
+            assert(crate::query_split::model_scan((2u8,first@,0int),true,2,following@)
+                == ((0u8,Seq::<u8>::empty(),0int),seq![(crate::query_split::ItemKind::Atom,0int,first@),
+                    (crate::query_split::ItemKind::Stray,2int,seq![b')']),(crate::query_split::ItemKind::Atom,3int,seq![b'c']),
+                    (crate::query_split::ItemKind::Stray,4int,seq![b')'])])) by { reveal(crate::query_split::model_step); reveal(crate::query_split::idle_model);
+                reveal(crate::query_split::atom_ends); reveal(crate::query_split::terminated_atom);
+                reveal(crate::query::word_delimiter); reveal_with_fuel(crate::query_split::model_scan,4); }
+        }
+        let mut owner=QueryPrefix::new(prefix);
+        let none=owner.append_items(&first);
+        sail_proof! { assert(crate::query_split::item_models(none@).len() == none@.len()); }
+        if !none.is_empty() { return false; }
+        let items=owner.append_items(&following);
+        sail_proof! { assert(crate::query_split::item_models(items@).len() == items@.len()); }
+        if items.len() != 4 { return false; }
+        sail_proof! {
+            assert(crate::query_split::item_models(items@)[0] == (crate::query_split::ItemKind::Atom,0int,first@));
+            assert(crate::query_split::item_models(items@)[1] == (crate::query_split::ItemKind::Stray,2int,seq![b')']));
+            assert(crate::query_split::item_models(items@)[2] == (crate::query_split::ItemKind::Atom,3int,seq![b'c']));
+            assert(crate::query_split::item_models(items@)[3] == (crate::query_split::ItemKind::Stray,4int,seq![b')']));
+            assert(owner.view() =~= expected@);
+            assert(owner.coherent());
+            assert(owner.parser_view() == (0u8,Seq::<u8>::empty(),0int));
+            assert(!owner.pending_item_view());
+        }
+        matches!(items[0].kind,crate::query_split::ItemKind::Atom)
+            && items[0].offset == 0 && items[0].bytes.len() == 2
+            && items[0].bytes[0] == b'a' && items[0].bytes[1] == b'b'
+            && matches!(items[1].kind,crate::query_split::ItemKind::Stray)
+            && items[1].offset == 2 && items[1].bytes.len() == 1 && items[1].bytes[0] == b')'
+            && matches!(items[2].kind,crate::query_split::ItemKind::Atom)
+            && items[2].offset == 3 && items[2].bytes.len() == 1 && items[2].bytes[0] == b'c'
+            && matches!(items[3].kind,crate::query_split::ItemKind::Stray)
+            && items[3].offset == 4 && items[3].bytes.len() == 1 && items[3].bytes[0] == b')'
+            && !owner.has_pending_item() && crate::inputs::byte_eq(owner.bytes(),&expected)
     }
 }

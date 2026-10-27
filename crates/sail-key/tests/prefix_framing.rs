@@ -51,8 +51,54 @@ fn native_shared_primitive_controls_execute() {
     assert!(sail_acceptance::key_prefix::overflow_framing_control());
     assert!(sail_acceptance::key_prefix::owned_feed_control());
     assert!(sail_acceptance::key_prefix::joint_owner_control());
+    assert!(sail_acceptance::key_prefix::owner_append_items_control());
     assert!(sail_acceptance::query::commented_head_control());
     assert!(sail_acceptance::query_policy::tactic_policy_control());
+    assert!(sail_acceptance::query_split::outer_atom_offsets_control());
+    assert!(sail_acceptance::query_split::outer_crlf_finish_control());
+    assert!(sail_acceptance::query_split::outer_chunks_control());
+    assert!(sail_acceptance::query_split::outer_clone_initial_control());
+}
+
+#[test]
+fn actual_command_items_share_the_original_raw_owner_at_every_boundary() {
+    use sail_acceptance::query_split::ItemKind;
+    let solver = SolverIdentity {
+        name: "z3".into(),
+        version: "4.16.0".into(),
+        binary_sha256: [7; 32],
+        platform: "linux-x86_64".into(),
+    };
+    let raw = b";c\r\na)()\r\nfoo\r";
+    for boundary in 0..=raw.len() {
+        let mut owner = SessionPrefix::new(&solver, &Mode::Default);
+        let mut items = owner.append_items(&raw[..boundary]);
+        items.extend(owner.append_items(&raw[boundary..]));
+        assert_eq!(owner.bytes(), raw);
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0].kind, ItemKind::Atom);
+        assert_eq!(items[0].offset, 4);
+        assert_eq!(items[0].bytes, b"a");
+        assert_eq!(items[1].kind, ItemKind::Stray);
+        assert_eq!(items[1].offset, 5);
+        assert_eq!(items[1].bytes, b")");
+        assert_eq!(items[2].kind, ItemKind::List);
+        assert_eq!(items[2].offset, 6);
+        assert_eq!(items[2].bytes, b"()");
+        assert!(owner.has_pending_item());
+        let terminated = owner.append_items(b"\n");
+        assert_eq!(terminated.len(), 1);
+        assert_eq!(terminated[0].kind, ItemKind::Atom);
+        assert_eq!(terminated[0].offset, 10);
+        assert_eq!(terminated[0].bytes, b"foo");
+        assert!(!owner.has_pending_item());
+        assert_eq!(owner.bytes(), [raw.as_slice(), b"\n"].concat());
+        assert!(owner.hash_tail());
+        let mut reference = PrefixHasher::new(&solver, &Mode::Default);
+        reference.update(raw);
+        reference.update(b"\n");
+        assert_eq!(owner.silence_key(), reference.silence_key());
+    }
 }
 
 #[test]

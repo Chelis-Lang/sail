@@ -115,15 +115,7 @@ impl CommandKind<'_> {
 /// symbol, or a lexical error in the tokens it reads.
 pub fn classify(text: &[u8]) -> Result<Command<'_>, Error> {
     let mut lexer = Lexer::new(text);
-    let open = next(&mut lexer)?.ok_or(Error::new(ErrorCode::Empty, 0))?;
-    if open.kind != TokenKind::Open {
-        return Err(Error::new(ErrorCode::InvalidToken, open.start));
-    }
-    let head = next(&mut lexer)?.ok_or(Error::new(ErrorCode::UnclosedList, open.start))?;
-    if head.kind != TokenKind::Symbol {
-        return Err(Error::new(ErrorCode::InvalidToken, head.start));
-    }
-    let name = head.text(text);
+    let (open_start, name) = lexer.command_head()?;
     let kind = match name {
         b"push" | b"pop" => {
             let count = match next(&mut lexer)? {
@@ -132,7 +124,7 @@ pub fn classify(text: &[u8]) -> Result<Command<'_>, Error> {
                 }
                 Some(t) if t.kind == TokenKind::Close => 1,
                 Some(t) => return Err(Error::new(ErrorCode::InvalidToken, t.start)),
-                None => return Err(Error::new(ErrorCode::UnclosedList, open.start)),
+                None => return Err(Error::new(ErrorCode::UnclosedList, open_start)),
             };
             if name == b"push" {
                 CommandKind::Push(count)
@@ -146,7 +138,7 @@ pub fn classify(text: &[u8]) -> Result<Command<'_>, Error> {
         b"define-fun" | b"define-fun-rec" | b"define-funs-rec" | b"define-sort"
         | b"define-const" => CommandKind::Define,
         b"set-option" => {
-            let keyword = keyword_after(next(&mut lexer)?, open)?;
+            let keyword = keyword_after(next(&mut lexer)?, open_start)?;
             let value = value_span(text, &mut lexer, keyword.end)?;
             CommandKind::SetOption {
                 keyword: keyword.text(text),
@@ -159,7 +151,7 @@ pub fn classify(text: &[u8]) -> Result<Command<'_>, Error> {
         b"check-sat-assuming" => CommandKind::CheckSatAssuming,
         b"check-sat-using" => CommandKind::CheckSatUsing,
         b"get-info" => CommandKind::GetInfo {
-            keyword: keyword_after(next(&mut lexer)?, open)?.text(text),
+            keyword: keyword_after(next(&mut lexer)?, open_start)?.text(text),
         },
         _ if name.starts_with(b"get-") => CommandKind::Get,
         b"echo" => CommandKind::Echo,
@@ -175,11 +167,11 @@ fn next(lexer: &mut Lexer<'_>) -> Result<Option<Token>, Error> {
     lexer.next().transpose()
 }
 
-fn keyword_after(token: Option<Token>, open: Token) -> Result<Token, Error> {
+fn keyword_after(token: Option<Token>, open_start: usize) -> Result<Token, Error> {
     match token {
         Some(t) if t.kind == TokenKind::Keyword => Ok(t),
         Some(t) => Err(Error::new(ErrorCode::InvalidToken, t.start)),
-        None => Err(Error::new(ErrorCode::UnclosedList, open.start)),
+        None => Err(Error::new(ErrorCode::UnclosedList, open_start)),
     }
 }
 
@@ -217,6 +209,20 @@ mod tests {
         match classify(src.as_bytes()) {
             Ok(c) => c.kind,
             Err(e) => unreachable!("{src}: {e}"),
+        }
+    }
+
+    #[test]
+    fn shared_borrowed_head_preserves_shallow_and_error_behavior() {
+        assert_eq!(kind("(assert"), CommandKind::Assert);
+        assert_eq!(kind(";c\r\n(check-sat)"), CommandKind::CheckSat);
+        for (raw, code, offset) in [
+            (b"".as_slice(), ErrorCode::Empty, 0),
+            (b"(".as_slice(), ErrorCode::UnclosedList, 0),
+            (b"(42)".as_slice(), ErrorCode::InvalidToken, 1),
+            (b";c\r\n(push x)".as_slice(), ErrorCode::InvalidToken, 10),
+        ] {
+            assert_eq!(classify(raw), Err(Error::new(code, offset)));
         }
     }
 

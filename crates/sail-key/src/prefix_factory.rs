@@ -30,6 +30,7 @@ sail_verified! {
         where (Host: HashHost)
         requires (host.bytes().len() == 0)
         ensures (out.coherent(), out.active(), out.view().len() == 0, out.fed() == 0,
+            out.parser_view() == (0u8,Seq::<u8>::empty(),0int),
             out.matches((vstd::utf8::encode_utf8(solver.name@),vstd::utf8::encode_utf8(solver.version@),
                 solver.binary_sha256@,vstd::utf8::encode_utf8(solver.platform@),
                 match mode { Mode::Default => None, Mode::OptIn(name) => Some(vstd::utf8::encode_utf8(name@)) })))
@@ -45,6 +46,7 @@ sail_verified! {
         where (Host: HashHost)
         requires (host.bytes().len() == 0)
         ensures (out.0.coherent(), out.0.active(), out.0.view().len() == 0, out.0.fed() == 0,
+            out.0.parser_view() == (0u8,Seq::<u8>::empty(),0int),
             out.1.length() == 0, out.1.exact(),
             out.0.material() == out.1.material(),
             out.1.material() == sail_acceptance::key_prefix::header(
