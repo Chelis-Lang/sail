@@ -18,8 +18,9 @@ failed proof attempts and the corrected proof-pattern (#469) and native-style
 (#470) defects. The reviewed #468 runtime-body guard repairs comparison control
 151 without changing the other 170 descriptors; the ten new edits and corrected
 151 target actual executable operations and await whole-root diagnostics.
-A source-only recurrence still accepts loop-contract-only selectors; the lead
-owns that separate #468 correction, and these eleven edits do not use it.
+The root-qualified `9099f673` correction also excludes loop-contract-only
+selectors and preserves loop annotations. All eleven actual runtime edits pass
+that stricter source guard; their entire-root verification remains pending.
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

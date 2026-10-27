@@ -189,7 +189,9 @@ def runtime_mutation(source: str, before: str, after: str) -> None:
     Erasing whole bodies yields an exact token skeleton: contracts, erased
     items and every other surrounding declaration must remain identical. The
     selected envelope must include runtime tokens; selecting only a proof
-    block is refused even if a broader executable body contains it. This is an
+    block is refused even if a broader executable body contains it. Checked
+    loop invariants and decreases clauses must also remain identical and do
+    not supply runtime selector spans. This is an
     early source check; Stock's actual full function/obligation inventory still
     determines ordinary negative credit.
     """
@@ -197,20 +199,25 @@ def runtime_mutation(source: str, before: str, after: str) -> None:
         "empty or ambiguous executable mutation")
     changed = source.replace(before, after)
 
-    def projection(text: str) -> tuple[list[str], list[list[str]], list[tuple[int, int]]]:
+    def projection(text: str) -> tuple[list[str], list[list[str]], list[tuple[int, int]], list[list[str]]]:
         stream = tokens(text)
         bodies = _executable_envelopes(stream)
         skeleton: list[str] = []
         executable: list[list[str]] = []
         spans: list[tuple[int, int]] = []
+        loop_contracts: list[list[str]] = []
         cursor = 0
         for begin, end in bodies:
             skeleton.extend(token.value for token in stream[cursor:begin])
             skeleton.append("<checked-runtime-body>")
             values: list[str] = []
+            annotations: dict[int, int] = {}
             at = begin
             while at <= end:
                 token = stream[at]
+                if at in annotations:
+                    at = annotations[at]
+                    continue
                 macro = at + 2 <= end and stream[at + 1].value == "!"
                 ghost = (macro and token.value in {"sail_proof", "sail_spec", "sail_impl_spec"})
                 ghost_group = (token.value in {"proof", "spec", "by"}
@@ -221,18 +228,35 @@ def runtime_mutation(source: str, before: str, after: str) -> None:
                 require(token.value != "fn" and not (macro
                     and token.value in {"sail_verified", "sail_method"}),
                     "nested runtime function outside mutation capture subset")
+                if macro and token.value == "sail_while":
+                    require(stream[at + 2].value == "{" and stream[at + 3].value == "(",
+                        "unsupported checked loop contract")
+                    loop_end = closing(stream, at + 2)
+                    contract_begin = closing(stream, at + 3) + 1
+                    body_begin = contract_begin
+                    for clause in ("invariant", "decreases"):
+                        require(body_begin + 1 < loop_end and stream[body_begin].value == clause
+                            and stream[body_begin + 1].value == "(",
+                            "unsupported checked loop contract")
+                        body_begin = closing(stream, body_begin + 1) + 1
+                    require(body_begin < loop_end and stream[body_begin].value == "{"
+                        and closing(stream, body_begin) == loop_end - 1,
+                        "missing or trailing checked loop body")
+                    loop_contracts.append([item.value for item in stream[contract_begin:body_begin]])
+                    annotations[contract_begin] = body_begin
                 values.append(token.value)
                 spans.append((token.begin, token.end))
                 at += 1
             executable.append(values)
             cursor = end + 1
         skeleton.extend(token.value for token in stream[cursor:])
-        return skeleton, executable, spans
+        return skeleton, executable, spans, loop_contracts
 
-    original_skeleton, original_runtime, spans = projection(source)
-    changed_skeleton, changed_runtime, _ = projection(changed)
+    original_skeleton, original_runtime, spans, original_loops = projection(source)
+    changed_skeleton, changed_runtime, _, changed_loops = projection(changed)
     require(original_skeleton == changed_skeleton,
         "mutation changes signature, contract or non-runtime source")
+    require(original_loops == changed_loops, "mutation changes checked loop contract")
     begin = source.index(before)
     end = begin + len(before)
     require(any(begin <= lo and hi <= end for lo, hi in spans),
