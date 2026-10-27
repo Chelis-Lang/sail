@@ -85,6 +85,12 @@ in 303.35 s; initial cause was unknown, with a later source diagnosis of the
 combined workspace/solver qualification remains pending. The [owning record](validation/acceptance-boundary-refinements.md)
 retains its independently hash-checked archive.
 
+The same frozen `88ab662d` native package is forced to rebuild the actual acceptance and
+SMT crates and passes all 22 tests/0 skips; strict Clippy refuses four style
+issues (#470 recurrence). Function-local documented annotations and backticks
+preserve every checked body token and predicate/control. Fresh native rerun is
+pending; full workspace/key/shim/solver/conformance remain separate.
+
 The actual outer/raw-owner source at `88ab662d` passes complete query discovery:
 524 verified/0 errors, 918 actual query entries, all 837 earlier entries retained,
 37.812 s, no resource/VIR failure and final source/runtime checks passing. The

@@ -931,6 +931,7 @@ sail_code! {
             /// Executes the original chunk loop over the actual owned state.
             /// In-list chunks retain the first-close fast path; outer bytes
             /// advance once even when their delimiter is reconsidered.
+            #[allow(clippy::no_effect_underscore_binding, reason = "Retain the actual prior cursor for erased raw-prefix and inventory facts in the shared checked loop.")]
             pub fn push_items(self, data: &[u8], items: Vec<Item>) -> (out: (Self,Vec<Item>))
                 requires (self.well_formed(),self.position_view()+data@.len() <= usize::MAX,
                     items@.len()+data@.len()+(if self.position_view()>0 {1int} else {0int}) <= usize::MAX,
@@ -1013,7 +1014,7 @@ sail_code! {
             }
         }
         sail_method! {
-            /// Read-only counterpart of the original finish().is_some() test,
+            /// Read-only counterpart of the original `finish().is_some()` test,
             /// retaining the owned parser for subsequent transcript operations.
             pub fn has_pending_item(&self) -> (out: bool)
                 requires (true)
@@ -1130,6 +1131,7 @@ sail_verified! {
 
 sail_verified! {
     /// Actual nonrecursive idle transition at the original unadvanced offset.
+    #[allow(clippy::vec_init_then_push, reason = "Preserve the actual one-byte stray construction checked by whole-root framing and ordinary controls.")]
     fn begin_outer(byte: u8, input: bool, position: u64) -> (out: (SplitState,Option<Item>))
         requires (position < u64::MAX,position < usize::MAX)
         ensures (idle_shape(out.0,out.1,byte,input,position),

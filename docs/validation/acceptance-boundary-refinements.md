@@ -21,6 +21,7 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 | Frozen source | Actual result | Limits |
 |---|---|---|
 | Outer native-delegation fixture (#484) | One lightweight source test at `2bf6c63a` reproduces stale native-body selector failure 0!=1 in 0.294 s; retargeting the same four meaningful native guards passes the same test in 0.240 s | Test fixture only: mathematical controls/assertions and runtime code unchanged; no native/proof/service qualification |
+| `88ab662d` outer native package | After explicit cargo clean, both sail-acceptance/sail-smtlib Compile lines occur; all 22 SMT tests pass/0 skip in 0.572 s testtime. Strict Clippy refuses four style diagnostics (#470 recurrence); final source guard passes | Function-local annotations/doc correction preserve every qualified executable body token, predicate/control/assertion. Fresh strict native and wider qualification remain required |
 | `88ab662d` outer/raw-owner whole query positive | Entire query root passes 524 verified/0 errors with 918 actual entries, all 837 prior entries retained, no VIR/resource failure, 37.812 s, final frozen source/runtime checks pass | Positive only: exact observed inventory locked; all 192 query controls, new native/conformance and later lexical/output/solver/origin joins remain unqualified |
 | `2bf6c63a` extracted chunk query attempt | Complete query observes 522 verified/2 failed functions across 918 query entries in 39.445 s; final frozen source/runtime guards pass, with the outer loop's default rlimit marker retained | No qualification/count lock. Explicit scalar push/append and returned-option raw-prefix equalities target the remaining chunk/outer transport facts; all 192 controls/contracts/default resources remain required |
 | `e36f9681` outer/owner query attempt | Full query observes 522 verified/1 failed function and 915 query entries, 38.232 s, final guards passing. Sole outer-loop raw-state carry includes a default rlimit refusal; scalar/constructive obligations clear | No inventory lock/qualification. Actual chunk-transition extraction retains payloads/contracts/old190 controls and adds two full-method controls, without raising resources |
@@ -78,6 +79,13 @@ open under #371; no physical EOF, complete parser inventory or origin claim is m
 Gate durations are not performance measurements. The older `a615dbba`
 checkpoint's full 92-case production, 31-case model, macOS host, native workspace
 and solver results remain historical evidence; its e2e failure stays indexed.
+
+The closed native package attempt is `acceptance-parser-88ab66-smt-native.tgz`,
+SHA-256 `10f3a41a488432e232cd50217fc0a058941ea090f6c882def6fcb26b967ed0b7`
+(4,928 bytes). Host creation and independent local SCP/hash/report/rebuild-line
+checks pass; separate object upload/readback is pending. It retains all 22 test
+passes and the four raw Clippy diagnostics; no full workspace/solver/conformance
+qualification follows.
 
 The whole-query positive is retained as
 `acceptance-parser-88ab66-positive-native.tgz`, SHA-256

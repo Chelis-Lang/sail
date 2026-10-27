@@ -350,6 +350,12 @@ native/conformance gates remain required; no source/runtime/API-wide or #371
 solver/origin completion is claimed. Later lexical source requires separate
 actual discovery.
 
+The actual `88ab662d` native SMT package rebuild passes all 22 existing tests;
+strict Clippy then refuses four new outer-code style diagnostics (#470). Narrow
+function-local annotations and doc backticks retain token-identical checked
+executable bodies and unchanged predicates/controls. Strict native qualification
+must repeat; the annotation-only source has no broader native/service claim.
+
 ### Scalar policy-option readback candidate
 
 `query_options.rs` adds a source-shared candidate for the raw `:print-success`

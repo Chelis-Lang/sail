@@ -34,6 +34,12 @@ owner, with a concrete nonempty shared witness and drop/reorder controls. This
 is a candidate refinement gap, not a demonstrated native wrong verdict. Fresh
 whole-root/control/native qualification remains pending.
 
+The expanded outer/raw-owner native package at `88ab662d` passes all 22 SMT
+tests after a forced actual rebuild, then refuses four strict style lints
+(#470 recurrence). Documented local annotations/backticks preserve all qualified
+body tokens, predicates and assertions; a fresh strict native rerun is required.
+No native verdict/test failure is demonstrated by these style diagnostics.
+
 The [actual owned streaming-list kernel](design/acceptance-query.md#actual-owned-streaming-list-kernel-candidate)
 passes the complete query positive at `a182c1e4` (482/837, all earlier functions,
 final identity checks). The `e6e0e67a` native package passes all 22 SMT tests,
