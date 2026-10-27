@@ -56,8 +56,14 @@ erasure. Proof-only selectors refuse. The four existing authority-model controls
 remain explicitly separate from production-body controls. Read-only inspection
 of all 397 descriptors finds no other misplaced runtime selector. All 393
 production descriptors satisfy the corrected source relation; this source audit
-is not ordinary-negative qualification. New regression fixtures and the repaired
-whole-root control remain unrun until the next frozen native attempt. Existing
+is not ordinary-negative qualification. At `4eeb4c95`, both native source suites pass: 12 model-source tests and all
+59 production-source tests (303.124 seconds). Its external launcher then mounts
+a nonexistent helper path as a directory and stops before any verifier call;
+that orchestration failure receives zero proof credit. The follow-up reuses
+one token list and advances a balanced-group cursor past complete erased and
+runtime envelopes instead of rescanning every prior erased range. This keeps
+the same contracts, runtime projection and regression assertions; fresh source
+suites and the repaired whole-root control remain required. Existing
 loop checks, exact function/obligation counts, controls and resource limits stay
 required. The failed matrix and nondurable original launcher remain indexed;
 its orchestration guard and correctly aborted service receive zero proof credit.
