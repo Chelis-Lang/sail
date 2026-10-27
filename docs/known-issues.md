@@ -114,6 +114,12 @@ physical compiler inputs, truthful solver origins, observation atomicity and
 all service consumers remain separate obligations. See the
 [refinement guide](design/acceptance-production-refinements.md).
 
+The [scalar-option candidate](design/acceptance-query.md#scalar-policy-option-readback-candidate)
+checks original raw option fields and persistent native Session readback for
+`:print-success` and `:rlimit`; direct-stock and native qualification remain
+pending. It does not establish pinned-solver defaults, option/alias/reset
+semantics or the complete SMT interpretation required by #371.
+
 ## Performance
 
 Current numbers are in [performance](performance.md).
