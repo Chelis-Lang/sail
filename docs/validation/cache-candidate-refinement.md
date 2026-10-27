@@ -19,6 +19,8 @@ Q40 architecture is selected.
 | `cb2e685a` bounded qualification | Strict all-target Clippy, source suites 12+62, fresh full roots 519/908, 308/538, 510/895 and cache/daemon library tests 104/104 pass (two configured skips). All 53 new exact ordinary negatives pass alongside 53 whole-root positives; source/runtime/rustc equality and exact-name union audit pass. Four separate native mutants compile and fail at intended original assertions | 106 canonical Stock calls in bounded 214-way partitions, no full 214-query/component/suite credit. Native controls never count as Stock negatives. Workspace/solver/conformance/performance/service gates remain open |
 | Exact native layout observation | Complete original `58806916` module and actual current aliases measure slot 80→96 bytes, align16; state64/16, FileStamp48/16, Value104 and Inner96 unchanged. Fixed-tier24 and queued-carrier48 measurements match their existing charges | Observation only; the original128 is logical, not an allocator/RSS bound. Incremental slot charge was8 versus measured16, tracked in #486. Portable actual-carrier delta correction and fifth native control are source-only pending qualification |
 | Ordered retirement source | Actual native Accounting/LRU removal is delegated to a shared operation over the real ordered map and owned update; old shared envelopes and all 214/115/145 inherited control objects are retained. Seven new Stock controls and one native LRU-omission control prepared; the old native accounting-omission control preserves its original index-removal effect | Source-only, no new counts inferred. Required historical minima remain 519/908, 308/538, 520/912 until complete discovery. The query control plan is now 221; global map/Mutex/clock/history/origin and later root-context union remain open |
+| `d6f3d144` retirement qualification | Strict cache/daemon all-target Clippy, source12+71, fresh complete Stock roots query521/910 functions, inputs308/538, authority523/915 and native106/106 tests pass (two configured skips). Every prior function is retained and final source/runtime checks pass | Actual inventories observed, not predicted. Seven new ordinary controls and added/rebased native cases still require qualification; complete221-query/root-context/workspace/differential/service union remains open |
+| `d6f3d144` exact HashMap probe | Whole-file direct Stock exits1 after1.134630696s at unsupported actual remove_entry/get_mut methods, support lines36/44; no resource marker and final source/runtime checks pass ([#498](https://github.com/Chelis-Lang/sail/issues/498)) | Pre-verification refusal, zero proofs or ordinary-negative credit. Key-model obligation/primitive control are unverified because compiler errors abort first. No new assumed specification is adopted |
 | `fe8c9188` layout correction | Strict all-target Clippy, source12+62, fresh complete Stock roots519/908,308/538,510/895 and cache/daemon105/105 tests pass (two configured skips), with final source/runtime guards. Actual-layout admission regression passes; a separately compiled undercharged8-byte mutant fails its intended actual-size assertion | Native-only correction; all shared proof bodies and214 query control objects remain byte-identical cb2. Historical53 bounded ordinary controls stay scoped to cb2; full combined214/workspace/solver/conformance/performance/service qualification remains open |
 
 The closed `37a38135` attempt is reconstructable from the source bundle and raw
@@ -131,9 +133,10 @@ The staged whole-file HashMap support probe is
 `proofs/support/cache_candidate_map.rs`. It uses the native `[u8; 32]` key and
 actual generic production Slot in `remove_entry`, `get_mut`/touch and `remove`,
 requests the library's key-model prerequisite without assuming it, and includes
-a nonempty primitive-key control. No compile/proof result is claimed before
-execution; a failed support prerequisite will not count as a broken production
-control. The surrounding physical lock/endpoint and recorded-origin requirements
+a nonempty primitive-key control. Its two unsupported method calls stop the
+`d6f3d144` run before verification; the separate key/model controls earn no credit.
+A failed support prerequisite does not count as a broken production control.
+The surrounding physical lock/endpoint and recorded-origin requirements
 are not discharged by a generic support result.
 
 The standalone layout-only policy also accepted alias/numeric-size/runtime
@@ -142,6 +145,24 @@ Its source-only witness invokes the actual old policy; the full native SHA still
 refuses drift, so no full-gate/admission or false-verdict bypass is claimed. Exact
 old field/variant and sizeof positions now supplement every old privacy/count
 check, with a direct source counterexample regression; complete qualification of
-that strengthening remains required.
+that strengthening passes the `d6f3d144` source suite (71 production-source tests),
+while full inherited/service qualification remains separate.
+
+The closed `d6f3d144` source/runtime/raw artifact is
+`experiments/2026-10-27/acceptance-accounted-order-d6f3d144-native.tgz`,
+7,819,587 bytes, SHA-256
+`47a0c99b2284a11a9e39c728f350be86bfe4de647a841e80b76e7b354ad17ff0`.
+Exact PUT/GET readback passes; independent lead audit remains separate. The native
+image is `sha256:b520a475caa587db8d35847b989cb588c256b6bff16cd57644005298645765f9`,
+distinct from the earlier cache lane; actual pinned runtime/archive/Rust identity
+is revalidated. No special compiler-consumer/provider/reproduction entrypoint is
+run. The image/source/bundle, three positive raw outputs, source suites, native
+baseline and unsupported HashMap probe are preserved together.
+
+The separate follow-up `proofs/support/cache_candidate_map_key.rs` stages actual
+specified insert/get/remove/occupied-entry methods, an unassumed byte-array key
+model obligation and a nonempty primitive-key control. It is unrun; useful
+functional postconditions cannot be replaced by bare compilation or a supplied
+key premise.
 
 The closed `fe8c9188` correction is object `experiments/2026-10-27/acceptance-candidate-write-fe8c9188-native.tgz`,7,623,421 bytes,SHA-256 `76872375c4c5d21a1b2091cdc58371a70bde0e53e7a9a7bf6acbf3640581888f`. Exact PUT/GET readback passes; independent lead audit remains separate. It includes the full source bundle, fresh three-root raw positives/source/native suite and selected fifth ordinary native failure. No Stock-control, allocator/RSS or full service credit is inferred from that native failure.
