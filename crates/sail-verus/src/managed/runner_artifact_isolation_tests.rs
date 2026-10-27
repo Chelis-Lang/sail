@@ -263,7 +263,7 @@ fn sibling_dependency_receipt_needs_identical_fresh_bytes_and_never_covers_a_sel
         serde_json::to_vec(dependency)?,
     )?;
     let data = fixture.data(&second, &package_id);
-    let records = |expected: &BTreeSet<(String, String, String)>| {
+    let records = |expected: &sail_api::request_targets::OriginalTargets| {
         target_records(&second, &data, "other", true, expected, &[], None)
     };
     let (targets, missing) = records(&BTreeSet::new())?;
@@ -299,7 +299,7 @@ fn sibling_dependency_receipt_needs_identical_fresh_bytes_and_never_covers_a_sel
     let (targets, missing) = records(&BTreeSet::new())?;
     assert!(missing.is_empty() && targets[0].reused);
     // A selected target needs a receipt of its own proof context.
-    let selected = BTreeSet::from([(package_id.clone(), "input".to_owned(), "lib".to_owned())]);
+    let selected = crate::managed::request::original_targets([(package_id.clone(), "input".to_owned(), "lib".to_owned())]);
     for force in [false, true] {
         let (targets, missing) = target_records(&second, &data, "other", force, &selected, &[], None)?;
         assert_eq!(targets, Vec::<TargetResult>::new());

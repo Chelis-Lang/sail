@@ -752,12 +752,14 @@ class SourceCaptureTests(unittest.TestCase):
             CHECKER.KEY_NATIVE, "crates/sail-key/Cargo.toml",
             "crates/sail-acceptance/src/query_prefix.rs",
             "crates/sail-acceptance/src/phase_inputs.rs",
-            "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
+            "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs", CHECKER.REQUEST_ORDER]
         paths += ["crates/" + name + "/Cargo.toml" for name in
             ("sail-smtlib", "sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         CHECKER.validate_assembly(snapshots)
         for path, before, after in (
+            (CHECKER.REQUEST_ORDER, b"        original: (String, String, String),",
+                b"        pub original: (String, String, String),"),
             ("crates/sail-acceptance/Cargo.toml", b"[lints]", b'[lib]\npath="../../elsewhere.rs"\n\n[lints]'),
             ("crates/sail-api/Cargo.toml", b"[lints]", b'[lib]\npath="alternate.rs"\n\n[lints]'),
             ("Cargo.toml", b'sail-api = { path = "crates/sail-api" }', b'sail-api = { path = "alternate/sail-api" }'),
@@ -1003,6 +1005,42 @@ class SourceCaptureTests(unittest.TestCase):
             with self.subTest(source=source), self.assertRaises(SOURCE.SourceRefusal):
                 SOURCE.checked_item_envelopes(source)
         SOURCE.checked_item_envelopes("sail_verified! { pub fn checked() -> (r:bool) requires(true) ensures(r) { true } }")
+
+    def test_inherited_trait_method_is_checked_and_raw_methods_still_refuse(self):
+        method = "fn eq(&self, other: &Self) -> (same: bool) ensures(same) { true }"
+        SOURCE.checked_item_envelopes(
+            "sail_code! { impl PartialEq for Key { sail_inherited_method! { " + method + " } } }")
+        for body in (
+            "fn eq(&self, other: &Self) -> bool { true }",
+            "unchecked_inherited_method! { " + method + " }",
+            "sail_inherited_method! { " + method + " } fn unchecked() -> bool { true }",
+        ):
+            with self.subTest(body=body), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.checked_item_envelopes("sail_code! { impl PartialEq for Key { " + body + " } }")
+
+    def test_actual_original_dictionary_modules_and_native_callers_remain_closed(self):
+        for path in (CHECKER.REQUEST_ORDER, CHECKER.REQUEST_TARGETS):
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            for addition in (b"\nuse hidden::*;", b"\npub fn unchecked() -> bool { true }"):
+                with self.subTest(path=path, addition=addition), self.assertRaises(
+                        (CHECKER.Refusal, SOURCE.SourceRefusal)):
+                    CHECKER.compiled_subset(path, original + addition)
+        for path in CHECKER.REQUEST_NATIVE_BINDINGS:
+            self.assertIn(path, CHECKER.INPUT_NATIVE_SHA256)
+            original = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, original)
+            with self.subTest(path=path), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(path, original + b"\nfn unchecked() {}\n")
+
+    def test_inherited_trait_method_mutation_preserves_its_postcondition(self):
+        source = "sail_inherited_method! { fn eq(&self, other: &Self) -> (same: bool) ensures(if same {1nat} else {0nat} == 1nat) { true } }"
+        SOURCE.runtime_mutation(source, "{ true }", "{ false }")
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            SOURCE.runtime_mutation(source, "same {1nat}", "same {2nat}")
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.runtime_mutation(source,
+                "ensures(if same {1nat} else {0nat} == 1nat)", "requires(true) ensures(same)")
 
     def test_untrusted_ordering_cannot_substitute_the_report_being_authorized(self):
         source = (ROOT / "crates/sail-api/src/acceptance_sort.rs").read_text()

@@ -151,6 +151,44 @@ selectors and preserves loop annotations. All eleven actual runtime edits pass
 that stricter source guard; the bounded 9c3b4ea6 run now passes all eleven complete-positive/ordinary-negative
 pairs with final checks. The new outer/owner source and full matrix remain
 unqualified.
+The request/domain candidate passes all complete production Stock roots but
+native test compilation at `206c077f` stops on three old-interface uses in the
+noop and runner fixtures ([#489](https://github.com/Chelis-Lang/sail/issues/489)).
+The correction uses the independently declared original library tuple through
+checked insertion, propagates request-construction errors, and inserts the real
+additional missing target. Every original assertion remains; native tests and
+ordinary negatives are still pending. The fixture-only file is not a proved
+input adapter; only the reviewed surrounding runner binding is refreshed.
+
+The original request/domain candidate's first complete native source check
+refuses inconsistent capture bindings, dependency ordering and an incomplete
+assembly fixture ([#479](https://github.com/Chelis-Lang/sail/issues/479)). The
+correction binds both roles of the actual API library, retains every dependency
+in its declared order and adds the real immutable key's public-field negative.
+The stopped run reaches no Stock or native compilation stage; corrected-source
+qualification remains pending in the
+[owning record](validation/acceptance-boundary-refinements.md).
+
+The unselected original-target comparator's first whole-file probe stops at four
+VIR errors because its Eq/Ord/Clone methods use an envelope that emits an explicit
+`requires(true)` instead of inheriting the trait preconditions
+([#472](https://github.com/Chelis-Lang/sail/issues/472)). A separate checked
+trait-method envelope preserves every native body and postcondition without an
+implementation precondition clause. A later whole-file library support probe
+passes 17 verified functions and all 333 actual function details after three
+native-equivalent enum variant tests become direct matches. The complete
+production request/domain proof and native caller/ordering checks remain pending;
+the library support result establishes no full request or physical-input closure.
+
+The original requested-target scan counts raw `--workspace` and `--all` text
+after the Cargo/Verus separator
+([#467](https://github.com/Chelis-Lang/sail/issues/467)). A source candidate
+routes the actual selection operation through a checked prefix scan and adds a
+two-member/default-member regression. This is a source-confirmed request-scope
+defect; no new native reproduction, Verus acceptance of those forwarded flags
+or false verdict is claimed. Option/value-state parsing and full metadata
+selection remain open. See the
+[request-construction boundary](design/acceptance-production-refinements.md#pre-execution-request-construction-candidate).
 
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained

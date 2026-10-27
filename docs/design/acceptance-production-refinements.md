@@ -110,6 +110,224 @@ the amended proof checks the acceptance rule over its stated inputs. Native
 option decoding and the complete service correspondence retain their explicit
 refinement boundaries.
 
+## Pre-execution request construction candidate
+
+The source candidate for [#375](https://github.com/Chelis-Lang/sail/issues/375)
+connects actual production construction operations to shared executable bodies:
+
+- The CLI's `without_incremental` delegates to
+  `normalize_submitted_arguments`. Its contract removes only the deprecated
+  no-op spelling before the first `--`; every remaining original argument is
+  copied in order, including forwarded `--incremental` text.
+- `managed/request.rs::Resolution::resolve` calls
+  `construct_resolved_request` with original run, rendered invocation/workspace,
+  context, revision, arguments, engine, repair selection and target fields.
+  The shared constructor retains every field and argument position. Its input
+  record is ordinary data, not request, currentness or input-domain authority.
+- Each actual native target-map step calls `construct_request_target`, preserving
+  the original package ID, target and kind. The actual engine identity method
+  delegates to `construct_interactive_identity`, preserving the selected digest
+  without treating it as physical launch evidence.
+- `expected_targets` calls `cargo_workspace_selected`. The shared iff predicate
+  counts the two existing workspace flag spellings only before the first `--`,
+  correcting the native scan that also counted forwarded text
+  ([#467](https://github.com/Chelis-Lang/sail/issues/467)). This checks that
+  actual prefix-selection operation, not the entire Cargo argument grammar.
+
+Erased constructive controls cover nonempty original arguments and target
+triples, prefix versus forwarded no-op flags, and original versus forwarded
+workspace spellings. Compile-only and partial arguments produced by the actual
+constructor still refuse the existing whole-request factory for arbitrary later
+project rows. Normal native regressions exercise the actual nonempty resolution
+builder and independent Cargo prefix selection. The complete production Stock
+roots pass at `f98ea578`, including the actual constructor, key/set operations and
+these constructive/refusal witnesses. Actual inventories retain every prior
+function. Ordinary mutation qualification, native tests and differential/cost
+qualification remain pending; native Clippy reports the style diagnostics in the
+owning qualification record.
+
+The candidate registers 22 mandatory ordinary mutations over the actual
+construction, normalization and workspace-prefix bodies. Their changed source
+spans are inside the named executable functions and outside their contracts and
+erased proof blocks; original loop scaffolding remains. All 397 inherited
+controls remain required. Actual verifier/function counts are not
+guessed: the older inventories remain until new complete-root discovery, and
+every new mutation still needs an ordinary failure at the full scope. The
+separate known `4c43e5a9` query control 151 selector failure is corrected by
+importing the exact reviewed full-method control from `00352b64`; it still needs
+ordinary negative qualification. All other inherited controls are unchanged.
+
+The current proof guidance interprets actual fixed byte-array lengths and the
+standard ordered-set sequence specification explicitly. Finite witnesses reveal
+both a complete partial-selector literal and its real accepted prefix. These are
+erased facts about existing operations; the default Stock resource limits,
+original contracts and all admission guards remain unchanged. Complete-root
+discovery now passes at `f98ea578`, locking only the actual verified/function
+inventories. It supplies no ordinary-negative or native-test credit; the owning
+[qualification record](../validation/acceptance-boundary-refinements.md) records
+the exact source, subsequent lint stop and archive.
+
+Set iteration remains a distinct operation. The earlier original
+`BTreeSet<(String, String, String)>` supplied the target vector. Current vstd
+source makes set-domain
+coverage conditional on comparator laws; source review alone does not establish
+those laws for String keys. Dedicated complete-file support diagnostics are
+separate from acceptance qualification. If necessary, a reviewed internal key
+with an actual checked bytewise lexicographic comparator can preserve the old
+String-tuple ordering while enabling checked set construction/iteration. That
+conversion needs actual checking and native qualification; there is no assumed
+ordering or supplied completeness Boolean.
+
+Native support diagnostics now distinguish the two cases at the same pinned
+Stock setup. The complete String and String-tuple order-law file fails two
+ordinary postconditions; the complete actual String-tuple `BTreeSet` domain file
+fails its two coverage/no-duplicate assertions. Identical numeric `u64` controls
+both pass. The initial two missing-`main` attempts are invalid and earn zero
+support credit. All six attempts are retained at
+`experiments/2026-10-27/acceptance-request-support-4c43-native.tgz`, SHA-256
+`b7860ae37002e2c74e27b8505065a9d6968743bc87bf1a9989ef0fec3c55e9d0`
+(7,284,334 bytes). This is library-support evidence, not acceptance or a false
+verdict finding. Independent storage readback remains separately reported.
+
+The child source candidate adds `request_order.rs`: an immutable original
+String-tuple key, actual bytewise comparison/equality/clone implementations,
+and constructive byte/key order-law bodies for `OrdSpecImpl`. Its byte order
+matches Rust's original String/tuple field order by source review; an ordinary
+native differential fixture covers prefixes, embedded NUL, Unicode, field
+precedence, duplicate keys and actual set iteration against the old tuple set.
+The native differential fixture remains unrun. The complete-file Stock support
+probe at `367c5e03` stops in 9.04 seconds with four VIR errors and empty function
+details: the ordinary `sail_method!` envelope emits `requires(true)` on trait
+implementations, which must inherit their trait preconditions
+([#472](https://github.com/Chelis-Lang/sail/issues/472)). Final source/runtime
+checks pass, but this attempt earns zero proof credit. Its correction adds
+`sail_inherited_method!`, whose native signature/body is identical and whose
+Stock expansion inherits trait preconditions and checks the original additional
+postconditions. Only the four Eq/PartialOrd/Ord/Clone methods change envelopes;
+their executable bodies remain identical. The reviewed syntax fingerprint and
+checked-function envelope inventory include this macro, with ordinary source
+guard controls retaining refusal of raw or unknown-envelope methods. Those
+source-guard controls remain unrun.
+The corrected trait-envelope probe first stops at two helper mode errors: its
+executable wrapper called a proof function without a proof block. With those
+two ghost calls correctly scoped, the unchanged whole file reaches 15 verified
+and two failed functions in 10.05 seconds without resource exhaustion. The
+remaining three postcondition diagnostics concern executable `Ordering`
+equality in byte equality and the key comparator's first return, including its
+inherited standard-trait postcondition. A source follow-up uses direct enum
+variant matching for those three actual variant tests and retains every byte
+scan, return value and postcondition. No
+ordering equality law is assumed and no function is excluded from the probe.
+The `62a1d31a` whole-file support probe passes 17 verified functions, zero errors
+and all 333 actual function details in 9.589 seconds, with final source/runtime
+checks and unchanged default scope/resources. All five candidate probe attempts
+are retained in
+`experiments/2026-10-27/acceptance-request-arc-support-native.tgz`, SHA-256
+`42e4e848571415ad693fd15d6839c735146346638d4597b670c9ad15c3e2693c`
+(7,662,072 bytes), with independent storage readback. This is standalone
+library-support evidence, not production canonical qualification. The candidate
+now connects actual set storage/insertion/iteration and request projection to
+that key. This projection iterates the real original set, not a supplied
+list or mint a physical compiler-input domain. New comparator primitives add
+no String-order axiom, dependency, public record schema or provider selection.
+The follow-up key interface exposes closed original-tuple projections and
+constructor/borrow round-trip postconditions. Later projection proofs can use
+those checked relations without exposing private fields or assuming a digest
+or String-view injection law. Projection/header caller conversion leaves the
+`62a1d31a` comparator runtime bodies unchanged.
+
+The separate `request_targets.rs` source candidate implements operations over
+the real `BTreeSet<OriginalTargetKey>`. Insertion passes the actual original
+triple to the checked key constructor and standard set insertion. Projection
+consumes only actual `Iterator::next` outcomes and calls the same actual target
+record constructor. Its loop relates produced keys plus the iterator's remaining
+keys to the immutable original dictionary: exact cardinality, set coverage,
+uniqueness and order. There is no supplied complete-list or success Boolean.
+An unexpected iterator end returns explicit absence, never a truncated row
+list. The constructive postcondition additionally requires a present complete
+projection for every valid original standard-library dictionary, so an
+always-refusing implementation must fail verification.
+The ordinary native fixture compares insertion, duplicate handling and complete
+projection with the original String-tuple set. These bodies, their contracts
+pass complete-root Stock discovery; the native fixture remains unrun. The managed callers now
+use these operations, while no publication or runtime selection is implied.
+
+The same candidate adds `OriginalRequestHeader`, a borrowed construction input
+without target rows, and `construct_original_request(header, &OriginalTargets)`.
+Its body projects the actual dictionary and feeds only those rows to the actual
+existing request constructor. Its checked postcondition combines the existing
+original-header relation with actual dictionary coverage, cardinality, uniqueness
+and order. `ResolvedRequest` remains the single resulting request type; the
+borrowed header carries no authority. A nonempty ordinary fixture retains every
+header/engine/repair field and compile-only arguments across two actual original
+targets. The operation, fixture and actual `Resolution` caller conversion
+pass complete-root Stock discovery; the native fixture and surrounding caller
+behavior still need native checks. No result-selected list, input-domain provider
+or metadata enumeration completeness is inferred from this constructor.
+
+The candidate caller conversion changes the actual requested-target set type,
+delegates each real metadata insertion to `insert_original_target`, and makes
+`Resolution` call `construct_original_request` on that original set and its
+borrowed header. Both actual pre-Cargo request capture and unchanged-call
+preflight consume that result. Unexpected projection absence refuses replay or
+returns the existing `SAIL3115` capture error before Cargo starts; it cannot
+admit a truncated request. Existing
+native dependency/cleanup predicates can borrow the unchanged original tuple
+through `as_tuple`; no additional String clones, row lists or namespace
+reconstruction are needed. Actual metadata and Cargo-unit-graph root insertion
+use the same checked insertion operation; the original metadata filters,
+feature tests, target kinds and option/value-state handling are preserved.
+Their JSON decoding and upstream selection remain native and unproved. Native
+differential fixtures live in separate test modules, outside the captured proof
+bodies. Closed canonical module/import/spec-trait inventories include both
+actual modules and 29 additional executable mutation controls; complete-root
+function/count discovery, ordinary negatives, native checks and cost measurement
+remain pending. Older source hashes and numeric support probes cannot qualify
+this join.
+
+The first complete native source-capture attempt at `23ccd443` stops before
+Stock or Rust compilation with 66 production source tests, one failure and five
+errors ([#479](https://github.com/Chelis-Lang/sail/issues/479)). The strict checks
+identify the stale second binding for the same API library, inconsistent CLI
+dependency ordering and an assembly fixture missing the newly protected key.
+The correction refreshes both actual-library bindings, uses the exact declared
+dependency ordering without changing membership, and adds the key to the
+existing fixture with a public-field rejection. No production body, contract,
+resource limit or mutation object changes. Corrected-source qualification
+remains pending; the failed attempt and exact retained source/runtime evidence
+are indexed in the
+[owning validation record](../validation/acceptance-boundary-refinements.md).
+
+The corrected capture attempt passes the ordinary source suites and complete
+query/input proof roots, then the full authority root refuses two unsupported
+annotation forms: a direct call to the zero-argument reference-order broadcast
+lemma and an undereferenced final iterator snapshot before a spec-method call.
+The correction uses the standard broadcast directive and explicit snapshot
+dereference. Runtime bodies and the relations they must prove stay unchanged;
+the complete authority root and native stages still need qualification.
+
+The next whole-root run reaches actual authority verification and identifies
+missing argument-projection, literal, iterator-order and vector-push guidance.
+The constructor now additionally exposes exact original argument sequence
+equality, proved by its existing clone loop; the header/dictionary join carries
+that fact directly to later scope checks. Checked mathematical helpers frame
+the actual row push and byte projection. Standard-library order interpretation
+and compiler literal reveals expose existing meanings without adding an order,
+digest-injection, metadata-completeness or whole-compiler assumption. The finite
+normalization and compile-only/partial witnesses retain their original claims
+and default proof resources. No runtime body or guard changes; the
+[owning record](../validation/acceptance-boundary-refinements.md) retains the
+failed run and remaining qualification.
+
+Native path rendering still uses the old `to_string_lossy` operation and the
+independent raw-path binding, including invalid-byte refusal. Cargo metadata
+decoding/selection, argument option/value state, per-unit effective options,
+original submission/mode transport and native compiler launch remain explicit
+joins. The constructor does not derive expected targets from result rows or
+prove that its supplied projection exhausts Cargo's real selection. Physical
+compiler-input/provider questions 38 and 39 and all six service obligations
+remain open. No schema, dependency, runtime or provider is selected by this slice.
+
 ## Independent checking
 
 Commit the source first, then run Python 3.11 or newer:

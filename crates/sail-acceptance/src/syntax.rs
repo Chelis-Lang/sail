@@ -121,6 +121,42 @@ macro_rules! sail_method {
     };
 }
 
+/// Compile a trait implementation method under its inherited preconditions.
+///
+/// The executable signature and body are identical in both builds. Stock Verus
+/// inherits the trait's preconditions and checks these additional postconditions;
+/// implementation methods cannot declare a replacement `requires` clause.
+#[cfg(not(sail_verus))]
+#[macro_export]
+macro_rules! sail_inherited_method {
+    ($(#[$attribute:meta])* $visibility:vis fn $name:ident $(<$($generic:tt),*>)?
+        ($($argument:tt)*) -> ($result:ident: $return_type:ty)
+        $(where ($($bounds:tt)*))?
+        ensures ($($ensures:tt)*)
+        $(decreases ($($decreases:tt)*))? $body:block) => {
+        $(#[$attribute])* $visibility fn $name $(<$($generic),*>)? ($($argument)*) -> $return_type $(where $($bounds)*)? $body
+    };
+}
+
+/// Compile a trait implementation method under its inherited preconditions.
+#[cfg(sail_verus)]
+#[macro_export]
+macro_rules! sail_inherited_method {
+    ($(#[$attribute:meta])* $visibility:vis fn $name:ident $(<$($generic:tt),*>)?
+        ($($argument:tt)*) -> ($result:ident: $return_type:ty)
+        $(where ($($bounds:tt)*))?
+        ensures ($($ensures:tt)*)
+        $(decreases ($($decreases:tt)*))? $body:block) => {
+        ::verus_builtin_macros::verus_impl! {
+            $(#[$attribute])* $visibility fn $name $(<$($generic),*>)?
+                ($($argument)*) -> ($result: $return_type)
+                $(where $($bounds)*)?
+                ensures $($ensures)*,
+                $(decreases $($decreases)*,)? $body
+        }
+    };
+}
+
 /// Compile a loop with the same condition/body and checked invariants.
 #[cfg(not(sail_verus))]
 #[macro_export]
