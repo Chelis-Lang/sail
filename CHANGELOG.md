@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Share actual cache accounting/LRU retirement over the original owned update
+  and ordered index, preserving the native slot-map behavior. This source slice
+  still requires full qualification and does not establish global map/lock/history
+  consistency or cache origin. Strengthen the layout-only source policy against
+  alias/constructor substitution under unchanged name counts (#494).
 - Preserve unchanged human Cargo output when the run observes no target reports
   (#476). A separate byte-only replay checks the original/current requests,
   recorded observations, native paths and guarded readback, and admits only empty

@@ -138,13 +138,16 @@ impl Inner {
         // Charge this exact owned slot before the shared operation returns the
         // same transition. Native maps/lock/LRU still need their separate join.
         let cost = value_cost(update.slot().value());
-        match self.accounting.apply(update, cost) {
+        match cache_candidate::apply_accounted_order(
+            &mut self.accounting,
+            &mut self.order,
+            update,
+            cost,
+        ) {
             EntryUpdate::Unchanged((key, slot)) | EntryUpdate::Written((key, slot)) => {
                 self.slots.insert(key, slot);
             }
-            EntryUpdate::Removed((_, slot)) => {
-                self.order.remove(&slot.tick());
-            }
+            EntryUpdate::Removed(_) => {}
         }
     }
 
@@ -637,6 +640,55 @@ mod tests {
         assert_eq!(t.stats().entries, 0);
         assert_eq!(t.stats().bytes, tier_overhead());
         assert_eq!(t.stats().pending, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn actual_retirement_index_preserves_other_live_slot() -> std::io::Result<()> {
+        let tier = MemoryTier::new(1 << 20);
+        let first_key = QueryKey([73; 32]);
+        let other_key = QueryKey([74; 32]);
+        let first = required_pending(insert_pending(&tier, &first_key, val(6, b'a')))?;
+        let other = required_pending(insert_pending(&tier, &other_key, val(7, b'b')))?;
+        let (first_tick, other_tick) = {
+            let inner = tier
+                .lock()
+                .ok_or_else(|| std::io::Error::other("locked test tier"))?;
+            let first_tick = inner
+                .slots
+                .get(&first_key.0)
+                .ok_or_else(|| std::io::Error::other("missing first test slot"))?
+                .tick();
+            let other_tick = inner
+                .slots
+                .get(&other_key.0)
+                .ok_or_else(|| std::io::Error::other("missing other test slot"))?
+                .tick();
+            assert_eq!(inner.order.get(&first_tick), Some(&first_key.0));
+            assert_eq!(inner.order.get(&other_tick), Some(&other_key.0));
+            (first_tick, other_tick)
+        };
+        settle(first, None);
+        {
+            let inner = tier
+                .lock()
+                .ok_or_else(|| std::io::Error::other("locked retired tier"))?;
+            assert!(!inner.slots.contains_key(&first_key.0));
+            assert!(inner.slots.contains_key(&other_key.0));
+            assert_eq!(inner.order.len(), 1);
+            assert!(!inner.order.contains_key(&first_tick));
+            assert_eq!(inner.order.get(&other_tick), Some(&other_key.0));
+            assert_eq!(inner.accounting.pending(), 1);
+            assert_eq!(inner.accounting.bytes(), SLOT_OVERHEAD + 7);
+        }
+        settle(other, Some(stamp()));
+        let inner = tier
+            .lock()
+            .ok_or_else(|| std::io::Error::other("locked written tier"))?;
+        assert_eq!(inner.order.len(), 1);
+        assert_eq!(inner.order.get(&other_tick), Some(&other_key.0));
+        assert_eq!(inner.accounting.pending(), 0);
+        assert_eq!(inner.accounting.bytes(), SLOT_OVERHEAD + 7);
         Ok(())
     }
 

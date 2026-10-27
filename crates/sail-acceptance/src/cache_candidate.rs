@@ -7,6 +7,7 @@
 use vstd::prelude::*;
 
 use crate::inputs::byte_eq;
+use std::collections::BTreeMap;
 
 sail_code! {
     /// A checked lifetime clock, shared by insertion generations and LRU touches.
@@ -420,6 +421,40 @@ sail_spec! {
 }
 
 sail_verified! {
+    /// Apply the actual owned accounting transition and retire only its original
+    /// LRU tick. The supplied map is the native tier's real ordered index.
+    /// This does not assert that the slot map, index, lock or history are globally
+    /// consistent, and it grants no candidate origin or proof authority.
+    pub fn apply_accounted_order<Value, Stamp>(accounting: &mut Accounting,
+        order: &mut BTreeMap<u64, [u8; 32]>, update: EntryUpdate<Value, Stamp>, cost: u64)
+        -> (out: EntryUpdate<Value, Stamp>)
+        requires (true)
+        ensures (out == update,
+            final(order)@ == if update.removed_view() {
+                old(order)@.remove(update.slot_view().tick_view())
+            } else { old(order)@ },
+            final(accounting).bytes_view() as int == if update.removed_view() {
+                if old(accounting).bytes_view() >= cost {
+                    old(accounting).bytes_view() as int - cost as int
+                } else { 0 }
+            } else { old(accounting).bytes_view() as int },
+            final(accounting).pending_view() as int == if update.written_view()
+                || (update.removed_view() && matches!(update.slot_view().state_view(), SlotState::Pending)) {
+                if old(accounting).pending_view() > 0 {
+                    old(accounting).pending_view() as int - 1
+                } else { 0 }
+            } else { old(accounting).pending_view() as int })
+    {
+        sail_proof! { broadcast use vstd::laws_cmp::group_laws_cmp; }
+        let update = accounting.apply(update, cost);
+        if matches!(update, EntryUpdate::Removed(_)) {
+            order.remove(&update.slot().tick());
+        }
+        update
+    }
+}
+
+sail_verified! {
     /// Apply an actual disk outcome only to its original still-pending insertion.
     /// This owns the real entry removed from the native map, not a shadow ledger.
     pub fn complete<Value, Stamp>(entry: ([u8; 32], Slot<Value, Stamp>), ticket: &Ticket,
@@ -553,6 +588,55 @@ sail_verified! {
         exhausted.exhaust();
         if exhausted.advance().is_some() || exhausted.advance().is_some() { return false; }
         true
+    }
+}
+
+sail_verified! {
+    /// Nonempty native-shaped ordered entries exercise retirement, written and
+    /// unchanged outcomes without asserting a global slot-map/lock invariant.
+    pub fn accounted_order_control() -> (out: bool)
+        requires (true) ensures (out)
+    {
+        sail_proof! { broadcast use vstd::laws_cmp::group_laws_cmp; }
+        let key = [29u8; 32];
+        let other_key = [31u8; 32];
+        let mut order = BTreeMap::<u64, [u8; 32]>::new();
+        let mut accounting = Accounting::empty();
+        let mut clock = Clock::start();
+        let Some((entry, ticket)) = clock.entry(key,
+            vec![117u8,110u8,115u8,97u8,116u8,10u8], SlotState::<u64>::Pending)
+            else { return false; };
+        let Some((other_entry, _)) = clock.entry(other_key,
+            vec![117u8,110u8,107u8,110u8,111u8,119u8,110u8], SlotState::OnDisk(21u64))
+            else { return false; };
+        order.insert(1, key);
+        order.insert(other_entry.1.tick(), other_key);
+        if !accounting.reserve(&entry.1, 142) || !accounting.reserve(&other_entry.1, 143) { return false; }
+        let removed = apply_accounted_order(&mut accounting, &mut order,
+            complete(entry, &ticket, Completion::Exists), 142);
+        if !matches!(removed, EntryUpdate::Removed(_)) || order.len() != 1
+            || order.contains_key(&1) || accounting.bytes() != 143 || accounting.pending() != 0 {
+            return false;
+        }
+        let Some(other) = order.get(&2) else { return false; };
+        if !byte_eq(other, &other_key) { return false; }
+        let Some((entry, ticket)) = clock.entry(key,
+            vec![117u8,110u8,115u8,97u8,116u8,10u8], SlotState::<u64>::Pending)
+            else { return false; };
+        order.insert(3, key);
+        if !accounting.reserve(&entry.1, 142) { return false; }
+        let written = apply_accounted_order(&mut accounting, &mut order,
+            complete(entry, &ticket, Completion::Written(17)), 142);
+        let EntryUpdate::Written(entry) = written else { return false; };
+        if order.len() != 2 || !order.contains_key(&3)
+            || accounting.bytes() != 285 || accounting.pending() != 0 {
+            return false;
+        }
+        let unchanged = apply_accounted_order(&mut accounting, &mut order,
+            complete(entry, &ticket, Completion::Written(99)), 142);
+        matches!(unchanged, EntryUpdate::Unchanged(_)) && order.len() == 2
+            && order.contains_key(&3) && order.contains_key(&2)
+            && accounting.bytes() == 285 && accounting.pending() == 0
     }
 }
 

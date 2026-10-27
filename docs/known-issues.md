@@ -91,6 +91,13 @@ layout/admission regression. Its corrected-source qualification is pending in th
 incremental accounting gap, not a proved total-budget/RSS violation or false
 verdict; the shared accounting proof intentionally covers supplied charges.
 
+The standalone layout-only source policy accepts alias/runtime substitution when
+protected name counts remain unchanged
+([#494](https://github.com/Chelis-Lang/sail/issues/494)). Full native SHA binding
+continues to refuse the drift; no complete-gate or false-verdict bypass is shown.
+Exact old-field/variant and sizeof-position checks plus a direct source
+counterexample regression are prepared and unqualified.
+
 The `6e239d21` native workspace runs 1,278 tests: 1,276 pass, two fail and 57
 skip. Its baseline fixture expects a whole-request facet after the real retained
 read path correctly projects absent freshness to Unknown

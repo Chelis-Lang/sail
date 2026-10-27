@@ -321,6 +321,21 @@ def candidate_memory_policy(source: str) -> None:
             "candidate old layout types must remain private attributed declarations")
         require(values.count(name) == 2,
             "candidate old layout types may only describe the original carrier for size_of")
+    require(occurrences(["enum", "StateBeforeGeneration", "{", "OnDisk", "(", "FileStamp", ")", ",", "Pending", ",", "}"]) == 1
+        and occurrences(["struct", "SlotBeforeGeneration", "{", "value", ":", "Arc", "<", "Value", ">", ",",
+            "state", ":", "StateBeforeGeneration", ",", "tick", ":", "u64", ",", "}"]) == 1,
+        "candidate old carrier must retain its complete original field/variant shape")
+    require(occurrences(["const", "SLOT_GROWTH", ":", "usize", "=", "std", ":", ":", "mem", ":", ":", "size_of",
+        ":", ":", "<", "Slot", ">", "(", ")", ".", "saturating_sub", "(", "std", ":", ":", "mem", ":", ":",
+        "size_of", ":", ":", "<", "SlotBeforeGeneration", ">", "(", ")", ")", ";"]) == 1,
+        "candidate old carrier must appear only in its actual size_of delta")
+    order_call = ["cache_candidate", ":", ":", "apply_accounted_order", "(", "&", "mut", "self", ".", "accounting", ",",
+        "&", "mut", "self", ".", "order", ",", "update", ",", "cost", ",", ")"]
+    order_calls = [i for i in range(len(values) - len(order_call) + 1)
+        if values[i:i + len(order_call)] == order_call]
+    require(len(order_calls) == 1,
+        "candidate retirement must forward its actual accounting/order and owned update once")
+    forwarded_accounting = {at + 9 for at in order_calls}
     require(not ({"unsafe", "replace", "swap", "take", "try_unwrap", "into_inner", "cfg", "mod"} & set(values)),
         "candidate memory reset/alias syntax outside reviewed subset")
     for prefix in ("Self", "Default"):
@@ -331,6 +346,8 @@ def candidate_memory_policy(source: str) -> None:
             "candidate memory cannot replace the held Inner")
     for i, token in enumerate(stream):
         if i and stream[i - 1].value == "." and token.value in {"clock", "inner", "accounting"}:
+            if token.value == "accounting" and i in forwarded_accounting:
+                continue
             allowed = {"clock": {"advance", "exhaust", "entry", "prepare"},
                 "inner": {"lock", "as_ref", "is_some"},
                 "accounting": {"apply", "reserve", "clear", "bytes", "pending"}}[token.value]
