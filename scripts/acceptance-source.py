@@ -218,6 +218,9 @@ def runtime_mutation(source: str, before: str, after: str) -> None:
                 if ghost or ghost_group:
                     at = closing(stream, at + (2 if ghost else 1)) + 1
                     continue
+                require(token.value != "fn" and not (macro
+                    and token.value in {"sail_verified", "sail_method"}),
+                    "nested runtime function outside mutation capture subset")
                 values.append(token.value)
                 spans.append((token.begin, token.end))
                 at += 1

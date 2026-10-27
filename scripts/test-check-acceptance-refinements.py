@@ -245,6 +245,19 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
             SOURCE.runtime_mutation(source, "let nested = true", "let nested = false")
 
+    def test_inventory_refuses_historical_contract_selector_before_stock(self):
+        import copy
+        import json
+        manifest = copy.deepcopy(json.loads((ROOT / CHECKER.MANIFEST).read_text()))
+        controls = manifest["components"][0]["negative_controls"]
+        control = next(item for item in controls
+            if item["name"] == "replay-full-comparison-always-refuses")
+        control["before"], control["after"] = "1nat", "false"
+        snapshots = {path: (ROOT / path).read_bytes() for component in CHECKER.COMPONENTS
+            for path in CHECKER.dependency_paths(component)}
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "contract or non-runtime"):
+            CHECKER.inventory(ROOT, manifest, snapshots)
+
     def test_runtime_control_refuses_erased_and_proof_only_selectors(self):
         source = """sail_spec! { spec fn ghost() -> bool { true } }
         sail_method! {
@@ -269,6 +282,16 @@ class SourceCaptureTests(unittest.TestCase):
             self.assertEqual(SOURCE.executable_envelopes(source), [])
             with self.subTest(wrapper=wrapper), self.assertRaises(SOURCE.SourceRefusal):
                 SOURCE.runtime_mutation(source, "{ true }", "{ false }")
+
+    def test_runtime_control_refuses_nested_runtime_declarations(self):
+        for nested in (
+            "sail_method! { fn hidden() -> (x: bool) requires (true) ensures (if x {1nat} else {0nat} == 0nat) { true } }",
+            "fn hidden() -> bool requires true ensures if result {1nat} else {0nat} == 0nat { true }",
+        ):
+            source = "sail_method! { fn outer() -> (ok: bool) requires (true) ensures (ok) { " + nested + " true } }"
+            with self.subTest(nested=nested), self.assertRaisesRegex(
+                    SOURCE.SourceRefusal, "nested runtime function"):
+                SOURCE.runtime_mutation(source, "1nat", "false")
 
     def test_runtime_control_keeps_contracts_even_with_whole_method_selector(self):
         source = "sail_verified! { fn f() -> (ok: bool) requires (true) ensures (ok) { true } }"
