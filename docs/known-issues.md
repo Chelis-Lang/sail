@@ -24,27 +24,12 @@ covered by conformance.
 ## Input coverage and cache integrity
 
 No end-to-end false proof is reproduced for these; each weakens a check that
-reuse depends on. Fixes for the first five are staged in the acceptance
-integration draft ([#378](https://github.com/Chelis-Lang/sail/pull/378)),
-which is parked until after 0.1.0.
+reuse depends on.
 
-- A cached file digest can be returned for a symlink that was retargeted
-  after its canonical path was looked up
-  ([#381](https://github.com/Chelis-Lang/sail/issues/381)).
-- Unreadable declaration providers (dep-info, build-script output) can still
-  count as an empty, complete declaration set in `build_inputs.rs`
-  ([#382](https://github.com/Chelis-Lang/sail/issues/382); #389 fixed the
-  `declared_names` part).
-- Declared environment names with surrounding whitespace or rustc escapes can
-  be recorded under a different key
-  ([#383](https://github.com/Chelis-Lang/sail/issues/383)).
-- Read-back currentness hashes recorded files one at a time, so concurrent
-  edits can produce a combination that never existed
-  ([#387](https://github.com/Chelis-Lang/sail/issues/387)).
-- The dep-info parser splits paths on Unicode whitespace and treats
-  backslashes as escapes, so a file name with a non-breaking space is
-  recorded as other paths
-  ([#408](https://github.com/Chelis-Lang/sail/issues/408)).
+- Read-back currentness brackets its reads with metadata stamps of every
+  recorded path (#387). A concurrent edit that restores every stamped
+  field, including the inode change time, is not detected; that needs a
+  privileged clock change or a filesystem without change times.
 - Native-artifact store seeding can hide a changed native linker at the same
   `PATH` ([#187](https://github.com/Chelis-Lang/sail/issues/187)). The store
   is disabled under [ADR 0053](decisions/0053-disable-unqualified-native-store.md),
