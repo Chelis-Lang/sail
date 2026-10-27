@@ -1097,3 +1097,19 @@ Its native package archive `acceptance-parser-1f3566-native-smt-closed.tgz` is
 3,971 bytes, SHA-256
 `c7e25b5c800a947e4cad4a5f9384fc683ca20fa76124a9733d03b08f24ae459b`.
 Independent lead archive verification remains pending for these newer artifacts.
+
+The corrected stdout witness attempt `f3de98e5` observes 564 verified/4 failed
+functions and 971 query entries in 39.460 seconds, entire crate/no VIR or
+resource refusal, with final source/runtime checks. Factory/discard empty-tape
+identity and two finite constructive/refusal paths remain unsatisfied; no new
+inventory is locked. The next candidate supplies exact empty/slice/atom facts
+and exposes the existing transcript completion predicate through its existing
+partition lemma, retaining all operations/contracts/controls/resources.
+
+Its native package run explicitly cleans and recompiles both touched packages:
+all **25 tests pass**, none skipped. Strict Clippy refuses only the explicit
+single opening-parenthesis byte array in the partial-output constructive fixture
+([#491](https://github.com/Chelis-Lang/sail/issues/491)); final source checks pass.
+A documented allowance on that one fixture retains every byte/assertion and
+requires a fresh strict native run. No full workspace, solver or conformance
+claim follows.
