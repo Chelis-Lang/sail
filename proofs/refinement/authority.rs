@@ -1515,6 +1515,7 @@ pub fn original_nonempty_selected_suffix_matches(arguments: &[String], candidate
         string_bytes(&arguments@[0]) == vstd::utf8::encode_utf8(candidate@),
     ensures matched,
 {
+    proof { vstd::seq_lib::lemma_seq_skip_nothing(string_bytes(&arguments@[0]), 0); }
     crate::request_selectors::original_span_matches_str(arguments,
         &crate::request_selectors::ArgumentSpan { argument: 0, offset: 0 }, candidate)
 }
@@ -1526,6 +1527,7 @@ pub fn original_nonempty_package_name_matches(arguments: &[String], name: &str, 
         string_bytes(&arguments@[0]) == vstd::utf8::encode_utf8(name@),
     ensures matched,
 {
+    proof { vstd::seq_lib::lemma_seq_skip_nothing(string_bytes(&arguments@[0]), 0); }
     crate::request_selectors::original_package_matches(arguments,
         &crate::request_selectors::ArgumentSpan { argument: 0, offset: 0 }, name, id, None)
 }

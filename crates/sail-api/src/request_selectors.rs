@@ -233,6 +233,32 @@ sail_spec! {
                 && bytes.subrange(begin, at) == name && version.is_some()
                 && bytes.skip(at + 1) == version.unwrap())
     }
+
+    /// The first actual at-sign is the unique split used by the original rule.
+    pub proof fn first_at_package_projection(bytes: Seq<u8>, begin: int, at: int,
+        name: Seq<u8>, id: Seq<u8>, version: Seq<u8>)
+        requires 0 <= begin <= at < bytes.len(), bytes[at] == 64,
+            forall |i: int| begin <= i < at ==> bytes[i] != 64,
+            bytes.skip(begin) != name, bytes.skip(begin) != id,
+        ensures selected_package_bytes(bytes, begin, name, id, Some(version))
+            == (bytes.subrange(begin, at) == name && bytes.skip(at + 1) == version),
+    {
+        if selected_package_bytes(bytes, begin, name, id, Some(version)) {
+            let split = choose |split: int| begin <= split < bytes.len() && bytes[split] == 64
+                && (forall |i: int| begin <= i < split ==> bytes[i] != 64)
+                && bytes.subrange(begin, split) == name && bytes.skip(split + 1) == version;
+            if split < at { assert(bytes[split] != 64); }
+            else if at < split { assert(bytes[at] != 64); }
+            assert(split == at);
+        }
+        if bytes.subrange(begin, at) == name && bytes.skip(at + 1) == version {
+            assert(exists |split: int| split == at && begin <= split < bytes.len()
+                && bytes[split] == 64
+                && (forall |i: int| begin <= i < split ==> bytes[i] != 64)
+                && bytes.subrange(begin, split) == name && bytes.skip(split + 1) == version);
+            assert(selected_package_bytes(bytes, begin, name, id, Some(version)));
+        }
+    }
 }
 
 sail_verified! {
@@ -279,10 +305,18 @@ sail_verified! {
         let mut at = span.offset;
         sail_while! { (at < bytes.len())
             invariant(span.offset <= at <= bytes.len(), span.argument < arguments.len(),
+                bytes@ == crate::acceptance::string_bytes(&arguments@[span.argument as int]),
+                !original_span_matches(arguments@, span, vstd::utf8::encode_utf8(name@)),
+                !original_span_matches(arguments@, span, vstd::utf8::encode_utf8(id@)),
                 forall |i: int| span.offset <= i < at ==> bytes@[i] != 64)
             decreases(bytes.len() - at)
             {
                 if bytes[at] == b'@' {
+                    sail_proof! {
+                        first_at_package_projection(bytes@, span.offset as int, at as int,
+                            vstd::utf8::encode_utf8(name@), vstd::utf8::encode_utf8(id@),
+                            vstd::utf8::encode_utf8(version@));
+                    }
                     return original_window_matches(bytes, span.offset, at, name.as_bytes())
                         && original_window_matches(bytes, at + 1, bytes.len(), version.as_bytes());
                 }

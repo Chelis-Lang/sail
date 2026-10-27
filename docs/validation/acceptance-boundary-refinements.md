@@ -20,6 +20,20 @@ native source-suite evidence; this combined extension and actual request/domain
 construction still require fresh native source checks and complete-root Stock
 discovery. No function or obligation counts are inferred from the support probe.
 
+The corrected selector qualifier at `e92200f1` passes all 67 production source
+tests and the complete query 471/0 (821 functions) and input 308/0 (538) roots.
+Whole authority reports 588 verified and three ordinary failed functions, with no
+resource diagnostic: two nonempty suffix/name examples need `skip(0)` framing,
+and the actual package-version return needs first-at uniqueness/existential
+framing. The scanner, separator, complete-window and suffix operations themselves
+prove. Native stages and all 23 new ordinary negatives remain unrun; no new
+inventory is frozen. Final source/image/runtime checks pass. The authenticated
+archive is `experiments/2026-10-27/acceptance-request-domain-e92200f1-native.tgz`,
+7,620,479 bytes, SHA256
+`88f2a40d6d6d4e7fd782258be37fa87af078f33932bb858445dbf6ec7bfd8fe6`.
+The follow-up adds only proved first-at/sequence guidance and derived loop facts,
+retaining predicates, executable guards and every constructive/refusal check.
+
 The first original-selector source qualifier at `b51373b6` is refused by the
 strict mandatory-control inventory before Stock or native compilation. All 23
 new control objects exist in the manifest, but the independently captured
