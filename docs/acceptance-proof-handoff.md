@@ -391,3 +391,23 @@ package/target/kind revision key (#390). Both unchanged native tests fail at
 revision controls retain original admission guards. This focused result is not
 the new main/view union's complete workspace gate. The owning record retains
 the immutable baseline/correction archive and independent download/hash.
+
+## Owned stdout/splitter source candidate
+
+`query_output_split::ParsedOutput` is the actual native output loop's new paired
+controller: its private factory owns the original `StreamOutput` and output
+splitter, and `append_items` binds the complete ordered returned inventory to
+the same retained raw bytes. Existing StreamOutput operations/contracts remain
+untouched; the wrapper delegates frame/replay/end/refuse/discard/seal behavior
+without exposing mutable internals. Native forwarding, actual physical EOF/wait,
+independent response-frame refusal and publication gates stay unchanged.
+
+The source adds two nonempty constructive candidates and twelve full-method
+ordinary controls, retaining all 213 earlier controls (225 query). Assembly is
+23/9/14 files; this isolated branch plans 464 unique cases/473 partitioned calls.
+The inherited lexical 553/951 inventory is historical for this newer source;
+new function counts require actual discovery. All controls, native new fixtures,
+workspace/conformance/cost and physical/parser/Session/Z3/origin composition stay
+open. Two targeted lightweight source guards pass; no local native/proof build
+or excluded consumer/provider action is used. ADR 0086 and CI policy remain
+unselected; this slice adds no graph edge or new trusted premise.

@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Pair actual stdout splitting with the same retained output controller used
+  for forwarding, frame refusal and replay. Keep byte output, independent
+  framing, EOF handling and origin checks unchanged; new source/control/native
+  qualification and broader #371 correspondence remain pending.
+
 - Source-share actual SMT lexical spans, word classification, sticky error state
   and borrowed shallow command heads. Preserve original bytes, public token
   fields, diagnostics and supported shallow behavior; new qualification and

@@ -30,6 +30,8 @@ pub mod query_options;
 pub mod query_output;
 /// Original opaque stream leases retained through frame copies and publication.
 pub mod query_output_owner;
+/// Actual output splitter and retained stdout bytes consumed through one controller.
+pub mod query_output_split;
 /// Default response policy from exact accepted command head bytes.
 pub mod query_policy;
 /// Joint ownership of exact raw input and its incremental key material.
