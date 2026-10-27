@@ -29,10 +29,10 @@
     {
       "name": "native-candidate-owned-accounting-omitted",
       "source": "crates/sail-cache/src/memory.rs",
-      "before": "match self.accounting.apply(update, cost) {",
-      "after": "match update {",
+      "before": "match cache_candidate::apply_accounted_order(\n            &mut self.accounting,\n            &mut self.order,\n            update,\n            cost,\n        ) {",
+      "after": "match {\n            if matches!(update, EntryUpdate::Removed(_)) {\n                self.order.remove(&update.slot().tick());\n            }\n            update\n        } {",
       "native_test": "actual_owned_accounting_preserves_stale_replacement_and_retirement",
-      "scope": "ordinary native test failure only; no Stock negative credit; source capture may first refuse"
+      "scope": "ordinary native test failure only; no Stock negative credit; source capture may first refuse; rebase preserves exact original LRU removal while omitting accounting only"
     },
     {
       "name": "native-candidate-slot-padding-undercharged",
@@ -41,6 +41,14 @@
       "after": "        ENTRY_OVERHEAD + 8",
       "native_test": "actual_carrier_growth_is_charged_before_admission",
       "scope": "ordinary native test failure only on this measured native layout; no Stock/allocator/RSS credit"
+    },
+    {
+      "name": "native-candidate-actual-retirement-index-omitted",
+      "source": "crates/sail-cache/src/memory.rs",
+      "before": "match cache_candidate::apply_accounted_order(\n            &mut self.accounting,\n            &mut self.order,\n            update,\n            cost,\n        ) {",
+      "after": "match self.accounting.apply(update, cost) {",
+      "native_test": "actual_retirement_index_preserves_other_live_slot",
+      "scope": "ordinary native test failure only; accounting is preserved, actual ordered-index removal is omitted; no Stock credit"
     }
   ]
 }
