@@ -249,6 +249,19 @@ function/count discovery, ordinary negatives, native checks and cost measurement
 remain pending. Older source hashes and numeric support probes cannot qualify
 this join.
 
+The first complete native source-capture attempt at `23ccd443` stops before
+Stock or Rust compilation with 66 production source tests, one failure and five
+errors ([#479](https://github.com/Chelis-Lang/sail/issues/479)). The strict checks
+identify the stale second binding for the same API library, inconsistent CLI
+dependency ordering and an assembly fixture missing the newly protected key.
+The correction refreshes both actual-library bindings, uses the exact declared
+dependency ordering without changing membership, and adds the key to the
+existing fixture with a public-field rejection. No production body, contract,
+resource limit or mutation object changes. Corrected-source qualification
+remains pending; the failed attempt and exact retained source/runtime evidence
+are indexed in the
+[owning validation record](../validation/acceptance-boundary-refinements.md).
+
 Native path rendering still uses the old `to_string_lossy` operation and the
 independent raw-path binding, including invalid-byte refusal. Cargo metadata
 decoding/selection, argument option/value state, per-unit effective options,

@@ -4,6 +4,15 @@ Open Sail defects, integration limits and current product limits. Fixed defects 
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The original request/domain candidate's first complete native source check
+refuses inconsistent capture bindings, dependency ordering and an incomplete
+assembly fixture ([#479](https://github.com/Chelis-Lang/sail/issues/479)). The
+correction binds both roles of the actual API library, retains every dependency
+in its declared order and adds the real immutable key's public-field negative.
+The stopped run reaches no Stock or native compilation stage; corrected-source
+qualification remains pending in the
+[owning record](validation/acceptance-boundary-refinements.md).
+
 The unselected original-target comparator's first whole-file probe stops at four
 VIR errors because its Eq/Ord/Clone methods use an envelope that emits an explicit
 `requires(true)` instead of inheriting the trait preconditions

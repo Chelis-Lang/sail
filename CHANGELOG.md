@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep both request-candidate API-library capture bindings and declared source
+  dependency ordering consistent; include the actual immutable key in assembly
+  rejection fixtures (#479). The guards retain strict refusal and report the
+  mismatching native source path. Fresh qualification remains pending.
+
 - Construct the candidate's actual pre-Cargo and replay requests from the
   original target dictionary through shared checked insertion, iteration and
   header construction. Preserve target ordering, metadata filters, arguments and
