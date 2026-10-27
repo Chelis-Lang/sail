@@ -23,7 +23,9 @@ discovery. No function or obligation counts are inferred from the support probe.
 The later captured-worker selection source candidate is separate from the frozen
 request/domain qualifier. It adds the actual decoded `RequestCapture` declaration
 and version constant, the checked consuming selection loop, native caller binding
-and twelve mandatory executable controls. Existing 559/961 authority inventory
+and twelve mandatory executable controls. The representation regression also
+refuses changed, missing or conditionally attributed capture-version constants.
+Existing 559/961 authority inventory
 entries are retained as a required subset; no new function/obligation counts are
 guessed. All new whole-root, source, native and negative checks are pending.
 Decoding/canonicalization/journal origin are native boundaries; no physical-origin

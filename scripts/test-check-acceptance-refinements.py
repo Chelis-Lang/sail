@@ -428,6 +428,7 @@ class SourceCaptureTests(unittest.TestCase):
         for before, after in (
             (b"pub const REQUEST_CAPTURE_VERSION: u32 = 1;", b"pub const REQUEST_CAPTURE_VERSION: u32 = 2;"),
             (b"pub const REQUEST_CAPTURE_VERSION: u32 = 1;", b"const REQUEST_CAPTURE_VERSION: u32 = 1;"),
+            (b"pub const REQUEST_CAPTURE_VERSION: u32 = 1;", b"#[cfg(not(sail_verus))] pub const REQUEST_CAPTURE_VERSION: u32 = 1;"),
             (b"pub worker_id: String,", b"pub worker_id: Vec<u8>,"),
         ):
             changed = dict(snapshots)
