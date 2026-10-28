@@ -21,7 +21,7 @@
         "proofs/refinement/query.rs",
         "crates/sail-shim/src/cached.rs"
       ],
-      "verified": 284,
+      "verified": 286,
       "functions": [
         "check_query::cache_bucket::Bucket::contains_view",
         "check_query::cache_bucket::Bucket::empty",
@@ -1853,7 +1853,7 @@
         "proofs/refinement/inputs.rs",
         "crates/sail-verus/src/managed/source_inputs.rs"
       ],
-      "verified": 57,
+      "verified": 59,
       "functions": [
         "check_inputs::context::Mode::arrow_0",
         "check_inputs::context::Mode::arrow_OptIn_0",
@@ -2032,7 +2032,7 @@
         "crates/sail-api/src/project.rs",
         "crates/sail-verus/src/adapter.rs"
       ],
-      "verified": 186,
+      "verified": 188,
       "functions": [
         "check_authority::acceptance::CompleteReport::policy",
         "check_authority::acceptance::CompleteReport::report",
