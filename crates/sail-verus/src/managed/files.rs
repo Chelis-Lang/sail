@@ -300,7 +300,24 @@ fn json_bytes(path: &Path, bytes: &[u8]) -> Result<()> {
         .map_err(|e| Error::new("SAIL3102", e.to_string()))
 }
 
+/// Every event this process emitted, so an unchanged-call record can carry
+/// them and a replay under `SAIL_JOB_EVENTS` can emit them again (spike A1).
+static EMITTED: std::sync::Mutex<Vec<serde_json::Value>> = std::sync::Mutex::new(Vec::new());
+
+/// The events emitted so far by this process.
+pub(crate) fn emitted_events() -> Vec<serde_json::Value> {
+    EMITTED
+        .lock()
+        .map(|events| events.clone())
+        .unwrap_or_default()
+}
+
 pub(crate) fn event(value: &serde_json::Value) {
+    if let Ok(mut events) = EMITTED.lock()
+        && events.len() < 1024
+    {
+        events.push(value.clone());
+    }
     if let Some(path) = std::env::var_os("SAIL_JOB_EVENTS")
         && let Ok(mut file) = std::fs::OpenOptions::new()
             .create(true)

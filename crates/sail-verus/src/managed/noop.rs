@@ -46,7 +46,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Version 4 also binds names required by proof receipts, including ghost
 /// reads absent from dep-info. Earlier records can omit those inputs (#552).
-const VERSION: u32 = 4;
+const VERSION: u32 = 5;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
@@ -82,6 +82,8 @@ struct Record {
     result: ProjectResult,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
+    /// The job events the recorded run emitted, in order.
+    events: Vec<serde_json::Value>,
 }
 
 /// Cargo's uplifted copy of a build-script executable (#437). Cargo
@@ -284,16 +286,19 @@ pub(super) struct Facts<'a> {
 
 fn disabled() -> bool {
     std::env::var_os("SAIL_MANAGED_NOOP").is_some_and(|value| value == "0")
-        // Job workers and observers expect the records a full run writes.
-        || [
-            "SAIL_JOB_EVENTS",
-            "SAIL_PROOF_EVENTS",
-            "SAIL_JOB_GUARD_PARENT",
-            "SAIL_MANAGED_FORCE",
-        ]
-        .iter()
-        .any(|name| std::env::var_os(name).is_some())
+        // A forced job must run in full. Job workers and observers
+        // (`SAIL_JOB_EVENTS`, `SAIL_PROOF_EVENTS`) replay: a replay emits the
+        // recorded run's job events again under its own run identity.
+        || std::env::var_os("SAIL_MANAGED_FORCE").is_some()
 }
+
+/// Per-job variables: their values name the job's own files, never an
+/// input, so they are not part of the invocation key.
+const JOB_VARIABLES: [&str; 3] = [
+    "SAIL_JOB_EVENTS",
+    "SAIL_PROOF_EVENTS",
+    "SAIL_JOB_GUARD_PARENT",
+];
 
 /// One line per decision in the file `SAIL_MANAGED_NOOP_TRACE` names, for
 /// tests and diagnosis. Never written to the run's own output.
@@ -317,6 +322,9 @@ fn key_environment(
 ) -> Option<Vec<(String, String)>> {
     let mut selected = Vec::new();
     for (name, value) in variables {
+        if JOB_VARIABLES.iter().any(|job| name == *job) {
+            continue;
+        }
         if super::environment::input_environment_key(&name)
             || name.as_encoded_bytes().starts_with(b"SAIL_")
             || ["PATH", "HOME", "TERM", "PWD", "CARGO_TARGET_DIR"]
@@ -530,6 +538,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             result: facts.result.clone(),
             stdout: Vec::new(),
             stderr: Vec::new(),
+            events: super::files::emitted_events(),
         },
     })
 }
@@ -676,6 +685,14 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
         || super::files::json(&directory.join("result.json"), &result).is_err()
     {
         return None;
+    }
+    if std::env::var_os("SAIL_JOB_EVENTS").is_some() {
+        for mut event in record.events {
+            if event.get("run_id").is_some() {
+                event["run_id"] = serde_json::Value::String(run_id.clone());
+            }
+            super::files::event(&event);
+        }
     }
     trace("hit");
     Some(Replay {
