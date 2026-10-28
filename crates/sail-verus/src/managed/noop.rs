@@ -19,8 +19,9 @@
 //!   Cargo-Verus, Verus and its engine, the solver, rustc, rustup, sysroot
 //!   libraries), and rustup's settings;
 //! - the proof context's and compiler family's cache records, by content;
-//! - the values of every variable a unit declares (`env-dep`,
-//!   `rerun-if-env-changed`).
+//! - caller values for every variable a unit declares (`env-dep`,
+//!   `rerun-if-env-changed`) or an admitted proof receipt requires, including
+//!   ghost-only names absent from dep-info.
 //!
 //! The invocation itself (arguments, output mode, terminals, the selected
 //! tools and every environment variable the tools or Sail read) is the
@@ -43,10 +44,9 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-/// Version 3: earlier records could omit compiler-declared files and
-/// environment names that the dep-info and build-script readers lost (#383,
-/// #408).
-const VERSION: u32 = 3;
+/// Version 4 also binds names required by proof receipts, including ghost
+/// reads absent from dep-info. Earlier records can omit those inputs (#552).
+const VERSION: u32 = 4;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
@@ -76,7 +76,8 @@ struct Record {
     copies: Vec<Copied>,
     /// The directories holding them, bound by identity and entry names.
     directories: Vec<Directory>,
-    /// Declared variables and their values.
+    /// Caller values for unit declarations and admitted proof-receipt
+    /// requirements, including ghost-only names absent from dep-info.
     environment: BTreeMap<String, Option<Vec<u8>>>,
     result: ProjectResult,
     stdout: Vec<u8>,
@@ -274,6 +275,10 @@ pub(super) struct Facts<'a> {
     /// Receipt directories of the family's other proof contexts, which a
     /// dependency's reuse may consult.
     pub siblings: Vec<PathBuf>,
+    /// Caller-variable requirements captured from the actual admitted proof
+    /// receipts. Unknown requirements for any included report make recording
+    /// ineligible; omitted targets confer no report authority.
+    pub receipt_environment: Option<std::collections::BTreeSet<String>>,
     pub result: &'a ProjectResult,
 }
 
@@ -458,6 +463,7 @@ fn rustup_settings() -> Option<PathBuf> {
 /// Gather a record at the end of a run that ended Current without starting a
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
+    let required_environment = facts.receipt_environment?;
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
     let target_stamps = crate::parallel::in_order(&target, |path| lstat(path));
@@ -504,8 +510,9 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         ));
         return None;
     }
-    let environment =
-        super::environment::values(&super::environment::declared_names(facts.target)?);
+    let mut names = super::environment::declared_names(facts.target)?;
+    names.extend(required_environment);
+    let environment = super::environment::values(&names);
     Some(Pending {
         path: record_path(facts.cache, facts.key),
         record: Record {
@@ -729,6 +736,179 @@ fn mismatch(record: &Record) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const SHADOW: &str = " __VERUS_DRIVER_SHADOW__";
+
+    fn receipt_fixture_result(root: &Path) -> ProjectResult {
+        ProjectResult {
+            kind: "sail-project-result".into(),
+            schema_version: sail_api::project::SCHEMA_VERSION,
+            run_id: "establishing-call".into(),
+            workspace: root.to_string_lossy().into_owned(),
+            context_sha256: "context".into(),
+            input_revision: "revision".into(),
+            currentness: sail_api::project::Currentness::Current,
+            exit_code: Some(0),
+            targets: Vec::new(),
+            execution: sail_api::project::Execution {
+                verifier_invocations: 0,
+                reused_targets: 0,
+                wall_ms: 1.0,
+            },
+            notes: Vec::new(),
+            error: None,
+            engine: None,
+            no_reuse: None,
+        }
+    }
+
+    /// Exercise preparation and replay in separate callers, without mutating
+    /// the parallel test process's environment. The operation file is outside
+    /// every recorded tree and is not an input to the invocation key.
+    #[test]
+    fn receipt_environment_process_probe() -> Result<(), Box<dyn std::error::Error>> {
+        let Some(root) = std::env::var_os("SAIL_TEST_NOOP_RECEIPTS") else {
+            return Ok(());
+        };
+        let root = PathBuf::from(root);
+        let cache = root.join("cache");
+        let family = cache.join("family");
+        let context = cache.join("context");
+        let target = family.join("target");
+        let executable = root.join("sail");
+        let config = Config {
+            workspace: root.clone(),
+            cache: cache.clone(),
+            sail: executable.clone(),
+            cargo_verus: executable.clone(),
+            cargo: executable.clone(),
+            cargo_toolchain: crate::managed::CargoToolchain::Caller,
+            shim: executable.clone(),
+            z3: executable.clone(),
+            socket: None,
+            args: Vec::new(),
+            force: false,
+            attribution_logs: true,
+        };
+        let key = key(&config, true).ok_or("fixture key unavailable")?;
+        assert_ne!(Some(key.clone()), super::key(&config, false));
+        let operation = std::fs::read_to_string(root.join("operation"))?;
+        if operation != "prepare" {
+            assert_eq!(key, std::fs::read_to_string(root.join("key"))?);
+        }
+        if matches!(operation.as_str(), "prepare" | "unknown") {
+            let result = receipt_fixture_result(&root);
+            let declared = super::super::environment::declared_names(&target)
+                .ok_or("fixture dep-info unreadable")?;
+            assert!(!declared.contains(SHADOW));
+            assert!(declared.contains("SAIL_TEST_NOOP_DEP_ONLY_INPUT"));
+            let pending = prepare(Facts {
+                key: &key,
+                cache: &cache,
+                // Unit-test stamps predate this simulated run start; no real
+                // tool invocation or native qualification is claimed here.
+                start: SystemTime::now() + Duration::from_secs(3),
+                workspace_lock: root.join("workspace.lock"),
+                family: &family,
+                context: &context,
+                target: &target,
+                observation: Vec::new(),
+                identity: std::slice::from_ref(&executable),
+                siblings: Vec::new(),
+                receipt_environment: (operation == "prepare")
+                    .then(|| std::collections::BTreeSet::from([SHADOW.into()])),
+                result: &result,
+            });
+            if operation == "unknown" {
+                assert!(pending.is_none(), "unknown admission must not record");
+            } else {
+                assert!(std::env::var_os(SHADOW).is_none());
+                pending.ok_or("actual prepare refused fixture")?.commit(
+                    b"verified report\n".to_vec(),
+                    b"Finished dev target(s) in 0.01s\n".to_vec(),
+                );
+                let record: Record =
+                    serde_json::from_slice(&std::fs::read(record_path(&cache, &key))?)?;
+                assert_eq!(record.version, 4);
+                assert_eq!(record.environment.get(SHADOW), Some(&None));
+                assert!(
+                    record
+                        .environment
+                        .contains_key("SAIL_TEST_NOOP_DEP_ONLY_INPUT")
+                );
+                std::fs::write(root.join("key"), &key)?;
+            }
+        } else {
+            if operation == "legacy" {
+                let path = record_path(&cache, &key);
+                let mut record: Record = serde_json::from_slice(&std::fs::read(&path)?)?;
+                record.version = 3;
+                std::fs::write(path, serde_json::to_vec(&record)?)?;
+            }
+            let replay = replay(&config, &key, std::time::Instant::now());
+            if operation == "same" {
+                let replay = replay.ok_or("unchanged receipt input did not replay")?;
+                assert_eq!(replay.stdout, b"verified report\n");
+                assert_eq!(replay.result.execution.verifier_invocations, 0);
+                assert_ne!(replay.result.run_id, "establishing-call");
+            } else {
+                assert!(matches!(operation.as_str(), "changed" | "legacy"));
+                assert!(replay.is_none(), "changed input or legacy record replayed");
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn actual_prepare_and_replay_bind_ghost_only_receipt_names()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-noop-receipt-env-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for directory in [
+            "cache/family/target/deps",
+            "cache/context/runs",
+            "cache/runtime-identities",
+        ] {
+            std::fs::create_dir_all(root.join(directory))?;
+        }
+        for path in ["sail", "workspace.lock", "cache/family/ownership.lock"] {
+            std::fs::write(root.join(path), "fixture")?;
+        }
+        std::fs::write(
+            root.join("cache/family/target/deps/input.d"),
+            "input: input.rs\n# env-dep:SAIL_TEST_NOOP_DEP_ONLY_INPUT\n",
+        )?;
+        for operation in ["prepare", "same", "changed", "unknown", "legacy"] {
+            std::fs::write(root.join("operation"), operation)?;
+            let mut command = std::process::Command::new(std::env::current_exe()?);
+            command
+                .args([
+                    "--exact",
+                    "managed::noop::tests::receipt_environment_process_probe",
+                ])
+                .env("SAIL_TEST_NOOP_RECEIPTS", &root)
+                .env_remove(SHADOW)
+                .env_remove("SAIL_MANAGED_FORCE")
+                .env_remove("SAIL_MANAGED_NOOP")
+                .env_remove("SAIL_JOB_EVENTS")
+                .env_remove("SAIL_JOB_GUARD_PARENT")
+                .env_remove("SAIL_PROOF_EVENTS");
+            if operation == "changed" {
+                command.env(SHADOW, "new-source-visible-value");
+            }
+            let output = command.output()?;
+            assert!(
+                output.status.success(),
+                "{operation}: {}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn finished_time_is_the_only_regenerated_text() {

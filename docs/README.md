@@ -207,3 +207,5 @@ native/Mac gates, unchanged Vest costs and preserved historical failures.
 [Neutral source profile two qualification](validation/neutral-source-profile-two.md) records explicit flat Rust admission, retained legacy identities and the bounded UNKNOWN diagnostic.
 
 - [Cache ownership core](design/cache-ownership-core.md): staged executable kernels and their [qualification](validation/cache-ownership-core.md).
+
+The [unchanged-call receipt environment qualification](validation/managed-noop-receipt-environment.md) records the main #552 witness and the bounded replay fix.

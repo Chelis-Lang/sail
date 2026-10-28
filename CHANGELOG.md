@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Bind unchanged-call replay to the environment names required by the proof
+  receipts admitted for that call, including ghost-only reads absent from
+  Cargo dep-info. Retire older replay records that omitted those inputs (#552).
+
 - Document the owner-approved equivalence exception for code that observes
   Sail's named compiler-visible integration settings (ADR 0088). Solver-answer
   correctness and acceptance checks for actual effective inputs remain required.
