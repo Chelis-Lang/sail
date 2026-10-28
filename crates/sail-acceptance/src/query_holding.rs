@@ -87,8 +87,9 @@ sail_code! {
             { self.metadata.take() }
         }
         sail_method! {
-            /// Restores annotation only while its original payload is present.
-            /// Metadata cannot create a new held payload.
+            /// Stores annotation only while a payload is present. Callers are
+            /// responsible for associating metadata with that payload; this
+            /// operation cannot create or replace the held payload.
             pub fn put_metadata(&mut self, metadata: Metadata) -> (accepted: bool)
                 requires (old(self).well_formed())
                 ensures (final(self).well_formed(), final(self).payload_view() == old(self).payload_view(),
