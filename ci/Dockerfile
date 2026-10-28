@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       build-essential pkg-config libssl-dev cmake ninja-build \
-      git curl ca-certificates unzip python3 time procps \
+      git curl ca-certificates unzip python3 time procps rsync \
  && rm -rf /var/lib/apt/lists/*
 
 ENV RUSTUP_HOME=/opt/rustup \

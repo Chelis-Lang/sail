@@ -50,6 +50,8 @@ them.
 - [Roadmap](ROADMAP.md).
 - [Testing](testing.md), [fault injection](fault-injection.md) and
   [deep Verus checks](deep-verus-tests.md).
+- [Native source sync](testing.md#native-linux-hosts): linked-worktree support,
+  dirty-input preservation and [qualification](validation/host-source-sync.md).
 - [Releasing](releasing.md): release procedure, archive layout, how `sail`
   finds its bundled Verus.
 - [Sail's Verus](../engine/verus/README.md): the fork runtime and its

@@ -142,13 +142,11 @@ cmd_up() {
 
 cmd_sync() {
   require_lane "${1:-}"; host_of "$1"
-  # shellcheck disable=SC2046
-  # Content must decide source updates across worktrees. Copied sources need
-  # current mtimes so Cargo cannot reuse binaries newer than an older checkout.
-  rsync -az --checksum --no-times --delete -e "ssh $(ssh_opts "$1")" \
-    --exclude target/ --exclude .claude/ --exclude '__pycache__/' --exclude conformance-out/ \
-    --exclude /dist/ --exclude /release-out/ \
-    "$(git rev-parse --show-toplevel)/" "ec2-user@$addr:sail/"
+  # Preserve the Mac transport/user while sharing the frozen source and
+  # standalone Git metadata transfer with the Linux host helper.
+  python3 "$(dirname "${BASH_SOURCE[0]}")/sync-native-checkout.py" \
+    --source "$PWD" --destination "ec2-user@$addr" \
+    --ssh-command "ssh $(ssh_opts "$1")"
 }
 
 cmd_run() {

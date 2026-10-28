@@ -1,0 +1,238 @@
+#!/usr/bin/env python3
+"""Sync frozen actual sources and standalone Git metadata to an owned host."""
+import argparse
+import hashlib
+import os
+from pathlib import Path
+import re
+import shlex
+import shutil
+import stat
+import subprocess
+import tempfile
+import uuid
+
+
+EXCLUDED_DIRS = {"target", ".claude", "__pycache__", "conformance-out"}
+ROOT_EXCLUDED_DIRS = {"dist", "release-out"}
+
+
+def digest(path):
+    result = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            result.update(chunk)
+    return result.hexdigest()
+
+
+def git_environment():
+    if any(os.environ.get(name) for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")):
+        raise RuntimeError("unset Git repository/index redirection before sync")
+    env = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+    env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull,
+               GIT_NO_REPLACE_OBJECTS="1", GIT_OPTIONAL_LOCKS="0")
+    return env
+
+
+def git(root, env, *args, payload=None):
+    return subprocess.check_output(["git", "-c", "core.fsmonitor=false", "-C", str(root), *args],
+                                   env=env, input=payload)
+
+
+def source_files(root):
+    """Match the source rsync exclusions, without following directory symlinks."""
+    def walk(directory):
+        for path in sorted(directory.iterdir()):
+            if path.name == ".git":
+                continue
+            mode = path.lstat().st_mode
+            if stat.S_ISDIR(mode):
+                if path.name in EXCLUDED_DIRS or (directory == root and path.name in ROOT_EXCLUDED_DIRS):
+                    continue
+                yield path, mode
+                yield from walk(path)
+            elif stat.S_ISREG(mode) or stat.S_ISLNK(mode):
+                yield path, mode
+            else:
+                raise RuntimeError("unsupported special source file: " + str(path.relative_to(root)))
+    return walk(root)
+
+
+def snapshot(root):
+    result = {}
+    for path, mode in source_files(root):
+        value = ("directory",) if stat.S_ISDIR(mode) else (
+            ("symlink", os.readlink(path)) if stat.S_ISLNK(mode) else ("file", digest(path)))
+        result[str(path.relative_to(root))] = (stat.S_IMODE(mode), *value)
+    return result
+
+
+def copy_sources(source, destination):
+    destination.mkdir()
+    directories = []
+    for path, mode in source_files(source):
+        target = destination / path.relative_to(source)
+        if stat.S_ISDIR(mode):
+            target.mkdir()
+            directories.append((target, stat.S_IMODE(mode)))
+        elif stat.S_ISLNK(mode):
+            target.symlink_to(os.readlink(path))
+        else:
+            shutil.copy2(path, target)
+    for target, mode in reversed(directories):
+        target.chmod(mode)
+
+
+def index_observation(root, env):
+    sparse = subprocess.run(["git", "-C", str(root), "config", "--bool", "--get", "core.sparseCheckout"],
+                            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if sparse.returncode not in (0, 1) or sparse.stdout.strip() == b"true":
+        raise RuntimeError("sparse checkouts are unsupported; use a full worktree")
+    tags = git(root, env, "ls-files", "-v", "-z").split(b"\0")
+    if any(row[:2] in (b"S ", b"s ") for row in tags):
+        raise RuntimeError("skip-worktree entries are unsupported; clear them before sync")
+    def intent_paths(option):
+        return set(git(root, env, "diff", "--cached", "--no-ext-diff", "--no-textconv",
+                       "--name-only", "-z", option).split(b"\0"))
+    if intent_paths("--ita-visible-in-index") != intent_paths("--ita-invisible-in-index"):
+        raise RuntimeError("intent-to-add entries are unsupported; stage or unstage them before sync")
+    entries = git(root, env, "ls-files", "--stage", "-z")
+    objects = set()
+    for row in entries.split(b"\0"):
+        if not row:
+            continue
+        mode, oid, stage = row.split(b"\t", 1)[0].split()
+        if mode not in (b"100644", b"100755", b"120000") or stage not in (b"0", b"1", b"2", b"3"):
+            raise RuntimeError("unsupported Git index entry (including submodules)")
+        objects.add(oid)
+    index = Path(os.fsdecode(git(root, env, "rev-parse", "--git-path", "index").strip()))
+    if not index.is_absolute():
+        index = root / index
+    return entries, objects, digest(index) if index.exists() else None
+
+
+def export_git(source, directory, env, head, entries, objects):
+    """Export only reachable objects and staged blobs, never local config/hooks."""
+    bundle = directory / "head.bundle"
+    git(source, env, "bundle", "create", str(bundle), "HEAD")
+    refs = git(source, env, "bundle", "list-heads", str(bundle)).splitlines()
+    if refs != [(head + " HEAD").encode()]:
+        raise RuntimeError("HEAD changed while creating the source bundle")
+    repo = directory / "metadata"
+    repo.mkdir()
+    fmt = git(source, env, "rev-parse", "--show-object-format").decode().strip()
+    git(repo, env, "init", "--quiet", "--template=", "--object-format=" + fmt)
+    for key, value in (("core.logAllRefUpdates", "false"), ("core.ignoreCase", "false"),
+                       ("core.fileMode", "true"), ("core.symlinks", "true")):
+        git(repo, env, "config", key, value)
+    git(repo, env, "bundle", "unbundle", str(bundle))
+    git(repo, env, "update-ref", "--no-deref", "HEAD", head)
+    if objects:
+        requested = b"".join(oid + b"\n" for oid in sorted(objects))
+        missing = [line.split()[0] for line in git(repo, env, "cat-file", "--batch-check", payload=requested).splitlines()
+                   if line.endswith(b" missing")]
+        if missing:
+            raw = git(source, env, "cat-file", "--batch", payload=b"".join(oid + b"\n" for oid in missing))
+            position = 0
+            for expected in missing:
+                end = raw.index(b"\n", position)
+                header = raw[position:end].split()
+                if len(header) != 3 or header[0] != expected or header[1] != b"blob" or not header[2].isdigit():
+                    raise RuntimeError("missing staged Git blob")
+                oid, _kind, size = header
+                position = end + 1
+                body = raw[position:position + int(size)]
+                position += int(size)
+                if raw[position:position + 1] != b"\n":
+                    raise RuntimeError("truncated staged Git blob")
+                position += 1
+                if git(repo, env, "hash-object", "-w", "--stdin", payload=body).strip() != oid:
+                    raise RuntimeError("staged Git object identity changed")
+            if position != len(raw):
+                raise RuntimeError("unexpected staged Git object data")
+    git(repo, env, "read-tree", "--empty")
+    git(repo, env, "update-index", "-z", "--index-info", payload=entries)
+    return repo / ".git"
+
+
+def sync(source, destination, ssh_command):
+    if not re.fullmatch(r"[A-Za-z0-9_.@:-]+", destination):
+        raise RuntimeError("unsupported SSH destination")
+    env = git_environment()
+    source = Path(os.fsdecode(git(source, env, "rev-parse", "--show-toplevel").strip())).resolve()
+    head = git(source, env, "rev-parse", "HEAD").decode().strip()
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", head):
+        raise RuntimeError("sync requires an existing HEAD commit")
+    initial_index = index_observation(source, env)
+    initial_sources = snapshot(source)
+    def guard():
+        if (git(source, env, "rev-parse", "HEAD").decode().strip() != head
+                or index_observation(source, env) != initial_index or snapshot(source) != initial_sources):
+            raise RuntimeError("local HEAD, index or source changed during sync; retry")
+    token = uuid.uuid4().hex
+    staging = "sail-git-sync-" + token
+    ssh = shlex.split(ssh_command)
+    if not ssh:
+        raise RuntimeError("missing SSH command")
+    def remote(command):
+        subprocess.run([*ssh, destination, "set -eu; " + command], check=True)
+    locked = False
+    acquire_attempted = False
+    installed = False
+    with tempfile.TemporaryDirectory(prefix="sail-perf-sync-") as temporary:
+        directory = Path(temporary)
+        frozen = directory / "source"
+        copy_sources(source, frozen)
+        if snapshot(frozen) != initial_sources:
+            raise RuntimeError("source changed while freezing sync inputs")
+        metadata = export_git(source, directory, env, head, initial_index[0], initial_index[1])
+        guard()
+        try:
+            acquire_attempted = True
+            remote("test ! -L sail; mkdir -p sail; mkdir sail-sync.lock; "
+                   + "printf '%s' " + token + " > sail-sync.lock/owner")
+            locked = True
+            remote("test \"$(cat sail-sync.lock/owner)\" = " + token
+                   + "; rm -rf sail/.git; mkdir " + staging)
+            common = ["rsync", "-az", "--checksum", "--no-times", "--delete", "-e", ssh_command]
+            exclusions = ["--exclude", ".git"]
+            for name in sorted(EXCLUDED_DIRS):
+                exclusions += ["--exclude", name + "/"]
+            for name in sorted(ROOT_EXCLUDED_DIRS):
+                exclusions += ["--exclude", "/" + name + "/"]
+            subprocess.run([*common, *exclusions, str(frozen) + "/", destination + ":sail/"], check=True)
+            subprocess.run([*common, str(metadata) + "/", destination + ":" + staging + "/"], check=True)
+            guard()
+            remote("test \"$(cat sail-sync.lock/owner)\" = " + token
+                   + "; test ! -e sail/.git; test ! -L sail/.git; test ! -L " + staging
+                   + "; mv " + staging + " sail/.git; git -C sail cat-file -e 'HEAD^{tree}'; "
+                   + "test \"$(git -C sail rev-parse HEAD)\" = " + head)
+            guard()
+            installed = True
+        finally:
+            if acquire_attempted:
+                invalidate = "" if installed else "rm -rf sail/.git; "
+                absent = "false" if locked else "test ! -e sail-sync.lock && test ! -L sail-sync.lock"
+                remote("if test ! -L sail-sync.lock && test ! -L sail-sync.lock/owner "
+                       + "&& test -f sail-sync.lock/owner && test \"$(cat sail-sync.lock/owner)\" = " + token
+                       + "; then " + invalidate + "rm -rf " + staging
+                       + "; rm sail-sync.lock/owner; rmdir sail-sync.lock; "
+                       + "elif " + absent + "; then :; else "
+                       + "echo 'sync lock ownership is unknown; retaining it' >&2; exit 1; fi")
+    print("synced " + head + " with actual sources and standalone Git metadata")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source", type=Path, required=True)
+    parser.add_argument("--destination", required=True)
+    parser.add_argument("--ssh-command", required=True)
+    args = parser.parse_args()
+    try:
+        sync(args.source, args.destination, args.ssh_command)
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        parser.exit(1, "error[SAIL9003]: source sync failed: " + str(error) + "\n")
+
+
+if __name__ == "__main__":
+    main()

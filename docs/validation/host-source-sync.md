@@ -1,6 +1,41 @@
-# Native source synchronization (#188)
+# Native source synchronization (#188, #589)
 
-**Status: source controls and local gates pass; required PR checks are enforced separately.**
+**Status: #589 local source controls pass; native Linux, platform host and
+hosted qualification remain pending. Historical #188 gates are recorded below.**
+
+## Linked-worktree metadata
+
+The #589 candidate preserves actual working bytes and staged entries while
+building standalone Git metadata from a frozen HEAD bundle and staged blobs.
+It excludes local Git config/hooks/pointers, resets index optimization flags,
+retains checksum/current-mtime behavior and refuses source/index/HEAD drift.
+The [testing guide](../testing.md) records commands and supported index states.
+
+All 17 local macOS real-Git/rsync controls pass for primary/linked checkouts, staged
+then modified files, untracked/deleted inputs, repeated branch switching,
+same-size/same-time content changes, Cargo timestamps, split/unmerged indexes,
+local-only config/hooks and unsupported-state refusal. Only SSH transport is
+local; the Git and rsync operations are real. An expected metadata-transfer
+failure retains its nonzero result and refuses usable remote Git metadata.
+Owned-lock controls cover failure after owner creation but before staging,
+lost acquisition acknowledgement, and retention of foreign/missing ownership.
+Native Linux whole-gate and hosted qualification remain pending. No solver,
+conformance or performance result follows from these local controls.
+
+The Linux-helper-only prefix passes all 14 controls; its raw log remains
+outside Git. Both helpers then use the same transfer implementation with their
+original SSH users. Actual Mac-helper transport coverage uses local SSH/rsync,
+not an allocated EC2 Mac. The platform host gate remains required before push
+under AGENTS.md; no new heavy local build or cloud allocation is claimed.
+
+The complete 17-control local log has SHA-256
+`b16c95bcb6283a802e9378b085abffb928cd83a49572e95b12eb6fdfedfbfbc8`.
+The unchanged teardown suite passes 14/14 controls, log SHA-256
+`012abdcd45ea9e86bc52555f97b9c2a7e529439b4cc3124cd796836c807d5c99`.
+Both shell syntax checks, formatting and whitespace checks pass. These are
+local tooling results, not the pending full native/platform gates.
+
+## Original content and timestamp qualification
 
 Both Linux and macOS host helpers compare source contents during sync and give
 changed files current timestamps (`rsync --checksum --no-times`). This corrects
