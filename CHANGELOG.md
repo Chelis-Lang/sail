@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- `sail --help` no longer lists `sail runtime`, and `sail runtime --help` now
+  starts with the EXPERIMENTAL note, matching its documented status as an
+  experimental integration API. The command itself is unchanged.
+
 - Document the owner-approved equivalence exception for code that observes
   Sail's named compiler-visible integration settings (ADR 0088). Solver-answer
   correctness and acceptance checks for actual effective inputs remain required.
