@@ -225,6 +225,26 @@ class SourceCaptureTests(unittest.TestCase):
                 with self.subTest(source=changed), self.assertRaises((CHECKER.Refusal, SOURCE.SourceRefusal)):
                     CHECKER.compiled_subset(path, changed)
 
+    def test_actual_report_mode_body_and_native_delegate_remain_distinct(self):
+        core = (ROOT / CHECKER.MODE_CORE).read_bytes()
+        native = (ROOT / CHECKER.MODE_NATIVE).read_bytes()
+        CHECKER.compiled_subset(CHECKER.MODE_CORE, core)
+        CHECKER.compiled_subset(CHECKER.MODE_NATIVE, native)
+        changed = native.replace(
+            b"construct_report_verification_arguments(report_args, effective)",
+            b"construct_report_verification_arguments(&[], effective)", 1)
+        self.assertNotEqual(changed, native)
+        with self.assertRaises(CHECKER.Refusal):
+            CHECKER.compiled_subset(CHECKER.MODE_NATIVE, changed)
+        changed = core.replace(b"use crate::acceptance::", b"use hidden::acceptance::", 1)
+        with self.assertRaises((CHECKER.Refusal, SOURCE.SourceRefusal)):
+            CHECKER.compiled_subset(CHECKER.MODE_CORE, changed)
+        roles = CHECKER.source_roles({"dependencies": [CHECKER.MODE_CORE, CHECKER.MODE_NATIVE]})
+        self.assertIn(CHECKER.MODE_CORE, roles["checked_source"])
+        self.assertNotIn(CHECKER.MODE_NATIVE, roles["checked_source"])
+        self.assertEqual(roles["bound_native_callers"][CHECKER.MODE_NATIVE],
+            ["report_verification_arguments", "cargo_driver_options_with", "effective_verus_arguments"])
+
     def test_executable_cfg_loading_and_unchecked_spec_refuse(self):
         for source in (b"#[cfg(sail_verus)] fn valid() -> bool { true }",
                 b'include!("hidden.rs");', b"assume(false);", b"assume_specification[foo]() ensures false;", b"#[verifier::external_body] fn f() {}"):

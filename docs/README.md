@@ -76,6 +76,9 @@ the remaining integration and service-wide proof obligations.
 [Binary64 equality support](../corpus/repros/verus-float-equality-spec/README.md)
 gives the standalone numerical model, exact broken controls and
 [qualification scope](validation/binary64-equality-support.md).
+[Report verification mode](design/report-verification-mode.md) describes the
+checked actual command-construction operation and its separate
+[qualification](validation/report-verification-mode.md).
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs
