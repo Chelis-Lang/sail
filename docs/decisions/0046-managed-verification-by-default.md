@@ -393,7 +393,23 @@ inside managed verification without reuse (`verified_as` `managed`).
 The cost moves to the project's own target: the first loader run in a
 project verified only with `sail verify` builds that target as a cold
 `cargo verus verify` does. After that, unchanged loader runs and runs with a
-different loader value cost what stock's do. The e2e `loader` phase checks
+different loader value cost what stock's do. Directional timings (wall seconds, one round,
+native Linux x86-64 shared with other agents at load 30-37, host build with
+no shipped vstd proof; "before" is `main` at `e1365eb2`), after a plain warm
+`sail verify` in each copy (`cargo verus verify` for stock):
+
+| Run (`LD_LIBRARY_PATH`) | demo stock | before | after | IronKV stock | before | after |
+|---|---:|---:|---:|---:|---:|---:|
+| first value | 0.40 | 91.2 | 95.4 | 0.30 | 50.0 | 72.2 |
+| same value again | 0.50 | 0.83 | 0.30 | 0.27 | 0.47 | 0.32 |
+| another value | 0.49 | 101.8 | 0.24 | 0.35 | 66.0 | 0.28 |
+| failing edit | 2.84 | 1.66 | 1.10 | 21.7 | 24.5 | 13.9 |
+
+The first-value row is the one-time build of the project's own target in a
+copy that had never run `cargo verus verify`. Every "after" transcript but
+that first one equals stock's (Cargo's `Blocking waiting for file lock`
+lines and Verus's order of two failing functions' errors in IronKV aside);
+"before" also differed for each new value. The e2e `loader` phase checks
 the JSON result's new `verified_as`, its empty context and that no receipt is
 recorded, and still compares human output with plain Cargo-Verus's.
 `crates/sail-cli/tests/no_reuse.rs` covers every loader variable for human,
