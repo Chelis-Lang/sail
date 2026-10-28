@@ -187,6 +187,31 @@ only symbolic links. Plain `sail verify` asks Verus for no AIR or SMT logs;
 HumanEval single-function edit from 3.03 s to 0.94 s (plain `cargo verus`:
 0.54 s), L7c (rescue lane report, tag `archive/rescue-m7-98f6292`).
 
+Cargo-Verus reads `cargo metadata` again right after Sail's own read in the
+same run. When that call would run the same Cargo program, with the same
+complete arguments (including Sail's metadata target), in the same resolved
+directory and with the same effective environment, Sail's Cargo alias answers
+it with the exact bytes Sail's read printed instead of starting Cargo again.
+The environment check covers every variable apart from Sail's and Verus's own
+variables, and `RUSTC_BOOTSTRAP` is checked separately. The read must also
+have printed nothing on stderr. Every metadata input (manifests, lockfile,
+the directories Cargo discovers targets in, Cargo configuration and toolchain
+files) and the toolchain's identity (the Cargo program, rustup's settings and
+installed toolchains) must keep the stat stamp it had before Sail's read. Sail sets
+`RUSTC_BOOTSTRAP=1` for Cargo-Verus. When Sail's read ran without that value,
+the alias answers only if no unstable input exists: no `-Z` argument, no
+`CARGO_UNSTABLE_*` variable, no `[unstable]` table or `include` in a Cargo
+configuration file and no `cargo-features` in a manifest. Any difference or
+doubt runs the real Cargo. The memo stores a digest of the environment,
+never its values. `SAIL_MANAGED_METADATA_MEMO=0` turns it off.
+`SAIL_MANAGED_METADATA_MEMO_TRACE=FILE` logs each decision, and for diagnosis
+makes every eligible call also run the real Cargo, print that output and log
+whether the memo matched it byte for byte. A run with no proof-store
+candidate (always, while the store is off) no longer reads every receipt to
+choose store entries, and a run in which no compiler started no longer walks
+the target's dep-info files for declared variables; neither result was used
+in those cases.
+
 Reuse works the same way on macOS. On an Apple M3 under other load:
 
 | Project | Unchanged | Edit | Failing edit | Fix |

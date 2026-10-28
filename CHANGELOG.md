@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in
+  the same managed run when program, arguments, directory, effective
+  environment and every stamped metadata and toolchain input match; anything
+  else runs Cargo. `SAIL_MANAGED_METADATA_MEMO=0` turns this off and
+  `SAIL_MANAGED_METADATA_MEMO_TRACE=FILE` checks it against real Cargo. Skip
+  receipt reads and the dep-info walk when their results would go unused
+  (#560).
+
 - Bind unchanged-call replay to the environment names required by the proof
   receipts admitted for that call, including ghost-only reads absent from
   Cargo dep-info. Retire older replay records that omitted those inputs (#552).

@@ -13,6 +13,7 @@ mod files;
 mod freshness;
 pub(crate) mod ghost_environment;
 mod input;
+pub(crate) mod metadata_memo;
 mod native_include_hints;
 mod native_tools;
 pub mod noop;

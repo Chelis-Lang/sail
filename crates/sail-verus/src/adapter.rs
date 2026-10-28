@@ -156,6 +156,8 @@ fn cargo() -> Result<ExitCode> {
     // The real Cargo, and so every build script and compiler, gets the
     // caller's own `CARGO`, not the runner's alias (#385).
     transport::restore_cargo(&mut cmd);
+    transport::clear(&mut cmd, CARGO_METADATA_ENV);
+    transport::clear(&mut cmd, crate::managed::metadata_memo::MEMO_ENV);
     if args.first().is_some_and(|argument| argument == "metadata")
         && let Some(target) = transport::var(CARGO_METADATA_ENV)
     {
@@ -163,8 +165,11 @@ fn cargo() -> Result<ExitCode> {
         // caller's target, even though it does not compile. Managed builds use
         // their explicit owned target, so that override cannot select artifacts.
         configure_metadata_target(&mut cmd, Path::new(&target))?;
+        // The runner's identical read in this run answers it when it may.
+        if let Some(code) = crate::managed::metadata_memo::serve(&mut cmd)? {
+            return Ok(code);
+        }
     }
-    transport::clear(&mut cmd, CARGO_METADATA_ENV);
     let build = args.iter().any(|s| s == "build" || s == "check");
     if !build {
         return cmd

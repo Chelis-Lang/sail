@@ -921,6 +921,10 @@ fn invocation_command(
         .set("SAIL_MANAGED_PROXY", &paths.proxy_alias)
         .set("SAIL_MANAGED_RUNTIME", &paths.runtime)
         .set("SAIL_MANAGED_ARTIFACTS", paths.run.join("artifacts.jsonl"));
+    let memo = paths.run.join(super::metadata_memo::MEMO_FILE);
+    if memo.is_file() {
+        transport.set(super::metadata_memo::MEMO_ENV, memo);
+    }
     if let Some(plan) = &paths.shipped_plan {
         transport.set(super::shipped::PLAN_ENV, plan);
     }
@@ -1891,8 +1895,14 @@ fn target_records_in(
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
     // Unknown declarations (an unreadable unit record) publish no receipt.
-    let declared = super::environment::declared_names(&paths.target)
-        .map(|names| super::environment::values(&names));
+    // Only a compiler observation publishes one: without any, the walk of
+    // every dep-info and script output decides nothing.
+    let declared = if calls.is_empty() {
+        None
+    } else {
+        super::environment::declared_names(&paths.target)
+            .map(|names| super::environment::values(&names))
+    };
     let artifacts = artifacts(paths);
     let verified = |artifact: &Value| {
         let package = data["packages"]
@@ -3018,12 +3028,13 @@ fn run_recorded(
     // keep this stamp after the run, the after-run metadata is this one.
     let metadata_guard = read::<super::input::SnapshotHint>(&hint_path)
         .and_then(|hint| super::input::MetadataGuard::begin(&hint.projection));
+    let memo_identity = super::metadata_memo::Identity::begin(&config.cargo);
     // Cargo metadata and the runtime context are independent: neither reads
     // the other's result. They overlap, and their results are consumed in the
     // original order, so the first reported error is unchanged.
     let (data, context_result, metadata_phase) = std::thread::scope(|scope| {
         let pending = scope.spawn(|| {
-            metadata(
+            super::input::managed_metadata_read(
                 &config.workspace,
                 &config.args,
                 &config.cargo,
@@ -3040,7 +3051,7 @@ fn run_recorded(
             .unwrap_or_else(|_| Err(Error::new("SAIL3103", "Cargo metadata reader failed")));
         (data, context_result, metadata_phase)
     });
-    let mut data = data?;
+    let (mut data, metadata_read) = data?;
     // An excluded cache subtree cannot also contain source inputs. Refuse
     // before prepare(), dependency seeding or any proof receipt is inspected.
     super::configuration::check_cache_inputs(&data, &config.cache)?;
@@ -3544,11 +3555,24 @@ fn run_recorded(
         engine,
     };
     json(&paths.runtime, &runtime)?;
+    // Cargo-Verus's own metadata call is this run's read again when nothing
+    // it depends on differs; the alias checks that again before serving.
+    super::metadata_memo::record(
+        &paths.run,
+        metadata_read,
+        metadata_guard.as_ref(),
+        memo_identity,
+        &data,
+    );
     let invocation_phase = diagnostics.phase(Phase::Invocation);
     // After every cleanup, so nothing seeded is cleaned again before Cargo
     // decides its freshness.
     let seeded = if new_target {
         super::store::seed(&config.cache, &paths.target, &store_candidates, &data, err)
+    } else if store_candidates.is_empty() {
+        // Without a candidate (always, while the store is off) the receipts
+        // read below would select nothing to attach.
+        Vec::new()
     } else {
         // Only a dependency without a receipt of this context needs the store.
         let own: BTreeSet<String> = std::fs::read_dir(&paths.receipts)
