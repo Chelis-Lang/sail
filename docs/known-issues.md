@@ -30,15 +30,32 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
 ## Input coverage and cache integrity
 
-No end-to-end false proof is reproduced for these; each weakens a check that
-reuse depends on.
-
-- Retained-proof admission normalizes the effective observed
-  ` __VERUS_DRIVER_ARGS__` to its base value without preserving that effective
-  binding for reuse ([#551](https://github.com/Chelis-Lang/sail/issues/551)).
-  This is a source-established input-coverage gap, separate from ADR 0088's
-  accepted visibility difference; it does not authorize stale reuse. No
-  end-to-end wrong-verdict reproduction is claimed.
+- **Unchanged-call replay can return an old report after a compiler-tracked
+  ghost input changes** ([#552](https://github.com/Chelis-Lang/sail/issues/552)).
+  A caller environment variable read only in ghost code is missing from
+  Cargo's dep-info and from the replay record, so changing only that variable
+  replays the earlier verified report, where stock Verus fails. This is
+  reproduced end to end on main `d5a5d58b`. Until
+  [PR #554](https://github.com/Chelis-Lang/sail/pull/554) merges, set
+  `SAIL_MANAGED_NOOP=0` to disable replay.
+- **Proof reuse loses effective compiler-environment bindings**
+  ([#551](https://github.com/Chelis-Lang/sail/issues/551)). Ordinary receipt
+  reuse and retained-proof admission both normalize the effective
+  ` __VERUS_DRIVER_ARGS__` to its base value, so a change in Sail's added
+  observation options (for example turning attribution on) is not bound.
+  Ordinary receipts also miss `SAIL_PROVENANCE_DIR` going from absent to
+  present and ghost-only reads of `SAIL_COMPILER_INPUTS` and
+  `SAIL_COMPILER_INPUTS_BINDING`, because freshness resamples the outer
+  environment rather than the compiler child's values. This is a
+  source-established gap, separate from ADR 0088's accepted visibility
+  difference; no end-to-end wrong verdict is reproduced.
+- **A forced run of a non-default profile fails instead of reverifying**
+  ([#553](https://github.com/Chelis-Lang/sail/issues/553)). Managed package
+  cleanup omits Cargo's `--release`, `--profile` and `--target` selectors.
+  After a verified `--release` run, `SAIL_MANAGED_FORCE=1 sail verify
+  --release` finds the release artifact fresh and ends Unknown with
+  `SAIL3100`/`SAIL3107` (reproduced for `--release`; the other selectors are
+  source findings). No false proof results.
 - Read-back currentness brackets its reads with metadata stamps of every
   recorded path (#387). A concurrent edit that restores every stamped
   field, including the inode change time, is not detected; that needs a
@@ -60,21 +77,28 @@ The service-wide acceptance theorem is not complete
 
 Current numbers are in [performance](performance.md).
 
-- **Unchanged calls that miss replay pay setup cost**
-  ([#314](https://github.com/Chelis-Lang/sail/issues/314)). An unchanged
-  `sail verify` replays in about 26 ms on Linux (60 ms on macOS) when every
-  recorded stamp matches
-  ([ADR 0082](decisions/0082-unchanged-call-replay.md)). When replay does not
-  apply (for example after a `touch`, a recent ctime or a different
-  argument), unchanged Anvil takes about 1.7 s against stock's 0.3 s, with no
-  verifier run.
-- **Tiny edits cost more than stock**
-  ([#156](https://github.com/Chelis-Lang/sail/issues/156)). Input checks,
-  receipts and complete reports add a fraction of a second to small edits.
-- **macOS cold Anvil is slightly slower than stock**
-  ([#278](https://github.com/Chelis-Lang/sail/issues/278),
-  [#232](https://github.com/Chelis-Lang/sail/issues/232)): about 0.1 s on
-  100 s, within run-to-run range. Linux cold runs are at parity or faster.
+- **The first unchanged call after a verification is slower than stock**
+  ([#558](https://github.com/Chelis-Lang/sail/issues/558)). It takes the full path and records
+  the replay: on macOS main `dca5cd43`, Anvil 2.07 s against 0.30 s, Vest
+  0.79 s against 0.26 s, CapybaraKV 0.59 s against 0.22 s and IronKV 0.28 s
+  against 0.21 s. Later unchanged calls replay in 0.03–0.09 s
+  ([ADR 0082](decisions/0082-unchanged-call-replay.md)).
+- **Unchanged calls that do not replay pay setup cost**
+  ([#560](https://github.com/Chelis-Lang/sail/issues/560),
+  [#559](https://github.com/Chelis-Lang/sail/issues/559)). When replay misses (for
+  example after a `touch`, a recent ctime or different arguments), or for MCP
+  and job calls, which never replay, unchanged Anvil takes about 1.6 s against
+  stock's 0.24 s on macOS, with no verifier run. Unchanged `SAIL3112` setups
+  take about 0.9 s on Anvil ([#561](https://github.com/Chelis-Lang/sail/issues/561)).
+- **Tiny-project edits cost more than stock**
+  ([#560](https://github.com/Chelis-Lang/sail/issues/560)). Input checks, receipts and
+  complete reports add a fraction of a second to edits of small projects;
+  one-line edits of the measured real projects are faster than stock.
+- **macOS cold Anvil is slower than stock**
+  ([#232](https://github.com/Chelis-Lang/sail/issues/232),
+  [#466](https://github.com/Chelis-Lang/sail/pull/466)): 0.7 s on 100 s
+  (100.2 s against 99.5 s), with ranges that do not overlap. Linux cold runs
+  are at parity or faster.
 - **A miss re-solves the whole bucket**
   ([#158](https://github.com/Chelis-Lang/sail/issues/158)). Editing one
   function re-sends its module's whole solver session; on Anvil one bucket

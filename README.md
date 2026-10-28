@@ -334,9 +334,16 @@ See [workspace verification](docs/workspace-verification.md#evidence-from-comple
   See [details](docs/workspace-verification.md#setups-verified-without-proof-reuse).
 - **Speed is bounded by the solver's share of the work.** Sail caches solver
   answers; on an edit, Rust compilation and Verus's own frontend still run.
-  An unchanged call replays its recorded result in milliseconds when nothing
-  it read has changed; otherwise Sail's input checks, receipts and complete
-  reports make small edits and unchanged calls slower than plain Verus.
+  A later unchanged call replays its recorded result in 0.03–0.09 s when
+  nothing it read has changed (until
+  [#552](https://github.com/Chelis-Lang/sail/issues/552) is fixed, replay can
+  miss a change to a variable read only in ghost code; set
+  `SAIL_MANAGED_NOOP=0` to disable it). The first unchanged call after a
+  verification, calls that miss replay, and MCP and job calls take the full
+  path, and Sail's input checks, receipts and complete reports make them
+  slower than plain Verus (Anvil 1.6–2.1 s against 0.24–0.30 s on macOS).
+  One-line edits of the measured real projects are faster than plain Verus;
+  edits of tiny projects still cost a fraction of a second more.
   Current measurements, where Sail is faster and where it is not, and how to
   reproduce each number are in [performance](docs/performance.md).
 - **Instant revert applies to qualified dependency profiles only.** With
@@ -351,9 +358,13 @@ See [workspace verification](docs/workspace-verification.md#evidence-from-comple
   `--rlimit`. Anything else, for example another forwarded Verus flag or a
   project-chosen toolchain, verifies vstd in that project (about 15 s more on
   Linux), with the same results.
-- **Open verdict differences.** Code that reads Sail's solver-route variables
-  (such as `SAIL_Z3_PATH`) by name sees them, which plain Cargo-Verus does not
-  ([#435](https://github.com/Chelis-Lang/sail/issues/435)).
+- **Accepted integration exception.** Code that reads Sail's named
+  integration settings (such as `SAIL_Z3_PATH`) by name sees them, which
+  plain Cargo-Verus does not. The owner accepts this bounded difference
+  ([ADR 0088](docs/decisions/0088-compiler-visible-integration-settings.md),
+  [#435](https://github.com/Chelis-Lang/sail/issues/435)); the
+  [divergence registry](docs/divergences.md#compiler-visible-integration-settings)
+  defines its scope.
 - **Fragility, the portfolio, team caching and the integration APIs are
   experimental** (see [Experimental commands](#experimental-commands) and
   [Integration APIs](#integration-apis-experimental)).
