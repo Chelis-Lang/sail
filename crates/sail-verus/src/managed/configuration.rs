@@ -118,7 +118,7 @@ pub(super) fn loader_reason(variable: &str) -> String {
 }
 
 /// Whether `error` is the `SAIL3112` fallback for a loader variable
-/// ([`loader_reason`]). Its JSON result stays a project result marked
+/// (`loader_reason`). Its JSON result stays a project result marked
 /// `unknown` with `no_reuse`, as the managed loader run's was, rather than
 /// the bare schema-v2 report of the other `SAIL3112` setups.
 #[must_use]
