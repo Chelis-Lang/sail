@@ -39,7 +39,7 @@ fn help_lists_every_user_command() {
     ] {
         assert!(listed.contains(&cmd), "help is missing `{cmd}`:\n{text}");
     }
-    for cmd in ["bench", "serve", "fragility", "assurance"] {
+    for cmd in ["bench", "serve", "fragility", "assurance", "runtime"] {
         assert!(!listed.contains(&cmd), "help lists `{cmd}`:\n{text}");
     }
     assert!(!text.contains("experimental"), "{text}");
@@ -357,6 +357,7 @@ fn every_command_has_help() {
         "status",
         "cache",
         "fragility",
+        "runtime",
     ] {
         for args in [
             vec![command, "--help"],
@@ -391,6 +392,7 @@ fn every_command_has_help() {
         &["serve", "--help"][..],
         &["assurance", "--help"],
         &["fragility", "--help"],
+        &["runtime", "--help"],
         &["cache", "keygen", "--help"],
         &["cache", "trust", "list", "--help"],
         &["cache", "publish", "--help"],

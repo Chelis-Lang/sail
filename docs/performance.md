@@ -189,9 +189,9 @@ applies. Anvil also needs OpenSSL (`brew install openssl@3`, then set
   Cheaper targets use ordinary solver caching instead, avoiding the cost of
   retaining every compiled revision. See [instant revert](instant-revert.md).
 - **Unchanged runs and tiny edits.** A later unchanged call replays its
-  recorded report in 0.03–0.09 s. The first unchanged call after a
-  verification, a call that misses replay, and MCP and job calls take the full
-  path: Sail checks inputs and returns a complete report, which costs more
+  recorded report in 0.03–0.09 s, including unchanged MCP and background job
+  calls. The first unchanged call after a verification and a call that misses
+  replay take the full path: Sail checks inputs and returns a complete report, which costs more
   than plain Cargo's no-op, most visibly on Anvil. Edits of tiny projects also
   have visible overhead. See [known issues](known-issues.md).
 - **CI.** A fresh runner gains from persisted solver replies, and in
@@ -402,6 +402,16 @@ the ordinary CLI loop, `scripts/perf-agents.sh vest AGENTS ROUNDS` measures
 concurrency, and `scripts/perf-real.sh` exercises individual real projects.
 These need the Sail/shim pair, stock Verus, `git`, `perl` and `awk`; set
 `SAIL_PERF_MACHINE` and keep `SAIL_PERF_OUT` outside a Cargo project.
+Each script stops the daemon serving an arm's cache with
+`scripts/sail-stop-daemon.sh`, which asks `sail status --json` for that
+cache's actual socket and daemon pid (a long cache path gets a short socket
+under the temporary directory, not under `SAIL_CACHE_DIR`), and also
+stops any daemon bound to a socket inside the cache, such as a `sail@NAME`
+baseline's daemon of another protocol version. It refuses to run without
+`SAIL_CACHE_DIR` or `SAIL_DAEMON_SOCKET`, so it never stops the default
+cache's daemon. Hard-linking or
+otherwise restamping an installed binary between calls ends unchanged-call
+replay ([freshness](freshness.md#unchanged-call-replay)).
 
 Earlier component measurements remain in the
 [real-project report](reports/2026-10-15-real-project-performance.md),

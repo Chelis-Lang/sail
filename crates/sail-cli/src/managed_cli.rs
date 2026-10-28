@@ -312,13 +312,18 @@ pub(crate) fn verify(
         // is refused before anything runs. It is then verified as plain
         // Cargo-Verus verifies it (ADR 0046): from the command line with
         // Cargo-Verus's output, and in a job's worker (jobs, `watch`, MCP)
-        // as a project result marked `no_reuse` (#165). The opt-in engine
-        // still reports it.
+        // as a project result marked `no_reuse` (#165). With `--output json`
+        // an unqualified Cargo (SAIL3139) and a loader variable (#577), whose
+        // runs were managed project results, stay project results. The
+        // opt-in engine still reports it.
         Err(error) if matches!(error.code, "SAIL3112" | "SAIL3139") && !interactive => {
             crate::verify::unbound(
                 &config.args,
                 options.json,
-                options.json && (worker || error.code == "SAIL3139"),
+                options.json
+                    && (worker
+                        || error.code == "SAIL3139"
+                        || sail_verus::managed::loader_unbound(&error)),
                 &error.message,
                 out,
                 err,

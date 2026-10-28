@@ -312,9 +312,14 @@ failure. It does not by itself establish that Z3 exhausted a resource limit.
 ### `verify`
 
 Default verification submits a managed workspace job and waits for its
-result. Like `sail verify`, it reuses a Current report for
+result. While it waits it reads only the job's lifecycle status, over the
+service socket when one is listening (otherwise `sail jobs status`), and reads
+the complete result once, after the job ends. Like `sail verify`, it reuses a Current report for
 unchanged inputs instead of verifying again, and the summary names the run that
-established each reused report. By default it returns the agent view below;
+established each reused report. An unchanged call identical to an earlier one
+that verified nothing replays that call's result without running Cargo, as
+`sail verify` does ([unchanged-call replay](freshness.md#unchanged-call-replay));
+a forced call never replays. By default it returns the agent view below;
 `detail: "targets"` or `"full"` returns the schema-v2 report
 (`docs/output-schema.md`) and the project envelope, with per-function verdicts,
 establishment, evidence tier and provenance, obligation ids, counterexample models, diagnostics,
@@ -418,7 +423,8 @@ marked so an agent cannot mistake it for reusable evidence:
   `VERIFIED`, …), or `NO RESULT` when Cargo found everything up to date and
   Verus verified no function;
 - `no_reuse` is `{"code": "SAIL3112", "reason": …, "verified_as":
-  "plain-cargo-verus"}` (`managed` for a process-loader variable);
+  "plain-cargo-verus"}` (`managed` only for a process-loader variable under
+  `--engine interactive`);
 - `execution.verifier_invocations` counts the aggregate Cargo-Verus driver
   result (one), including zero or several verified crates; setup/driver failure
   without that result counts zero. It is not a per-crate Verus work count;

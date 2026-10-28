@@ -26,37 +26,14 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
   [divergence registry](divergences.md#compiler-visible-integration-settings)
   defines the exact scope. Solver correctness, actual-query cache identity,
   freshness, complete scope and truthful reporting remain required; unrelated
-  differences remain failures. No private transport or new runtime is selected.
+  differences remain failures. No private transport is selected.
 
 ## Input coverage and cache integrity
 
-- **Proof reuse loses effective compiler-environment bindings**
-  ([#551](https://github.com/Chelis-Lang/sail/issues/551)). Ordinary receipt
-  reuse and retained-proof admission both normalize the effective
-  ` __VERUS_DRIVER_ARGS__` to its base value, so a change in Sail's added
-  observation options (for example turning attribution on) is not bound.
-  Ordinary receipts also miss `SAIL_PROVENANCE_DIR` going from absent to
-  present and ghost-only reads of `SAIL_COMPILER_INPUTS` and
-  `SAIL_COMPILER_INPUTS_BINDING`, because freshness resamples the outer
-  environment rather than the compiler child's values. This is a
-  source-established gap, separate from ADR 0088's accepted visibility
-  difference; no end-to-end wrong verdict is reproduced.
-- **Unchanged-call replay can print output stock would not**
-  ([#573](https://github.com/Chelis-Lang/sail/issues/573),
-  [#574](https://github.com/Chelis-Lang/sail/issues/574)). The replay key
-  omits the terminal-capability variables Cargo's colour and hyperlink
-  detection reads, so a replay can print OSC 8 hyperlinks a stock run in the
-  same terminal would not. Replay also repeats transient Cargo stderr from the
-  recording run, such as `Blocking waiting for file lock on package cache`.
-  Both are default-mode output divergences being fixed; verdicts and exit
-  codes are unaffected. `SAIL_MANAGED_NOOP=0` disables replay.
-- **A forced run of a non-default profile fails instead of reverifying**
-  ([#553](https://github.com/Chelis-Lang/sail/issues/553)). Managed package
-  cleanup omits Cargo's `--release`, `--profile` and `--target` selectors.
-  After a verified `--release` run, `SAIL_MANAGED_FORCE=1 sail verify
-  --release` finds the release artifact fresh and ends Unknown with
-  `SAIL3100`/`SAIL3107` (reproduced for `--release`; the other selectors are
-  source findings). No false proof results.
+- `cargo xtask fetch-verus` can install in the default cache while validation
+  follows a custom `SAIL_CACHE_DIR` ([#581](https://github.com/Chelis-Lang/sail/issues/581)).
+  Use `SAIL_VERUS_HOME` pointing to an existing primary release's install parent
+  for that scoped setup; the separate tooling fix remains open.
 - Read-back currentness brackets its reads with metadata stamps of every
   recorded path (#387). A concurrent edit that restores every stamped
   field, including the inode change time, is not detected; that needs a
@@ -85,10 +62,9 @@ Current numbers are in [performance](performance.md).
   against 0.21 s. Later unchanged calls replay in 0.03–0.09 s
   ([ADR 0082](decisions/0082-unchanged-call-replay.md)).
 - **Unchanged calls that do not replay pay setup cost**
-  ([#560](https://github.com/Chelis-Lang/sail/issues/560),
-  [#559](https://github.com/Chelis-Lang/sail/issues/559)). When replay misses (for
-  example after a `touch`, a recent ctime or different arguments), or for MCP
-  and job calls, which never replay, unchanged Anvil takes about 1.6 s against
+  ([#560](https://github.com/Chelis-Lang/sail/issues/560)). When replay misses (for
+  example after a `touch`, a recent ctime or different arguments), or for
+  forced jobs, which never replay, unchanged Anvil takes about 1.6 s against
   stock's 0.24 s on macOS, with no verifier run. Unchanged `SAIL3112` setups
   take about 0.9 s on Anvil ([#561](https://github.com/Chelis-Lang/sail/issues/561)).
 - **Tiny-project edits cost more than stock**
@@ -132,7 +108,11 @@ Current numbers are in [performance](performance.md).
   - `--sysroot`, `RUSTC_WORKSPACE_WRAPPER`, Cargo `--config` and
     configuration includes, and compiler or sysroot overrides Sail cannot
     identify;
-  - loader variables such as `LD_LIBRARY_PATH` or `DYLD_LIBRARY_PATH`;
+  - loader variables such as `LD_LIBRARY_PATH` or `DYLD_LIBRARY_PATH`, which
+    verify in the project's own Cargo target: the first such run in a
+    project verified only with `sail verify` builds that target as a cold
+    `cargo verus verify` does
+    ([#577](https://github.com/Chelis-Lang/sail/issues/577));
   - a Sail cache and package root that overlap.
 - **Only Sail's Verus,** at the release it pins
   ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). A project that

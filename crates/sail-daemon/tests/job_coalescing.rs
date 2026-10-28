@@ -220,3 +220,39 @@ fn remembered_context_coalesces_equal_inputs_but_not_cold_or_restored_mtime_edit
     handle.shutdown();
     let _ = std::fs::remove_dir_all(root);
 }
+
+/// A replayed job writes the recorded `context-ready` under the replay's run
+/// identity, followed by its `target-reused` events (ADR 0082, amendment of
+/// 2026-10-28); the running revision is read from that stream as from a full
+/// run's.
+#[test]
+fn a_replayed_job_stream_feeds_the_running_revision() {
+    let root = std::env::temp_dir().join(format!("sail-job-replayed-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    assert!(std::fs::create_dir_all(&root).is_ok());
+    let root = root.canonicalize().unwrap_or(root);
+    let (worker, environment, context, event) = prepare(&root);
+    let project = root.join("project");
+    let revision = record(&context, &project);
+    let replayed = [
+        serde_json::json!({"kind":"context-ready","workspace":project,"run_id":"replay-run","targets":[],"context_sha256":"fixture-context","input_revision":revision,"complete":true,"source_observation":true}),
+        serde_json::json!({"event":"target-reused","target":"demo","establishing_run":"first-run"}),
+    ];
+    let stream = replayed
+        .iter()
+        .map(|event| serde_json::to_string(event).unwrap_or_default())
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(std::fs::write(&event, stream).is_ok());
+    let socket = root.join("j.sock");
+    let mut handle = sail_daemon::jobs::bind(&socket, &root.join("jobs"), &worker)
+        .and_then(sail_daemon::jobs::JobServer::spawn)
+        .unwrap_or_else(|error| unreachable!("{error}"));
+    let client = Client::new(socket);
+    let replay = submit(&client, &root, &environment);
+    ready(&client, &root, &replay.id);
+    await_coalescing(&client, &root, &environment, &replay.id);
+    cancel(&client, &replay.id);
+    handle.shutdown();
+    let _ = std::fs::remove_dir_all(root);
+}

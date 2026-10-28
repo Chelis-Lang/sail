@@ -19,6 +19,7 @@ anything differed (the first differing line is printed), 2 on usage errors.
 """
 import argparse
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -88,7 +89,16 @@ def first_difference(a, b, label):
 def run_once(command, cap, env):
     os.makedirs(cap)
     env = dict(env, SAIL_DETERMINISM_DIR=cap)
+    # Keep metadata beside the capture directory: only solver streams belong
+    # inside it and participate in bucket matching.
+    with open(cap + ".command.json", "w") as file:
+        json.dump({"command": command}, file, indent=2)
     p = subprocess.run(command, env=env, stdin=subprocess.DEVNULL, capture_output=True)
+    for suffix, data in [("stdout", p.stdout), ("stderr", p.stderr)]:
+        with open(cap + "." + suffix, "wb") as file:
+            file.write(data)
+    with open(cap + ".result.json", "w") as file:
+        json.dump({"command": command, "exit": p.returncode}, file, indent=2)
     streams = []
     for name in sorted(os.listdir(cap)):
         data = open(os.path.join(cap, name), "rb").read()

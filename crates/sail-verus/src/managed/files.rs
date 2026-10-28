@@ -300,7 +300,71 @@ fn json_bytes(path: &Path, bytes: &[u8]) -> Result<()> {
         .map_err(|e| Error::new("SAIL3102", e.to_string()))
 }
 
+/// Whether consumers read `value` from a job's event stream: the daemon's
+/// running-revision projection and proof journal read `context-ready`, and
+/// reused targets name their establishing run. An unchanged-call replay emits
+/// these again (ADR 0082, amendment of 2026-10-28); every other event is
+/// diagnostic and belongs to the run that wrote it.
+fn replayed(value: &serde_json::Value) -> bool {
+    value["kind"] == "context-ready" || value["event"] == "target-reused"
+}
+
+/// The most events one run's capture holds; a run that emits more is not
+/// recorded.
+const CAPTURE_LIMIT: usize = 4096;
+
+/// Events captured on this thread, or `None` with no capture active. The
+/// flag records an overflow.
+type Captured = Option<(Vec<serde_json::Value>, bool)>;
+
+thread_local! {
+    static CAPTURED: std::cell::RefCell<Captured> = const { std::cell::RefCell::new(None) };
+}
+
+/// The replayable job events of one managed run, captured while the run
+/// lasts. A managed run emits them from the thread that runs it, and one
+/// thread runs one managed run at a time; the capture ends when it is dropped.
+pub(crate) struct Capture(());
+
+impl Capture {
+    /// Start capturing this thread's replayable events, discarding any
+    /// earlier capture.
+    pub(crate) fn start() -> Self {
+        CAPTURED.with(|captured| *captured.borrow_mut() = Some((Vec::new(), false)));
+        Self(())
+    }
+
+    /// The events captured so far, in order; `None` after an overflow.
+    #[allow(
+        clippy::unused_self,
+        reason = "only a live capture can be read; dropping it ends the capture"
+    )]
+    pub(crate) fn events(&self) -> Option<Vec<serde_json::Value>> {
+        CAPTURED.with(|captured| match &*captured.borrow() {
+            Some((events, false)) => Some(events.clone()),
+            _ => None,
+        })
+    }
+}
+
+impl Drop for Capture {
+    fn drop(&mut self) {
+        CAPTURED.with(|captured| *captured.borrow_mut() = None);
+    }
+}
+
 pub(crate) fn event(value: &serde_json::Value) {
+    if replayed(value) {
+        CAPTURED.with(|captured| {
+            if let Some((events, overflowed)) = &mut *captured.borrow_mut() {
+                if events.len() < CAPTURE_LIMIT {
+                    events.push(value.clone());
+                } else {
+                    *overflowed = true;
+                }
+            }
+        });
+    }
     if let Some(path) = std::env::var_os("SAIL_JOB_EVENTS")
         && let Ok(mut file) = std::fs::OpenOptions::new()
             .create(true)
@@ -315,6 +379,40 @@ pub(crate) fn event(value: &serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capture_holds_only_replayable_events_of_its_own_run() {
+        event(&serde_json::json!({"kind":"context-ready","run_id":"before"}));
+        let capture = Capture::start();
+        event(&serde_json::json!({"kind":"context-ready","run_id":"run"}));
+        event(&serde_json::json!({"kind":"managed-cleanup-decision","forced":false}));
+        event(&serde_json::json!({"event":"target-reused","target":"t","establishing_run":"e"}));
+        event(&serde_json::json!({"event":"dependency-stored","key":"k"}));
+        // Another thread's run never contributes.
+        let _ = std::thread::spawn(|| {
+            event(&serde_json::json!({"kind":"context-ready","run_id":"other"}));
+        })
+        .join();
+        assert_eq!(
+            capture.events(),
+            Some(vec![
+                serde_json::json!({"kind":"context-ready","run_id":"run"}),
+                serde_json::json!({"event":"target-reused","target":"t","establishing_run":"e"}),
+            ])
+        );
+        drop(capture);
+        event(&serde_json::json!({"kind":"context-ready","run_id":"after"}));
+        assert_eq!(Capture::start().events(), Some(Vec::new()));
+    }
+
+    #[test]
+    fn an_overflowing_capture_records_nothing() {
+        let capture = Capture::start();
+        for _ in 0..=CAPTURE_LIMIT {
+            event(&serde_json::json!({"event":"target-reused"}));
+        }
+        assert_eq!(capture.events(), None);
+    }
 
     #[test]
     fn prefetched_records_preserve_their_read_descriptors()

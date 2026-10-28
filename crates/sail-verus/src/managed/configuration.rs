@@ -109,6 +109,26 @@ pub(super) const LOADER_VARIABLES: &[&str] = &[
     "DYLD_FRAMEWORK_PATH",
 ];
 
+/// The `SAIL3112` reason for a run with the loader variable `variable` set.
+/// Without the interactive engine, such a run is verified as plain
+/// Cargo-Verus verifies it, in the invocation's own Cargo target (ADR 0046,
+/// amended for #577).
+pub(super) fn loader_reason(variable: &str) -> String {
+    format!("{variable} is set, which a proof receipt cannot bind (unset it to reuse proofs)")
+}
+
+/// Whether `error` is the `SAIL3112` fallback for a loader variable
+/// (`loader_reason`). Its JSON result stays a project result marked
+/// `unknown` with `no_reuse`, as the managed loader run's was, rather than
+/// the bare schema-v2 report of the other `SAIL3112` setups.
+#[must_use]
+pub fn loader_unbound(error: &crate::Error) -> bool {
+    error.code == "SAIL3112"
+        && LOADER_VARIABLES
+            .iter()
+            .any(|variable| error.message == loader_reason(variable))
+}
+
 /// Refuses configuration Sail cannot identify (`SAIL3112`). Returns the
 /// first loader variable set in the environment, if any: such a run is
 /// still verified, as plain Cargo-Verus would, but neither reuses nor
@@ -119,7 +139,7 @@ pub(super) fn check(workspace: &Path, args: &[String]) -> Result<Option<String>>
 
 /// Resolve existing ancestors before appending a not-yet-created cache suffix.
 /// An unreadable or dangling alias is unbound, never an assumed disjoint path.
-fn physical_path(path: &Path) -> std::io::Result<PathBuf> {
+pub(super) fn physical_path(path: &Path) -> std::io::Result<PathBuf> {
     let absolute = std::path::absolute(path)?;
     let mut ancestor = absolute.as_path();
     let mut suffix = Vec::new();
@@ -363,6 +383,27 @@ mod tests {
             Err("SAIL3112")
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Only the loader reason itself routes a `SAIL3112` to the loader's
+    /// project-result fallback; other `SAIL3112` setups keep theirs.
+    #[test]
+    fn only_the_loader_reason_is_a_loader_fallback() {
+        for variable in LOADER_VARIABLES {
+            let error = crate::Error::new("SAIL3112", loader_reason(variable));
+            assert!(loader_unbound(&error), "{variable}");
+            assert!(!loader_unbound(&crate::Error::new(
+                "SAIL3139",
+                loader_reason(variable)
+            )));
+        }
+        for message in [
+            "`--target-dir` is not bound to a proof receipt by managed verification",
+            "the process environment changed during verification setup",
+            "LD_LIBRARY_PATH is set",
+        ] {
+            assert!(!loader_unbound(&crate::Error::new("SAIL3112", message)));
+        }
     }
     #[test]
     fn configuration_homes_come_only_from_the_supplied_environment()

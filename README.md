@@ -335,13 +335,11 @@ See [workspace verification](docs/workspace-verification.md#evidence-from-comple
 - **Speed is bounded by the solver's share of the work.** Sail caches solver
   answers; on an edit, Rust compilation and Verus's own frontend still run.
   A later unchanged call replays its recorded result in 0.03–0.09 s when
-  nothing it read has changed (until
-  [#552](https://github.com/Chelis-Lang/sail/issues/552) is fixed, replay can
-  miss a change to a variable read only in ghost code; set
-  `SAIL_MANAGED_NOOP=0` to disable it). The first unchanged call after a
-  verification, calls that miss replay, and MCP and job calls take the full
-  path, and Sail's input checks, receipts and complete reports make them
-  slower than plain Verus (Anvil 1.6–2.1 s against 0.24–0.30 s on macOS).
+  nothing it read has changed (set `SAIL_MANAGED_NOOP=0` to disable it).
+  Unchanged MCP and background job calls replay too. The first unchanged call
+  after a verification and calls that miss replay take the full path, and
+  Sail's input checks, receipts and complete reports make them slower than
+  plain Verus (Anvil 1.6–2.1 s against 0.24–0.30 s on macOS).
   One-line edits of the measured real projects are faster than plain Verus;
   edits of tiny projects still cost a fraction of a second more.
   Current measurements, where Sail is faster and where it is not, and how to

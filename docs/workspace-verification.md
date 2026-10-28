@@ -103,15 +103,23 @@ The job's exit code is Cargo-Verus's. `sail jobs result` adds a
 `no-reuse` event (see [watch](#watch-and-agent-tools)).
 
 A process-loader variable (`LD_LIBRARY_PATH`, `LD_PRELOAD`,
-`DYLD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES` or `DYLD_FRAMEWORK_PATH`) is
-handled the same way inside managed verification, so it also works for jobs
-and MCP: Sail cannot bind what it changes to a receipt, so such a run
-(noted as `SAIL3112`) verifies what Cargo rebuilds exactly as
-`cargo verus verify` does, in Sail's target, and neither reuses nor records
-proof receipts or dependency records. `--output json` reads `unknown`, with
-a `SAIL3112` note and `no_reuse` whose `verified_as` is `managed`, and has
-no report for a target Cargo found up to date. Unset the variable for the
-`sail verify` command to get reuse back.
+`DYLD_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES` or `DYLD_FRAMEWORK_PATH`)
+changes what the compiler and verifier load, which a receipt cannot bind, so
+such a run (noted as `SAIL3112`) takes the same fallback: it is verified
+exactly as `cargo verus verify` verifies it, in the project's own Cargo
+target, with Sail's solver cache, and neither reuses nor records proof
+receipts, dependency records or a managed target. Cargo does not fingerprint
+loader variables, so after that target has been built once, an unchanged
+loader run, or one with a different loader value, is as fast as plain
+`cargo verus verify`. The first such run in a project whose own target was
+never built (one verified only with `sail verify`) builds and verifies it as
+a cold `cargo verus verify` does, vstd included. `--output json`, jobs,
+`watch` and MCP return a project result that reads `unknown`, with a
+`SAIL3112` note and `no_reuse` whose `verified_as` is `plain-cargo-verus`;
+its one target holds the run's report, which has nothing for a crate Cargo
+found up to date. Only `--engine interactive` still verifies a loader run
+inside managed verification (`verified_as` is then `managed`). Unset the
+variable for the `sail verify` command to get reuse back.
 
 `--verus-source FILE` (a single file with `verus FILE`) is only for the
 opt-in portfolio. `--measure-fragility` and `--portfolio accept-first-proof`

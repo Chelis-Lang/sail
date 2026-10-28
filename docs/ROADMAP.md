@@ -29,11 +29,12 @@ baseline.
 
 | Gate | State | Next |
 |---|---|---|
-| Fork runtime | `36d65c3f` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; selected | — |
+| Fork runtime | `47fb3be6` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; schema2 archives built and qualified | Owner rollout |
+| Compiler-input currentness | Source-origin protocol, durable pre-Cargo invalidation and complete native workspace gates; Linux full corpus and Mac runtime/bounded consumer controls pass ([record](validation/compiler-read-origin.md)) | Service-wide theorem remains #368 |
 | Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
 | Default output identical to stock | Done: human stderr is byte-identical by default; Sail notes only with `SAIL_EXPLAIN=1` or in JSON (#391) | — |
 | Default-mode verdict conformance | Done: #385, #386, #393 fixed. Sail's named settings stay compiler-visible as an accepted exception (ADR 0088, #435) | — |
-| Proof-reuse input coverage | Replay binds ghost-only environment reads (#552, fixed by #554, replay record v4). Open: reuse loses effective compiler-environment bindings (#551, PR #572); a forced `--release` run fails with `SAIL3107` (#553, PR #570); replay output can differ from stock (OSC 8 hyperlinks #573, transient Cargo lines #574) | Fix, with regressions |
+| Proof-reuse input coverage | Done: replay binds ghost-only environment reads (#552), effective compiler inputs are bound across reuse (#551), managed cleanup forwards profile and target selectors (#553), and replay output matches stock (#573, #574) and binds the supplied daemon socket (#571) | — |
 | Unchanged calls | Later unchanged calls replay in 0.03–0.09 s against stock's 0.20–0.26 s (Linux Anvil 26 ms; macOS `dca5cd43` 0.04–0.09 s; ADR 0082, #402, #437). The first unchanged call and calls that miss replay are slower | [Performance parity](#performance-parity) |
 | Tiny edits | One-line edits faster than stock on all four real projects (macOS `dca5cd43`); tiny-project edits still slower | [Performance parity](#performance-parity) |
 | Cold runs | Linux at parity or faster; macOS Anvil 0.7 s slower on 100 s, ranges not overlapping (#466) | #232 |
@@ -76,9 +77,8 @@ record peak memory (#562).
 | Row | Measured, Sail against stock | Spike finding | Issue |
 |---|---|---|---|
 | First unchanged call after a verification (full path, records replay) | macOS `dca5cd43`: Anvil 2.07 s against 0.30 s; Vest 0.79 s against 0.26 s | A settle pass that records replay at the end of the verifying run is not worth its cost | #558 |
-| MCP and job calls never replay (ADR 0082) | Every unchanged call pays the full path | MCP latency is dominated by result polling (Vest 1–2.6 s, #578); job replay is tractable (#559) | #559, #578 |
-| Unchanged call that misses replay (`touch`, recent ctime, other arguments) | macOS `dca5cd43`: Anvil 1.59 s against 0.24 s | Near its floor without cross-run trust. Full runs rewrite `runtime.json` and invalidate other keys' records (#575); root/subdirectory alternation and a package-local `target/` thrash (#576) | #560, #575, #576 |
-| Unchanged `SAIL3112` setups | Anvil 0.90 s with no proof reuse ([record](validation/unsupported-cargo-fallback.md)), stock about 0.3 s | A loader variable or a new value re-verifies everything, vstd included (65–180 s; #577) | #561, #577 |
+| Unchanged call that misses replay (`touch`, recent ctime, other arguments) | macOS `dca5cd43`: Anvil 1.59 s against 0.24 s | Near its floor without cross-run trust. Full runs under other keys no longer invalidate records (#575, fixed); root/subdirectory alternation and a package-local `target/` thrash (#576) | #560, #576 |
+| Unchanged `SAIL3112` setups | Anvil 0.90 s with no proof reuse ([record](validation/unsupported-cargo-fallback.md)), stock about 0.3 s | Loader-variable runs now verify in the project's own target (#577, fixed) | #561 |
 | Tiny-project edits | About 0.4 s (Linux) and 0.7 s (macOS) more, `e51e4660` matrix | — | #560 |
 | macOS Anvil cold | 100.2 s against 99.5 s, ranges not overlapping (#466) | — | #232 |
 
