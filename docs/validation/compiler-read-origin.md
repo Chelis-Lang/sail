@@ -1,7 +1,12 @@
 # Compiler-read source origin qualification
 
-Status: runtime acceptance remains unqualified and unselected. Native source
-tests and the conditional model suite pass on the checkpoint below. This record
+Status: draft PR #572 stages the paired compiler-input fix; it is not merge-ready.
+The frozen Linux checkpoint `96de5097` passes solver, complete unchanged e2e,
+full fast and standard conformance, both semantic counterexample controls and
+useful-reuse/lifecycle controls. Its raw packet is being closed. The current
+integration rebases that work onto main after #552 merged; it has not inherited
+an exact-head whole-gate pass. macOS runtime construction passes, with additional
+native qualification and final platform integration still pending. This record
 tracks the paired Verus observation producer and Sail reuse consumers for
 [#551](https://github.com/Chelis-Lang/sail/issues/551) and the distinct caller
 replay gap [#552](https://github.com/Chelis-Lang/sail/issues/552). The #552
@@ -30,8 +35,10 @@ retire those facts only after strict physical fingerprint invalidation.
 
 The Linux descriptor now stages the real schema2 candidate from fork `47fb3be6`,
 archive `8da9b487...`, manifest `d6096d5b...`. It is not final selection or a
-published asset. The macOS descriptor remains the old schema1 runtime under the
-new shared fork pin, so the unmodified whole-head gate correctly refuses it.
+published asset. The macOS descriptor now proposes the actually constructed
+schema2 archive `52ba48d4...`, manifest `ea6853a8...`; its remaining native
+qualification is running. Earlier Linux checkpoints correctly refused the old
+macOS descriptor. This new proposal has not passed the final whole-head gate.
 See [actual runtime construction](compiler-read-origin-runtime.md) for the
 normal no-rust-src build, real pack/install and independently audited receipts.
 The producer source gate passes at exact `47fb3be6`; the source tests and
@@ -43,11 +50,12 @@ runtime constructor remain distinct from paired consumer acceptance.
 | Sail unit and workspace gate | PASS on `dbda2535`: 1,170 tests, 54 inherited skips; fmt/clippy/docs/layering/deny/generated benchmark page |
 | Direct stock conditional models | PASS on `dbda2535`: 4 positive models and all 31 controls; normal resources |
 | Production refinements, including bound native caller | PASS on `dbda2535`: 3 positive roots, all 168 controls; query282 / inputs54 / authority184 verified, whole crates |
-| Cleanup correction | PASS at `aefef5ca`: strict workspace clippy and all 10 focused origin/cleanup controls; whole-head gate remains blocked by macOS selection |
-| Solver and complete native e2e | Solver51 PASS at `0ae88ef9`; full e2e FAIL at focused replay, marker correction pending |
-| Full fast and standard conformance | Pending new runtime |
-| Native added-validation cost and useful warm reuse | Pending new runtime |
-| Native macOS runtime qualification and final whole-head gate | Pending; old descriptor correctly fails the shared-fork binding |
+| Latest Linux source/Rust checks | `96de5097`: strict clippy and focused20 PASS; host 1,186/1,187 PASS with 54 inherited skips, sole failure the old macOS descriptor |
+| Solver and complete native e2e | `96de5097`: solver51 PASS and unchanged complete e2e/all ten phases plus extra PASS |
+| Full fast and standard conformance | `96de5097`: all four arms PASS; fast147 and standard159 units per arm, zero differences, instability, infrastructure failures or skips; standard mutation controls PASS |
+| Native useful reuse and lifecycle | `96de5097`: basic64 and lifecycle10 PASS on both actual normal build variants; genuine changed-input SAT failures preserved |
+| Native added cost | Coherent minimal production pair: three alternating pairs, zero refusals; tiny-fixture warm medians 310.863ms baseline / 304.480ms candidate, overlapping samples; no speedup or isolated-overhead claim |
+| Native macOS runtime qualification and final whole-head gate | Construction/pack/install PASS; further Mac qualification running, final integration gate pending |
 | Runtime oracle and determinism | PASS at fork47/candidate8da9: engine11, cancellation, direct320×3; both-platform selection pending |
 
 Tests cover source-vs-driver COMMON classification, strict origin decoding,
@@ -78,8 +86,9 @@ of this qualification.
 installed variant and public CLI/jobs/MCP requests. Its corrected basic scope passes all 64 native cases against the real candidate,
 including both SAT semantic controls; complete acceptance gates remain open.
 Actual owned interruption and eligible retained A-to-B-to-A pass all ten lifecycle
-controls at `a1600f19`. Those older-prefix receipts do not qualify later runtime
-changes. Neither runner scope alone closes overall acceptance. Complete compiled
+controls at `96de5097` as well as the earlier `a1600f19` checkpoint. These receipts
+retain their actual source and executable identities; they do not qualify the
+new integration head automatically. Neither runner scope alone closes overall acceptance. Complete compiled
 proof programs retain explicitly checked correspondence to `dbda2535`; new
 runtime and cleanup code remains surrounding unproved code.
 
@@ -196,3 +205,20 @@ is local to the open replay fix and receives a focused actual-route regression.
   final source/runtime/tool guard are preserved. The main issue stays open
   until its fix merges; this is an operational rebuild check, not a false-proof
   reproduction.
+
+## Current WIP integration
+
+PR #572 is based on main `e1365eb2`, which already contains the independent
+#552 replay repair. The latest Linux receipts remain attributed to `96de5097`.
+Its normal e2e/example-enabled binary (`11246f3c...`) and normal conformance /
+minimal production binary (`2837f369...`) are distinct builds. Each separately
+passes basic64 and lifecycle10; complete e2e uses the former, full corpus and
+mutation checks the latter. The ordinary minimal release command selects the
+latter bytes exactly. No binary equivalence is inferred from shared source.
+
+The actual macOS descriptor and selection guard are staged proposals, pending
+remaining Mac gates and reviewed runtime publication. Overlapping fixes for
+#553 and #555 are being reconciled with focused PRs #570 and #557; this WIP
+branch must not duplicate their delivery. API-only socket-key issue #571 remains
+separate. Final source-closure/proof-program correspondence, platform gate and
+required hosted CI are pending on the final reconciled head.

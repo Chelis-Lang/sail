@@ -2,8 +2,9 @@
 
 Status: the Linux candidate is built, locally packed and freshly installed.
 It is **unselected**. The paired [compiler-read origin acceptance](compiler-read-origin.md),
-ordinary useful reuse, full conformance, determinism and macOS qualification
-remain pending. This record qualifies runtime construction only; it does not
+ordinary useful reuse and full Linux conformance now pass at the separate
+`96de5097` checkpoint; Linux oracle and determinism also pass in their own
+packet. Further macOS qualification and final integration remain pending. This record qualifies runtime construction only; it does not
 close [#551](https://github.com/Chelis-Lang/sail/issues/551).
 
 ## Frozen inputs and actual output
@@ -64,8 +65,8 @@ The proposed Linux pin and `LINUX_MANIFEST` guard name these exact bytes so the
 paired acceptance branch can exercise ordinary reuse. They are not production
 acceptance. The descriptor's prospective release asset has not been published;
 use the locally packed archive through normal validated installation. The
-macOS pin and guard still identify the old schema1 runtime and do not qualify
-the schema2 consumer. No public asset, release or final selection is made here.
+macOS pin and guard now propose the separately constructed schema2 runtime
+below; they do not yet qualify the final integrated consumer. No public asset, release or final selection is made here.
 
 ## Evidence
 
@@ -85,3 +86,17 @@ It passed all 162 unfiltered fork targets (4,839 passed, 63 inherited ignored,
 zero failed or filtered). Its raw rust-src Vargo build is not this release-style
 runtime; its failed preparation/build attempts retain their original scope in
 [fork PR #13](https://github.com/Chelis-Lang/verus/pull/13).
+
+## Constructed macOS proposal
+
+The same exact Sail constructor source `4b3f7aa6` and fork `47fb3be6` also
+complete the normal native arm64 macOS build, both vstd verifications
+(2,059 verified each), real pack and fresh install. The staged proposal names
+variant `7d829946231d6413a398f6e4160cdfe951261dad-91a9b529d1d74530`,
+manifest `ea6853a815475820ad3cfeb2a6d9b684e4fff82506eac8fba0cc938ef6359996`,
+and archive `52ba48d4288a18c7994ce2b73cec878342728cb929e9d87e06b4badad96a7da9`.
+Independent source/tool/runtime and full-byte privacy audits pass. Further
+Mac source/origin/determinism gates are running; final descriptor integration,
+consumer host gate, asset publication and selection remain pending. The initial
+combined-output locator failed after the successful build; its failed attempt
+remains preserved without relabeling or rebuilding the runtime.
