@@ -480,6 +480,10 @@ the absolute paths of their dependency sources (panic locations) and vstd.vir
 those of vstd's, so set `RUSTUP_HOME`, `CARGO_HOME` and `SAIL_CACHE_DIR` to
 directories outside the home directory (for example under `/tmp`) and check
 the packed archive's strings for `/Users/` before publishing it.
+The unpacked-tree check uses `ci/engine-artifact.py scan --root TREE`, which
+checks file bytes, including tokens spanning read chunks. Enumeration and
+read errors, symbolic links and other nonregular entries fail the scan.
+`SAIL_SCAN_TOKENS` adds whitespace-separated tokens such as the build hostname.
 `scripts/build-macos-runtime.sh build` does all of this, plus the fork's
 library and regression tests and the determinism check, and packs the
 archive; after publishing, `scripts/build-macos-runtime.sh published` fetches

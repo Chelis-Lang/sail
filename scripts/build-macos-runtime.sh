@@ -120,14 +120,10 @@ cmd_build() {
     --archive "$q/engine-runtime.tar.gz" --pin engine/verus/artifact-macos.json >"$q/pack.log" 2>&1 \
     || die "pack failed ($q/pack.log)"
   (cd "$q" && shasum -a 256 engine-runtime.tar.gz >engine-runtime.tar.gz.sha256 && cat engine-runtime.tar.gz.sha256)
-  local scan="$work/scan" hits=0 f t
+  local scan="$work/scan"
   mkdir -p "$scan" && tar -xzf "$q/engine-runtime.tar.gz" -C "$scan"
-  while IFS= read -r f; do
-    for t in /Users/ /home/ ${SAIL_SCAN_TOKENS:-}; do
-      if strings -a "$f" | grep -qF -- "$t"; then echo "scan: $t in ${f#"$scan"/}"; hits=1; fi
-    done
-  done < <(find "$scan" -type f)
-  [ "$hits" = 0 ] || die "the archive names host paths or tokens; do not publish it"
+  "$py" ci/engine-artifact.py scan --root "$scan" \
+    || die "the runtime path scan failed; do not publish it"
   echo "scan: clean"
   step "done: publish $q/engine-runtime.tar.gz{,.sha256} as $(sed -n 's/.*"release_tag": "\(.*\)".*/\1/p' engine/verus/artifact-macos.json), then run: $0 published"
 }

@@ -30,15 +30,38 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
 ## Input coverage and cache integrity
 
-No end-to-end false proof is reproduced for these; each weakens a check that
-reuse depends on.
-
-- Retained-proof admission normalizes the effective observed
-  ` __VERUS_DRIVER_ARGS__` to its base value without preserving that effective
-  binding for reuse ([#551](https://github.com/Chelis-Lang/sail/issues/551)).
-  This is a source-established input-coverage gap, separate from ADR 0088's
-  accepted visibility difference; it does not authorize stale reuse. No
-  end-to-end wrong-verdict reproduction is claimed.
+- Proof reuse can confuse the effective compiler environment with the outer
+  parent's values ([#551](https://github.com/Chelis-Lang/sail/issues/551)).
+  Ordinary dep-info restoration and retained admission normalize source reads
+  of ` __VERUS_DRIVER_ARGS__` into driver bookkeeping. Ordinary provenance can
+  change from absent to a compiler-only injected path while Cargo still sees
+  absence; ghost-only compiler-input endpoint/binding reads can be omitted from
+  dep-info and recorded from the parent instead. These four settings have
+  source-established coverage holes, separate from ADR 0088's visibility
+  exception. No end-to-end wrong-verdict reproduction is claimed.
+  The paired schema2 producer/consumer fix also conservatively refuses genuine
+  source reads of the other seven named compiler-child controls. Both platform
+  runtimes and full native runtime-reuse qualification must complete before
+  selection; see [compiler-read origin qualification](validation/compiler-read-origin.md).
+- Unchanged-call replay can omit a ghost-only caller variable whose leading
+  spaces make it look like a Verus driver name to the dep-info merge, while
+  neither the context nor replay key actually binds that raw name
+  ([#552](https://github.com/Chelis-Lang/sail/issues/552)). Ordinary receipts
+  reject a changed value, but the earlier replay path can skip those checks.
+  The old-main reproduction reaches a real replay hit after only the caller
+  input changes and returns Current, confirmed verified with zero compiler
+  invocations. Fresh pinned stock rejects the same source/value with a concrete
+  bit-vector SAT counterexample. The separate fix carries actual admitted receipt
+  requirements into replay and retires the old record version; it remains open
+  until its own qualification and merge complete.
+- Forced verification can clean the wrong Cargo profile or target
+  ([#553](https://github.com/Chelis-Lang/sail/issues/553)). On old main,
+  `SAIL_MANAGED_FORCE=1 sail verify --release --output json` starts no verifier
+  after a warm successful run and refuses missing proof coverage (`SAIL3107`),
+  rather than performing the requested fresh verification. The CLI exits 2;
+  the structured result has no exit code. This is an operational refusal,
+  not an accepted false proof. The cleanup correction still requires its
+  public corrected-run qualification.
 - Read-back currentness brackets its reads with metadata stamps of every
   recorded path (#387). A concurrent edit that restores every stamped
   field, including the inode change time, is not detected; that needs a

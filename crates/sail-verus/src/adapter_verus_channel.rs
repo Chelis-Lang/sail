@@ -16,14 +16,14 @@
 //! The Verus driver records the variable's value in the target's dep-info,
 //! which Cargo checks against its own environment on the next build. The
 //! driver writes back the value Cargo has, so a fresh target stays fresh.
-//! Compiler-input observations name the same variable; [`normalize`] maps
-//! Sail's value back to the one Cargo gave.
+//! Schema-2 observations separate this driver bookkeeping from actual source
+//! reads. Only an exact driver-only observation permits this restoration;
+//! source reads retain their actual value and refuse proof reuse.
 
 use crate::{Error, Result};
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 
 /// Cargo-Verus's variable for the Verus options of every verified package.
 pub(crate) const COMMON: &str = " __VERUS_DRIVER_ARGS__";
@@ -99,10 +99,11 @@ impl Channel {
         }
     }
 
-    /// Makes this the channel [`normalize`] maps back, for this process's one
-    /// verified compiler.
-    pub(crate) fn publish(&self) {
-        let _ = ACTIVE.set(self.clone());
+    /// Whether the separately classified driver bookkeeping records this exact
+    /// compiler child's effective COMMON value. Source reads are checked separately.
+    pub(crate) fn observed_driver(&self, driver: &BTreeMap<String, Option<String>>) -> bool {
+        driver.len() == 1
+            && driver.get(COMMON) == Some(&self.augmented.as_ref().or(self.base.as_ref()).cloned())
     }
 
     /// Writes the base value back into the dep-info at `path` (see
@@ -127,24 +128,6 @@ impl Channel {
                 let _ = std::fs::remove_file(&temporary);
             }
         }
-    }
-}
-
-static ACTIVE: OnceLock<Channel> = OnceLock::new();
-
-/// Maps an observed ` __VERUS_DRIVER_ARGS__` that carries exactly Sail's
-/// options back to the value without them. Any other value is unchanged.
-pub(crate) fn normalize(environment: &mut BTreeMap<String, Option<String>>) {
-    if let Some(channel) = ACTIVE.get() {
-        normalize_with(channel, environment);
-    }
-}
-
-fn normalize_with(channel: &Channel, environment: &mut BTreeMap<String, Option<String>>) {
-    if let (Some(augmented), Some(value)) = (&channel.augmented, environment.get_mut(COMMON))
-        && value.as_deref() == Some(augmented.as_str())
-    {
-        value.clone_from(&channel.base);
     }
 }
 
@@ -305,19 +288,15 @@ mod tests {
     }
 
     #[test]
-    fn observations_of_sails_value_name_cargos() -> Result<()> {
+    fn only_exact_explicit_driver_bookkeeping_authorizes_restoration() -> Result<()> {
         let channel = Channel::new(None, &os(&["--time"]))?;
-        let mut observed = BTreeMap::from([
-            (COMMON.to_owned(), channel.augmented.clone()),
-            ("OTHER".to_owned(), Some("x".to_owned())),
-        ]);
-        normalize_with(&channel, &mut observed);
-        assert_eq!(observed.get(COMMON), Some(&None));
-        assert_eq!(observed.get("OTHER"), Some(&Some("x".to_owned())));
-        // Another value is not Sail's and keeps refusing admission.
-        let mut other = BTreeMap::from([(COMMON.to_owned(), Some("y".to_owned()))]);
-        normalize_with(&channel, &mut other);
-        assert_eq!(other.get(COMMON), Some(&Some("y".to_owned())));
+        assert!(channel.observed_driver(&BTreeMap::from([(
+            COMMON.into(),
+            channel.augmented.clone()
+        )])));
+        assert!(!channel.observed_driver(&BTreeMap::new()));
+        assert!(!channel.observed_driver(&BTreeMap::from([(COMMON.into(), None)])));
+        assert!(!channel.observed_driver(&BTreeMap::from([(COMMON.into(), Some("other".into()))])));
         Ok(())
     }
 
