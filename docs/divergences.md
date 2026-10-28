@@ -13,6 +13,41 @@ default-mode differences are recorded separately below.
 
 ## Accepted default-mode differences
 
+### Compiler-visible integration settings
+
+Owner decision, 2026-10-27: code that inspects the operational integration
+surfaces listed below may compile different inputs under Sail and plain
+Cargo-Verus, with corresponding verdict or diagnostic differences. This is an
+accepted equivalence limit, rather than a private-transport implementation.
+See [ADR 0088](decisions/0088-compiler-visible-integration-settings.md) and
+[#435](https://github.com/Chelis-Lang/sail/issues/435).
+
+- Solver routing: `VERUS_Z3_PATH`, `SAIL_Z3_PATH`, `SAIL_SOLVER_MODE`,
+  `SAIL_DAEMON_SOCKET`, and `SAIL_PROVENANCE_DIR` when active.
+- `RUSTC_WRAPPER`, which names Sail's driver alias.
+- The physical ` __VERUS_DRIVER_ARGS__`, which includes Sail's JSON, timing,
+  attribution-log and retained-checksum observation options.
+- Active source-map and input collection: `SAIL_RUSTC_DEV_SOURCE_BASE`,
+  `SAIL_VIR_SPAN_REMAP`, `SAIL_COMPILER_INPUTS`,
+  `SAIL_COMPILER_INPUTS_BINDING`, `SAIL_NATIVE_COMPILER_INPUTS`, and
+  `SAIL_NATIVE_COMPILER_INPUTS_BINDING`.
+- Existing engine controls: `SAIL_ENGINE`, `SAIL_ENGINE_FUNCTION`,
+  `SAIL_ENGINE_EVENTS`, `SAIL_ENGINE_FOCUS_REPORT`, and `SAIL_ENGINE_CONTEXT`.
+  Default managed invocation clears caller values before Cargo; explicitly
+  selected interactive mode supplies its compiler-child controls.
+
+Build scripts, procedural macros, `env!`, `option_env!` and other compiler-time
+observations can see these values or their absence. This exception covers differences caused by
+those observations; it is not a general allowance for differing results.
+Solver answers, exact query/key binding, freshness, full scope and truthful
+reporting remain required for Sail's actual effective inputs. No new mode,
+cache namespace or verdict-changing solver strategy is introduced. Conformance
+checks remain unchanged, and mismatches still require causal evidence rather
+than an automatic exemption. This decision establishes no service-wide theorem
+and makes no claim that a false proof has been demonstrated or excluded.
+
+### Failed bit-vector function status
+
 Default mode runs Sail's Verus fork (ADR 0043). One fork fix makes Sail
 stricter than stock in stock's per-function JSON status, and the
 owner accepted it on 2026-10-20:
