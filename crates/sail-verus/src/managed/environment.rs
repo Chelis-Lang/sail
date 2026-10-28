@@ -21,7 +21,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-/// Sail variables that only observe or schedule a run; they never reach a proof.
+/// Sail controls omitted from the ambient proof-context hash. A source can
+/// still read their compiler-visible values (ADR 0088); declarations and
+/// source-sensitive child-origin guards remain separate reuse obligations.
 const OBSERVATION_ONLY: &[&str] = &[
     // Private dependency authentication selects fetched bytes, not compiler
     // semantics. Those bytes remain source inputs; explicit env! or script

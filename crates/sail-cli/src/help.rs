@@ -25,7 +25,8 @@ SAIL OPTIONS (before --):
 /// Commands that run but are not part of the supported command set:
 /// `sail --help` omits them and their own help starts with
 /// [`EXPERIMENTAL_NOTE`].
-pub(crate) const EXPERIMENTAL: &[&str] = &["assurance", "serve", "fragility", "cache shared"];
+pub(crate) const EXPERIMENTAL: &[&str] =
+    &["assurance", "serve", "fragility", "runtime", "cache shared"];
 
 /// The first paragraph of every experimental command's help.
 pub(crate) const EXPERIMENTAL_NOTE: &str = "\

@@ -99,6 +99,12 @@ blanked stdout, stderr or exit code, printing the first differing line. A
 directory. It is local only: 3 runs of the fast tier's 153 direct inputs took about
 8 minutes on a c7i.8xlarge, beyond the CI budget.
 
+The committed runner retains each completed run's raw stdout, stderr, command
+and exit status as `run-N.stdout`, `run-N.stderr`, `run-N.command.json` and
+`run-N.result.json`, beside its `run-N` solver-capture directory. These sidecars
+do not enter solver-bucket matching. Timing normalization applies to the
+comparison; the retained streams keep their original bytes.
+
 ## Evidence
 
 Everything below is in `l42-determinism-evidence.tar.gz`, kept outside the repository
