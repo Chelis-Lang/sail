@@ -906,7 +906,8 @@ mod tests {
             if operation == "legacy" {
                 let path = record_path(&cache, &key);
                 let mut record: Record = serde_json::from_slice(&std::fs::read(&path)?)?;
-                record.version = 3;
+                // A version-4 record carries no job events.
+                record.version = VERSION - 1;
                 std::fs::write(path, serde_json::to_vec(&record)?)?;
             }
             let replay = replay(&config, &key, std::time::Instant::now());
@@ -933,6 +934,14 @@ mod tests {
             } else {
                 assert!(matches!(operation.as_str(), "changed" | "legacy"));
                 assert!(replay.is_none(), "changed input or legacy record replayed");
+                // A miss writes no job events: the full run that follows
+                // writes its own.
+                assert_eq!(
+                    std::fs::read(root.join(format!("{operation}.events.jsonl")))
+                        .unwrap_or_default(),
+                    Vec::<u8>::new(),
+                    "a missed replay wrote job events"
+                );
             }
         }
         Ok(())
@@ -991,11 +1000,18 @@ mod tests {
             if operation == "forced" {
                 command.env("SAIL_MANAGED_FORCE", "1");
             }
-            if matches!(operation, "job" | "forced") {
-                // A daemon job worker's own variables replay the same record.
+            if matches!(operation, "job" | "forced" | "changed" | "legacy") {
+                // A daemon job worker's own variables keep the key: the same
+                // record replays, or misses, as for a plain JSON call.
                 command
-                    .env("SAIL_JOB_EVENTS", root.join("job.events.jsonl"))
-                    .env("SAIL_PROOF_EVENTS", root.join("job.proof-source.jsonl"))
+                    .env(
+                        "SAIL_JOB_EVENTS",
+                        root.join(format!("{operation}.events.jsonl")),
+                    )
+                    .env(
+                        "SAIL_PROOF_EVENTS",
+                        root.join(format!("{operation}.proof-source.jsonl")),
+                    )
                     .env("SAIL_JOB_GUARD_PARENT", "1");
             }
             if operation == "changed" {
