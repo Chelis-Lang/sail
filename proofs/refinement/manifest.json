@@ -21,7 +21,7 @@
         "proofs/refinement/query.rs",
         "crates/sail-shim/src/cached.rs"
       ],
-      "verified": 286,
+      "verified": 295,
       "functions": [
         "check_query::cache_bucket::Bucket::contains_view",
         "check_query::cache_bucket::Bucket::empty",

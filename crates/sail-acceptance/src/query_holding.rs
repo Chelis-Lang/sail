@@ -59,8 +59,10 @@ sail_code! {
             }
         }
         sail_method! {
-            /// Emits the exact held value before this current value. This is
-            /// the actual statistics-release permutation, with no re-pairing.
+            /// Emits the exact held value before this current value, matching
+            /// the statistics-release permutation without re-pairing. Native
+            /// callers can use take followed by their existing pushes to avoid
+            /// allocating this convenience result.
             pub fn release_before(&mut self, current: Payload) -> (out: Vec<(Payload, Option<Metadata>)>)
                 requires (old(self).well_formed())
                 ensures (final(self).well_formed(), final(self).payload_view().is_none(), final(self).metadata_view().is_none(),

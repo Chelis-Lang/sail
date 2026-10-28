@@ -58,8 +58,9 @@ scope and required gates are satisfied.
 Main-relative bugs belong in GitHub with precise evidence and duplicate checks.
 PR-introduced findings stay in the owning PR or
 [findings ledger](design/acceptance-pr-findings.md). Unfinished design work stays
-in the design and #368. Jeff's overlapping PRs #557 and #570 remain open pending
-owner direction; proof delivery does not authorize their closure.
+in the design and #368. Jeff merged #557 as an empty-tree change after #572 had already incorporated
+its contents. PR #570 remains open pending owner direction; proof delivery
+does not authorize its closure.
 
 The remaining service theorem still needs parser/session composition, truthful
 cache origin, complete compiler-input closure, filesystem/process observations,
