@@ -14,7 +14,7 @@ same engine checks as the Linux runtime
 | Build roots | Under `/tmp/sail-engine-f8589ed4`. vstd.vir: 10,215 `/rustc/58cf8f9c…` spans, 0 local. The archive scan found no home-directory path, IP address, account id or host name (one false positive: `Z3 4.16.0.0`) |
 | Environment | EC2 mac-m4.metal, Apple M4 (10 cores, 24 GiB), macOS 27.0 (26A428), us-east-1d |
 | Scope | The script's `build` and `published` steps: build with vstd verification; `test-engine.py`; `test-cancel.py`; the fork's library tests and every `sail_vi*` test plus `basic` on a fresh clone; `scripts/verus-determinism.py --runs 3` over 320 fast-tier inputs; the fast PR conformance subset on the runtime fetched from the release; `cargo verus new` |
-| Limits | Correctness only, one run of each (determinism: 3); no performance measurement |
+| Limits | Correctness only, one run of each (determinism: 3); no performance measurement. The archive scan used the earlier `strings \| grep -q` predicate, which under `pipefail` can report a large file clean after an early match ([#555](https://github.com/Chelis-Lang/sail/issues/555)); this runtime has not been rescanned with `scripts/scan-host-paths.sh` |
 
 ## Results
 
