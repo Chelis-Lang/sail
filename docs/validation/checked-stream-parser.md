@@ -1,19 +1,20 @@
 # Shared stream parser qualification
 
-Status: complete positive Stock discovery passes, but the full control suite
-is refused at the default resource limit. Native compatibility, cost and
-conformance are unrun. The candidate adopts the new native path when built; owner acceptance
+Status: the resumed complete positive Stock discovery and the previously
+resource-refused original-byte control pass at unchanged default limits.
+The full current control matrix, native compatibility, cost and conformance
+remain pending. The candidate adopts the new native path when built; owner acceptance
 and completion of #371 are not claimed. See the [design](../design/checked-stream-parser.md).
 
 | Scope | State |
 |---|---|
-| Base | Main source `67b8b95d` / canonical `9dc2038c`, bugfix base `ef655f82`, reviewed model cut `03665cd9` |
+| Base | Current main `e9862433`; earlier frozen lineages below remain historical |
 | Source operations | Actual splitter/token lexer and exact grammar extracted from the frozen source lineage; command/head/session/cache features excluded |
-| Existing proof programs | Source-only comparison verifies all 25 captured programs against model baseline `03665cd9`: query 134/263, inputs 54/91, observed authority 174/303; no parser qualification inferred |
-| New parser root | Actual complete positive at `96c2c4f0`: 127 verified / 201 function entries; all 54 controls preserving the 51 original fault behaviors remain pending |
-| Qualification admission | Locks the actual 127/201 inventory; the pending-discovery refusal remains tested |
+| Existing proof programs | Source-only comparison preserves all 171 complete captured main programs; no new proof execution or parser qualification inferred |
+| New parser root | Actual complete positive at `1b614970`: 129 verified / 204 function entries, including both checked history/emission lemmas; original-byte control fails ordinarily with no resource refusal |
+| Qualification admission | Locks the actual 129/204 inventory; the pending-discovery refusal remains tested |
 | Native callers | Candidate default splitter/lexer paths now delegate to shared implementations; adapters and command/sexpr consumers are bound/unverified, not Stock-compiled |
-| Remaining gates | All 54 parser and 22 baseline controls, strict native/Linux/Mac compatibility, solver/scoped standard conformance and narrow measured parser cost |
+| Remaining gates | Full 226-case matrix (54 parser and 168 current-main controls), strict native/Linux/Mac compatibility, solver/scoped standard conformance and narrow measured parser cost |
 
 Earlier larger-root receipts apply only to their named frozen sources and
 scope. They do not qualify this module relocation, new root or main-based
@@ -157,3 +158,5 @@ unrelated loop rlimit exhaustion. No resource limit or wall deadline changes.
 - `993bfe7e` (2026-10-28): direct Stock discovery stopped before verification because the existing snapshot expression matcher rejects `appended@`. The attempted complete source and raw diagnostics are retained; no positive or negative proof credit. The follow-up uses equivalent erased `appended.view()` without changing the macro, contracts, runtime loop or resource settings.
 
 - `72edd307` (2026-10-28): both new history/emission lemmas verify, but the positive root encounters the default loop resource limit (`128` verified, `1` error, no VIR error). No positive inventory or negative-control credit. The follow-up scopes the history lemma inside its quantified proof; all loop invariants and executable transitions remain unchanged.
+
+At `1b614970`, the complete parser positive verifies `129` items with all `204` function entries. The original-byte control produces its intended two assertion diagnostics (`128` verified, one failing function), with no resource or VIR refusal. Both the source/runtime and outer image guards pass. Only these two direct Stock calls are credited; the locked-inventory full matrix must run separately.

@@ -45,10 +45,10 @@ modules and their actual nonempty witnesses. Its 54 planned ordinary controls
 retain the 49 transferred fault effects and direct delimiter/whitespace
 faults. Every selected original contract, loop annotation and proof assertion
 is retained, including the corrected full-transition/chunk fixtures (#537).
-The parser feature leaves its three baseline roots and all their 22 controls
-unchanged. The reviewed authority-model baseline `03665cd9` intentionally adds
-model coverage; its observed authority inventory is 174 verified / 303 function
-entries. That base update does not qualify the parser.
+The parser feature leaves the three current main roots and all their 168
+controls unchanged. Source comparison preserves each of those 171 complete
+positive/control programs. Existing main proof receipts do not qualify the
+new parser root.
 
 Three original combined mutations cross erased proof boundaries and are
 refused by the strict interval guard. Each is decomposed into two independent
@@ -61,11 +61,13 @@ order reconstructs its original `after` body byte for byte. The refused combined
 descriptors earn no canonical credit. Both independent parts require ordinary
 whole-root Stock failure at the unchanged resources before qualification.
 
-Complete pinned Stock discovery at `96c2c4f0` observes 127 verified / 201
-function entries and retains all three original roots. The manifest locks that
-actual inventory; unknown pending inventories still earn no credit. All 54
-parser controls and 22 baseline controls remain mandatory at the existing
-resources, alongside native compatibility, conformance and cost qualification.
+Complete pinned Stock discovery observes 129 verified / 204 function entries,
+including the checked history/emission lemmas used by the actual chunk loop.
+The manifest locks this observed inventory; unknown pending inventories still
+earn no credit. The original-byte mutation fails on its intended assertions
+without exhausting resources. All 54 parser controls and 168 current-main
+controls remain mandatory at unchanged resources, alongside native
+compatibility, conformance and cost qualification.
 
 The native splitter adapters do not discharge all representable-offset,
 output-capacity, allocation or process-lifetime premises. Physical reads/EOF,

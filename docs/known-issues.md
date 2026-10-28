@@ -4,13 +4,11 @@ Open Sail defects and current product limits on main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
-The proposed [shared parser](design/checked-stream-parser.md) has no complete
-new-root inventory or native/conformance/cost qualification yet. Its normal
-proof runner refuses pending discovery. Native capacity/lifetime, external
-owner/EOF and solver interpretation relations remain open; source/hash binding
-does not establish them. The candidate restores Token::text's omitted must-use
-annotation (#533) and its omitted internal lock edge (#544), without claiming
-a native diagnostic or verdict bug.
+The proposed [shared parser](design/checked-stream-parser.md) has a complete
+new-root Stock inventory and an ordinary original-byte failure control; its
+full control matrix and native/conformance/cost qualification remain pending.
+Native capacity/lifetime, external owner/EOF and solver interpretation
+relations remain open; source/hash binding does not establish them.
 
 ## Accepted integration limit
 

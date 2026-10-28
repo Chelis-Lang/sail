@@ -2425,7 +2425,7 @@
         "crates/sail-smtlib/src/split.rs",
         "Cargo.lock"
       ],
-      "verified": 127,
+      "verified": 129,
       "functions": [
         "check_parser::inputs::InputValue::arrow_0",
         "check_parser::inputs::InputValue::arrow_Present_0",
@@ -2605,11 +2605,14 @@
         "check_parser::query_split::model_step",
         "check_parser::query_split::nonempty_list_control",
         "check_parser::query_split::open_list_bytes",
+        "check_parser::query_split::option_items",
         "check_parser::query_split::option_models",
         "check_parser::query_split::optional_original",
+        "check_parser::query_split::original_history_step",
         "check_parser::query_split::original_item",
         "check_parser::query_split::original_item_append",
         "check_parser::query_split::original_items_append",
+        "check_parser::query_split::original_items_emit",
         "check_parser::query_split::outer_atom_offsets_control",
         "check_parser::query_split::outer_byte",
         "check_parser::query_split::outer_chunks_control",
