@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- MCP `verify` now waits on the job's lifecycle status over the service
+  socket and reads the complete result once, after the job ends, instead of
+  starting `sail jobs result` every 100 ms. Replies are unchanged (#578).
+
 - Keep unchanged-call replay records valid across full runs under other
   keys: `--output json`, `SAIL_MANAGED_NOOP=0` and job calls no longer make
   the next unchanged `sail verify` take the full path. The per-run settings
