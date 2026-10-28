@@ -119,7 +119,7 @@ pub(super) fn check(workspace: &Path, args: &[String]) -> Result<Option<String>>
 
 /// Resolve existing ancestors before appending a not-yet-created cache suffix.
 /// An unreadable or dangling alias is unbound, never an assumed disjoint path.
-fn physical_path(path: &Path) -> std::io::Result<PathBuf> {
+pub(super) fn physical_path(path: &Path) -> std::io::Result<PathBuf> {
     let absolute = std::path::absolute(path)?;
     let mut ancestor = absolute.as_path();
     let mut suffix = Vec::new();

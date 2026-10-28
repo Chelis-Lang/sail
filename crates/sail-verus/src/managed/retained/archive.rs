@@ -19,7 +19,7 @@ use std::time::SystemTime;
 
 /// Version 4: archives before it were established while Sail's private
 /// settings and observation options reached the compiler (#385, #393).
-const VERSION: u32 = 4;
+const VERSION: u32 = 5;
 const FILE_LIMIT: u64 = 256 * 1024 * 1024;
 const OUTPUT_LIMIT: u64 = 16 * 1024 * 1024;
 const ENTRY_LIMIT: u64 = 8 * 1024 * 1024;
@@ -1165,7 +1165,7 @@ mod tests {
         let phase = serde_json::json!({"sources":{"lib.rs":{"checksum":format!("sha256={}",digest(b"A")),"size":1}},
             "extra_tracked_files":[],"tracked_environment":{}});
         let raw = serde_json::to_vec(&serde_json::json!({"kind":"sail-compiler-read-inputs",
-            "schema":1,"complete":true,"pid":123,
+            "schema":2,"driver_environment":{},"complete":true,"pid":123,
             "binding":digest(format!("establishing-A\0{}",basis.identity.key()).as_bytes()),
             "phases":{"verification":phase,"compilation":phase}}))?;
         std::fs::write(&reads, &raw)?;

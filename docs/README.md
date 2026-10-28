@@ -73,6 +73,11 @@ controls. [Production refinements](design/acceptance-production-refinements.md)
 connect source-shared operations and typed factories to native callers; their
 [qualification record](validation/acceptance-production-refinements.md) states
 the remaining integration and service-wide proof obligations.
+[Compiler-read origin qualification](validation/compiler-read-origin.md) tracks
+schema2 source/control binding and the paired runtime rollout; its
+[local runner](validation/compiler-read-origin-runner.md) records actual
+CLI/job/MCP reuse and source-sensitive refusal checks separately from those
+formal proofs.
 [Binary64 equality support](../corpus/repros/verus-float-equality-spec/README.md)
 gives the standalone numerical model, exact broken controls and
 [qualification scope](validation/binary64-equality-support.md).
@@ -205,3 +210,5 @@ native/Mac gates, unchanged Vest costs and preserved historical failures.
 [Neutral source profile two qualification](validation/neutral-source-profile-two.md) records explicit flat Rust admission, retained legacy identities and the bounded UNKNOWN diagnostic.
 
 - [Cache ownership core](design/cache-ownership-core.md): staged executable kernels and their [qualification](validation/cache-ownership-core.md).
+
+The [unchanged-call receipt environment qualification](validation/managed-noop-receipt-environment.md) records the main #552 witness and the bounded replay fix.
