@@ -155,3 +155,5 @@ The original-byte control must then fail ordinarily without the earlier
 unrelated loop rlimit exhaustion. No resource limit or wall deadline changes.
 
 - `993bfe7e` (2026-10-28): direct Stock discovery stopped before verification because the existing snapshot expression matcher rejects `appended@`. The attempted complete source and raw diagnostics are retained; no positive or negative proof credit. The follow-up uses equivalent erased `appended.view()` without changing the macro, contracts, runtime loop or resource settings.
+
+- `72edd307` (2026-10-28): both new history/emission lemmas verify, but the positive root encounters the default loop resource limit (`128` verified, `1` error, no VIR error). No positive inventory or negative-control credit. The follow-up scopes the history lemma inside its quantified proof; all loop invariants and executable transitions remain unchanged.

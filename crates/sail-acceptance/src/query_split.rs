@@ -1067,11 +1067,11 @@ sail_code! {
                         sail_proof! {
                             assert(data@.subrange(_chunk_start as int,data@.len() as int).take(consumed as int)
                                 =~= data@.subrange(_chunk_start as int,cursor as int));
-                            original_history_step(self,chunk_origin,next,appended@,items@.len() as int,
-                                data@,_chunk_start as int,cursor as int,first,second);
                             assert forall|history:Seq<u8>| self.matches(history) implies
                                 forall|i:int| items@.len() <= i < (prefix_items+chunk_items).len() ==>
                                     original_item((prefix_items+chunk_items)[i],history+data@.take(cursor as int),self.input) by {
+                                original_history_step(self,chunk_origin,next,appended@,items@.len() as int,
+                                    data@,_chunk_start as int,cursor as int,first,second);
                                 original_items_emit(appended@,items@.len() as int,history+data@.take(cursor as int),self.input,first,second);
                             }
                             scan_prefix_step(model(self.state),self.input,self.position_view(),data@,
