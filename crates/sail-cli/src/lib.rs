@@ -65,10 +65,6 @@ const COMMANDS: &[(&str, &str)] = &[
         "engine",
         "install or inspect Sail's Verus (fork runtime and repair engine)",
     ),
-    (
-        "runtime",
-        "execute versioned raw SMT requests with Sail's pinned solver",
-    ),
     ("watch", "re-verify the workspace as files change"),
     ("jobs", "inspect, follow, or cancel local verification jobs"),
     (

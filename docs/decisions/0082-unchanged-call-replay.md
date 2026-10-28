@@ -26,8 +26,10 @@ This extends stat trust across runs, as follows.
 
 **Key.** The record is keyed by the invocation: the working directory, the
 cache, the selected Sail, Cargo, Cargo-Verus, solver and shim paths, the
-Cargo toolchain selection, whether a daemon is available, the arguments, the
-output mode, whether stdout and stderr are terminals, and the value of every
+Cargo toolchain selection, whether a daemon is available (since 2026-10-28,
+the exact socket), the arguments, the
+output mode, whether stdout and stderr are terminals (since 2026-10-28, the
+colour Sail asks Cargo for; see the amendment below), and the value of every
 variable the proof context binds, every `SAIL_*` variable, and `PATH`, `HOME`,
 `TERM`, `PWD` and `CARGO_TARGET_DIR`. Job workers, observers (`SAIL_JOB_EVENTS`,
 `SAIL_PROOF_EVENTS`), `SAIL_MANAGED_FORCE`, research modes and
@@ -201,3 +203,80 @@ reading and comparing them with their originals takes 4.4 ms single-threaded
 against 10.9 ms for hashing the copies alone, and replay spreads the
 comparisons over worker threads. CI runs on Linux, where the copies are hard
 links, so the unit tests in `noop.rs` carry the copy cases.
+
+## Amendment: output fidelity of the key and record (2026-10-28)
+
+**Context.** Replay must print what plain Cargo-Verus prints in the same
+environment. Three gaps let it print a different transcript (verdicts were
+unaffected). The key omitted the terminal-capability variables that the
+pinned Cargo (1.99.1, `cargo-util-terminal`) reads: `anstyle-query` through
+`anstream` for colour, and `supports-hyperlinks` for OSC 8 links, which reads
+no stream at all (#573). The key bound whether stdout and stderr were
+terminals rather than what that changes. A record could hold Cargo's
+transient status lines, such as `Blocking waiting for file lock on package
+cache`, that a later plain run would not print (#574). And the key bound only
+whether a daemon socket was supplied, while Cargo's environment receives the
+exact value as `SAIL_DAEMON_SOCKET` (#571, the public API; the CLI's socket
+was already keyed through its variable or cache root).
+
+**Decision.** Record version 5. The key binds:
+
+- the value of `CI`, `CLICOLOR`, `CLICOLOR_FORCE`, `COLORTERM`, `DOMTERM`,
+  `FORCE_HYPERLINK`, `KONSOLE_VERSION`, `NO_COLOR`, `TERM_PROGRAM`,
+  `VTE_VERSION` and `WT_SESSION`, besides `TERM`;
+- the colour decision Sail passes to Cargo (`--color=always` with shown
+  output on a colour stderr, with no colour choice of the caller's), computed
+  by the same function that builds the invocation, in place of the raw
+  terminal bits. Cargo-Verus and every process it starts get null stdin and
+  Sail's pipes, and every other process the managed run starts has captured
+  output, so the caller's terminals reach the transcript only through that
+  argument;
+- the raw `Option<PathBuf>` daemon socket, without normalization.
+
+A run whose stderr contains a transient Cargo status line is not recorded,
+and the key's older record is removed. The lines are Cargo's right-aligned
+status verbs `Blocking` (lock contention), `Updating` (index or git refresh),
+`Locking` (lock-file resolution), `Downloading` and `Downloaded` (package
+cache fill), ignoring colour, and the `warning: spurious network error` retry
+warning. The recorded transcript is never filtered.
+
+**Consequences.** A change of any listed variable, of the colour decision or
+of the API socket misses and takes the full path. A replay no longer misses
+when only a terminal that cannot affect the output changes, such as stdout
+being redirected while stderr stays on a terminal. A run that waited on a
+lock, refreshed an index or downloaded a crate is recorded by the next
+unchanged call instead. Version 4 records take the full path once.
+
+## Amendment: per-run settings files (2026-10-28)
+
+**Context.** Every full managed run, under any key, writes the proof
+context's `runtime.json` (the adapters' settings, with the run identifier,
+the run's sidecar and invocation directories and its retention plan) and the
+compiler family's `managed-transport.json` (the aliases' private settings,
+naming the run's artifact log and `runtime.json`). Both are small records in
+bound trees, so each was bound by content, and a full run under another key
+(`--output json`, `SAIL_MANAGED_NOOP=0`, a job or observer call) invalidated
+every other key's record for that context (#575).
+
+**Decision.** These two files, and only at those two locations (direct
+children of the context and family roots), stay in their tree's entry
+listing but are not bound by content or stamp.
+
+**Soundness.** Neither file is an input to the decision or output a record
+holds. Each full run writes both again before it starts Cargo, from its own
+invocation, and only processes started by that run (Sail's Cargo and
+Verus-driver aliases and adapters) read them, under the exclusive family lock
+a replay also takes. A replay starts no process, so their bytes cannot reach
+its output. Everything they are derived from is bound on its own: the
+arguments, tools and variables by the key, the solver and installed files by
+stamp, the sources, manifests and metadata inputs by the source observation,
+and the receipts and other records by content. Removing or adding either file
+still changes the entry listing and misses.
+
+**Consequences.** Alternating call kinds on one project keep replaying. On
+the demo project (native Linux, shared host, directional), the human call
+after a `SAIL_MANAGED_NOOP=0`, `--output json` or job-events call takes
+0.10 s instead of 0.75 to 0.81 s; on Vest (`-- --rlimit 100`) 0.05 to
+0.07 s instead of 1.9 to 5.0 s (one sequence per arm, load from other agents).
+A real change still misses: the receipts, sources, target and other records
+stay bound as before.

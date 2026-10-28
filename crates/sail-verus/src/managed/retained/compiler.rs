@@ -36,6 +36,7 @@ struct Document {
     binding: String,
     pid: u32,
     complete: bool,
+    driver_environment: super::super::ghost_environment::Environment,
     phases: BTreeMap<String, Phase>,
 }
 
@@ -54,7 +55,12 @@ pub(super) fn stored_header(raw: &[u8], key: &str, run: &str) -> bool {
         return false;
     };
     document.kind == "sail-compiler-read-inputs"
-        && document.schema == 1
+        && document.schema == 2
+        && super::super::compiler_origin::known(&document.driver_environment)
+        && document
+            .phases
+            .values()
+            .all(|phase| super::super::compiler_origin::reusable(&phase.tracked_environment))
         && document.complete
         && document.pid != 0
         && document.binding == digest(format!("{run}\0{key}").as_bytes())
@@ -149,10 +155,7 @@ impl Observation {
         if raw.len() as u64 > LIMIT {
             return None;
         }
-        let mut document: Document = serde_json::from_slice(&raw).ok()?;
-        for phase in document.phases.values_mut() {
-            crate::adapter::verus_channel::normalize(&mut phase.tracked_environment);
-        }
+        let document: Document = serde_json::from_slice(&raw).ok()?;
         self.admit(&document, working_directory, sources, copies, environment)
             .map(|tracked_environment| Accepted {
                 document_sha256: digest(&raw),
@@ -169,7 +172,12 @@ impl Observation {
         environment: &BTreeMap<String, String>,
     ) -> Option<BTreeMap<String, Option<String>>> {
         if document.kind != "sail-compiler-read-inputs"
-            || document.schema != 1
+            || document.schema != 2
+            || !super::super::compiler_origin::known(&document.driver_environment)
+            || document
+                .phases
+                .values()
+                .any(|phase| !super::super::compiler_origin::reusable(&phase.tracked_environment))
             || !document.complete
             || document.pid == 0
             || Some(document.pid) != self.pid
@@ -239,6 +247,45 @@ mod tests {
         Ok(())
     }
 
+    fn assert_source_common_refuses(
+        request: &Observation,
+        raw: &serde_json::Value,
+        root: &Path,
+        expected: &BTreeMap<PathBuf, Content>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        for name in [
+            crate::adapter::verus_channel::COMMON,
+            "SAIL_PROVENANCE_DIR",
+            "SAIL_COMPILER_INPUTS",
+            "SAIL_COMPILER_INPUTS_BINDING",
+        ] {
+            for value in [
+                serde_json::Value::Null,
+                serde_json::json!(""),
+                serde_json::json!("base-or-augmented"),
+            ] {
+                for phase in ["verification", "compilation"] {
+                    let mut source_read = raw.clone();
+                    source_read["phases"][phase]["tracked_environment"][name] = value.clone();
+                    let changed: Document = serde_json::from_value(source_read.clone())?;
+                    assert!(
+                        request
+                            .admit(&changed, root, expected, &BTreeMap::new(), &BTreeMap::new())
+                            .is_none()
+                    );
+                    assert!(
+                        !stored_header(&serde_json::to_vec(&source_read)?, "key", "run"),
+                        "must refuse before archive placement"
+                    );
+                }
+            }
+        }
+        let mut legacy = raw.clone();
+        legacy["schema"] = 1.into();
+        assert!(!stored_header(&serde_json::to_vec(&legacy)?, "key", "run"));
+        Ok(())
+    }
+
     #[test]
     fn ghost_b_exec_a_and_final_disk_a_cannot_create_an_a_proof()
     -> Result<(), Box<dyn std::error::Error>> {
@@ -263,8 +310,9 @@ mod tests {
             request.started(123);
             let phase = serde_json::json!({"sources":{source.to_string_lossy():{"checksum":format!("sha256={}",digest(b"source A")),"size":8}},
                 "extra_tracked_files":[],"tracked_environment":{}});
-            let raw = serde_json::json!({"kind":"sail-compiler-read-inputs","schema":1,"binding":request.binding,
+            let raw = serde_json::json!({"kind":"sail-compiler-read-inputs","schema":2,"driver_environment":{},"binding":request.binding,
                 "pid":123,"complete":true,"phases":{"verification":phase,"compilation":phase}});
+            assert_source_common_refuses(&request, &raw, &root, &expected)?;
             let good: Document = serde_json::from_value(raw.clone())?;
             assert!(
                 request
