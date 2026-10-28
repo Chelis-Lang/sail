@@ -63,6 +63,8 @@ them.
   source-shared operations, native adoption and qualification limits.
 - [Shared command classifier](design/checked-command-classifier.md): checked shallow
   command/response operations and [qualification](validation/checked-command-classifier.md).
+- [Shared cache persistence](design/checked-cache-persistence.md): record framing,
+  write sequencing, [qualification](validation/checked-cache-persistence.md) and native limits.
 - Validation records for each gate are in [validation/](validation/). Design
   notes are in [design/](design/), milestone reports in [reports/](reports/),
   and research in [survey/](survey/README.md).

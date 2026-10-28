@@ -31,6 +31,7 @@ goes to crates.io. It was qualified as `0.1.0-rc.7` (`8797ccd4`)
 
 | Gate | State | Next |
 |---|---|---|
+| Shared cache transaction | Record framing and write sequencing connected in a source candidate | Complete Stock discovery, native gates, scoped conformance and cost; [limits](design/checked-cache-persistence.md) |
 | Fork runtime | `47fb3be6` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; schema2 archives built, qualified and shipped in 0.1.0 | — |
 | Compiler-input currentness | Source-origin protocol, durable pre-Cargo invalidation and complete native workspace gates; Linux full corpus and Mac runtime/bounded consumer controls pass ([record](validation/compiler-read-origin.md)) | Service-wide theorem remains #368 |
 | Shared stream parser | Current union parser 133/208 plus all 54 ordinary controls pass within the 238-case matrix; frozen full corpus passes. Parent parser-only cost retains its original scope | Current-main managed refresh and bounded adoption cost complete; lead review/CI and physical caller/owner relations remain open ([scope](design/checked-stream-parser.md)) |

@@ -7,6 +7,8 @@
 
 #[macro_use]
 mod syntax;
+#[macro_use]
+mod host_syntax;
 
 pub mod authority;
 /// Staged cache ownership operation; native adoption is separately qualified.
@@ -21,8 +23,12 @@ pub mod cache_counted;
 pub mod cache_indexed;
 /// Staged cache ownership operation; native adoption is separately qualified.
 pub mod cache_order;
+/// Exact header and original payload framing for disk records.
+pub mod cache_record;
 /// Staged cache ownership operation; native adoption is separately qualified.
 pub mod cache_slots;
+/// Cache record transaction with explicit low-level host assumptions.
+pub mod cache_write;
 pub mod inputs;
 pub mod query;
 

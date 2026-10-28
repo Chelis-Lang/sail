@@ -3264,6 +3264,80 @@
           "after": "sail_verified! {\n    /// Actual Session response decision over the exact command and its native\n    /// print-success readback. A returned One is the existing mechanical\n    /// prediction; it does not establish that Z3 accepted an earlier option.\n    pub fn expects_output(command:&[u8],print_success:Option<&[u8]>) -> (out:Output)\n        requires (true)\n        ensures (out==response_expectation(command@,match print_success {Some(v)=>Some(v@),None=>None}))\n    {\n        let enabled=match print_success {Some(value)=>crate::query_policy::word_eq(value,\"true\"),None=>false};\n        if enabled {return Output::One;}\n        match classify(command) {Ok(_)=>Output::Unknown,Err(_)=>Output::Unknown}\n    }\n}"
         }
       ]
+    },
+    {
+      "id": "persistence",
+      "source": "proofs/refinement/persistence.rs",
+      "dependencies": [
+        "crates/sail-acceptance/src/syntax.rs",
+        "crates/sail-acceptance/src/host_syntax.rs",
+        "crates/sail-acceptance/src/inputs.rs",
+        "crates/sail-acceptance/src/cache_record.rs",
+        "crates/sail-acceptance/src/cache_write.rs",
+        "proofs/refinement/persistence.rs",
+        "crates/sail-cache/src/persist.rs",
+        "crates/sail-cache/src/lib.rs",
+        "crates/sail-cache/Cargo.toml"
+      ],
+      "discovery_pending": true,
+      "verified": null,
+      "functions": [],
+      "negative_controls": [
+        {
+          "name": "record-ignore-header-newline",
+          "source": "crates/sail-acceptance/src/cache_record.rs",
+          "before": "if !header_line(&header) { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "record-change-separator",
+          "source": "crates/sail-acceptance/src/cache_record.rs",
+          "before": "header.push(b'\\n');",
+          "after": "header.push(b'\\r');"
+        },
+        {
+          "name": "record-keep-separator-in-reply",
+          "source": "crates/sail-acceptance/src/cache_record.rs",
+          "before": "let parts = (&data[..i], &data[i + 1..]);",
+          "after": "let parts = (&data[..i], &data[i..]);"
+        },
+        {
+          "name": "write-omitted-full-write",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); host.remove(); return Err(error);\n        }\n",
+          "after": ""
+        },
+        {
+          "name": "write-omitted-rename-call",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "        if let Err(error) = host.rename() {\n            host.remove(); return Err(error);\n        }\n",
+          "after": ""
+        },
+        {
+          "name": "write-premature-metadata",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); host.remove(); return Err(error);\n        }\n        let observed = host.stamp(&file);\n",
+          "after": "        let observed = host.stamp(&file);\n        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); host.remove(); return Err(error);\n        }\n"
+        },
+        {
+          "name": "write-cleanup-unowned-name",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "Err(error) => return Err(error),",
+          "after": "Err(error) => { host.remove(); return Err(error); },"
+        },
+        {
+          "name": "write-substitute-original-error",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "Err(error) => return Err(error),",
+          "after": "Err(error) => return Err(host.invalid_header()),"
+        },
+        {
+          "name": "write-omit-owned-cleanup",
+          "source": "crates/sail-acceptance/src/cache_write.rs",
+          "before": "        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); host.remove(); return Err(error);\n        }\n",
+          "after": "        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); return Err(error);\n        }\n"
+        }
+      ]
     }
   ],
   "api_declarations": {

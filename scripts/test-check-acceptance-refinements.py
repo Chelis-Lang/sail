@@ -224,6 +224,69 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(CHECKER.Refusal, "Stock discovery pending"):
             CHECKER.require_discovered([sibling, command])
 
+    def test_persistence_host_contract_cannot_be_replaced(self):
+        source = (ROOT / CHECKER.WRITE_CORE).read_bytes()
+        CHECKER.compiled_subset(CHECKER.WRITE_CORE, source)
+        changed = source.replace(b"Self::position(&handle) == 0", b"Self::position(&handle) >= 0")
+        self.assertNotEqual(source, changed)
+        with self.assertRaisesRegex(CHECKER.Refusal, "host contract changed"):
+            CHECKER.compiled_subset(CHECKER.WRITE_CORE, changed)
+
+    def test_persistence_script_must_remain_inside_stock_envelope(self):
+        source = (ROOT / CHECKER.WRITE_CORE).read_text()
+        stream = SOURCE.tokens(source)
+        start = next(i for i, token in enumerate(stream[:-1])
+            if token.value == "impl" and stream[i + 1].value == "PersistenceHost")
+        body = next(i for i in range(start, len(stream)) if stream[i].value == "{")
+        end = SOURCE.closing(stream, body)
+        begin, finish = stream[start].begin, stream[end].end
+        moved = source[:begin] + source[finish:] + "\n" + source[begin:finish]
+        with self.assertRaisesRegex(CHECKER.Refusal, "outside checked envelope"):
+            CHECKER.compiled_subset(CHECKER.WRITE_CORE, moved.encode())
+
+    def test_persistence_script_cannot_hide_an_alternate_implementation(self):
+        source = (ROOT / CHECKER.WRITE_CORE).read_bytes()
+        changed = source.replace(b"let failed = self.fail_at == 5;", b"let failed = false;")
+        self.assertNotEqual(source, changed)
+        with self.assertRaisesRegex(CHECKER.Refusal, "script implementation changed"):
+            CHECKER.compiled_subset(CHECKER.WRITE_CORE, changed)
+
+    def test_persistence_native_operations_are_bound_but_not_proved(self):
+        manifest = json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        entry = next(e for e in manifest["components"] if e["id"] == "persistence")
+        roles = CHECKER.source_roles(entry)
+        self.assertIn(CHECKER.WRITE_CORE, roles["checked_source"])
+        self.assertIn(CHECKER.HOST_SYNTAX, roles["reviewed_syntax"])
+        for path in CHECKER.WRITE_NATIVE_SHA256:
+            self.assertNotIn(path, roles["checked_source"])
+            self.assertIn(path, roles["reviewed_native_persistence"])
+            with self.subTest(path=path), self.assertRaisesRegex(CHECKER.Refusal, "native persistence"):
+                CHECKER.compiled_subset(path, (ROOT / path).read_bytes() + b"\n// drift\n")
+        with self.assertRaisesRegex(CHECKER.Refusal, "host trait erasure"):
+            CHECKER.compiled_subset(CHECKER.HOST_SYNTAX,
+                (ROOT / CHECKER.HOST_SYNTAX).read_bytes() + b"\n// drift\n")
+        for path in (CHECKER.WRITE_CORE, "crates/sail-acceptance/src/cache_record.rs"):
+            with self.subTest(path=path), self.assertRaisesRegex(CHECKER.Refusal, "import bindings changed"):
+                CHECKER.compiled_subset(path, (ROOT / path).read_bytes() + b"\nuse std::ptr::*;\n")
+
+    def test_persistence_controls_keep_the_original_fault_effects(self):
+        manifest = json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        entry = next(e for e in manifest["components"] if e["id"] == "persistence")
+        self.assertEqual(len(entry["negative_controls"]), 9)
+        for control in entry["negative_controls"]:
+            source = (ROOT / control["source"]).read_text()
+            with self.subTest(control=control["name"]):
+                SOURCE.runtime_mutation(source, control["before"], control["after"])
+                CHECKER.compiled_subset(control["source"],
+                    source.replace(control["before"], control["after"]).encode())
+
+    def test_pending_persistence_cannot_authorize_normal_qualification(self):
+        manifest = json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        entry = dict(next(e for e in manifest["components"] if e["id"] == "persistence"))
+        entry.update(discovery_pending=True, verified=None, functions=[])
+        with self.assertRaisesRegex(CHECKER.Refusal, "Stock discovery pending"):
+            CHECKER.require_discovered([entry])
+
     def test_command_source_and_native_session_delegate_have_distinct_roles(self):
         manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
         command = next(entry for entry in manifest["components"] if entry["id"] == "command")
@@ -497,11 +560,13 @@ class SourceCaptureTests(unittest.TestCase):
             source.write_bytes(b"original")
             snapshots = {path: b"original"}
             CHECKER.working_source_matches(root, snapshots)
-            build = root / "crates/sail-api/build.rs"
-            build.write_text("fn main() {}")
-            with self.assertRaisesRegex(CHECKER.Refusal, "build script"):
-                CHECKER.working_source_matches(root, snapshots)
-            build.unlink()
+            for crate in ("sail-api", "sail-cache"):
+                build = root / "crates" / crate / "build.rs"
+                build.parent.mkdir(parents=True, exist_ok=True)
+                build.write_text("fn main() {}")
+                with self.subTest(crate=crate), self.assertRaisesRegex(CHECKER.Refusal, "build script"):
+                    CHECKER.working_source_matches(root, snapshots)
+                build.unlink()
             extra = source.parent / "extra.rs"
             extra.write_bytes(b"extra")
             with self.assertRaisesRegex(CHECKER.Refusal, "discovery changed"):

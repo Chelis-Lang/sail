@@ -58,6 +58,10 @@ known issues.
   the next unchanged `sail verify` take the full path. The per-run settings
   files those runs rewrite are no longer bound by content (#575).
 
+- Share cache record framing and write sequencing while retaining the disk
+  format, exclusive temporary creation and original failure behavior.
+  Complete proof and native qualification remain pending.
+
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed
   spans and error behavior. Complete proof/native qualification is pending.

@@ -14,9 +14,9 @@
 pub mod maint;
 pub mod memory;
 pub mod pack;
+mod persist;
 pub mod shared;
 
-use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
@@ -240,15 +240,10 @@ pub fn shape_ok(command: &str, reply: &[u8]) -> bool {
 ///
 /// The first problem found.
 pub fn parse_entry(data: &[u8], key: &str) -> Result<(Meta, Vec<u8>), Problem> {
-    let nl = data
-        .iter()
-        .position(|&b| b == b'\n')
-        .ok_or(Problem::BadHeader)?;
-    let meta: Meta = data
-        .get(..nl)
-        .and_then(|h| serde_json::from_slice(h).ok())
-        .ok_or(Problem::BadHeader)?;
-    let reply = data.get(nl + 1..).unwrap_or_default().to_vec();
+    let (header, payload) =
+        sail_acceptance::cache_record::split_record(data).ok_or(Problem::BadHeader)?;
+    let meta: Meta = serde_json::from_slice(header).map_err(|_| Problem::BadHeader)?;
+    let reply = payload.to_vec();
     let computed = hex(&sha256(&reply));
     let version = meta.entry_version;
     let recorded_key = meta.key.as_bytes().to_vec();
@@ -456,32 +451,10 @@ impl DiskCache {
         // must not write into the same temporary file.
         let seq = TMP_SEQ.fetch_add(1, Ordering::Relaxed);
         let tmp = dir.join(format!(".tmp-{}-{seq}-{key}", std::process::id()));
-        // Exclusive creation: a preexisting name (another writer's file or a
-        // symlink) is refused rather than followed and truncated, and a name
-        // this call did not create is never removed (#412).
-        let mut f = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&tmp)?;
-        let written = (|| {
-            let mut buf = serde_json::to_vec(&meta).map_err(std::io::Error::other)?;
-            buf.push(b'\n');
-            buf.extend_from_slice(reply);
-            f.write_all(&buf)?;
-            // No fsync: a torn or lost entry after a crash fails its
-            // integrity check and is a miss, which costs time, never
-            // correctness. The stamp comes from the open file, so it
-            // describes exactly these bytes; a rename keeps the inode and
-            // the modification time.
-            let stamp = FileStamp::of(&f.metadata()?);
-            drop(f);
-            std::fs::rename(&tmp, &path)?;
-            Ok(PutOutcome::Written(stamp))
-        })();
-        if written.is_err() {
-            let _ = std::fs::remove_file(&tmp);
-        }
-        written
+        // The shared transaction retains exclusive creation and never removes
+        // a preexisting temporary name. Its receipt establishes write-call
+        // sequencing, not truthful solver origin or durable filesystem state.
+        persist::write_record(&tmp, &path, &meta, reply).map(PutOutcome::Written)
     }
 }
 
