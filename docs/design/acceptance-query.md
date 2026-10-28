@@ -93,9 +93,10 @@ The native `Pairer` adapter is source-bound and reviewed, rather than compiled
 as a Stock proof body. Parsing, process observations, complete publication
 projection and cache-writer origin remain separate obligations. The
 [held-response qualification record](../validation/held-response-ownership.md)
-records the whole positive, six ordinary controls and focused native checks.
-The complete combined control and runtime gates remain separate acceptance
-requirements for this delivery.
+preserves the bounded whole positive, six ordinary controls and focused native
+checks. The linked combined qualification records all 238 cases and completed
+runtime/conformance gates with their actual source identities; those results
+do not close the native caller and origin obligations above.
 
 [`proofs/refinement/query.rs`](../../proofs/refinement/query.rs) calls these
 actual executable operations and proves simulation into the existing model.

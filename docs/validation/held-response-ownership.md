@@ -1,11 +1,16 @@
 # Held-response ownership qualification
 
-Status: a bounded production adoption is implemented in a candidate based on
-main `e9862433`. Frozen `144db36d` passes its whole-query positive, all six new
-ordinary controls and focused native Rust checks. The whole positive reports
-291 verified checks, zero errors and all 476 functions, retaining the former
-464 and adding 12 held-response functions. The complete combined control and
-runtime gates remain pending. No performance result is claimed.
+Status: production uses the source-shared Holding implementation. The combined
+Holding/filename extraction passes all 238 refinement cases, 35 model cases and
+full native Linux fast/standard gates at `838706f0`. Current-main managed-path
+qualification and the bounded native demo comparison are complete at their
+recorded sources; see the
+[combined qualification record](compiler-filename-refinement.md) for source
+correspondence, current results and failed-attempt index.
+
+The current query positive is 295 verified checks and all 480 functions.
+The historical bounded `144db36d` receipt below checks 291/476 before the filename
+kernel joins that root; it is preserved with its original source and scope.
 
 `query_holding.rs` is extracted from `97550ed3` without parser, output-owner,
 key, compiler-input or cache-storage representation changes. The production
@@ -29,12 +34,12 @@ and permanent stopping. Existing statistics/reason ordering checks remain.
 |---|---|
 | Source/checker tests | All 59 pass at committed `0349afa6`; combined-source qualification remains separate |
 | Bounded direct Stock checks | Frozen `144db36d`: whole positive 291/476; all six controls fail ordinarily with 290 verified, one error and all 476 functions |
-| Complete combined control matrix | Pending; the 177-case registry is preflighted, not fully executed here |
-| Model suite and unchanged-input evidence | Pending exact input comparison |
+| Complete combined control matrix | All 238 cases pass at their actual sources, with exact compiled-input correspondence; see the combined record |
+| Model suite and unchanged-input evidence | All 35 execute at `838706f0`; exact current-main program correspondence passes |
 | Focused native Rust | Strict Clippy for acceptance/shim with all targets; all 12 shim library tests pass, zero skipped, including both new regressions |
-| Native workspace, solver and full E2E | Pending combined acceptance |
-| Full fast/standard conformance | Required: production query association is selected |
-| Added validation cost | Pending bounded native comparison; no performance claim |
+| Native workspace, solver and full E2E | Pass at `838706f0`; current-main managed checks pass separately at `00382159` |
+| Full fast/standard conformance | All four direct arms and standard mutations pass at `838706f0`; reviewed current-base transfer and fresh mutations pass separately |
+| Added validation cost | Three-round native demo against main measured; all 60 samples retained and audited. Combined changes are not isolated kernel cost; see the combined record |
 
 All Stock calls retain normal whole-crate scope, one thread, default resource
 limits and the 120-second deadline. Signals, syntax errors and resource failures

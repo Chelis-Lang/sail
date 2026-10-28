@@ -309,11 +309,27 @@ environment interfaces.
 
 Stages C and D may expose a smaller useful proved boundary before E and F.
 That boundary must be named accurately: a verified predicate conditional on
-input evidence is not an end-to-end verified service. [Component and composed models](acceptance-proof-checker.md) provide
-machine-checked model evidence, including explicit origin/observation lifecycles. Stage C now has source-shared executable operations and typed factories with
-concrete refinements. Its final integration gates remain open; stages D–F
-still need complete cache origins, observation adapters and composition.
-Those stages are not complete.
+input evidence is not an end-to-end verified service.
+[Component and composed models](acceptance-proof-checker.md) check the modeled
+origin/observation lifecycles. Source sharing under accepted ADR 0079 connects
+selected executable operations and typed factories to those models. The
+[production refinement guide](acceptance-production-refinements.md) and owning
+qualification records identify the checked bodies, native callers and actual
+integration gates.
+
+| Stage | Delivered boundary | Remaining interface |
+|---|---|---|
+| A | Main-relative fixes and their regression controls | Continue filing defects established on main; this is not a claim that no bugs remain |
+| B | The conditional component/composed theorem and named assumption inventory | Relate every production evidence origin and observation point to those interfaces |
+| C | Selected pure operations, typed authority factories and concrete refinements | Connect the remaining authority-producing callers and their concrete state to the checked operations |
+| D | Checked byte framing/token operations and preservation of supplied held request/reply pairs | Complete session/protocol association, admitted writer and persistence/recovery contracts for every included origin |
+| E | Checked handling of supplied input records and exact filename-token encoding | Establish actual compiler-input closure, filesystem/process observations and freshness at the acceptance point |
+| F | Composed model proofs and separately qualified production components | Refine every CLI, job, repair and MCP acceptance surface to the complete theorem |
+
+The delivered source-sharing boundaries do not complete stages D–F. In
+particular, preserving a supplied pair does not establish its original query
+association, and an exact token predicate does not establish physical input
+discovery. Native caller hashes require review; they do not prove those callers.
 
 Fast proof checks should enter CI only after their measured duration fits the
 repository's fast-tier budget. Longer model exploration and whole-corpus
@@ -328,14 +344,17 @@ actual source/runtime/environment and scope, with failed attempts visible and
 raw data outside the repository. Do not label a model-check pass as an
 implementation proof or a proof build as integrated acceptance.
 
-## Remaining decisions before production integration
+## Remaining integration work and decisions
 
-- Approve the first theorem and observation-point semantics, including how
-  current documented filesystem exclusions enter the assumptions.
+- Complete the production mapping of the reviewed model theorem and
+  observation-point semantics, including how current documented filesystem
+  exclusions enter the assumptions.
 - Select the verified-origin or independently checked cache strategy, and
   state which shared/bundled writers the first theorem includes.
-- Review the source-sharing candidate and ADR 0079; complete its layering,
-  conformance and added-cost qualification before selection.
+- Extend the source-sharing architecture already accepted in ADR 0079 across
+  the remaining interfaces above. Each selected integration still needs its
+  scoped layering, conformance and added-cost qualification; accepting the ADR
+  does not discharge those gates or the caller obligations.
 - Qualify final changed source with the compatible pinned stock checker on
   both native platforms and review its explicit trust dependencies.
 - Define the scope and measured cost budget for each integration stage.

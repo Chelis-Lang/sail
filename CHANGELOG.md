@@ -10,6 +10,13 @@ semantic versioning once the API is published.
   emissions and token spans. Preserve the public chunk/finish behavior and
   lexical errors; [qualification and limits](docs/validation/checked-stream-parser.md).
 
+- Carry deferred solver replies through checked ownership while recording
+  effort and reason-unknown metadata.
+
+- Validate decoded compiler filenames with a source-shared exact-byte check.
+  Unsupported empty, NUL or line-ending names withhold reusable input coverage;
+  literal spaces, backslashes and path components retain their original bytes.
+
 ## 0.1.0 (2026-10-29)
 
 First release. `sail verify` is a drop-in for `cargo verus verify` that gives
@@ -68,12 +75,6 @@ known issues.
 - `sail --help` no longer lists `sail runtime`, and `sail runtime --help` now
   starts with the EXPERIMENTAL note, matching its documented status as an
   experimental integration API. The command itself is unchanged.
-
-- Carry deferred solver replies through checked ownership while recording
-  effort and reason-unknown metadata.
-- Validate decoded compiler filenames with a source-shared exact-byte check.
-  Unsupported empty, NUL or line-ending names withhold reusable input coverage;
-  literal spaces, backslashes and path components retain their original bytes.
 
 - Add compiler-read schema2 support that keeps source reads of
   ` __VERUS_DRIVER_ARGS__` distinct from Verus driver bookkeeping. Such
