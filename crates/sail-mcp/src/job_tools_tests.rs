@@ -827,3 +827,132 @@ fn blocking_verify_returns_reused_requested_reports_with_their_establishing_run(
         ]
     );
 }
+
+#[test]
+fn blocking_verify_polls_status_and_reads_the_result_once_over_the_service() {
+    use sail_api::jobs::Request;
+    let mut fixture = Fixture::new();
+    populate_job_fixture(&fixture);
+    let socket = fixture.root.join("blocking.sock");
+    let listener = std::os::unix::net::UnixListener::bind(&socket)
+        .unwrap_or_else(|error| unreachable!("{error}"));
+    fixture.context.jobs = Some(crate::job_clients::ReadClients::at(socket));
+    let running = status(&fixture.root, Lifecycle::Running, "running");
+    let completed = status(&fixture.root, Lifecycle::Completed, "running");
+    let expected = project(&fixture.root);
+    let document = ResultDocument {
+        contracts: None,
+        repair: None,
+        job: completed.clone(),
+        result: serde_json::to_value(&expected).ok(),
+    };
+    let mut replies = vec![
+        Response::Status(running.clone()),
+        Response::Status(running),
+        Response::Status(completed.clone()),
+        Response::Result(document),
+    ]
+    .into_iter();
+    let server = crate::test_io::Server::spawn(listener, replies.len(), move |stream| {
+        let request: Request =
+            sail_api::jobs::read_frame(stream).unwrap_or_else(|error| unreachable!("{error}"));
+        let response = replies
+            .next()
+            .unwrap_or_else(|| unreachable!("fixture reply"));
+        // Only the final read asks for the complete result.
+        let expect_result = matches!(response, Response::Result(_));
+        assert_eq!(
+            matches!(&request, Request::Result { id } if id == "running"),
+            expect_result
+        );
+        assert!(expect_result || matches!(&request, Request::Status { id } if id == "running"));
+        assert!(sail_api::jobs::write_frame(stream, &response).is_ok());
+    })
+    .unwrap_or_else(|error| unreachable!("{error}"));
+    let request = RunArgs::parse(&Map::new()).unwrap_or_else(|error| unreachable!("{error}"));
+    let outcome = blocking(
+        &fixture.context,
+        &request,
+        &fixture.root,
+        &Cancel::default(),
+    );
+    assert!(server.finish());
+    let Ok(Some((job, result))) = outcome else {
+        unreachable!("blocking verify did not return the completed result");
+    };
+    assert_eq!(
+        serde_json::to_value(&job).ok(),
+        serde_json::to_value(&completed).ok()
+    );
+    assert_eq!(
+        serde_json::to_vec(&result).ok(),
+        serde_json::to_vec(&expected).ok()
+    );
+}
+
+#[test]
+fn blocking_verify_cli_fallback_reads_status_then_result_once() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let mut fixture = Fixture::new();
+    populate_job_fixture(&fixture);
+    let script = "#!/bin/sh\nd=${0%/*}\nprintf '%s\\n' \"$*\" >> \"$d/calls\"\nrespond() { IFS= read -r response < \"$1\"; printf '%s' \"$response\"; }\ncase \"$1:$2\" in\nverify:*) respond \"$d/start.json\";;\njobs:status) respond \"$d/terminal.json\";;\njobs:result) respond \"$d/final.json\";;\n*) exit 2;;\nesac\n";
+    let sail = fixture.root.join("logging-sail");
+    assert!(std::fs::write(&sail, script).is_ok());
+    assert!(std::fs::set_permissions(&sail, std::fs::Permissions::from_mode(0o755)).is_ok());
+    fixture.context.config.sail = sail;
+    let request = RunArgs::parse(&Map::new()).unwrap_or_else(|error| unreachable!("{error}"));
+    let completed = status(&fixture.root, Lifecycle::Completed, "running");
+    let expected = project(&fixture.root);
+    fixture.write("terminal.json", &Response::Status(completed.clone()));
+    fixture.write(
+        "final.json",
+        &Response::Result(ResultDocument {
+            contracts: None,
+            repair: None,
+            job: completed,
+            result: serde_json::to_value(&expected).ok(),
+        }),
+    );
+    let outcome = blocking(
+        &fixture.context,
+        &request,
+        &fixture.root,
+        &Cancel::default(),
+    );
+    assert!(matches!(&outcome, Ok(Some((job, _))) if job.state == Lifecycle::Completed));
+    // A job that ends without a result reports its terminal lifecycle.
+    let cancelled = status(&fixture.root, Lifecycle::Cancelled, "running");
+    fixture.write("terminal.json", &Response::Status(cancelled.clone()));
+    fixture.write(
+        "final.json",
+        &Response::Result(ResultDocument {
+            contracts: None,
+            repair: None,
+            job: cancelled,
+            result: None,
+        }),
+    );
+    let failed = blocking(
+        &fixture.context,
+        &request,
+        &fixture.root,
+        &Cancel::default(),
+    );
+    let Err(failed) = failed else {
+        unreachable!("a cancelled job has no result");
+    };
+    assert_eq!(failed.text, "Verification job Cancelled: ");
+    assert_eq!(failed.structured["state"], "cancelled");
+    let calls = std::fs::read_to_string(fixture.root.join("calls")).unwrap_or_default();
+    let reads = [
+        "jobs status running --output json",
+        "jobs result running --output json",
+    ];
+    assert_eq!(
+        calls
+            .lines()
+            .filter(|line| !line.starts_with("verify"))
+            .collect::<Vec<_>>(),
+        [reads, reads].concat()
+    );
+}

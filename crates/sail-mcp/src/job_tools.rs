@@ -256,13 +256,9 @@ pub(super) fn blocking(
             json!({"error":"submission_failed"}),
         ));
     };
-    let poll = [
-        "jobs".to_owned(),
-        "result".to_owned(),
-        status.id.clone(),
-        "--output".to_owned(),
-        "json".to_owned(),
-    ];
+    // Poll the small lifecycle status, then fetch the (possibly multi-MB)
+    // result exactly once. The service attaches a result only to a
+    // Completed job, so this returns the same document as polling the result.
     loop {
         if cancel.is_cancelled() {
             let args = ["jobs".to_owned(), "cancel".to_owned(), status.id.clone()];
@@ -272,28 +268,31 @@ pub(super) fn blocking(
                 json!({"job_id":status.id,"cancelled":true}),
             ));
         }
-        let outcome =
-            run::run(&ctx.config.sail, &poll, project, &Cancel::default()).map_err(|error| {
-                ToolResult::error(format!("SAIL0813: {error}"), json!({"job_id":status.id}))
-            })?;
-        let response = serde_json::from_slice::<sail_api::jobs::Response>(&outcome.stdout)
-            .map_err(|error| {
-                ToolResult::error(
-                    format!("SAIL0813: invalid result: {error}"),
-                    json!({"job_id":status.id}),
-                )
-            })?;
-        if !crate::job_clients::response_matches(
-            &sail_api::jobs::Request::Result {
+        let polled = read_job(
+            ctx,
+            project,
+            &sail_api::jobs::Request::Status {
                 id: status.id.clone(),
             },
-            &response,
-        ) {
+        )?;
+        let sail_api::jobs::Response::Status(polled) = polled else {
             return Err(invalid_response(
                 "unexpected job identity, version or response",
             ));
-        }
-        if let sail_api::jobs::Response::Result(document) = response {
+        };
+        if polled.state.terminal() {
+            let response = read_job(
+                ctx,
+                project,
+                &sail_api::jobs::Request::Result {
+                    id: status.id.clone(),
+                },
+            )?;
+            let sail_api::jobs::Response::Result(document) = response else {
+                return Err(invalid_response(
+                    "unexpected job identity, version or response",
+                ));
+            };
             if let Some(result) = document.result {
                 let project = serde_json::from_value(result).map_err(|error| {
                     ToolResult::error(
@@ -303,19 +302,60 @@ pub(super) fn blocking(
                 })?;
                 return Ok(Some((document.job, project)));
             }
-            if document.job.state.terminal() {
-                return Err(ToolResult::error(
-                    format!(
-                        "Verification job {:?}: {}",
-                        document.job.state,
-                        document.job.error.unwrap_or_default()
-                    ),
-                    json!({"job_id":status.id,"state":document.job.state}),
-                ));
-            }
+            // Terminal lifecycle is final, so this is the job's last word.
+            return Err(ToolResult::error(
+                format!(
+                    "Verification job {:?}: {}",
+                    document.job.state,
+                    document.job.error.unwrap_or_default()
+                ),
+                json!({"job_id":status.id,"state":document.job.state}),
+            ));
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
+}
+
+/// One job read for the blocking call: the in-process socket client when the
+/// service is listening, otherwise the CLI. The response always matches the
+/// request's job identity, version and variant.
+fn read_job(
+    ctx: &Context,
+    project: &std::path::Path,
+    request: &sail_api::jobs::Request,
+) -> Result<sail_api::jobs::Response, ToolResult> {
+    use sail_api::jobs::Request;
+    let (operation, id) = match request {
+        Request::Status { id } => ("status", id),
+        Request::Result { id } => ("result", id),
+        _ => return Err(unsupported_response()),
+    };
+    // Cancellation is observed between reads, where it also cancels the job.
+    if let Some(response) = direct_read(ctx, project, request, &Cancel::default()) {
+        return response.map_err(read_error);
+    }
+    let arguments = [
+        "jobs".to_owned(),
+        operation.to_owned(),
+        id.clone(),
+        "--output".to_owned(),
+        "json".to_owned(),
+    ];
+    let outcome = run::run(&ctx.config.sail, &arguments, project, &Cancel::default())
+        .map_err(|error| ToolResult::error(format!("SAIL0813: {error}"), json!({"job_id":id})))?;
+    let response =
+        serde_json::from_slice::<sail_api::jobs::Response>(&outcome.stdout).map_err(|error| {
+            ToolResult::error(
+                format!("SAIL0813: invalid result: {error}"),
+                json!({"job_id":id}),
+            )
+        })?;
+    if !crate::job_clients::response_matches(request, &response) {
+        return Err(invalid_response(
+            "unexpected job identity, version or response",
+        ));
+    }
+    Ok(response)
 }
 
 /// Requested targets' reports, fresh or reused. A reused target carries the

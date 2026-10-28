@@ -570,6 +570,17 @@ for doc in (recorded, replayed):
     doc["execution"].pop("wall_ms")
 assert recorded == replayed, (recorded, replayed)
 PY
+# Full runs under other keys (the JSON record above, a disabled replay, a job
+# observer) rewrite the proof context's per-run settings; the human record
+# still replays (#575).
+pair human-after-json
+expect human-after-json '^hit$'
+SAIL_MANAGED_NOOP=0 pair human-noop-disabled
+pair human-after-disabled
+expect human-after-disabled '^hit$'
+SAIL_JOB_EVENTS="$work/observer.jsonl" pair human-observed
+pair human-after-observed
+expect human-after-observed '^hit$'
 # An exact partial scope replays only itself and is never promoted: the
 # whole-target call after it has no record of its own and stays complete.
 rm -f "$SAIL_CACHE_DIR"/noop/*.json

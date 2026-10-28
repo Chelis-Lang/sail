@@ -26,12 +26,15 @@ This extends stat trust across runs, as follows.
 
 **Key.** The record is keyed by the invocation: the working directory, the
 cache, the selected Sail, Cargo, Cargo-Verus, solver and shim paths, the
-Cargo toolchain selection, whether a daemon is available, the arguments, the
-output mode, whether stdout and stderr are terminals, and the value of every
+Cargo toolchain selection, whether a daemon is available (since 2026-10-28,
+the exact socket), the arguments, the
+output mode, whether stdout and stderr are terminals (since 2026-10-28, the
+colour Sail asks Cargo for; see the amendment below), and the value of every
 variable the proof context binds, every `SAIL_*` variable, and `PATH`, `HOME`,
 `TERM`, `PWD` and `CARGO_TARGET_DIR`. Job workers, observers (`SAIL_JOB_EVENTS`,
 `SAIL_PROOF_EVENTS`), `SAIL_MANAGED_FORCE`, research modes and
-`SAIL_MANAGED_NOOP=0` never replay.
+`SAIL_MANAGED_NOOP=0` never replay. (Job workers and observers replay since
+the [2026-10-28 amendment](#amendment-job-and-observer-calls-2026-10-28).)
 
 **Recording.** A record is written only at the end of a run that ended
 Current, started no verifier, did not retry, was not forced, reused proof
@@ -97,7 +100,9 @@ takes the full path and records. `SAIL_MANAGED_NOOP=0` disables replay;
 `SAIL_MANAGED_NOOP_TRACE=FILE` logs each hit, miss reason and recording.
 Revisit if Sail adds per-run side effects that consumers rely on (job events,
 watch state) to the managed path. Replay is excluded wherever those are
-requested.
+requested. (Revisited for job events by the
+[2026-10-28 amendment](#amendment-job-and-observer-calls-2026-10-28): a
+replay reproduces the events consumers read.)
 
 ## Amendment: solver identity (2026-10-26)
 
@@ -201,3 +206,128 @@ reading and comparing them with their originals takes 4.4 ms single-threaded
 against 10.9 ms for hashing the copies alone, and replay spreads the
 comparisons over worker threads. CI runs on Linux, where the copies are hard
 links, so the unit tests in `noop.rs` carry the copy cases.
+
+## Amendment: output fidelity of the key and record (2026-10-28)
+
+**Context.** Replay must print what plain Cargo-Verus prints in the same
+environment. Three gaps let it print a different transcript (verdicts were
+unaffected). The key omitted the terminal-capability variables that the
+pinned Cargo (1.99.1, `cargo-util-terminal`) reads: `anstyle-query` through
+`anstream` for colour, and `supports-hyperlinks` for OSC 8 links, which reads
+no stream at all (#573). The key bound whether stdout and stderr were
+terminals rather than what that changes. A record could hold Cargo's
+transient status lines, such as `Blocking waiting for file lock on package
+cache`, that a later plain run would not print (#574). And the key bound only
+whether a daemon socket was supplied, while Cargo's environment receives the
+exact value as `SAIL_DAEMON_SOCKET` (#571, the public API; the CLI's socket
+was already keyed through its variable or cache root).
+
+**Decision.** Record version 5. The key binds:
+
+- the value of `CI`, `CLICOLOR`, `CLICOLOR_FORCE`, `COLORTERM`, `DOMTERM`,
+  `FORCE_HYPERLINK`, `KONSOLE_VERSION`, `NO_COLOR`, `TERM_PROGRAM`,
+  `VTE_VERSION` and `WT_SESSION`, besides `TERM`;
+- the colour decision Sail passes to Cargo (`--color=always` with shown
+  output on a colour stderr, with no colour choice of the caller's), computed
+  by the same function that builds the invocation, in place of the raw
+  terminal bits. Cargo-Verus and every process it starts get null stdin and
+  Sail's pipes, and every other process the managed run starts has captured
+  output, so the caller's terminals reach the transcript only through that
+  argument;
+- the raw `Option<PathBuf>` daemon socket, without normalization.
+
+A run whose stderr contains a transient Cargo status line is not recorded,
+and the key's older record is removed. The lines are Cargo's right-aligned
+status verbs `Blocking` (lock contention), `Updating` (index or git refresh),
+`Locking` (lock-file resolution), `Downloading` and `Downloaded` (package
+cache fill), ignoring colour, and the `warning: spurious network error` retry
+warning. The recorded transcript is never filtered.
+
+**Consequences.** A change of any listed variable, of the colour decision or
+of the API socket misses and takes the full path. A replay no longer misses
+when only a terminal that cannot affect the output changes, such as stdout
+being redirected while stderr stays on a terminal. A run that waited on a
+lock, refreshed an index or downloaded a crate is recorded by the next
+unchanged call instead. Version 4 records take the full path once.
+
+## Amendment: per-run settings files (2026-10-28)
+
+**Context.** Every full managed run, under any key, writes the proof
+context's `runtime.json` (the adapters' settings, with the run identifier,
+the run's sidecar and invocation directories and its retention plan) and the
+compiler family's `managed-transport.json` (the aliases' private settings,
+naming the run's artifact log and `runtime.json`). Both are small records in
+bound trees, so each was bound by content, and a full run under another key
+(`--output json`, `SAIL_MANAGED_NOOP=0`, a job or observer call) invalidated
+every other key's record for that context (#575).
+
+**Decision.** These two files, and only at those two locations (direct
+children of the context and family roots), stay in their tree's entry
+listing but are not bound by content or stamp.
+
+**Soundness.** Neither file is an input to the decision or output a record
+holds. Each full run writes both again before it starts Cargo, from its own
+invocation, and only processes started by that run (Sail's Cargo and
+Verus-driver aliases and adapters) read them, under the exclusive family lock
+a replay also takes. A replay starts no process, so their bytes cannot reach
+its output. Everything they are derived from is bound on its own: the
+arguments, tools and variables by the key, the solver and installed files by
+stamp, the sources, manifests and metadata inputs by the source observation,
+and the receipts and other records by content. Removing or adding either file
+still changes the entry listing and misses.
+
+**Consequences.** Alternating call kinds on one project keep replaying. On
+the demo project (native Linux, shared host, directional), the human call
+after a `SAIL_MANAGED_NOOP=0`, `--output json` or job-events call takes
+0.10 s instead of 0.75 to 0.81 s; on Vest (`-- --rlimit 100`) 0.05 to
+0.07 s instead of 1.9 to 5.0 s (one sequence per arm, load from other agents).
+A real change still misses: the receipts, sources, target and other records
+stay bound as before.
+
+## Amendment: job and observer calls (2026-10-28)
+
+**Context.** The decision excluded job workers and observers from replay,
+under its revisit clause: they rely on per-run side effects. MCP `verify`,
+`start_verification` and `sail verify --background` all run as daemon jobs,
+whose worker sets `SAIL_JOB_EVENTS`, `SAIL_PROOF_EVENTS` and
+`SAIL_JOB_GUARD_PARENT`, so agents, the main consumers of unchanged
+re-queries, always paid the full unchanged path (#559). The per-job values
+of those variables (each job's own files) would also have made every job's
+key unique.
+
+**Decision.** Job workers and observers replay. Only `SAIL_MANAGED_FORCE` (a
+forced job or call) and `SAIL_MANAGED_NOOP=0` still disable replay, as do
+research modes and `--force`.
+
+- **Key.** `SAIL_JOB_EVENTS`, `SAIL_PROOF_EVENTS` and `SAIL_JOB_GUARD_PARENT`
+  are left out of the invocation key. They name the job's own event files and
+  mark a worker; neither changes what the call prints or reports (a worker
+  always runs `--output json`, where the worker marker changes nothing). Every
+  other part of the key stays, so a job shares a record with a CLI
+  `--output json` call only when that call's arguments, non-terminal streams,
+  tools and keyed environment are the same, that is, when its output is the
+  same.
+- **Recording.** A record also holds the run's consumer-visible job events,
+  in order: its `context-ready` event (which the daemon's running-revision
+  projection and proof journal read) and each `target-reused` event. They are
+  captured for the run itself whether or not `SAIL_JOB_EVENTS` is set, on the
+  thread that runs it, and the capture ends with the run. A run whose capture
+  does not hold exactly one `context-ready` for the run's own identity, or
+  overflows 4096 events, is not recorded. Diagnostic events (setup phases,
+  cleanup decisions, build-environment restoration) belong to the run that
+  wrote them and are not recorded.
+- **Replay.** Under the same locks and after every comparison holds, a replay
+  writes the recorded events to `SAIL_JOB_EVENTS`, when set, with each
+  `run_id` replaced by the replay's run identity. The `establishing_run` of
+  each reused target stays as recorded. A recordable run starts no verifier
+  and no source engine, so it writes no proof events; neither does its
+  replay, and its job's proof journal ends with the same `SAIL0903` gap.
+- Record version 6 replaces version 5; older records take the full path.
+
+**Consequences.** An unchanged MCP or background job call runs the replay
+inside its worker instead of the full unchanged path; daemon job overhead is
+unchanged. A job still never shares a record with an interactive terminal
+call (different streams and output mode). Anything a job consumer reads from
+a full recordable run, its result, its `context-ready` and `target-reused`
+events and its empty proof stream, a replay reproduces under its own run
+identity.

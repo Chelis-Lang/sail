@@ -23,9 +23,11 @@
 //!   `rerun-if-env-changed`) or an admitted proof receipt requires, including
 //!   ghost-only names absent from dep-info.
 //!
-//! The invocation itself (arguments, output mode, terminals, the selected
-//! tools and every environment variable the tools or Sail read) is the
-//! record's key. A stamp is recorded only when its ctime is at least
+//! The invocation itself (arguments, output mode, the colour Sail asks Cargo
+//! for, the selected tools, the daemon socket and every environment variable
+//! the tools or Sail read, terminal capabilities included) is the record's
+//! key. A run whose output holds Cargo's transient status lines is never
+//! recorded. A stamp is recorded only when its ctime is at least
 //! 2 s older than the run's start, so a later change to the file
 //! moves its ctime past the recorded one even on coarse clocks.
 //!
@@ -44,9 +46,13 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-/// Version 4 also binds names required by proof receipts, including ghost
-/// reads absent from dep-info. Earlier records can omit those inputs (#552).
-const VERSION: u32 = 4;
+/// Version 6 carries the run's consumer-visible job events, which a job
+/// replay emits again; earlier records have none (#559). Version 5 keys the
+/// terminal-capability variables, the colour Sail asks Cargo for and the
+/// exact daemon socket, and never records Cargo's transient status lines
+/// (#571, #573, #574). Version 4 also bound names required by proof
+/// receipts, including ghost reads absent from dep-info (#552).
+const VERSION: u32 = 6;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
@@ -82,6 +88,9 @@ struct Record {
     result: ProjectResult,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
+    /// The recorded run's consumer-visible job events, in order
+    /// (`context-ready`, `target-reused`).
+    events: Vec<serde_json::Value>,
 }
 
 /// Cargo's uplifted copy of a build-script executable (#437). Cargo
@@ -280,20 +289,25 @@ pub(super) struct Facts<'a> {
     /// ineligible; omitted targets confer no report authority.
     pub receipt_environment: Option<std::collections::BTreeSet<String>>,
     pub result: &'a ProjectResult,
+    /// The run's consumer-visible job events, in order.
+    pub events: Vec<serde_json::Value>,
 }
 
 fn disabled() -> bool {
     std::env::var_os("SAIL_MANAGED_NOOP").is_some_and(|value| value == "0")
-        // Job workers and observers expect the records a full run writes.
-        || [
-            "SAIL_JOB_EVENTS",
-            "SAIL_PROOF_EVENTS",
-            "SAIL_JOB_GUARD_PARENT",
-            "SAIL_MANAGED_FORCE",
-        ]
-        .iter()
-        .any(|name| std::env::var_os(name).is_some())
+        // A forced job or call always runs in full.
+        || std::env::var_os("SAIL_MANAGED_FORCE").is_some()
 }
+
+/// Per-job variables. Their values name the job's own event files or mark
+/// a worker, never an input or the call's output, so they are not part of
+/// the invocation key: a job replays the record of an identical call, and
+/// the replay writes the recorded job events to the job's own files.
+const JOB_VARIABLES: [&str; 3] = [
+    "SAIL_JOB_EVENTS",
+    "SAIL_PROOF_EVENTS",
+    "SAIL_JOB_GUARD_PARENT",
+];
 
 /// One line per decision in the file `SAIL_MANAGED_NOOP_TRACE` names, for
 /// tests and diagnosis. Never written to the run's own output.
@@ -309,6 +323,28 @@ fn trace(line: &str) {
     }
 }
 
+/// What the pinned Cargo's terminal detection reads besides `TERM` (cargo
+/// 1.99.1, `crates/cargo-util-terminal/src/shell.rs`): `anstyle-query` 1.1.5
+/// through `anstream` 1.0.0 for colour (`CI`, `CLICOLOR`, `CLICOLOR_FORCE`,
+/// `COLORTERM`, `NO_COLOR`), and `supports-hyperlinks` 3.2.0 for OSC 8 links
+/// (`COLORTERM`, `DOMTERM`, `FORCE_HYPERLINK`, `KONSOLE_VERSION`,
+/// `TERM_PROGRAM`, `VTE_VERSION`, `WT_SESSION`). Cargo writes to Sail's
+/// pipes, but `CLICOLOR_FORCE` colours a pipe and the hyperlink decision
+/// reads no stream at all, so each changes what a run prints (#573).
+const TERMINAL_CAPABILITIES: &[&str] = &[
+    "CI",
+    "CLICOLOR",
+    "CLICOLOR_FORCE",
+    "COLORTERM",
+    "DOMTERM",
+    "FORCE_HYPERLINK",
+    "KONSOLE_VERSION",
+    "NO_COLOR",
+    "TERM_PROGRAM",
+    "VTE_VERSION",
+    "WT_SESSION",
+];
+
 /// Variables that make up the invocation's key: every variable the context
 /// binds, every Sail variable, and the ones that select tools and terminal
 /// rendering.
@@ -317,10 +353,14 @@ fn key_environment(
 ) -> Option<Vec<(String, String)>> {
     let mut selected = Vec::new();
     for (name, value) in variables {
+        if JOB_VARIABLES.iter().any(|job| name == *job) {
+            continue;
+        }
         if super::environment::input_environment_key(&name)
             || name.as_encoded_bytes().starts_with(b"SAIL_")
             || ["PATH", "HOME", "TERM", "PWD", "CARGO_TARGET_DIR"]
                 .iter()
+                .chain(TERMINAL_CAPABILITIES)
                 .any(|n| name == *n)
         {
             selected.push((name.into_string().ok()?, value.into_string().ok()?));
@@ -333,7 +373,6 @@ fn key_environment(
 /// The invocation's key, or `None` when it cannot be replayed.
 #[must_use]
 pub fn key(config: &Config, json: bool) -> Option<String> {
-    use std::io::IsTerminal as _;
     if disabled() || config.force {
         return None;
     }
@@ -351,13 +390,15 @@ pub fn key(config: &Config, json: bool) -> Option<String> {
             format!("{:?}", config.cargo_toolchain),
             &config.shim,
             &config.z3,
-            config.socket.is_some(),
+            // The exact value Cargo's environment receives as
+            // `SAIL_DAEMON_SOCKET`, unnormalized (#571).
+            &config.socket,
         ),
         (&config.args, config.attribution_logs, json),
-        (
-            std::io::stdout().is_terminal(),
-            std::io::stderr().is_terminal(),
-        ),
+        // Cargo and everything it starts write only to Sail's pipes, so the
+        // caller's terminals reach the run's output only through the colour
+        // Sail asks Cargo for (#573).
+        super::runner::invocation_colour(&config.args, !json),
         key_environment(std::env::vars_os())?,
     ))
     .ok()?;
@@ -408,14 +449,39 @@ type CacheState = (
     Vec<(PathBuf, Option<Stamp>)>,
 );
 
-/// Cache trees compared by content (small regular files) or stamp.
-fn cache_state(trees: &[(PathBuf, &[&str])]) -> Option<CacheState> {
+/// The proof context's per-run settings for its adapters, which every full
+/// run writes again before it starts Cargo.
+pub(super) const RUNTIME: &str = "runtime.json";
+
+/// The per-run files a cache tree holds: `(root, direct child)`. Every full
+/// run, under any key, writes them again before it starts Cargo, from its own
+/// invocation (its run identifier and run directory among them), and only
+/// the processes that run starts read them: the proof context's adapter
+/// settings ([`RUNTIME`]) and the compiler family's alias settings
+/// ([`super::transport::FILE`]). A replay starts no process, so their bytes
+/// cannot reach its output; what they are derived from is bound on its own
+/// (the key, the source observation, the installed files and the receipts).
+/// They stay in their tree's entry listing, so a removed or added one still
+/// misses, but their content is not bound (#575).
+fn per_run(path: &Path, context: &Path, family: &Path) -> bool {
+    let (Some(parent), Some(name)) = (path.parent(), path.file_name()) else {
+        return false;
+    };
+    (parent == context && name == RUNTIME) || (parent == family && name == super::transport::FILE)
+}
+
+/// Cache trees compared by content (small regular files) or stamp, apart
+/// from the [`per_run`] files below `context` and `family`.
+fn cache_state(trees: &[(PathBuf, &[&str])], context: &Path, family: &Path) -> Option<CacheState> {
     let mut listed = Vec::new();
     let mut contents = Vec::new();
     let mut stamps = Vec::new();
     for (root, skip) in trees {
         let entries = walk(root, skip)?;
         for path in &entries {
+            if per_run(path, context, family) {
+                continue;
+            }
             let metadata = std::fs::symlink_metadata(path).ok()?;
             if metadata.is_file() && metadata.len() <= CONTENT_LIMIT {
                 contents.push(path.clone());
@@ -464,6 +530,17 @@ fn rustup_settings() -> Option<PathBuf> {
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
     let required_environment = facts.receipt_environment?;
+    // Consumers find the run through its one `context-ready` event; a capture
+    // without exactly that event is not a complete account of the run.
+    let ready: Vec<_> = facts
+        .events
+        .iter()
+        .filter(|event| event["kind"] == "context-ready")
+        .collect();
+    if !matches!(ready[..], [ready] if ready["run_id"] == facts.result.run_id.as_str()) {
+        trace("not recorded: job events incomplete");
+        return None;
+    }
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
     let target_stamps = crate::parallel::in_order(&target, |path| lstat(path));
@@ -491,12 +568,11 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         stat_entries.push((path.clone(), stamp?));
         lstat_entries.push((path.clone(), link.ok()?));
     }
-    let (trees, contents, cache_stamps) = cache_state(&cache_trees(
-        facts.cache,
-        facts.family,
+    let (trees, contents, cache_stamps) = cache_state(
+        &cache_trees(facts.cache, facts.family, facts.context, &facts.siblings),
         facts.context,
-        &facts.siblings,
-    ))?;
+        facts.family,
+    )?;
     lstat_entries.extend(cache_stamps);
     let recent = lstat_entries
         .iter()
@@ -530,6 +606,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             result: facts.result.clone(),
             stdout: Vec::new(),
             stderr: Vec::new(),
+            events: facts.events,
         },
     })
 }
@@ -538,6 +615,14 @@ impl Pending {
     /// Store the record with what the run printed. A failure only means the
     /// next unchanged call takes the ordinary path.
     pub fn commit(mut self, stdout: Vec<u8>, stderr: Vec<u8>) {
+        if let Some(line) = transient_status(&stderr) {
+            // A later stock run would not print it, so this output is not
+            // the unchanged call's transcript (#574). Never leave an older
+            // record of this key behind either.
+            let _ = std::fs::remove_file(&self.path);
+            trace(&format!("not recorded: transient Cargo status {line:?}"));
+            return;
+        }
         self.record.stdout = stdout;
         self.record.stderr = stderr;
         let Ok(bytes) = serde_json::to_vec(&self.record) else {
@@ -561,6 +646,34 @@ impl Pending {
             ));
         }
     }
+}
+
+/// Cargo status verbs whose lines depend on state outside the recorded
+/// observation, so an unchanged rerun need not print them (cargo 1.99.1):
+/// `Blocking` waits on a contended lock (`src/util/flock.rs`, package cache,
+/// build and artifact directories); `Updating` refreshes a registry index or
+/// git source, `Locking` resolves the lock file, and `Downloading` and
+/// `Downloaded` fill the package cache.
+const TRANSIENT_STATUS: &[&str] = &[
+    "Blocking",
+    "Updating",
+    "Locking",
+    "Downloading",
+    "Downloaded",
+];
+
+/// The first line of `stderr` that is a transient Cargo status line: Cargo's
+/// right-aligned 12-column verb from [`TRANSIENT_STATUS`], ignoring colour,
+/// or a `spurious network error` retry warning.
+fn transient_status(stderr: &[u8]) -> Option<String> {
+    stderr.split(|b| *b == b'\n').find_map(|line| {
+        let plain = String::from_utf8_lossy(&strip_ansi(line)).into_owned();
+        let status = TRANSIENT_STATUS
+            .iter()
+            .any(|verb| plain.starts_with(&format!("{verb:>12} ")));
+        let retry = plain.starts_with("warning: spurious network error");
+        (status || retry).then(|| plain.trim_end().to_owned())
+    })
 }
 
 /// Remove any record of `key`: an invocation that did not end unchanged
@@ -677,12 +790,25 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     {
         return None;
     }
+    // Job workers and observers read the recorded run's events under the
+    // replay's own run identity; establishing runs stay as recorded.
+    for event in record.events {
+        super::files::event(&with_run_id(event, &run_id));
+    }
     trace("hit");
     Some(Replay {
         result,
         stdout: record.stdout,
         stderr: regenerate_finished(&record.stderr, started.elapsed()),
     })
+}
+
+/// `event` with its `run_id`, where it has one, replaced by `run_id`.
+fn with_run_id(mut event: serde_json::Value, run_id: &str) -> serde_json::Value {
+    if let Some(field) = event.get_mut("run_id") {
+        *field = serde_json::Value::String(run_id.to_owned());
+    }
+    event
 }
 
 /// The first recorded `lstat` stamp that no longer holds.
@@ -766,6 +892,10 @@ mod tests {
     /// the parallel test process's environment. The operation file is outside
     /// every recorded tree and is not an input to the invocation key.
     #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one probe runs every operation of the separate-process sequence"
+    )]
     fn receipt_environment_process_probe() -> Result<(), Box<dyn std::error::Error>> {
         let Some(root) = std::env::var_os("SAIL_TEST_NOOP_RECEIPTS") else {
             return Ok(());
@@ -790,9 +920,25 @@ mod tests {
             force: false,
             attribution_logs: true,
         };
-        let key = key(&config, true).ok_or("fixture key unavailable")?;
-        assert_ne!(Some(key.clone()), super::key(&config, false));
         let operation = std::fs::read_to_string(root.join("operation"))?;
+        if operation == "forced" {
+            // A forced job (its worker variables included) never replays.
+            assert!(key(&config, true).is_none(), "forced call has a replay key");
+            return Ok(());
+        }
+        assert!(
+            key(
+                &Config {
+                    force: true,
+                    ..config.clone()
+                },
+                true
+            )
+            .is_none()
+        );
+        let key = key(&config, true).ok_or("fixture key unavailable")?;
+        // JSON and human calls print different output and never share a record.
+        assert_ne!(Some(key.clone()), super::key(&config, false));
         if operation != "prepare" {
             assert_eq!(key, std::fs::read_to_string(root.join("key"))?);
         }
@@ -802,7 +948,7 @@ mod tests {
                 .ok_or("fixture dep-info unreadable")?;
             assert!(!declared.contains(SHADOW));
             assert!(declared.contains("SAIL_TEST_NOOP_DEP_ONLY_INPUT"));
-            let pending = prepare(Facts {
+            let facts = |events| Facts {
                 key: &key,
                 cache: &cache,
                 // Unit-test stamps predate this simulated run start; no real
@@ -818,7 +964,12 @@ mod tests {
                 receipt_environment: (operation == "prepare")
                     .then(|| std::collections::BTreeSet::from([SHADOW.into()])),
                 result: &result,
-            });
+                events,
+            };
+            // Without its one `context-ready`, the run is not recorded.
+            assert!(prepare(facts(vec![replayed_events()[1].clone()])).is_none());
+            assert!(prepare(facts([replayed_events(), replayed_events()].concat())).is_none());
+            let pending = prepare(facts(replayed_events()));
             if operation == "unknown" {
                 assert!(pending.is_none(), "unknown admission must not record");
             } else {
@@ -829,7 +980,8 @@ mod tests {
                 );
                 let record: Record =
                     serde_json::from_slice(&std::fs::read(record_path(&cache, &key))?)?;
-                assert_eq!(record.version, 4);
+                assert_eq!(record.version, 6);
+                assert_eq!(record.events, replayed_events());
                 assert_eq!(record.environment.get(SHADOW), Some(&None));
                 assert!(
                     record
@@ -842,21 +994,58 @@ mod tests {
             if operation == "legacy" {
                 let path = record_path(&cache, &key);
                 let mut record: Record = serde_json::from_slice(&std::fs::read(&path)?)?;
-                record.version = 3;
+                // A version-5 record carries no job events.
+                record.version = VERSION - 1;
                 std::fs::write(path, serde_json::to_vec(&record)?)?;
             }
             let replay = replay(&config, &key, std::time::Instant::now());
-            if operation == "same" {
+            if matches!(operation.as_str(), "same" | "job") {
                 let replay = replay.ok_or("unchanged receipt input did not replay")?;
                 assert_eq!(replay.stdout, b"verified report\n");
                 assert_eq!(replay.result.execution.verifier_invocations, 0);
                 assert_ne!(replay.result.run_id, "establishing-call");
+                let emitted: Vec<serde_json::Value> =
+                    std::fs::read_to_string(root.join(format!("{operation}.events.jsonl")))
+                        .unwrap_or_default()
+                        .lines()
+                        .map(serde_json::from_str)
+                        .collect::<std::result::Result<_, _>>()?;
+                if operation == "job" {
+                    // The recorded events under the replay's run identity;
+                    // the reused target keeps its establishing run.
+                    let mut expected = replayed_events();
+                    expected[0]["run_id"] = replay.result.run_id.clone().into();
+                    assert_eq!(emitted, expected);
+                } else {
+                    assert_eq!(emitted, Vec::<serde_json::Value>::new());
+                }
             } else {
                 assert!(matches!(operation.as_str(), "changed" | "legacy"));
                 assert!(replay.is_none(), "changed input or legacy record replayed");
+                // A miss writes no job events: the full run that follows
+                // writes its own.
+                assert_eq!(
+                    std::fs::read(root.join(format!("{operation}.events.jsonl")))
+                        .unwrap_or_default(),
+                    Vec::<u8>::new(),
+                    "a missed replay wrote job events"
+                );
             }
         }
         Ok(())
+    }
+
+    /// The job events a recordable run emits, as the runner shapes them.
+    fn replayed_events() -> Vec<serde_json::Value> {
+        vec![
+            serde_json::json!({
+                "kind":"context-ready", "workspace":"/w", "run_id":"establishing-call",
+                "targets":[{"package_id":"p","name":"t","kind":["lib"]}],
+                "context_sha256":"context", "input_revision":"revision",
+                "complete":true, "source_observation":true
+            }),
+            serde_json::json!({"event":"target-reused","target":"t","establishing_run":"first"}),
+        ]
     }
 
     #[test]
@@ -879,7 +1068,9 @@ mod tests {
             root.join("cache/family/target/deps/input.d"),
             "input: input.rs\n# env-dep:SAIL_TEST_NOOP_DEP_ONLY_INPUT\n",
         )?;
-        for operation in ["prepare", "same", "changed", "unknown", "legacy"] {
+        for operation in [
+            "prepare", "same", "job", "forced", "changed", "unknown", "legacy",
+        ] {
             std::fs::write(root.join("operation"), operation)?;
             let mut command = std::process::Command::new(std::env::current_exe()?);
             command
@@ -894,6 +1085,23 @@ mod tests {
                 .env_remove("SAIL_JOB_EVENTS")
                 .env_remove("SAIL_JOB_GUARD_PARENT")
                 .env_remove("SAIL_PROOF_EVENTS");
+            if operation == "forced" {
+                command.env("SAIL_MANAGED_FORCE", "1");
+            }
+            if matches!(operation, "job" | "forced" | "changed" | "legacy") {
+                // A daemon job worker's own variables keep the key: the same
+                // record replays, or misses, as for a plain JSON call.
+                command
+                    .env(
+                        "SAIL_JOB_EVENTS",
+                        root.join(format!("{operation}.events.jsonl")),
+                    )
+                    .env(
+                        "SAIL_PROOF_EVENTS",
+                        root.join(format!("{operation}.proof-source.jsonl")),
+                    )
+                    .env("SAIL_JOB_GUARD_PARENT", "1");
+            }
             if operation == "changed" {
                 command.env(SHADOW, "new-source-visible-value");
             }
@@ -905,6 +1113,88 @@ mod tests {
                 String::from_utf8_lossy(&output.stderr)
             );
             assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    /// A full run under another key rewrites the per-run files with its own
+    /// run identity; the record still holds. Any other change in the same
+    /// trees, or a per-run file's removal, still misses (#575).
+    #[test]
+    fn per_run_files_are_listed_but_not_bound() -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-noop-per-run-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let cache = root.join("cache");
+        let family = cache.join("family");
+        let context = cache.join("context");
+        let target = family.join("target");
+        for directory in [
+            &target,
+            &context.join("runs"),
+            &cache.join("runtime-identities"),
+        ] {
+            std::fs::create_dir_all(directory)?;
+        }
+        let runtime = context.join(RUNTIME);
+        let transport = family.join(super::super::transport::FILE);
+        let receipt = context.join("receipt.json");
+        std::fs::write(&runtime, r#"{"run_id":"first"}"#)?;
+        std::fs::write(&transport, r#"{"values":{"run":"first"}}"#)?;
+        std::fs::write(&receipt, "receipt")?;
+        // Another child of the same name elsewhere stays bound.
+        let nested = context.join("receipts");
+        std::fs::create_dir_all(&nested)?;
+        std::fs::write(nested.join(RUNTIME), "nested")?;
+        let executable = root.join("sail");
+        std::fs::write(&executable, "fixture")?;
+        let result = receipt_fixture_result(&root);
+        let record = prepare(Facts {
+            key: "per-run",
+            cache: &cache,
+            start: SystemTime::now() + Duration::from_secs(3),
+            workspace_lock: root.join("workspace.lock"),
+            family: &family,
+            context: &context,
+            target: &target,
+            observation: Vec::new(),
+            identity: std::slice::from_ref(&executable),
+            siblings: Vec::new(),
+            receipt_environment: Some(std::collections::BTreeSet::new()),
+            result: &result,
+            events: replayed_events(),
+        })
+        .ok_or("prepare refused the fixture")?
+        .record;
+        assert!(
+            record
+                .contents
+                .iter()
+                .all(|(path, _)| path != &runtime && path != &transport)
+        );
+        assert_eq!(mismatch(&record), None);
+        std::fs::write(&runtime, r#"{"run_id":"second, another key"}"#)?;
+        std::fs::write(&transport, r#"{"values":{"run":"second"}}"#)?;
+        assert_eq!(
+            mismatch(&record),
+            None,
+            "a per-run rewrite invalidated the record"
+        );
+        std::fs::write(&receipt, "changed receipt")?;
+        assert!(mismatch(&record).is_some(), "a changed receipt replayed");
+        std::fs::write(&receipt, "receipt")?;
+        std::fs::write(nested.join(RUNTIME), "changed")?;
+        assert!(mismatch(&record).is_some(), "a nested namesake is bound");
+        std::fs::write(nested.join(RUNTIME), "nested")?;
+        assert_eq!(mismatch(&record), None);
+        for removed in [&runtime, &transport] {
+            let bytes = std::fs::read(removed)?;
+            std::fs::remove_file(removed)?;
+            assert!(
+                mismatch(&record).is_some(),
+                "a removed per-run file replayed"
+            );
+            std::fs::write(removed, bytes)?;
         }
         std::fs::remove_dir_all(root)?;
         Ok(())
@@ -956,8 +1246,20 @@ mod tests {
         ] {
             assert_ne!(selection(&[changed]), plain, "{changed:?}");
         }
-        // Variables no tool or Sail reads keep the key.
+        // Variables no tool or Sail reads keep the key, and so do a job
+        // worker's own event files and worker marker: they never change
+        // what the call prints or reports.
         assert_eq!(selection(&[("EDITOR", "vi"), ("OLDPWD", "/tmp")]), plain);
+        assert_eq!(
+            selection(&[
+                ("SAIL_JOB_EVENTS", "/jobs/a/events.jsonl"),
+                ("SAIL_PROOF_EVENTS", "/jobs/a/proof-source.jsonl"),
+                ("SAIL_JOB_GUARD_PARENT", "1"),
+            ]),
+            plain
+        );
+        // A forced call never replays, whatever its key would be.
+        assert_ne!(selection(&[("SAIL_MANAGED_FORCE", "1")]), plain);
         let mut moved = base();
         moved[0].1 = "/opt/bin".into();
         assert_ne!(key_environment(moved), plain);
@@ -1181,5 +1483,148 @@ mod tests {
         let bound = unit.bind()?;
         assert_eq!(bound.1.len(), 0);
         Ok(())
+    }
+
+    fn key_fixture(socket: Option<&str>) -> Config {
+        let root = std::env::temp_dir().join("sail-noop-key-fixture");
+        Config {
+            workspace: root.clone(),
+            cache: root.join("cache"),
+            sail: root.join("sail"),
+            cargo_verus: root.join("cargo-verus"),
+            cargo: root.join("cargo"),
+            cargo_toolchain: crate::managed::CargoToolchain::Caller,
+            shim: root.join("shim"),
+            z3: root.join("z3"),
+            socket: socket.map(PathBuf::from),
+            args: Vec::new(),
+            force: false,
+            attribution_logs: false,
+        }
+    }
+
+    #[test]
+    fn the_exact_daemon_socket_is_part_of_the_key() {
+        if disabled() {
+            // This process's environment never replays.
+            return;
+        }
+        let key_of = |socket| key(&key_fixture(socket), true);
+        let socket_a = key_of(Some("daemon-a"));
+        assert!(socket_a.is_some());
+        assert_eq!(key_of(Some("daemon-a")), socket_a);
+        assert_ne!(key_of(Some("daemon-b")), socket_a);
+        assert_ne!(key_of(None), socket_a);
+        assert_ne!(key_of(None), key_of(Some("")));
+        // No normalization: an equivalent spelling is a different value of
+        // `SAIL_DAEMON_SOCKET`, so a different key.
+        assert_ne!(key_of(Some("./daemon-a")), socket_a);
+        assert_ne!(key_of(Some("daemon-a/")), socket_a);
+        assert_eq!(key_of(None), key_of(None));
+    }
+
+    #[test]
+    fn every_terminal_capability_is_part_of_the_key() {
+        let base = || -> Vec<(std::ffi::OsString, std::ffi::OsString)> {
+            vec![("PATH".into(), "/usr/bin".into())]
+        };
+        let plain = key_environment(base());
+        assert!(plain.is_some());
+        for name in TERMINAL_CAPABILITIES {
+            let mut variables = base();
+            variables.push(((*name).into(), "1".into()));
+            let set = key_environment(variables);
+            assert_ne!(set, plain, "{name}");
+            let mut variables = base();
+            variables.push(((*name).into(), "2".into()));
+            assert_ne!(key_environment(variables), set, "{name}");
+        }
+    }
+
+    #[test]
+    fn the_key_binds_the_colour_sail_asks_for() {
+        use std::io::IsTerminal as _;
+        let colour = super::super::runner::invocation_colour;
+        let args = |list: &[&str]| list.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>();
+        // JSON output (no shown output) never asks for colour.
+        assert!(!colour(&args(&[]), false));
+        // An explicit Cargo colour choice is the caller's and is keyed as
+        // an argument; one after `--` is the verifier's.
+        assert!(!colour(&args(&["--color=never"]), true));
+        assert!(!colour(&args(&["--color", "always"]), true));
+        let terminal =
+            std::io::stderr().is_terminal() && std::env::var_os("CARGO_TERM_COLOR").is_none();
+        assert_eq!(colour(&args(&[]), true), terminal);
+        assert_eq!(colour(&args(&["--", "--color=never"]), true), terminal);
+    }
+
+    #[test]
+    fn transient_cargo_status_lines_are_found() {
+        for line in [
+            "    Blocking waiting for file lock on package cache\n",
+            "    Blocking waiting for file lock on build directory\n",
+            "\x1b[1m\x1b[36m    Blocking\x1b[0m waiting for file lock on artifact directory\n",
+            "    Updating crates.io index\n",
+            "     Locking 3 packages to latest compatible versions\n",
+            " Downloading crates ...\n",
+            "  Downloaded serde v1.0.0\n",
+            "\x1b[1m\x1b[32m  Downloaded\x1b[0m 2 crates (100 KB) in 0.5s\n",
+            "warning: spurious network error (2 tries remaining): timeout\n",
+            "\x1b[1m\x1b[33mwarning\x1b[0m: spurious network error (1 try remaining): reset\n",
+        ] {
+            let stderr = format!("   Compiling x v0.1.0\n{line}    Finished `dev` profile\n");
+            assert!(transient_status(stderr.as_bytes()).is_some(), "{line:?}");
+        }
+        for stderr in [
+            "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s\n",
+            "verification results:: 3 verified, 0 errors\n",
+            // Not Cargo's right-aligned status column.
+            "Blocking waiting for file lock on package cache\n",
+            "        Blocking waiting\n",
+            "note: Updating crates.io index\n",
+            "warning: unused variable: `spurious`\n",
+            "",
+        ] {
+            assert_eq!(transient_status(stderr.as_bytes()), None, "{stderr:?}");
+        }
+    }
+
+    #[test]
+    fn a_run_with_transient_cargo_status_is_never_recorded() -> std::io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-noop-transient-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let cache = root.join("cache");
+        let pending = |key: &str| Pending {
+            path: record_path(&cache, key),
+            record: Record {
+                version: VERSION,
+                key: key.to_owned(),
+                locks: (root.join("w.lock"), root.join("o.lock")),
+                runs: root.join("runs"),
+                lstat: Vec::new(),
+                stat: Vec::new(),
+                trees: Vec::new(),
+                contents: Vec::new(),
+                copies: Vec::new(),
+                directories: Vec::new(),
+                environment: BTreeMap::new(),
+                result: receipt_fixture_result(&root),
+                stdout: Vec::new(),
+                stderr: Vec::new(),
+                events: Vec::new(),
+            },
+        };
+        let finished = b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s\n";
+        pending("k").commit(Vec::new(), finished.to_vec());
+        assert!(record_path(&cache, "k").is_file());
+        // The same key under contention: not recorded, and the older record
+        // is gone, so the next unchanged call takes the full path.
+        let mut blocked = b"    Blocking waiting for file lock on package cache\n".to_vec();
+        blocked.extend_from_slice(finished);
+        pending("k").commit(Vec::new(), blocked.clone());
+        assert!(!record_path(&cache, "k").exists());
+        pending("fresh").commit(Vec::new(), blocked);
+        assert!(!record_path(&cache, "fresh").exists());
+        std::fs::remove_dir_all(&root)
     }
 }

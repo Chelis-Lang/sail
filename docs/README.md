@@ -73,6 +73,11 @@ controls. [Production refinements](design/acceptance-production-refinements.md)
 connect source-shared operations and typed factories to native callers; their
 [qualification record](validation/acceptance-production-refinements.md) states
 the remaining integration and service-wide proof obligations.
+[Compiler-read origin qualification](validation/compiler-read-origin.md) tracks
+schema2 source/control binding and the paired runtime rollout; its
+[local runner](validation/compiler-read-origin-runner.md) records actual
+CLI/job/MCP reuse and source-sensitive refusal checks separately from those
+formal proofs.
 [Binary64 equality support](../corpus/repros/verus-float-equality-spec/README.md)
 gives the standalone numerical model, exact broken controls and
 [qualification scope](validation/binary64-equality-support.md).
