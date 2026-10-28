@@ -9,5 +9,19 @@
 mod syntax;
 
 pub mod authority;
+/// Staged cache ownership operation; native adoption is separately qualified.
+pub mod cache_bucket;
+/// Staged cache ownership operation; native adoption is separately qualified.
+pub mod cache_candidate;
+/// Staged cache ownership operation; native adoption is separately qualified.
+pub mod cache_chain;
+/// Staged cache ownership operation; native adoption is separately qualified.
+pub mod cache_counted;
+/// Staged cache ownership operation; native adoption is separately qualified.
+pub mod cache_indexed;
+/// Staged cache ownership operation; native adoption is separately qualified.
+pub mod cache_order;
+/// Staged cache ownership operation; native adoption is separately qualified.
+pub mod cache_slots;
 pub mod inputs;
 pub mod query;

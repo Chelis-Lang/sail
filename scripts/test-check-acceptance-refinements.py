@@ -166,7 +166,7 @@ class SourceCaptureTests(unittest.TestCase):
     def test_syntax_runtime_branch_cannot_differ_from_reviewed_erasure(self):
         original = (ROOT / CHECKER.SYNTAX).read_bytes()
         CHECKER.compiled_subset(CHECKER.SYNTAX, original)
-        changed = original.replace(b"-> $return_type $body", b"-> $return_type { true }")
+        changed = original.replace(b"-> $return_type $(where $($bounds)*)? $body", b"-> $return_type $(where $($bounds)*)? { true }")
         self.assertNotEqual(changed, original)
         with self.assertRaises(CHECKER.Refusal):
             CHECKER.compiled_subset(CHECKER.SYNTAX, changed)
@@ -177,6 +177,7 @@ class SourceCaptureTests(unittest.TestCase):
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
         paths += ["crates/" + name + "/Cargo.toml" for name in
             ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
+        paths += [str(path.relative_to(ROOT)) for path in (ROOT / "crates/sail-acceptance/src").glob("cache_*.rs")]
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         CHECKER.validate_assembly(snapshots)
         for path, before, after in (
@@ -374,6 +375,107 @@ class SourceCaptureTests(unittest.TestCase):
                     CHECKER.check(root, base / "archive", base / "runtime", base / "evidence", 120)
             self.assertEqual(sum(calls.values()), sum(1 + len(e["negative_controls"]) for e in entries.values()))
             self.assertFalse((base / "evidence/report.json").exists())
+
+    def test_indexed_owner_constructor_and_private_state_are_closed(self):
+        source = (ROOT / "crates/sail-acceptance/src/cache_indexed.rs").read_text()
+        SOURCE.candidate_indexed_policy(source)
+        for before, after in (
+            ("        slots: CountedSlots<Value, Stamp>,", "        pub slots: CountedSlots<Value, Stamp>,"),
+            ("pub struct IndexedSlots<Value, Stamp>", "#[derive(Default)]\npub struct IndexedSlots<Value, Stamp>"),
+            ("        order: BTreeMap<u64, [u8; 32]>,", "        order: BTreeMap<u64, [u8; 32]>, shadow: bool,"),
+        ):
+            self.assertEqual(source.count(before), 1)
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.candidate_indexed_policy(source.replace(before, after))
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.candidate_indexed_policy(source + "\npub fn unreviewed_factory() {}\n")
+
+    def test_indexed_owner_admission_contract_and_readonly_api_are_closed(self):
+        source = (ROOT / "crates/sail-acceptance/src/cache_indexed.rs").read_text()
+        for before, after in (
+            ("pub fn empty() -> (out: Self)\n                requires (true)",
+                "pub fn empty() -> (out: Self)\n                requires (false)"),
+            ("pub fn order(&self) -> (out: &BTreeMap<u64, [u8; 32]>)",
+                "pub fn order(&mut self) -> (out: &mut BTreeMap<u64, [u8; 32]>)"),
+            ("use crate::inputs::byte_eq;", "use unreviewed::byte_eq;"),
+        ):
+            self.assertEqual(source.count(before), 1)
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.candidate_indexed_policy(source.replace(before, after))
+
+    def test_indexed_owner_views_and_bijection_cannot_be_detached(self):
+        source = (ROOT / "crates/sail-acceptance/src/cache_indexed.rs").read_text()
+        for before, after in (
+            ("-> CountedSlots<Value, Stamp> { self.slots }", "-> CountedSlots<Value, Stamp> { choose|s| true }"),
+            ("-> Map<u64, [u8; 32]> { self.order@ }", "-> Map<u64, [u8; 32]> { Map::empty() }"),
+            ("slots.valid()\n            && order.len()", "true\n            && order.len()"),
+        ):
+            self.assertEqual(source.count(before), 1)
+            with self.subTest(after=after), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.candidate_indexed_policy(source.replace(before, after))
+
+    def test_indexed_owner_runtime_fault_still_reaches_the_verifier(self):
+        source = (ROOT / "crates/sail-acceptance/src/cache_indexed.rs").read_text()
+        before, after = "{ self.slots.get(key) }", "{ None }"
+        self.assertEqual(source.count(before), 1)
+        SOURCE.runtime_mutation(source, before, after)
+        SOURCE.candidate_indexed_policy(source.replace(before, after))
+
+    def test_no_unwind_method_keeps_complete_contract_and_loop_guards(self):
+        source = """sail_no_unwind_method! {
+            fn drain(&mut self) -> (out: ())
+            requires ({ let ok = true; ok }) ensures (if true {true} else {false})
+            { sail_while! { (self.pending) invariant(true) decreases(self.count)
+                { self.pending = false; } } }
+        }"""
+        SOURCE.runtime_mutation(source, "self.pending = false;", "self.pending = true;")
+        for before, after in (("let ok = true", "let ok = false"),
+                ("invariant(true)", "invariant(false)"),
+                ("sail_no_unwind_method", "sail_method")):
+            with self.subTest(before=before), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.runtime_mutation(source, before, after)
+
+    def test_drop_accepts_only_exact_trait_signature_and_real_body(self):
+        source = "sail_drop! { fn drop(&mut self) { self.drain(); sail_proof! { assert(self.empty_view()); } } }"
+        SOURCE.runtime_mutation(source, "self.drain();", "{}")
+        for before, after in (("fn drop", "fn other"), ("&mut self", "&self"),
+                ("&mut self", "&mut other"),
+                ("{ self.drain();", "ensures (true) { self.drain();")):
+            with self.subTest(before=before), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.runtime_mutation(source, before, after)
+
+    def test_snapshot_is_erased_and_cannot_hide_a_checked_body(self):
+        source = """sail_no_unwind_method! { fn drain(&mut self) -> (out: ())
+            requires (true) ensures (true)
+            { sail_snapshot!(saved = self.length_view()); self.pending = false; }
+        }"""
+        SOURCE.runtime_mutation(source, "self.pending = false;", "self.pending = true;")
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.runtime_mutation(source, "self.length_view()", "self.other_view()")
+        hidden = "sail_snapshot!(saved = { sail_drop! { fn drop(&mut self) { self.drain(); } } 0 });"
+        self.assertEqual(SOURCE.executable_envelopes(hidden), [])
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.runtime_mutation(hidden, "self.drain();", "{}")
+
+    def test_erased_semicolon_cannot_masquerade_as_a_runtime_fault(self):
+        for wrapper in ("sail_proof!", "proof"):
+            for count in range(4):
+                before = "{ " + wrapper + " { assert(true); }" + ";" * count + " true }"
+                source = "sail_no_unwind_method! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"
+                for remaining in range(4):
+                    after = "{ " + wrapper + " { assert(false); }" + ";" * remaining + " true }"
+                    with self.subTest(wrapper=wrapper, count=count, remaining=remaining), self.assertRaises(SOURCE.SourceRefusal):
+                        SOURCE.runtime_mutation(source, before, after)
+                with self.subTest(wrapper=wrapper, count=count), self.assertRaises(SOURCE.SourceRefusal):
+                    SOURCE.runtime_mutation(source, before, "{ true }")
+                SOURCE.runtime_mutation(source, before, before[:-6] + "false }")
+        for binding in ("saved", "mut saved"):
+            for count in range(4):
+                before = "{ sail_snapshot!(" + binding + " = 1)" + ";" * count + " true }"
+                source = "sail_no_unwind_method! { fn f() -> (out: bool) requires (true) ensures (out) " + before + " }"
+                with self.subTest(binding=binding, count=count), self.assertRaises(SOURCE.SourceRefusal):
+                    SOURCE.runtime_mutation(source, before, "{ true }")
+                SOURCE.runtime_mutation(source, before, before[:-6] + "false }")
 
     def test_selected_guard_control_cannot_be_omitted(self):
         import json

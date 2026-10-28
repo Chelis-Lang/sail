@@ -197,3 +197,5 @@ the qualified #174/#215 implementation, its nine-sample targeted gain, complete
 native/Mac gates, unchanged Vest costs and preserved historical failures.
 
 [Neutral source profile two qualification](validation/neutral-source-profile-two.md) records explicit flat Rust admission, retained legacy identities and the bounded UNKNOWN diagnostic.
+
+- [Cache ownership core](design/cache-ownership-core.md): staged executable kernels and their [qualification](validation/cache-ownership-core.md).
