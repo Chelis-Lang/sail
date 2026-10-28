@@ -437,14 +437,39 @@ type CacheState = (
     Vec<(PathBuf, Option<Stamp>)>,
 );
 
-/// Cache trees compared by content (small regular files) or stamp.
-fn cache_state(trees: &[(PathBuf, &[&str])]) -> Option<CacheState> {
+/// The proof context's per-run settings for its adapters, which every full
+/// run writes again before it starts Cargo.
+pub(super) const RUNTIME: &str = "runtime.json";
+
+/// The per-run files a cache tree holds: `(root, direct child)`. Every full
+/// run, under any key, writes them again before it starts Cargo, from its own
+/// invocation (its run identifier and run directory among them), and only
+/// the processes that run starts read them: the proof context's adapter
+/// settings ([`RUNTIME`]) and the compiler family's alias settings
+/// ([`super::transport::FILE`]). A replay starts no process, so their bytes
+/// cannot reach its output; what they are derived from is bound on its own
+/// (the key, the source observation, the installed files and the receipts).
+/// They stay in their tree's entry listing, so a removed or added one still
+/// misses, but their content is not bound (#575).
+fn per_run(path: &Path, context: &Path, family: &Path) -> bool {
+    let (Some(parent), Some(name)) = (path.parent(), path.file_name()) else {
+        return false;
+    };
+    (parent == context && name == RUNTIME) || (parent == family && name == super::transport::FILE)
+}
+
+/// Cache trees compared by content (small regular files) or stamp, apart
+/// from the [`per_run`] files below `context` and `family`.
+fn cache_state(trees: &[(PathBuf, &[&str])], context: &Path, family: &Path) -> Option<CacheState> {
     let mut listed = Vec::new();
     let mut contents = Vec::new();
     let mut stamps = Vec::new();
     for (root, skip) in trees {
         let entries = walk(root, skip)?;
         for path in &entries {
+            if per_run(path, context, family) {
+                continue;
+            }
             let metadata = std::fs::symlink_metadata(path).ok()?;
             if metadata.is_file() && metadata.len() <= CONTENT_LIMIT {
                 contents.push(path.clone());
@@ -520,12 +545,11 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         stat_entries.push((path.clone(), stamp?));
         lstat_entries.push((path.clone(), link.ok()?));
     }
-    let (trees, contents, cache_stamps) = cache_state(&cache_trees(
-        facts.cache,
-        facts.family,
+    let (trees, contents, cache_stamps) = cache_state(
+        &cache_trees(facts.cache, facts.family, facts.context, &facts.siblings),
         facts.context,
-        &facts.siblings,
-    ))?;
+        facts.family,
+    )?;
     lstat_entries.extend(cache_stamps);
     let recent = lstat_entries
         .iter()
@@ -970,6 +994,87 @@ mod tests {
                 String::from_utf8_lossy(&output.stderr)
             );
             assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    /// A full run under another key rewrites the per-run files with its own
+    /// run identity; the record still holds. Any other change in the same
+    /// trees, or a per-run file's removal, still misses (#575).
+    #[test]
+    fn per_run_files_are_listed_but_not_bound() -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-noop-per-run-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let cache = root.join("cache");
+        let family = cache.join("family");
+        let context = cache.join("context");
+        let target = family.join("target");
+        for directory in [
+            &target,
+            &context.join("runs"),
+            &cache.join("runtime-identities"),
+        ] {
+            std::fs::create_dir_all(directory)?;
+        }
+        let runtime = context.join(RUNTIME);
+        let transport = family.join(super::super::transport::FILE);
+        let receipt = context.join("receipt.json");
+        std::fs::write(&runtime, r#"{"run_id":"first"}"#)?;
+        std::fs::write(&transport, r#"{"values":{"run":"first"}}"#)?;
+        std::fs::write(&receipt, "receipt")?;
+        // Another child of the same name elsewhere stays bound.
+        let nested = context.join("receipts");
+        std::fs::create_dir_all(&nested)?;
+        std::fs::write(nested.join(RUNTIME), "nested")?;
+        let executable = root.join("sail");
+        std::fs::write(&executable, "fixture")?;
+        let result = receipt_fixture_result(&root);
+        let record = prepare(Facts {
+            key: "per-run",
+            cache: &cache,
+            start: SystemTime::now() + Duration::from_secs(3),
+            workspace_lock: root.join("workspace.lock"),
+            family: &family,
+            context: &context,
+            target: &target,
+            observation: Vec::new(),
+            identity: std::slice::from_ref(&executable),
+            siblings: Vec::new(),
+            receipt_environment: Some(std::collections::BTreeSet::new()),
+            result: &result,
+        })
+        .ok_or("prepare refused the fixture")?
+        .record;
+        assert!(
+            record
+                .contents
+                .iter()
+                .all(|(path, _)| path != &runtime && path != &transport)
+        );
+        assert_eq!(mismatch(&record), None);
+        std::fs::write(&runtime, r#"{"run_id":"second, another key"}"#)?;
+        std::fs::write(&transport, r#"{"values":{"run":"second"}}"#)?;
+        assert_eq!(
+            mismatch(&record),
+            None,
+            "a per-run rewrite invalidated the record"
+        );
+        std::fs::write(&receipt, "changed receipt")?;
+        assert!(mismatch(&record).is_some(), "a changed receipt replayed");
+        std::fs::write(&receipt, "receipt")?;
+        std::fs::write(nested.join(RUNTIME), "changed")?;
+        assert!(mismatch(&record).is_some(), "a nested namesake is bound");
+        std::fs::write(nested.join(RUNTIME), "nested")?;
+        assert_eq!(mismatch(&record), None);
+        for removed in [&runtime, &transport] {
+            let bytes = std::fs::read(removed)?;
+            std::fs::remove_file(removed)?;
+            assert!(
+                mismatch(&record).is_some(),
+                "a removed per-run file replayed"
+            );
+            std::fs::write(removed, bytes)?;
         }
         std::fs::remove_dir_all(root)?;
         Ok(())

@@ -246,3 +246,37 @@ when only a terminal that cannot affect the output changes, such as stdout
 being redirected while stderr stays on a terminal. A run that waited on a
 lock, refreshed an index or downloaded a crate is recorded by the next
 unchanged call instead. Version 4 records take the full path once.
+
+## Amendment: per-run settings files (2026-10-28)
+
+**Context.** Every full managed run, under any key, writes the proof
+context's `runtime.json` (the adapters' settings, with the run identifier,
+the run's sidecar and invocation directories and its retention plan) and the
+compiler family's `managed-transport.json` (the aliases' private settings,
+naming the run's artifact log and `runtime.json`). Both are small records in
+bound trees, so each was bound by content, and a full run under another key
+(`--output json`, `SAIL_MANAGED_NOOP=0`, a job or observer call) invalidated
+every other key's record for that context (#575).
+
+**Decision.** These two files, and only at those two locations (direct
+children of the context and family roots), stay in their tree's entry
+listing but are not bound by content or stamp.
+
+**Soundness.** Neither file is an input to the decision or output a record
+holds. Each full run writes both again before it starts Cargo, from its own
+invocation, and only processes started by that run (Sail's Cargo and
+Verus-driver aliases and adapters) read them, under the exclusive family lock
+a replay also takes. A replay starts no process, so their bytes cannot reach
+its output. Everything they are derived from is bound on its own: the
+arguments, tools and variables by the key, the solver and installed files by
+stamp, the sources, manifests and metadata inputs by the source observation,
+and the receipts and other records by content. Removing or adding either file
+still changes the entry listing and misses.
+
+**Consequences.** Alternating call kinds on one project keep replaying. On
+the demo project (native Linux, shared host, directional), the human call
+after a `SAIL_MANAGED_NOOP=0`, `--output json` or job-events call takes
+0.10 s instead of 0.75 to 0.81 s; on Vest (`-- --rlimit 100`) 0.05 to
+0.07 s instead of 1.9 to 5.0 s (one sequence per arm, load from other agents).
+A real change still misses: the receipts, sources, target and other records
+stay bound as before.

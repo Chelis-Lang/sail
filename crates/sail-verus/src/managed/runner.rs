@@ -705,7 +705,7 @@ fn prepare(
         cargo_alias: compiler.join("sail-cargo"),
         proxy_alias: compiler.join("sail-verus-driver"),
         receipts: context.join("receipts"),
-        runtime: context.join("runtime.json"),
+        runtime: context.join(super::noop::RUNTIME),
         build_inputs: context.join("build-inputs.json"),
         input_state: context.join("input-state.json"),
         compiler_inputs: compiler.join("build-inputs.json"),

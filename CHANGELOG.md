@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep unchanged-call replay records valid across full runs under other
+  keys: `--output json`, `SAIL_MANAGED_NOOP=0` and job calls no longer make
+  the next unchanged `sail verify` take the full path. The per-run settings
+  files those runs rewrite are no longer bound by content (#575).
+
 - Make unchanged-call replay print what plain Cargo-Verus prints: key it by
   the terminal-capability variables Cargo's colour and hyperlink detection
   reads and by the colour Sail asks Cargo for (#573), never record a run whose
