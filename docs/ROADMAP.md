@@ -33,7 +33,7 @@ baseline.
 | Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
 | Default output identical to stock | Done: human stderr is byte-identical by default; Sail notes only with `SAIL_EXPLAIN=1` or in JSON (#391) | — |
 | Default-mode verdict conformance | Done: #385, #386, #393 fixed. Sail's named settings stay compiler-visible as an accepted exception (ADR 0088, #435) | — |
-| Proof-reuse input coverage | Open: replay can return an old report after a ghost compiler input changes (#552, fix in PR #554); reuse loses effective compiler-environment bindings (#551); a forced `--release` run fails with `SAIL3107` (#553) | Fix, with regressions |
+| Proof-reuse input coverage | Replay binds ghost-only environment reads (#552, fixed by #554, replay record v4). Open: reuse loses effective compiler-environment bindings (#551, PR #572); a forced `--release` run fails with `SAIL3107` (#553, PR #570); replay output can differ from stock (OSC 8 hyperlinks #573, transient Cargo lines #574) | Fix, with regressions |
 | Unchanged calls | Later unchanged calls replay in 0.03–0.09 s against stock's 0.20–0.26 s (Linux Anvil 26 ms; macOS `dca5cd43` 0.04–0.09 s; ADR 0082, #402, #437). The first unchanged call and calls that miss replay are slower | [Performance parity](#performance-parity) |
 | Tiny edits | One-line edits faster than stock on all four real projects (macOS `dca5cd43`); tiny-project edits still slower | [Performance parity](#performance-parity) |
 | Cold runs | Linux at parity or faster; macOS Anvil 0.7 s slower on 100 s, ranges not overlapping (#466) | #232 |
@@ -73,14 +73,14 @@ Rows still slower than stock. Direction: spike each row's tractability first
 justify. Numbers are in [performance](performance.md). Benchmarks do not yet
 record peak memory (#562).
 
-| Row | Measured, Sail against stock | Issue |
-|---|---|---|
-| First unchanged call after a verification (full path, records replay) | macOS `dca5cd43`: Anvil 2.07 s against 0.30 s; Vest 0.79 s against 0.26 s | #558 |
-| MCP and job calls never replay (ADR 0082) | Every unchanged call pays the full path | #559 |
-| Unchanged call that misses replay (`touch`, recent ctime, other arguments) | macOS `dca5cd43`: Anvil 1.59 s against 0.24 s | #560 |
-| Unchanged `SAIL3112` setups | Anvil 0.90 s with no proof reuse ([record](validation/unsupported-cargo-fallback.md)), stock about 0.3 s | #561 |
-| Tiny-project edits | About 0.4 s (Linux) and 0.7 s (macOS) more, `e51e4660` matrix | #560 |
-| macOS Anvil cold | 100.2 s against 99.5 s, ranges not overlapping (#466) | #232 |
+| Row | Measured, Sail against stock | Spike finding | Issue |
+|---|---|---|---|
+| First unchanged call after a verification (full path, records replay) | macOS `dca5cd43`: Anvil 2.07 s against 0.30 s; Vest 0.79 s against 0.26 s | A settle pass that records replay at the end of the verifying run is not worth its cost | #558 |
+| MCP and job calls never replay (ADR 0082) | Every unchanged call pays the full path | MCP latency is dominated by result polling (Vest 1–2.6 s, #578); job replay is tractable (#559) | #559, #578 |
+| Unchanged call that misses replay (`touch`, recent ctime, other arguments) | macOS `dca5cd43`: Anvil 1.59 s against 0.24 s | Near its floor without cross-run trust. Full runs rewrite `runtime.json` and invalidate other keys' records (#575); root/subdirectory alternation and a package-local `target/` thrash (#576) | #560, #575, #576 |
+| Unchanged `SAIL3112` setups | Anvil 0.90 s with no proof reuse ([record](validation/unsupported-cargo-fallback.md)), stock about 0.3 s | A loader variable or a new value re-verifies everything, vstd included (65–180 s; #577) | #561, #577 |
+| Tiny-project edits | About 0.4 s (Linux) and 0.7 s (macOS) more, `e51e4660` matrix | — | #560 |
+| macOS Anvil cold | 100.2 s against 99.5 s, ranges not overlapping (#466) | — | #232 |
 
 ## After 0.1.0 (parked)
 

@@ -30,14 +30,6 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
 ## Input coverage and cache integrity
 
-- **Unchanged-call replay can return an old report after a compiler-tracked
-  ghost input changes** ([#552](https://github.com/Chelis-Lang/sail/issues/552)).
-  A caller environment variable read only in ghost code is missing from
-  Cargo's dep-info and from the replay record, so changing only that variable
-  replays the earlier verified report, where stock Verus fails. This is
-  reproduced end to end on main `d5a5d58b`. Until
-  [PR #554](https://github.com/Chelis-Lang/sail/pull/554) merges, set
-  `SAIL_MANAGED_NOOP=0` to disable replay.
 - **Proof reuse loses effective compiler-environment bindings**
   ([#551](https://github.com/Chelis-Lang/sail/issues/551)). Ordinary receipt
   reuse and retained-proof admission both normalize the effective
@@ -49,6 +41,15 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
   environment rather than the compiler child's values. This is a
   source-established gap, separate from ADR 0088's accepted visibility
   difference; no end-to-end wrong verdict is reproduced.
+- **Unchanged-call replay can print output stock would not**
+  ([#573](https://github.com/Chelis-Lang/sail/issues/573),
+  [#574](https://github.com/Chelis-Lang/sail/issues/574)). The replay key
+  omits the terminal-capability variables Cargo's colour and hyperlink
+  detection reads, so a replay can print OSC 8 hyperlinks a stock run in the
+  same terminal would not. Replay also repeats transient Cargo stderr from the
+  recording run, such as `Blocking waiting for file lock on package cache`.
+  Both are default-mode output divergences being fixed; verdicts and exit
+  codes are unaffected. `SAIL_MANAGED_NOOP=0` disables replay.
 - **A forced run of a non-default profile fails instead of reverifying**
   ([#553](https://github.com/Chelis-Lang/sail/issues/553)). Managed package
   cleanup omits Cargo's `--release`, `--profile` and `--target` selectors.
