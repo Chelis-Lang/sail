@@ -1850,6 +1850,7 @@ fn target_records(
         seeded,
         partial_args,
         None,
+        None,
     )
     .map(|records| (records.targets, records.missing))
 }
@@ -1868,6 +1869,7 @@ fn target_records_in(
     seeded: &[super::store::Seeded],
     partial_args: Option<&[String]>,
     observation: Option<RevisionObservation<'_>>,
+    speculative: Option<&super::receipts::Speculative>,
 ) -> Result<RecordedTargets> {
     let scoped_run = partial_args.is_some();
     let mut results = Vec::new();
@@ -1893,8 +1895,15 @@ fn target_records_in(
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
     // Unknown declarations (an unreadable unit record) publish no receipt.
-    let declared = super::environment::declared_names(&paths.target)
-        .map(|names| super::environment::values(&names));
+    // SPIKE A2 cut B: only a compiler observation publishes a receipt, and
+    // `declared` is read only on that branch; without one the walk of every
+    // dep-info and script output in the target decides nothing.
+    let declared = if calls.is_empty() {
+        None
+    } else {
+        super::environment::declared_names(&paths.target)
+            .map(|names| super::environment::values(&names))
+    };
     let artifacts = artifacts(paths);
     super::diagnostics::spike_mark("tr:declared+artifacts");
     let verified = |artifact: &Value| {
@@ -1962,6 +1971,9 @@ fn target_records_in(
         .collect();
     let revisions: HashMap<String, String> = std::thread::scope(|scope| {
         let current = scope.spawn(|| target_revisions(data, &ids, observation));
+        if let Some(speculative) = speculative {
+            digests.seed(speculative.current(&batch));
+        }
         digests.prefetch(
             batch
                 .iter()
@@ -3560,6 +3572,11 @@ fn run_recorded(
     // decides its freshness.
     let seeded = if new_target {
         super::store::seed(&config.cache, &paths.target, &store_candidates, &data, err)
+    } else if store_candidates.is_empty() {
+        // SPIKE A2 cut A: `unowned` below filters `store_candidates`, so with
+        // no candidate (always, while the store is disabled) reading and
+        // decoding every complete receipt here selects nothing.
+        Vec::new()
     } else {
         // Only a dependency without a receipt of this context needs the store.
         let own: BTreeSet<String> = std::fs::read_dir(&paths.receipts)
@@ -3577,7 +3594,13 @@ fn run_recorded(
         super::store::attach(&config.cache, &paths.target, &unowned, &data)
     };
     super::diagnostics::spike_mark("invocation:cargo-start");
+    // SPIKE A2 cut C: read what the stored receipts bind while Cargo runs.
+    let speculative = paths
+        .reuse
+        .then(|| super::receipts::Speculative::spawn(&paths.receipts))
+        .flatten();
     let mut exit = invoke(config, &paths, &mut out, err, &seeded)?;
+    let speculative = speculative.and_then(|thread| thread.join().ok());
     super::diagnostics::spike_mark("invocation:cargo-end");
     drop(invocation_phase);
     if let Some(plan) = &shipped_plan {
@@ -3726,6 +3749,7 @@ fn run_recorded(
             &seeded,
             focused(&config.args).then_some(config.args.as_slice()),
             Some(observation),
+            speculative.as_ref(),
         );
         super::diagnostics::spike_mark("records:records-done");
         (records, after.join())

@@ -385,6 +385,16 @@ impl PhaseDigests {
             .all(|(path, hash)| read.get(path).is_some_and(|d| d.as_ref() == Ok(hash)))
     }
 
+    /// SPIKE A2 cut C: adopts digests read earlier in this run whose file
+    /// still has exactly the stamp it had around that read. Paths already
+    /// read in this phase keep their read.
+    pub(super) fn seed(&self, digests: Vec<(PathBuf, String)>) {
+        let mut read = self.0.borrow_mut();
+        for (path, digest) in digests {
+            read.entry(path).or_insert(Ok(digest));
+        }
+    }
+
     /// As [`artifact_hashes`]: the first failure in path order is the error.
     pub(super) fn hashes(&self, paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, String>> {
         self.prefetch(paths.iter().map(PathBuf::as_path));
@@ -705,5 +715,86 @@ mod tests {
         assert!(publish(&root.join("run"), &root.join("receipts"), "ctx").is_ok());
         assert!(receipt.valid("ctx"));
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+}
+
+/// SPIKE A2 cut C: complete digests of the files the stored receipts bind,
+/// read while Cargo decides freshness. Each is kept only for a regular file
+/// whose complete `lstat` stamp was settled (ADR 0082's 2 s ctime rule,
+/// measured from the start of this observation) and equal before and after
+/// its read. Nothing here is trusted across runs: [`Self::current`] adopts a
+/// digest only while the file still has exactly that stamp, so any write
+/// after the read (which advances ctime past the settled one) re-reads it.
+pub(super) struct Speculative(BTreeMap<PathBuf, (sail_api::stamp::Stamp, String)>);
+
+impl Speculative {
+    pub(super) fn spawn(receipts: &Path) -> Option<std::thread::JoinHandle<Self>> {
+        let receipts = receipts.to_owned();
+        std::thread::Builder::new()
+            .name("sail-speculative-digests".to_owned())
+            .spawn(move || Self::read(&receipts))
+            .ok()
+    }
+
+    fn read(receipts: &Path) -> Self {
+        // Only the keys are needed; values are skipped without building them.
+        #[derive(Deserialize)]
+        #[allow(clippy::zero_sized_map_values, reason = "keys only")]
+        struct Keys {
+            artifact_hashes: BTreeMap<PathBuf, serde::de::IgnoredAny>,
+            invocation: InvocationKeys,
+        }
+        #[derive(Deserialize)]
+        #[allow(clippy::zero_sized_map_values, reason = "keys only")]
+        struct InvocationKeys {
+            dependencies: BTreeMap<PathBuf, serde::de::IgnoredAny>,
+        }
+        let start = std::time::SystemTime::now();
+        let mut paths: Vec<PathBuf> = std::fs::read_dir(receipts)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter_map(|entry| read::<Keys>(&entry.path()))
+            .flat_map(|keys| {
+                keys.artifact_hashes
+                    .into_keys()
+                    .chain(keys.invocation.dependencies.into_keys())
+            })
+            .collect();
+        paths.sort_unstable();
+        paths.dedup();
+        let stamp = |path: &Path| {
+            std::fs::symlink_metadata(path)
+                .ok()
+                .filter(std::fs::Metadata::is_file)
+                .map(|metadata| sail_api::stamp::Stamp::of(&metadata))
+        };
+        let reads = crate::parallel::in_order(&paths, |path| {
+            let before = stamp(path).filter(|s| s.settled(start))?;
+            let digest = file_digest(path).ok()?;
+            (stamp(path) == Some(before)).then(|| (path.clone(), (before, digest)))
+        });
+        Self(reads.into_iter().flatten().collect())
+    }
+
+    /// The digests among `paths` whose file still has its recorded stamp.
+    pub(super) fn current(&self, paths: &[PathBuf]) -> Vec<(PathBuf, String)> {
+        let known: Vec<&PathBuf> = paths
+            .iter()
+            .filter(|path| self.0.contains_key(*path))
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        crate::parallel::in_order(&known, |path| {
+            let (stamp, digest) = self.0.get(*path)?;
+            let now = std::fs::symlink_metadata(path)
+                .ok()
+                .filter(std::fs::Metadata::is_file)
+                .map(|metadata| sail_api::stamp::Stamp::of(&metadata))?;
+            (now == *stamp).then(|| ((*path).clone(), digest.clone()))
+        })
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
