@@ -90,6 +90,13 @@ refinement boundaries.
 
 ## Executable failure controls
 
+The source-envelope validator memoizes successful checks for the exact builtin
+source string and builtin proof-mode Boolean, with at most 128 entries. It
+checks local syntax only. Changed strings, proof modes and unusual argument
+subclasses cannot reuse a different admission; exceptions are not cached.
+Declaration/import bindings, source discovery, emitted programs, Git/file hashes
+and final drift checks remain outside this cache.
+
 Every production failure control must change exactly one checked executable
 body while retaining its signature, contracts, surrounding declarations and
 checked loop invariants/decreases clauses. The runner enforces this both when

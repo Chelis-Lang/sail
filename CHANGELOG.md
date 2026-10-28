@@ -9,6 +9,9 @@ semantic versioning once the API is published.
   Sail's named compiler-visible integration settings (ADR 0088). Solver-answer
   correctness and acceptance checks for actual effective inputs remain required.
 
+- Reuse successful proof-source envelope syntax checks for identical source
+  and proof mode while keeping binding and drift validation fresh.
+
 - Extend acceptance-model checks for engine completion, normal declines,
   same-subject fallback and per-target repair origins; require every enrolled
   model failure control.

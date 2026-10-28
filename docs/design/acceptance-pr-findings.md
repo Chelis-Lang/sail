@@ -19,17 +19,17 @@ These nine issues concern implementation present on main. Tooling probes do
 not imply an observed wrong verifier verdict or a failure of the existing
 registered proof programs.
 
-| Issue | Main behavior | Planned correction |
+| Issue | Reported main behavior | Current status |
 |---|---|---|
-| [419](https://github.com/Chelis-Lang/sail/issues/419) | Explicit environment validation resamples ambient configuration homes | PR 542 uses the supplied observation |
-| [432](https://github.com/Chelis-Lang/sail/issues/432) | Source tokenization repeatedly copies the remaining input | PR 542 uses absolute regex positions |
+| [419](https://github.com/Chelis-Lang/sail/issues/419) | Explicit environment validation resamples ambient configuration homes | Fixed by merged PR 542; issue closed |
+| [432](https://github.com/Chelis-Lang/sail/issues/432) | Source tokenization repeatedly copies the remaining input | Fixed by merged PR 542; issue closed |
 | [435](https://github.com/Chelis-Lang/sail/issues/435) | Compiler-visible Sail settings can differ from plain Verus | Owner accepts the bounded integration exception in ADR 0088 / PR 550; no private transport is selected |
-| [475](https://github.com/Chelis-Lang/sail/issues/475) | Prepared checkouts share Cargo target fingerprints | PR 542 isolates physical checkout targets |
-| [477](https://github.com/Chelis-Lang/sail/issues/477) | Bounded failure capture selects old command files before producer evidence | Collector correction remains required |
-| [514](https://github.com/Chelis-Lang/sail/issues/514) | The source guard mistakes a `.union(` expression for a declaration | PR 542 narrows that classification |
-| [532](https://github.com/Chelis-Lang/sail/issues/532) | The reviewed proof-import lexer excludes identifier digits | PR 542 retains exact binding and cfg checks while accepting digits |
-| [537](https://github.com/Chelis-Lang/sail/issues/537) | Control admission permits a proof-only false assertion with unchanged native behavior | PR 542 checks executable changes and preserved obligations |
-| [540](https://github.com/Chelis-Lang/sail/issues/540) | Full local E2E leaks generated-file source into a stock oracle without its build script | PR 542 restores scenario inputs |
+| [475](https://github.com/Chelis-Lang/sail/issues/475) | Prepared checkouts share Cargo target fingerprints | Fixed by merged PR 542; issue closed |
+| [477](https://github.com/Chelis-Lang/sail/issues/477) | Bounded failure capture selects old command files before producer evidence | Fixed by merged PR 545; issue closed. Collector acceptance does not reproduce the separate original intermittent replay failure |
+| [514](https://github.com/Chelis-Lang/sail/issues/514) | The source guard mistakes a `.union(` expression for a declaration | Fixed by merged PR 542; issue closed |
+| [532](https://github.com/Chelis-Lang/sail/issues/532) | The reviewed proof-import lexer excludes identifier digits | Fixed by merged PR 542; issue closed |
+| [537](https://github.com/Chelis-Lang/sail/issues/537) | Control admission permits a proof-only false assertion with unchanged native behavior | Fixed by merged PR 542; issue closed |
+| [540](https://github.com/Chelis-Lang/sail/issues/540) | Full local E2E leaks generated-file source into a stock oracle without its build script | Fixed by merged PR 542; issue closed |
 
 The 514/532 probes extend otherwise-supported source/import syntax; main's
 existing 25 captured programs do not contain those cases. Issue 537 has an

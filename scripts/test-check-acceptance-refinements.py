@@ -708,5 +708,60 @@ class RuntimeControlTests(unittest.TestCase):
             CHECKER.captured_driver(entry, snapshots, control)
 
 
+class SourceEnvelopeCacheTests(unittest.TestCase):
+    """Only the same immutable source and proof mode share successful checks."""
+
+    def setUp(self):
+        SOURCE._cached_item_envelopes.cache_clear()
+        self.addCleanup(SOURCE._cached_item_envelopes.cache_clear)
+
+    def test_exact_source_cache_preserves_changed_source_and_proof_refusals(self):
+        good = "sail_verified! { fn checked() -> (out:bool) requires(true) ensures(out) { true } }"
+        SOURCE.checked_item_envelopes(good)
+        SOURCE.checked_item_envelopes(good)
+        self.assertEqual(SOURCE._cached_item_envelopes.cache_info().hits, 1)
+        bad = good + "\npub fn unchecked() -> bool { true }"
+        for _ in range(2):
+            with self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.checked_item_envelopes(bad)
+        self.assertEqual(SOURCE._cached_item_envelopes.cache_info().currsize, 1)
+        proof = "verus! { fn proof_only() -> bool { true } }"
+        SOURCE.checked_item_envelopes(proof, proof=True)
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.checked_item_envelopes(proof, proof=False)
+
+    def test_source_subclass_cannot_spoof_a_cached_source(self):
+        good = "sail_verified! { fn checked() -> (out:bool) requires(true) ensures(out) { true } }"
+        bad = good + "\nfn unchecked() -> bool { true }"
+
+        class SpoofSource(str):
+            def __hash__(self):
+                return hash(good)
+
+            def __eq__(self, other):
+                return True
+
+        SOURCE.checked_item_envelopes(good)
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.checked_item_envelopes(SpoofSource(bad))
+
+    def test_unusual_proof_truth_preserves_uncached_behavior(self):
+        class ChangingProof:
+            def __init__(self):
+                self.enabled = True
+
+            def __bool__(self):
+                value = self.enabled
+                self.enabled = not value
+                return value
+
+        proof = "verus! { fn proof_only() -> bool { true } }"
+        mode = ChangingProof()
+        SOURCE.checked_item_envelopes(proof, proof=mode)
+        with self.assertRaises(SOURCE.SourceRefusal):
+            SOURCE.checked_item_envelopes(proof, proof=mode)
+        self.assertEqual(SOURCE._cached_item_envelopes.cache_info().currsize, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
