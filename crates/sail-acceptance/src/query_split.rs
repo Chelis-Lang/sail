@@ -533,6 +533,10 @@ sail_spec! {
     pub open spec fn option_models(item:Option<Item>) -> Seq<(ItemKind,int,Seq<u8>)> {
         match item { Some(item) => seq![item_model(item)],None => seq![] }
     }
+    /// Ghost counterpart of one actual optional vector emission.
+    spec fn option_items(item:Option<Item>) -> Seq<Item> {
+        match item { Some(item) => seq![item],None => seq![] }
+    }
     pub open spec fn idle_model(byte:u8,input:bool,position:int) -> ((u8,Seq<u8>,int),Seq<(ItemKind,int,Seq<u8>)>) {
         if byte == b' ' || byte == b'\t' || byte == b'\n' || byte == b'\r' {
             ((0u8,Seq::<u8>::empty(),0int),seq![])
@@ -700,6 +704,54 @@ sail_spec! {
     {
         assert forall|i:int| floor <= i < items.len() implies original_item(items[i],history+tail,input) by {
             original_item_append(items[i],history,tail,input);
+        }
+    }
+    /// Isolate original-interval preservation from the scan/model induction.
+    /// This proves the same quantified history cut the native loop requires.
+    proof fn original_history_step(initial:StreamSplitter,current:StreamSplitter,next:StreamSplitter,
+        items:Seq<Item>,floor:int,data:Seq<u8>,start:int,end:int,first:Option<Item>,second:Option<Item>)
+        requires 0 <= floor <= items.len(),0 <= start <= end <= data.len(),
+            current.input_view() == initial.input_view(),
+            forall|history:Seq<u8>| initial.matches(history) ==>
+                current.matches(history+data.take(start))
+                && forall|i:int| floor <= i < items.len() ==>
+                    original_item(items[i],history+data.take(start),initial.input_view()),
+            forall|history:Seq<u8>| current.matches(history) ==>
+                next.matches(history+data.subrange(start,end))
+                && optional_original(first,history+data.subrange(start,end),initial.input_view())
+                && optional_original(second,history+data.subrange(start,end),initial.input_view()),
+        ensures forall|history:Seq<u8>| initial.matches(history) ==>
+            next.matches(history+data.take(end))
+            && optional_original(first,history+data.take(end),initial.input_view())
+            && optional_original(second,history+data.take(end),initial.input_view())
+            && forall|i:int| floor <= i < items.len() ==>
+                original_item(items[i],history+data.take(end),initial.input_view()),
+    {
+        assert forall|history:Seq<u8>| initial.matches(history) implies
+            next.matches(history+data.take(end))
+            && optional_original(first,history+data.take(end),initial.input_view())
+            && optional_original(second,history+data.take(end),initial.input_view())
+            && forall|i:int| floor <= i < items.len() ==>
+                original_item(items[i],history+data.take(end),initial.input_view()) by {
+            assert((history+data.take(start))+data.subrange(start,end) =~= history+data.take(end));
+            original_items_append(items,floor,history+data.take(start),data.subrange(start,end),initial.input_view());
+        }
+    }
+    /// Both actual optional pushes preserve every already-original item and
+    /// add only the original emissions established by the chunk transition.
+    proof fn original_items_emit(items:Seq<Item>,floor:int,history:Seq<u8>,input:bool,
+        first:Option<Item>,second:Option<Item>)
+        requires 0 <= floor <= items.len(),
+            forall|i:int| floor <= i < items.len() ==> original_item(items[i],history,input),
+            optional_original(first,history,input),optional_original(second,history,input),
+        ensures forall|i:int| floor <= i < (items+option_items(first)+option_items(second)).len() ==>
+            original_item((items+option_items(first)+option_items(second))[i],history,input),
+    {
+        let emitted=items+option_items(first)+option_items(second);
+        assert forall|i:int| floor <= i < emitted.len() implies original_item(emitted[i],history,input) by {
+            if i < items.len() { assert(emitted[i] == items[i]); }
+            else if first.is_some() && i == items.len() { assert(emitted[i] == first.unwrap()); }
+            else { assert(second.is_some());assert(emitted[i] == second.unwrap()); }
         }
     }
     /// The original delimiter-only CR trim removes one final suffix byte.
@@ -1007,24 +1059,20 @@ sail_code! {
                     decreases (data.len()-cursor)
                     {
                         let _chunk_start=cursor;
+                        sail_snapshot!(chunk_origin = current);
+                        sail_snapshot!(prefix_items = appended@);
                         let (next,first,second,consumed)=current.consume_chunk(&data[cursor..]);
+                        sail_snapshot!(chunk_items = option_items(first)+option_items(second));
                         cursor += consumed;
                         sail_proof! {
                             assert(data@.subrange(_chunk_start as int,data@.len() as int).take(consumed as int)
                                 =~= data@.subrange(_chunk_start as int,cursor as int));
+                            original_history_step(self,chunk_origin,next,appended@,items@.len() as int,
+                                data@,_chunk_start as int,cursor as int,first,second);
                             assert forall|history:Seq<u8>| self.matches(history) implies
-                                forall|i:int| items@.len() <= i < appended@.len() ==>
-                                    original_item(appended@[i],history+data@.take(cursor as int),self.input) by {
-                                assert((history+data@.take(_chunk_start as int))+data@.subrange(_chunk_start as int,cursor as int)
-                                    =~= history+data@.take(cursor as int));
-                                original_items_append(appended@,items@.len() as int,history+data@.take(_chunk_start as int),
-                                    data@.subrange(_chunk_start as int,cursor as int),self.input);
-                            }
-                            assert forall|history:Seq<u8>| self.matches(history) implies
-                                optional_original(first,history+data@.take(cursor as int),self.input)
-                                && optional_original(second,history+data@.take(cursor as int),self.input) by {
-                                assert((history+data@.take(_chunk_start as int))+data@.subrange(_chunk_start as int,cursor as int)
-                                    =~= history+data@.take(cursor as int));
+                                forall|i:int| items@.len() <= i < (prefix_items+chunk_items).len() ==>
+                                    original_item((prefix_items+chunk_items)[i],history+data@.take(cursor as int),self.input) by {
+                                original_items_emit(appended@,items@.len() as int,history+data@.take(cursor as int),self.input,first,second);
                             }
                             scan_prefix_step(model(self.state),self.input,self.position_view(),data@,
                                 _chunk_start as int,cursor as int,model(next.state),first,second);
@@ -1041,6 +1089,7 @@ sail_code! {
                         if let Some(item)=second { appended.push(item); }
                         current=next;
                         sail_proof! {
+                            assert(appended@ =~= prefix_items+chunk_items);
                             assert(appended@.len()+current.pending_slots()
                                 <= items@.len()+cursor+self.pending_slots());
                             assert(item_models(appended@) == item_models(items@)

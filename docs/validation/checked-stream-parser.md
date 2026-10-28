@@ -134,3 +134,22 @@ byte for byte; only the erased splitter proof text changes in the 55 parser
 programs. The entire Cargo-erased splitter source is byte-identical to
 `97ed0dd3`. All 48 source tests pass. These source facts do not replace the
 missing complete control, native, cost or conformance gates.
+
+## Resumed proof cut
+
+The slice is restacked on main `e9862433`, preserving the prior `defe8668`
+source. Current main's three roots and 168 controls remain intact; adding the
+parser positive and 54 controls makes the normal matrix 226 calls. The earlier
+127/201 parser inventory remains a historical observed result, not discovery
+for the newly added erased lemmas.
+
+The next bounded candidate isolates original-history extension and ordered
+optional-emission preservation into checked lemmas. Existing erased snapshots
+name the prior vector and chunk state. Every executable token, loop invariant,
+contract and original mutant effect is preserved: source comparison covers all
+55 parser programs and all 171 existing-main complete programs. All 60 merged
+source/checker tests pass. These are source checks, not proof acceptance.
+A fresh whole-root Stock positive discovery must include the new lemmas and
+retain the original function inventory before its actual counts are locked.
+The original-byte control must then fail ordinarily without the earlier
+unrelated loop rlimit exhaustion. No resource limit or wall deadline changes.
