@@ -3236,6 +3236,16 @@ fn run_recorded(
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
     let loader = super::configuration::check(&invocation, &config.args)?;
+    // A loader run reuses and records nothing, so outside the opt-in engine
+    // it is the plain Cargo-Verus fallback (ADR 0046, #577): the invocation's
+    // own target, which Cargo fingerprints as stock does, instead of a fresh
+    // managed family per loader value that rebuilds and re-verifies all.
+    if let Some(variable) = loader.as_ref().filter(|_| engine.is_none()) {
+        return Err(Error::new(
+            "SAIL3112",
+            super::configuration::loader_reason(variable),
+        ));
+    }
     // Human output is plain Cargo-Verus's; Sail's notes reach it only with
     // `SAIL_EXPLAIN=1`. JSON callers (jobs, `watch`, MCP) keep them on stderr
     // as diagnostics and in the result's notes.

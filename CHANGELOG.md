@@ -5,6 +5,15 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Verify runs with a process-loader variable (`LD_LIBRARY_PATH`,
+  `LD_PRELOAD`, `DYLD_*`) as plain `cargo verus verify` does, in the
+  project's own Cargo target, instead of in a fresh managed target per loader
+  value that rebuilt and re-verified everything, vstd included (#577). JSON,
+  job and MCP results stay `unknown` project results with `no_reuse`, now
+  `verified_as: plain-cargo-verus`. The first loader run in a project
+  verified only with `sail verify` builds that target once, as a cold stock
+  run does.
+
 - Let unchanged background jobs and MCP `verify` and `start_verification`
   calls use unchanged-call replay. A replay writes the recorded run's
   `context-ready` and `target-reused` job events under its own run identity;

@@ -423,7 +423,8 @@ marked so an agent cannot mistake it for reusable evidence:
   `VERIFIED`, …), or `NO RESULT` when Cargo found everything up to date and
   Verus verified no function;
 - `no_reuse` is `{"code": "SAIL3112", "reason": …, "verified_as":
-  "plain-cargo-verus"}` (`managed` for a process-loader variable);
+  "plain-cargo-verus"}` (`managed` only for a process-loader variable under
+  `--engine interactive`);
 - `execution.verifier_invocations` counts the aggregate Cargo-Verus driver
   result (one), including zero or several verified crates; setup/driver failure
   without that result counts zero. It is not a per-crate Verus work count;
