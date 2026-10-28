@@ -846,7 +846,7 @@ mod tests {
                 );
                 let record: Record =
                     serde_json::from_slice(&std::fs::read(record_path(&cache, &key))?)?;
-                assert_eq!(record.version, 4);
+                assert_eq!(record.version, VERSION);
                 assert_eq!(record.environment.get(SHADOW), Some(&None));
                 assert!(
                     record
