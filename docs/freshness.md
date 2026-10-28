@@ -394,6 +394,18 @@ keep its identity and exact entry names.
 Anything else takes the full path. Only Cargo's `Finished` time is
 regenerated.
 
+Replay records include environment names from the direct, sibling or seeded
+proof receipts actually admitted for the result, as well as Cargo dep-info.
+A compiler-boundary restoration contributes its observed names and staged
+receipt declarations. Recording samples the caller's values, including absent
+and empty values. Unknown coverage for any included report prevents recording.
+A human Cargo no-op may omit targets without receipts; replay preserves that
+admitted subset and adds no missing report. Structured requests separately
+require complete requested coverage. Recording also requires a readable
+compiler-invocation inventory with no compiler starts and only recognized
+cached invocation records. Version 4 replaces version 3; older records take
+the full path.
+
 The first unchanged call after a verification takes the full path and
 records; a file changed less than 2 s before a run is not recorded, so the
 next call records it. A failing project re-verifies on every call, as plain
