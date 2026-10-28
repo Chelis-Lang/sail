@@ -395,7 +395,7 @@ project verified only with `sail verify` builds that target as a cold
 `cargo verus verify` does. After that, unchanged loader runs and runs with a
 different loader value cost what stock's do. Directional timings (wall seconds, one round,
 native Linux x86-64 shared with other agents at load 30-37, host build with
-no shipped vstd proof; "before" is `main` at `e1365eb2`), after a plain warm
+no shipped vstd proof; "before" is a `main` build at `d5a5d58b`), after a plain warm
 `sail verify` in each copy (`cargo verus verify` for stock):
 
 | Run (`LD_LIBRARY_PATH`) | demo stock | before | after | IronKV stock | before | after |
