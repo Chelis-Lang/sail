@@ -8,11 +8,53 @@ semantic versioning once the API is published.
 - Let unchanged background jobs and MCP `verify` and `start_verification`
   calls use unchanged-call replay. A replay writes the recorded run's
   `context-ready` and `target-reused` job events under its own run identity;
-  forced jobs never replay. Replay records move to version 5 (#559).
+  forced jobs never replay. Replay records move to version 6 (#559).
+
+- MCP `verify` now waits on the job's lifecycle status over the service
+  socket and reads the complete result once, after the job ends, instead of
+  starting `sail jobs result` every 100 ms. Replies are unchanged (#578).
+
+- Keep unchanged-call replay records valid across full runs under other
+  keys: `--output json`, `SAIL_MANAGED_NOOP=0` and job calls no longer make
+  the next unchanged `sail verify` take the full path. The per-run settings
+  files those runs rewrite are no longer bound by content (#575).
+
+- Make unchanged-call replay print what plain Cargo-Verus prints: key it by
+  the terminal-capability variables Cargo's colour and hyperlink detection
+  reads and by the colour Sail asks Cargo for (#573), never record a run whose
+  output holds Cargo's transient lock-wait, index or download lines (#574),
+  and bind the exact daemon socket a managed API caller supplies (#571).
+  Older replay records take the full path once.
+
+- Benchmark scripts (`perf-real.sh`, `perf-loops.sh`, `perf-agents.sh`) stop
+  each arm's daemon by the socket and pid `sail status --json` reports, through
+  the new `scripts/sail-stop-daemon.sh`; the old command-line match missed
+  daemons whose socket is outside the cache directory (#580). Daemons bound
+  inside the cache, such as a baseline's, are still stopped. Document that
+  hard-linking an installed binary ends unchanged-call replay.
+
+- `sail --help` no longer lists `sail runtime`, and `sail runtime --help` now
+  starts with the EXPERIMENTAL note, matching its documented status as an
+  experimental integration API. The command itself is unchanged.
+
+- Add compiler-read schema2 support that keeps source reads of
+  ` __VERUS_DRIVER_ARGS__` distinct from Verus driver bookkeeping. Such
+  source-reading units and units reading Sail's named compiler-child controls
+  recompile instead of reusing proofs; routine units keep reuse. Family-scoped write-ahead state prevents stale Cargo freshness after
+  interrupted or unsupported observations. Both platform pins select the matching qualified producer (#551). Origin cleanup follows the actual
+  Cargo profile/target and checks physical invalidation before retiring older
+  unit observations, so removing a read can recover ordinary unchanged reuse.
 
 - Bind unchanged-call replay to the environment names required by the proof
   receipts admitted for that call, including ghost-only reads absent from
   Cargo dep-info. Retire older replay records that omitted those inputs (#552).
+
+- Forward the caller's Cargo manifest, profile, target and configuration
+  selectors during managed package cleanup (#553), preserving whole-family
+  origin migration and strict invalidation checks.
+
+- Reject forbidden runtime paths and scan errors reliably during macOS runtime
+  qualification, including large files whose early matches caused SIGPIPE (#555).
 
 - Document the owner-approved equivalence exception for code that observes
   Sail's named compiler-visible integration settings (ADR 0088). Solver-answer

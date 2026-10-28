@@ -704,7 +704,7 @@ run_mode() { # ROUND MODE
     cleanup_shim
     unset SAIL_DAEMON_SOCKET
   else
-    pkill -f -- "--socket $cache/" 2>/dev/null || true
+    "$here/sail-stop-daemon.sh"
   fi
   sleep 1
   unset SAIL_CACHE_DIR

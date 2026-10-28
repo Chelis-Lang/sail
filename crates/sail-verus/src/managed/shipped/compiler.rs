@@ -35,6 +35,7 @@ pub(super) struct Document {
     binding: String,
     pid: u32,
     complete: bool,
+    driver_environment: super::super::ghost_environment::Environment,
     phases: BTreeMap<String, Phase>,
 }
 
@@ -188,10 +189,7 @@ impl Observation {
         if bytes.len() as u64 > LIMIT {
             return None;
         }
-        let mut document: Document = serde_json::from_slice(&bytes).ok()?;
-        for phase in document.phases.values_mut() {
-            crate::adapter::verus_channel::normalize(&mut phase.tracked_environment);
-        }
+        let document: Document = serde_json::from_slice(&bytes).ok()?;
         (Some(document.pid) == self.pid
             && document.binding == self.binding
             && document.valid(call, &call.plan.run_id))
@@ -202,7 +200,12 @@ impl Observation {
 impl Document {
     fn header(&self, key: &str, establishing_run: &str) -> bool {
         self.kind == "sail-compiler-read-inputs"
-            && self.schema == 1
+            && self.schema == 2
+            && super::super::compiler_origin::known(&self.driver_environment)
+            && self
+                .phases
+                .values()
+                .all(|phase| super::super::compiler_origin::reusable(&phase.tracked_environment))
             && self.complete
             && self.pid != 0
             && self.binding == binding(key, establishing_run)
@@ -303,10 +306,34 @@ mod tests {
             "sources":{},"extra_tracked_files":[],"tracked_environment":{}
         });
         let raw = serde_json::json!({
-            "kind":"sail-compiler-read-inputs","schema":1,"complete":true,
+            "kind":"sail-compiler-read-inputs","schema":2,"driver_environment":{},"complete":true,
             "pid":123,"binding":binding("key", "run"),
             "phases":{"verification":phase,"compilation":phase},
         });
+        for name in [
+            crate::adapter::verus_channel::COMMON,
+            "SAIL_PROVENANCE_DIR",
+            "SAIL_COMPILER_INPUTS",
+            "SAIL_COMPILER_INPUTS_BINDING",
+        ] {
+            for value in [
+                serde_json::Value::Null,
+                serde_json::json!(""),
+                serde_json::json!("same-as-driver"),
+            ] {
+                for phase in ["verification", "compilation"] {
+                    let mut changed = raw.clone();
+                    changed["driver_environment"][crate::adapter::verus_channel::COMMON] =
+                        value.clone();
+                    changed["phases"][phase]["tracked_environment"][name] = value.clone();
+                    let changed: Document = serde_json::from_value(changed)?;
+                    assert!(
+                        !changed.header("key", "run"),
+                        "source observation cannot serve or publish"
+                    );
+                }
+            }
+        }
         let document: Document = serde_json::from_value(raw.clone())?;
         assert!(document.header("key", "run"));
         assert!(!document.header("key", "different-run"));
@@ -336,7 +363,7 @@ mod tests {
     fn compiler_phase_environment_union_refuses_conflicting_reads()
     -> Result<(), Box<dyn std::error::Error>> {
         let mut document: Document = serde_json::from_value(serde_json::json!({
-            "kind":"sail-compiler-read-inputs","schema":1,"complete":true,
+            "kind":"sail-compiler-read-inputs","schema":2,"driver_environment":{},"complete":true,
             "pid":123,"binding":binding("key", "run"),
             "phases": {
                 "verification":{"sources":{},"extra_tracked_files":[],

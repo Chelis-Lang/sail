@@ -312,7 +312,9 @@ failure. It does not by itself establish that Z3 exhausted a resource limit.
 ### `verify`
 
 Default verification submits a managed workspace job and waits for its
-result. Like `sail verify`, it reuses a Current report for
+result. While it waits it reads only the job's lifecycle status, over the
+service socket when one is listening (otherwise `sail jobs status`), and reads
+the complete result once, after the job ends. Like `sail verify`, it reuses a Current report for
 unchanged inputs instead of verifying again, and the summary names the run that
 established each reused report. An unchanged call identical to an earlier one
 that verified nothing replays that call's result without running Cargo, as
