@@ -21,6 +21,7 @@ pub(crate) fn file_digest(path: &Path) -> Result<String> {
     let mut input = std::fs::File::open(path)
         .map_err(|e| Error::new("SAIL3101", format!("cannot read {}: {e}", path.display())))?;
     let mut hasher = Sha256::new();
+    let mut total = 0usize;
     BUFFER.with_borrow_mut(|buf| -> Result<()> {
         loop {
             let n = input
@@ -29,9 +30,11 @@ pub(crate) fn file_digest(path: &Path) -> Result<String> {
             if n == 0 {
                 return Ok(());
             }
+            total += n;
             hasher.update(&buf[..n]);
         }
     })?;
+    super::diagnostics::spike_digest(path, total);
     Ok(format!("{:x}", hasher.finalize()))
 }
 

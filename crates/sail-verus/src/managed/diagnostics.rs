@@ -53,6 +53,26 @@ struct Record {
     read_kib: f64,
 }
 
+/// SPIKE A2 (temporary): the phase most recently started, for digest logs.
+static CURRENT: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(255);
+
+/// SPIKE A2 (temporary): with `SAIL_SPIKE_DIGESTS=FILE`, appends one line per
+/// complete file digest: phase index, bytes, path.
+pub(crate) fn spike_digest(path: &Path, bytes: usize) {
+    let Some(file) = std::env::var_os("SAIL_SPIKE_DIGESTS") else {
+        return;
+    };
+    if let Ok(mut log) = OpenOptions::new().append(true).create(true).open(file) {
+        let _ = writeln!(
+            log,
+            "{}\t{}\t{bytes}\t{}",
+            std::process::id(),
+            CURRENT.load(Ordering::Relaxed),
+            path.display()
+        );
+    }
+}
+
 /// SPIKE A2 (temporary) process counters: (self ticks, child ticks, rchar).
 fn probe() -> (u64, u64, u64) {
     let stat = std::fs::read_to_string("/proc/self/stat").unwrap_or_default();
@@ -127,6 +147,7 @@ impl Diagnostics {
     }
 
     pub(super) fn phase(&self, phase: Phase) -> Timer<'_> {
+        CURRENT.store(phase as u8, Ordering::Relaxed);
         Timer {
             diagnostics: self,
             phase,
