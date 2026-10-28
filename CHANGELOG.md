@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Fix `SAIL_MANAGED_FORCE=1 sail verify --release` (and `--profile`,
+  `--target` or `--config` selections) failing with `SAIL3107`: managed
+  package cleanup now forwards the caller's profile, target and configuration
+  selectors to `cargo clean`, so the selected build compiles and verifies
+  again instead of staying fresh (#553).
+
 - Document the owner-approved equivalence exception for code that observes
   Sail's named compiler-visible integration settings (ADR 0088). Solver-answer
   correctness and acceptance checks for actual effective inputs remain required.
