@@ -1060,7 +1060,7 @@ sail_code! {
                     {
                         let _chunk_start=cursor;
                         sail_snapshot!(chunk_origin = current);
-                        sail_snapshot!(prefix_items = appended@);
+                        sail_snapshot!(prefix_items = appended.view());
                         let (next,first,second,consumed)=current.consume_chunk(&data[cursor..]);
                         sail_snapshot!(chunk_items = option_items(first)+option_items(second));
                         cursor += consumed;
