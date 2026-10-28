@@ -354,6 +354,36 @@ as successful negative controls.
 
 ## Remaining concrete refinement
 
+### Compiler filename token refinement
+
+`inputs::dependency_filename_matches` checks the actual decoder proposal
+against rustc's literal dep-info filename encoding: ASCII spaces become `\ `;
+every other supported byte remains literal. Its executable contract is an iff,
+including the full final length. Tabs, Unicode whitespace, backslashes,
+trailing backslashes and lexical path components are not normalized.
+
+`managed/source_inputs.rs::dependencies` retains the complete output/file-rule
+layout check and its native decoder. Each newly decoded file rule passes the shared
+predicate before entering the inventory. One unsupported token refuses the
+whole inventory. Empty names, NUL, carriage return and newline are outside this
+token contract. A carriage return is a possible Unix filename byte, but this
+adapter conservatively withholds reusable input coverage for it. It does not
+change the verifier's invocation or replace a freshly produced verdict.
+Existing version-2 source inventories retain their ordinary identity and
+currentness checks. Their paths are not retroactively certified by this token
+theorem; no claim covers every filename in a retained record.
+
+The extracted kernel and six ordinary guard mutations come from the existing
+input work. A constructive proof exercises nonempty literal and escaped names;
+native controls retain the existing real-rustc filename fixtures and check
+that refusal persists as incomplete coverage. The owning
+[qualification record](../validation/compiler-filename-refinement.md) states
+which checks have actually run. This token theorem does not prove native
+decoding/framing, rustc's encoding implementation, complete compiler-input
+discovery, physical observation, or the schema2 origin protocol.
+
+### Native and provider interfaces
+
 The completed lifecycle and source-shared identity obligations above leave these native/provider interfaces open:
 
 | Production boundary | Remaining relation |

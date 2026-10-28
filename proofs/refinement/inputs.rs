@@ -300,4 +300,28 @@ pub fn original_stamp_aba_and_exact_revert_controls() {
     assert(interrupted.is_none());
 }
 
+/// Raw filename encoding preserves all ordinary bytes and escapes only spaces.
+pub fn compiler_filename_encoding_controls() {
+    reveal_with_fuel(encoded_dependency_name, 8);
+    assert(encoded_dependency_name(seq![97u8, 194u8, 160u8, 98u8, 99u8]) == seq![97u8, 194u8, 160u8, 98u8, 99u8]) by(compute);
+    assert(encoded_dependency_name(seq![97u8, 9u8, 98u8]) == seq![97u8, 9u8, 98u8]) by(compute);
+    assert(encoded_dependency_name(seq![97u8, 92u8, 98u8]) == seq![97u8, 92u8, 98u8]) by(compute);
+    assert(encoded_dependency_name(seq![97u8, 32u8, 98u8]) == seq![97u8, 92u8, 32u8, 98u8]) by(compute);
+    let unicode: [u8; 5] = [97, 194, 160, 98, 99];
+    let tab: [u8; 3] = [97, 9, 98];
+    let slash: [u8; 3] = [97, 92, 98];
+    let encoded: [u8; 4] = [97, 92, 32, 98];
+    let spaced: [u8; 3] = [97, 32, 98];
+    let wrong: [u8; 2] = [97, 98];
+    let newline: [u8; 3] = [97, 10, 98];
+    let literal = crate::inputs::dependency_filename_matches(&unicode, &unicode); assert(literal);
+    let literal = crate::inputs::dependency_filename_matches(&tab, &tab); assert(literal);
+    let literal = crate::inputs::dependency_filename_matches(&slash, &slash); assert(literal);
+    let escaped = crate::inputs::dependency_filename_matches(&encoded, &spaced); assert(escaped);
+    let trimmed = crate::inputs::dependency_filename_matches(&encoded, &wrong); assert(!trimmed);
+    let escaped_wrong = crate::inputs::dependency_filename_matches(&slash, &wrong); assert(!escaped_wrong);
+    let unsupported = crate::inputs::dependency_filename_matches(&newline, &newline); assert(!unsupported);
+}
+
+
 }

@@ -58,6 +58,9 @@ them.
   receipts are reused.
 - [Shared stream parser](design/checked-stream-parser.md): checked operations,
   [qualification](validation/checked-stream-parser.md) and unproved boundaries.
+- [Held solver replies](validation/held-response-ownership.md) and
+  [compiler filename tokens](validation/compiler-filename-refinement.md):
+  source-shared operations, native adoption and qualification limits.
 - Validation records for each gate are in [validation/](validation/). Design
   notes are in [design/](design/), milestone reports in [reports/](reports/),
   and research in [survey/](survey/README.md).

@@ -71,6 +71,9 @@ known issues.
 
 - Carry deferred solver replies through checked ownership while recording
   effort and reason-unknown metadata.
+- Validate decoded compiler filenames with a source-shared exact-byte check.
+  Unsupported empty, NUL or line-ending names withhold reusable input coverage;
+  literal spaces, backslashes and path components retain their original bytes.
 
 - Add compiler-read schema2 support that keeps source reads of
   ` __VERUS_DRIVER_ARGS__` distinct from Verus driver bookkeeping. Such
