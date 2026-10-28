@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- MCP `verify` now waits on the job's lifecycle status over the service
+  socket and reads the complete result once, after the job ends, instead of
+  starting `sail jobs result` every 100 ms. Replies are unchanged (#578).
+
 - Bind unchanged-call replay to the environment names required by the proof
   receipts admitted for that call, including ghost-only reads absent from
   Cargo dep-info. Retire older replay records that omitted those inputs (#552).
