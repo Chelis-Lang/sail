@@ -46,6 +46,34 @@ struct Record {
     pid: u32,
     started_ms: f64,
     elapsed_ms: f64,
+    // SPIKE A2 (temporary): process CPU (self + reaped children, 10 ms ticks)
+    // and bytes read during the phase, from /proc.
+    cpu_ms: f64,
+    child_cpu_ms: f64,
+    read_kib: f64,
+}
+
+/// SPIKE A2 (temporary) process counters: (self ticks, child ticks, rchar).
+fn probe() -> (u64, u64, u64) {
+    let stat = std::fs::read_to_string("/proc/self/stat").unwrap_or_default();
+    let fields: Vec<&str> = stat
+        .rsplit_once(')')
+        .map(|(_, rest)| rest.split_whitespace().collect())
+        .unwrap_or_default();
+    let n = |i: usize| {
+        fields
+            .get(i)
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(0)
+    };
+    // After the ')' field 0 is state; utime=11, stime=12, cutime=13, cstime=14.
+    let io = std::fs::read_to_string("/proc/self/io").unwrap_or_default();
+    let rchar = io
+        .lines()
+        .find_map(|l| l.strip_prefix("rchar: "))
+        .and_then(|v| v.trim().parse().ok())
+        .unwrap_or(0);
+    (n(11) + n(12), n(13) + n(14), rchar)
 }
 
 struct Sink {
@@ -103,10 +131,22 @@ impl Diagnostics {
             diagnostics: self,
             phase,
             started: self.origin.map(|_| Instant::now()),
+            probe: if self.origin.is_some() {
+                probe()
+            } else {
+                (0, 0, 0)
+            },
         }
     }
 
-    fn record(&self, phase: Phase, started: Instant) {
+    fn record(&self, phase: Phase, started: Instant, before: (u64, u64, u64)) {
+        let after = probe();
+        #[allow(clippy::cast_precision_loss, reason = "spike counters")]
+        let (cpu_ms, child_cpu_ms, read_kib) = (
+            after.0.saturating_sub(before.0) as f64 * 10.0,
+            after.1.saturating_sub(before.1) as f64 * 10.0,
+            after.2.saturating_sub(before.2) as f64 / 1024.0,
+        );
         let Some(origin) = self.origin else {
             return;
         };
@@ -117,6 +157,9 @@ impl Diagnostics {
                 pid: std::process::id(),
                 started_ms: started.duration_since(origin).as_secs_f64() * 1000.0,
                 elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
+                cpu_ms,
+                child_cpu_ms,
+                read_kib,
             })
         });
     }
@@ -150,12 +193,13 @@ pub(super) struct Timer<'a> {
     diagnostics: &'a Diagnostics,
     phase: Phase,
     started: Option<Instant>,
+    probe: (u64, u64, u64),
 }
 
 impl Drop for Timer<'_> {
     fn drop(&mut self) {
         if let Some(started) = self.started {
-            self.diagnostics.record(self.phase, started);
+            self.diagnostics.record(self.phase, started, self.probe);
         }
     }
 }
