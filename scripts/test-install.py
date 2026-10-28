@@ -17,6 +17,10 @@ from unittest.mock import patch
 spec = importlib.util.spec_from_file_location("sail_install", Path(__file__).with_name("install.py"))
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
+shipped_spec = importlib.util.spec_from_file_location(
+    "sail_release_shipped", Path(__file__).with_name("release-shipped.py"))
+shipped = importlib.util.module_from_spec(shipped_spec)
+shipped_spec.loader.exec_module(shipped)
 TARGET = "x86_64-unknown-linux-gnu"
 NAME = "sail-0.1.0-test-" + TARGET
 
@@ -132,6 +136,42 @@ class InstallTests(unittest.TestCase):
         log = self.fake_gh(auth_status=1)
         self.assert_unavailable_gh()
         self.assertNotIn("attestation verify " + str(self.archive), log.read_text())
+
+    def test_installed_modes_are_the_archives_under_any_umask(self):
+        # Ubuntu's default umask 002 must not change any indexed mode (#591).
+        stage = self.root / "stage" / NAME
+        for directory in ("bin", "deps/runtime", "engine/runtime"):
+            (stage / directory).mkdir(parents=True)
+        for path, mode in (("bin/sail", 0o755), ("bin/sail-z3", 0o755),
+                           ("deps/runtime/vstd.vir", 0o644),
+                           ("engine/runtime/sail-build.json", 0o644)):
+            (stage / path).write_bytes(b"fixture")
+            (stage / path).chmod(mode)
+        for directory in [stage] + [p for p in stage.rglob("*") if p.is_dir()]:
+            directory.chmod(0o755)
+        expected = {"files": shipped.inventory(stage), "directories": shipped.directories(stage)}
+        with tarfile.open(self.archive, "w:gz") as archive:
+            archive.add(stage, NAME)
+        checksum = hashlib.sha256(self.archive.read_bytes()).hexdigest()
+        Path(str(self.archive) + ".sha256").write_text(checksum + "  " + self.archive.name + "\n")
+        previous = os.umask(0o002)
+        try:
+            with patch.object(installer.subprocess, "run", side_effect=self.mock_run), \
+                    patch.object(installer.subprocess, "check_output", side_effect=self.mock_status):
+                result = installer.install(self.archive, self.root / "prefix", TARGET)
+            self.assertEqual(os.umask(0o002), 0o002, "install must restore the caller's umask")
+        finally:
+            os.umask(previous)
+        self.assertEqual(shipped.directories(result), expected["directories"])
+        self.assertEqual(set(expected["directories"].values()), {0o755})
+        self.assertEqual(shipped.inventory(result), expected["files"])
+        self.assertEqual(result.stat().st_mode & 0o777, 0o755)
+
+    def test_layout_mismatch_names_the_installation_not_the_toolchain(self):
+        message = shipped.layout_mismatch({"deps": 0o755, "bin": 0o755}, {"deps": 0o775, "bin": 0o755})
+        self.assertIn("deps (index 0o755, installed 0o775)", message)
+        self.assertIn("not the cause", message)
+        self.assertNotIn("bin (", message)
 
     def test_traversal_links_and_special_files_are_rejected(self):
         for name, kind in ((NAME + "/../../escape", tarfile.REGTYPE),

@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- `scripts/install.py` now installs every directory with the archive's
+  recorded mode instead of the caller's umask. Under umask `002` (Ubuntu's
+  default) directories came out `0775`, unlike the release index's `0755`, so
+  the shipped vstd proof was refused with a `SAIL3138` note that blamed the
+  toolchain or Verus, and the first `sail verify` checked vstd in full.
+  Verdicts were unaffected. `release-shipped.py verify` now names a directory
+  mode or layout mismatch as the installation's own (#591).
+
 - Verify runs with a process-loader variable (`LD_LIBRARY_PATH`,
   `LD_PRELOAD`, `DYLD_*`) as plain `cargo verus verify` does, in the
   project's own Cargo target, instead of in a fresh managed target per loader

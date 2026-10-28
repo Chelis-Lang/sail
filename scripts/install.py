@@ -121,15 +121,28 @@ def unpack(archive, destination, name):
                     or not (member.isdir() or member.isfile())):
                 raise ValueError("archive has an unsupported or unsafe member: " + member.name)
             seen.add(str(path))
-        for member in members:
-            path = destination.joinpath(*PurePosixPath(member.name).parts)
-            if member.isdir():
-                path.mkdir(parents=True, exist_ok=True)
-            else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                with source.extractfile(member) as content, path.open("xb") as output:
-                    shutil.copyfileobj(content, output)
-                path.chmod(member.mode & 0o777)
+        # Every installed mode is the archive's, never the caller's umask:
+        # the release index (release-files.json) binds file and directory
+        # modes, and a mismatch refuses the shipped vstd proof (#591). The
+        # fixed umask covers parents the archive does not list; directory
+        # modes are applied last so a read-only one cannot block extraction.
+        previous = os.umask(0o022)
+        try:
+            directories = []
+            for member in members:
+                path = destination.joinpath(*PurePosixPath(member.name).parts)
+                if member.isdir():
+                    path.mkdir(parents=True, exist_ok=True)
+                    directories.append((path, member.mode & 0o777))
+                else:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    with source.extractfile(member) as content, path.open("xb") as output:
+                        shutil.copyfileobj(content, output)
+                    path.chmod(member.mode & 0o777)
+            for path, mode in reversed(directories):
+                path.chmod(mode)
+        finally:
+            os.umask(previous)
     installed = destination / name
     for binary in ("sail", "sail-z3"):
         if not os.access(installed / "bin" / binary, os.X_OK):
