@@ -23,7 +23,7 @@ use sail_acceptance::query::{
 };
 use sail_api::client::Client;
 use sail_api::protocol::{Effort, Identity, PutMeta};
-use sail_key::{Mode, PrefixHasher, QueryKey, SolverIdentity};
+use sail_key::{DeliveredInput, InputDelivery, Mode, QueryKey, SessionPrefix, SolverIdentity};
 use sail_session::Session;
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_single_response};
@@ -31,7 +31,7 @@ use sail_smtlib::split::{CommandSplitter, Item, ItemKind, ResponseSplitter, is_s
 /// What the output side should do with the next reply.
 enum Expect {
     /// Full input reached EOF; certify it only after a quiet, complete session.
-    Terminal(QueryKey),
+    Terminal(DeliveredInput),
     /// Store the reply under this key.
     Store {
         key: QueryKey,
@@ -229,7 +229,7 @@ fn rlimit_count(reply: &[u8]) -> Option<u64> {
 /// `Expect::Stop`, a solver error reply, an implausible reply, or
 /// [`Pairer::stop`].
 struct Pairer {
-    terminal: Option<QueryKey>,
+    terminal: Option<DeliveredInput>,
     pending: CorrelatedQueue<Expect, Vec<u8>>,
     /// The latest `rlimit-count` seen in a statistics reply.
     last_count: Option<u64>,
@@ -256,6 +256,11 @@ impl Pairer {
     }
 
     fn expect(&mut self, expect: Expect) {
+        if self.terminal.is_some() {
+            // The input owner seals once. Later metadata withholds publication.
+            self.pending.stop();
+            return;
+        }
         match expect {
             Expect::Terminal(key) => self.terminal = Some(key),
             _ if self.pending.is_stopped() => {}
@@ -350,7 +355,7 @@ impl Pairer {
             if self.pending.is_empty()
                 && let Some(key) = self.terminal.take()
             {
-                out.push(Entry::Silence { key });
+                out.push(Entry::Silence { key: key.key() });
             }
         }
         out
@@ -372,8 +377,24 @@ impl InputStatus {
     }
 }
 
-struct Solving {
+/// The actual input descriptor taken from the same owned solver child.
+struct SolverPipe {
     stdin: Option<ChildStdin>,
+}
+
+impl sail_acceptance::query_delivery::InputPipe for SolverPipe {
+    fn write(&mut self, bytes: &[u8]) -> bool {
+        self.stdin
+            .as_mut()
+            .is_some_and(|stdin| stdin.write_all(bytes).and_then(|()| stdin.flush()).is_ok())
+    }
+    fn close(&mut self) {
+        drop(self.stdin.take());
+    }
+}
+
+struct Solving {
+    stdin: InputDelivery<SolverPipe>,
     expects: Sender<Expect>,
     /// Input completion and permanently latched delivery/completion failures.
     input: Arc<InputStatus>,
@@ -646,7 +667,7 @@ fn output_side(
 fn start_solver(
     solver: &Path,
     args: &[std::ffi::OsString],
-    raw: &[u8],
+    prefix: &SessionPrefix,
     served: Vec<ServedReply>,
     first: Expect,
     client: Option<Client>,
@@ -693,12 +714,12 @@ fn start_solver(
         })
         .ok()?;
     let mut s = Solving {
-        stdin: Some(stdin),
+        stdin: prefix.delivery(SolverPipe { stdin: Some(stdin) }),
         expects: tx,
         input,
         output,
     };
-    s.write(raw);
+    s.write(prefix.bytes());
     Some(s)
 }
 
@@ -708,27 +729,29 @@ impl Solving {
     }
 
     fn write(&mut self, bytes: &[u8]) {
-        if let Some(stdin) = &mut self.stdin
-            && stdin.write_all(bytes).and_then(|()| stdin.flush()).is_err()
-        {
+        if !self.stdin.write(bytes) {
+            self.stdin.close();
             self.input.valid.store(false, Ordering::SeqCst);
-            self.stdin = None;
         }
     }
 
     fn finish(mut self, terminal: QueryKey, complete: bool) -> ExitCode {
-        if !complete {
-            self.input.valid.store(false, Ordering::SeqCst);
-        }
-        let final_expectation = if self.input.valid.load(Ordering::SeqCst) {
-            Expect::Terminal(terminal)
-        } else {
-            Expect::Stop
+        // Only the frozen actual delivery can supply a complete-input token.
+        // It cannot be reconstructed from a terminal key or a success Boolean.
+        let delivered = self.stdin.seal(terminal, complete);
+        let final_expectation = match delivered {
+            Some(delivered) if self.input.valid.load(Ordering::SeqCst) => {
+                Expect::Terminal(delivered)
+            }
+            _ => {
+                self.input.valid.store(false, Ordering::SeqCst);
+                Expect::Stop
+            }
         };
         self.expect(final_expectation);
         // All metadata sends, including their failure latch, precede done.
         self.input.done.store(true, Ordering::SeqCst);
-        drop(self.stdin.take());
+        self.stdin.close();
         drop(self.expects);
         ExitCode::from(self.output.join().unwrap_or(1))
     }
@@ -760,7 +783,7 @@ fn daemon_timeout() -> Duration {
 }
 
 /// Connects without consuming input and binds the explicit verification mode.
-fn connect(socket: &Path, solver: &Path) -> Option<(Client, PrefixHasher)> {
+fn connect(socket: &Path, solver: &Path) -> Option<(Client, SessionPrefix)> {
     let mode = match std::env::var("SAIL_SOLVER_MODE").as_deref() {
         Ok("accept-first-proof") => sail_api::protocol::VerificationMode::AcceptFirstProof,
         Ok("default") | Err(std::env::VarError::NotPresent) => {
@@ -776,21 +799,38 @@ fn connect(socket: &Path, solver: &Path) -> Option<(Client, PrefixHasher)> {
             Mode::OptIn(mode.name().to_owned())
         }
     };
-    let prefix = PrefixHasher::new(&identity, &key_mode);
+    let prefix = SessionPrefix::new(&identity, &key_mode);
     Some((client, prefix))
 }
 
 fn observe(
     session: &mut Session,
     item: &Item,
-    prefix: &mut PrefixHasher,
-    raw: &[u8],
+    prefix: &mut SessionPrefix,
 ) -> (Output, String, Expect) {
-    let end = usize::try_from(item.offset + item.bytes.len() as u64).unwrap_or(usize::MAX);
-    let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
-    prefix.update(raw.get(from..end).unwrap_or_default());
-    let mut output = if item.kind == ItemKind::List {
-        session.expects_output(&item.bytes)
+    // The splitter proposes an interval. Exact bytes, monotonicity and complete
+    // inter-item trivia are checked before the proposal can drive a cache key.
+    let Some(offset) = usize::try_from(item.offset).ok() else {
+        prefix.refuse();
+        return (Output::Unknown, String::new(), Expect::Stop);
+    };
+    let Some(frame) = prefix.command(offset, &item.bytes) else {
+        return (Output::Unknown, String::new(), Expect::Stop);
+    };
+    let head = frame.head();
+    let name = String::from_utf8_lossy(head).into_owned();
+    if !classify(&item.bytes).is_ok_and(|command| command.name == head) {
+        prefix.refuse();
+        return (Output::Unknown, String::new(), Expect::Stop);
+    }
+    let policy = match frame.policy() {
+        sail_acceptance::query_policy::ResponsePolicy::None => Output::None,
+        sail_acceptance::query_policy::ResponsePolicy::One => Output::One,
+        sail_acceptance::query_policy::ResponsePolicy::Unknown => Output::Unknown,
+    };
+    let mut output = if item.kind == ItemKind::List && session.expects_output(&item.bytes) == policy
+    {
+        policy
     } else {
         Output::Unknown
     };
@@ -803,16 +843,13 @@ fn observe(
     {
         output = Output::Unknown;
     }
-    let name = classify(&item.bytes)
-        .map(|c| String::from_utf8_lossy(c.name).into_owned())
-        .unwrap_or_default();
     let limit = session
         .option(b":rlimit")
         .and_then(|v| std::str::from_utf8(v).ok())
         .and_then(|v| v.parse::<u64>().ok());
     let expect = match output {
         Output::One => Expect::Store {
-            key: prefix.key(),
+            key: frame.key(),
             command: name.clone(),
             text: item.bytes.clone(),
             limit,
@@ -949,7 +986,6 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     let (client, mut prefix) = connect(socket, solver)?;
     let mut session = Session::new();
     let mut splitter = CommandSplitter::new();
-    let mut raw: Vec<u8> = Vec::new();
     let mut served = Served::default();
     let mut solving: Option<Solving> = None;
     let mut client = Some(client);
@@ -969,14 +1005,14 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
         };
         let chunk = buf.get(..n).unwrap_or_default().to_vec();
-        raw.extend_from_slice(&chunk);
+        prefix.append(&chunk);
         let mut items = Vec::new();
         splitter.push(&chunk, &mut items);
         // Expectations for commands in this chunk are queued before the
         // chunk reaches the solver.
         let mut fresh_solver = false;
         for item in items {
-            let (expects, name, expect) = observe(&mut session, &item, &mut prefix, &raw);
+            let (expects, name, expect) = observe(&mut session, &item, &mut prefix);
             if name == "exit" && closes_session(&item.bytes) {
                 if let Some(s) = &solving
                     && expects != Output::None
@@ -988,15 +1024,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 {
                     s.write(&chunk);
                 }
-                return finish_run(
-                    solving,
-                    client,
-                    solver,
-                    args,
-                    (&raw, served),
-                    &mut prefix,
-                    true,
-                );
+                return finish_run(solving, client, solver, args, served, &mut prefix, true);
             }
             if let Some(s) = &solving {
                 if expects != Output::None {
@@ -1004,19 +1032,21 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
                 }
                 continue;
             }
-            let hit = match expects {
-                Output::None => continue,
-                Output::One => match client.as_mut().map(|c| c.get_with_effort(&prefix.key().0)) {
-                    Some(Ok(found)) => found
-                        .filter(|(r, e)| !unservable(&item.bytes, r, e.as_ref()))
-                        .map(|(r, _)| r),
-                    Some(Err(_)) => {
-                        client = None;
-                        None
+            let hit = match (expects, &expect) {
+                (Output::None, _) => continue,
+                (Output::One, Expect::Store { key, .. }) => {
+                    match client.as_mut().map(|c| c.get_with_effort(&key.0)) {
+                        Some(Ok(found)) => found
+                            .filter(|(r, e)| !unservable(&item.bytes, r, e.as_ref()))
+                            .map(|(r, _)| r),
+                        Some(Err(_)) => {
+                            client = None;
+                            None
+                        }
+                        None => None,
                     }
-                    None => None,
-                },
-                Output::Unknown => None,
+                }
+                _ => None,
             };
             if let Some(reply) = hit {
                 if !write_out(&reply) {
@@ -1028,7 +1058,8 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             }
             // Miss: start the solver with the whole input so far.
             let replies = served.take();
-            let Some(s) = start_solver(solver, args, &raw, replies, expect, client.take()) else {
+            let Some(s) = start_solver(solver, args, &prefix, replies, expect, client.take())
+            else {
                 return Some(ExitCode::from(1));
             };
             solving = Some(s);
@@ -1040,13 +1071,13 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             s.write(&chunk);
         }
         // Served replies are retained for the replay check, so they count.
-        if raw.len().saturating_add(served.bytes) > limit {
+        if prefix.bytes().len().saturating_add(served.bytes) > limit {
             let terminal = prefix.silence_key();
             return Some(overflow(
                 solving,
                 solver,
                 args,
-                std::mem::take(&mut raw),
+                prefix,
                 served.take(),
                 terminal,
                 &mut stdin,
@@ -1055,15 +1086,8 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
     }
     // At the end of input while serving, incomplete trailing input goes to
     // the solver, which decides what it means.
-    finish_run(
-        solving,
-        client,
-        solver,
-        args,
-        (&raw, served),
-        &mut prefix,
-        input_read_ok && splitter.finish().is_none(),
-    )
+    let complete = input_read_ok && splitter.finish().is_none() && prefix.trailing_trivia();
+    finish_run(solving, client, solver, args, served, &mut prefix, complete)
 }
 
 /// Continues a session that outgrew [`buffer_limit`] as pass-through: no
@@ -1076,7 +1100,7 @@ fn overflow(
     solving: Option<Solving>,
     solver: &Path,
     args: &[std::ffi::OsString],
-    raw: Vec<u8>,
+    raw: SessionPrefix,
     served: Vec<ServedReply>,
     terminal: QueryKey,
     stdin: &mut impl Read,
@@ -1101,7 +1125,7 @@ fn overflow(
             Err(_) => break,
         };
         s.write(buf.get(..n).unwrap_or_default());
-        if s.stdin.is_none() {
+        if !s.stdin.active() {
             break;
         }
     }
@@ -1122,25 +1146,26 @@ fn finish_run(
     client: Option<Client>,
     solver: &Path,
     args: &[std::ffi::OsString],
-    (raw, served): (&[u8], Served),
-    prefix: &mut PrefixHasher,
+    served: Served,
+    prefix: &mut SessionPrefix,
     complete: bool,
 ) -> Option<ExitCode> {
-    let from = usize::try_from(prefix.len()).unwrap_or(usize::MAX);
-    prefix.update(raw.get(from..).unwrap_or_default());
+    if !prefix.hash_tail() || usize::try_from(prefix.len()).ok() != Some(prefix.bytes().len()) {
+        prefix.refuse();
+    }
     let mut end = SessionEnd {
-        raw,
+        prefix,
         served,
         terminal: prefix.silence_key(),
-        complete,
+        complete: complete && prefix.valid(),
     };
     let (code, started) = finish_input(solving, client, solver, args, &mut end);
-    record_provenance(raw, end.served.count, started);
+    record_provenance(prefix.bytes(), end.served.count, started);
     code
 }
 
 struct SessionEnd<'a> {
-    raw: &'a [u8],
+    prefix: &'a SessionPrefix,
     served: Served,
     terminal: QueryKey,
     complete: bool,
@@ -1167,7 +1192,7 @@ fn finish_input(
             start_solver(
                 solver,
                 args,
-                end.raw,
+                end.prefix,
                 end.served.take(),
                 Expect::Stop,
                 client.take(),
@@ -1240,8 +1265,211 @@ mod tests {
         entries.into_iter().map(stored_entry).collect()
     }
 
+    fn identity() -> super::SolverIdentity {
+        super::SolverIdentity {
+            name: "z3".to_owned(),
+            version: "pinned-test".to_owned(),
+            binary_sha256: [9; 32],
+            platform: "test-platform".to_owned(),
+        }
+    }
+
     #[test]
-    fn lost_expectation_metadata_permanently_blocks_publication() {
+    fn checked_raw_prefixes_preserve_existing_keys_and_replay_bytes() {
+        use super::{CommandSplitter, Mode, Session, SessionPrefix, observe};
+        use sail_key::PrefixHasher;
+        let input = b" ;head\r\n(set-option :print-success false)\n(echo \"a;()\")\t;gap\n(check-sat)\n;tail";
+        for width in [1, 3, 17, input.len()] {
+            for mode in [Mode::Default, Mode::OptIn("test-mode".to_owned())] {
+                let mut parser = CommandSplitter::new();
+                let mut prefix = SessionPrefix::new(&identity(), &mode);
+                let mut session = Session::new();
+                let mut items = Vec::new();
+                for chunk in input.chunks(width) {
+                    prefix.append(chunk);
+                    parser.push(chunk, &mut items);
+                    for item in items.drain(..) {
+                        let _ = observe(&mut session, &item, &mut prefix);
+                        let endpoint =
+                            usize::try_from(item.offset).unwrap_or_default() + item.bytes.len();
+                        let mut plain = PrefixHasher::new(&identity(), &mode);
+                        plain.update(&input[..endpoint]);
+                        assert_eq!(prefix.key(), plain.key());
+                        assert_eq!(usize::try_from(prefix.len()).unwrap_or_default(), endpoint);
+                        assert!(prefix.valid());
+                    }
+                }
+                assert!(parser.finish().is_none());
+                assert!(prefix.trailing_trivia());
+                assert!(prefix.hash_tail());
+                let mut plain = PrefixHasher::new(&identity(), &mode);
+                plain.update(input);
+                assert_eq!(prefix.silence_key(), plain.silence_key());
+                assert_eq!(prefix.bytes(), input);
+            }
+        }
+    }
+
+    #[test]
+    fn output_expectations_use_the_exact_checked_frame_head() {
+        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        for (command, expected) in [
+            (b"( ;head\r\ncheck-sat-using smt)".as_slice(), Output::One),
+            (
+                b"(assert (str.contains \"a;()\" \"a\"))".as_slice(),
+                Output::None,
+            ),
+            (b"(echo \"a;()\"\"b\")".as_slice(), Output::One),
+            (b"(get-info :name)".as_slice(), Output::One),
+            (b"(get-proof)".as_slice(), Output::One),
+            (b"(reset)".as_slice(), Output::None),
+            (b"(check-sat-usingbad)".as_slice(), Output::Unknown),
+            (b"(|check-sat|)".as_slice(), Output::Unknown),
+        ] {
+            let mut prefix = SessionPrefix::new(&identity(), &super::Mode::Default);
+            prefix.append(command);
+            let item = Item {
+                kind: ItemKind::List,
+                offset: 0,
+                bytes: command.to_vec(),
+            };
+            let (actual, _, metadata) = observe(&mut Session::new(), &item, &mut prefix);
+            assert_eq!(actual, expected);
+            assert_eq!(prefix.bytes(), command);
+            if expected == Output::One {
+                let Expect::Store { key, text, .. } = metadata else {
+                    unreachable!("one response needs an exact Store expectation");
+                };
+                assert_eq!(text, command);
+                assert_eq!(key, prefix.key());
+            } else {
+                assert!(matches!(metadata, Expect::Stop));
+            }
+        }
+    }
+
+    #[test]
+    fn wrong_missing_or_overlapping_parser_items_disable_only_cache_interpretation() {
+        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        use sail_acceptance::query_raw::RawTranscript;
+        let first = b"(set-option :print-success false)\n";
+        let input = [first.as_slice(), b"(check-sat)"].concat();
+        for item in [
+            Item {
+                kind: ItemKind::List,
+                offset: first.len() as u64,
+                bytes: b"(check-sat)".to_vec(),
+            },
+            Item {
+                kind: ItemKind::List,
+                offset: 0,
+                bytes: b"(check-bad)".to_vec(),
+            },
+            Item {
+                kind: ItemKind::List,
+                offset: u64::MAX,
+                bytes: b"(check-sat)".to_vec(),
+            },
+        ] {
+            let mut prefix = SessionPrefix::new(&identity(), &super::Mode::Default);
+            prefix.append(&input);
+            let mut session = Session::new();
+            let (output, name, expectation) = observe(&mut session, &item, &mut prefix);
+            assert_eq!(output, Output::Unknown);
+            assert_eq!(name, "");
+            assert!(matches!(expectation, Expect::Stop));
+            assert!(!prefix.valid());
+            assert_eq!(prefix.bytes(), input);
+        }
+        let mut raw = RawTranscript::empty();
+        raw.append(b"(check-sat)");
+        assert!(raw.command(0, b"(check-sat)").is_some());
+        assert!(raw.command(0, b"(check-sat)").is_none());
+        assert!(!raw.valid());
+        assert_eq!(raw.bytes(), b"(check-sat)");
+    }
+
+    #[test]
+    fn native_frames_match_checked_lexical_grammar_across_fragments() {
+        use super::is_single_response as response_frame;
+        use sail_acceptance::query_raw::{command_head, complete_list};
+        let input = b";header )\r\n( ;head\n echo \"a;()\"\"x\") (assert |a)b|) (assert ;hidden )\n true)\n";
+        for width in 1..=input.len() {
+            let mut splitter = super::CommandSplitter::new();
+            let mut items = Vec::new();
+            for chunk in input.chunks(width) {
+                splitter.push(chunk, &mut items);
+            }
+            assert!(splitter.finish().is_none());
+            assert_eq!(items.len(), 3);
+            for item in items {
+                assert!(complete_list(&item.bytes, true));
+                let checked = command_head(&item.bytes);
+                let native = super::classify(&item.bytes)
+                    .ok()
+                    .map(|command| command.name);
+                assert_eq!(checked, native);
+            }
+        }
+        let output = b"unsat\r\n(:name \"a;()\"\"x\")\n(model (define-fun |a)b| () Int 1))\n";
+        for width in 1..=output.len() {
+            let mut splitter = super::ResponseSplitter::new();
+            let mut items = Vec::new();
+            for chunk in output.chunks(width) {
+                splitter.push(chunk, &mut items);
+            }
+            assert!(splitter.finish().is_none());
+            assert_eq!(items.len(), 3);
+            for (i, item) in items.iter().enumerate() {
+                let start = usize::try_from(item.offset).unwrap_or_default();
+                let end = items.get(i + 1).map_or(output.len(), |next| {
+                    usize::try_from(next.offset).unwrap_or_default()
+                });
+                assert!(response_frame(&output[start..end]));
+            }
+        }
+    }
+
+    #[test]
+    fn framing_refuses_quoted_heads_partial_forms_and_coalesced_replies() {
+        use super::{Item, ItemKind, Output, Session, SessionPrefix, observe};
+        for bytes in [
+            b"(check-sat)(check-sat)".as_slice(),
+            b"(|check-sat|)",
+            b"(echo \"unfinished)",
+            b"(assert true ;comment EOF",
+        ] {
+            let mut prefix = SessionPrefix::new(&identity(), &super::Mode::Default);
+            prefix.append(bytes);
+            let item = Item {
+                kind: ItemKind::List,
+                offset: 0,
+                bytes: bytes.to_vec(),
+            };
+            let (output, name, expected) = observe(&mut Session::new(), &item, &mut prefix);
+            assert_eq!(output, Output::Unknown);
+            assert_eq!(name, "");
+            assert!(matches!(expected, Expect::Stop));
+            assert!(!prefix.valid());
+            assert_eq!(prefix.bytes(), bytes);
+        }
+        assert!(!super::plausible(
+            b"(get-info :version)",
+            b"(:version \"x\")(:name \"coalesced\")\n"
+        ));
+        assert!(!super::plausible(
+            b"(get-info :version)",
+            b"(:version \"unfinished\""
+        ));
+        assert!(!super::plausible(b"(check-sat)", b"unsat"));
+        assert!(super::plausible(
+            b"(get-info :version)",
+            b"(:version \"4.16.0\")\n"
+        ));
+    }
+
+    #[test]
+    fn lost_expectation_metadata_permanently_blocks_publication() -> Result<(), &'static str> {
         use std::sync::atomic::{AtomicBool, Ordering};
         let status = super::InputStatus {
             done: AtomicBool::new(false),
@@ -1252,9 +1480,44 @@ mod tests {
         status.send_expectation(&sender, Expect::Stop);
         assert!(!status.valid.load(Ordering::SeqCst));
         assert!(!status.done.load(Ordering::SeqCst));
-        status.send_expectation(&sender, Expect::Terminal(key(1)));
+        status.send_expectation(&sender, Expect::Terminal(terminal(b"(echo 1)")?));
         assert!(!status.valid.load(Ordering::SeqCst));
         assert!(!status.done.load(Ordering::SeqCst));
+        Ok(())
+    }
+
+    struct TestPipe;
+    impl sail_acceptance::query_delivery::InputPipe for TestPipe {
+        fn write(&mut self, _: &[u8]) -> bool {
+            true
+        }
+        fn close(&mut self) {}
+    }
+    fn terminal(bytes: &[u8]) -> Result<sail_key::DeliveredInput, &'static str> {
+        let mut prefix = sail_key::SessionPrefix::new(&identity(), &sail_key::Mode::Default);
+        let mut delivery = prefix.delivery(TestPipe);
+        prefix.append(bytes);
+        if !prefix.hash_tail() || !delivery.write(bytes) {
+            return Err("script input must be complete");
+        }
+        delivery
+            .seal(prefix.silence_key(), true)
+            .ok_or("script delivery must seal")
+    }
+
+    #[test]
+    fn duplicate_or_late_metadata_cannot_extend_a_frozen_delivery() -> Result<(), &'static str> {
+        let mut late = Pairer::default();
+        late.expect(Expect::Terminal(terminal(b"(echo 1)")?));
+        late.expect(store(1, "(echo 1)"));
+        assert!(late.pending.is_stopped());
+        assert!(late.finish().is_empty());
+        let mut duplicate = Pairer::default();
+        duplicate.expect(Expect::Terminal(terminal(b"(echo 1)")?));
+        duplicate.expect(Expect::Terminal(terminal(b"(echo 1)")?));
+        assert!(duplicate.pending.is_stopped());
+        assert!(duplicate.finish().is_empty());
+        Ok(())
     }
 
     fn key(i: u8) -> QueryKey {

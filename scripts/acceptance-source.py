@@ -598,7 +598,7 @@ def binding_environment(source: str, module: str) -> list[list[str]]:
     return imports
 
 
-def record(source: str, name: str, kind: str) -> dict:
+def record(source: str, name: str, kind: str, tuple_variants: dict[str, list[str]] | None = None) -> dict:
     """Capture every field/variant of one exact public declaration."""
     stream = tokens(source)
     levels = top_level(stream)
@@ -629,6 +629,7 @@ def record(source: str, name: str, kind: str) -> dict:
     body = stream[at + 1:end]
     fields: dict[str, list[str]] = {}
     variants: list[str] = []
+    tuples: dict[str, list[str]] = {}
     at = 0
     while at < len(body):
         if body[at].value == "#":
@@ -641,6 +642,13 @@ def record(source: str, name: str, kind: str) -> dict:
             require(variant not in variants, "duplicate enum variant")
             variants.append(variant)
             at += 1
+            if at < len(body) and body[at].value == "(":
+                end_tuple = closing(body, at)
+                values = [token.value for token in body[at + 1:end_tuple]]
+                require(tuple_variants is not None and tuple_variants.get(variant) == values,
+                    "unreviewed enum payload: " + name + "." + variant)
+                tuples[variant] = values
+                at = end_tuple + 1
             require(at == len(body) or body[at].value == ",", "non-unit enum unsupported: " + name)
             at += 1
             continue
@@ -673,8 +681,39 @@ def record(source: str, name: str, kind: str) -> dict:
         fields[field] = values
         at += 1
     block = source[stream[begin].begin:stream[end].end].encode()
-    return {"name": name, "kind": kind, "fields": fields, "variants": variants,
+    result = {"name": name, "kind": kind, "fields": fields, "variants": variants,
         "declaration_sha256": hashlib.sha256(block).hexdigest()}
+    if tuple_variants is not None:
+        require(tuples == tuple_variants, "missing reviewed enum payload: " + name)
+        result["tuple_fields"] = tuples
+    return result
+
+
+def key_stencil(snapshots: dict[str, bytes], expected: dict | None = None) -> tuple[bytes, dict]:
+    """Project the complete real key identity/mode, with no invented fields."""
+    path = "crates/sail-key/src/lib.rs"
+    source = snapshots[path].decode()
+    identity = record(source, "SolverIdentity", "struct")
+    mode = record(source, "Mode", "enum", {"OptIn": ["String"]})
+    require(identity["fields"] == {"name": ["String"], "version": ["String"],
+        "binary_sha256": ["[", "u8", ";", "32", "]"], "platform": ["String"]},
+        "solver identity representation changed")
+    require(mode["variants"] == ["Default", "OptIn"], "key mode representation changed")
+    inventory = {"source_sha256": hashlib.sha256(snapshots[path]).hexdigest(),
+        "declarations": [identity, mode]}
+    require(expected is None or expected == inventory, "key declaration inventory changed")
+    lines = ["use vstd::prelude::*;", "verus! {"]
+    for item in (identity, mode):
+        lines.append("pub " + item["kind"] + " " + item["name"] + " {")
+        if item["kind"] == "struct":
+            lines += ["pub " + name + ": " + " ".join(value) + ","
+                for name, value in item["fields"].items()]
+        else:
+            lines += [name + ("(" + " ".join(item["tuple_fields"][name]) + ")"
+                if name in item["tuple_fields"] else "") + "," for name in item["variants"]]
+        lines.append("}")
+    lines.append("}")
+    return ("\n".join(lines) + "\n").encode(), inventory
 
 
 OUTPUT_FIELDS = {

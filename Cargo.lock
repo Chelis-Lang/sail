@@ -1404,6 +1404,7 @@ dependencies = [
 name = "sail-key"
 version = "0.1.0"
 dependencies = [
+ "sail-acceptance",
  "proptest",
  "sail-session",
  "sail-smtlib",

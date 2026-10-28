@@ -3827,6 +3827,254 @@
           "after": "        if let Err(error) = host.write_all(&mut file,&image) {\n            host.close(file); return Err(error);\n        }\n"
         }
       ]
+    },
+    {
+      "id": "prefix",
+      "source": "proofs/refinement/prefix.rs",
+      "dependencies": [
+        "crates/sail-acceptance/src/syntax.rs",
+        "crates/sail-acceptance/src/host_syntax.rs",
+        "crates/sail-acceptance/src/inputs.rs",
+        "crates/sail-acceptance/src/parser_grammar.rs",
+        "crates/sail-acceptance/src/query_lex.rs",
+        "crates/sail-acceptance/src/query_policy.rs",
+        "crates/sail-acceptance/src/query_raw.rs",
+        "crates/sail-acceptance/src/key_prefix.rs",
+        "crates/sail-acceptance/src/query_prefix.rs",
+        "crates/sail-acceptance/src/query_delivery.rs",
+        "proofs/refinement/prefix.rs",
+        "crates/sail-key/src/lib.rs",
+        "crates/sail-key/src/prefix_factory.rs",
+        "crates/sail-shim/src/cached.rs",
+        "crates/sail-shim/src/trace.rs"
+      ],
+      "verified": null,
+      "functions": [],
+      "discovery_pending": true,
+      "negative_controls": [
+        {
+          "name": "key-solver-platform",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "append_field(&mut host, platform);",
+          "after": "append_field(&mut host, b\"\");"
+        },
+        {
+          "name": "key-mode-domain",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "None => append_field(&mut host, b\"mode:default\"),",
+          "after": "None => append_field(&mut host, b\"mode:opt-in\"),"
+        },
+        {
+          "name": "key-raw-bytes",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "self.host.append(bytes);",
+          "after": "self.host.append(b\"\");"
+        },
+        {
+          "name": "key-end-domain",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "hash.append(b\"\\x00sail-key/prefix/v2/end\");",
+          "after": "hash.append(b\"\\x00sail-key/prefix/v2/changed\");"
+        },
+        {
+          "name": "key-counter-refusal",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "None => self.exact = false,",
+          "after": "None => self.exact = true,"
+        },
+        {
+          "name": "key-feed-order",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "self.length != start as u64",
+          "after": "false"
+        },
+        {
+          "name": "key-silence-domain",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "append_field(&mut hash, b\"sail-key/session-silence/v1\");",
+          "after": "append_field(&mut hash, b\"sail-key/prefix/v2\");"
+        },
+        {
+          "name": "key-state-copy",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "Self { host: self.host.duplicate(), length: self.length, exact: self.exact }",
+          "after": "Self { host: self.host.empty(), length: self.length, exact: self.exact }"
+        },
+        {
+          "name": "key-length-word",
+          "source": "crates/sail-acceptance/src/key_prefix.rs",
+          "before": "(word >> 8) as u8, (word >> 16) as u8",
+          "after": "(word >> 16) as u8, (word >> 16) as u8"
+        },
+        {
+          "name": "key-typed-platform",
+          "source": "crates/sail-key/src/prefix_factory.rs",
+          "before": "solver.platform.as_str().as_bytes()",
+          "after": "solver.version.as_str().as_bytes()"
+        },
+        {
+          "name": "key-typed-optin",
+          "source": "crates/sail-key/src/prefix_factory.rs",
+          "before": "Some(name.as_str().as_bytes())",
+          "after": "None"
+        },
+        {
+          "name": "owner-command-feed",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "if !self.prefix.feed(&feed) { return None; }",
+          "after": "if false { return None; }"
+        },
+        {
+          "name": "owner-tail-feed",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "let accepted = self.prefix.feed(&feed);",
+          "after": "let accepted = true;"
+        },
+        {
+          "name": "owner-command-endpoint",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "Some(FramedCommand { head, endpoint, prefix: &self.prefix })",
+          "after": "Some(FramedCommand { head, endpoint: 0, prefix: &self.prefix })"
+        },
+        {
+          "name": "owner-sticky-refusal",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "{ self.raw.refuse(); }",
+          "after": "{}"
+        },
+        {
+          "name": "delivery-omit-actual-pipe-write",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                if !self.pipe.write(bytes) { self.healthy = false; return false; }",
+          "after": ""
+        },
+        {
+          "name": "delivery-hash-different-write-bytes",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "self.delivered.update(bytes);",
+          "after": "self.delivered.update(&[]);"
+        },
+        {
+          "name": "delivery-heal-failed-delivery",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                if !self.delivered.is_exact() { self.healthy = false; }",
+          "after": "                if !self.delivered.is_exact() { self.healthy = false; } else { self.healthy = true; }"
+        },
+        {
+          "name": "delivery-omit-terminal-key-binding",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "let accepted = crate::inputs::byte_eq(&key, &expected);",
+          "after": "let accepted = true;"
+        },
+        {
+          "name": "delivery-accept-closed-pipe",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "if !complete || !self.healthy || self.closed || self.sealed { return false; }",
+          "after": "if !complete || !self.healthy || self.sealed { return false; }"
+        },
+        {
+          "name": "delivery-omit-owned-pipe-close",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                self.pipe.close();",
+          "after": ""
+        },
+        {
+          "name": "delivery-seed-drops-mode",
+          "source": "crates/sail-key/src/prefix_factory.rs",
+          "before": "let seed = new_prefix(host.duplicate(),solver,mode);",
+          "after": "let seed = new_prefix(host.duplicate(),solver,&Mode::Default);"
+        },
+        {
+          "name": "delivery-seal-without-freezing",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                self.sealed = true;",
+          "after": ""
+        },
+        {
+          "name": "delivery-seal-unmatched-prefix",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "                if !accepted { return None; }",
+          "after": ""
+        },
+        {
+          "name": "delivery-write-after-seal",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "if self.closed || self.sealed { self.healthy = false; return false; }",
+          "after": "if self.closed { self.healthy = false; return false; }"
+        },
+        {
+          "name": "delivery-token-different-prefix",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "Some(Delivered { prefix: self.delivered.duplicate() })",
+          "after": "Some(Delivered { prefix: self.initial.duplicate() })"
+        },
+        {
+          "name": "delivery-token-different-domain",
+          "source": "crates/sail-acceptance/src/query_delivery.rs",
+          "before": "{ self.prefix.silence_key() }",
+          "after": "{ self.prefix.key() }"
+        },
+        {
+          "name": "delivery-parser-drops-mode",
+          "source": "crates/sail-key/src/prefix_factory.rs",
+          "before": "let session = new_query_prefix(host,solver,mode);",
+          "after": "let session = new_query_prefix(host,solver,&Mode::Default);"
+        },
+        {
+          "name": "owner-policy-head",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "response_policy(self.head)",
+          "after": "response_policy(&[])"
+        },
+        {
+          "name": "owner-original-append",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "self.raw.append(bytes);",
+          "after": "self.raw.append(&[]);"
+        },
+        {
+          "name": "owner-command-end",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "let endpoint = feed.end();",
+          "after": "let endpoint = 0;"
+        },
+        {
+          "name": "owner-hash-tail",
+          "source": "crates/sail-acceptance/src/query_prefix.rs",
+          "before": "let accepted = self.prefix.feed(&feed);",
+          "after": "let accepted = true;"
+        },
+        {
+          "name": "raw-ignore-command-bytes",
+          "source": "crates/sail-acceptance/src/query_raw.rs",
+          "before": "if !super::inputs::byte_eq(&self.bytes[offset..end], command)",
+          "after": "if false"
+        },
+        {
+          "name": "raw-ignore-gap",
+          "source": "crates/sail-acceptance/src/query_raw.rs",
+          "before": "|| !trivia(&self.bytes[self.fed..offset], false)",
+          "after": "|| false"
+        },
+        {
+          "name": "raw-skip-separators",
+          "source": "crates/sail-acceptance/src/query_raw.rs",
+          "before": "let start = self.fed;\n                self.fed = end;",
+          "after": "let start = offset;\n                self.fed = end;"
+        },
+        {
+          "name": "frame-premature-root-close",
+          "source": "crates/sail-acceptance/src/query_raw.rs",
+          "before": "if depth == 0 { return i == bytes.len(); }",
+          "after": "if depth == 0 { return true; }"
+        },
+        {
+          "name": "head-ignore-framing",
+          "source": "crates/sail-acceptance/src/query_raw.rs",
+          "before": "if !complete_list(bytes, true) { return None; }",
+          "after": "if false { return None; }"
+        }
+      ]
     }
   ],
   "api_declarations": {
@@ -4470,5 +4718,49 @@
         "ProjectResult": "currentness exit_code error targets"
       }
     }
+  },
+  "key_declarations": {
+    "source_sha256": "1c159a81f44d0cc81dae6550eed621da61d6102aa23f5f09705e981b4eca0109",
+    "declarations": [
+      {
+        "name": "SolverIdentity",
+        "kind": "struct",
+        "fields": {
+          "name": [
+            "String"
+          ],
+          "version": [
+            "String"
+          ],
+          "binary_sha256": [
+            "[",
+            "u8",
+            ";",
+            "32",
+            "]"
+          ],
+          "platform": [
+            "String"
+          ]
+        },
+        "variants": [],
+        "declaration_sha256": "b94e07805560ad1255bc60c4d806fb40f38b7f693f89d258bc095e747e70137b"
+      },
+      {
+        "name": "Mode",
+        "kind": "enum",
+        "fields": {},
+        "variants": [
+          "Default",
+          "OptIn"
+        ],
+        "declaration_sha256": "7437779fdedeade4720054670fe545261164c310c3ea1d309155e0385408baf6",
+        "tuple_fields": {
+          "OptIn": [
+            "String"
+          ]
+        }
+      }
+    ]
   }
 }

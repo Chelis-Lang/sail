@@ -462,3 +462,14 @@ planned for releases after 0.1.0. The owner answered all twelve on
     The earlier M10 hold until M11 completes is superseded. Private dependency
     access uses a dedicated read-only credential; secrets never enter source,
     images or artifact URLs. See ADR 0065 and charter appendix entry 8.
+
+42. **Direct key-to-acceptance edge for exact input delivery.**
+
+    [ADR 0089](decisions/0089-checked-input-prefix-delivery.md) proposes the
+    direct `sail-key` → `sail-acceptance` edge for the existing typed factory,
+    raw-prefix owner and acknowledged-input operations. The candidate keeps
+    the leaf dependency-free and retains explicit SHA/owned-pipe primitives;
+    it does not establish physical launch or solved-store origin. Accept the
+    graph decision after source review and required qualification, or retain
+    the current edge while revising the extraction? The decision remains
+    proposed; source implementation is not owner acceptance or merge approval.

@@ -178,13 +178,17 @@ class SourceCaptureTests(unittest.TestCase):
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs",
             "crates/sail-acceptance/src/query_split.rs", "crates/sail-acceptance/src/query_lex.rs", CHECKER.HOLDING_CORE]
         paths += ["crates/" + name + "/Cargo.toml" for name in
-            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib", "sail-session")]
+            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib", "sail-session", "sail-key")]
         paths += [str(path.relative_to(ROOT)) for path in (ROOT / "crates/sail-acceptance/src").glob("cache_*.rs")]
+        paths += ["crates/sail-acceptance/src/" + name + ".rs" for name in
+            ("query_raw", "key_prefix", "query_prefix", "query_delivery")]
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         CHECKER.validate_assembly(snapshots)
         for path, before, after in (
             ("crates/sail-acceptance/Cargo.toml", b"[lints]", b'[lib]\npath="../../elsewhere.rs"\n\n[lints]'),
             ("crates/sail-api/Cargo.toml", b"[lints]", b'[lib]\npath="alternate.rs"\n\n[lints]'),
+            ("crates/sail-key/Cargo.toml", b"[lints]", b'[lib]\npath="alternate.rs"\n\n[lints]'),
+            ("crates/sail-key/Cargo.toml", b'name = "sail-key"', b'name = "sail-key"\nbuild = "outside.rs"'),
             ("Cargo.toml", b'sail-api = { path = "crates/sail-api" }', b'sail-api = { path = "alternate/sail-api" }'),
             ("Cargo.toml", b'sail-api = { path = "crates/sail-api" }', b'sail-api = { path = "crates/sail-api", default-features = false }'),
             ("Cargo.toml", b'sail-daemon = { path = "crates/sail-daemon" }',
@@ -223,6 +227,63 @@ class SourceCaptureTests(unittest.TestCase):
         sibling = {"id": "inputs", "verified": 59, "functions": ["check_inputs::example"]}
         with self.assertRaisesRegex(CHECKER.Refusal, "Stock discovery pending"):
             CHECKER.require_discovered([sibling, command])
+
+    def test_key_stencil_retains_all_actual_solver_fields_and_optin_payload(self):
+        native = (ROOT / CHECKER.KEY_NATIVE).read_bytes()
+        stencil, inventory = SOURCE.key_stencil({CHECKER.KEY_NATIVE: native})
+        self.assertIn(b"pub binary_sha256: [ u8 ; 32 ],", stencil)
+        self.assertIn(b"OptIn(String)", stencil)
+        self.assertEqual(inventory["declarations"][1]["tuple_fields"], {"OptIn": ["String"]})
+        for before, after in [(b"OptIn(String)", b"OptIn(Vec<u8>)"),
+                              (b"pub platform: String,", b"pub platform: Vec<u8>,")]:
+            with self.subTest(before=before), self.assertRaises(SOURCE.SourceRefusal):
+                SOURCE.key_stencil({CHECKER.KEY_NATIVE: native.replace(before, after)})
+        # General API enum capture remains closed to unrequested payloads.
+        with self.assertRaisesRegex(SOURCE.SourceRefusal, "unreviewed enum payload"):
+            SOURCE.record(native.decode(), "Mode", "enum")
+
+    def test_prefix_root_uses_full_frozen_bodies_and_real_type_projection(self):
+        manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        entry = next(e for e in manifest["components"] if e["id"] == "prefix")
+        snapshots = {path: (ROOT / path).read_bytes() for path in entry["dependencies"]}
+        _, driver, files = CHECKER.captured_driver(entry, snapshots)
+        self.assertIn(b"pub use key_types::{Mode, SolverIdentity};", driver)
+        self.assertEqual(files["prefix_factory.rs"], snapshots[CHECKER.KEY_FACTORY])
+        self.assertEqual(files["core_query_lex.rs"], snapshots["crates/sail-acceptance/src/query_lex.rs"])
+        self.assertEqual(files["core_query_delivery.rs"], snapshots["crates/sail-acceptance/src/query_delivery.rs"])
+        self.assertNotIn("cached.rs", files)
+        roles = CHECKER.source_roles(entry)
+        self.assertIn(CHECKER.KEY_NATIVE, roles["declaration_projections"])
+        self.assertNotIn(CHECKER.KEY_NATIVE, roles["checked_source"])
+        self.assertIn(CHECKER.KEY_NATIVE, roles["reviewed_native_prefix"])
+        with self.assertRaisesRegex(CHECKER.Refusal, "Stock discovery pending"):
+            CHECKER.require_discovered([entry])
+
+    def test_prefix_native_adapters_cannot_change_without_review(self):
+        for path in CHECKER.PREFIX_NATIVE_SHA256:
+            source = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, source)
+            with self.subTest(path=path), self.assertRaisesRegex(CHECKER.Refusal, "native prefix/hash/delivery"):
+                CHECKER.compiled_subset(path, source + b"\n// changed native adapter\n")
+
+    def test_prefix_host_contracts_and_script_envelopes_are_closed(self):
+        for path in CHECKER.PREFIX_HOST_TRAITS:
+            source = (ROOT / path).read_bytes()
+            CHECKER.compiled_subset(path, source)
+            changed = source.replace(b"spec fn", b"spec /* changed token */ fn", 1)
+            # Comments are immaterial; a real contract-token edit must refuse.
+            CHECKER.compiled_subset(path, changed)
+            trait = CHECKER.PREFIX_HOST_TRAITS[path][0].encode()
+            changed = source.replace(b"pub trait " + trait, b"pub trait Changed" + trait, 1)
+            with self.subTest(path=path), self.assertRaisesRegex(CHECKER.Refusal, "host contract changed"):
+                CHECKER.compiled_subset(path, changed)
+            script_name = CHECKER.PREFIX_SCRIPT_IMPLS[path][0].encode()
+            declaration = source.index(b"pub struct " + script_name)
+            envelope = source.rfind(b"sail_code! {", 0, declaration)
+            self.assertGreaterEqual(envelope, 0)
+            erased = source[:envelope] + source[envelope:].replace(b"sail_code! {", b"sail_spec! {", 1)
+            with self.subTest(path=path), self.assertRaisesRegex(CHECKER.Refusal, "script implementation outside"):
+                CHECKER.compiled_subset(path, erased)
 
     def test_persistence_host_contract_cannot_be_replaced(self):
         source = (ROOT / CHECKER.WRITE_CORE).read_bytes()
@@ -356,7 +417,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs", "crates/sail-api/src/lib.rs",
             "crates/sail-acceptance/Cargo.toml"])
         paths.update("crates/" + name + "/Cargo.toml" for name in
-            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib"))
+            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib", "sail-key"))
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         CHECKER.validate_assembly(snapshots)
         changed_lock = dict(snapshots)

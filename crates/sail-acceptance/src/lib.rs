@@ -45,3 +45,12 @@ pub mod query_split;
 pub mod query_command;
 /// Exact supported successful-command response policy over original head bytes.
 pub mod query_policy;
+
+/// Exact incremental key framing through reviewed hashing primitives.
+pub mod key_prefix;
+/// Acknowledged solver writes and one frozen complete-input token.
+pub mod query_delivery;
+/// Joint ownership of the original transcript and its incremental key.
+pub mod query_prefix;
+/// Same-owner raw input and command-key transitions.
+pub mod query_raw;

@@ -94,3 +94,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0084: Build-script receipts for a qualified range of Cargo releases (proposed)](0084-qualified-cargo-range.md)
 - [0087: Scope long conformance gates to runtime behavior (accepted)](0087-scoped-merge-conformance.md)
 - [0088: Accept named compiler-visible integration settings (accepted)](0088-compiler-visible-integration-settings.md)
+
+- [0089: Exact input-prefix and solver-delivery operations](0089-checked-input-prefix-delivery.md) (proposed)
