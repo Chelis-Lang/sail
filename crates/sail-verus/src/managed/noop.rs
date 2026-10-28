@@ -309,6 +309,20 @@ fn trace(line: &str) {
     }
 }
 
+const TERMINAL_CAPABILITIES: &[&str] = &[
+    "CI",
+    "CLICOLOR",
+    "CLICOLOR_FORCE",
+    "COLORTERM",
+    "DOMTERM",
+    "FORCE_HYPERLINK",
+    "KONSOLE_VERSION",
+    "NO_COLOR",
+    "TERM_PROGRAM",
+    "VTE_VERSION",
+    "WT_SESSION",
+];
+
 /// Variables that make up the invocation's key: every variable the context
 /// binds, every Sail variable, and the ones that select tools and terminal
 /// rendering.
@@ -322,6 +336,11 @@ fn key_environment(
             || ["PATH", "HOME", "TERM", "PWD", "CARGO_TARGET_DIR"]
                 .iter()
                 .any(|n| name == *n)
+            // SPIKE A5: what Cargo's colour and hyperlink detection reads
+            // (anstyle-query, supports-hyperlinks): with `--color=always`
+            // Cargo prints OSC 8 links only when these say the terminal
+            // supports them, so they change the recorded output.
+            || TERMINAL_CAPABILITIES.iter().any(|n| name == *n)
         {
             selected.push((name.into_string().ok()?, value.into_string().ok()?));
         }
@@ -333,7 +352,6 @@ fn key_environment(
 /// The invocation's key, or `None` when it cannot be replayed.
 #[must_use]
 pub fn key(config: &Config, json: bool) -> Option<String> {
-    use std::io::IsTerminal as _;
     if disabled() || config.force {
         return None;
     }
@@ -354,10 +372,10 @@ pub fn key(config: &Config, json: bool) -> Option<String> {
             config.socket.is_some(),
         ),
         (&config.args, config.attribution_logs, json),
-        (
-            std::io::stdout().is_terminal(),
-            std::io::stderr().is_terminal(),
-        ),
+        // Cargo, the compilers and the verifier write to Sail's pipes, so
+        // the terminals change the recorded output only through the colour
+        // Sail requests; human output shows it, JSON output never does.
+        super::runner::invocation_colour(&config.args, !json),
         key_environment(std::env::vars_os())?,
     ))
     .ok()?;

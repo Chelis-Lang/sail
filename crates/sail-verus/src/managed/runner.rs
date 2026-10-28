@@ -961,7 +961,7 @@ fn invocation_command(
         // Cargo writes to Sail's pipe, not the terminal, so it would print
         // no colour; ask for it as plain Cargo-Verus would on this terminal.
         // An argument, not CARGO_TERM_COLOR, so it is not a proof input.
-        .args((show_output && terminal_colour(&config.args[..split])).then_some("--color=always"))
+        .args(invocation_colour(&config.args, show_output).then_some("--color=always"))
         .args(&config.args[split..])
         .env("RUSTC_BOOTSTRAP", "1")
         // Only Cargo-Verus sees the alias; the alias gives the real Cargo the
@@ -1148,6 +1148,15 @@ fn invoke(
 
 /// Whether Sail's stderr is a terminal on which plain Cargo would print
 /// colour, and the user chose no colour setting of their own.
+/// Whether the invocation asks Cargo for colour: the only way the caller's
+/// terminals reach what the run prints, since Cargo and everything below it
+/// write to Sail's pipes. The unchanged-call key binds this decision instead
+/// of the raw terminal bits (ADR 0082).
+pub(super) fn invocation_colour(args: &[String], show_output: bool) -> bool {
+    let split = args.iter().position(|a| a == "--").unwrap_or(args.len());
+    show_output && terminal_colour(&args[..split])
+}
+
 fn terminal_colour(cargo_args: &[String]) -> bool {
     use std::io::IsTerminal as _;
     colour_wanted(
@@ -2986,6 +2995,20 @@ fn run_recorded(
     let invocation = std::path::absolute(&config.workspace)
         .map_err(|e| Error::new("SAIL3100", e.to_string()))?;
     let loader = super::configuration::check(&invocation, &config.args)?;
+    // SPIKE A5: a loader run reuses and records nothing, so with human
+    // output it is exactly the plain Cargo-Verus fallback (ADR 0046). Taking
+    // that path keeps the invocation's own Cargo target, which Cargo
+    // fingerprints as stock does, instead of a fresh managed family per
+    // loader value (a cold rebuild and re-verification of every crate).
+    if let Some(variable) = loader
+        .as_ref()
+        .filter(|_| out.is_some() && engine.is_none())
+    {
+        return Err(Error::new(
+            "SAIL3112",
+            format!("{variable} is set, so this run reuses no proof receipts and records none"),
+        ));
+    }
     // Human output is plain Cargo-Verus's; Sail's notes reach it only with
     // `SAIL_EXPLAIN=1`. JSON callers (jobs, `watch`, MCP) keep them on stderr
     // as diagnostics and in the result's notes.

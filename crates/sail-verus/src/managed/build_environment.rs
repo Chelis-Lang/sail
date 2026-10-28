@@ -439,7 +439,12 @@ pub(super) fn package_values<'a>(
 }
 
 const CACHE_VERSION: u64 = 1;
-const CACHE_FILE: &str = "build-environment.json";
+/// SPIKE A5: one retained query per key, so invocations from different
+/// directories (whose keys differ) no longer evict each other's query and,
+/// with it, each other's unchanged-call records.
+fn cache_file(key: &str) -> String {
+    format!("build-environment-{key}.json")
+}
 
 /// A retained query: the exact files one complete query wrote, under the key
 /// of everything that query depends on ([`cache_key`]).
@@ -524,7 +529,7 @@ pub(super) fn cache_key(
 pub(super) fn restore(context: &Path, key: &str, directory: &Path, metadata: &Value) -> bool {
     let restored = || -> Option<()> {
         let retained: Retained =
-            serde_json::from_slice(&std::fs::read(context.join(CACHE_FILE)).ok()?).ok()?;
+            serde_json::from_slice(&std::fs::read(context.join(cache_file(key))).ok()?).ok()?;
         (retained.version == CACHE_VERSION && retained.key == key).then_some(())?;
         let graph: Value = serde_json::from_str(retained.files.get("graph.json")?).ok()?;
         consistent(&graph, metadata)?;
@@ -574,7 +579,7 @@ pub(super) fn retain(context: &Path, key: &str, directory: &Path, metadata: &Val
         })
     };
     if let Some(retained) = retained() {
-        let _ = super::files::json(&context.join(CACHE_FILE), &retained);
+        let _ = super::files::json(&context.join(cache_file(key)), &retained);
     }
 }
 
@@ -1481,7 +1486,7 @@ fn main() {
         )?;
         assert!(load(&query, &metadata).is_some());
         retain(&context, "key", &query, &metadata);
-        assert!(!context.join(CACHE_FILE).exists());
+        assert!(!context.join(cache_file("key")).exists());
         let incomplete = root.join("incomplete");
         write_query(
             &incomplete,
@@ -1490,7 +1495,7 @@ fn main() {
         )?;
         std::fs::remove_file(incomplete.join("cargo-version.txt"))?;
         retain(&context, "key", &incomplete, &metadata);
-        assert!(!context.join(CACHE_FILE).exists());
+        assert!(!context.join(cache_file("key")).exists());
         Ok(())
     }
 
