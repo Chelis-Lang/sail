@@ -1,5 +1,14 @@
 # macOS engine qualification
 
+The current compiler-read runtime is fork `47fb3be6`, manifest `ea6853a8…`,
+published as `engine-runtime-47fb3be6-macos`. Its build, engine, source-regression,
+origin, 320-input three-run determinism, anonymous-download and fresh-project
+checks pass. The [compiler-read origin record](compiler-read-origin.md) binds
+the exact artifacts and scopes; it also records the separate Mac host and
+public Sail regression checks.
+
+## Historical f8589ed4 qualification
+
 The macOS release archive bundles a repair engine runtime built locally from
 the pinned fork commit ([releasing](../releasing.md)). There is no CI coverage
 on macOS, so this record is the qualification for that runtime. It uses the
@@ -8,13 +17,13 @@ same engine checks as the Linux runtime
 
 | Field | Value |
 |---|---|
-| Status | **Pass** for the pinned runtime, fork `f8589ed4` (R3): built, qualified and published; release smoke test not yet run on it |
+| Status | **Pass** for the historical runtime, fork `f8589ed4` (R3): built, qualified and published; release smoke test not yet run on it |
 | Source | Sail `candidate/r3-runtime` (`af163cae`, plus this record's pin commit), 2026-10-20; fork commit `f8589ed4345f147d8fb43d8cb7992921944b91f0` (`64baccbb` plus closure-name determinism, cost-ordered dispatch and the Fx hasher) on upstream `7d82994` |
 | Runtime | `scripts/build-macos-runtime.sh build`, pinned in `engine/verus/artifact-macos.json`: variant `7d829946231d6413a398f6e4160cdfe951261dad-e9b69a75ea390499`, manifest sha256 `67589de3c3f9681fb50dcd96313311e1a3d2776241d121f6c0e433be54cf7f0c`, archive sha256 `6f523cea7595b82cc6e0f1434b8ff550b6295a3897e8301733511b78065fca12` (fork prerelease `engine-runtime-f8589ed4-macos`; the anonymous download matches), Verus Rust toolchain 1.99.1 without `rust-src`, no Verus features; stock Verus `0.2026.10.18.7d82994` (arm64-macos) and its Z3 4.16.0 |
 | Build roots | Under `/tmp/sail-engine-f8589ed4`. vstd.vir: 10,215 `/rustc/58cf8f9c…` spans, 0 local. The archive scan found no home-directory path, IP address, account id or host name (one false positive: `Z3 4.16.0.0`) |
 | Environment | EC2 mac-m4.metal, Apple M4 (10 cores, 24 GiB), macOS 27.0 (26A428), us-east-1d |
 | Scope | The script's `build` and `published` steps: build with vstd verification; `test-engine.py`; `test-cancel.py`; the fork's library tests and every `sail_vi*` test plus `basic` on a fresh clone; `scripts/verus-determinism.py --runs 3` over 320 fast-tier inputs; the fast PR conformance subset on the runtime fetched from the release; `cargo verus new` |
-| Limits | Correctness only, one run of each (determinism: 3); no performance measurement |
+| Limits | Correctness only, one run of each (determinism: 3); no performance measurement. The archive scan used the earlier `strings \| grep -q` predicate, which under `pipefail` can report a large file clean after an early match ([#555](https://github.com/Chelis-Lang/sail/issues/555)); this runtime has not been rescanned with `scripts/scan-host-paths.sh` |
 
 ## Results
 

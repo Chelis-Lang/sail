@@ -3311,10 +3311,12 @@ mod tests {
             z3: root.join("z3"),
             z3_sha256: call.solver_sha256.clone(),
             daemon: false,
+            reuse: true,
             sidecars: run.join("sidecars"),
             invocations: run.join("invocations"),
             original_wrapper: call.native_launcher.clone(),
             receipts: root.join("receipts"),
+            compiler_read_origins: root.join("compiler-read-origins"),
             context_sha256: "context".into(),
             input_revision: "source".into(),
             packages: BTreeMap::new(),
@@ -3458,7 +3460,7 @@ mod tests {
                 .map(|(name, value)| (name.clone(), Some(value.clone()))).collect::<BTreeMap<_, _>>(),
         });
         let actual: compiler::Document = serde_json::from_value(serde_json::json!({
-            "kind":"sail-compiler-read-inputs", "schema":1, "complete":true,
+            "kind":"sail-compiler-read-inputs", "schema":2, "driver_environment":{}, "complete":true,
             "pid":123, "binding":digest(format!("{}\0{}", a.plan.run_id, ca.key).as_bytes()),
             "phases":{"verification":phase, "compilation":phase},
         }))?;

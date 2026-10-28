@@ -31,11 +31,21 @@ IDENTITY_PATTERN="(${TOKENS})"
 # machine's hostname, so they are rejected like AI identities.
 FALLBACK_EMAIL_PATTERN='<[^>]*@([^>]*\.(local|localdomain|lan|home)|localhost)>$|<\(none\)>$|<>$'
 
+# matches <pattern> <text>: 0 on a match, 1 on none. grep reads a here-string
+# rather than a pipe, so an early match in a long text cannot be lost to
+# SIGPIPE under pipefail; any other grep status (a bad pattern) is fatal.
+matches() {
+  local s=0
+  grep -qiE -- "$1" <<<"$2" || s=$?
+  [ "$s" -le 1 ] || { echo "FAIL: grep could not check pattern: $1 (status $s)" >&2; exit 2; }
+  return "$s"
+}
+
 # check_text <label> <text>: prints offending patterns, returns 1 on a match.
 check_message() {
   local label="$1" text="$2" found=0 pat
   for pat in "${MSG_PATTERNS[@]}"; do
-    if printf '%s\n' "$text" | grep -qiE -- "$pat"; then
+    if matches "$pat" "$text"; then
       echo "FAIL: ${label}: message matches: ${pat}" >&2
       found=1
     fi
@@ -47,7 +57,7 @@ check_commit() {
   local sha="$1" found=0 who
   check_message "$sha" "$(git log -1 --format=%B "$sha")" || found=1
   for who in "$(git log -1 --format='%an <%ae>' "$sha")" "$(git log -1 --format='%cn <%ce>' "$sha")"; do
-    if printf '%s\n' "$who" | grep -qiE -- "$IDENTITY_PATTERN"; then
+    if matches "$IDENTITY_PATTERN" "$who"; then
       echo "FAIL: ${sha}: author/committer identity matches: ${who}" >&2
       found=1
     fi
@@ -58,7 +68,7 @@ check_commit() {
 
 # check_identity <label> <name <email>>: rejects git's hostname fallback.
 check_identity() {
-  if printf '%s\n' "$2" | grep -qiE -- "$FALLBACK_EMAIL_PATTERN"; then
+  if matches "$FALLBACK_EMAIL_PATTERN" "$2"; then
     echo "FAIL: ${1}: machine-fallback identity: ${2} (set git config user.email)" >&2
     return 1
   fi
@@ -82,7 +92,9 @@ case "${1:-}" in
   message)
     [ $# -eq 2 ] || { echo "usage: $0 message <file>" >&2; exit 2; }
     # Ignore git's comment lines (the commented diff in verbose mode, etc.).
-    if ! check_message "commit message" "$(grep -v '^#' -- "$2" || true)"; then
+    # grep exits 1 when every line is a comment; any other failure is fatal.
+    text="$(grep -v '^#' -- "$2")" || [ $? -eq 1 ] || { echo "FAIL: cannot read $2" >&2; exit 2; }
+    if ! check_message "commit message" "$text"; then
       echo "Remove AI tool attribution lines from the commit message." >&2
       exit 1
     fi

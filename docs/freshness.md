@@ -471,3 +471,73 @@ with no Cargo execution unit need no observed build-script contract. Missing
 or unsupported planning evidence retains conservative cleanup; unexpected
 actual units prevent a Current result.
 
+
+## Compiler-visible Sail settings
+
+The schema2 compiler-read protocol distinguishes the Verus driver's
+bookkeeping read of ` __VERUS_DRIVER_ARGS__` from a tracked source or macro
+read of that variable. Genuine source reads retain their exact observed value,
+including absence. Units reading this channel or Sail's explicit compiler-child
+controls compile afresh rather than reusing ordinary, sibling,
+dependency-store or retained proofs:
+
+| Controls | Role |
+| --- | --- |
+| ` __VERUS_DRIVER_ARGS__` | Effective Verus options; driver-only bookkeeping remains reusable |
+| `SAIL_PROVENANCE_DIR` | Per-run solver attribution directory |
+| `SAIL_COMPILER_INPUTS`, `SAIL_COMPILER_INPUTS_BINDING` | Per-run compiler-read request |
+| `SAIL_ENGINE`, `SAIL_ENGINE_EVENTS`, `SAIL_ENGINE_CONTEXT`, `SAIL_ENGINE_FOCUS_REPORT`, `SAIL_ENGINE_FUNCTION` | Engine child controls |
+| `SAIL_RUSTC_DEV_SOURCE_BASE`, `SAIL_VIR_SPAN_REMAP` | Explicit source/span mapping controls |
+
+COMMON, provenance and the two compiler-input request settings motivate the input-binding fix; the other seven receive conservative treatment under the same bounded policy. Routine
+units retain reuse, including Verus's ordinary Z3/Singular declarations and
+inherited user variables checked against the parent environment. Only classified
+driver-only COMMON bookkeeping may be restored to Cargo's base in dep-info.
+
+Before a real verified compiler starts, Sail writes a non-authorizing marker
+outside the shared compiler family's Cargo target. An interrupted, missing,
+legacy or malformed observation leaves that marker, so the next reuse-enabled
+run recompiles the package before Cargo can declare old artifacts fresh.
+Receipt retirement and ordinary package cleaning do not remove the marker.
+A genuinely complete successful schema2 observation from a reuse-enabled run
+with no source-sensitive read clears its own marker. This records compiler
+inputs only: a complete focused or no-verify dependency observation can clear
+that state without granting whole-target proof authority. Exact-scope receipts
+and whole-target success retain their separate admission rules.
+Before retrying a marked
+package, Sail can also retire its older argument variants after cleaning both
+owned ordinary and focused layouts and independently checking that no package
+fingerprint authority remains. A failed or uncertain cleanup retains the facts;
+a successful observation of another variant alone cannot clear them.
+Loader/no-reuse runs retain Cargo's own freshness and never clear these facts.
+Removing the source read restores routine reuse after genuine new verification.
+
+Cleanup uses the family's actual Cargo profile and target, with metadata-resolved
+intermediate directories and strict filesystem checks. A configured intermediate
+root outside the owned target cannot receive reuse authority: Sail uses its
+existing `SAIL3112` plain Cargo-Verus fallback and leaves origin facts intact.
+Explicit interactive requests refuse that unbound layout instead of creating a
+reusable report.
+
+A fresh result describes the original request's actual compiler inputs and
+retains that provenance when its job is read later. A new verification request
+must pass reuse eligibility separately. Unknown family origin state requires
+a full family clean before recording the new protocol.
+
+This tracks rustc's declared reads; untracked procedural-macro environment
+reads remain outside Cargo's existing tracking guarantees. Both platform pins select the matching producer; see
+[compiler-read origin qualification](validation/compiler-read-origin.md).
+
+## Caller variables in unchanged-call replay
+
+The unchanged-call record binds the caller-variable names required by
+proof receipts actually admitted for its result. This includes sibling and
+previously adopted dependency receipts and zero-compiler retained restores.
+A ghost-only name can be absent from Cargo's dep-info while remaining a
+requirement of an admitted proof; replay must still compare its exact caller
+value. Unknown required coverage prevents recording. Older version3 replay
+records are retired by version4; ordinary verification rebuilds the record.
+Unchanged inherited values retain useful replay, and a changed value returns to
+the ordinary receipt/currentness checks. See
+[#552](https://github.com/Chelis-Lang/sail/issues/552) and the
+[owning qualification record](validation/compiler-read-origin.md).
