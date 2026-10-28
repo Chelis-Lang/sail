@@ -3,6 +3,14 @@
 How far each source of a verification result is trusted, and what is checked
 before it is used. Charter rules 2, 3, 7, 9 and 10 apply.
 
+These obligations apply to the actual effective inputs Sail verifies. Code that
+observes Sail's named compiler-visible integration settings can compile different
+inputs from plain Cargo-Verus under the
+[accepted equivalence exception](divergences.md#compiler-visible-integration-settings).
+That exception does not relax exact query/key and solver binding, input freshness,
+complete requested scope or truthful reporting; it does not authorize reuse for
+different effective inputs. See [ADR 0088](decisions/0088-compiler-visible-integration-settings.md).
+
 Status: two local tiers exist, the in-memory tier and the disk tier, both
 inside the daemon (ADR 0011, ADR 0015). Behind them sit the bundled tier,
 the signed vstd replies a release archive ships (ADR 0062), and a shared

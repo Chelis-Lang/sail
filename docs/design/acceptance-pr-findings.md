@@ -23,7 +23,7 @@ registered proof programs.
 |---|---|---|
 | [419](https://github.com/Chelis-Lang/sail/issues/419) | Explicit environment validation resamples ambient configuration homes | PR 542 uses the supplied observation |
 | [432](https://github.com/Chelis-Lang/sail/issues/432) | Source tokenization repeatedly copies the remaining input | PR 542 uses absolute regex positions |
-| [435](https://github.com/Chelis-Lang/sail/issues/435) | Compiler-visible Sail settings can differ from plain Verus | Separate unresolved transport work; not fixed by PR 542 |
+| [435](https://github.com/Chelis-Lang/sail/issues/435) | Compiler-visible Sail settings can differ from plain Verus | Owner accepts the bounded integration exception in ADR 0088 / PR 550; no private transport is selected |
 | [475](https://github.com/Chelis-Lang/sail/issues/475) | Prepared checkouts share Cargo target fingerprints | PR 542 isolates physical checkout targets |
 | [477](https://github.com/Chelis-Lang/sail/issues/477) | Bounded failure capture selects old command files before producer evidence | Collector correction remains required |
 | [514](https://github.com/Chelis-Lang/sail/issues/514) | The source guard mistakes a `.union(` expression for a declaration | PR 542 narrows that classification |

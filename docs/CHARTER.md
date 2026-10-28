@@ -284,3 +284,16 @@ Each entry names the charter text it qualifies and the ADR that records it.
    implementation and disclose the original source and scope; it is not a new
    execution. No correctness oracle, proof obligation or resource limit changes.
    See ADR 0087 and `AGENTS.md`.
+
+12. *Correctness rule 1: named compiler-visible integration settings* (owner
+    decision, 2026-10-27). Code that observes Sail's existing named solver-route,
+    Cargo wrapper, packed driver-option, source-map/compiler-input or
+    interactive-engine control settings
+    may compile different inputs and therefore produce different verdicts or
+    diagnostics from plain Cargo-Verus. The exact surfaces and causal scope are
+    listed in ADR 0088 and `docs/divergences.md`. This accepts their visibility;
+    it does not implement a private transport. Solver-answer correctness,
+    exact actual-query cache identity, freshness, complete requested scope and
+    truthful reporting remain required for the effective inputs Sail verifies.
+    Unrelated differences remain failures. No conformance comparison, corpus
+    case or proof obligation is weakened, and no runtime or backend is selected.

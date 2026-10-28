@@ -17,7 +17,8 @@ acting. The charter's appendix records corrections made since it was written.
   per-function verdicts and the same diagnostics as plain Verus with the pinned
   Z3. The differential harness (`sail-conformance`) is the definition of
   correctness. Owner-approved exceptions cover verification-progress note
-  ordering with exact text and counts (ADR 0064), and the reproduced VI-0003
+  ordering with exact text and counts (ADR 0064), compiler-time observation
+  of the named integration settings (ADR 0088), and the reproduced VI-0003
   case where the fork correctly marks a failed bit-vector function as failed
   while stock’s timing entry says successful. See the charter appendix and
   `docs/divergences.md`; all other differences remain failures.

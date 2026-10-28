@@ -13,7 +13,10 @@ built from Sail's [Verus fork](https://github.com/Chelis-Lang/verus), which
 removes known run-to-run variation in the solver queries stock Verus sends
 for the same input (variation defeats caching). Sail's conformance suite checks per-function verdicts, diagnostics and exit
 codes against plain stock Verus with its pinned Z3, with narrow
-[documented corrections to stock reporting](docs/divergences.md). On top of that, Sail
+[documented reporting and integration exceptions](docs/divergences.md).
+Code that uses `env!`, `option_env!` or compiler-time tools to inspect Sail's
+named operational settings can compile different inputs from plain Cargo-Verus.
+On top of that, Sail
 adds complete per-target reports, durable background jobs, a file watcher and
 an MCP server for agents. When anything in Sail fails,
 verification falls back to the pinned Z3 and stays correct.
@@ -175,12 +178,16 @@ The [instant-revert guide](docs/instant-revert.md) explains restoration of a
 previously verified revision, its qualified Linux/dependency-profile scope and
 the measured time and storage tradeoffs.
 
-`sail verify` takes the same arguments as `cargo verus verify` and prints the
-same verdicts, diagnostics and exit code. Two things can differ in the text
-(see also [known issues](docs/known-issues.md)): Cargo's parallel `Compiling`
+`sail verify` takes the same arguments as `cargo verus verify`; its verdicts,
+diagnostics and exit code follow the [documented equivalence contract](docs/divergences.md).
+Cargo's parallel `Compiling`
 lines can come out in another order, and a few arguments Sail cannot bind to
 a proof receipt run without proof reuse, with one note line
 ([details](docs/workspace-verification.md#setups-verified-without-proof-reuse)).
+Compiler-time code that observes Sail's named solver-route, wrapper, driver-option,
+collection or interactive-engine settings can compile different inputs and produce different results
+([accepted integration limit](docs/divergences.md#compiler-visible-integration-settings)).
+Solver-answer correctness and cache binding to the actual query inputs remain required.
 It builds in its own Cargo target under
 the Sail cache and never touches your `target/`.
 

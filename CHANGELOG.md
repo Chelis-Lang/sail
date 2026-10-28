@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Document the owner-approved equivalence exception for code that observes
+  Sail's named compiler-visible integration settings (ADR 0088). Solver-answer
+  correctness and acceptance checks for actual effective inputs remain required.
+
 - Extend acceptance-model checks for engine completion, normal declines,
   same-subject fallback and per-target repair origins; require every enrolled
   model failure control.
