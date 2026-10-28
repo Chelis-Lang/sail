@@ -8,7 +8,8 @@ semantic versioning once the API is published.
 - Benchmark scripts (`perf-real.sh`, `perf-loops.sh`, `perf-agents.sh`) stop
   each arm's daemon by the socket and pid `sail status --json` reports, through
   the new `scripts/sail-stop-daemon.sh`; the old command-line match missed
-  daemons whose socket is outside the cache directory (#580). Document that
+  daemons whose socket is outside the cache directory (#580). Daemons bound
+  inside the cache, such as a baseline's, are still stopped. Document that
   hard-linking an installed binary ends unchanged-call replay.
 
 - Bind unchanged-call replay to the environment names required by the proof

@@ -203,8 +203,13 @@ fresh_copy() { # DIR
   fi
 }
 
-stop_daemons() { # with SAIL_CACHE_DIR set to the cache to release
-  "$here/sail-stop-daemon.sh"
+stop_daemons() { # MODE, with SAIL_CACHE_DIR set to the cache to release
+  # A baseline's daemon is asked through its own binary, whose socket name
+  # can differ from the current one.
+  case "$1" in
+    sail@*) PATH="$(baseline_dir "${1#sail@}"):$PATH" "$here/sail-stop-daemon.sh" ;;
+    *) "$here/sail-stop-daemon.sh" ;;
+  esac
   sleep 1
 }
 
@@ -271,7 +276,7 @@ run_mode() { # ROUND MODE
   done
   run_phase "$round" "$mode" "$dir" warm2
   if [ "$mode" = sail ]; then run_mcp "$round" "$dir"; fi
-  stop_daemons
+  stop_daemons "$mode"
   unset SAIL_CACHE_DIR
 }
 

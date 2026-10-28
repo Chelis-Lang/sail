@@ -396,7 +396,11 @@ These need the Sail/shim pair, stock Verus, `git`, `perl` and `awk`; set
 Each script stops the daemon serving an arm's cache with
 `scripts/sail-stop-daemon.sh`, which asks `sail status --json` for that
 cache's actual socket and daemon pid (a long cache path gets a short socket
-under the temporary directory, not under `SAIL_CACHE_DIR`). Hard-linking or
+under the temporary directory, not under `SAIL_CACHE_DIR`), and also
+stops any daemon bound to a socket inside the cache, such as a `sail@NAME`
+baseline's daemon of another protocol version. It refuses to run without
+`SAIL_CACHE_DIR` or `SAIL_DAEMON_SOCKET`, so it never stops the default
+cache's daemon. Hard-linking or
 otherwise restamping an installed binary between calls ends unchanged-call
 replay ([freshness](freshness.md#unchanged-call-replay)).
 
