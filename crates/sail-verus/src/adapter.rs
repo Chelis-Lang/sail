@@ -149,6 +149,52 @@ pub fn dispatch() -> Option<ExitCode> {
     }))
 }
 
+/// SPIKE (A4): answers Cargo-Verus's metadata probe from the runner's
+/// identical read when [`crate::managed::metadata_memo::eligible`] allows it.
+fn served_metadata(
+    cmd: &mut Command,
+    args: &[OsString],
+    target: &OsString,
+) -> Result<Option<ExitCode>> {
+    let Some(memo) = crate::managed::metadata_memo::eligible(args, Some(target)) else {
+        return Ok(None);
+    };
+    {
+        match std::env::var_os("SAIL_SPIKE_METADATA_MEMO_CHECK") {
+            Some(log) if !log.is_empty() => {
+                // Validation: run the real Cargo, compare, print its output.
+                transport::clear(cmd, CARGO_METADATA_ENV);
+                let output = cmd
+                    .output()
+                    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+                let verdict =
+                    if output.status.success() && output.stderr.is_empty() && output.stdout == memo
+                    {
+                        "MATCH"
+                    } else {
+                        "MISMATCH"
+                    };
+                if let Ok(mut file) = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&log)
+                {
+                    let _ = writeln!(file, "{verdict} {} bytes", memo.len());
+                }
+                std::io::stdout()
+                    .write_all(&output.stdout)
+                    .and_then(|()| std::io::stderr().write_all(&output.stderr))
+                    .map_err(|e| Error::new("SAIL3111", e.to_string()))?;
+                Ok(Some(status(output.status)))
+            }
+            _ => {
+                crate::managed::metadata_memo::emit(&memo)?;
+                Ok(Some(ExitCode::SUCCESS))
+            }
+        }
+    }
+}
+
 fn cargo() -> Result<ExitCode> {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let mut cmd = Command::new(transport::required("SAIL_MANAGED_CARGO")?);
@@ -163,6 +209,9 @@ fn cargo() -> Result<ExitCode> {
         // caller's target, even though it does not compile. Managed builds use
         // their explicit owned target, so that override cannot select artifacts.
         configure_metadata_target(&mut cmd, Path::new(&target))?;
+        if let Some(code) = served_metadata(&mut cmd, &args, &target)? {
+            return Ok(code);
+        }
     }
     transport::clear(&mut cmd, CARGO_METADATA_ENV);
     let build = args.iter().any(|s| s == "build" || s == "check");

@@ -800,6 +800,86 @@ fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
     cleaned
 }
 
+/// SPIKE (A4): forces Cargo to compile the changed receipt packages again
+/// without a `cargo clean` process, by deleting their units' fingerprint
+/// directories in Sail's owned target. Cargo rebuilds every unit whose
+/// fingerprint is missing. Returns `false`, having changed nothing that a
+/// following `cargo clean` would not also delete, when the packages or the
+/// target's layout are not exactly the ones this recognizes: a package
+/// without a parsable ID, one with a build script (whose `OUT_DIR` only a
+/// clean empties) or one with no fingerprint directory at all.
+fn forget_fingerprints(target: &Path, args: &[String], data: &Value, ids: &[String]) -> bool {
+    if std::env::var("SAIL_SPIKE_FINGERPRINT_CLEAN").as_deref() == Ok("0") {
+        return false;
+    }
+    let build_target = cargo_build_target(target, args);
+    // `<target>/<profile>/.fingerprint` and `<target>/<triple>/<profile>/.fingerprint`.
+    let mut roots = Vec::new();
+    for entry in std::fs::read_dir(&build_target)
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        let path = entry.path();
+        if path.join(".fingerprint").is_dir() {
+            roots.push(path.join(".fingerprint"));
+        }
+        for inner in std::fs::read_dir(&path).into_iter().flatten().flatten() {
+            if inner.path().join(".fingerprint").is_dir() {
+                roots.push(inner.path().join(".fingerprint"));
+            }
+        }
+    }
+    let packages = data["packages"].as_array().cloned().unwrap_or_default();
+    let mut doomed = Vec::new();
+    for id in ids {
+        let Some(package) = packages.iter().find(|p| p["id"].as_str() == Some(id)) else {
+            return false;
+        };
+        let Some(name) = package["name"].as_str() else {
+            return false;
+        };
+        let scripted = package["targets"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|t| {
+                t["kind"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .any(|k| k == "custom-build")
+            });
+        if scripted {
+            return false;
+        }
+        let before = doomed.len();
+        for root in &roots {
+            for entry in std::fs::read_dir(root).into_iter().flatten().flatten() {
+                let file = entry.file_name();
+                let Some(hash) = file
+                    .to_str()
+                    .and_then(|f| f.strip_prefix(name))
+                    .and_then(|f| f.strip_prefix('-'))
+                else {
+                    continue;
+                };
+                if hash.len() == 16 && hash.bytes().all(|b| b.is_ascii_hexdigit()) {
+                    doomed.push(entry.path());
+                }
+            }
+        }
+        if doomed.len() == before {
+            return false;
+        }
+    }
+    // Deleting more fingerprints than needed only costs a rebuild. A failed
+    // deletion leaves the clean to do the job.
+    doomed
+        .iter()
+        .all(|path| std::fs::remove_dir_all(path).is_ok() && !path.exists())
+}
+
 /// Moves each rustc incremental directory in `build_target`
 /// (`<profile>/incremental` and `<target triple>/<profile>/incremental`)
 /// aside, so that `cargo clean` cannot delete it.
@@ -912,6 +992,10 @@ fn invocation_command(
     // The adapters' private settings go beside them, never into the
     // environment Cargo hands to build scripts and compilers (#385).
     let mut transport = super::transport::Transport::new(std::env::var_os("CARGO").as_deref());
+    let memo = paths.run.join("metadata-memo.json");
+    if memo.is_file() {
+        transport.set(super::metadata_memo::MEMO_ENV, &memo);
+    }
     transport
         .set("SAIL_MANAGED_CARGO", &config.cargo)
         .set(
@@ -3445,7 +3529,11 @@ fn run_recorded(
         "changed_receipt_packages":dirty, "stale_scripts":stale_scripts,
         "late_scripts":late_scripts
     }));
-    if paths.reuse && !new_target && !dirty.is_empty() {
+    if paths.reuse
+        && !new_target
+        && !dirty.is_empty()
+        && !forget_fingerprints(&paths.target, &config.args, &data, &dirty)
+    {
         clean(config, &paths.target, &dirty)?;
     }
     drop(cleanup);
@@ -3544,6 +3632,23 @@ fn run_recorded(
         engine,
     };
     json(&paths.runtime, &runtime)?;
+    // SPIKE (A4): Cargo-Verus's own metadata probe is this run's read again
+    // when every metadata input kept its stamp across that read.
+    if let (Some(guard), Some(stdout)) = (
+        metadata_guard
+            .as_ref()
+            .filter(|guard| guard.unchanged_for(&data)),
+        super::input::take_metadata_stdout(&config.workspace, &config.args, &config.cargo),
+    ) {
+        let _ = super::metadata_memo::write(
+            &paths.run,
+            super::input::metadata_argv(&config.workspace, &config.args, &config.cargo),
+            &config.workspace,
+            crate::adapter::metadata_target(&config.cache)?,
+            guard,
+            stdout,
+        );
+    }
     let invocation_phase = diagnostics.phase(Phase::Invocation);
     // After every cleanup, so nothing seeded is cleaned again before Cargo
     // decides its freshness.

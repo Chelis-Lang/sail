@@ -272,7 +272,46 @@ pub(super) fn managed_metadata(
     )
 }
 
+/// SPIKE (A4): the exact stdout of this process's latest successful Cargo
+/// metadata read that printed nothing on stderr.
+type MetadataRead = (Vec<String>, Option<PathBuf>, Vec<u8>);
+static LAST_STDOUT: std::sync::Mutex<Option<MetadataRead>> = std::sync::Mutex::new(None);
+
+/// SPIKE (A4): takes [`LAST_STDOUT`].
+pub(super) fn take_metadata_stdout(
+    workspace: &Path,
+    args: &[String],
+    cargo: &Path,
+) -> Option<Vec<u8>> {
+    let (recorded, cwd, stdout) = LAST_STDOUT.lock().ok()?.take()?;
+    let expected = metadata_argv(workspace, args, cargo);
+    (cwd.as_deref() == Some(workspace)
+        && recorded.len() == expected.len() + 2
+        && recorded.starts_with(&expected)
+        && recorded[expected.len()] == "--config")
+        .then_some(stdout)
+}
+
+/// SPIKE (A4): the arguments [`metadata`] passes to Cargo, before the managed
+/// metadata target is added.
+pub(super) fn metadata_argv(workspace: &Path, args: &[String], cargo: &Path) -> Vec<String> {
+    metadata_command(workspace, args, cargo)
+        .get_args()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect()
+}
+
+/// SPIKE (A4): whether `paths` still have `stamp`.
+pub(crate) fn stamp_matches(paths: &BTreeSet<PathBuf>, stamp: &str) -> bool {
+    stamp_paths(paths).as_deref() == Some(stamp)
+}
+
 fn read_metadata(mut command: Command, args: &[String]) -> Result<Value> {
+    let command_args: Vec<String> = command
+        .get_args()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    let cwd = command.get_current_dir().map(Path::to_path_buf);
     let output = command
         .output()
         .map_err(|e| Error::new("SAIL3103", e.to_string()))?;
@@ -284,6 +323,12 @@ fn read_metadata(mut command: Command, args: &[String]) -> Result<Value> {
     }
     let mut data: Value = serde_json::from_slice(&output.stdout)
         .map_err(|e| Error::new("SAIL3103", e.to_string()))?;
+    if let Ok(mut last) = LAST_STDOUT.lock() {
+        *last = output
+            .stderr
+            .is_empty()
+            .then(|| (command_args, cwd, output.stdout.clone()));
+    }
     // Preserve explicit package roles for disabled-script scheduling checks.
     // Unknown or ambiguous package specs retain original unobserved cleaning.
     data["sail_selected_package_ids"] =
@@ -1581,6 +1626,11 @@ impl MetadataGuard {
             .then_some(())?;
         let stamp = stamp_paths(&paths)?;
         Some(Self { paths, stamp })
+    }
+
+    /// SPIKE (A4): the guarded paths and their stamp.
+    pub(super) fn parts(&self) -> (&BTreeSet<PathBuf>, &str) {
+        (&self.paths, &self.stamp)
     }
 
     /// Whether `data`, read after [`Self::begin`], still describes every
