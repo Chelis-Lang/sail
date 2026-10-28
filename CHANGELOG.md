@@ -69,6 +69,9 @@ known issues.
   starts with the EXPERIMENTAL note, matching its documented status as an
   experimental integration API. The command itself is unchanged.
 
+- Carry deferred solver replies through checked ownership while recording
+  effort and reason-unknown metadata.
+
 - Add compiler-read schema2 support that keeps source reads of
   ` __VERUS_DRIVER_ARGS__` distinct from Verus driver bookkeeping. Such
   source-reading units and units reading Sail's named compiler-child controls

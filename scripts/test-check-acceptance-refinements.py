@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -175,7 +176,7 @@ class SourceCaptureTests(unittest.TestCase):
         paths = ["Cargo.toml", "Cargo.lock", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs",
-            "crates/sail-acceptance/src/query_split.rs", "crates/sail-acceptance/src/query_lex.rs"]
+            "crates/sail-acceptance/src/query_split.rs", "crates/sail-acceptance/src/query_lex.rs", CHECKER.HOLDING_CORE]
         paths += ["crates/" + name + "/Cargo.toml" for name in
             ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib")]
         paths += [str(path.relative_to(ROOT)) for path in (ROOT / "crates/sail-acceptance/src").glob("cache_*.rs")]
@@ -198,6 +199,8 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/lib.rs", b"pub mod authority;", b'#[path="hidden.rs"] pub mod authority;'),
             ("crates/sail-api/src/acceptance.rs", b"report: &'a Report,", b"pub report: &'a Report,"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct CompleteReport", b"#[derive(Default)] pub struct CompleteReport"),
+            (CHECKER.HOLDING_CORE, b"payload: Option<Payload>,", b"pub payload: Option<Payload>,"),
+            (CHECKER.HOLDING_CORE, b"pub struct Holding", b"#[derive(Default)] pub struct Holding"),
         ):
             candidate = dict(snapshots)
             self.assertIn(before, candidate[path])
@@ -322,6 +325,38 @@ class SourceCaptureTests(unittest.TestCase):
         self.assertNotIn(CHECKER.MODE_NATIVE, roles["checked_source"])
         self.assertEqual(roles["bound_native_callers"][CHECKER.MODE_NATIVE],
             ["report_verification_arguments", "cargo_driver_options_with", "effective_verus_arguments"])
+
+    def test_held_response_body_and_native_delegate_remain_distinct(self):
+        core = (ROOT / CHECKER.HOLDING_CORE).read_bytes()
+        native = (ROOT / CHECKER.HOLDING_NATIVE).read_bytes()
+        CHECKER.compiled_subset(CHECKER.HOLDING_CORE, core)
+        CHECKER.compiled_subset(CHECKER.HOLDING_NATIVE, native)
+        for before, after in (
+            (b"out.push(held_entry(previous, metadata));", b"out.push(held_entry(previous, None));"),
+            (b"type HeldPayload = BoundPair<Expect, Vec<u8>>;", b"type HeldPayload = Vec<u8>;"),
+            (b"if !self.held.put_metadata(metadata)", b"if self.held.put_metadata(metadata)"),
+        ):
+            changed = native.replace(before, after)
+            self.assertNotEqual(changed, native)
+            with self.subTest(before=before), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(CHECKER.HOLDING_NATIVE, changed)
+        roles = CHECKER.source_roles({"dependencies": [CHECKER.HOLDING_CORE, CHECKER.HOLDING_NATIVE]})
+        self.assertIn(CHECKER.HOLDING_CORE, roles["checked_source"])
+        self.assertNotIn(CHECKER.HOLDING_NATIVE, roles["checked_source"])
+        self.assertEqual(roles["bound_native_callers"][CHECKER.HOLDING_NATIVE],
+            ["held_entry", "Pairer::drain", "Pairer::release", "Pairer::finish"])
+
+    def test_complete_held_response_controls_preserve_runtime_mutation_scope(self):
+        manifest = json.loads((ROOT / CHECKER.MANIFEST).read_text())
+        entry = next(item for item in manifest["components"] if item["id"] == "query")
+        source = (ROOT / CHECKER.HOLDING_CORE).read_text()
+        controls = [control for control in entry["negative_controls"] if control["source"] == CHECKER.HOLDING_CORE]
+        self.assertEqual(len(controls), 6)
+        for control in controls:
+            with self.subTest(control=control["name"]):
+                SOURCE.runtime_mutation(source, control["before"], control["after"])
+                CHECKER.compiled_subset(CHECKER.HOLDING_CORE,
+                    source.replace(control["before"], control["after"]).encode())
 
     def test_executable_cfg_loading_and_unchecked_spec_refuse(self):
         for source in (b"#[cfg(sail_verus)] fn valid() -> bool { true }",

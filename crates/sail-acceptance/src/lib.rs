@@ -32,3 +32,5 @@ pub mod parser_grammar;
 pub mod query_lex;
 /// Actual owned SMT stream splitter operations and ordered emissions.
 pub mod query_split;
+/// Owned deferred responses preserve their original payload through annotation.
+pub mod query_holding;

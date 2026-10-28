@@ -17,7 +17,9 @@
         "crates/sail-acceptance/src/cache_counted.rs",
         "crates/sail-acceptance/src/cache_order.rs",
         "crates/sail-acceptance/src/cache_indexed.rs",
-        "proofs/refinement/query.rs"
+        "crates/sail-acceptance/src/query_holding.rs",
+        "proofs/refinement/query.rs",
+        "crates/sail-shim/src/cached.rs"
       ],
       "verified": 282,
       "functions": [
@@ -466,6 +468,18 @@
         "check_query::query_association::store_step",
         "check_query::query_association::store_wf",
         "check_query::query_association::stored_reply_has_admitted_origin",
+        "check_query::query_holding::Holding::metadata_view",
+        "check_query::query_holding::Holding::new",
+        "check_query::query_holding::Holding::payload_view",
+        "check_query::query_holding::Holding::put_metadata",
+        "check_query::query_holding::Holding::release_before",
+        "check_query::query_holding::Holding::replace",
+        "check_query::query_holding::Holding::take",
+        "check_query::query_holding::Holding::take_metadata",
+        "check_query::query_holding::Holding::well_formed",
+        "check_query::query_holding::held_pair_preservation_control",
+        "check_query::query_holding::held_release_order_control",
+        "check_query::query_holding::orphan_metadata_refused",
         "check_query::refinement::distinct_pairs_survive_asynchronous_arrival",
         "check_query::refinement::expectation_arrival_refines",
         "check_query::refinement::held_release_permutation_is_nonempty",
@@ -1320,6 +1334,42 @@
           "source": "crates/sail-acceptance/src/cache_indexed.rs",
           "before": "pub fn is_empty(&self) -> (out: bool)\n                requires (self.valid())\n                ensures (out == (self.slots_view().entries_view() == 0),\n                    out == self.order_view().is_empty())\n            { self.slots.is_empty() }",
           "after": "pub fn is_empty(&self) -> (out: bool)\n                requires (self.valid())\n                ensures (out == (self.slots_view().entries_view() == 0),\n                    out == self.order_view().is_empty())\n            { true }"
+        },
+        {
+          "name": "held-replace-drops-displaced-original",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "                let previous = self.take();\n                self.payload=Some(payload); self.metadata=Some(metadata);\n                previous",
+          "after": "                let _ = self.take();\n                self.payload=Some(payload); self.metadata=Some(metadata);\n                None"
+        },
+        {
+          "name": "held-take-silently-discards-original",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "match payload { Some(payload)=>Some((payload,metadata)), None=>None }",
+          "after": "{ let _ = payload; let _ = metadata; None }"
+        },
+        {
+          "name": "held-metadata-detach-discards-original",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "{ self.metadata.take() }",
+          "after": "{ let _ = self.metadata.take(); None }"
+        },
+        {
+          "name": "held-orphan-metadata-creates-annotation",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "                if self.payload.is_none() { return false; }",
+          "after": ""
+        },
+        {
+          "name": "held-release-before-reorders-original-current",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "                if let Some(previous)=held { out.push(previous); }\n                out.push((current,None)); out",
+          "after": "                out.push((current,None));\n                if let Some(previous)=held { out.push(previous); }\n                out"
+        },
+        {
+          "name": "held-replace-returns-wrong-original",
+          "source": "crates/sail-acceptance/src/query_holding.rs",
+          "before": "                let previous = self.take();\n                self.payload=Some(payload); self.metadata=Some(metadata);\n                previous",
+          "after": "                let previous = self.take();\n                self.payload=Some(payload); self.metadata=Some(metadata);\n                if let Some((old_payload, old_metadata)) = previous {\n                    let wrong = self.take();\n                    self.payload=Some(old_payload); self.metadata=old_metadata;\n                    wrong\n                } else { None }"
         }
       ],
       "required_prior_functions": [
