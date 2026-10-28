@@ -695,6 +695,7 @@ sail_spec! {
         requires original_item(item,history,input),
         ensures original_item(item,history+tail,input),
     {
+        reveal(original_item);
         prefix_slice_append(history,item.offset as int,item.offset as int+item.bytes@.len(),tail);
     }
     proof fn original_items_append(items:Seq<Item>,floor:int,history:Seq<u8>,tail:Seq<u8>,input:bool)
@@ -772,6 +773,7 @@ sail_spec! {
         }
     }
     /// No emitted byte or offset can refer to a different original stream.
+    #[verifier::opaque]
     pub open spec fn original_item(item: Item, history: Seq<u8>, input: bool) -> bool {
         item.offset as int + item.bytes@.len() <= history.len()
             && item.bytes@ == history.subrange(item.offset as int,item.offset as int + item.bytes@.len())
@@ -971,6 +973,7 @@ sail_code! {
                         };
                         let next=Self { input:current.input,state,position };
                         sail_proof! {
+                            reveal(original_item);
                             assert forall|history:Seq<u8>| self.matches(history) implies
                                 next.matches(history+data@.take(consumed as int))
                                 && optional_original(item,history+data@.take(consumed as int),self.input) by {
@@ -1021,7 +1024,6 @@ sail_code! {
                             original_item(out.1@[i],history+data@,self.input_view()))
             {
                 sail_proof! {
-                    hide(original_item);
                     assert(model_scan(model(self.state),self.input,self.position_view(),data@.take(0))
                         == (model(self.state),Seq::<(ItemKind,int,Seq<u8>)>::empty())) by {
                         reveal_with_fuel(model_scan,1);
@@ -1118,6 +1120,7 @@ sail_code! {
                     forall|history:Seq<u8>| self.matches(history) ==>
                     optional_original(out,history,self.input_view()))
             {
+                sail_proof! { reveal(original_item); }
                 match self.state {
                     SplitState::Atom(atom) => {
                         let (bytes,offset)=atom.finish();
@@ -1237,6 +1240,7 @@ sail_verified! {
             OuterByte::Atom => (SplitState::Atom(AtomFrame::start(byte,position)),None),
         };
         sail_proof! {
+            reveal(original_item);
             assert forall|history:Seq<u8>| history.len() == position implies
                 state_matches(out.0,input,position as int+1,history.push(byte))
                 && optional_original(out.1,history.push(byte),input) by {
@@ -1286,6 +1290,7 @@ sail_verified! {
             },
         };
         sail_proof! {
+            reveal(original_item);
             assert(step_shape(state,out.0,out.1,out.2,byte,input,position));
             assert forall|history:Seq<u8>| state_matches(state,input,position as int,history) implies
                 state_matches(out.0,input,position as int+1,history.push(byte))
