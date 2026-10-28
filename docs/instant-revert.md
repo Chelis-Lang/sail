@@ -12,6 +12,15 @@ continues to require fresh verification. Restored results keep the original
 establishing run, while the current invocation separately checks currentness.
 An unsupported context runs the genuine compiler instead.
 
+Compiler restoration preserves Verus's function verdicts, diagnostics and
+timing, and names the original establishing run. It does not restore the
+original obligation logs. Its JSON report therefore shows `obligations: null`
+and `unrecorded` check provenance, with no new solver checks; the solver digest
+remains bound, while its reported version can be null. A later unchanged call
+keeps this reconstructed report. A fresh verification requested through JSON,
+a job or MCP records obligation detail again; plain human output does not
+request those logs.
+
 Automatic eligibility is restricted to x86-64 Linux and the exact qualified
 normal runtime manifest. Every invocation uses the existing complete runtime
 validator on fresh file bytes before admitting a plan. Source, features, native

@@ -202,3 +202,48 @@ fn producer_events_must_match_the_worker_context_and_exact_target_inventory() ->
     assert!(restarted.gap.is_some());
     Ok(())
 }
+
+/// An unchanged-call replay writes the recorded run's `context-ready` under
+/// its own run identity, then the recorded `target-reused` events, and no
+/// source events (ADR 0082, amendment of 2026-10-28). Its journal reads as a
+/// full run's that reused every target.
+#[test]
+fn replayed_job_events_bind_the_replay_run() -> TestResult {
+    let replayed = [
+        serde_json::json!({"kind":"context-ready","workspace":"/w","run_id":"replay-run","context_sha256":"context1","input_revision":"revision1","targets":[{"package_id":"demo@1.0.0","name":"demo","kind":["lib"]}],"complete":true,"source_observation":true}),
+        serde_json::json!({"event":"target-reused","target":"demo","establishing_run":"run1"}),
+    ];
+    let mut stream = Vec::new();
+    for event in &replayed {
+        stream.extend(serde_json::to_vec(event)?);
+        stream.push(b'\n');
+    }
+    let job = || -> std::io::Result<Root> {
+        let root = Root::new()?;
+        std::fs::write(root.0.join("events.jsonl"), &stream)?;
+        // The worker creates the job's source spool before starting the call.
+        root.append(b"")?;
+        Ok(root)
+    };
+    // As for any call that started no verifier: no proof stream.
+    let root = job()?;
+    let page = Journals::default().page(&root.0, "job0", &Cursor::default(), 10, true)?;
+    assert!(page.events.is_empty() && page.terminal);
+    assert_eq!(
+        page.gap.as_deref(),
+        Some("SAIL0903: this job produced no interactive proof stream")
+    );
+    // Source events bind the replay's run, never the establishing run's.
+    let root = job()?;
+    let journals = Journals::default();
+    let mut ours = event("lib1", "lib");
+    ours.run_id = "replay-run".into();
+    root.append(&line(&ours)?)?;
+    let page = journals.page(&root.0, "job1", &Cursor::default(), 10, false)?;
+    assert_eq!(page.events.len(), 1);
+    assert_eq!(page.gap, None);
+    root.append(&line(&event("lib2", "lib"))?)?;
+    let page = journals.page(&root.0, "job1", &page.next, 10, false)?;
+    assert!(page.events.is_empty() && page.gap.is_some());
+    Ok(())
+}

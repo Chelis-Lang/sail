@@ -168,7 +168,10 @@ use an already built variant; CI never compiles Verus.
   Rust frontend errors and late EXEC errors.
 - `test-cancel.py` kills a worker at an actual blocked solver check, requires
   no terminal seal or unfinished focus report, and verifies the restart
-  against stock.
+  against stock. It retains each command and cancelled/restart/stock stdout
+  and stderr, including partial output on restart/stock timeout. Its evidence
+  covers cancellation seals and restart equivalence; `test-engine.py`
+  separately checks complete solver-query bytes.
 
 ```sh
 python3 engine/verus/test-engine.py --engine BUILD/verus/source/target-verus/release/verus \
@@ -189,6 +192,9 @@ those of earlier pins in [the M7 validation record](../../docs/validation/m7.md)
 (Gate 1, engine build and qualification). A new fork commit needs its own
 run, including the determinism check
 ([determinism record](../../docs/validation/determinism.md)).
+The [compiler-read origin runtime record](../../docs/validation/compiler-read-origin-runtime.md)
+records the built Linux schema2 candidate and its remaining acceptance/platform gates;
+its local pack/install result does not select that runtime.
 
 ## Corpus conformance arm
 

@@ -793,7 +793,6 @@ fn driver() -> Result<ExitCode> {
         );
     }
     let channel = verus_channel::Channel::new(base.clone(), &options)?;
-    channel.publish();
     let dep_info = verus_channel::dep_info_path(compiler_args);
     cmd.args(compiler_args)
         .envs(&launcher_environment)
@@ -841,6 +840,7 @@ fn driver() -> Result<ExitCode> {
         .engine
         .as_ref()
         .map(|_| crate::engine_events::Relay::start(source_events.clone(), &runtime, &identity));
+    crate::managed::compiler_origin::started(&runtime, &identity)?;
     let compile_started = std::time::Instant::now();
     let mut child = cmd
         .spawn()
@@ -938,10 +938,6 @@ fn driver() -> Result<ExitCode> {
         )
         .map_err(|e| Error::new("SAIL3123", e.to_string()))?;
     }
-    // Cargo's next build compares the dep-info with its own environment.
-    // Each restores only its own exact value, so at most one applies.
-    channel.restore_dep_info(dep_info.as_deref());
-    stock_channel.restore_dep_info(dep_info.as_deref());
     let compiler_environment = (exit.success() && !engine_restarted)
         .then(|| {
             if let Some(observation) = &ghost {
@@ -953,7 +949,22 @@ fn driver() -> Result<ExitCode> {
             }
         })
         .flatten()
-        .and_then(|observed| declare_ghost_reads(&args, observed));
+        .and_then(|observed| {
+            // Only explicitly classified driver bookkeeping may be restored to
+            // Cargo's base. Actual source reads, unknown observations and
+            // restarted compilers keep their raw dep-info and authorize no reuse.
+            if !observed.environment.contains_key(verus_channel::COMMON) {
+                if channel.observed_driver(&observed.driver_environment) {
+                    channel.restore_dep_info(dep_info.as_deref());
+                } else if stock_channel.observed_driver(&observed.driver_environment) {
+                    stock_channel.restore_dep_info(dep_info.as_deref());
+                }
+            }
+            declare_ghost_reads(&args, observed)
+        });
+    let observed_reusable = compiler_environment
+        .as_ref()
+        .is_some_and(crate::managed::compiler_origin::reusable);
     let invocation_key = identity.key();
     let measured = (identity.manifest.clone(), identity.target_name().to_owned());
     let verifier_readable = finish(
@@ -972,16 +983,22 @@ fn driver() -> Result<ExitCode> {
     // A successful process alone is insufficient: partial/no-verify output
     // must never become a reusable proof. Reuse only the complete successful
     // invocation that finish just established from Verus's full document.
-    if let Some(call) = &call {
-        let completed = std::fs::read(runtime.invocations.join(format!("{invocation_key}.json")))
-            .ok()
-            .and_then(|bytes| serde_json::from_slice::<Invocation>(&bytes).ok())
-            .is_some_and(|invocation| {
-                invocation.success && crate::managed::receipt_complete(&invocation.report)
-            });
-        if completed {
-            call.record(&stdout, &stderr, exit.code());
-        }
+    let completed = std::fs::read(runtime.invocations.join(format!("{invocation_key}.json")))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Invocation>(&bytes).ok())
+        .is_some_and(|invocation| {
+            invocation.success && crate::managed::receipt_complete(&invocation.report)
+        });
+    complete_origin_observation(
+        &runtime,
+        &invocation_key,
+        verifier_readable,
+        observed_reusable,
+    );
+    if let Some(call) = &call
+        && completed
+    {
+        call.record(&stdout, &stderr, exit.code());
     }
     if let Some(attempt) = &retained {
         let finishing = std::time::Instant::now();
@@ -1133,6 +1150,21 @@ pub(crate) fn mark_engine(
         function.provenance.engine = Some(engine.clone());
     }
     report.engine = Some(engine.clone());
+}
+
+/// Origin state only records known compiler inputs; it grants no proof authority.
+/// `observed_reusable` comes only from a successful, non-restarted child with a
+/// complete bound schema2 observation. Partial and no-verify dependency runs
+/// can establish those input facts while retaining their separate proof status.
+fn complete_origin_observation(
+    runtime: &Runtime,
+    key: &str,
+    verifier_readable: bool,
+    observed_reusable: bool,
+) {
+    if verifier_readable && observed_reusable {
+        crate::managed::compiler_origin::completed(runtime, key);
+    }
 }
 
 /// Whether a completed report may publish a whole-target proof receipt. A
@@ -1510,6 +1542,10 @@ fn target_identity(
 }
 
 #[cfg(test)]
+#[path = "adapter_origin_tests.rs"]
+mod origin_tests;
+
+#[cfg(test)]
 mod tests {
     #[test]
     fn a_vanished_verus_records_no_success_and_keeps_the_exit_status()
@@ -1524,10 +1560,12 @@ mod tests {
             z3: root.join("z3"),
             z3_sha256: String::new(),
             daemon: false,
+            reuse: true,
             sidecars: root.join("sidecars"),
             invocations: root.join("invocations"),
             original_wrapper: root.join("missing-verus"),
             receipts: root.join("receipts"),
+            compiler_read_origins: root.join("compiler-read-origins"),
             context_sha256: "context".into(),
             input_revision: "source".into(),
             packages: std::collections::BTreeMap::new(),
@@ -1639,7 +1677,8 @@ mod tests {
         // child transport. This fixture is not compiler/source admission.
         let wire = serde_json::json!({
             "run_id":"owned-outer-run", "args":[], "z3":"/pinned/z3",
-            "z3_sha256":"solver", "daemon":false, "sidecars":root,
+            "z3_sha256":"solver", "daemon":false, "reuse":true, "sidecars":root,
+            "compiler_read_origins":root.join("compiler-read-origins"),
             "invocations":root, "original_wrapper":"/pinned/verus", "receipts":root,
             "context_sha256":"context", "input_revision":"revision",
             "packages":{}, "target_kinds":{}, "engine":null,

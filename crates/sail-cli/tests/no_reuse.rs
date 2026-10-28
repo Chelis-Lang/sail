@@ -247,6 +247,119 @@ fn human_output_has_sail_notes_only_when_explained() {
     assert_eq!(explained.stdout, plain.stdout);
 }
 
+/// A process-loader variable (#577) takes the same plain Cargo-Verus
+/// fallback, in the invocation's own Cargo target, rather than a fresh
+/// managed target family per loader value: human output is exactly
+/// Cargo-Verus's, and `--output json` and jobs return a project result marked
+/// `no_reuse` that is never current.
+#[test]
+fn loader_variables_verify_as_plain_cargo_verus() {
+    let fixture = Fixture::new("loader");
+    let expected = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/attr/stderr.txt"),
+    )
+    .unwrap_or_else(|error| unreachable!("{error}"));
+    let libraries = fixture.root.join("no-libraries").display().to_string();
+    let last_run = || {
+        std::fs::read_to_string(&fixture.args_log)
+            .unwrap_or_default()
+            .lines()
+            .last()
+            .unwrap_or_default()
+            .to_owned()
+    };
+    for loader in LOADERS {
+        // A preload list naming a missing object makes the loader print an
+        // error; an empty one is still a set loader variable.
+        let libraries = if loader.contains("PRELOAD") || loader.contains("INSERT") {
+            String::new()
+        } else {
+            libraries.clone()
+        };
+        let human = fixture
+            .sail()
+            .arg("verify")
+            .env(loader, &libraries)
+            .env("SAIL_DAEMON_SOCKET", fixture.root.join("d".repeat(120)))
+            .output()
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        assert_eq!(human.status.code(), Some(1), "{loader}");
+        let stderr: String = String::from_utf8_lossy(&human.stderr)
+            .split_inclusive('\n')
+            .filter(|line| !line.starts_with("warning[SAIL0108]: "))
+            .collect();
+        assert_eq!(stderr, expected, "{loader}");
+        // Plain Cargo-Verus's own command line: no managed driver or target.
+        assert_eq!(last_run(), "verus verify", "{loader}");
+        let json = fixture
+            .sail()
+            .args(["verify", "--output", "json"])
+            .env(loader, &libraries)
+            .env("SAIL_DAEMON_SOCKET", fixture.root.join("d".repeat(120)))
+            .output()
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        assert_eq!(json.status.code(), Some(1), "{loader}");
+        let result: ProjectResult = serde_json::from_slice(&json.stdout)
+            .unwrap_or_else(|error| unreachable!("{loader}: {error}"));
+        assert_plain(&result, &[loader]);
+        let err = String::from_utf8_lossy(&json.stderr);
+        assert!(
+            err.contains(&format!("note[SAIL3112]: {loader} is set")),
+            "{err}"
+        );
+        assert!(last_run().starts_with("verus verify "), "{}", last_run());
+        assert!(!last_run().contains("--target-dir"), "{}", last_run());
+    }
+    // No managed context, receipt or target family was created.
+    assert!(!fixture.root.join("cache/projects").exists());
+    let mut daemon = fixture.jobs();
+    let client = Client::new(sail_api::jobs::socket_path(&fixture.cache_socket));
+    let mut environment = fixture.environment();
+    environment.insert("LD_LIBRARY_PATH".to_owned(), libraries);
+    let submission = Submission {
+        mode: sail_api::jobs::Mode::Stock,
+        project_dir: fixture.project.clone(),
+        args: Vec::new(),
+        force: false,
+        environment,
+        input_revision: None,
+    };
+    let Ok(Response::Status(status)) = client.call(&Request::Submit { submission }) else {
+        unreachable!("no submit response")
+    };
+    let mut document = None;
+    wait_for("the job's result", || {
+        match client.call(&Request::Result {
+            id: status.id.clone(),
+        }) {
+            Ok(Response::Result(result)) if result.job.state.terminal() => {
+                document = Some(result);
+                true
+            }
+            _ => false,
+        }
+    });
+    let Some(document) = document else {
+        unreachable!()
+    };
+    assert_eq!(
+        document.job.state,
+        Lifecycle::Completed,
+        "{:?}",
+        document.job.error
+    );
+    assert_eq!(
+        document.job.currentness,
+        sail_api::jobs::Currentness::Unknown
+    );
+    let result: ProjectResult = document
+        .result
+        .and_then(|value| serde_json::from_value(value).ok())
+        .unwrap_or_else(|| unreachable!("no project result"));
+    assert_plain(&result, &["LD_LIBRARY_PATH"]);
+    daemon.shutdown();
+}
+
 #[test]
 fn jobs_verify_unbound_setups_as_plain_cargo_verus() {
     let fixture = Fixture::new("jobs");
