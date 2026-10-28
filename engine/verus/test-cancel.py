@@ -13,6 +13,24 @@ from importlib.machinery import SourceFileLoader
 oracle = SourceFileLoader('oracle', str(pathlib.Path(__file__).with_name('test-engine.py'))).load_module()
 
 
+def capture(root, name, command, env):
+    record = {'command': command, 'timeout_seconds': 120}
+    (root / (name + '.command.json')).write_text(json.dumps(record, indent=2) + '\n')
+    try:
+        result = subprocess.run(command, capture_output=True, env=env, timeout=120)
+    except subprocess.TimeoutExpired as error:
+        (root / (name + '.stdout')).write_bytes(error.stdout or b'')
+        (root / (name + '.stderr')).write_bytes(error.stderr or b'')
+        record.update(timed_out=True, returncode=None)
+        (root / (name + '.command.json')).write_text(json.dumps(record, indent=2) + '\n')
+        raise
+    (root / (name + '.stdout')).write_bytes(result.stdout)
+    (root / (name + '.stderr')).write_bytes(result.stderr)
+    record.update(timed_out=False, returncode=result.returncode)
+    (root / (name + '.command.json')).write_text(json.dumps(record, indent=2) + '\n')
+    return result
+
+
 def run(args):
     root = pathlib.Path(args.out).absolute()
     root.mkdir(parents=True, exist_ok=True)
@@ -45,6 +63,8 @@ child.stdin.close();sys.exit(child.wait())
                SAIL_ENGINE_EVENTS=str(events),
                SAIL_ENGINE_FOCUS_REPORT=str(root/'focus.json'))
     command = [args.engine,str(source),'--no-vstd','--crate-name','demo','-V','use-crate-name','--output-json','--time','--no-report-long-running']
+    cancel_command = {'command': command, 'blocked_deadline_seconds': 30, 'kill_wait_seconds': 10}
+    (root/'cancel.command.json').write_text(json.dumps(cancel_command,indent=2)+'\n')
     with (root/'cancel.stdout').open('wb') as output, (root/'cancel.stderr').open('wb') as error:
         child = subprocess.Popen(command,env=env,stdout=output,stderr=error,start_new_session=True)
         try:
@@ -58,13 +78,15 @@ child.stdin.close();sys.exit(child.wait())
             if child.poll() is None:
                 os.killpg(child.pid,signal.SIGKILL)
                 child.wait(timeout=10)
+            cancel_command['returncode'] = child.returncode
+            (root/'cancel.command.json').write_text(json.dumps(cancel_command,indent=2)+'\n')
     frames = [json.loads(line) for line in events.read_text().splitlines()]
     assert not any(event['event']=='compiler-sealed' for event in frames), 'cancelled compiler produced authoritative seal'
     assert not (root/'focus.json').exists(), 'unfinished focus reported complete'
     # Retained lowerings may be reused after cancellation, but always re-prove.
     env['VERUS_Z3_PATH']=args.z3
-    result=subprocess.run(command,capture_output=True,env=env,timeout=120)
-    stock=subprocess.run([args.stock,*command[1:]],capture_output=True,env={key:value for key,value in env.items() if not key.startswith('SAIL_ENGINE')},timeout=120)
+    result=capture(root,'restart',command,env)
+    stock=capture(root,'stock',[args.stock,*command[1:]],{key:value for key,value in env.items() if not key.startswith('SAIL_ENGINE')})
     assert result.returncode==stock.returncode and result.stderr==stock.stderr, 'restart verdict or diagnostics differ'
     assert json.loads(result.stdout)['verification-results']==json.loads(stock.stdout)['verification-results'], 'restart skipped proof'
     frames = [json.loads(line) for line in events.read_text().splitlines()]

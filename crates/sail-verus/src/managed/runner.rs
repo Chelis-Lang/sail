@@ -72,6 +72,7 @@ struct Paths {
     build_inputs: PathBuf,
     input_state: PathBuf,
     compiler_inputs: PathBuf,
+    compiler_read_origins: PathBuf,
     /// One empty file per proof context of this compiler family.
     family_contexts: PathBuf,
     /// The workspace's directory of proof contexts.
@@ -708,6 +709,7 @@ fn prepare(
         build_inputs: context.join("build-inputs.json"),
         input_state: context.join("input-state.json"),
         compiler_inputs: compiler.join("build-inputs.json"),
+        compiler_read_origins: compiler.join("compiler-read-origins"),
         run: context.join("runs").join(run_id),
         family_contexts: compiler.join("contexts"),
         projects: root,
@@ -790,14 +792,174 @@ fn clean(config: &Config, target: &Path, packages: &[String]) -> Result<()> {
         return Ok(());
     }
     let build_target = cargo_build_target(target, &config.args);
+    clean_build_target(config, &build_target, packages)
+}
+
+fn clean_build_target(config: &Config, build_target: &Path, packages: &[String]) -> Result<()> {
     let tag = build_target.join("CACHEDIR.TAG");
     if build_target.is_dir() && !tag.exists() {
         std::fs::write(&tag, CACHEDIR_TAG).map_err(|e| Error::new("SAIL3105", e.to_string()))?;
     }
-    let kept = keep_incremental(&build_target);
-    let cleaned = cargo_clean(config, &build_target, packages);
+    let kept = keep_incremental(build_target);
+    let cleaned = cargo_clean(config, build_target, packages);
     restore_incremental(kept);
     cleaned
+}
+
+/// All markers share this compiler family's configuration, target and profile.
+/// Clean both Cargo-Verus layouts before retiring any package's old observations.
+/// A successful different-unit compiler observation alone cannot retire them.
+fn clean_origin_packages(
+    config: &Config,
+    target: &Path,
+    origins: &Path,
+    plan: &super::compiler_origin::PackageClean,
+    metadata: &Value,
+) -> Result<()> {
+    let packages = plan.packages();
+    if packages.is_empty() {
+        return Ok(());
+    }
+    let names: BTreeSet<_> = packages
+        .iter()
+        .map(|id| {
+            metadata["packages"]
+                .as_array()
+                .and_then(|all| {
+                    all.iter()
+                        .find(|package| package["id"].as_str() == Some(id.as_str()))
+                })
+                .and_then(|package| package["name"].as_str())
+                .ok_or_else(|| Error::new("SAIL3111", "origin package is absent from metadata"))
+        })
+        .collect::<Result<_>>()?;
+    let roots = [target.to_owned(), target.join("verus-partial")];
+    let layouts = cargo_clean_layouts(config, target)?;
+    for build_target in &roots {
+        match std::fs::symlink_metadata(build_target) {
+            Ok(_) => clean_build_target(config, build_target, packages)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Err(error) => return Err(Error::new("SAIL3111", error.to_string())),
+        }
+    }
+    for root in roots.iter().chain(layouts.iter()) {
+        origin_fingerprints_absent(root, &names, 0)?;
+    }
+    super::compiler_origin::retired_after_clean(origins, plan)
+}
+
+fn cargo_clean_layouts(config: &Config, target: &Path) -> Result<Vec<PathBuf>> {
+    [target.to_owned(), target.join("verus-partial")]
+        .iter()
+        .map(|root| cargo_clean_layout(config, root, target))
+        .collect()
+}
+
+/// Resolve Cargo's actual intermediate root, including build-dir interpolation.
+/// A foreign build directory has no family owner and cannot retire observations.
+fn cargo_clean_layout(config: &Config, root: &Path, family_target: &Path) -> Result<PathBuf> {
+    for directory in [family_target, root] {
+        match std::fs::symlink_metadata(directory) {
+            Ok(metadata) if metadata.is_dir() && !metadata.is_symlink() => (),
+            Ok(_) => {
+                return Err(Error::new(
+                    "SAIL3112",
+                    "compiler cleanup root is not an owned directory",
+                ));
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Err(error) => return Err(Error::new("SAIL3112", error.to_string())),
+        }
+    }
+    let mut command = Command::new(&config.cargo);
+    config.cargo_toolchain.apply(&mut command);
+    command
+        .current_dir(&config.workspace)
+        .args(["metadata", "--no-deps", "--format-version", "1"]);
+    cargo_clean_arguments(&mut command, &config.args, false);
+    crate::adapter::configure_metadata_target(&mut command, root)?;
+    let output = command
+        .output()
+        .map_err(|error| Error::new("SAIL3111", error.to_string()))?;
+    if !output.status.success() {
+        return Err(Error::new(
+            "SAIL3111",
+            String::from_utf8_lossy(&output.stderr),
+        ));
+    }
+    let metadata: Value = serde_json::from_slice(&output.stdout)
+        .map_err(|error| Error::new("SAIL3111", error.to_string()))?;
+    let physical = |path: &Path| {
+        super::configuration::physical_path(path)
+            .map_err(|error| Error::new("SAIL3111", error.to_string()))
+    };
+    let target = metadata["target_directory"]
+        .as_str()
+        .ok_or_else(|| Error::new("SAIL3112", "Cargo cleanup target directory is unknown"))?;
+    let build = metadata["build_directory"].as_str().ok_or_else(|| {
+        Error::new(
+            "SAIL3112",
+            "Cargo cleanup intermediate directory is unknown",
+        )
+    })?;
+    let build = physical(Path::new(build))?;
+    if physical(Path::new(target))? != physical(root)?
+        || !build.starts_with(physical(family_target)?)
+    {
+        return Err(Error::new(
+            "SAIL3112",
+            "compiler-origin cleanup cannot own Cargo's artifact layout",
+        ));
+    }
+    Ok(build)
+}
+
+/// Cargo clean can skip an unreadable path and still succeed. Independently
+/// check every host/triple/profile fingerprint directory before retiring facts.
+/// Cargo's layouts place them at most three directory levels below either root.
+fn origin_fingerprints_absent(root: &Path, names: &BTreeSet<&str>, depth: usize) -> Result<()> {
+    let entries = match std::fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(Error::new("SAIL3111", error.to_string())),
+    };
+    for entry in entries {
+        let entry = entry.map_err(|error| Error::new("SAIL3111", error.to_string()))?;
+        let kind = entry
+            .file_type()
+            .map_err(|error| Error::new("SAIL3111", error.to_string()))?;
+        if entry.file_name() == ".fingerprint" {
+            if !kind.is_dir() {
+                return Err(Error::new(
+                    "SAIL3111",
+                    "cannot inspect Cargo fingerprint authority",
+                ));
+            }
+            let fingerprints = std::fs::read_dir(entry.path())
+                .map_err(|error| Error::new("SAIL3111", error.to_string()))?;
+            for fingerprint in fingerprints {
+                let fingerprint =
+                    fingerprint.map_err(|error| Error::new("SAIL3111", error.to_string()))?;
+                if fingerprint.file_name().to_str().is_none_or(|name| {
+                    name.rsplit_once('-')
+                        .is_some_and(|(name, _)| names.contains(name))
+                }) {
+                    return Err(Error::new(
+                        "SAIL3111",
+                        "Cargo left compiler fingerprint authority after origin cleanup",
+                    ));
+                }
+            }
+        } else if kind.is_symlink() && depth < 2 {
+            return Err(Error::new(
+                "SAIL3111",
+                "cannot retire origins through a linked Cargo layout",
+            ));
+        } else if kind.is_dir() && depth < 2 {
+            origin_fingerprints_absent(&entry.path(), names, depth + 1)?;
+        }
+    }
+    Ok(())
 }
 
 /// Moves each rustc incremental directory in `build_target`
@@ -854,6 +1016,91 @@ fn restore_incremental(kept: Vec<(PathBuf, PathBuf)>) {
     }
 }
 
+/// Retire every legacy artifact variant, including focused builds. Seeded
+/// owned targets may lack Cargo's tag; establish it before asking Cargo to
+/// remove this family, as the targeted clean does for ordinary rebuilds.
+fn clean_compiler_family(config: &Config, target: &Path) -> Result<()> {
+    let builds = cargo_clean_layouts(config, target)?;
+    let tag = target.join("CACHEDIR.TAG");
+    if target.is_dir() && !tag.exists() {
+        std::fs::write(&tag, CACHEDIR_TAG)
+            .map_err(|error| Error::new("SAIL3105", error.to_string()))?;
+    }
+    cargo_clean(config, target, &[])?;
+    for root in std::iter::once(target).chain(builds.iter().map(PathBuf::as_path)) {
+        match std::fs::symlink_metadata(root) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Err(error) => return Err(Error::new("SAIL3111", error.to_string())),
+            Ok(_) => {
+                return Err(Error::new(
+                    "SAIL3111",
+                    "Cargo left compiler artifacts after family cleanup",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Match the actual family's profile/target when cleaning packages. Whole-family
+/// migration deliberately omits scope flags to remove every artifact directory.
+fn cargo_clean_arguments(command: &mut Command, args: &[String], scoped: bool) {
+    let selected = clean_selectors(args);
+    let mut selected = selected.iter();
+    while let Some(arg) = selected.next() {
+        if !scoped && ["--profile", "--target"].contains(&arg.as_str()) {
+            selected.next();
+        } else if scoped
+            || !(matches!(arg.as_str(), "--release" | "-r")
+                || arg.starts_with("--profile=")
+                || arg.starts_with("--target="))
+        {
+            command.arg(arg);
+        }
+    }
+}
+
+/// Keep Cargo selector spelling/order and skip values of unrelated options.
+/// Only options before the first Verus separator belong to Cargo.
+fn clean_selectors(args: &[String]) -> Vec<String> {
+    const FORWARDED: [&str; 5] = ["--manifest-path", "--profile", "--target", "--config", "-m"];
+    const SKIPPED: [&str; 14] = [
+        "-p",
+        "--package",
+        "--exclude",
+        "-F",
+        "--features",
+        "--bin",
+        "--example",
+        "--test",
+        "--bench",
+        "-j",
+        "--jobs",
+        "--color",
+        "-Z",
+        "--lockfile-path",
+    ];
+    let mut selected = Vec::new();
+    let mut rest = args.iter().take_while(|arg| *arg != "--");
+    while let Some(arg) = rest.next() {
+        let name = arg.as_str();
+        if matches!(name, "--release" | "-r") {
+            selected.push(arg.clone());
+        } else if FORWARDED.contains(&name) {
+            selected.push(arg.clone());
+            selected.extend(rest.next().cloned());
+        } else if SKIPPED.contains(&name) {
+            rest.next();
+        } else if FORWARDED
+            .iter()
+            .any(|option| option.starts_with("--") && name.starts_with(&format!("{option}=")))
+        {
+            selected.push(arg.clone());
+        }
+    }
+    selected
+}
+
 fn cargo_clean(config: &Config, build_target: &Path, packages: &[String]) -> Result<()> {
     let mut cmd = Command::new(&config.cargo);
     config.cargo_toolchain.apply(&mut cmd);
@@ -868,16 +1115,7 @@ fn cargo_clean(config: &Config, build_target: &Path, packages: &[String]) -> Res
     for p in packages {
         cmd.arg("-p").arg(p);
     }
-    for window in config.args.windows(2) {
-        if window[0] == "--manifest-path" {
-            cmd.arg("--manifest-path").arg(&window[1]);
-        }
-    }
-    for arg in &config.args {
-        if arg.starts_with("--manifest-path=") {
-            cmd.arg(arg);
-        }
-    }
+    cargo_clean_arguments(&mut cmd, &config.args, !packages.is_empty());
     let output = cmd
         .output()
         .map_err(|e| Error::new("SAIL3105", e.to_string()))?;
@@ -2148,6 +2386,7 @@ fn target_records_in(
                     seeded.iter().find_map(|seed| {
                         let r = &seed.receipt;
                         (artifact["fresh"] == true
+                            && r.version == RECEIPT_VERSION
                             && r.package_id == package_id
                             && r.invocation.identity.manifest
                                 == Path::new(package["manifest_path"].as_str().unwrap_or_default())
@@ -3410,6 +3649,38 @@ fn run_recorded(
         std::thread::spawn(move || file_digest(&z3))
     };
     let cleanup = diagnostics.phase(Phase::TargetCleanup);
+    // Origin state lives outside Cargo's target and receipt directories. It
+    // survives receipt retirement, interrupted compilers and sibling contexts.
+    // A protocol migration discards all legacy artifacts before Cargo can
+    // declare them fresh, including shown-output runs that never retry.
+    let origin_dirty = match super::compiler_origin::cleanup_for_run(
+        &paths.compiler_read_origins,
+        &data,
+        paths.reuse,
+    ) {
+        super::compiler_origin::Cleanup::Family => {
+            if new_target {
+                // Even an empty owned target can have a foreign configured
+                // intermediate directory. It must not initialize reuse state.
+                cargo_clean_layouts(config, &paths.target)?;
+            } else {
+                clean_compiler_family(config, &paths.target)?;
+            }
+            super::compiler_origin::initialized(&paths.compiler_read_origins)?;
+            Vec::new()
+        }
+        super::compiler_origin::Cleanup::Packages(plan) => {
+            clean_origin_packages(
+                config,
+                &paths.target,
+                &paths.compiler_read_origins,
+                &plan,
+                &data,
+            )?;
+            plan.packages().to_vec()
+        }
+    };
+
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
         || !before.complete
@@ -3460,6 +3731,7 @@ fn run_recorded(
         && stale_scripts.is_empty()
         && late_scripts.is_empty()
         && dirty.is_empty()
+        && origin_dirty.is_empty()
         && receipt_covered_targets(&paths, &expected, &hash, &receipt_revisions);
     let mut retained_notes = Vec::new();
     let runtime = Runtime {
@@ -3470,10 +3742,12 @@ fn run_recorded(
             .join()
             .unwrap_or_else(|_| file_digest(&config.z3))?,
         daemon: config.socket.is_some(),
+        reuse: paths.reuse,
         sidecars: paths.run.join("sidecars"),
         invocations: paths.run.join("invocations"),
         original_wrapper: actual_wrapper(&config.cargo_verus)?,
         receipts: paths.receipts.clone(),
+        compiler_read_origins: paths.compiler_read_origins.clone(),
         context_sha256: hash.clone(),
         input_revision: before.revision.clone(),
         packages: data["packages"]
@@ -4402,6 +4676,8 @@ mod tests {
     #[cfg(unix)]
     include!("runner_artifact_isolation_tests.rs");
     #[cfg(unix)]
+    include!("runner_origin_cleanup_tests.rs");
+    #[cfg(unix)]
     include!("runner_cargo_toolchain_tests.rs");
     fn compiler_request(function: Option<&str>) -> crate::engine::Request {
         crate::engine::Request {
@@ -4586,6 +4862,45 @@ mod tests {
             force: true,
             attribution_logs: true,
         })
+    }
+
+    #[test]
+    fn legacy_untagged_family_is_fully_cleaned_before_origin_reset()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-origin-legacy-clean-{}", std::process::id()));
+        let mut config = compiler_fixture(&root)?;
+        config.cargo = PathBuf::from("cargo");
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='origin-clean'\nversion='0.1.0'\nedition='2024'\n[lib]\npath='lib.rs'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "")?;
+        let target = root.join("family/target");
+        let origin = root.join("family/compiler-read-origins");
+        std::fs::create_dir_all(&origin)?;
+        std::fs::write(origin.join("pending-proof"), "unknown")?;
+        for relative in [
+            "debug/deps/legacy.rmeta",
+            "verus-partial/debug/deps/legacy.rmeta",
+        ] {
+            let path = target.join(relative);
+            std::fs::create_dir_all(path.parent().ok_or("parent")?)?;
+            std::fs::write(path, "legacy compiler output")?;
+        }
+        assert!(!target.join("CACHEDIR.TAG").exists());
+        clean_compiler_family(&config, &target)?;
+        assert!(
+            !target.exists(),
+            "no old normal or focused artifact survives migration"
+        );
+        assert!(
+            origin.join("pending-proof").is_file(),
+            "Cargo cleaning cannot clear origin facts"
+        );
+        super::super::compiler_origin::initialized(&origin)?;
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[test]
@@ -6358,6 +6673,553 @@ mod tests {
         Ok(())
     }
 
+    mod compiler_origin_reuse {
+        use super::*;
+
+        type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+        #[derive(Clone, Copy, Debug)]
+        enum Route {
+            Direct,
+            Sibling,
+            Seeded,
+        }
+
+        struct Fixture {
+            root: PathBuf,
+            paths: Paths,
+            ownership: Ownership,
+            data: Value,
+            artifact: PathBuf,
+        }
+
+        impl Fixture {
+            fn new(route: Route) -> TestResult<Self> {
+                Self::named(route, "source")
+            }
+
+            fn named(route: Route, label: &str) -> TestResult<Self> {
+                let root = std::env::temp_dir().join(format!(
+                    "sail-origin-receipt-route-{route:?}-{label}-{}",
+                    std::process::id()
+                ));
+                let config = compiler_fixture(&root)?;
+                let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+                std::fs::write(
+                    root.join("Cargo.toml"),
+                    "[workspace]\nmembers=['input','app']\n",
+                )?;
+                for name in ["input", "app"] {
+                    std::fs::create_dir_all(root.join(name))?;
+                    std::fs::write(
+                        root.join(name).join("Cargo.toml"),
+                        format!(
+                            "[package]\nname='{name}'\nversion='0.1.0'\n[lib]\npath='lib.rs'\n{}",
+                            if name == "app" {
+                                "[dependencies]\ninput={path='../input'}\n"
+                            } else {
+                                ""
+                            }
+                        ),
+                    )?;
+                    std::fs::write(root.join(name).join("lib.rs"), "pub fn fixture() {}")?;
+                }
+                let package = |name: &str| {
+                    serde_json::json!({
+                        "id":name,"name":name,"manifest_path":root.join(name).join("Cargo.toml"),
+                        "source":null,"metadata":{"verus":{"verify":true}},
+                        "targets":[{"name":name,"kind":["lib"],"src_path":root.join(name).join("lib.rs")}]
+                    })
+                };
+                let data = serde_json::json!({"workspace_root":root,
+                    "sail_cache_directory":config.cache,"target_directory":paths.target,
+                    "workspace_members":["input","app"],
+                    "resolve":{"nodes":[{"id":"input","dependencies":[]},
+                        {"id":"app","dependencies":["input"]}]},
+                    "packages":[package("input"),package("app")]});
+                std::fs::create_dir_all(&paths.target)?;
+                let artifact = paths.target.join("input.rlib");
+                std::fs::write(&artifact, "unchanged verified artifact")?;
+                json(
+                    &paths.run.join("artifacts.jsonl"),
+                    &serde_json::json!({
+                        "reason":"compiler-artifact","package_id":"input","fresh":true,
+                        "target":{"name":"input","kind":["lib"]},"filenames":[artifact]
+                    }),
+                )?;
+                Ok(Self {
+                    root,
+                    paths,
+                    ownership,
+                    data,
+                    artifact,
+                })
+            }
+
+            fn select(
+                &self,
+                route: Route,
+                receipt: Receipt,
+            ) -> TestResult<(Vec<TargetResult>, BTreeSet<String>)> {
+                let records = self.select_recorded(route, receipt)?;
+                Ok((records.targets, records.missing))
+            }
+
+            fn select_recorded(
+                &self,
+                route: Route,
+                receipt: Receipt,
+            ) -> TestResult<RecordedTargets> {
+                let mut receipt = receipt;
+                let mut seeds = Vec::new();
+                let requested = match route {
+                    Route::Direct => "input",
+                    Route::Sibling | Route::Seeded => "app",
+                };
+                let expected = BTreeSet::from([(
+                    requested.to_owned(),
+                    requested.to_owned(),
+                    "lib".to_owned(),
+                )]);
+                if matches!(route, Route::Seeded) {
+                    assert_eq!(std::fs::read_dir(&self.paths.receipts)?.count(), 0);
+                    seeds.push(super::super::super::store::Seeded {
+                        key: "source-origin-store".into(),
+                        receipt,
+                        placed: true,
+                        shown_stdout: Vec::new(),
+                    });
+                } else {
+                    let (context, destination) = if matches!(route, Route::Sibling) {
+                        std::fs::write(self.paths.family_contexts.join("sibling"), [])?;
+                        ("sibling", self.paths.projects.join("sibling/receipts"))
+                    } else {
+                        ("selected", self.paths.receipts.clone())
+                    };
+                    std::fs::create_dir_all(&destination)?;
+                    context.clone_into(&mut receipt.context);
+                    let path = receipt_path(&self.paths, "input", "input", &["lib".into()]);
+                    json(
+                        &self
+                            .paths
+                            .run
+                            .join("pending-receipts")
+                            .join(path.file_name().ok_or("receipt name")?),
+                        &receipt.seal(),
+                    )?;
+                    super::super::super::receipts::publish(&self.paths.run, &destination, context)?;
+                }
+                Ok(target_records_in(
+                    &self.paths,
+                    &self.data,
+                    "selected",
+                    false,
+                    &expected,
+                    &seeds,
+                    None,
+                    None,
+                )?)
+            }
+
+            fn close(self) -> TestResult {
+                drop(self.ownership);
+                std::fs::remove_dir_all(self.root)?;
+                Ok(())
+            }
+        }
+
+        fn assert_source_reads_refuse(
+            fixture: &Fixture,
+            route: Route,
+            baseline: &Receipt,
+        ) -> TestResult {
+            for name in [
+                crate::adapter::verus_channel::COMMON,
+                "SAIL_PROVENANCE_DIR",
+                "SAIL_COMPILER_INPUTS",
+                "SAIL_COMPILER_INPUTS_BINDING",
+                "SAIL_ENGINE",
+                "SAIL_ENGINE_EVENTS",
+                "SAIL_ENGINE_CONTEXT",
+                "SAIL_ENGINE_FOCUS_REPORT",
+                "SAIL_ENGINE_FUNCTION",
+                "SAIL_RUSTC_DEV_SOURCE_BASE",
+                "SAIL_VIR_SPAN_REMAP",
+            ] {
+                for value in [
+                    None,
+                    Some(String::new()),
+                    Some("effective-with-new-logs".into()),
+                ] {
+                    for shipped_origin in [false, true] {
+                        let mut ineligible = baseline.clone();
+                        ineligible.invocation.compiler_environment =
+                            Some(BTreeMap::from([(name.into(), value.clone())]));
+                        if shipped_origin {
+                            ineligible.invocation.dependency_build =
+                                Some(sail_api::project::DependencyBuildOrigin {
+                                    kind: sail_api::project::DependencyBuildKind::Release,
+                                    identity: "build/entry".into(),
+                                    establishing_run: "shipped:build/entry".into(),
+                                });
+                        }
+                        let (targets, missing) = fixture.select(route, ineligible.seal())?;
+                        assert!(targets.is_empty(), "source {name} cannot pass {route:?}");
+                        assert_eq!(missing, BTreeSet::from(["input".into()]));
+                    }
+                }
+            }
+            Ok(())
+        }
+
+        fn assert_inherited_reads_reuse(
+            fixture: &Fixture,
+            route: Route,
+            baseline: &Receipt,
+        ) -> TestResult {
+            for name in [
+                "SAIL_APPLICATION_INPUT",
+                "ORDINARY_PROOF_INPUT",
+                "VERUS_Z3_PATH",
+                "VERUS_SINGULAR_PATH",
+            ] {
+                let mut inherited = baseline.clone();
+                inherited.invocation.compiler_environment =
+                    Some(BTreeMap::from([(name.into(), std::env::var(name).ok())]));
+                let value = std::env::var_os(name).map(std::ffi::OsString::into_encoded_bytes);
+                inherited
+                    .declared_environment
+                    .insert(name.into(), value.clone());
+                let inherited = inherited.seal();
+                let (targets, missing) = fixture.select(route, inherited.clone())?;
+                assert!(
+                    missing.is_empty(),
+                    "bound inherited {name} must reach {route:?}"
+                );
+                assert_eq!(targets.len(), 1);
+                assert!(targets[0].reused);
+                assert_eq!(targets[0].establishing_run, "run");
+
+                // These source reads remain eligible only while their ordinary
+                // declaration matches the parent. An impossible NUL guarantees
+                // a distinct value without changing the test process's environment.
+                let mut mismatched = inherited;
+                let mut different = value.unwrap_or_default();
+                different.push(0);
+                mismatched
+                    .declared_environment
+                    .insert(name.into(), Some(different));
+                let (targets, missing) = fixture.select(route, mismatched.seal())?;
+                assert!(
+                    targets.is_empty(),
+                    "changed inherited {name} cannot pass {route:?}"
+                );
+                assert_eq!(missing, BTreeSet::from(["input".into()]));
+            }
+            Ok(())
+        }
+
+        fn check_route(route: Route) -> TestResult {
+            let fixture = Fixture::new(route)?;
+            let mut baseline = compiler_receipt(&fixture.paths, &fixture.data, &fixture.artifact);
+            baseline.declared_environment.insert(
+                crate::adapter::verus_channel::COMMON.into(),
+                std::env::var_os(crate::adapter::verus_channel::COMMON)
+                    .map(std::ffi::OsString::into_encoded_bytes),
+            );
+            let baseline = baseline.seal();
+            assert!(
+                baseline.version >= 10,
+                "source-origin migration is required"
+            );
+            assert_ne!(baseline.input_revision, "");
+            let assert_reused = |receipt| -> TestResult {
+                let (targets, missing) = fixture.select(route, receipt)?;
+                assert!(
+                    missing.is_empty(),
+                    "qualified baseline must reach {route:?}"
+                );
+                assert_eq!(targets.len(), 1);
+                assert!(targets[0].reused);
+                assert_eq!(targets[0].requested, matches!(route, Route::Direct));
+                assert_eq!(targets[0].establishing_run, "run");
+                assert_eq!(
+                    targets[0].dependency_store.as_deref(),
+                    matches!(route, Route::Seeded).then_some("source-origin-store")
+                );
+                Ok(())
+            };
+            assert_reused(baseline.clone())?;
+            assert_source_reads_refuse(&fixture, route, &baseline)?;
+            assert_inherited_reads_reuse(&fixture, route, &baseline)?;
+            let mut legacy = baseline.clone();
+            legacy.version = 9;
+            let (targets, missing) = fixture.select(route, legacy.seal())?;
+            assert!(targets.is_empty(), "legacy origin cannot pass {route:?}");
+            assert_eq!(missing, BTreeSet::from(["input".into()]));
+            assert_reused(baseline)?;
+            assert_eq!(
+                std::fs::read(&fixture.artifact)?,
+                b"unchanged verified artifact"
+            );
+            fixture.close()
+        }
+
+        #[test]
+        fn direct_receipt_rejects_source_common_at_actual_target_selection() -> TestResult {
+            check_route(Route::Direct)
+        }
+
+        #[test]
+        fn sibling_dependency_rejects_source_common_at_actual_target_selection() -> TestResult {
+            check_route(Route::Sibling)
+        }
+
+        #[test]
+        fn fresh_seeded_dependency_rejects_source_common_at_actual_target_selection() -> TestResult
+        {
+            check_route(Route::Seeded)
+        }
+
+        fn check_admitted_names(route: Route) -> TestResult {
+            const SHADOW: &str = " __VERUS_DRIVER_SHADOW__";
+            let fixture = Fixture::named(route, "admission-names")?;
+            let mut receipt = compiler_receipt(&fixture.paths, &fixture.data, &fixture.artifact);
+            receipt.invocation.compiler_environment = Some(BTreeMap::from([(
+                SHADOW.into(),
+                std::env::var(SHADOW).ok(),
+            )]));
+            receipt.declared_environment = BTreeMap::from([(
+                SHADOW.into(),
+                std::env::var_os(SHADOW).map(std::ffi::OsString::into_encoded_bytes),
+            )]);
+            let accepted = fixture.select_recorded(route, receipt.clone().seal())?;
+            assert!(accepted.missing.is_empty());
+            assert_eq!(accepted.targets.len(), 1);
+            assert!(accepted.targets[0].reused);
+            assert_eq!(
+                accepted.receipt_environment,
+                Some(BTreeSet::from([SHADOW.into()]))
+            );
+
+            let mut wrong = receipt.clone();
+            wrong
+                .declared_environment
+                .insert(SHADOW.into(), Some(vec![0]));
+            let rejected = fixture.select_recorded(route, wrong.seal())?;
+            assert!(
+                rejected.targets.is_empty(),
+                "rejected receipt supplied a target report"
+            );
+            assert_eq!(rejected.missing, BTreeSet::from(["input".into()]));
+            // Rejection grants no report authority; the empty returned
+            // subset therefore has an empty complete requirement set.
+            assert_eq!(rejected.receipt_environment, Some(BTreeSet::new()));
+            let requested = if matches!(route, Route::Direct) {
+                "input"
+            } else {
+                "app"
+            };
+            assert!(!sail_api::acceptance::requested_coverage(
+                &[sail_api::acceptance::requested_target(
+                    requested, requested, "lib"
+                )],
+                &rejected.targets,
+            ));
+
+            // A compiler-boundary restoration writes an invocation without
+            // starting a verifier. Its raw names must survive this branch too.
+            let mut restored = receipt.invocation;
+            restored.retained_from = Some("original-proof-run".into());
+            let call_path = fixture
+                .paths
+                .run
+                .join("invocations")
+                .join(format!("{}.json", restored.identity.key()));
+            json(&call_path, &restored)?;
+            let recorded = target_records_in(
+                &fixture.paths,
+                &fixture.data,
+                "selected",
+                false,
+                &BTreeSet::from([("input".into(), "input".into(), "lib".into())]),
+                &[],
+                None,
+                None,
+            )?;
+            assert!(recorded.missing.is_empty());
+            assert_eq!(recorded.targets.len(), 1);
+            assert!(recorded.targets[0].reused);
+            assert_eq!(recorded.targets[0].establishing_run, "original-proof-run");
+            assert_eq!(
+                recorded.receipt_environment,
+                Some(BTreeSet::from([SHADOW.into()]))
+            );
+            fixture.close()
+        }
+
+        #[test]
+        fn missing_unreported_target_does_not_hide_known_subset_requirements() -> TestResult {
+            const SHADOW: &str = " __VERUS_DRIVER_SHADOW__";
+            let fixture = Fixture::named(Route::Sibling, "known-subset")?;
+            let app_artifact = fixture.paths.target.join("app.rlib");
+            std::fs::write(&app_artifact, "unreported Cargo artifact")?;
+            let artifact = |package: &str, path: &Path| {
+                serde_json::json!({
+                    "reason":"compiler-artifact", "package_id":package, "fresh":true,
+                    "target":{"name":package,"kind":["lib"]}, "filenames":[path]
+                })
+            };
+            std::fs::write(
+                fixture.paths.run.join("artifacts.jsonl"),
+                format!(
+                    "{}\n{}\n",
+                    artifact("input", &fixture.artifact),
+                    artifact("app", &app_artifact)
+                ),
+            )?;
+            let mut receipt = compiler_receipt(&fixture.paths, &fixture.data, &fixture.artifact);
+            receipt.invocation.compiler_environment = Some(BTreeMap::from([(
+                SHADOW.into(),
+                std::env::var(SHADOW).ok(),
+            )]));
+            receipt.declared_environment.insert(
+                SHADOW.into(),
+                std::env::var_os(SHADOW).map(std::ffi::OsString::into_encoded_bytes),
+            );
+            let subset = fixture.select_recorded(Route::Sibling, receipt.clone().seal())?;
+            assert_eq!(subset.missing, BTreeSet::from(["app".into()]));
+            assert_eq!(subset.targets.len(), 1);
+            assert_eq!(subset.targets[0].target, "input");
+            assert!(!subset.targets[0].requested);
+            assert!(subset.targets[0].complete && subset.targets[0].reused);
+            assert_eq!(
+                subset.receipt_environment,
+                Some(BTreeSet::from([SHADOW.into()]))
+            );
+
+            assert!(!sail_api::acceptance::requested_coverage(
+                &[sail_api::acceptance::requested_target("app", "app", "lib")],
+                &subset.targets,
+            ));
+
+            // Once the unknown app report is included, the known dependency
+            // subset cannot authorize recording it.
+            let mut unknown = receipt.invocation;
+            unknown.identity.manifest = fixture.root.join("app/Cargo.toml");
+            unknown.identity.name = "app".into();
+            unknown.report.crates[0].name = Some("app".into());
+            unknown.compiler_environment = None;
+            unknown.retained_from = Some("unobserved-app".into());
+            json(
+                &fixture
+                    .paths
+                    .run
+                    .join("invocations")
+                    .join(format!("{}.json", unknown.identity.key())),
+                &unknown,
+            )?;
+            let included = target_records_in(
+                &fixture.paths,
+                &fixture.data,
+                "selected",
+                false,
+                &BTreeSet::from([("app".into(), "app".into(), "lib".into())]),
+                &[],
+                None,
+                None,
+            )?;
+            assert!(included.missing.is_empty());
+            assert_eq!(included.targets.len(), 2);
+            assert_eq!(included.receipt_environment, None);
+            fixture.close()
+        }
+
+        #[test]
+        fn replay_inventory_requires_readable_cached_records_without_starts() -> TestResult {
+            let fixture = Fixture::named(Route::Direct, "invocation-inventory")?;
+            let directory = fixture.paths.run.join("invocations");
+            assert!(replay_only_invocations(&directory));
+            let mut call =
+                compiler_receipt(&fixture.paths, &fixture.data, &fixture.artifact).invocation;
+            call.retained_from = Some("original-proof-run".into());
+            let path = directory.join("cached.json");
+            json(&path, &call)?;
+            assert!(replay_only_invocations(&directory));
+            std::fs::write(directory.join("123.started"), "actual compiler start")?;
+            assert!(!replay_only_invocations(&directory));
+            std::fs::remove_file(directory.join("123.started"))?;
+            std::fs::write(&path, "invalid JSON")?;
+            assert!(!replay_only_invocations(&directory));
+            call.retained_from = None;
+            json(&path, &call)?;
+            assert!(!replay_only_invocations(&directory));
+            assert!(!replay_only_invocations(&fixture.root.join("missing")));
+            assert!(!replay_only_invocations(&path));
+            fixture.close()
+        }
+
+        #[test]
+        fn unknown_or_artifactless_observations_refuse_replay_recording() -> TestResult {
+            let fixture = Fixture::named(Route::Direct, "unknown-observation")?;
+            let mut call =
+                compiler_receipt(&fixture.paths, &fixture.data, &fixture.artifact).invocation;
+            call.retained_from = Some("original-proof-run".into());
+            call.compiler_environment = None;
+            let path = fixture
+                .paths
+                .run
+                .join("invocations")
+                .join(format!("{}.json", call.identity.key()));
+            json(&path, &call)?;
+            let select = || {
+                target_records_in(
+                    &fixture.paths,
+                    &fixture.data,
+                    "selected",
+                    false,
+                    &BTreeSet::from([("input".into(), "input".into(), "lib".into())]),
+                    &[],
+                    None,
+                    None,
+                )
+            };
+            let unknown = select()?;
+            assert_eq!(unknown.targets.len(), 1);
+            assert!(unknown.missing.is_empty());
+            assert_eq!(unknown.receipt_environment, None);
+
+            call.compiler_environment = Some(BTreeMap::new());
+            json(&path, &call)?;
+            std::fs::remove_file(fixture.paths.run.join("artifacts.jsonl"))?;
+            let artifactless = select()?;
+            assert_eq!(artifactless.targets.len(), 1);
+            assert!(artifactless.missing.is_empty());
+            assert_eq!(artifactless.receipt_environment, None);
+            assert_eq!(artifactless.targets[0].report, call.report);
+            assert_eq!(
+                artifactless.targets[0].establishing_run,
+                "original-proof-run"
+            );
+            fixture.close()
+        }
+
+        #[test]
+        fn direct_admission_preserves_ghost_receipt_requirements() -> TestResult {
+            check_admitted_names(Route::Direct)
+        }
+
+        #[test]
+        fn sibling_admission_preserves_ghost_receipt_requirements() -> TestResult {
+            check_admitted_names(Route::Sibling)
+        }
+
+        #[test]
+        fn seeded_admission_preserves_ghost_receipt_requirements() -> TestResult {
+            check_admitted_names(Route::Seeded)
+        }
+    }
+
     #[test]
     fn runtime_identity_compares_bytes_of_installed_files_and_configuration()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -7441,5 +8303,137 @@ mod tests {
             "independent phases must re-read content"
         );
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+    #[test]
+    fn clean_forwards_profile_target_and_manifest_selectors() {
+        let selectors = |args: &[&str]| {
+            let args: Vec<String> = args.iter().map(|&a| a.to_owned()).collect();
+            clean_selectors(&args)
+        };
+        let none: [String; 0] = [];
+        assert_eq!(selectors(&[]), none);
+        assert_eq!(
+            selectors(&["-p", "input", "--lib", "--features", "x"]),
+            none
+        );
+        assert_eq!(selectors(&["--release"]), ["--release"]);
+        assert_eq!(selectors(&["-p", "a", "-r"]), ["-r"]);
+        assert_eq!(
+            selectors(&["--profile", "custom", "--target=x86_64-unknown-linux-gnu"]),
+            ["--profile", "custom", "--target=x86_64-unknown-linux-gnu"]
+        );
+        assert_eq!(
+            selectors(&["--target", "a", "--target", "b", "--profile=p"]),
+            ["--target", "a", "--target", "b", "--profile=p"]
+        );
+        assert_eq!(
+            selectors(&[
+                "--config",
+                "build.target='a'",
+                "--config=profile.dev.debug=0"
+            ]),
+            [
+                "--config",
+                "build.target='a'",
+                "--config=profile.dev.debug=0"
+            ]
+        );
+        assert_eq!(
+            selectors(&[
+                "--manifest-path",
+                "m/Cargo.toml",
+                "--manifest-path=n/Cargo.toml"
+            ]),
+            [
+                "--manifest-path",
+                "m/Cargo.toml",
+                "--manifest-path=n/Cargo.toml"
+            ]
+        );
+        // Option values are never read as selectors, and the Verus
+        // arguments after the separator are not Cargo's.
+        assert_eq!(selectors(&["--features", "--release", "-p", "-r"]), none);
+        assert_eq!(selectors(&["--target-dir", "t", "--targets"]), none);
+        assert_eq!(
+            selectors(&["--release", "--", "--release", "--target", "x"]),
+            ["--release"]
+        );
+    }
+    #[test]
+    fn clean_reaches_the_selected_profile_and_target_artifacts()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-select-clean-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("src"))?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\nedition='2024'\n[profile.custom]\ninherits='dev'\n[workspace]\n",
+        )?;
+        std::fs::write(root.join("src/lib.rs"), "pub fn input() -> u32 { 1 }\n")?;
+        let rustc = Command::new("rustc").arg("-vV").output()?;
+        let host = String::from_utf8(rustc.stdout)?
+            .lines()
+            .find_map(|line| line.strip_prefix("host: ").map(str::to_owned))
+            .ok_or("rustc reports no host")?;
+        let target = root.join("owned-target");
+        let config = |args: &[&str]| Config {
+            workspace: root.clone(),
+            cache: root.join("cache"),
+            sail: PathBuf::from("sail"),
+            cargo_verus: PathBuf::from("cargo-verus"),
+            cargo: PathBuf::from("cargo"),
+            cargo_toolchain: crate::managed::CargoToolchain::Caller,
+            shim: PathBuf::from("sail-z3"),
+            z3: PathBuf::from("z3"),
+            socket: None,
+            args: args.iter().map(|&a| a.to_owned()).collect(),
+            force: true,
+            attribution_logs: true,
+        };
+        let fresh = |args: &[String]| -> std::result::Result<bool, Box<dyn std::error::Error>> {
+            let output = Command::new("cargo")
+                .current_dir(&root)
+                .args(["check", "--offline", "-p", "input", "--message-format=json"])
+                .args(args)
+                .arg("--target-dir")
+                .arg(&target)
+                .env_remove("RUSTC_WRAPPER")
+                .env_remove("RUSTC_WORKSPACE_WRAPPER")
+                .env_remove("CARGO_BUILD_TARGET")
+                .output()?;
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            output
+                .stdout
+                .split(|b| *b == b'\n')
+                .filter_map(|line| serde_json::from_slice::<Value>(line).ok())
+                .find(|r| r["reason"] == "compiler-artifact" && r["target"]["name"] == "input")
+                .and_then(|r| r["fresh"].as_bool())
+                .ok_or_else(|| "no artifact for the selected package".into())
+        };
+        let default = config(&["-p", "input"]);
+        for selection in [
+            vec!["--release"],
+            vec!["--profile", "custom"],
+            vec!["--target", host.as_str()],
+            vec!["--release", "--target", host.as_str()],
+        ] {
+            let mut args = vec!["-p", "input"];
+            args.extend(&selection);
+            let selected = config(&args);
+            let build = &selected.args[2..];
+            fresh(build)?;
+            assert!(fresh(build)?, "an unchanged build is fresh: {selection:?}");
+            // The old cleanup: default profile, host layout only.
+            clean(&default, &target, &["input".to_owned()])?;
+            assert!(fresh(build)?, "a default clean misses {selection:?}");
+            clean(&selected, &target, &["input".to_owned()])?;
+            assert!(!fresh(build)?, "the clean must reach {selection:?}");
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 }

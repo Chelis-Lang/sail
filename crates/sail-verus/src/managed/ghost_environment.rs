@@ -52,6 +52,8 @@ pub(crate) type Environment = BTreeMap<String, Option<String>>;
 pub(crate) struct Observed {
     /// The tracked environment.
     pub(crate) environment: Environment,
+    /// Explicit driver-only COMMON bookkeeping, kept separate from source reads.
+    pub(crate) driver_environment: Environment,
     /// Every local source-map file and tracked file, as rustc names them,
     /// with the checksum rustc computed of the bytes it read (source-map files
     /// only), except imported VIR, which the invocation binds by its extern
@@ -75,6 +77,7 @@ struct Document {
     binding: String,
     pid: u32,
     complete: bool,
+    driver_environment: super::ghost_environment::Environment,
     phases: BTreeMap<String, Phase>,
 }
 
@@ -176,7 +179,8 @@ pub(crate) fn read(path: &Path, binding: &str, pid: u32) -> Option<Observed> {
     let document: Document = serde_json::from_slice(&raw).ok()?;
     let phases: BTreeSet<&str> = document.phases.keys().map(String::as_str).collect();
     if document.kind != KIND
-        || document.schema != 1
+        || document.schema != 2
+        || !super::compiler_origin::known(&document.driver_environment)
         || !document.complete
         || pid == 0
         || document.pid != pid
@@ -214,7 +218,11 @@ pub(crate) fn read(path: &Path, binding: &str, pid: u32) -> Option<Observed> {
     if files.keys().any(String::is_empty) {
         return None;
     }
-    Some(Observed { environment, files })
+    Some(Observed {
+        environment,
+        driver_environment: document.driver_environment,
+        files,
+    })
 }
 
 /// The dep-info path rustc writes for these compiler arguments, if any is
@@ -307,8 +315,9 @@ fn declared(text: &str) -> BTreeSet<&str> {
 /// Declaring the forwarded arguments would recompile a library whenever a new
 /// dependent changes them, and every repair (VI-0005).
 fn context_bound(name: &str) -> bool {
-    super::environment::input_environment_key(OsStr::new(name))
-        || name.trim_start().starts_with("__VERUS_DRIVER_")
+    !super::compiler_origin::source_sensitive(name)
+        && (super::environment::input_environment_key(OsStr::new(name))
+            || name.trim_start().starts_with("__VERUS_DRIVER_"))
 }
 
 /// rustc's dep-info escaping of file names
@@ -431,7 +440,7 @@ mod tests {
 
     fn document(binding: &str, pid: u32, verification: &serde_json::Value) -> serde_json::Value {
         serde_json::json!({
-            "kind": KIND, "schema": 1, "binding": binding, "pid": pid, "complete": true,
+            "kind": KIND, "schema": 2, "driver_environment": {}, "binding": binding, "pid": pid, "complete": true,
             "phases": {
                 "verification": {"sources": {"/w/src/lib.rs": {"checksum": "sha256=00", "size": 1},
                         "/w/src/value.rs": {"checksum": "sha256=01", "size": 2}},
@@ -441,6 +450,98 @@ mod tests {
                     "extra_tracked_files": [], "tracked_environment": {"VERUSDOC": null}},
             }
         })
+    }
+
+    #[test]
+    fn source_child_settings_are_declared_raw_even_when_the_ambient_context_omits_them()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = root("source-child-depinfo")?;
+        let path = root.0.join("demo.d");
+        let environment = Environment::from([
+            ("SAIL_PROVENANCE_DIR".into(), None),
+            (
+                "SAIL_COMPILER_INPUTS".into(),
+                Some("per-run-request".into()),
+            ),
+            (
+                "SAIL_COMPILER_INPUTS_BINDING".into(),
+                Some("per-run-binding".into()),
+            ),
+        ]);
+        std::fs::write(&path, "output: src/lib.rs\n\nsrc/lib.rs:\n\n")?;
+        merge(
+            &path,
+            &Observed {
+                environment,
+                driver_environment: Environment::new(),
+                files: BTreeMap::new(),
+            },
+        )
+        .ok_or("merge")?;
+        let raw = std::fs::read_to_string(path)?;
+        assert!(raw.contains("# env-dep:SAIL_PROVENANCE_DIR\n"));
+        assert!(raw.contains("# env-dep:SAIL_COMPILER_INPUTS=per-run-request\n"));
+        assert!(raw.contains("# env-dep:SAIL_COMPILER_INPUTS_BINDING=per-run-binding\n"));
+        Ok(())
+    }
+
+    #[test]
+    fn schema2_keeps_source_common_separate_and_refuses_unknown_origin()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = root("common-origin")?;
+        let path = root.0.join(DOCUMENT);
+        for value in [
+            serde_json::Value::Null,
+            serde_json::json!(""),
+            serde_json::json!("effective-with-logs"),
+        ] {
+            for phase in ["verification", "compilation"] {
+                let mut raw = document("binding", 42, &serde_json::json!({}));
+                raw["driver_environment"][crate::adapter::verus_channel::COMMON] = value.clone();
+                raw["phases"][phase]["tracked_environment"]
+                    [crate::adapter::verus_channel::COMMON] = value.clone();
+                std::fs::write(&path, serde_json::to_vec(&raw)?)?;
+                let observed = read(&path, "binding", 42).ok_or("source read lost")?;
+                assert_eq!(
+                    observed
+                        .environment
+                        .get(crate::adapter::verus_channel::COMMON),
+                    Some(&serde_json::from_value::<Option<String>>(value.clone())?)
+                );
+                assert!(!super::super::compiler_origin::reusable(
+                    &observed.environment
+                ));
+            }
+        }
+        let valid = document("binding", 42, &serde_json::json!({}));
+        for changed in [
+            {
+                let mut raw = valid.clone();
+                raw["schema"] = 1.into();
+                raw
+            },
+            {
+                let mut raw = valid.clone();
+                raw.as_object_mut()
+                    .ok_or("object")?
+                    .remove("driver_environment");
+                raw
+            },
+            {
+                let mut raw = valid.clone();
+                raw["driver_environment"]["UNKNOWN_ORIGIN"] = serde_json::Value::Null;
+                raw
+            },
+            {
+                let mut raw = valid.clone();
+                raw["driver_environment"] = serde_json::Value::Null;
+                raw
+            },
+        ] {
+            std::fs::write(&path, serde_json::to_vec(&changed)?)?;
+            assert!(read(&path, "binding", 42).is_none());
+        }
+        Ok(())
     }
 
     #[test]
@@ -462,6 +563,7 @@ mod tests {
         assert_eq!(
             observation.observed(),
             Some(Observed {
+                driver_environment: Environment::new(),
                 environment: Environment::from([
                     ("ORDINARY_PROOF_FLAG".to_owned(), Some("7".to_owned())),
                     ("VERUSDOC".to_owned(), None),
@@ -619,6 +721,7 @@ mod tests {
             ),
         ]);
         let observed = Observed {
+            driver_environment: Environment::new(),
             environment,
             files: BTreeMap::from([("src/lib.rs".to_owned(), None)]),
         };
@@ -627,7 +730,7 @@ mod tests {
         assert_eq!(
             merged,
             format!(
-                "{original}# env-dep:ABSENT_FLAG\n# env-dep:ODD\\nNAME=back\\\\slash\n# env-dep:ORDINARY_PROOF_FLAG=7\n"
+                "{original}# env-dep: __VERUS_DRIVER_ARGS__=compile\n# env-dep:ABSENT_FLAG\n# env-dep:ODD\\nNAME=back\\\\slash\n# env-dep:ORDINARY_PROOF_FLAG=7\n"
             )
         );
         // Sail's own declaration scan now sees the ghost read.
@@ -670,6 +773,7 @@ mod tests {
         let original = "/t/demo-0123.d: src/lib.rs\n/t/libdemo-0123.rmeta: src/lib.rs\n\nsrc/lib.rs:\n\n# env-dep:VERUSDOC\n# checksum:blake3=00 file_len:1 src/lib.rs\n";
         std::fs::write(&path, original)?;
         let observed = Observed {
+            driver_environment: Environment::new(),
             environment: Environment::from([("VERUSDOC".to_owned(), None)]),
             files: BTreeMap::from([
                 ("src/lib.rs".to_owned(), None),
