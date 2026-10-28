@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Keep unchanged-call replay records valid across full runs under other
+  keys: `--output json`, `SAIL_MANAGED_NOOP=0` and job calls no longer make
+  the next unchanged `sail verify` take the full path. The per-run settings
+  files those runs rewrite are no longer bound by content (#575).
+
 - Bind unchanged-call replay to the environment names required by the proof
   receipts admitted for that call, including ghost-only reads absent from
   Cargo dep-info. Retire older replay records that omitted those inputs (#552).
