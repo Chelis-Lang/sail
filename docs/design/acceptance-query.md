@@ -82,7 +82,8 @@ The held-response delivery separates the original bound pair from mutable
 effort metadata. Reason-unknown and statistics updates borrow only detached
 metadata. The checked controller preserves the pair through those updates,
 returns an original displaced check before holding its successor, and releases
-it at most once. The shim retains its existing statistics release and append
+it at most once. The carrier's payload type is `BoundPair`; silence
+certificates retain their separate `Entry` variant. The shim retains its existing statistics release and append
 operations: `[1,3,2,4]` remains the correct sequence for initial statistics,
 held check, reason-unknown and final statistics. Metadata restoration failure
 permanently stops pairing and ends the current drain; the existing publication
@@ -92,8 +93,9 @@ The native `Pairer` adapter is source-bound and reviewed, rather than compiled
 as a Stock proof body. Parsing, process observations, complete publication
 projection and cache-writer origin remain separate obligations. The
 [held-response qualification record](../validation/held-response-ownership.md)
-distinguishes implemented source from pending direct-Stock and native runtime
-acceptance for this delivery.
+records the whole positive, six ordinary controls and focused native checks.
+The complete combined control and runtime gates remain separate acceptance
+requirements for this delivery.
 
 [`proofs/refinement/query.rs`](../../proofs/refinement/query.rs) calls these
 actual executable operations and proves simulation into the existing model.

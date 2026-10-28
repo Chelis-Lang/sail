@@ -362,12 +362,16 @@ mod tests {
             "target":{"name":"demo","kind":["lib"]},"filenames":[output]});
         std::fs::write(&artifacts, closed_journal(&[record]))?;
         std::fs::write(root.join("good.rs"), "pub fn input() {}\n")?;
+        let expected: Vec<_> =
+            BTreeSet::from([root.join("good.rs"), root.join("good.rs").canonicalize()?])
+                .into_iter()
+                .collect();
         for name in ["", "nul\0name", "carriage\rreturn"] {
             std::fs::write(root.join("demo.d"), "o: good.rs\n\ngood.rs:\n")?;
             let (known, covered) =
                 update(&state, &artifacts, &metadata).map_err(std::io::Error::other)?;
             assert!(covered, "fixture must first establish complete coverage");
-            assert_eq!(known, [root.join("good.rs")]);
+            assert_eq!(known, expected);
             assert!(load(&state, true).1);
             let package_paths = packages(&state);
             let target_paths = targets(&state);
