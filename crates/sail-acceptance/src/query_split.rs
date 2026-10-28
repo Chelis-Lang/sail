@@ -709,33 +709,24 @@ sail_spec! {
     /// Isolate original-interval preservation from the scan/model induction.
     /// This proves the same quantified history cut the native loop requires.
     proof fn original_history_step(initial:StreamSplitter,current:StreamSplitter,next:StreamSplitter,
-        items:Seq<Item>,floor:int,data:Seq<u8>,start:int,end:int,first:Option<Item>,second:Option<Item>)
+        items:Seq<Item>,floor:int,data:Seq<u8>,start:int,end:int,first:Option<Item>,second:Option<Item>,
+        history:Seq<u8>)
         requires 0 <= floor <= items.len(),0 <= start <= end <= data.len(),
-            current.input_view() == initial.input_view(),
-            forall|history:Seq<u8>| initial.matches(history) ==>
-                current.matches(history+data.take(start))
-                && forall|i:int| floor <= i < items.len() ==>
-                    original_item(items[i],history+data.take(start),initial.input_view()),
-            forall|history:Seq<u8>| current.matches(history) ==>
-                next.matches(history+data.subrange(start,end))
-                && optional_original(first,history+data.subrange(start,end),initial.input_view())
-                && optional_original(second,history+data.subrange(start,end),initial.input_view()),
-        ensures forall|history:Seq<u8>| initial.matches(history) ==>
-            next.matches(history+data.take(end))
-            && optional_original(first,history+data.take(end),initial.input_view())
-            && optional_original(second,history+data.take(end),initial.input_view())
-            && forall|i:int| floor <= i < items.len() ==>
+            initial.matches(history),current.input_view() == initial.input_view(),
+            current.matches(history+data.take(start)),
+            forall|i:int| floor <= i < items.len() ==>
+                original_item(items[i],history+data.take(start),initial.input_view()),
+            next.matches((history+data.take(start))+data.subrange(start,end)),
+            optional_original(first,(history+data.take(start))+data.subrange(start,end),initial.input_view()),
+            optional_original(second,(history+data.take(start))+data.subrange(start,end),initial.input_view()),
+        ensures next.matches(history+data.take(end)),
+            optional_original(first,history+data.take(end),initial.input_view()),
+            optional_original(second,history+data.take(end),initial.input_view()),
+            forall|i:int| floor <= i < items.len() ==>
                 original_item(items[i],history+data.take(end),initial.input_view()),
     {
-        assert forall|history:Seq<u8>| initial.matches(history) implies
-            next.matches(history+data.take(end))
-            && optional_original(first,history+data.take(end),initial.input_view())
-            && optional_original(second,history+data.take(end),initial.input_view())
-            && forall|i:int| floor <= i < items.len() ==>
-                original_item(items[i],history+data.take(end),initial.input_view()) by {
-            assert((history+data.take(start))+data.subrange(start,end) =~= history+data.take(end));
-            original_items_append(items,floor,history+data.take(start),data.subrange(start,end),initial.input_view());
-        }
+        assert((history+data.take(start))+data.subrange(start,end) =~= history+data.take(end));
+        original_items_append(items,floor,history+data.take(start),data.subrange(start,end),initial.input_view());
     }
     /// Both actual optional pushes preserve every already-original item and
     /// add only the original emissions established by the chunk transition.
@@ -1071,7 +1062,7 @@ sail_code! {
                                 forall|i:int| items@.len() <= i < (prefix_items+chunk_items).len() ==>
                                     original_item((prefix_items+chunk_items)[i],history+data@.take(cursor as int),self.input) by {
                                 original_history_step(self,chunk_origin,next,appended@,items@.len() as int,
-                                    data@,_chunk_start as int,cursor as int,first,second);
+                                    data@,_chunk_start as int,cursor as int,first,second,history);
                                 original_items_emit(appended@,items@.len() as int,history+data@.take(cursor as int),self.input,first,second);
                             }
                             scan_prefix_step(model(self.state),self.input,self.position_view(),data@,
