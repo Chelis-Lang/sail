@@ -1,8 +1,11 @@
 # Shared cache record framing and write sequencing
 
-Status: source candidate extracted from the existing acceptance work. Direct
-Stock discovery, failure controls and native qualification remain pending;
-see the [qualification record](../validation/checked-cache-persistence.md).
+Status: implemented in the candidate based on main `bdd5e050`. Conditional
+Stock refinements pass at `67d1c84c`; fresh Linux full runtime/conformance and
+bounded component-cost checks pass at `e63ac6aa`. The full Mac host gate passes
+at `f4d686fc`; lead review accepts this bounded adoption and its measured cost
+tradeoff. The [qualification record](../validation/checked-cache-persistence.md) separates these
+receipts from native host effects and the full service theorem.
 
 `DiskCache::put_scoped` calls the shared `cache_write::write_record` transaction
 through the private native `persist::NativeWriteHost`. The transaction creates

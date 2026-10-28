@@ -1,8 +1,11 @@
 # Shared command classification and response expectation
 
-Status: implemented in a stacked candidate based on `838706f0`. Complete Stock
-discovery, ordinary controls and native qualification are pending. See the
-[qualification record](../validation/checked-command-classifier.md).
+Status: implemented in the candidate based on main `bdd5e050`. Conditional
+Stock refinements pass at `67d1c84c`; fresh Linux full runtime/conformance and
+bounded component-cost checks pass at `e63ac6aa`. The full Mac host gate passes
+at `f4d686fc`; lead review accepts this bounded adoption and its measured cost
+tradeoff. The [qualification record](../validation/checked-command-classifier.md) separates these
+receipts from native host effects and the full service theorem.
 
 `sail_smtlib::command::classify` delegates to the actual shared
 `query_command::classify` body. Public `Command`, `CommandKind` and `Output`
@@ -35,9 +38,11 @@ remain separate obligations under [the full design](evidence-acceptance-core.md)
 
 The head extension changes the complete parser root too. Its old 133-verified,
 208-function inventory is retained as a prior baseline. Parser and command
-roots explicitly await discovery; normal qualification rejects any pending
-root. No expected counts are guessed and historical receipts supply no new
-execution credit.
+roots now have actual whole-root discoveries: parser 135 verified / 213
+functions and command 108 / 163. The manifest locks these observed values;
+all 54 parser and 29 command failure controls now fail ordinarily at that scope.
+These calls were freshly executed; separately reused historical receipts retain
+their actual source/runtime attribution. No counts are guessed.
 
 Selection requires complete direct-stock proofs/ordinary controls, native
 Linux/Mac compatibility, solver faults, full E2E, scoped fast/standard

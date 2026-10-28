@@ -40,8 +40,10 @@ The native API reexports the original data declarations. Existing methods,
 byte fields, tokenizer and error-code/offset conversion are preserved. The
 stacked [command classifier](checked-command-classifier.md) uses a separate
 shared root. The `sexpr` consumer and thin native adapters remain hash-bound,
-not Stock-compiled. Added lexer-head operations require fresh complete parser
-discovery/controls; earlier parser-only counts and receipts remain historical.
+not Stock-compiled. The added lexer-head operations extend the complete parser
+inventory to 135 verified / 213 function entries. All 55 parser cases were
+freshly checked in the command/cache checkpoint; earlier parser-only and
+Holding/filename receipts retain their historical inventories and scope.
 
 The independent `parser` production root compiles the complete selected
 modules and their actual nonempty witnesses. Its 54 ordinary controls

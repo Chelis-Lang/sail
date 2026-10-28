@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Source-share shallow command classification and response expectation through
+  the existing SMT API and Session delegate, preserving original borrowed
+  spans and error behavior; [qualification and limits](docs/validation/checked-command-classifier.md).
+
+- Share cache record framing and write sequencing while retaining the disk
+  format, exclusive temporary creation and original failure behavior;
+  [qualification and limits](docs/validation/checked-cache-persistence.md).
+
 - Share the actual SMT streaming splitter and token lexer operations with
   conditionally checked stock-Verus proofs for original bytes, ordered
   emissions and token spans. Preserve the public chunk/finish behavior and
@@ -57,14 +65,6 @@ known issues.
   keys: `--output json`, `SAIL_MANAGED_NOOP=0` and job calls no longer make
   the next unchanged `sail verify` take the full path. The per-run settings
   files those runs rewrite are no longer bound by content (#575).
-
-- Share cache record framing and write sequencing while retaining the disk
-  format, exclusive temporary creation and original failure behavior.
-  Complete proof and native qualification remain pending.
-
-- Source-share shallow command classification and response expectation through
-  the existing SMT API and Session delegate, preserving original borrowed
-  spans and error behavior. Complete proof/native qualification is pending.
 
 - Make unchanged-call replay print what plain Cargo-Verus prints: key it by
   the terminal-capability variables Cargo's colour and hyperlink detection
