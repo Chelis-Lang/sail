@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Make unchanged-call replay print what plain Cargo-Verus prints: key it by
+  the terminal-capability variables Cargo's colour and hyperlink detection
+  reads and by the colour Sail asks Cargo for (#573), never record a run whose
+  output holds Cargo's transient lock-wait, index or download lines (#574),
+  and bind the exact daemon socket a managed API caller supplies (#571).
+  Older replay records take the full path once.
+
 - Benchmark scripts (`perf-real.sh`, `perf-loops.sh`, `perf-agents.sh`) stop
   each arm's daemon by the socket and pid `sail status --json` reports, through
   the new `scripts/sail-stop-daemon.sh`; the old command-line match missed
