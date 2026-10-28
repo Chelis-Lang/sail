@@ -413,6 +413,15 @@ Cargo-Verus does, and is never replayed. Job workers and `SAIL_MANAGED_FORCE`
 never replay; `SAIL_MANAGED_NOOP=0` disables replay, and
 `SAIL_MANAGED_NOOP_TRACE=FILE` logs each hit, miss reason and recording.
 
+Installed tools are stamped like any other input, so anything that changes
+their inode metadata ends replay for every recorded call, even when the bytes
+are unchanged. Hard-linking an installed `sail`, `sail-z3` or tool binary (for
+example to stage a benchmark copy) updates its ctime; so do
+`chmod`, `chown` and `touch`. The next call of each project then takes the
+full path and records again. This is the intended fail-safe outcome. When
+benchmarking, stage copies before the first measured call, or copy rather
+than link the installed binaries.
+
 ## Reader latency
 
 The M7 reader gate (four clients, 200 Status and Result reads, p95 below

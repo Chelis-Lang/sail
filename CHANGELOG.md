@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Benchmark scripts (`perf-real.sh`, `perf-loops.sh`, `perf-agents.sh`) stop
+  each arm's daemon by the socket and pid `sail status --json` reports, through
+  the new `scripts/sail-stop-daemon.sh`; the old command-line match missed
+  daemons whose socket is outside the cache directory (#580). Daemons bound
+  inside the cache, such as a baseline's, are still stopped. Document that
+  hard-linking an installed binary ends unchanged-call replay.
+
 - `sail --help` no longer lists `sail runtime`, and `sail runtime --help` now
   starts with the EXPERIMENTAL note, matching its documented status as an
   experimental integration API. The command itself is unchanged.
