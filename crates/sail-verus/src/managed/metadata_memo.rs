@@ -176,11 +176,10 @@ fn bootstrap_neutral(
     }
     inputs.iter().all(|path| {
         let name = path.file_name().and_then(OsStr::to_str);
-        let configuration = matches!(name, Some("config" | "config.toml"))
-            && path
-                .parent()
-                .and_then(Path::file_name)
-                .is_some_and(|parent| parent == ".cargo");
+        // Every file so named counts, not only those under a `.cargo`
+        // directory: the Cargo home's configuration (`$CARGO_HOME/config.toml`)
+        // is one too, and `CARGO_HOME` need not end in `.cargo`.
+        let configuration = matches!(name, Some("config" | "config.toml")) && !path.is_dir();
         let manifest = name == Some("Cargo.toml");
         if !(configuration || manifest) {
             return true;
@@ -563,6 +562,19 @@ mod tests {
             assert!(!bootstrap_neutral(&[], &none, &inputs), "{text}");
         }
         std::fs::remove_file(&configuration)?;
+        // The Cargo home's configuration, under a home not named `.cargo`
+        // (as in `CARGO_HOME=/usr/local/cargo`), is a configuration file too.
+        let home = root.join("cargo-home");
+        std::fs::create_dir_all(&home)?;
+        for name in ["config.toml", "config"] {
+            let home_configuration = home.join(name);
+            let with_home = BTreeSet::from([manifest.clone(), home_configuration.clone()]);
+            std::fs::write(&home_configuration, "[unstable]\nbindeps = true\n")?;
+            assert!(!bootstrap_neutral(&[], &none, &with_home), "{name}");
+            std::fs::write(&home_configuration, "[build]\njobs = 1\n")?;
+            assert!(bootstrap_neutral(&[], &none, &with_home), "{name}");
+            std::fs::remove_file(&home_configuration)?;
+        }
         std::fs::write(&manifest, "cargo-features = [\"x\"]\n")?;
         assert!(!bootstrap_neutral(&[], &none, &inputs));
         std::fs::write(&manifest, "[package]\n")?;
