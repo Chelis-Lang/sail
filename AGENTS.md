@@ -17,7 +17,8 @@ acting. The charter's appendix records corrections made since it was written.
   per-function verdicts and the same diagnostics as plain Verus with the pinned
   Z3. The differential harness (`sail-conformance`) is the definition of
   correctness. Owner-approved exceptions cover verification-progress note
-  ordering with exact text and counts (ADR 0064), and the reproduced VI-0003
+  ordering with exact text and counts (ADR 0064), compiler-time observation
+  of the named integration settings (ADR 0088), and the reproduced VI-0003
   case where the fork correctly marks a failed bit-vector function as failed
   while stock’s timing entry says successful. See the charter appendix and
   `docs/divergences.md`; all other differences remain failures.
@@ -260,8 +261,15 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   production bodies they refine, or their checkers.
 - *Standard (local):* `ci/local.sh conformance fast`, then
   `ci/local.sh conformance standard` (includes anvil). Run it before merging
-  changes to the shim, cache, daemon, keys or harness, and put the summary
-  lines in the PR.
+  changes to selected runtime verification behavior: solver interaction,
+  query/reply handling, cache reuse or keys, parsers, verdict/diagnostic
+  production, or the differential conformance oracle. Scope follows behavior,
+  not a crate or filename alone. Proof/model-only, documentation and diagnostic
+  tooling changes use fast CI plus their affected proofs and focused tests;
+  they do not automatically require the long corpus. Adopting previously
+  unselected proved code into those runtime paths does require it. State the
+  classification, actual results and any reused identical-source evidence in
+  the PR; never label an unrun suite passed. See ADR 0087.
 - *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
   Run it before pushing changes that touch platform-specific code.
 - *Temporal extension (local):* `ci/local.sh extension` (or `ci/run.sh
@@ -309,8 +317,19 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
 
 - **Milestones.** GitHub milestones on `Chelis-Lang/sail` track phases, and
   `docs/ROADMAP.md` is the narrative.
-- **Issues.** One issue per deliverable or defect. Every conformance
-  disagreement becomes an issue containing a minimal reproduction.
+- **Main-relative bugs.** File GitHub bug issues for defects established on
+  current `main`, with a minimal reproduction or precise source evidence. If
+  imminent PR work fixes or supersedes a main bug, assign the owner so another
+  implementation does not run in parallel.
+- **PR and local defects.** Fix bugs introduced by an open PR, branch or local
+  refactor in that work. Track them in PR comments or a managed document, not
+  standalone GitHub issues. If an unfixed defect reaches `main`, file it then.
+  Apply the same distinction to conformance disagreements; preserve their
+  reproduction and never weaken the conformance check.
+- **Design work.** Keep unfinished design work in the design document or one
+  umbrella issue. A PR implementing part A needs no separate issues for B, C
+  and D when the design already covers them. Follow-up issues are for remaining
+  work on `main` that is not already represented by the design or its tracker.
 - **Owner questions** live in `docs/open-questions.md`. Add to it rather than
   guessing.
 

@@ -269,3 +269,31 @@ Each entry names the charter text it qualifies and the ADR that records it.
    identical. Conformance records accepted cases separately, binds them to
    the reproduced function and assertion location, and rejects ambiguous or
    unrelated status changes. See `docs/divergences.md`.
+
+11. *Engineering practice: scoped merge qualification* (owner decision,
+   2026-10-27). Standard conformance gates changes to selected runtime
+   verification behavior: solver interaction, query/reply handling, cache reuse
+   or keys, parsers, verdict/diagnostic production and the differential oracle.
+   It is not automatic for proof/model-only, documentation or diagnostic-tooling
+   PRs, or unselected proved operations that leave existing runtime paths
+   unchanged. Every PR retains required fast CI and relevant focused tests;
+   changed proofs retain complete direct Stock checking and failure controls.
+   Runtime performance changes retain native benchmark and standard conformance
+   requirements. Adopting staged code into a runtime path requires its runtime
+   qualification. Evidence reuse must establish identical tested inputs and
+   implementation and disclose the original source and scope; it is not a new
+   execution. No correctness oracle, proof obligation or resource limit changes.
+   See ADR 0087 and `AGENTS.md`.
+
+12. *Correctness rule 1: named compiler-visible integration settings* (owner
+    decision, 2026-10-27). Code that observes Sail's existing named solver-route,
+    Cargo wrapper, packed driver-option, source-map/compiler-input or
+    interactive-engine control settings
+    may compile different inputs and therefore produce different verdicts or
+    diagnostics from plain Cargo-Verus. The exact surfaces and causal scope are
+    listed in ADR 0088 and `docs/divergences.md`. This accepts their visibility;
+    it does not implement a private transport. Solver-answer correctness,
+    exact actual-query cache identity, freshness, complete requested scope and
+    truthful reporting remain required for the effective inputs Sail verifies.
+    Unrelated differences remain failures. No conformance comparison, corpus
+    case or proof obligation is weakened, and no runtime or backend is selected.

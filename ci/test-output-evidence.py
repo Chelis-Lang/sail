@@ -117,6 +117,42 @@ def filesystem_controls():
         print('output evidence: exact raw/producers, missing executable, FIFO/external refusal and indexed size limits pass')
 
 
+def selection_controls():
+    with tempfile.TemporaryDirectory(prefix='sail-output-selection-') as temporary:
+        root = Path(temporary)
+        work = root / 'work'
+        commands = work / 'commands'
+        commands.mkdir(parents=True)
+        sail = root / 'sail'
+        sail.write_bytes(b'fixture executable identity only')
+        # Use the real count cap: old duplicate snapshots must not displace
+        # either the latest command or original producer observations.
+        for index in range(collector.MAX_FILES + 8):
+            (commands / f'old-{index:04}.argv').write_bytes(b'old command\x00')
+        (commands / 'last-sail.argv').write_bytes(b'original last command\x00')
+        (work / 'last-sail.err').write_bytes(b'original last stderr\n')
+        (work / 'noop.trace').write_bytes(b'not recorded: original producer unavailable\n')
+        for run in ('older', 'newer'):
+            producer = work / 'cache/projects/p/c/runs' / run
+            producer.mkdir(parents=True)
+            (producer / 'result.json').write_text(json.dumps({'run_id': run}))
+            (producer / 'cargo.stderr').write_bytes(b'original producer stderr\n')
+        assert collector.capture(work, root / 'evidence', 'loop', 17, sail, 'last-sail') == 1
+        output = root / 'evidence/files'
+        assert (output / 'commands/last-sail.argv').read_bytes() == b'original last command\x00'
+        assert (output / 'last-sail.err').read_bytes() == b'original last stderr\n'
+        assert (output / 'noop.trace').read_bytes() == b'not recorded: original producer unavailable\n'
+        for run in ('older', 'newer'):
+            assert (output / 'cache/projects/p/c/runs' / run / 'result.json').is_file()
+        index = json.loads((root / 'evidence/index.json').read_text())
+        assert index['original_exit'] == 17 and not index['capture_complete']
+        assert len(index['files']) == collector.MAX_FILES
+        assert 'selected-file count limit reached' in '\n'.join(index['errors'])
+        assert index['last_command'] == 'last-sail'
+        assert index['limits']['files'] == 1024
+        print('output evidence: last command and producer records survive old snapshot overflow under the original cap')
+
+
 VERIFIER = r'''#!PYTHON
 import json,os,sys,time
 from pathlib import Path
@@ -215,6 +251,7 @@ a=a[1:];os.execvp(a[0],a)
                 index = json.loads((record / 'index.json').read_text())
                 assert index['original_exit'] == expected and index['capture_complete']
                 if case == 'mismatch':
+                    assert index['last_command'] == 'combined-sail'
                     raw = record / 'files/combined-sail.out'
                     assert b'intentional fixture mismatch' in raw.read_bytes()
                     assert (record / 'files/combined-sail.rc').read_bytes() == b'101\n'
@@ -222,9 +259,12 @@ a=a[1:];os.execvp(a[0],a)
                     assert command == [str(tools / 'sail').encode(), b'verify', b'']
                     assert (record / 'files/commands/combined-sail.raw.out').read_bytes() == raw.read_bytes()
                     assert any(row['path'].endswith('/result.json') for row in index['files'])
+                else:
+                    assert index['last_command'] is None, 'setup failed before any recorded verifier command'
             print('output evidence: actual shell', case, 'preserves original exit and cleanup')
 
 
 if __name__ == '__main__':
     filesystem_controls()
+    selection_controls()
     shell_controls()

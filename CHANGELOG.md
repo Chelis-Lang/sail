@@ -5,6 +5,40 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Document the owner-approved equivalence exception for code that observes
+  Sail's named compiler-visible integration settings (ADR 0088). Solver-answer
+  correctness and acceptance checks for actual effective inputs remain required.
+
+- Reuse successful proof-source envelope syntax checks for identical source
+  and proof mode while keeping binding and drift validation fresh.
+
+- Extend acceptance-model checks for engine completion, normal declines,
+  same-subject fallback and per-target repair origins; require every enrolled
+  model failure control.
+- Stage the checked cache generation, complete-key map and index kernels; native cache adoption remains separate.
+
+- Resolve managed configuration homes from the supplied environment, keeping
+  CARGO_HOME precedence and native path bytes from that observation.
+- Validate source tokens without repeatedly copying the remaining input;
+  retain exact spans, literal boundaries and refusal behavior. Distinguish
+  reviewed Set union expressions from erased type declarations.
+
+- Restore generated-file E2E inputs before later stock-oracle comparisons in
+  the full local managed suite.
+
+- Keep local container build targets separate between physical checkouts, so
+  prepared worktrees cannot accidentally run one another's stale binaries.
+- Accept reviewed proof-import identifiers containing digits while retaining
+  exact import bindings and executable-configuration refusals.
+
+- Refuse production proof controls that change contracts or loop obligations,
+  change erased proof syntax or alter runtime intervals on both sides of it,
+  instead of introducing an executable fault.
+
+- Prioritize the last output-test command and original producer records over
+  older command snapshots when a failure archive reaches its file cap (#477).
+  File, byte and time limits stay fixed, incomplete captures stay indexed, and
+  collector failures preserve the original test exit.
 - Fail safe on several cache and daemon edge cases. The disk cache creates
   its temporary entry file exclusively, so a preexisting file or symlink at
   that name is refused rather than followed and truncated, and a name the

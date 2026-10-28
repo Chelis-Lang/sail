@@ -4,13 +4,12 @@ Open Sail defects and current product limits on main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
-## Default-mode verdict differences
+## Accepted integration limit
 
-These break the correctness contract and stay listed until fixed and
-covered by conformance.
-
-- **Sail's solver route and Verus-fork requests remain visible to compiled
-  code** ([#435](https://github.com/Chelis-Lang/sail/issues/435)). The
+- **Sail's named integration settings are compiler-visible**
+  ([ADR 0088](decisions/0088-compiler-visible-integration-settings.md),
+  [#435](https://github.com/Chelis-Lang/sail/issues/435)). The owner accepts
+  this bounded equivalence exception. The
   pinned fork and the `sail-z3` shim read these from the compiler's
   environment. Build scripts and compilers see `VERUS_Z3_PATH`,
   `SAIL_Z3_PATH`, `SAIL_SOLVER_MODE` and `SAIL_DAEMON_SOCKET`, and
@@ -18,14 +17,28 @@ covered by conformance.
   ` __VERUS_DRIVER_ARGS__` carries Sail's observation options. The fork's
   shipped-build and compiler-input requests (`SAIL_RUSTC_DEV_SOURCE_BASE`,
   `SAIL_VIR_SPAN_REMAP`, `SAIL_COMPILER_INPUTS*`) reach compilers while those
-  features are active. No ordinary project reads these names. A proof or
-  macro that does can still differ from plain Cargo-Verus.
+  features are active. `SAIL_PROVENANCE_DIR` and
+  `SAIL_NATIVE_COMPILER_INPUTS`/`SAIL_NATIVE_COMPILER_INPUTS_BINDING` are also
+  observable while active. Code that reads these settings can compile different
+  inputs and differ from plain Cargo-Verus. Default managed invocation also
+  clears caller values of the five existing interactive-engine controls;
+  selected interactive mode supplies its compiler-child values. The
+  [divergence registry](divergences.md#compiler-visible-integration-settings)
+  defines the exact scope. Solver correctness, actual-query cache identity,
+  freshness, complete scope and truthful reporting remain required; unrelated
+  differences remain failures. No private transport or new runtime is selected.
 
 ## Input coverage and cache integrity
 
 No end-to-end false proof is reproduced for these; each weakens a check that
 reuse depends on.
 
+- Retained-proof admission normalizes the effective observed
+  ` __VERUS_DRIVER_ARGS__` to its base value without preserving that effective
+  binding for reuse ([#551](https://github.com/Chelis-Lang/sail/issues/551)).
+  This is a source-established input-coverage gap, separate from ADR 0088's
+  accepted visibility difference; it does not authorize stale reuse. No
+  end-to-end wrong-verdict reproduction is claimed.
 - Read-back currentness brackets its reads with metadata stamps of every
   recorded path (#387). A concurrent edit that restores every stamped
   field, including the inode change time, is not detected; that needs a
@@ -169,8 +182,6 @@ Current numbers are in [performance](performance.md).
 - **Verifier wait under amd64 emulation.** Verification sometimes stalls
   under emulation, which is not used for performance or Linux validation
   ([reproduction](../corpus/repros/linux-emulation-verus-stall/)).
-- The configuration selector unit test reads the developer's own Cargo home
-  ([#419](https://github.com/Chelis-Lang/sail/issues/419)).
 
 ## Verus and Z3
 

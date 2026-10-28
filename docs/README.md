@@ -60,6 +60,9 @@ runtime improvement and its installed consumer checks.
 The [M7 acceptance guide](bench/m7-repair-acceptance.md) specifies frozen real
 projects, unchanged deadlines, source-byte checks and performance gates.
 [Fault injection](fault-injection.md) covers solver, cache and daemon failures.
+[Acceptance work and PR findings](design/acceptance-pr-findings.md) separates
+current-main bugs from unmerged development findings and records the single
+proof-work tracker.
 [The proposed evidence-acceptance core](design/evidence-acceptance-core.md)
 defines a conditional safety theorem for query association, input identity,
 requested scope and result authority. It is a design proposal, not an
@@ -70,6 +73,12 @@ controls. [Production refinements](design/acceptance-production-refinements.md)
 connect source-shared operations and typed factories to native callers; their
 [qualification record](validation/acceptance-production-refinements.md) states
 the remaining integration and service-wide proof obligations.
+[Binary64 equality support](../corpus/repros/verus-float-equality-spec/README.md)
+gives the standalone numerical model, exact broken controls and
+[qualification scope](validation/binary64-equality-support.md).
+[Report verification mode](design/report-verification-mode.md) describes the
+checked actual command-construction operation and its separate
+[qualification](validation/report-verification-mode.md).
 The [solver identity record](validation/solver-identity.md) tracks the stale
 executable-hash reproduction, handshake repair and remaining qualification.
 The [cold first-run record](validation/cold-first-run.md) compares first runs
@@ -196,3 +205,5 @@ the qualified #174/#215 implementation, its nine-sample targeted gain, complete
 native/Mac gates, unchanged Vest costs and preserved historical failures.
 
 [Neutral source profile two qualification](validation/neutral-source-profile-two.md) records explicit flat Rust admission, retained legacy identities and the bounded UNKNOWN diagnostic.
+
+- [Cache ownership core](design/cache-ownership-core.md): staged executable kernels and their [qualification](validation/cache-ownership-core.md).

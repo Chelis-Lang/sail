@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "scope": "Independent whole-file mathematical support only; no production/runtime mutation credit or semantic boundary selection.",
+  "controls": [
+    {
+      "name": "all-nan-payloads-unequal",
+      "before": "left & 0x7fff_ffff_ffff_ffffu64 <= 0x7ff0_0000_0000_0000u64\n        && right & 0x7fff_ffff_ffff_ffffu64 <= 0x7ff0_0000_0000_0000u64",
+      "after": "true",
+      "role": "Remove both actual NaN classification guards; identical NaN bits falsely compare equal."
+    },
+    {
+      "name": "opposite-zero-signs-equal",
+      "before": " || left & 0x7fff_ffff_ffff_ffffu64 == 0\n            && right & 0x7fff_ffff_ffff_ffffu64 == 0",
+      "after": "",
+      "role": "Remove the original signed-zero exception; the numeric zero denotations remain equal."
+    },
+    {
+      "name": "original-finite-sign",
+      "before": "(left == right ||",
+      "after": "((left & 0x7fff_ffff_ffff_ffffu64) == (right & 0x7fff_ffff_ffff_ffffu64) ||",
+      "role": "Ignore the original sign during comparison while the numeric denotation retains it."
+    },
+    {
+      "name": "original-finite-fraction",
+      "before": "(left == right ||",
+      "after": "(exponent(left) == exponent(right) ||",
+      "role": "Drop original fraction/sign association rather than checking identical values."
+    },
+    {
+      "name": "normal-hidden-leading-bit",
+      "before": "(HIDDEN as int + frac as int) * pow2((exp - 1) as nat) as int",
+      "after": "frac as int * pow2((exp - 1) as nat) as int",
+      "role": "Delete the leading1 of every normal value; numeric bounds and concrete1.0 must refuse."
+    },
+    {
+      "name": "normal-original-numeric-scale",
+      "before": "(HIDDEN as int + frac as int) * pow2((exp - 1) as nat) as int",
+      "after": "(HIDDEN as int + frac as int) * pow2(exp) as int",
+      "role": "Wrong normal binary exponent; equality alone could be invariant, so exact numeric endpoints remain mandatory."
+    },
+    {
+      "name": "nan-is-not-reflexive",
+      "before": "(Binary64Value::NegativeInfinity, Binary64Value::NegativeInfinity) => true,",
+      "after": "(Binary64Value::Nan, Binary64Value::Nan) => true,\n        (Binary64Value::NegativeInfinity, Binary64Value::NegativeInfinity) => true,",
+      "role": "Give NaNs reflexive denotation equality while retaining original guard/refusal."
+    },
+    {
+      "name": "infinity-original-sign",
+      "before": "(Binary64Value::PositiveInfinity, Binary64Value::PositiveInfinity) => true,",
+      "after": "(Binary64Value::NegativeInfinity, Binary64Value::PositiveInfinity) => true,\n        (Binary64Value::PositiveInfinity, Binary64Value::PositiveInfinity) => true,",
+      "role": "Wrongly admit opposite signed infinities."
+    },
+    {
+      "name": "numeric-comparison-always-refuses",
+      "before": "left & 0x7fff_ffff_ffff_ffffu64 <= 0x7ff0_0000_0000_0000u64\n        && right & 0x7fff_ffff_ffff_ffffu64 <= 0x7ff0_0000_0000_0000u64\n        && (left == right || left & 0x7fff_ffff_ffff_ffffu64 == 0\n            && right & 0x7fff_ffff_ffff_ffffu64 == 0)",
+      "after": "false",
+      "role": "Refuse the full comparison operation; nonempty numeric examples and the universal theorem remain unchanged."
+    }
+  ]
+}

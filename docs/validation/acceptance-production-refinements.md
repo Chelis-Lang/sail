@@ -10,6 +10,127 @@ the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
+## Consolidated acceptance-audit bugfix candidate
+
+The separate source-envelope optimization (#534) at `a891b3a0` passes the
+complete native 48-test source suite and fresh 25-case direct Stock refinement
+matrix: query 134 checks/263 functions, inputs 54/91 and authority 174/303.
+All 22 negative controls fail ordinary verification under the unchanged
+120-second deadline, one thread and normal resource limits. The complete
+25 captured programs are byte-identical to parent `b61603bc`. No new model
+mathematics, production Rust, proof source, manifest or runtime is introduced.
+The retained source tests cover all 45 baseline controls plus exact source/proof
+mode separation, spoofed string-subclass refusal and mutable truth values.
+
+On the dedicated native EC2 `c7i.4xlarge` in `us-east-1`, four cold paired runs
+compare the identical complete 25-program capture/validation workload. Each
+sample runs in a fresh process with explicitly empty syntax caches; pair order
+alternates. Git capture, assembly/import checks, full initial/final inventories,
+all complete generated programs and both filesystem drift checks remain active.
+
+| Pair | Order | Parent seconds | Cached seconds |
+|---|---|---:|---:|
+| 1 | Parent, cached | 5.919557 | 5.012783 |
+| 2 | Cached, parent | 6.067294 | 4.920863 |
+| 3 | Parent, cached | 6.035451 | 4.932509 |
+| 4 | Cached, parent | 5.932582 | 4.944062 |
+
+All samples are retained. Median paired cached/parent ratio is 0.825315,
+about 17.47% lower time for this proof-tooling workload. Each cached sample
+records 135 hits and 34 misses in the bounded 128-entry successful-syntax cache.
+This is not a product verification-speed or full source-suite timing claim.
+The full refinement matrix takes 236.775 seconds; the complete qualifier,
+including source tests, all paired runs and final validation, takes 306.734
+seconds. Core image SHA256 is
+`338fdef13e0182ca8433ab65db9f17eabc6500639c36ec527417fdcfb3e33fa1`.
+Final Git source, image and every pinned Stock runtime file are rechecked.
+
+Raw native evidence is preserved by byte-identical authenticated PUT/GET:
+`experiments/2026-10-27/acceptance-envelope-a891b3a0-paired-native.tgz`,
+6,402,364 bytes, SHA256
+`307efa10456a8b70c0b02f00148086bff08f4a1535bf38505bb0d374d7932468`.
+This source-only optimization changes no corpus entry, query generation or
+runtime selection. Historical larger-branch timings are not reused for this cut.
+
+After the cache-core merge `06f0eceb`, the complete source-only comparison at
+`d4499697` reconstructs all 157 current production programs, including every
+registered control. Drivers and every compiled file are byte-identical with
+and without this optimization; both complete inventories and source guards
+pass. The underlying validator's parsed function is identical to the parent's
+after accounting for its private name. All 56 current source tests pass,
+retaining the parent's 53 controls and the three cache-specific tests.
+This comparison makes zero Stock calls. The unchanged compiled programs retain
+the parent's independently audited [cache-core proof qualification](cache-ownership-core.md);
+the original 25-program native timing above remains scoped to that workload.
+No new 157-program timing or whole-head native execution is claimed.
+
+The main-based bugfix extraction changes qualification tooling and fixture
+isolation independently of the broader #378 production refinements. Its
+current implemented scope is:
+
+| Finding | Correction | Evidence and limits |
+|---|---|---|
+| #454, #508, #537 | Preserve function contracts, loop annotations, erased proof groups and all but one proof-delimited runtime interval; refuse proof-only faults and bare verification statements | All 45 local source tests pass. All 22 existing control objects and 25 captured programs remain unchanged; comparison makes zero Stock calls |
+| #532 | Accept digits in reviewed proof-import identifiers | Exact import hashes, allowed prefixes and cfg/body refusals remain; covered by source tests |
+| #419 | Resolve configuration homes from the same supplied environment | Supplied-home and CARGO_HOME-precedence regression passes in the native gate at `9597caad` |
+| #514 | Distinguish the exact `.union(` member expression from an erased declaration | Positive Set union and all erased-declaration/alternate-macro refusals pass |
+| #432 | Match lexer regexes at absolute source positions, avoiding remaining-tail copies | Six lexical span/literal/refusal regressions pass; no token/envelope memoization or new main timing claim |
+| #475 | Separate core/Singular target volumes by physical checkout | Actual-wrapper fixture passes on macOS with a recording Docker substitute; separate checkouts differ, same checkout/alias stay warm. Native aggregate uses a fresh physical-checkout target volume |
+| #540 | Restore generated-file scenario source and build script before later stock-oracle controls | Full local native E2E passes at `9597caad`, retaining every comparison/assertion |
+
+Native aggregate `9597caad4e2311b642b7470764376928cbbd426c` passes:
+1,161 Rust tests, solver51, model29, refinement25, full local E2E (all phases
+and extras), and PR conformance. All 25 captured programs equal main byte for
+byte. Host: c7i.4xlarge, x86-64 Linux, us-east-1; core image
+`sha256:85ce0f274de085e47ae6bd297555fa4c43b58e18c6c3c4b392e0c608219899f2`.
+Artifact `acceptance-audit-bugs-9597caad-native.tgz`, 7,023,701 bytes, SHA-256
+`f77e197e5922752d69e61a00d3c50a1dc89430c41592e8ecfb856a180a333f10`;
+source/image and upload/readback guards pass. This source has the same tree as
+`c575471e`; later documentation commits through `08ba9bb6` leave its code
+unchanged. All hosted checks pass at `08ba9bb6`.
+
+Independent review of that head found a remaining source-admission gap: an
+unchanged erased assertion could move past a runtime assignment when a separate
+runtime edit was present. The original 22 registered controls do not do this.
+The candidate now allows runtime edits in only one exact interval between
+unchanged proof groups, with bidirectional relocation and ambiguous repeated-token
+regressions. Multi-interval controls are conservatively refused. The final
+`ef655f82` correction passes fresh native qualification: workspace gate (1,161
+tests), solver51, model29, refinement25, full local E2E including extras,
+PR conformance, full fast and standard conformance. Each of four fast arms
+reports 147 Same / 3,451 functions; each standard arm reports 159 Same /
+13,166 functions, with zero unstable/different/infrastructure errors or skipped
+projects. Resource-count drift is reported separately (11 fast units, 17
+standard units), without changing verdict or diagnostic comparisons.
+
+The host is c7i.4xlarge, native x86-64 Linux, us-east-1; the core image is
+the same `85ce0f27` image identified above. Final source/image guards pass.
+Artifact `acceptance-audit-bugs-ef655f82-native.tgz`, 53,670,168 bytes, SHA-256
+`34c5b337329930e332a7c03c14564a54ba47232e7203a75ac2afb8a5b7e0c7ed`,
+passes upload/readback and independent download digest checks. #542 is merged
+as `9702cfdd`, with the exact same tree as `ef655f82`. The earlier `9597caad`
+aggregate remains evidence only for its own source.
+
+The #540 failed aggregate passes native gate (1,160 Rust tests), solver51,
+model29 and production refinement25 before the full managed sequence fails;
+PR conformance is unrun. Hosted phase-isolated checks pass. Artifact
+`acceptance-tooling-split-d1518341-v3-native.tgz`, 6,665,267 bytes, SHA-256
+`004a85a477ba1cd41c195635cc8e39265ff6adbe01032ca08444fcc7191b6d4b`;
+source/image and upload/readback guards pass.
+
+| Date | Source | Gate | Result |
+|---|---|---|---|
+| 2026-10-27 | `d1518341` | Full native local E2E | Failed at ghost-environment stock comparison: generated-file fixture leaked `OUT_DIR` source into an oracle lacking its build script (#540) |
+| 2026-10-27 | `08ba9bb6` | Source admission review | Assertion relocation with a separate runtime edit was admitted; source-only reproduction, no Stock invocation or wrong Sail verdict demonstrated |
+
+Earlier runtime/input fixes already merged in #436, #445, #512 and #515 are
+not reintroduced by this extraction. Corrections belonging only to unselected
+parser, metadata and cache components remain tracked with those components.
+The independent #534 envelope cache is not a prerequisite. The only production
+Rust change observes supplied configuration homes; no proof source or manifest
+changes. The later source-position correction remains subject to the fresh
+qualification described above.
+
 ## Checked source and runtime
 
 The frozen checkpoint is `3b1cb3623ef17a2c4a99bc8bd3e12e88f1ef63fb`.

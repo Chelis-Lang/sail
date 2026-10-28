@@ -32,6 +32,9 @@ pub mod project;
 pub mod proof;
 pub mod protocol;
 pub mod repair;
+/// Internal checked construction of a package report's verification mode.
+#[doc(hidden)]
+pub mod request_mode;
 pub mod runtime;
 pub mod schema;
 pub mod stamp;

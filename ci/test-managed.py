@@ -878,6 +878,8 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             # declares an environment variable and writes its value into a file
             # the crate includes. An unchanged value reuses the proof; a changed
             # value must verify the crate again.
+            generated_source = source.read_text()
+            generated_build_script = (project / "build.rs").read_text()
             (project / "build.rs").write_text(
                 'fn main() {\n'
                 '    println!("cargo::rerun-if-env-changed=DEMO_GENERATED_VALUE");\n'
@@ -915,6 +917,10 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 assert b"declared caller target changed" in declared_run.stderr, declared_run.stderr.decode()
                 assert declared["context_sha256"] == changed["context_sha256"], diagnostic(declared)
             finally:
+                # Later full-suite cases copy the original source into a stock
+                # oracle without this generated-file build script.
+                source.write_text(generated_source)
+                (project / "build.rs").write_text(generated_build_script)
                 env.pop("DEMO_GENERATED_VALUE", None)
                 if declared_caller_target is None:
                     env.pop("CARGO_TARGET_DIR", None)
