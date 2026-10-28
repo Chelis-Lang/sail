@@ -61,6 +61,8 @@ them.
 - [Held solver replies](validation/held-response-ownership.md) and
   [compiler filename tokens](validation/compiler-filename-refinement.md):
   source-shared operations, native adoption and qualification limits.
+- [Shared command classifier](design/checked-command-classifier.md): checked shallow
+  command/response operations and [qualification](validation/checked-command-classifier.md).
 - Validation records for each gate are in [validation/](validation/). Design
   notes are in [design/](design/), milestone reports in [reports/](reports/),
   and research in [survey/](survey/README.md).

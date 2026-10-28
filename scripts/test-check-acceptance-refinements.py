@@ -178,7 +178,7 @@ class SourceCaptureTests(unittest.TestCase):
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs",
             "crates/sail-acceptance/src/query_split.rs", "crates/sail-acceptance/src/query_lex.rs", CHECKER.HOLDING_CORE]
         paths += ["crates/" + name + "/Cargo.toml" for name in
-            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib")]
+            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib", "sail-session")]
         paths += [str(path.relative_to(ROOT)) for path in (ROOT / "crates/sail-acceptance/src").glob("cache_*.rs")]
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         CHECKER.validate_assembly(snapshots)
@@ -199,6 +199,7 @@ class SourceCaptureTests(unittest.TestCase):
             ("crates/sail-acceptance/src/lib.rs", b"pub mod authority;", b'#[path="hidden.rs"] pub mod authority;'),
             ("crates/sail-api/src/acceptance.rs", b"report: &'a Report,", b"pub report: &'a Report,"),
             ("crates/sail-api/src/acceptance.rs", b"pub struct CompleteReport", b"#[derive(Default)] pub struct CompleteReport"),
+            ("crates/sail-session/Cargo.toml", b"sail-smtlib.workspace = true", b'sail-smtlib = { path = "../alternate" }'),
             (CHECKER.HOLDING_CORE, b"payload: Option<Payload>,", b"pub payload: Option<Payload>,"),
             (CHECKER.HOLDING_CORE, b"pub struct Holding", b"#[derive(Default)] pub struct Holding"),
         ):
@@ -214,6 +215,43 @@ class SourceCaptureTests(unittest.TestCase):
         parser.update(discovery_pending=True, verified=None, functions=[])
         with self.assertRaisesRegex(CHECKER.Refusal, "Stock discovery pending"):
             CHECKER.require_discovered([parser])
+
+    def test_pending_command_blocks_normal_qualification_with_discovered_siblings(self):
+        manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        command = dict(next(entry for entry in manifest["components"] if entry["id"] == "command"))
+        command.update(discovery_pending=True, verified=None, functions=[])
+        sibling = {"id": "inputs", "verified": 59, "functions": ["check_inputs::example"]}
+        with self.assertRaisesRegex(CHECKER.Refusal, "Stock discovery pending"):
+            CHECKER.require_discovered([sibling, command])
+
+    def test_command_source_and_native_session_delegate_have_distinct_roles(self):
+        manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        command = next(entry for entry in manifest["components"] if entry["id"] == "command")
+        snapshots = {path: (ROOT / path).read_bytes() for path in command["dependencies"]}
+        _, _, files = CHECKER.captured_driver(command, snapshots)
+        for name in ("query_command", "query_policy", "query_lex"):
+            self.assertEqual(files["core_" + name + ".rs"], snapshots["crates/sail-acceptance/src/" + name + ".rs"])
+        roles = CHECKER.source_roles(command)
+        for path in CHECKER.COMMAND_NATIVE_SHA256:
+            self.assertNotIn(path, roles["checked_source"])
+            self.assertIn(path, roles["reviewed_native_command"])
+            with self.subTest(path=path), self.assertRaisesRegex(CHECKER.Refusal, "native (parser|command)"):
+                CHECKER.compiled_subset(path, snapshots[path] + b"\n// unreviewed drift\n")
+        session = "crates/sail-session/src/lib.rs"
+        before = b"self.option(b\":print-success\")"
+        self.assertIn(before, snapshots[session])
+        with self.assertRaisesRegex(CHECKER.Refusal, "native command"):
+            CHECKER.compiled_subset(session, snapshots[session].replace(before, b"self.option(b\":other\")"))
+
+    def test_command_controls_retain_all_executable_and_proof_boundaries(self):
+        manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        entry = next(entry for entry in manifest["components"] if entry["id"] == "command")
+        self.assertEqual(len(entry["negative_controls"]), 29)
+        for control in entry["negative_controls"]:
+            source = (ROOT / control["source"]).read_text()
+            with self.subTest(control=control["name"]):
+                SOURCE.runtime_mutation(source, control["before"], control["after"])
+                CHECKER.compiled_subset(control["source"], source.replace(control["before"], control["after"]).encode())
 
     def test_parser_split_controls_preserve_original_combined_faults(self):
         manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
@@ -492,8 +530,15 @@ class SourceCaptureTests(unittest.TestCase):
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         manifest = json.loads(snapshots[CHECKER.MANIFEST])
         # This fixture simulates verifier I/O only to attack source recapture.
-        # Use the actual locked inventories, including parser discovery; these
-        # synthetic results are not new proof or qualification evidence.
+        # Give pending roots explicit synthetic inventories in this private
+        # source-recapture attack fixture only. No verifier is executed and no
+        # synthetic result supplies proof or qualification evidence.
+        for entry in manifest["components"]:
+            if entry.get("discovery_pending"):
+                entry.pop("discovery_pending")
+                entry["verified"] = 1
+                entry["functions"] = ["check_" + entry["id"] + "::synthetic_capture_attack"]
+        snapshots[CHECKER.MANIFEST] = json.dumps(manifest).encode()
         entries = {entry["id"]: entry for entry in manifest["components"]}
         pins = tomllib.loads(snapshots["corpus/toolchain.toml"].decode())
         with tempfile.TemporaryDirectory(prefix="sail-final-assembly-") as temporary:

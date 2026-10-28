@@ -34,3 +34,8 @@ pub mod query_holding;
 pub mod query_lex;
 /// Actual owned SMT stream splitter operations and ordered emissions.
 pub mod query_split;
+
+/// Actual shallow command classifier and response expectation over original bytes.
+pub mod query_command;
+/// Exact supported successful-command response policy over original head bytes.
+pub mod query_policy;

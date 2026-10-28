@@ -58,6 +58,10 @@ known issues.
   the next unchanged `sail verify` take the full path. The per-run settings
   files those runs rewrite are no longer bound by content (#575).
 
+- Source-share shallow command classification and response expectation through
+  the existing SMT API and Session delegate, preserving original borrowed
+  spans and error behavior. Complete proof/native qualification is pending.
+
 - Make unchanged-call replay print what plain Cargo-Verus prints: key it by
   the terminal-capability variables Cargo's colour and hyperlink detection
   reads and by the colour Sail asks Cargo for (#573), never record a run whose

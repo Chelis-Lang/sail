@@ -464,6 +464,109 @@ sail_code! {
     }
 }
 
+sail_spec! {
+    pub open spec fn head_transition(bytes:Seq<u8>) -> (int,bool,Result<(usize,Seq<u8>),LexFailure>) {
+        let first=lex_transition(bytes,0,false);
+        match first.2 {
+            None => (first.0,first.1,Err(LexFailure { kind:LexFailureKind::Empty,offset:0 })),
+            Some(Err(error)) => (first.0,first.1,Err(error)),
+            Some(Ok(open)) => if !(open.kind is Open) {
+                (first.0,first.1,Err(LexFailure { kind:LexFailureKind::InvalidToken,offset:open.start }))
+            } else {
+                let next=lex_transition(bytes,first.0,first.1);
+                match next.2 {
+                    None => (next.0,next.1,Err(LexFailure { kind:LexFailureKind::UnclosedList,offset:open.start })),
+                    Some(Err(error)) => (next.0,next.1,Err(error)),
+                    Some(Ok(head)) => if !(head.kind is Symbol) {
+                        (next.0,next.1,Err(LexFailure { kind:LexFailureKind::InvalidToken,offset:head.start }))
+                    } else { (next.0,next.1,Ok((open.start,bytes.subrange(head.start as int,head.end as int)))) },
+                }
+            },
+        }
+    }
+    pub open spec fn borrowed_head_view(out:Result<(usize,&[u8]),LexFailure>) -> Result<(usize,Seq<u8>),LexFailure> {
+        match out { Ok((open,name)) => Ok((open,name@)),Err(error) => Err(error) }
+    }
+}
+
+sail_code! {
+    impl<'a> Lexer<'a> {
+        sail_method! {
+            /// Executes the actual shallow two-token command-head read. The
+            /// returned name borrows this lexer's own original input rather
+            /// than interpreting a token against a separately supplied slice.
+            /// Full framing implies the existing checked raw head-span relation;
+            /// command arity/body and solver meaning remain separate.
+            ///
+            /// # Errors
+            /// Retains the original empty/unclosed, invalid-token and
+            /// unterminated string/quoted-symbol diagnostic classes/offsets.
+            pub fn command_head(&mut self) -> (out:Result<(usize,&'a [u8]),LexFailure>)
+                requires (old(self).well_formed(),old(self).position_view() == 0,!old(self).failed_view())
+                ensures (final(self).well_formed(),final(self).input_view() == old(self).input_view(),
+                    (final(self).position_view(),final(self).failed_view(),borrowed_head_view(out))
+                        == head_transition(old(self).input_view()),
+                    match out { Ok((_open,name)) => name@.len()>0
+                        && (crate::parser_grammar::single_list(old(self).input_view(),true) ==>
+                            exists|start:int,end:int| crate::parser_grammar::head_span(old(self).input_view(),start,end)
+                                && name@ == old(self).input_view().subrange(start,end)),Err(_) => true })
+            {
+                let open=match self.next_token() {
+                    None => return Err(LexFailure { kind:LexFailureKind::Empty,offset:0 }),
+                    Some(Err(error)) => return Err(error),
+                    Some(Ok(open)) => open,
+                };
+                if !matches!(open.kind,TokenKind::Open) {
+                    return Err(LexFailure { kind:LexFailureKind::InvalidToken,offset:open.start });
+                }
+                let head=match self.next_token() {
+                    None => return Err(LexFailure { kind:LexFailureKind::UnclosedList,offset:open.start }),
+                    Some(Err(error)) => return Err(error),
+                    Some(Ok(head)) => head,
+                };
+                if !matches!(head.kind,TokenKind::Symbol) {
+                    return Err(LexFailure { kind:LexFailureKind::InvalidToken,offset:head.start });
+                }
+                Ok((open.start,&self.src[head.start..head.end]))
+            }
+        }
+    }
+}
+
+sail_verified! {
+    /// Nonempty actual command with CRLF comment trivia returns its original
+    /// borrowed head and leaves the closing token for the existing classifier.
+    #[allow(clippy::byte_char_slices, reason = "Explicit original bytes keep the whole-root lexical/head witness concrete.")]
+    pub fn lexer_head_constructive_control() -> (passed:bool)
+        requires (true) ensures (passed)
+    {
+        let src=[b'(',b';',b'c',b'\r',b'\n',b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't',b')'];
+        let expected=[b'c',b'h',b'e',b'c',b'k',b'-',b's',b'a',b't'];
+        sail_proof! {
+            assert(src@.subrange(5,14) =~= expected@);
+            assert(trivia_stop(src@,1,false) == 5) by {
+                reveal_with_fuel(trivia_stop,7);
+            }
+            assert(word_stop(src@,5) == 14) by {
+                reveal_with_fuel(word_stop,11);
+            }
+            assert(lex_transition(src@,0,false)
+                == (1int,false,Some(Ok(Token { kind:TokenKind::Open,start:0,end:1 }))));
+            assert(lex_transition(src@,1,false)
+                == (14int,false,Some(Ok(Token { kind:TokenKind::Symbol,start:5,end:14 }))));
+            assert(head_transition(src@) == (14int,false,Ok((0usize,expected@)))) by {
+                reveal(head_transition);
+            }
+        }
+        let mut lexer=Lexer::new(&src);
+        let Ok((open,name))=lexer.command_head() else { return false; };
+        if open != 0 || !crate::inputs::byte_eq(name,&expected) { return false; }
+        let Some(Ok(close))=lexer.next_token() else { return false; };
+        matches!(close.kind,TokenKind::Close) && close.start == 14 && close.end == 15
+            && lexer.next_token().is_none()
+    }
+}
+
 sail_verified! {
     /// Actual doubled-quote, quoted-symbol and binary token spans stay on the
     /// original byte carrier, including punctuation hidden inside quotes.

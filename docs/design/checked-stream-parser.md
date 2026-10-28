@@ -37,9 +37,11 @@ scoped standard conformance are qualified; ADR 0086 accepts this bounded
 adoption with the documented fragmentation and lexer regressions.
 
 The native API reexports the original data declarations. Existing methods,
-byte fields, tokenizer and error-code/offset conversion are preserved. Native `command` and `sexpr`
-consumers stay at their main source. Their bodies and the thin adapters are
-reviewed/hash-bound source, not Stock-compiled code.
+byte fields, tokenizer and error-code/offset conversion are preserved. The
+stacked [command classifier](checked-command-classifier.md) uses a separate
+shared root. The `sexpr` consumer and thin native adapters remain hash-bound,
+not Stock-compiled. Added lexer-head operations require fresh complete parser
+discovery/controls; earlier parser-only counts and receipts remain historical.
 
 The independent `parser` production root compiles the complete selected
 modules and their actual nonempty witnesses. Its 54 ordinary controls
