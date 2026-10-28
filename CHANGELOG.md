@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- `sail --help` no longer lists `sail runtime`, and `sail runtime --help` now
+  starts with the EXPERIMENTAL note, matching its documented status as an
+  experimental integration API. The command itself is unchanged.
+
 - Add compiler-read schema2 support that keeps source reads of
   ` __VERUS_DRIVER_ARGS__` distinct from Verus driver bookkeeping. Such
   source-reading units and units reading Sail's named compiler-child controls
