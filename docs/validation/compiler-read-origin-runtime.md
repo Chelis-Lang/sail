@@ -1,10 +1,10 @@
 # Compiler-read origin Linux runtime construction
 
 Status: the Linux candidate is built, locally packed and freshly installed.
-It is **unselected**. The paired [compiler-read origin acceptance](compiler-read-origin.md),
+Its exact bytes are published as an immutable fork prerelease and selected by this branch. The paired [compiler-read origin acceptance](compiler-read-origin.md),
 ordinary useful reuse and full Linux conformance now pass at the separate
 `96de5097` checkpoint; Linux oracle and determinism also pass in their own
-packet. Further macOS qualification and final integration remain pending. This record qualifies runtime construction only; it does not
+packet. The separate Mac runtime gate also passes; final consumer/publication checks are recorded in the owning acceptance record. This record qualifies runtime construction only; it does not
 close [#551](https://github.com/Chelis-Lang/sail/issues/551).
 
 ## Frozen inputs and actual output
@@ -59,14 +59,13 @@ and it is absent from later pack/install and acceptance commands.
 | Source, compiler, lock and solver guards | PASS; 1,010 Sail inputs and 1,496 fork inputs match frozen source, exact fork version reported, toolchain bytes unchanged |
 | Paired e2e/conformance, useful reuse and cost | NOT RUN in this construction gate |
 | Engine differential/cancellation and determinism | NOT RUN in this construction gate |
-| macOS runtime and both-platform selection | Pending |
+| macOS runtime and both-platform selection | Separate Mac gate PASS; both immutable archive pins are selected and published |
 
-The proposed Linux pin and `LINUX_MANIFEST` guard name these exact bytes so the
+The Linux pin and `LINUX_MANIFEST` guard name these exact bytes so the
 paired acceptance branch can exercise ordinary reuse. They are not production
-acceptance. The descriptor's prospective release asset has not been published;
-use the locally packed archive through normal validated installation. The
-macOS pin and guard now propose the separately constructed schema2 runtime
-below; they do not yet qualify the final integrated consumer. No public asset, release or final selection is made here.
+acceptance. The descriptor names the published immutable release asset, also checked through anonymous normal validated installation. The
+macOS pin and guard select the separately constructed schema2 runtime
+below; the owning acceptance record supplies the separate consumer qualification. This construction record remains separate from Sail product release acceptance.
 
 ## Evidence
 
@@ -87,16 +86,22 @@ zero failed or filtered). Its raw rust-src Vargo build is not this release-style
 runtime; its failed preparation/build attempts retain their original scope in
 [fork PR #13](https://github.com/Chelis-Lang/verus/pull/13).
 
-## Constructed macOS proposal
+## Constructed macOS runtime
 
 The same exact Sail constructor source `4b3f7aa6` and fork `47fb3be6` also
 complete the normal native arm64 macOS build, both vstd verifications
-(2,059 verified each), real pack and fresh install. The staged proposal names
+(2,059 verified each), real pack and fresh install. The selected archive names
 variant `7d829946231d6413a398f6e4160cdfe951261dad-91a9b529d1d74530`,
 manifest `ea6853a815475820ad3cfeb2a6d9b684e4fff82506eac8fba0cc938ef6359996`,
 and archive `52ba48d4288a18c7994ce2b73cec878342728cb929e9d87e06b4badad96a7da9`.
-Independent source/tool/runtime and full-byte privacy audits pass. Further
-Mac source/origin/determinism gates are running; final descriptor integration,
-consumer host gate, asset publication and selection remain pending. The initial
+Independent source/tool/runtime and full-byte privacy audits pass. The additional native gate passes: engine11, cancellation, libraries180, selected19 source targets (97 pass/one inherited ignore), installed origin4 and all320 inputs three times with zero variation. Both immutable runtime assets are published. The source95 consumer host gate and bounded smoke pass separately; its published fast-PR/new-project checks are recorded in the owning acceptance record. The initial
 combined-output locator failed after the successful build; its failed attempt
 remains preserved without relabeling or rebuilding the runtime.
+
+The additional Mac raw gate is privately preserved at
+`experiments/2026-10-28/env551-macos-runtime-4b3-qualification-v2-ccf7edc4.tar`,
+418,590,720 bytes, SHA-256
+`ccf7edc4f2ea8e697c6b1fe01136f19bee65fa3f67752b81f247c8f17bf67398`.
+Its complete 960 calls contain 921 normal successes and 39 expected verifier
+failures; all320 inputs are stable across three runs. This is repeatability
+qualification, not a claim that every source proves.

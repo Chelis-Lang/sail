@@ -368,4 +368,15 @@ fn origin_cleanup_forwards_only_cargo_scope_before_the_verus_separator() {
             "--manifest-path=other.toml"
         ]
     );
+    let configured: Vec<_> = [
+        "--features", "--release", "--config", "build.target='host'",
+        "--target", "ignored-in-layout-query", "--config=build.build-dir='target/build'",
+        "-m", "layout/Cargo.toml", "--", "--config=wrong",
+    ].into_iter().map(str::to_owned).collect();
+    let mut layout = Command::new("cargo");
+    cargo_clean_arguments(&mut layout, &configured, false);
+    assert_eq!(layout.get_args().collect::<Vec<_>>(), [
+        "--config", "build.target='host'", "--config=build.build-dir='target/build'",
+        "-m", "layout/Cargo.toml",
+    ]);
 }

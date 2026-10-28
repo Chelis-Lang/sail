@@ -1045,23 +1045,60 @@ fn clean_compiler_family(config: &Config, target: &Path) -> Result<()> {
 /// Match the actual family's profile/target when cleaning packages. Whole-family
 /// migration deliberately omits scope flags to remove every artifact directory.
 fn cargo_clean_arguments(command: &mut Command, args: &[String], scoped: bool) {
-    let mut args = args.iter().take_while(|arg| arg.as_str() != "--");
-    while let Some(arg) = args.next() {
-        if arg == "--manifest-path" || (scoped && ["--profile", "--target"].contains(&arg.as_str()))
-        {
-            command.arg(arg);
-            if let Some(value) = args.next() {
-                command.arg(value);
-            }
-        } else if arg.starts_with("--manifest-path=")
-            || (scoped
-                && (["--release", "-r"].contains(&arg.as_str())
-                    || arg.starts_with("--profile=")
-                    || arg.starts_with("--target=")))
+    let selected = clean_selectors(args);
+    let mut selected = selected.iter();
+    while let Some(arg) = selected.next() {
+        if !scoped && ["--profile", "--target"].contains(&arg.as_str()) {
+            selected.next();
+        } else if scoped
+            || !(matches!(arg.as_str(), "--release" | "-r")
+                || arg.starts_with("--profile=")
+                || arg.starts_with("--target="))
         {
             command.arg(arg);
         }
     }
+}
+
+/// Keep Cargo selector spelling/order and skip values of unrelated options.
+/// Only options before the first Verus separator belong to Cargo.
+fn clean_selectors(args: &[String]) -> Vec<String> {
+    const FORWARDED: [&str; 5] = ["--manifest-path", "--profile", "--target", "--config", "-m"];
+    const SKIPPED: [&str; 14] = [
+        "-p",
+        "--package",
+        "--exclude",
+        "-F",
+        "--features",
+        "--bin",
+        "--example",
+        "--test",
+        "--bench",
+        "-j",
+        "--jobs",
+        "--color",
+        "-Z",
+        "--lockfile-path",
+    ];
+    let mut selected = Vec::new();
+    let mut rest = args.iter().take_while(|arg| *arg != "--");
+    while let Some(arg) = rest.next() {
+        let name = arg.as_str();
+        if matches!(name, "--release" | "-r") {
+            selected.push(arg.clone());
+        } else if FORWARDED.contains(&name) {
+            selected.push(arg.clone());
+            selected.extend(rest.next().cloned());
+        } else if SKIPPED.contains(&name) {
+            rest.next();
+        } else if FORWARDED
+            .iter()
+            .any(|option| option.starts_with("--") && name.starts_with(&format!("{option}=")))
+        {
+            selected.push(arg.clone());
+        }
+    }
+    selected
 }
 
 fn cargo_clean(config: &Config, build_target: &Path, packages: &[String]) -> Result<()> {
@@ -8266,5 +8303,137 @@ mod tests {
             "independent phases must re-read content"
         );
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+    #[test]
+    fn clean_forwards_profile_target_and_manifest_selectors() {
+        let selectors = |args: &[&str]| {
+            let args: Vec<String> = args.iter().map(|&a| a.to_owned()).collect();
+            clean_selectors(&args)
+        };
+        let none: [String; 0] = [];
+        assert_eq!(selectors(&[]), none);
+        assert_eq!(
+            selectors(&["-p", "input", "--lib", "--features", "x"]),
+            none
+        );
+        assert_eq!(selectors(&["--release"]), ["--release"]);
+        assert_eq!(selectors(&["-p", "a", "-r"]), ["-r"]);
+        assert_eq!(
+            selectors(&["--profile", "custom", "--target=x86_64-unknown-linux-gnu"]),
+            ["--profile", "custom", "--target=x86_64-unknown-linux-gnu"]
+        );
+        assert_eq!(
+            selectors(&["--target", "a", "--target", "b", "--profile=p"]),
+            ["--target", "a", "--target", "b", "--profile=p"]
+        );
+        assert_eq!(
+            selectors(&[
+                "--config",
+                "build.target='a'",
+                "--config=profile.dev.debug=0"
+            ]),
+            [
+                "--config",
+                "build.target='a'",
+                "--config=profile.dev.debug=0"
+            ]
+        );
+        assert_eq!(
+            selectors(&[
+                "--manifest-path",
+                "m/Cargo.toml",
+                "--manifest-path=n/Cargo.toml"
+            ]),
+            [
+                "--manifest-path",
+                "m/Cargo.toml",
+                "--manifest-path=n/Cargo.toml"
+            ]
+        );
+        // Option values are never read as selectors, and the Verus
+        // arguments after the separator are not Cargo's.
+        assert_eq!(selectors(&["--features", "--release", "-p", "-r"]), none);
+        assert_eq!(selectors(&["--target-dir", "t", "--targets"]), none);
+        assert_eq!(
+            selectors(&["--release", "--", "--release", "--target", "x"]),
+            ["--release"]
+        );
+    }
+    #[test]
+    fn clean_reaches_the_selected_profile_and_target_artifacts()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-select-clean-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("src"))?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='input'\nversion='0.1.0'\nedition='2024'\n[profile.custom]\ninherits='dev'\n[workspace]\n",
+        )?;
+        std::fs::write(root.join("src/lib.rs"), "pub fn input() -> u32 { 1 }\n")?;
+        let rustc = Command::new("rustc").arg("-vV").output()?;
+        let host = String::from_utf8(rustc.stdout)?
+            .lines()
+            .find_map(|line| line.strip_prefix("host: ").map(str::to_owned))
+            .ok_or("rustc reports no host")?;
+        let target = root.join("owned-target");
+        let config = |args: &[&str]| Config {
+            workspace: root.clone(),
+            cache: root.join("cache"),
+            sail: PathBuf::from("sail"),
+            cargo_verus: PathBuf::from("cargo-verus"),
+            cargo: PathBuf::from("cargo"),
+            cargo_toolchain: crate::managed::CargoToolchain::Caller,
+            shim: PathBuf::from("sail-z3"),
+            z3: PathBuf::from("z3"),
+            socket: None,
+            args: args.iter().map(|&a| a.to_owned()).collect(),
+            force: true,
+            attribution_logs: true,
+        };
+        let fresh = |args: &[String]| -> std::result::Result<bool, Box<dyn std::error::Error>> {
+            let output = Command::new("cargo")
+                .current_dir(&root)
+                .args(["check", "--offline", "-p", "input", "--message-format=json"])
+                .args(args)
+                .arg("--target-dir")
+                .arg(&target)
+                .env_remove("RUSTC_WRAPPER")
+                .env_remove("RUSTC_WORKSPACE_WRAPPER")
+                .env_remove("CARGO_BUILD_TARGET")
+                .output()?;
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            output
+                .stdout
+                .split(|b| *b == b'\n')
+                .filter_map(|line| serde_json::from_slice::<Value>(line).ok())
+                .find(|r| r["reason"] == "compiler-artifact" && r["target"]["name"] == "input")
+                .and_then(|r| r["fresh"].as_bool())
+                .ok_or_else(|| "no artifact for the selected package".into())
+        };
+        let default = config(&["-p", "input"]);
+        for selection in [
+            vec!["--release"],
+            vec!["--profile", "custom"],
+            vec!["--target", host.as_str()],
+            vec!["--release", "--target", host.as_str()],
+        ] {
+            let mut args = vec!["-p", "input"];
+            args.extend(&selection);
+            let selected = config(&args);
+            let build = &selected.args[2..];
+            fresh(build)?;
+            assert!(fresh(build)?, "an unchanged build is fresh: {selection:?}");
+            // The old cleanup: default profile, host layout only.
+            clean(&default, &target, &["input".to_owned()])?;
+            assert!(fresh(build)?, "a default clean misses {selection:?}");
+            clean(&selected, &target, &["input".to_owned()])?;
+            assert!(!fresh(build)?, "the clean must reach {selection:?}");
+        }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 }

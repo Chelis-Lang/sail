@@ -13,7 +13,6 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import shutil
-import stat
 import tarfile
 import re
 import tempfile
@@ -34,35 +33,6 @@ def sha(path):
         for chunk in iter(lambda: source.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def scan_paths(root, tokens):
-    """Reject forbidden bytes or unknown reads in an unpacked runtime tree."""
-    tokens = tuple(tokens)
-    if not tokens or any(not token for token in tokens):
-        raise ValueError("SAIL0944: runtime scan requires nonempty tokens")
-    if not stat.S_ISDIR(root.lstat().st_mode):
-        raise ValueError("SAIL0944: runtime scan root must be a physical directory")
-    overlap = max(map(len, tokens)) - 1
-    pending = [root]
-    while pending:
-        with os.scandir(pending.pop()) as entries:
-            for entry in entries:
-                path = Path(entry.path)
-                if entry.is_dir(follow_symlinks=False):
-                    pending.append(path)
-                elif entry.is_file(follow_symlinks=False):
-                    with path.open("rb") as source:
-                        carry = b""
-                        for chunk in iter(lambda: source.read(65536), b""):
-                            data = carry + chunk
-                            for token in tokens:
-                                if token in data:
-                                    raise ValueError("SAIL0944: forbidden runtime token "
-                                                     + repr(token) + " in " + str(path.relative_to(root)))
-                            carry = data[-overlap:] if overlap else b""
-                else:
-                    raise ValueError("SAIL0944: nonregular runtime scan entry: " + str(path.relative_to(root)))
 
 
 def fork_value(key):
@@ -286,8 +256,6 @@ def main():
     unpack.add_argument("--archive", type=Path, required=True)
     unpack.add_argument("--pin", type=Path, required=True)
     unpack.add_argument("--cache", type=Path, required=True)
-    scan = commands.add_parser("scan")
-    scan.add_argument("--root", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "pack":
         if os.environ.get("CI"):
@@ -295,9 +263,6 @@ def main():
         pack(args)
     elif args.command == "fetch":
         fetch(args)
-    elif args.command == "scan":
-        scan_paths(args.root, [os.fsencode(token) for token in
-                   ["/Users/", "/home/", *os.environ.get("SAIL_SCAN_TOKENS", "").split()]])
     else:
         print(install(args.archive, committed_pin(args.pin), args.cache))
 

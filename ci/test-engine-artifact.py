@@ -6,14 +6,10 @@ import contextlib
 import importlib.util
 import io
 import json
-import os
 from pathlib import Path
 import tarfile
 import tempfile
-import subprocess
-import sys
 import unittest
-from unittest import mock
 
 spec = importlib.util.spec_from_file_location("artifact", Path(__file__).with_name("engine-artifact.py"))
 artifact = importlib.util.module_from_spec(spec)
@@ -21,50 +17,6 @@ spec.loader.exec_module(artifact)
 
 
 class ArtifactTests(unittest.TestCase):
-    def test_runtime_scan_rejects_early_late_and_cross_chunk_tokens(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            file = root / "runtime"
-            for payload in [b"/Users/probe\n" + b"ordinary\n" * 400000,
-                            b"x" * 65534 + b"/home/probe",
-                            b"x" * 131072 + b"private-host"]:
-                with self.subTest(length=len(payload)):
-                    file.write_bytes(payload)
-                    with self.assertRaisesRegex(ValueError, "forbidden runtime token"):
-                        artifact.scan_paths(root, [b"/Users/", b"/home/", b"private-host"])
-
-    def test_runtime_scan_accepts_clean_files_and_refuses_unknown_reads(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "nested").mkdir()
-            (root / "nested/runtime").write_bytes(b"ordinary runtime\x00bytes")
-            artifact.scan_paths(root, [b"/Users/", b"/home/"])
-            with mock.patch.object(Path, "open", side_effect=OSError("unreadable file")):
-                with self.assertRaises(OSError):
-                    artifact.scan_paths(root, [b"/Users/"])
-            with mock.patch.object(os, "scandir", side_effect=OSError("unreadable directory")):
-                with self.assertRaises(OSError):
-                    artifact.scan_paths(root, [b"/Users/"])
-            (root / "link").symlink_to(root / "nested/runtime")
-            with self.assertRaisesRegex(ValueError, "nonregular"):
-                artifact.scan_paths(root, [b"/Users/"])
-            with self.assertRaises(OSError):
-                artifact.scan_paths(root / "absent", [b"/Users/"])
-
-    def test_runtime_scan_cli_rejects_large_matches_and_configured_tokens(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            file = root / "runtime"
-            command = [sys.executable, str(Path(__file__).with_name("engine-artifact.py")),
-                       "scan", "--root", str(root)]
-            for token in [b"/Users/probe", b"private-host"]:
-                file.write_bytes(token + b"\n" + b"ordinary\n" * 400000)
-                with mock.patch.dict(os.environ, {"SAIL_SCAN_TOKENS": "private-host"}):
-                    output = subprocess.run(command, capture_output=True)
-                self.assertEqual(output.returncode, 1)
-                self.assertIn(b"SAIL0944", output.stderr)
-                self.assertIn(b"forbidden runtime token", output.stderr)
-
     def fixture(self, root):
         build = root / "source-variant"
         runtime = build / artifact.RUNTIME

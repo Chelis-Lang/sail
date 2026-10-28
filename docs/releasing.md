@@ -478,12 +478,11 @@ Verus toolchain must not have `rust-src`
 ([VI-0031](verus-issues/VI-0031-rust-src-std-paths.md)). The binaries record
 the absolute paths of their dependency sources (panic locations) and vstd.vir
 those of vstd's, so set `RUSTUP_HOME`, `CARGO_HOME` and `SAIL_CACHE_DIR` to
-directories outside the home directory (for example under `/tmp`) and check
-the packed archive's strings for `/Users/` before publishing it.
-The unpacked-tree check uses `ci/engine-artifact.py scan --root TREE`, which
-checks file bytes, including tokens spanning read chunks. Enumeration and
-read errors, symbolic links and other nonregular entries fail the scan.
-`SAIL_SCAN_TOKENS` adds whitespace-separated tokens such as the build hostname.
+directories outside the home directory (for example under `/tmp`) and scan
+the unpacked archive with `scripts/scan-host-paths.sh DIR [TOKEN...]` before
+publishing it. The scan searches the complete bytes of every file for
+`/Users/`, `/home/` and each token, exits 1 on a hit and 2 when any file
+cannot be enumerated or read; only exit 0 clears the archive.
 `scripts/build-macos-runtime.sh build` does all of this, plus the fork's
 library and regression tests and the determinism check, and packs the
 archive; after publishing, `scripts/build-macos-runtime.sh published` fetches

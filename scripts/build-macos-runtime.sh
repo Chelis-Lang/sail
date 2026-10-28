@@ -19,9 +19,10 @@
 #      test plus `basic`, on a fresh clone of the fork commit;
 #   4. scripts/verus-determinism.py --runs 3 over the fast tier's direct inputs;
 #   5. ci/engine-artifact.py pack --platform macos, which rewrites
-#      engine/verus/artifact-macos.json, and a strings scan of every archive
-#      file for /Users/ and /home/ paths and for SAIL_SCAN_TOKENS (space
-#      separated, for example the host name); a hit fails the build.
+#      engine/verus/artifact-macos.json, and scripts/scan-host-paths.sh over
+#      the complete bytes of every archive file for /Users/ and /home/ paths
+#      and for SAIL_SCAN_TOKENS (space separated, for example the host name);
+#      a hit, or any file the scan cannot read, fails the build.
 # Logs and the archive (with its .sha256 file) go to WORK/qualification.
 # Then publish the archive as the fork prerelease named in the pin and run
 # `published`. Python: SAIL_RELEASE_PYTHON (default python3, 3.9 or newer).
@@ -120,11 +121,16 @@ cmd_build() {
     --archive "$q/engine-runtime.tar.gz" --pin engine/verus/artifact-macos.json >"$q/pack.log" 2>&1 \
     || die "pack failed ($q/pack.log)"
   (cd "$q" && shasum -a 256 engine-runtime.tar.gz >engine-runtime.tar.gz.sha256 && cat engine-runtime.tar.gz.sha256)
-  local scan="$work/scan"
-  mkdir -p "$scan" && tar -xzf "$q/engine-runtime.tar.gz" -C "$scan"
-  "$py" ci/engine-artifact.py scan --root "$scan" \
-    || die "the runtime path scan failed; do not publish it"
-  echo "scan: clean"
+  local scan="$work/scan" status=0 tokens=()
+  read -r -a tokens <<<"${SAIL_SCAN_TOKENS:-}"
+  rm -rf "$scan" && mkdir -p "$scan"
+  tar -xzf "$q/engine-runtime.tar.gz" -C "$scan" || die "cannot unpack the archive for the scan"
+  scripts/scan-host-paths.sh "$scan" ${tokens[@]+"${tokens[@]}"} || status=$?
+  case "$status" in
+    0) ;;
+    1) die "the archive names host paths or tokens; do not publish it" ;;
+    *) die "the archive scan did not complete (status $status); do not publish it" ;;
+  esac
   step "done: publish $q/engine-runtime.tar.gz{,.sha256} as $(sed -n 's/.*"release_tag": "\(.*\)".*/\1/p' engine/verus/artifact-macos.json), then run: $0 published"
 }
 
@@ -149,5 +155,5 @@ cmd_published() {
 case "${1:-}" in
   build) shift; cmd_build "$@" ;;
   published) cmd_published ;;
-  *) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  *) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

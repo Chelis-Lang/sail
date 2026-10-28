@@ -474,7 +474,7 @@ actual units prevent a Current result.
 
 ## Compiler-visible Sail settings
 
-The staged schema2 compiler-read protocol distinguishes the Verus driver's
+The schema2 compiler-read protocol distinguishes the Verus driver's
 bookkeeping read of ` __VERUS_DRIVER_ARGS__` from a tracked source or macro
 read of that variable. Genuine source reads retain their exact observed value,
 including absence. Units reading this channel or Sail's explicit compiler-child
@@ -489,8 +489,7 @@ dependency-store or retained proofs:
 | `SAIL_ENGINE`, `SAIL_ENGINE_EVENTS`, `SAIL_ENGINE_CONTEXT`, `SAIL_ENGINE_FOCUS_REPORT`, `SAIL_ENGINE_FUNCTION` | Engine child controls |
 | `SAIL_RUSTC_DEV_SOURCE_BASE`, `SAIL_VIR_SPAN_REMAP` | Explicit source/span mapping controls |
 
-The first four settings have established coverage holes on main; the other
-seven receive conservative treatment under the same bounded policy. Routine
+COMMON, provenance and the two compiler-input request settings motivate the input-binding fix; the other seven receive conservative treatment under the same bounded policy. Routine
 units retain reuse, including Verus's ordinary Z3/Singular declarations and
 inherited user variables checked against the parent environment. Only classified
 driver-only COMMON bookkeeping may be restored to Cargo's base in dep-info.
@@ -526,13 +525,12 @@ must pass reuse eligibility separately. Unknown family origin state requires
 a full family clean before recording the new protocol.
 
 This tracks rustc's declared reads; untracked procedural-macro environment
-reads remain outside Cargo's existing tracking guarantees. The paired runtime
-upgrade and its acceptance gates are still pending; see
+reads remain outside Cargo's existing tracking guarantees. Both platform pins select the matching producer; see
 [compiler-read origin qualification](validation/compiler-read-origin.md).
 
 ## Caller variables in unchanged-call replay
 
-The staged unchanged-call record binds the caller-variable names required by
+The unchanged-call record binds the caller-variable names required by
 proof receipts actually admitted for its result. This includes sibling and
 previously adopted dependency receipts and zero-compiler retained restores.
 A ghost-only name can be absent from Cargo's dep-info while remaining a
