@@ -59,7 +59,7 @@ static CURRENT: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(2
 /// SPIKE A2 (temporary): with `SAIL_SPIKE_DIGESTS=FILE`, appends one line per
 /// complete file digest: phase index, bytes, path.
 pub(crate) fn spike_digest(path: &Path, bytes: usize) {
-    let Some(file) = std::env::var_os("SAIL_SPIKE_DIGESTS") else {
+    let Some(file) = std::env::var_os("SAIL_MANAGED_SPIKE_DIGESTS") else {
         return;
     };
     if let Ok(mut log) = OpenOptions::new().append(true).create(true).open(file) {
@@ -69,6 +69,24 @@ pub(crate) fn spike_digest(path: &Path, bytes: usize) {
             std::process::id(),
             CURRENT.load(Ordering::Relaxed),
             path.display()
+        );
+    }
+}
+
+/// SPIKE A2 (temporary): with `SAIL_MANAGED_SPIKE_MARKS=FILE`, appends
+/// `pid label ms-since-first-mark` lines.
+pub(crate) fn spike_mark(label: &str) {
+    static ORIGIN: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    let origin = *ORIGIN.get_or_init(Instant::now);
+    let Some(file) = std::env::var_os("SAIL_MANAGED_SPIKE_MARKS") else {
+        return;
+    };
+    if let Ok(mut log) = OpenOptions::new().append(true).create(true).open(file) {
+        let _ = writeln!(
+            log,
+            "{}\t{label}\t{:.2}",
+            std::process::id(),
+            origin.elapsed().as_secs_f64() * 1000.0
         );
     }
 }

@@ -1887,13 +1887,16 @@ fn target_records_in(
         })
         .collect::<Result<_>>()?;
     let mut represented = BTreeSet::new();
+    super::diagnostics::spike_mark("tr:bindings");
     let siblings = sibling_receipts(paths, context);
+    super::diagnostics::spike_mark("tr:siblings");
     // Every unit's declared variables, as Cargo fingerprints them; their
     // current values bind each receipt this run publishes.
     // Unknown declarations (an unreadable unit record) publish no receipt.
     let declared = super::environment::declared_names(&paths.target)
         .map(|names| super::environment::values(&names));
     let artifacts = artifacts(paths);
+    super::diagnostics::spike_mark("tr:declared+artifacts");
     let verified = |artifact: &Value| {
         let package = data["packages"]
             .as_array()
@@ -1947,6 +1950,7 @@ fn target_records_in(
         }
         stored.insert(path, receipt);
     }
+    super::diagnostics::spike_mark("tr:stored-receipts-read");
     // Each verified package's current revision is its own complete snapshot.
     // They are taken while the batch is read, in the same phase.
     let ids: Vec<String> = artifacts
@@ -1967,6 +1971,7 @@ fn target_records_in(
         current.join().ok()
     })
     .unwrap_or_default();
+    super::diagnostics::spike_mark("tr:revisions+prefetch");
     for artifact in artifacts {
         let Some(package) = verified(&artifact) else {
             continue;
@@ -2194,6 +2199,7 @@ fn target_records_in(
             missing.insert(package["name"].as_str().unwrap_or_default().to_owned());
         }
     }
+    super::diagnostics::spike_mark("tr:artifact-loop");
     // A failing compiler may not emit an artifact; preserve its observed target report.
     for (index, call) in calls.into_iter().enumerate() {
         if !represented.contains(&index) {
@@ -3410,6 +3416,7 @@ fn run_recorded(
         std::thread::spawn(move || file_digest(&z3))
     };
     let cleanup = diagnostics.phase(Phase::TargetCleanup);
+    super::diagnostics::spike_mark("cleanup:start");
     let forced = config.force
         || std::env::var("SAIL_MANAGED_FORCE").as_deref() == Ok("1")
         || !before.complete
@@ -3435,11 +3442,13 @@ fn run_recorded(
         .flatten()
         .filter_map(|entry| Some((entry.path(), read::<ReceiptRevision>(&entry.path())?)))
         .collect();
+    super::diagnostics::spike_mark("cleanup:receipt-revisions-read");
     let observation = RevisionObservation {
         snapshot: &before,
         stamp: before_observation_stamp.as_ref(),
     };
     let dirty = dirty_receipt_packages(&receipt_revisions, &data, Some(observation));
+    super::diagnostics::spike_mark("cleanup:dirty-computed");
     event(&serde_json::json!({
         "kind":"managed-cleanup-decision", "forced":forced,
         "changed_receipt_packages":dirty, "stale_scripts":stale_scripts,
@@ -3448,6 +3457,7 @@ fn run_recorded(
     if paths.reuse && !new_target && !dirty.is_empty() {
         clean(config, &paths.target, &dirty)?;
     }
+    super::diagnostics::spike_mark("cleanup:end");
     drop(cleanup);
     let source_engine = engine.is_some();
     // A header may only avoid optional restoration work. Unexpected Cargo
@@ -3545,6 +3555,7 @@ fn run_recorded(
     };
     json(&paths.runtime, &runtime)?;
     let invocation_phase = diagnostics.phase(Phase::Invocation);
+    super::diagnostics::spike_mark("invocation:start");
     // After every cleanup, so nothing seeded is cleaned again before Cargo
     // decides its freshness.
     let seeded = if new_target {
@@ -3565,12 +3576,15 @@ fn run_recorded(
             .collect();
         super::store::attach(&config.cache, &paths.target, &unowned, &data)
     };
+    super::diagnostics::spike_mark("invocation:cargo-start");
     let mut exit = invoke(config, &paths, &mut out, err, &seeded)?;
+    super::diagnostics::spike_mark("invocation:cargo-end");
     drop(invocation_phase);
     if let Some(plan) = &shipped_plan {
         super::shipped::finish_record(plan, &config.cargo_verus, &workspace_root)?;
     }
     let records_phase = diagnostics.phase(Phase::TargetRecords);
+    super::diagnostics::spike_mark("records:start");
     outside_scope |= !units_in_scope(&paths);
     // The inputs after the run: Cargo metadata again, the build-script and
     // source-input records this run's artifacts update, and the complete
@@ -3698,7 +3712,10 @@ fn run_recorded(
                 .as_ref()
                 .filter(|guard| guard.unchanged_for(&data))
                 .map(|_| Ok(data.clone()));
-            after_inputs(unchanged, Some(observation))
+            super::diagnostics::spike_mark("records:after-inputs-thread-start");
+            let inputs = after_inputs(unchanged, Some(observation));
+            super::diagnostics::spike_mark("records:after-inputs-thread-end");
+            inputs
         });
         let records = target_records_in(
             &paths,
@@ -3710,6 +3727,7 @@ fn run_recorded(
             focused(&config.args).then_some(config.args.as_slice()),
             Some(observation),
         );
+        super::diagnostics::spike_mark("records:records-done");
         (records, after.join())
     });
     let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
@@ -3719,6 +3737,7 @@ fn run_recorded(
         missing,
         receipt_environment,
     } = records?;
+    super::diagnostics::spike_mark("records:joined");
     let retried = retry_possible && !missing.is_empty();
     if retried {
         overlapped = None;
@@ -3750,6 +3769,7 @@ fn run_recorded(
     }
     drop(records_phase);
     let post_run = diagnostics.phase(Phase::PostRun);
+    super::diagnostics::spike_mark("postrun:start");
     let AfterInputs {
         data: after_data,
         snapshot: after,
@@ -3773,6 +3793,7 @@ fn run_recorded(
             stamp: after_stamp.as_ref(),
         }),
     )?;
+    super::diagnostics::spike_mark("postrun:completed-receipts");
     let after_run = without_generated(&after, generated.as_deref());
     let schedule_after = super::build_inputs::family::schedule::Scope {
         data: &after_data,
@@ -3825,6 +3846,7 @@ fn run_recorded(
             &after_run.digests,
             &before_run.workspace,
         );
+    super::diagnostics::spike_mark("postrun:end");
     drop(post_run);
     if paths.reuse
         && !shown
