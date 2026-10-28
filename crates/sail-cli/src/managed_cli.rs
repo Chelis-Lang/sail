@@ -227,12 +227,48 @@ fn managed(
         }
         Ok((result, None)) => {
             noop::forget(&config.cache, &key);
+            // Spike A3: a verifying run that ended Current and passing runs
+            // the ordinary unchanged pass once more before it exits, so the
+            // next identical call can replay that pass's real transcript.
+            if result.currentness == sail_api::project::Currentness::Current
+                && result.exit_code == Some(0)
+                && result.execution.verifier_invocations > 0
+            {
+                settle(config, json, &key);
+            }
             Ok(result)
         }
         Err(error) => {
             noop::forget(&config.cache, &key);
             Err(error)
         }
+    }
+}
+
+/// Spike A3: the unchanged pass after a verifying run, its output captured
+/// and recorded for replay instead of shown. Failure leaves no record.
+fn settle(config: &sail_verus::managed::Config, json: bool, key: &str) {
+    use sail_verus::managed::noop;
+    use std::io::Write as _;
+    let started = std::time::Instant::now();
+    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+    let shown: Option<&mut dyn std::io::Write> = if json { None } else { Some(&mut stdout) };
+    let outcome = sail_verus::managed::run_for_replay(config, shown, &mut stderr, key);
+    if let Some(path) = std::env::var_os("SAIL_MANAGED_NOOP_TRACE")
+        && let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+    {
+        let _ = writeln!(file, "settle pass: {} ms", started.elapsed().as_millis());
+    }
+    match outcome {
+        Ok((result, Some(pending)))
+            if result.execution.verifier_invocations == 0 && result.exit_code == Some(0) =>
+        {
+            pending.commit(stdout, stderr);
+        }
+        _ => noop::forget(&config.cache, key),
     }
 }
 

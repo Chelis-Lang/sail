@@ -76,6 +76,12 @@ struct Record {
     copies: Vec<Copied>,
     /// The directories holding them, bound by identity and entry names.
     directories: Vec<Directory>,
+    /// Spike A3: files whose stamp was too recent to trust across runs,
+    /// bound by every stamp field except ctime plus their content digest.
+    /// Re-recorded by stamp on the first replay where their stamp settled.
+    bound: Vec<ContentBound>,
+    /// Spike A3: recent directories, bound by identity and entry names.
+    bound_directories: Vec<Directory>,
     /// Caller values for unit declarations and admitted proof-receipt
     /// requirements, including ghost-only names absent from dep-info.
     environment: BTreeMap<String, Option<Vec<u8>>>,
@@ -104,6 +110,154 @@ struct Directory {
     path: PathBuf,
     identity: (u64, u64, u32),
     names: Vec<String>,
+}
+
+/// Spike A3: a file too recent for its stamp to be trusted across runs,
+/// bound by device, inode, size, mode and mtime and its content digest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct ContentBound {
+    path: PathBuf,
+    fields: [i64; 6],
+    digest: String,
+}
+
+/// Spike A3: bind the recent entries of `entries` by content.
+///
+/// A recent regular file is hashed between two `lstat` calls that must agree
+/// exactly (stamp-hash-stamp). Outside Sail's own cache and target (written
+/// only under the family lock this run still holds), the digest must also
+/// equal the digest this run's own input snapshot took, so the bound content
+/// is the content the run's verdict covers even if a same-tick write kept the
+/// stamp. A recent directory is bound by identity and entry names, and
+/// outside Sail's own trees every entry must be one this run observed.
+/// Anything else that is recent (links, unreadable, unobserved) is left in
+/// place for the ordinary guard to refuse.
+fn bind_recent(
+    entries: Vec<(PathBuf, Option<Stamp>)>,
+    start: SystemTime,
+    owned: &[&Path],
+    digests: &BTreeMap<PathBuf, String>,
+    observed: &std::collections::BTreeSet<PathBuf>,
+) -> (
+    Vec<(PathBuf, Option<Stamp>)>,
+    Vec<ContentBound>,
+    Vec<Directory>,
+) {
+    enum Bind {
+        Keep,
+        File(ContentBound),
+        Directory(Directory),
+    }
+    let bound = crate::parallel::in_order(&entries, |(path, stamp)| {
+        let Some(stamp) = stamp.filter(|stamp| !stamp.settled(start)) else {
+            return Bind::Keep;
+        };
+        let mine = owned.iter().any(|root| path.starts_with(root));
+        let Ok(before) = std::fs::symlink_metadata(path) else {
+            return Bind::Keep;
+        };
+        if Stamp::of(&before) != stamp {
+            return Bind::Keep;
+        }
+        if before.is_file() {
+            let Ok(digest) = super::files::file_digest(path) else {
+                return Bind::Keep;
+            };
+            let after = std::fs::symlink_metadata(path).map(|m| Stamp::of(&m));
+            if after.ok() != Some(stamp) || (!mine && digests.get(path) != Some(&digest)) {
+                return Bind::Keep;
+            }
+            return Bind::File(ContentBound {
+                path: path.clone(),
+                fields: stamp.without_ctime(),
+                digest,
+            });
+        }
+        if before.is_dir() {
+            let (Some(names), Some(identity)) = (entry_names(path), identity(&before)) else {
+                return Bind::Keep;
+            };
+            if !mine
+                && names
+                    .iter()
+                    .any(|name| !observed.contains(&path.join(name)))
+            {
+                return Bind::Keep;
+            }
+            let after = std::fs::symlink_metadata(path).map(|m| Stamp::of(&m));
+            if after.ok() != Some(stamp) {
+                return Bind::Keep;
+            }
+            return Bind::Directory(Directory {
+                path: path.clone(),
+                identity,
+                names,
+            });
+        }
+        Bind::Keep
+    });
+    let mut rest = Vec::new();
+    let mut files = Vec::new();
+    let mut directories = Vec::new();
+    for (entry, bind) in entries.into_iter().zip(bound) {
+        match bind {
+            Bind::Keep => rest.push(entry),
+            Bind::File(file) => files.push(file),
+            Bind::Directory(directory) => directories.push(directory),
+        }
+    }
+    (rest, files, directories)
+}
+
+/// Spike A3: the first content-bound file or directory that no longer holds,
+/// or, when all hold, the stamps of those whose stamp has now settled
+/// relative to `start` and stayed equal across the content read (`None` in
+/// the second position when not all of them can be re-recorded by stamp).
+fn bound_mismatch(
+    files: &[ContentBound],
+    directories: &[Directory],
+    start: SystemTime,
+) -> Result<Option<Vec<(PathBuf, Option<Stamp>)>>, String> {
+    let now = crate::parallel::in_order(files, |file| {
+        let before = Stamp::of(&std::fs::symlink_metadata(&file.path).ok()?);
+        if before.without_ctime() != file.fields {
+            return None;
+        }
+        if super::files::file_digest(&file.path).ok()? != file.digest {
+            return None;
+        }
+        let after = std::fs::symlink_metadata(&file.path).map(|m| Stamp::of(&m));
+        Some((after.ok() == Some(before) && before.settled(start)).then_some(before))
+    });
+    let mut settled = Some(Vec::new());
+    for (file, now) in files.iter().zip(now) {
+        match now {
+            None => return Err(format!("changed: {}", file.path.display())),
+            Some(Some(stamp)) => {
+                if let Some(settled) = &mut settled {
+                    settled.push((file.path.clone(), Some(stamp)));
+                }
+            }
+            Some(None) => settled = None,
+        }
+    }
+    for directory in directories {
+        let held = std::fs::symlink_metadata(&directory.path).ok();
+        let before = held.as_ref().map(Stamp::of);
+        if held.as_ref().filter(|m| m.is_dir()).and_then(identity) != Some(directory.identity)
+            || entry_names(&directory.path).as_ref() != Some(&directory.names)
+        {
+            return Err(format!("changed: {}", directory.path.display()));
+        }
+        let after = std::fs::symlink_metadata(&directory.path).map(|m| Stamp::of(&m));
+        match (before, &mut settled) {
+            (Some(stamp), Some(list)) if after.ok() == Some(stamp) && stamp.settled(start) => {
+                list.push((directory.path.clone(), Some(stamp)));
+            }
+            _ => settled = None,
+        }
+    }
+    Ok(settled)
 }
 
 /// The prefix of Cargo's name for an uplifted build-script executable,
@@ -280,6 +434,10 @@ pub(super) struct Facts<'a> {
     /// ineligible; omitted targets confer no report authority.
     pub receipt_environment: Option<std::collections::BTreeSet<String>>,
     pub result: &'a ProjectResult,
+    /// Spike A3: the content digests of this run's final input snapshot and
+    /// every path it observed, for binding recent sources by content.
+    pub digests: &'a BTreeMap<PathBuf, String>,
+    pub observed: &'a std::collections::BTreeSet<PathBuf>,
 }
 
 fn disabled() -> bool {
@@ -498,6 +656,13 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         &facts.siblings,
     ))?;
     lstat_entries.extend(cache_stamps);
+    let (lstat_entries, bound, bound_directories) = bind_recent(
+        lstat_entries,
+        facts.start,
+        &[facts.target, facts.cache],
+        facts.digests,
+        facts.observed,
+    );
     let recent = lstat_entries
         .iter()
         .filter_map(|(path, stamp)| stamp.map(|stamp| (path, stamp)))
@@ -526,6 +691,8 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             contents,
             copies,
             directories,
+            bound,
+            bound_directories,
             environment,
             result: facts.result.clone(),
             stdout: Vec::new(),
@@ -554,10 +721,12 @@ impl Pending {
             let _ = std::fs::remove_file(&temporary);
         } else {
             trace(&format!(
-                "recorded: {} stamps, {} contents, {} copies",
+                "recorded: {} stamps, {} contents, {} copies, {} content-bound, {} bound directories",
                 self.record.lstat.len() + self.record.stat.len(),
                 self.record.contents.len(),
-                self.record.copies.len()
+                self.record.copies.len(),
+                self.record.bound.len(),
+                self.record.bound_directories.len()
             ));
         }
     }
@@ -640,13 +809,14 @@ fn lock(path: &Path, shared: bool) -> Option<std::fs::File> {
 /// observation still matches.
 #[must_use]
 pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option<Replay> {
+    let replay_start = SystemTime::now();
     let workspace = std::path::absolute(&config.workspace).ok()?;
     let cache = workspace.join(&config.cache);
     let Ok(bytes) = std::fs::read(record_path(&cache, key)) else {
         trace("miss: no record");
         return None;
     };
-    let record: Record = serde_json::from_slice(&bytes).ok()?;
+    let mut record: Record = serde_json::from_slice(&bytes).ok()?;
     if record.version != VERSION || record.key != key {
         trace("miss: record version");
         return None;
@@ -659,6 +829,35 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     if let Some(reason) = mismatch(&record) {
         trace(&format!("miss: {reason}"));
         return None;
+    }
+    let settled = match bound_mismatch(&record.bound, &record.bound_directories, replay_start) {
+        Err(reason) => {
+            trace(&format!("miss: {reason}"));
+            return None;
+        }
+        Ok(settled) => settled,
+    };
+    // Every content-bound entry now has a settled stamp that bracketed an
+    // equal content read: re-record them by stamp (still under the locks).
+    if let Some(settled) =
+        settled.filter(|_| !record.bound.is_empty() || !record.bound_directories.is_empty())
+    {
+        record.lstat.extend(settled);
+        record.bound.clear();
+        record.bound_directories.clear();
+        let path = record_path(&cache, key);
+        if let Ok(bytes) = serde_json::to_vec(&record)
+            && let Some(parent) = path.parent()
+        {
+            let temporary = parent.join(format!(".{key}.{}", std::process::id()));
+            if std::fs::write(&temporary, bytes).is_ok()
+                && std::fs::rename(&temporary, &path).is_ok()
+            {
+                trace("re-recorded by stamp");
+            } else {
+                let _ = std::fs::remove_file(&temporary);
+            }
+        }
     }
     let run_id = format!(
         "{}-{}",
@@ -818,6 +1017,8 @@ mod tests {
                 receipt_environment: (operation == "prepare")
                     .then(|| std::collections::BTreeSet::from([SHADOW.into()])),
                 result: &result,
+                digests: &BTreeMap::new(),
+                observed: &std::collections::BTreeSet::new(),
             });
             if operation == "unknown" {
                 assert!(pending.is_none(), "unknown admission must not record");

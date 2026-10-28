@@ -4098,6 +4098,8 @@ fn run_recorded(
                     .collect(),
                 receipt_environment,
                 result: &result,
+                digests: &after_run.digests,
+                observed: &after_run.observation_paths,
             })
         })
         .flatten()

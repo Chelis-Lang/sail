@@ -49,6 +49,15 @@ impl Stamp {
         Self([0, 0, 0, 0, 0, 0, -1, -1])
     }
 
+    /// Every field except the ctime: device, inode, size, mode and mtime.
+    /// What a content binding keeps exact when the ctime is too recent to
+    /// trust (the content itself is compared instead).
+    #[must_use]
+    pub fn without_ctime(self) -> [i64; 6] {
+        let [a, b, c, d, e, f, _, _] = self.0;
+        [a, b, c, d, e, f]
+    }
+
     /// Whether the last status change happened at least [`SETTLED`] before
     /// `start`. A ctime before the epoch or after `start` is never settled.
     #[must_use]
