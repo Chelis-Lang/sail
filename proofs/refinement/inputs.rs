@@ -257,16 +257,46 @@ pub fn nonempty_readback_and_partial_controls() {
     let after_order = vec![1usize, 0usize, 2usize];
     let after_inverse = vec![1usize, 0usize, 2usize];
     proof { assert(lex_at(name@, config@, 0)); assert(lex_less(name@, config@)); }
+    proof {
+        assert forall|i: int| 0 <= i < 3 implies
+            permutation_at(before_order@, before_inverse@, 3, i)
+                && permutation_at(after_order@, after_inverse@, 3, i) by {
+            assert(i == 0 || i == 1 || i == 2);
+        }
+        assert(valid_permutation(before_order@, before_inverse@, 3));
+        assert(valid_permutation(after_order@, after_inverse@, 3));
+        assert(key_less(before[0], before[2]));
+        assert(key_less(before[2], before[1]));
+        assert(key_less(after[1], after[0]));
+        assert(key_less(after[0], after[2]));
+        assert(ordered_facts(before@, before_order@, before_inverse@));
+        assert(ordered_facts(after@, after_order@, after_inverse@));
+        assert forall|i: int| 0 <= i < 3 implies
+            same_key(before[before_order[i] as int], after[after_order[i] as int])
+                && same_value(before[before_order[i] as int].value, after[after_order[i] as int].value) by {
+            assert(i == 0 || i == 1 || i == 2);
+        }
+        assert(facts_match(before@, after@, before_order@, after_order@));
+    }
     let checked = compare_readback(&before, &after, &before_order, &before_inverse, &after_order, &after_inverse);
     let equal = checked.is_equal();
     assert(equal);
     proof { matching_inventory_refines_map(before@, after@); }
     let partial_order = vec![1usize, 0usize];
+    assert(partial_order.len() != after.len());
     let partial = compare_readback(&before, &after, &before_order, &before_inverse, &partial_order, &partial_order);
     let equal = partial.is_equal();
     assert(!equal);
     let failed = vec![InputFact { namespace: 0, name: &name, value: InputValue::Unreadable }];
     let one = vec![0usize];
+    proof {
+        assert(!same_value(failed[0].value, failed[0].value));
+        assert(!facts_match(failed@, failed@, one@, one@)) by {
+            if facts_match(failed@, failed@, one@, one@) {
+                assert(same_value(failed[0].value, failed[0].value));
+            }
+        }
+    }
     let failure = compare_readback(&failed, &failed, &one, &one, &one, &one);
     let equal = failure.is_equal();
     assert(!equal);
@@ -302,11 +332,26 @@ pub fn original_stamp_aba_and_exact_revert_controls() {
 
 /// Raw filename encoding preserves all ordinary bytes and escapes only spaces.
 pub fn compiler_filename_encoding_controls() {
-    reveal_with_fuel(encoded_dependency_name, 8);
-    assert(encoded_dependency_name(seq![97u8, 194u8, 160u8, 98u8, 99u8]) == seq![97u8, 194u8, 160u8, 98u8, 99u8]) by(compute);
-    assert(encoded_dependency_name(seq![97u8, 9u8, 98u8]) == seq![97u8, 9u8, 98u8]) by(compute);
-    assert(encoded_dependency_name(seq![97u8, 92u8, 98u8]) == seq![97u8, 92u8, 98u8]) by(compute);
-    assert(encoded_dependency_name(seq![97u8, 32u8, 98u8]) == seq![97u8, 92u8, 32u8, 98u8]) by(compute);
+    assert(encoded_dependency_name(seq![97u8, 194u8, 160u8, 98u8, 99u8]) == seq![97u8, 194u8, 160u8, 98u8, 99u8]) by {
+        reveal_with_fuel(encoded_dependency_name, 8);
+        assert(encoded_dependency_name(seq![97u8, 194u8, 160u8, 98u8, 99u8]) == seq![97u8, 194u8, 160u8, 98u8, 99u8]) by(compute);
+    }
+    assert(encoded_dependency_name(seq![97u8, 9u8, 98u8]) == seq![97u8, 9u8, 98u8]) by {
+        reveal_with_fuel(encoded_dependency_name, 8);
+        assert(encoded_dependency_name(seq![97u8, 9u8, 98u8]) == seq![97u8, 9u8, 98u8]) by(compute);
+    }
+    assert(encoded_dependency_name(seq![97u8, 92u8, 98u8]) == seq![97u8, 92u8, 98u8]) by {
+        reveal_with_fuel(encoded_dependency_name, 8);
+        assert(encoded_dependency_name(seq![97u8, 92u8, 98u8]) == seq![97u8, 92u8, 98u8]) by(compute);
+    }
+    assert(encoded_dependency_name(seq![97u8, 32u8, 98u8]) == seq![97u8, 92u8, 32u8, 98u8]) by {
+        reveal_with_fuel(encoded_dependency_name, 8);
+        assert(encoded_dependency_name(seq![97u8, 32u8, 98u8]) == seq![97u8, 92u8, 32u8, 98u8]) by(compute);
+    }
+    assert(encoded_dependency_name(seq![97u8, 98u8]) == seq![97u8, 98u8]) by {
+        reveal_with_fuel(encoded_dependency_name, 8);
+        assert(encoded_dependency_name(seq![97u8, 98u8]) == seq![97u8, 98u8]) by(compute);
+    }
     let unicode: [u8; 5] = [97, 194, 160, 98, 99];
     let tab: [u8; 3] = [97, 9, 98];
     let slash: [u8; 3] = [97, 92, 98];
@@ -314,6 +359,13 @@ pub fn compiler_filename_encoding_controls() {
     let spaced: [u8; 3] = [97, 32, 98];
     let wrong: [u8; 2] = [97, 98];
     let newline: [u8; 3] = [97, 10, 98];
+    assert(unicode@ == seq![97u8, 194u8, 160u8, 98u8, 99u8]);
+    assert(tab@ == seq![97u8, 9u8, 98u8]);
+    assert(slash@ == seq![97u8, 92u8, 98u8]);
+    assert(encoded@ == seq![97u8, 92u8, 32u8, 98u8]);
+    assert(spaced@ == seq![97u8, 32u8, 98u8]);
+    assert(wrong@ == seq![97u8, 98u8]);
+    assert(newline[1] == 10);
     let literal = crate::inputs::dependency_filename_matches(&unicode, &unicode); assert(literal);
     let literal = crate::inputs::dependency_filename_matches(&tab, &tab); assert(literal);
     let literal = crate::inputs::dependency_filename_matches(&slash, &slash); assert(literal);
