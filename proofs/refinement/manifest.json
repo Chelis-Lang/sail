@@ -2525,7 +2525,7 @@
         "crates/sail-smtlib/src/split.rs",
         "Cargo.lock"
       ],
-      "verified": 129,
+      "verified": 133,
       "functions": [
         "check_parser::inputs::InputValue::arrow_0",
         "check_parser::inputs::InputValue::arrow_Present_0",
@@ -2560,6 +2560,10 @@
         "check_parser::inputs::contains_present",
         "check_parser::inputs::copy_bytes",
         "check_parser::inputs::covered_selection",
+        "check_parser::inputs::dependency_filename_matches",
+        "check_parser::inputs::encoded_dependency_byte",
+        "check_parser::inputs::encoded_dependency_name",
+        "check_parser::inputs::encoded_dependency_prefix",
         "check_parser::inputs::facts_match",
         "check_parser::inputs::input_key_eq",
         "check_parser::inputs::input_key_lt",
