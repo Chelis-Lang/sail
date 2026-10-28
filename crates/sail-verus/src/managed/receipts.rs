@@ -15,10 +15,14 @@ pub(crate) struct Runtime {
     pub z3: PathBuf,
     pub z3_sha256: String,
     pub daemon: bool,
+    /// Whether this run permits proof reuse; loader runs never clear origin markers.
+    pub reuse: bool,
     pub sidecars: PathBuf,
     pub invocations: PathBuf,
     pub original_wrapper: PathBuf,
     pub receipts: PathBuf,
+    /// Family-scoped non-authorizing compiler observation state, outside Cargo clean.
+    pub compiler_read_origins: PathBuf,
     pub context_sha256: String,
     pub input_revision: String,
     pub packages: BTreeMap<PathBuf, String>,
@@ -101,12 +105,16 @@ pub(crate) struct Invocation {
 }
 
 impl Invocation {
-    /// Whether the environment the compiler read in every phase is known: an
-    /// observed verification-phase environment, or a replay of Sail's shipped
-    /// dependency build, whose own admission binds the recorded compiler
-    /// environment of that pinned source (ADR 0048).
+    /// Whether the complete compiler observation is eligible to authorize
+    /// reuse. A fully observed source read of a compiler-child control remains
+    /// conservatively ineligible; its genuinely fresh proof still describes the
+    /// original request. Shipped dependency replay has its own admitted compiler
+    /// environment for that pinned source (ADR 0048).
     pub(crate) fn environment_observed(&self) -> bool {
-        self.compiler_environment.is_some() || self.dependency_build.is_some()
+        self.compiler_environment
+            .as_ref()
+            .is_some_and(super::compiler_origin::reusable)
+            || (self.compiler_environment.is_none() && self.dependency_build.is_some())
     }
 
     /// The names the compiler tracked, for a receipt's declared environment.
@@ -173,7 +181,8 @@ pub(crate) struct Receipt {
 /// Version 9: earlier receipts bound declared environment names after
 /// trimming or without decoding them (#383), and source inputs from a
 /// dep-info reader that split or rewrote some file names (#408).
-pub(crate) const RECEIPT_VERSION: u32 = 9;
+/// Version 10 retires receipts without schema2 source/control-origin eligibility.
+pub(crate) const RECEIPT_VERSION: u32 = 10;
 
 impl Receipt {
     pub(crate) fn seal(mut self) -> Self {
@@ -632,6 +641,36 @@ mod tests {
         );
         assert!(receipt.valid("ctx"));
         assert!(!declared.valid("ctx"));
+        // This is a real source read even when unset/empty or equal to the
+        // driver's value. It cannot become direct, sibling, or seeded authority.
+        for value in [
+            None,
+            Some(String::new()),
+            Some("effective-with-logs".into()),
+        ] {
+            let mut source_read = receipt.clone();
+            source_read.invocation.compiler_environment = Some(BTreeMap::from([(
+                crate::adapter::verus_channel::COMMON.into(),
+                value,
+            )]));
+            assert!(!source_read.invocation.environment_observed());
+            let source_read = source_read.seal();
+            assert!(
+                json(
+                    &source_read.committed,
+                    &Commit {
+                        context: "ctx".into(),
+                        run_id: "run".into(),
+                        receipt_checksums: BTreeSet::from([
+                            receipt.checksum.clone(),
+                            source_read.checksum.clone(),
+                        ]),
+                    },
+                )
+                .is_ok()
+            );
+            assert!(!source_read.valid("ctx"));
+        }
         // An invocation whose compiler environment was not observed may have
         // read a ghost-only variable no declaration names (#386).
         let mut unobserved = receipt.clone();

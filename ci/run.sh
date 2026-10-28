@@ -201,6 +201,7 @@ case "$step" in
   gate)
     bash ci/test-completion.sh
     bash scripts/test-ai-markers.sh
+    bash scripts/test-runtime-scan.sh
     # The image's engine installer: corrupt or stale runtimes never install.
     python3 ci/test-engine-artifact.py
     python3 ci/test-output-evidence.py

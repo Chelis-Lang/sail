@@ -168,7 +168,7 @@ PYCODE
 }
 
 release() {
-  local version="$1" workspace commit lane
+  local version="$1" workspace commit lane remote
   workspace="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
   case "$version" in "$workspace"|"$workspace"-*) ;; *) die "VERSION must start with the workspace version $workspace" ;; esac
   [ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] || die "run on an Apple-silicon Mac (it builds aarch64-apple-darwin locally)"
@@ -177,7 +177,8 @@ release() {
   [ -z "$(git status --porcelain)" ] || die "the checkout is not clean"
   commit="$(git rev-parse HEAD)"
   git fetch -q origin
-  git branch -r --contains "$commit" | grep -q . || die "commit $commit is not on origin"
+  remote="$(git branch -r --contains "$commit")" || die "cannot list the remote branches containing $commit"
+  [ -n "$remote" ] || die "commit $commit is not on origin"
   if gh release view "v$version" --repo "$repo" >/dev/null 2>&1; then
     die "release v$version already exists"
   fi

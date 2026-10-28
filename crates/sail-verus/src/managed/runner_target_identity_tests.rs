@@ -29,8 +29,14 @@ impl Collision {
         )?;
         std::fs::write(root.join("a.rs"), "fn main() {}\n")?;
         std::fs::write(root.join("b.rs"), "fn main() {}\n")?;
+        // Each fixture owns its Cargo target directory. An inherited
+        // `CARGO_TARGET_DIR` (as under nextest or CI) is otherwise shared by
+        // both collision tests, whose identical `input` packages then reuse
+        // each other's fresh artifacts and skip the observing wrapper.
+        let target = root.join("target");
         let metadata = Command::new("cargo")
             .args(["metadata", "--format-version=1", "--no-deps"])
+            .env("CARGO_TARGET_DIR", &target)
             .current_dir(&root)
             .output()?;
         assert!(metadata.status.success());
@@ -41,6 +47,7 @@ impl Collision {
         std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))?;
         let output = Command::new("cargo")
             .args(["check", "--bins", "--message-format=json"])
+            .env("CARGO_TARGET_DIR", &target)
             .env("RUSTC_WRAPPER", &wrapper)
             .env("SAIL_TEST_BIN_IDENTITIES", &root)
             .current_dir(&root)
