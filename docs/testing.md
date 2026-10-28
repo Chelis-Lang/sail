@@ -36,6 +36,22 @@ remain on the host. The existing target, agent, bytecode, conformance and releas
 output exclusions still apply. This is not a clean-source certificate: proof
 gates must retain their normal clean-source and canonical-byte checks.
 
+HEAD/index-tracked paths override those exclusions: tracked project settings
+under `.claude` still transfer, including dirty contents and staged additions.
+Tracked deletions stay deleted; files are not restored from committed blobs.
+Untracked private siblings and agent worktrees remain excluded. A host-side
+`sail-sync-owned-paths.json` ledger records prior tracked names so committed
+branch deletions also retire previously transferred files inside exclusions.
+It is replaced atomically under the sync lock and retains the union of owned
+names after failure, allowing a retry to remove stale source without deleting
+unknown private siblings. Initial migration reads only standalone Git metadata,
+never a linked-worktree pointer or redirected/shared Git metadata. A legacy
+pointer or nonempty checkout without known ownership refuses with `SAIL9003`;
+use a fresh lane, or explicitly clean the destination under owner control while
+preserving any needed build/private files. This is not an in-place migration of
+unknown legacy source. Malformed ledger state refuses before source
+mutation; do not discard the ledger while reusing a native checkout.
+
 Sparse/skip-worktree, intent-to-add and submodule index entries refuse before
 remote mutation. Stage or unstage intent entries and use a full ordinary
 worktree. Source, index or HEAD changes during sync also refuse. A failed

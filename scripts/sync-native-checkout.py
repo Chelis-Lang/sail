@@ -2,6 +2,7 @@
 """Sync frozen actual sources and standalone Git metadata to an owned host."""
 import argparse
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -39,18 +40,34 @@ def git(root, env, *args, payload=None):
                                    env=env, input=payload)
 
 
-def source_files(root):
-    """Match the source rsync exclusions, without following directory symlinks."""
-    def walk(directory):
+def excluded_directories(parts):
+    return [parts[:i + 1] for i, name in enumerate(parts)
+            if name in EXCLUDED_DIRS or (i == 0 and name in ROOT_EXCLUDED_DIRS)]
+
+
+def literal_filter(parts):
+    """Quote filename wildcard bytes in an anchored rsync include pattern."""
+    return "/" + "".join("\\" + char if char in "\\*?[" else char for char in "/".join(parts))
+
+
+def source_files(root, tracked=()):
+    """Keep actual tracked files even within otherwise excluded output trees."""
+    tracked = {Path(name).parts for name in tracked}
+    parents = {parts[:i] for parts in tracked for i in range(1, len(parts))}
+    def walk(directory, excluded=False):
         for path in sorted(directory.iterdir()):
             if path.name == ".git":
                 continue
             mode = path.lstat().st_mode
+            parts = path.relative_to(root).parts
             if stat.S_ISDIR(mode):
-                if path.name in EXCLUDED_DIRS or (directory == root and path.name in ROOT_EXCLUDED_DIRS):
+                child_excluded = excluded or bool(excluded_directories(parts))
+                if child_excluded and parts not in parents:
                     continue
                 yield path, mode
-                yield from walk(path)
+                yield from walk(path, child_excluded)
+            elif excluded and parts not in tracked:
+                continue
             elif stat.S_ISREG(mode) or stat.S_ISLNK(mode):
                 yield path, mode
             else:
@@ -58,19 +75,19 @@ def source_files(root):
     return walk(root)
 
 
-def snapshot(root):
+def snapshot(root, tracked=()):
     result = {}
-    for path, mode in source_files(root):
+    for path, mode in source_files(root, tracked):
         value = ("directory",) if stat.S_ISDIR(mode) else (
             ("symlink", os.readlink(path)) if stat.S_ISLNK(mode) else ("file", digest(path)))
         result[str(path.relative_to(root))] = (stat.S_IMODE(mode), *value)
     return result
 
 
-def copy_sources(source, destination):
+def copy_sources(source, destination, tracked=()):
     destination.mkdir()
     directories = []
-    for path, mode in source_files(source):
+    for path, mode in source_files(source, tracked):
         target = destination / path.relative_to(source)
         if stat.S_ISDIR(mode):
             target.mkdir()
@@ -155,6 +172,70 @@ def export_git(source, directory, env, head, entries, objects):
     return repo / ".git"
 
 
+# Executed through the same SSH transport, under the token-owned sync lock.
+# The ledger survives a failed transfer that deliberately removes usable .git.
+REMOTE_OWNERSHIP = r"""
+import json, os, pathlib, stat, subprocess, sys
+state = pathlib.Path('sail-sync-owned-paths.json')
+def names(value):
+    if not isinstance(value, list) or any(not isinstance(p, str) or not p or '\0' in p or p.startswith('/')
+        or any(c in ('', '.', '..', '.git') for c in p.split('/')) for p in value):
+        raise RuntimeError('invalid managed source ownership paths')
+    return set(value)
+if sys.argv[1] == 'read':
+    if state.is_symlink():
+        raise RuntimeError('source ownership ledger is a symlink')
+    if state.exists():
+        value = json.loads(state.read_text())
+        if not isinstance(value, dict) or set(value) != {'version', 'paths'} or type(value['version']) is not int or value['version'] != 1:
+            raise RuntimeError('invalid managed source ownership ledger')
+        result = names(value['paths'])
+    else:
+        result = set()
+        metadata = pathlib.Path('sail/.git')
+        if metadata.is_symlink() or (metadata.exists() and not metadata.is_dir()):
+            raise RuntimeError('opaque prior Git pointer; use a fresh lane or owner-controlled checkout cleanup; existing files preserved')
+        if not metadata.exists() and any(pathlib.Path('sail').iterdir()):
+            raise RuntimeError('nonempty prior checkout has no ownership metadata; use a fresh lane or owner-controlled checkout cleanup; existing files preserved')
+        if metadata.is_dir():
+            forbidden = ['commondir', 'gitdir', 'worktrees', 'config.worktree',
+                         'objects/info/alternates', 'objects/info/http-alternates']
+            if any((metadata / name).exists() or (metadata / name).is_symlink() for name in forbidden):
+                raise RuntimeError('prior Git metadata is not standalone')
+            for path in metadata.rglob('*'):
+                mode = path.lstat().st_mode
+                if not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
+                    raise RuntimeError('prior Git metadata contains a link or special file')
+            env = {k:v for k,v in os.environ.items() if not k.startswith('GIT_')}
+            env.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
+                       GIT_NO_REPLACE_OBJECTS='1', GIT_OPTIONAL_LOCKS='0')
+            configuration = subprocess.check_output(['git', 'config', '--file=sail/.git/config',
+                                                      '--no-includes', '--null', '--list'], env=env)
+            allowed = {'core.repositoryformatversion', 'core.filemode', 'core.bare',
+                       'core.logallrefupdates', 'core.ignorecase', 'core.symlinks', 'core.precomposeunicode',
+                       'extensions.objectformat'}
+            if any(os.fsdecode(row.split(b'\n', 1)[0]) not in allowed for row in configuration.split(b'\0') if row):
+                raise RuntimeError('prior Git configuration may redirect repository inputs')
+            command = ['git', '--git-dir=sail/.git', '--work-tree=sail', '-c', 'core.fsmonitor=false']
+            def git(*args):
+                return subprocess.check_output(command + list(args), env=env)
+            before = (git('rev-parse', 'HEAD'), git('ls-files', '--stage', '-z'))
+            result = names([os.fsdecode(p) for p in git('ls-tree', '-r', '--name-only', '-z', 'HEAD').split(b'\0') if p])
+            result.update(names([os.fsdecode(row.split(b'\t',1)[1]) for row in before[1].split(b'\0') if row]))
+            if before != (git('rev-parse', 'HEAD'), git('ls-files', '--stage', '-z')):
+                raise RuntimeError('previous remote Git state changed during source capture')
+    print(json.dumps(sorted(result)))
+elif sys.argv[1] == 'write':
+    value = names(json.loads(sys.argv[2]))
+    temporary = pathlib.Path('sail-sync.lock/owned-paths')
+    with temporary.open('x') as stream:
+        json.dump({'version':1, 'paths':sorted(value)}, stream)
+    os.replace(temporary, state)
+else:
+    raise RuntimeError('invalid ownership operation')
+"""
+
+
 def sync(source, destination, ssh_command):
     if not re.fullmatch(r"[A-Za-z0-9_.@:-]+", destination):
         raise RuntimeError("unsupported SSH destination")
@@ -164,26 +245,35 @@ def sync(source, destination, ssh_command):
     if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", head):
         raise RuntimeError("sync requires an existing HEAD commit")
     initial_index = index_observation(source, env)
-    initial_sources = snapshot(source)
+    tracked = {os.fsdecode(row.split(b"\t", 1)[1]) for row in initial_index[0].split(b"\0") if row}
+    tracked.update(os.fsdecode(path) for path in git(source, env, "ls-tree", "-r", "--name-only", "-z", head).split(b"\0") if path)
+    initial_sources = snapshot(source, tracked)
     def guard():
         if (git(source, env, "rev-parse", "HEAD").decode().strip() != head
-                or index_observation(source, env) != initial_index or snapshot(source) != initial_sources):
+                or index_observation(source, env) != initial_index or snapshot(source, tracked) != initial_sources):
             raise RuntimeError("local HEAD, index or source changed during sync; retry")
     token = uuid.uuid4().hex
     staging = "sail-git-sync-" + token
     ssh = shlex.split(ssh_command)
     if not ssh:
         raise RuntimeError("missing SSH command")
-    def remote(command):
-        subprocess.run([*ssh, destination, "set -eu; " + command], check=True)
+    def remote(command, capture=False):
+        return subprocess.run([*ssh, destination, "set -eu; " + command], check=True,
+                              stdout=subprocess.PIPE if capture else None).stdout
+    def ownership(operation, paths=None):
+        args = ["python3", "-c", REMOTE_OWNERSHIP, operation]
+        if paths is not None:
+            args.append(json.dumps(sorted(paths)))
+        return remote(shlex.join(args), capture=operation == "read")
     locked = False
     acquire_attempted = False
     installed = False
+    mutation_attempted = False
     with tempfile.TemporaryDirectory(prefix="sail-perf-sync-") as temporary:
         directory = Path(temporary)
         frozen = directory / "source"
-        copy_sources(source, frozen)
-        if snapshot(frozen) != initial_sources:
+        copy_sources(source, frozen, tracked)
+        if snapshot(frozen, tracked) != initial_sources:
             raise RuntimeError("source changed while freezing sync inputs")
         metadata = export_git(source, directory, env, head, initial_index[0], initial_index[1])
         guard()
@@ -192,10 +282,39 @@ def sync(source, destination, ssh_command):
             remote("test ! -L sail; mkdir -p sail; mkdir sail-sync.lock; "
                    + "printf '%s' " + token + " > sail-sync.lock/owner")
             locked = True
+            previous = set(json.loads(ownership("read")))
+            selected = tracked | previous
+            # Owned excluded paths need sender directories so rsync visits and
+            # removes missing names even when the whole subtree is gone.
+            for name in selected:
+                parts = Path(name).parts
+                if excluded_directories(parts[:-1]):
+                    parent = frozen
+                    for component in parts[:-1]:
+                        parent /= component
+                        if parent.is_symlink() or (parent.exists() and not parent.is_dir()):
+                            raise RuntimeError("retired source path crosses a non-directory")
+                        parent.mkdir(exist_ok=True)
+            ownership("write", selected)
+            mutation_attempted = True
             remote("test \"$(cat sail-sync.lock/owner)\" = " + token
                    + "; rm -rf sail/.git; mkdir " + staging)
             common = ["rsync", "-az", "--checksum", "--no-times", "--delete", "-e", ssh_command]
             exclusions = ["--exclude", ".git"]
+            included = set()
+            protected = set()
+            for name in selected:
+                parts = Path(name).parts
+                excluded = excluded_directories(parts[:-1])
+                if not excluded:
+                    continue
+                included.update(literal_filter(parts[:i]) + "/" for i in range(1, len(parts)))
+                included.add(literal_filter(parts))
+                protected.update(literal_filter(parts) + "/**" for parts in excluded)
+            for pattern in sorted(included):
+                exclusions += ["--include", pattern]
+            for pattern in sorted(protected):
+                exclusions += ["--exclude", pattern]
             for name in sorted(EXCLUDED_DIRS):
                 exclusions += ["--exclude", name + "/"]
             for name in sorted(ROOT_EXCLUDED_DIRS):
@@ -208,10 +327,11 @@ def sync(source, destination, ssh_command):
                    + "; mv " + staging + " sail/.git; git -C sail cat-file -e 'HEAD^{tree}'; "
                    + "test \"$(git -C sail rev-parse HEAD)\" = " + head)
             guard()
+            ownership("write", tracked)
             installed = True
         finally:
             if acquire_attempted:
-                invalidate = "" if installed else "rm -rf sail/.git; "
+                invalidate = "rm -rf sail/.git; " if mutation_attempted and not installed else ""
                 absent = "false" if locked else "test ! -e sail-sync.lock && test ! -L sail-sync.lock"
                 remote("if test ! -L sail-sync.lock && test ! -L sail-sync.lock/owner "
                        + "&& test -f sail-sync.lock/owner && test \"$(cat sail-sync.lock/owner)\" = " + token

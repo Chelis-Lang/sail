@@ -171,17 +171,52 @@ raise SystemExit(subprocess.run(command,cwd=env['HOME'],env=env).returncode)
         self.assertEqual((self.source / ".git/index").read_bytes(), before)
         self.assertEqual(list((target / ".git").glob("sharedindex.*")), [])
 
-    def test_remote_git_pointer_is_replaced_without_touching_its_old_target(self):
+    def test_opaque_remote_git_pointer_refuses_without_touching_its_old_target(self):
         target = self.remote / "sail"
         target.mkdir()
         source_git = self.source / ".git"
         original = (source_git / "HEAD").read_bytes()
         (target / ".git").symlink_to(source_git)
-        self.invoke()
-        self.assertFalse((target / ".git").is_symlink())
-        self.assertTrue((target / ".git").is_dir())
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.invoke()
+        self.assertTrue((target / ".git").is_symlink())
         self.assertEqual((source_git / "HEAD").read_bytes(), original)
-        self.assert_same_git_state(self.source, target)
+        self.assertFalse((self.remote / "sail-sync.lock").exists())
+
+    def test_nonempty_checkout_without_prior_ownership_refuses(self):
+        target = self.remote / "sail"
+        (target / ".claude").mkdir(parents=True)
+        old = target / ".claude/unknown-old-source"
+        old.write_text("cannot establish prior ownership\n")
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.invoke()
+        self.assertEqual(old.read_text(), "cannot establish prior ownership\n")
+        self.assertFalse((target / ".git").exists())
+        self.assertFalse((self.remote / "sail-sync-owned-paths.json").exists())
+
+    def test_prior_git_migration_rejects_links_and_redirection(self):
+        target = self.invoke()
+        ledger = self.remote / "sail-sync-owned-paths.json"
+        ledger.unlink()
+        for name, content in [("commondir", "outside"), ("objects/info/alternates", "outside")]:
+            with self.subTest(name=name):
+                path = target / ".git" / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
+                with self.assertRaises(subprocess.CalledProcessError):
+                    self.invoke()
+                self.assertTrue((target / ".git/HEAD").exists())
+                path.unlink()
+        self.git(target, "config", "core.worktree", str(self.source))
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.invoke()
+        self.assertTrue((target / ".git/HEAD").exists())
+        self.git(target, "config", "--unset", "core.worktree")
+        (target / ".git/linked-file").symlink_to(self.source / ".git/HEAD")
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.invoke()
+        self.assertTrue((target / ".git/linked-file").is_symlink())
+        self.assertFalse(ledger.exists())
 
     def test_readonly_source_directory_can_be_frozen_without_changing_it(self):
         directory = self.source / "readonly"
@@ -192,6 +227,103 @@ raise SystemExit(subprocess.run(command,cwd=env['HOME'],env=env).returncode)
         target = self.invoke()
         self.assertEqual((target / "readonly/actual.txt").read_text(), "readable source\n")
         self.assertEqual(directory.stat().st_mode & 0o777, 0o555)
+
+    def test_tracked_excluded_files_override_filters_without_private_siblings(self):
+        agent = self.source / ".claude"
+        agent.mkdir()
+        settings = agent / "settings.json"
+        settings.write_text("tracked project settings\n")
+        literal = agent / "[tracked]?.json"
+        literal.write_text("literal tracked filename\n")
+        self.git(self.source, "add", ".claude/settings.json", ".claude/[tracked]?.json")
+        self.commit(self.source, "tracked agent settings")
+        (agent / "settings.local.json").write_text("private local settings\n")
+        (agent / "worktrees").mkdir()
+        (agent / "worktrees/private.txt").write_text("private worktree\n")
+        target = self.invoke()
+        self.assertEqual((target / ".claude/settings.json").read_bytes(), settings.read_bytes())
+        self.assertEqual((target / ".claude/[tracked]?.json").read_bytes(), literal.read_bytes())
+        self.assertFalse((target / ".claude/settings.local.json").exists())
+        self.assertFalse((target / ".claude/worktrees").exists())
+        (target / ".claude/remote-private.txt").write_text("preserve remote excluded data\n")
+        settings.write_text("staged project settings\n")
+        added = agent / "new*tracked.txt"
+        added.write_text("staged added settings\n")
+        self.git(self.source, "add", ".claude/settings.json", ".claude/new*tracked.txt")
+        settings.write_text("actual dirty settings\n")
+        added.write_text("actual new working settings\n")
+        literal.unlink()
+        self.invoke()
+        self.assertEqual(self.git(self.source, "ls-files", "--stage", "-z"), self.git(target, "ls-files", "--stage", "-z"))
+        self.assertEqual(self.git(self.source, "diff", "--binary"), self.git(target, "diff", "--binary"))
+        self.assertEqual((target / ".claude/settings.json").read_bytes(), settings.read_bytes())
+        self.assertEqual((target / ".claude/new*tracked.txt").read_bytes(), added.read_bytes())
+        self.assertFalse((target / ".claude/[tracked]?.json").exists())
+        self.assertEqual((target / ".claude/remote-private.txt").read_text(), "preserve remote excluded data\n")
+        self.assertFalse((target / ".claude/settings.local.json").exists())
+        self.assertFalse((target / ".claude/worktrees").exists())
+
+    def test_committed_excluded_deletion_retires_only_previous_owned_source(self):
+        agent = self.source / ".claude"
+        agent.mkdir()
+        obsolete = agent / "obsolete"
+        obsolete.write_text("old tracked source\n")
+        self.git(self.source, "add", ".claude/obsolete")
+        self.commit(self.source, "branch A owns excluded source")
+        target = self.invoke()
+        private = target / ".claude/private-sibling"
+        private.write_text("not owned by sync\n")
+        # Migrate a checkout written by the earlier helper, before the ledger.
+        (self.remote / "sail-sync-owned-paths.json").unlink()
+        linked = self.base / "branch B"
+        self.git(self.source, "worktree", "add", "-q", "-b", "branch-b", str(linked))
+        self.git(linked, "rm", ".claude/obsolete")
+        self.commit(linked, "branch B commits excluded deletion")
+        self.invoke(linked)
+        self.assertFalse((target / ".claude/obsolete").exists())
+        self.assertEqual(private.read_text(), "not owned by sync\n")
+        self.assertEqual(self.git(linked, "diff", "HEAD", "--binary"), self.git(target, "diff", "HEAD", "--binary"))
+        self.invoke(self.source)
+        self.assertEqual((target / ".claude/obsolete").read_bytes(), obsolete.read_bytes())
+        self.git(self.source, "rm", ".claude/obsolete")
+        self.invoke()
+        self.assertFalse((target / ".claude/obsolete").exists())
+        self.assertEqual(self.git(self.source, "diff", "--cached", "--binary"), self.git(target, "diff", "--cached", "--binary"))
+        self.commit(self.source, "commit previously staged removal")
+        self.invoke()
+        self.assertFalse((target / ".claude/obsolete").exists())
+        self.assertEqual(private.read_text(), "not owned by sync\n")
+
+    def test_failed_transfer_keeps_retired_ownership_for_a_clean_retry(self):
+        agent = self.source / ".claude"
+        agent.mkdir()
+        (agent / "obsolete").write_text("owned source before failure\n")
+        self.git(self.source, "add", ".claude/obsolete")
+        self.commit(self.source, "own excluded source")
+        target = self.invoke()
+        with mock.patch.dict(os.environ, {"SAIL_SYNC_TEST_FAIL_PREPARE": "1"}):
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.invoke()
+        self.assertFalse((target / ".git").exists())
+        self.assertTrue((target / ".claude/obsolete").exists())
+        self.git(self.source, "rm", ".claude/obsolete")
+        self.commit(self.source, "remove source after incomplete transfer")
+        self.invoke()
+        self.assertFalse((target / ".claude/obsolete").exists())
+        self.assert_same_git_state(self.source, target)
+        ledger = json.loads((self.remote / "sail-sync-owned-paths.json").read_text())
+        self.assertNotIn(".claude/obsolete", ledger["paths"])
+
+    def test_invalid_ownership_ledger_refuses_before_git_or_source_mutation(self):
+        target = self.invoke()
+        before = (target / ".git/HEAD").read_bytes()
+        ledger = self.remote / "sail-sync-owned-paths.json"
+        ledger.write_text(json.dumps({"version":1, "paths":["../private"]}))
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.invoke()
+        self.assertEqual((target / ".git/HEAD").read_bytes(), before)
+        self.assertFalse((self.remote / "sail-sync.lock").exists())
+        self.assertFalse((self.remote / "private").exists())
 
     def test_unmerged_index_stages_and_original_working_conflict_are_preserved(self):
         self.git(self.source, "checkout", "-q", "-b", "theirs")
@@ -297,8 +429,8 @@ raise SystemExit(subprocess.run(command,cwd=env['HOME'],env=env).returncode)
 
     def test_freeze_drift_refuses_before_remote_source_is_touched(self):
         original = SYNC.copy_sources
-        def changing(source, destination):
-            original(source, destination)
+        def changing(source, destination, tracked=()):
+            original(source, destination, tracked)
             (source / "README.md").write_text("mutated during preparation\n")
         with mock.patch.object(SYNC, "copy_sources", changing), self.assertRaisesRegex(RuntimeError, "changed during sync"):
             self.invoke()
