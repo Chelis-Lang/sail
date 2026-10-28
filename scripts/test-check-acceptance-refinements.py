@@ -326,6 +326,28 @@ class SourceCaptureTests(unittest.TestCase):
         self.assertEqual(roles["bound_native_callers"][CHECKER.MODE_NATIVE],
             ["report_verification_arguments", "cargo_driver_options_with", "effective_verus_arguments"])
 
+    def test_filename_body_and_native_admission_remain_distinct(self):
+        core_path = "crates/sail-acceptance/src/inputs.rs"
+        core = (ROOT / core_path).read_bytes()
+        native = (ROOT / CHECKER.FILENAME_NATIVE).read_bytes()
+        CHECKER.compiled_subset(core_path, core)
+        CHECKER.compiled_subset(CHECKER.FILENAME_NATIVE, native)
+        for before, after in (
+            (b"encoded.as_bytes(),", b"decoded.as_bytes(),"),
+            (b".then_some(decoded)", b".then_some(String::new())"),
+            (b"let mut covered = journal.is_some();", b"let mut covered = true;"),
+            (b"covered = false;", b"covered = true;"),
+        ):
+            changed = native.replace(before, after)
+            self.assertNotEqual(changed, native)
+            with self.subTest(before=before), self.assertRaises(CHECKER.Refusal):
+                CHECKER.compiled_subset(CHECKER.FILENAME_NATIVE, changed)
+        roles = CHECKER.source_roles({"dependencies": [core_path, CHECKER.FILENAME_NATIVE]})
+        self.assertIn(core_path, roles["checked_source"])
+        self.assertNotIn(CHECKER.FILENAME_NATIVE, roles["checked_source"])
+        self.assertEqual(roles["bound_native_callers"][CHECKER.FILENAME_NATIVE],
+            ["dependencies", "update"])
+
     def test_held_response_body_and_native_delegate_remain_distinct(self):
         core = (ROOT / CHECKER.HOLDING_CORE).read_bytes()
         native = (ROOT / CHECKER.HOLDING_NATIVE).read_bytes()

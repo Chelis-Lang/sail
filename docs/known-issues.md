@@ -40,6 +40,11 @@ relations remain open; source/hash binding does not establish them.
 
 ## Input coverage and cache integrity
 
+- Native host synchronization from a linked Git worktree copies its local
+  `.git` pointer without reconstructing usable remote repository metadata
+  ([#589](https://github.com/Chelis-Lang/sail/issues/589)). Git-based source
+  validation then refuses before running proofs. Use a standalone checkout
+  from the frozen Git bundle for qualification; do not disable source checks.
 - `cargo xtask fetch-verus` can install in the default cache while validation
   follows a custom `SAIL_CACHE_DIR` ([#581](https://github.com/Chelis-Lang/sail/issues/581)).
   Use `SAIL_VERUS_HOME` pointing to an existing primary release's install parent

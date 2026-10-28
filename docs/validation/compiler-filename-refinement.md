@@ -24,6 +24,12 @@ Existing version-2 source records and receipts may predate the new guard. They
 retain their existing literal-path identity/currentness checks and are not
 retroactively certified by this theorem. No record version is changed.
 
+The checker captures and digest-binds the native decoder/admission source and
+labels it as an unproved native caller. Changes to proposal identity or refusal
+propagation require a fresh review of that binding; the digest does not prove
+those operations. The direct-stock program still checks the shared predicate,
+not the filesystem or document parser.
+
 The complete input refinement and every inherited input negative remain in
 scope. The query and authority roots also compile the input leaf and must qualify
 the added functions; no existing function or control is removed. New controls

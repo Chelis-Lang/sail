@@ -1850,7 +1850,8 @@
         "crates/sail-acceptance/src/syntax.rs",
         "proofs/acceptance/context.rs",
         "crates/sail-acceptance/src/inputs.rs",
-        "proofs/refinement/inputs.rs"
+        "proofs/refinement/inputs.rs",
+        "crates/sail-verus/src/managed/source_inputs.rs"
       ],
       "verified": 57,
       "functions": [

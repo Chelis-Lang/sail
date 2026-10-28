@@ -1,6 +1,7 @@
 # Held-response ownership qualification
 
-Status: a bounded production adoption is implemented on main `e9862433`.
+Status: a bounded production adoption is implemented in a candidate based on
+main `e9862433`.
 Direct Stock proof discovery, the complete affected controls and native
 runtime acceptance remain pending. No new proof pass or performance result is
 claimed by source inspection.
