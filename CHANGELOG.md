@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Let unchanged background jobs and MCP `verify` and `start_verification`
+  calls use unchanged-call replay. A replay writes the recorded run's
+  `context-ready` and `target-reused` job events under its own run identity;
+  forced jobs never replay. Replay records move to version 6 (#559).
+
 - MCP `verify` now waits on the job's lifecycle status over the service
   socket and reads the complete result once, after the job ends, instead of
   starting `sail jobs result` every 100 ms. Replies are unchanged (#578).
