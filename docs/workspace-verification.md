@@ -153,6 +153,10 @@ What differs is when there is work:
   prune` removed receipts but not the target), `sail verify` prints what
   plain Cargo-Verus prints for an up-to-date target. `--output json`, jobs
   and MCP clean that target and run Cargo again, to return its report.
+  That clean, and the one `SAIL_MANAGED_FORCE=1` runs, passes Cargo the
+  caller's `--release`/`-r`, `--profile`, `--target`, `--config` and
+  `--manifest-path` arguments unchanged, so it removes the artifacts of the
+  profile and target layouts the invocation actually builds.
 - **Partial verification.** `sail verify -- --verify-function F` (or
   `--verify-module`, `--verify-only-module`, `--verify-root`) gets plain
   Cargo-Verus's refusal ("Partial verification must use `cargo verus

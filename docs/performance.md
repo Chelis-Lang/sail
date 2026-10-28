@@ -19,6 +19,8 @@ was timed. Both platforms complete 31 valid comparisons and all four
 three-round mutation cohorts, with 651 matching comparisons each. See the
 [qualification and raw records](validation/shadow-index.md).
 
+Measured with Sail `e51e4660`, runtime `36d65c3f`:
+
 | Complete mutation loop | Linux speedup | Mac speedup |
 |---|---:|---:|
 | HumanEval | 2.71× | 2.87× |
@@ -86,6 +88,8 @@ The phases, in order:
 Each cell is the median of six rounds, with the range in brackets, in seconds.
 Every exit code matched stock's: fail exits 101 on both arms.
 
+Measured with Sail main `dca5cd43`, runtime `36d65c3f`:
+
 | Project | Phase | Stock | Sail | Stock/Sail |
 |---|---|---:|---:|---:|
 | Vest | cold | 38.4 [38.3–38.5] | 38.2 [38.0–38.5] | 1.01× |
@@ -140,7 +144,9 @@ Every exit code matched stock's: fail exits 101 on both arms.
 - **Cold runs.** IronKV is the only project that gets the shipped vstd proof,
   so it is the only one with a large cold gain. The other three verify vstd
   themselves, because each misses the proof:
-  - Vest's `--rlimit 100`
+  - Vest's vstd dependency closure and features (`default-features = false`
+    and three locked versions), not its `--rlimit 100`
+    ([record](validation/rlimit-subsumption.md), #238)
   - CapybaraKV's `--no-default-features` resolution
   - Anvil's patched Verus sources
 
@@ -182,13 +188,16 @@ applies. Anvil also needs OpenSSL (`brew install openssl@3`, then set
 - **Undo.** Expensive targets can restore a previously verified revision.
   Cheaper targets use ordinary solver caching instead, avoiding the cost of
   retaining every compiled revision. See [instant revert](instant-revert.md).
-- **Unchanged runs and tiny edits.** Sail still checks inputs and returns a
-  complete report. Plain Cargo can do less work on a no-op, so these calls
-  have visible overhead. Anvil's unchanged partial verification remains a
-  particular setup cost tracked in [known issues](known-issues.md).
+- **Unchanged runs and tiny edits.** A later unchanged call replays its
+  recorded report in 0.03–0.09 s, including unchanged MCP and background job
+  calls. The first unchanged call after a verification and a call that misses
+  replay take the full path: Sail checks inputs and returns a complete report, which costs more
+  than plain Cargo's no-op, most visibly on Anvil. Edits of tiny projects also
+  have visible overhead. See [known issues](known-issues.md).
 - **CI.** A fresh runner gains from persisted solver replies, and in
-  SAIL3112 mode from a persisted `target/`. Managed targets and receipts do
-  not move between machines yet. See [caching Sail in CI](ci-cache.md).
+  SAIL3112 mode from a persisted `target/`. In managed mode, restored managed
+  targets and receipts are reused on a new runner, because tools are
+  identified by content (#428). See [caching Sail in CI](ci-cache.md).
 
 The disabled v1 compiled-dependency store is not part of these claims. Other
 compiled dependencies are built separately for each project and worktree

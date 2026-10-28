@@ -30,12 +30,6 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
 ## Input coverage and cache integrity
 
-- The experimental managed Rust API can reuse an unchanged-call record when
-  its explicitly supplied socket changes from one path to another
-  ([#571](https://github.com/Chelis-Lang/sail/issues/571)); the key binds only
-  whether a socket exists. The ordinary CLI derives that setting from already
-  keyed caller/cache inputs; no ordinary CLI false-proof reproduction is claimed.
-  The separate exact-path key repair remains open.
 - `cargo xtask fetch-verus` can install in the default cache while validation
   follows a custom `SAIL_CACHE_DIR` ([#581](https://github.com/Chelis-Lang/sail/issues/581)).
   Use `SAIL_VERUS_HOME` pointing to an existing primary release's install parent
@@ -61,21 +55,27 @@ The service-wide acceptance theorem is not complete
 
 Current numbers are in [performance](performance.md).
 
-- **Unchanged calls that miss replay pay setup cost**
-  ([#314](https://github.com/Chelis-Lang/sail/issues/314)). An unchanged
-  `sail verify` replays in about 26 ms on Linux (60 ms on macOS) when every
-  recorded stamp matches
-  ([ADR 0082](decisions/0082-unchanged-call-replay.md)). When replay does not
-  apply (for example after a `touch`, a recent ctime or a different
-  argument), unchanged Anvil takes about 1.7 s against stock's 0.3 s, with no
-  verifier run.
-- **Tiny edits cost more than stock**
-  ([#156](https://github.com/Chelis-Lang/sail/issues/156)). Input checks,
-  receipts and complete reports add a fraction of a second to small edits.
-- **macOS cold Anvil is slightly slower than stock**
-  ([#278](https://github.com/Chelis-Lang/sail/issues/278),
-  [#232](https://github.com/Chelis-Lang/sail/issues/232)): about 0.1 s on
-  100 s, within run-to-run range. Linux cold runs are at parity or faster.
+- **The first unchanged call after a verification is slower than stock**
+  ([#558](https://github.com/Chelis-Lang/sail/issues/558)). It takes the full path and records
+  the replay: on macOS main `dca5cd43`, Anvil 2.07 s against 0.30 s, Vest
+  0.79 s against 0.26 s, CapybaraKV 0.59 s against 0.22 s and IronKV 0.28 s
+  against 0.21 s. Later unchanged calls replay in 0.03–0.09 s
+  ([ADR 0082](decisions/0082-unchanged-call-replay.md)).
+- **Unchanged calls that do not replay pay setup cost**
+  ([#560](https://github.com/Chelis-Lang/sail/issues/560)). When replay misses (for
+  example after a `touch`, a recent ctime or different arguments), or for
+  forced jobs, which never replay, unchanged Anvil takes about 1.6 s against
+  stock's 0.24 s on macOS, with no verifier run. Unchanged `SAIL3112` setups
+  take about 0.9 s on Anvil ([#561](https://github.com/Chelis-Lang/sail/issues/561)).
+- **Tiny-project edits cost more than stock**
+  ([#560](https://github.com/Chelis-Lang/sail/issues/560)). Input checks, receipts and
+  complete reports add a fraction of a second to edits of small projects;
+  one-line edits of the measured real projects are faster than stock.
+- **macOS cold Anvil is slower than stock**
+  ([#232](https://github.com/Chelis-Lang/sail/issues/232),
+  [#466](https://github.com/Chelis-Lang/sail/pull/466)): 0.7 s on 100 s
+  (100.2 s against 99.5 s), with ranges that do not overlap. Linux cold runs
+  are at parity or faster.
 - **A miss re-solves the whole bucket**
   ([#158](https://github.com/Chelis-Lang/sail/issues/158)). Editing one
   function re-sends its module's whole solver session; on Anvil one bucket
