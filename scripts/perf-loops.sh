@@ -35,6 +35,7 @@
 # Prints a table of median (min-max) wall seconds per mode and phase, and
 # keeps every log and results.tsv in the output directory.
 set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
 
 project="${1:-}"
 rounds="${2:-3}"
@@ -202,8 +203,8 @@ fresh_copy() { # DIR
   fi
 }
 
-stop_daemons() { # CACHE
-  pkill -f -- "--socket $1/" 2>/dev/null || true
+stop_daemons() { # with SAIL_CACHE_DIR set to the cache to release
+  "$here/sail-stop-daemon.sh"
   sleep 1
 }
 
@@ -270,7 +271,7 @@ run_mode() { # ROUND MODE
   done
   run_phase "$round" "$mode" "$dir" warm2
   if [ "$mode" = sail ]; then run_mcp "$round" "$dir"; fi
-  stop_daemons "$cache"
+  stop_daemons
   unset SAIL_CACHE_DIR
 }
 
