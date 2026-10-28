@@ -380,8 +380,13 @@ change ([ADR 0046](decisions/0046-managed-verification-by-default.md),
 A `sail verify` identical to an earlier call that ended Current without
 starting a verifier replays that call's output without running Cargo
 ([ADR 0082](decisions/0082-unchanged-call-replay.md)). The call is identical
-when its arguments, output mode, terminals, selected tools and every variable
-the tools or Sail read are the same. Replay also needs the full stat stamp
+when its arguments, output mode, selected tools, exact daemon socket, the
+colour Sail asks Cargo for (`--color=always` on a colour terminal) and every
+variable the tools or Sail read are the same. Those variables include the
+terminal-capability variables the pinned Cargo's colour and hyperlink
+detection reads (`CI`, `CLICOLOR`, `CLICOLOR_FORCE`, `COLORTERM`, `DOMTERM`,
+`FORCE_HYPERLINK`, `KONSOLE_VERSION`, `NO_COLOR`, `TERM_PROGRAM`,
+`VTE_VERSION`, `WT_SESSION`, besides `TERM`). Replay also needs the full stat stamp
 (device, inode, size, mode, mtime and ctime) of every input path and walked
 directory to match, along with the owned Cargo target's entries and every
 installed tool and sysroot file. The proof context's cache records must match
@@ -403,8 +408,12 @@ A human Cargo no-op may omit targets without receipts; replay preserves that
 admitted subset and adds no missing report. Structured requests separately
 require complete requested coverage. Recording also requires a readable
 compiler-invocation inventory with no compiler starts and only recognized
-cached invocation records. Version 4 replaces version 3; older records take
-the full path.
+cached invocation records. A run whose stderr holds one of Cargo's transient
+status lines is never recorded, and removes any older record of its key: a
+`Blocking` lock wait, `Updating`, `Locking`, `Downloading`, `Downloaded`, or a
+`spurious network error` retry warning. Those depend on concurrent activity
+or on the package cache, so a later plain run would not print them. Version 5
+replaces version 4; older records take the full path.
 
 The first unchanged call after a verification takes the full path and
 records; a file changed less than 2 s before a run is not recorded, so the

@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Make unchanged-call replay print what plain Cargo-Verus prints: key it by
+  the terminal-capability variables Cargo's colour and hyperlink detection
+  reads and by the colour Sail asks Cargo for (#573), never record a run whose
+  output holds Cargo's transient lock-wait, index or download lines (#574),
+  and bind the exact daemon socket a managed API caller supplies (#571).
+  Older replay records take the full path once.
+
 - Bind unchanged-call replay to the environment names required by the proof
   receipts admitted for that call, including ghost-only reads absent from
   Cargo dep-info. Retire older replay records that omitted those inputs (#552).

@@ -961,7 +961,7 @@ fn invocation_command(
         // Cargo writes to Sail's pipe, not the terminal, so it would print
         // no colour; ask for it as plain Cargo-Verus would on this terminal.
         // An argument, not CARGO_TERM_COLOR, so it is not a proof input.
-        .args((show_output && terminal_colour(&config.args[..split])).then_some("--color=always"))
+        .args(invocation_colour(&config.args, show_output).then_some("--color=always"))
         .args(&config.args[split..])
         .env("RUSTC_BOOTSTRAP", "1")
         // Only Cargo-Verus sees the alias; the alias gives the real Cargo the
@@ -1144,6 +1144,15 @@ fn invoke(
         .and_then(|()| std::fs::write(paths.run.join("cargo.stderr"), captured))
         .map_err(|e| Error::new("SAIL3106", e.to_string()))?;
     Ok(code)
+}
+
+/// Whether the invocation asks Cargo for colour (`--color=always`). Cargo
+/// and everything it starts write only to Sail's pipes, with stdin null, so
+/// this decision is the only way the caller's terminals reach what the run
+/// prints; the unchanged-call key binds it (ADR 0082).
+pub(super) fn invocation_colour(args: &[String], show_output: bool) -> bool {
+    let split = args.iter().position(|a| a == "--").unwrap_or(args.len());
+    show_output && terminal_colour(&args[..split])
 }
 
 /// Whether Sail's stderr is a terminal on which plain Cargo would print
