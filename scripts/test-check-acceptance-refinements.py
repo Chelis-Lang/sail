@@ -172,11 +172,12 @@ class SourceCaptureTests(unittest.TestCase):
             CHECKER.compiled_subset(CHECKER.SYNTAX, changed)
 
     def test_cargo_paths_and_private_token_fields_cannot_change_without_review(self):
-        paths = ["Cargo.toml", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
+        paths = ["Cargo.toml", "Cargo.lock", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
-            "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs"]
+            "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs",
+            "crates/sail-acceptance/src/query_split.rs", "crates/sail-acceptance/src/query_lex.rs"]
         paths += ["crates/" + name + "/Cargo.toml" for name in
-            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon")]
+            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib")]
         paths += [str(path.relative_to(ROOT)) for path in (ROOT / "crates/sail-acceptance/src").glob("cache_*.rs")]
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         CHECKER.validate_assembly(snapshots)
@@ -202,6 +203,83 @@ class SourceCaptureTests(unittest.TestCase):
             self.assertIn(before, candidate[path])
             candidate[path] = candidate[path].replace(before, after, 1)
             with self.subTest(path=path, after=after), self.assertRaises(CHECKER.Refusal):
+                CHECKER.validate_assembly(candidate)
+
+    def test_pending_parser_cannot_authorize_any_normal_qualification(self):
+        manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        parser = dict(next(entry for entry in manifest["components"] if entry["id"] == "parser"))
+        parser.update(discovery_pending=True, verified=None, functions=[])
+        with self.assertRaisesRegex(CHECKER.Refusal, "Stock discovery pending"):
+            CHECKER.require_discovered([parser])
+
+    def test_parser_split_controls_preserve_original_combined_faults(self):
+        manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        parser = next(entry for entry in manifest["components"] if entry["id"] == "parser")
+        controls = {control["name"]: control for control in parser["negative_controls"]}
+        reference = CHECKER.json.loads((ROOT / "proofs/refinement/parser-control-decompositions.json").read_bytes())
+        self.assertEqual(reference["schema"], "sail-parser-combined-control-decomposition-v1")
+        self.assertEqual(len(reference["pairs"]), 3)
+        self.assertEqual(len(controls), 54)
+        for pair in reference["pairs"]:
+            combined = pair["combined"]
+            original = combined["before"]
+            source = (ROOT / combined["source"]).read_text()
+            self.assertEqual(source.count(original), 1)
+            self.assertEqual(pair["parts"][0], combined["name"])
+            self.assertEqual(len(pair["parts"]), 2)
+            self.assertEqual(len(pair["edits"]), 2)
+            for name, edit in zip(pair["parts"], pair["edits"], strict=True):
+                part = controls[name]
+                self.assertEqual(part["source"], combined["source"])
+                self.assertEqual(part["before"], original)
+                self.assertEqual(original.count(edit["before"]), 1)
+                self.assertEqual(part["after"], original.replace(edit["before"], edit["after"], 1))
+                # This preserves each complete signature, loop contract and
+                # erased proof group in its original executable body/interval.
+                SOURCE.runtime_mutation(source, original, part["after"])
+            for edits in (pair["edits"], list(reversed(pair["edits"]))):
+                composed = original
+                for edit in edits:
+                    self.assertEqual(composed.count(edit["before"]), 1)
+                    composed = composed.replace(edit["before"], edit["after"], 1)
+                self.assertEqual(composed, combined["after"])
+            with self.assertRaisesRegex(SOURCE.SourceRefusal, "runtime intervals on both sides"):
+                SOURCE.runtime_mutation(source, original, combined["after"])
+
+    def test_parser_native_callers_and_original_must_use_are_bound(self):
+        manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())
+        paths = {path for entry in manifest["components"] for path in entry["dependencies"]}
+        paths.update(["Cargo.toml", "crates/sail-acceptance/src/lib.rs", "crates/sail-api/src/lib.rs",
+            "crates/sail-acceptance/Cargo.toml"])
+        paths.update("crates/" + name + "/Cargo.toml" for name in
+            ("sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib"))
+        snapshots = {path: (ROOT / path).read_bytes() for path in paths}
+        CHECKER.validate_assembly(snapshots)
+        changed_lock = dict(snapshots)
+        lock_edge = b' "proptest",\n "sail-acceptance",\n]'
+        self.assertIn(lock_edge, changed_lock["Cargo.lock"])
+        # Only the parser package is selected; unrelated package locks stay intact.
+        marker = b'name = "sail-smtlib"'
+        left, right = changed_lock["Cargo.lock"].split(marker, 1)
+        changed_lock["Cargo.lock"] = left + marker + right.replace(b' "sail-acceptance",\n', b'', 1)
+        with self.assertRaisesRegex(CHECKER.Refusal, "dependency lock"):
+            CHECKER.validate_assembly(changed_lock)
+        parser = next(entry for entry in manifest["components"] if entry["id"] == "parser")
+        _, _, files = CHECKER.captured_driver(parser, snapshots)
+        self.assertEqual(files["core_query_lex.rs"], snapshots["crates/sail-acceptance/src/query_lex.rs"])
+        self.assertEqual(files["core_query_split.rs"], snapshots["crates/sail-acceptance/src/query_split.rs"])
+        self.assertEqual(files["core_parser_grammar.rs"], snapshots["crates/sail-acceptance/src/parser_grammar.rs"])
+        self.assertFalse(any(path in files for path in CHECKER.PARSER_NATIVE_SHA256))
+        for path in CHECKER.PARSER_NATIVE_SHA256:
+            with self.subTest(path=path), self.assertRaisesRegex(CHECKER.Refusal, "native parser"):
+                CHECKER.compiled_subset(path, snapshots[path] + b"\n// drift\n")
+        path = "crates/sail-acceptance/src/query_lex.rs"
+        before = b"#[must_use]\n            pub fn text<'a>"
+        self.assertEqual(snapshots[path].count(before), 1)
+        for fake in (b"", b"// #[must_use]\n            pub fn text<'a>\n"):
+            candidate = dict(snapshots)
+            candidate[path] = snapshots[path].replace(before, b"pub fn text<'a>") + fake
+            with self.subTest(fake=fake), self.assertRaisesRegex(CHECKER.Refusal, "must-use"):
                 CHECKER.validate_assembly(candidate)
 
     def test_reviewed_proof_import_identifier_digits_preserve_exact_binding(self):
@@ -356,6 +434,9 @@ class SourceCaptureTests(unittest.TestCase):
             or path.startswith("proofs/") and path.endswith((".rs", ".json"))]
         snapshots = {path: (ROOT / path).read_bytes() for path in paths}
         manifest = json.loads(snapshots[CHECKER.MANIFEST])
+        # This fixture simulates verifier I/O only to attack source recapture.
+        # Use the actual locked inventories, including parser discovery; these
+        # synthetic results are not new proof or qualification evidence.
         entries = {entry["id"]: entry for entry in manifest["components"]}
         pins = tomllib.loads(snapshots["corpus/toolchain.toml"].decode())
         with tempfile.TemporaryDirectory(prefix="sail-final-assembly-") as temporary:

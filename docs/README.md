@@ -56,6 +56,8 @@ them.
   interactive engine.
 - [Managed runs](managed-cold-start.md): what a first run costs and when
   receipts are reused.
+- [Shared stream parser](design/checked-stream-parser.md): checked operations,
+  [qualification](validation/checked-stream-parser.md) and unproved boundaries.
 - Validation records for each gate are in [validation/](validation/). Design
   notes are in [design/](design/), milestone reports in [reports/](reports/),
   and research in [survey/](survey/README.md).
