@@ -10,6 +10,9 @@ semantic versioning once the API is published.
   package cleanup now forwards the caller's profile, target and configuration
   selectors to `cargo clean`, so the selected build compiles and verifies
   again instead of staying fresh (#553).
+- Bind unchanged-call replay to the environment names required by the proof
+  receipts admitted for that call, including ghost-only reads absent from
+  Cargo dep-info. Retire older replay records that omitted those inputs (#552).
 
 - Document the owner-approved equivalence exception for code that observes
   Sail's named compiler-visible integration settings (ADR 0088). Solver-answer

@@ -1455,6 +1455,26 @@ fn invocations(paths: &Paths) -> Vec<Invocation> {
         .collect()
 }
 
+/// No compiler may have started in a replayable run. Directory and entry
+/// errors are unknown, never an empty inventory; only recognized cached
+/// invocation records may remain beside an otherwise empty directory.
+fn replay_only_invocations(directory: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(directory) else {
+        return false;
+    };
+    entries.into_iter().all(|entry| {
+        let Ok(entry) = entry else {
+            return false;
+        };
+        entry.file_type().is_ok_and(|kind| kind.is_file())
+            && entry.path().extension().is_some_and(|kind| kind == "json")
+            && read::<Invocation>(&entry.path()).is_some_and(|call| {
+                (call.retained_from.is_some() || call.dependency_build.is_some())
+                    && call.environment_observed()
+            })
+    })
+}
+
 /// A complete negative full run can retain ordinary dependency contracts, but
 /// neither Cargo's 101 nor Currentness alone establishes that completion.
 /// Stock and source-engine runs both qualify; only the completion evidence
@@ -1842,6 +1862,16 @@ fn dirty_receipt_packages(
         .collect()
 }
 
+/// Internal admission facts, kept separate from the serialized user result.
+struct RecordedTargets {
+    targets: Vec<TargetResult>,
+    missing: BTreeSet<String>,
+    /// Names required by exactly the proof records admitted for this result.
+    /// `None` when an included report lacks complete admitted requirements.
+    /// Omitted targets confer no returned report authority.
+    receipt_environment: Option<BTreeSet<String>>,
+}
+
 fn target_records(
     paths: &Paths,
     data: &Value,
@@ -1861,6 +1891,7 @@ fn target_records(
         partial_args,
         None,
     )
+    .map(|records| (records.targets, records.missing))
 }
 
 #[allow(
@@ -1877,10 +1908,12 @@ fn target_records_in(
     seeded: &[super::store::Seeded],
     partial_args: Option<&[String]>,
     observation: Option<RevisionObservation<'_>>,
-) -> Result<(Vec<TargetResult>, BTreeSet<String>)> {
+) -> Result<RecordedTargets> {
     let scoped_run = partial_args.is_some();
     let mut results = Vec::new();
     let mut missing = BTreeSet::new();
+    let mut receipt_environment = BTreeSet::new();
+    let mut receipt_requirements_complete = true;
     let calls = invocations(paths);
     let bindings: Vec<_> = calls
         .iter()
@@ -2013,6 +2046,7 @@ fn target_records_in(
         }
         if let Some((index, call)) = call {
             represented.insert(index);
+            receipt_environment.extend(call.compiler_environment_names().cloned());
             let mut artifact_paths: Vec<PathBuf> = artifact["filenames"]
                 .as_array()
                 .into_iter()
@@ -2046,6 +2080,7 @@ fn target_records_in(
                         );
                     }
                 }
+                receipt_environment.extend(declared.keys().cloned());
                 json(
                     &paths
                         .run
@@ -2068,6 +2103,7 @@ fn target_records_in(
                     .seal(),
                 )?;
             } else {
+                receipt_requirements_complete = false;
                 let _ = std::fs::remove_file(&path);
             }
             results.push(TargetResult {
@@ -2172,6 +2208,7 @@ fn target_records_in(
                     })
                 })
         } {
+            receipt_environment.extend(receipt.declared_environment.keys().cloned());
             event(
                 &serde_json::json!({"event":"target-reused","target":name,"establishing_run":receipt.invocation.establishing_run()}),
             );
@@ -2200,6 +2237,9 @@ fn target_records_in(
     // A failing compiler may not emit an artifact; preserve its observed target report.
     for (index, call) in calls.into_iter().enumerate() {
         if !represented.contains(&index) {
+            // No artifact-backed receipt was admitted for this observation.
+            // Preserve its report, but do not infer complete replay inputs.
+            receipt_requirements_complete = false;
             let (package, target) = bindings[index];
             let name = target["name"].as_str().unwrap_or_default();
             let kind: Vec<String> = target["kind"]
@@ -2248,7 +2288,15 @@ fn target_records_in(
             "multiple proof reports name one Cargo target",
         ));
     }
-    Ok((results, missing))
+    Ok(RecordedTargets {
+        targets: results,
+        // Missing targets supply no returned report authority. Shown Cargo
+        // no-ops may omit them; structured runs enforce requested coverage
+        // separately before recording. Every included report still needs its
+        // own complete receipt environment requirements.
+        receipt_environment: receipt_requirements_complete.then_some(receipt_environment),
+        missing,
+    })
 }
 
 /// Package ids reachable from `roots` through every resolved dependency kind.
@@ -3706,7 +3754,11 @@ fn run_recorded(
     });
     let reader_failed = || Error::new("SAIL3103", "Cargo metadata reader failed");
     let mut overlapped = Some(after_thread.unwrap_or_else(|_| Err(reader_failed())));
-    let (mut targets, missing) = records?;
+    let RecordedTargets {
+        mut targets,
+        missing,
+        receipt_environment,
+    } = records?;
     let retried = retry_possible && !missing.is_empty();
     if retried {
         overlapped = None;
@@ -4062,6 +4114,7 @@ fn run_recorded(
         *pending = (result.currentness == Currentness::Current
             && result.exit_code.is_some()
             && result.execution.verifier_invocations == 0
+            && replay_only_invocations(&paths.run.join("invocations"))
             && !retried
             && !forced
             && paths.reuse
@@ -4083,6 +4136,7 @@ fn run_recorded(
                     .into_iter()
                     .map(|(_, receipts)| receipts)
                     .collect(),
+                receipt_environment,
                 result: &result,
             })
         })
@@ -5878,6 +5932,378 @@ mod tests {
         drop(ownership);
         std::fs::remove_dir_all(root)?;
         Ok(())
+    }
+
+    mod receipt_environment_admission {
+        use super::*;
+
+        type TestResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+        #[derive(Clone, Copy, Debug)]
+        enum Route {
+            Direct,
+            Sibling,
+            Seeded,
+        }
+
+        struct Fixture {
+            root: PathBuf,
+            paths: Paths,
+            ownership: Ownership,
+            data: Value,
+            artifact: PathBuf,
+        }
+
+        impl Fixture {
+            fn named(route: Route, label: &str) -> TestResult<Self> {
+                let root = std::env::temp_dir().join(format!(
+                    "sail-noop-receipt-route-{route:?}-{label}-{}",
+                    std::process::id()
+                ));
+                let config = compiler_fixture(&root)?;
+                let (paths, ownership) = prepare(&config, &root, "selected", "compiler", "run")?;
+                std::fs::write(
+                    root.join("Cargo.toml"),
+                    "[workspace]\nmembers=['input','app']\n",
+                )?;
+                for name in ["input", "app"] {
+                    std::fs::create_dir_all(root.join(name))?;
+                    std::fs::write(
+                        root.join(name).join("Cargo.toml"),
+                        format!(
+                            "[package]\nname='{name}'\nversion='0.1.0'\n[lib]\npath='lib.rs'\n{}",
+                            if name == "app" {
+                                "[dependencies]\ninput={path='../input'}\n"
+                            } else {
+                                ""
+                            }
+                        ),
+                    )?;
+                    std::fs::write(root.join(name).join("lib.rs"), "pub fn fixture() {}")?;
+                }
+                let package = |name: &str| {
+                    serde_json::json!({
+                        "id":name,"name":name,"manifest_path":root.join(name).join("Cargo.toml"),
+                        "source":null,"metadata":{"verus":{"verify":true}},
+                        "targets":[{"name":name,"kind":["lib"],"src_path":root.join(name).join("lib.rs")}]
+                    })
+                };
+                let data = serde_json::json!({"workspace_root":root,
+                    "sail_cache_directory":config.cache,"target_directory":paths.target,
+                    "workspace_members":["input","app"],
+                    "resolve":{"nodes":[{"id":"input","dependencies":[]},
+                        {"id":"app","dependencies":["input"]}]},
+                    "packages":[package("input"),package("app")]});
+                std::fs::create_dir_all(&paths.target)?;
+                let artifact = paths.target.join("input.rlib");
+                std::fs::write(&artifact, "unchanged verified artifact")?;
+                json(
+                    &paths.run.join("artifacts.jsonl"),
+                    &serde_json::json!({
+                        "reason":"compiler-artifact","package_id":"input","fresh":true,
+                        "target":{"name":"input","kind":["lib"]},"filenames":[artifact]
+                    }),
+                )?;
+                Ok(Self {
+                    root,
+                    paths,
+                    ownership,
+                    data,
+                    artifact,
+                })
+            }
+
+            fn select_recorded(
+                &self,
+                route: Route,
+                receipt: Receipt,
+            ) -> TestResult<RecordedTargets> {
+                let mut receipt = receipt;
+                let mut seeds = Vec::new();
+                let requested = match route {
+                    Route::Direct => "input",
+                    Route::Sibling | Route::Seeded => "app",
+                };
+                let expected = BTreeSet::from([(
+                    requested.to_owned(),
+                    requested.to_owned(),
+                    "lib".to_owned(),
+                )]);
+                if matches!(route, Route::Seeded) {
+                    assert_eq!(std::fs::read_dir(&self.paths.receipts)?.count(), 0);
+                    seeds.push(super::super::super::store::Seeded {
+                        key: "source-origin-store".into(),
+                        receipt,
+                        placed: true,
+                        shown_stdout: Vec::new(),
+                    });
+                } else {
+                    let (context, destination) = if matches!(route, Route::Sibling) {
+                        std::fs::write(self.paths.family_contexts.join("sibling"), [])?;
+                        ("sibling", self.paths.projects.join("sibling/receipts"))
+                    } else {
+                        ("selected", self.paths.receipts.clone())
+                    };
+                    std::fs::create_dir_all(&destination)?;
+                    context.clone_into(&mut receipt.context);
+                    let path = receipt_path(&self.paths, "input", "input", &["lib".into()]);
+                    json(
+                        &self
+                            .paths
+                            .run
+                            .join("pending-receipts")
+                            .join(path.file_name().ok_or("receipt name")?),
+                        &receipt.seal(),
+                    )?;
+                    super::super::super::receipts::publish(&self.paths.run, &destination, context)?;
+                }
+                Ok(target_records_in(
+                    &self.paths,
+                    &self.data,
+                    "selected",
+                    false,
+                    &expected,
+                    &seeds,
+                    None,
+                    None,
+                )?)
+            }
+
+            fn close(self) -> TestResult {
+                drop(self.ownership);
+                std::fs::remove_dir_all(self.root)?;
+                Ok(())
+            }
+        }
+
+        fn check_admitted_names(route: Route) -> TestResult {
+            const SHADOW: &str = " __VERUS_DRIVER_SHADOW__";
+            let fixture = Fixture::named(route, "admission-names")?;
+            let mut receipt = compiler_receipt(&fixture.paths, &fixture.data, &fixture.artifact);
+            receipt.invocation.compiler_environment = Some(BTreeMap::from([(
+                SHADOW.into(),
+                std::env::var(SHADOW).ok(),
+            )]));
+            receipt.declared_environment = BTreeMap::from([(
+                SHADOW.into(),
+                std::env::var_os(SHADOW).map(std::ffi::OsString::into_encoded_bytes),
+            )]);
+            let accepted = fixture.select_recorded(route, receipt.clone().seal())?;
+            assert!(accepted.missing.is_empty());
+            assert_eq!(accepted.targets.len(), 1);
+            assert!(accepted.targets[0].reused);
+            assert_eq!(
+                accepted.receipt_environment,
+                Some(BTreeSet::from([SHADOW.into()]))
+            );
+
+            let mut wrong = receipt.clone();
+            wrong
+                .declared_environment
+                .insert(SHADOW.into(), Some(vec![0]));
+            let rejected = fixture.select_recorded(route, wrong.seal())?;
+            assert_eq!(rejected.targets, Vec::<TargetResult>::new());
+            assert_eq!(rejected.missing, BTreeSet::from(["input".into()]));
+            // Rejection grants no report authority; the empty returned
+            // subset therefore has an empty complete requirement set.
+            assert_eq!(rejected.receipt_environment, Some(BTreeSet::new()));
+            let requested = if matches!(route, Route::Direct) {
+                "input"
+            } else {
+                "app"
+            };
+            assert!(!sail_api::acceptance::requested_coverage(
+                &[sail_api::acceptance::requested_target(
+                    requested, requested, "lib"
+                )],
+                &rejected.targets,
+            ));
+
+            // A compiler-boundary restoration writes an invocation without
+            // starting a verifier. Its raw names must survive this branch too.
+            let mut restored = receipt.invocation;
+            restored.retained_from = Some("original-proof-run".into());
+            let call_path = fixture
+                .paths
+                .run
+                .join("invocations")
+                .join(format!("{}.json", restored.identity.key()));
+            json(&call_path, &restored)?;
+            let recorded = target_records_in(
+                &fixture.paths,
+                &fixture.data,
+                "selected",
+                false,
+                &BTreeSet::from([("input".into(), "input".into(), "lib".into())]),
+                &[],
+                None,
+                None,
+            )?;
+            assert!(recorded.missing.is_empty());
+            assert_eq!(recorded.targets.len(), 1);
+            assert!(recorded.targets[0].reused);
+            assert_eq!(recorded.targets[0].establishing_run, "original-proof-run");
+            assert_eq!(
+                recorded.receipt_environment,
+                Some(BTreeSet::from([SHADOW.into()]))
+            );
+            fixture.close()
+        }
+
+        #[test]
+        fn missing_unreported_target_does_not_hide_known_subset_requirements() -> TestResult {
+            const SHADOW: &str = " __VERUS_DRIVER_SHADOW__";
+            let fixture = Fixture::named(Route::Sibling, "known-subset")?;
+            let app_artifact = fixture.paths.target.join("app.rlib");
+            std::fs::write(&app_artifact, "unreported Cargo artifact")?;
+            let artifact = |package: &str, path: &Path| {
+                serde_json::json!({
+                    "reason":"compiler-artifact", "package_id":package, "fresh":true,
+                    "target":{"name":package,"kind":["lib"]}, "filenames":[path]
+                })
+            };
+            std::fs::write(
+                fixture.paths.run.join("artifacts.jsonl"),
+                format!(
+                    "{}\n{}\n",
+                    artifact("input", &fixture.artifact),
+                    artifact("app", &app_artifact)
+                ),
+            )?;
+            let mut receipt = compiler_receipt(&fixture.paths, &fixture.data, &fixture.artifact);
+            receipt.invocation.compiler_environment = Some(BTreeMap::from([(
+                SHADOW.into(),
+                std::env::var(SHADOW).ok(),
+            )]));
+            receipt.declared_environment.insert(
+                SHADOW.into(),
+                std::env::var_os(SHADOW).map(std::ffi::OsString::into_encoded_bytes),
+            );
+            let subset = fixture.select_recorded(Route::Sibling, receipt.clone().seal())?;
+            assert_eq!(subset.missing, BTreeSet::from(["app".into()]));
+            assert_eq!(subset.targets.len(), 1);
+            assert_eq!(subset.targets[0].target, "input");
+            assert!(!subset.targets[0].requested);
+            assert!(subset.targets[0].complete && subset.targets[0].reused);
+            assert_eq!(
+                subset.receipt_environment,
+                Some(BTreeSet::from([SHADOW.into()]))
+            );
+            assert!(!sail_api::acceptance::requested_coverage(
+                &[sail_api::acceptance::requested_target("app", "app", "lib")],
+                &subset.targets,
+            ));
+
+            // Once the unknown app report is included, the known dependency
+            // subset cannot authorize recording it.
+            let mut unknown = receipt.invocation;
+            unknown.identity.manifest = fixture.root.join("app/Cargo.toml");
+            unknown.identity.name = "app".into();
+            unknown.report.crates[0].name = Some("app".into());
+            unknown.compiler_environment = None;
+            unknown.retained_from = Some("unobserved-app".into());
+            json(
+                &fixture
+                    .paths
+                    .run
+                    .join("invocations")
+                    .join(format!("{}.json", unknown.identity.key())),
+                &unknown,
+            )?;
+            let included = target_records_in(
+                &fixture.paths,
+                &fixture.data,
+                "selected",
+                false,
+                &BTreeSet::from([("app".into(), "app".into(), "lib".into())]),
+                &[],
+                None,
+                None,
+            )?;
+            assert!(included.missing.is_empty());
+            assert_eq!(included.targets.len(), 2);
+            assert_eq!(included.receipt_environment, None);
+            fixture.close()
+        }
+
+        #[test]
+        fn replay_inventory_requires_readable_cached_records_without_starts() -> TestResult {
+            let fixture = Fixture::named(Route::Direct, "invocation-inventory")?;
+            let directory = fixture.paths.run.join("invocations");
+            assert!(replay_only_invocations(&directory));
+            let mut call =
+                compiler_receipt(&fixture.paths, &fixture.data, &fixture.artifact).invocation;
+            call.retained_from = Some("original-proof-run".into());
+            let path = directory.join("cached.json");
+            json(&path, &call)?;
+            assert!(replay_only_invocations(&directory));
+            std::fs::write(directory.join("123.started"), "actual compiler start")?;
+            assert!(!replay_only_invocations(&directory));
+            std::fs::remove_file(directory.join("123.started"))?;
+            std::fs::write(&path, "invalid JSON")?;
+            assert!(!replay_only_invocations(&directory));
+            call.retained_from = None;
+            json(&path, &call)?;
+            assert!(!replay_only_invocations(&directory));
+            assert!(!replay_only_invocations(&fixture.root.join("missing")));
+            assert!(!replay_only_invocations(&path));
+            fixture.close()
+        }
+
+        #[test]
+        fn unknown_or_artifactless_observations_refuse_replay_recording() -> TestResult {
+            let fixture = Fixture::named(Route::Direct, "unknown-observation")?;
+            let mut call =
+                compiler_receipt(&fixture.paths, &fixture.data, &fixture.artifact).invocation;
+            call.retained_from = Some("original-proof-run".into());
+            call.compiler_environment = None;
+            let path = fixture
+                .paths
+                .run
+                .join("invocations")
+                .join(format!("{}.json", call.identity.key()));
+            json(&path, &call)?;
+            let select = || {
+                target_records_in(
+                    &fixture.paths,
+                    &fixture.data,
+                    "selected",
+                    false,
+                    &BTreeSet::from([("input".into(), "input".into(), "lib".into())]),
+                    &[],
+                    None,
+                    None,
+                )
+            };
+            let unknown = select()?;
+            assert_eq!(unknown.targets.len(), 1);
+            assert!(unknown.missing.is_empty());
+            assert_eq!(unknown.receipt_environment, None);
+
+            call.compiler_environment = Some(BTreeMap::new());
+            json(&path, &call)?;
+            std::fs::remove_file(fixture.paths.run.join("artifacts.jsonl"))?;
+            let artifactless = select()?;
+            assert_eq!(artifactless.targets.len(), 1);
+            assert!(artifactless.missing.is_empty());
+            assert_eq!(artifactless.receipt_environment, None);
+            fixture.close()
+        }
+
+        #[test]
+        fn direct_admission_preserves_ghost_receipt_requirements() -> TestResult {
+            check_admitted_names(Route::Direct)
+        }
+
+        #[test]
+        fn sibling_admission_preserves_ghost_receipt_requirements() -> TestResult {
+            check_admitted_names(Route::Sibling)
+        }
+
+        #[test]
+        fn seeded_admission_preserves_ghost_receipt_requirements() -> TestResult {
+            check_admitted_names(Route::Seeded)
+        }
     }
 
     #[test]
