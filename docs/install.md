@@ -37,6 +37,9 @@ The installer verifies the checksum, checks the platform and archive layout,
 and validates the actual bundled runtime before making the installation
 available. It refuses an existing installation directory. An interrupted or
 failed check does not publish a partial installation; retry the same command.
+Every installed file and directory gets exactly the mode the archive records,
+whatever your umask, because the shipped vstd proof is admitted only for an
+installation that matches the release index's modes.
 `--install-toolchain` explicitly installs the bundled verifier's Rust pin with
 `rust-src` through rustup. Without it, no Rust installation is attempted.
 The default toolchain, shell profiles and existing installations are unchanged.
@@ -87,7 +90,11 @@ that pin and its known project limitations.
 
 On a fresh project, a `SAIL3138` note (in `--output json`, or on stderr with
 `SAIL_EXPLAIN=1`) explains why a shipped vstd proof cannot be used. A different dependency resolution, extra compiler components or
-forwarded verifier flags can cause this. Verification continues normally, with
+forwarded verifier flags can cause this. So can an installation whose
+directory modes differ from the release index. An installation made under
+umask `002` (Ubuntu's default) by `scripts/install.py` from release candidates
+up to 0.1.0-rc.7 is refused this way, with a note that wrongly blames the
+toolchain or Verus; reinstall it. Verification continues normally, with
 exact solver caching still available. Do not rewrite a real project's lockfile
 merely to reproduce a benchmark's bundle hit.
 

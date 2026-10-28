@@ -313,11 +313,25 @@ def drain_queue(binaries, socket, env):
     raise AssertionError('recording daemon did not drain its write queue')
 
 
+def layout_mismatch(indexed, found):
+    """Name an installation's own directory mismatch, which no toolchain causes."""
+    differing = sorted(name for name in set(indexed) | set(found)
+                       if indexed.get(name) != found.get(name))
+    shown = ', '.join(name + ' (index ' + (oct(indexed[name]) if name in indexed else 'absent')
+                      + ', installed ' + (oct(found[name]) if name in found else 'absent') + ')'
+                      for name in differing[:20])
+    return ('this installation\'s directories do not match its release index (' + INDEX
+            + '), so Sail will not use the shipped vstd proof; the Rust toolchain and Verus are '
+            'not the cause. Differing directories: ' + shown
+            + '. Reinstall with scripts/install.py, or extract with tar under umask 022.')
+
+
 def verify(root):
     index = json.loads((root/INDEX).read_bytes())
     assert set(index) == {'schema', 'proof', 'files', 'directories'}
     assert index['schema'] == 1 and index['files'] == inventory(root)
-    assert index['directories'] == directories(root)
+    found = directories(root)
+    assert index['directories'] == found, layout_mismatch(index['directories'], found)
     assert set(index['files']).issuperset({'bin/sail', 'bin/sail-z3'})
     # Only the internal temporal-enabled variant (ADR 0083) has the native
     # worker, and then always with its exact installation manifest.
