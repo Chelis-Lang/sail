@@ -1,168 +1,157 @@
 # Shared stream parser qualification
 
-Status: the resumed complete positive Stock discovery and the previously
-resource-refused original-byte control pass at unchanged default limits.
-The full current control matrix, native compatibility, cost and conformance
-remain pending. The candidate adopts the new native path when built; owner acceptance
-and completion of #371 are not claimed. See the [design](../design/checked-stream-parser.md).
+The complete parser root and all 54 ordinary failure controls pass through
+pinned stock Verus. The 171 inherited cases reuse independently audited,
+byte-identical programs and runtime: coverage is **55 fresh + 171 reused**, not
+226 fresh executions. Frozen-source native Linux workspace, solver, full end-to-end, full fast and
+full standard conformance pass, including the mandatory mutation cohort. Narrow
+native cost is measured. The affected runtime checks also pass freshly on
+base `8797ccd4`. The restack onto `b56889f1` changes only inherited installer
+helpers/tests and documentation; complete proof and runtime/cost source inputs
+remain identical. Scoped installer/link checks and current-head CI cover that
+base update. Final head review and current-head CI remain before merge.
+[ADR 0086](../decisions/0086-checked-stream-framing.md) is accepted on
+2026-10-29 for this bounded runtime adoption and its measured cost tradeoff. The [service-wide design](../design/evidence-acceptance-core.md)
+remains open under #368.
 
-| Scope | State |
+| Scope | Evidence and result |
 |---|---|
-| Base | Current main `e9862433`; earlier frozen lineages below remain historical |
-| Source operations | Actual splitter/token lexer and exact grammar extracted from the frozen source lineage; command/head/session/cache features excluded |
-| Existing proof programs | Source-only comparison preserves all 171 complete captured main programs; no new proof execution or parser qualification inferred |
-| New parser root | Actual complete positive at `1b614970`: 129 verified / 204 function entries, including both checked history/emission lemmas; original-byte control fails ordinarily with no resource refusal |
-| Qualification admission | Locks the actual 129/204 inventory; the pending-discovery refusal remains tested |
-| Native callers | Candidate default splitter/lexer paths now delegate to shared implementations; adapters and command/sexpr consumers are bound/unverified, not Stock-compiled |
-| Remaining gates | Full 226-case matrix (54 parser and 168 current-main controls), strict native/Linux/Mac compatibility, solver/scoped standard conformance and narrow measured parser cost |
+| Source | Restacked base `b56889f1`; actual refreshed native source remains `7b1c2720` on `8797ccd4`, with older native/cost source `a84109cc` on `584fd14a`. No new runtime or proof execution is attributed to the restack |
+| Fresh production proof | `d9da43c9`: whole parser positive 129 verified / 204 function entries; all 54 controls fail ordinarily with 128 verified / one failing function; no resource or VIR refusal |
+| Inherited production proofs | 171 unique cases / 174 historical calls re-audited from closed `c0957b92` and `fefe3c73` receipts; complete generated programs, inventories, default commands, Stock runtime and Rust identity match |
+| Abstract models | 35 executions at union `838706f0`: four whole positives and 31 ordinary controls; all current generated programs, all 3,873 Stock runtime files and pinned Rust match; actual raw results independently checked; no new execution at the parser head |
+| Current correspondence | All 226 production programs and native-parser bindings match from qualified `d9da43c9` through the restacked head; all 35 model programs also match their executed receipt. No new verifier calls |
+| Frozen native Linux | `a84109cc`, c7i.4xlarge/us-east-1: workspace 1,203 passed / 54 skipped; solver 51 passed; full unchanged end-to-end + extra passed; full fast four arms each 147/147 units / 3,451 functions; standard four arms each 159/159 / 13,166 functions plus all 18 mutations and both revert controls passed |
+| Current-base runtime refresh | `7b1c2720`: workspace 1,212 passed / 54 skipped; solver 51 passed; full end-to-end + extra passed (1,099.77 s); PR-fast four arms each 33/33 passed; all 18 mutations and cold/revert/forced-revert checks passed (21 rows, 1,050.02 s). No mutation evidence transferred |
+| Installer/docs base refresh | Main `b56889f1`: focused installer tests (12/12) and documentation-link checks pass; all runtime crates, complete proof inputs, entry scripts, fixtures, image and pins are unchanged. Original native/corpus/cost evidence retains its actual sources; no new whole-binary identity is asserted |
+| Before merge | Final head review and current-head CI. ADR 0086 and the bounded measured cost tradeoff are accepted; physical caller and service relations remain open |
+| macOS | No fresh Stock proof suite or native host gate for this candidate. Portable code adds no platform-specific path; the design's two-platform qualification remains open |
 
-Earlier larger-root receipts apply only to their named frozen sources and
-scope. They do not qualify this module relocation, new root or main-based
-adapter. Native source/target closure, source erasure and private-constructor
-checks remain required. The source extraction restores the inherited missing
-Token::text must-use annotation (#533); no native diagnostic reproduction is
-claimed for that metadata correction. Full-transition/chunk negative fixtures
-retain all original proof groups while preserving their runtime fault effects
-(#537). There is no timeout or proof-scope relaxation.
+## Meaning and limits
 
-The exact-interval guard refuses three combined descriptors whose runtime
-changes cross proof boundaries. Each now has two independent canonical parts,
-including the second-Stray/outer-arm effects. Source tests check every part's
-unchanged contracts, loops and proof groups, and raw composition in both orders
-exactly reconstructs each original combined `after` body. The original three
-descriptors remain control-source fixtures, not qualified controls. All six
-parts and the other 48 controls still need ordinary whole-root Stock execution;
-no kernel operation, return join or native adapter changes for this decomposition.
+Default `CommandSplitter`, `ResponseSplitter` and `Lexer::next` delegate to the
+actual shared operations. The checked relations cover original bytes, ordered
+emissions, offsets, grammar, token spans and lexical failure. Checked
+history/emission lemmas and explicit reveals make the unchanged recursive
+predicates modular; no definition, contract, invariant, control, resource limit
+or timeout is removed or weakened.
 
-Before the intentional authority-model update, the feature's 25 captured
-programs compared byte-identically to original main `67b8b95d`. The current
-feature likewise leaves all 25 programs byte-identical to reviewed baseline
-`03665cd9`, whose actual authority inventory is 174 verified / 303 function
-entries. Its model suite has 35 cases. These are independently observed base
-results, not a new parser proof or a claim that the model cut has merged.
+Three combined mutations cross proof intervals. Each is retained as a source
+fixture and decomposed into two independent mutations. Source tests check
+unchanged proof groups and reconstruct each original fault in both orders;
+all six parts and the other 48 controls now fail ordinarily on the whole root.
+The original combined descriptors themselves earn no canonical credit.
 
-Explicit cursor/output-capacity and native lifetime obligations remain open,
-as do physical EOF/origin, original-owner/queue, Session and solver relations.
+Native adapters, command classification, sexpr/Session consumers, representable
+cursor/capacity and allocation premises, physical I/O and EOF, external byte
+ownership and queue association, solver interpretation and truthful service
+origins remain outside this proof. Reviewed/hash-bound callers do not prove
+those relations. Model checks establish conditional model theorems, not the
+complete production service. Native compatibility, corpus conformance and cost
+are separate evidence.
 
-The owner-approved validation policy belongs to the prerequisite; this
-feature changes no CI job placement or mathematical check. Draft publication is authorized before the pending gates, not merge or
-owner acceptance of the candidate native adoption.
+## Native cost
 
-Source review of the first feature draft finds a missing internal lock edge
-(#544): smtlib Cargo adds acceptance but the package lock initially lists only
-proptest. The source correction records that same internal edge in Cargo.lock
-and adds a drift guard, without any version or third-party dependency change.
-This is source-confirmed, not a reproduced native compiler failure; all pending
-native/proof/solver/conformance/cost gates remain.
+The same public API harness compares baseline `584fd14a` with `a84109cc` on a
+native c7i.4xlarge in us-east-1. All 20 byte/kind/offset/error/sticky fingerprints
+match, including incomplete and malformed fragments. Five alternating pairs
+per case retain all 200 timing samples and zero refusals.
 
-The first standalone discovery at `38ce57a0` retains the three complete base
-positives (134/263, 54/91, 174/303), then refuses the parser root at its
-`StreamSplitter::push_items` loop under the unchanged default resource limit.
-The raw result is 126 verified / one resource error with 201 function entries;
-these are failed-attempt diagnostics, not a discovered positive inventory.
-Final source/runtime guards pass. The closed failed archive has SHA-256
-`aafa67f2c4e61d3d19d34a1529594d513d82451eb0f27c2e586d4175e33e2b07`
-(317,343 bytes). A first guidance attempt at `5f310427` is refused during Verus translation:
-`hide` is a function header and cannot sit inside the existing proof envelope.
-Its raw diagnostic and final source/runtime checks are retained, with no parser
-proof credit. Replacement erased guidance exposes the empty scan case and
-records each exact emission-capacity/inventory cut; the existing scan lemmas,
-all runtime operations/contracts/loops and all 54 fault effects remain. The
-replacement guidance passes the complete root at the original limits.
+| Whole-input operation | Baseline median (µs) | Candidate median (µs) | Ratio |
+|---|---:|---:|---:|
+| 59 KB commands, 4 KiB chunks | 284.9 | 282.4 | 0.99× |
+| 100 KB responses, 4 KiB chunks | 295.5 | 303.8 | 1.03× |
+| Same commands, one-byte chunks | 468.5 | 1,416.8 | 3.02× |
+| Same responses, one-byte chunks | 608.7 | 2,253.4 | 3.70× |
+| Token lexing of the 59 KB input | 121.6 | 231.5 | 1.90× |
 
-At `96c2c4f0`, all four complete roots pass with pinned Stock
-`0.2026.10.18.7d82994`, Rust `1.99.1`, Z3 `4.16.0`, `--no-cheating`,
-one thread and the unchanged 120-second timeout: query 134/263, inputs 54/91,
-authority 174/303 and parser 127/201. Actual parser verification takes 7.211 s
-on a native c7i.4xlarge in us-east-1. Complete source/runtime/image checks pass;
-this is a positive proof result, not a parser cost measurement or native/control
-qualification. The manifest records only the actual observed inventory. The
-late-build-script guard fixture now uses that real inventory while retaining
-its synthetic verifier-I/O attack and every refusal assertion.
+At 64-byte chunks, median command/response costs rise 5.0%/7.9%. Tiny incomplete
+streams cost 2.6–4.3× more (still low microseconds); malformed-token lexer cases
+cost 1.36–1.41× more (about 16 ns extra). The complete samples and ranges are
+retained. This is parser/lexer microcost, not an aggregate percentage, a service
+latency benchmark or a speedup claim. Neither worse fragmentation nor lexer
+cost is hidden by the bulk-stream results.
 
-The closed positive-only archive is
-`experiments/2026-10-27/acceptance-parser-main-positive-closed-20261027-v1.tgz`,
-SHA-256 `0c5c7832878ad853398c59e8db8f613ed0c10690818af713677a79ee90e3a15e`
-(949,418 bytes). PUT/GET is byte-identical. Local audit checks all three nested
-hashes/sizes, 301 canonical Git blobs, all four actual drivers/file sets and
-full function inventories/default resources; independent lead audit is pending.
-The archive retains both preceding failed attempts.
+These measurements retain their actual sources. Reuse on current main requires
+unchanged complete crate/fixture/profile inputs and checked tool/runtime
+identities. Both checks pass at the refreshed native source. Direct corpus
+reuse uses the reviewed call-path closure; the changed managed mutation path
+ran freshly in full.
 
-The first full-matrix launcher at `55f4402b` exits 125 before any Stock call:
-its fresh read-only checkout lacks the `/work/target` mountpoint. All 80 cases
-are unrun in that attempt. The separate normal retry creates only the ignored
-mountpoint, keeping the frozen source, assertions and default resources.
+## Retained evidence
 
-That retry at `55f4402b` terminates before completing the suite: all four
-positive roots and 25 ordinary negative controls pass, then
-`split-list-original-byte` correctly fails its original-byte assertions but
-also reaches the default resource limit in the unrelated `model_scan_join`
-lemma and `push_items` loop. Its result is 124 verified / three errors;
-it earns no ordinary-control credit. Fifty later calls are unrun. Native
-compatibility, cost and conformance remain unrun. The closed archive
-`acceptance-parser-main-closed-20261027-v2.tgz`, 2,263,073 bytes, SHA-256
-`5e464ed609c664b3a9254d8f3a8d2a8f80e15cc7f16c76090b885255c6a22387`,
-retains the original raw results, both launch attempts and the earlier
-positive-only archive. Regenerated canonical programs are explicitly
-identified as reconstruction; the normal runner deleted its temporary inputs.
+The closed proof packet is privately retained at
+`experiments/2026-10-28/acceptance-parser-d9da43c9-proof-closed.tgz`,
+SHA256 `07e93fd884bc31d81b85dbbdebe9ff9455c126342fb57421c90eec97d4d9e670`
+(34,832,279 bytes; PUT and fresh GET checked). It retains all 55 actual programs
+and raw results, the 226-case preflight, inherited audits/transfers and every
+failed/interrupted current-session prefix. The separate native/cost packet is
+`experiments/2026-10-28/acceptance-parser-a84109cc-native-cost-closed.tgz`,
+SHA256 `5bbf38c304b0711a2f4789a9c0f9b8907621ecabb4dc07c1fb87988dab314039`
+(746,650,903 bytes; PUT and fresh full GET checked). Its 61,275 included payloads
+cover actual Sail executable variants, raw reports/streams, current and refused
+native prefixes, cost fingerprints/samples and independent model/audit
+companions. Its 3,732 regenerable build/IR exclusions are explicitly indexed by
+hash and reason; their raw bytes are not claimed retained.
 
-The delivery retry adds only checked intermediate sequence/scan equalities
-inside the existing erased `model_scan_join` proof. Runtime operations,
-contracts, loop obligations and every control effect are unchanged. No proof
-resource, timeout, inventory or acceptance condition is relaxed.
+The current-base refresh packet is
+`experiments/2026-10-28/acceptance-parser-7b1c2720-current-native-closed.tgz`,
+SHA256 `e0661fca7b1d1a484827c27e8a3bc4aa7de09ca764a1abcef0d8bf0837004254`
+(238,957,451 bytes; PUT and fresh full GET checked). All 28,405 included payloads
+pass readback; 1,854 regenerable exclusions retain digest/reason. The packet
+also retains all 84 refreshed mutation stdout/stderr files and all 84 original
+`a84109cc` mutation streams, with separate source attribution.
 
-That bounded retry at `502a1968` is also refused. The complete parser positive
-passes with 127 verified / 201 function entries. The original-byte control
-correctly fails its two assertions, with 125 verified / two reported errors,
-but the `push_items` loop still reaches the default resource limit. The added
-checked scan-join cuts eliminate that lemma's separate resource refusal;
-they do not qualify the control or the full suite. The canonical 80-case
-suite is deliberately unrun after this refusal. No further proof expansion,
-native benchmark or corpus acceptance is inferred. The PR remains draft.
+Actual CLI bytes differ by normal build scope. Original end-to-end uses
+`59b662c4…`, original corpus/mutations `54a6c950…`; refreshed end-to-end uses
+`b8644802…`, refreshed PR-fast/mutations `2aa805e9…`. Actual originals and Cargo
+fingerprints are retained. No whole-binary equality is claimed.
 
-The native c7i.4xlarge/us-east-1 run uses core image
-`sha256:eb9f76a640e4faafea55d1089f83372c190e27651432209a64660b78591e4244`,
-the same pinned Stock/Rust/Z3 as the positive checkpoint, one thread and a
-120-second per-case deadline. Pre/post source, runtime and image checks pass;
-the Rust compiler version is checked before execution. The fresh complete
-archive `acceptance-parser-delivery-502a1968-proof.tgz`, 6,032,505 bytes,
-SHA-256 `ff259847e58347a1a40924533e0874fb57042d10fc23c39f1a3c78826609cfe9`,
-retains both original complete programs, raw outputs, frozen source bundle,
-controller and explicit incomplete scope. Upload/readback checks pass.
+| Companion | SHA256 |
+|---|---|
+| Independent final 55 + inherited raw audit | `529be360ebdfad9b2c982866480ef4d991e80cb3027d25952f98d9f95c9116b9` |
+| `d9da43c9` to current-base `7a63045b` complete program/native-binding correspondence | `ef0a3b49e6495d14661374eb80463c2aee8472f210fb55c3241b79c7374c5e6f` |
+| `a84109cc` to `7f2cd6b1` Markdown-only correspondence | `2b4961fd9a84a5f693ff379c46f825acd77ac8402df73976f69291080d05d1a0` |
+| Actual union 35-model execution report | `4d673cb4d7d6a5063ada3ee58a8ee423bc05e8413c1144878b18e6d415175d64` |
+| Current 35-model program/runtime correspondence and raw-result audit | `04d0c687425c3392e8479a13a594e31c372023cc047af7ace2a0f760c0a82686` |
+| Lead 584 → 879 direct-conformance path/source audit | `cb31c91d4de64e3070f90c87c8dd0ca0f36007ade822dc9a39a5d814072751bb` |
+| Candidate-to-candidate 211-entry crate/fixture/profile/direct-path audit | `db497c90efbaec3d25139ecddfc5202a790db71ebc0e7103f6b5cdd0c4bda61a` |
+| `7a63045b` to actual refreshed `7b1c2720` Markdown-only correspondence | `30e96e4e3dc0429f5c3b33acaecdd7fc93748fdb2586a8333b1e3ebf62c65661` |
 
-Source comparison preserves all 80 drivers and all 25 baseline programs
-byte for byte; only the erased splitter proof text changes in the 55 parser
-programs. The entire Cargo-erased splitter source is byte-identical to
-`97ed0dd3`. All 48 source tests pass. These source facts do not replace the
-missing complete control, native, cost or conformance gates.
+These correspondence checks execute no verifier. The model receipt retains its
+actual union source; it is not relabelled as fresh parser-head execution.
 
-## Resumed proof cut
+## Earlier attempts
 
-The slice is restacked on main `e9862433`, preserving the prior `defe8668`
-source. Current main's three roots and 168 controls remain intact; adding the
-parser positive and 54 controls makes the normal matrix 226 calls. The earlier
-127/201 parser inventory remains a historical observed result, not discovery
-for the newly added erased lemmas.
+Every row retains its actual source and scope. Refused or interrupted calls
+receive no positive or ordinary-control qualification credit. Current proof
+attempts are included in the closed proof packet above; older archive hashes
+below identify their original immutable receipts.
 
-The next bounded candidate isolates original-history extension and ordered
-optional-emission preservation into checked lemmas. Existing erased snapshots
-name the prior vector and chunk state. Every executable token, loop invariant,
-contract and original mutant effect is preserved: source comparison covers all
-55 parser programs and all 171 existing-main complete programs. All 60 merged
-source/checker tests pass. These are source checks, not proof acceptance.
-A fresh whole-root Stock positive discovery must include the new lemmas and
-retain the original function inventory before its actual counts are locked.
-The original-byte control must then fail ordinarily without the earlier
-unrelated loop rlimit exhaustion. No resource limit or wall deadline changes.
+| Source / date | Result and limit |
+|---|---|
+| `38ce57a0`, 2026-10-27 | Whole parser discovery refused at the chunk loop's default rlimit: 126 verified / one resource error, 201 function entries; archive `aafa67f2c4e61d3d19d34a1529594d513d82451eb0f27c2e586d4175e33e2b07` (317,343 bytes) |
+| `5f310427`, 2026-10-27 | Nested `hide` rejected as function-header placement before verification; retained with the following positive packet |
+| `96c2c4f0`, 2026-10-27 | Positive-only four-root checkpoint passed; parser 127/201 in 7.211 s, not a cost measurement; packet `0c5c7832878ad853398c59e8db8f613ed0c10690818af713677a79ee90e3a15e` (949,418 bytes) |
+| `55f4402b`, 2026-10-27, setup | Exit 125 before Stock because the ignored mountpoint was absent; zero proof calls |
+| `55f4402b`, 2026-10-27, retry | Four positives and 25 controls passed, then original-byte assertions plus unrelated scan/loop rlimit refused; 50 later calls unrun; packet `5e464ed609c664b3a9254d8f3a8d2a8f80e15cc7f16c76090b885255c6a22387` (2,263,073 bytes) |
+| `502a1968`, 2026-10-27 | Positive 127/201 passed; original-byte intended assertions plus unrelated loop rlimit refused in 58.805 s, not a wall timeout; packet `ff259847e58347a1a40924533e0874fb57042d10fc23c39f1a3c78826609cfe9` (6,032,505 bytes) |
+| `993bfe7e`, 2026-10-28 | Snapshot matcher rejected `appended@` before verification; equivalent erased `appended.view()` used next |
+| `72edd307`, 2026-10-28 | Both new helper lemmas verified; positive loop rlimit remained, 128 verified / one error |
+| `1b614970`, 2026-10-28 | Bounded positive 129/204 and ordinary original-byte control 128/1 passed; only these two calls credited; bounded packet `26d36a793429d1c3fa1f4fcba4ceeef0a0fe8acc0e00ffb2ad23389be967a6b6` (6,775,331 bytes) |
+| `6aeb50b1`, 2026-10-28 | Duplicate inherited rerun intentionally interrupted after independent exact-input reuse audit; raw prefix/current program and terminal guards retained, zero new canonical credit |
+| `74245adb`, 2026-10-28, setup | Missing audit mount refused before Stock; zero calls |
+| `74245adb`, 2026-10-28, retry | Positive and first seven ordinary controls passed, then chunk-original-order intended failures plus unrelated outer-loop rlimit refused |
+| `e894a107`, 2026-10-28 | Positive passed, original-byte again hit unrelated loop rlimit; no complete bounded qualification |
+| `1250a538`, 2026-10-28 | Nested `hide` header-placement refusal before verification; zero proof credit |
+| `dedf7c09`, 2026-10-28 | Original-item opacity introduced no other errors, but whole positive loop rlimit remained, 128 verified / one error |
+| `d9da43c9`, 2026-10-28 | Bounded positive/original-byte/chunk-order passed; subsequent full 55 passed at unchanged resources; bounded packet `f3daacaf75857af0f028acf3cd51ade6d1868557b286f55097b86c7ee381004f` (12,876,785 bytes) |
+| `d9da43c9` native v1, 2026-10-28 | Workspace/solver passed; end-to-end setup refused SAIL3140 because neutral projects were placed under repository Cargo configuration; no end-to-end credit |
+| `d9da43c9` native v2, 2026-10-28 | Corrected unchanged full end-to-end passed with source/runtime guards; follow-on corpus held at a natural boundary for main update |
+| `a84109cc` cost setup v1, 2026-10-28 | Read-only source cloning refused Git ownership before builds or samples; isolated clone setup corrected; no cost credit |
 
-- `993bfe7e` (2026-10-28): direct Stock discovery stopped before verification because the existing snapshot expression matcher rejects `appended@`. The attempted complete source and raw diagnostics are retained; no positive or negative proof credit. The follow-up uses equivalent erased `appended.view()` without changing the macro, contracts, runtime loop or resource settings.
-
-- `72edd307` (2026-10-28): both new history/emission lemmas verify, but the positive root encounters the default loop resource limit (`128` verified, `1` error, no VIR error). No positive inventory or negative-control credit. The follow-up scopes the history lemma inside its quantified proof; all loop invariants and executable transitions remain unchanged.
-
-At `1b614970`, the complete parser positive verifies `129` items with all `204` function entries. The original-byte control produces its intended two assertion diagnostics (`128` verified, one failing function), with no resource or VIR refusal. Both the source/runtime and outer image guards pass. Only these two direct Stock calls are credited; the locked-inventory full matrix must run separately.
-
-- `74245adb` (2026-10-28): all 226 registry entries pass preflight; 171 inherited programs match independently audited closed receipts. The fresh parser attempt passes its positive and first seven ordinary controls, then refuses `split-list-chunk-original-order` for intended inner failures plus an unrelated outer-loop resource limit. No complete 55-case qualification. The duplicate inherited-root rerun was intentionally interrupted with zero new credit; its raw prefix, active source and final source/runtime checks are retained.
-
-- `e894a107` (2026-10-28): the one-history helper positive passes, but original-byte again encounters the unrelated outer-loop default resource limit. The bounded attempt earns no complete qualification. The next guidance keeps `original_item` opaque only in the loop proof; its full definition remains checked in the history/emission lemmas and every original loop formula remains unchanged.
-
-- `1250a538` (2026-10-28): Stock refuses the nested `hide` as a function-header placement error before verification. No proof credit. The follow-up keeps the exact original-item definition opaque by default and explicitly reveals it where the primitive origin and append helpers establish that predicate; the loop consumes their checked results. No definition, contract, invariant, runtime operation or resource limit changes.
+Earlier source corrections preserve the original `Token::text` must-use
+annotation (#533), full-transition/chunk control groups (#537) and internal
+Cargo lock edge (#544). Their historical filings do not substitute for native
+or proof acceptance. Main's worktree-sync tooling defect is tracked separately
+as #589; canonical standalone source bundles avoid it here.

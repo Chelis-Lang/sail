@@ -1,7 +1,7 @@
 # 0086: Share actual stream framing and lexical operations
 
-- **Status:** proposed
-- **Date:** 2026-10-27
+- **Status:** accepted
+- **Date:** 2026-10-29
 
 ## Context
 
@@ -12,7 +12,7 @@ grammar. The acceptance leaf already supports identical Cargo/Stock bodies
 
 ## Decision
 
-Propose the single edge `sail-smtlib` → `sail-acceptance`, recorded in
+Add the single edge `sail-smtlib` → `sail-acceptance`, recorded in
 `xtask/src/layering.rs`. Keep the leaf dependency-free and add no third-party
 crate or cross-crate source include. The edge cannot form a cycle or give the
 shim a path to the daemon, cache, solver pool, portfolio or Verus.
@@ -40,6 +40,10 @@ Representable cursor, buffer and output-vector bounds remain explicit
 preconditions. A native wrapper call does not prove those lifetime bounds;
 explicit finish does not prove physical EOF. Solver interpretation, external
 raw-owner/queue joins and truthful origins remain open. Runtime selection
-requires new complete-root Stock discovery/controls, native compatibility,
-conformance and measured cost. This reversible source proposal is not that
-selection or completion of #371.
+is accepted on 2026-10-29 with the complete-root proofs/ordinary controls,
+native Linux checks, scoped conformance and measured cost recorded in the
+[qualification](../validation/checked-stream-parser.md). The accepted narrow
+microcost tradeoff includes 3.02×/3.70× one-byte command/response fragmentation
+and 1.90× lexer cost, alongside 0.99×/1.03× bulk 4 KiB results. This accepts the
+bounded default-runtime adoption, not a service-latency or general performance
+claim. The physical caller/service obligations and #368 remain open.

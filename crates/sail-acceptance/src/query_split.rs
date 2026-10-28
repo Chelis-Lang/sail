@@ -564,6 +564,7 @@ sail_spec! {
         } else { ((3u8,state.1.push(byte),state.2),seq![]) }
     }
     /// Complete ordered emission inventory, independent of runtime chunking.
+    #[verifier::opaque]
     pub open spec fn model_scan(state:(u8,Seq<u8>,int),input:bool,position:int,data:Seq<u8>) -> ((u8,Seq<u8>,int),Seq<(ItemKind,int,Seq<u8>)>)
         decreases data.len(),
     {
@@ -582,6 +583,7 @@ sail_spec! {
         },
         decreases left.len(),
     {
+        reveal(model_scan);
         if left.len() > 0 {
             let first=model_step(state,input,position,left[0]);
             let rest=model_scan(first.0,input,position+1,left.drop_first());
@@ -629,6 +631,7 @@ sail_spec! {
             == ((3u8,bytes+data,start),seq![]),
         decreases data.len(),
     {
+        reveal(model_scan);
         if data.len()>0 {
             assert((bytes+data).take(bytes.len() as int+1) =~= bytes.push(data[0]));
             assert(bytes.push(data[0])+data.drop_first() =~= bytes+data);
@@ -646,6 +649,7 @@ sail_spec! {
             == ((0u8,Seq::<u8>::empty(),0int),seq![(ItemKind::List,start,bytes+data)]),
         decreases data.len(),
     {
+        reveal(model_scan);
         reveal_with_fuel(model_scan,2);
         assert(bytes.push(data[0])+data.drop_first() =~= bytes+data);
         if data.len()>1 {

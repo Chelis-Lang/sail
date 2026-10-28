@@ -1,9 +1,9 @@
 # Shared stream parser
 
-The source candidate moves actual streaming and lexical operations into
+The implementation shares actual streaming and lexical operations in
 `sail-acceptance`, using the same Cargo/Stock syntax envelopes as the existing
 acceptance core. Its [decision](../decisions/0086-checked-stream-framing.md) is
-proposed. The [qualification record](../validation/checked-stream-parser.md)
+accepted. The [qualification record](../validation/checked-stream-parser.md)
 separates source assembly from proof, native behavior and runtime selection.
 
 `query_split` owns the actual pending list/atom bytes, input/output side,
@@ -32,8 +32,9 @@ APIs. The splitter now owns disjoint atom/list states, transfers its item vector
 through the checked chunk loop, and uses the first-close list chunk path; the
 lexer uses checked indexed endpoint/category loops. Intended public bytes,
 spans, errors and finish behavior remain the same, but representation and
-code generation are not identical to main. Narrow native cost measurements
-and scoped standard conformance are required before accepting this adoption.
+code generation differ from the previous implementation. Native microcost and
+scoped standard conformance are qualified; ADR 0086 accepts this bounded
+adoption with the documented fragmentation and lexer regressions.
 
 The native API reexports the original data declarations. Existing methods,
 byte fields, tokenizer and error-code/offset conversion are preserved. Native `command` and `sexpr`
@@ -41,7 +42,7 @@ consumers stay at their main source. Their bodies and the thin adapters are
 reviewed/hash-bound source, not Stock-compiled code.
 
 The independent `parser` production root compiles the complete selected
-modules and their actual nonempty witnesses. Its 54 planned ordinary controls
+modules and their actual nonempty witnesses. Its 54 ordinary controls
 retain the 49 transferred fault effects and direct delimiter/whitespace
 faults. Every selected original contract, loop annotation and proof assertion
 is retained, including the corrected full-transition/chunk fixtures (#537).
@@ -64,14 +65,16 @@ whole-root Stock failure at the unchanged resources before qualification.
 Complete pinned Stock discovery observes 129 verified / 204 function entries,
 including the checked history/emission lemmas used by the actual chunk loop.
 The manifest locks this observed inventory; unknown pending inventories still
-earn no credit. The original-byte mutation fails on its intended assertions
-without exhausting resources. All 54 parser controls and 168 current-main
-controls remain mandatory at unchanged resources, alongside native
-compatibility, conformance and cost qualification.
+earn no credit. All 54 parser mutations fail ordinarily on the full function
+inventory without exhausting resources. The 168 current-main controls and their three
+positives reuse independently audited identical programs. This is 55 fresh
+checks plus 171 reused checks; it does not mean 226 fresh executions. Native
+compatibility, conformance and cost qualification remain separate gates.
 
 The native splitter adapters do not discharge all representable-offset,
 output-capacity, allocation or process-lifetime premises. Physical reads/EOF,
 external original-byte ownership and queue association, complete SMT/Session
 and pinned-solver interpretation, and truthful origins remain separate work.
-The caller/hash binding is not a proof of those relations. Narrow cost and scoped standard
-conformance remain required before owner acceptance; no speed claim is made.
+The caller/hash binding is not a proof of those relations. ADR 0086 accepts the
+measured parser/lexer microcost tradeoff and qualified default-runtime adoption;
+no service-latency, general performance or completed-service theorem is claimed.

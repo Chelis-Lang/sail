@@ -31,7 +31,7 @@ attested archives ([record](validation/release-candidate.md)).
 |---|---|---|
 | Fork runtime | `47fb3be6` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; schema2 archives built and qualified | Owner rollout |
 | Compiler-input currentness | Source-origin protocol, durable pre-Cargo invalidation and complete native workspace gates; Linux full corpus and Mac runtime/bounded consumer controls pass ([record](validation/compiler-read-origin.md)) | Service-wide theorem remains #368 |
-| Shared stream parser | Complete Stock positive 129/204 and ordinary original-byte control pass at unchanged resources; 171 existing-main programs preserved | Full 226-case matrix, native/solver/scoped standard/narrow cost for candidate default native adoption; [scope](design/checked-stream-parser.md) |
+| Shared stream parser | Stock parser 129/204 plus all 54 ordinary controls pass; 171 inherited cases audited/reused; frozen full corpus passes, microcost measured, current-main runtime refresh passes | ADR 0086 accepted; current-head CI/final review pending; physical caller/owner relations remain open ([scope](design/checked-stream-parser.md)) |
 | Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
 | Default output identical to stock | Done: human stderr is byte-identical by default; Sail notes only with `SAIL_EXPLAIN=1` or in JSON (#391) | — |
 | Default-mode verdict conformance | Done: #385, #386, #393 fixed. Sail's named settings stay compiler-visible as an accepted exception (ADR 0088, #435) | — |
