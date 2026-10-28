@@ -403,15 +403,26 @@ A human Cargo no-op may omit targets without receipts; replay preserves that
 admitted subset and adds no missing report. Structured requests separately
 require complete requested coverage. Recording also requires a readable
 compiler-invocation inventory with no compiler starts and only recognized
-cached invocation records. Version 4 replaces version 3; older records take
+cached invocation records. Version 5 replaces version 4; older records take
 the full path.
 
 The first unchanged call after a verification takes the full path and
 records; a file changed less than 2 s before a run is not recorded, so the
 next call records it. A failing project re-verifies on every call, as plain
-Cargo-Verus does, and is never replayed. Job workers and `SAIL_MANAGED_FORCE`
-never replay; `SAIL_MANAGED_NOOP=0` disables replay, and
+Cargo-Verus does, and is never replayed. `SAIL_MANAGED_FORCE` (a forced job
+or call) never replays; `SAIL_MANAGED_NOOP=0` disables replay, and
 `SAIL_MANAGED_NOOP_TRACE=FILE` logs each hit, miss reason and recording.
+
+Background jobs, MCP `verify` and `start_verification` replay too
+([ADR 0082](decisions/0082-unchanged-call-replay.md), 2026-10-28 amendment).
+A job's own variables (`SAIL_JOB_EVENTS`, `SAIL_PROOF_EVENTS`,
+`SAIL_JOB_GUARD_PARENT`) are not part of the key, so an unchanged job replays
+the record of an earlier identical job, or of an identical `sail verify
+--output json` call with non-terminal streams and the same environment. A
+record keeps the run's `context-ready` and `target-reused` job events; a
+replay writes them to the job's event stream under its own run identity,
+keeping each reused target's establishing run. Diagnostic events (setup
+phases, cleanup decisions) appear only for calls that take the full path.
 
 ## Reader latency
 

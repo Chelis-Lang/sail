@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## 0.1.0 (unreleased)
 
+- Let unchanged background jobs and MCP `verify` and `start_verification`
+  calls use unchanged-call replay. A replay writes the recorded run's
+  `context-ready` and `target-reused` job events under its own run identity;
+  forced jobs never replay. Replay records move to version 5 (#559).
+
 - Bind unchanged-call replay to the environment names required by the proof
   receipts admitted for that call, including ghost-only reads absent from
   Cargo dep-info. Retire older replay records that omitted those inputs (#552).

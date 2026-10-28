@@ -46,7 +46,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Version 4 also binds names required by proof receipts, including ghost
 /// reads absent from dep-info. Earlier records can omit those inputs (#552).
-const VERSION: u32 = 4;
+/// Version 5 carries the run's consumer-visible job events, which a job
+/// replay emits again; earlier records have none (#559).
+const VERSION: u32 = 5;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
@@ -82,6 +84,9 @@ struct Record {
     result: ProjectResult,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
+    /// The recorded run's consumer-visible job events, in order
+    /// (`context-ready`, `target-reused`).
+    events: Vec<serde_json::Value>,
 }
 
 /// Cargo's uplifted copy of a build-script executable (#437). Cargo
@@ -280,20 +285,25 @@ pub(super) struct Facts<'a> {
     /// ineligible; omitted targets confer no report authority.
     pub receipt_environment: Option<std::collections::BTreeSet<String>>,
     pub result: &'a ProjectResult,
+    /// The run's consumer-visible job events, in order.
+    pub events: Vec<serde_json::Value>,
 }
 
 fn disabled() -> bool {
     std::env::var_os("SAIL_MANAGED_NOOP").is_some_and(|value| value == "0")
-        // Job workers and observers expect the records a full run writes.
-        || [
-            "SAIL_JOB_EVENTS",
-            "SAIL_PROOF_EVENTS",
-            "SAIL_JOB_GUARD_PARENT",
-            "SAIL_MANAGED_FORCE",
-        ]
-        .iter()
-        .any(|name| std::env::var_os(name).is_some())
+        // A forced job or call always runs in full.
+        || std::env::var_os("SAIL_MANAGED_FORCE").is_some()
 }
+
+/// Per-job variables. Their values name the job's own event files or mark
+/// a worker, never an input or the call's output, so they are not part of
+/// the invocation key: a job replays the record of an identical call, and
+/// the replay writes the recorded job events to the job's own files.
+const JOB_VARIABLES: [&str; 3] = [
+    "SAIL_JOB_EVENTS",
+    "SAIL_PROOF_EVENTS",
+    "SAIL_JOB_GUARD_PARENT",
+];
 
 /// One line per decision in the file `SAIL_MANAGED_NOOP_TRACE` names, for
 /// tests and diagnosis. Never written to the run's own output.
@@ -317,6 +327,9 @@ fn key_environment(
 ) -> Option<Vec<(String, String)>> {
     let mut selected = Vec::new();
     for (name, value) in variables {
+        if JOB_VARIABLES.iter().any(|job| name == *job) {
+            continue;
+        }
         if super::environment::input_environment_key(&name)
             || name.as_encoded_bytes().starts_with(b"SAIL_")
             || ["PATH", "HOME", "TERM", "PWD", "CARGO_TARGET_DIR"]
@@ -464,6 +477,17 @@ fn rustup_settings() -> Option<PathBuf> {
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
     let required_environment = facts.receipt_environment?;
+    // Consumers find the run through its one `context-ready` event; a capture
+    // without exactly that event is not a complete account of the run.
+    let ready: Vec<_> = facts
+        .events
+        .iter()
+        .filter(|event| event["kind"] == "context-ready")
+        .collect();
+    if !matches!(ready[..], [ready] if ready["run_id"] == facts.result.run_id.as_str()) {
+        trace("not recorded: job events incomplete");
+        return None;
+    }
     let mut lstat_entries = facts.observation;
     let target = walk(facts.target, &[])?;
     let target_stamps = crate::parallel::in_order(&target, |path| lstat(path));
@@ -530,6 +554,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             result: facts.result.clone(),
             stdout: Vec::new(),
             stderr: Vec::new(),
+            events: facts.events,
         },
     })
 }
@@ -677,12 +702,25 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     {
         return None;
     }
+    // Job workers and observers read the recorded run's events under the
+    // replay's own run identity; establishing runs stay as recorded.
+    for event in record.events {
+        super::files::event(&with_run_id(event, &run_id));
+    }
     trace("hit");
     Some(Replay {
         result,
         stdout: record.stdout,
         stderr: regenerate_finished(&record.stderr, started.elapsed()),
     })
+}
+
+/// `event` with its `run_id`, where it has one, replaced by `run_id`.
+fn with_run_id(mut event: serde_json::Value, run_id: &str) -> serde_json::Value {
+    if let Some(field) = event.get_mut("run_id") {
+        *field = serde_json::Value::String(run_id.to_owned());
+    }
+    event
 }
 
 /// The first recorded `lstat` stamp that no longer holds.
@@ -766,6 +804,10 @@ mod tests {
     /// the parallel test process's environment. The operation file is outside
     /// every recorded tree and is not an input to the invocation key.
     #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one probe runs every operation of the separate-process sequence"
+    )]
     fn receipt_environment_process_probe() -> Result<(), Box<dyn std::error::Error>> {
         let Some(root) = std::env::var_os("SAIL_TEST_NOOP_RECEIPTS") else {
             return Ok(());
@@ -790,9 +832,25 @@ mod tests {
             force: false,
             attribution_logs: true,
         };
-        let key = key(&config, true).ok_or("fixture key unavailable")?;
-        assert_ne!(Some(key.clone()), super::key(&config, false));
         let operation = std::fs::read_to_string(root.join("operation"))?;
+        if operation == "forced" {
+            // A forced job (its worker variables included) never replays.
+            assert!(key(&config, true).is_none(), "forced call has a replay key");
+            return Ok(());
+        }
+        assert!(
+            key(
+                &Config {
+                    force: true,
+                    ..config.clone()
+                },
+                true
+            )
+            .is_none()
+        );
+        let key = key(&config, true).ok_or("fixture key unavailable")?;
+        // JSON and human calls print different output and never share a record.
+        assert_ne!(Some(key.clone()), super::key(&config, false));
         if operation != "prepare" {
             assert_eq!(key, std::fs::read_to_string(root.join("key"))?);
         }
@@ -802,7 +860,7 @@ mod tests {
                 .ok_or("fixture dep-info unreadable")?;
             assert!(!declared.contains(SHADOW));
             assert!(declared.contains("SAIL_TEST_NOOP_DEP_ONLY_INPUT"));
-            let pending = prepare(Facts {
+            let facts = |events| Facts {
                 key: &key,
                 cache: &cache,
                 // Unit-test stamps predate this simulated run start; no real
@@ -818,7 +876,12 @@ mod tests {
                 receipt_environment: (operation == "prepare")
                     .then(|| std::collections::BTreeSet::from([SHADOW.into()])),
                 result: &result,
-            });
+                events,
+            };
+            // Without its one `context-ready`, the run is not recorded.
+            assert!(prepare(facts(vec![replayed_events()[1].clone()])).is_none());
+            assert!(prepare(facts([replayed_events(), replayed_events()].concat())).is_none());
+            let pending = prepare(facts(replayed_events()));
             if operation == "unknown" {
                 assert!(pending.is_none(), "unknown admission must not record");
             } else {
@@ -829,7 +892,8 @@ mod tests {
                 );
                 let record: Record =
                     serde_json::from_slice(&std::fs::read(record_path(&cache, &key))?)?;
-                assert_eq!(record.version, 4);
+                assert_eq!(record.version, VERSION);
+                assert_eq!(record.events, replayed_events());
                 assert_eq!(record.environment.get(SHADOW), Some(&None));
                 assert!(
                     record
@@ -846,17 +910,45 @@ mod tests {
                 std::fs::write(path, serde_json::to_vec(&record)?)?;
             }
             let replay = replay(&config, &key, std::time::Instant::now());
-            if operation == "same" {
+            if matches!(operation.as_str(), "same" | "job") {
                 let replay = replay.ok_or("unchanged receipt input did not replay")?;
                 assert_eq!(replay.stdout, b"verified report\n");
                 assert_eq!(replay.result.execution.verifier_invocations, 0);
                 assert_ne!(replay.result.run_id, "establishing-call");
+                let emitted: Vec<serde_json::Value> =
+                    std::fs::read_to_string(root.join(format!("{operation}.events.jsonl")))
+                        .unwrap_or_default()
+                        .lines()
+                        .map(serde_json::from_str)
+                        .collect::<std::result::Result<_, _>>()?;
+                if operation == "job" {
+                    // The recorded events under the replay's run identity;
+                    // the reused target keeps its establishing run.
+                    let mut expected = replayed_events();
+                    expected[0]["run_id"] = replay.result.run_id.clone().into();
+                    assert_eq!(emitted, expected);
+                } else {
+                    assert_eq!(emitted, Vec::<serde_json::Value>::new());
+                }
             } else {
                 assert!(matches!(operation.as_str(), "changed" | "legacy"));
                 assert!(replay.is_none(), "changed input or legacy record replayed");
             }
         }
         Ok(())
+    }
+
+    /// The job events a recordable run emits, as the runner shapes them.
+    fn replayed_events() -> Vec<serde_json::Value> {
+        vec![
+            serde_json::json!({
+                "kind":"context-ready", "workspace":"/w", "run_id":"establishing-call",
+                "targets":[{"package_id":"p","name":"t","kind":["lib"]}],
+                "context_sha256":"context", "input_revision":"revision",
+                "complete":true, "source_observation":true
+            }),
+            serde_json::json!({"event":"target-reused","target":"t","establishing_run":"first"}),
+        ]
     }
 
     #[test]
@@ -879,7 +971,9 @@ mod tests {
             root.join("cache/family/target/deps/input.d"),
             "input: input.rs\n# env-dep:SAIL_TEST_NOOP_DEP_ONLY_INPUT\n",
         )?;
-        for operation in ["prepare", "same", "changed", "unknown", "legacy"] {
+        for operation in [
+            "prepare", "same", "job", "forced", "changed", "unknown", "legacy",
+        ] {
             std::fs::write(root.join("operation"), operation)?;
             let mut command = std::process::Command::new(std::env::current_exe()?);
             command
@@ -894,6 +988,16 @@ mod tests {
                 .env_remove("SAIL_JOB_EVENTS")
                 .env_remove("SAIL_JOB_GUARD_PARENT")
                 .env_remove("SAIL_PROOF_EVENTS");
+            if operation == "forced" {
+                command.env("SAIL_MANAGED_FORCE", "1");
+            }
+            if matches!(operation, "job" | "forced") {
+                // A daemon job worker's own variables replay the same record.
+                command
+                    .env("SAIL_JOB_EVENTS", root.join("job.events.jsonl"))
+                    .env("SAIL_PROOF_EVENTS", root.join("job.proof-source.jsonl"))
+                    .env("SAIL_JOB_GUARD_PARENT", "1");
+            }
             if operation == "changed" {
                 command.env(SHADOW, "new-source-visible-value");
             }
@@ -956,8 +1060,20 @@ mod tests {
         ] {
             assert_ne!(selection(&[changed]), plain, "{changed:?}");
         }
-        // Variables no tool or Sail reads keep the key.
+        // Variables no tool or Sail reads keep the key, and so do a job
+        // worker's own event files and worker marker: they never change
+        // what the call prints or reports.
         assert_eq!(selection(&[("EDITOR", "vi"), ("OLDPWD", "/tmp")]), plain);
+        assert_eq!(
+            selection(&[
+                ("SAIL_JOB_EVENTS", "/jobs/a/events.jsonl"),
+                ("SAIL_PROOF_EVENTS", "/jobs/a/proof-source.jsonl"),
+                ("SAIL_JOB_GUARD_PARENT", "1"),
+            ]),
+            plain
+        );
+        // A forced call never replays, whatever its key would be.
+        assert_ne!(selection(&[("SAIL_MANAGED_FORCE", "1")]), plain);
         let mut moved = base();
         moved[0].1 = "/opt/bin".into();
         assert_ne!(key_environment(moved), plain);

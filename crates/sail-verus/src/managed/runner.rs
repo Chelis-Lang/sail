@@ -2930,6 +2930,8 @@ fn run_recorded(
     record: Option<(&str, &mut Option<super::noop::Pending>)>,
 ) -> Result<(ProjectResult, File)> {
     let research = super::research::selected()?;
+    // A replay emits the run's consumer-visible job events again (ADR 0082).
+    let events = record.is_some().then(super::files::Capture::start);
     let mut owned = config.clone();
     owned.workspace =
         std::path::absolute(&owned.workspace).map_err(|e| Error::new("SAIL3100", e.to_string()))?;
@@ -4098,6 +4100,7 @@ fn run_recorded(
                     .collect(),
                 receipt_environment,
                 result: &result,
+                events: events.as_ref()?.events()?,
             })
         })
         .flatten()
