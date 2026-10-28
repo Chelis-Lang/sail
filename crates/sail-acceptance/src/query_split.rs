@@ -1021,6 +1021,7 @@ sail_code! {
                             original_item(out.1@[i],history+data@,self.input_view()))
             {
                 sail_proof! {
+                    hide(original_item);
                     assert(model_scan(model(self.state),self.input,self.position_view(),data@.take(0))
                         == (model(self.state),Seq::<(ItemKind,int,Seq<u8>)>::empty())) by {
                         reveal_with_fuel(model_scan,1);
