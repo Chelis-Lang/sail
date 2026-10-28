@@ -107,7 +107,11 @@ Current numbers are in [performance](performance.md).
   - `--sysroot`, `RUSTC_WORKSPACE_WRAPPER`, Cargo `--config` and
     configuration includes, and compiler or sysroot overrides Sail cannot
     identify;
-  - loader variables such as `LD_LIBRARY_PATH` or `DYLD_LIBRARY_PATH`;
+  - loader variables such as `LD_LIBRARY_PATH` or `DYLD_LIBRARY_PATH`, which
+    verify in the project's own Cargo target: the first such run in a
+    project verified only with `sail verify` builds that target as a cold
+    `cargo verus verify` does
+    ([#577](https://github.com/Chelis-Lang/sail/issues/577));
   - a Sail cache and package root that overlap.
 - **Only Sail's Verus,** at the release it pins
   ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). A project that

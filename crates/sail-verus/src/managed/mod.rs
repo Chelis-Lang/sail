@@ -34,6 +34,7 @@ pub(crate) mod transport;
 pub(crate) mod visible_output;
 
 pub use cargo_toolchain::CargoToolchain;
+pub use configuration::loader_unbound;
 pub(crate) use files::{digest, event, file_digest, json, stat_identity};
 pub use freshness::FreshnessIndex;
 pub use input::{InputSnapshot, snapshot};

@@ -359,3 +359,42 @@ revision above did not count it. The verification phase's local source-map
 and tracked files from the same report are added to the unit's dep-info, with
 rustc's checksum of the bytes it read under checksum freshness. Receipt
 version 8 requires it.
+
+## Amendment (2026-10-28): loader variables take the plain fallback
+
+A run with a process-loader variable set (item 4) was verified inside managed
+verification, in a target family keyed by the loader variable's value. It
+reused and recorded nothing, so the family served no proof, yet every new
+value started a cold one: the first loader run, and each change of the value,
+rebuilt and re-verified every crate, vstd included, where plain Cargo-Verus,
+which does not fingerprint loader variables, finds the project up to date and
+prints nothing (#577). The output then differed from stock's for that call.
+
+Outside the opt-in interactive engine, the runner now reports a loader
+variable as `SAIL3112` right after its configuration check, before Cargo
+metadata or any managed target is touched, and the run takes item 4's
+fallback: verified exactly as `cargo verus verify` verifies it, in the
+invocation's own Cargo target, with `sail-z3` and the solver cache, reusing
+and recording nothing. It is the same plain run a loader run was always meant
+to be, and it adds no new trust: no receipt, read check, dependency record,
+replay record or dependency-store entry is written, and the loader variable
+reaches Cargo-Verus unchanged.
+
+The result shapes stay as they were for loader runs, as for an unqualified
+Cargo (`SAIL3139`, ADR 0084): human output is Cargo-Verus's, with one
+`note[SAIL3112]` line only under `SAIL_EXPLAIN=1`; `--output json`, jobs,
+`watch` and MCP return one project result, `unknown`, with a `SAIL3112` note
+and `no_reuse` (`verified_as` now `plain-cargo-verus`), whose one target holds
+the run's schema-v2 report. The other `SAIL3112` setups keep their bare
+schema-v2 report under `--output json`. With `--engine interactive`, which
+reports the other `SAIL3112` setups as errors, a loader run is still verified
+inside managed verification without reuse (`verified_as` `managed`).
+
+The cost moves to the project's own target: the first loader run in a
+project verified only with `sail verify` builds that target as a cold
+`cargo verus verify` does. After that, unchanged loader runs and runs with a
+different loader value cost what stock's do. The e2e `loader` phase checks
+the JSON result's new `verified_as`, its empty context and that no receipt is
+recorded, and still compares human output with plain Cargo-Verus's.
+`crates/sail-cli/tests/no_reuse.rs` covers every loader variable for human,
+JSON and job runs.
