@@ -256,8 +256,9 @@ class SourceCaptureTests(unittest.TestCase):
         self.assertIn(CHECKER.KEY_NATIVE, roles["declaration_projections"])
         self.assertNotIn(CHECKER.KEY_NATIVE, roles["checked_source"])
         self.assertIn(CHECKER.KEY_NATIVE, roles["reviewed_native_prefix"])
+        pending = dict(entry, discovery_pending=True, verified=None, functions=[])
         with self.assertRaisesRegex(CHECKER.Refusal, "Stock discovery pending"):
-            CHECKER.require_discovered([entry])
+            CHECKER.require_discovered([pending])
 
     def test_prefix_native_adapters_cannot_change_without_review(self):
         for path in CHECKER.PREFIX_NATIVE_SHA256:
