@@ -95,7 +95,9 @@ pub(crate) fn config(
     }
     let z3 = crate::verify::real_z3(&cargo_verus, &shim)
         .ok_or("error[SAIL0103]: cannot find the solver; set VERUS_Z3_PATH")?;
-    let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
+    let cache = sail_verus::managed::canonical_cache_root(
+        sail_verus::cache_dir().map_err(|e| e.to_string())?,
+    );
     let socket = std::env::var_os("SAIL_DAEMON_SOCKET")
         .map_or_else(|| crate::default_socket(&cache), PathBuf::from);
     let daemon = crate::verify::ensure_daemon(&socket, attribution_logs || sail_verus::explain());

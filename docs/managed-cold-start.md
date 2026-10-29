@@ -35,6 +35,11 @@ are checked too. Use an external cache (the default) to reuse proofs. This
 conservatively includes projects checked out beneath the Sail cache: its
 excluded output directories must never hide new source inputs (#189).
 
+Managed verification resolves a symlinked cache root before deriving tool,
+compiler and receipt paths. `cargo xtask fetch-verus` follows the same cache
+selection as runtime lookup. The [cache-path qualification](validation/cache-path-selection.md)
+records native controls and installed-release checks.
+
 ## What the first run costs
 
 Setting or unsetting `CARGO_TARGET_DIR` keeps the same managed context: Sail
@@ -215,3 +220,13 @@ exclusively with mode 0600, and are limited to 64 files per process and 64
 rows and 16 KiB per file. Any failure disables them without changing the run.
 Choose a destination outside the workspace, so writing timings does not change
 an input.
+
+## Cache path spelling
+
+Managed CLI verification creates and resolves its cache root before deriving
+compiler targets, proof receipts and replay paths. A symlinked `SAIL_CACHE_DIR`
+therefore uses the same physical paths as its destination, including macOS
+`/tmp`. If creation or resolution fails, normal verification retains the
+literal path and its existing fallback/error behavior. Global cache selection
+and daemon endpoint rules are unchanged. An unexplained shipped-vstd refusal
+suggests `SAIL_SHIPPED_TRACE=DIR`; it does not assert a dependency mismatch.
