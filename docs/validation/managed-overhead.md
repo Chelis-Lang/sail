@@ -75,7 +75,7 @@ same-size edit with restored mtime changes the stamp and refuses replay.
 This changes no cross-run trust or two-second settle rule. Full currentness,
 zero verifiers, no retry/force/store seeding, original output/events and every
 recording gate still apply. Verifying calls keep the stamp-only path. Native
-before/after recording cost remains pending. The first candidate passes a
+before/after recording cost is measured below. The first candidate passes a
 native full gate (1,253 ordinary tests), solver51, full E2E plus extra and
 all four PR conformance arms. Mac Clippy and 1,242 host tests pass.
 
@@ -86,6 +86,25 @@ vector path and the comparison cannot measure this cut. The corrected hint
 uses the existing replay-only invocation predicate, while retaining every
 final recording authority check. No scoped report is promoted to whole-target
 reuse.
+
+Corrected component comparison: `9f4e347a` already includes stable script
+contracts and invocation-local scheduling, but still uses the separate final
+source-vector pass. Mac `85e26c97` and Linux `390c1c94` use the corrected
+replay-only allocation hint. Each platform runs ten rotated before/after
+pairs, deleting only the optional replay JSON before each measured call.
+Every call is Current, starts zero verifiers and recreates its record. No
+trace or memory sampler runs inside these component timing intervals.
+
+| Platform | Before median, s | After median, s | Saved, ms |
+|---|---:|---:|---:|
+| Native c7i.8xlarge, us-east-1 | 1.640387 | 1.575216 | 65.171 |
+| Native mac-m4.metal, us-east-1b, macOS 27.0 | 1.617450 | 1.573077 | 44.373 |
+
+This is the recording-call component, not first-call parity or a cold/edit
+acceptance matrix. The Mac combined host/recording/directory log is retained
+outside Git, SHA-256
+`e77c69111c723c459ea377c9c74a7f040dd76dfef039a14d43b2304a9588533d`.
+The Linux joined full-fast/standard log remains in progress.
 
 ## Correctness
 
@@ -354,8 +373,8 @@ Raw evidence: `mac-unch.tgz` sha256
 
 ## Invocation-sidecar thrash (#576)
 
-Status: reproduced on native Linux; bounded-slot implementation and runtime
-qualification pending. On 2026-10-29, c7i.8xlarge/us-east-1, the staged
+Status: bounded slots implemented; Mac real-project qualification passes.
+Joined native Linux full-fast/standard qualification remains in progress. On 2026-10-29, c7i.8xlarge/us-east-1, the staged
 `1dc5f1a5` candidate runs a real two-directory Cargo workspace: root cold,
 root unchanged, member unchanged, root return and member return, with five
 seconds between calls and one constant replay-trace path. Every result is
@@ -374,7 +393,7 @@ for the same 41 contracts, while the shared unscheduled-script memo changes
 its invocation binding and run id. Four instrumented Current/no-verifier calls
 reproduce both. The corrected candidate sorts contracts without dropping any
 unit and gives the scheduling memo its own existing bounded invocation slot.
-Real-project replay acceptance remains pending. Raw diagnosis log SHA-256:
+The controls below qualify the corrected implementation. Raw diagnosis log SHA-256:
 `42aa778d646c04cf02d8968c3c3fdfc19e81048e10325095363efdfb5aa83bfd`.
 
 Indexed attempt, `6f97b902`: native Linux passes 1,253 ordinary tests and Mac
@@ -382,3 +401,23 @@ passes 1,242; both fail the slot fixture's final eviction expectation. The
 new scheduling-corruption control replayed root last, legitimately refreshing
 its LRU order. The fixture now re-establishes root-then-member use before the
 unchanged eviction assertion. Production behavior and every assertion remain.
+
+Mac `85e26c97` passes Clippy and 1,243 host tests (54 skipped), followed by
+80 rotated timed samples: ten stock/Sail pairs per directory and project.
+Anvil uses the established `vdeployment_controller` scope; Vest uses rlimit100.
+All warm Sail calls are Current with zero verifiers and one shared proof
+context per project. Separate diagnostic calls establish at least two replay
+hits per project; timed calls contain no trace setting.
+
+| Project | Root stock / Sail, s | Subdirectory stock / Sail, s |
+|---|---:|---:|
+| Anvil | 0.261898 / 0.068748 | 0.263153 / 0.068181 |
+| Vest | 0.267874 / 0.111899 | 0.267553 / 0.112034 |
+
+Mac production Rust bodies are identical between `85e26c97` and joined
+`390c1c94`; the latter adds current-main test-fixture readiness and the
+corrected private scheduling-memo E2E lookup. The Mac log hash is recorded
+above. The joined Linux run passes the ordinary gate and solver51, full E2E
+including extra, the source-vector comparison and timed Anvil alternation;
+its full fast/standard tiers are still running. Package-local output
+exclusion is a separate candidate and is not qualified by these controls.

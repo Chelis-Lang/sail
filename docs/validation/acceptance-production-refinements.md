@@ -12,18 +12,82 @@ This record owns the scope of the
 
 ## Metadata memo native-binding review (#607)
 
-Candidate based on `727a6a97`, 2026-10-29: the recovered metadata memo changes
-only `cargo()` in `adapter.rs`. The three bound callers
-`effective_verus_arguments`, `cargo_driver_options_with` and
-`report_verification_arguments` are byte-identical to main; the last remains
-the delegate to the unchanged `request_mode.rs` import. The dispatch clears
-the private metadata settings before the real Cargo, and may serve only its
-metadata branch. The reviewed adapter SHA-256 is
+The recovered metadata memo changes only `cargo()` in `adapter.rs`.
+The three bound callers `effective_verus_arguments`, `cargo_driver_options_with`
+and `report_verification_arguments` are byte-identical to main; the last remains
+the delegate to the unchanged `request_mode.rs` import. Dispatch clears private
+metadata settings before real Cargo and may serve only its metadata branch.
+The reviewed adapter SHA-256 is
 `b2381428fc4c3100139b92d3ad59f60d7ddd3390c7aa074c108f4ef8d15a215f`.
-This justifies the native-source pin update; hashing alone proves no behavior.
-Fresh committed-source Stock refinement qualification and native performance
-remain pending. The memo-off full-run output and nonempty store-attachment
-controls are included in this candidate; the disabled store stays disabled.
+Hashing alone proves no behavior; the caller and delegation review justifies
+the native-source pin update. The disabled native store remains disabled.
+
+On 2026-10-29, native EC2 c7i.8xlarge/us-east-1, committed `3de561fc` passes
+the direct Stock matrix: all six positive roots and 272 ordinary failing
+controls (278 total). Positive verified counts are query295, inputs59,
+authority188, parser135, command108 and persistence65, each with zero errors.
+A complete source capture at `82fee522`, rebased onto the independently
+qualified raw-prefix main, produces byte-identical drivers and dependencies
+for all 278 programs. That correspondence check makes zero Stock calls; the
+additional prefix controls retain main's separate qualification.
+
+At `82fee522`, the full native image gate passes 1,244 ordinary tests and
+solver51. Full E2E including extra, all four full-fast arms (147 Same / 3,451
+functions each), all four standard arms (159 Same / 13,166 functions each)
+and all 21 mutation/control rows pass. No unstable/different/infrastructure
+outcomes or skipped projects occur. Resource-only drift remains reported
+separately. Memo-disabled output equality and a nonempty disabled-store control
+are active in E2E. Combined Mac source `0d3138d1` passes strict Clippy and
+1,238 non-solver tests with the same metadata implementation. The rebased `0326d4b5` passes the full native image gate again (1,244 tests).
+
+A warm `sail new --lib` demo on that same isolated c7i.8xlarge compares
+`SAIL_MANAGED_METADATA_MEMO=0` and `1`, both with `SAIL_MANAGED_NOOP=0`.
+Twenty interleaved pairs follow retained cold/warm setup; all 40 measured
+JSON calls are Current and start zero verifiers. Median external wall time
+is 0.214241 s disabled and 0.184444 s enabled (29.797 ms lower). This isolates
+the memo; it does not separately attribute the unconditional unused-receipt
+cuts or establish the four-project release bar.
+
+The current-main join `ae309d6d` (including #614's unchanged cache-path fix)
+passes a fresh complete native gate (1,247 tests), solver51, full E2E including
+extra and PR conformance (33 Same / 311 functions in all four arms).
+
+Seven rotated tiny-project rounds compare stock, `b41a4504` and staged
+`0326d4b5` on the same native Linux host, independent warmed projects/caches,
+with replay disabled. All 63 measured calls succeed; retained cold setup is
+excluded from these medians. This exercises a one-function body edit, an
+unchanged call and return to the original body.
+
+| Median seconds | Stock | Before | After |
+|---|---:|---:|---:|
+| Edit | 0.773929 | 0.961946 | 0.929423 |
+| Unchanged | 0.111195 | 0.213797 | 0.185208 |
+| Revert | 0.775176 | 0.958623 | 0.925926 |
+
+These modest improvements do not meet the tiny-project stock-parity goal.
+
+Raw evidence remains outside Git:
+
+| Artifact | SHA-256 |
+|---|---|
+| Direct Stock matrix | `16a0652a8e9e54ad02cfa1c733544fa9c2983a838510e5b18468cfb6dc0f3042` |
+| Complete program correspondence | `0a1eaf0506e0b461f70b33b005c86f4570b4ef13f7d6c4dafec83abb39ce7df1` |
+| Current-main joined gate | `a03577b6052ffc5d38d67e675cedf29df854d260b91e13f980d501e2c4891617` |
+| Seven tiny-project rounds | `210a89bb1c9ee30813e1e400120cc7c16c1129c78e439ec558d1f25e1dc70b1c` |
+| Rebased native gate and staged build | `2fed11ea8be0105f51742d2e64726812a5021dd6509afdac2b93d8831eff860c` |
+| Twenty paired memo controls | `ee95d276f71dabda1933ac1a478bb8811ab0df3a032844b87242a63a1830bae8` |
+| Current native gate and conformance | `ae5e7e99627f4284d5ab46e21573611425281726489d418599f5cf03a3e3050f` |
+
+Indexed hosted failure, `de8961b8`: Solver tests passes 50/51; the unchanged
+`replayed_statistics_may_differ_in_resource_count` control prints genuine Z3
+statistics rather than its deliberately rewritten cache entry (#616). Exit0
+and stderr agree. One complete failed-job workflow rerun passes the unchanged solver51 control;
+this does not establish the cause. The assertion is unchanged. Raw job
+log SHA-256 `39e56589ad2e2162683edf734400d75284d21dd0a6cda9b7793b4e0287fd7e1b`.
+
+Indexed attempt: the first native timing wrapper lacked its temporary parent
+and stopped before measurement. Creating that directory yields the complete
+40-sample comparison above; correctness and staging had already passed.
 
 ## Consolidated acceptance-audit bugfix candidate
 

@@ -23,13 +23,6 @@ semantic versioning once the API is published.
   pass while preserving every replay and recording guard (#558).
 - Bind cached SMT command keys to their owned original input and independently
   acknowledged solver writes; freeze complete delivery before terminal metadata.
-- Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in
-  the same managed run when program, arguments, directory, effective
-  environment and every stamped metadata and toolchain input match; anything
-  else runs Cargo. `SAIL_MANAGED_METADATA_MEMO=0` turns this off and
-  `SAIL_MANAGED_METADATA_MEMO_TRACE=FILE` checks it against real Cargo. Skip
-  receipt reads and the dep-info walk when their results would go unused
-  (#560).
 - Preserve the release factory's proof evidence during native source sync,
   including root-owned evidence, while retaining tracked-source overrides.
 - Retain optional per-arm benchmark diagnostics, run notes and retention costs
@@ -45,11 +38,13 @@ semantic versioning once the API is published.
   An unclassified shipped-vstd miss now names the trace route without
   attributing it to dependency versions.
 
-- Use the same cache selection for `cargo xtask fetch-verus` and runtime
-  lookup, including `SAIL_CACHE_DIR` (#581). Managed verification resolves
-  symlinked cache roots before deriving compiler and proof paths (#601).
-  An unclassified shipped-vstd miss now names the trace route without
-  attributing it to dependency versions.
+- Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in
+  the same managed run when program, arguments, directory, effective
+  environment and every stamped metadata and toolchain input match; anything
+  else runs Cargo. `SAIL_MANAGED_METADATA_MEMO=0` turns this off and
+  `SAIL_MANAGED_METADATA_MEMO_TRACE=FILE` checks it against real Cargo. Skip
+  receipt reads and the dep-info walk when their results would go unused
+  (#560).
 
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed
