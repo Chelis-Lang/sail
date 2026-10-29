@@ -674,3 +674,23 @@ External evidence under the same delivery root:
 The delivery documentation amendment preserves every executed Rust/Cargo body
 and mode. The measured production implementation, test-lint successor and
 current qualification scopes remain separately identified above.
+
+## Mac Vest intermittent-miss diagnosis (#595)
+
+On 2026-10-29, mac-m4.metal/us-east-1b/macOS 27.0, staged `1dc5f1a5`, fork
+`47fb3be6`, stock `0.2026.10.18.7d82994`: six rounds exercise both arms and
+all nine rc.7 phases with the registry vstd recipe and rlimit100. Every exit
+code agrees. All 12 Sail body/fix reverts restore without a verifier or solver
+session, around 1.03 s versus stock's roughly 22 s. The occasional rc.7 miss
+is not reproduced; no cause or fix is claimed. The compile/retention records
+satisfy the unchanged factor16 cost rule and show no cost-decline note.
+
+Recording traces expose 18 prepare attempts and six completed records. Median
+components are target walk14.337 ms, identity0.164 ms, cache42.230 ms;
+environment0.741 ms and commit9.225 ms cover the six completed records only.
+Source mutation-vector discovery precedes these prepare timers, so their sum
+is not the whole recording cost. Memory acceptance is not established by this
+diagnostic cohort. #595 remains open.
+
+Raw archive `mac-revert.tgz`, retained outside Git, SHA-256:
+`1c8778192aeb0c419ff33dcddca3c05bf8a7d0c9121e17ae70f165d90c93f722`.
