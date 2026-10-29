@@ -308,6 +308,12 @@ record does not replace the full repository gate or integrated acceptance.
 
 ## Remaining production refinement and trust
 
+The stacked [command-classifier candidate](checked-command-classifier.md)
+connects the original shallow classification/response bodies through the native
+facade, preserving all 29 command/policy/head controls. Qualification is pending.
+Session storage/interpretation, solver origins and complete raw-prefix/output
+correspondence remain separate obligations.
+
 There are no assumed lemmas, `assume`, `admit`, `external_body` or unchecked
 external specifications in this component. Opaque specification definitions
 are proved through their explicit definitions and helper lemmas; opacity

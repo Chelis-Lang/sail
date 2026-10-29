@@ -1,6 +1,14 @@
 # Shared stream parser qualification
 
-The current Holding/filename union's parser root passes 133 verified checks
+The command/cache extraction extends the parser root to 135 verified / 213
+function entries. Its 55 parser calls were freshly checked with all original
+controls in the [command/cache checkpoint](checked-command-classifier.md);
+that extraction's fresh Linux full runtime/corpus and bounded component-cost
+checks pass at `e63ac6aa`; the full Mac host gate passes at `f4d686fc`.
+Lead review accepts the bounded component adoption and measured cost tradeoff.
+The earlier checkpoints below retain their actual source and scope.
+
+The parent Holding/filename union's parser root passes 133 verified checks
 and all 208 function entries, including the four added filename functions. All
 54 ordinary parser controls pass their required whole-root failure checks.
 The combined matrix has 238 actual cases at the sources recorded in the

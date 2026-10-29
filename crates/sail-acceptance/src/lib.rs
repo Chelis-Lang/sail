@@ -7,6 +7,8 @@
 
 #[macro_use]
 mod syntax;
+#[macro_use]
+mod host_syntax;
 
 pub mod authority;
 /// Staged cache ownership operation; native adoption is separately qualified.
@@ -21,8 +23,12 @@ pub mod cache_counted;
 pub mod cache_indexed;
 /// Staged cache ownership operation; native adoption is separately qualified.
 pub mod cache_order;
+/// Exact header and original payload framing for disk records.
+pub mod cache_record;
 /// Staged cache ownership operation; native adoption is separately qualified.
 pub mod cache_slots;
+/// Cache record transaction with explicit low-level host assumptions.
+pub mod cache_write;
 pub mod inputs;
 pub mod query;
 
@@ -34,3 +40,8 @@ pub mod query_holding;
 pub mod query_lex;
 /// Actual owned SMT stream splitter operations and ordered emissions.
 pub mod query_split;
+
+/// Actual shallow command classifier and response expectation over original bytes.
+pub mod query_command;
+/// Exact supported successful-command response policy over original head bytes.
+pub mod query_policy;

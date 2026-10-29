@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Source-share shallow command classification and response expectation through
+  the existing SMT API and Session delegate, preserving original borrowed
+  spans and error behavior; [qualification and limits](docs/validation/checked-command-classifier.md).
+
+- Share cache record framing and write sequencing while retaining the disk
+  format, exclusive temporary creation and original failure behavior;
+  [qualification and limits](docs/validation/checked-cache-persistence.md).
+
 - Share the actual SMT streaming splitter and token lexer operations with
   conditionally checked stock-Verus proofs for original bytes, ordered
   emissions and token spans. Preserve the public chunk/finish behavior and

@@ -207,3 +207,13 @@ pub proof fn flat_list_frame(contents: Seq<u8>)
         }
     }
 }
+
+sail_spec! {
+    /// Exact first bare command-head token inside one framed list.
+    pub open spec fn head_span(bytes: Seq<u8>, start: int, end: int) -> bool {
+        single_list(bytes, true) && 1 <= start < end < bytes.len()
+            && trivia_after(bytes.subrange(1, start), false) == Some(false)
+            && symbol_first(bytes[start]) && word_delimiter(bytes[end])
+            && forall|i: int| start <= i < end ==> !word_delimiter(bytes[i])
+    }
+}

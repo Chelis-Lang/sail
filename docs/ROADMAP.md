@@ -31,9 +31,12 @@ goes to crates.io. It was qualified as `0.1.0-rc.7` (`8797ccd4`)
 
 | Gate | State | Next |
 |---|---|---|
+| Shared cache transaction | Complete 65/113 Stock root and nine ordinary controls pass; fresh Linux runtime/conformance and component-cost checks pass | Bounded adoption accepted; native-host/origin refinement; [limits](design/checked-cache-persistence.md) |
 | Fork runtime | `47fb3be6` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; schema2 archives built, qualified and shipped in 0.1.0 | — |
 | Compiler-input currentness | Source-origin protocol, durable pre-Cargo invalidation and complete native workspace gates; Linux full corpus and Mac runtime/bounded consumer controls pass ([record](validation/compiler-read-origin.md)) | Service-wide theorem remains #368 |
-| Shared stream parser | Current union parser 133/208 plus all 54 ordinary controls pass within the 238-case matrix; frozen full corpus passes. Parent parser-only cost retains its original scope | Current-main managed refresh and bounded adoption cost complete; lead review/CI and physical caller/owner relations remain open ([scope](design/checked-stream-parser.md)) |
+| Shared stream parser | Command-extension root 135/213 and all 54 ordinary controls pass; parent parser/Holding corpus and cost evidence retain their original scope | Command/cache Linux E2E, full conformance and component cost pass; Mac host passes; bounded adoption accepted; physical caller/owner relations remain open ([scope](design/checked-stream-parser.md)) |
+| Command classification | Shared shallow classifier and Session response delegate; complete parser/command roots and ordinary controls pass; fresh Linux full E2E, conformance and component cost pass | Mac host passes; bounded adoption accepted; [scope](design/checked-command-classifier.md) |
+| Cache persistence | Whole 65/113 root and all nine ordinary controls pass; fresh Linux full E2E, conformance and component cost pass | Mac host passes; bounded adoption accepted; native-host/origin refinement; [scope](design/checked-cache-persistence.md) |
 | Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
 | Default output identical to stock | Done: human stderr is byte-identical by default; Sail notes only with `SAIL_EXPLAIN=1` or in JSON (#391) | — |
 | Default-mode verdict conformance | Done: #385, #386, #393 fixed. Sail's named settings stay compiler-visible as an accepted exception (ADR 0088, #435) | — |

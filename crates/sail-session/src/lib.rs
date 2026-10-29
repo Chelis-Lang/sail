@@ -172,10 +172,7 @@ impl Session {
     /// which the solver may report for any command, are not predicted.
     #[must_use]
     pub fn expects_output(&self, command: &[u8]) -> Output {
-        if self.option(b":print-success") == Some(b"true") {
-            return Output::One;
-        }
-        classify(command).map_or(Output::Unknown, |c| c.kind.output())
+        sail_smtlib::command::expects_output(command, self.option(b":print-success"))
     }
 
     fn mark(&mut self, why: Inexact) {
