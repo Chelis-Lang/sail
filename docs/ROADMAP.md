@@ -6,7 +6,7 @@ only; [performance](performance.md) has the numbers,
 
 ## Goal
 
-The first public release must be clearly faster than plain `cargo verus
+Sail must be clearly faster than plain `cargo verus
 verify` (stock Verus) in normal use. Most scenarios should be faster; Sail
 may add only modest overhead on runs that are already tiny, and must never
 make a run genuinely slower, cold runs included (owner direction
@@ -15,8 +15,10 @@ Sail's Verus fork is an accepted way to get speed (ADR 0039, ADR 0043). The
 product is a CLI with Linux and macOS binaries. Final release composition is
 the owner's decision.
 
-Milestones: **0.1.0** holds the release blockers. M11 (*Verus core and
-performance*) holds performance work, ordered in
+Milestone **0.2.0** targets performance parity on Vest, IronKV, CapybaraKV and
+Anvil on Linux and macOS, including cold runs and peak memory. The
+[milestone](https://github.com/Chelis-Lang/sail/milestone/12) tracks its
+deliverables. M11 (*Verus core and performance*) holds performance work, ordered in
 [#168](https://github.com/Chelis-Lang/sail/issues/168). M10 is the
 multi-backend verification runtime (#146).
 
@@ -79,7 +81,10 @@ jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
 Rows still slower than stock. Direction: spike each row's tractability first
 (what it costs and what would remove it), then fix in the order the spikes
 justify. Numbers are in [performance](performance.md). Benchmarks do not yet
-record peak memory (#562).
+record peak memory in the rc.7 results (#562). The real-project harness now
+captures tree/daemon RSS and child high-water usage; native controls pass
+([record](validation/benchmark-memory.md)). Full overhead qualification and the
+four-project memory acceptance matrix remain pending.
 
 | Row | Measured, Sail against stock | Spike finding | Issue |
 |---|---|---|---|
