@@ -52,7 +52,11 @@ The existing baseline save/read operations retain neutral source and exact
 worker stdout/stderr independently of job pruning. New jobs use corrected
 lowering version two. Unaffected historical version-one evidence remains
 readable with its original bytes; records affected by the compound-field
-translation defect are refused without rewriting them. Every read verifies their hashes
+translation defect are refused without rewriting them. The MCP server has no
+tool that submits neutral source: `start_verification` and `verify` submit only
+ordinary workspace jobs. Its `verification_result` and `requirement_assurance`
+tools read a neutral job through the same service requests, so they return the
+same refusal. Every read verifies their hashes
 and agreement with the public metadata and historical project report. Generic
 comparison and function explanation refuse this evidence family until those
 operations have contract-specific semantics. See the [service specification](spec/neutral-contract-jobs.md)
