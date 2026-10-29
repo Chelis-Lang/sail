@@ -7,216 +7,23 @@
 //! and never fail. Malformed input becomes [`ItemKind::Stray`] items rather
 //! than errors: the solver, not this module, decides what is valid.
 
-/// What a split item is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ItemKind {
-    /// A complete parenthesised top-level command (input) or response
-    /// (output).
-    List,
-    /// A bare top-level atom. On the output side this is a response line
-    /// such as `unsat` or `<<DONE>>`. On the input side it is not valid
-    /// SMT-LIB, but it is still forwarded to the solver.
-    Atom,
-    /// A `)` with no matching `(` (input side only).
-    Stray,
-}
-
-/// One top-level item and where it starts in the whole stream.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Item {
-    /// What kind of item this is.
-    pub kind: ItemKind,
-    /// Byte offset of the item's first byte in the whole stream.
-    pub offset: u64,
-    /// The item's exact bytes.
-    pub bytes: Vec<u8>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum State {
-    /// Between items, at depth 0.
-    Idle,
-    /// Inside a list, outside any string, quoted symbol or comment.
-    List,
-    /// Inside a string literal.
-    Str,
-    /// Just saw `"` inside a string: either an escaped `""` or the end.
-    StrQuote,
-    /// Inside a `|quoted symbol|`.
-    Quoted,
-    /// Inside a `;` comment (input side only). `in_list` says where to
-    /// return.
-    Comment { in_list: bool },
-    /// Inside a bare top-level atom.
-    Atom,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Side {
-    Input,
-    Output,
-}
-
-#[derive(Debug, Clone)]
-struct Splitter {
-    side: Side,
-    state: State,
-    depth: u64,
-    /// Bytes of the item in progress.
-    current: Vec<u8>,
-    /// Stream offset of `current[0]`.
-    current_offset: u64,
-    /// Stream offset of the next byte to be pushed.
-    offset: u64,
-}
-
-impl Splitter {
-    fn new(side: Side) -> Self {
-        Self {
-            side,
-            state: State::Idle,
-            depth: 0,
-            current: Vec::new(),
-            current_offset: 0,
-            offset: 0,
-        }
-    }
-
-    fn emit(&mut self, kind: ItemKind, out: &mut Vec<Item>) {
-        out.push(Item {
-            kind,
-            offset: self.current_offset,
-            bytes: std::mem::take(&mut self.current),
-        });
-        self.state = State::Idle;
-    }
-
-    fn begin(&mut self, b: u8) {
-        self.current_offset = self.offset;
-        self.current.push(b);
-    }
-
-    fn push(&mut self, data: &[u8], out: &mut Vec<Item>) {
-        for &b in data {
-            self.step(b, out);
-            self.offset += 1;
-        }
-    }
-
-    fn step(&mut self, b: u8, out: &mut Vec<Item>) {
-        match self.state {
-            State::Idle => match b {
-                b' ' | b'\t' | b'\n' | b'\r' => {}
-                b';' if self.side == Side::Input => self.state = State::Comment { in_list: false },
-                b'(' => {
-                    self.begin(b);
-                    self.depth = 1;
-                    self.state = State::List;
-                }
-                b')' if self.side == Side::Input => {
-                    self.begin(b);
-                    self.emit(ItemKind::Stray, out);
-                }
-                _ => {
-                    self.begin(b);
-                    self.state = State::Atom;
-                }
-            },
-            State::Atom => {
-                let ends = match self.side {
-                    // Output atoms are whole lines (echo output may contain
-                    // spaces); input atoms end at any delimiter.
-                    Side::Output => b == b'\n',
-                    Side::Input => crate::lex::is_delimiter(b),
-                };
-                if ends {
-                    if self.current.last() == Some(&b'\r') {
-                        self.current.pop();
-                    }
-                    self.emit(ItemKind::Atom, out);
-                    // The delimiter starts whatever comes next.
-                    if b != b'\n' {
-                        self.step(b, out);
-                    }
-                } else {
-                    self.current.push(b);
-                }
-            }
-            State::List => {
-                self.current.push(b);
-                match b {
-                    b'(' => self.depth += 1,
-                    b')' => {
-                        self.depth -= 1;
-                        if self.depth == 0 {
-                            self.emit(ItemKind::List, out);
-                        }
-                    }
-                    b'"' => self.state = State::Str,
-                    b'|' => self.state = State::Quoted,
-                    b';' if self.side == Side::Input => {
-                        self.state = State::Comment { in_list: true }
-                    }
-                    _ => {}
-                }
-            }
-            State::Str => {
-                self.current.push(b);
-                if b == b'"' {
-                    self.state = State::StrQuote;
-                }
-            }
-            State::StrQuote => {
-                if b == b'"' {
-                    // Escaped quote: still inside the string.
-                    self.current.push(b);
-                    self.state = State::Str;
-                } else {
-                    self.state = State::List;
-                    self.step(b, out);
-                }
-            }
-            State::Quoted => {
-                self.current.push(b);
-                if b == b'|' {
-                    self.state = State::List;
-                }
-            }
-            State::Comment { in_list } => {
-                if in_list {
-                    self.current.push(b);
-                }
-                if b == b'\n' || b == b'\r' {
-                    self.state = if in_list { State::List } else { State::Idle };
-                }
-            }
-        }
-    }
-
-    fn finish(mut self) -> Option<Item> {
-        match self.state {
-            State::Atom => {
-                let mut out = Vec::new();
-                self.emit(ItemKind::Atom, &mut out);
-                out.pop()
-            }
-            _ if self.current.is_empty() => None,
-            // An incomplete list: report what there is, as a stray.
-            _ => Some(Item {
-                kind: ItemKind::Stray,
-                offset: self.current_offset,
-                bytes: self.current,
-            }),
-        }
-    }
-}
+// The public data types retain their existing fields and constructors. They
+// carry no cache authority; the shared machine proves only emitted-byte facts.
+use sail_acceptance::query_split::StreamSplitter;
+pub use sail_acceptance::query_split::{Item, ItemKind};
 
 /// Splits solver input (what Verus sends) into top-level commands.
 ///
 /// Comments and whitespace between commands are dropped; comments inside a
 /// command are kept in its bytes.
-#[derive(Debug, Clone)]
-pub struct CommandSplitter(Splitter);
+#[derive(Debug)]
+pub struct CommandSplitter(StreamSplitter);
+
+impl Clone for CommandSplitter {
+    fn clone(&self) -> Self {
+        Self(self.0.duplicate())
+    }
+}
 
 impl Default for CommandSplitter {
     fn default() -> Self {
@@ -228,13 +35,16 @@ impl CommandSplitter {
     /// A splitter at the start of a stream.
     #[must_use]
     pub fn new() -> Self {
-        Self(Splitter::new(Side::Input))
+        Self(StreamSplitter::start(true))
     }
 
     /// Feeds the next chunk of the stream, appending completed items to
     /// `out`.
     pub fn push(&mut self, data: &[u8], out: &mut Vec<Item>) {
-        self.0.push(data, out);
+        let current = std::mem::replace(&mut self.0, StreamSplitter::start(true));
+        let (next, items) = current.push_items(data, std::mem::take(out));
+        self.0 = next;
+        *out = items;
     }
 
     /// Ends the stream, returning any incomplete trailing item.
@@ -251,8 +61,14 @@ impl CommandSplitter {
 /// an `echo`. Echo text that itself starts with `(` is indistinguishable from
 /// an expression at this level; callers pairing responses with commands must
 /// allow for that.
-#[derive(Debug, Clone)]
-pub struct ResponseSplitter(Splitter);
+#[derive(Debug)]
+pub struct ResponseSplitter(StreamSplitter);
+
+impl Clone for ResponseSplitter {
+    fn clone(&self) -> Self {
+        Self(self.0.duplicate())
+    }
+}
 
 impl Default for ResponseSplitter {
     fn default() -> Self {
@@ -264,13 +80,16 @@ impl ResponseSplitter {
     /// A splitter at the start of a stream.
     #[must_use]
     pub fn new() -> Self {
-        Self(Splitter::new(Side::Output))
+        Self(StreamSplitter::start(false))
     }
 
     /// Feeds the next chunk of the stream, appending completed items to
     /// `out`.
     pub fn push(&mut self, data: &[u8], out: &mut Vec<Item>) {
-        self.0.push(data, out);
+        let current = std::mem::replace(&mut self.0, StreamSplitter::start(false));
+        let (next, items) = current.push_items(data, std::mem::take(out));
+        self.0 = next;
+        *out = items;
     }
 
     /// Ends the stream, returning any incomplete trailing item.
@@ -289,15 +108,62 @@ impl ResponseSplitter {
 /// stands for exactly one reply in the stream.
 #[must_use]
 pub fn is_single_response(reply: &[u8]) -> bool {
-    let mut splitter = ResponseSplitter::new();
-    let mut items = Vec::new();
-    splitter.push(reply, &mut items);
-    matches!(items.as_slice(), [one] if one.offset == 0) && splitter.finish().is_none()
+    sail_acceptance::query_split::single_response(reply)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn actual_shared_stream_controls_execute() {
+        assert!(sail_acceptance::query_split::chunk_endpoint_control());
+        assert!(sail_acceptance::query_split::command_chunks_control());
+        assert!(sail_acceptance::query_split::nonempty_list_control(true));
+        assert!(sail_acceptance::query_split::nonempty_list_control(false));
+        assert!(sail_acceptance::query_split::outer_atom_offsets_control());
+        assert!(sail_acceptance::query_split::outer_crlf_finish_control());
+        assert!(sail_acceptance::query_split::outer_chunks_control());
+        assert!(sail_acceptance::query_split::outer_clone_initial_control());
+    }
+
+    #[test]
+    fn input_carriage_return_ends_atom_at_every_chunk_boundary() {
+        let raw = b";c\r\na)()\r\nfoo\r";
+        let expected = vec![
+            Item {
+                kind: ItemKind::Atom,
+                offset: 4,
+                bytes: b"a".to_vec(),
+            },
+            Item {
+                kind: ItemKind::Stray,
+                offset: 5,
+                bytes: b")".to_vec(),
+            },
+            Item {
+                kind: ItemKind::List,
+                offset: 6,
+                bytes: b"()".to_vec(),
+            },
+            Item {
+                kind: ItemKind::Atom,
+                offset: 10,
+                bytes: b"foo".to_vec(),
+            },
+        ];
+        for boundary in 0..=raw.len() {
+            let mut splitter = CommandSplitter::new();
+            let mut items = Vec::new();
+            splitter.push(&raw[..boundary], &mut items);
+            splitter.push(&raw[boundary..], &mut items);
+            assert_eq!(items, expected);
+            assert!(splitter.clone().finish().is_none());
+            splitter.push(b"\n", &mut items);
+            assert_eq!(items, expected);
+            assert!(splitter.finish().is_none());
+        }
+    }
 
     #[test]
     fn single_response_requires_exactly_one_complete_frame() {

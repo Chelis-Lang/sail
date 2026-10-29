@@ -25,3 +25,10 @@ pub mod cache_order;
 pub mod cache_slots;
 pub mod inputs;
 pub mod query;
+
+/// Exact structural byte grammar for streaming frames and lexical tokens.
+pub mod parser_grammar;
+/// Actual borrowed SMT token cursor, spans and sticky lexical errors.
+pub mod query_lex;
+/// Actual owned SMT stream splitter operations and ordered emissions.
+pub mod query_split;

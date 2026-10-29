@@ -4,6 +4,16 @@ Open Sail defects and current product limits on main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
+The accepted [shared parser](design/checked-stream-parser.md) has a complete
+new-root Stock inventory and all ordinary failure controls. Its frozen native
+source passes full fast/standard conformance, end-to-end and solver checks;
+measured fragmentation and lexer costs are recorded. Current-main managed
+runtime checks also pass. ADR 0086 accepts the bounded runtime adoption and
+the documented 3.02×/3.70× fragmentation and 1.90× lexer cost tradeoff;
+no general service-performance or completed-service claim follows.
+Native capacity/lifetime, external owner/EOF and solver interpretation
+relations remain open; source/hash binding does not establish them.
+
 ## Accepted integration limit
 
 - **Sail's named integration settings are compiler-visible**

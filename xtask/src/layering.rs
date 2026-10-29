@@ -20,7 +20,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     ("sail-contracts-ir", &[]),
     ("sail-contracts-macros", &["sail-contracts-ir"]),
     ("sail-contracts", &["sail-contracts-macros"]),
-    ("sail-smtlib", &[]),
+    ("sail-smtlib", &["sail-acceptance"]),
     ("sail-session", &["sail-smtlib"]),
     ("sail-key", &["sail-smtlib", "sail-session"]),
     (
