@@ -17,9 +17,9 @@ mtime; corrected sync supplies current timestamps. Summary SHA-256:
 | Source and environment | Scope and result | Raw evidence SHA-256 |
 |---|---|---|
 | `317516f5`, macOS 26.5, Apple M3, Rust 1.99.0 | Full host gate: Clippy and 617 tests pass, 35 skipped; tracked inputs unchanged | Log `bd8551479b701f998a324b5990966a2bd68074ddeabedce005c031fd3d1c171a`; source manifest `843536e66ab2d77611081b94600ad35b78ab1d1a032f1ae68c0d677023adea4d` |
-| `f6063c0d`, joined with main `c96fdbec`, c7i.8xlarge, us-east-1 | Full native Linux workspace gate: 631 tests pass, 35 skipped; 504 tracked source inputs match | Archive `c8ba226252696ff25b41de2ead3a8b07dc973129e9da4043d57ac57c9283d076` |
+| `f6063c0d`, joined with main `aabf3a15`, c7i.8xlarge, us-east-1 | Full native Linux workspace gate: 631 tests pass, 35 skipped; 504 tracked source inputs match | Archive `c8ba226252696ff25b41de2ead3a8b07dc973129e9da4043d57ac57c9283d076` |
 
-The macOS gate predates the integration with `c96fdbec`; the sync helper patch
+The macOS gate predates the integration with `aabf3a15`; the sync helper patch
 is unchanged. These are source-sync and workspace correctness checks, without
 a solver, corpus or performance change. Required PR conformance runs separately.
 

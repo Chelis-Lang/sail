@@ -6,7 +6,7 @@ Validation of cheaper managed checks described in
 | Field | Evidence |
 |---|---|
 | Status | Corrected source qualified; post-#183 combined native gate, solver, full end-to-end and PR conformance pass |
-| Source | Original corpus/performance evidence: `6563a170`, based on `0a7c1d0d`; initial checks also cover `6f73ab9e`. Joined-source checks: `a6629ee4`, based on #183 `ba2220b9` |
+| Source | Original corpus/performance evidence: `6563a170`, based on `1bc27f87`; initial checks also cover `6f73ab9e`. Joined-source checks: `a6629ee4`, based on #183 `21ecab75` |
 | Runtime | Sail fork `73dea021`, pinned Z3 4.16.0; stock oracle `0.2026.10.04.426d8b0` |
 | Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, CI image; macOS host correctness checks |
 | Scope | Managed receipt/input/store lifecycle via full end-to-end suite; stock-versus-shim/fork/engine differential corpus |
@@ -16,7 +16,7 @@ Validation of cheaper managed checks described in
 
 The integration retains #183's complete foreign dependency closure binding:
 the target-revision foreign-binding block and dependency-store binding
-function are byte-identical to `ba2220b9`. Snapshot projection still includes
+function are byte-identical to `21ecab75`. Snapshot projection still includes
 every closure package's files, and foreign binding uses the full unprojected
 resolution graph. The only rebase conflict was in the changelog; both entries
 were retained. On joined source `a6629ee4`, the native workspace gate passes
@@ -63,7 +63,7 @@ Raw logs remain outside the repository.
 ## Performance
 
 Three alternating, interleaved rounds on isolated native c7i.8xlarge compare
-corrected `6563a170` against released rc.5 `c3687990`, using the same fork
+corrected `6563a170` against released rc.5 `eecaf731`, using the same fork
 and solver. Each project and mode has an independent warmed compiler target
 and automatic Sail daemon/cache. All 24 measured commands exit 0. Candidate
 binaries are stripped by the release procedure without a source rebuild.
@@ -97,7 +97,7 @@ Archive `m114-linux-perf.tgz`, SHA-256
 | Field | Evidence |
 |---|---|
 | Status | Measured; edit and revert still above the 0.1 s sub-second bar |
-| Source | Baseline `main` `4f373727`; candidate branch `perf/small-overhead` at `ac8422a2` (its crates are byte-identical to the branch rebased onto `5f79459d`, which added only release notices) |
+| Source | Baseline `main` `c4cb6076`; candidate branch `perf/small-overhead` at `ac8422a2` (its crates are byte-identical to the branch rebased onto `fbb9f33b`, which added only release notices) |
 | Runtime | Sail fork `9c0ca7e7` (7d82994, manifest `f4568e29…`), pinned Z3 4.16.0; stock oracle `0.2026.10.18.7d82994`, Cargo 1.99.1 both |
 | Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, CI `core` image, one idle lane |
 | Scope | `sail new --lib` demo with one function; per round: add one function (edit), rerun unchanged, return to the original (revert); 7 rotated rounds after two warm-ups, own project copy, cache and target per arm; Sail binaries copied onto the cache filesystem |
@@ -193,7 +193,7 @@ Archive `feature-alias-2026-10-16.tgz`, SHA-256
 | Field | Evidence |
 |---|---|
 | Status | Measured |
-| Source | Baseline `main` `356238cd`; candidate branch `fix/snapshot-hint-order` |
+| Source | Baseline `main` `0127ef03`; candidate branch `fix/snapshot-hint-order` |
 | Runtime | Sail fork `9c0ca7e7` (7d82994), pinned Z3 4.16.0; stock `0.2026.10.18.7d82994`, Cargo 1.99.1 |
 | Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, CI `core` image, one lane |
 | Scope | Current-pin Vest (`-p vest_lib -- --rlimit 100`): a cold run, then unchanged reruns, fresh copy and cache per arm and round, rotated; demo edit/unchanged/revert as a control |

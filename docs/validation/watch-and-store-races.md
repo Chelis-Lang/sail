@@ -38,7 +38,7 @@ content capture's. On Vest's workspace (3,458 entries) one pass costs about
 it is an upper bound. A full rehash costs about 120 ms and runs only on a
 stamp change.
 
-**Evidence** (Apple silicon, 8 cores, Darwin 25.5, base `b5420f24`):
+**Evidence** (Apple silicon, 8 cores, Darwin 25.5, base `16876ade`):
 
 - On the base, the delayed-duplicate and refresh-swallow regressions fail.
   With the corrections, they pass, along with deterministic tests for Cargo
@@ -59,7 +59,7 @@ stamp change.
 
 ## Current startup correction (2026-10-25)
 
-The candidate based on `237c7d8d` corrects notification-batch classification.
+The candidate based on `4d754827` corrects notification-batch classification.
 Ancestor subscriptions can report unrelated sibling removals and renames.
 Previously these disabled startup replay suppression for the whole batch,
 including delayed Cargo.lock creation events, even when every tracked byte

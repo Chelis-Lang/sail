@@ -8,7 +8,7 @@ Fixes #166 and the compiler false reuse in
 [#189](https://github.com/Chelis-Lang/sail/issues/189).
 
 Source: native candidate `7cc62383`, with the qualified #183 product changes.
-Joined candidate `682ddd98` is based on main `4846cfe1`.
+Joined candidate `682ddd98` is based on main `8bd1948e`.
 `crates/sail-verus/src/adapter.rs` SHA-256
 `39d0c48dea35b208c58af62bc122643f0d92bbd75b5c7f0ea2f34872613b0120`.
 The cache-overlap guard additionally qualifies `configuration.rs` SHA-256

@@ -92,7 +92,7 @@ Raw logs are in the external `frontend-review-2026-10-16` evidence set:
 | `key-projection-clippy.log` | `95e83b967575ed6a1de786feb1306ee655f450f6265e1d8957212a0e547928aa` |
 
 The final Sail research-harness gate passes on source
-`d9d25cbbe5d79e9812f79712097c03e3546469c0` (base `1060a8ec`): 638 tests
+`d9d25cbbe5d79e9812f79712097c03e3546469c0` (base `56d58208`): 638 tests
 passed, 35 solver tests skipped, and two doctests passed, together with
 formatting, clippy, rustdoc, layering, dependency policy and generated benchmark
 checks. All explicit command (10), capture (8) and input-difference (7) controls
@@ -108,7 +108,7 @@ The gate's archived raw output and every member are verified by SHA-256:
 `e6cd9094bd0e998df3cb447738ed80afe65ca2239b0b10c861b8dbc4c6b077cc`.
 Raw evidence remains outside git.
 
-The current-main rebase onto `d1be41c1` preserves all 11 feature scripts
+The current-main rebase onto `1fd634b6` preserves all 11 feature scripts
 byte-for-byte; only changelog and decision-index conflicts needed resolution,
 with both entries retained. The native result qualifies `d9d25cbb`, not a new
 native run on the later joined source or its documentation amendment. Required

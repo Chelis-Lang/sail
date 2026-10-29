@@ -9,7 +9,7 @@ remains a separate check on the final pull-request head.
 ## Source and installation
 
 The code-qualified source composes the corrected witness implementation with
-protected main `eab1e36d4e55c454bcd8d4aa504ee104ed94a356`. Its source index
+protected main `42bb75aed485c8a9386809bee89777bb995ee11b`. Its source index
 SHA-256 is `bce071573d85451212ba82d9d799d52330ed2700b7c1debe8b84e512b2d52a41`.
 The packaging correction adds two generated notice lines for `num-bigint 0.4.8`,
 which the new normal `sail-cli -> sail-verus -> num-bigint` dependency path

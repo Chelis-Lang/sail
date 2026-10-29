@@ -154,7 +154,7 @@ both arms. Peak memory is not recorded (#562).
   every check was served from the solver cache. Both are still faster than
   stock; the cause is not diagnosed.
 
-The macOS medians match the earlier main `dca5cd43` measurement on the same
+The macOS medians match the earlier main `dad6a80a` measurement on the same
 host type within about 2% on every row. The 1-minute load average was 2–7
 (Linux) and 2–17 (macOS), from the runs' own work.
 

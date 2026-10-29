@@ -5,7 +5,7 @@
 The joined #215/#174 implementation is merged in PR #226 after macOS/native
 Linux qualification, independent review and all required delivery CI. Executed
 source `7411f458` combines output `354d2995` and scheduling facts on
-`17464f16`. Accepted main `ee163bc3` (#225) differs from that baseline only in
+`17464f16`. Accepted main `d7b30b88` (#225) differs from that baseline only in
 three Markdown files; every executable body and mode is identical. The local
 delivery rebase preserves every non-Markdown body and mode from `7411f458`.
 
@@ -17,7 +17,7 @@ delivery rebase preserves every non-Markdown body and mode from `7411f458`.
 | Solver, all nine E2E phases plus extra, PR subset and full FAST | PASS: 9.09 s / 640.94 s / 54.60 s / 491.74 s; FAST has all four arms, 147 Same / 3,450 functions each |
 | Full STANDARD and final native guards | PASS: 5,108.27 s, all four arms 159 Same / 12,726 functions each; final source/runtime/products and strict complete archive pass |
 | Current-pin Vest changed/unchanged costs | Complete 36-row retained facts verified: output B median +1.04%, joined +0.99% versus MAIN; unchanged ranges overlap. No Vest/CPU gain; enclosing capture-deadline failure remains ([costs](unscheduled-script-cleaning.md#current-pin-vest-cost-facts)) |
-| Delivery | PR #226 merged at `d1499eff`; reviewed delivery `4208273d` has the identical Git tree; required CI and main workflow `39141431318` pass |
+| Delivery | PR #226 merged at `eea420bd`; reviewed delivery `4208273d` has the identical Git tree; required CI and main workflow `39141431318` pass |
 
 The full Mac result is outside git at
 `vest-output-scheduling-joined-qualification-2026-10-18/mac-host-01/result.json`,
@@ -110,7 +110,7 @@ extend or reclassify that earlier attempt.
 Each line remains scoped to its original source and command; later success does
 not erase it.
 
-- `3892881a` plus payload candidate, 2026-10-18, attempt 01: disk admission refused; controls unrun.
+- `731b3052` plus payload candidate, 2026-10-18, attempt 01: disk admission refused; controls unrun.
 - Same base, attempt 02: compilation interrupted after a regenerable Cargo path vanished; no unit result.
 - Same base, attempt 03: five controls pass; the broken-pipe fixture wrongly required producer success after closure.
 - Same base, attempt 04: six relay controls and compiler cleanup pass; test-only Clippy and a changing Cargo metadata guard fail the enclosing attempt.

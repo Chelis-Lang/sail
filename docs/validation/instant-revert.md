@@ -3,7 +3,7 @@
 Status: final source `83128ad0` passes the native ordinary-selection, bundled
 Vest A → B → A and complete default gates with the selected `e5365c05` runtime.
 The delivery composition preserves its executed Rust/Cargo bytes. PR #224
-merged as `3892881a`; all required checks and the main workflow pass. Ordinary eligibility is the exact Linux/public alloc/std
+merged as `731b3052`; all required checks and the main workflow pass. Ordinary eligibility is the exact Linux/public alloc/std
 profile, not every project or platform. [Paired qualification](proof-reuse-integration.md)
 separates the current source from earlier component results.
 
@@ -534,7 +534,7 @@ clippy stderr SHA-256:
 
 ## Unchanged-run optional-plan candidate (#156)
 
-The optimization measured at `e0d14d75`, based on `3892881a`, omits the optional
+The optimization measured at `e0d14d75`, based on `731b3052`, omits the optional
 retained-content plan when every requested target has an own-context receipt
 header with the current nonempty input revision. It reuses the existing fresh
 dirty-receipt scan; it adds no second source-hash pass. Cold or missing receipts,
@@ -553,7 +553,7 @@ and returned A revisions, wrong identity/context/version and malformed headers.
 The actual native screen on `c7i.4xlarge`, `us-east-1`, passes all 36 calls with
 zero unrun rows: three rotated rounds of genuine stock `426d8b01`, baseline
 `83128ad0` and this candidate. Baseline executed Rust/Cargo bytes equal the
-candidate's `3892881a` base. Both Sail actors use the genuine normal
+candidate's `731b3052` base. Both Sail actors use the genuine normal
 `e5365c05` runtime (archive `689004c0`); no Verus rebuild is involved. The
 current-pin Vest source, lock and ordinary public provider profile are identical
 across actors. Sail uses ordinary default verbosity; stock's explicit JSON/time

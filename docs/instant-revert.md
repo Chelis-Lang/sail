@@ -1,7 +1,7 @@
 # Instant revert
 
 Status: automatic selection is implemented and qualified at `83128ad0` for the
-narrow Linux/public dependency profile below. PR #224 merged as `3892881a`,
+narrow Linux/public dependency profile below. PR #224 merged as `731b3052`,
 with all required checks and the main workflow passing. Native ordinary and genuinely bundled Vest A → B → A controls pass,
 along with the complete default gates. See the
 [validation record](validation/instant-revert.md).

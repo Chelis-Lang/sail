@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Defect reproduced on rc.5; correction passes the live macOS reproduction and host gate, native Linux gates and full fast/standard conformance. Post-#183/#186 rebase native and Mac gates and live stdout checks pass; required CI remains pending |
-| Defective source/runtime | Sail `c3687990a8139b0f0453c6ef574b3787aded6e92`; Verus fork `73dea02112d730e7ab52f58158012d440fb89512`; exact draft rc.5 macOS archive SHA-256 `303e0750a8c2d7ea48d7a149f10608cd68ff00d7d67b4dd9cf2db58880b5d309` |
+| Defective source/runtime | Sail `eecaf73186f728531b739cea50e9282d2213ed1a`; Verus fork `73dea02112d730e7ab52f58158012d440fb89512`; exact draft rc.5 macOS archive SHA-256 `303e0750a8c2d7ea48d7a149f10608cd68ff00d7d67b4dd9cf2db58880b5d309` |
 | Oracle | Stock Verus `0.2026.10.04.426d8b0`, Z3 4.16.0 |
 | Environment | macOS arm64, Apple M3 under other work; no performance qualification claimed |
 | Reproduction | Two new projects with identical manifests and lockfiles, one fresh Sail cache; second run uses the dependency store; stock uses a fresh target |
@@ -22,7 +22,7 @@ acceptance follows from fixture tests.
 
 ## Attempts
 
-- 2026-10-16, rc.5 `c3687990`, macOS: reproduced missing vstd stdout on a
+- 2026-10-16, rc.5 `eecaf731`, macOS: reproduced missing vstd stdout on a
   second new project; both Sail runs and plain stock exited 0.
 - 2026-10-16, shipped-vstd candidate `c98b3828`, macOS: eight acceptance
   cases passed; the added store-copy case failed stdout identity while its
@@ -56,7 +56,7 @@ The separately retained Linux binaries archive has SHA-256
 No performance acceptance or rc.5 asset requalification follows from these
 correctness checks.
 
-The final branch is rebased onto #183 (`ba2220b9`). Its conflict resolution
+The final branch is rebased onto #183 (`21ecab75`). Its conflict resolution
 keeps #183's resolved foreign-node identity and selection-free family key,
 and this correction's strict refusal of nested verified roots. The complete
 native checks above ran before that rebase. The exact rebased source
@@ -80,7 +80,7 @@ Required CI must pass before landing.
 The first complete PR CI run at `4470d816` passes every required check;
 its retained run summary has SHA-256
 `325d2437d3eaf931f8a8c66998efef0a25f708e376bb9ca907379d03b0194402`.
-After #186 merged, this correction rebased onto `5de8819e` as
+After #186 merged, this correction rebased onto `7b31275f` as
 `cfa4d96557b15c157c031bb986d3e9c5c0662222`. Both changelog entries remain;
 #186's existing-store hold optimization, #183's resolved dependency bindings
 and this correction's displayed-output/nested-root rules remain intact.

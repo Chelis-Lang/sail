@@ -93,7 +93,7 @@ Measured on native c7i.4xlarge (us-east-1), CapybaraKV with crates.io vstd,
 `RUSTUP_TOOLCHAIN=1.99.1`, Sail's install, the Rust toolchain and
 `~/.cargo/bin` recreated with new inodes and identical bytes, a fresh clone
 with `git restore-mtime` and the whole Sail cache restored with `tar`: main
-`1f812e12` took 40.7 s with 2 verifier runs and 0 reused targets; this
+`f33da950` took 40.7 s with 2 verifier runs and 0 reused targets; this
 change 0.94 s, Current, 0 verifier runs and 2 reused targets (0.80 s on the
 same machine without reinstalling). On a warm machine, ten alternating
 unchanged full-path calls took a median 0.473 s against main's 0.478 s, and

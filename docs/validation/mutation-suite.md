@@ -101,7 +101,7 @@ and 18 HumanEval mutants with both reverts. The composed Mac host gate passes
 
 ## Indexed earlier attempts
 
-- 2026-10-20, branch on `006ee5d0`: first oracle kept successful Cargo targets
+- 2026-10-20, branch on `908abe1b`: first oracle kept successful Cargo targets
   fresh instead of re-verifying; corrected with targeted cleaning per stock run.
 - 2026-10-20: first runner compared cold-only dependency documents during a
   revert; corrected to compare the requested package documents.

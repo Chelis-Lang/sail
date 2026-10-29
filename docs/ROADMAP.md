@@ -82,7 +82,7 @@ record peak memory (#562).
 | First unchanged call after a verification (full path, records replay) | rc.7: Anvil 2.44 s against 0.36 s (Linux), 2.11 s against 0.30 s (macOS); Vest 0.80 s against 0.26 s (macOS) | A settle pass that records replay at the end of the verifying run is not worth its cost | #558 |
 | Unchanged call that misses replay (`touch`, recent ctime, other arguments) | rc.7: Anvil 2.13 s against 0.32 s (Linux), 1.63 s against 0.25 s (macOS) | Near its floor without cross-run trust. Full runs under other keys no longer invalidate records (#575, fixed); root/subdirectory alternation and a package-local `target/` thrash (#576) | #560, #576 |
 | Unchanged `SAIL3112` setups | Anvil 0.90 s with no proof reuse ([record](validation/unsupported-cargo-fallback.md)), stock about 0.3 s | Loader-variable runs now verify in the project's own target (#577, fixed) | #561 |
-| Tiny-project edits | About 0.4 s (Linux) and 0.7 s (macOS) more, `e51e4660` matrix | — | #560 |
+| Tiny-project edits | About 0.4 s (Linux) and 0.7 s (macOS) more, `fc7cd0c7` matrix | — | #560 |
 | macOS Anvil cold | rc.7: 100.3 s against 99.4 s, ranges overlapping (#466) | — | #232 |
 
 ## After 0.1.0 (parked)

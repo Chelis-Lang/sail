@@ -2,7 +2,7 @@
 
 Status: source `83128ad0` passes the complete native default qualification and
 final guards. The composed delivery preserves its executed code and merged
-through PR #224 as `3892881a`; all required checks and the main workflow pass. The native 72-row cohort and same-host Linux portable
+through PR #224 as `731b3052`; all required checks and the main workflow pass. The native 72-row cohort and same-host Linux portable
 component pass. These results qualify their stated scopes separately; they do
 not establish release-bundled first-use vstd reuse or combined proof authority.
 See [retained restoration](instant-revert.md) and

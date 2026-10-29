@@ -3,7 +3,7 @@
 ## Current-main private preview
 
 Both actual checksummed previews use the ordered-projection candidate based on
-main `3b0bac19` (crate tree `a8140a02446d41d39d93ec96dccb07a9d99b3baf`)
+main `4b41c9fd` (crate tree `a8140a02446d41d39d93ec96dccb07a9d99b3baf`)
 and runtime `36d65c3f`. The installer creates a fresh prefix, then both native
 hosts pass bundled-runtime selection, shipped first-use vstd proof, unchanged
 zero-verifier reuse, passing/failing edits and return to passing source. The
@@ -20,7 +20,7 @@ remains separate.
 
 The installer is qualified for actual Linux x86-64 and Apple-silicon Mac
 archives, with the pinned Verus runtime `7d9d5410` and Rust `1.99.1`.
-The Linux archive uses main's `9f819166` Rust inputs; the Mac archive also
+The Linux archive uses main's `c8e45ad7` Rust inputs; the Mac archive also
 contains the bounded source-check/transcript changes from `1ccf52ec`.
 These checks qualify installation, not those changes' performance.
 

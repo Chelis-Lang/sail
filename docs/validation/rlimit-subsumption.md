@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Status | **Historical witness qualification below; current Mac recordings use exact default/100 profiles after a reproduced resource-count variation. Native Linux and Mac qualification of the new loader pass; final performance matrices remain separate gates.** |
-| Source | Sail `feat/rlimit-subsumption` on `main` `3b9ec170`; runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`); stock release 0.2026.10.18.7d82994; Z3 4.16.0 |
+| Source | Sail `feat/rlimit-subsumption` on `main` `d64e65d9`; runtime `7d829946…-4ed2dee08bc877ae` (fork `9c0ca7e7`); stock release 0.2026.10.18.7d82994; Z3 4.16.0 |
 | Host | native EC2 c7i.8xlarge (us-east-1, Xeon Platinum 8488C, 32 vCPUs), Ubuntu 24.04, Rust 1.99.1 |
 | Tool | `scripts/rlimit-subsumption.py --runs 3 --rlimit 100` |
 
 ## Exact-profile fallback, 2026-10-22
 
-Source: main `ff63d032` plus this change; the combined Mac consumer also uses
+Source: main `b8395983` plus this change; the combined Mac consumer also uses
 retention-budget candidate `c308bda4`. Runtime f8589ed4 / Verus 7d82994,
 Rust/Cargo 1.99.1, EC2 mac-m4.metal in us-east-1c, macOS 27.0 (26A428).
 
@@ -66,7 +66,7 @@ establish that every Linux query has deterministic resource counts.
 
 ## Re-recording on fork `f8589ed4` (Linux)
 
-After rebasing onto `main` `658e8001` (runtime `7d829946…-81186034d2e137a2`, fork `f8589ed4`, manifest `576558fc…`), the release was staged twice with `ci/local.sh release` on native EC2 c7i.8xlarge (us-east-1). Both recordings stored the same witness for unit `df8e0dc3…`:
+After rebasing onto `main` `1793a129` (runtime `7d829946…-81186034d2e137a2`, fork `f8589ed4`, manifest `576558fc…`), the release was staged twice with `ci/local.sh release` on native EC2 c7i.8xlarge (us-east-1). Both recordings stored the same witness for unit `df8e0dc3…`:
 - recorded/witness rlimit 10/100; solver limits 30,000,000/300,000,000;
 - largest query 12,941,218 against its own limit of 30,000,000;
 - 2,061 queries, 366 solver processes, 0 `unknown`, 0 at or over their limit;
@@ -86,7 +86,7 @@ With the final branch's staged release, stock `cargo verus verify` and `sail ver
 
 ### Cold first run with `-- --rlimit 100`
 
-Stock against two staged releases: `main` `658e8001` (before) and this branch (after), both recorded on fork `f8589ed4`. Each arm of each round used a fresh copy, Cargo home and Sail cache, with human output; round order rotated. All runs exited 0, and every Sail run's stdout and stderr equal stock's as line sets after removing roots, Cargo's progress and timing, and Sail's notes. Values are wall seconds: median (min–max).
+Stock against two staged releases: `main` `1793a129` (before) and this branch (after), both recorded on fork `f8589ed4`. Each arm of each round used a fresh copy, Cargo home and Sail cache, with human output; round order rotated. All runs exited 0, and every Sail run's stdout and stderr equal stock's as line sets after removing roots, Cargo's progress and timing, and Sail's notes. Values are wall seconds: median (min–max).
 
 | Project | Stock | Before | After | Note in Sail |
 |---|---:|---:|---:|---|

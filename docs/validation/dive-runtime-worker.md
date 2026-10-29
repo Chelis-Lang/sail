@@ -7,7 +7,7 @@ original source scope.
 Status: focused native-library, isolated-process, full macOS host and native
 Linux workspace/solver/end-to-end/conformance checks passed. Common-runtime
 integration and private-dependency protected CI remain required.
-The current implementation includes main `616cc8ad` and pins D.I.V.E.
+The current implementation includes main `82ccd765` and pins D.I.V.E.
 `1025cd6a0510183bc16abc1e6e3eea4f9305c5a9`. No TLC, Java or D.I.V.E.
 command executes in these checks. Existing Verus routes are unchanged.
 
@@ -171,7 +171,7 @@ and inherited-pipe cleanup.
 
 ## Current-main bound-role qualification
 
-Implementation `5ffc4a01`, including main `29ad230c` and the bound-role routing
+Implementation `5ffc4a01`, including main `8e46fd1c` and the bound-role routing
 fix, passed the complete native Linux gate with 946 tests and 44 explicit
 skips. The corresponding full Mac host gate passed 935 tests and 44 explicit
 skips, including strict workspace Clippy. The focused library/process suite
@@ -195,7 +195,7 @@ credential installed on the host.
 
 
 After performance PR #321 landed, implementation `5051d96a` merged main
-`616cc8ad` and passed the complete native Linux gate with 949 tests and the
+`82ccd765` and passed the complete native Linux gate with 949 tests and the
 full Mac host gate with 938 tests. Both retain 44 explicit skips, strict
 workspace Clippy and unchanged deadlines. These followup gates do not relabel
 the earlier solver, end-to-end or conformance runs.

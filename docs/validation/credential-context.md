@@ -1,6 +1,6 @@
 # Private authentication and proof reuse
 
-The candidate based on main `1b8bfd31` excludes only
+The candidate based on main `0377d6d3` excludes only
 `SAIL_DEPENDENCY_READ_TOKEN` and `SAIL_PRIVATE_GIT_READY` from the generic
 proof context. Resolved dependency source bytes remain inputs. Explicit
 compiler and build-script environment declarations retain their value checks.
@@ -19,7 +19,7 @@ after the first successful verification. Source bytes stayed identical.
 The baseline changes context and verifies again on the second call. This
 qualifies removal of that invalidation; it does not close ordinary unchanged,
 small-edit or real-project cold overhead. The baseline install is from
-`9f819166`; its relevant environment classification is unchanged at the parent.
+`c8e45ad7`; its relevant environment classification is unchanged at the parent.
 
 Actual native Mac controls additionally add an `option_env!` source read:
 changing the declared credential produces a fresh verifier invocation and a

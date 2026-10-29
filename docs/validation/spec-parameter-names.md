@@ -43,7 +43,7 @@ The prospective reader correction uses the exact timed Cargo arguments; it does
 not change the recipe, stock oracle, comparator or expected verdicts. No timing
 row is rerun or substituted by that correction.
 
-The corrected follow-on used Sail `6af7d10f` on main `2936ead2`, with the same
+The corrected follow-on used Sail `6af7d10f` on main `ee6914c7`, with the same
 genuine runtime bytes and captured Capy rename inputs. No Capy timing row was
 repeated. On c7i.8xlarge (32 vCPU, us-east-1), both cc7 and the candidate passed
 the unchanged whole-document/function checker against stock: vstd's 1,871 and

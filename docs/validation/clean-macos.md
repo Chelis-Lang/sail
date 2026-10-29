@@ -9,7 +9,7 @@ new-user walkthrough that follows the README. It complements the
 | Field | Value |
 |---|---|
 | Status | **Pass**: smoke test passed; every walkthrough step worked; output matched plain Verus |
-| Source | Draft release `v0.1.0-rc.1`, built from `main` `958dee9`; archive `sail-0.1.0-rc.1-aarch64-apple-darwin.tar.gz`, sha256 `d6fe42d4ce0e21650a74769672eea3e01bce9ad6a36059afe77d09bc1497fd66` (matches the release's `.sha256` asset) |
+| Source | Draft release `v0.1.0-rc.1`, built from `main` `2c42867`; archive `sail-0.1.0-rc.1-aarch64-apple-darwin.tar.gz`, sha256 `d6fe42d4ce0e21650a74769672eea3e01bce9ad6a36059afe77d09bc1497fd66` (matches the release's `.sha256` asset) |
 | Environment | EC2 mac-m4.metal, Apple M4 (4 performance and 6 efficiency cores, 24 GiB), macOS 27.0 (26A428), us-east-1b, a fresh instance (`scripts/perf-host-mac.sh`), lane L39, 2026-10-14. The Xcode command line tools come with the image. Before these runs the same instance ran the [performance](../performance.md) and engine checks; their Sail cache and Cargo registry were moved aside first, so Sail started with no cache |
 | Scope | `scripts/release-smoke.sh` on the archive; the README's install and usage steps on a new `cargo verus new` project and on vest (`-p vest_lib`), each in plain, `sail verify` and `--incremental` modes (cold, warm, edit, failing edit, fix, warm); MCP in the Claude Code CLI and from a scripted stdio client; `sail watch`; `sail cache projects`; the bundled repair engine; `--help` |
 | Limits | One run of each step, so times are indicative (the [performance page](../performance.md) has three-round medians from the same machine). Archives were downloaded with `gh` and `scp`, so they had no quarantine attribute; how Gatekeeper treats a browser-downloaded archive (the binaries are ad-hoc signed, not notarized) was not tested |
@@ -76,7 +76,7 @@ cold-cache time):
 
 ## Against the previous walkthrough's frictions
 
-| # | 2026-10-13 (developer Mac, `212ceb4`) | Clean M4, `v0.1.0-rc.1` |
+| # | 2026-10-13 (developer Mac, `71dc463`) | Clean M4, `v0.1.0-rc.1` |
 |---|---|---|
 | 1 | MCP unusable in Claude Code (tools fetch failed) | Fixed: Connected, tools listed |
 | 2 | `verify` replies 4–16 MB | Fixed: 2.7–3.8 KB, with the counterexample in the summary |
@@ -100,4 +100,4 @@ command's stdout, stderr and exit code, MCP replies and watch events);
 `mac-smoke-rc1.log` `40662593…5973`.
 
 Attempts:
-- `v0.0.0-rc.1` (`7782b13`), 2026-10-14: install only; that draft was withdrawn for `v0.1.0-rc.1` before the smoke test.
+- `v0.0.0-rc.1` (`e00ac7b`), 2026-10-14: install only; that draft was withdrawn for `v0.1.0-rc.1` before the smoke test.

@@ -10,7 +10,7 @@ vstd and exports, and the owner's decisions on the proposed notes in ADRs
 | Field | Value |
 |---|---|
 | Environment | Native EC2 c7i.8xlarge (32 vCPU), us-east-1, Ubuntu 24.04, one idle lane; each commit built there with `vargo build --release`; pinned Z3 4.16.0 |
-| Sail source | `4f373727` (main) scripts: `perf-real.sh`, `verus-determinism.py` helpers |
+| Sail source | `c4cb6076` (main) scripts: `perf-real.sh`, `verus-determinism.py` helpers |
 | Raw evidence | `fperf-evidence2.tgz`, sha256 `04d8f6800741dcb9212100884502e4de0a491345ad84962d6e932a10e3099c46` (outside the repository) |
 
 ## Fork tests (local Linux x86-64, a fresh clone per commit)

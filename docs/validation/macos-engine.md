@@ -133,7 +133,7 @@ archive digest and every runtime file checked):
 | Field | Value |
 |---|---|
 | Status | **Pass** |
-| Source | Sail `main` `4c1392a`, 2026-10-14 (lane L39); runtime `13a1176c` (manifest `c95d5f9a686d…`) |
+| Source | Sail `main` `9339deb`, 2026-10-14 (lane L39); runtime `13a1176c` (manifest `c95d5f9a686d…`) |
 | Environment | EC2 mac-m4.metal, Apple M4 (4 performance and 6 efficiency cores, 24 GiB), macOS 27.0 (26A428), us-east-1b, a fresh instance with only rustup, the stock Verus release and this checkout added; load average 4–7 during the checks (the checks' own work; about 1.5 from macOS services when idle) |
 | Scope | Engine source build with vstd verification; `test-engine.py`; `test-cancel.py`; `ci/run.sh conformance fast pr` with `SAIL_ENGINE_BUILD` set to the fetched pinned runtime. One run of each, correctness only |
 
@@ -152,7 +152,7 @@ Logs: `l39-mac-engine.tgz` `78845938…8b3d`, holding `engine-build.log`
 ## Release smoke test (runtime `13a1176c`)
 
 `scripts/release-smoke.sh` on the draft `v0.0.0-preview.3` archives, built by
-`scripts/release.sh` from `14a5445` (rebased on `main` `6f22621`, which
+`scripts/release.sh` from `14a5445` (rebased on `main` `8c72b7f`, which
 includes the macOS managed-reuse fix #99), each in a fresh directory with an
 empty `SAIL_CACHE_DIR`, the stock Verus release on `PATH` and Rust 1.98.1. The
 macOS archive carries the pinned runtime fetched anonymously from the fork

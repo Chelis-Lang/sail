@@ -41,7 +41,7 @@ it. It is an investigation only: no product code changed. Lane L40.
 - **`sail verify --incremental` was slower than plain** on vest, capybarakv
   and verismo (0.5–0.7×). Run from the package directory without `-p`,
   every managed run recompiled the Verus macro crates and verified vstd
-  again. This still happens on `origin/main` `49487ef7`, and also with
+  again. This still happens on `origin/main` `25d1910f`, and also with
   vest's own crates.io vstd. From vest's workspace root with
   `-p vest_lib`, an unchanged managed run takes 1.5 s and an edit 31 s
   (issue #157). A tester using managed mode from a package directory could
@@ -55,7 +55,7 @@ it. It is an investigation only: no product code changed. Lane L40.
 | | |
 |---|---|
 | Hosts | 2 × EC2 c7i.4xlarge (16 vCPU, 30 GiB), us-east-1, Ubuntu 24.04, `scripts/perf-host.sh up l40` and `l40b`, one timed run at a time per host, nothing else on the host |
-| Sail | `63e8dfb4` (this branch's base), release build of `sail-cli`, `sail-shim`, `sail-conformance` |
+| Sail | `0e7f8c8d` (this branch's base), release build of `sail-cli`, `sail-shim`, `sail-conformance` |
 | Stock Verus | 0.2026.10.04.426d8b0 (`cargo xtask fetch-verus`), Z3 4.16.0 |
 | Fork Verus | engine runtime `engine-runtime-13a1176c-linux` (fork commit `13a1176c`, archive sha256 `a28e212e…7c2`, as pinned in `engine/verus/artifact-linux.json`), used as a plain `cargo verus`/`verus` |
 | Projects | corpus pins in `corpus/corpus.toml`, fetched by `sail-conformance fetch`; each copy's Verus dependencies patched to the pinned Verus source exactly as conformance does (`sail_verus::patch`) |
@@ -176,7 +176,7 @@ printed `Current evidence … 1 target reports reused`.
 
 The harness runs each project from its package directory without `-p`.
 That condition triggers the problem, not the patched Verus dependencies. A
-check on `origin/main` `49487ef7` used the engine runtime pinned there and
+check on `origin/main` `25d1910f` used the engine runtime pinned there and
 the unmodified vest, with crates.io vstd. From `vest/vest_lib`, cold took
 83 s, then two unchanged runs took 61 s each and an edit 62 s, with vstd
 compiled and verified every time. From `vest/` with `-p vest_lib`, cold

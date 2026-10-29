@@ -14,7 +14,7 @@ and edit runs show no regression.
 
 | Field | Evidence |
 |---|---|
-| Source | Base `3520f2b4` (the 0.1.0 candidate before its merge as #249). Candidate: the three #232 commits on that base, measured from the committed tree. They were then rebased onto main `4f373727`, whose code differs from the base only in shipped-record path remapping, a note's wording and tests. That rebase was not re-measured |
+| Source | Base `3520f2b4` (the 0.1.0 candidate before its merge as #249). Candidate: the three #232 commits on that base, measured from the committed tree. They were then rebased onto main `c4cb6076`, whose code differs from the base only in shipped-record path remapping, a note's wording and tests. That rebase was not re-measured |
 | Runtime | Fork `9c0ca7e7`, variant `7d829946…-4ed2dee08bc877ae`, pinned Z3 4.16.0; stock oracle 0.2026.10.18.7d82994 |
 | Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, host build (no CI image), Rust 1.99.1 Cargo for both arms |
 | Scope | Demo (`sail new --lib` / `cargo verus new --lib`) first run with an empty cache; public-profile Vest cycle (A cold, B edit, A returned, A unchanged, comment no-op) |
@@ -139,7 +139,7 @@ Instant revert stays intact and gets faster. The change is an accepted
 
 | Field | Evidence |
 |---|---|
-| Source | Main `006ee5d0`; branch `perf/cold-retention` `ea5f4d66` (main plus the scoping commit). The branch was then rebased onto main `e45f9031` as `0514c265` with the same diff. Main by then serves the shipped vstd proof under a raised `--rlimit` (#268) and ships vstd solver replies (#287), which change Vest's absolute cold times; that rebase was not re-measured |
+| Source | Main `908abe1b`; branch `perf/cold-retention` `ea5f4d66` (main plus the scoping commit). The branch was then rebased onto main `539dbb7b` as `0514c265` with the same diff. Main by then serves the shipped vstd proof under a raised `--rlimit` (#268) and ships vstd solver replies (#287), which change Vest's absolute cold times; that rebase was not re-measured |
 | Runtime | macOS `7d829946…-e9b69a75ea390499`, Linux `7d829946…-81186034d2e137a2` (fork `f8589ed4`); stock oracle 0.2026.10.18.7d82994, Rust 1.99.1 |
 | Environment | macOS: EC2 mac-m4.metal, us-east-1d, macOS 27.0, idle apart from the cohort. Linux: native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, Linux release trees staged by `ci/run.sh release`, run inside the CI image (`core`) with the verifier toolchain reduced to the README profile |
 | Scope | Demo first run; public-profile Vest cycle (A cold, B edit, A returned, A unchanged), `-p vest_lib -- --rlimit 100` |
@@ -234,7 +234,7 @@ Vest's cold run is now faster than stock on Linux (−2.2%); on macOS it is
 
 | Field | Evidence |
 |---|---|
-| Source | Main `e45f9031`; #289 (closure-scoped source check) `7ea42f2b`; branch `perf/pipelined-native` `780fc392` (#289 plus ADR 0061). Rebased afterwards onto main `e8e62867` (#276 adds a closure-difference note) with the same diff; the rebase was not re-measured |
+| Source | Main `539dbb7b`; #289 (closure-scoped source check) `7ea42f2b`; branch `perf/pipelined-native` `780fc392` (#289 plus ADR 0061). Rebased afterwards onto main `9ccbe879` (#276 adds a closure-difference note) with the same diff; the rebase was not re-measured |
 | Runtime | macOS `7d829946…-e9b69a75ea390499`, Linux `7d829946…-81186034d2e137a2` (fork `f8589ed4`); stock 0.2026.10.18.7d82994, Rust 1.99.1 |
 | Environment | Full release trees from `scripts/release.sh stage` (shipped vstd bundle and replies). macOS: EC2 mac-m4.metal, us-east-1d, macOS 27.0. Linux: native EC2 c7i.8xlarge, us-east-1, inside the CI image (`core`), README verifier toolchain |
 | Scope | Demo first run; public-profile Vest cycle, `-p vest_lib -- --rlimit 100`; three rounds per platform, arms rotated; one JSON instant-revert round per platform |

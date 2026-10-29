@@ -118,7 +118,7 @@
 on EC2 c7i.4xlarge (us-east-1, Ubuntu 24.04, no other work on the host, one
 timed run at a time), Sail's Verus `73dea021`, 2026-10-15. Every mode runs in
 the same rotation: plain stock `cargo verus verify`; the removed
-pass-through (`main` at `4cd6fcaa`); managed verification before this change
+pass-through (`main` at `5f7ece1a`); managed verification before this change
 (PR #155 at `27fee790`); and this change. Seconds:
 
 | Project, phase | plain | pass-through | before (#155) | after |
@@ -257,7 +257,7 @@ spelling correction; final-code qualification follows below.
 `scripts/perf-loops.sh` with `SAIL_PERF_BASELINES`, three
 rounds, medians, EC2 c7i.4xlarge (us-east-1, Ubuntu 24.04, no other work
 on the host, one timed run at a time), Sail's Verus `73dea021`,
-2026-10-16. "main" is `502fc669` (#173), the pass-through `4cd6fcaa`.
+2026-10-16. "main" is `6deb592f` (#173), the pass-through `5f7ece1a`.
 This host ran about 3% slower than the one above (plain vest edit 43.2 s
 against 41.8 s). Seconds:
 
@@ -302,7 +302,7 @@ unchanged re-runs 0.36 s and 0.10 s over Cargo's no-op):
   observe metadata taken earlier).
 
 **Final-code qualification.** Corrected `6563a170` against released rc.5
-`c3687990`, isolated c7i.8xlarge/us-east-1, same fork `73dea021` and pinned Z3,
+`eecaf731`, isolated c7i.8xlarge/us-east-1, same fork `73dea021` and pinned Z3,
 three alternating, interleaved rounds: unchanged demo 0.388 to 0.207 s,
 unchanged vest 1.013 to 0.539 s, demo body edit 1.154 to 0.957 s, vest body
 edit 24.078 to 23.817 s. Vest edit ranges overlap, so that edit gain remains

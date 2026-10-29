@@ -288,7 +288,7 @@ not accepted.**
   own boundary trace. The `native-output-established` record carries the
   proxy's arguments and its tool-read environment, with credential-like
   values withheld. Rerun on native EC2 c7i.4xlarge (us-east-1, lane `adm3`)
-  from `38b04b12` plus that change, with runtime `9c0ca7e7`: all five cases
+  from `2b60da7c` plus that change, with runtime `9c0ca7e7`: all five cases
   pass with the same verdicts, refusal reasons and exit codes as the
   `strace` run above. Evidence `adm3.tgz` sha256
   `a9e760dac8567ec348e021366356983445300f81c83bd134779c9f36efd59c62`.

@@ -10,7 +10,7 @@ smaller than estimated and is left unchanged (see below).
 
 | Field | Evidence |
 |---|---|
-| Source | Main `2293db1f` (before the shipped solver replies of #287; this change does not touch them) against branch `perf/miss-hashing` (this PR), each staged by `ci/local.sh release` with its own shipped vstd proof (archives sha256 `07f3eda6…` main, `00af742b…` branch). Both proofs have identity `0391f755…`; the branch's manifest also records `sysroot_shape` |
+| Source | Main `e2d349b7` (before the shipped solver replies of #287; this change does not touch them) against branch `perf/miss-hashing` (this PR), each staged by `ci/local.sh release` with its own shipped vstd proof (archives sha256 `07f3eda6…` main, `00af742b…` branch). Both proofs have identity `0391f755…`; the branch's manifest also records `sysroot_shape` |
 | Runtime | Fork `f8589ed4`, variant `7d829946…-81186034d2e137a2`, pinned Z3 4.16.0; stock Verus `0.2026.10.18.7d82994` x86-linux |
 | Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, lane `hash1020`. Rustup with default 1.99.0 and pinned 1.99.1 |
 | Toolchains | *Minimal*: 1.99.1 minimal profile plus `rust-src` (676 MB). *Developer*: the same plus `rustc-dev` and `llvm-tools` (1.6 GB) |
@@ -85,7 +85,7 @@ on that trust boundary. The daemon's per-handshake solver read is lever 1.3.
 ## Gates
 
 On native c7i.8xlarge lane `hash1020g`, source before the rebase onto
-`13ef5258` and `e45f9031` (which do not touch this code): workspace gate (832
+`13d52647` and `539dbb7b` (which do not touch this code): workspace gate (832
 tests, 37 skipped), all 35 solver tests, all E2E phases plus extra, and PR
 conformance pass. FAST: 147 Same of 147 in all four modes. STANDARD: 159 Same
 in pass-through and cache fill; cache warm and engine each record one

@@ -31,7 +31,7 @@ The existing whole-project pairing and `check_output` remain unchanged.
 
 ## Evidence and remaining gate
 
-- Original native attempt, 2026-10-17, source `6af7d10` on main `2936ead2`:
+- Original native attempt, 2026-10-17, source `6af7d10` on main `ee6914c7`:
   **FAIL**, all 18 Anvil Sail/fork-Sail rows exit before a solver handshake.
   Non-JSON partial verification intentionally routes to the plain verification
   refusal. Raw final archive SHA-256

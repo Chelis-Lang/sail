@@ -50,7 +50,7 @@ rather than ordinary managed unchanged-call performance.
 - Both immutable fork runtime archives validate on anonymous download and
   both ordinary Sail archive factories pass. The frozen consumer passes full
   FAST and STANDARD, including the 21 bounded mutation/control comparisons.
-- Latest cumulative source: main `6f0a4232` plus this runtime selection,
+- Latest cumulative source: main `fbd5d682` plus this runtime selection,
   code-qualified as `be573d46`; later changes are documentation only. On a
   native c7i.4xlarge in us-east-1 using the pinned MCP CI image, workspace
   1,066 tests, solver 42, full E2E plus extra and every PR arm pass
@@ -68,7 +68,7 @@ rather than ordinary managed unchanged-call performance.
 
 ## Installed CLI matrix
 
-Both factories stage Sail `e51e4660` with the exact runtime pins and qualified
+Both factories stage Sail `fc7cd0c7` with the exact runtime pins and qualified
 retained-proof manifests in this change. Each platform completes all 27
 scripted scenarios in three rounds (162 samples). The installed binaries stay
 frozen for their mutation cohorts. Later opt-in contract-profile changes on
@@ -160,7 +160,7 @@ Indexed attempts, 2026-10-24–25:
 - Initial Mac install post-check expects a nonexistent `vstd_proof` field;
   checking the saved successful commands against the documented
   `dependency_build` provenance passes both cold and unchanged controls.
-- After integrating `6f0a4232`, the first Mac gate sees an extra restart in
+- After integrating `fbd5d682`, the first Mac gate sees an extra restart in
   the fake-Cargo unbound watch fixture. The unchanged isolated test and full
   host retry pass (1,055 tests). Cause unknown; the observation and original
   failed log remain linked in #306. No assertion or timeout changed.

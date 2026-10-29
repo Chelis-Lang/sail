@@ -64,5 +64,10 @@ them.
 - Validation records for each gate are in [validation/](validation/). Design
   notes are in [design/](design/), milestone reports in [reports/](reports/),
   and research in [survey/](survey/README.md).
+- Sail commit identities in these records name commits on `main` wherever an
+  equivalent exists. Some records also cite commits from unmerged research,
+  evidence and release-candidate branches. Those commits are not part of the
+  published history; such a record's identity is the SHA-256 it cites for its
+  evidence, archives and runtimes.
 - [Verus issues](verus-issues/README.md): local reproductions and workarounds
   for upstream behaviour.

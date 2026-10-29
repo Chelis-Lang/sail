@@ -13,7 +13,7 @@ remove compiler-byte checks or change receipt admission.
 
 ## Native comparison
 
-EC2 c7i.8xlarge, us-east-1, 2026-10-24. Sail `e51e4660` versus that source
+EC2 c7i.8xlarge, us-east-1, 2026-10-24. Sail `fc7cd0c7` versus that source
 plus this fix; both independently staged archives use runtime `7d9d5410`.
 Anvil uses its real Cargo 1.98.0 toolchain selection. Three rotated unchanged
 pairs follow the retained warm-up and normal real-project harness setup.
@@ -41,7 +41,7 @@ compares failing and passing output to stock, checks unchanged Cargo no-ops,
 and requires explicit no-reuse JSON. All PR arms pass 33 Same, and all full
 FAST arms pass 147 Same. STANDARD passes all four arms (159 Same and
 13,166 functions each), plus all 21 bounded mutation/control comparisons.
-The cumulative integration on main `d24297db` passes 1,056 workspace tests,
+The cumulative integration on main `88248a2b` passes 1,056 workspace tests,
 42 solver tests, full E2E including extra and all four PR conformance arms
 (33 Same / 311 functions each). The Mac host gate passes all 1,045 tests
 with Clippy clean. No checks are weakened.
