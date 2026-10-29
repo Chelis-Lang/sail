@@ -804,16 +804,19 @@ fn closed_stderr_sink_does_not_deadlock_a_large_diagnostic() {
 
 /// Starts a daemon on `cache` at `socket` and waits for its socket.
 fn start_daemon(socket: &Path, cache: &Path) {
-    let (sock, root) = (socket.to_path_buf(), cache.to_path_buf());
-    std::thread::spawn(move || {
-        sail_daemon::serve(&sock, &root, Arc::new(sail_daemon::Stats::default()))
-    });
-    for _ in 0..100 {
-        if socket.exists() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
+    // The socket name can appear before listen and daemon initialization
+    // finish. Bind completely before launching the client, as the daemon's
+    // own integration fixtures do; a path-existence poll is not readiness.
+    let server = match sail_daemon::bind(
+        socket,
+        cache,
+        Arc::new(sail_daemon::Stats::default()),
+        &sail_daemon::Config::default(),
+    ) {
+        Ok(server) => server,
+        Err(error) => unreachable!("cannot bind cached-session daemon: {error}"),
+    };
+    std::thread::spawn(move || server.run());
 }
 
 /// Every entry file under `cache`.
