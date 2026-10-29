@@ -4214,7 +4214,24 @@ fn run_recorded(
         // if an unexpectedly scheduled unit left the same input bytes.
         let _ = std::fs::remove_file(&schedule_path);
     }
-    let stamp_after = super::input::mutation_stamp(&after_run);
+    // An unchanged call can retain the very vector its final mutation stamp
+    // folds, instead of rediscovering and restamping it during recording.
+    // The invocation check only chooses this allocation; all recording
+    // authority below is unchanged. A scoped result intentionally does not
+    // claim whole-target reuse, so its target flag cannot choose this path.
+    // Verifying calls keep the original stamp-only path.
+    let (stamp_after, replay_observation) = if record.is_some()
+        && !retried
+        && !forced
+        && replay_only_invocations(&paths.run.join("invocations"))
+    {
+        match super::input::mutation_observation(&after_run) {
+            Some((stamp, vector)) => (Some(stamp), Some(vector)),
+            None => (None, None),
+        }
+    } else {
+        (super::input::mutation_stamp(&after_run), None)
+    };
     let absent = absent.finish();
     let currentness = if !paths.reuse
         || !before.complete
@@ -4515,7 +4532,8 @@ fn run_recorded(
                 context: paths.receipts.parent()?,
                 slot: paths.invocation_slot.as_deref(),
                 target: &paths.target,
-                observation: super::input::mutation_vector(&after_run, stamp_after.as_ref()?)?,
+                observation: replay_observation
+                    .or_else(|| super::input::mutation_vector(&after_run, stamp_after.as_ref()?))?,
                 identity: &identity_paths,
                 siblings: sibling_receipts(&paths, &result.context_sha256)
                     .into_iter()

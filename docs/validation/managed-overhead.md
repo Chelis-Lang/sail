@@ -12,6 +12,81 @@ Validation of cheaper managed checks described in
 | Scope | Managed receipt/input/store lifecycle via full end-to-end suite; stock-versus-shim/fork/engine differential corpus |
 | Limits | No corpus-wide managed-workflow claim; residual overhead keeps #156 open; no final-head cold or Mac performance claim |
 
+## v0.2.0 within-call projection and stable sidecars (#560)
+
+The candidate avoids replacing byte-identical regular sidecars (input state,
+read-check and snapshot hints), with atomic replacement of symbolic aliases.
+It also shares pure target revisions only within the original complete source
+observation. A complete metadata/source/configuration key selects each cached
+projection; every batch still checks the observation's original stamp. Changed
+selection, new configuration, incomplete observations and retries read afresh.
+No content digest crosses calls.
+
+Native source `ec0f47ed` passes the full gate (1,249 ordinary tests), solver51,
+full E2E including extra, and all four PR arms (33 Same / 311 functions each).
+Corrected combined Mac `0d3138d1` passes strict Clippy and 1,238 host tests.
+The latter changes only a projection fixture to use its physical root: the
+original Mac alias fixture safely declined the memo and failed its hit-count
+expectation. Its production refusal was correct; no gate was weakened.
+
+A separate diagnostic profile compares `707de5cf` (metadata/cache fixes and
+stable sidecars already present) with `867fd4ec` on Linux and `0d3138d1` on
+Mac, all with fork `47fb3be6`. Hosts: native c7i.8xlarge/us-east-1 and
+mac-m4.metal/us-east-1b/macOS 27.0. Each arm retains one cold call and ten
+full unchanged calls with replay disabled, diagnostic events and memory
+sampling. Arms run sequentially, not interleaved; there is no stock arm.
+
+| Project | Linux before / after, s | Mac before / after, s |
+|---|---:|---:|
+| Anvil, same focused scope | 1.818 / 1.536 | 1.554 / 1.378 |
+| Vest, rlimit100 | 0.420 / 0.425 | 0.480 / 0.479 |
+| CapybaraKV | 0.397 / 0.379 | 0.385 / 0.368 |
+| IronKV | 0.168 / 0.169 | 0.176 / 0.176 |
+
+Anvil's target-record phase falls from 569.083 to 269.345 ms on Linux and
+394.504 to 225.573 ms on Mac. CapybaraKV falls 88.222 to 65.702 ms and
+62.666 to 45.896 ms respectively. Other differences are inconclusive. The
+single cold pair per arm does not establish a cold gain. These profiles
+isolate the projection cut, not the already-present metadata/sidecar changes,
+and do not qualify tiny edits or release parity.
+
+Raw evidence remains outside Git:
+
+| Artifact | SHA-256 |
+|---|---|
+| Native ordinary/solver/E2E/PR log | `412b0da5a9774e99f8efc02e32dc091ba34facb697d8adeb01104afd13d2e698` |
+| Linux profiles | `90efa81c304657e2d609b19cce5188ddc3cbf56d0cb74aa7f177c99de194016f` |
+| Mac profiles | `372b329f5718a57befa8eea22c12e0236aac864a0e240e802dc95d23c0d333c9` |
+| Corrected Mac gate | `a5bee5b2cde7d1424fc74b08b2030e26ad7de1115737ef2a049e2fbcd28d1e66` |
+
+Indexed attempt: `867fd4ec` Mac host gate passed 1,237 tests and failed the
+one nonphysical-root fixture above; corrected `0d3138d1` passes all 1,238.
+Failed log SHA-256 `21ddf18710bf61fc97924fb431eb29dfff2cd3a103ec4fdcce448fffd05f78ca`.
+
+## Final source observation candidate (#558)
+
+The first unchanged call can retain the source vector from its final mutation
+stamp, instead of rediscovering every alias and restamping every source path
+later during recording. Both values derive from the same complete keyed readback;
+the digest and serialized vector agree with the original separate observations
+on an unchanged tree. Missing paths and symlinks remain represented. A
+same-size edit with restored mtime changes the stamp and refuses replay.
+
+This changes no cross-run trust or two-second settle rule. Full currentness,
+zero verifiers, no retry/force/store seeding, original output/events and every
+recording gate still apply. Verifying calls keep the stamp-only path. Native
+before/after recording cost remains pending. The first candidate passes a
+native full gate (1,253 ordinary tests), solver51, full E2E plus extra and
+all four PR conformance arms. Mac Clippy and 1,242 host tests pass.
+
+Indexed attempt: the first Anvil recording comparison (`5d147efb`) uses a
+whole-target `reused` bit as an allocation hint. Scoped reports intentionally
+leave that bit false even when no verifier starts, so Anvil keeps the old
+vector path and the comparison cannot measure this cut. The corrected hint
+uses the existing replay-only invocation predicate, while retaining every
+final recording authority check. No scoped report is promoted to whole-target
+reuse.
+
 ## Correctness
 
 The integration retains #183's complete foreign dependency closure binding:
