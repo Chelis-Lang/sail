@@ -194,6 +194,9 @@ fn verify_never_runs_a_cargo_verus_from_path() {
     // overlapping package/cache roots deliberately take the plain fallback.
     let cache = root.with_extension("cache");
     let _ = std::fs::remove_dir_all(&cache);
+    let cargo_home = root.with_extension("cargo-home");
+    let _ = std::fs::remove_dir_all(&cargo_home);
+    assert!(std::fs::create_dir_all(&cargo_home).is_ok());
     // A Verus project, so verification gets as far as choosing a Verus.
     assert!(std::fs::create_dir_all(root.join("src")).is_ok());
     assert!(
@@ -224,6 +227,8 @@ fn verify_never_runs_a_cargo_verus_from_path() {
             .arg("verify")
             .current_dir(&root)
             .env("PATH", &path)
+            // This fixture needs an unconfigured Cargo setup, independent of the caller.
+            .env("CARGO_HOME", &cargo_home)
             .env("SAIL_CACHE_DIR", &cache)
             // Longer than any Unix socket path: no daemon is started.
             .env("SAIL_DAEMON_SOCKET", root.join("d".repeat(120)))
@@ -273,6 +278,7 @@ fn verify_never_runs_a_cargo_verus_from_path() {
     );
     let _ = std::fs::remove_dir_all(&root);
     let _ = std::fs::remove_dir_all(&cache);
+    let _ = std::fs::remove_dir_all(&cargo_home);
 }
 
 #[test]

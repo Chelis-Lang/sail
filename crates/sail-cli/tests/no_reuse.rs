@@ -48,6 +48,8 @@ impl Fixture {
         // versioned job endpoint name is appended: use the short /tmp root.
         let root = Path::new("/tmp").join(format!("sail-nr-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
+        // Preserve HOME/Rustup while excluding caller Cargo configuration.
+        assert!(std::fs::create_dir_all(root.join("cargo-home")).is_ok());
         let project = root.join("input");
         assert!(std::fs::create_dir_all(project.join("src")).is_ok());
         assert!(
@@ -108,6 +110,7 @@ exit 1
             }
         }
         for (key, value) in [
+            ("CARGO_HOME", self.root.join("cargo-home")),
             ("SAIL_CARGO_VERUS", self.root.join("cargo-verus")),
             ("VERUS_Z3_PATH", self.root.join("z3")),
             ("SAIL_CACHE_DIR", self.root.join("cache")),
