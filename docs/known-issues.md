@@ -52,10 +52,6 @@ relations remain open; source/hash binding does not establish them.
   ([#589](https://github.com/Chelis-Lang/sail/issues/589)). Git-based source
   validation then refuses before running proofs. Use a standalone checkout
   from the frozen Git bundle for qualification; do not disable source checks.
-- `cargo xtask fetch-verus` can install in the default cache while validation
-  follows a custom `SAIL_CACHE_DIR` ([#581](https://github.com/Chelis-Lang/sail/issues/581)).
-  Use `SAIL_VERUS_HOME` pointing to an existing primary release's install parent
-  for that scoped setup; the separate tooling fix remains open.
 - Read-back currentness brackets its reads with metadata stamps of every
   recorded path (#387). A concurrent edit that restores every stamped
   field, including the inode change time, is not detected; that needs a
@@ -104,15 +100,10 @@ Current numbers are in [performance](performance.md).
   0.1.0 rounds the Vest revert and fix revert took about 12 s instead of
   1.1 s, with every check served from the solver cache. That is still faster
   than stock's 22 s and the verdicts matched; the cause is not diagnosed.
-- **A cache path through a symlink loses the shipped vstd proof**
-  ([#601](https://github.com/Chelis-Lang/sail/issues/601)). On macOS,
-  `SAIL_CACHE_DIR=/tmp/x` (where `/tmp` links to `/private/tmp`) verified
-  vstd itself during 0.1.0 qualification, with a `SAIL3138` note that wrongly
-  blamed vstd's dependency versions or build settings; `/private/tmp/x`
-  was served the proof. Verdicts are unaffected. The likely cause, not yet
-  confirmed, is that the proof's path mapping binds only the cache path as
-  spelled, not its canonical form. Workaround: give the physical path, for
-  example `SAIL_CACHE_DIR="$(realpath /tmp/x)"`.
+- Release 0.1.0 can miss shipped vstd through a symlinked cache (#601).
+  The candidate resolves managed paths physically and passes installed-release
+  first-Serve checks on both platforms ([record](validation/cache-path-selection.md)).
+  Use a physical cache path with 0.1.0.
 - **A miss re-solves the whole bucket**
   ([#158](https://github.com/Chelis-Lang/sail/issues/158)). Editing one
   function re-sends its module's whole solver session; on Anvil one bucket
