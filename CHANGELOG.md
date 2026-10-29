@@ -3,6 +3,13 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning once the API is published.
 
+## Unreleased
+
+- Share the actual SMT streaming splitter and token lexer operations with
+  conditionally checked stock-Verus proofs for original bytes, ordered
+  emissions and token spans. Preserve the public chunk/finish behavior and
+  lexical errors; [qualification and limits](docs/validation/checked-stream-parser.md).
+
 ## 0.1.0 (2026-10-29)
 
 First release. `sail verify` is a drop-in for `cargo verus verify` that gives
@@ -87,11 +94,6 @@ known issues.
 
 - Reuse successful proof-source envelope syntax checks for identical source
   and proof mode while keeping binding and drift validation fresh.
-
-- Share the actual SMT streaming splitter and token lexer operations with
-  conditionally checked stock-Verus proofs for original bytes, ordered
-  emissions and token spans. Preserve the public chunk/finish behavior and
-  lexical errors; [qualification and limits](docs/validation/checked-stream-parser.md).
 
 - Extend acceptance-model checks for engine completion, normal declines,
   same-subject fallback and per-target repair origins; require every enrolled
