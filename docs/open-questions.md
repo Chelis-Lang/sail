@@ -475,3 +475,11 @@ planned for releases after 0.1.0. The owner answered all twelve on
     theorem remains #368. Final evidence review and current-head CI still
     gate this delivery. This records lead acceptance, not an explicit owner
     approval or a broader service proof.
+
+43. **Additional exact shipped-vstd profiles for v0.2.0.** Approve
+    [ADR 0090](decisions/0090-additional-exact-vstd-profiles.md): retain the
+    exact compiler-boundary key and every admission check, add Vest's actual
+    closure/features, bump lookup schema to 13 and cap an explicitly qualified
+    bundle at eight units. The post-frontend route is unselected. CapybaraKV's
+    native provenance refusal and Anvil's focused cold overhead remain separate
+    work. #563 explicitly requires owner sign-off before adoption.
