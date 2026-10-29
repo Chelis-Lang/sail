@@ -56,6 +56,14 @@ semantic versioning once the API is published.
   An unclassified shipped-vstd miss now names the trace route without
   attributing it to dependency versions.
 
+- Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in
+  the same managed run when program, arguments, directory, effective
+  environment and every stamped metadata and toolchain input match; anything
+  else runs Cargo. `SAIL_MANAGED_METADATA_MEMO=0` turns this off and
+  `SAIL_MANAGED_METADATA_MEMO_TRACE=FILE` checks it against real Cargo. Skip
+  receipt reads and the dep-info walk when their results would go unused
+  (#560).
+
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed
   spans and error behavior; [qualification and limits](docs/validation/checked-command-classifier.md).
