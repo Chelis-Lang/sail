@@ -3583,7 +3583,7 @@ fn run_recorded(
         // A hint is only ever a hint: failing to record one changes nothing.
         let _ = std::fs::create_dir_all(hint_path.parent().unwrap_or(&config.cache))
             .map_err(|e| Error::new("SAIL3102", e.to_string()))
-            .and_then(|()| json(&hint_path, &selection));
+            .and_then(|()| super::files::json_if_changed(&hint_path, &selection));
     }
     let (mut before, before_observation_stamp) = match speculative {
         Some((_, snapshot, stamp)) => (snapshot, stamp),
@@ -3682,7 +3682,7 @@ fn run_recorded(
             "the process environment changed during verification setup",
         ));
     }
-    super::files::json(&paths.input_state, &data)?;
+    super::files::json_if_changed(&paths.input_state, &data)?;
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
         "targets":expected.iter().map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
@@ -3976,7 +3976,7 @@ fn run_recorded(
             serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
         after_data["sail_source_inputs_by_target"] =
             serde_json::to_value(super::source_inputs::targets(&source_state)).unwrap_or_default();
-        super::files::json(&paths.input_state, &after_data)?;
+        super::files::json_if_changed(&paths.input_state, &after_data)?;
         // Kept only if nothing it observed changed while Cargo read the
         // metadata (which may rewrite the lockfile).
         let (mut after, after_stamp) = match speculative {

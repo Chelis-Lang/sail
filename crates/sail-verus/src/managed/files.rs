@@ -238,6 +238,19 @@ pub(crate) fn json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     json_bytes(path, &bytes)
 }
 
+/// Publish a stable sidecar only when its complete serialized bytes differ.
+/// This saves a replacement, never an observation or a currentness check.
+/// Links and unreadable files take the ordinary atomic replacement path.
+pub(super) fn json_if_changed<T: Serialize>(path: &Path, value: &T) -> Result<()> {
+    let bytes = serde_json::to_vec(value).map_err(|e| Error::new("SAIL3102", e.to_string()))?;
+    if std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file())
+        && std::fs::read(path).is_ok_and(|previous| previous == bytes)
+    {
+        return Ok(());
+    }
+    json_bytes(path, &bytes)
+}
+
 /// Identity of a file without reading its bytes: device, inode, size and
 /// modification time. The engine runtime's revalidation record uses it; the
 /// proof context identifies installed tools by content instead
@@ -379,6 +392,49 @@ pub(crate) fn event(value: &serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stable_sidecar_preserves_time_only_for_identical_bytes()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-stable-json-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let path = root.join("state.json");
+        let first = serde_json::json!({"revision":"first"});
+        json_if_changed(&path, &first)?;
+        let old = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1000);
+        std::fs::File::options()
+            .write(true)
+            .open(&path)?
+            .set_modified(old)?;
+        let recorded = std::fs::metadata(&path)?.modified()?;
+        json_if_changed(&path, &first)?;
+        assert_eq!(std::fs::metadata(&path)?.modified()?, recorded);
+        let second = serde_json::json!({"revision":"other"});
+        json_if_changed(&path, &second)?;
+        assert_eq!(std::fs::read(&path)?, serde_json::to_vec(&second)?);
+        assert_ne!(std::fs::metadata(&path)?.modified()?, recorded);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stable_sidecar_replaces_equal_byte_alias_without_writing_its_target()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-stable-json-link-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let target = root.join("target");
+        let path = root.join("state.json");
+        let value = serde_json::json!({"revision":"first"});
+        json(&target, &value)?;
+        std::os::unix::fs::symlink(&target, &path)?;
+        json_if_changed(&path, &value)?;
+        assert!(std::fs::symlink_metadata(&path)?.is_file());
+        assert_eq!(std::fs::read(&target)?, serde_json::to_vec(&value)?);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 
     #[test]
     fn capture_holds_only_replayable_events_of_its_own_run() {

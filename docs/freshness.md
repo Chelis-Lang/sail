@@ -99,6 +99,10 @@ uncovered aliases or incomplete coverage require fresh reads. Source hashes
 are not carried between calls, and compiler identity checks still read the
 actual compiler bytes.
 
+After these checks, stable input and read-check sidecars are replaced only
+when their complete serialized bytes change. Keeping an identical sidecar
+does not skip any input observation, mutation stamp or receipt validation.
+
 A run is Current only when all of the following hold:
 
 - the content revision of its inputs (every source, manifest, lockfile,

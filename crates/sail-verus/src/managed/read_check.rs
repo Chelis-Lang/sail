@@ -13,7 +13,7 @@
 //! otherwise unchanged result reports Unknown.
 
 use super::InputSnapshot;
-use super::files::{digest, json};
+use super::files::{digest, json_if_changed};
 use super::input::proposed_order;
 use crate::{Error, Result};
 use sail_acceptance::inputs::{InputFact, InputValue, compare_readback};
@@ -53,7 +53,7 @@ pub(super) fn record(
     files: Vec<(PathBuf, Option<String>)>,
     bindings: BTreeMap<PathBuf, PathBuf>,
 ) -> Result<()> {
-    json(
+    json_if_changed(
         &context.join(FILE),
         &Record {
             version: VERSION,
@@ -317,6 +317,7 @@ fn compare_observed(record: &Record, reads: &[(u8, &Path, Observation)]) -> (boo
 
 #[cfg(test)]
 mod tests {
+    use super::super::files::json;
     use super::*;
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 

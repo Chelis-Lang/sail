@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Keep unchanged managed input, read-check and snapshot-hint sidecars in place
+  after comparing their complete serialized bytes. Input observations and
+  currentness checks still run on every full invocation.
+
 - Bind cached SMT command keys to their owned original input and independently
   acknowledged solver writes; freeze complete delivery before terminal metadata.
 - Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in
