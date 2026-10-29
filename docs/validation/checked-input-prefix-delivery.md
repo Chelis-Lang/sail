@@ -4,6 +4,22 @@ Status: source candidate only; no current Stock, Cargo, native, conformance or
 cost qualification is claimed. Normal qualification refuses while `prefix`
 discovery is pending. Historical compatibility counts are not current results.
 
+| Source | Date | Attempt |
+|---|---|---|
+| `369fb802` | 2026-10-29 | Whole-prefix positive FAIL: 181 verified, one failing function, 264 inventory entries; `command_head` lacks two lemma calls' slice-length bound. No timeout/resource/VIR error; final source/runtime/tool guards pass. |
+
+The closed failed raw packet has SHA-256
+`05bc1173a802854b94a70c451cec7ff996f9526749cab9d2320c23cfccc03e19`
+(private key `experiments/2026-10-29/acceptance-prefix-369fb802-discovery.tgz`).
+An independent audit checks the canonical source, all 316 generated programs
+and the raw result; retained runtime/tool maps are reviewed rather than
+independently rehashed from runtime payloads. All 37 negative controls remain
+unrun and no inventory is locked.
+
+The candidate now adds proof-only assertions connecting the mathematical view
+to the actual slice's `usize` length. Contracts, executable bodies, controls
+and resource limits are unchanged. Fresh whole-root discovery remains pending.
+
 The candidate extracts the original key/prefix/delivery cores from `e07c9f39`
 onto the command/persistence stack originally at `2baa1336`, now restacked
 on `2ac97a50`. The new raw-input module

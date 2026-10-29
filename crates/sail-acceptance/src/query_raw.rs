@@ -374,6 +374,8 @@ sail_verified! {
         let mut lexer = crate::query_lex::Lexer::new(bytes);
         let observed = lexer.command_head();
         sail_proof! {
+            assert(bytes@.len() == bytes.len());
+            assert(bytes@.len() <= usize::MAX);
             assert forall|start: int, end: int| head_span(bytes@, start, end)
                 implies match observed { Ok((_open, name)) => name@ == bytes@.subrange(start, end), Err(_) => false } by {
                 head_span_transition(bytes@, start, end);
