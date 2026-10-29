@@ -122,9 +122,19 @@ class Memory(unittest.TestCase):
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertGreater(json.loads(output.read_text())['daemon_peak_kb'], 12000)
                 self.assertIn(str(child.pid), json.loads(state.read_text()))
+                # A cold server can detach before the first descendant scan.
+                # Completion sampling must discover it from fresh status while
+                # preserving the measured command's own figures.
+                before = json.loads(output.read_text())
+                before['daemon_peak_kb'] = 0
+                output.write_text(json.dumps(before))
+                state.write_text('{}')
                 run = subprocess.run(command + ['--snapshot'], capture_output=True, timeout=10)
                 self.assertEqual(run.returncode, 0, run.stderr)
                 snapshot = json.loads(output.read_text())
+                self.assertGreater(snapshot['daemon_peak_kb'], 12000)
+                self.assertEqual(snapshot['tree_peak_kb'], before['tree_peak_kb'])
+                self.assertEqual(snapshot['exit'], before['exit'])
                 if sys.platform.startswith('linux'):
                     self.assertGreater(snapshot['daemon_hwm_kb'][str(child.pid)], 12000)
             finally:

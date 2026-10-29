@@ -145,8 +145,13 @@ def run(args):
     tracker = Tracker(known)
     if args.snapshot:
         tracker.sample(table, None)
-        result = {'daemon_peak_kb': tracker.daemon_peak,
-                  'daemon_hwm_kb': daemon_hwm(table, tracker.daemons)}
+        # A server may have detached between samples before it was ever seen
+        # as a descendant. The harness supplies fresh status after the call;
+        # retain that completion observation and seed the following phase.
+        result = load(args.output, {})
+        result.update(daemon_peak_kb=max(result.get('daemon_peak_kb') or 0,
+                                         tracker.daemon_peak),
+                      daemon_hwm_kb=daemon_hwm(table, tracker.daemons))
     else:
         try:
             child = subprocess.Popen(args.command)

@@ -154,6 +154,7 @@ def report(out):
 
 def memory_report(out, rows, modes, phases, by):
     print("\nMemory, MiB, median (min-max). Tree and daemon RSS are sampled every 50 ms;"
+          " daemon RSS also includes a completion observation from fresh status;"
           " shared pages are counted per process and short peaks can be missed."
           " The sampler is excluded. Largest is the measured child's wait4 high-water"
           " usage, including accounted descendants; sampler ps children are excluded."

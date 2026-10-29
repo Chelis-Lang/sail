@@ -638,6 +638,12 @@ run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run on
   find "$live" -mindepth 1 -maxdepth 1 -exec mv {} "$prov"/ \;
   t1=$(now)
   s1=$(stats)
+  if [ -n "$memory_file" ]; then
+    # Status now knows even a daemon that detached before its first sample.
+    # Completion sampling stays outside the measured wall interval.
+    python3 -I "$here/perf-mem.py" --snapshot --output "$memory_file" \
+      --state "$memory_state" --status "$daemon_status"
+  fi
   local sessions started served
   sessions=$(find "$prov" -name '*.json' | wc -l | tr -d ' ')
   # One JSON object per file, without a trailing newline.

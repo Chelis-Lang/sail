@@ -25,8 +25,10 @@ process and shorter peaks may be missed. The sampler's own process and its
 `ps` children are excluded. Observed detached daemons remain tracked by PID
 and start identity across phases; the cache daemon reported by `sail status`
 is also seeded before each run. A daemon that detaches before its first
-observation may escape sampling; Linux's final per-process `VmHWM` supplies a
-separate lifetime cross-check. At arm end, `MODE.daemon-memory.json` retains
+observation is discovered from fresh status at completion and sampled again
+outside the wall interval. This can still miss an earlier short peak;
+Linux's final per-process `VmHWM` supplies a separate lifetime cross-check.
+At arm end, `MODE.daemon-memory.json` retains
 that cross-check before the harness stops the daemon. Cache byte usage from
 `sail status` is not RSS.
 
