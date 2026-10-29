@@ -8,7 +8,7 @@
 //! `verus` and `cargo-verus` on `PATH`.
 
 use std::io::Read as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use sha2::{Digest, Sha256};
