@@ -17,6 +17,11 @@ a clean Git checkout does not establish which binary Cargo executed.
 Real-project benchmarks keep their timings and logs and delete each completed
 arm's temporary source, build artifacts and cache before starting the next arm.
 
+`cargo xtask fetch-verus` and stock-runtime lookup share cache selection:
+`SAIL_VERUS_HOME` overrides the primary install; otherwise `SAIL_CACHE_DIR`,
+`XDG_CACHE_HOME/sail` or `HOME/.cache/sail` supplies the root, in that order.
+Secondary releases always use the selected Sail cache.
+
 Both native host helpers support primary Git checkouts and linked worktrees:
 
 ```sh

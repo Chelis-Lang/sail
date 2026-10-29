@@ -1037,7 +1037,7 @@ pub(crate) fn plan_miss(
             if reason == TOOLCHAIN_MISS
                 && admission::Closure::resolve(metadata, registry).is_none() =>
         {
-            closure_miss(metadata).unwrap_or_else(|| CLOSURE_MISS.to_owned())
+            closure_miss(metadata).unwrap_or_else(|| LOOKUP_MISS.to_owned())
         }
         _ => reason.to_owned(),
     }
@@ -1053,9 +1053,8 @@ fn components_miss(extra: &[String]) -> String {
 const TOOLCHAIN_MISS: &str =
     "the installed Rust toolchain or Sail's Verus differs from the one the proof was built with";
 
-/// Also the reason when Cargo resolved vstd's closure differently.
-pub(crate) const CLOSURE_MISS: &str =
-    "vstd's dependency versions or build settings differ from the shipped build's";
+/// No more specific refusal was established; do not invent a closure mismatch.
+pub(crate) const LOOKUP_MISS: &str = "the build did not match the shipped build when vstd was looked up (set SAIL_SHIPPED_TRACE=DIR to diagnose)";
 
 fn miss_reason(
     wrapped: bool,

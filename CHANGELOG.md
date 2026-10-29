@@ -7,6 +7,11 @@ semantic versioning once the API is published.
 
 - Bind cached SMT command keys to their owned original input and independently
   acknowledged solver writes; freeze complete delivery before terminal metadata.
+- Use the same cache selection for `cargo xtask fetch-verus` and runtime
+  lookup, including `SAIL_CACHE_DIR` (#581). Managed verification resolves
+  symlinked cache roots before deriving compiler and proof paths (#601).
+  An unclassified shipped-vstd miss now names the trace route without
+  attributing it to dependency versions.
 
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed

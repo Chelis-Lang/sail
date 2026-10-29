@@ -46,18 +46,6 @@ pub(crate) fn file_sha256(path: &Path) -> Result<String> {
     }))
 }
 
-fn install_root(release: &str) -> Result<PathBuf> {
-    if let Some(home) = std::env::var_os("SAIL_VERUS_HOME").filter(|v| !v.is_empty()) {
-        return Ok(PathBuf::from(home));
-    }
-    let cache = std::env::var_os("XDG_CACHE_HOME")
-        .filter(|v| !v.is_empty())
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))
-        .ok_or("neither SAIL_VERUS_HOME, XDG_CACHE_HOME nor HOME is set")?;
-    Ok(cache.join("sail").join("verus").join(release))
-}
-
 fn run(cmd: &mut Command) -> Result<()> {
     let status = cmd
         .status()
@@ -99,14 +87,8 @@ pub fn fetch() -> Result<()> {
         .get(host())
         .ok_or_else(|| format!("no pinned Verus asset for host {}", host()))?;
     // SAIL_VERUS_HOME names the primary release's install only.
-    let root = if pins.is_secondary {
-        sail_verus::cache_dir()
-            .map_err(|e| e.to_string())?
-            .join("verus")
-            .join(&pins.verus.release)
-    } else {
-        install_root(&pins.verus.release)?
-    };
+    let root = sail_verus::toolchain::install_root(&pins.verus.release, !pins.is_secondary)
+        .map_err(|error| error.to_string())?;
     let install = root.join(&asset.dir);
     // A release that bundles no z3 uses the primary's (`z3 = "primary"`).
     let bundled = asset.z3.as_deref() != Some("primary");

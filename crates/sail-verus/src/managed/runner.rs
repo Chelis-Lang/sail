@@ -4207,7 +4207,7 @@ fn run_recorded(
         shipped_miss.get_or_insert_with(|| {
             super::shipped::forwarded_miss(&config.args)
                 .or_else(|| super::shipped::closure_miss(&data))
-                .unwrap_or_else(|| super::shipped::CLOSURE_MISS.to_owned())
+                .unwrap_or_else(|| super::shipped::LOOKUP_MISS.to_owned())
         });
     }
     if let Some(reason) = shipped_miss {
