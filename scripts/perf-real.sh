@@ -68,8 +68,9 @@
 #   SAIL_PERF_UNCHANGED N: measure N unmodified reruns immediately after cold
 #                      (`unchanged`, `unchanged2`, ...; Sail records its
 #                      unchanged-call replay on the first and replays later ones)
-#   SAIL_PERF_NOREPLAY 1: then one more unmodified rerun, `unchanged-noreplay`,
-#                      with SAIL_MANAGED_NOOP=0 for Sail (the full unchanged path)
+#   SAIL_PERF_NOREPLAY N: then N full-path unmodified reruns with
+#                      SAIL_MANAGED_NOOP=0 (`unchanged-noreplay`, then numbered
+#                      from 2); 1 retains the release measurement recipe
 #   SAIL_PERF_REVERT   1: after each edit, restore the pristine source and
 #                      measure that as `EDIT-revert`; or a list of edit names
 #                      to revert only after those (e.g. "body-early fix", so
@@ -95,6 +96,8 @@
 #                      a user would
 #   SAIL_PERF_MEMORY  0 disables the 50 ms process-tree/daemon RSS sampler
 #                      (for sampler overhead controls only)
+#   SAIL_PERF_DIAG    1 retains per-arm explanations, setup events, replay
+#                      traces and run result notes; never use for timed acceptance
 #   SAIL_PERF_VSTD_LOCK  the shipped build's Cargo.lock for `registry`
 #                      (default: the one in the release beside `sail`)
 # Needs sail, sail-z3, sail-conformance, cargo verus, python3, perl, git, jq.
@@ -547,6 +550,15 @@ measured() { # Actual executable and arguments, with the mode's environment.
   fi
 }
 
+diagnostic_environment() { # MODE DIRECTORY: called only inside the measured subshell.
+  case "$1" in sail | fork-sail | incremental)
+    if [ "${SAIL_PERF_DIAG:-0}" = 1 ]; then
+      export SAIL_EXPLAIN=1 SAIL_JOB_EVENTS="$2/events.jsonl" SAIL_MANAGED_NOOP_TRACE="$2/noop.trace" \
+        SAIL_SHIPPED_TRACE="$2/shipped"
+    fi ;;
+  esac
+}
+
 verus_cmd() { # MODE EXTRA_VERUS_ARGS...
   local mode="$1"; shift
   local sub=verify sail_output=()
@@ -624,6 +636,11 @@ run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run on
   # own directory afterwards.
   live="$out/r$round/prov/$mode.live"
   mkdir -p "$prov" "$live"
+  local diag="$out/r$round/$mode.diagnostics"
+  if [ "${SAIL_PERF_DIAG:-0}" = 1 ]; then
+    mkdir -p "$diag"
+    printf '\nphase: %s\n' "$phase" >>"$diag/noop.trace"
+  fi
   s0=$(stats)
   # Quietness: settle, then record the 1-minute load average (which still
   # carries the previous run's own work) and the processes running right now.
@@ -637,6 +654,7 @@ run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run on
   mkfifo "$memory_go"
   (cd "$dir/$pkg" && if [ -n "${SAIL_PERF_VERUS_BUILD:-}" ]; then export SAIL_VERUS_BUILD="$SAIL_PERF_VERUS_BUILD"; fi &&
     if [ ${#run_env[@]} -gt 0 ]; then export "${run_env[@]}"; fi &&
+    diagnostic_environment "$mode" "$diag" &&
     PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$live" verus_cmd "$mode" ${time_args[@]+"${time_args[@]}"}) >"$log" 2>&1 &
   local invocation_pid=$! attempt
   # Bound sampler setup, retaining a failed sample if it cannot become ready.
@@ -720,9 +738,12 @@ run_mode() { # ROUND MODE
   for ((i = 1; i <= ${SAIL_PERF_UNCHANGED:-0}; i++)); do
     run_one "$round" "$mode" "$dir" "unchanged$([ "$i" = 1 ] || echo "$i")"
   done
-  if [ "${SAIL_PERF_NOREPLAY:-0}" = 1 ]; then
-    run_one "$round" "$mode" "$dir" unchanged-noreplay SAIL_MANAGED_NOOP=0
-  fi
+  local noreplay="${SAIL_PERF_NOREPLAY:-0}"
+  case "$noreplay" in '' | *[!0-9]*) echo 'SAIL_PERF_NOREPLAY must be a nonnegative integer' >&2; exit 2 ;; esac
+  noreplay=$((10#$noreplay))
+  for ((i = 1; i <= noreplay; i++)); do
+    run_one "$round" "$mode" "$dir" "unchanged-noreplay$([ "$i" = 1 ] || echo "$i")" SAIL_MANAGED_NOOP=0
+  done
   case "$mode" in
     sail | fork-sail | incremental)
       python3 -I "$here/perf-matrix.py" vstd-proof "$cache" "$out/r$round/$mode.cold.log" \
@@ -746,6 +767,21 @@ run_mode() { # ROUND MODE
     apply_op "$dir" noop "$noop_file" end
     run_one "$round" "$mode" "$dir" noopend
     reset_files "$dir"
+  fi
+  if [ "${SAIL_PERF_DIAG:-0}" = 1 ]; then
+    local diag="$out/r$round/$mode.diagnostics"
+    mkdir -p "$diag/results" "$diag/retention-costs"
+    while IFS= read -r result; do
+      cp "$result" "$diag/results/$(basename "$(dirname "$result")").json"
+    done < <(find "$cache/projects" -path '*/runs/*/result.json' -type f 2>/dev/null || true)
+    python3 -I - "$cache" "$diag/retention-costs" <<'PY'
+import pathlib, shutil, sys
+cache, output = map(pathlib.Path, sys.argv[1:])
+for source in cache.glob('projects/**/retention-costs/*.json'):
+    target = output / source.relative_to(cache)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, target)
+PY
   fi
   # Capture the daemon's lifetime Linux HWM before either stop path; it is
   # not the sampled simultaneous tree peak and is reported separately.

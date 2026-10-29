@@ -51,6 +51,14 @@ be measured before claiming memory acceptance for a release.
 `XDG_CACHE_HOME/sail` or `HOME/.cache/sail` supplies the root, in that order.
 Secondary releases always use the selected Sail cache.
 
+`SAIL_PERF_DIAG=1` retains a `rN/MODE.diagnostics/` directory with explanatory
+notes, managed setup events, a replay trace marked by phase, run results and
+retention-cost records before the arm's cache is removed. Sail runs use one
+constant event/trace path per arm, because trace settings are replay inputs.
+Use this only to diagnose a slowdown; rerun without diagnostics for acceptance
+numbers. A replay miss on a source revert is expected and does not explain a
+retained-restoration miss; use result notes and retention costs.
+
 Both native host helpers support primary Git checkouts and linked worktrees:
 
 ```sh

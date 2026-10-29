@@ -24,6 +24,9 @@ semantic versioning once the API is published.
   (#560).
 - Preserve the release factory's proof evidence during native source sync,
   including root-owned evidence, while retaining tracked-source overrides.
+- Retain optional per-arm benchmark diagnostics, run notes and retention costs
+  with `SAIL_PERF_DIAG=1`, so replay and retained-restoration misses remain
+  diagnosable after benchmark caches are removed (#595).
 
 - Record sampled process-tree and daemon peak RSS, plus child high-water RSS,
   in real-project benchmark rows and reports on Linux and macOS. Existing
