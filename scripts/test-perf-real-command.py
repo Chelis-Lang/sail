@@ -38,7 +38,7 @@ class Commands(unittest.TestCase):
                                         capture_output=True, text=True, timeout=15)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 row = (root / 'out/results.tsv').read_text().strip().split('\t')
-                self.assertEqual(len(row), 22)
+                self.assertEqual(len(row), 22, result.stderr)
                 self.assertEqual(row[4], '7')
                 self.assertEqual((root / 'out/r1/plain.cold.log').read_text(), 'child-output\n')
                 self.assertFalse(list((root / 'out/r1').glob('*.go')))
