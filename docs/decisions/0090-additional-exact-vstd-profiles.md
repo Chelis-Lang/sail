@@ -1,6 +1,6 @@
 # 0090: Additional exact shipped-vstd profiles
 
-- **Status:** proposed; owner sign-off required before adoption
+- **Status:** accepted by the owner on 2026-10-29; implementation qualification pending
 - **Date:** 2026-10-29
 - **Amends:** [ADR 0048](0048-shipped-dependency-build.md),
   [ADR 0060](0060-shipped-vstd-under-a-raised-rlimit.md)

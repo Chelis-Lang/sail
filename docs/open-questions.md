@@ -476,20 +476,23 @@ planned for releases after 0.1.0. The owner answered all twelve on
     gate this delivery. This records lead acceptance, not an explicit owner
     approval or a broader service proof.
 
-43. **Additional exact shipped-vstd profiles for v0.2.0.** Approve
+43. **Additional exact shipped-vstd profiles for v0.2.0.**
+    **Answered 2026-10-29 (owner):** approve
     [ADR 0090](decisions/0090-additional-exact-vstd-profiles.md): retain the
     exact compiler-boundary key and every admission check, add Vest's actual
     closure/features, bump lookup schema to 13 and cap an explicitly qualified
     bundle at eight units. The post-frontend route is unselected. CapybaraKV's
     native provenance refusal and Anvil's focused cold overhead remain separate
-    work. #563 explicitly requires owner sign-off before adoption.
+    work. Implementation and release gates remain; design approval does not
+    establish qualification.
 
-44. **Settled source and target observations across managed calls.** Approve
+44. **Settled source and target observations across managed calls.**
+    **Answered 2026-10-29 (owner):** approve
     [ADR 0091](decisions/0091-settled-source-and-target-digests.md) for the bounded
     prototype and separately measured source/owned-target optimizations in #560.
     The read-only Mac component spike is 544.236 ms fresh versus 42.727 ms for
     ledger/stat matching; it is not a Sail timing. Full stamps, fresh namespace
     discovery, the original two-second settle rule, complete Current origin,
-    dirty cleanup and fail-closed controls remain. #560 explicitly requires
-    owner approval because current freshness rules forbid source digests from
-    crossing calls. No such implementation has been adopted.
+    dirty cleanup and fail-closed controls remain. Qualify both optimizations
+    separately before selection; approval is for the bounded implementation
+    and its measured qualification, not an acceptance claim.
