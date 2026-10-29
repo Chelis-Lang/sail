@@ -17,6 +17,53 @@ a clean Git checkout does not establish which binary Cargo executed.
 Real-project benchmarks keep their timings and logs and delete each completed
 arm's temporary source, build artifacts and cache before starting the next arm.
 
+Both native host helpers support primary Git checkouts and linked worktrees:
+
+```sh
+scripts/perf-host.sh sync LANE
+scripts/perf-host.sh run LANE git status --short
+```
+
+For an already approved Mac host, use `scripts/perf-host-mac.sh sync LANE`;
+its `ec2-user` transport and host allocation policy are unchanged.
+
+Sync freezes the actual tracked/untracked working files, committed HEAD and
+staged entries, then installs standalone Git metadata on the host. Dirty inputs
+stay dirty; staged-new files modified again retain both versions. It copies no
+local Git config, hooks, linked-worktree pointers or index optimization flags.
+Content checks and current timestamps remain in force; native Cargo outputs
+remain on the host. The existing target, agent, bytecode, conformance and release
+output exclusions still apply. This is not a clean-source certificate: proof
+gates must retain their normal clean-source and canonical-byte checks.
+
+HEAD/index-tracked paths override those exclusions: tracked project settings
+under `.claude` still transfer, including dirty contents and staged additions.
+Tracked deletions stay deleted; files are not restored from committed blobs.
+Untracked private siblings and agent worktrees remain excluded. A host-side
+`sail-sync-owned-paths.json` ledger records prior tracked names so committed
+branch deletions also retire previously transferred files inside exclusions.
+It is replaced atomically under the sync lock and retains the union of owned
+names after failure, allowing a retry to remove stale source without deleting
+unknown private siblings. Initial migration reads only standalone Git metadata,
+never a linked-worktree pointer or redirected/shared Git metadata. A legacy
+pointer or nonempty checkout without known ownership refuses with `SAIL9003`;
+use a fresh lane, or explicitly clean the destination under owner control while
+preserving any needed build/private files. This is not an in-place migration of
+unknown legacy source. Malformed ledger state refuses before source
+mutation; do not discard the ledger while reusing a native checkout.
+
+Sparse/skip-worktree, intent-to-add and submodule index entries refuse before
+remote mutation. Stage or unstage intent entries and use a full ordinary
+worktree. Source, index or HEAD changes during sync also refuse. A failed
+transfer leaves no admitted Git metadata; an interrupted connection can retain
+the owned `sail-sync.lock` on the host. Check that no sync is running before
+removing that lock and retrying. Full local Git merge-operation state is not
+exported; unmerged index stages and actual conflict files are preserved.
+
+`python3 scripts/test-perf-host-sync.py` exercises real Git and rsync with local
+SSH transport. It is included in the workspace gate. See the
+[source-sync record](validation/host-source-sync.md) for qualification scope.
+
 The e2e shell scripts need no GNU tools on macOS: fixture edits use portable
 `sed`, and bounded steps use coreutils' `timeout` where it is installed or
 `ci/timeout.py` (the same options and exit statuses, checked against GNU by

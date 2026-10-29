@@ -250,6 +250,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | Code | Meaning | What to do |
 |---|---|---|
 | `SAIL9001` | `scripts/perf-host.sh down` could not verify termination or complete resource cleanup; recorded lane files are retained | Read the AWS error, refresh authentication or permissions as needed, then retry the same `down LANE`. A successful waiter must also be followed by a confirmed terminated/absent instance before resource deletion |
+| `SAIL9003` | Native host source sync could not freeze or transfer consistent source/index/HEAD inputs and standalone Git metadata | Read the error and retry from a stable full worktree. Unsupported index states refuse before transfer. After an interrupted connection, check that no sync is running before removing the owned remote `sail-sync.lock` and retrying. A failed sync is not a qualified source checkout. |
 
 `SAIL3134`: the disabled retained-content experiment could not remove a
 partially restored output. The attempt refuses; do not treat it as a cache miss
