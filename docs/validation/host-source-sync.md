@@ -171,3 +171,16 @@ The earlier #183 native attempt remains rejected because its compiled source
 could not be established. Its exact original sync cause is unresolved; this
 reproduction does not attribute that historical failure. The accepted rerun is
 bound to its complete source and executable identities in the #183 evidence.
+
+## Release proof-evidence follow-up
+
+The factory's default `release-out-proof-evidence/` is now an explicit output
+exclusion. Unknown native evidence stays untouched; explicitly tracked files
+still override the exclusion. All 24 real Git/rsync fixture controls pass
+locally, including an inaccessible evidence directory, private local/remote
+siblings and tracked source beneath the same name. Native Linux and Mac
+refresh qualification remains pending.
+
+| Source | Date | Result | Cause |
+|---|---|---|---|
+| `7ad933bf` | 2026-10-29 | Linux source sync failed with SAIL9003 before the refreshed gate | Prior successful release staging left root-owned proof evidence outside the original exclusions; raw sync log SHA-256 `af6028b53db12e7bf0f86d11df068ec843a4145a12b70d662fc70fc99424845d` |
