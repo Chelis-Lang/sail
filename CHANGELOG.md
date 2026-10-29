@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Remember a previously observed unqualified Cargo and take the existing
+  no-reuse fallback before managed setup when its native tool identities,
+  rustup selection, invocation, environment and metadata stamps still match.
+  Custom wrappers and external path toolchains retain the ordinary late check.
+
 - Keep working-directory and argument-specific managed observations in eight
   bounded slots, so alternating workspace and member calls can retain their
   own unchanged-call records. Replays republish their validated latest-context

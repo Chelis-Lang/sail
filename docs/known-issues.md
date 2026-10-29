@@ -251,3 +251,9 @@ deep gate compares exactly.
   engine lacks falls back to stock verification (`SAIL3124`), and the engine
   arm counts it as `engine-lacks-feature`
   ([reproduction](../corpus/repros/engine-without-singular/)).
+
+The v0.2.0 unqualified-Cargo early-refusal candidate is limited to rustup's
+installed native Cargo programs and proxy. External path toolchains and
+custom wrappers keep the existing late no-reuse fallback. Its performance
+qualification is tracked in #561; see the
+[record](validation/unsupported-cargo-fallback.md).

@@ -64,3 +64,29 @@ Initial cumulative source copies omitted documentation and were refused by
 the gate; the complete Git merge passes. The first Mac run inherited a shared
 `CARGO_TARGET_DIR` and failed three fixtures; ordinary Cargo target selection
 passes all 1,045, with the failed log retained separately alongside it.
+
+## v0.2.0 early-refusal candidate (#561)
+
+The 2026-10-29 native c7i.8xlarge/us-east-1 comparison forces the real Cargo
+1.92.0 executable with Anvil's Rust 1.98.0 selection. Stock uses `cargo verus
+focus`; Sail uses `sail verify --output json`, both with
+`--lib -- --verify-module vdeployment_controller`. Separate project copies
+avoid shared Cargo fingerprints. All 20 interleaved pairs pass; median stock
+is 0.256365 s and Sail is 0.796584 s. Sail's witness is Unknown with no-reuse,
+without a complete or reused proof. Source is staged `867fd4ec`, fork
+`47fb3be6`, and stock Verus `0.2026.10.18.7d82994`.
+
+The candidate retains the existing late SAIL3139 observation as a negative
+hint. An early match binds actual installed Cargo bodies and the rustup
+proxy, toolchain-selection files, invocation/arguments, tool environment and
+metadata paths/stamps. Cargo reinstalls, selection/configuration/manifest
+changes, malformed records and a newly qualified source commit miss. It
+never enables proof reuse or reports Current. Custom wrappers, external path
+toolchains and unreadable identities keep the late path.
+`SAIL_UNQUALIFIED_CARGO_MEMO=0` disables this scheduling optimization for
+comparison. Native before/after and Mac qualification remain pending.
+
+Indexed attempt: the first measurement loop used human partial verification,
+which the established CLI contract rejects in both Sail and stock `verify`.
+That expected refusal is retained; the successful scoped JSON comparison
+above uses the documented real-project recipe. It is not a Sail defect.
