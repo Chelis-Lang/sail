@@ -61,6 +61,9 @@ impl Probe {
             VERSION,
             &config.workspace,
             &config.args,
+            &config.cache,
+            &config.sail,
+            &config.cargo_verus,
             &config.cargo,
             format!("{:?}", config.cargo_toolchain),
             environment.iter().collect::<Vec<_>>(),
@@ -199,6 +202,10 @@ fn selection_paths(config: &Config) -> Option<(BTreeSet<PathBuf>, Vec<PathBuf>)>
     let proxy = super::cargo_toolchain::observe(&config.workspace, &config.cargo, "").rustup_proxy;
     (native || proxy).then_some(())?;
     programs.insert(config.cargo.clone());
+    for program in [&config.sail, &config.cargo_verus] {
+        paths.insert(program.clone());
+        programs.insert(program.clone());
+    }
     let home = std::env::var_os("CARGO_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cargo")));
@@ -333,6 +340,8 @@ mod tests {
         std::fs::write(root.join("bin/rustup"), "proxy")?;
         std::fs::hard_link(root.join("bin/rustup"), root.join("bin/cargo"))?;
         std::fs::write(root.join("custom-cargo"), "opaque wrapper")?;
+        std::fs::write(root.join("sail"), "sail")?;
+        std::fs::write(root.join("cargo-verus"), "cargo-verus")?;
         let settings = root.join("rustup/settings.toml");
         let setting = |channel: &str| {
             std::fs::write(
