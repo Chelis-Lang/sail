@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Share target-revision projection work within one full managed call while
+  preserving fresh configuration discovery and the original source-stamp
+  check for every batch. Retries still read their own inputs.
+
 - Keep unchanged managed input, read-check and snapshot-hint sidecars in place
   after comparing their complete serialized bytes. Input observations and
   currentness checks still run on every full invocation.

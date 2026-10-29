@@ -2037,6 +2037,42 @@ fn receipt_covered_targets(
 struct RevisionObservation<'a> {
     snapshot: &'a super::input::InputSnapshot,
     stamp: Option<&'a String>,
+    /// Only this invocation's original observation shares projection work.
+    revisions: Option<&'a RevisionMemo>,
+}
+
+/// Pure target projections from the same complete source observation. Every
+/// batch still rechecks that observation's original stamp before using them.
+/// No disk state, content reads or retry observations enter this map.
+#[derive(Default)]
+struct RevisionMemo {
+    entries: std::sync::Mutex<HashMap<(String, String), String>>,
+    #[cfg(test)]
+    hits: std::sync::atomic::AtomicUsize,
+}
+
+impl RevisionMemo {
+    fn get(&self, selection: &str, id: &str) -> Option<String> {
+        let revision = self
+            .entries
+            .lock()
+            .ok()?
+            .get(&(selection.to_owned(), id.to_owned()))
+            .cloned()?;
+        #[cfg(test)]
+        self.hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Some(revision)
+    }
+
+    fn retain(&self, selection: &str, revisions: &HashMap<String, String>) {
+        if let Ok(mut known) = self.entries.lock() {
+            known.extend(
+                revisions
+                    .iter()
+                    .map(|(id, revision)| ((selection.to_owned(), id.clone()), revision.clone())),
+            );
+        }
+    }
 }
 
 fn dirty_receipt_packages(
@@ -2599,17 +2635,46 @@ fn target_revisions(
         && source.snapshot.complete
         && source.stamp.is_some()
     {
+        // The complete metadata and source revision bind the projection's
+        // selection. This memo belongs to the original observation only;
+        // retries and newly collected after-run observations have no memo.
+        // Absent configuration names are watch-only roots, outside the
+        // original content capture. Preserve the fresh projection's discovery
+        // of newly created configuration, including files above the workspace.
+        let invocation = data["sail_invocation_directory"]
+            .as_str()
+            .or_else(|| data["workspace_root"].as_str());
+        let home = std::env::var_os("CARGO_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cargo")));
+        let configuration = invocation.and_then(|invocation| {
+            let paths = super::input::configuration_paths(Path::new(invocation), home.as_deref());
+            super::input::stamp_paths(&paths.into_iter().collect())
+        });
+        let selection = configuration.and_then(|configuration| {
+            serde_json::to_vec(&(data, &source.snapshot.revision, configuration))
+                .ok()
+                .map(|bytes| digest(&bytes))
+        });
         let projected = crate::parallel::in_order(&requested, |&id| {
+            let cached = source
+                .revisions
+                .and_then(|memo| memo.get(selection.as_deref()?, id));
             (
                 id,
-                target_revision_with(data, id, |selected, extras| {
-                    super::input::snapshot_revision_projected(selected, extras, source.snapshot)
+                cached.unwrap_or_else(|| {
+                    target_revision_with(data, id, |selected, extras| {
+                        super::input::snapshot_revision_projected(selected, extras, source.snapshot)
+                    })
                 }),
             )
         });
         if let Some(projected) = target_revision_readback(&requested, projected)
             && super::input::unchanged_since(source.snapshot, source.stamp)
         {
+            if let (Some(memo), Some(selection)) = (source.revisions, selection) {
+                memo.retain(&selection, &projected);
+            }
             return projected;
         }
     }
@@ -3755,9 +3820,11 @@ fn run_recorded(
         .flatten()
         .filter_map(|entry| Some((entry.path(), read::<ReceiptRevision>(&entry.path())?)))
         .collect();
+    let revision_memo = RevisionMemo::default();
     let observation = RevisionObservation {
         snapshot: &before,
         stamp: before_observation_stamp.as_ref(),
+        revisions: Some(&revision_memo),
     };
     let dirty = dirty_receipt_packages(&receipt_revisions, &data, Some(observation));
     event(&serde_json::json!({
@@ -4099,6 +4166,7 @@ fn run_recorded(
         Some(RevisionObservation {
             snapshot: &after,
             stamp: after_stamp.as_ref(),
+            revisions: None,
         }),
     )?;
     let after_run = without_generated(&after, generated.as_deref());
@@ -7485,13 +7553,24 @@ mod tests {
         assert_eq!(rebound[0].1.input_revision, target_revision(&data, "vstd"));
         assert_eq!(rebound[0].1.clone().seal().checksum, rebound[0].1.checksum);
         let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let revision_memo = RevisionMemo::default();
         let observation = Some(RevisionObservation {
             snapshot: &observed,
             stamp: stamp.as_ref(),
+            revisions: Some(&revision_memo),
         });
         let projected = completed_receipts(&run, &data, observation)
             .unwrap_or_else(|e| unreachable!("fixture: {e}"));
         assert_eq!(projected[0].1.input_revision, rebound[0].1.input_revision);
+        let again = completed_receipts(&run, &data, observation)
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert_eq!(again[0].1.input_revision, rebound[0].1.input_revision);
+        assert!(
+            revision_memo
+                .hits
+                .load(std::sync::atomic::Ordering::Relaxed)
+                > 0
+        );
         // An edit after the observation must rebind to fresh bytes, even
         // though this include was already inside an observed package root.
         assert!(std::fs::write(&external, "changed after observation").is_ok());
@@ -7829,17 +7908,58 @@ mod tests {
         assert_eq!(target_revision(&data, &bin), bin_before);
         assert_ne!(target_revision(&data, "app"), package_before);
         let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let revision_memo = RevisionMemo::default();
         let observation = Some(RevisionObservation {
             snapshot: &observed,
             stamp: stamp.as_ref(),
+            revisions: Some(&revision_memo),
         });
         let ids = vec![lib.clone(), bin.clone()];
         let projected = target_revisions(&data, &ids, observation);
         assert_eq!(projected, target_revisions(&data, &ids, None));
         assert_eq!(projected.get(&lib), Some(&lib_before));
+        assert_eq!(target_revisions(&data, &ids, observation), projected);
+        assert_eq!(
+            revision_memo
+                .hits
+                .load(std::sync::atomic::Ordering::Relaxed),
+            2
+        );
+        // New ancestor configuration is outside the package walk. Even if
+        // its creation leaves the original content capture unchanged, a
+        // cached projection must discover it exactly as a fresh one does.
+        std::fs::create_dir_all(root.join(".cargo"))?;
+        std::fs::write(root.join(".cargo/config.toml"), "[build]\njobs=1\n")?;
+        let configured = target_revisions(&data, &ids, observation);
+        assert_eq!(configured, target_revisions(&data, &ids, None));
+        assert_ne!(configured.get(&lib), projected.get(&lib));
+        std::fs::remove_dir_all(root.join(".cargo"))?;
+        let mut changed_selection = data.clone();
+        changed_selection["sail_invocation_directory"] = serde_json::json!(app.join("src"));
+        let hits = revision_memo
+            .hits
+            .load(std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(
+            target_revisions(&changed_selection, &ids, observation),
+            target_revisions(&changed_selection, &ids, None)
+        );
+        assert_eq!(
+            revision_memo
+                .hits
+                .load(std::sync::atomic::Ordering::Relaxed),
+            hits
+        );
         // Another target's source binds only that target and the targets
         // that link it (#401); the library binds the binary.
         write("src/bin/probe.rs", "fn main() { }")?;
+        assert_eq!(
+            target_revisions(&data, &ids, observation),
+            target_revisions(&data, &ids, None)
+        );
+        assert_ne!(
+            target_revisions(&data, &ids, observation).get(&bin),
+            projected.get(&bin)
+        );
         assert_eq!(target_revision(&data, &lib), lib_before);
         assert_ne!(target_revision(&data, &bin), bin_before);
         write("src/m.rs", "m2")?;
@@ -7980,9 +8100,11 @@ mod tests {
             );
         }
         let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let revision_memo = RevisionMemo::default();
         let observation = Some(RevisionObservation {
             snapshot: &observed,
             stamp: stamp.as_ref(),
+            revisions: Some(&revision_memo),
         });
         let ids = vec!["vstd".to_owned(), "app".to_owned()];
         assert!(super::super::input::snapshot_metadata_projected(&data, &[], &observed).is_some());

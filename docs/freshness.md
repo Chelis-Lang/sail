@@ -99,6 +99,11 @@ uncovered aliases or incomplete coverage require fresh reads. Source hashes
 are not carried between calls, and compiler identity checks still read the
 actual compiler bytes.
 
+Target-revision projections from the original observation may also be shared
+within that call when their complete metadata selection and configuration
+stamps match. Every batch rechecks the observation's original mutation stamp;
+a retry or a new after-run observation does its own projection work.
+
 After these checks, stable input and read-check sidecars are replaced only
 when their complete serialized bytes change. Keeping an identical sidecar
 does not skip any input observation, mutation stamp or receipt validation.
