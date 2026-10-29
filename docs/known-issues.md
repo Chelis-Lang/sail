@@ -41,6 +41,12 @@ relations remain open; source/hash binding does not establish them.
 
 ## Input coverage and cache integrity
 
+- Compiler input observations report an empty-file checksum and size for
+  non-UTF-8 `include_bytes!` inputs
+  ([#599](https://github.com/Chelis-Lang/sail/issues/599)). Ordinary `.vir`
+  includes are retained with their correct checksums. Sail independently hashes
+  actual dependency files for receipt currentness; no stale Sail proof has
+  been demonstrated. The compiler-read metadata defect remains open.
 - Native host synchronization from a linked Git worktree copies its local
   `.git` pointer without reconstructing usable remote repository metadata
   ([#589](https://github.com/Chelis-Lang/sail/issues/589)). Git-based source
@@ -200,6 +206,13 @@ Current numbers are in [performance](performance.md).
 
 ## Tests and environment
 
+- **Incomplete trailing output in two test comparators.**
+  `z3_transcript::replies` and `cached_session::replies` check completed reply
+  counts but omit `ResponseSplitter::finish()`, so an incomplete trailing
+  suffix can be ignored ([#611](https://github.com/Chelis-Lang/sail/issues/611)).
+  The bounded input-prefix cost runner additionally checks stream completion;
+  it does not fix these repository helpers. No production wrong answer is
+  demonstrated. The helpers already check reply cardinality.
 - **Short fixture deadlines under heavy parallel load on macOS.** Exec of a
   freshly written executable has taken up to 10.5 s during
   `cargo nextest run --workspace -j 32` on an 8-core Mac. Fixtures whose

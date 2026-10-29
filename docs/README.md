@@ -67,6 +67,8 @@ them.
   command/response operations and [qualification](validation/checked-command-classifier.md).
 - [Shared cache persistence](design/checked-cache-persistence.md): record framing,
   write sequencing, [qualification](validation/checked-cache-persistence.md) and native limits.
+- [Input prefix and delivery](design/checked-input-prefix-delivery.md): owned raw
+  input, acknowledged writes and [bounded qualification](validation/checked-input-prefix-delivery.md).
 - Validation records for each gate are in [validation/](validation/). Design
   notes are in [design/](design/), milestone reports in [reports/](reports/),
   and research in [survey/](survey/README.md).

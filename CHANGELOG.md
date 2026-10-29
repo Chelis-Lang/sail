@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Bind cached SMT command keys to their owned original input and independently
+  acknowledged solver writes; freeze complete delivery before terminal metadata.
+
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed
   spans and error behavior; [qualification and limits](docs/validation/checked-command-classifier.md).
