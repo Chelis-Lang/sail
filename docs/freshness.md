@@ -27,6 +27,16 @@ toolchain to enable proof reuse, for example
 binary explicitly, unset it or point it at a qualified Cargo too. Sail does not
 change your toolchain selection or treat an unsupported protocol as proof authority.
 
+After a genuine unqualified-Cargo observation, Sail can remember its negative
+result and take that same fallback before managed setup. This scheduling hint
+requires unchanged native Rustup Cargo/proxy and Sail identities, selection
+files, invocation, effective environment and metadata stamps. Reinstalls,
+newly qualified versions, changed inputs or malformed records take the ordinary
+check. Custom wrappers and external path toolchains also keep that check.
+The hint grants no proof reuse or replay: JSON remains Unknown with its
+`SAIL3112` no-reuse reason. For diagnosis, compare with
+`SAIL_MANAGED_UNQUALIFIED_CARGO_MEMO=0 sail verify`.
+
 These labels describe your inputs, not the solver's verdict. A Current result
 can contain a failed proof. Only a Current, successful result can be reused as a
 proof receipt or accept a repair. CLI and MCP clients receive the same label.

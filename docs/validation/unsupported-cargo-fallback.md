@@ -65,7 +65,7 @@ the gate; the complete Git merge passes. The first Mac run inherited a shared
 `CARGO_TARGET_DIR` and failed three fixtures; ordinary Cargo target selection
 passes all 1,045, with the failed log retained separately alongside it.
 
-## v0.2.0 early-refusal candidate (#561)
+## v0.2.0 early refusal (#561)
 
 The 2026-10-29 native c7i.8xlarge/us-east-1 comparison forces the real Cargo
 1.92.0 executable with Anvil's Rust 1.98.0 selection. Stock uses `cargo verus
@@ -84,7 +84,7 @@ changes, malformed records and a newly qualified source commit miss. It
 never enables proof reuse or reports Current. Custom wrappers, external path
 toolchains and unreadable identities keep the late path.
 `SAIL_MANAGED_UNQUALIFIED_CARGO_MEMO=0` disables this scheduling optimization for
-comparison. Native before/after and Mac qualification remain pending.
+comparison. Native and Mac qualification is recorded below.
 
 Indexed attempt: the first measurement loop used human partial verification,
 which the established CLI contract rejects in both Sail and stock `verify`.
@@ -96,9 +96,47 @@ hint because Anvil's TOML toolchain file begins with a comment. Selection
 conservatively took the late path, so on/off times coincide. The corrected
 parser accepts valid commented TOML and retains strict named-channel checks;
 the native/proxy fixture now includes that exact header. This is a scheduling
-miss, not proof reuse or a verdict difference. Final timing remains pending.
+miss, not proof reuse or a verdict difference. Corrected timing is recorded below.
 
 Indexed attempt, `4715752f`: Clippy refuses the expanded subprocess fixture's
 109-line test. Shared program setup is extracted without changing any control
 or allowing the lint. Interpreter providers, including an installed Cargo or
 broker wrapper, retain the late path; native ELF/Mach-O bodies remain eligible.
+
+The final native-provider guard in `7ceb6423` passes the native full image
+gate (1,256 ordinary tests, 54 skipped), solver51, all local E2E phases plus
+extra, and four PR conformance arms. Each arm is 33/33 Same, 311 functions,
+zero unstable/different/infrastructure errors or skipped projects; five units
+report resource-count drift separately. Mac Clippy and all 1,245 host tests
+pass (54 skipped). Real Cargo timing uses installed native Cargo 1.92.0,
+Anvil Rust 1.98.0, fork `47fb3be6` and stock `0.2026.10.18.7d82994`.
+
+Each platform retains 20 rotated stock/memo-off/memo-on triples (60 calls),
+with separate stock/Sail project copies and five seconds between calls.
+Every call passes without Cargo compilation. Every Sail JSON result stays
+Unknown and no-reuse, with no complete or reused target proof. Timed calls
+use no diagnostic trace. These component measurements do not establish
+four-project parity, memory acceptance or deep release qualification.
+
+| Platform | Stock median, s | Sail memo off, s | Sail memo on, s | On minus stock, s |
+|---|---:|---:|---:|---:|
+| Native c7i.8xlarge, us-east-1 | 0.269296 | 0.814837 | 0.311894 | 0.042598 |
+| Native mac-m4.metal, us-east-1b, macOS 27.0 | 0.388642 | 0.878987 | 0.406701 | 0.018059 |
+
+Both meet #561's 0.1-second component timing allowance. The existing flags
+phase preserves full passing, failing and unchanged output through an opaque
+wrapper; the new local native Cargo-range case additionally requires a
+learned hint, two byte-identical unchanged human calls and Unknown/no-reuse
+JSON. That new native case remains pending; deep and deep-rvt are release
+gates, so #561 remains open.
+
+| Raw log retained outside Git | SHA-256 |
+|---|---|
+| Native `7ceb6423` gates and real triples | `e210f8be58ec9f30065c81c2a37fa5c18df8b284d2c406f5d3176c48328837cb` |
+| Mac `7ceb6423` host gate and real triples | `eaaff6065b20f0bc28ad047debd9907dd10100a3c025fcacf696e4c9aff60f27` |
+
+Indexed attempts: `4663f79c` Linux measurement was interrupted after its
+correctness gates when the real-Mac commented-toolchain selection miss made
+that candidate obsolete; all partial logs remain retained. The first Mac
+restaging attempt reused a nonempty evidence output and refused; staging to
+a fresh destination succeeded without changing product code or a check.

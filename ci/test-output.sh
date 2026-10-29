@@ -874,6 +874,23 @@ range_case() { # toolchain qualified|unqualified
   same "$label-pass-plain" "$label-pass-sail"
   [ "$(cat "$work/$label-pass-sail.rc")" = 0 ]
   if [ "$mode" = unqualified ]; then
+    # Exercise the native early-refusal candidate after the genuine late
+    # observation; the shell-wrapper flags fixture deliberately stays late.
+    for repeat in 1 2; do
+      CARGO_TARGET_DIR="$work/target-plain" quiet_run "$label-noop-$repeat-plain" cargo verus verify
+      CARGO_TARGET_DIR="$work/target-sail" quiet_run "$label-noop-$repeat-sail" "$sail" verify
+      same "$label-noop-$repeat-plain" "$label-noop-$repeat-sail"
+      if grep -qE '^ *(Compiling|Checking) ' "$work/$label-noop-$repeat-sail.err"; then
+        echo 'e2e: unqualified Cargo rebuilt an unchanged project' >&2
+        exit 1
+      fi
+    done
+    if [ "${SAIL_MANAGED_UNQUALIFIED_CARGO_MEMO:-1}" != 0 ]; then
+      python3 - "$SAIL_CACHE_DIR" <<'PY'
+import pathlib,sys
+assert list(pathlib.Path(sys.argv[1], "unqualified-cargo").glob("*.json")), "no native negative hint"
+PY
+    fi
     range_json "$label-json" unqualified
     echo "e2e: unqualified Cargo $toolchain: plain output, SAIL3139 fallback without receipts"
     return

@@ -183,6 +183,17 @@ For Anvil, leave `RUSTUP_TOOLCHAIN` unset so that its own toolchain file
 applies. On macOS Anvil also needs OpenSSL (`brew install openssl@3`, then set
 `OPENSSL_DIR`).
 
+## v0.2.0 unqualified-Cargo component
+
+Candidate `7ceb6423` reduces unchanged Anvil calls with native Cargo 1.92.0
+from 0.815 to 0.312 s on c7i.8xlarge/us-east-1, against stock's 0.269 s;
+Mac mac-m4.metal/us-east-1b/macOS 27.0 falls from 0.879 to 0.407 s, against
+0.389 s. Each is 20 rotated stock/off/on triples, with the established
+focused scope, no compilation and Unknown/no-reuse results. This does not
+replace the six-round release matrix above. See the
+[qualification record](validation/unsupported-cargo-fallback.md) for source,
+runtime, output controls, hashes and remaining gates.
+
 ## What to expect
 
 - **First use.** A matching project skips vstd verification using the proof
