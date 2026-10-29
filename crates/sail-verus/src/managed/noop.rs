@@ -1057,7 +1057,7 @@ mod tests {
                 );
                 let record: Record =
                     serde_json::from_slice(&std::fs::read(record_path(&cache, &key))?)?;
-                assert_eq!(record.version, 6);
+                assert_eq!(record.version, 7);
                 assert_eq!(record.events, replayed_events());
                 assert_eq!(record.environment.get(SHADOW), Some(&None));
                 assert!(
@@ -1068,11 +1068,12 @@ mod tests {
                 std::fs::write(root.join("key"), &key)?;
             }
         } else {
-            if operation == "legacy" {
+            if matches!(operation.as_str(), "legacy" | "legacy_slot") {
                 let path = record_path(&cache, &key);
                 let mut record: Record = serde_json::from_slice(&std::fs::read(&path)?)?;
-                // A version-5 record carries no job events.
-                record.version = VERSION - 1;
+                // Keep the pre-events refusal, and separately reject the
+                // immediately preceding layout without invocation slots.
+                record.version = if operation == "legacy" { 5 } else { 6 };
                 std::fs::write(path, serde_json::to_vec(&record)?)?;
             }
             let replay = replay(&config, &key, std::time::Instant::now());
@@ -1097,7 +1098,10 @@ mod tests {
                     assert_eq!(emitted, Vec::<serde_json::Value>::new());
                 }
             } else {
-                assert!(matches!(operation.as_str(), "changed" | "legacy"));
+                assert!(matches!(
+                    operation.as_str(),
+                    "changed" | "legacy" | "legacy_slot"
+                ));
                 assert!(replay.is_none(), "changed input or legacy record replayed");
                 // A miss writes no job events: the full run that follows
                 // writes its own.
@@ -1146,7 +1150,14 @@ mod tests {
             "input: input.rs\n# env-dep:SAIL_TEST_NOOP_DEP_ONLY_INPUT\n",
         )?;
         for operation in [
-            "prepare", "same", "job", "forced", "changed", "unknown", "legacy",
+            "prepare",
+            "same",
+            "job",
+            "forced",
+            "changed",
+            "unknown",
+            "legacy",
+            "legacy_slot",
         ] {
             std::fs::write(root.join("operation"), operation)?;
             let mut command = std::process::Command::new(std::env::current_exe()?);
@@ -1165,7 +1176,10 @@ mod tests {
             if operation == "forced" {
                 command.env("SAIL_MANAGED_FORCE", "1");
             }
-            if matches!(operation, "job" | "forced" | "changed" | "legacy") {
+            if matches!(
+                operation,
+                "job" | "forced" | "changed" | "legacy" | "legacy_slot"
+            ) {
                 // A daemon job worker's own variables keep the key: the same
                 // record replays, or misses, as for a plain JSON call.
                 command
