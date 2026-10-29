@@ -22,6 +22,7 @@ verification.
 | Trust model and differences from plain Verus | [Trust](trust.md), [divergences](divergences.md) |
 | Limitations and open problems | [Known issues](known-issues.md) |
 | Error codes | [Errors](errors.md) |
+| What changed in a release | [0.1.0 release notes](release-notes/0.1.0.md), [changelog](../CHANGELOG.md) |
 
 ## Experimental features
 

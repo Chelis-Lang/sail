@@ -3,7 +3,15 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning once the API is published.
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-29)
+
+First release. `sail verify` is a drop-in for `cargo verus verify` that gives
+the same verdicts and output while reusing solver answers, a preverified vstd
+and proofs of unchanged targets, so one-line edits are 1.2-2.5x faster than
+stock and undoing an edit can be up to about 34x faster. Prebuilt archives for
+Linux x86-64 and macOS on Apple silicon bundle Sail's Verus fork (`47fb3be6`)
+and its pinned Z3. See the [release notes](docs/release-notes/0.1.0.md) for
+known issues.
 
 - `scripts/install.py` now installs every directory with the archive's
   recorded mode instead of the caller's umask. Under umask `002` (Ubuntu's
