@@ -266,13 +266,43 @@ pub(super) fn managed_metadata(
     toolchain: &super::CargoToolchain,
     cache: &Path,
 ) -> Result<Value> {
-    read_metadata(
+    managed_metadata_read(workspace, args, cargo, toolchain, cache).map(|(data, _)| data)
+}
+
+/// As [`managed_metadata`], also returning the read itself when Cargo printed
+/// nothing on stderr.
+pub(super) fn managed_metadata_read(
+    workspace: &Path,
+    args: &[String],
+    cargo: &Path,
+    toolchain: &super::CargoToolchain,
+    cache: &Path,
+) -> Result<(Value, Option<MetadataRead>)> {
+    read_metadata_exact(
         managed_metadata_command(workspace, args, cargo, toolchain, cache)?,
         args,
     )
 }
 
-fn read_metadata(mut command: Command, args: &[String]) -> Result<Value> {
+/// One successful `cargo metadata` read exactly as it ran: the program, its
+/// complete arguments, directory and environment changes, and the exact
+/// bytes Cargo printed on stdout. Only a read with an empty stderr is kept.
+pub(super) struct MetadataRead {
+    pub(super) program: std::ffi::OsString,
+    pub(super) args: Vec<std::ffi::OsString>,
+    pub(super) directory: Option<PathBuf>,
+    pub(super) environment: Vec<(std::ffi::OsString, Option<std::ffi::OsString>)>,
+    pub(super) stdout: Vec<u8>,
+}
+
+fn read_metadata(command: Command, args: &[String]) -> Result<Value> {
+    read_metadata_exact(command, args).map(|(data, _)| data)
+}
+
+fn read_metadata_exact(
+    mut command: Command,
+    args: &[String],
+) -> Result<(Value, Option<MetadataRead>)> {
     let output = command
         .output()
         .map_err(|e| Error::new("SAIL3103", e.to_string()))?;
@@ -284,11 +314,21 @@ fn read_metadata(mut command: Command, args: &[String]) -> Result<Value> {
     }
     let mut data: Value = serde_json::from_slice(&output.stdout)
         .map_err(|e| Error::new("SAIL3103", e.to_string()))?;
+    let read = output.stderr.is_empty().then(|| MetadataRead {
+        program: command.get_program().to_owned(),
+        args: command.get_args().map(std::ffi::OsStr::to_owned).collect(),
+        directory: command.get_current_dir().map(Path::to_path_buf),
+        environment: command
+            .get_envs()
+            .map(|(name, value)| (name.to_owned(), value.map(std::ffi::OsStr::to_owned)))
+            .collect(),
+        stdout: output.stdout,
+    });
     // Preserve explicit package roles for disabled-script scheduling checks.
     // Unknown or ambiguous package specs retain original unobserved cleaning.
     data["sail_selected_package_ids"] =
         serde_json::to_value(selected_packages(&data, args)).unwrap_or(Value::Null);
-    Ok(data)
+    Ok((data, read))
 }
 
 fn selected_packages(data: &Value, args: &[String]) -> Option<Vec<String>> {
@@ -1401,7 +1441,7 @@ fn mutation_paths(snapshot: &InputSnapshot) -> BTreeSet<PathBuf> {
 // The `lstat` calls overlap (about 13,000 paths per vest snapshot); the stamp
 // folds their results in the original sorted order, exactly as one by one.
 #[cfg(unix)]
-fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
+pub(super) fn stamp_paths(paths: &BTreeSet<PathBuf>) -> Option<String> {
     let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
     let stats = crate::parallel::in_order(&names, |&path| (path, std::fs::symlink_metadata(path)));
     stamp_readback(paths, &stats)
@@ -1455,7 +1495,7 @@ fn stamp_readback(
 }
 
 #[cfg(not(unix))]
-fn stamp_paths(_paths: &BTreeSet<PathBuf>) -> Option<String> {
+pub(super) fn stamp_paths(_paths: &BTreeSet<PathBuf>) -> Option<String> {
     None
 }
 
@@ -1581,6 +1621,11 @@ impl MetadataGuard {
             .then_some(())?;
         let stamp = stamp_paths(&paths)?;
         Some(Self { paths, stamp })
+    }
+
+    /// The guarded paths and the stamp they had before the metadata read.
+    pub(super) fn parts(&self) -> (&BTreeSet<PathBuf>, &str) {
+        (&self.paths, &self.stamp)
     }
 
     /// Whether `data`, read after [`Self::begin`], still describes every
