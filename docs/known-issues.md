@@ -41,6 +41,12 @@ relations remain open; source/hash binding does not establish them.
 
 ## Input coverage and cache integrity
 
+- Compiler input observations report an empty-file checksum and size for
+  non-UTF-8 `include_bytes!` inputs
+  ([#599](https://github.com/Chelis-Lang/sail/issues/599)). Ordinary `.vir`
+  includes are retained with their correct checksums. Sail independently hashes
+  actual dependency files for receipt currentness; no stale Sail proof has
+  been demonstrated. The compiler-read metadata defect remains open.
 - Native host synchronization from a linked Git worktree copies its local
   `.git` pointer without reconstructing usable remote repository metadata
   ([#589](https://github.com/Chelis-Lang/sail/issues/589)). Git-based source
