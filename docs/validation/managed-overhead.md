@@ -75,7 +75,17 @@ same-size edit with restored mtime changes the stamp and refuses replay.
 This changes no cross-run trust or two-second settle rule. Full currentness,
 zero verifiers, no retry/force/store seeding, original output/events and every
 recording gate still apply. Verifying calls keep the stamp-only path. Native
-correctness, before/after recording cost and Mac qualification are pending.
+before/after recording cost remains pending. The first candidate passes a
+native full gate (1,253 ordinary tests), solver51, full E2E plus extra and
+all four PR conformance arms. Mac Clippy and 1,242 host tests pass.
+
+Indexed attempt: the first Anvil recording comparison (`5d147efb`) uses a
+whole-target `reused` bit as an allocation hint. Scoped reports intentionally
+leave that bit false even when no verifier starts, so Anvil keeps the old
+vector path and the comparison cannot measure this cut. The corrected hint
+uses the existing replay-only invocation predicate, while retaining every
+final recording authority check. No scoped report is promoted to whole-target
+reuse.
 
 ## Correctness
 
