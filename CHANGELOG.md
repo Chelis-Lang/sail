@@ -24,6 +24,11 @@ semantic versioning once the API is published.
 - Record sampled process-tree and daemon peak RSS, plus child high-water RSS,
   in real-project benchmark rows and reports on Linux and macOS. Existing
   reports remain readable with memory marked unavailable.
+- Use the same cache selection for `cargo xtask fetch-verus` and runtime
+  lookup, including `SAIL_CACHE_DIR` (#581). Managed verification resolves
+  symlinked cache roots before deriving compiler and proof paths (#601).
+  An unclassified shipped-vstd miss now names the trace route without
+  attributing it to dependency versions.
 
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed

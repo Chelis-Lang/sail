@@ -10,6 +10,19 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Installation parent for a pinned stock Verus release, shared by fetch and lookup.
+/// `SAIL_VERUS_HOME` overrides only the primary release; all other installs use
+/// the normal Sail cache selection, including `SAIL_CACHE_DIR`.
+///
+/// # Errors
+/// `SAIL3001` if no cache directory can be selected and no primary override exists.
+pub fn install_root(release: &str, primary: bool) -> Result<PathBuf> {
+    match std::env::var_os("SAIL_VERUS_HOME").filter(|value| primary && !value.is_empty()) {
+        Some(home) => Ok(PathBuf::from(home)),
+        None => Ok(crate::cache_dir()?.join("verus").join(release)),
+    }
+}
+
 use serde::Deserialize;
 
 use crate::{Error, Result};
@@ -262,13 +275,7 @@ impl Installed {
         })?;
         // SAIL_VERUS_HOME names the primary release's install; secondary
         // releases always install under the cache.
-        let root_of = |release: &str, primary: bool| -> Result<PathBuf> {
-            match std::env::var_os("SAIL_VERUS_HOME").filter(|v| !v.is_empty() && primary) {
-                Some(home) => Ok(PathBuf::from(home)),
-                None => Ok(crate::cache_dir()?.join("verus").join(release)),
-            }
-        };
-        let dir = root_of(&pins.verus.release, !pins.is_secondary)?.join(&asset.dir);
+        let dir = install_root(&pins.verus.release, !pins.is_secondary)?.join(&asset.dir);
         let verus = dir.join("verus");
         let (z3, z3_bundled) = match (asset.z3.as_deref(), &pins.primary) {
             (Some("primary"), Some((pv, passets))) => {
@@ -276,7 +283,10 @@ impl Installed {
                     .get(host())
                     .map(|a| a.dir.clone())
                     .unwrap_or_default();
-                (root_of(&pv.release, true)?.join(pdir).join("z3"), false)
+                (
+                    install_root(&pv.release, true)?.join(pdir).join("z3"),
+                    false,
+                )
             }
             _ => (dir.join("z3"), true),
         };
@@ -303,6 +313,83 @@ impl Installed {
 #[cfg(test)]
 mod tests {
     use super::Pins;
+
+    #[test]
+    fn installation_and_lookup_share_cache_selection()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        if let Some(expected) = std::env::var_os("SAIL_TEST_VERUS_ROOT") {
+            let secondary = std::env::var_os("SAIL_TEST_VERUS_SECONDARY").is_some();
+            let release = if secondary { "0.9" } else { "1.0" };
+            let root = super::install_root(release, !secondary)?;
+            assert_eq!(root, std::path::PathBuf::from(expected));
+            let pins: Pins =
+                toml::from_str(&PINS.replace("assets.h", &format!("assets.{}", super::host())))?;
+            let pins = pins.select(release)?;
+            std::fs::create_dir_all(root.join("d"))?;
+            for name in ["verus", "z3"] {
+                std::fs::write(root.join("d").join(name), b"fixture")?;
+            }
+            let installed = super::Installed::locate_release(pins)?;
+            assert_eq!(installed.verus, root.join("d/verus"));
+            assert_eq!(installed.z3, root.join("d/z3"));
+            return Ok(());
+        }
+        let base = std::env::temp_dir().join(format!("sail-install-roots-{}", std::process::id()));
+        for (name, override_home, custom_cache, xdg, secondary, relative) in [
+            ("custom", false, true, true, false, "cache/verus/1.0"),
+            ("override", true, true, true, false, "override"),
+            ("secondary", true, true, true, true, "cache/verus/0.9"),
+            ("xdg", false, false, true, false, "xdg/sail/verus/1.0"),
+            (
+                "home",
+                false,
+                false,
+                false,
+                false,
+                "home/.cache/sail/verus/1.0",
+            ),
+        ] {
+            let root = base.join(name);
+            let mut command = std::process::Command::new(std::env::current_exe()?);
+            command.args([
+                "--exact",
+                "toolchain::tests::installation_and_lookup_share_cache_selection",
+                "--nocapture",
+            ]);
+            for key in [
+                "SAIL_VERUS_HOME",
+                "SAIL_CACHE_DIR",
+                "XDG_CACHE_HOME",
+                "SAIL_TEST_VERUS_SECONDARY",
+            ] {
+                command.env_remove(key);
+            }
+            command.env("HOME", root.join("home"));
+            if override_home {
+                command.env("SAIL_VERUS_HOME", root.join("override"));
+            }
+            if custom_cache {
+                command.env("SAIL_CACHE_DIR", root.join("cache"));
+            }
+            if xdg {
+                command.env("XDG_CACHE_HOME", root.join("xdg"));
+            }
+            if secondary {
+                command.env("SAIL_TEST_VERUS_SECONDARY", "1");
+            }
+            let output = command
+                .env("SAIL_TEST_VERUS_ROOT", root.join(relative))
+                .output()?;
+            assert!(
+                output.status.success(),
+                "{name}: {}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        std::fs::remove_dir_all(base)?;
+        Ok(())
+    }
 
     const PINS: &str = r#"
 [verus]

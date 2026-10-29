@@ -104,15 +104,13 @@ Current numbers are in [performance](performance.md).
   0.1.0 rounds the Vest revert and fix revert took about 12 s instead of
   1.1 s, with every check served from the solver cache. That is still faster
   than stock's 22 s and the verdicts matched; the cause is not diagnosed.
-- **A cache path through a symlink loses the shipped vstd proof**
-  ([#601](https://github.com/Chelis-Lang/sail/issues/601)). On macOS,
-  `SAIL_CACHE_DIR=/tmp/x` (where `/tmp` links to `/private/tmp`) verified
-  vstd itself during 0.1.0 qualification, with a `SAIL3138` note that wrongly
-  blamed vstd's dependency versions or build settings; `/private/tmp/x`
-  was served the proof. Verdicts are unaffected. The likely cause, not yet
-  confirmed, is that the proof's path mapping binds only the cache path as
-  spelled, not its canonical form. Workaround: give the physical path, for
-  example `SAIL_CACHE_DIR="$(realpath /tmp/x)"`.
+- **Symlinked-cache shipped-proof acceptance remains pending**
+  ([#601](https://github.com/Chelis-Lang/sail/issues/601)). Managed CLI
+  verification now resolves its cache root and unclassified `SAIL3138`
+  messages no longer blame dependency versions. Path-spelling controls cover
+  the fix; an installed-release first-Serve check on Linux and macOS remains
+  required before closing the original 0.1.0 defect. The physical-cache-path
+  workaround remains valid for 0.1.0.
 - **A miss re-solves the whole bucket**
   ([#158](https://github.com/Chelis-Lang/sail/issues/158)). Editing one
   function re-sends its module's whole solver session; on Anvil one bucket
