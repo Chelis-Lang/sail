@@ -1,6 +1,6 @@
 # 0091: Settled source and owned-target digest observations
 
-- **Status:** proposed; owner approval required before implementation
+- **Status:** accepted by the owner on 2026-10-29; separate implementation qualification pending
 - **Date:** 2026-10-29
 - **Amends:** [ADR 0082](0082-unchanged-call-replay.md), [freshness](../freshness.md)
 - **Tracks:** [#560](https://github.com/Chelis-Lang/sail/issues/560)
@@ -31,7 +31,7 @@ Raw spike log SHA-256:
 Driver SHA-256:
 `e19239229f6bf95d9f5f065a1b6f40bea21827ff7967dd464eb64732b5123e51`.
 
-## Proposed decision
+## Decision
 
 Extend ADR 0082's existing full-stat trust to two separately qualified local
 optimizations. Keep all logical proof keys, exact solver input bytes, selected
