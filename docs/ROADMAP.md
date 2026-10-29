@@ -42,7 +42,7 @@ attested archives ([record](validation/release-candidate.md)).
 | Feature set | Done (#423): repair, `explain`, `baseline`, `compare` and MCP supported; fragility, portfolio, team cache and integration APIs experimental | — |
 | Release attestations | Done: rc.7 draft archives attested (run 40762232461); `gh attestation verify` and the installer's check pass on both platforms | — |
 | Release-candidate qualification | rc.7 passes every gate on Linux and macOS: workspace, solver, full e2e, fast/standard/deep conformance, deep-rvt, determinism, Mac host gate, smoke, install walkthrough and six-round performance ([record](validation/release-candidate.md)). Installer umask defect #591 fixed on main after the candidate (#593) | Cut 0.1.0 from a commit that includes #593 (#282) |
-| Owner review and publication | rc.7 draft ready for review; slower rows listed under [performance parity](#performance-parity) | Owner |
+| Owner review and publication | rc.7 qualified; slower rows under [performance parity](#performance-parity) accepted for 0.1.0 as known issues | Cut 0.1.0 |
 
 **On main for 0.1.0:** managed verification by default (ADR 0046), the
 pinned Cargo (ADR 0058), shipped verified vstd and signed vstd replies,

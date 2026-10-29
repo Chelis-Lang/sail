@@ -4,8 +4,8 @@
 on native Linux and macOS. One installer defect found during qualification
 (#591) is fixed on main after the candidate commit (#593). The candidate is a
 GitHub draft with attested archives; nothing is published. Performance is in
-[performance](../performance.md); accepting its slower rows and publishing
-are the owner's decisions.
+[performance](../performance.md). The owner accepted its slower rows for
+0.1.0 as known issues.
 
 Candidate source `8797ccd4` (on main), fork runtime `47fb3be6` (Verus
 0.2026.10.18.7d82994, Rust 1.99.1), CI image `sail-ci:587662778c7e8f88-core`.
