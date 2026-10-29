@@ -3,11 +3,83 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning once the API is published.
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-29)
+
+First release. `sail verify` is a drop-in for `cargo verus verify` that gives
+the same verdicts and output while reusing solver answers, a preverified vstd
+and proofs of unchanged targets, so one-line edits are 1.2-2.5x faster than
+stock and undoing an edit can be up to about 34x faster. Prebuilt archives for
+Linux x86-64 and macOS on Apple silicon bundle Sail's Verus fork (`47fb3be6`)
+and its pinned Z3. See the [release notes](docs/release-notes/0.1.0.md) for
+known issues.
+
+- `scripts/install.py` now installs every directory with the archive's
+  recorded mode instead of the caller's umask. Under umask `002` (Ubuntu's
+  default) directories came out `0775`, unlike the release index's `0755`, so
+  the shipped vstd proof was refused with a `SAIL3138` note that blamed the
+  toolchain or Verus, and the first `sail verify` checked vstd in full.
+  Verdicts were unaffected. `release-shipped.py verify` now names a directory
+  mode or layout mismatch as the installation's own (#591).
+
+- Verify runs with a process-loader variable (`LD_LIBRARY_PATH`,
+  `LD_PRELOAD`, `DYLD_*`) as plain `cargo verus verify` does, in the
+  project's own Cargo target, instead of in a fresh managed target per loader
+  value that rebuilt and re-verified everything, vstd included (#577). JSON,
+  job and MCP results stay `unknown` project results with `no_reuse`, now
+  `verified_as: plain-cargo-verus`. The first loader run in a project
+  verified only with `sail verify` builds that target once, as a cold stock
+  run does.
+
+- Let unchanged background jobs and MCP `verify` and `start_verification`
+  calls use unchanged-call replay. A replay writes the recorded run's
+  `context-ready` and `target-reused` job events under its own run identity;
+  forced jobs never replay. Replay records move to version 6 (#559).
+
+- MCP `verify` now waits on the job's lifecycle status over the service
+  socket and reads the complete result once, after the job ends, instead of
+  starting `sail jobs result` every 100 ms. Replies are unchanged (#578).
+
+- Keep unchanged-call replay records valid across full runs under other
+  keys: `--output json`, `SAIL_MANAGED_NOOP=0` and job calls no longer make
+  the next unchanged `sail verify` take the full path. The per-run settings
+  files those runs rewrite are no longer bound by content (#575).
+
+- Make unchanged-call replay print what plain Cargo-Verus prints: key it by
+  the terminal-capability variables Cargo's colour and hyperlink detection
+  reads and by the colour Sail asks Cargo for (#573), never record a run whose
+  output holds Cargo's transient lock-wait, index or download lines (#574),
+  and bind the exact daemon socket a managed API caller supplies (#571).
+  Older replay records take the full path once.
+
+- Benchmark scripts (`perf-real.sh`, `perf-loops.sh`, `perf-agents.sh`) stop
+  each arm's daemon by the socket and pid `sail status --json` reports, through
+  the new `scripts/sail-stop-daemon.sh`; the old command-line match missed
+  daemons whose socket is outside the cache directory (#580). Daemons bound
+  inside the cache, such as a baseline's, are still stopped. Document that
+  hard-linking an installed binary ends unchanged-call replay.
+
+- `sail --help` no longer lists `sail runtime`, and `sail runtime --help` now
+  starts with the EXPERIMENTAL note, matching its documented status as an
+  experimental integration API. The command itself is unchanged.
+
+- Add compiler-read schema2 support that keeps source reads of
+  ` __VERUS_DRIVER_ARGS__` distinct from Verus driver bookkeeping. Such
+  source-reading units and units reading Sail's named compiler-child controls
+  recompile instead of reusing proofs; routine units keep reuse. Family-scoped write-ahead state prevents stale Cargo freshness after
+  interrupted or unsupported observations. Both platform pins select the matching qualified producer (#551). Origin cleanup follows the actual
+  Cargo profile/target and checks physical invalidation before retiring older
+  unit observations, so removing a read can recover ordinary unchanged reuse.
 
 - Bind unchanged-call replay to the environment names required by the proof
   receipts admitted for that call, including ghost-only reads absent from
   Cargo dep-info. Retire older replay records that omitted those inputs (#552).
+
+- Forward the caller's Cargo manifest, profile, target and configuration
+  selectors during managed package cleanup (#553), preserving whole-family
+  origin migration and strict invalidation checks.
+
+- Reject forbidden runtime paths and scan errors reliably during macOS runtime
+  qualification, including large files whose early matches caused SIGPIPE (#555).
 
 - Document the owner-approved equivalence exception for code that observes
   Sail's named compiler-visible integration settings (ADR 0088). Solver-answer

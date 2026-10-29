@@ -4,6 +4,9 @@ Use `sail runtime` to submit complete SMT-LIB transcripts through Sail's bundled
 pinned Z3. This command is independent of `sail verify`: a satisfiability answer
 is evidence about the submitted formula, not proof that Rust code implements it.
 
+`sail runtime` is an experimental integration API: `sail --help` does not
+list it, and `sail runtime --help` starts with an EXPERIMENTAL note.
+
 Inspect actual installation and implemented capabilities:
 
 ```sh

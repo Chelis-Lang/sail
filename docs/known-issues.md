@@ -26,27 +26,22 @@ keep the history. The [roadmap](ROADMAP.md) tracks release work.
   [divergence registry](divergences.md#compiler-visible-integration-settings)
   defines the exact scope. Solver correctness, actual-query cache identity,
   freshness, complete scope and truthful reporting remain required; unrelated
-  differences remain failures. No private transport or new runtime is selected.
+  differences remain failures. No private transport is selected.
 
 ## Input coverage and cache integrity
 
-No end-to-end false proof is reproduced for these; each weakens a check that
-reuse depends on.
-
-- Retained-proof admission normalizes the effective observed
-  ` __VERUS_DRIVER_ARGS__` to its base value without preserving that effective
-  binding for reuse ([#551](https://github.com/Chelis-Lang/sail/issues/551)).
-  This is a source-established input-coverage gap, separate from ADR 0088's
-  accepted visibility difference; it does not authorize stale reuse. No
-  end-to-end wrong-verdict reproduction is claimed.
+- `cargo xtask fetch-verus` can install in the default cache while validation
+  follows a custom `SAIL_CACHE_DIR` ([#581](https://github.com/Chelis-Lang/sail/issues/581)).
+  Use `SAIL_VERUS_HOME` pointing to an existing primary release's install parent
+  for that scoped setup; the separate tooling fix remains open.
 - Read-back currentness brackets its reads with metadata stamps of every
   recorded path (#387). A concurrent edit that restores every stamped
   field, including the inode change time, is not detected; that needs a
   privileged clock change or a filesystem without change times.
-- Native-artifact store seeding could hide a changed native linker at the
-  same `PATH`. The store is disabled under
-  [ADR 0053](decisions/0053-disable-unqualified-native-store.md), so main is
-  not affected. Its family key now binds the bytes of the native
+- Native-artifact store seeding can hide a changed native linker at the same
+  `PATH` ([#187](https://github.com/Chelis-Lang/sail/issues/187)). The store
+  is disabled under [ADR 0053](decisions/0053-disable-unqualified-native-store.md),
+  so main is not affected. Its family key now binds the bytes of the native
   tools (`cc`, `c++`, `ar`, `ld` on `PATH` and any linker or C compiler named
   by the environment) and refuses the store when a linker is chosen by Cargo
   configuration or compiler flags. Re-enabling the store is still not
@@ -60,25 +55,27 @@ The service-wide acceptance theorem is not complete
 
 Current numbers are in [performance](performance.md).
 
-- **The first unchanged call, and any unchanged call that misses replay,
-  pays setup cost** ([#232](https://github.com/Chelis-Lang/sail/issues/232)).
-  A recorded unchanged `sail verify` replays in 0.03–0.06 s on Linux and
-  0.04–0.09 s on macOS when every recorded stamp matches
-  ([ADR 0082](decisions/0082-unchanged-call-replay.md)). The first unchanged
-  call after a verification takes the full path and records the replay, as
-  does any call replay does not apply to (for example after a `touch`, a
-  recent ctime or a different argument), with no verifier run: Anvil takes
-  2.21 s against stock's 0.34 s on Linux and 2.07 s against 0.30 s on
-  macOS; Vest and CapybaraKV about 0.55–0.8 s against 0.14–0.26 s.
-- **Small edits on small projects gain little**
-  ([#232](https://github.com/Chelis-Lang/sail/issues/232)). On IronKV a
-  one-line edit, fail and fix are 1.08–1.24× faster than stock on Linux and
-  1.28–1.45× on macOS; input checks, receipts and complete reports are part
-  of every managed run.
-- **macOS cold Anvil is slightly slower than stock**
-  ([#232](https://github.com/Chelis-Lang/sail/issues/232)): 99.5 → 100.2 s,
-  with ranges that do not overlap. Linux cold runs are at parity or faster on
-  every measured project (Anvil 175.9 → 169.0 s).
+- **The first unchanged call after a verification is slower than stock**
+  ([#558](https://github.com/Chelis-Lang/sail/issues/558)). It takes the full path and records
+  the replay: on macOS main `dca5cd43`, Anvil 2.07 s against 0.30 s, Vest
+  0.79 s against 0.26 s, CapybaraKV 0.59 s against 0.22 s and IronKV 0.28 s
+  against 0.21 s. Later unchanged calls replay in 0.03–0.09 s
+  ([ADR 0082](decisions/0082-unchanged-call-replay.md)).
+- **Unchanged calls that do not replay pay setup cost**
+  ([#560](https://github.com/Chelis-Lang/sail/issues/560)). When replay misses (for
+  example after a `touch`, a recent ctime or different arguments), or for
+  forced jobs, which never replay, unchanged Anvil takes about 1.6 s against
+  stock's 0.24 s on macOS, with no verifier run. Unchanged `SAIL3112` setups
+  take about 0.9 s on Anvil ([#561](https://github.com/Chelis-Lang/sail/issues/561)).
+- **Tiny-project edits cost more than stock**
+  ([#560](https://github.com/Chelis-Lang/sail/issues/560)). Input checks, receipts and
+  complete reports add a fraction of a second to edits of small projects;
+  one-line edits of the measured real projects are faster than stock.
+- **macOS cold Anvil is slower than stock**
+  ([#232](https://github.com/Chelis-Lang/sail/issues/232),
+  [#466](https://github.com/Chelis-Lang/sail/pull/466)): 0.7 s on 100 s
+  (100.2 s against 99.5 s), with ranges that do not overlap. Linux cold runs
+  are at parity or faster.
 - **A miss re-solves the whole bucket**
   ([#158](https://github.com/Chelis-Lang/sail/issues/158)). Editing one
   function re-sends its module's whole solver session; on Anvil one bucket
@@ -111,7 +108,11 @@ Current numbers are in [performance](performance.md).
   - `--sysroot`, `RUSTC_WORKSPACE_WRAPPER`, Cargo `--config` and
     configuration includes, and compiler or sysroot overrides Sail cannot
     identify;
-  - loader variables such as `LD_LIBRARY_PATH` or `DYLD_LIBRARY_PATH`;
+  - loader variables such as `LD_LIBRARY_PATH` or `DYLD_LIBRARY_PATH`, which
+    verify in the project's own Cargo target: the first such run in a
+    project verified only with `sail verify` builds that target as a cold
+    `cargo verus verify` does
+    ([#577](https://github.com/Chelis-Lang/sail/issues/577));
   - a Sail cache and package root that overlap.
 - **Only Sail's Verus,** at the release it pins
   ([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). A project that

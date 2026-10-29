@@ -21,7 +21,7 @@
   gave 5 and 6 distinct orders (another test 3), so 10 confirming runs no longer suffice:
   `deep-rvt` reported one `output_json` test Different in six of eight rounds,
   each with identical stdout and with stderr that sorts to the same lines as
-  every plain run ([release-candidate finding 11](../validation/release-candidate.md#rc3-findings)).
+  every plain run (rc.3 finding 11 in the [release-candidate record](../validation/release-candidate.md#earlier-candidates)'s git history).
 - **Workaround:** none needed for correctness; the runner classifies the
   variation as `unstable` (ADR 0009, ADR 0019).
 

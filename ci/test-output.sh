@@ -175,7 +175,7 @@ touch src/lib.rs
 warm_plain() { CARGO_TARGET_DIR="$work/target-plain" quiet_run "$@"; }
 warm_sail() { CARGO_TARGET_DIR="$work/target-sail" quiet_run "$@"; }
 # Warm-ups: each side builds and verifies vstd once, where the part needs it.
-# The loader part's Sail run builds its own context meanwhile (below).
+# The loader part's Sail runs build their own target meanwhile (below).
 case "$part" in loop | loader | extra) warm_plain warmup-plain stock_cargo verus verify & ;; esac
 case "$part" in loop | extra) warm_sail warmup-sail "$sail" verify & ;; esac
 [ "$part" = loader ] || wait
@@ -570,6 +570,17 @@ for doc in (recorded, replayed):
     doc["execution"].pop("wall_ms")
 assert recorded == replayed, (recorded, replayed)
 PY
+# Full runs under other keys (the JSON record above, a disabled replay, a job
+# observer) rewrite the proof context's per-run settings; the human record
+# still replays (#575).
+pair human-after-json
+expect human-after-json '^hit$'
+SAIL_MANAGED_NOOP=0 pair human-noop-disabled
+pair human-after-disabled
+expect human-after-disabled '^hit$'
+SAIL_JOB_EVENTS="$work/observer.jsonl" pair human-observed
+pair human-after-observed
+expect human-after-observed '^hit$'
 # An exact partial scope replays only itself and is never promoted: the
 # whole-target call after it has no record of its own and stays complete.
 rm -f "$SAIL_CACHE_DIR"/noop/*.json
@@ -885,10 +896,10 @@ unset SAIL_MANAGED_NOOP_TRACE
 fi
 
 if [ "$part" = loader ]; then
-# A process-loader variable: verified as plain Cargo-Verus verifies it, with
-# the same output, no proof receipts and no dependency store; the JSON run and
-# `SAIL_EXPLAIN=1` carry one note saying why. The failing proof
-# fails; the JSON run builds the loader context's own target.
+# A process-loader variable: verified as plain Cargo-Verus verifies it, in
+# the invocation's own Cargo target (#577), with the same output, no proof
+# receipts, no managed context and no dependency store; the JSON run and
+# `SAIL_EXPLAIN=1` carry one note saying why. The failing proof fails.
 LD_LIBRARY_PATH="$work/no-libraries" CARGO_TARGET_DIR="$work/target-sail" \
   quiet_run loader-json "$sail" verify --output json
 grep -q '^note\[SAIL3112\]: LD_LIBRARY_PATH is set' "$work/loader-json.err"
@@ -897,9 +908,15 @@ import json, pathlib, sys
 doc = json.loads(open(sys.argv[1]).read())
 assert doc["error"] is None and doc["currentness"] == "unknown", doc["currentness"]
 assert any(n.startswith("SAIL3112:") for n in doc["notes"]), doc["notes"]
-assert not any(t["reused"] for t in doc["targets"]), "no reuse"
-contexts = list(pathlib.Path(sys.argv[2], "projects").glob("*/" + doc["context_sha256"]))
-assert len(contexts) == 1 and not list((contexts[0] / "receipts").glob("*.json")), contexts
+assert doc["no_reuse"]["code"] == "SAIL3112", doc["no_reuse"]
+assert doc["no_reuse"]["verified_as"] == "plain-cargo-verus", doc["no_reuse"]
+assert doc["no_reuse"]["reason"].startswith("LD_LIBRARY_PATH is set"), doc["no_reuse"]
+assert doc["context_sha256"] == "" and doc["input_revision"] == "", doc["context_sha256"]
+[target] = doc["targets"]
+assert target["requested"] and not target["reused"] and not target["complete"], target
+failed = [f["function"] for c in target["report"]["crates"] for f in c["functions"] if f["verdict"] == "failed"]
+assert failed, target["report"]["summary"]
+assert not list(pathlib.Path(sys.argv[2], "projects").glob("**/receipts/*.json")), "no receipts"
 PY
 wait # the plain warm-up
 plain_run loader-plain stock_cargo verus verify

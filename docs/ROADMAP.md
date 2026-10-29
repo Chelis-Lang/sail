@@ -24,23 +24,25 @@ multi-backend verification runtime (#146).
 
 Nothing is published and nothing goes to crates.io until the owner's
 rollout. The release is MIT-licensed, with macOS and Linux archives on GitHub
-releases. It follows main; the earlier private rc.6 is only a measurement
-baseline.
+releases. The current candidate is `0.1.0-rc.7` (`8797ccd4`), a draft with
+attested archives ([record](validation/release-candidate.md)).
 
 | Gate | State | Next |
 |---|---|---|
-| Fork runtime | `36d65c3f` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; selected | — |
+| Fork runtime | `47fb3be6` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; schema2 archives built and qualified | Owner rollout |
+| Compiler-input currentness | Source-origin protocol, durable pre-Cargo invalidation and complete native workspace gates; Linux full corpus and Mac runtime/bounded consumer controls pass ([record](validation/compiler-read-origin.md)) | Service-wide theorem remains #368 |
 | Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
 | Default output identical to stock | Done: human stderr is byte-identical by default; Sail notes only with `SAIL_EXPLAIN=1` or in JSON (#391) | — |
-| Default-mode verdict conformance | Open defects #385, #386, #393 (environment and `--time` reach the verified compiler) | Fix, with conformance coverage |
-| Unchanged calls | Done when replay applies: 26 ms against stock's 0.26 s on Anvil on Linux, 60 ms against 0.25 s on macOS (ADR 0082, #402, #437). Otherwise unchanged Anvil about 1.7 s | #314 |
-| Tiny edits | Sail still slower than stock by a fraction of a second | #156 |
-| Cold runs | Linux at parity or faster; macOS Anvil about 0.4 s slower on 100 s | #278, #232 |
+| Default-mode verdict conformance | Done: #385, #386, #393 fixed. Sail's named settings stay compiler-visible as an accepted exception (ADR 0088, #435) | — |
+| Proof-reuse input coverage | Done: replay binds ghost-only environment reads (#552), effective compiler inputs are bound across reuse (#551), managed cleanup forwards profile and target selectors (#553), and replay output matches stock (#573, #574) and binds the supplied daemon socket (#571) | — |
+| Unchanged calls | Later unchanged calls replay in 0.03–0.09 s against stock's 0.11–0.31 s on rc.7, both platforms (ADR 0082, #402, #437). The first unchanged call and calls that miss replay are slower | [Performance parity](#performance-parity) |
+| Tiny edits | One-line edits, failing edits, fixes and reverts faster than stock on all four real projects and both platforms (rc.7); tiny-project edits still slower | [Performance parity](#performance-parity) |
+| Cold runs | rc.7: Linux medians faster on all four projects; macOS Anvil 100.3 s against 99.4 s, ranges overlapping (#466) | #232 |
 | CI cache reuse | Done: tools identified by content, so restored caches are reused on a new runner (#428); [guide](ci-cache.md) | — |
 | Feature set | Done (#423): repair, `explain`, `baseline`, `compare` and MCP supported; fragility, portfolio, team cache and integration APIs experimental | — |
-| Release attestations | Workflow and installer check built (#400); first exercised on the first real release | Release |
-| Release matrix, deep conformance, walkthroughs | Last complete run on rc.6 / runtime `36d65c3f` archives | Rerun on the release candidate (#282) |
-| Owner review and publication | Not started | Owner |
+| Release attestations | Done: rc.7 draft archives attested (run 40762232461); `gh attestation verify` and the installer's check pass on both platforms | — |
+| Release-candidate qualification | rc.7 passes every gate on Linux and macOS: workspace, solver, full e2e, fast/standard/deep conformance, deep-rvt, determinism, Mac host gate, smoke, install walkthrough and six-round performance ([record](validation/release-candidate.md)). Installer umask defect #591 fixed on main after the candidate (#593) | Cut 0.1.0 from a commit that includes #593 (#282) |
+| Owner review and publication | rc.7 qualified; slower rows under [performance parity](#performance-parity) accepted for 0.1.0 as known issues | Cut 0.1.0 |
 
 **On main for 0.1.0:** managed verification by default (ADR 0046), the
 pinned Cargo (ADR 0058), shipped verified vstd and signed vstd replies,
@@ -57,13 +59,28 @@ jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
 
 | Track | State | Open work |
 |---|---|---|
-| 1. Cold runs and first use (#232) | Shipped vstd proof and replies; pinned Cargo; pipelined native admission (ADR 0061); first-use hashing and daemon start cut (#424, levers 1.5/1.6); solver identity reused under a settled stamp (#417) | macOS Anvil cold (#278); macro-closure compile is most of the remaining first use (#234) |
+| 1. Cold runs and first use (#232) | Shipped vstd proof and replies; pinned Cargo; pipelined native admission (ADR 0061); first-use hashing and daemon start cut (#424, levers 1.5/1.6); solver identity reused under a settled stamp (#417) | macOS Anvil cold, 0.9 s on rc.7 (#232); macro-closure compile is most of the remaining first use (#234) |
 | 2. Frontend floor (#162) | Profiled; persistent frontend reuse unqualified | Parked after 0.1.0 |
 | 3. Solver work on misses (#158, #244) | Longest-first bucket dispatch by a static size estimate shipped in fork commit `ee8dd97d` (runtime `f8589ed4` onward): Vest 10–15% faster at 7–15 threads, no gain on Anvil | Parked after 0.1.0 |
 | 4. Incidental edits (#118) | Closure identity, spec-parameter names and trait spellings merged | 15-edit catalogue untimed |
-| 5. Managed overhead (#156, #314) | Unchanged-call replay; unit-graph and script-snapshot reuse (#407); build-script receipts for Cargo 1.93–1.99 (ADR 0084) | Setup cost when replay misses; tiny-edit cost |
+| 5. Managed overhead | Unchanged-call replay; unit-graph and script-snapshot reuse (#407); build-script receipts for Cargo 1.93–1.99 (ADR 0084) | [Performance parity](#performance-parity) |
 | 6. Instant revert (#163) | Linux and macOS for qualified profiles; 16 revisions with pinned baseline; `SAIL3146` explains skips | More dependency profiles |
 | CI and team caches (#240, #242) | Measured recipe in [CI caching](ci-cache.md); restored caches reused across runners (#428) | GitHub Actions example not yet run on GitHub |
+
+## Performance parity
+
+Rows still slower than stock. Direction: spike each row's tractability first
+(what it costs and what would remove it), then fix in the order the spikes
+justify. Numbers are in [performance](performance.md). Benchmarks do not yet
+record peak memory (#562).
+
+| Row | Measured, Sail against stock | Spike finding | Issue |
+|---|---|---|---|
+| First unchanged call after a verification (full path, records replay) | rc.7: Anvil 2.44 s against 0.36 s (Linux), 2.11 s against 0.30 s (macOS); Vest 0.80 s against 0.26 s (macOS) | A settle pass that records replay at the end of the verifying run is not worth its cost | #558 |
+| Unchanged call that misses replay (`touch`, recent ctime, other arguments) | rc.7: Anvil 2.13 s against 0.32 s (Linux), 1.63 s against 0.25 s (macOS) | Near its floor without cross-run trust. Full runs under other keys no longer invalidate records (#575, fixed); root/subdirectory alternation and a package-local `target/` thrash (#576) | #560, #576 |
+| Unchanged `SAIL3112` setups | Anvil 0.90 s with no proof reuse ([record](validation/unsupported-cargo-fallback.md)), stock about 0.3 s | Loader-variable runs now verify in the project's own target (#577, fixed) | #561 |
+| Tiny-project edits | About 0.4 s (Linux) and 0.7 s (macOS) more, `e51e4660` matrix | — | #560 |
+| macOS Anvil cold | rc.7: 100.3 s against 99.4 s, ranges overlapping (#466) | — | #232 |
 
 ## After 0.1.0 (parked)
 

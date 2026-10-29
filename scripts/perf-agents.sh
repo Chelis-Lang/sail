@@ -18,6 +18,7 @@
 # Projects and environment are those of scripts/perf-loops.sh
 # (SAIL_PERF_OUT, SAIL_PERF_VEST_SRC, SAIL_PERF_MACHINE).
 set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
 
 # report RESULTS AGENTS: the table from a results.tsv.
 report() {
@@ -88,7 +89,7 @@ export SAIL_CACHE_DIR="$out/c"
 mkdir -p "$SAIL_CACHE_DIR"
 
 stop_daemon() {
-  pkill -f -- "--socket $SAIL_CACHE_DIR/" 2>/dev/null || true
+  "$here/sail-stop-daemon.sh"
   sleep 1
 }
 

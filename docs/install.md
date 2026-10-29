@@ -37,14 +37,84 @@ The installer verifies the checksum, checks the platform and archive layout,
 and validates the actual bundled runtime before making the installation
 available. It refuses an existing installation directory. An interrupted or
 failed check does not publish a partial installation; retry the same command.
+Every installed file and directory gets exactly the mode the archive records,
+whatever your umask, because the shipped vstd proof is admitted only for an
+installation that matches the release index's modes.
 `--install-toolchain` explicitly installs the bundled verifier's Rust pin with
 `rust-src` through rustup. Without it, no Rust installation is attempted.
 The default toolchain, shell profiles and existing installations are unchanged.
 Add the printed `PATH` line to your shell profile. The archive remains together
 under the prefix; do not move just its executables.
 
-The [README](../README.md#install) also gives manual download and extraction
-commands requiring no Python.
+To install without Python, see [manual installation](#manual-installation).
+
+## Manual installation
+
+Install the prerequisites first: a C toolchain and `curl`. On Debian or
+Ubuntu, run `sudo apt-get install -y build-essential curl`. On macOS, run
+`xcode-select --install`.
+
+Pick the archive for your platform:
+
+| Platform | Archive |
+|---|---|
+| Linux x86-64, glibc 2.39 or later | `sail-VERSION-x86_64-unknown-linux-gnu.tar.gz` |
+| macOS on Apple silicon | `sail-VERSION-aarch64-apple-darwin.tar.gz` |
+
+Download it with its `.sha256` file, check it, unpack it and put its `bin/`
+on `PATH`:
+
+```sh
+VERSION=0.1.0                      # the release you are installing
+TARGET=x86_64-unknown-linux-gnu    # or aarch64-apple-darwin
+base="https://github.com/Chelis-Lang/sail/releases/download/v$VERSION"
+curl -fLO "$base/sail-$VERSION-$TARGET.tar.gz"
+curl -fLO "$base/sail-$VERSION-$TARGET.tar.gz.sha256"
+shasum -a 256 -c "sail-$VERSION-$TARGET.tar.gz.sha256"   # or: sha256sum -c
+mkdir -p ~/.local/opt
+tar -C ~/.local/opt -xzf "sail-$VERSION-$TARGET.tar.gz"
+export PATH="$HOME/.local/opt/sail-$VERSION-$TARGET/bin:$PATH"   # add to your shell profile
+sail --version
+```
+
+The check must print `OK`. Keep the unpacked directory together: `sail`
+finds `sail-z3` beside it in `bin/` and its Verus in `engine/`. On macOS, an
+archive downloaded with a browser is quarantined; clear that with
+`xattr -dr com.apple.quarantine ~/.local/opt/sail-$VERSION-$TARGET`.
+
+Then install the Rust toolchain Verus pins, with its sources:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+. "$HOME/.cargo/env"
+rustup toolchain install 1.99.1 --profile minimal --component rust-src
+sail engine status                 # checks Sail's Verus against its pins
+```
+
+This doesn't change your default toolchain.
+
+## Rust toolchain and the preverified vstd
+
+`sail verify` runs Cargo with the pinned toolchain on its own, so the
+release's preverified `vstd` (recorded with Cargo `1.99.1`) applies whatever
+your default Cargo is. A `RUSTUP_TOOLCHAIN` you set, a project's
+`rust-toolchain.toml`, a `rustup override` or an explicit `CARGO` takes
+precedence, and then `vstd` may be verified again. Sail never installs a
+toolchain itself.
+
+The preverified `vstd` applies only to one exact setup:
+- the `vstd` version `sail new` writes, with its default dependency
+  resolution;
+- the pinned toolchain with `rust-src` and no extra components, since
+  `rustc-dev` or `llvm-tools` change what rustc loads;
+- no forwarded Verus flags other than a supported `--rlimit`.
+
+Otherwise Sail verifies `vstd` in the project, with the same results, and
+answers identical solver queries from signed replies shipped in the archive.
+
+Verus flags after `--` reach `vstd` too, as with `cargo verus verify`. To keep
+them off `vstd`, pass `--fwd-verus-args-to roots` before `--`, as with stock:
+`sail verify --fwd-verus-args-to roots -- --rlimit 100`.
 
 ## Verify provenance
 
@@ -87,7 +157,11 @@ that pin and its known project limitations.
 
 On a fresh project, a `SAIL3138` note (in `--output json`, or on stderr with
 `SAIL_EXPLAIN=1`) explains why a shipped vstd proof cannot be used. A different dependency resolution, extra compiler components or
-forwarded verifier flags can cause this. Verification continues normally, with
+forwarded verifier flags can cause this. So can an installation whose
+directory modes differ from the release index. An installation made under
+umask `002` (Ubuntu's default) by `scripts/install.py` from release candidates
+up to 0.1.0-rc.7 is refused this way, with a note that wrongly blames the
+toolchain or Verus; reinstall it. Verification continues normally, with
 exact solver caching still available. Do not rewrite a real project's lockfile
 merely to reproduce a benchmark's bundle hit.
 
