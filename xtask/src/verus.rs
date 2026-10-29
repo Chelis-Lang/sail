@@ -134,8 +134,12 @@ pub fn fetch() -> Result<()> {
         let _ = std::fs::remove_dir_all(&staging);
     }
     let z3 = sail_verus::toolchain::Installed::locate(pins.clone())
-        .map_err(|e| {
-            format!("{e} (for a release using the primary's z3, fetch the primary first)")
+        .map_err(|error| {
+            if bundled {
+                error.to_string()
+            } else {
+                format!("{error} (for a release using the primary's z3, fetch the primary first)")
+            }
         })?
         .z3;
     check_z3(&z3, asset)?;

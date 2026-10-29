@@ -60,6 +60,13 @@ pub fn canonical_cache_root(path: std::path::PathBuf) -> std::path::PathBuf {
         .unwrap_or(path)
 }
 
+/// Whether `args` select partial verification (`--verify-function`,
+/// `--verify-module`, `--verify-only-module` or `--verify-root` after `--`).
+#[must_use]
+pub fn partial(args: &[String]) -> bool {
+    focused(args)
+}
+
 #[cfg(test)]
 mod cache_path_tests {
     #[test]
@@ -86,11 +93,4 @@ mod cache_path_tests {
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
-}
-
-/// Whether `args` select partial verification (`--verify-function`,
-/// `--verify-module`, `--verify-only-module` or `--verify-root` after `--`).
-#[must_use]
-pub fn partial(args: &[String]) -> bool {
-    focused(args)
 }
