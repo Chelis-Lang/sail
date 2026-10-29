@@ -178,8 +178,11 @@ The factory's default `release-out-proof-evidence/` is now an explicit output
 exclusion. Unknown native evidence stays untouched; explicitly tracked files
 still override the exclusion. All 24 real Git/rsync fixture controls pass
 locally, including an inaccessible evidence directory, private local/remote
-siblings and tracked source beneath the same name. Native Linux and Mac
-refresh qualification remains pending.
+siblings and tracked source beneath the same name. The complete native Linux
+pre-push sequence and Mac host gate pass at `ce72c778`
+([scope and raw logs](benchmark-memory.md)); all 24 sync controls pass on
+both platforms. The complete current-main Linux sequence passes at
+`a7eac428`; the record above preserves each execution's original scope.
 
 | Source | Date | Result | Cause |
 |---|---|---|---|
