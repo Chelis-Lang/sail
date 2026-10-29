@@ -476,6 +476,12 @@ fn affected_version_one_history_is_refused_even_with_intact_content_seals() -> T
         let mut server = fixture.server()?;
         let client = fixture.client();
         assert!(read(&client, &job).is_err());
+        // MCP `verification_result` and `requirement_assurance` reach these requests.
+        assert!(
+            client
+                .call(&Request::Assurance { id: job.clone() })
+                .is_err()
+        );
         assert!(
             client
                 .call(&Request::GetBaseline {
@@ -515,6 +521,11 @@ fn a_new_worker_cannot_supply_even_an_unaffected_version_one_projection() -> Tes
         Lifecycle::InfrastructureError
     );
     assert!(read(&client, &job.id)?.contracts.is_none());
+    assert!(
+        client
+            .call(&Request::Assurance { id: job.id.clone() })
+            .is_err()
+    );
     server.shutdown();
     Ok(())
 }
