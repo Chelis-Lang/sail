@@ -1447,6 +1447,9 @@ mod tests {
         assert!(replay_config(&member_config).is_some());
         std::fs::write(root_slot.join("unscheduled-scripts.json"), "root view")?;
         assert!(replay_config(&root_config).is_some());
+        // Establish the original root-then-member recency order again before
+        // checking which slot the seventh additional invocation evicts.
+        assert!(replay_config(&member_config).is_some());
         for index in 0..7 {
             super::super::invocation_slots::prepare(&context, &root.join(index.to_string()), &[])
                 .ok_or("extra slot unavailable")?;

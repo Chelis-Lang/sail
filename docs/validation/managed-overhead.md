@@ -376,3 +376,9 @@ reproduce both. The corrected candidate sorts contracts without dropping any
 unit and gives the scheduling memo its own existing bounded invocation slot.
 Real-project replay acceptance remains pending. Raw diagnosis log SHA-256:
 `42aa778d646c04cf02d8968c3c3fdfc19e81048e10325095363efdfb5aa83bfd`.
+
+Indexed attempt, `6f97b902`: native Linux passes 1,253 ordinary tests and Mac
+passes 1,242; both fail the slot fixture's final eviction expectation. The
+new scheduling-corruption control replayed root last, legitimately refreshing
+its LRU order. The fixture now re-establishes root-then-member use before the
+unchanged eviction assertion. Production behavior and every assertion remain.
