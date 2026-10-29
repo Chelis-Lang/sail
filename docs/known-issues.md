@@ -1,6 +1,7 @@
 # Known issues and limits
 
-Open Sail defects and current product limits on main. Fixed defects are
+Open Sail defects and current product limits in the published 0.1.0 and on
+main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
 
@@ -72,25 +73,40 @@ Current numbers are in [performance](performance.md).
 
 - **The first unchanged call after a verification is slower than stock**
   ([#558](https://github.com/Chelis-Lang/sail/issues/558)). It takes the full path and records
-  the replay: on macOS main `dca5cd43`, Anvil 2.07 s against 0.30 s, Vest
-  0.79 s against 0.26 s, CapybaraKV 0.59 s against 0.22 s and IronKV 0.28 s
-  against 0.21 s. Later unchanged calls replay in 0.03–0.09 s
+  the replay: on macOS 0.1.0 (measured as `0.1.0-rc.7`), Anvil 2.11 s
+  against 0.30 s, Vest 0.80 s against 0.26 s, CapybaraKV 0.59 s against
+  0.23 s and IronKV 0.29 s against 0.21 s. Later unchanged calls replay in
+  0.04–0.09 s on macOS and 0.03–0.06 s on Linux
   ([ADR 0082](decisions/0082-unchanged-call-replay.md)).
 - **Unchanged calls that do not replay pay setup cost**
   ([#560](https://github.com/Chelis-Lang/sail/issues/560)). When replay misses (for
   example after a `touch`, a recent ctime or different arguments), or for
-  forced jobs, which never replay, unchanged Anvil takes about 1.6 s against
-  stock's 0.24 s on macOS, with no verifier run. Unchanged `SAIL3112` setups
+  forced jobs, which never replay, unchanged Anvil takes 1.63 s against
+  stock's 0.25 s on macOS 0.1.0, with no verifier run. Unchanged `SAIL3112` setups
   take about 0.9 s on Anvil ([#561](https://github.com/Chelis-Lang/sail/issues/561)).
 - **Tiny-project edits cost more than stock**
   ([#560](https://github.com/Chelis-Lang/sail/issues/560)). Input checks, receipts and
   complete reports add a fraction of a second to edits of small projects;
   one-line edits of the measured real projects are faster than stock.
-- **macOS cold Anvil is slower than stock**
+- **macOS cold Anvil is not faster than stock**
   ([#232](https://github.com/Chelis-Lang/sail/issues/232),
-  [#466](https://github.com/Chelis-Lang/sail/pull/466)): 0.7 s on 100 s
-  (100.2 s against 99.5 s), with ranges that do not overlap. Linux cold runs
-  are at parity or faster.
+  [#466](https://github.com/Chelis-Lang/sail/pull/466)): on 0.1.0 its median
+  is 0.9 s slower on 100 s (100.3 s against 99.4 s), with overlapping ranges.
+  Linux cold medians are faster on all four measured projects.
+- **macOS Vest reverts sometimes miss the restore fast path**
+  ([#595](https://github.com/Chelis-Lang/sail/issues/595)). In two of six
+  0.1.0 rounds the Vest revert and fix revert took about 12 s instead of
+  1.1 s, with every check served from the solver cache. That is still faster
+  than stock's 22 s and the verdicts matched; the cause is not diagnosed.
+- **A cache path through a symlink loses the shipped vstd proof**
+  ([#601](https://github.com/Chelis-Lang/sail/issues/601)). On macOS,
+  `SAIL_CACHE_DIR=/tmp/x` (where `/tmp` links to `/private/tmp`) verified
+  vstd itself during 0.1.0 qualification, with a `SAIL3138` note that wrongly
+  blamed vstd's dependency versions or build settings; `/private/tmp/x`
+  was served the proof. Verdicts are unaffected. The likely cause, not yet
+  confirmed, is that the proof's path mapping binds only the cache path as
+  spelled, not its canonical form. Workaround: give the physical path, for
+  example `SAIL_CACHE_DIR="$(realpath /tmp/x)"`.
 - **A miss re-solves the whole bucket**
   ([#158](https://github.com/Chelis-Lang/sail/issues/158)). Editing one
   function re-sends its module's whole solver session; on Anvil one bucket

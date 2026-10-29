@@ -22,14 +22,16 @@ multi-backend verification runtime (#146).
 
 ## 0.1.0
 
-Nothing is published and nothing goes to crates.io until the owner's
-rollout. The release is MIT-licensed, with macOS and Linux archives on GitHub
-releases. The current candidate is `0.1.0-rc.7` (`8797ccd4`), a draft with
-attested archives ([record](validation/release-candidate.md)).
+Sail 0.1.0 was published on 2026-10-29 as GitHub release `v0.1.0`
+(`b56889f1`), MIT-licensed, with attested macOS and Linux archives; nothing
+goes to crates.io. It was qualified as `0.1.0-rc.7` (`8797ccd4`)
+([record](validation/release-candidate.md),
+[release notes](release-notes/0.1.0.md)). Open defects and limits are in
+[known issues](known-issues.md).
 
 | Gate | State | Next |
 |---|---|---|
-| Fork runtime | `47fb3be6` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; schema2 archives built and qualified | Owner rollout |
+| Fork runtime | `47fb3be6` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; schema2 archives built, qualified and shipped in 0.1.0 | — |
 | Compiler-input currentness | Source-origin protocol, durable pre-Cargo invalidation and complete native workspace gates; Linux full corpus and Mac runtime/bounded consumer controls pass ([record](validation/compiler-read-origin.md)) | Service-wide theorem remains #368 |
 | Shared stream parser | Current union parser 133/208 plus all 54 ordinary controls pass within the 238-case matrix; frozen full corpus passes. Parent parser-only cost retains its original scope | Current-main managed refresh and bounded adoption cost complete; lead review/CI and physical caller/owner relations remain open ([scope](design/checked-stream-parser.md)) |
 | Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
@@ -42,8 +44,8 @@ attested archives ([record](validation/release-candidate.md)).
 | CI cache reuse | Done: tools identified by content, so restored caches are reused on a new runner (#428); [guide](ci-cache.md) | — |
 | Feature set | Done (#423): repair, `explain`, `baseline`, `compare` and MCP supported; fragility, portfolio, team cache and integration APIs experimental | — |
 | Release attestations | Done: rc.7 draft archives attested (run 40762232461); `gh attestation verify` and the installer's check pass on both platforms | — |
-| Release-candidate qualification | rc.7 passes every gate on Linux and macOS: workspace, solver, full e2e, fast/standard/deep conformance, deep-rvt, determinism, Mac host gate, smoke, install walkthrough and six-round performance ([record](validation/release-candidate.md)). Installer umask defect #591 fixed on main after the candidate (#593) | Cut 0.1.0 from a commit that includes #593 (#282) |
-| Owner review and publication | rc.7 qualified; slower rows under [performance parity](#performance-parity) accepted for 0.1.0 as known issues | Cut 0.1.0 |
+| Release-candidate qualification | rc.7 passes every gate on Linux and macOS: workspace, solver, full e2e, fast/standard/deep conformance, deep-rvt, determinism, Mac host gate, smoke, install walkthrough and six-round performance ([record](validation/release-candidate.md)). Installer umask defect #591 fixed by #593, which 0.1.0 includes | — |
+| Owner review and publication | Done: 0.1.0 published 2026-10-29; slower rows under [performance parity](#performance-parity) accepted as known issues | Point releases |
 
 **On main for 0.1.0:** managed verification by default (ADR 0046), the
 pinned Cargo (ADR 0058), shipped verified vstd and signed vstd replies,
@@ -124,7 +126,6 @@ command set.
 
 | Decision | Who | Blocks |
 |---|---|---|
-| Release composition and publication | Owner | 0.1.0 |
 | Prebuilt macro crates under ADR 0053 parity ([question 35](open-questions.md)) | Owner | #239 |
 | Question 31, continuation timing oracle | Owner | Live-prefix preparation |
 | ADR 0048 status: research path to release default | Lead | — |
