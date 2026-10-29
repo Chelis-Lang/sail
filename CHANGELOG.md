@@ -26,6 +26,9 @@ semantic versioning once the API is published.
 - Retain the final source mutation vector for unchanged-call recording from
   the same keyed reads used by currentness, avoiding a second source stat
   pass while preserving every replay and recording guard (#558).
+- Preserve unchanged-call replay across writes to an existing package-local
+  Cargo `target/` only when its physical Cargo marker qualifies and no source
+  or declared input is inside; marker changes and ambiguity keep full checks.
 - Bind cached SMT command keys to their owned original input and independently
   acknowledged solver writes; freeze complete delivery before terminal metadata.
 - Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in

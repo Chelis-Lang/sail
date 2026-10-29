@@ -606,3 +606,11 @@ republishes them from its independently validated slot before publishing its
 result and job events. A changed or missing slot misses. Missing or unreadable
 slot bookkeeping takes the ordinary shared-sidecar path; it grants no reuse.
 Cargo target directories continue to count as source under the existing rules.
+
+Package-local Cargo `target/` contents can be omitted from the source walk
+only with Cargo's regular physical directory marker and no protected crate,
+package, module or declared input inside. The marker itself remains bound;
+source/configuration paths and script/compiler declarations always win. A
+missing or changed marker, unknown metadata or aliases keep the complete walk.
+First creation of the directory may still require a full call. See the
+[ADR 0082 amendment](decisions/0082-unchanged-call-replay.md#amendment-marked-package-local-cargo-outputs-2026-10-29-576).

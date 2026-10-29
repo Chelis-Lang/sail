@@ -2903,7 +2903,7 @@ fn target_revision_with(
         .into_iter()
         .flatten()
         .filter(|p| p["id"].as_str().is_some_and(|id| closure.contains(id)))
-        .map(|p| serde_json::json!({ "manifest_path": p["manifest_path"] }))
+        .map(super::input::package_projection)
         .collect();
     package_data["packages"] = Value::Array(packages);
     if let Some(observed) = data["sail_source_inputs_by_package"].as_object() {
@@ -4580,7 +4580,7 @@ fn snapshot_projection(data: &Value, sources: &Value) -> Value {
                 .as_array()
                 .into_iter()
                 .flatten()
-                .map(|p| serde_json::json!({ "manifest_path": p["manifest_path"] }))
+                .map(super::input::package_projection)
                 .collect(),
         ),
     );
