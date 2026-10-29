@@ -22,13 +22,14 @@ impl Fixture {
             root.join("target/CACHEDIR.TAG"),
             [CARGO_TAG, b"# fixture\n"].concat(),
         )?;
-        let data = serde_json::json!({
+        let mut data = serde_json::json!({
             "workspace_root":root, "sail_invocation_directory":root,
             "target_directory":root.join("managed-output"),
             "sail_source_inputs":[root.join("src/lib.rs")],
             "packages":[{"manifest_path":root.join("Cargo.toml"),
                 "targets":[{"src_path":root.join("src/lib.rs"), "kind":["lib"], "name":"demo"}]}]
         });
+        data[OUTPUT_GUARDS] = output_guards(&data, &[]);
         Ok(Self { root, data })
     }
 
@@ -98,7 +99,7 @@ fn declared_sources_directories_and_target_roots_keep_their_complete_inputs() ->
             "directory" => extras.push(fixture.root.join("target")),
             "ancestor" => extras.push(fixture.root.clone()),
             "crate" => {
-                fixture.data["packages"][0]["targets"][0]["src_path"] = serde_json::json!(input)
+                fixture.data["packages"][0]["targets"][0]["src_path"] = serde_json::json!(input);
             }
             _ => return Err(std::io::Error::other("unknown fixture")),
         }
@@ -149,6 +150,8 @@ fn names_alone_unknown_metadata_and_aliases_do_not_select_output_exclusion() -> 
         "target-alias",
         "src-tag",
         "unknown",
+        "guard-missing",
+        "guard-relative",
     ] {
         let mut fixture = Fixture::new(kind)?;
         let tag = fixture.root.join("target/CACHEDIR.TAG");
@@ -179,6 +182,13 @@ fn names_alone_unknown_metadata_and_aliases_do_not_select_output_exclusion() -> 
                     .as_object_mut()
                     .ok_or_else(|| std::io::Error::other("fixture data"))?
                     .remove("sail_source_inputs");
+            }
+            "guard-missing" => {
+                fixture.data[OUTPUT_GUARDS] = Value::Null;
+            }
+            "guard-relative" => {
+                fixture.data[OUTPUT_GUARDS] =
+                    serde_json::json!({"roots":["relative"], "extras":[]});
             }
             _ => return Err(std::io::Error::other("unknown fixture")),
         }
@@ -225,5 +235,63 @@ fn output_namespace_and_marker_changes_refuse_old_projections() -> std::io::Resu
     assert!(projected_snapshot(&fixture.data, &[], None, &full).is_none());
     std::fs::remove_file(fixture.root.join("target/CACHEDIR.TAG"))?;
     assert!(projected_snapshot(&fixture.data, &[], None, &before).is_none());
+    Ok(())
+}
+
+#[test]
+fn output_markers_guard_replay_without_changing_scoped_proof_keys() -> std::io::Result<()> {
+    let mut fixture = Fixture::new("scoped")?;
+    fixture.data["sail_revision_scope"] = serde_json::json!({
+        "roots":[fixture.root], "scoped":[fixture.root],
+        "keep":[fixture.root.join("src/lib.rs")]
+    });
+    let before = fixture.snapshot(&[]);
+    let tag = fixture.root.join("target/CACHEDIR.TAG");
+    assert!(before.complete && fixture.excludes_target(&before));
+    assert!(before.observation_paths.contains(&tag));
+    assert!(!before.digests.contains_key(&tag));
+    let stamp = mutation_stamp(&before);
+    std::fs::write(&tag, "ordinary directory now")?;
+    assert!(projected_snapshot(&fixture.data, &[], None, &before).is_none());
+    let after = fixture.snapshot(&[]);
+    assert!(after.complete && !fixture.excludes_target(&after));
+    assert_eq!(before.revision, after.revision);
+    assert_ne!(stamp, mutation_stamp(&after));
+    std::fs::remove_file(&tag)?;
+    assert_eq!(before.revision, fixture.snapshot(&[]).revision);
+    Ok(())
+}
+
+#[test]
+fn global_declarations_survive_narrower_target_projections() -> std::io::Result<()> {
+    let mut fixture = Fixture::new("global-guards")?;
+    let declared = fixture.root.join("target/generated.rs");
+    std::fs::write(&declared, "declared source")?;
+    fixture.data[OUTPUT_GUARDS] = output_guards(&fixture.data, std::slice::from_ref(&declared));
+    let snapshot = fixture.snapshot(&[]);
+    assert!(snapshot.complete && !fixture.excludes_target(&snapshot));
+    assert!(snapshot.digests.contains_key(&declared));
+    // A package's target can also live below another package's output path;
+    // narrowing packages must retain that global guard.
+    fixture.data[OUTPUT_GUARDS] = serde_json::json!({"roots":[declared], "extras":[]});
+    assert!(!fixture.excludes_target(&fixture.snapshot(&[])));
+    fixture
+        .data
+        .as_object_mut()
+        .ok_or_else(|| std::io::Error::other("fixture metadata"))?
+        .remove(OUTPUT_GUARDS);
+    assert!(!fixture.excludes_target(&fixture.snapshot(&[])));
+    Ok(())
+}
+
+#[test]
+fn a_directory_replaced_after_admission_refuses_marker_reuse() -> std::io::Result<()> {
+    let fixture = Fixture::new("directory-recheck")?;
+    let before = fixture.snapshot(&[]);
+    let exclusions = Exclusions::new(&fixture.data, &[], &fixture.root);
+    assert!(exclusions.markers_match(&before.digests));
+    std::fs::rename(fixture.root.join("target"), fixture.root.join("old-target"))?;
+    std::os::unix::fs::symlink(fixture.root.join("old-target"), fixture.root.join("target"))?;
+    assert!(!exclusions.markers_match(&before.digests));
     Ok(())
 }

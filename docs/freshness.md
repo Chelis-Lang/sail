@@ -605,7 +605,6 @@ Latest-context input/read-check files still serve job observers. A replay
 republishes them from its independently validated slot before publishing its
 result and job events. A changed or missing slot misses. Missing or unreadable
 slot bookkeeping takes the ordinary shared-sidecar path; it grants no reuse.
-Cargo target directories continue to count as source under the existing rules.
 
 Package-local Cargo `target/` contents can be omitted from the source walk
 only with Cargo's regular physical directory marker and no protected crate,

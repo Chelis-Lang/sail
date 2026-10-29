@@ -379,7 +379,15 @@ are independently collected even beneath excluded output directories, as before.
 New compiler/script declarations widen the after-run observation; they cannot
 project old unread bytes or establish Current under a changed namespace.
 Target-source paths therefore remain part of the private snapshot projection.
+Global package/target roots and script declarations remain in a separate
+private projection field when a target narrows its package or include list.
+Missing or malformed global guards retain the complete walk.
 Projection reuse checks the exact relevant exclusion set and marker bytes.
+The marker remains in the full source observation and replay vector. Scoped
+proof revisions retain their existing declared-input selection: an unrelated
+marker change must not request verification when Cargo performs no compilation.
+The marker's bounded byte read is still checked inside the original stamp
+bracket when that scoped revision does not include its digest.
 
 Cargo's marker is a routing hint, not proof authority. Cargo freshness uses
 source dep-info and script declarations rather than arbitrary output contents;

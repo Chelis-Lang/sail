@@ -544,13 +544,53 @@ pub(super) fn hint_path(cache: &Path, invocation: &Path, args: &[String]) -> Pat
 
 /// The metadata fields [`snapshot_metadata_home`] reads, besides each
 /// package's `manifest_path`.
-pub(super) const SNAPSHOT_FIELDS: [&str; 5] = [
+pub(super) const SNAPSHOT_FIELDS: [&str; 6] = [
     "workspace_root",
     "sail_invocation_directory",
     "sail_cache_directory",
     "target_directory",
     "sail_source_inputs",
+    OUTPUT_GUARDS,
 ];
+
+pub(super) const OUTPUT_GUARDS: &str = "sail_cargo_output_guards";
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OutputGuards {
+    roots: Vec<PathBuf>,
+    extras: Vec<PathBuf>,
+}
+
+/// Preserve global source roots and script declarations when target metadata
+/// is narrowed. Missing or malformed guards retain the complete source walk.
+pub(super) fn output_guards(data: &Value, extras: &[PathBuf]) -> Value {
+    let guards = || -> Option<OutputGuards> {
+        let mut roots = Vec::new();
+        for package in data.get("packages")?.as_array()? {
+            roots.push(
+                Path::new(package.get("manifest_path")?.as_str()?)
+                    .parent()?
+                    .to_owned(),
+            );
+            for target in package.get("targets")?.as_array()? {
+                roots.push(PathBuf::from(target.get("src_path")?.as_str()?));
+            }
+        }
+        roots
+            .iter()
+            .chain(extras)
+            .all(|path| path.is_absolute())
+            .then_some(())?;
+        Some(OutputGuards {
+            roots,
+            extras: extras.to_vec(),
+        })
+    };
+    guards()
+        .and_then(|guards| serde_json::to_value(guards).ok())
+        .unwrap_or_default()
+}
 
 /// Per-package observer inputs. Target source roots prevent treating a source
 /// tree as Cargo output; other target metadata does not select this walk.
@@ -656,6 +696,13 @@ impl Exclusions {
     }
 
     fn cargo_outputs(data: &Value, extras: &[PathBuf]) -> Option<Vec<CargoOutput>> {
+        let global: OutputGuards = serde_json::from_value(data.get(OUTPUT_GUARDS)?.clone()).ok()?;
+        global
+            .roots
+            .iter()
+            .chain(&global.extras)
+            .all(|path| path.is_absolute())
+            .then_some(())?;
         let packages = data.get("packages")?.as_array()?;
         let roots: Vec<_> = packages
             .iter()
@@ -668,6 +715,7 @@ impl Exclusions {
             })
             .collect::<Option<_>>()?;
         let mut source_roots = roots.clone();
+        source_roots.extend(global.roots);
         for package in packages {
             for target in package.get("targets")?.as_array()? {
                 let path = PathBuf::from(target.get("src_path")?.as_str()?);
@@ -683,6 +731,7 @@ impl Exclusions {
             .collect::<Option<_>>()?;
         let declarations: Vec<_> = declarations
             .into_iter()
+            .chain(global.extras)
             .chain(extras.iter().cloned())
             .collect();
         Some(
@@ -694,8 +743,25 @@ impl Exclusions {
     }
 
     fn markers_match(&self, digests: &BTreeMap<PathBuf, String>) -> bool {
+        use std::io::Read as _;
         self.outputs.iter().all(|output| {
-            digests.get(&output.tag) == Some(&output.digest)
+            if !std::fs::symlink_metadata(&output.directory).is_ok_and(|metadata| metadata.is_dir())
+                || !output
+                    .directory
+                    .canonicalize()
+                    .is_ok_and(|path| path == output.directory)
+            {
+                return false;
+            }
+            let digest = digests.get(&output.tag).cloned().or_else(|| {
+                let mut bytes = Vec::new();
+                super::dependency_snapshot::open(&output.tag)?
+                    .take(4097)
+                    .read_to_end(&mut bytes)
+                    .ok()?;
+                (bytes.len() <= 4096).then(|| super::files::digest(&bytes))
+            });
+            digest.as_ref() == Some(&output.digest)
                 && std::fs::symlink_metadata(&output.tag).is_ok_and(|metadata| metadata.is_file())
         })
     }
@@ -879,8 +945,7 @@ fn stamped_snapshot(
             .filter(|p| !excluded_canonical.contains(p)),
     );
     let observation_paths = path_set(observation_paths);
-    let mut files = RevisionScope::retain(data, path_set(files));
-    files.extend(exclusions.outputs.iter().map(|output| output.tag.clone()));
+    let files = RevisionScope::retain(data, path_set(files));
     let stamp_before = stamp_paths(&observation_paths);
     let original = OriginalCapture::begin(stamp_before.as_deref().map(str::as_bytes));
     let (revision, readable, digests) = contents_revision(&files, &bindings.paths);
@@ -1288,8 +1353,7 @@ fn projected_selection(
     }
     roots.sort();
     roots.dedup();
-    let mut files = RevisionScope::retain(data, files);
-    files.extend(exclusions.outputs.iter().map(|output| output.tag.clone()));
+    let files = RevisionScope::retain(data, files);
     Some(Projection {
         workspace,
         roots,

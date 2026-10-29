@@ -492,6 +492,18 @@ pub fn one() -> (r: u32)
 
 } // verus!
 RS
+# Real Cargo writes into this package's conventional output directory while
+# the verifier arms retain their isolated target directories.
+mkdir -p "$work/output-writer/src"
+cat > "$work/output-writer/Cargo.toml" <<'TOML'
+[package]
+name = "sail-output-writer"
+version = "0.1.0"
+edition = "2024"
+[workspace]
+TOML
+printf 'fn main() {}\n' > "$work/output-writer/src/main.rs"
+stock_cargo build --manifest-path "$work/output-writer/Cargo.toml" --target-dir "$PWD/target"
 plain_run pass-plain stock_cargo verus verify
 sail_run pass-sail "$sail" verify
 same pass-plain pass-sail
@@ -507,6 +519,36 @@ rerecord unchanged
 # The same call again replays again.
 pair unchanged-again
 expect unchanged-again '^hit$'
+
+printf 'fn main() { let _ = 1; }\n' > "$work/output-writer/src/main.rs"
+stock_cargo build --manifest-path "$work/output-writer/Cargo.toml" --target-dir "$PWD/target"
+pair cargo-output-churn
+expect cargo-output-churn '^hit$'
+cp -p src/lib.rs "$work/cargo-output-source.keep"
+cat > target/proof.rs <<'RS'
+verus! { proof fn cargo_output_source_guard() { assert(1 == 1); } }
+RS
+printf '\ninclude!("../target/proof.rs");\n' >> src/lib.rs
+pair cargo-declared-source
+[ "$(cat "$work/cargo-declared-source-sail.rc")" = 0 ]
+rerecord cargo-declared-source
+# Cargo's dep-info now names a file under the marked output directory.
+# Its failing edit must reach the verifier, never the old replay.
+printf 'verus! { proof fn cargo_output_source_guard() { assert(1 == 0); } }\n' > target/proof.rs
+pair cargo-declared-source-edit
+[ "$(cat "$work/cargo-declared-source-edit-sail.rc")" = 101 ]
+expect cargo-declared-source-edit '^miss: '
+cp "$work/cargo-output-source.keep" src/lib.rs
+rm target/proof.rs
+pair cargo-declared-source-restored
+[ "$(cat "$work/cargo-declared-source-restored-sail.rc")" = 0 ]
+rerecord after-cargo-declared-source
+# Changing the routing marker invalidates replay; unrelated marker bytes
+# must still leave Cargo's ordinary no-op output and proof keys unchanged.
+printf 'ordinary directory\n' > target/CACHEDIR.TAG
+pair cargo-marker-changed
+expect cargo-marker-changed '^miss: '
+rerecord after-cargo-marker
 
 # A content edit with its mtime restored still changes ctime.
 cp -p src/lib.rs "$work/lib.rs.orig"
