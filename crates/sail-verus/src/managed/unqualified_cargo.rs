@@ -22,6 +22,23 @@ struct Record {
     programs: Vec<(PathBuf, String)>,
     metadata: BTreeSet<PathBuf>,
     metadata_stamp: String,
+    checksum: String,
+}
+
+impl Record {
+    fn body_digest(&self) -> Option<String> {
+        let bytes = serde_json::to_vec(&(
+            self.version,
+            &self.key,
+            &self.reported,
+            &self.selection,
+            &self.programs,
+            &self.metadata,
+            &self.metadata_stamp,
+        ))
+        .ok()?;
+        Some(super::files::digest(&bytes))
+    }
 }
 
 /// Selection observed before the genuine Cargo version query, retained only
@@ -66,6 +83,7 @@ impl Probe {
 
     pub(super) fn refusal(&self, config: &Config) -> Option<Error> {
         let record: Record = receipts::read(&self.file)?;
+        (record.body_digest().as_deref() == Some(record.checksum.as_str())).then_some(())?;
         (record.version == VERSION && record.key == self.key && record.selection == self.selection)
             .then_some(())?;
         let version = super::build_environment::unsupported_version(&record.reported)?;
@@ -107,19 +125,18 @@ impl Probe {
                 .then_some(())?;
             guard.unchanged_for(data).then_some(())?;
             std::fs::create_dir_all(self.file.parent()?).ok()?;
-            super::files::json(
-                &self.file,
-                &Record {
-                    version: VERSION,
-                    key: self.key.clone(),
-                    reported,
-                    selection: self.selection.clone(),
-                    programs,
-                    metadata: metadata.clone(),
-                    metadata_stamp: metadata_stamp.to_owned(),
-                },
-            )
-            .ok()?;
+            let mut record = Record {
+                version: VERSION,
+                key: self.key.clone(),
+                reported,
+                selection: self.selection.clone(),
+                programs,
+                metadata: metadata.clone(),
+                metadata_stamp: metadata_stamp.to_owned(),
+                checksum: String::new(),
+            };
+            record.checksum = record.body_digest()?;
+            super::files::json(&self.file, &record).ok()?;
             Some(())
         };
         let _ = remember();
@@ -266,11 +283,17 @@ mod tests {
                 "cargo 1.99.1\ncommit-hash: {}\n",
                 super::super::build_environment::QUALIFIED_CARGO[0].1
             );
+            record.checksum = record.body_digest().ok_or("checksum")?;
             super::super::files::json(&probe.file, &record)?;
             assert!(
                 probe.refusal(&config).is_none(),
                 "a qualified report was refused"
             );
+        } else if operation == "corrupt" {
+            let mut record: Record = receipts::read(&probe.file).ok_or("record unavailable")?;
+            record.reported.push('x');
+            super::super::files::json(&probe.file, &record)?;
+            assert!(probe.refusal(&config).is_none());
         } else {
             let refusal = probe.refusal(&config);
             if operation.ends_with("same") {
@@ -374,6 +397,8 @@ mod tests {
         probe("selection")?;
         probe("prepare")?;
         probe("qualified")?;
+        probe("prepare")?;
+        probe("corrupt")?;
         probe("wrapper")?;
         probe("disabled")?;
         setting("/external/toolchain")?;
