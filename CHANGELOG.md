@@ -7,6 +7,13 @@ semantic versioning once the API is published.
 
 - Bind cached SMT command keys to their owned original input and independently
   acknowledged solver writes; freeze complete delivery before terminal metadata.
+- Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in
+  the same managed run when program, arguments, directory, effective
+  environment and every stamped metadata and toolchain input match; anything
+  else runs Cargo. `SAIL_MANAGED_METADATA_MEMO=0` turns this off and
+  `SAIL_MANAGED_METADATA_MEMO_TRACE=FILE` checks it against real Cargo. Skip
+  receipt reads and the dep-info walk when their results would go unused
+  (#560).
 
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed
@@ -45,6 +52,7 @@ known issues.
   toolchain or Verus, and the first `sail verify` checked vstd in full.
   Verdicts were unaffected. `release-shipped.py verify` now names a directory
   mode or layout mismatch as the installation's own (#591).
+
 
 - Verify runs with a process-loader variable (`LD_LIBRARY_PATH`,
   `LD_PRELOAD`, `DYLD_*`) as plain `cargo verus verify` does, in the

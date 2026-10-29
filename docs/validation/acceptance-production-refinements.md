@@ -10,6 +10,21 @@ the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
+## Metadata memo native-binding review (#607)
+
+Candidate based on `727a6a97`, 2026-10-29: the recovered metadata memo changes
+only `cargo()` in `adapter.rs`. The three bound callers
+`effective_verus_arguments`, `cargo_driver_options_with` and
+`report_verification_arguments` are byte-identical to main; the last remains
+the delegate to the unchanged `request_mode.rs` import. The dispatch clears
+the private metadata settings before the real Cargo, and may serve only its
+metadata branch. The reviewed adapter SHA-256 is
+`b2381428fc4c3100139b92d3ad59f60d7ddd3390c7aa074c108f4ef8d15a215f`.
+This justifies the native-source pin update; hashing alone proves no behavior.
+Fresh committed-source Stock refinement qualification and native performance
+remain pending. The memo-off full-run output and nonempty store-attachment
+controls are included in this candidate; the disabled store stays disabled.
+
 ## Consolidated acceptance-audit bugfix candidate
 
 The separate source-envelope optimization (#534) at `a891b3a0` passes the
