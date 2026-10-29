@@ -21,7 +21,9 @@ relations remain open; source/hash binding does not establish them.
   solver path instead of its deliberately rewritten cache entry (#616).
   Exit status and genuine solver output were correct; the replay witness
   failed. Cause is unknown. Native solver checks pass; the strict assertion
-  remains active ([record](validation/acceptance-production-refinements.md)).
+  remains active. The fixture now binds its service completely before clients
+  start; 100 unchanged-fixture and 100 corrected native repetitions pass, so
+  the original cause remains unproved ([record](validation/cached-session-fixture.md)).
 
 - **Sail's named integration settings are compiler-visible**
   ([ADR 0088](decisions/0088-compiler-visible-integration-settings.md),
