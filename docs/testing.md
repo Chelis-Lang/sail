@@ -58,6 +58,10 @@ constant event/trace path per arm, because trace settings are replay inputs.
 Use this only to diagnose a slowdown; rerun without diagnostics for acceptance
 numbers. A replay miss on a source revert is expected and does not explain a
 retained-restoration miss; use result notes and retention costs.
+The replay trace also records preparation costs separately for target walks,
+tool identity stamps, cache contents, declared environment and record commit
+as `record timing: PHASE=N ms`. These timings are diagnostic only and do not
+change the recorded transcript or replay eligibility (#558).
 
 Both native host helpers support primary Git checkouts and linked worktrees:
 

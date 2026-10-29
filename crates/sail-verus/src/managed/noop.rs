@@ -323,6 +323,21 @@ fn trace(line: &str) {
     }
 }
 
+/// Diagnostic timings never enter the saved record or the call's output.
+fn trace_timer() -> Option<std::time::Instant> {
+    std::env::var_os("SAIL_MANAGED_NOOP_TRACE").map(|_| std::time::Instant::now())
+}
+
+fn trace_phase(timer: &mut Option<std::time::Instant>, phase: &str) {
+    if let Some(start) = timer {
+        trace(&format!(
+            "record timing: {phase}={:.3} ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        *start = std::time::Instant::now();
+    }
+}
+
 /// What the pinned Cargo's terminal detection reads besides `TERM` (cargo
 /// 1.99.1, `crates/cargo-util-terminal/src/shell.rs`): `anstyle-query` 1.1.5
 /// through `anstream` 1.0.0 for colour (`CI`, `CLICOLOR`, `CLICOLOR_FORCE`,
@@ -529,6 +544,7 @@ fn rustup_settings() -> Option<PathBuf> {
 /// Gather a record at the end of a run that ended Current without starting a
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
+    let mut timing = trace_timer();
     let required_environment = facts.receipt_environment?;
     // Consumers find the run through its one `context-ready` event; a capture
     // without exactly that event is not a complete account of the run.
@@ -551,6 +567,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         .collect::<Option<Vec<_>>>()?;
     let (target, copies, directories) = bind_copies(target, facts.start);
     lstat_entries.extend(target);
+    trace_phase(&mut timing, "target");
     if let Some(settings) = rustup_settings() {
         lstat_entries.push((settings.clone(), lstat(&settings).ok()?));
     }
@@ -568,12 +585,14 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         stat_entries.push((path.clone(), stamp?));
         lstat_entries.push((path.clone(), link.ok()?));
     }
+    trace_phase(&mut timing, "identity");
     let (trees, contents, cache_stamps) = cache_state(
         &cache_trees(facts.cache, facts.family, facts.context, &facts.siblings),
         facts.context,
         facts.family,
     )?;
     lstat_entries.extend(cache_stamps);
+    trace_phase(&mut timing, "cache");
     let recent = lstat_entries
         .iter()
         .filter_map(|(path, stamp)| stamp.map(|stamp| (path, stamp)))
@@ -589,6 +608,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
     let mut names = super::environment::declared_names(facts.target)?;
     names.extend(required_environment);
     let environment = super::environment::values(&names);
+    trace_phase(&mut timing, "environment");
     Some(Pending {
         path: record_path(facts.cache, facts.key),
         record: Record {
@@ -615,6 +635,7 @@ impl Pending {
     /// Store the record with what the run printed. A failure only means the
     /// next unchanged call takes the ordinary path.
     pub fn commit(mut self, stdout: Vec<u8>, stderr: Vec<u8>) {
+        let mut timing = trace_timer();
         if let Some(line) = transient_status(&stderr) {
             // A later stock run would not print it, so this output is not
             // the unchanged call's transcript (#574). Never leave an older
@@ -638,6 +659,7 @@ impl Pending {
         {
             let _ = std::fs::remove_file(&temporary);
         } else {
+            trace_phase(&mut timing, "commit");
             trace(&format!(
                 "recorded: {} stamps, {} contents, {} copies",
                 self.record.lstat.len() + self.record.stat.len(),
