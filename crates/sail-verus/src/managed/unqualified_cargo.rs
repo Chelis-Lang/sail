@@ -73,6 +73,13 @@ impl Probe {
         let key = super::files::digest(&bytes);
         let (paths, programs) = selection_paths(config)?;
         let selection = input::stamp_paths(&paths)?;
+        // Even a script installed at a normal rustup path can delegate its
+        // version to unobserved files. Keep opaque/interpreter wrappers late.
+        programs
+            .iter()
+            .all(|path| native_program(path))
+            .then_some(())?;
+        (input::stamp_paths(&paths).as_deref() == Some(selection.as_str())).then_some(())?;
         Some(Self {
             file: config
                 .cache
@@ -167,6 +174,26 @@ fn named_channel(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+}
+
+fn native_program(path: &Path) -> bool {
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return false;
+    };
+    let mut magic = [0; 4];
+    if std::io::Read::read_exact(&mut file, &mut magic).is_err() {
+        return false;
+    }
+    // ELF and Mach-O (thin and universal), on the supported native hosts.
+    // The genuine Cargo report and complete program digests remain required.
+    matches!(
+        magic,
+        [0x7f, b'E', b'L', b'F']
+            | [0xfe, 0xed, 0xfa, 0xce | 0xcf]
+            | [0xce | 0xcf, 0xfa, 0xed, 0xfe]
+            | [0xca, 0xfe, 0xba, 0xbe | 0xbf]
+            | [0xbe | 0xbf, 0xba, 0xfe, 0xca]
+    )
 }
 
 /// Bind the actual Cargo bodies as well as the rustup proxy and every file
@@ -277,7 +304,10 @@ mod tests {
             (b"RUSTFLAGS".to_vec(), vec![0xff, b'x']),
         ]);
         let probe = Probe::begin(&config, &environment);
-        if matches!(operation.as_str(), "wrapper" | "disabled" | "external") {
+        if matches!(
+            operation.as_str(),
+            "wrapper" | "disabled" | "external" | "installed-wrapper" | "broker-wrapper"
+        ) {
             assert!(probe.is_none());
             return Ok(());
         }
@@ -337,16 +367,16 @@ mod tests {
         }
         let root = root.canonicalize()?;
         let program = root.join("rustup/toolchains/1.92.0/bin/cargo");
-        std::fs::write(&program, "old Cargo")?;
+        std::fs::write(&program, "\x7fELFold Cargo")?;
         std::fs::write(
             root.join("rustup/toolchains/1.99.1/bin/cargo"),
-            "qualified Cargo",
+            "\x7fELFqualified Cargo",
         )?;
-        std::fs::write(root.join("bin/rustup"), "proxy")?;
+        std::fs::write(root.join("bin/rustup"), "\x7fELFproxy")?;
         std::fs::hard_link(root.join("bin/rustup"), root.join("bin/cargo"))?;
         std::fs::write(root.join("custom-cargo"), "opaque wrapper")?;
-        std::fs::write(root.join("sail"), "sail")?;
-        std::fs::write(root.join("cargo-verus"), "cargo-verus")?;
+        std::fs::write(root.join("sail"), "\x7fELFsail")?;
+        std::fs::write(root.join("cargo-verus"), "\x7fELFcargo-verus")?;
         let settings = root.join("rustup/settings.toml");
         let setting = |channel: &str| {
             std::fs::write(
@@ -401,7 +431,7 @@ mod tests {
             probe(operation)?;
         }
         let modified = std::fs::metadata(&program)?.modified()?;
-        std::fs::write(&program, "new Cargo")?;
+        std::fs::write(&program, "\x7fELFnew Cargo")?;
         std::fs::File::options()
             .write(true)
             .open(&program)?
@@ -422,6 +452,15 @@ mod tests {
         probe("disabled")?;
         setting("/external/toolchain")?;
         probe("external")?;
+        setting("1.92.0")?;
+        std::fs::write(&program, "#!/bin/sh\nexec other-cargo \"$@\"\n")?;
+        probe("installed-wrapper")?;
+        std::fs::write(&program, "\x7fELFnew Cargo")?;
+        std::fs::write(
+            root.join("cargo-verus"),
+            "#!/bin/sh\nexec other-broker \"$@\"\n",
+        )?;
+        probe("broker-wrapper")?;
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
