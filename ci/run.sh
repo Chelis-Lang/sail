@@ -209,6 +209,9 @@ case "$step" in
     python3 ci/test-timeout.py
     python3 scripts/check-links.py
     python3 scripts/test-perf-matrix.py
+    python3 scripts/test-perf-mem.py
+    python3 scripts/test-perf-real-command.py
+    python3 scripts/test-perf-real-report.py
     python3 scripts/test-perf-host-sync.py
     python3 scripts/test-private-dependencies.py
     python3 scripts/test-check-acceptance-proofs.py

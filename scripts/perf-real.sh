@@ -93,6 +93,8 @@
 #                      Verus flags to vstd as well, and the shipped vstd proof
 #                      binds them, so the release matrix runs without it, as
 #                      a user would
+#   SAIL_PERF_MEMORY  0 disables the 50 ms process-tree/daemon RSS sampler
+#                      (for sampler overhead controls only)
 #   SAIL_PERF_VSTD_LOCK  the shipped build's Cargo.lock for `registry`
 #                      (default: the one in the release beside `sail`)
 # Needs sail, sail-z3, sail-conformance, cargo verus, python3, perl, git, jq.
@@ -531,6 +533,15 @@ for a in ${vargs[@]+"${vargs[@]}"}; do
   esac
 done
 
+measured() { # Actual executable and arguments, with the mode's environment.
+  if [ -n "${memory_file:-}" ]; then
+    python3 -I "$here/perf-mem.py" --output "$memory_file" --state "$memory_state" \
+      --status "$daemon_status" -- "$@"
+  else
+    "$@"
+  fi
+}
+
 verus_cmd() { # MODE EXTRA_VERUS_ARGS...
   local mode="$1"; shift
   local sub=verify sail_output=()
@@ -538,18 +549,18 @@ verus_cmd() { # MODE EXTRA_VERUS_ARGS...
   case "$mode" in
     fork-shim)
       VERUS_Z3_PATH="$(command -v sail-z3)" SAIL_Z3_PATH="$fork/z3" \
-        cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
-    plain | fork-plain) cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+        measured cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    plain | fork-plain) measured cargo verus "$sub" ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     sail)
       if [ -n "$baseline" ]; then
-        SAIL_CARGO_VERUS="$baseline/cargo-verus" sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+        SAIL_CARGO_VERUS="$baseline/cargo-verus" measured sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
       else
-        sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+        measured sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
       fi ;;
     # Sail never searches PATH for Verus (ADR 0043); the development
     # override is the only way to run another build under Sail.
-    fork-sail) SAIL_CARGO_VERUS="$fork/cargo-verus" sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
-    incremental) sail verify --incremental ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    fork-sail) SAIL_CARGO_VERUS="$fork/cargo-verus" measured sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    incremental) measured sail verify --incremental ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     *) echo "unknown performance mode: $mode" >&2; return 2 ;;
   esac
 }
@@ -560,6 +571,7 @@ mode_path() { # MODE: PATH for the mode
 
 stats() { # -> "hellos gets hits puts" of the daemon for SAIL_CACHE_DIR, or zeros
   { sail status --json 2>/dev/null || true; } |
+    tee "${daemon_status:-/dev/null}" |
     jq -r 'if .running then "\(.stats.hellos) \(.stats.gets) \(.stats.hits) \(.stats.puts)" else "0 0 0 0" end' 2>/dev/null |
     grep . || echo "0 0 0 0"
 }
@@ -595,6 +607,11 @@ sample_failures=0
 
 run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run only
   local round="$1" mode="$2" dir="$3" phase="$4" log prov live t0 t1 code=0 s0 s1
+  local memory_file="" memory_state="$out/r$1/$2.daemons.json"
+  local daemon_status="$out/r$1/$2.daemon-status.json"
+  if [ "${SAIL_PERF_MEMORY:-1}" != 0 ]; then
+    memory_file="$out/r$1/$2.$4.memory.json"
+  fi
   shift 4
   local run_env=("$@")
   log="$out/r$round/$mode.$phase.log"
@@ -628,9 +645,13 @@ run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run on
   served=$( (cat "$prov"/*.json 2>/dev/null || true) | (grep -o '"replies_served":[0-9]*' || true) | cut -d: -f2 | awk '{s += $1} END {print s + 0}')
   local d
   d=$(echo "$s0 $s1" | awk '{printf "%d\t%d\t%d\t%d", $5-$1, $6-$2, $7-$3, $8-$4}')
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$round" "$mode" "$phase" \
+  local memory="NA\tNA\tNA"
+  if [ -n "$memory_file" ] && [ -s "$memory_file" ]; then
+    memory=$(jq -r '[.tree_peak_kb, .largest_kb, .daemon_peak_kb] | map(if . == null then "NA" else tostring end) | @tsv' "$memory_file")
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%b\n' "$round" "$mode" "$phase" \
     "$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')" "$code" \
-    "$sessions" "$started" "$served" "$d" "$(times_of "$log" "$mode")" "$load1" >>"$results"
+    "$sessions" "$started" "$served" "$d" "$(times_of "$log" "$mode")" "$load1" "$memory" >>"$results"
   printf '  r%s %-11s %-14s %8.2f s exit %s  load %s  sessions %s (solver %s)  daemon %s\n' "$round" "$mode" "$phase" \
     "$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')" "$code" "$load1" "$sessions" "$started" "$d"
   # Every incidental edit must verify, including cold/unchanged controls.
@@ -699,6 +720,15 @@ run_mode() { # ROUND MODE
     apply_op "$dir" noop "$noop_file" end
     run_one "$round" "$mode" "$dir" noopend
     reset_files "$dir"
+  fi
+  # Capture the daemon's lifetime Linux HWM before either stop path; it is
+  # not the sampled simultaneous tree peak and is reported separately.
+  if [ "${SAIL_PERF_MEMORY:-1}" != 0 ]; then
+    local daemon_status="$out/r$round/$mode.daemon-status.json"
+    stats >/dev/null
+    python3 -I "$here/perf-mem.py" --snapshot \
+      --state "$out/r$round/$mode.daemons.json" --status "$daemon_status" \
+      --output "$out/r$round/$mode.daemon-memory.json"
   fi
   if [ "$mode" = fork-shim ]; then
     cleanup_shim

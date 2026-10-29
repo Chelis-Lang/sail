@@ -12,7 +12,7 @@ import unittest
 
 
 class Commands(unittest.TestCase):
-    def run_command(self, mode, selector, baseline=""):
+    def run_command(self, mode, selector, baseline="", sample=False):
         text = Path(__file__).with_name("perf-real.sh").read_text()
         command = text.split("partial=0\n", 1)[1].split("\nmode_path()", 1)[0]
         with tempfile.TemporaryDirectory(prefix="sail-perf-command-") as tmp:
@@ -35,13 +35,37 @@ class Commands(unittest.TestCase):
                    if not key.startswith(("SAIL_", "VERUS_"))}
             env.update(PATH=f"{root}:{env['PATH']}", MODE=mode, SELECTOR=selector,
                        FORK=str(root / "fork"), BASELINE=baseline, SAIL_DAEMON_SOCKET=str(root / "d.sock"))
-            script = ('cargs=(--lib); vargs=(); [ -z "$SELECTOR" ] || vargs=("$SELECTOR"); '
+            setup = ''
+            if sample:
+                setup = ('memory_file="$MEMORY_OUTPUT"; memory_state="$MEMORY_STATE"; '
+                         'daemon_status="$DAEMON_STATUS"; here="$SCRIPTS"; ')
+                env.update(MEMORY_OUTPUT=str(root / 'memory.json'),
+                           MEMORY_STATE=str(root / 'state.json'),
+                           DAEMON_STATUS=str(root / 'status.json'),
+                           SCRIPTS=str(Path(__file__).resolve().parent))
+            script = (setup + 'cargs=(--lib); vargs=(); [ -z "$SELECTOR" ] || vargs=("$SELECTOR"); '
                       'fork="$FORK"; baseline="$BASELINE"; partial=0\n' + command +
                       '\nverus_cmd "$MODE" --time-expanded\n')
             result = subprocess.run(["bash", "-c", script], env=env, text=True,
                                     capture_output=True, timeout=10)
             output = json.loads(result.stdout) if result.stdout else None
+            if sample:
+                self.assertEqual(json.loads((root / 'memory.json').read_text())['exit'], 0)
             return result, output, str(shim), str(root / "fork/z3")
+
+    def test_sampler_preserves_all_mode_commands_and_environment(self):
+        for mode in ['plain', 'sail', 'incremental', 'fork-plain', 'fork-sail', 'fork-shim']:
+            with self.subTest(mode=mode):
+                result, output, shim, solver = self.run_command(mode, '--verify-root',
+                                                                '/owned/baseline', sample=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('--verify-root', output['args'])
+                if mode == 'fork-shim':
+                    self.assertEqual((output['shim'], output['solver']), (shim, solver))
+                elif mode == 'sail':
+                    self.assertEqual(output['runtime'], '/owned/baseline/cargo-verus')
+                elif mode == 'fork-sail':
+                    self.assertEqual(output['runtime'], str(Path(solver).with_name('cargo-verus')))
 
     def test_focused_shim_uses_fork_solver_and_owned_daemon(self):
         result, output, shim, solver = self.run_command("fork-shim", "--verify-module=module")

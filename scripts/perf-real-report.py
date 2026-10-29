@@ -5,12 +5,15 @@
     perf-real-report.py --det DET_DIR    SMT-log comparison of a `det` run
 """
 import os
+import json
 import statistics
 import sys
 
-COLS = ["round", "mode", "phase", "secs", "exit", "sessions", "started", "served",
+LEGACY_COLS = ["round", "mode", "phase", "secs", "exit", "sessions", "started", "served",
         "hellos", "gets", "hits", "puts", "total_ms", "rust_ms", "vir_ms",
         "vcrate_ms", "vsum_ms", "smt_ms", "load"]
+MEMORY_COLS = ["tree_peak_kb", "largest_kb", "daemon_peak_kb"]
+COLS = LEGACY_COLS + MEMORY_COLS
 STAGE_COLS = COLS[12:18]
 MODE_ORDER = ["plain", "sail", "incremental", "fork-plain", "fork-sail", "fork-shim"]
 LABEL = {"plain": "plain", "sail": "sail", "incremental": "sail --incr",
@@ -28,13 +31,15 @@ def med(xs):
 def load(out):
     rows = []
     with open(os.path.join(out, "results.tsv")) as f:
-        for line in f:
+        for number, line in enumerate(f, 1):
             parts = line.rstrip("\n").split("\t")
+            if len(parts) == len(LEGACY_COLS):
+                parts += ["NA"] * len(MEMORY_COLS)
             if len(parts) != len(COLS):
-                continue
+                raise ValueError(f"results.tsv:{number}: expected 19 or 22 columns, got {len(parts)}")
             r = dict(zip(COLS, parts))
-            for k in COLS[3:-1]:
-                r[k] = None if k in STAGE_COLS and r[k] == "NA" else float(r[k])
+            for k in LEGACY_COLS[3:-1] + MEMORY_COLS:
+                r[k] = None if k in STAGE_COLS + MEMORY_COLS and r[k] == "NA" else float(r[k])
             rows.append(r)
     return rows
 
@@ -69,6 +74,8 @@ def report(out):
             a, b = med(col("plain", p, "secs")), med(col(m, p, "secs"))
             cells.append(f"{a / b:.2f}x" if a and b else "-")
         print(f"| {p} | " + " | ".join(cells) + " |")
+
+    memory_report(out, rows, modes, phases, by)
 
     cached = [m for m in modes if m in ("sail", "incremental", "fork-sail", "fork-shim")]
     if cached:
@@ -143,6 +150,48 @@ def report(out):
                 bad.append(f"round {rnd} phase {p}: {sorted(codes.items())}")
     print()
     print("EXIT CODES DIFFER: " + "; ".join(bad) if bad else "exit codes: identical across modes in every round and phase")
+
+
+def memory_report(out, rows, modes, phases, by):
+    print("\nMemory, MiB, median (min-max). Tree and daemon RSS are sampled every 50 ms;"
+          " shared pages are counted per process and short peaks can be missed."
+          " The sampler is excluded. Largest is the measured child's wait4 high-water"
+          " usage, including accounted descendants; sampler ps children are excluded."
+          " Daemon RSS includes its workers and is excluded from tree RSS."
+          " Ratios are plain/mode; NA means unavailable, never zero.\n")
+
+    def values(rs, key):
+        xs = [r[key] for r in rs]
+        return xs if xs and all(x is not None for x in xs) else []
+
+    def cell(xs):
+        return (f"{fmt(med(xs) / 1024)} ({fmt(min(xs) / 1024)}-{fmt(max(xs) / 1024)})"
+                if xs else "NA")
+
+    print("| phase | mode | tree peak MiB | largest MiB | daemon peak MiB | plain/tree |")
+    print("|---|---|---:|---:|---:|---:|")
+    for phase in phases:
+        plain = values(by.get(('plain', phase), []), 'tree_peak_kb')
+        for mode in modes:
+            rs = by.get((mode, phase), [])
+            xs = [values(rs, key) for key in MEMORY_COLS]
+            ratio = f"{med(plain) / med(xs[0]):.2f}x" if plain and xs[0] and med(xs[0]) else 'NA'
+            print(f"| {phase} | {LABEL[mode]} | " + ' | '.join(cell(x) for x in xs) + f" | {ratio} |")
+    for mode in modes:
+        peaks, hwms = [], []
+        for rnd in sorted({r['round'] for r in rows if r['mode'] == mode}):
+            rs = [r for r in rows if r['round'] == rnd and r['mode'] == mode]
+            samples = values(rs, 'daemon_peak_kb')
+            if samples:
+                peaks.append(max(samples))
+            path = os.path.join(out, f'r{rnd}', f'{mode}.daemon-memory.json')
+            if os.path.isfile(path):
+                with open(path) as f:
+                    hwm = json.load(f)['daemon_hwm_kb']
+                if hwm:
+                    hwms.append(max(hwm.values()))
+        print(f"\n{LABEL[mode]} daemon, per-arm sampled peak: {cell(peaks)} MiB;"
+              f" Linux largest daemon lifetime VmHWM: {cell(hwms)} MiB.")
 
 
 def checks(lines):

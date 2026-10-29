@@ -79,7 +79,9 @@ jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
 Rows still slower than stock. Direction: spike each row's tractability first
 (what it costs and what would remove it), then fix in the order the spikes
 justify. Numbers are in [performance](performance.md). Benchmarks do not yet
-record peak memory (#562).
+record peak memory in the rc.7 results (#562). The real-project harness now
+captures tree/daemon RSS and child high-water usage; native overhead and the
+four-project memory acceptance matrix remain pending.
 
 | Row | Measured, Sail against stock | Spike finding | Issue |
 |---|---|---|---|
