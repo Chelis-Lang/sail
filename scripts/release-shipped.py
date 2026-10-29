@@ -25,7 +25,8 @@ if sys.version_info < (3, 12):
 if not __debug__:
     raise SystemExit('release-shipped: required validation needs Python without -O or PYTHONOPTIMIZE')
 
-SCHEMA = 12
+SCHEMA = 13
+PROFILE_LIMIT = 8
 LIMIT = 4 * 1024**3
 CAPTURE_LIMIT = 32 * 1024**2
 SOURCE_LIMIT = 128 * 1024**2
@@ -207,11 +208,13 @@ def check_bundle(bundle, variant, manifest_sha256, run=None):
     manifest = json.loads((bundle/'manifest.json').read_bytes())
     assert manifest['schema'] == SCHEMA and manifest['kind'] == 'sail-vstd-compile-boundary'
     assert manifest['runtime'] == variant and len(manifest['identity']) == 64
-    assert (bundle/'Cargo.lock').is_file() and 1 <= len(manifest['units']) <= 2
+    assert (bundle/'Cargo.lock').is_file() and 1 <= len(manifest['units']) <= PROFILE_LIMIT
     if isinstance(run, dict):
         assert set(run) == set(manifest['units']), 'missing per-profile source run'
     elif run is not None:
         assert len(manifest['units']) == 1, 'multiple profiles require separate source runs'
+    assert set(manifest['profiles']) == set(manifest['units']), 'missing or extra profile binding'
+    policies = source_policies()
     expected = {'manifest.json', 'Cargo.lock'}
     for key, description in manifest['units'].items():
         assert len(key) == 64 and all(c in '0123456789abcdef' for c in key)
@@ -221,6 +224,9 @@ def check_bundle(bundle, variant, manifest_sha256, run=None):
         unit = json.loads((bundle/(prefix+'unit.json')).read_bytes())
         assert unit['schema'] == SCHEMA and unit['key'] == key
         assert unit['verifying'] is True and unit['crate_name'] == 'vstd'
+        assert unit['source_policy'] in policies, 'unknown source policy'
+        assert unit['establishing_run'], 'missing establishing run'
+        assert manifest['profiles'][key] == {field: unit[field] for field in ('source_policy', 'establishing_run')}, 'inconsistent profile binding'
         assert unit['source_tree'] and unit['sources']
         expected_run = run[key] if isinstance(run, dict) else run
         assert expected_run is None or unit['establishing_run'] == expected_run
@@ -243,6 +249,11 @@ def check_bundle(bundle, variant, manifest_sha256, run=None):
     return {'schema': SCHEMA, 'identity': manifest['identity'], 'runtime': variant,
             'runtime_manifest_sha256': manifest_sha256, 'manifest_sha256': digest(bundle/'manifest.json'),
             'members': tree}
+
+
+def source_policies():
+    return {digest(ROOT/'engine/verus'/name) for name in
+            ('vstd-boundary-inputs.json', 'vstd-boundary-vest-inputs.json')}
 
 
 def recorded_rlimits(unit):
@@ -276,8 +287,34 @@ def join_exact_profiles(bundle, raised, variant, manifest_sha256, original_run, 
         assert recorded_rlimits(unit) == expected, 'unexpected recorded resource-limit profile'
     shutil.copytree(raised/'units'/raised_key, bundle/'units'/raised_key)
     original['units'].update(additional['units'])
+    original['profiles'].update(additional['profiles'])
     (bundle/'manifest.json').write_text(json.dumps(original, indent=2)+'\n')
     runs = {original_key: original_run, raised_key: raised_run}
+    return check_bundle(bundle, variant, manifest_sha256, runs), runs
+
+
+def append_exact_profile(bundle, additional, variant, manifest_sha256, runs,
+                         establishing_run, policy, limits):
+    """Join one independently established, explicitly selected policy/argument unit."""
+    check_bundle(bundle, variant, manifest_sha256, runs)
+    check_bundle(additional, variant, manifest_sha256, establishing_run)
+    original = json.loads((bundle/'manifest.json').read_bytes())
+    extra = json.loads((additional/'manifest.json').read_bytes())
+    for field in ('schema', 'kind', 'runtime', 'identity', 'virtual_base', 'sysroot_shape'):
+        assert original.get(field) == extra.get(field), 'incompatible exact profile'
+    [key] = extra['units']
+    assert key not in original['units'] and len(original['units']) < PROFILE_LIMIT
+    unit = json.loads((additional/'units'/key/'unit.json').read_bytes())
+    assert policy in source_policies() and unit['source_policy'] == policy
+    assert recorded_rlimits(unit) == limits, 'unselected exact argument profile'
+    if not isinstance(runs, dict):
+        [original_key] = original['units']
+        runs = {original_key: runs}
+    runs = dict(runs, **{key: establishing_run})
+    shutil.copytree(additional/'units'/key, bundle/'units'/key)
+    original['units'].update(extra['units'])
+    original['profiles'].update(extra['profiles'])
+    (bundle/'manifest.json').write_text(json.dumps(original, indent=2)+'\n')
     return check_bundle(bundle, variant, manifest_sha256, runs), runs
 
 
@@ -356,8 +393,10 @@ def first_use(root, doc):
     proof = index['proof']
     bundle = root/'deps'/proof['runtime']
     manifest = json.loads((bundle/'manifest.json').read_bytes())
+    default_policy = digest(ROOT/'engine/verus/vstd-boundary-inputs.json')
     defaults = [key for key in manifest['units']
-                if not recorded_rlimits(json.loads((bundle/'units'/key/'unit.json').read_bytes()))]
+                if manifest['profiles'][key]['source_policy'] == default_policy
+                and not recorded_rlimits(json.loads((bundle/'units'/key/'unit.json').read_bytes()))]
     assert len(defaults) == 1, 'first use needs one exact default-limit profile'
     identity = proof['identity']+'/'+defaults[0]
     origin = {'kind': 'release', 'identity': identity, 'establishing_run': 'shipped:'+identity}
@@ -747,6 +786,26 @@ def record(root, evidence):
                                                      selected['manifest_sha256'], run, raised_run)
                     outcome['exact_raised_profile'] = True
                     outcome['profile_establishing_runs'] = runs
+                # ADR 0090: an explicit finite recording list, never a limit-
+                # driven discovery loop. The consumer's closure is unchanged.
+                vest = owned/'project-vest'
+                shutil.copytree(ROOT/'scripts/shipped-deps-vest', vest)
+                command('fetch-vest', ['cargo', 'fetch', '--locked'], cwd=vest, cap=120)
+                vest_policy = digest(ROOT/'engine/verus/vstd-boundary-vest-inputs.json')
+                end += 600  # Separate bounded work for the two additional units.
+                for label, extra in (('vest-default', []), ('vest-raised', ['--', '--rlimit', WITNESS_RLIMIT])):
+                    destination = owned/('bundle-'+label)
+                    recording_env = dict(env, SAIL_SHIPPED_RECORD=str(destination))
+                    raw = command('record-'+label,
+                                  [str(binaries/'sail'), 'verify', '--locked', '--output', 'json', *extra],
+                                  cwd=vest, command_env=recording_env)
+                    source_run = complete_report(json.loads(raw))
+                    (destination/'Cargo.lock').chmod(0o644)
+                    proof, runs = append_exact_profile(
+                        bundle, destination, variant, selected['manifest_sha256'], runs,
+                        source_run, vest_policy, [WITNESS_RLIMIT] if extra else [])
+                outcome['profile_establishing_runs'] = runs
+                outcome['exact_vest_profiles'] = True
                 drain_queue(binaries, socket, env)
             finally:
                 stop_server()

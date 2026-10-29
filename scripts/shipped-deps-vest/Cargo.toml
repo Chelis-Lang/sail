@@ -1,0 +1,13 @@
+[package]
+name = "sail-shipped-dependencies"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[package.metadata.verus]
+verify = true
+
+[dependencies]
+vstd = { version = "=0.0.0-2026-10-18-0147", default-features = false, features = ["std"] }

@@ -87,13 +87,13 @@ def main():
         for name in ('stdout', 'stderr'):
             path = entry/name;path.write_text('fixture '+name)
             streams[name] = {'name': name, 'sha256': module.digest(path), 'size': path.stat().st_size, 'executable': False}
-        unit = dict(schema=12, key=key, crate_name='vstd', package='fixture', verifying=True,
+        unit = dict(schema=13, source_policy=module.digest(module.ROOT/'engine/verus/vstd-boundary-inputs.json'), key=key, crate_name='vstd', package='fixture', verifying=True,
                     source_tree={'source':'hash'}, sources=[['source','hash']], establishing_run='run',
                     compiler_reads={'complete':True,'phases':{'verification':phase,'compilation':phase}},
                     files=members, **streams)
         (entry/'unit.json').write_text(json.dumps(unit))
-        (bundle/'manifest.json').write_text(json.dumps({'schema':12,'kind':'sail-vstd-compile-boundary',
-                'runtime':'variant','identity':'b'*64,'virtual_base':'/rustc-dev/fixture','units':{key:'vstd fixture'}}))
+        (bundle/'manifest.json').write_text(json.dumps({'schema':13,'kind':'sail-vstd-compile-boundary',
+                'runtime':'variant','identity':'b'*64,'virtual_base':'/rustc-dev/fixture','units':{key:'vstd fixture'},'profiles':{key:{field:unit[field] for field in ('source_policy','establishing_run')}}}))
         proof = module.check_bundle(bundle, 'variant', module.digest(runtime/'sail-build.json'), 'run')
         # Each exact profile needs its own complete source run and remains
         # fully bound; joining one cannot hide a corrupt second profile.
@@ -108,6 +108,7 @@ def main():
         (raised/'units'/raised_key/'unit.json').write_text(json.dumps(raised_unit))
         raised_manifest = json.loads((raised/'manifest.json').read_text())
         raised_manifest['units'] = {raised_key:'vstd fixture'}
+        raised_manifest['profiles'] = {raised_key:{field:raised_unit[field] for field in ('source_policy','establishing_run')}}
         (raised/'manifest.json').write_text(json.dumps(raised_manifest))
         original_unit = copy.deepcopy(unit);original_unit['environment'] = {}
         (original/'units'/key/'unit.json').write_text(json.dumps(original_unit))
@@ -183,7 +184,7 @@ def main():
         rustup.write_text('#!/bin/sh\n[ "$*" = "run '+PIN+' rustc --print sysroot" ] || exit 9\nprintf "%s\\n" '+str(sysroot)+'\n')
         rustup.chmod(0o755)
         executable = r'''#!/usr/bin/env python3
-import json,os,shutil,signal,socket,sys,time
+import hashlib,json,os,shutil,signal,socket,sys,time
 from pathlib import Path
 cfg=json.loads(Path(__file__).with_name('fixture-config.json').read_text())
 if sys.argv[1:]==['engine','status','--output','json']:
@@ -201,15 +202,20 @@ elif sys.argv[1]=='verify':
   observed=Path(os.environ['CARGO_HOME']).parent/directory/'fixture';observed.mkdir(parents=True,exist_ok=True);(observed/'inputs.json').write_text('{}')
  bundle=Path(os.environ['SAIL_SHIPPED_RECORD']);shutil.copytree(cfg['template'],bundle)
  value=cfg['report'];value['currentness']=cfg['currentness']
- if '--rlimit' in sys.argv:
-  manifest=json.loads((bundle/'manifest.json').read_text());[old_key]=manifest['units'];key='b'*64
+ is_vest=Path.cwd().name=='project-vest';is_raised='--rlimit' in sys.argv
+ if is_vest or is_raised:
+  manifest=json.loads((bundle/'manifest.json').read_text());[old_key]=manifest['units']
+  key=('d' if is_raised else 'c')*64 if is_vest else 'b'*64
+  run=('vest-raised-run' if is_raised else 'vest-default-run') if is_vest else 'raised-run'
   (bundle/'units'/old_key).rename(bundle/'units'/key)
   unit_path=bundle/'units'/key/'unit.json';unit=json.loads(unit_path.read_text())
-  unit.update(key=key,establishing_run='raised-run',environment={' __VERUS_DRIVER_ARGS_FOR_@@sail-package@@':
-      '__VERUS_DRIVER_ARGS_SEP__--rlimit__VERUS_DRIVER_ARGS_SEP__100'})
+  environment={' __VERUS_DRIVER_ARGS_FOR_@@sail-package@@':'__VERUS_DRIVER_ARGS_SEP__--rlimit__VERUS_DRIVER_ARGS_SEP__100'} if is_raised else {}
+  unit.update(key=key,establishing_run=run,environment=environment)
+  if is_vest:unit['source_policy']=cfg['vest_policy']
   unit_path.write_text(json.dumps(unit));manifest['units']={key:manifest['units'][old_key]}
-  (bundle/'manifest.json').write_text(json.dumps(manifest));value['run_id']='raised-run'
-  for target in value['targets']:target['establishing_run']='raised-run'
+  manifest['profiles']={key:{field:unit[field] for field in ('source_policy','establishing_run')}}
+  (bundle/'manifest.json').write_text(json.dumps(manifest));value['run_id']=run
+  for target in value['targets']:target['establishing_run']=run
  print(json.dumps(value))
 elif sys.argv[1]=='status':
  print(json.dumps({'running':True,'info':{'queue':{'entries':0}}}))
@@ -335,7 +341,7 @@ else:raise SystemExit(3)
                 pid_record=root/(case+'-server-pid')
                 (stage/'bin/fixture-config.json').write_text(json.dumps({'runtime':str(stage/'engine/variant'),'toolchain':PIN,
                     'runtime_hash':module.digest(stage/'engine/variant/sail-build.json'),
-                    'template':str(template),'report':doc,'currentness':'historical' if case=='historical' else 'current',
+                    'vest_policy':module.digest(module.ROOT/'engine/verus/vstd-boundary-vest-inputs.json'),'template':str(template),'report':doc,'currentness':'historical' if case=='historical' else 'current',
                     'pid_record':str(pid_record),'evidence':str(root/(case+'-evidence')),'missing_certificate':case=='certificate-missing'}))
                 evidence=root/(case+'-evidence')
                 previous_limit=module.CAPTURE_LIMIT
@@ -363,7 +369,8 @@ else:raise SystemExit(3)
                 if case=='current':
                     assert module.verify(stage)['proof']['members']['Cargo.lock']['mode']==0o644
                     assert result['replies']['entries']==1
-                    assert result['exact_raised_profile'] and len(result['profile_establishing_runs'])==2
+                    assert result['exact_raised_profile'] and result['exact_vest_profiles']
+                    assert result['profile_establishing_runs']=={'a'*64:'run','b'*64:'raised-run','c'*64:'vest-default-run','d'*64:'vest-raised-run'}
                 else:assert not (stage/module.REPLIES).exists()
                 if case=='certificate-missing':retained(evidence)
                 if case=='scratch-cleanup-failure':

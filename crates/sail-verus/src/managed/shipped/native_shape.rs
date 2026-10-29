@@ -20,11 +20,28 @@ struct Shape {
 /// Fresh source admission precedes this function; private graph, compiler and
 /// actual source-read authority still have their original independent gates.
 pub(super) fn admitted(call: &Call<'_>) -> bool {
-    let Ok(shapes) =
+    let Ok(mut shapes) =
         serde_json::from_str::<BTreeMap<String, Shape>>(include_str!("native_shapes.json"))
     else {
         return false;
     };
+    if call
+        .plan
+        .closure
+        .as_ref()
+        .is_some_and(super::super::admission::Closure::vest_profile)
+    {
+        let Ok(additional) = serde_json::from_str::<BTreeMap<String, Shape>>(include_str!(
+            "native_shapes_vest.json"
+        )) else {
+            return false;
+        };
+        for (name, shape) in additional {
+            if shapes.insert(name, shape).is_some() {
+                return false;
+            }
+        }
+    }
     let Some(shape) = shapes.get(&call.package) else {
         return false;
     };
