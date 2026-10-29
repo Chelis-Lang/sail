@@ -15,7 +15,7 @@ import uuid
 
 
 EXCLUDED_DIRS = {"target", ".claude", "__pycache__", "conformance-out"}
-ROOT_EXCLUDED_DIRS = {"dist", "release-out"}
+ROOT_EXCLUDED_DIRS = {"dist", "release-out", "release-out-proof-evidence"}
 
 
 def digest(path):

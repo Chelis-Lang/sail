@@ -63,7 +63,13 @@ stay dirty; staged-new files modified again retain both versions. It copies no
 local Git config, hooks, linked-worktree pointers or index optimization flags.
 Content checks and current timestamps remain in force; native Cargo outputs
 remain on the host. The existing target, agent, bytecode, conformance and release
-output exclusions still apply. This is not a clean-source certificate: proof
+output exclusions still apply.
+The release factory's `release-out-proof-evidence/` is also protected from
+ordinary source transfer and deletion, including container-root-owned records.
+Tracked source under that exclusion still transfers through the same explicit
+tracked-file rules as other output directories.
+
+This is not a clean-source certificate: proof
 gates must retain their normal clean-source and canonical-byte checks.
 
 HEAD/index-tracked paths override those exclusions: tracked project settings
