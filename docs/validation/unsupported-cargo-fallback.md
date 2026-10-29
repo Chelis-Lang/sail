@@ -97,3 +97,8 @@ conservatively took the late path, so on/off times coincide. The corrected
 parser accepts valid commented TOML and retains strict named-channel checks;
 the native/proxy fixture now includes that exact header. This is a scheduling
 miss, not proof reuse or a verdict difference. Final timing remains pending.
+
+Indexed attempt, `4715752f`: Clippy refuses the expanded subprocess fixture's
+109-line test. Shared program setup is extracted without changing any control
+or allowing the lint. Interpreter providers, including an installed Cargo or
+broker wrapper, retain the late path; native ELF/Mach-O bodies remain eligible.

@@ -350,11 +350,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(unix)]
-    #[test]
-    fn native_and_proxy_hints_bind_programs_metadata_and_selection() -> TestResult {
-        let root = std::env::temp_dir().join(format!("sail-negative-cargo-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
+    fn fixture_programs(root: &Path) -> TestResult {
         for name in [
             "project",
             "query",
@@ -365,7 +361,6 @@ mod tests {
         ] {
             std::fs::create_dir_all(root.join(name))?;
         }
-        let root = root.canonicalize()?;
         let program = root.join("rustup/toolchains/1.92.0/bin/cargo");
         std::fs::write(&program, "\x7fELFold Cargo")?;
         std::fs::write(
@@ -377,6 +372,18 @@ mod tests {
         std::fs::write(root.join("custom-cargo"), "opaque wrapper")?;
         std::fs::write(root.join("sail"), "\x7fELFsail")?;
         std::fs::write(root.join("cargo-verus"), "\x7fELFcargo-verus")?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn native_and_proxy_hints_bind_programs_metadata_and_selection() -> TestResult {
+        let root = std::env::temp_dir().join(format!("sail-negative-cargo-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        fixture_programs(&root)?;
+        let program = root.join("rustup/toolchains/1.92.0/bin/cargo");
         let settings = root.join("rustup/settings.toml");
         let setting = |channel: &str| {
             std::fs::write(

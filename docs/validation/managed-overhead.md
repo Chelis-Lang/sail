@@ -382,3 +382,10 @@ passes 1,242; both fail the slot fixture's final eviction expectation. The
 new scheduling-corruption control replayed root last, legitimately refreshing
 its LRU order. The fixture now re-establishes root-then-member use before the
 unchanged eviction assertion. Production behavior and every assertion remain.
+
+Indexed attempt, `85e26c97`: native gate and solver51 pass; full E2E reaches
+the scheduled-script binding control, whose private fixture still reads the
+old context-root memo. The fixture now reads bounded invocation slots while
+retaining the exact context, establishing run id, uniqueness and binding-change
+assertions. The same runtime passes the Mac host gate and real Anvil/Vest
+root/subdirectory replay controls; final joined qualification remains pending.

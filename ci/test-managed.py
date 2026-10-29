@@ -831,7 +831,7 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                 return marker
             def schedule_binding(result):
                 memos = list((root / "cache/projects").glob(
-                    f'*/{result["context_sha256"]}/unscheduled-scripts.json'))
+                    f'*/{result["context_sha256"]}/invocations/*/unscheduled-scripts.json'))
                 current = [json.loads(memo.read_text()) for memo in memos]
                 current = [memo for memo in current if memo["run_id"] == result["run_id"]]
                 assert len(current) == 1, current
