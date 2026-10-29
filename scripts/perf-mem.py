@@ -137,7 +137,10 @@ def run(args):
         table = {}
     status = load(args.status, {})
     pid = (status.get('info') or {}).get('pid')
-    if pid in table and daemon(table[pid][3]):
+    # The cache's own status identifies its server. Darwin can rewrite argv[0]
+    # (and ps cannot delimit executable paths with spaces), so command spelling
+    # must not reject that authoritative PID. Retain the observed start identity.
+    if pid in table:
         known[str(pid)] = table[pid][2]
     tracker = Tracker(known)
     if args.snapshot:
