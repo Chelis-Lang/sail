@@ -138,12 +138,20 @@ fn decode_file(encoded: &str) -> String {
 pub(super) fn dependencies(text: &str) -> Option<Vec<String>> {
     let lines: Vec<&str> = text.split('\n').collect();
     let (_, files) = rule_layout(&lines)?;
-    Some(
-        files
-            .into_iter()
-            .map(|index| decode_file(lines[index].strip_suffix(':').unwrap_or_default()))
-            .collect(),
-    )
+    files
+        .into_iter()
+        .map(|index| {
+            let encoded = lines[index].strip_suffix(':')?;
+            let decoded = decode_file(encoded);
+            // Certify the actual proposal, without normalizing any path byte.
+            // Unsupported tokens refuse the whole inventory, never one row.
+            sail_acceptance::inputs::dependency_filename_matches(
+                encoded.as_bytes(),
+                decoded.as_bytes(),
+            )
+            .then_some(decoded)
+        })
+        .collect()
 }
 
 /// The line indices of a rustc dep-info's output rules and of its file
@@ -323,6 +331,74 @@ pub(super) fn closed_journal(records: &[Value]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn compiler_filename_guard_preserves_literal_paths_and_refuses_unsupported_tokens() {
+        for (encoded, decoded) in [
+            ("a\\ b", "a b"),
+            ("back\\slash", "back\\slash"),
+            ("end\\", "end\\"),
+            ("a/./b", "a/./b"),
+            ("back\\\\ space", "back\\ space"),
+        ] {
+            let document = format!("o: {encoded}\n\n{encoded}:\n");
+            assert_eq!(dependencies(&document), Some(vec![decoded.to_owned()]));
+        }
+        for name in ["", "nul\0name", "carriage\rreturn", "new\nline"] {
+            let document = format!("o: {name}\n\n{name}:\n");
+            assert!(dependencies(&document).is_none(), "{name:?}");
+        }
+    }
+
+    #[test]
+    fn rejected_filename_keeps_source_inventory_incomplete() -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-filename-refusal-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let state = root.join("source-state.json");
+        let artifacts = root.join("artifacts.jsonl");
+        let output = root.join("libdemo.rmeta");
+        let metadata = serde_json::json!({"workspace_root":root});
+        let record = serde_json::json!({"reason":"compiler-artifact", "package_id":"demo",
+            "target":{"name":"demo","kind":["lib"]},"filenames":[output]});
+        std::fs::write(&artifacts, closed_journal(&[record]))?;
+        std::fs::write(root.join("good.rs"), "pub fn input() {}\n")?;
+        let expected: Vec<_> =
+            BTreeSet::from([root.join("good.rs"), root.join("good.rs").canonicalize()?])
+                .into_iter()
+                .collect();
+        for name in ["", "nul\0name", "carriage\rreturn"] {
+            std::fs::write(root.join("demo.d"), "o: good.rs\n\ngood.rs:\n")?;
+            let (known, covered) =
+                update(&state, &artifacts, &metadata).map_err(std::io::Error::other)?;
+            assert!(covered, "fixture must first establish complete coverage");
+            assert_eq!(known, expected);
+            assert!(load(&state, true).1);
+            let package_paths = packages(&state);
+            let target_paths = targets(&state);
+            // The valid first row must not conceal a later unsupported row,
+            // or leave a previously complete inventory marked complete.
+            std::fs::write(
+                root.join("demo.d"),
+                format!("o: good.rs {name}\n\ngood.rs:\n{name}:\n"),
+            )?;
+            let malformed = std::fs::read_to_string(root.join("demo.d"))?;
+            assert!(
+                dependencies(&malformed).is_none(),
+                "no valid subset: {name:?}"
+            );
+            let (_, covered) =
+                update(&state, &artifacts, &metadata).map_err(std::io::Error::other)?;
+            assert!(
+                !covered,
+                "refused token cannot establish coverage: {name:?}"
+            );
+            assert!(!load(&state, true).1, "refusal must persist across reads");
+            assert_eq!(packages(&state), package_paths);
+            assert_eq!(targets(&state), target_paths);
+        }
+        std::fs::remove_dir_all(root)
+    }
+
     #[test]
     fn compiler_dep_info_preserves_escaped_external_paths() {
         let files = [

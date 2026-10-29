@@ -28,6 +28,8 @@ pub mod query;
 
 /// Exact structural byte grammar for streaming frames and lexical tokens.
 pub mod parser_grammar;
+/// Owned deferred responses preserve their original payload through annotation.
+pub mod query_holding;
 /// Actual borrowed SMT token cursor, spans and sticky lexical errors.
 pub mod query_lex;
 /// Actual owned SMT stream splitter operations and ordered emissions.

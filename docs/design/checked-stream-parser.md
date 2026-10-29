@@ -62,14 +62,17 @@ order reconstructs its original `after` body byte for byte. The refused combined
 descriptors earn no canonical credit. Both independent parts require ordinary
 whole-root Stock failure at the unchanged resources before qualification.
 
-Complete pinned Stock discovery observes 129 verified / 204 function entries,
-including the checked history/emission lemmas used by the actual chunk loop.
-The manifest locks this observed inventory; unknown pending inventories still
-earn no credit. All 54 parser mutations fail ordinarily on the full function
-inventory without exhausting resources. The 168 current-main controls and their three
-positives reuse independently audited identical programs. This is 55 fresh
-checks plus 171 reused checks; it does not mean 226 fresh executions. Native
-compatibility, conformance and cost qualification remain separate gates.
+The current union's complete pinned Stock parser root checks 133 verified
+checks and all 208 function entries. This retains the checked
+history/emission lemmas used by the actual chunk loop and adds the four shared
+filename functions. All 54 parser mutations fail ordinarily at whole-root scope
+without exhausting resources. The manifest locks the actual discovered inventory.
+The combined matrix has 238 cases: 183 query/input/authority calls execute at
+`58edf644`, and all 55 parser calls execute freshly at `838706f0`; exact compiled
+program hashes bind those calls to the combined source. The parent parser-only
+checkpoint's earlier 129/204 and 55 fresh + 171 reused receipts retain their
+historical scope. See the [combined qualification](../validation/compiler-filename-refinement.md)
+for native compatibility, conformance, current-main transfer and cost status.
 
 The native splitter adapters do not discharge all representable-offset,
 output-capacity, allocation or process-lifetime premises. Physical reads/EOF,

@@ -147,13 +147,6 @@ enum Entry {
 }
 
 impl Entry {
-    fn effort_mut(&mut self) -> Option<&mut Effort> {
-        match self {
-            Self::Paired { effort, .. } => effort.as_mut(),
-            Self::Silence { .. } => None,
-        }
-    }
-
     fn wire_cost(&self) -> Option<usize> {
         match self {
             Self::Paired { pair, .. } => {
@@ -202,9 +195,19 @@ impl Entry {
 /// A `check-sat` reply held back until its effort is known: the
 /// `:all-statistics` reply after it gives the `rlimit-count` delta, and a
 /// `reason-unknown` reply may come in between (ADR 0009).
-struct HeldCheck {
-    entry: Entry,
+struct HeldMetadata {
     before: Option<u64>,
+    effort: Effort,
+}
+
+type HeldPayload = BoundPair<Expect, Vec<u8>>;
+type HeldCheck = sail_acceptance::query_holding::Holding<HeldPayload, HeldMetadata>;
+
+fn held_entry(pair: HeldPayload, metadata: Option<HeldMetadata>) -> Entry {
+    Entry::Paired {
+        pair,
+        effort: metadata.map(|metadata| metadata.effort),
+    }
 }
 
 /// The number after `:rlimit-count` in a statistics reply.
@@ -230,7 +233,7 @@ struct Pairer {
     pending: CorrelatedQueue<Expect, Vec<u8>>,
     /// The latest `rlimit-count` seen in a statistics reply.
     last_count: Option<u64>,
-    held: Option<HeldCheck>,
+    held: HeldCheck,
 }
 
 impl Default for Pairer {
@@ -239,7 +242,7 @@ impl Default for Pairer {
             terminal: None,
             pending: CorrelatedQueue::empty(),
             last_count: None,
-            held: None,
+            held: HeldCheck::new(),
         }
     }
 }
@@ -266,8 +269,8 @@ impl Pairer {
 
     /// Releases a held check, with whatever effort is known.
     fn release(&mut self, out: &mut Vec<Entry>) {
-        if let Some(h) = self.held.take() {
-            out.push(h.entry);
+        if let Some((pair, metadata)) = self.held.take() {
+            out.push(held_entry(pair, metadata));
         }
     }
 
@@ -291,37 +294,43 @@ impl Pairer {
             let kind = classify(text).map(|c| c.kind).ok();
             match kind {
                 Some(k) if k.is_check() => {
-                    self.release(&mut out);
-                    self.held = Some(HeldCheck {
-                        entry: Entry::Paired {
-                            effort: Some(Effort {
-                                limit: *limit,
-                                used: None,
-                                reason: None,
-                            }),
-                            pair,
-                        },
+                    let metadata = HeldMetadata {
                         before: self.last_count,
-                    });
+                        effort: Effort {
+                            limit: *limit,
+                            used: None,
+                            reason: None,
+                        },
+                    };
+                    if let Some((previous, metadata)) = self.held.replace(pair, metadata) {
+                        out.push(held_entry(previous, metadata));
+                    }
                     continue;
                 }
                 Some(CommandKind::GetInfo {
                     keyword: b":reason-unknown",
                 }) => {
-                    if let Some(effort) = self.held.as_mut().and_then(|h| h.entry.effort_mut()) {
-                        effort.reason =
+                    if let Some(mut metadata) = self.held.take_metadata() {
+                        metadata.effort.reason =
                             Some(String::from_utf8_lossy(reply.trim_ascii()).into_owned());
+                        if !self.held.put_metadata(metadata) {
+                            self.pending.stop();
+                            break;
+                        }
                     }
                 }
                 Some(CommandKind::GetInfo {
                     keyword: b":all-statistics",
                 }) => {
                     let count = rlimit_count(reply);
-                    if let Some(h) = self.held.as_mut()
-                        && let (Some(before), Some(after)) = (h.before, count)
-                        && let Some(effort) = h.entry.effort_mut()
-                    {
-                        effort.used = Some(after.saturating_sub(before));
+                    if let Some(mut metadata) = self.held.take_metadata() {
+                        if let (Some(before), Some(after)) = (metadata.before, count) {
+                            metadata.effort.used = Some(after.saturating_sub(before));
+                        }
+                        if !self.held.put_metadata(metadata) {
+                            self.pending.stop();
+                            break;
+                        }
                     }
                     self.release(&mut out);
                     self.last_count = count.or(self.last_count);
@@ -1206,7 +1215,7 @@ fn record_provenance(input: &[u8], served: u64, solver_started: bool) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Expect, Pairer};
+    use super::{Effort, Expect, Pairer};
     use proptest::prelude::*;
     use sail_key::QueryKey;
 
@@ -1320,6 +1329,7 @@ mod tests {
         assert_eq!(stored.len(), 1);
         assert_eq!(stored[0].key, key(2));
         assert!(p.finish().is_empty());
+        assert!(p.finish().is_empty());
     }
 
     fn check(i: u8, limit: u64) -> Expect {
@@ -1372,7 +1382,75 @@ mod tests {
         assert!(p.drain().is_empty());
         let rest = stored_entries(p.finish());
         assert_eq!(rest.len(), 1);
+        assert_eq!(rest[0].key, key(1));
+        assert_eq!(rest[0].reply, b"unsat\n");
         assert_eq!(rest[0].effort.as_ref().and_then(|e| e.used), None);
+        assert!(p.finish().is_empty());
+    }
+
+    #[test]
+    fn replacing_a_held_check_preserves_each_original_pair_and_annotation() {
+        let mut p = Pairer::default();
+        p.expect(store(1, "(get-info :all-statistics)"));
+        p.reply(b"(:rlimit-count 100)\n".to_vec());
+        p.expect(check(2, 10));
+        p.reply(b"unsat\n".to_vec());
+        p.expect(check(3, 20));
+        p.reply(b"unknown\n".to_vec());
+        p.expect(store(4, "(get-info :reason-unknown)"));
+        p.reply(b"(:reason-unknown \"incomplete\")\n".to_vec());
+        p.expect(store(5, "(get-info :all-statistics)"));
+        p.reply(b"(:rlimit-count 140)\n".to_vec());
+
+        let stored = stored_entries(p.drain());
+        let keys: Vec<u8> = stored.iter().map(|entry| entry.key.0[0]).collect();
+        assert_eq!(keys, [1, 2, 4, 3, 5]);
+        assert_eq!(stored[1].reply, b"unsat\n");
+        assert_eq!(
+            stored[1].effort,
+            Some(Effort {
+                limit: Some(10),
+                used: None,
+                reason: None,
+            })
+        );
+        assert_eq!(stored[3].reply, b"unknown\n");
+        assert_eq!(
+            stored[3].effort,
+            Some(Effort {
+                limit: Some(20),
+                used: Some(40),
+                reason: Some("(:reason-unknown \"incomplete\")".to_owned()),
+            })
+        );
+        assert!(p.finish().is_empty());
+    }
+
+    #[test]
+    fn unheld_metadata_does_not_annotate_a_later_check() {
+        let mut p = Pairer::default();
+        p.expect(store(1, "(get-info :reason-unknown)"));
+        p.reply(b"(:reason-unknown \"old\")\n".to_vec());
+        p.expect(store(2, "(get-info :all-statistics)"));
+        p.reply(b"(:rlimit-count 100)\n".to_vec());
+        p.expect(check(3, 30));
+        p.reply(b"sat\n".to_vec());
+        let initial = stored_entries(p.drain());
+        assert_eq!(initial.len(), 2);
+        assert!(initial.iter().all(|entry| entry.effort.is_none()));
+        let final_entries = stored_entries(p.finish());
+        assert_eq!(final_entries.len(), 1);
+        assert_eq!(final_entries[0].key, key(3));
+        assert_eq!(final_entries[0].reply, b"sat\n");
+        assert_eq!(
+            final_entries[0].effort,
+            Some(Effort {
+                limit: Some(30),
+                used: None,
+                reason: None,
+            })
+        );
+        assert!(p.finish().is_empty());
     }
 
     #[test]

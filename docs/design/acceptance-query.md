@@ -58,6 +58,7 @@ The production adapters now use these operations:
 | Production path | Checked executable operation | Established boundary |
 |---|---|---|
 | Shim `cached::Pairer` | `CorrelatedQueue<Expect, Vec<u8>>` owns both queues; `take_pair` returns a private `BoundPair` | Both oldest actual payloads are removed together; a missing side or permanent stop changes neither queue. Every unmatched suffix is preserved exactly. |
+| Shim held-check storage | `query_holding::Holding<BoundPair<Expect, Vec<u8>>, HeldMetadata>` | The original pair stays private while effort metadata is detached and restored; replacement returns the original displaced pair, and taking clears the held value. Candidate qualification is recorded separately below. |
 | Shim replay output | `ReplayCursor::advance` | Exactly the already-served prefix is suppressed. The countdown cannot overflow while forwarding an arbitrarily long fresh suffix. |
 | Shim `spawn_storer` | `PublicationBatch<Entry>` | Checked byte accounting bounds the actual pending payloads; release returns exactly their original values in order, or no values. |
 | Shim publication adapter | `PublicationGate::allows` | Every supplied closure observation is required. The adapter requires input completion, active pairing, empty queues, successful exit, quiet stderr EOF and successful forwarding before opening the storer's atomic gate. |
@@ -76,6 +77,26 @@ response pair. Because this ownership retains exact command text until batch
 release, the storer charges that text alongside reply and command-name bytes
 to its existing 64 MiB pending-byte limit. An oversized batch is discarded
 without changing forwarded output.
+
+The held-response delivery separates the original bound pair from mutable
+effort metadata. Reason-unknown and statistics updates borrow only detached
+metadata. The checked controller preserves the pair through those updates,
+returns an original displaced check before holding its successor, and releases
+it at most once. The carrier's payload type is `BoundPair`; silence
+certificates retain their separate `Entry` variant. The shim retains its existing statistics release and append
+operations: `[1,3,2,4]` remains the correct sequence for initial statistics,
+held check, reason-unknown and final statistics. Metadata restoration failure
+permanently stops pairing and ends the current drain; the existing publication
+gate still refuses a stopped pairer.
+
+The native `Pairer` adapter is source-bound and reviewed, rather than compiled
+as a Stock proof body. Parsing, process observations, complete publication
+projection and cache-writer origin remain separate obligations. The
+[held-response qualification record](../validation/held-response-ownership.md)
+preserves the bounded whole positive, six ordinary controls and focused native
+checks. The linked combined qualification records all 238 cases and completed
+runtime/conformance gates with their actual source identities; those results
+do not close the native caller and origin obligations above.
 
 [`proofs/refinement/query.rs`](../../proofs/refinement/query.rs) calls these
 actual executable operations and proves simulation into the existing model.

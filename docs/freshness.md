@@ -34,6 +34,14 @@ proof receipt or accept a repair. CLI and MCP clients receive the same label.
 Any doubt makes a result Historical or Unknown, never Current. The cost of a
 wrong "not current" is one re-run; a wrong "Current" is never acceptable.
 
+Newly decoded compiler dep-info filename inventories preserve the literal
+spelling of spaces, backslashes and path components. An empty name, NUL,
+carriage return or newline refuses that whole inventory. This conservatively
+withholds input coverage and reports Unknown, without changing a freshly
+executed verifier's verdict. Previously recorded literal paths retain their
+existing identity and currentness checks; the new token proof does not
+retroactively certify them.
+
 ## Reading a result later
 
 When a run ends Current, Sail records the SHA-256 content digest of every file

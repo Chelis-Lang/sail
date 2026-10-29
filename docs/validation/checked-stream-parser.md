@@ -1,18 +1,25 @@
 # Shared stream parser qualification
 
-The complete parser root and all 54 ordinary failure controls pass through
-pinned stock Verus. The 171 inherited cases reuse independently audited,
-byte-identical programs and runtime: coverage is **55 fresh + 171 reused**, not
-226 fresh executions. Frozen-source native Linux workspace, solver, full end-to-end, full fast and
-full standard conformance pass, including the mandatory mutation cohort. Narrow
-native cost is measured. The affected runtime checks also pass freshly on
-base `8797ccd4`. The restack onto `b56889f1` changes only inherited installer
-helpers/tests and documentation; complete proof and runtime/cost source inputs
-remain identical. Scoped installer/link checks and current-head CI cover that
-base update. Final head review and current-head CI remain before merge.
+The current Holding/filename union's parser root passes 133 verified checks
+and all 208 function entries, including the four added filename functions. All
+54 ordinary parser controls pass their required whole-root failure checks.
+The combined matrix has 238 actual cases at the sources recorded in the
+[combined qualification](compiler-filename-refinement.md), including 55 fresh
+parser calls at `838706f0`. That record owns current union runtime/cost status.
+
+The parent parser-only checkpoint below retains its original 129/204 inventory
+and **55 fresh + 171 reused** coverage; it is not 226 fresh executions and is
+not relabeled as the later union's proof. Its frozen-source full native gates
+and narrow parser cost remain attributed to their actual source.
+The restack onto `b56889f1` changes inherited installer helpers/tests and
+documentation only; proof and runtime/cost inputs retain their executed source.
+Scoped installer/link checks cover that base update, with current-head CI
+required before merge.
 [ADR 0086](../decisions/0086-checked-stream-framing.md) is accepted on
 2026-10-29 for this bounded runtime adoption and its measured cost tradeoff. The [service-wide design](../design/evidence-acceptance-core.md)
 remains open under #368.
+
+## Parent parser checkpoint evidence
 
 | Scope | Evidence and result |
 |---|---|
@@ -20,7 +27,7 @@ remains open under #368.
 | Fresh production proof | `d9da43c9`: whole parser positive 129 verified / 204 function entries; all 54 controls fail ordinarily with 128 verified / one failing function; no resource or VIR refusal |
 | Inherited production proofs | 171 unique cases / 174 historical calls re-audited from closed `c0957b92` and `fefe3c73` receipts; complete generated programs, inventories, default commands, Stock runtime and Rust identity match |
 | Abstract models | 35 executions at union `838706f0`: four whole positives and 31 ordinary controls; all current generated programs, all 3,873 Stock runtime files and pinned Rust match; actual raw results independently checked; no new execution at the parser head |
-| Current correspondence | All 226 production programs and native-parser bindings match from qualified `d9da43c9` through the restacked head; all 35 model programs also match their executed receipt. No new verifier calls |
+| Parent correspondence | All 226 production programs and native-parser bindings match from qualified `d9da43c9` through the restacked parent head; all 35 model programs also match their executed receipt. No new verifier calls |
 | Frozen native Linux | `a84109cc`, c7i.4xlarge/us-east-1: workspace 1,203 passed / 54 skipped; solver 51 passed; full unchanged end-to-end + extra passed; full fast four arms each 147/147 units / 3,451 functions; standard four arms each 159/159 / 13,166 functions plus all 18 mutations and both revert controls passed |
 | Current-base runtime refresh | `7b1c2720`: workspace 1,212 passed / 54 skipped; solver 51 passed; full end-to-end + extra passed (1,099.77 s); PR-fast four arms each 33/33 passed; all 18 mutations and cold/revert/forced-revert checks passed (21 rows, 1,050.02 s). No mutation evidence transferred |
 | Installer/docs base refresh | Main `b56889f1`: focused installer tests (12/12) and documentation-link checks pass; all runtime crates, complete proof inputs, entry scripts, fixtures, image and pins are unchanged. Original native/corpus/cost evidence retains its actual sources; no new whole-binary identity is asserted |
