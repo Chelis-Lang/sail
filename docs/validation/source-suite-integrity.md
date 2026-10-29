@@ -78,7 +78,7 @@ native root-owned-file control demonstrated an archive permission failure
 mechanism. The successful retry verifies privileged full archival before the
 image builds. The earlier lost outcome remains unknown.
 
-The #202 PR head `7c2d26d1`, rebased onto main `c89e29d3`, retained the two
+The #202 PR head `7c2d26d1`, rebased onto main `82d46529`, retained the two
 Rust implementation files and three integrity-control scripts byte-identically
 to qualified source `6ba30636`. This does not claim a native run of that rebased
 head or any later harness integration.

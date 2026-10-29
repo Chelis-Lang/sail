@@ -3,7 +3,7 @@
 | Field | Evidence |
 |---|---|
 | Status | Native workspace, solver, every end-to-end phase plus extra, PR subset, full fast and full standard pass; required PR checks are enforced separately |
-| Source | Native checks qualify `b0eb7534d023d372599b017f6621114595729a05`, based on `1060a8ec`; the final rebase onto `4b0f265f` adds only the merged solver-research documentation and this record/API clarification, with functional source unchanged |
+| Source | Native checks qualify `b0eb7534d023d372599b017f6621114595729a05`, based on `56d58208`; the final rebase onto `24cf4c3a` adds only the merged solver-research documentation and this record/API clarification, with functional source unchanged |
 | Runtime | Pinned fork `73dea021`, Z3 4.16.0; stock oracle `0.2026.10.04.426d8b0` |
 | Environment | Dedicated native EC2 c7i.8xlarge (32 vCPU), us-east-1, Ubuntu 24.04; CI images `sail-ci:44261d52f2b2ff03-core` and `sail-ci:44261d52f2b2ff03`; earlier macOS non-solver host checks |
 | Scope | Unsupported-setup fallback in jobs, watch and blocking/asynchronous MCP; unbound evidence comparison and repair baselines; existing default-mode corpus |

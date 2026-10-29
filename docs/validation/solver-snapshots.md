@@ -49,7 +49,7 @@ Historical report-only source at `519cb773` passes the full native workspace
 gate: 638 tests passed, 35 skipped, plus formatting, clippy, doctests,
 rustdoc, layering, dependency policy and generated benchmark checks. This
 ran on c7i.4xlarge, us-east-1, image context `3c02e445e25df766`.
-The historical rebases onto `555b8467` and `1060a8ec` change only that report's parent;
+The historical rebases onto `16111e24` and `56d58208` change only that report's parent;
 its own delta remains documentation and the standalone SMT reproduction.
 All previously gated Rust sources and Cargo inputs are byte-identical.
 The parent additionally introduces the independently qualified `actual_work`

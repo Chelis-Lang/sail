@@ -7,7 +7,7 @@ same machine stored.
 | Field | Value |
 |---|---|
 | Status | **Pass** on the measured scope: seeded first runs match plain stock Verus in exit code, stderr (without Cargo progress lines) and `verification results::` lines; mismatched and corrupt entries fall back to a normal verification |
-| Source | Sail `feat/prebuilt-vstd` (lane L47), code at `93a55a0d` (later commits change only documentation and tests); before = `main` at `d4ac51af` |
+| Source | Sail `feat/prebuilt-vstd` (lane L47), code at `93a55a0d` (later commits change only documentation and tests); before = `main` at `868d5af1` |
 | Runtime | Sail's Verus, fork `73dea021` (`engine-runtime-73dea021-linux` in the CI image; `-macos` from the Sail cache); oracle: stock release `0.2026.10.04.426d8b0`; Z3 4.16.0 |
 | Environment | Linux: native EC2 c7i.4xlarge (16 vCPU, Xeon 8488C) for timings and c7i.8xlarge for the checks, us-east-1, Ubuntu 24.04, inside the CI image, one timed command at a time, load average 2–5. macOS: Apple M3 (macOS 26.5) under other work, load average 15–23 |
 | Scope | A one-function project made as README's First verification says (crates.io `vstd = "=0.0.0-2026-10-04-0306"`), and vest at `11af01dd` (`-p vest_lib`, crates.io `vstd 0.0.0-2026-09-06-0133`, unpatched) |

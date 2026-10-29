@@ -36,7 +36,9 @@ Relative or missing hints add no coverage. See [freshness](../freshness.md).
 
 ## Corrected combined consumer
 
-Source `cda42861`, runtime `7d9d5410` on upstream `7d82994`, Cargo/Rust 1.99.1.
+Source: the 0.1.0-rc.6 `release/0.1.0` commit, whose Rust, Cargo, runtime and
+build inputs equal main `63420678` (#347); runtime `7d9d5410` on upstream
+`7d82994`, Cargo/Rust 1.99.1.
 Native Linux: EC2 c7i.8xlarge, us-east-1. Mac: EC2 mac-m4.metal, us-east-1c,
 macOS 27.0.
 
@@ -108,4 +110,4 @@ SHA-256 `33d93b6863135fd6c42393e33aaae4ac147608cb59cb8aae3cfcdd9cca5d998e`.
   no changed file digests, source bindings or existing path metadata.
 - `2c7f5164`, 2026-10-23, initial correction refused release recording with
   Unknown inputs because absent configuration roots could not canonicalize.
-  `cda42861` preserves those missing-path stamps and adds a regression test.
+  The rc.6 source preserves those missing-path stamps and adds a regression test.

@@ -6,7 +6,7 @@ cohorts pass. Both actual archive walkthroughs and the focused current Mac
 comparisons pass functional checks. The remaining setup overhead is open.
 
 The combined crate tree is `a8140a02446d41d39d93ec96dccb07a9d99b3baf`,
-based on main `3b0bac19`, with runtime `36d65c3f`.
+based on main `4b41c9fd`, with runtime `36d65c3f`.
 
 The shared projection validates the same selected namespace and aliases. Internal
 revision comparisons hash that selection directly instead of materializing and
@@ -53,7 +53,7 @@ dependency proof was independently recorded by the normal factory.
 Native hosts with no competing test/build jobs: EC2 c7i.8xlarge, us-east-1,
 and mac-m4.metal, us-east-1c,
 macOS 27.0. Verifier Rust/Cargo 1.99.1, fork runtime `36d65c3f`. Baseline Sail is
-`237c7d8d`; the candidate adds the input/runner patch, plus the separately
+`4d754827`; the candidate adds the input/runner patch, plus the separately
 qualified watch correction on Mac. The frozen code patch and raw results are
 identified in the evidence below. Both variants use stripped release binaries,
 the same workspace and separate proof contexts. Each establishes its own proof
@@ -77,7 +77,7 @@ mutation-loop performance results.
 ## Focused current-main Mac cold baseline
 
 Six rotated rounds on the same Mac, using a normal factory installation
-of `237c7d8d`: all 48 samples succeed and all four selected rows have valid
+of `4d754827`: all 48 samples succeed and all four selected rows have valid
 functional comparisons. The missing mutation row in the general matrix report
 is outside this focused diagnosis; no full matrix acceptance is claimed.
 

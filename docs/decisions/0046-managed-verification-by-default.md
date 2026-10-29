@@ -156,7 +156,7 @@
 
 `scripts/perf-loops.sh`, three rounds, medians, on EC2 c7i.4xlarge
 (us-east-1, idle, one timed run at a time), Sail's Verus `73dea021`. "Before"
-is `main` at `4cd6fcaa`, whose `sail verify` was the pass-through; "after" is
+is `main` at `5f7ece1a`, whose `sail verify` was the pass-through; "after" is
 this change. Each side is measured with its own plain baseline in the same
 session. Seconds:
 

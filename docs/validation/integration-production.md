@@ -4,13 +4,13 @@ Assessed October 23, 2026. Qualified executable source is
 `64a49aa5aa43f69b452424dd8c39bc9079d03569`, tree
 `7716977b53a74dae3de955964a43d656877e7541`. It combines native temporal jobs,
 neutral source assurance and bounded mutation retention with protected main
-`e03dfa0b0186a9a834c66d7ca7e349a2e36c78bb`. The final delivery preserves the qualified Rust, Cargo and runtime inputs.
+`6342067857521a63ea20aab03e65ec811a3ee300`. The final delivery preserves the qualified Rust, Cargo and runtime inputs.
 The benchmark-only main update below is separate from runtime qualification.
 Protected delivery requires every hosted gate.
 
 The native worker links D.I.V.E.
 `1025cd6a0510183bc16abc1e6e3eea4f9305c5a9`. Neutral macro and grammar bytes
-match `b3ea2007fa31a71e867c2278860ebe4b5573d34c`. Corpus entries, runtime pins
+match `71e8357971dc55f9e71d232439e8f67ca6ced728`. Corpus entries, runtime pins
 and default deadlines are unchanged. This qualification establishes no performance
 improvement, positive native neutral-source mutation kill, application trace
 capture or full realizability.
@@ -18,7 +18,7 @@ capture or full realizability.
 ## Current cumulative source
 
 The delivery also incorporates protected main
-`fc29023ae0578cf435aa295a604ee6d5a09f4a39`. Its only non-Markdown changes
+`082c629a78162261d50f4a42e9c210f3f3dda067`. Its only non-Markdown changes
 relative to the previously qualified integration are `scripts/perf-matrix.py`
 and `scripts/test-perf-matrix.py`. Passing-workload rows now require successful
 proofs, Vest receives the required proof limit on both arms, and a failed

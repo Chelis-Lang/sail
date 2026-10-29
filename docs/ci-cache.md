@@ -155,7 +155,7 @@ trust you already place in a cached `target/` with stock `cargo verus`; see
 
 The measurements ran on a native EC2 c7i.4xlarge (16 vCPU, Intel Xeon
 Platinum 8488C) in us-east-1, Ubuntu 24.04, on 2026-10-26. Sail was a Linux
-release stage of main `b3ab7677` (Sail 0.1.0, fork runtime `36d65c3f`).
+release stage of main `fb98b082` (Sail 0.1.0, fork runtime `36d65c3f`).
 Stock was Verus 0.2026.10.18.7d82994. GitHub's standard runners have 4 vCPU,
 so absolute times there will be longer.
 
@@ -224,7 +224,7 @@ times, then the caches were restored into a fresh clone:
 
 So `target/`, `results/` and `projects/` all survive a new runner.
 
-² Measured on main `1f812e12` with and without the content-identity change
+² Measured on main `f33da950` with and without the content-identity change
 ([#428](https://github.com/Chelis-Lang/sail/pull/428)), same host type and
 method. The first run on a new runner reads every installed tool once, about
 0.15 s; later runs reuse a per-machine memo.

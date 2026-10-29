@@ -23,7 +23,7 @@ On 2026-10-17, one quiet native c7i.4xlarge in us-east-1 ran three paired rounds
 in rotated arm order, retaining all 18 calls. Both research arms used the same
 normal `cc7bbce4` runtime and literal Vest recipes at project commit
 `11af01ddaef76cceded03517cd48764adb9d35b1`. Baseline Sail `0272afe8` is
-`a6c7a4b8` with only the research fork selector; candidate `5a52f8a9` is product
+`eac593df` with only the research fork selector; candidate `5a52f8a9` is product
 `285f7fa3` with that same selector. A single physical project/source-cache path
 was held across contexts, with separate Cargo, proof and daemon caches.
 
@@ -63,14 +63,14 @@ not establish complete solver work; all-hit status remains UNKNOWN.
 
 ## Current-source qualification
 
-The qualified native source `e2600b44` is based on `12e82e37`; its two changed
+The qualified native source `e2600b44` is based on `5bb7ecbc`; its two changed
 Rust files are byte-identical to measured product `285f7fa3`. That qualification
 uses the then-accepted `73dea021` runtime; the timing screen separately binds
 its genuine cc7 runtime above. Absolute timings belong to those exact sources
 and runtimes.
 
 The implementation PR composes the same selection Rust onto current main
-`df1c3630`, including independently qualified #219 fresh-byte digest reuse and
+`221f88e2`, including independently qualified #219 fresh-byte digest reuse and
 #221 full closure-identity runtime selection. Both selection files remain
 byte-identical to `e2600b44`; Cargo manifests and lockfiles are unchanged.
 The added non-documentation differences are exactly those merged daemon and

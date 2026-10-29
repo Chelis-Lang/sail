@@ -4,24 +4,13 @@ Development and performance work follow current main, including the Oyster
 integration. Release composition remains the owner's decision. Do not create
 a release branch, tag or draft merely because a sprint validation completes.
 
-The earlier private 0.1.0-rc.6 artifacts were frozen on `release/0.1.0`, starting at
-`fc29023a`. Their Rust/Cargo/runtime inputs equal the qualified `cda42861`
-consumer. Later Oyster integration on main is outside those historical artifacts;
-they are a baseline, not the selected scope of a future release.
-Both frozen archives pass first-use proof reuse, an edit, actual repair and
-real Claude Code MCP checks. All mutation comparisons pass; remaining cold
-and unchanged costs keep performance acceptance open. The
-[release record](validation/release-candidate.md) binds the exact artifacts.
-
-For private draft review, collaborators can download the archives and checksums
-with GitHub CLI, then follow the README's checksum and extraction commands:
-
-```sh
-gh release download v0.1.0-rc.6 --repo Chelis-Lang/sail \
-  --pattern 'sail-0.1.0-rc.6-*.tar.gz*'
-```
-
-The ordinary release download URLs become available when the owner publishes.
+Published releases are on the repository's
+[Releases](https://github.com/Chelis-Lang/sail/releases) page; the
+[install guide](install.md) downloads, checks and installs them. The
+[release record](validation/release-candidate.md) binds the qualified
+artifacts of the current release and lists earlier candidates as history.
+A release is built locally, uploaded as a **draft**, attested and verified,
+and only then published; see [Procedure](#procedure).
 
 The portable native path requires the pinned verifier toolchain's canonical
 `lib/rustlib/src/rust` tree; a missing, aliased or changed tree declines proof
@@ -31,9 +20,9 @@ or change machine-local research mode. See the
 [compiler-boundary record](validation/vstd-compile-boundary.md).
 
 Sail ships prebuilt binaries for Linux and macOS as GitHub release assets on
-`Chelis-Lang/sail`. Each archive includes the repair engine runtime. Until
-the owner's open-source release, every release stays a **draft**: the release
-script never publishes one, and only the owner publishes.
+`Chelis-Lang/sail`. Each archive includes the repair engine runtime. The
+release script creates a **draft** and never publishes one; publishing is a
+separate step that follows a verified attestation of both archives.
 
 Releases are built locally. CI stays Linux-only and never builds, packages or
 publishes a release (ADR 0013); there are no macOS runners.
@@ -97,9 +86,12 @@ does not claim that GitHub built the archive. `scripts/install.py` and the
 [install guide](install.md#verify-provenance) verify it with
 `gh attestation verify ARCHIVE --repo Chelis-Lang/sail`.
 
-Attestations on a private repository need GitHub Enterprise Cloud, so the
-workflow first works once the repository is public; the first published
-release is the first end-to-end check.
+The workflow runs against the **draft** release, before anything is
+published: its `contents: write` permission lets it read draft assets. The
+0.1.0-rc.7 and 0.1.0 drafts were both attested this way, and
+`gh attestation verify` passed for both archives of each before publication.
+Never publish a release whose archives have not verified; `scripts/install.py`
+checks the attestation of every archive it installs.
 
 Each archive unpacks to one directory:
 
@@ -440,10 +432,22 @@ qualifying the macOS runtime against it).
    runtime, `sail verify` to pass on a new project made as the README's First
    verification says, and one `sail repair-check` through the engine to be
    accepted, with no engine fault.
-5. When the `attest-release` run succeeds, check each archive's attestation
-   (`gh attestation verify dist/sail-VERSION-TARGET.tar.gz --repo
-   Chelis-Lang/sail`). Publish only after both verify.
-6. The owner reviews the draft and decides when to publish.
+5. Wait for the `attest-release` run against the draft to succeed (start it
+   with `gh workflow run attest-release.yml --repo Chelis-Lang/sail -f
+   tag=vVERSION` if the script did not), then verify both archives:
+
+   ```sh
+   gh attestation verify dist/sail-VERSION-x86_64-unknown-linux-gnu.tar.gz \
+     --repo Chelis-Lang/sail
+   gh attestation verify dist/sail-VERSION-aarch64-apple-darwin.tar.gz \
+     --repo Chelis-Lang/sail
+   ```
+
+   Record the run id and both results in the
+   [release record](validation/release-candidate.md).
+6. Only after both archives verify, publish the draft (`gh release edit
+   vVERSION --repo Chelis-Lang/sail --draft=false`). A failed or missing
+   attestation blocks publication; fix it on the draft.
 
 When the installed stages have already passed the native matrix, full mutation
 cohorts and walkthroughs, package those same bytes on an Apple-silicon Mac:
@@ -458,8 +462,8 @@ names. It does not rebuild, record new proofs, upload, create a tag or publish.
 Keep the stages' native `sail --version` results and CLI hashes with their
 qualification results; `VERSION` must match the version they report. Review
 and create the draft from these assets only after the release gates pass,
-then attest them with `gh workflow run attest-release.yml --repo
-Chelis-Lang/sail -f tag=vVERSION`.
+then attest and verify them on the draft as steps 5 and 6 say before
+publishing.
 The one-command build-and-draft route above remains available for a new build;
 its output needs qualification before publication.
 

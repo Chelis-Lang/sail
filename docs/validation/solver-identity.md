@@ -17,7 +17,7 @@ of the same file falls back to a launch that refuses the handshake. The
 existing #213 real-client regressions in `crates/sail-daemon/tests/tiers.rs`
 are unchanged and pass.
 
-Native c7i.8xlarge in us-east-1, core CI image, 2026-10-26. Main `84502c0b`
+Native c7i.8xlarge in us-east-1, core CI image, 2026-10-26. Main `81dc5597`
 was compared with the candidate in six alternating pairs, each arm with its
 own warm cache and long-lived daemon:
 
@@ -58,7 +58,7 @@ possible concurrent executable-mutation race.
 
 On shared macOS arm64, the retained private CLI built from `af339f8a` returned
 the preceding solver SHA after a one-byte comment replacement at fixed path,
-length and nanosecond mtime. `server.rs` is byte-identical at main `79e26818`.
+length and nanosecond mtime. `server.rs` is byte-identical at main `ab8f48cb`.
 The two real protocol connections returned
 `b9c10bcc305463722b87534227458cb5fd0d8d168f5d68bbc665a9dc6ad7bcf0`;
 the second executable's actual SHA was
@@ -85,7 +85,7 @@ acceptance; no negligible-overhead claim is made.
 
 ## Accepted-runtime native checkpoint
 
-Standalone source `51649fc2` keeps main `72acf29b`'s accepted runtime pins.
+Standalone source `51649fc2` keeps main `97523ecf`'s accepted runtime pins.
 On 2026-10-17, native c7i.8xlarge in us-east-1 passed the real HELLO
 reproduction, workspace gate (657 tests, 35 solver tests skipped, 2 doctests),
 all 35 solver tests, all nine E2E phases plus local extra, and the PR
@@ -185,7 +185,7 @@ Independent review verifies all 21 complete archives and recomputes all
 
 Failed attempts remain indexed here:
 
-- 2026-10-17, `af339f8a` private Mac CLI / daemon source equal to `79e26818`:
+- 2026-10-17, `af339f8a` private Mac CLI / daemon source equal to `ab8f48cb`:
   actual stale identity reproduced; original outcome remains failed.
 - 2026-10-17, `e3322f4f`, first Mac host attempt: bundle clone lacked a
   default HEAD; source admission refused before Rust ran. A later explicit

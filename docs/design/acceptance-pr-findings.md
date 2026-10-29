@@ -14,7 +14,7 @@ supersedes them so another implementation does not run in parallel.
 
 ## Main-relative findings
 
-Baseline: `9dc2038c`, whose file tree equals the earlier `67b8b95d` baseline.
+Baseline: `9dc2038c`.
 These nine issues concern implementation present on main. Tooling probes do
 not imply an observed wrong verifier verdict or a failure of the existing
 registered proof programs.

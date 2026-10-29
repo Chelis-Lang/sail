@@ -5,7 +5,7 @@
 | Status | Focused macOS checks, the macOS host gate and the combined-fixture native Linux workspace gate pass. Required PR checks are enforced separately. Both fixture failures from [#103](https://github.com/Chelis-Lang/sail/issues/103) have reproduced causes and corrections. |
 | Scope | Test-only owned Unix socket server. Production MCP, job cancellation, transport and verification behavior are unchanged. The timed job-tool fixture also uses an installed interpreter for fresh command text. |
 | Environment | Shared Apple M3 developer machine, macOS 26.5, Rust 1.99.0; correctness reproduction and stress checks, not performance measurements. |
-| Original source | `0a7c1d0d`, unchanged `crates/sail-mcp/src/test_io.rs`, compiled directly as a Rust test binary. |
+| Original source | `1bc27f87`, unchanged `crates/sail-mcp/src/test_io.rs`, compiled directly as a Rust test binary. |
 | Original failure | One stalled run in 100 invocations and another in 300, four invocations at a time. A live sample shows fixture retirement waiting in `join` while its worker remains in `recvfrom`, beyond the configured two-second read timeout. |
 | Candidate | Accepted sockets stay nonblocking. Each fixture read/write checks an owned stop flag and its existing deadline. Retirement sets that flag before joining. A retired read returns EOF; a retired write fails. No thread is detached and no retry or relaxed assertion authorizes a pass. |
 | Checks | 61 MCP library tests pass, including cancellation/framing controls and the new silent-peer timeout check. All 1,200 independent fixture stress invocations pass, four at a time. Pedantic release clippy passes. The complete combined macOS host gate passes: 614 tests, 35 skipped. The earlier socket-only candidate passed 613 tests; the combined run also covers the interpreted job fixture. |
@@ -34,7 +34,7 @@ Raw records remain outside the repository:
 | 2026-10-16 | Nonblocking fixture, 1,200 invocations | All pass | `6f6394208025fb917d3c9d61d66fc11aae96e8bdd3c8365c1e3e45b8bb9027be` |
 | 2026-10-16 | MCP library tests | 61 pass | `ecdfcd057fe6cc5443b7d3b42538df32a07244efdd1abe70ec0999513c1a6a33` |
 | 2026-10-16 | Combined macOS host gate, both fixture corrections | 614 pass, 35 skipped; all-target clippy passes | `1808eff28819456dc519b7cf7c1c7387b8c2fe4de7127e629410c0037b066407` |
-| 2026-10-16 | Native Linux full workspace gate, `f9e33238` joined with `c96fdbec` | 633 pass, 35 skipped; complete gate passes | Archive `d795f3f7ed1392204cee2158b2cf600468e9429ae8926ecbe8531904cf396d1d` |
+| 2026-10-16 | Native Linux full workspace gate, `f9e33238` joined with `aabf3a15` | 633 pass, 35 skipped; complete gate passes | Archive `d795f3f7ed1392204cee2158b2cf600468e9429ae8926ecbe8531904cf396d1d` |
 
 The native run used a c7i.8xlarge in us-east-1. Its source manifest binds all
 505 tracked source inputs before and after compilation. The macOS gate above

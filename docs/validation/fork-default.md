@@ -65,7 +65,7 @@ Attempts:
 
 ## Release candidate rc.3
 
-`v0.1.0-rc.3` (`8bd4aed2`, lane L45, 2026-10-15) closed three of the gates
+`v0.1.0-rc.3` (`48ed4f83`, lane L45, 2026-10-15) closed three of the gates
 below on the `73dea021` runtime; details in the
 [release-candidate record](release-candidate.md#earlier-candidates) (rc.3, in its git history):
 

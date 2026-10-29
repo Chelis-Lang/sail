@@ -13,7 +13,7 @@ store, motivated the change.
 
 | Field | Evidence |
 |---|---|
-| Source | Sail main `006ee5d0`, staged by `ci/local.sh release` as `0.1.0-miss`, with the shipped vstd bundle. Fork runtime `f8589ed4` (variant `7d829946…-81186034d2e137a2`), pinned Z3 4.16.0 |
+| Source | Sail main `908abe1b`, staged by `ci/local.sh release` as `0.1.0-miss`, with the shipped vstd bundle. Fork runtime `f8589ed4` (variant `7d829946…-81186034d2e137a2`), pinned Z3 4.16.0 |
 | Stock | Verus `0.2026.10.18.7d82994` x86-linux release (`cargo verus`) |
 | Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, lane `miss1020`. Host install as in the README: rustup, default 1.99.0, pinned 1.99.1 |
 | Toolchains | *Minimal*: 1.99.1 with the minimal profile and `rust-src` (the bundle hits). *Developer*: the same plus `rustc-dev` and `llvm-tools`, which change the proof's compiler identity, so the bundle misses and Sail prints no note |
@@ -151,7 +151,7 @@ traces; the code path responsible has not been located.
 
 | Field | Evidence |
 |---|---|
-| Source | Branch `perf/vstd-miss-replies` `c44fe25b` (main `2293db1f` plus ADR 0062), staged by `ci/local.sh release` as `0.1.0-replies`. The factory's `bundle-replies` step packed 20,208 entries (18.4 MB, key `bc2f6595896e5213`, pack SHA-256 `6b9690ae…`, `release-files.json` `3cafc9bb…`) |
+| Source | Branch `perf/vstd-miss-replies` `c44fe25b` (main `e2d349b7` plus ADR 0062), staged by `ci/local.sh release` as `0.1.0-replies`. The factory's `bundle-replies` step packed 20,208 entries (18.4 MB, key `bc2f6595896e5213`, pack SHA-256 `6b9690ae…`, `release-files.json` `3cafc9bb…`) |
 | Environment | Native EC2 c7i.8xlarge, us-east-1, Ubuntu 24.04, lane `missr2`, with the same host install and isolation as above. `release-shipped.py verify` passes on the stage |
 | Arms | Stock; developer-toolchain miss with the tier on and with `SAIL_BUNDLED_REPLIES=0`; lock-file miss (`proc-macro2` downgraded, minimal toolchain); loader-variable run (`LD_LIBRARY_PATH`, minimal toolchain); bundle hit (minimal toolchain), with the tier on and off |
 
@@ -193,7 +193,7 @@ the hit pair).
 Evidence: `experiments/2026-10-20/miss-replies/replies-impl-evidence.tgz`,
 SHA-256 `d5d6c863a8a2f075899355c6a1a1381137b08c68788ced91d5035af215dee5b4`.
 
-**Confirming cohort after rebasing onto main `13ef5258`** (with ADR 0060's
+**Confirming cohort after rebasing onto main `13d52647`** (with ADR 0060's
 rlimit witness in the factory). This is a second release stage on lane
 `missr2g`, which also ran the gates, so its timings are noisier: the load
 average was still falling from the release build, and timings drift

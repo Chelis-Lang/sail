@@ -5,7 +5,7 @@
 The joined #215/#174 implementation is merged in PR #226 after macOS/native
 Linux qualification, independent review and all required delivery CI. Exact executed
 `7411f458` contains output `354d2995` plus the scheduling memo on #225 executable
-source `17464f16`. Accepted main `ee163bc3` differs from that baseline only in
+source `17464f16`. Accepted main `d7b30b88` differs from that baseline only in
 three Markdown files. The delivery rebase preserves all non-Markdown bytes and
 modes from `7411f458`; original `643ffd2e`, `f217785f` and PR #197 stay separate.
 
@@ -18,7 +18,7 @@ modes from `7411f458`; original `643ffd2e`, `f217785f` and PR #197 stay separate
 | Full STANDARD and final guards | PASS: 5,108.27 s, all four arms 159 Same / 12,726 functions each; final source/runtime/products and complete strict archive pass |
 | Current-source affected fixture | PASS: all nine measured calls; baseline 0.896 → joined 0.174 s (5.14×), with complete capture and final guards ([scope below](#current-source-affected-fixture)) |
 | Current-pin Vest costs | Complete retained 36-row facts verified: no Vest speed or CPU gain; enclosing capture-deadline failure preserved ([scope below](#current-pin-vest-cost-facts)) |
-| Delivery | PR #226 merged at `d1499eff`; reviewed delivery `4208273d` has the identical Git tree; required CI and main workflow `39141431318` pass |
+| Delivery | PR #226 merged at `eea420bd`; reviewed delivery `4208273d` has the identical Git tree; required CI and main workflow `39141431318` pass |
 
 The [output record](managed-output-order.md) gives exact Mac and accepted-base
 hashes, standalone output scope and the incomplete historical STANDARD attempt.

@@ -21,7 +21,7 @@ engine cannot be obtained without private repository access.
 | | Linux | macOS |
 |---|---|---|
 | Machine | c7i.4xlarge (16 vCPU, 30 GiB), us-east-1, Ubuntu 24.04, `scripts/perf-host.sh up l27` | Apple M3, 8 cores, 24 GiB, macOS 26 |
-| Sail | `main` at `212ceb4`, rsynced (the repository is private, so an outside user cannot clone it) | fresh clone of `main` at `212ceb4` |
+| Sail | `main` at `71dc463`, rsynced (the repository is private, so an outside user cannot clone it) | fresh clone of `main` at `71dc463` |
 | Toolchains | rustup installed fresh; pinned Verus via `cargo xtask fetch-verus` | existing rustup/Cargo installs reused; fresh `HOME` (`/tmp/l27h`), so the Sail cache and Verus install were fresh |
 | Projects | `cargo verus new --lib demo` with five functions (spec recursion, a lemma, `max`, a loop search, a loop sum); vest `11af01dd` (`-p vest_lib`, 3,237 Verus items); human-eval-verus `bbe93f7` | same |
 

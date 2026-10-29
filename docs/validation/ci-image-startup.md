@@ -57,7 +57,7 @@ downloaded e2e-bin artifact digest mentions in the full logs are separate.
 ## Native qualification, 2026-10-16
 
 Source `1e80012a152283ee72c107ff38792c980122fbaf`, based on main
-`4846cfe1`, built both images on a native c7i.8xlarge in us-east-1 (availability zone us-east-1c). The 507 tracked source-file
+`8bd1948e`, built both images on a native c7i.8xlarge in us-east-1 (availability zone us-east-1c). The 507 tracked source-file
 hashes, excluding agent settings, match before and after every stage; affected internal
 packages were cleaned and Rust/Cargo source timestamps refreshed first.
 Candidate tags are `44261d52f2b2ff03-core` and `44261d52f2b2ff03`. These
@@ -107,7 +107,7 @@ flags. That fixture is not runtime acceptance. Its result SHA-256:
 ## Joined current-main gate
 
 After #196 merged, source `7999d0b1a4df4ca257af921abf96636251da5be1`
-rebased onto main `35c089b4` passes the native workspace gate again:
+rebased onto main `2891710b` passes the native workspace gate again:
 638 tests, 35 skipped, 50.75s. All 508 tracked source hashes (agent settings
 excluded) match before/after every stage; affected packages were cleaned
 again. The old/core/MCP inventory parity still passes without differences,
@@ -179,7 +179,7 @@ acceptance.
 ## Final current-main gate
 
 Source `31c6ad26128fd57231b54306308068d39d97e5c1`, rebased onto main
-`555b8467` after #199, passes the native workspace gate again: 638 tests,
+`16111e24` after #199, passes the native workspace gate again: 638 tests,
 35 skipped, 50.5s. All 519 source-file hashes (agent settings excluded)
 match before/after every stage. Affected packages were cleaned, all three
 existing image inventories still match except the client, and no image was

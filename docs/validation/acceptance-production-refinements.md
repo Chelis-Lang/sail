@@ -248,7 +248,7 @@ seconds. All 20 hosted checks pass on the same implementation head, including
 both direct-stock proof suites and the complete end-to-end aggregate.
 
 The same native host measures original main
-`3b0bac191d0866fdd400d7dcd52e9cacc50d5cfe` against the candidate, with the
+`4b41c9fd120b762a04e6d5bb3b0da28b1c1cfabc` against the candidate, with the
 same pinned stock/fork runtime. Three rounds per version exercise one tiny
 Cargo project and its vstd dependency. Each proof edit runs the verifier once
 and reuses one dependency on both versions. All samples and validation remain
@@ -278,7 +278,7 @@ qualification before the protected merge.
 
 ## Combined revision-only projection qualification
 
-Combined implementation `c6270f75ab228efbdf30a288308dd9713b4e58f2` integrates main `3ca8264ee4f50de868a1f640598a4aa3939f10dc`.
+Combined implementation `c6270f75ab228efbdf30a288308dd9713b4e58f2` integrates main `65462c56562a31bda91f2a20c5b766a41f2f5b51`.
 Native x86-64 Linux validation uses a dedicated EC2 c7i.4xlarge in us-east-1.
 The workspace gate, direct-stock model proofs, production refinements, pinned
 solver faults, all local end-to-end phases plus extra, and PR conformance pass.

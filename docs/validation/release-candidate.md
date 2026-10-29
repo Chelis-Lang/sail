@@ -100,17 +100,18 @@ sources equal the candidate's.
 
 None of these qualify rc.7. Their records are in this file's git history.
 
-- rc.6, `cda42861`, 2026-10-23: functional qualification passed on both
+- rc.6 (`release/0.1.0` source; Rust, Cargo and runtime inputs equal main
+  `63420678`), 2026-10-23: functional qualification passed on both
   platforms ([matrix](release-matrix.md)); performance not accepted. Private
   draft, superseded.
 - rc.6 first build, fork `f8589ed4`, 2026-10-23: macOS HumanEval mutation
   cohort had three functional disagreements (#337). Superseded.
-- rc.5, `c3687990`, 2026-10-15: macOS asset omitted vstd's stdout summary
+- rc.5, `eecaf731`, 2026-10-15: macOS asset omitted vstd's stdout summary
   after dependency-store seeding (#184); input-coverage limit #187. Draft,
   never accepted.
-- rc.4, `5d99671e`, 2026-10-15: revalidation of #125. Superseded.
-- rc.3, `8bd4aed2`, 2026-10-15: first candidate on Sail's own Verus (ADR
+- rc.4, `f85eebc3`, 2026-10-15: revalidation of #125. Superseded.
+- rc.3, `48ed4f83`, 2026-10-15: first candidate on Sail's own Verus (ADR
   0043). Superseded.
-- rc.2, `8f427e81`, 2026-10-14: revalidation of rc.1's findings. Draft deleted.
-- rc.1, `7782b136`, 2026-10-14: first candidate; walkthrough findings fixed
+- rc.2, `84694471`, 2026-10-14: revalidation of rc.1's findings. Draft deleted.
+- rc.1, `e00ac7b2`, 2026-10-14: first candidate; walkthrough findings fixed
   in rc.2.

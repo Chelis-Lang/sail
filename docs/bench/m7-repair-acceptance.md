@@ -27,7 +27,7 @@ sample first. The gate is applied afterwards, when the report is generated.
 - **Arms.**
   - *M6* is built from the branch `rescue/m6-baseline`, commit
     `26f124f52dbf51d6c94178778873e96ac5e072ef`. That is the frozen M6 commit
-    `0fde777fc79ccf07e1318ce21dc0ff84eea1b2ca` (the catalogue's
+    `3eb253b52a1b785bb949ce1a2aadf365848d7e2d` (the catalogue's
     `baseline_commit`) plus one backported fix and its test. Unpatched M6
     cleans `<target-dir>` before a focused check, but `cargo verus focus` builds
     in `<target-dir>/verus-partial` with checksum freshness. A cycle whose edit

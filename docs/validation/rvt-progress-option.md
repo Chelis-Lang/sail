@@ -25,7 +25,7 @@ nonignored plain tests passed, zero Different, Unstable or infrastructure
 errors, in 1,225.58 s. These results identify that private
 source, not a native gate of the subsequent main-based harness-only join.
 The main-based harness-only join `2bd59014` separately passed its full native
-workspace gate and all controls in image `08bd13d8`, built from main `c89e29d3`,
+workspace gate and all controls in image `08bd13d8`, built from main `82d46529`,
 on a c7i.4xlarge in us-east-1. Raw archive SHA-256
 `9d417731ece59058f380072fb9171fb54c8120c2c76cd646c47cc5689fbc65cf`.
 That result qualifies the workspace join, not the private fork runtime or any

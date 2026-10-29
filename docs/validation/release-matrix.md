@@ -7,8 +7,8 @@ its six-round timings on both platforms. On rc.6, all 31 selected comparisons
 are valid on each frozen installed platform, including all four full mutation
 cohorts: 651 matching comparisons per platform.
 
-Source `cda42861` has the same Rust, Cargo, runtime and build inputs as merged
-`e03dfa0b` (#347). Benchmark correction `fc29023a` (#354) does not change the
+The rc.6 source has the same Rust, Cargo, runtime and build inputs as merged
+`63420678` (#347). Benchmark correction `082c629a` (#354) does not change the
 consumer. `release/0.1.0` freezes this source before later Oyster changes
 on main. Runtime `7d9d5410` remains based on upstream `7d82994`, with
 Rust/Cargo 1.99.1 and the two manifests in the [runtime record](spec-signature-runtime.md).
@@ -289,7 +289,7 @@ cannot qualify the corrected product.
   `6c9d81b21d3629dab7a3fe701eae051450532942baedc7ff5f472fda452af154`.
   Completed benchmark caches are now discarded by #333.
 
-The tighter retention-budget candidate is based on `ff63d032`, with installed
+The tighter retention-budget candidate is based on `b8395983`, with installed
 Linux CLI SHA-256
 `06cf3abe148a416afc09e42b8578f6d927320d66e6bb90f81943fdcdd32945f5`.
 The focused three-round IronKV check has 12 matching comparisons. The actual
@@ -359,7 +359,7 @@ Raw control, scripts, outputs and host log:
 `experiments/2026-10-22/mac-proof-coexistence.tgz`, SHA-256
 `a4726b493060707597e8402776cf2c0e9782c957159b94995f9344b9bb9930a9`.
 
-- `cda42861`, 2026-10-23, Linux scripted Vest attempt: invalid as a passing
+- rc.6 source, 2026-10-23, Linux scripted Vest attempt: invalid as a passing
   workload; both arms failed at the default limit (VI-0032). The corrected
   invocation uses `--rlimit 100` equally on both arms; matching failed samples
   remain recorded and now fail the performance-validity check.

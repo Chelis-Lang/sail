@@ -13,7 +13,7 @@ Final source/runtime guards pass. See the [current runtime record](spec-paramete
 for exact sources, evidence hashes and preserved earlier failures.
 
 The earlier cc7 selection below remains its original scope.
-Current main `2936ead2` selects fork `cc7bbce4` through merged PR #221. The
+Current main `ee6914c7` selects fork `cc7bbce4` through merged PR #221. The
 harness runs an exact fork-with-and-without-shim arm and retains the separate
 stock-with-and-without-shim control using ADR 0042's complete diagnostic-message
 multiset comparison. Stock stdout, message bytes/multiplicities, outcomes and
@@ -96,7 +96,7 @@ VI-0012 regression, BASIC and the full genuine fork suite on private
 zero Different, Unstable or infrastructure errors in 1,225.58 s. Raw SHA-256
 `b2304b6dd70355fd69a0ad6241c3f2a00c25156e8443ffb357b80005ce165faf`.
 The main-based harness join `2bd59014` separately passed its full native
-workspace gate and controls in the main `c89e29d3` image `08bd13d8` on a
+workspace gate and controls in the main `82d46529` image `08bd13d8` on a
 c7i.4xlarge/us-east-1; raw archive SHA-256
 `9d417731ece59058f380072fb9171fb54c8120c2c76cd646c47cc5689fbc65cf`.
 This is workspace qualification only, not a fork source-suite run or acceptance

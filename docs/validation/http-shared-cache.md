@@ -89,11 +89,11 @@ cancellation and the original bounds. The full macOS host check also passes
 (613 tests, 35 solver tests skipped); log SHA-256
 `e927dc092faeb696fb9e9520060f359bc4a6f3ebb22012f6432e3ea276cba829`.
 The combined native Linux workspace gate also passes at `f9e33238`, joined
-with `c96fdbec`: 633 tests, 35 skipped. Its complete source manifest and raw
+with `aabf3a15`: 633 tests, 35 skipped. Its complete source manifest and raw
 archive are indexed in the [MCP fixture record](mcp-fixture-retirement.md).
 There is no verifier, solver, cache-key or corpus behavior change.
 
-Retained attempt: `0a7c1d0d` plus the regression, 2026-10-16, failed the
+Retained attempt: `1bc27f87` plus the regression, 2026-10-16, failed the
 owner assertion with discovery paused; raw log SHA-256
 `fca2764d7d2283d119a16d0da7ebe820d92886d6f731ff9c7cb0825946f38b18`.
 Corrected five-test log SHA-256:

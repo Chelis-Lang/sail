@@ -71,7 +71,7 @@ sequence above. Complete original logs and conformance reports are retained in
 `sail-daemon-full-native-evidence.tar.gz`, SHA-256
 `ad814460d9a648ab1e12e93874883deb0efc7c9d10379b6f6c27edf77cad2e17`.
 
-The branch then merged main `ee362574`, including independently qualified raw
+The branch then merged main `a0e5649f`, including independently qualified raw
 runtime and neutral-contract lowering. The merged implementation `f35156e4` passed its current-source native full
 gate with 930 tests and all formatting, strict workspace Clippy, documentation,
 layering, dependency and benchmark-page checks. Its current-source macOS host

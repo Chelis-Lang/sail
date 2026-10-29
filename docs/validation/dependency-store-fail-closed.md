@@ -15,7 +15,7 @@ execute normal native compilation.
 ## Native assessment
 
 On 2026-10-16, a dedicated EC2 c7i.4xlarge (16 vCPUs, us-east-1) compared actual
-release binaries from baseline `3c0498c3` and containment candidate `19034f8d`,
+release binaries from baseline `96fec87d` and containment candidate `19034f8d`,
 using the original pinned runtime. Full source and runtime inventories and
 binary identities were checked before and after. Both binaries were built
 normally from their exact sources. Each round retained a successful donor,
@@ -61,7 +61,7 @@ EC2 c7i.8xlarge hosts in us-east-1:
 | Source | Actual completed scope | Result |
 |---|---|---|
 | `7b0908bd` | Workspace gate, solver, all seven end-to-end phases plus extra, changed native compiler, PR subset, full FAST and STANDARD | 655 unit tests and two doctests pass; 35 solver tests pass. Each PR arm has 33 Same / 311 functions; each full FAST arm has 147 Same / 3,450 functions. Zero differences, instability, infrastructure errors or skipped projects. Each STANDARD arm has 159 Same / 12,726 functions, with zero differences, instability, infrastructure errors or skipped projects. The first three STANDARD arms report one rlimit drift each; the engine arm reports zero. |
-| `eae5c4d2`, based on main `3dd4e28e` | Workspace gate, solver, all seven end-to-end phases plus extra, changed native compiler, PR subset | Same gate and solver counts; all four PR arms have 33 Same / 311 functions and zero differences, instability, infrastructure errors or skipped projects. Final source, runtime and binary guards pass. |
+| `eae5c4d2`, based on main `61b59a3c` | Workspace gate, solver, all seven end-to-end phases plus extra, changed native compiler, PR subset | Same gate and solver counts; all four PR arms have 33 Same / 311 functions and zero differences, instability, infrastructure errors or skipped projects. Final source, runtime and binary guards pass. |
 
 The current-main integration changes only the failure-evidence harness and
 documentation relative to `7b0908bd`; the Rust and managed acceptance source

@@ -334,7 +334,7 @@ following physical interfaces remain obligations, not established guarantees:
 | Shared/bundled admission | Excluded here; needs a reviewed writer-origin contract or independent certificate checking before inclusion. |
 
 The source-shared changes start from production base `53d30e87`, which
-includes main `237c7d8d`. The executable core and bounded simulations pass 135
+includes main `4d754827`. The executable core and bounded simulations pass 135
 whole-crate obligations with zero errors through the direct stock driver
 (including 59 existing query/context obligations); the existing model scope
 and controls remain intact. Full native qualification and integrated checker

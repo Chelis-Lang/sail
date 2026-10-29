@@ -2,7 +2,7 @@
 
 ## Frozen implementation and scope
 
-The frozen implementation candidate is `1a7dfb88b7791bb2839701084a6b035014228fa4`, based on `e51e466007c492e86f168bc351bda352ab407870`. The native source bundle SHA-256 is `0572cd377c59fa536b327c364b1c15d4cb49f5a1e18c06d77fc72d0ef2c86023`. Native execution uses the clean detached source on Linux x86-64 EC2 and core image `sha256:acbd792f3e0ff0befe6182ae32d1112a96abd6a53736f534a3c139fa8d11947e`. Native qualification and actual installed consumer acceptance are recorded below. Protected delivery and final immutable consumer selection remain separate.
+The frozen implementation candidate is `1a7dfb88b7791bb2839701084a6b035014228fa4`, based on `fc7cd0c7c8150de4322986b7f782d4164cb9350c`. The native source bundle SHA-256 is `0572cd377c59fa536b327c364b1c15d4cb49f5a1e18c06d77fc72d0ef2c86023`. Native execution uses the clean detached source on Linux x86-64 EC2 and core image `sha256:acbd792f3e0ff0befe6182ae32d1112a96abd6a53736f534a3c139fa8d11947e`. Native qualification and actual installed consumer acceptance are recorded below. Protected delivery and final immutable consumer selection remain separate.
 
 Explicit profile two admits genuine unit enums, flat named Boolean/integer/enum records, shared references, mutable primitive entry/poststate and multiple stable requirement identities sharing a conjunction guarantee. Profile one remains the default. Missing profile-two capability, unknown profiles and unsupported source fail before successful submission. A requirement label supplies no semantic link, and multiple labels do not increase the number of proved functions.
 
@@ -75,8 +75,8 @@ All entries below occurred on October 24, 2026. Abbreviated revisions identify r
 
 | Date | Source | Attempt and result | Original record and cause |
 |---|---|---|---|
-| 2026-10-24 | `e51e4660` | First direct diagnostic: no verifier invocation despite controller exit zero | `direct-unknown-attempt1-diagnosis.json`; Docker lacked stdin attachment; archive contained image identity only |
-| 2026-10-24 | `e51e4660` | First inline six-case diagnostic: Docker exit 125 | `six-case-diagnostic-status.json`; read-only source lacked the child target mountpoint |
+| 2026-10-24 | `fc7cd0c7` | First direct diagnostic: no verifier invocation despite controller exit zero | `direct-unknown-attempt1-diagnosis.json`; Docker lacked stdin attachment; archive contained image identity only |
+| 2026-10-24 | `fc7cd0c7` | First inline six-case diagnostic: Docker exit 125 | `six-case-diagnostic-status.json`; read-only source lacked the child target mountpoint |
 | 2026-10-24 | `4f53ac30` | First review Cargo setup: private dependency authentication failed before tests | `fresh-profile2-review/initial-setup-error.log`; command omitted the private-dependency wrapper |
 | 2026-10-24 | `4f53ac30` | First independent probe: assertion failed | `fresh-profile2-review/native-probe-initial.log`; probe incorrectly selected the first sorted function rather than its named target |
 | 2026-10-24 | `4f53ac30` | First review collection: incomplete | `fresh-profile2-review/native-initial-collection.log` and `initial-setup-error.log`; collector addressed container runtime paths from the host |

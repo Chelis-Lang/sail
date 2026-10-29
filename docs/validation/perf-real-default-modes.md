@@ -1,6 +1,6 @@
 # Real-project benchmark mode defaults
 
-Source `48eaa4e0`, based on main `c96fdbec`, passes the full native workspace
+Source `48eaa4e0`, based on main `aabf3a15`, passes the full native workspace
 gate on a dedicated EC2 c7i.8xlarge in us-east-1: 631 tests pass, with 35
 solver-dependent tests skipped. All 504 tracked-file hashes match before and
 after the run except excluded local agent settings. Affected internal Cargo

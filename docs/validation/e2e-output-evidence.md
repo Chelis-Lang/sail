@@ -124,7 +124,7 @@ retained managed evidence archive SHA-256
 
 ## Native feature checkpoint
 
-Source `b0ddd460` on main `3c0498c3`, native c7i.4xlarge in us-east-1,
+Source `b0ddd460` on main `96fec87d`, native c7i.4xlarge in us-east-1,
 passed the workspace gate (655 tests, 35 skipped, 2 doctests), all 35 solver
 tests, all seven E2E phases plus local extra, and every PR conformance arm
 (33 Same / 311 functions each; zero different, unstable, infrastructure errors
@@ -158,7 +158,7 @@ archives was independently rechecked; verification summary SHA-256
 
 ## Full conformance checkpoint
 
-The same `b0ddd460` implementation on main `3c0498c3` then ran on a separate
+The same `b0ddd460` implementation on main `96fec87d` then ran on a separate
 native c7i.8xlarge in us-east-1, with the same pinned fork, stock oracle, Z3
 and MCP image context. Every mode passed:
 

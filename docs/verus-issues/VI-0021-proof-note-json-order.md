@@ -46,7 +46,7 @@ Sail harness source `d422adf0`: 4,709 Same (58 ignored), all 4,651 nonignored
 plain tests passed, zero Different, Unstable or infrastructure errors. All nine
 `output_json` tests passed on both arms, including the three originally failing
 proof-note cases. The exact source-suite harness implementation remains unchanged
-on main `2936ead2`. This is qualified source evidence, not a claim that the
+on main `ee6914c7`. This is qualified source evidence, not a claim that the
 whole suite was rerun at that composed main commit.
 
 The full-suite archive SHA-256 is
