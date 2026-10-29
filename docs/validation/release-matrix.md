@@ -1,10 +1,11 @@
 # Combined release matrix
 
-**Current status:** all 31 selected comparisons are valid on each frozen
-installed platform, including all four full mutation cohorts: 651 matching
-comparisons per platform. Performance acceptance remains open for slower
-cold and unchanged rows. This is a private review candidate, not an accepted
-public release.
+**Current status:** this matrix qualifies the superseded rc.6 archives only;
+it was not rerun on rc.7. The [rc.7 record](release-candidate.md) has the
+current candidate's mutation cohorts, and [performance](../performance.md)
+its six-round timings on both platforms. On rc.6, all 31 selected comparisons
+are valid on each frozen installed platform, including all four full mutation
+cohorts: 651 matching comparisons per platform.
 
 Source `cda42861` has the same Rust, Cargo, runtime and build inputs as merged
 `e03dfa0b` (#347). Benchmark correction `fc29023a` (#354) does not change the

@@ -67,7 +67,7 @@ Attempts:
 
 `v0.1.0-rc.3` (`8bd4aed2`, lane L45, 2026-10-15) closed three of the gates
 below on the `73dea021` runtime; details in the
-[release-candidate record](release-candidate.md#v010-rc3):
+[release-candidate record](release-candidate.md#earlier-candidates) (rc.3, in its git history):
 
 - **Deep tier:** 159 units, 159 same, 0 Different in pass-through, cache
   fill, warm and engine (sharded by project across four hosts).
