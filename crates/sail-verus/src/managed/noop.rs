@@ -1394,6 +1394,7 @@ mod tests {
                 std::fs::write(slot.join(name), text)?;
                 std::fs::write(context.join(name), text)?;
             }
+            std::fs::write(slot.join("unscheduled-scripts.json"), text)?;
             let key = key(config, true).ok_or("key unavailable")?;
             let result = receipt_fixture_result(&root);
             prepare(Facts {
@@ -1438,6 +1439,14 @@ mod tests {
         std::fs::write(root_slot.join("read-check.json"), "root view")?;
         assert!(replay_config(&root_config).is_some());
         assert!(replay_config(&member_config).is_some());
+        std::fs::write(
+            root_slot.join("unscheduled-scripts.json"),
+            "changed scheduling",
+        )?;
+        assert!(replay_config(&root_config).is_none());
+        assert!(replay_config(&member_config).is_some());
+        std::fs::write(root_slot.join("unscheduled-scripts.json"), "root view")?;
+        assert!(replay_config(&root_config).is_some());
         for index in 0..7 {
             super::super::invocation_slots::prepare(&context, &root.join(index.to_string()), &[])
                 .ok_or("extra slot unavailable")?;

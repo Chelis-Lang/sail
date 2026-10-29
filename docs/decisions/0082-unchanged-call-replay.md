@@ -334,8 +334,8 @@ identity.
 
 ## Implementation: invocation-local observations (2026-10-29)
 
-The context's invocation-dependent input state, build-environment query and
-read-check body have bounded slots keyed by the invoking directory and exact
+The context's invocation-dependent input state, build-environment query,
+unscheduled-script memo and read-check body have bounded slots keyed by the invoking directory and exact
 arguments. The slot uses the same digest as the snapshot hint. Proof contexts,
 receipts, target artifacts and every source/currentness check remain shared.
 A replay binds its own slot as a complete cache tree; it ignores other slots,
@@ -355,3 +355,8 @@ no authority. Eviction removes a slot, so its old replay record misses; other
 slots' observations remain independently bound. Unknown names or links in the
 slot directory refuse slot use rather than being evicted. Cargo target/source
 exclusions and the two-second settle rule are unchanged.
+
+Cargo's build-script contract vector is sorted by complete unit identity before
+publication. No contract or field is dropped: identical fresh journals in another
+order retain identical bytes, including the compiler-family export. This is
+metadata determinism, not query normalization or reduced proof admission.

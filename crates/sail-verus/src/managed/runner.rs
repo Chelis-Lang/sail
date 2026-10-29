@@ -3699,9 +3699,14 @@ fn run_recorded(
         )
     });
     let before_run = without_generated(&before, generated.as_deref());
-    let schedule_path = paths
-        .build_inputs
-        .with_file_name("unscheduled-scripts.json");
+    let schedule_path = paths.invocation_slot.as_ref().map_or_else(
+        || {
+            paths
+                .build_inputs
+                .with_file_name("unscheduled-scripts.json")
+        },
+        |slot| slot.join("unscheduled-scripts.json"),
+    );
     let schedule_before = super::build_inputs::family::schedule::Scope {
         data: &data,
         snapshot: &before_run,

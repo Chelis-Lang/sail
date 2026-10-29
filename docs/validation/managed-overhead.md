@@ -292,3 +292,12 @@ and `read-check.json`. The per-run runtime settings also change, as expected
 under #575. `build-inputs.json` and `source-inputs.json` remain unchanged after
 the first warm call. This functional reproduction supplies no stock timing or
 real-project acceptance result. Its raw log is retained outside Git.
+
+Real Mac Anvil qualification at `e108339d` exposes two additional causes after
+the demo slot control: context/family build-input changes are ordering-only
+for the same 41 contracts, while the shared unscheduled-script memo changes
+its invocation binding and run id. Four instrumented Current/no-verifier calls
+reproduce both. The corrected candidate sorts contracts without dropping any
+unit and gives the scheduling memo its own existing bounded invocation slot.
+Real-project replay acceptance remains pending. Raw diagnosis log SHA-256:
+`42aa778d646c04cf02d8968c3c3fdfc19e81048e10325095363efdfb5aa83bfd`.
