@@ -13,13 +13,16 @@ const LIMIT: usize = 8;
 pub(super) const VIEWS: [&str; 2] = ["input-state.json", "read-check.json"];
 
 fn key(name: &str) -> bool {
-    name.len() == 64 && name.bytes().all(|byte| byte.is_ascii_hexdigit())
+    name.len() == 64
+        && name
+            .bytes()
+            .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
 }
 
 pub(super) fn path(context: &Path, invocation: &Path, args: &[String]) -> Option<PathBuf> {
     let invocation = std::path::absolute(invocation).ok()?;
-    let bytes = serde_json::to_vec(&(invocation, args)).ok()?;
-    Some(context.join(DIRECTORY).join(super::files::digest(&bytes)))
+    let hint = super::input::hint_path(context, &invocation, args);
+    Some(context.join(DIRECTORY).join(hint.file_stem()?))
 }
 
 /// Best effort, called only with the workspace/family locks held. Unknown
