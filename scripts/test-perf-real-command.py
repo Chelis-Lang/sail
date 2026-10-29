@@ -12,6 +12,39 @@ import unittest
 
 
 class Commands(unittest.TestCase):
+    def test_run_one_records_wrapped_failure_and_disabled_memory(self):
+        text = Path(__file__).with_name('perf-real.sh').read_text()
+        commands = 'measured()' + text.split('measured()', 1)[1].split('\nstats()', 1)[0]
+        runner = 'run_one()' + text.split('run_one()', 1)[1].split('\nshim_pid=', 1)[0]
+        for enabled in ['1', '0']:
+            with self.subTest(memory=enabled), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / 'project').mkdir()
+                executable = root / 'cargo'
+                executable.write_text('#!/bin/sh\nprintf "child-output\\n"\nexit 7\n')
+                executable.chmod(0o755)
+                env = {k: v for k, v in os.environ.items() if not k.startswith('SAIL_')}
+                env.update(PATH=f"{root}:{env['PATH']}", SAIL_PERF_MEMORY=enabled,
+                           SAIL_PERF_SETTLE='0', ROOT=str(root),
+                           SCRIPTS=str(Path(__file__).resolve().parent))
+                script = ('out="$ROOT/out"; results="$out/results.tsv"; pkg=.; partial=0; '
+                          'fork=""; baseline=""; cargs=(); vargs=(); time_args=(); '
+                          'here="$SCRIPTS"; sample_failures=0\n' + commands + '\n' +
+                          'stats() { echo "0 0 0 0"; }; '
+                          'times_of() { printf "NA\\tNA\\tNA\\tNA\\tNA\\tNA"; }; '
+                          'now() { python3 -c "import time; print(time.time())"; };\n' +
+                          runner + '\nrun_one 1 plain "$ROOT/project" cold\n')
+                result = subprocess.run(['bash', '-c', script], env=env,
+                                        capture_output=True, text=True, timeout=15)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                row = (root / 'out/results.tsv').read_text().strip().split('\t')
+                self.assertEqual(len(row), 22)
+                self.assertEqual(row[4], '7')
+                self.assertEqual((root / 'out/r1/plain.cold.log').read_text(), 'child-output\n')
+                self.assertFalse(list((root / 'out/r1').glob('*.go')))
+                if enabled == '0':
+                    self.assertEqual(row[-3:], ['NA', 'NA', 'NA'])
+
     def run_command(self, mode, selector, baseline="", sample=False):
         text = Path(__file__).with_name("perf-real.sh").read_text()
         command = text.split("partial=0\n", 1)[1].split("\nmode_path()", 1)[0]

@@ -535,8 +535,13 @@ done
 
 measured() { # Actual executable and arguments, with the mode's environment.
   if [ -n "${memory_file:-}" ]; then
+    local options=()
+    if [ -n "${memory_ready:-}" ]; then
+      options+=(--ready "$memory_ready" --go "$memory_go")
+    fi
+    [ "${SAIL_PERF_MEMORY:-1}" != 0 ] || options+=(--no-sample)
     python3 -I "$here/perf-mem.py" --output "$memory_file" --state "$memory_state" \
-      --status "$daemon_status" -- "$@"
+      --status "$daemon_status" ${options[@]+"${options[@]}"} -- "$@"
   else
     "$@"
   fi
@@ -607,11 +612,9 @@ sample_failures=0
 
 run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run only
   local round="$1" mode="$2" dir="$3" phase="$4" log prov live t0 t1 code=0 s0 s1
-  local memory_file="" memory_state="$out/r$1/$2.daemons.json"
+  local memory_file="$out/r$1/$2.$4.memory.json" memory_state="$out/r$1/$2.daemons.json"
+  local memory_ready="$out/r$1/$2.$4.ready" memory_go="$out/r$1/$2.$4.go"
   local daemon_status="$out/r$1/$2.daemon-status.json"
-  if [ "${SAIL_PERF_MEMORY:-1}" != 0 ]; then
-    memory_file="$out/r$1/$2.$4.memory.json"
-  fi
   shift 4
   local run_env=("$@")
   log="$out/r$round/$mode.$phase.log"
@@ -631,14 +634,31 @@ run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run on
   else
     load1=$(uptime | sed 's/.*load average[s]*: //; s/,.*//')
   fi
-  t0=$(now)
+  mkfifo "$memory_go"
   (cd "$dir/$pkg" && if [ -n "${SAIL_PERF_VERUS_BUILD:-}" ]; then export SAIL_VERUS_BUILD="$SAIL_PERF_VERUS_BUILD"; fi &&
     if [ ${#run_env[@]} -gt 0 ]; then export "${run_env[@]}"; fi &&
-    PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$live" verus_cmd "$mode" ${time_args[@]+"${time_args[@]}"}) >"$log" 2>&1 || code=$?
+    PATH="$(mode_path "$mode")" SAIL_PROVENANCE_DIR="$live" verus_cmd "$mode" ${time_args[@]+"${time_args[@]}"}) >"$log" 2>&1 &
+  local invocation_pid=$! attempt
+  # Bound sampler setup, retaining a failed sample if it cannot become ready.
+  for ((attempt = 0; attempt < 3000; attempt++)); do
+    [ ! -f "$memory_ready" ] || break
+    kill -0 "$invocation_pid" 2>/dev/null || break
+    sleep 0.01
+  done
+  t0=$(now)
+  if [ -f "$memory_ready" ]; then
+    printf 'go\n' >"$memory_go"
+  else
+    kill "$invocation_pid" 2>/dev/null || true
+    echo 'sampler did not become ready; command was not started' >>"$log"
+    code=2
+  fi
+  wait "$invocation_pid" || code=$?
   find "$live" -mindepth 1 -maxdepth 1 -exec mv {} "$prov"/ \;
   t1=$(now)
+  rm -f "$memory_ready" "$memory_go"
   s1=$(stats)
-  if [ -n "$memory_file" ]; then
+  if [ "${SAIL_PERF_MEMORY:-1}" != 0 ]; then
     # Status now knows even a daemon that detached before its first sample.
     # Completion sampling stays outside the measured wall interval.
     python3 -I "$here/perf-mem.py" --snapshot --output "$memory_file" \

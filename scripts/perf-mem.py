@@ -131,7 +131,7 @@ def run(args):
         known = {}
     errors = []
     try:
-        table = processes()
+        table = {} if args.no_sample else processes()
     except (OSError, subprocess.SubprocessError) as error:
         errors.append(str(error))
         table = {}
@@ -153,6 +153,13 @@ def run(args):
                                          tracker.daemon_peak),
                       daemon_hwm_kb=daemon_hwm(table, tracker.daemons))
     else:
+        # Preparing Python and the initial process inventory is harness setup,
+        # before run_one starts its clock. The FIFO releases the actual command.
+        if args.ready:
+            args.ready.write_text('ready\n')
+            with args.go.open('rb', buffering=0) as gate:
+                if not gate.read(1):
+                    return 2
         try:
             child = subprocess.Popen(args.command)
         except OSError as error:
@@ -177,15 +184,17 @@ def run(args):
                         break
             except (OSError, subprocess.SubprocessError) as error:
                 errors.append(str(error))
-        sampler = threading.Thread(target=sample)
-        sampler.start()
+        sampler = None if args.no_sample else threading.Thread(target=sample)
+        if sampler:
+            sampler.start()
         try:
             _, wait_status, usage = os.wait4(child.pid, 0)
             code = os.waitstatus_to_exitcode(wait_status)
             child.returncode = code
         finally:
             stopped.set()
-            sampler.join()
+            if sampler:
+                sampler.join()
             for signum, handler in previous.items():
                 signal.signal(signum, handler)
         result = {'tree_peak_kb': tracker.tree_peak,
@@ -194,6 +203,8 @@ def run(args):
                   'interval_ms': 50, 'samples': tracker.samples, 'exit': code}
         if errors:
             result.update(tree_peak_kb=None, daemon_peak_kb=None, errors=errors)
+        if args.no_sample:
+            result.update(tree_peak_kb=None, largest_kb=None, daemon_peak_kb=None)
     try:
         args.output.write_text(json.dumps(result) + '\n')
         if args.state:
@@ -209,12 +220,17 @@ def main():
     parser.add_argument('--state', type=Path)
     parser.add_argument('--status', type=Path)
     parser.add_argument('--snapshot', action='store_true')
+    parser.add_argument('--no-sample', action='store_true')
+    parser.add_argument('--ready', type=Path)
+    parser.add_argument('--go', type=Path)
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.command[:1] == ['--']:
         args.command.pop(0)
     if not args.command and not args.snapshot:
         parser.error('a command is required after --')
+    if bool(args.ready) != bool(args.go):
+        parser.error('--ready and --go must be supplied together')
     return run(args)
 
 

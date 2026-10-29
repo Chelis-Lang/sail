@@ -39,6 +39,11 @@ instead of silently losing samples. `SAIL_PERF_MEMORY=0` disables sampling
 for paired overhead controls, leaving memory unavailable. The wrapper changes
 no child arguments or environment variables. Use the same setting throughout
 an arm, and never treat disabled or failed sampling as memory acceptance.
+The wrapper signals readiness before the wall clock starts and waits on an
+owned FIFO; the harness then releases the actual command. Python startup and
+the initial process inventory are outside the timed interval. Disabled
+sampling uses the same readiness path, with no process scans or sampler
+thread, so the overhead control retains the same command-launch boundary.
 Native sampler overhead and the four-project Linux/macOS memory matrix must
 be measured before claiming memory acceptance for a release.
 

@@ -8,6 +8,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 SCRIPT = Path(__file__).with_name('perf-mem.py')
@@ -17,6 +18,43 @@ spec.loader.exec_module(mem)
 
 
 class Memory(unittest.TestCase):
+    def test_readiness_precedes_command_for_both_overhead_arms(self):
+        for sampled in [True, False]:
+            with self.subTest(sampled=sampled), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                ready, gate, marker = root / 'ready', root / 'go', root / 'ran'
+                os.mkfifo(gate)
+                output = root / 'memory.json'
+                command = [sys.executable, '-I', str(SCRIPT), '--output', str(output),
+                           '--ready', str(ready), '--go', str(gate)]
+                if not sampled:
+                    command.append('--no-sample')
+                command += ['--', sys.executable, '-c',
+                            'import pathlib,sys; pathlib.Path(sys.argv[1]).write_text("ran"); '
+                            'print("child output"); sys.exit(7)', str(marker)]
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                try:
+                    deadline = time.monotonic() + 5
+                    while not ready.exists() and process.poll() is None and time.monotonic() < deadline:
+                        time.sleep(.01)
+                    self.assertTrue(ready.exists())
+                    self.assertFalse(marker.exists(), 'command ran before timing began')
+                    with gate.open('wb', buffering=0) as writer:
+                        writer.write(b'g')
+                    stdout, stderr = process.communicate(timeout=5)
+                    self.assertEqual(process.returncode, 7, stderr)
+                    self.assertEqual(stdout, b'child output\n')
+                    self.assertTrue(marker.exists())
+                    usage = json.loads(output.read_text())
+                    self.assertEqual(usage['exit'], 7)
+                    if not sampled:
+                        self.assertTrue(all(usage[k] is None for k in
+                                            ['tree_peak_kb', 'largest_kb', 'daemon_peak_kb']))
+                finally:
+                    if process.poll() is None:
+                        process.terminate()
+                    process.communicate(timeout=5)
+
     def test_tree_sum_daemon_reparent_and_pid_reuse(self):
         tracker = mem.Tracker({})
         tracker.sample({10: (1, 5, 'a', ['cargo']),
