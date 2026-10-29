@@ -90,3 +90,10 @@ Indexed attempt: the first measurement loop used human partial verification,
 which the established CLI contract rejects in both Sail and stock `verify`.
 That expected refusal is retained; the successful scoped JSON comparison
 above uses the documented real-project recipe. It is not a Sail defect.
+
+Indexed attempt, `4663f79c`: the first real Mac paired run does not create a
+hint because Anvil's TOML toolchain file begins with a comment. Selection
+conservatively took the late path, so on/off times coincide. The corrected
+parser accepts valid commented TOML and retains strict named-channel checks;
+the native/proxy fixture now includes that exact header. This is a scheduling
+miss, not proof reuse or a verdict difference. Final timing remains pending.
