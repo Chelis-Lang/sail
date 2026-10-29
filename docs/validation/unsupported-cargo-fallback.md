@@ -83,7 +83,7 @@ metadata paths/stamps. Cargo reinstalls, selection/configuration/manifest
 changes, malformed records and a newly qualified source commit miss. It
 never enables proof reuse or reports Current. Custom wrappers, external path
 toolchains and unreadable identities keep the late path.
-`SAIL_UNQUALIFIED_CARGO_MEMO=0` disables this scheduling optimization for
+`SAIL_MANAGED_UNQUALIFIED_CARGO_MEMO=0` disables this scheduling optimization for
 comparison. Native before/after and Mac qualification remain pending.
 
 Indexed attempt: the first measurement loop used human partial verification,

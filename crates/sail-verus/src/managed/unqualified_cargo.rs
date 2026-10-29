@@ -53,7 +53,8 @@ pub(super) struct Probe {
 
 impl Probe {
     pub(super) fn begin(config: &Config, environment: &BTreeMap<Vec<u8>, Vec<u8>>) -> Option<Self> {
-        if std::env::var_os("SAIL_UNQUALIFIED_CARGO_MEMO").is_some_and(|value| value == "0") {
+        if std::env::var_os("SAIL_MANAGED_UNQUALIFIED_CARGO_MEMO").is_some_and(|value| value == "0")
+        {
             return None;
         }
         let bytes = serde_json::to_vec(&(
@@ -369,7 +370,7 @@ mod tests {
                 .env("CARGO_HOME", root.join("cargo-home"))
                 .env("RUSTUP_TOOLCHAIN", "1.92.0")
                 .env(
-                    "SAIL_UNQUALIFIED_CARGO_MEMO",
+                    "SAIL_MANAGED_UNQUALIFIED_CARGO_MEMO",
                     if operation == "disabled" { "0" } else { "1" },
                 )
                 .env(
