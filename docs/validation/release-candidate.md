@@ -1,11 +1,27 @@
 # Release-candidate validation
 
-**Current status:** `0.1.0-rc.7` passes every functional qualification gate
-on native Linux and macOS. One installer defect found during qualification
-(#591) is fixed on main after the candidate commit (#593). The candidate is a
-GitHub draft with attested archives; nothing is published. Performance is in
-[performance](../performance.md). The owner accepted its slower rows for
-0.1.0 as known issues.
+**Current status:** Sail 0.1.0 is published (tag `v0.1.0`, `b56889f1`,
+2026-10-29). It was qualified as `0.1.0-rc.7`, which passed every functional
+qualification gate on native Linux and macOS. The one installer defect found
+during qualification (#591) was fixed before the release (#593). Between rc.7
+and `v0.1.0` only the installer, its tests, docs and the changelog changed.
+Performance is in [performance](../performance.md). The slower rows ship as
+known issues.
+
+## 0.1.0 release
+
+The 0.1.0 archives were rebuilt from `b56889f1` with the rc.7 procedure,
+then attested (workflow run 40796280564) and verified before the release was
+published. Both platforms passed `release-smoke.sh` and the install walkthrough.
+The Linux walkthrough ran under umask 002 and served the shipped vstd proof on
+the first verify (10.9 s, against 29.5 s for rc.7 with #591).
+
+| Asset | Bytes | SHA-256 |
+|---|---:|---|
+| `sail-0.1.0-x86_64-unknown-linux-gnu.tar.gz` | 56,852,091 | `99bccf151ad0ea426ed781af798204496a96d90ad69153116ace0d91bf9a5588` |
+| `sail-0.1.0-aarch64-apple-darwin.tar.gz` | 58,217,950 | `169b8c0e2a08348315acea9270d537a9b34cb89fc5563b0c9851aca5ea697d30` |
+
+## rc.7 candidate
 
 Candidate source `8797ccd4` (on main), fork runtime `47fb3be6` (Verus
 0.2026.10.18.7d82994, Rust 1.99.1), CI image `sail-ci:587662778c7e8f88-core`.
@@ -18,7 +34,7 @@ and third-party notices. All runs are from 2026-10-28.
 | `sail-0.1.0-rc.7-aarch64-apple-darwin.tar.gz` | 58,217,800 | `59cce7c3c5342c3f16bf052a9ed1870d8579d3f8b2e90a4579326ca1af10da21` |
 
 Bundled engine manifests: Linux `d6096d5b…e44b`, macOS `ea6853a8…9996`.
-Draft release `v0.1.0-rc.7` targets `8797ccd4`. Workflow run 40762232461 of
+The rc.7 draft (deleted after 0.1.0 shipped) targeted `8797ccd4`. Workflow run 40762232461 of
 `attest-release.yml` attested both archives, and
 `gh attestation verify --repo Chelis-Lang/sail` passes for each.
 
