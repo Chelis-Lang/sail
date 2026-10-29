@@ -53,11 +53,11 @@ acting. The charter's appendix records corrections made since it was written.
   projects or any other repository.
   Record upstream problems locally (`docs/verus-issues/`). Whether to report
   upstream is a human decision.
-- **Nothing is published until the owner's rollout.** This work is intended
-  for open source but stays staged: nothing is open-sourced or published to
-  crates.io until the owner orchestrates the rollout. The Verus fork is the
-  only public repository in this line of work. The workspace keeps
-  `publish = false` (ADR 0010).
+- **Publishing.** The Sail repository and the Verus fork are public (since
+  2026-10-28). Releases ship as archives on GitHub Releases, starting with
+  0.1.0. Agents publish a release's archives once it has passed qualification,
+  without a separate owner sign-off. Nothing is published to crates.io: the
+  workspace keeps `publish = false` (ADR 0010).
 - **Fork a backend only for a proven gain.** Forking a backend or tool (as
   ADR 0039 forks Verus) needs a rigorously measured gain, proven before any
   Sail use of the fork ships.
