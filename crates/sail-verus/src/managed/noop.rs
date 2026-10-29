@@ -823,6 +823,11 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     let _family = lock(&record.locks.1, false)?;
     if let Some(reason) = mismatch(&record) {
         trace(&format!("miss: {reason}"));
+        if std::env::var_os("SAIL_MANAGED_NOOP_TRACE").is_some() {
+            for path in changed_paths(&record) {
+                trace(&format!("mismatch path: {}", path.display()));
+            }
+        }
         return None;
     }
     if let Some(slot) = &record.slot {
@@ -895,6 +900,53 @@ fn stamps_mismatch(recorded: &[(PathBuf, Option<Stamp>)]) -> Option<String> {
         .zip(now)
         .find(|((_, recorded), now)| now.as_ref().ok() != Some(recorded))
         .map(|((path, _), _)| format!("changed: {}", path.display()))
+}
+
+/// A diagnostic survey after the ordinary refusal. It grants no authority and
+/// is never run without an explicitly requested trace. Include every changed
+/// recorded body and namespace entry, rather than stopping at the first one.
+fn changed_paths(record: &Record) -> std::collections::BTreeSet<PathBuf> {
+    let mut changed = std::collections::BTreeSet::new();
+    for (path, expected) in &record.lstat {
+        if lstat(path).as_ref().ok() != Some(expected) {
+            changed.insert(path.clone());
+        }
+    }
+    for (path, expected) in &record.stat {
+        if std::fs::metadata(path)
+            .ok()
+            .map(|metadata| Stamp::of(&metadata))
+            != Some(*expected)
+        {
+            changed.insert(path.clone());
+        }
+    }
+    for copy in &record.copies {
+        if copies_mismatch(std::slice::from_ref(copy), &[]).is_some() {
+            changed.insert(copy.path.clone());
+        }
+    }
+    for directory in &record.directories {
+        if copies_mismatch(&[], std::slice::from_ref(directory)).is_some() {
+            changed.insert(directory.path.clone());
+        }
+    }
+    for (root, skip, expected) in &record.trees {
+        let skip: Vec<_> = skip.iter().map(String::as_str).collect();
+        if let Some(now) = walk(root, &skip) {
+            let now: std::collections::BTreeSet<_> = now.into_iter().collect();
+            let expected: std::collections::BTreeSet<_> = expected.iter().cloned().collect();
+            changed.extend(now.symmetric_difference(&expected).cloned());
+        } else {
+            changed.insert(root.clone());
+        }
+    }
+    for (path, expected) in &record.contents {
+        if super::files::file_digest(path).ok().as_ref() != Some(expected) {
+            changed.insert(path.clone());
+        }
+    }
+    changed
 }
 
 /// The first recorded observation that no longer holds.
@@ -1274,6 +1326,13 @@ mod tests {
         );
         std::fs::write(&receipt, "changed receipt")?;
         assert!(mismatch(&record).is_some(), "a changed receipt replayed");
+        let second = nested.join(RUNTIME);
+        std::fs::write(&second, "also changed")?;
+        assert_eq!(
+            changed_paths(&record),
+            std::collections::BTreeSet::from([receipt.clone(), second.clone()])
+        );
+        std::fs::write(&second, "nested")?;
         std::fs::write(&receipt, "receipt")?;
         std::fs::write(nested.join(RUNTIME), "changed")?;
         assert!(mismatch(&record).is_some(), "a nested namesake is bound");
