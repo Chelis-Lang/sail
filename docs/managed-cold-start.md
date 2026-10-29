@@ -35,6 +35,11 @@ are checked too. Use an external cache (the default) to reuse proofs. This
 conservatively includes projects checked out beneath the Sail cache: its
 excluded output directories must never hide new source inputs (#189).
 
+Managed verification resolves a symlinked cache root before deriving tool,
+compiler and receipt paths. `cargo xtask fetch-verus` follows the same cache
+selection as runtime lookup. The [cache-path qualification](validation/cache-path-selection.md)
+records native controls and installed-release checks.
+
 ## What the first run costs
 
 Setting or unsetting `CARGO_TARGET_DIR` keeps the same managed context: Sail
