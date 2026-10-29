@@ -243,12 +243,17 @@ pub(crate) fn json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
 /// Links and unreadable files take the ordinary atomic replacement path.
 pub(super) fn json_if_changed<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     let bytes = serde_json::to_vec(value).map_err(|e| Error::new("SAIL3102", e.to_string()))?;
+    bytes_if_changed(path, &bytes)
+}
+
+/// Atomically publish the exact supplied bytes, preserving an identical file.
+pub(super) fn bytes_if_changed(path: &Path, bytes: &[u8]) -> Result<()> {
     if std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file())
         && std::fs::read(path).is_ok_and(|previous| previous == bytes)
     {
         return Ok(());
     }
-    json_bytes(path, &bytes)
+    json_bytes(path, bytes)
 }
 
 /// Identity of a file without reading its bytes: device, inode, size and

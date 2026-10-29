@@ -71,6 +71,8 @@ struct Paths {
     run: PathBuf,
     build_inputs: PathBuf,
     input_state: PathBuf,
+    /// Working-directory/argument-specific observations, never proof receipts.
+    invocation_slot: Option<PathBuf>,
     compiler_inputs: PathBuf,
     compiler_read_origins: PathBuf,
     /// One empty file per proof context of this compiler family.
@@ -700,7 +702,7 @@ fn prepare(
         _family: ownership_lock(&compiler)?,
         workspace: workspace_lock,
     };
-    let paths = Paths {
+    let mut paths = Paths {
         target: compiler.join("target"),
         cargo_alias: compiler.join("sail-cargo"),
         proxy_alias: compiler.join("sail-verus-driver"),
@@ -708,6 +710,7 @@ fn prepare(
         runtime: context.join(super::noop::RUNTIME),
         build_inputs: context.join("build-inputs.json"),
         input_state: context.join("input-state.json"),
+        invocation_slot: None,
         compiler_inputs: compiler.join("build-inputs.json"),
         compiler_read_origins: compiler.join("compiler-read-origins"),
         run: context.join("runs").join(run_id),
@@ -742,7 +745,26 @@ fn prepare(
     });
     cargo_alias.unwrap_or_else(|_| alias(&config.sail, &paths.cargo_alias))?;
     proxy_alias?;
+    paths.invocation_slot =
+        super::invocation_slots::prepare(&context, &config.workspace, &config.args);
     Ok((paths, ownership))
+}
+
+impl Paths {
+    fn input_cache(&self) -> Option<&Path> {
+        self.invocation_slot
+            .as_deref()
+            .or_else(|| self.input_state.parent())
+    }
+
+    fn write_input_state(&self, data: &Value) -> Result<()> {
+        let bytes = serde_json::to_vec(data).map_err(|e| Error::new("SAIL3102", e.to_string()))?;
+        super::files::bytes_if_changed(&self.input_state, &bytes)?;
+        if let Some(slot) = &self.invocation_slot {
+            super::files::bytes_if_changed(&slot.join("input-state.json"), &bytes)?;
+        }
+        Ok(())
+    }
 }
 
 /// The directory Cargo actually builds in for this invocation's owned target.
@@ -1258,7 +1280,7 @@ fn build_environment(
     let directory = paths.run.join("build-environment");
     std::fs::create_dir(&directory).ok()?;
     let key = build_environment_key(config, paths, data, context);
-    if let (Some(key), Some(context)) = (&key, paths.input_state.parent())
+    if let (Some(key), Some(context)) = (&key, paths.input_cache())
         && super::build_environment::restore(context, key, &directory, data)
     {
         if let Some(environment) = super::build_environment::load(&directory, data) {
@@ -3747,7 +3769,7 @@ fn run_recorded(
             "the process environment changed during verification setup",
         ));
     }
-    super::files::json_if_changed(&paths.input_state, &data)?;
+    paths.write_input_state(&data)?;
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
         "targets":expected.iter().map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
@@ -4043,7 +4065,7 @@ fn run_recorded(
             serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
         after_data["sail_source_inputs_by_target"] =
             serde_json::to_value(super::source_inputs::targets(&source_state)).unwrap_or_default();
-        super::files::json_if_changed(&paths.input_state, &after_data)?;
+        paths.write_input_state(&after_data)?;
         // Kept only if nothing it observed changed while Cargo read the
         // metadata (which may rewrite the lockfile).
         let (mut after, after_stamp) = match speculative {
@@ -4370,8 +4392,9 @@ fn run_recorded(
                 .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
                 .as_deref(),
         );
-        super::read_check::record(
+        super::read_check::record_in(
             context,
+            paths.invocation_slot.as_deref(),
             &result.input_revision,
             super::read_check::entries(&after, &after_data, scope.as_ref(), &configuration),
             super::input::closure_bindings(&after, &after_data, scope.as_ref()),
@@ -4401,7 +4424,7 @@ fn run_recorded(
         // The fresh unit query is retained only when this run is Current and
         // its key, read again from the metadata and manifests after the run,
         // is the one the query ran under: nothing it depends on moved.
-        if let (Some(key), Some(context)) = (&environment_key, paths.input_state.parent())
+        if let (Some(key), Some(context)) = (&environment_key, paths.input_cache())
             && build_environment_key(config, &paths, &after_data, &result.context_sha256).as_ref()
                 == Some(key)
         {
@@ -4485,6 +4508,7 @@ fn run_recorded(
                 workspace_lock: paths.projects.join(super::projects::WORKSPACE_LOCK),
                 family: paths.target.parent()?,
                 context: paths.receipts.parent()?,
+                slot: paths.invocation_slot.as_deref(),
                 target: &paths.target,
                 observation: super::input::mutation_vector(&after_run, stamp_after.as_ref()?)?,
                 identity: &identity_paths,
@@ -7491,11 +7515,17 @@ mod tests {
     }
 
     #[test]
-    fn rebinding_declared_external_inputs_preserves_seals_and_rejects_corruption() {
+    fn rebinding_declared_external_inputs_preserves_seals_and_rejects_corruption()
+    -> std::io::Result<()> {
         let root = std::env::temp_dir().join(format!(
             "sail-receipt-completed-inputs-{}",
             std::process::id()
         ));
+        std::fs::create_dir_all(&root)?;
+        // Projection eligibility requires physical roots. Darwin's temporary
+        // directory may itself be an alias; exercise the memo here and retain
+        // the separate alias-refusal controls unchanged.
+        let root = root.canonicalize()?;
         let app = root.join("app");
         let dependency = root.join("vstd");
         let run = root.join("run");
@@ -7588,6 +7618,7 @@ mod tests {
         assert!(completed_receipts(&run, &data, None).is_err());
         assert!(!run.join("committed.json").exists());
         assert!(std::fs::remove_dir_all(root).is_ok());
+        Ok(())
     }
 
     /// Issue #120: serde's build script writes `OUT_DIR/private.rs`, which

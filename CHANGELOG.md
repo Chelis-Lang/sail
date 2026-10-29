@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Keep working-directory and argument-specific managed observations in eight
+  bounded slots, so alternating workspace and member calls can retain their
+  own unchanged-call records. Replays republish their validated latest-context
+  views; proof receipts and Cargo targets stay shared.
+
 - Share target-revision projection work within one full managed call while
   preserving fresh configuration discovery and the original source-stamp
   check for every batch. Retries still read their own inputs.

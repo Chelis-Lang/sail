@@ -276,3 +276,19 @@ complete reads and stamps themselves, which this change keeps.
 Raw evidence: `mac-unch.tgz` sha256
 `c65c712c84a37d8a5fce5895fe53f3d44892032c16c1bcc639cba583361cdd12`
 (phase rows, the `fs_usage` capture, eight `sample` profiles, the drivers).
+
+## Invocation-sidecar thrash (#576)
+
+Status: reproduced on native Linux; bounded-slot implementation and runtime
+qualification pending. On 2026-10-29, c7i.8xlarge/us-east-1, the staged
+`1dc5f1a5` candidate runs a real two-directory Cargo workspace: root cold,
+root unchanged, member unchanged, root return and member return, with five
+seconds between calls and one constant replay-trace path. Every result is
+Current; the four warm calls start zero verifiers. All five use exactly the
+same proof context and input revision.
+
+Each directory transition changes `input-state.json`, `build-environment.json`
+and `read-check.json`. The per-run runtime settings also change, as expected
+under #575. `build-inputs.json` and `source-inputs.json` remain unchanged after
+the first warm call. This functional reproduction supplies no stock timing or
+real-project acceptance result. Its raw log is retained outside Git.
