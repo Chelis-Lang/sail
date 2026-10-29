@@ -206,6 +206,13 @@ Current numbers are in [performance](performance.md).
 
 ## Tests and environment
 
+- **Incomplete trailing output in two test comparators.**
+  `z3_transcript::replies` and `cached_session::replies` check completed reply
+  counts but omit `ResponseSplitter::finish()`, so an incomplete trailing
+  suffix can be ignored ([#611](https://github.com/Chelis-Lang/sail/issues/611)).
+  The bounded input-prefix cost runner additionally checks stream completion;
+  it does not fix these repository helpers. No production wrong answer is
+  demonstrated. The helpers already check reply cardinality.
 - **Short fixture deadlines under heavy parallel load on macOS.** Exec of a
   freshly written executable has taken up to 10.5 s during
   `cargo nextest run --workspace -j 32` on an 8-core Mac. Fixtures whose

@@ -1,7 +1,7 @@
 # 0089: Share exact input-prefix and solver-delivery operations
 
-- **Status:** proposed
-- **Date:** 2026-10-28
+- **Status:** accepted (bounded adoption, lead review)
+- **Date:** 2026-10-29
 
 ## Context
 
@@ -38,5 +38,8 @@ quiet output and observed normal termination.
 Encoding injectivity concerns fully framed bytes. Digest collision resistance,
 SHA implementation, operating-system writes and launched-image identity remain
 explicit trust boundaries. Native differential and added-cost qualification
-are required separately from direct Stock proofs. This proposal does not claim
-the complete service theorem or authorize merging an unqualified candidate.
+are required separately from direct Stock proofs. Lead acceptance covers this
+bounded dependency edge and source-shared adoption after the recorded component,
+native and cost checks. Final evidence review and current-head CI still gate
+this delivery. It does not establish solver-image/writer origin or the complete
+service theorem.

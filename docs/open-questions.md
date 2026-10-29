@@ -465,11 +465,13 @@ planned for releases after 0.1.0. The owner answered all twelve on
 
 42. **Direct key-to-acceptance edge for exact input delivery.**
 
-    [ADR 0089](decisions/0089-checked-input-prefix-delivery.md) proposes the
-    direct `sail-key` → `sail-acceptance` edge for the existing typed factory,
-    raw-prefix owner and acknowledged-input operations. The candidate keeps
-    the leaf dependency-free and retains explicit SHA/owned-pipe primitives;
-    it does not establish physical launch or solved-store origin. Accept the
-    graph decision after source review and required qualification, or retain
-    the current edge while revising the extraction? The decision remains
-    proposed; source implementation is not owner acceptance or merge approval.
+    **Answered 2026-10-29 (lead review):** accept the bounded direct
+    `sail-key` → `sail-acceptance` edge under
+    [ADR 0089](decisions/0089-checked-input-prefix-delivery.md), following source
+    review and the recorded component, native and cost checks. The leaf stays
+    dependency-free, without a cycle or path to the daemon or verifier.
+    SHA/owned-pipe primitives, physical launch, protected writers and solved
+    result origin retain their explicit boundaries; the complete service
+    theorem remains #368. Final evidence review and current-head CI still
+    gate this delivery. This records lead acceptance, not an explicit owner
+    approval or a broader service proof.

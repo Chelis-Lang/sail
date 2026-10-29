@@ -1,10 +1,10 @@
 # Exact input ownership and acknowledged solver delivery
 
-Status: candidate extracted from the existing acceptance work, based on the
-command/persistence stack at `2ac97a50`, preserving the original extraction
-from `2baa1336`. Whole-root discovery, controls and
-native qualification remain pending; see the
-[qualification record](../validation/checked-input-prefix-delivery.md).
+The production key and cached shim use the shared raw-prefix and acknowledged
+input-delivery operations. The complete component proof and controls, native
+conformance, Mac host and bounded component-cost gates pass; the
+[qualification record](../validation/checked-input-prefix-delivery.md) identifies
+actual execution sources, evidence and remaining review gates.
 
 `sail-key::PrefixHasher` executes the shared `key_prefix` framing through the
 private SHA adapter. The actual typed factory initializes the solver fields,
