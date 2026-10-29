@@ -483,3 +483,13 @@ planned for releases after 0.1.0. The owner answered all twelve on
     bundle at eight units. The post-frontend route is unselected. CapybaraKV's
     native provenance refusal and Anvil's focused cold overhead remain separate
     work. #563 explicitly requires owner sign-off before adoption.
+
+44. **Settled source and target observations across managed calls.** Approve
+    [ADR 0091](decisions/0091-settled-source-and-target-digests.md) for the bounded
+    prototype and separately measured source/owned-target optimizations in #560.
+    The read-only Mac component spike is 544.236 ms fresh versus 42.727 ms for
+    ledger/stat matching; it is not a Sail timing. Full stamps, fresh namespace
+    discovery, the original two-second settle rule, complete Current origin,
+    dirty cleanup and fail-closed controls remain. #560 explicitly requires
+    owner approval because current freshness rules forbid source digests from
+    crossing calls. No such implementation has been adopted.
