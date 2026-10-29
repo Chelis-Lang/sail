@@ -117,6 +117,32 @@ raise SystemExit(subprocess.run(command,cwd=env['HOME'],env=env).returncode)
         self.assertFalse((target / ".git/hooks").exists())
         self.assertFalse((target / ".git/objects/info/alternates").exists())
 
+    def test_release_proof_evidence_is_preserved_and_tracked_source_still_transfers(self):
+        target = self.invoke()
+        name = 'release-out-proof-evidence'
+        evidence = target / name
+        evidence.mkdir()
+        (evidence / 'native.log').write_text('retain native proof evidence')
+        local = self.source / name
+        local.mkdir()
+        (local / 'private.log').write_text('do not transfer private evidence')
+        # Release staging runs as container root. Sync must not enumerate or
+        # delete the resulting inaccessible, untracked evidence directory.
+        evidence.chmod(0)
+        try:
+            self.invoke()
+        finally:
+            evidence.chmod(0o700)
+        self.assertEqual((evidence / 'native.log').read_text(), 'retain native proof evidence')
+        self.assertFalse((evidence / 'private.log').exists())
+        (local / 'tracked.rs').write_text('tracked source still transfers')
+        self.git(self.source, 'add', str(local / 'tracked.rs'))
+        self.commit(self.source, 'track a source beneath the output exclusion')
+        self.invoke()
+        self.assertEqual((evidence / 'tracked.rs').read_text(), 'tracked source still transfers')
+        self.assertTrue((evidence / 'native.log').exists())
+        self.assertFalse((evidence / 'private.log').exists())
+
     def test_linked_staged_then_modified_deleted_and_untracked_inputs_survive(self):
         linked = self.base / "linked source"
         self.git(self.source, "worktree", "add", "-q", "-b", "linked", str(linked))

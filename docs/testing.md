@@ -17,6 +17,36 @@ a clean Git checkout does not establish which binary Cargo executed.
 Real-project benchmarks keep their timings and logs and delete each completed
 arm's temporary source, build artifacts and cache before starting the next arm.
 
+`scripts/perf-real.sh` wraps each measured command with `python3 -I
+scripts/perf-mem.py`. Each `rN/MODE.PHASE.memory.json` records process-tree
+peak RSS, largest accounted child high-water RSS and separate daemon peak RSS,
+in KiB. Tree and daemon peaks sample every 50 ms; shared pages are counted per
+process and shorter peaks may be missed. The sampler's own process and its
+`ps` children are excluded. Observed detached daemons remain tracked by PID
+and start identity across phases; the cache daemon reported by `sail status`
+is also seeded before each run. A daemon that detaches before its first
+observation is discovered from fresh status at completion and sampled again
+outside the wall interval. This can still miss an earlier short peak;
+Linux's final per-process `VmHWM` supplies a separate lifetime cross-check.
+At arm end, `MODE.daemon-memory.json` retains
+that cross-check before the harness stops the daemon. Cache byte usage from
+`sail status` is not RSS.
+
+The last three `results.tsv` columns are `tree_peak_kb`, `largest_kb` and
+`daemon_peak_kb`. The report accepts both original 19-column rows and new
+22-column rows; old memory is `NA`. Malformed row widths refuse reporting
+instead of silently losing samples. `SAIL_PERF_MEMORY=0` disables sampling
+for paired overhead controls, leaving memory unavailable. The wrapper changes
+no child arguments or environment variables. Use the same setting throughout
+an arm, and never treat disabled or failed sampling as memory acceptance.
+The wrapper signals readiness before the wall clock starts and waits on an
+owned FIFO; the harness then releases the actual command. Python startup and
+the initial process inventory are outside the timed interval. Disabled
+sampling uses the same readiness path, with no process scans or sampler
+thread, so the overhead control retains the same command-launch boundary.
+Native sampler overhead and the four-project Linux/macOS memory matrix must
+be measured before claiming memory acceptance for a release.
+
 Both native host helpers support primary Git checkouts and linked worktrees:
 
 ```sh
@@ -33,7 +63,13 @@ stay dirty; staged-new files modified again retain both versions. It copies no
 local Git config, hooks, linked-worktree pointers or index optimization flags.
 Content checks and current timestamps remain in force; native Cargo outputs
 remain on the host. The existing target, agent, bytecode, conformance and release
-output exclusions still apply. This is not a clean-source certificate: proof
+output exclusions still apply.
+The release factory's `release-out-proof-evidence/` is also protected from
+ordinary source transfer and deletion, including container-root-owned records.
+Tracked source under that exclusion still transfers through the same explicit
+tracked-file rules as other output directories.
+
+This is not a clean-source certificate: proof
 gates must retain their normal clean-source and canonical-byte checks.
 
 HEAD/index-tracked paths override those exclusions: tracked project settings

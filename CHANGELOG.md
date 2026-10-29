@@ -18,6 +18,12 @@ semantic versioning once the API is published.
   `SAIL_MANAGED_METADATA_MEMO_TRACE=FILE` checks it against real Cargo. Skip
   receipt reads and the dep-info walk when their results would go unused
   (#560).
+- Preserve the release factory's proof evidence during native source sync,
+  including root-owned evidence, while retaining tracked-source overrides.
+
+- Record sampled process-tree and daemon peak RSS, plus child high-water RSS,
+  in real-project benchmark rows and reports on Linux and macOS. Existing
+  reports remain readable with memory marked unavailable.
 
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed

@@ -12,7 +12,40 @@ import unittest
 
 
 class Commands(unittest.TestCase):
-    def run_command(self, mode, selector, baseline=""):
+    def test_run_one_records_wrapped_failure_and_disabled_memory(self):
+        text = Path(__file__).with_name('perf-real.sh').read_text()
+        commands = 'measured()' + text.split('measured()', 1)[1].split('\nstats()', 1)[0]
+        runner = 'run_one()' + text.split('run_one()', 1)[1].split('\nshim_pid=', 1)[0]
+        for enabled in ['1', '0']:
+            with self.subTest(memory=enabled), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / 'project').mkdir()
+                executable = root / 'cargo'
+                executable.write_text('#!/bin/sh\nprintf "child-output\\n"\nexit 7\n')
+                executable.chmod(0o755)
+                env = {k: v for k, v in os.environ.items() if not k.startswith('SAIL_')}
+                env.update(PATH=f"{root}:{env['PATH']}", SAIL_PERF_MEMORY=enabled,
+                           SAIL_PERF_SETTLE='0', ROOT=str(root),
+                           SCRIPTS=str(Path(__file__).resolve().parent))
+                script = ('out="$ROOT/out"; results="$out/results.tsv"; pkg=.; partial=0; '
+                          'fork=""; baseline=""; cargs=(); vargs=(); time_args=(); '
+                          'here="$SCRIPTS"; sample_failures=0\n' + commands + '\n' +
+                          'stats() { echo "0 0 0 0"; }; '
+                          'times_of() { printf "NA\\tNA\\tNA\\tNA\\tNA\\tNA"; }; '
+                          'now() { python3 -c "import time; print(time.time())"; };\n' +
+                          runner + '\nrun_one 1 plain "$ROOT/project" cold\n')
+                result = subprocess.run(['bash', '-c', script], env=env,
+                                        capture_output=True, text=True, timeout=15)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                row = (root / 'out/results.tsv').read_text().strip().split('\t')
+                self.assertEqual(len(row), 22, result.stderr)
+                self.assertEqual(row[4], '7')
+                self.assertEqual((root / 'out/r1/plain.cold.log').read_text(), 'child-output\n')
+                self.assertFalse(list((root / 'out/r1').glob('*.go')))
+                if enabled == '0':
+                    self.assertEqual(row[-3:], ['NA', 'NA', 'NA'])
+
+    def run_command(self, mode, selector, baseline="", sample=False):
         text = Path(__file__).with_name("perf-real.sh").read_text()
         command = text.split("partial=0\n", 1)[1].split("\nmode_path()", 1)[0]
         with tempfile.TemporaryDirectory(prefix="sail-perf-command-") as tmp:
@@ -35,13 +68,37 @@ class Commands(unittest.TestCase):
                    if not key.startswith(("SAIL_", "VERUS_"))}
             env.update(PATH=f"{root}:{env['PATH']}", MODE=mode, SELECTOR=selector,
                        FORK=str(root / "fork"), BASELINE=baseline, SAIL_DAEMON_SOCKET=str(root / "d.sock"))
-            script = ('cargs=(--lib); vargs=(); [ -z "$SELECTOR" ] || vargs=("$SELECTOR"); '
+            setup = ''
+            if sample:
+                setup = ('memory_file="$MEMORY_OUTPUT"; memory_state="$MEMORY_STATE"; '
+                         'daemon_status="$DAEMON_STATUS"; here="$SCRIPTS"; ')
+                env.update(MEMORY_OUTPUT=str(root / 'memory.json'),
+                           MEMORY_STATE=str(root / 'state.json'),
+                           DAEMON_STATUS=str(root / 'status.json'),
+                           SCRIPTS=str(Path(__file__).resolve().parent))
+            script = (setup + 'cargs=(--lib); vargs=(); [ -z "$SELECTOR" ] || vargs=("$SELECTOR"); '
                       'fork="$FORK"; baseline="$BASELINE"; partial=0\n' + command +
                       '\nverus_cmd "$MODE" --time-expanded\n')
             result = subprocess.run(["bash", "-c", script], env=env, text=True,
                                     capture_output=True, timeout=10)
             output = json.loads(result.stdout) if result.stdout else None
+            if sample:
+                self.assertEqual(json.loads((root / 'memory.json').read_text())['exit'], 0)
             return result, output, str(shim), str(root / "fork/z3")
+
+    def test_sampler_preserves_all_mode_commands_and_environment(self):
+        for mode in ['plain', 'sail', 'incremental', 'fork-plain', 'fork-sail', 'fork-shim']:
+            with self.subTest(mode=mode):
+                result, output, shim, solver = self.run_command(mode, '--verify-root',
+                                                                '/owned/baseline', sample=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('--verify-root', output['args'])
+                if mode == 'fork-shim':
+                    self.assertEqual((output['shim'], output['solver']), (shim, solver))
+                elif mode == 'sail':
+                    self.assertEqual(output['runtime'], '/owned/baseline/cargo-verus')
+                elif mode == 'fork-sail':
+                    self.assertEqual(output['runtime'], str(Path(solver).with_name('cargo-verus')))
 
     def test_focused_shim_uses_fork_solver_and_owned_daemon(self):
         result, output, shim, solver = self.run_command("fork-shim", "--verify-module=module")
