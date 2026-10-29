@@ -205,6 +205,14 @@ grep -q "verified, 0 errors" "$work/pass-plain.out"
 CARGO_TARGET_DIR="$work/target-plain" quiet_run noop-plain stock_cargo verus verify
 CARGO_TARGET_DIR="$work/target-sail" quiet_run noop-sail "$sail" verify
 same noop-plain noop-sail
+# Both routes take the full managed runner, with identical stock output.
+# Replay is disabled so these calls actually exercise the metadata decision.
+SAIL_MANAGED_NOOP=0 SAIL_MANAGED_METADATA_MEMO=0 CARGO_TARGET_DIR="$work/target-sail" \
+  quiet_run metadata-off "$sail" verify
+same noop-plain metadata-off
+SAIL_MANAGED_NOOP=0 CARGO_TARGET_DIR="$work/target-sail" \
+  quiet_run metadata-on "$sail" verify
+same noop-plain metadata-on
 printf 'pub fn broken() -> u32 { y }\n' >> src/lib.rs
 plain_run compile-plain stock_cargo verus verify
 sail_run compile-sail "$sail" verify

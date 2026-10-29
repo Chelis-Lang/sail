@@ -17,6 +17,12 @@ relations remain open; source/hash binding does not establish them.
 
 ## Accepted integration limit
 
+- A hosted cached-session statistics control intermittently took the genuine
+  solver path instead of its deliberately rewritten cache entry (#616).
+  Exit status and genuine solver output were correct; the replay witness
+  failed. Cause is unknown. Native solver checks pass; the strict assertion
+  remains active ([record](validation/acceptance-production-refinements.md)).
+
 - **Sail's named integration settings are compiler-visible**
   ([ADR 0088](decisions/0088-compiler-visible-integration-settings.md),
   [#435](https://github.com/Chelis-Lang/sail/issues/435)). The owner accepts

@@ -1529,12 +1529,11 @@ mod tests {
         );
         // An existing target holding exactly the stored bytes is attached
         // without copying; one without them is not.
-        let attached = attach(
-            &fixture.cache(),
-            &new,
+        let unowned = super::super::runner::unowned_store_candidates(
             std::slice::from_ref(&candidate),
-            &fixture.data,
+            BTreeSet::new,
         );
+        let attached = attach(&fixture.cache(), &new, &unowned, &fixture.data);
         assert!(attached.len() == 1 && !attached[0].placed);
         assert_eq!(attached[0].shown_stdout, Vec::<u8>::new());
         assert!(
