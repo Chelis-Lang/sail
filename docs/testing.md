@@ -63,6 +63,11 @@ tool identity stamps, cache contents, declared environment and record commit
 as `record timing: PHASE=N ms`. These timings are diagnostic only and do not
 change the recorded transcript or replay eligibility (#558).
 
+`cargo xtask fetch-verus` and stock-runtime lookup share cache selection:
+`SAIL_VERUS_HOME` overrides the primary install; otherwise `SAIL_CACHE_DIR`,
+`XDG_CACHE_HOME/sail` or `HOME/.cache/sail` supplies the root, in that order.
+Secondary releases always use the selected Sail cache.
+
 Both native host helpers support primary Git checkouts and linked worktrees:
 
 ```sh

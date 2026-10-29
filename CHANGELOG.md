@@ -45,6 +45,12 @@ semantic versioning once the API is published.
   An unclassified shipped-vstd miss now names the trace route without
   attributing it to dependency versions.
 
+- Use the same cache selection for `cargo xtask fetch-verus` and runtime
+  lookup, including `SAIL_CACHE_DIR` (#581). Managed verification resolves
+  symlinked cache roots before deriving compiler and proof paths (#601).
+  An unclassified shipped-vstd miss now names the trace route without
+  attributing it to dependency versions.
+
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed
   spans and error behavior; [qualification and limits](docs/validation/checked-command-classifier.md).
