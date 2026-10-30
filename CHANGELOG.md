@@ -11,17 +11,23 @@ semantic versioning once the API is published.
   bound observer interpreter delays in the command clock. Native overhead
   and release-memory acceptance remain pending.
 
+- Enable settled owned-target digest observations by default on Linux after
+  independent native qualification. `SAIL_MANAGED_TARGET_DIGEST_MEMO=0` keeps
+  fresh reads; macOS keeps fresh reads by default. Source memoization remains
+  opt-in. All full-stamp, source, receipt and Currentness guards remain.
+
 - Add separately controlled source and owned-target digest observations under
   ADR 0091. Fresh namespaces, complete original settled stamps and successful
   Current provenance guard reuse; changed inputs, retries and force keep fresh
-  reads. Both remain opt-in and default to fresh reads on each platform.
+  reads. Source reuse remains opt-in; target reuse defaults to fresh reads on
+  macOS and uses the independently qualified guarded path on Linux.
 
 - Record Vest's exact shipped-vstd source/features profile without changing
   consumer manifests or locks. Each schema-13 unit binds its own closed source
   policy and establishing run; releases admit at most eight explicit units.
-  Native factories and first-Serve pass on Linux and Mac; Linux cold-call
-  comparisons improve. Quiet-host Mac performance and release qualification
-  remain pending.
+  Native factories and first-Serve pass on Linux and Mac; six-round Vest
+  cold medians improve on both platforms. Sampler-overhead, stock parity
+  and complete release qualification remain open.
 
 - Remember a previously observed unqualified Cargo and take the existing
   no-reuse fallback before managed setup when its native tool identities,
@@ -30,7 +36,6 @@ semantic versioning once the API is published.
 - Measure real-project command wall time from spawn through child exit,
   excluding sampler setup/teardown. Sampling controls no longer reach the
   child environment; invalid clocks retain a failed sample and refuse acceptance.
-
 
 - Keep working-directory and argument-specific managed observations in eight
   bounded slots, so alternating workspace and member calls can retain their
@@ -74,14 +79,6 @@ semantic versioning once the API is published.
   symlinked cache roots before deriving compiler and proof paths (#601).
   An unclassified shipped-vstd miss now names the trace route without
   attributing it to dependency versions.
-
-- Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in
-  the same managed run when program, arguments, directory, effective
-  environment and every stamped metadata and toolchain input match; anything
-  else runs Cargo. `SAIL_MANAGED_METADATA_MEMO=0` turns this off and
-  `SAIL_MANAGED_METADATA_MEMO_TRACE=FILE` checks it against real Cargo. Skip
-  receipt reads and the dep-info walk when their results would go unused
-  (#560).
 
 - Source-share shallow command classification and response expectation through
   the existing SMT API and Session delegate, preserving original borrowed

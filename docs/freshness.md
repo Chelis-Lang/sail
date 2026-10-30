@@ -635,13 +635,17 @@ digests across calls. Unknown data, changed entries, retries and forced calls
 read afresh. Source and target optimizations require separate platform
 qualification; see the [record](validation/settled-digest-observations.md).
 
-The separate `SAIL_MANAGED_TARGET_DIGEST_MEMO=1` candidate additionally
+Linux selects the separately qualified owned-target observation by default;
+`SAIL_MANAGED_TARGET_DIGEST_MEMO=0` restores fresh reads. macOS keeps fresh
+reads by default and requires explicit `=1` to try the same guarded path.
+An unknown setting refuses reuse; non-Unix hosts always retain fresh reads.
+This optimization additionally
 requires a freshly matched complete owned target, exact receipt bytes and
 complete source/metadata/context bindings. It retains dirty cleanup and
 refuses aliases or any changed entry. Pure receipt projections also bind their
 exact original selection and target keys; each batch still checks the fresh
 source observation. Native component gates pass; corrected Linux warm Anvil pairs save about 0.43 s.
 The Mac target candidate refuses because build-script directory stamps change
-during unchanged calls. Both switches remain off by default; neither result
-establishes release parity. See the separate scopes in the
+during unchanged calls. Source observations remain opt-in on both platforms. Target selection on
+Linux does not establish release parity. See the separate scopes in the
 [qualification record](validation/settled-digest-observations.md).

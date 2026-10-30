@@ -111,6 +111,10 @@ Current numbers are in [performance](performance.md).
   0.1.0 rounds the Vest revert and fix revert took about 12 s instead of
   1.1 s, with every check served from the solver cache. That is still faster
   than stock's 22 s and the verdicts matched; the cause is not diagnosed.
+  Current candidate normal cohorts restore all twelve times below 2 s on
+  each platform. A separate Linux baseline reproduces two slow restore misses,
+  so a Mac-only cause is not established
+  ([current evidence](validation/v020-performance.md)).
 - Release 0.1.0 can miss shipped vstd through a symlinked cache (#601).
   The candidate resolves managed paths physically and passes installed-release
   first-Serve checks on both platforms ([record](validation/cache-path-selection.md)).
@@ -259,19 +263,30 @@ deep gate compares exactly.
 The v0.2.0 unqualified-Cargo early-refusal candidate is limited to rustup's
 installed native Cargo programs and proxy. External path toolchains and
 custom wrappers keep the existing late no-reuse fallback. Its performance
-component timing qualifies on Linux and Mac; full native output and release
-qualification remain tracked in #561. See the
+component timing and repeated native-Cargo human-output controls qualify on
+Linux and Mac; the strict deep-rvt aggregate and release qualification remain
+open, tracked in #561. See the
 [record](validation/unsupported-cargo-fallback.md).
 
-- Native macOS27 performance qualification remains open after sustained
-  background audio/configuration CPU was observed on the EC2 Mac host.
-  Earlier component numbers are retained as diagnostics. The candidate
-  process-CPU preflight refuses a busy measurement environment; quiet-host
-  reruns are required. See [the record](validation/benchmark-memory.md#mac-environment-refusal-2026-10-30).
+- Native macOS27 sampler-overhead qualification remains open. Earlier
+  component numbers affected by background audio/configuration CPU remain
+  diagnostic. The complete authenticated-console matrix passes the bounded
+  startup preflight, but the independent overhead controls fail or refuse
+  before timing. No threshold changes ([instrumentation](validation/benchmark-memory.md),
+  [current matrix](validation/v020-performance.md)).
+
+A strict v0.2.0 stock source-suite control reports a JSON debug-order
+disagreement after eleven confirming plain runs ([#627](https://github.com/Chelis-Lang/sail/issues/627)).
+All three exact fork arms are 4,902 Same, with all 4,839 nonignored tests
+passing. Two strict stock attempts remain failed; their JSON object-key and
+proof-note order symptoms match VI-0008 / VI-0021. No comparator is relaxed
+([current scope](validation/deep-tier.md#v020-performance-candidate)).
 
 ## Settled digest candidates
 
-The ADR 0091 switches remain off by default. Corrected Linux source pairs
+The ADR 0091 source switch remains off by default. Linux uses the guarded
+target path by default, with explicit `=0` opt-out;
+macOS keeps fresh target reads by default. Corrected Linux source pairs
 regress warm Anvil by 120 ms; the refined Mac source pairs save about 48 ms
 with only a bounded startup quiet check. The corrected target memo saves
 about 430 ms on Linux but refuses publication on Mac

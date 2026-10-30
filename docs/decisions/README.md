@@ -97,5 +97,5 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0089: Exact input-prefix and solver-delivery operations](0089-checked-input-prefix-delivery.md) (proposed)
 
-- [0090: Additional exact shipped-vstd profiles](0090-additional-exact-vstd-profiles.md) (accepted; implementation qualification pending)
-- [0091: Settled source and owned-target digest observations](0091-settled-source-and-target-digests.md) (accepted; separate implementation qualification pending)
+- [0090: Additional exact shipped-vstd profiles](0090-additional-exact-vstd-profiles.md) (accepted; implemented, factories qualified, release qualification open)
+- [0091: Settled source and owned-target digest observations](0091-settled-source-and-target-digests.md) (accepted; implementation qualified, Linux target default selected, release qualification open)

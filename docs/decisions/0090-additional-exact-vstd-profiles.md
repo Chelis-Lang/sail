@@ -1,6 +1,6 @@
 # 0090: Additional exact shipped-vstd profiles
 
-- **Status:** accepted by the owner on 2026-10-29; implementation qualification pending
+- **Status:** accepted by the owner on 2026-10-29; implemented with Linux/macOS factories qualified; release qualification open
 - **Date:** 2026-10-29
 - **Amends:** [ADR 0048](0048-shipped-dependency-build.md),
   [ADR 0060](0060-shipped-vstd-under-a-raised-rlimit.md)
