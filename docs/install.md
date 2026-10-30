@@ -102,12 +102,24 @@ your default Cargo is. A `RUSTUP_TOOLCHAIN` you set, a project's
 precedence, and then `vstd` may be verified again. Sail never installs a
 toolchain itself.
 
-The preverified `vstd` applies only to one exact setup:
+The archive records a finite list of exact `vstd` setups:
+
 - the `vstd` version `sail new` writes, with its default dependency
-  resolution;
+  resolution and features;
+- the pinned Vest registry closure with `vstd` alloc/std and default features
+  disabled, recorded separately at the default limit and `--rlimit 100`
+  ([qualification and limits](validation/exact-vstd-profiles.md)).
+
+Each setup also requires:
+
 - the pinned toolchain with `rust-src` and no extra components, since
   `rustc-dev` or `llvm-tools` change what rustc loads;
 - no forwarded Verus flags other than a supported `--rlimit`.
+
+Each proof binds its own exact dependency versions, features and original
+verification run. Sail does not change a project's manifest or lockfile to
+match a profile. Other Vest resolutions, CapybaraKV and Anvil are not covered
+by adding this exact profile.
 
 Otherwise Sail verifies `vstd` in the project, with the same results, and
 answers identical solver queries from signed replies shipped in the archive.

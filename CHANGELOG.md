@@ -8,13 +8,18 @@ semantic versioning once the API is published.
 - Record Vest's exact shipped-vstd source/features profile without changing
   consumer manifests or locks. Each schema-13 unit binds its own closed source
   policy and establishing run; releases admit at most eight explicit units.
-  Native factories and first-Serve pass on Linux and Mac; repeated
-  performance and release qualification remain pending.
+  Native factories and first-Serve pass on Linux and Mac; Linux cold-call
+  comparisons improve. Quiet-host Mac performance and release qualification
+  remain pending.
 
 - Remember a previously observed unqualified Cargo and take the existing
   no-reuse fallback before managed setup when its native tool identities,
   rustup selection, invocation, environment and metadata stamps still match.
   Custom wrappers and external path toolchains retain the ordinary late check.
+- Measure real-project command wall time from spawn through child exit,
+  excluding sampler setup/teardown. Sampling controls no longer reach the
+  child environment; invalid clocks retain a failed sample and refuse acceptance.
+
 
 - Keep working-directory and argument-specific managed observations in eight
   bounded slots, so alternating workspace and member calls can retain their
@@ -53,12 +58,6 @@ semantic versioning once the API is published.
 - Record sampled process-tree and daemon peak RSS, plus child high-water RSS,
   in real-project benchmark rows and reports on Linux and macOS. Existing
   reports remain readable with memory marked unavailable.
-- Use the same cache selection for `cargo xtask fetch-verus` and runtime
-  lookup, including `SAIL_CACHE_DIR` (#581). Managed verification resolves
-  symlinked cache roots before deriving compiler and proof paths (#601).
-  An unclassified shipped-vstd miss now names the trace route without
-  attributing it to dependency versions.
-
 - Use the same cache selection for `cargo xtask fetch-verus` and runtime
   lookup, including `SAIL_CACHE_DIR` (#581). Managed verification resolves
   symlinked cache roots before deriving compiler and proof paths (#601).
@@ -632,10 +631,6 @@ known issues.
 
 - Reserve dependency-publication staging directories exclusively, leaving
   another publisher’s files untouched on a collision.
-- Compare standalone verification-progress notes independent of worker order,
-  with exact text and counts, under the owner-approved VI-0012 exception.
-  Verdicts, errors and other output retain their exact checks.
-
 - Discover initial watch inputs before starting filesystem notifications.
   Cargo's startup creation of `Cargo.lock` no longer cancels the first
   verification when macOS delivers that notification late. Later input edits

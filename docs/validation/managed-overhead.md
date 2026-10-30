@@ -75,7 +75,7 @@ same-size edit with restored mtime changes the stamp and refuses replay.
 This changes no cross-run trust or two-second settle rule. Full currentness,
 zero verifiers, no retry/force/store seeding, original output/events and every
 recording gate still apply. Verifying calls keep the stamp-only path. Native
-before/after recording cost remains pending. The first candidate passes a
+before/after recording cost is measured below. The first candidate passes a
 native full gate (1,253 ordinary tests), solver51, full E2E plus extra and
 all four PR conformance arms. Mac Clippy and 1,242 host tests pass.
 
@@ -86,6 +86,27 @@ vector path and the comparison cannot measure this cut. The corrected hint
 uses the existing replay-only invocation predicate, while retaining every
 final recording authority check. No scoped report is promoted to whole-target
 reuse.
+
+Corrected component comparison: `9f4e347a` already includes stable script
+contracts and invocation-local scheduling, but still uses the separate final
+source-vector pass. Mac `85e26c97` and Linux `390c1c94` use the corrected
+replay-only allocation hint. Each platform runs ten rotated before/after
+pairs, deleting only the optional replay JSON before each measured call.
+Every call is Current, starts zero verifiers and recreates its record. No
+trace or memory sampler runs inside these component timing intervals.
+
+| Platform | Before median, s | After median, s | Saved, ms |
+|---|---:|---:|---:|
+| Native c7i.8xlarge, us-east-1 | 1.640387 | 1.575216 | 65.171 |
+| Native mac-m4.metal, us-east-1b, macOS 27.0 | 1.617450 | 1.573077 | 44.373 |
+
+This is the recording-call component, not first-call parity or a cold/edit
+acceptance matrix. The Mac combined host/recording/directory log is retained
+outside Git, SHA-256
+`e77c69111c723c459ea377c9c74a7f040dd76dfef039a14d43b2304a9588533d`.
+The Linux joined ordinary/solver/E2E/component/full-fast/standard log is
+retained outside Git, SHA-256
+`5bb714ff5b983735885063a1ec2f6abfca1aeaeec477c8c156bbe84afe5c0244`.
 
 ## Correctness
 
@@ -354,8 +375,9 @@ Raw evidence: `mac-unch.tgz` sha256
 
 ## Invocation-sidecar thrash (#576)
 
-Status: reproduced on native Linux; bounded-slot implementation and runtime
-qualification pending. On 2026-10-29, c7i.8xlarge/us-east-1, the staged
+Status: bounded slots implemented; Mac real-project qualification passes.
+Joined native Linux ordinary, solver, full E2E, full fast and standard
+qualification passes. On 2026-10-29, c7i.8xlarge/us-east-1, the staged
 `1dc5f1a5` candidate runs a real two-directory Cargo workspace: root cold,
 root unchanged, member unchanged, root return and member return, with five
 seconds between calls and one constant replay-trace path. Every result is
@@ -374,7 +396,7 @@ for the same 41 contracts, while the shared unscheduled-script memo changes
 its invocation binding and run id. Four instrumented Current/no-verifier calls
 reproduce both. The corrected candidate sorts contracts without dropping any
 unit and gives the scheduling memo its own existing bounded invocation slot.
-Real-project replay acceptance remains pending. Raw diagnosis log SHA-256:
+The controls below qualify the corrected implementation. Raw diagnosis log SHA-256:
 `42aa778d646c04cf02d8968c3c3fdfc19e81048e10325095363efdfb5aa83bfd`.
 
 Indexed attempt, `6f97b902`: native Linux passes 1,253 ordinary tests and Mac
@@ -383,9 +405,88 @@ new scheduling-corruption control replayed root last, legitimately refreshing
 its LRU order. The fixture now re-establishes root-then-member use before the
 unchanged eviction assertion. Production behavior and every assertion remain.
 
-Indexed attempt, `85e26c97`: native gate and solver51 pass; full E2E reaches
-the scheduled-script binding control, whose private fixture still reads the
-old context-root memo. The fixture now reads bounded invocation slots while
-retaining the exact context, establishing run id, uniqueness and binding-change
-assertions. The same runtime passes the Mac host gate and real Anvil/Vest
-root/subdirectory replay controls; final joined qualification remains pending.
+Mac `85e26c97` passes Clippy and 1,243 host tests (54 skipped), followed by
+80 rotated timed samples: ten stock/Sail pairs per directory and project.
+Anvil uses the established `vdeployment_controller` scope; Vest uses rlimit100.
+All warm Sail calls are Current with zero verifiers and one shared proof
+context per project. Separate diagnostic calls establish at least two replay
+hits per project; timed calls contain no trace setting.
+
+| Project | Root stock / Sail, s | Subdirectory stock / Sail, s |
+|---|---:|---:|
+| Anvil | 0.261898 / 0.068748 | 0.263153 / 0.068181 |
+| Vest | 0.267874 / 0.111899 | 0.267553 / 0.112034 |
+
+Mac production Rust bodies are identical between `85e26c97` and joined
+`390c1c94`; the latter adds current-main test-fixture readiness and the
+corrected private scheduling-memo E2E lookup. The Mac log hash is recorded
+above. The joined Linux run passes the ordinary gate and solver51, full E2E
+including extra, the source-vector comparison and timed Anvil alternation;
+all four full-fast arms match 147/147 units and 3,451 functions, and all four
+standard arms match 159/159 units and 13,166 functions. There are zero
+unstable/different/infrastructure errors or skipped projects; resource-count
+drift remains separately reported for 11 fast and 17 standard units. All
+21 standard mutants and revert controls agree with stock. Package-local
+output exclusion is a separate candidate and is not qualified by these controls.
+
+Linux Anvil `390c1c94` additionally passes 40 timed root/subdirectory samples;
+combined `7ceb6423` passes 40 Linux Vest samples with the same slot bodies
+plus the separate unqualified-Cargo candidate. Both retain at least two
+separate diagnostic hits, one proof context and zero warm verifier starts.
+
+| Project | Root stock / Sail, s | Subdirectory stock / Sail, s |
+|---|---:|---:|
+| Linux Anvil | 0.291893 / 0.047919 | 0.289603 / 0.047931 |
+| Linux Vest | 0.195146 / 0.079207 | 0.193289 / 0.079919 |
+
+The Linux Vest/control log SHA-256 is
+`c0c4432d056e46255c7081dd28a375472b731f7591a8525daafb28937a53c5e2`.
+The included sampler comparison still fails one of eighteen strata and does
+not qualify memory overhead; its failed result remains in the memory record.
+
+
+## Guarded package-local Cargo outputs (#576)
+
+Status: candidate; complete native gate/E2E/PR and Mac host controls pass.
+Full-fast/standard qualification passes. Ordinary source, declared
+inputs and marker changes retain their existing checks. A physical package
+`target/` with the bounded regular Cargo marker can avoid irrelevant output
+churn only when no global package/target root or declared input conflicts.
+Missing/malformed global exclusion guards keep the full source walk. Scoped
+proof revisions retain their exact prior input selection.
+
+Native source `5468b163` passes 1,264 ordinary tests (54 skipped), solver51,
+all local E2E phases plus extra and all four PR conformance arms. Mac Clippy
+and all 1,253 ordinary tests pass (54 skipped). Source `8ada5efb` has identical
+production Rust and adds a real Cargo producer plus a target-local `include!`
+control; its output E2E phase passes on c7i.8xlarge/us-east-1. Ordinary output
+churn preserves replay; changing the Cargo marker misses; changing the declared
+included proof from passing to failing gives identical stock/Sail exit101 and
+output and cannot replay the old proof. Restoring/removing it re-establishes
+Current through genuine verification. No conformance/output check is removed.
+
+Raw native `cargo-outputs-r5.log` SHA-256:
+`4c7e9ce3ff1862da3a12aad74f47cb03ff414369367500c3d7fcebd40f4992ae`.
+Raw Mac host log SHA-256:
+`542efc5ea70da4dd0b273bde6c9c32719f3dec33b36d6faf11d241653a55d5d8`.
+The later real include control is retained in the matrix log separately;
+its full acceptance record will identify that log after it completes.
+These functional controls supply no four-project timing or memory acceptance.
+
+Indexed attempts (2026-10-30): `f3f0aff5`, Clippy semicolon refusal;
+`d6745470`, Clippy cloned-reference refusal; `8af0af5c`, wrong private test
+module path and similar names; `abf6361f`, incomplete positive metadata
+fixture supplied a null guard. The corrected fixtures retain all assertions;
+no lint is allowed or conformance check weakened.
+
+Final joined source `64145ee1`, native c7i.4xlarge/us-east-1: the full image
+gate passes 1,264 ordinary tests (54 skipped). All four full-fast arms match
+147/147 units and 3,451 functions; all four standard arms match 159/159 units
+and 13,166 functions. All 21 mutants and reverts agree. There are zero
+unstable/different/infrastructure errors or skipped projects; resource drift
+is separately reported for 11 fast and 17 standard units. The current-main
+restack changes no production Rust. These are correctness qualifications;
+quiet-host Mac timing and the final release matrix remain open.
+
+Final native gate/full-fast/standard/mutation log SHA-256:
+`84e16561f0425167828f72dfee01b8be92e41784ba1f9d3fbf7483853fe39314`.
