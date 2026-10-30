@@ -185,8 +185,10 @@ difference. Local functional controls pass (13 memory, 19 command). Native Linux
 51 solver tests, every local E2E phase plus extra, and PR conformance: all
 four arms 33/33 Same, 311 functions, zero unstable/different/infrastructure
 errors or skipped projects. Native functional controls include all 13 memory,
-5 quiet-host and 19 command tests. Mac functional controls and independent
-before/after measurements remain pending; these gates do not establish the
+5 quiet-host and 19 command tests. The identical sampler bodies in combined Mac `c60dc918` pass strict Clippy,
+1,265 ordinary tests (54 skipped), and all 13 memory, 5 quiet-host and
+19 command controls. Independent Mac before/after measurements remain
+pending; these gates do not establish the
 original within-range overhead requirement.
 
 | Raw corrected-observer evidence outside Git | SHA-256 |
@@ -194,3 +196,25 @@ original within-range overhead requirement.
 | Native full gate log | `24343382ba05e5dc762293330cb067849f4b374426aafd3d0468b04bec4de4b6` |
 | Native conformance archive | `15f1981b025dc1ab065d95ad3e9b6fc7481009ee9928c8ec48f9831875cd65b6` |
 | Native E2E archive | `ae49168e1ce988a41429381dc216673901c0a2729dc693b43f35cbc5f8abd161` |
+
+## Corrected observer native on/off controls
+
+The 1 ms observer helper (`30843d0f`) retains all 108 IronKV samples on native
+c7i.8xlarge/us-east-1. The measured release tree is main `47dd15f8`; these
+controls isolate the sampler and do not qualify product performance for the
+later digest-selection candidate. The four demo arm/phase comparisons pass
+the original within-range rule. Seventeen of eighteen IronKV comparisons pass.
+Sail's first unchanged row fails: disabled median 0.211296351 s, sampled
+0.218340316 s, difference 0.007043965 s against largest arm range
+0.006694430 s. The full sampler-overhead requirement remains unqualified.
+No sample is removed and the threshold is unchanged.
+
+Raw 108-sample archive SHA-256:
+`48432c81aa30c54ac44b32d22f73bda2e73dcbd533119939042bf3993e3796cc`.
+Mac functional checks pass on combined `c60dc918` as described above; its
+independent on/off controls remain pending. This
+clock correction does not relabel older timings or establish release-memory
+acceptance.
+
+Mac combined host/functional gate log SHA-256:
+`218e990667f413ccec7775b4d4b444a6ed1c60818e5b57dad53d65a8f9bdbfff`.

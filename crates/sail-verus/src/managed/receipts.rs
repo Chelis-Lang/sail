@@ -353,12 +353,32 @@ pub(super) fn artifact_hashes(paths: &[PathBuf]) -> Result<BTreeMap<PathBuf, Str
 /// the receipt checks after one invocation. A dependency's artifacts are both
 /// its own receipt's artifacts and every dependent's inputs (vstd's `.vir` is
 /// about 40 MB), and the checks of several receipts overlap their reads.
-/// Every digest is still a complete read made in this phase, after the
-/// invocation; nothing is carried over from an earlier phase or run.
+/// By default every digest is a complete read in this phase. The opt-in
+/// ADR 0091 caller may supply hashes from a successful Current observation
+/// only after freshly matching the complete owned target and all bindings.
 #[derive(Default)]
 pub(super) struct PhaseDigests(std::cell::RefCell<BTreeMap<PathBuf, Result<String>>>);
 
 impl PhaseDigests {
+    /// ADR 0091 supplies only hashes bound to a freshly matched complete owned
+    /// target observation. Files absent from that observation still read afresh.
+    pub(super) fn observed(reads: BTreeMap<PathBuf, String>) -> Self {
+        Self(std::cell::RefCell::new(
+            reads
+                .into_iter()
+                .map(|(path, hash)| (path, Ok(hash)))
+                .collect(),
+        ))
+    }
+
+    pub(super) fn successful_reads(&self) -> BTreeMap<PathBuf, String> {
+        self.0
+            .borrow()
+            .iter()
+            .filter_map(|(path, result)| Some((path.clone(), result.as_ref().ok()?.clone())))
+            .collect()
+    }
+
     /// Reads every path not yet read in this phase, concurrently.
     pub(super) fn prefetch<'a>(&self, paths: impl IntoIterator<Item = &'a Path>) {
         let pending: Vec<&Path> = {

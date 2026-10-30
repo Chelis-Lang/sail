@@ -11,6 +11,11 @@ semantic versioning once the API is published.
   bound observer interpreter delays in the command clock. Native overhead
   and release-memory acceptance remain pending.
 
+- Add separately controlled source and owned-target digest observations under
+  ADR 0091. Fresh namespaces, complete original settled stamps and successful
+  Current provenance guard reuse; changed inputs, retries and force keep fresh
+  reads. Both remain opt-in and default to fresh reads on each platform.
+
 - Record Vest's exact shipped-vstd source/features profile without changing
   consumer manifests or locks. Each schema-13 unit binds its own closed source
   policy and establishing run; releases admit at most eight explicit units.
