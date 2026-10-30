@@ -93,8 +93,8 @@ Current v0.2.0 implementation gates:
 | Memory harness, native source sync, cache selection/aliases, metadata memo | Merged (#613–#615); Linux and Mac component controls pass | Complete four-project memory matrix and sampler-overhead acceptance |
 | Stable sidecars and within-call target projections (#560) | Implemented; native/Mac gates and diagnostic component comparisons pass | Final combined matrix; full-path and tiny-edit parity remain open |
 | Final source-vector observation (#558) | Implemented; Anvil recording calls save 65 ms Linux / 44 ms Mac | Four-project first-unchanged parity remains open |
-| Invocation slots (#576) | Implemented; Mac Anvil/Vest alternation qualifies | Joined Linux full fast/standard qualification in progress; output exclusion separate |
-| Exact extra vstd profiles / settled digest observations | Proposed in #618 | Owner decisions required by #563 / #560 before implementation |
+| Invocation slots (#576) | Implemented; Mac Anvil/Vest alternation qualifies | Linux/Mac root/subdirectory controls pass; output exclusion separate |
+| Exact extra vstd profiles / settled digest observations | Owner-approved ADRs 0090/0091 (#618) | Independent implementation and native qualification |
 
 These component results do not establish v0.2.0 acceptance. The final release
 still needs the unchanged correctness tiers and six-round parity measurements.
