@@ -132,7 +132,9 @@ def run(args):
         known = {}
     errors = []
     try:
-        table = {} if args.no_sample else processes()
+        # Prime the same inventory before readiness in both arms. Otherwise
+        # the control changes pre-command work as well as recurring sampling.
+        table = processes()
     except (OSError, subprocess.SubprocessError) as error:
         errors.append(str(error))
         table = {}
@@ -167,6 +169,14 @@ def run(args):
         except OSError as error:
             print(f'perf-mem: {error}', file=sys.stderr)
             return 127 if isinstance(error, FileNotFoundError) else 126
+        # The command has already inherited its caller's priority. Lower only
+        # Darwin's observer and its future ps children, in both control arms.
+        # The 50 ms cadence and complete process inventory stay unchanged.
+        if sys.platform == 'darwin':
+            try:
+                os.setpriority(os.PRIO_PROCESS, 0, 19)
+            except OSError as error:
+                errors.append(f'cannot lower observer priority: {error}')
         # Forward termination so an interrupted wrapper never intentionally
         # leaves its measured command running. Preserve shell signal status.
         previous = {}

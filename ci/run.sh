@@ -210,6 +210,7 @@ case "$step" in
     python3 scripts/check-links.py
     python3 scripts/test-perf-matrix.py
     python3 scripts/test-perf-mem.py
+    python3 scripts/test-perf-mac-quiet.py
     python3 scripts/test-perf-real-command.py
     python3 scripts/test-perf-real-report.py
     python3 scripts/test-perf-host-sync.py

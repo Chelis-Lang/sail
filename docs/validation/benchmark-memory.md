@@ -101,3 +101,70 @@ The new native Linux and Mac three-pair overhead comparisons are running;
 this correction does not claim that the earlier overhead failure is resolved.
 
 Native correction gate log SHA-256: `8e53062f2236fd6a0024902c1b7c3cb0df09acc76f50f8aa47dd75e355e0611b`.
+
+## Equal priming and Mac observer priority candidate
+
+The corrected-clock three-pair controls retain 108 samples per platform.
+Linux still fails one of eighteen strata (stock first unchanged): absolute
+median difference 35.021 ms versus a 33.235 ms largest arm range. Mac fails
+twelve of eighteen, including stock body edit (80.036 ms versus 18.506 ms
+range). These controls do not establish overhead within noise. The command
+environment/arguments and interval are already identical; every sample stays.
+
+Source inspection finds that disabled sampling also skips the initial,
+untimed process inventory. The next candidate primes that inventory in both
+arms. On Mac it additionally lowers only the observer and its later `ps`
+children to nice19 after spawning the command. Both control arms receive the
+same observer priority; the command retains its original caller priority.
+No process inventory, RSS metric or 50 ms sampling interval is removed.
+Neither change is accepted until native controls and repeat measurements pass.
+
+The new controls require inventory before spawn in both modes, observer
+priority changes only after spawn, and exact child priority/environment/argv
+preservation. This is diagnostic tooling only, with no Rust or verifier change.
+
+## Mac environment refusal (2026-10-30)
+
+The current mac-m4.metal/macOS27 host exposes sustained non-workload CPU:
+`audiomxd` has accumulated 382 CPU minutes and `configd` 230 CPU minutes
+in about 565 minutes of uptime. Earlier Mac component samples remain retained
+as diagnostics; they do not establish quiet-host timing or release acceptance.
+Correctness, factory and first-Serve results retain their actual executed
+scope. The interrupted equal-priming/priority overhead attempt is also retained.
+
+A console session and fresh boot clear the observed hot audio/configuration
+processes on this host; newly started indexing still needs to settle before
+measurement. Underlying cause is not attributed without isolation. The
+candidate adds a one-second process-CPU preflight before Mac performance work:
+at most 0.10 observed CPU cores across the inventory. Busy, missing, malformed
+or unreadable observations refuse the run before any timing sample starts.
+`host-quiet.json` retains the actual observation. This is a bounded startup
+observation, not continuous proof of an idle machine; every timed sample and
+harness refusal rule remains unchanged.
+
+Pre-console raw evidence (1,885 files, including current component summaries,
+all memory/control rows and installed indexes), SHA-256:
+`efef3ff74f51e37dafa375041f6f34a1e834145be6937adefb8fd0f011e5f227`.
+The approved dedicated Mac allocation is unchanged. Quiet-host reruns remain
+required before any Mac timing or sampler-overhead acceptance claim.
+
+Indexed quiet-host rerun, `6358c7a6`, 2026-10-30: two complete rotated
+batches retain 36 samples; the next batch refuses before timing at 0.498
+observed CPU cores. Its largest contributor is a newly respawned Bluetooth
+service (0.197 cores), with smaller OS services also active. The complete
+108-sample control is not established. Static wallpaper and a console session
+alone do not eliminate every background burst. The refusal limit is unchanged;
+no timed sample is removed. The next attempt uses Bluetooth's ordinary power
+off preference and a 60-second untimed pause between batches. Neither host
+configuration change itself proves a quiet measurement.
+
+The combined `6358c7a6` native image gate passes 1,274 ordinary tests and all
+51 solver tests; full E2E plus extra passes. Mac host `6358c7a6` passes strict
+Clippy and 1,263 ordinary tests, with 54 skipped. All 12 memory, 5 quiet-host
+and 19 command controls pass on both platforms. These correctness/tooling
+checks do not qualify sampler overhead or release memory acceptance.
+
+Refused rerun controller log SHA-256:
+`76d73e41bfdd7c8a66fbaed72b48872ae6a5b8ee918bbb6833ed18d1b577f609`.
+Retained raw archive SHA-256:
+`2de94ca2c698be53e3bef3b70c053118d4f45ebf01626e8bcee225f84bb626fe`.

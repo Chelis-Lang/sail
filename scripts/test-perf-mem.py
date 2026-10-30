@@ -83,6 +83,30 @@ class Memory(unittest.TestCase):
             self.assertGreater(usage['wall_seconds'], 0)
             self.assertGreater(elapsed-usage['wall_seconds'], .2)
 
+    def test_both_arms_prime_inventory_before_spawn_and_lower_only_the_observer(self):
+        for sampled in [False, True]:
+            with self.subTest(sampled=sampled), tempfile.TemporaryDirectory() as temporary:
+                events = []
+                def inventory():
+                    events.append('inventory')
+                    return {}
+                original = subprocess.Popen
+                def spawn(*args, **kwargs):
+                    events.append('spawn')
+                    return original(*args, **kwargs)
+                def lower(*args):
+                    self.assertEqual(args, (os.PRIO_PROCESS, 0, 19))
+                    events.append('lower-observer')
+                args = SimpleNamespace(snapshot=False, output=Path(temporary)/'memory.json',
+                    state=None, status=None, ready=None, go=None, no_sample=not sampled,
+                    command=[sys.executable, '-c', 'pass'])
+                with mock.patch.object(mem, 'processes', side_effect=inventory), \
+                     mock.patch.object(mem.subprocess, 'Popen', side_effect=spawn), \
+                     mock.patch.object(mem.sys, 'platform', 'darwin'), \
+                     mock.patch.object(mem.os, 'setpriority', side_effect=lower):
+                    self.assertEqual(mem.run(args), 0)
+                self.assertEqual(events[:3], ['inventory', 'spawn', 'lower-observer'])
+
     def test_tree_sum_daemon_reparent_and_pid_reuse(self):
         tracker = mem.Tracker({})
         tracker.sample({10: (1, 5, 'a', ['cargo']),

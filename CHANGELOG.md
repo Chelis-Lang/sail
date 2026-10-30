@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Prime the same memory inventory in both overhead-control arms and reduce
+  Mac observer priority after command spawn, preserving the command's priority,
+  environment and arguments. Native overhead qualification remains pending.
+
 - Remember a previously observed unqualified Cargo and take the existing
   no-reuse fallback before managed setup when its native tool identities,
   rustup selection, invocation, environment and metadata stamps still match.
