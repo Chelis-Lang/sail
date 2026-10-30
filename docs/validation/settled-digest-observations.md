@@ -3,7 +3,9 @@
 Status: independently controlled source and owned-target candidates under
 owner-approved ADR 0091. Native component gates pass. Linux target pairs save
 material wall time; Mac target publication refuses. Both remain off by default.
-Final combined gates and release qualification remain pending.
+Corrected combined gates and independent Linux before/after controls pass.
+Linux target reuse saves 430 ms; source reuse regresses by 120 ms. Platform
+selection and release qualification remain pending.
 
 `SAIL_MANAGED_SOURCE_DIGEST_MEMO=1` enables bounded local source observations;
 the default retains fresh content reads. The fresh namespace and alias map
@@ -102,7 +104,7 @@ path, but the environment force control was checked later than speculative
 source observation. The source switch now refuses environment force before
 any snapshot; subprocess controls retain enabled/zero-force behavior and
 require force1 refusal without unsafe environment mutation. This narrows the
-candidate and changes no key or admitted proof. Fresh native gates are pending.
+candidate and changes no key or admitted proof. The corrected combined gate below includes this refusal.
 
 ## Executed independent qualification
 
@@ -114,7 +116,7 @@ Mac is mac-m4.metal/us-east-1b/macOS 27.0.
 |---|---|---|
 | Refined source `7a750319` | Complete image gate, pinned solver, source-enabled full E2E plus extra, full fast/standard | 1,268 ordinary tests and 51 solver tests pass; every E2E phase passes; all four fast arms 147/147 Same (3,451 functions), standard 159/159 Same (13,166 functions); zero unstable/different/infrastructure errors or skipped projects, 11/17 resource-drift units separately |
 | Same refined source | Complete Mac host gate | Clippy and 1,257 ordinary tests pass, 54 skipped |
-| Target `d6786f96` | Complete image gate, pinned solver, target-enabled full E2E plus extra, full fast/standard and all 21 native mutants | 1,271 ordinary tests, 51 solver tests and all E2E phases pass; all four fast/standard arms agree with the same counts and zero disagreements/errors/skips above; every mutant is detected |
+| Target `d6786f96` | Complete image gate, pinned solver, target-enabled full E2E plus extra, full fast/standard and all 21 native mutants | 1,271 ordinary tests, 51 solver tests and all E2E phases pass; all four fast/standard arms agree with the same counts and zero disagreements/errors/skips above; all 21 mutant comparisons agree, with zero false verified steps/functions |
 | Same target | Complete Mac host gate and actual factory | Clippy and 1,260 ordinary tests pass, 54 skipped; four exact schema-13 units built |
 
 Ten rotated on/off warm Anvil pairs retain identical proof context and input
@@ -125,7 +127,7 @@ only the optimization named in its row.
 | Platform / implementation | Fresh median, s | Memo median, s | Consequence |
 |---|---:|---:|---|
 | Linux initial source `ee105bbe` | 1.586891 | 1.757142 | Regression; retain fresh reads |
-| Quiet Mac refined source `7a750319` | 1.375511 | 1.327397 | About 48 ms saved; still far above stock, no release parity claim |
+| Mac refined source `7a750319` (startup quiet check only) | 1.375511 | 1.327397 | About 48 ms saved; still far above stock, no release parity claim |
 | Linux target `d6786f96` | 1.593258 | 1.151233 | About 442 ms saved; still far above stock |
 | Mac target `d6786f96` | — | — | Publication refuses before timing; no admitted target ledger |
 
@@ -142,8 +144,7 @@ Indexed attempts: refined Mac setup first refuses timing on a cold/first-warm
 revision difference; the rerun establishes identity at the first warm call and
 requires it throughout all warm/timed calls. Combined force control `b040e113`
 then fails native Clippy because its subprocess-only test returns an unnecessary
-Result; `76b159d6` keeps every assertion and uses a unit return. Fresh combined
-ordinary/solver gates pass; full joined qualification is recorded when complete.
+Result; `76b159d6` keeps every assertion and uses a unit return. The corrected combined gate below includes this control.
 
 | Raw evidence retained outside Git | SHA-256 |
 |---|---|
@@ -161,8 +162,54 @@ path set. The corrected candidate binds both before target admission. A new
 production-caller lifecycle control establishes a settled target, requires a
 real ledger hit, then requires refusal for a changed path set and a same-byte
 restored-mtime source rewrite. Previous component timings and gates describe
-the earlier candidate; corrected native qualification remains pending.
+the earlier candidate; the corrected combined gate below qualifies the tightened binding.
 
 Indexed attempt, `3b37f266`, 2026-10-30: native Clippy compilation rejects an
 unqualified Duration name in the new regression test. The fixture now uses the
 fully qualified standard-library type; all lifecycle assertions remain.
+
+## Corrected combined gate
+
+Native source `62af231b` includes the complete source stamp/path-set binding
+and environment-force refusal. Its complete image gate passes 1,275 ordinary
+tests (54 skipped) and all 51 solver tests. With both optimizations explicitly
+on, every local E2E phase plus extra passes; all four fast arms are 147/147
+Same (3,451 functions) and all four standard arms 159/159 Same (13,166
+functions), zero unstable/different/infrastructure errors or skipped projects;
+11/17 resource-drift units are recorded separately. All 21 native mutation
+comparisons are Same, with zero false verified steps/functions. Combined Mac
+`b70ec5ee` has identical production digest bodies and passes strict Clippy and
+1,264 host tests (54 skipped), including the real ledger-hit, namespace-change
+and same-byte restored-mtime source controls.
+
+Both switches remain off by default. Ten fresh rotated pairs on the same
+native c7i.8xlarge/us-east-1 host use combined `b70ec5ee`, whose production
+digest bodies match `62af231b`. Every warm/timed result is Current, starts
+zero verifiers and retains identical proof context and input revision. Replay,
+diagnostics and memory sampling are disabled identically.
+
+| Corrected independent Linux control | Fresh median, s (range) | Memo median, s (range) | Result |
+|---|---:|---:|---|
+| Owned target | 1.475124 (1.468897–1.488539) | 1.045243 (1.037602–1.068562) | 430 ms / 29% saved; material component gain |
+| Source | 1.476600 (1.469516–1.487928) | 1.597081 (1.591175–1.609997) | 120 ms / 8% slower; retain fresh reads on Linux |
+
+These controls establish the tightened target implementation's component gain,
+not default selection or stock parity. Source reuse is not selected on Linux.
+The candidate executable SHA-256 is
+`5e91c8de079737e04cb1f7ce506e32aa833a770a58b1c2d6da2e4634d3c9d3ea`.
+Both original drivers, every timed output and both ledgers remain retained.
+ The earlier Mac source pairs have a bounded startup quiet check;
+a locked console and background bursts were observed later. They do not
+establish continuous quiet-host or release acceptance. The current four-project
+matrix uses an authenticated idle console. A complete input observation from
+a successful Current call does not turn partial verification into a complete
+target proof; ordinary receipt admission and report scope stay unchanged.
+
+| Corrected evidence outside Git | SHA-256 |
+|---|---|
+| Native complete joined gates | `6b2c2b2beac0af11bfe1218b4632e10af2f3be310b54cbebfc39b0310ed0726f` |
+| Native raw conformance archive | `fbeb3eef873c609d394b9f40c725ae936878bbcc37d7f1a438fe618280cf3bc4` |
+| Native raw E2E archive | `e08a1b8e3e75bd6d181815db75dfa8246b2efd232703edb1a93ee876bec15a2d` |
+
+Corrected ten-pair source/target raw archive SHA-256:
+`1fd1edd3e3d5b65d6a73bf7c19762c90a8deb635769ac2c56614589892bbc1dc`.

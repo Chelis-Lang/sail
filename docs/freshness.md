@@ -102,10 +102,10 @@ run of that context yet), requests never coalesce.
 
 ## How a run decides it is Current
 
-Every verification call reads the current input bytes. Its checks can share a
+By default, every verification call reads the current input bytes. Its checks can share a
 complete source observation within that call while the original mutation
 stamps and selected paths still agree. Changes, newly discovered inputs,
-uncovered aliases or incomplete coverage require fresh reads. Source hashes
+uncovered aliases or incomplete coverage require fresh reads. Default source hashes
 are not carried between calls, and compiler identity checks still read the
 actual compiler bytes.
 
@@ -640,7 +640,7 @@ requires a freshly matched complete owned target, exact receipt bytes and
 complete source/metadata/context bindings. It retains dirty cleanup and
 refuses aliases or any changed entry. Pure receipt projections also bind their
 exact original selection and target keys; each batch still checks the fresh
-source observation. Native component gates pass; Linux warm Anvil pairs save about 0.44 s.
+source observation. Native component gates pass; corrected Linux warm Anvil pairs save about 0.43 s.
 The Mac target candidate refuses because build-script directory stamps change
 during unchanged calls. Both switches remain off by default; neither result
 establishes release parity. See the separate scopes in the
