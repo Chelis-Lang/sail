@@ -127,8 +127,16 @@ Both meet #561's 0.1-second component timing allowance. The existing flags
 phase preserves full passing, failing and unchanged output through an opaque
 wrapper; the new local native Cargo-range case additionally requires a
 learned hint, two byte-identical unchanged human calls and Unknown/no-reuse
-JSON. That new native case remains pending; deep and deep-rvt are release
-gates, so #561 remains open.
+JSON. That native case passes on both platforms: Linux executes `3b5dd692`
+and Mac executes the same fixture against the byte-identical staged `7ceb6423`
+production implementation. The final native gate passes 1,256 ordinary tests
+(54 skipped); all four full-fast arms match 147/147 units and 3,451 functions,
+and all four standard arms match 159/159 units and 13,166 functions. All
+21 mutants and revert controls agree. Zero unstable/different/infrastructure
+errors or skipped projects; resource drift remains separately reported for
+11 fast and 17 standard units. Restacking onto `6d8ee2eb` changes no Rust or
+native-output fixture bodies. Deep and deep-rvt remain release gates, so
+#561 stays open.
 
 | Raw log retained outside Git | SHA-256 |
 |---|---|
@@ -140,3 +148,8 @@ correctness gates when the real-Mac commented-toolchain selection miss made
 that candidate obsolete; all partial logs remain retained. The first Mac
 restaging attempt reused a nonempty evidence output and refused; staging to
 a fresh destination succeeded without changing product code or a check.
+
+Final native ordinary/native-Cargo/full-fast/standard/mutation log SHA-256:
+`f67a3cb691a2e7d070c3a6d39c89b33b4ff3c12f5a688c3bb5fb0eb7231ce72c`.
+Mac native-Cargo human-output log SHA-256:
+`5aa3ffda77c0a7cc9efa3b1b3c690ce9624d5919cc15e9b9cf96629cd279becd`.

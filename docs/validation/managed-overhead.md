@@ -104,7 +104,9 @@ This is the recording-call component, not first-call parity or a cold/edit
 acceptance matrix. The Mac combined host/recording/directory log is retained
 outside Git, SHA-256
 `e77c69111c723c459ea377c9c74a7f040dd76dfef039a14d43b2304a9588533d`.
-The Linux joined full-fast/standard log remains in progress.
+The Linux joined ordinary/solver/E2E/component/full-fast/standard log is
+retained outside Git, SHA-256
+`5bb714ff5b983735885063a1ec2f6abfca1aeaeec477c8c156bbe84afe5c0244`.
 
 ## Correctness
 
@@ -374,7 +376,8 @@ Raw evidence: `mac-unch.tgz` sha256
 ## Invocation-sidecar thrash (#576)
 
 Status: bounded slots implemented; Mac real-project qualification passes.
-Joined native Linux full-fast/standard qualification remains in progress. On 2026-10-29, c7i.8xlarge/us-east-1, the staged
+Joined native Linux ordinary, solver, full E2E, full fast and standard
+qualification passes. On 2026-10-29, c7i.8xlarge/us-east-1, the staged
 `1dc5f1a5` candidate runs a real two-directory Cargo workspace: root cold,
 root unchanged, member unchanged, root return and member return, with five
 seconds between calls and one constant replay-trace path. Every result is
@@ -402,13 +405,6 @@ new scheduling-corruption control replayed root last, legitimately refreshing
 its LRU order. The fixture now re-establishes root-then-member use before the
 unchanged eviction assertion. Production behavior and every assertion remain.
 
-Indexed attempt, `85e26c97`: native gate and solver51 pass; full E2E reaches
-the scheduled-script binding control, whose private fixture still reads the
-old context-root memo. The fixture now reads bounded invocation slots while
-retaining the exact context, establishing run id, uniqueness and binding-change
-assertions. The same runtime passes the Mac host gate and real Anvil/Vest
-root/subdirectory replay controls; final joined qualification remains pending.
-
 Mac `85e26c97` passes Clippy and 1,243 host tests (54 skipped), followed by
 80 rotated timed samples: ten stock/Sail pairs per directory and project.
 Anvil uses the established `vdeployment_controller` scope; Vest uses rlimit100.
@@ -426,5 +422,24 @@ Mac production Rust bodies are identical between `85e26c97` and joined
 corrected private scheduling-memo E2E lookup. The Mac log hash is recorded
 above. The joined Linux run passes the ordinary gate and solver51, full E2E
 including extra, the source-vector comparison and timed Anvil alternation;
-its full fast/standard tiers are still running. Package-local output
-exclusion is a separate candidate and is not qualified by these controls.
+all four full-fast arms match 147/147 units and 3,451 functions, and all four
+standard arms match 159/159 units and 13,166 functions. There are zero
+unstable/different/infrastructure errors or skipped projects; resource-count
+drift remains separately reported for 11 fast and 17 standard units. All
+21 standard mutants and revert controls agree with stock. Package-local
+output exclusion is a separate candidate and is not qualified by these controls.
+
+Linux Anvil `390c1c94` additionally passes 40 timed root/subdirectory samples;
+combined `7ceb6423` passes 40 Linux Vest samples with the same slot bodies
+plus the separate unqualified-Cargo candidate. Both retain at least two
+separate diagnostic hits, one proof context and zero warm verifier starts.
+
+| Project | Root stock / Sail, s | Subdirectory stock / Sail, s |
+|---|---:|---:|
+| Linux Anvil | 0.291893 / 0.047919 | 0.289603 / 0.047931 |
+| Linux Vest | 0.195146 / 0.079207 | 0.193289 / 0.079919 |
+
+The Linux Vest/control log SHA-256 is
+`c0c4432d056e46255c7081dd28a375472b731f7591a8525daafb28937a53c5e2`.
+The included sampler comparison still fails one of eighteen strata and does
+not qualify memory overhead; its failed result remains in the memory record.
