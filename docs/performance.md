@@ -5,6 +5,13 @@ verified targets and exact solver answers. Edits still pay Rust compilation
 and the Verus frontend for changed targets. Undoing an edit can restore an
 original complete proof when retaining that target was worth its cost.
 
+## v0.2.0 implementation candidate
+
+The [combined candidate record](validation/v020-performance.md) reports the
+current installed Linux/macOS timing and memory qualification and its remaining
+gates. These are development measurements, not a qualified release. The rc.7
+measurements below retain their original source and observer scope.
+
 ## 0.1.0-rc.7
 
 The numbers below time the installed `0.1.0-rc.7` release archives, built from
@@ -45,7 +52,9 @@ The phases, in order:
 
 Each cell is the median of six rounds, with the range in brackets, in seconds.
 Every exit code matched stock's in every round and phase: fail exits 101 on
-both arms. Peak memory is not recorded (#562).
+both arms. Peak memory was not recorded in this rc.7 matrix (#562); the
+current candidate record above includes the separate memory observations and
+the unresolved sampler-overhead gate.
 
 ### Linux
 

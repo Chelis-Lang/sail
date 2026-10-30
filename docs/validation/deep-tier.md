@@ -1,9 +1,16 @@
 # Deep-tier soundness validation
 
+The current pinned fork is `47fb3be6`. Fresh combined source `c60dc918`
+passes all three complete fork source-suite arms, including cache fill/warm;
+all 4,839 nonignored plain tests pass in each. The independent strict stock
+control fails on JSON debug ordering, so aggregate release qualification is
+failed ([current scope and evidence](#v020-performance-candidate)).
+The earlier records below retain their original sources and outcomes.
+
 ## Fork source-suite gate (#124)
 
-**Implemented and selected; complete fork source suites pass.**
-The matching `e5365c05` platform pins in this change retain that qualification
+**Historical implementation and selection.**
+The earlier matching `e5365c05` platform pins retain their qualification
 and add the separately qualified positional spec-formal naming and requested
 compiler observations. Its complete source suite reports 4,714 Same, 58 ignored
 and zero disagreements or infrastructure errors; the complete final inventory
@@ -13,7 +20,7 @@ Final source/runtime guards pass. See the [current runtime record](spec-paramete
 for exact sources, evidence hashes and preserved earlier failures.
 
 The earlier cc7 selection below remains its original scope.
-Current main `ee6914c7` selects fork `cc7bbce4` through merged PR #221. The
+Historical main `ee6914c7` selects fork `cc7bbce4` through merged PR #221. The
 harness runs an exact fork-with-and-without-shim arm and retains the separate
 stock-with-and-without-shim control using ADR 0042's complete diagnostic-message
 multiset comparison. Stock stdout, message bytes/multiplicities, outcomes and
@@ -266,3 +273,51 @@ Raw logs and reports are on the lead's machine under
 
 None: each suite ran once to completion. The L25 Singular step's exit 1 is
 the engine-arm result above.
+
+## v0.2.0 performance candidate
+
+Release acceptance remains open: the strict stock source-suite control fails.
+The exact fork source suites pass with and without the cache. No comparator,
+confirmation limit, baseline-must-pass requirement or outcome is changed.
+
+Native c7i.8xlarge/us-east-1, Sail Rust 1.99.0, Verus Rust 1.99.1, unchanged
+fork `47fb3be6` and stock `0.2026.10.18.7d82994`: initial source `d74fba5d`
+passes all four deep corpus arms, 159 units / 13,166 functions each, zero
+Different, Unstable or infrastructure errors; 17 resource-drift units and two
+optional Singular-project skips are separate. All 205 deep mutants and 12
+cold/revert/forced-revert controls agree (217 comparisons).
+
+The fresh unfiltered combined `c60dc918` source-suite run executes every arm,
+even after the independent stock refusal, preserving its aggregate exit 1:
+
+| Arm | Tests / ignored | Same / unstable / different / infra | Nonignored plain outcomes |
+|---|---:|---|---|
+| Exact fork, pass-through | 4,902 / 63 | 4,902 / 0 / 0 / 0 | 4,839 pass, zero failed/unknown |
+| Stock control | 4,867 / 63 | 4,864 / 2 / 1 / 0 | 4,802 pass, two known VI-0018 cargo source-build failures |
+| Exact fork, cache fill | 4,902 / 63 | 4,902 / 0 / 0 / 0 | 4,839 pass, zero failed/unknown |
+| Exact fork, cache warm | 4,902 / 63 | 4,902 / 0 / 0 / 0 | 4,839 pass, zero failed/unknown |
+
+The fresh stock disagreement is
+`output_json::test_json_proof_note_on_ensures`. Both libtest outcomes and
+stdout agree. Eleven confirming plain runs vary, but none matches the shim
+stderr. Complete inspection finds only the reversed `Label 451` / `Property
+732` order inside the same four proof-note arrays: the known stock VI-0021
+symptom. The earlier run differs only in the `example` / `caller` object-key
+order (VI-0008). Private diagnostic comparison does not change the executable
+oracle: both attempts remain failed under the exact ordered-text rule.
+[Issue #627](https://github.com/Chelis-Lang/sail/issues/627) retains minimal
+sources and commands. The source-suite arms exercise the unchanged fork/shim;
+fresh managed target-selection gates are scoped separately in the
+[digest record](settled-digest-observations.md).
+
+| Date | Source | Indexed failed attempt |
+|---|---|---|
+| 2026-10-30 | `d74fba5d` | Stock control: 4,862 Same, four Unstable, one Different; all eleven confirming plain outputs identical, only JSON object-key order differs; cache rounds not reached |
+| 2026-10-30 | `c60dc918` | Stock control: 4,864 Same, two Unstable, one Different; only proof-note array order differs; all three complete fork arms pass, aggregate gate remains failed |
+
+| Evidence retained outside Git | SHA-256 |
+|---|---|
+| Initial deep corpus, full mutants and source-suite outputs | `ecec9de7529db6e57f8b4db4ea294eb12de85c31e659f02b5d1a5e82f24109b0` |
+| Initial complete controller log | `6924fb28d45d7d73c4af769f90b9eb8e9a3c44119f6f776c77387feeec9aef38` |
+| Fresh complete four-arm reports, all confirming outputs and reproductions | `043608a3ad67bed39d0726b9b2107ecdbaad30c77195c59ef64d9a01c0938c27` |
+| Fresh complete controller log | `9037c47f4fbf3a0b140326fecf0ca15b2216db06e913f69764c3b57a1a048c11` |

@@ -1,4 +1,4 @@
-//! Opt-in owned-target digest observations under ADR 0091.
+//! Platform-qualified owned-target digest observations under ADR 0091.
 //!
 //! The complete physical tree and its ancestors are freshly enumerated around
 //! every digest phase. Any changed entry or binding keeps the ordinary reads.
@@ -16,8 +16,28 @@ const ENTRIES: usize = 100_000;
 const KIND: &str = "sail-current-target-digests";
 
 pub(super) fn enabled() -> bool {
-    cfg!(unix)
-        && std::env::var_os("SAIL_MANAGED_TARGET_DIGEST_MEMO").is_some_and(|value| value == "1")
+    enabled_for(std::env::var_os("SAIL_MANAGED_TARGET_DIGEST_MEMO").as_deref())
+}
+
+/// Select only the independently measured Linux path by default. Explicit
+/// unknown settings refuse reuse; Unix hosts may opt in with exactly `1`.
+fn enabled_for(setting: Option<&std::ffi::OsStr>) -> bool {
+    cfg!(unix) && setting.map_or(cfg!(target_os = "linux"), |value| value == "1")
+}
+
+#[cfg(test)]
+mod selection_tests {
+    use super::enabled_for;
+    use std::ffi::OsStr;
+
+    #[test]
+    fn default_is_linux_only_and_explicit_settings_fail_closed() {
+        assert_eq!(enabled_for(None), cfg!(target_os = "linux"));
+        assert_eq!(enabled_for(Some(OsStr::new("1"))), cfg!(unix));
+        for value in ["0", "", "true", "2", "01"] {
+            assert!(!enabled_for(Some(OsStr::new(value))));
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

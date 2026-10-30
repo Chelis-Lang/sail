@@ -1,8 +1,10 @@
 # Real-project memory instrumentation (#562)
 
-Status: implemented; native Linux and macOS controls pass. Release-wide
-memory acceptance remains open: the final candidate still needs the four
-projects on both platforms and a complete sampler overhead qualification.
+Status: implemented; functional controls pass on native Linux and macOS.
+The combined candidate records all four projects on both platforms, six paired
+rounds each: 864 expected exits and populated memory rows
+([complete matrix](v020-performance.md)). Release-wide memory acceptance
+remains unqualified because the separate below-noise sampler requirement fails.
 The [testing guide](../testing.md) defines the columns and measurement limits.
 
 ## Source and scope
@@ -97,8 +99,8 @@ separately report resource-count drift. The restack onto `6d8ee2eb` keeps
 these seven implementation/test file changes; its Rust bodies are the already
 qualified #619 bodies. The joined local command controls and real Mac controls
 pass all 19 command and 11 memory cases. No production Rust behavior changes.
-The new native Linux and Mac three-pair overhead comparisons are running;
-this correction does not claim that the earlier overhead failure is resolved.
+Subsequent native Linux and Mac controls below remain unqualified; this
+clock correction does not establish that the earlier overhead failure is resolved.
 
 Native correction gate log SHA-256: `8e53062f2236fd6a0024902c1b7c3cb0df09acc76f50f8aa47dd75e355e0611b`.
 
@@ -117,7 +119,8 @@ arms. On Mac it additionally lowers only the observer and its later `ps`
 children to nice19 after spawning the command. Both control arms receive the
 same observer priority; the command retains its original caller priority.
 No process inventory, RSS metric or 50 ms sampling interval is removed.
-Neither change is accepted until native controls and repeat measurements pass.
+Later functional qualification passes on both platforms, as recorded below;
+the complete below-noise overhead requirement remains unqualified.
 
 The new controls require inventory before spawn in both modes, observer
 priority changes only after spawn, and exact child priority/environment/argv
@@ -125,7 +128,7 @@ preservation. This is diagnostic tooling only, with no Rust or verifier change.
 
 ## Mac environment refusal (2026-10-30)
 
-The current mac-m4.metal/macOS27 host exposes sustained non-workload CPU:
+The early mac-m4.metal/macOS27 environment exposes sustained non-workload CPU:
 `audiomxd` has accumulated 382 CPU minutes and `configd` 230 CPU minutes
 in about 565 minutes of uptime. Earlier Mac component samples remain retained
 as diagnostics; they do not establish quiet-host timing or release acceptance.
@@ -145,8 +148,9 @@ harness refusal rule remains unchanged.
 Pre-console raw evidence (1,885 files, including current component summaries,
 all memory/control rows and installed indexes), SHA-256:
 `efef3ff74f51e37dafa375041f6f34a1e834145be6937adefb8fd0f011e5f227`.
-The approved dedicated Mac allocation is unchanged. Quiet-host reruns remain
-required before any Mac timing or sampler-overhead acceptance claim.
+The later authenticated-console matrix uses the original bounded startup
+checks. Complete sampler-overhead qualification remains open; the current
+[combined record](v020-performance.md) keeps its timing and memory scope explicit.
 
 Indexed quiet-host rerun, `6358c7a6`, 2026-10-30: two complete rotated
 batches retain 36 samples; the next batch refuses before timing at 0.498
@@ -187,9 +191,8 @@ four arms 33/33 Same, 311 functions, zero unstable/different/infrastructure
 errors or skipped projects. Native functional controls include all 13 memory,
 5 quiet-host and 19 command tests. The identical sampler bodies in combined Mac `c60dc918` pass strict Clippy,
 1,265 ordinary tests (54 skipped), and all 13 memory, 5 quiet-host and
-19 command controls. Independent Mac before/after measurements remain
-pending; these gates do not establish the
-original within-range overhead requirement.
+19 command controls. Independent Mac before/after results below fail qualification; these functional
+gates do not establish the original within-range overhead requirement.
 
 | Raw corrected-observer evidence outside Git | SHA-256 |
 |---|---|
@@ -212,9 +215,23 @@ No sample is removed and the threshold is unchanged.
 Raw 108-sample archive SHA-256:
 `48432c81aa30c54ac44b32d22f73bda2e73dcbd533119939042bf3993e3796cc`.
 Mac functional checks pass on combined `c60dc918` as described above; its
-independent on/off controls remain pending. This
-clock correction does not relabel older timings or establish release-memory
-acceptance.
+independent on/off controls below remain unqualified. This clock correction
+does not relabel older timings or establish release-memory acceptance.
 
 Mac combined host/functional gate log SHA-256:
 `218e990667f413ccec7775b4d4b444a6ed1c60818e5b57dad53d65a8f9bdbfff`.
+
+Indexed Mac observer rerun, `c60dc918` / identical `30843d0f` helper,
+2026-10-30: the demo plain-edit comparison fails the unchanged within-range
+rule (0.401845000 s disabled, 0.410984583 s sampled, difference 0.009139583 s
+against largest range 0.003362582 s). Four IronKV batches complete with 72
+retained samples; two further batches refuse before timing on background CPU,
+including 0.480 cores with a newly respawned Bluetooth service contributing
+0.207 cores. The 108-sample qualification is not established. A normal service
+pause is refused by macOS; no system protection or CPU limit is changed.
+The first complete four-project matrix retains its actual source/helper scope;
+a fresh corrected-helper matrix is separate, with bounded startup checks.
+
+Retained full Mac outputs, refused observations, harnesses and staged identities
+archive SHA-256:
+`ce8bea751487a45a2fc476006c4a6008e5707aefb3ab74ac31845db1602c9b61`.

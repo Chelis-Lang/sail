@@ -17,7 +17,7 @@ verification.
 | Read job status and results from Rust | [Result client](result-client.md) |
 | Cache Sail in CI | [CI cache](ci-cache.md) |
 | Manage disk use | [Disk use and cleanup](workspace-hygiene.md) |
-| Where Sail is faster and where it isn't | [Performance](performance.md), [generated benchmarks](benchmarks.md), [memory instrumentation](validation/benchmark-memory.md) |
+| Where Sail is faster and where it isn't | [Performance](performance.md), [generated benchmarks](benchmarks.md), [memory instrumentation](validation/benchmark-memory.md), [v0.2.0 candidate qualification](validation/v020-performance.md) |
 | Supported Verus and project setups | [Compatibility](compatibility.md) |
 | Trust model and differences from plain Verus | [Trust](trust.md), [divergences](divergences.md) |
 | Limitations and open problems | [Known issues](known-issues.md) |

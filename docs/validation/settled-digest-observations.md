@@ -1,11 +1,12 @@
 # Settled digest observations (#560)
 
-Status: independently controlled source and owned-target candidates under
-owner-approved ADR 0091. Native component gates pass. Linux target pairs save
-material wall time; Mac target publication refuses. Both remain off by default.
-Corrected combined gates and independent Linux before/after controls pass.
-Linux target reuse saves 430 ms; source reuse regresses by 120 ms. Platform
-selection and release qualification remain pending.
+Status: ADR 0091's guarded owned-target path is selected by default on Linux
+after independent native qualification: ten pairs save 430 ms / 29%. Source
+reuse stays off by default on both platforms; its Linux pairs regress by
+120 ms. Mac target reads remain fresh because no ledger is admitted under
+the original guards. Functional gates and the complete installed matrices
+are recorded below; stock parity, sampler-overhead and release acceptance
+remain unqualified.
 
 `SAIL_MANAGED_SOURCE_DIGEST_MEMO=1` enables bounded local source observations;
 the default retains fresh content reads. The fresh namespace and alias map
@@ -134,11 +135,15 @@ only the optimization named in its row.
 The Mac target refusal is an observed full-stamp mismatch, not an entry/byte
 ceiling or alias refusal: 2,777 entries, no symlinks, estimated serialized tree
 about 1.25 MiB. Build-script directories including anyhow, libc and serde_json
-receive ctime changes about 1.18 s after the unchanged call starts. Their
-complete original stamps cannot meet ADR 0091's pre-start two-second rule.
-The guard remains intact. No claim is made about which Cargo operation causes
-those writes. Mac target reads remain fresh. This failed component attempt is
-retained and supplies no timing sample.
+have post-run ctimes about 1.18 s after the warm call's run-ID timestamp,
+which is generated after call start. This is a lower bound on lateness,
+not a reconstruction of the original digest-phase stamps. These observed
+stamps cannot meet ADR 0091's pre-start two-second rule; an earlier captured
+stamp would also have to survive the existing final full-stamp comparison.
+The observation does not isolate which admission check first refused or which
+Cargo operation wrote those directories. Every guard remains intact, no target
+ledger is admitted, and Mac target reads stay fresh. This failed component
+attempt is retained and supplies no timing sample.
 
 Indexed attempts: refined Mac setup first refuses timing on a cold/first-warm
 revision difference; the rerun establishes identity at the first warm call and
@@ -182,8 +187,8 @@ comparisons are Same, with zero false verified steps/functions. Combined Mac
 1,264 host tests (54 skipped), including the real ledger-hit, namespace-change
 and same-byte restored-mtime source controls.
 
-Both switches remain off by default. Ten fresh rotated pairs on the same
-native c7i.8xlarge/us-east-1 host use combined `b70ec5ee`, whose production
+In that combined build both switches are off by default. Ten fresh rotated
+pairs on the same native c7i.8xlarge/us-east-1 host use combined `b70ec5ee`, whose production
 digest bodies match `62af231b`. Every warm/timed result is Current, starts
 zero verifiers and retains identical proof context and input revision. Replay,
 diagnostics and memory sampling are disabled identically.
@@ -213,3 +218,40 @@ target proof; ordinary receipt admission and report scope stay unchanged.
 
 Corrected ten-pair source/target raw archive SHA-256:
 `1fd1edd3e3d5b65d6a73bf7c19762c90a8deb635769ac2c56614589892bbc1dc`.
+
+## Linux default selection
+
+The Linux-only selection enables the unchanged target implementation
+when the setting is absent. Explicit `0` or an unknown setting retains fresh
+reads; exactly `1` permits the guarded path on Unix. macOS keeps fresh target
+reads by default because its original directory stamps refuse publication.
+Source observations remain off by default on both platforms: corrected Linux
+source pairs regress, and Mac source pairs do not establish quiet acceptance.
+
+The ten corrected independent pairs above establish a 430 ms material Linux
+target gain. Native `7178fc53` passes the complete default-enabled image gate: 1,276
+ordinary tests (54 skipped), all 51 solver tests, full E2E plus extra,
+all four fast arms 147/147 Same (3,451 functions), all four standard arms
+159/159 Same (13,166 functions), and all 21 mutation comparisons. Zero
+unstable/different/infrastructure errors or skipped projects; 11/17
+resource-drift units separately. The code-identical combined `c60dc918` passes
+the Mac host gate: strict Clippy, 1,265 ordinary tests (54 skipped), plus all
+13 memory, 5 quiet-host and 19 command controls; its actual Mac factory
+establishes all four exact proof units. All eight installed timing/memory
+matrices retain 864 expected exits and populated memory fields
+([complete record](v020-performance.md)). The separate sampler-overhead gate
+fails and first-unchanged/full-path parity remains unmet. The PR branch has
+identical crate, CI and script bodies to that frozen combined candidate after restacking onto main.
+This selection does not establish full-path or tiny-edit parity. Deep corpus
+comparisons agree; all three fresh fork source-suite arms pass, while the
+strict stock control fails on JSON debug ordering
+([deep-tier scope](deep-tier.md#v020-performance-candidate)). The fork artifact
+is unchanged; no new determinism execution is claimed. Complete release
+qualification remains open.
+
+| Linux selection evidence outside Git | SHA-256 |
+|---|---|
+| Native complete default-enabled gates | `e5ddf7412dcbae4688d6dabe5d3235b6a9de4fe364569fa9be2fa61beac4d9aa` |
+| Native conformance archive | `725f8c75e9eeef064c9ba91077bf4c900abcbc4e58431332290eaa903427bb2e` |
+| Native E2E archive | `5542c42404c9858367ec47ddf2689550212c362421446372ab113c23f933cd23` |
+| Combined Mac host, functional controls and actual factory | `4d66ff19c96956b96667908537e967b380012cd0252bcca95943904237d8e7ad` |
