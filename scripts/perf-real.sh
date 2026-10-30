@@ -543,8 +543,9 @@ measured() { # Actual executable and arguments, with the mode's environment.
       options+=(--ready "$memory_ready" --go "$memory_go")
     fi
     [ "${SAIL_PERF_MEMORY:-1}" != 0 ] || options+=(--no-sample)
-    python3 -I "$here/perf-mem.py" --output "$memory_file" --state "$memory_state" \
-      --status "$daemon_status" ${options[@]+"${options[@]}"} -- "$@"
+    (unset SAIL_PERF_MEMORY
+     python3 -I "$here/perf-mem.py" --output "$memory_file" --state "$memory_state" \
+       --status "$daemon_status" ${options[@]+"${options[@]}"} -- "$@")
   else
     "$@"
   fi
@@ -674,6 +675,14 @@ run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run on
   wait "$invocation_pid" || code=$?
   find "$live" -mindepth 1 -maxdepth 1 -exec mv {} "$prov"/ \;
   t1=$(now)
+  local command_seconds timing_refused=0
+  if ! command_seconds=$(jq -er '.wall_seconds | select(type == "number" and . >= 0 and . < 1e9)' "$memory_file" 2>/dev/null); then
+    echo 'sampler did not retain a valid command wall time; sample refused' >>"$log"
+    [ "$code" -ne 0 ] || code=2
+    timing_refused=1
+    # Retain the enclosing interval only for this failed sample's diagnosis.
+    command_seconds=$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')
+  fi
   rm -f "$memory_ready" "$memory_go"
   s1=$(stats)
   if [ "${SAIL_PERF_MEMORY:-1}" != 0 ]; then
@@ -694,13 +703,13 @@ run_one() { # ROUND MODE DIR PHASE [VAR=VALUE...]: the variables for this run on
     memory=$(jq -r '[.tree_peak_kb, .largest_kb, .daemon_peak_kb] | map(if . == null then "NA" else tostring end) | @tsv' "$memory_file")
   fi
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%b\n' "$round" "$mode" "$phase" \
-    "$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')" "$code" \
+    "$command_seconds" "$code" \
     "$sessions" "$started" "$served" "$d" "$(times_of "$log" "$mode")" "$load1" "$memory" >>"$results"
   printf '  r%s %-11s %-14s %8.2f s exit %s  load %s  sessions %s (solver %s)  daemon %s\n' "$round" "$mode" "$phase" \
-    "$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')" "$code" "$load1" "$sessions" "$started" "$d"
+    "$command_seconds" "$code" "$load1" "$sessions" "$started" "$d"
   # Every incidental edit must verify, including cold/unchanged controls.
   # Retain a failed sample and finish the table, then refuse acceptance.
-  if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ] && [ "$code" -ne 0 ]; then
+  if [ "$timing_refused" = 1 ] || { [ "${SAIL_PERF_CATALOGUE:-}" = incidental ] && [ "$code" -ne 0 ]; }; then
     sample_failures=$((sample_failures + 1))
   fi
 }
@@ -812,6 +821,7 @@ header() {
   echo "sail: $(sail --version 2>/dev/null | head -1) at $(command -v sail)"
   echo "verus: $(verus --version 2>&1 | sed -n 's/^ *Version: //p')"
   echo "vstd: $vstd_mode${vstd_lock:+ (shipped lock $vstd_lock)}"
+  echo 'wall clock: command spawn through child exit; sampler setup and teardown excluded'
   [ ! -s "$out/vstd-adjustments.txt" ] || sed 's/^/  adjusted: /' "$out/vstd-adjustments.txt"
   [ ! -s "$out/vstd-setup.txt" ] || sed 's/^/  /' "$out/vstd-setup.txt"
   [ ${#rust_targets[@]} -eq 0 ] ||
@@ -897,6 +907,6 @@ done
 echo "load average at end: $(uptime | sed 's/.*load average[s]*: //')" | tee -a "$out/header.txt"
 python3 -I "$here/perf-real-report.py" "$out" | tee "$out/table.md"
 if [ "$sample_failures" -ne 0 ]; then
-  echo "$sample_failures incidental samples failed; not an acceptance result" >&2
+  echo "$sample_failures benchmark samples failed; not an acceptance result" >&2
   exit 1
 fi

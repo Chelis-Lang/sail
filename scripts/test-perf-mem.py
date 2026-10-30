@@ -8,6 +8,8 @@ import signal
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
+from unittest import mock
 import time
 import unittest
 
@@ -54,6 +56,32 @@ class Memory(unittest.TestCase):
                     if process.poll() is None:
                         process.terminate()
                     process.communicate(timeout=5)
+
+    def test_child_clock_excludes_slow_sampler_teardown(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            marker, output = root/'exited', root/'memory.json'
+            calls = 0
+            def inventory():
+                nonlocal calls
+                calls += 1
+                if calls > 1:
+                    deadline = time.monotonic() + 5
+                    while not marker.exists() and time.monotonic() < deadline:
+                        time.sleep(.005)
+                    time.sleep(.5)
+                return {}
+            args = SimpleNamespace(snapshot=False, output=output, state=None, status=None,
+                ready=None, go=None, no_sample=False, command=[sys.executable, '-c',
+                    'import os,pathlib,sys; pathlib.Path(sys.argv[1]).write_text("done"); os._exit(0)', str(marker)])
+            start = time.monotonic()
+            with mock.patch.object(mem, 'processes', side_effect=inventory):
+                self.assertEqual(mem.run(args), 0)
+            elapsed = time.monotonic() - start
+            usage = json.loads(output.read_text())
+            self.assertGreaterEqual(calls, 2)
+            self.assertGreater(usage['wall_seconds'], 0)
+            self.assertGreater(elapsed-usage['wall_seconds'], .2)
 
     def test_tree_sum_daemon_reparent_and_pid_reuse(self):
         tracker = mem.Tracker({})
