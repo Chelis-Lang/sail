@@ -3360,6 +3360,17 @@ fn run_recorded(
             super::configuration::loader_reason(variable),
         ));
     }
+    let unqualified_cargo = (engine.is_none()
+        && research == super::research::Mode::Off
+        && std::env::var_os("RUSTC_WORKSPACE_WRAPPER").is_none())
+    .then(|| super::unqualified_cargo::Probe::begin(config, &context_environment(config)))
+    .flatten();
+    if let Some(error) = unqualified_cargo
+        .as_ref()
+        .and_then(|probe| probe.refusal(config))
+    {
+        return Err(error);
+    }
     // Human output is plain Cargo-Verus's; Sail's notes reach it only with
     // `SAIL_EXPLAIN=1`. JSON callers (jobs, `watch`, MCP) keep them on stderr
     // as diagnostics and in the result's notes.
@@ -3588,16 +3599,10 @@ fn run_recorded(
         && let Some(version) =
             super::build_environment::unsupported_cargo(&paths.run.join("build-environment"))
     {
-        let toolchain = crate::toolchain::Pins::embedded()?.verus.rust_toolchain;
-        return Err(Error::new(
-            "SAIL3139",
-            format!(
-                "Cargo {version} cannot track this project's build-script inputs for proof reuse; \
-                 its build-script protocol is qualified for Cargo {}. Select a qualified Rust \
-                 toolchain, for example `RUSTUP_TOOLCHAIN={toolchain} sail verify`, to enable reuse",
-                super::build_environment::QUALIFIED_RANGE
-            ),
-        ));
+        if let Some(probe) = &unqualified_cargo {
+            probe.remember(config, &data, &paths.run.join("build-environment"));
+        }
+        return Err(super::unqualified_cargo::error(&version)?);
     }
     if paths.reuse {
         data["sail_build_environment"] = environment;

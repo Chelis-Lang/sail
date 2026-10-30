@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Remember a previously observed unqualified Cargo and take the existing
+  no-reuse fallback before managed setup when its native tool identities,
+  rustup selection, invocation, environment and metadata stamps still match.
+  Custom wrappers and external path toolchains retain the ordinary late check.
 - Measure real-project command wall time from spawn through child exit,
   excluding sampler setup/teardown. Sampling controls no longer reach the
   child environment; invalid clocks retain a failed sample and refuse acceptance.

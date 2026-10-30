@@ -93,7 +93,10 @@ Current numbers are in [performance](performance.md).
   example after a `touch`, a recent ctime or different arguments), or for
   forced jobs, which never replay, unchanged Anvil takes 1.63 s against
   stock's 0.25 s on macOS 0.1.0, with no verifier run. Unchanged `SAIL3112` setups
-  take about 0.9 s on Anvil ([#561](https://github.com/Chelis-Lang/sail/issues/561)).
+  took about 0.9 s on Anvil in 0.1.0. The qualified native-Cargo candidate
+  measures 0.312 s Linux / 0.407 s Mac while remaining Unknown and no-reuse
+  ([#561](https://github.com/Chelis-Lang/sail/issues/561),
+  [scope and remaining gates](validation/unsupported-cargo-fallback.md)).
 - **Tiny-project edits cost more than stock**
   ([#560](https://github.com/Chelis-Lang/sail/issues/560)). Input checks, receipts and
   complete reports add a fraction of a second to edits of small projects;
@@ -252,3 +255,10 @@ deep gate compares exactly.
   engine lacks falls back to stock verification (`SAIL3124`), and the engine
   arm counts it as `engine-lacks-feature`
   ([reproduction](../corpus/repros/engine-without-singular/)).
+
+The v0.2.0 unqualified-Cargo early-refusal candidate is limited to rustup's
+installed native Cargo programs and proxy. External path toolchains and
+custom wrappers keep the existing late no-reuse fallback. Its performance
+component timing qualifies on Linux and Mac; full native output and release
+qualification remain tracked in #561. See the
+[record](validation/unsupported-cargo-fallback.md).

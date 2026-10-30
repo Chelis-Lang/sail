@@ -64,3 +64,92 @@ Initial cumulative source copies omitted documentation and were refused by
 the gate; the complete Git merge passes. The first Mac run inherited a shared
 `CARGO_TARGET_DIR` and failed three fixtures; ordinary Cargo target selection
 passes all 1,045, with the failed log retained separately alongside it.
+
+## v0.2.0 early refusal (#561)
+
+The 2026-10-29 native c7i.8xlarge/us-east-1 comparison forces the real Cargo
+1.92.0 executable with Anvil's Rust 1.98.0 selection. Stock uses `cargo verus
+focus`; Sail uses `sail verify --output json`, both with
+`--lib -- --verify-module vdeployment_controller`. Separate project copies
+avoid shared Cargo fingerprints. All 20 interleaved pairs pass; median stock
+is 0.256365 s and Sail is 0.796584 s. Sail's witness is Unknown with no-reuse,
+without a complete or reused proof. Source is staged `867fd4ec`, fork
+`47fb3be6`, and stock Verus `0.2026.10.18.7d82994`.
+
+The candidate retains the existing late SAIL3139 observation as a negative
+hint. An early match binds actual installed Cargo bodies and the rustup
+proxy, toolchain-selection files, invocation/arguments, tool environment and
+metadata paths/stamps. Cargo reinstalls, selection/configuration/manifest
+changes, malformed records and a newly qualified source commit miss. It
+never enables proof reuse or reports Current. Custom wrappers, external path
+toolchains and unreadable identities keep the late path.
+`SAIL_MANAGED_UNQUALIFIED_CARGO_MEMO=0` disables this scheduling optimization for
+comparison. Native and Mac qualification is recorded below.
+
+Indexed attempt: the first measurement loop used human partial verification,
+which the established CLI contract rejects in both Sail and stock `verify`.
+That expected refusal is retained; the successful scoped JSON comparison
+above uses the documented real-project recipe. It is not a Sail defect.
+
+Indexed attempt, `4663f79c`: the first real Mac paired run does not create a
+hint because Anvil's TOML toolchain file begins with a comment. Selection
+conservatively took the late path, so on/off times coincide. The corrected
+parser accepts valid commented TOML and retains strict named-channel checks;
+the native/proxy fixture now includes that exact header. This is a scheduling
+miss, not proof reuse or a verdict difference. Corrected timing is recorded below.
+
+Indexed attempt, `4715752f`: Clippy refuses the expanded subprocess fixture's
+109-line test. Shared program setup is extracted without changing any control
+or allowing the lint. Interpreter providers, including an installed Cargo or
+broker wrapper, retain the late path; native ELF/Mach-O bodies remain eligible.
+
+The final native-provider guard in `7ceb6423` passes the native full image
+gate (1,256 ordinary tests, 54 skipped), solver51, all local E2E phases plus
+extra, and four PR conformance arms. Each arm is 33/33 Same, 311 functions,
+zero unstable/different/infrastructure errors or skipped projects; five units
+report resource-count drift separately. Mac Clippy and all 1,245 host tests
+pass (54 skipped). Real Cargo timing uses installed native Cargo 1.92.0,
+Anvil Rust 1.98.0, fork `47fb3be6` and stock `0.2026.10.18.7d82994`.
+
+Each platform retains 20 rotated stock/memo-off/memo-on triples (60 calls),
+with separate stock/Sail project copies and five seconds between calls.
+Every call passes without Cargo compilation. Every Sail JSON result stays
+Unknown and no-reuse, with no complete or reused target proof. Timed calls
+use no diagnostic trace. These component measurements do not establish
+four-project parity, memory acceptance or deep release qualification.
+
+| Platform | Stock median, s | Sail memo off, s | Sail memo on, s | On minus stock, s |
+|---|---:|---:|---:|---:|
+| Native c7i.8xlarge, us-east-1 | 0.269296 | 0.814837 | 0.311894 | 0.042598 |
+| Native mac-m4.metal, us-east-1b, macOS 27.0 | 0.388642 | 0.878987 | 0.406701 | 0.018059 |
+
+Both meet #561's 0.1-second component timing allowance. The existing flags
+phase preserves full passing, failing and unchanged output through an opaque
+wrapper; the new local native Cargo-range case additionally requires a
+learned hint, two byte-identical unchanged human calls and Unknown/no-reuse
+JSON. That native case passes on both platforms: Linux executes `3b5dd692`
+and Mac executes the same fixture against the byte-identical staged `7ceb6423`
+production implementation. The final native gate passes 1,256 ordinary tests
+(54 skipped); all four full-fast arms match 147/147 units and 3,451 functions,
+and all four standard arms match 159/159 units and 13,166 functions. All
+21 mutants and revert controls agree. Zero unstable/different/infrastructure
+errors or skipped projects; resource drift remains separately reported for
+11 fast and 17 standard units. Restacking onto `6d8ee2eb` changes no Rust or
+native-output fixture bodies. Deep and deep-rvt remain release gates, so
+#561 stays open.
+
+| Raw log retained outside Git | SHA-256 |
+|---|---|
+| Native `7ceb6423` gates and real triples | `e210f8be58ec9f30065c81c2a37fa5c18df8b284d2c406f5d3176c48328837cb` |
+| Mac `7ceb6423` host gate and real triples | `eaaff6065b20f0bc28ad047debd9907dd10100a3c025fcacf696e4c9aff60f27` |
+
+Indexed attempts: `4663f79c` Linux measurement was interrupted after its
+correctness gates when the real-Mac commented-toolchain selection miss made
+that candidate obsolete; all partial logs remain retained. The first Mac
+restaging attempt reused a nonempty evidence output and refused; staging to
+a fresh destination succeeded without changing product code or a check.
+
+Final native ordinary/native-Cargo/full-fast/standard/mutation log SHA-256:
+`f67a3cb691a2e7d070c3a6d39c89b33b4ff3c12f5a688c3bb5fb0eb7231ce72c`.
+Mac native-Cargo human-output log SHA-256:
+`5aa3ffda77c0a7cc9efa3b1b3c690ce9624d5919cc15e9b9cf96629cd279becd`.

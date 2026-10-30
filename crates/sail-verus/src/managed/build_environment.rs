@@ -211,7 +211,12 @@ pub(super) fn load(directory: &Path, metadata: &Value) -> Option<Value> {
 /// Missing or malformed observations do not identify an unsupported Cargo.
 pub(super) fn unsupported_cargo(directory: &Path) -> Option<String> {
     let text = std::fs::read_to_string(directory.join("cargo-version.txt")).ok()?;
-    if qualified(&text) {
+    unsupported_version(&text)
+}
+
+/// A parsed unqualified report, shared by the late check and negative hint.
+pub(super) fn unsupported_version(text: &str) -> Option<String> {
+    if qualified(text) {
         return None;
     }
     let commit = text
