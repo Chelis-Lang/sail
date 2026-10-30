@@ -99,6 +99,15 @@ uncovered aliases or incomplete coverage require fresh reads. Source hashes
 are not carried between calls, and compiler identity checks still read the
 actual compiler bytes.
 
+Target-revision projections from the original observation may also be shared
+within that call when their complete metadata selection and configuration
+stamps match. Every batch rechecks the observation's original mutation stamp;
+a retry or a new after-run observation does its own projection work.
+
+After these checks, stable input and read-check sidecars are replaced only
+when their complete serialized bytes change. Keeping an identical sidecar
+does not skip any input observation, mutation stamp or receipt validation.
+
 A run is Current only when all of the following hold:
 
 - the content revision of its inputs (every source, manifest, lockfile,
@@ -583,3 +592,17 @@ Unchanged inherited values retain useful replay, and a changed value returns to
 the ordinary receipt/currentness checks. See
 [#552](https://github.com/Chelis-Lang/sail/issues/552) and the
 [owning qualification record](validation/compiler-read-origin.md).
+
+## Working-directory observations
+
+An unchanged-call record binds its own working-directory and argument-specific
+input state, Cargo-unit query and read-check record. Up to eight invocation
+slots share the same proof context and owned Cargo target. Using another slot
+changes no proof key or source observation. The least recently used slot is
+evicted when a ninth is needed; an evicted invocation takes the full path.
+
+Latest-context input/read-check files still serve job observers. A replay
+republishes them from its independently validated slot before publishing its
+result and job events. A changed or missing slot misses. Missing or unreadable
+slot bookkeeping takes the ordinary shared-sidecar path; it grants no reuse.
+Cargo target directories continue to count as source under the existing rules.

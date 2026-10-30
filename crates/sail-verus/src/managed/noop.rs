@@ -46,13 +46,14 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-/// Version 6 carries the run's consumer-visible job events, which a job
+/// Version 7 binds invocation-local sidecars and republishes the bound latest
+/// context views on replay. Version 6 carries the run's consumer-visible job events, which a job
 /// replay emits again; earlier records have none (#559). Version 5 keys the
 /// terminal-capability variables, the colour Sail asks Cargo for and the
 /// exact daemon socket, and never records Cargo's transient status lines
 /// (#571, #573, #574). Version 4 also bound names required by proof
 /// receipts, including ghost reads absent from dep-info (#552).
-const VERSION: u32 = 6;
+const VERSION: u32 = 7;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
@@ -69,6 +70,8 @@ struct Record {
     locks: (PathBuf, PathBuf),
     /// The proof context's run directory, where a replay leaves its result.
     runs: PathBuf,
+    /// This invocation's sidecars; other slots are never read by this replay.
+    slot: Option<PathBuf>,
     /// `lstat` stamps; `None` records an absent path.
     lstat: Vec<(PathBuf, Option<Stamp>)>,
     /// Stamps of installed files, following links.
@@ -278,6 +281,7 @@ pub(super) struct Facts<'a> {
     pub workspace_lock: PathBuf,
     pub family: &'a Path,
     pub context: &'a Path,
+    pub slot: Option<&'a Path>,
     pub target: &'a Path,
     pub observation: Vec<(PathBuf, Option<Stamp>)>,
     pub identity: &'a [PathBuf],
@@ -320,6 +324,21 @@ fn trace(line: &str) {
             .open(path)
     {
         let _ = writeln!(file, "{line}");
+    }
+}
+
+/// Diagnostic timings never enter the saved record or the call's output.
+fn trace_timer() -> Option<std::time::Instant> {
+    std::env::var_os("SAIL_MANAGED_NOOP_TRACE").map(|_| std::time::Instant::now())
+}
+
+fn trace_phase(timer: &mut Option<std::time::Instant>, phase: &str) {
+    if let Some(start) = timer {
+        trace(&format!(
+            "record timing: {phase}={:.3} ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        *start = std::time::Instant::now();
     }
 }
 
@@ -463,23 +482,34 @@ pub(super) const RUNTIME: &str = "runtime.json";
 /// (the key, the source observation, the installed files and the receipts).
 /// They stay in their tree's entry listing, so a removed or added one still
 /// misses, but their content is not bound (#575).
-fn per_run(path: &Path, context: &Path, family: &Path) -> bool {
+fn per_run(path: &Path, context: &Path, family: &Path, slot: Option<&Path>) -> bool {
     let (Some(parent), Some(name)) = (path.parent(), path.file_name()) else {
         return false;
     };
-    (parent == context && name == RUNTIME) || (parent == family && name == super::transport::FILE)
+    (parent == context
+        && (name == RUNTIME
+            || slot.is_some()
+                && super::invocation_slots::VIEWS
+                    .iter()
+                    .any(|view| name == *view)))
+        || (parent == family && name == super::transport::FILE)
 }
 
 /// Cache trees compared by content (small regular files) or stamp, apart
 /// from the [`per_run`] files below `context` and `family`.
-fn cache_state(trees: &[(PathBuf, &[&str])], context: &Path, family: &Path) -> Option<CacheState> {
+fn cache_state(
+    trees: &[(PathBuf, &[&str])],
+    context: &Path,
+    family: &Path,
+    slot: Option<&Path>,
+) -> Option<CacheState> {
     let mut listed = Vec::new();
     let mut contents = Vec::new();
     let mut stamps = Vec::new();
     for (root, skip) in trees {
         let entries = walk(root, skip)?;
         for path in &entries {
-            if per_run(path, context, family) {
+            if per_run(path, context, family, slot) {
                 continue;
             }
             let metadata = std::fs::symlink_metadata(path).ok()?;
@@ -509,13 +539,20 @@ fn cache_trees<'a>(
     family: &Path,
     context: &Path,
     siblings: &[PathBuf],
+    slot: Option<&Path>,
 ) -> Vec<(PathBuf, &'a [&'a str])> {
     let mut trees = vec![
-        (context.to_owned(), &["runs"][..]),
+        (
+            context.to_owned(),
+            &["runs", super::invocation_slots::DIRECTORY][..],
+        ),
         (family.to_owned(), &["target"][..]),
         (cache.join("runtime-identities"), &[][..]),
     ];
     trees.extend(siblings.iter().map(|receipts| (receipts.clone(), &[][..])));
+    if let Some(slot) = slot {
+        trees.push((slot.to_owned(), &[][..]));
+    }
     trees
 }
 
@@ -529,6 +566,7 @@ fn rustup_settings() -> Option<PathBuf> {
 /// Gather a record at the end of a run that ended Current without starting a
 /// verifier. `None` when any part cannot be observed exactly or is too recent.
 pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
+    let mut timing = trace_timer();
     let required_environment = facts.receipt_environment?;
     // Consumers find the run through its one `context-ready` event; a capture
     // without exactly that event is not a complete account of the run.
@@ -551,6 +589,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         .collect::<Option<Vec<_>>>()?;
     let (target, copies, directories) = bind_copies(target, facts.start);
     lstat_entries.extend(target);
+    trace_phase(&mut timing, "target");
     if let Some(settings) = rustup_settings() {
         lstat_entries.push((settings.clone(), lstat(&settings).ok()?));
     }
@@ -568,12 +607,21 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         stat_entries.push((path.clone(), stamp?));
         lstat_entries.push((path.clone(), link.ok()?));
     }
+    trace_phase(&mut timing, "identity");
     let (trees, contents, cache_stamps) = cache_state(
-        &cache_trees(facts.cache, facts.family, facts.context, &facts.siblings),
+        &cache_trees(
+            facts.cache,
+            facts.family,
+            facts.context,
+            &facts.siblings,
+            facts.slot,
+        ),
         facts.context,
         facts.family,
+        facts.slot,
     )?;
     lstat_entries.extend(cache_stamps);
+    trace_phase(&mut timing, "cache");
     let recent = lstat_entries
         .iter()
         .filter_map(|(path, stamp)| stamp.map(|stamp| (path, stamp)))
@@ -589,6 +637,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
     let mut names = super::environment::declared_names(facts.target)?;
     names.extend(required_environment);
     let environment = super::environment::values(&names);
+    trace_phase(&mut timing, "environment");
     Some(Pending {
         path: record_path(facts.cache, facts.key),
         record: Record {
@@ -596,6 +645,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             key: facts.key.to_owned(),
             locks: (facts.workspace_lock, facts.family.join("ownership.lock")),
             runs: facts.context.join("runs"),
+            slot: facts.slot.map(Path::to_owned),
             lstat: lstat_entries,
             stat: stat_entries,
             trees,
@@ -615,6 +665,7 @@ impl Pending {
     /// Store the record with what the run printed. A failure only means the
     /// next unchanged call takes the ordinary path.
     pub fn commit(mut self, stdout: Vec<u8>, stderr: Vec<u8>) {
+        let mut timing = trace_timer();
         if let Some(line) = transient_status(&stderr) {
             // A later stock run would not print it, so this output is not
             // the unchanged call's transcript (#574). Never leave an older
@@ -638,6 +689,7 @@ impl Pending {
         {
             let _ = std::fs::remove_file(&temporary);
         } else {
+            trace_phase(&mut timing, "commit");
             trace(&format!(
                 "recorded: {} stamps, {} contents, {} copies",
                 self.record.lstat.len() + self.record.stat.len(),
@@ -771,7 +823,36 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     let _family = lock(&record.locks.1, false)?;
     if let Some(reason) = mismatch(&record) {
         trace(&format!("miss: {reason}"));
+        if std::env::var_os("SAIL_MANAGED_NOOP_TRACE").is_some() {
+            for path in changed_paths(&record) {
+                trace(&format!("mismatch path: {}", path.display()));
+            }
+        }
         return None;
+    }
+    if let Some(slot) = &record.slot {
+        let context = record.runs.parent()?;
+        if super::invocation_slots::path(context, &config.workspace, &config.args).as_ref()
+            != Some(slot)
+        {
+            return None;
+        }
+        let views = super::invocation_slots::VIEWS
+            .into_iter()
+            .map(|name| {
+                let source = slot.join(name);
+                let expected = record
+                    .contents
+                    .iter()
+                    .find(|(path, _)| *path == source)?
+                    .1
+                    .as_str();
+                let bytes = std::fs::read(&source).ok()?;
+                (super::files::digest(&bytes) == expected).then_some((name.to_owned(), bytes))
+            })
+            .collect::<Option<Vec<_>>>()?;
+        super::invocation_slots::touch(slot)?;
+        super::invocation_slots::publish(context, &views).ok()?;
     }
     let run_id = format!(
         "{}-{}",
@@ -819,6 +900,53 @@ fn stamps_mismatch(recorded: &[(PathBuf, Option<Stamp>)]) -> Option<String> {
         .zip(now)
         .find(|((_, recorded), now)| now.as_ref().ok() != Some(recorded))
         .map(|((path, _), _)| format!("changed: {}", path.display()))
+}
+
+/// A diagnostic survey after the ordinary refusal. It grants no authority and
+/// is never run without an explicitly requested trace. Include every changed
+/// recorded body and namespace entry, rather than stopping at the first one.
+fn changed_paths(record: &Record) -> std::collections::BTreeSet<PathBuf> {
+    let mut changed = std::collections::BTreeSet::new();
+    for (path, expected) in &record.lstat {
+        if lstat(path).as_ref().ok() != Some(expected) {
+            changed.insert(path.clone());
+        }
+    }
+    for (path, expected) in &record.stat {
+        if std::fs::metadata(path)
+            .ok()
+            .map(|metadata| Stamp::of(&metadata))
+            != Some(*expected)
+        {
+            changed.insert(path.clone());
+        }
+    }
+    for copy in &record.copies {
+        if copies_mismatch(std::slice::from_ref(copy), &[]).is_some() {
+            changed.insert(copy.path.clone());
+        }
+    }
+    for directory in &record.directories {
+        if copies_mismatch(&[], std::slice::from_ref(directory)).is_some() {
+            changed.insert(directory.path.clone());
+        }
+    }
+    for (root, skip, expected) in &record.trees {
+        let skip: Vec<_> = skip.iter().map(String::as_str).collect();
+        if let Some(now) = walk(root, &skip) {
+            let now: std::collections::BTreeSet<_> = now.into_iter().collect();
+            let expected: std::collections::BTreeSet<_> = expected.iter().cloned().collect();
+            changed.extend(now.symmetric_difference(&expected).cloned());
+        } else {
+            changed.insert(root.clone());
+        }
+    }
+    for (path, expected) in &record.contents {
+        if super::files::file_digest(path).ok().as_ref() != Some(expected) {
+            changed.insert(path.clone());
+        }
+    }
+    changed
 }
 
 /// The first recorded observation that no longer holds.
@@ -957,6 +1085,7 @@ mod tests {
                 workspace_lock: root.join("workspace.lock"),
                 family: &family,
                 context: &context,
+                slot: None,
                 target: &target,
                 observation: Vec::new(),
                 identity: std::slice::from_ref(&executable),
@@ -980,7 +1109,7 @@ mod tests {
                 );
                 let record: Record =
                     serde_json::from_slice(&std::fs::read(record_path(&cache, &key))?)?;
-                assert_eq!(record.version, 6);
+                assert_eq!(record.version, 7);
                 assert_eq!(record.events, replayed_events());
                 assert_eq!(record.environment.get(SHADOW), Some(&None));
                 assert!(
@@ -991,11 +1120,12 @@ mod tests {
                 std::fs::write(root.join("key"), &key)?;
             }
         } else {
-            if operation == "legacy" {
+            if matches!(operation.as_str(), "legacy" | "legacy_slot") {
                 let path = record_path(&cache, &key);
                 let mut record: Record = serde_json::from_slice(&std::fs::read(&path)?)?;
-                // A version-5 record carries no job events.
-                record.version = VERSION - 1;
+                // Keep the pre-events refusal, and separately reject the
+                // immediately preceding layout without invocation slots.
+                record.version = if operation == "legacy" { 5 } else { 6 };
                 std::fs::write(path, serde_json::to_vec(&record)?)?;
             }
             let replay = replay(&config, &key, std::time::Instant::now());
@@ -1020,7 +1150,10 @@ mod tests {
                     assert_eq!(emitted, Vec::<serde_json::Value>::new());
                 }
             } else {
-                assert!(matches!(operation.as_str(), "changed" | "legacy"));
+                assert!(matches!(
+                    operation.as_str(),
+                    "changed" | "legacy" | "legacy_slot"
+                ));
                 assert!(replay.is_none(), "changed input or legacy record replayed");
                 // A miss writes no job events: the full run that follows
                 // writes its own.
@@ -1069,7 +1202,14 @@ mod tests {
             "input: input.rs\n# env-dep:SAIL_TEST_NOOP_DEP_ONLY_INPUT\n",
         )?;
         for operation in [
-            "prepare", "same", "job", "forced", "changed", "unknown", "legacy",
+            "prepare",
+            "same",
+            "job",
+            "forced",
+            "changed",
+            "unknown",
+            "legacy",
+            "legacy_slot",
         ] {
             std::fs::write(root.join("operation"), operation)?;
             let mut command = std::process::Command::new(std::env::current_exe()?);
@@ -1088,7 +1228,10 @@ mod tests {
             if operation == "forced" {
                 command.env("SAIL_MANAGED_FORCE", "1");
             }
-            if matches!(operation, "job" | "forced" | "changed" | "legacy") {
+            if matches!(
+                operation,
+                "job" | "forced" | "changed" | "legacy" | "legacy_slot"
+            ) {
                 // A daemon job worker's own variables keep the key: the same
                 // record replays, or misses, as for a plain JSON call.
                 command
@@ -1156,6 +1299,7 @@ mod tests {
             workspace_lock: root.join("workspace.lock"),
             family: &family,
             context: &context,
+            slot: None,
             target: &target,
             observation: Vec::new(),
             identity: std::slice::from_ref(&executable),
@@ -1182,6 +1326,13 @@ mod tests {
         );
         std::fs::write(&receipt, "changed receipt")?;
         assert!(mismatch(&record).is_some(), "a changed receipt replayed");
+        let second = nested.join(RUNTIME);
+        std::fs::write(&second, "also changed")?;
+        assert_eq!(
+            changed_paths(&record),
+            std::collections::BTreeSet::from([receipt.clone(), second.clone()])
+        );
+        std::fs::write(&second, "nested")?;
         std::fs::write(&receipt, "receipt")?;
         std::fs::write(nested.join(RUNTIME), "changed")?;
         assert!(mismatch(&record).is_some(), "a nested namesake is bound");
@@ -1196,6 +1347,117 @@ mod tests {
             );
             std::fs::write(removed, bytes)?;
         }
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "One fixture retains both invocation records, publication and eviction controls."
+    )]
+    fn invocation_slots_replay_independently_and_publish_their_bound_views()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-noop-slots-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let cache = root.join("cache");
+        let context = cache.join("context");
+        let family = cache.join("family");
+        let target = family.join("target");
+        std::fs::create_dir_all(&target)?;
+        std::fs::create_dir_all(cache.join("runtime-identities"))?;
+        std::fs::write(family.join("ownership.lock"), [])?;
+        std::fs::write(root.join("workspace.lock"), [])?;
+        let executable = root.join("sail");
+        std::fs::write(&executable, "fixture")?;
+        let config = |workspace: PathBuf| Config {
+            workspace,
+            cache: cache.clone(),
+            sail: executable.clone(),
+            cargo_verus: executable.clone(),
+            cargo: executable.clone(),
+            cargo_toolchain: crate::managed::CargoToolchain::Caller,
+            shim: executable.clone(),
+            z3: executable.clone(),
+            socket: None,
+            args: Vec::new(),
+            force: false,
+            attribution_logs: true,
+        };
+        let root_config = config(root.join("workspace"));
+        let member_config = config(root.join("workspace/member"));
+        let record = |config: &Config, text: &str| -> Result<PathBuf, Box<dyn std::error::Error>> {
+            let slot =
+                super::super::invocation_slots::prepare(&context, &config.workspace, &config.args)
+                    .ok_or("slot unavailable")?;
+            for name in super::super::invocation_slots::VIEWS {
+                std::fs::write(slot.join(name), text)?;
+                std::fs::write(context.join(name), text)?;
+            }
+            std::fs::write(slot.join("unscheduled-scripts.json"), text)?;
+            let key = key(config, true).ok_or("key unavailable")?;
+            let result = receipt_fixture_result(&root);
+            prepare(Facts {
+                key: &key,
+                cache: &cache,
+                start: SystemTime::now() + Duration::from_secs(3),
+                workspace_lock: root.join("workspace.lock"),
+                family: &family,
+                context: &context,
+                slot: Some(&slot),
+                target: &target,
+                observation: Vec::new(),
+                identity: std::slice::from_ref(&executable),
+                siblings: Vec::new(),
+                receipt_environment: Some(std::collections::BTreeSet::new()),
+                result: &result,
+                events: replayed_events(),
+            })
+            .ok_or("record unavailable")?
+            .commit(Vec::new(), Vec::new());
+            Ok(slot)
+        };
+        let root_slot = record(&root_config, "root view")?;
+        let member_slot = record(&member_config, "member view")?;
+        let replay_config = |config: &Config| {
+            key(config, true).and_then(|key| replay(config, &key, std::time::Instant::now()))
+        };
+        assert!(replay_config(&root_config).is_some());
+        assert_eq!(
+            std::fs::read_to_string(context.join("read-check.json"))?,
+            "root view"
+        );
+        assert!(replay_config(&member_config).is_some());
+        assert_eq!(
+            std::fs::read_to_string(context.join("read-check.json"))?,
+            "member view"
+        );
+        // A changed bound slot misses; latest-context views are not substitutes
+        // for the original invocation's independently checked copies.
+        std::fs::write(root_slot.join("read-check.json"), "changed")?;
+        assert!(replay_config(&root_config).is_none());
+        std::fs::write(root_slot.join("read-check.json"), "root view")?;
+        assert!(replay_config(&root_config).is_some());
+        assert!(replay_config(&member_config).is_some());
+        std::fs::write(
+            root_slot.join("unscheduled-scripts.json"),
+            "changed scheduling",
+        )?;
+        assert!(replay_config(&root_config).is_none());
+        assert!(replay_config(&member_config).is_some());
+        std::fs::write(root_slot.join("unscheduled-scripts.json"), "root view")?;
+        assert!(replay_config(&root_config).is_some());
+        // Establish the original root-then-member recency order again before
+        // checking which slot the seventh additional invocation evicts.
+        assert!(replay_config(&member_config).is_some());
+        for index in 0..7 {
+            super::super::invocation_slots::prepare(&context, &root.join(index.to_string()), &[])
+                .ok_or("extra slot unavailable")?;
+        }
+        assert!(!root_slot.exists());
+        assert!(member_slot.exists());
+        assert!(replay_config(&root_config).is_none());
+        assert!(replay_config(&member_config).is_some());
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
@@ -1601,6 +1863,7 @@ mod tests {
                 key: key.to_owned(),
                 locks: (root.join("w.lock"), root.join("o.lock")),
                 runs: root.join("runs"),
+                slot: None,
                 lstat: Vec::new(),
                 stat: Vec::new(),
                 trees: Vec::new(),
