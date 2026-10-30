@@ -844,6 +844,12 @@ PY
 
 prepare_pristine
 
+# Resource validation belongs outside every timed command. An observed busy
+# headless Mac cannot qualify a native comparison merely by being dedicated.
+if [ "$(uname -s)" = Darwin ]; then
+  python3 -I "$here/perf-mac-quiet.py" --output "$out/host-quiet.json"
+fi
+
 if [ "$cmd" = det ]; then
   # Plain runs with SMT logs, compared file by file with the first. With
   # SAIL_PERF_FORK set, the fork's Verus runs them.

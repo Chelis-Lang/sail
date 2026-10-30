@@ -263,6 +263,12 @@ component timing qualifies on Linux and Mac; full native output and release
 qualification remain tracked in #561. See the
 [record](validation/unsupported-cargo-fallback.md).
 
+- Native macOS27 performance qualification remains open after sustained
+  background audio/configuration CPU was observed on the EC2 Mac host.
+  Earlier component numbers are retained as diagnostics. The candidate
+  process-CPU preflight refuses a busy measurement environment; quiet-host
+  reruns are required. See [the record](validation/benchmark-memory.md#mac-environment-refusal-2026-10-30).
+
 ## Settled digest candidates
 
 The ADR 0091 switches remain off by default. Corrected Linux source pairs

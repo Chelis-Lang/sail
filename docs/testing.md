@@ -329,3 +329,21 @@ completion inventory and teardown are outside that interval. The harness
 removes its `SAIL_PERF_MEMORY` switch before starting the command, preserving
 identical measured environments. Invalid timing is a retained failed sample.
 Older reports retain their original clock method; compare matching methods.
+
+The sampler's on/off controls prime the same initial process inventory before
+command timing. On macOS the observer and its later `ps` children run at lower
+priority after command spawn; the measured command keeps the caller's original
+priority. The 50 ms process inventory and all RSS definitions are unchanged.
+Native overhead qualification remains required; see the memory acceptance record.
+
+Mac real-project measurements first run `scripts/perf-mac-quiet.py` and retain
+`host-quiet.json`. A fresh one-second observation above 0.10 CPU cores refuses
+measurement before samples begin. Headless macOS27 can leave audio/configuration
+services busy; confirm a quiet host after establishing its console session and
+allowing initial indexing to settle. Native hardware alone does not establish
+an uncontended benchmark. See the memory acceptance record for actual limits.
+
+The memory observer uses a 1 ms Python interpreter scheduling quantum in both
+control arms so inventory parsing yields promptly to the command waiter.
+Executed Python children retain their own interpreter scheduling. This does
+not change the 50 ms RSS cadence or the overhead acceptance threshold.

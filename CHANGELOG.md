@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Prime the same memory inventory in both overhead-control arms and reduce
+  Mac observer priority after command spawn, preserving the command's priority,
+  environment and arguments. Refuse busy Mac measurement before timing;
+  bound observer interpreter delays in the command clock. Native overhead
+  and release-memory acceptance remain pending.
+
 - Add separately controlled source and owned-target digest observations under
   ADR 0091. Fresh namespaces, complete original settled stamps and successful
   Current provenance guard reuse; changed inputs, retries and force keep fresh
