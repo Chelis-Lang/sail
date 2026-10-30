@@ -53,12 +53,6 @@ semantic versioning once the API is published.
   An unclassified shipped-vstd miss now names the trace route without
   attributing it to dependency versions.
 
-- Use the same cache selection for `cargo xtask fetch-verus` and runtime
-  lookup, including `SAIL_CACHE_DIR` (#581). Managed verification resolves
-  symlinked cache roots before deriving compiler and proof paths (#601).
-  An unclassified shipped-vstd miss now names the trace route without
-  attributing it to dependency versions.
-
 - Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in
   the same managed run when program, arguments, directory, effective
   environment and every stamped metadata and toolchain input match; anything
@@ -626,10 +620,6 @@ known issues.
 
 - Reserve dependency-publication staging directories exclusively, leaving
   another publisher’s files untouched on a collision.
-- Compare standalone verification-progress notes independent of worker order,
-  with exact text and counts, under the owner-approved VI-0012 exception.
-  Verdicts, errors and other output retain their exact checks.
-
 - Discover initial watch inputs before starting filesystem notifications.
   Cargo's startup creation of `Cargo.lock` no longer cancels the first
   verification when macOS delivers that notification late. Later input edits
