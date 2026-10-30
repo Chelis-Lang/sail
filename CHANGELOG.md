@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Measure real-project command wall time from spawn through child exit,
+  excluding sampler setup/teardown. Sampling controls no longer reach the
+  child environment; invalid clocks retain a failed sample and refuse acceptance.
+
+
 - Keep working-directory and argument-specific managed observations in eight
   bounded slots, so alternating workspace and member calls can retain their
   own unchanged-call records. Replays republish their validated latest-context
