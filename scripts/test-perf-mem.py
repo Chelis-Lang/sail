@@ -83,6 +83,34 @@ class Memory(unittest.TestCase):
             self.assertGreater(usage['wall_seconds'], 0)
             self.assertGreater(elapsed-usage['wall_seconds'], .2)
 
+    def test_child_clock_is_not_held_by_sampler_cpu_work(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)/'memory.json'
+            calls = 0
+            def inventory():
+                nonlocal calls
+                calls += 1
+                if calls > 1:
+                    # Deliberately occupy the GIL across the child's exit.
+                    deadline = time.monotonic()+1
+                    while time.monotonic() < deadline:
+                        pass
+                return {}
+            args = SimpleNamespace(snapshot=False, output=output, state=None,
+                status=None, ready=None, go=None, no_sample=False,
+                command=[sys.executable, '-c', 'import time; time.sleep(.1)'])
+            original = sys.getswitchinterval()
+            try:
+                sys.setswitchinterval(1)
+                with mock.patch.object(mem, 'processes', side_effect=inventory):
+                    self.assertEqual(mem.run(args), 0)
+            finally:
+                sys.setswitchinterval(original)
+            self.assertGreaterEqual(calls, 2)
+            # Joining still waits for the inventory; its CPU work cannot add
+            # nearly a full second to the reported command interval.
+            self.assertLess(json.loads(output.read_text())['wall_seconds'], .75)
+
     def test_both_arms_prime_inventory_before_spawn_and_lower_only_the_observer(self):
         for sampled in [False, True]:
             with self.subTest(sampled=sampled), tempfile.TemporaryDirectory() as temporary:

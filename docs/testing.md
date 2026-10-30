@@ -342,3 +342,8 @@ measurement before samples begin. Headless macOS27 can leave audio/configuration
 services busy; confirm a quiet host after establishing its console session and
 allowing initial indexing to settle. Native hardware alone does not establish
 an uncontended benchmark. See the memory acceptance record for actual limits.
+
+The memory observer uses a 1 ms Python interpreter scheduling quantum in both
+control arms so inventory parsing yields promptly to the command waiter.
+Executed Python children retain their own interpreter scheduling. This does
+not change the 50 ms RSS cadence or the overhead acceptance threshold.

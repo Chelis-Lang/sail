@@ -127,6 +127,10 @@ def daemon_hwm(table, pids):
 
 
 def run(args):
+    # Keep CPU-bound inventory parsing from delaying the wait4 reporter behind
+    # Python's default 5 ms GIL quantum. The executed child keeps its own runtime.
+    # Apply the same observer scheduling in both measurement/control arms.
+    sys.setswitchinterval(.001)
     known = load(args.state, {})
     if not isinstance(known, dict):
         known = {}

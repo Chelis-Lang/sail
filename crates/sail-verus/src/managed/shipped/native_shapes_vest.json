@@ -1,0 +1,35 @@
+{
+  "equivalent-1.0.2": {
+    "edition": "2015",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values())"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "indexmap-2.14.1": {
+    "edition": "2024",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values(\"arbitrary\", \"borsh\", \"default\", \"quickcheck\", \"rayon\", \"serde\", \"std\", \"sval\", \"test_debug\"))"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  },
+  "unicode-ident-1.0.24": {
+    "edition": "2021",
+    "non_feature_cfg": [],
+    "check_cfg": [
+      "cfg(docsrs,test)",
+      "cfg(feature, values())"
+    ],
+    "builtin": false,
+    "builtin_macros": false,
+    "lints": []
+  }
+}

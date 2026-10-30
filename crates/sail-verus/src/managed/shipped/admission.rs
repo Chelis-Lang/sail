@@ -14,6 +14,23 @@ const POLICY: &str = include_str!(concat!(
     "/../../engine/verus/vstd-boundary-inputs.json"
 ));
 
+const VEST_POLICY: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../engine/verus/vstd-boundary-vest-inputs.json"
+));
+const POLICIES: [&str; 2] = [POLICY, VEST_POLICY];
+
+pub(super) fn known_policy(hash: &str) -> bool {
+    POLICIES
+        .iter()
+        .any(|raw| super::digest(raw.as_bytes()) == hash)
+}
+
+#[cfg(test)]
+pub(super) fn default_policy_sha256() -> String {
+    super::digest(POLICY.as_bytes())
+}
+
 #[derive(Deserialize)]
 struct Policy {
     kind: String,
@@ -64,35 +81,43 @@ pub(super) struct Closure {
 impl Closure {
     /// A cheap rejection only; full source checks remain in `resolve`.
     pub(super) fn metadata_admits(metadata: &Value, registry: &Path) -> bool {
-        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
-            return false;
-        };
-        policy.kind == "sail-vstd-boundary-source-policy"
-            && policy.schema == 2
-            && resolved_packages(metadata, registry, &policy).is_some()
+        matched_policy(metadata, registry, &POLICIES).is_some()
     }
 
-    /// Reject path patches, different versions/features and extra dependencies.
+    /// Reject path patches, different versions/features and ambiguous policies.
     pub(super) fn resolve(metadata: &Value, registry: &Path) -> Option<Self> {
-        let policy: Policy = serde_json::from_str(POLICY).ok()?;
-        if policy.kind != "sail-vstd-boundary-source-policy" || policy.schema != 2 {
-            return None;
-        }
-        let admitted = resolved_packages(metadata, registry, &policy)?;
+        Self::resolve_from(metadata, registry, &POLICIES)
+    }
+
+    /// Neutral source admission keeps its previously qualified default policy.
+    pub(super) fn resolve_default(metadata: &Value, registry: &Path) -> Option<Self> {
+        Self::resolve_from(metadata, registry, &[POLICY])
+    }
+
+    fn resolve_from(metadata: &Value, registry: &Path, policies: &[&str]) -> Option<Self> {
+        let (raw, _, packages) = matched_policy(metadata, registry, policies)?;
         let closure = Self {
-            policy_sha256: super::digest(POLICY.as_bytes()),
+            policy_sha256: super::digest(raw.as_bytes()),
             registry: registry.to_owned(),
-            packages: admitted,
+            packages,
         };
         closure.check_sources().then_some(closure)
     }
 
+    fn policy(&self) -> Option<Policy> {
+        let raw = POLICIES
+            .iter()
+            .find(|raw| super::digest(raw.as_bytes()) == self.policy_sha256)?;
+        serde_json::from_str(raw).ok()
+    }
+
+    pub(super) fn vest_profile(&self) -> bool {
+        self.policy_sha256 == super::digest(VEST_POLICY.as_bytes())
+    }
+
     /// Validate every source file, not the mutable Cargo checksum sidecar alone.
     pub(super) fn check_sources(&self) -> bool {
-        if self.policy_sha256 != super::digest(POLICY.as_bytes()) {
-            return false;
-        }
-        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+        let Some(policy) = self.policy() else {
             return false;
         };
         if self.packages != policy.packages.keys().cloned().collect() {
@@ -129,7 +154,7 @@ impl Closure {
         args: &[std::ffi::OsString],
         vstd: bool,
     ) -> bool {
-        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+        let Some(policy) = self.policy() else {
             return false;
         };
         let Some(name) = vars.get("CARGO_PKG_NAME") else {
@@ -160,7 +185,7 @@ impl Closure {
         &self,
         sources: impl Iterator<Item = (&'a Path, &'a str, u64)>,
     ) -> bool {
-        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+        let Some(policy) = self.policy() else {
             return false;
         };
         let mut count = 0;
@@ -204,7 +229,7 @@ impl Closure {
     /// admits only the closed vstd Rust source set, never arbitrary tracked
     /// proc-macro files (rustc hashes those separately at the end).
     pub(super) fn compiler_sources(&self, dep_info: &str) -> bool {
-        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+        let Some(policy) = self.policy() else {
             return false;
         };
         let Some(package) = policy.packages.get(&policy.vstd) else {
@@ -222,7 +247,7 @@ impl Closure {
         &self,
         sources: impl Iterator<Item = (&'a str, &'a str, u64)>,
     ) -> bool {
-        let Ok(policy) = serde_json::from_str::<Policy>(POLICY) else {
+        let Some(policy) = self.policy() else {
             return false;
         };
         let Some(package) = policy.packages.get(&policy.vstd) else {
@@ -380,6 +405,27 @@ fn compiler_sources(
         }
     }
     observed == sources
+}
+
+fn matched_policy<'a>(
+    metadata: &Value,
+    registry: &Path,
+    policies: &[&'a str],
+) -> Option<(&'a str, Policy, BTreeSet<String>)> {
+    let mut selected = None;
+    for &raw in policies {
+        let policy: Policy = serde_json::from_str(raw).ok()?;
+        if policy.kind != "sail-vstd-boundary-source-policy" || policy.schema != 2 {
+            return None;
+        }
+        if let Some(packages) = resolved_packages(metadata, registry, &policy) {
+            if selected.is_some() {
+                return None;
+            }
+            selected = Some((raw, policy, packages));
+        }
+    }
+    selected
 }
 
 fn resolved_packages(
@@ -887,7 +933,12 @@ pub(super) fn test_features(
 /// Cargo metadata resolving exactly the policy's closure under `registry`.
 #[cfg(test)]
 pub(super) fn policy_metadata(registry: &Path) -> Result<Value, serde_json::Error> {
-    let policy: Policy = serde_json::from_str(POLICY)?;
+    policy_metadata_from(POLICY, registry)
+}
+
+#[cfg(test)]
+fn policy_metadata_from(raw: &str, registry: &Path) -> Result<Value, serde_json::Error> {
+    let policy: Policy = serde_json::from_str(raw)?;
     let packages: Vec<_> = policy
         .packages
         .iter()
@@ -1138,6 +1189,53 @@ mod native_source_tests {
             readme.checksum.as_str(),
             readme.size
         ))));
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod exact_profile_tests {
+    use super::*;
+
+    #[test]
+    fn each_closed_profile_requires_its_exact_metadata_and_refuses_ambiguity()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let registry = Path::new("/sail-profile-registry");
+        for raw in POLICIES {
+            let metadata = policy_metadata_from(raw, registry)?;
+            let (selected, _, packages) =
+                matched_policy(&metadata, registry, &POLICIES).ok_or("profile missing")?;
+            assert_eq!(
+                super::super::digest(raw.as_bytes()),
+                super::super::digest(selected.as_bytes())
+            );
+            assert!(matched_policy(&metadata, registry, &[raw, raw]).is_none());
+            let closure = Closure {
+                policy_sha256: super::super::digest(raw.as_bytes()),
+                registry: registry.to_owned(),
+                packages,
+            };
+            assert_eq!(closure.vest_profile(), raw == VEST_POLICY);
+            assert!(known_policy(closure.policy_sha256()));
+            assert!(closure.policy().is_some());
+            // Every policy still checks actual source files, not metadata alone.
+            assert!(!closure.check_sources());
+            for field in ["version", "source", "manifest_path"] {
+                let mut changed = metadata.clone();
+                changed["packages"][0][field] = Value::String("changed".into());
+                assert!(
+                    matched_policy(&changed, registry, &POLICIES).is_none(),
+                    "{field}"
+                );
+            }
+            let mut changed = metadata.clone();
+            changed["resolve"]["nodes"][0]["features"] = serde_json::json!(["unknown-feature"]);
+            assert!(matched_policy(&changed, registry, &POLICIES).is_none());
+            let mut changed = metadata;
+            changed["resolve"]["nodes"][0]["dependencies"] = serde_json::json!(["unknown-package"]);
+            assert!(matched_policy(&changed, registry, &POLICIES).is_none());
+        }
+        assert!(!known_policy("damaged"));
         Ok(())
     }
 }

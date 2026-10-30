@@ -17,7 +17,7 @@ class Commands(unittest.TestCase):
         function = 'measured()' + text.split('measured()', 1)[1].split('\nverus_cmd()', 1)[0]
         child = ('import hashlib,json,os,sys; print(json.dumps({'
                  '"environment":hashlib.sha256(json.dumps(dict(os.environ),sort_keys=True).encode()).hexdigest(),'
-                 '"control":os.getenv("SAIL_PERF_MEMORY"),"argv":sys.argv[1:],"nice":os.getpriority(os.PRIO_PROCESS,0)}))')
+                 '"control":os.getenv("SAIL_PERF_MEMORY"),"argv":sys.argv[1:],"nice":os.getpriority(os.PRIO_PROCESS,0),"switch_interval":sys.getswitchinterval()}))')
         results = []
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -35,6 +35,8 @@ class Commands(unittest.TestCase):
         self.assertIsNone(results[0]['control'])
         self.assertEqual(results[0]['argv'], ['literal argument'])
         self.assertEqual(results[0]['nice'], os.getpriority(os.PRIO_PROCESS, 0))
+        self.assertEqual(results[0]['switch_interval'], float(subprocess.check_output(
+            ['python3', '-c', 'import sys; print(sys.getswitchinterval())'], text=True)))
 
     def test_diagnostics_are_opt_in_and_use_one_constant_arm_path(self):
         text = Path(__file__).with_name('perf-real.sh').read_text()

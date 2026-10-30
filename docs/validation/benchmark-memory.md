@@ -168,3 +168,29 @@ Refused rerun controller log SHA-256:
 `76d73e41bfdd7c8a66fbaed72b48872ae6a5b8ee918bbb6833ed18d1b577f609`.
 Retained raw archive SHA-256:
 `2de94ca2c698be53e3bef3b70c053118d4f45ebf01626e8bcee225f84bb626fe`.
+
+## Observer interpreter scheduling correction
+
+A controlled child-clock regression exposes another observer delay: CPU-bound
+inventory work can hold Python's interpreter lock across the child's exit.
+With an intentionally one-second interpreter quantum, the prior helper reports
+about 1.001 s for a child sleeping 0.1 s. The candidate gives both observer
+arms a 1 ms interpreter quantum; the same regression passes. The child's
+independently executed interpreter keeps its own scheduling, as an added
+command control checks. The 50 ms inventory cadence, complete RSS definitions,
+environment/argv, child priority and all overhead thresholds remain unchanged.
+This is a reproduced clock mechanism, not attribution of every earlier Mac
+difference. Local functional controls pass (13 memory, 19 command). Native Linux
+`30843d0f` passes the complete image gate (1,265 ordinary tests, 54 skipped),
+51 solver tests, every local E2E phase plus extra, and PR conformance: all
+four arms 33/33 Same, 311 functions, zero unstable/different/infrastructure
+errors or skipped projects. Native functional controls include all 13 memory,
+5 quiet-host and 19 command tests. Mac functional controls and independent
+before/after measurements remain pending; these gates do not establish the
+original within-range overhead requirement.
+
+| Raw corrected-observer evidence outside Git | SHA-256 |
+|---|---|
+| Native full gate log | `24343382ba05e5dc762293330cb067849f4b374426aafd3d0468b04bec4de4b6` |
+| Native conformance archive | `15f1981b025dc1ab065d95ad3e9b6fc7481009ee9928c8ec48f9831875cd65b6` |
+| Native E2E archive | `ae49168e1ce988a41429381dc216673901c0a2729dc693b43f35cbc5f8abd161` |
