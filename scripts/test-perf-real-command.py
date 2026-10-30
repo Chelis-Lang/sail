@@ -12,6 +12,29 @@ import unittest
 
 
 class Commands(unittest.TestCase):
+    def test_sampler_switch_never_reaches_the_command_environment(self):
+        text = Path(__file__).with_name('perf-real.sh').read_text()
+        function = 'measured()' + text.split('measured()', 1)[1].split('\nverus_cmd()', 1)[0]
+        child = ('import hashlib,json,os,sys; print(json.dumps({'
+                 '"environment":hashlib.sha256(json.dumps(dict(os.environ),sort_keys=True).encode()).hexdigest(),'
+                 '"control":os.getenv("SAIL_PERF_MEMORY"),"argv":sys.argv[1:]}))')
+        results = []
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for flag in ['0', '1']:
+                env = dict(os.environ, SAIL_PERF_MEMORY=flag)
+                script = ('here="$1"; memory_file="$2"; memory_state="$3"; daemon_status="$4";\n' +
+                          function + '\nmeasured python3 -c "$5" "literal argument"')
+                result = subprocess.run(['bash', '-c', script, 'bash',
+                    str(Path(__file__).resolve().parent), str(root/('memory-'+flag)),
+                    str(root/('state-'+flag)), str(root/'status'), child],
+                    env=env, capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                results.append(json.loads(result.stdout))
+        self.assertEqual(results[0], results[1])
+        self.assertIsNone(results[0]['control'])
+        self.assertEqual(results[0]['argv'], ['literal argument'])
+
     def test_run_one_records_wrapped_failure_and_disabled_memory(self):
         text = Path(__file__).with_name('perf-real.sh').read_text()
         commands = 'measured()' + text.split('measured()', 1)[1].split('\nstats()', 1)[0]

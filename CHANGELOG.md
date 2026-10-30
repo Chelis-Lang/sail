@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Measure real-project command wall time from spawn through child exit,
+  excluding sampler setup/teardown. Sampling controls no longer reach the
+  child environment; invalid clocks retain a failed sample and refuse acceptance.
+
 - Bind cached SMT command keys to their owned original input and independently
   acknowledged solver writes; freeze complete delivery before terminal metadata.
 - Preserve the release factory's proof evidence during native source sync,

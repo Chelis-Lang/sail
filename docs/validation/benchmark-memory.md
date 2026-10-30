@@ -67,3 +67,27 @@ Raw evidence remains outside Git, identified by SHA-256:
 | `overhead-r3.log` | `4ba2310614ddd93152e92fb6fa614b50d6f21a27cc023d2837c2ea2f75c5efb6` |
 | `memory-overhead.tgz` | `26ac0f3edf164ef293e4710d633a5622a9041e9ec4b3bf51a7e608030e921aca` |
 | First Mac controls | `b27e4f980553b030a8c9855e8221a624b5baeb1535d2f42418de0ca146e6028f` |
+
+## Command-clock correction candidate (2026-10-30)
+
+A rotated three-pair IronKV rerun at `7ceb6423` retains 108 samples. Seventeen
+of eighteen arm/phase strata satisfy the original within-range requirement.
+Stock's first unchanged row does not: disabled median 0.142 s, sampled
+0.109 s, absolute difference 0.033 s versus a 0.009 s largest arm range.
+This does not establish sampler overhead within noise; it does not identify
+a cause. Earlier failed controls remain above.
+
+Source review shows the enclosing clock includes sampler finalization and
+after-command harness work, and `SAIL_PERF_MEMORY` reaches the child despite
+being an instrumentation switch. The correction captures a monotonic spawn
+through `wait4` interval inside the sampler and removes that switch before
+starting either arm. RSS sampling and every result remain intact. A missing
+or invalid clock retains a refused sample and fails acceptance. Existing
+19/22-column reports keep their original measurements; the correction does
+not rewrite them.
+
+New controls compare complete child-environment hashes and literal arguments
+across both sampling modes, and delay sampler teardown after a real child
+exits to prove that delay is outside the reported command interval. Local
+Python controls pass; native Linux/Mac qualification and repeat overhead
+measurement remain pending.
