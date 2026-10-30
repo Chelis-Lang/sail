@@ -89,5 +89,15 @@ not rewrite them.
 New controls compare complete child-environment hashes and literal arguments
 across both sampling modes, and delay sampler teardown after a real child
 exits to prove that delay is outside the reported command interval. Local
-Python controls pass; native Linux/Mac qualification and repeat overhead
-measurement remain pending.
+Python controls pass. Native Linux `5e67761d` passes the complete image gate
+(1,247 ordinary tests, 54 skipped), solver51, every local E2E phase plus extra,
+and all four PR conformance arms: 33/33 Same, 311 functions, zero
+unstable/different/infrastructure errors or skipped projects; five units
+separately report resource-count drift. The restack onto `6d8ee2eb` keeps
+these seven implementation/test file changes; its Rust bodies are the already
+qualified #619 bodies. The joined local command controls and real Mac controls
+pass all 19 command and 11 memory cases. No production Rust behavior changes.
+The new native Linux and Mac three-pair overhead comparisons are running;
+this correction does not claim that the earlier overhead failure is resolved.
+
+Native correction gate log SHA-256: `8e53062f2236fd6a0024902c1b7c3cb0df09acc76f50f8aa47dd75e355e0611b`.

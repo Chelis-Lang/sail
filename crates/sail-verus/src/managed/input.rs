@@ -1370,21 +1370,45 @@ pub(super) fn mutation_stamp(snapshot: &InputSnapshot) -> Option<String> {
     stamp_paths(&mutation_paths(snapshot))
 }
 
+pub(super) type MutationVector = Vec<(PathBuf, Option<super::noop::Stamp>)>;
+
+/// The final mutation stamp and the complete vector from those same keyed
+/// reads. This preserves the observation already accepted by currentness;
+/// replay still checks every stamp and applies its ordinary settle rule.
+#[cfg(unix)]
+pub(super) fn mutation_observation(snapshot: &InputSnapshot) -> Option<(String, MutationVector)> {
+    let paths = mutation_paths(snapshot);
+    let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
+    let stats = crate::parallel::in_order(&names, |&path| (path, std::fs::symlink_metadata(path)));
+    let stamp = stamp_readback(&paths, &stats)?;
+    let vector = mutation_readback(stats)?;
+    Some((stamp, vector))
+}
+
+#[cfg(not(unix))]
+pub(super) fn mutation_observation(_snapshot: &InputSnapshot) -> Option<(String, MutationVector)> {
+    None
+}
+
 /// The complete stat-stamp vector behind `expected`, this snapshot's mutation
 /// stamp: every stamped path with its full stamp, or `None` when absent. It is
 /// returned only when the same `lstat` results fold to exactly `expected`, so
 /// the vector describes the state the run's own currentness check accepted.
 #[cfg(unix)]
-pub(super) fn mutation_vector(
-    snapshot: &InputSnapshot,
-    expected: &str,
-) -> Option<Vec<(PathBuf, Option<super::noop::Stamp>)>> {
+pub(super) fn mutation_vector(snapshot: &InputSnapshot, expected: &str) -> Option<MutationVector> {
     let paths = mutation_paths(snapshot);
     let names: Vec<_> = paths.iter().map(PathBuf::as_path).collect();
     let stats = crate::parallel::in_order(&names, |&path| (path, std::fs::symlink_metadata(path)));
     if stamp_readback(&paths, &stats)? != expected {
         return None;
     }
+    mutation_readback(stats)
+}
+
+#[cfg(unix)]
+fn mutation_readback(
+    stats: Vec<(&Path, std::io::Result<std::fs::Metadata>)>,
+) -> Option<MutationVector> {
     stats
         .into_iter()
         .map(|(path, metadata)| match metadata {
@@ -1401,7 +1425,7 @@ pub(super) fn mutation_vector(
 pub(super) fn mutation_vector(
     _snapshot: &InputSnapshot,
     _expected: &str,
-) -> Option<Vec<(PathBuf, Option<super::noop::Stamp>)>> {
+) -> Option<MutationVector> {
     None
 }
 
@@ -2701,6 +2725,43 @@ mod tests {
         let restored = snapshot_metadata_home(&data, &[], None);
         assert_eq!(restored.revision, before.revision);
         assert_ne!(mutation_stamp(&restored), stamp);
+        std::fs::remove_dir_all(root)
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn final_observation_preserves_the_complete_recorded_vector() -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-final-observation-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let root = root.canonicalize()?;
+        let present = root.join("proof.rs");
+        let missing = root.join("absent.toml");
+        let alias = root.join("alias.rs");
+        std::fs::write(&present, "proof before")?;
+        std::os::unix::fs::symlink(&present, &alias)?;
+        let data = serde_json::json!({"workspace_root":root,
+            "packages":[{"manifest_path":root.join("Cargo.toml")}]});
+        let mut snapshot = snapshot_metadata_home(&data, &[], None);
+        snapshot.roots.push(missing.clone());
+        let (stamp, vector) = mutation_observation(&snapshot)
+            .ok_or_else(|| std::io::Error::other("observation missing"))?;
+        assert_eq!(Some(stamp.clone()), mutation_stamp(&snapshot));
+        assert_eq!(Some(vector.clone()), mutation_vector(&snapshot, &stamp));
+        assert!(
+            vector
+                .iter()
+                .any(|(path, value)| path == &missing && value.is_none())
+        );
+        assert!(vector.iter().any(|(path, _)| path == &alias));
+        let before = std::fs::metadata(&present)?.modified()?;
+        std::fs::write(&present, "proof edited")?;
+        std::fs::File::options()
+            .write(true)
+            .open(&present)?
+            .set_modified(before)?;
+        assert!(mutation_vector(&snapshot, &stamp).is_none());
+        assert_ne!(Some(stamp), mutation_stamp(&snapshot));
         std::fs::remove_dir_all(root)
     }
 

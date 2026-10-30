@@ -1,10 +1,9 @@
 # Instant revert
 
-Status: automatic selection is implemented and qualified at `83128ad0` for the
-narrow Linux/public dependency profile below. PR #224 merged as `731b3052`,
-with all required checks and the main workflow passing. Native ordinary and genuinely bundled Vest A → B → A controls pass,
-along with the complete default gates. See the
-[validation record](validation/instant-revert.md).
+Automatic selection supports the exact qualified Linux x86-64 and macOS arm64
+runtime manifests and closed public dependency profiles below. Current release
+qualification is in the [validation record](validation/instant-revert.md).
+The intermittent Mac Vest miss remains under investigation (#595).
 
 No extra workflow command is needed: `sail verify` can restore an
 already verified workspace revision after an A → B → A edit. `SAIL_MANAGED_FORCE=1 sail verify`
@@ -21,22 +20,17 @@ keeps this reconstructed report. A fresh verification requested through JSON,
 a job or MCP records obligation detail again; plain human output does not
 request those logs.
 
-Automatic eligibility is restricted to x86-64 Linux and the exact qualified
-normal runtime manifest. Every invocation uses the existing complete runtime
-validator on fresh file bytes before admitting a plan. Source, features, native
-compiler-read certificates and complete private dependency graphs must also
-satisfy a complete closed policy. A cheap metadata prefilter routes only the
-public alloc/std dependency profile used by current-pin Vest to full admission. It uses the same authority
-selector as full admission and grants no authority by itself. The public default
-feature profile used by a new library and the 718-file path-provider profile
-remain available only through explicit retained-content research. Public profiles
-bind all 15 archive identities, 662 file/checksum entries and exact
-feature/dependency vectors. This is a dependency-profile restriction, not an
-estimate of every target's proof cost; another small library can share that
-profile. Other Cargo resolutions remain fresh. macOS, other runtimes,
-unsupported macro/generated inputs, foreign imports and unsupported
-source namespaces remain fresh. Loader, engine and focused contexts keep their
-existing refusal rules.
+Automatic eligibility is restricted to the exact qualified runtime manifest
+for x86-64 Linux or arm64 macOS. Every invocation validates the runtime's fresh
+bytes before admitting a plan. Source, features, native compiler-read
+certificates and the complete private dependency graph must satisfy a closed
+policy. The routing prefilter recognizes the public registry profiles with
+vstd alloc/default/std or alloc/std (Vest); full admission remains mandatory.
+The path-provider profile remains explicit retained-content research.
+
+Other dependency resolutions, runtimes, unsupported macro/generated inputs,
+foreign imports and unsupported source namespaces take fresh verification.
+Loader, engine and focused contexts keep their existing refusal rules.
 
 Retention also has to pay for itself. Its checks read the target's whole
 private dependency graph (vstd and the macro crates) before and after the

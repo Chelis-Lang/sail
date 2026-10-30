@@ -71,6 +71,8 @@ struct Paths {
     run: PathBuf,
     build_inputs: PathBuf,
     input_state: PathBuf,
+    /// Working-directory/argument-specific observations, never proof receipts.
+    invocation_slot: Option<PathBuf>,
     compiler_inputs: PathBuf,
     compiler_read_origins: PathBuf,
     /// One empty file per proof context of this compiler family.
@@ -700,7 +702,7 @@ fn prepare(
         _family: ownership_lock(&compiler)?,
         workspace: workspace_lock,
     };
-    let paths = Paths {
+    let mut paths = Paths {
         target: compiler.join("target"),
         cargo_alias: compiler.join("sail-cargo"),
         proxy_alias: compiler.join("sail-verus-driver"),
@@ -708,6 +710,7 @@ fn prepare(
         runtime: context.join(super::noop::RUNTIME),
         build_inputs: context.join("build-inputs.json"),
         input_state: context.join("input-state.json"),
+        invocation_slot: None,
         compiler_inputs: compiler.join("build-inputs.json"),
         compiler_read_origins: compiler.join("compiler-read-origins"),
         run: context.join("runs").join(run_id),
@@ -742,7 +745,26 @@ fn prepare(
     });
     cargo_alias.unwrap_or_else(|_| alias(&config.sail, &paths.cargo_alias))?;
     proxy_alias?;
+    paths.invocation_slot =
+        super::invocation_slots::prepare(&context, &config.workspace, &config.args);
     Ok((paths, ownership))
+}
+
+impl Paths {
+    fn input_cache(&self) -> Option<&Path> {
+        self.invocation_slot
+            .as_deref()
+            .or_else(|| self.input_state.parent())
+    }
+
+    fn write_input_state(&self, data: &Value) -> Result<()> {
+        let bytes = serde_json::to_vec(data).map_err(|e| Error::new("SAIL3102", e.to_string()))?;
+        super::files::bytes_if_changed(&self.input_state, &bytes)?;
+        if let Some(slot) = &self.invocation_slot {
+            super::files::bytes_if_changed(&slot.join("input-state.json"), &bytes)?;
+        }
+        Ok(())
+    }
 }
 
 /// The directory Cargo actually builds in for this invocation's owned target.
@@ -1258,7 +1280,7 @@ fn build_environment(
     let directory = paths.run.join("build-environment");
     std::fs::create_dir(&directory).ok()?;
     let key = build_environment_key(config, paths, data, context);
-    if let (Some(key), Some(context)) = (&key, paths.input_state.parent())
+    if let (Some(key), Some(context)) = (&key, paths.input_cache())
         && super::build_environment::restore(context, key, &directory, data)
     {
         if let Some(environment) = super::build_environment::load(&directory, data) {
@@ -2037,6 +2059,42 @@ fn receipt_covered_targets(
 struct RevisionObservation<'a> {
     snapshot: &'a super::input::InputSnapshot,
     stamp: Option<&'a String>,
+    /// Only this invocation's original observation shares projection work.
+    revisions: Option<&'a RevisionMemo>,
+}
+
+/// Pure target projections from the same complete source observation. Every
+/// batch still rechecks that observation's original stamp before using them.
+/// No disk state, content reads or retry observations enter this map.
+#[derive(Default)]
+struct RevisionMemo {
+    entries: std::sync::Mutex<HashMap<(String, String), String>>,
+    #[cfg(test)]
+    hits: std::sync::atomic::AtomicUsize,
+}
+
+impl RevisionMemo {
+    fn get(&self, selection: &str, id: &str) -> Option<String> {
+        let revision = self
+            .entries
+            .lock()
+            .ok()?
+            .get(&(selection.to_owned(), id.to_owned()))
+            .cloned()?;
+        #[cfg(test)]
+        self.hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Some(revision)
+    }
+
+    fn retain(&self, selection: &str, revisions: &HashMap<String, String>) {
+        if let Ok(mut known) = self.entries.lock() {
+            known.extend(
+                revisions
+                    .iter()
+                    .map(|(id, revision)| ((selection.to_owned(), id.clone()), revision.clone())),
+            );
+        }
+    }
 }
 
 fn dirty_receipt_packages(
@@ -2599,17 +2657,46 @@ fn target_revisions(
         && source.snapshot.complete
         && source.stamp.is_some()
     {
+        // The complete metadata and source revision bind the projection's
+        // selection. This memo belongs to the original observation only;
+        // retries and newly collected after-run observations have no memo.
+        // Absent configuration names are watch-only roots, outside the
+        // original content capture. Preserve the fresh projection's discovery
+        // of newly created configuration, including files above the workspace.
+        let invocation = data["sail_invocation_directory"]
+            .as_str()
+            .or_else(|| data["workspace_root"].as_str());
+        let home = std::env::var_os("CARGO_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cargo")));
+        let configuration = invocation.and_then(|invocation| {
+            let paths = super::input::configuration_paths(Path::new(invocation), home.as_deref());
+            super::input::stamp_paths(&paths.into_iter().collect())
+        });
+        let selection = configuration.and_then(|configuration| {
+            serde_json::to_vec(&(data, &source.snapshot.revision, configuration))
+                .ok()
+                .map(|bytes| digest(&bytes))
+        });
         let projected = crate::parallel::in_order(&requested, |&id| {
+            let cached = source
+                .revisions
+                .and_then(|memo| memo.get(selection.as_deref()?, id));
             (
                 id,
-                target_revision_with(data, id, |selected, extras| {
-                    super::input::snapshot_revision_projected(selected, extras, source.snapshot)
+                cached.unwrap_or_else(|| {
+                    target_revision_with(data, id, |selected, extras| {
+                        super::input::snapshot_revision_projected(selected, extras, source.snapshot)
+                    })
                 }),
             )
         });
         if let Some(projected) = target_revision_readback(&requested, projected)
             && super::input::unchanged_since(source.snapshot, source.stamp)
         {
+            if let (Some(memo), Some(selection)) = (source.revisions, selection) {
+                memo.retain(&selection, &projected);
+            }
             return projected;
         }
     }
@@ -3583,7 +3670,7 @@ fn run_recorded(
         // A hint is only ever a hint: failing to record one changes nothing.
         let _ = std::fs::create_dir_all(hint_path.parent().unwrap_or(&config.cache))
             .map_err(|e| Error::new("SAIL3102", e.to_string()))
-            .and_then(|()| json(&hint_path, &selection));
+            .and_then(|()| super::files::json_if_changed(&hint_path, &selection));
     }
     let (mut before, before_observation_stamp) = match speculative {
         Some((_, snapshot, stamp)) => (snapshot, stamp),
@@ -3612,9 +3699,14 @@ fn run_recorded(
         )
     });
     let before_run = without_generated(&before, generated.as_deref());
-    let schedule_path = paths
-        .build_inputs
-        .with_file_name("unscheduled-scripts.json");
+    let schedule_path = paths.invocation_slot.as_ref().map_or_else(
+        || {
+            paths
+                .build_inputs
+                .with_file_name("unscheduled-scripts.json")
+        },
+        |slot| slot.join("unscheduled-scripts.json"),
+    );
     let schedule_before = super::build_inputs::family::schedule::Scope {
         data: &data,
         snapshot: &before_run,
@@ -3682,7 +3774,7 @@ fn run_recorded(
             "the process environment changed during verification setup",
         ));
     }
-    super::files::json(&paths.input_state, &data)?;
+    paths.write_input_state(&data)?;
     event(&serde_json::json!({
         "kind":"context-ready", "workspace":before.workspace, "run_id":run_id,
         "targets":expected.iter().map(|(package,name,kind)| serde_json::json!({"package_id":package,"name":name,"kind":[kind]})).collect::<Vec<_>>(),
@@ -3755,9 +3847,11 @@ fn run_recorded(
         .flatten()
         .filter_map(|entry| Some((entry.path(), read::<ReceiptRevision>(&entry.path())?)))
         .collect();
+    let revision_memo = RevisionMemo::default();
     let observation = RevisionObservation {
         snapshot: &before,
         stamp: before_observation_stamp.as_ref(),
+        revisions: Some(&revision_memo),
     };
     let dirty = dirty_receipt_packages(&receipt_revisions, &data, Some(observation));
     event(&serde_json::json!({
@@ -3976,7 +4070,7 @@ fn run_recorded(
             serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
         after_data["sail_source_inputs_by_target"] =
             serde_json::to_value(super::source_inputs::targets(&source_state)).unwrap_or_default();
-        super::files::json(&paths.input_state, &after_data)?;
+        paths.write_input_state(&after_data)?;
         // Kept only if nothing it observed changed while Cargo read the
         // metadata (which may rewrite the lockfile).
         let (mut after, after_stamp) = match speculative {
@@ -4099,6 +4193,7 @@ fn run_recorded(
         Some(RevisionObservation {
             snapshot: &after,
             stamp: after_stamp.as_ref(),
+            revisions: None,
         }),
     )?;
     let after_run = without_generated(&after, generated.as_deref());
@@ -4119,7 +4214,24 @@ fn run_recorded(
         // if an unexpectedly scheduled unit left the same input bytes.
         let _ = std::fs::remove_file(&schedule_path);
     }
-    let stamp_after = super::input::mutation_stamp(&after_run);
+    // An unchanged call can retain the very vector its final mutation stamp
+    // folds, instead of rediscovering and restamping it during recording.
+    // The invocation check only chooses this allocation; all recording
+    // authority below is unchanged. A scoped result intentionally does not
+    // claim whole-target reuse, so its target flag cannot choose this path.
+    // Verifying calls keep the original stamp-only path.
+    let (stamp_after, replay_observation) = if record.is_some()
+        && !retried
+        && !forced
+        && replay_only_invocations(&paths.run.join("invocations"))
+    {
+        match super::input::mutation_observation(&after_run) {
+            Some((stamp, vector)) => (Some(stamp), Some(vector)),
+            None => (None, None),
+        }
+    } else {
+        (super::input::mutation_stamp(&after_run), None)
+    };
     let absent = absent.finish();
     let currentness = if !paths.reuse
         || !before.complete
@@ -4302,8 +4414,9 @@ fn run_recorded(
                 .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")))
                 .as_deref(),
         );
-        super::read_check::record(
+        super::read_check::record_in(
             context,
+            paths.invocation_slot.as_deref(),
             &result.input_revision,
             super::read_check::entries(&after, &after_data, scope.as_ref(), &configuration),
             super::input::closure_bindings(&after, &after_data, scope.as_ref()),
@@ -4333,7 +4446,7 @@ fn run_recorded(
         // The fresh unit query is retained only when this run is Current and
         // its key, read again from the metadata and manifests after the run,
         // is the one the query ran under: nothing it depends on moved.
-        if let (Some(key), Some(context)) = (&environment_key, paths.input_state.parent())
+        if let (Some(key), Some(context)) = (&environment_key, paths.input_cache())
             && build_environment_key(config, &paths, &after_data, &result.context_sha256).as_ref()
                 == Some(key)
         {
@@ -4417,8 +4530,10 @@ fn run_recorded(
                 workspace_lock: paths.projects.join(super::projects::WORKSPACE_LOCK),
                 family: paths.target.parent()?,
                 context: paths.receipts.parent()?,
+                slot: paths.invocation_slot.as_deref(),
                 target: &paths.target,
-                observation: super::input::mutation_vector(&after_run, stamp_after.as_ref()?)?,
+                observation: replay_observation
+                    .or_else(|| super::input::mutation_vector(&after_run, stamp_after.as_ref()?))?,
                 identity: &identity_paths,
                 siblings: sibling_receipts(&paths, &result.context_sha256)
                     .into_iter()
@@ -7423,11 +7538,17 @@ mod tests {
     }
 
     #[test]
-    fn rebinding_declared_external_inputs_preserves_seals_and_rejects_corruption() {
+    fn rebinding_declared_external_inputs_preserves_seals_and_rejects_corruption()
+    -> std::io::Result<()> {
         let root = std::env::temp_dir().join(format!(
             "sail-receipt-completed-inputs-{}",
             std::process::id()
         ));
+        std::fs::create_dir_all(&root)?;
+        // Projection eligibility requires physical roots. Darwin's temporary
+        // directory may itself be an alias; exercise the memo here and retain
+        // the separate alias-refusal controls unchanged.
+        let root = root.canonicalize()?;
         let app = root.join("app");
         let dependency = root.join("vstd");
         let run = root.join("run");
@@ -7485,13 +7606,24 @@ mod tests {
         assert_eq!(rebound[0].1.input_revision, target_revision(&data, "vstd"));
         assert_eq!(rebound[0].1.clone().seal().checksum, rebound[0].1.checksum);
         let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let revision_memo = RevisionMemo::default();
         let observation = Some(RevisionObservation {
             snapshot: &observed,
             stamp: stamp.as_ref(),
+            revisions: Some(&revision_memo),
         });
         let projected = completed_receipts(&run, &data, observation)
             .unwrap_or_else(|e| unreachable!("fixture: {e}"));
         assert_eq!(projected[0].1.input_revision, rebound[0].1.input_revision);
+        let again = completed_receipts(&run, &data, observation)
+            .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        assert_eq!(again[0].1.input_revision, rebound[0].1.input_revision);
+        assert!(
+            revision_memo
+                .hits
+                .load(std::sync::atomic::Ordering::Relaxed)
+                > 0
+        );
         // An edit after the observation must rebind to fresh bytes, even
         // though this include was already inside an observed package root.
         assert!(std::fs::write(&external, "changed after observation").is_ok());
@@ -7509,6 +7641,7 @@ mod tests {
         assert!(completed_receipts(&run, &data, None).is_err());
         assert!(!run.join("committed.json").exists());
         assert!(std::fs::remove_dir_all(root).is_ok());
+        Ok(())
     }
 
     /// Issue #120: serde's build script writes `OUT_DIR/private.rs`, which
@@ -7829,17 +7962,58 @@ mod tests {
         assert_eq!(target_revision(&data, &bin), bin_before);
         assert_ne!(target_revision(&data, "app"), package_before);
         let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let revision_memo = RevisionMemo::default();
         let observation = Some(RevisionObservation {
             snapshot: &observed,
             stamp: stamp.as_ref(),
+            revisions: Some(&revision_memo),
         });
         let ids = vec![lib.clone(), bin.clone()];
         let projected = target_revisions(&data, &ids, observation);
         assert_eq!(projected, target_revisions(&data, &ids, None));
         assert_eq!(projected.get(&lib), Some(&lib_before));
+        assert_eq!(target_revisions(&data, &ids, observation), projected);
+        assert_eq!(
+            revision_memo
+                .hits
+                .load(std::sync::atomic::Ordering::Relaxed),
+            2
+        );
+        // New ancestor configuration is outside the package walk. Even if
+        // its creation leaves the original content capture unchanged, a
+        // cached projection must discover it exactly as a fresh one does.
+        std::fs::create_dir_all(root.join(".cargo"))?;
+        std::fs::write(root.join(".cargo/config.toml"), "[build]\njobs=1\n")?;
+        let configured = target_revisions(&data, &ids, observation);
+        assert_eq!(configured, target_revisions(&data, &ids, None));
+        assert_ne!(configured.get(&lib), projected.get(&lib));
+        std::fs::remove_dir_all(root.join(".cargo"))?;
+        let mut changed_selection = data.clone();
+        changed_selection["sail_invocation_directory"] = serde_json::json!(app.join("src"));
+        let hits = revision_memo
+            .hits
+            .load(std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(
+            target_revisions(&changed_selection, &ids, observation),
+            target_revisions(&changed_selection, &ids, None)
+        );
+        assert_eq!(
+            revision_memo
+                .hits
+                .load(std::sync::atomic::Ordering::Relaxed),
+            hits
+        );
         // Another target's source binds only that target and the targets
         // that link it (#401); the library binds the binary.
         write("src/bin/probe.rs", "fn main() { }")?;
+        assert_eq!(
+            target_revisions(&data, &ids, observation),
+            target_revisions(&data, &ids, None)
+        );
+        assert_ne!(
+            target_revisions(&data, &ids, observation).get(&bin),
+            projected.get(&bin)
+        );
         assert_eq!(target_revision(&data, &lib), lib_before);
         assert_ne!(target_revision(&data, &bin), bin_before);
         write("src/m.rs", "m2")?;
@@ -7980,9 +8154,11 @@ mod tests {
             );
         }
         let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let revision_memo = RevisionMemo::default();
         let observation = Some(RevisionObservation {
             snapshot: &observed,
             stamp: stamp.as_ref(),
+            revisions: Some(&revision_memo),
         });
         let ids = vec!["vstd".to_owned(), "app".to_owned()];
         assert!(super::super::input::snapshot_metadata_projected(&data, &[], &observed).is_some());

@@ -9,15 +9,34 @@ semantic versioning once the API is published.
   excluding sampler setup/teardown. Sampling controls no longer reach the
   child environment; invalid clocks retain a failed sample and refuse acceptance.
 
+
+- Keep working-directory and argument-specific managed observations in eight
+  bounded slots, so alternating workspace and member calls can retain their
+  own unchanged-call records. Replays republish their validated latest-context
+  views; proof receipts and Cargo targets stay shared.
+
+- Share target-revision projection work within one full managed call while
+  preserving fresh configuration discovery and the original source-stamp
+  check for every batch. Retries still read their own inputs.
+
+- Keep unchanged managed input, read-check and snapshot-hint sidecars in place
+  after comparing their complete serialized bytes. Input observations and
+  currentness checks still run on every full invocation.
+
+- Retain the final source mutation vector for unchanged-call recording from
+  the same keyed reads used by currentness, avoiding a second source stat
+  pass while preserving every replay and recording guard (#558).
 - Bind cached SMT command keys to their owned original input and independently
   acknowledged solver writes; freeze complete delivery before terminal metadata.
 - Preserve the release factory's proof evidence during native source sync,
   including root-owned evidence, while retaining tracked-source overrides.
+- Retain optional per-arm benchmark diagnostics, run notes and retention costs
+  with `SAIL_PERF_DIAG=1`, so replay and retained-restoration misses remain
+  diagnosable after benchmark caches are removed (#595).
 
 - Record sampled process-tree and daemon peak RSS, plus child high-water RSS,
   in real-project benchmark rows and reports on Linux and macOS. Existing
   reports remain readable with memory marked unavailable.
-
 - Use the same cache selection for `cargo xtask fetch-verus` and runtime
   lookup, including `SAIL_CACHE_DIR` (#581). Managed verification resolves
   symlinked cache roots before deriving compiler and proof paths (#601).

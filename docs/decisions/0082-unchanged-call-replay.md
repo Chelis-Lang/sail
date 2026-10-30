@@ -331,3 +331,32 @@ call (different streams and output mode). Anything a job consumer reads from
 a full recordable run, its result, its `context-ready` and `target-reused`
 events and its empty proof stream, a replay reproduces under its own run
 identity.
+
+## Implementation: invocation-local observations (2026-10-29)
+
+The context's invocation-dependent input state, build-environment query,
+unscheduled-script memo and read-check body have bounded slots keyed by the invoking directory and exact
+arguments. The slot uses the same digest as the snapshot hint. Proof contexts,
+receipts, target artifacts and every source/currentness check remain shared.
+A replay binds its own slot as a complete cache tree; it ignores other slots,
+which its full invocation does not read. There are at most eight slots, ordered
+by last full or replay use under the existing workspace/family owners.
+
+The context retains its latest input/read-check views for ordinary readers.
+Their complete entry names remain bound. Their bytes are derived from the
+call's independently content-bound slot: replay reads each body completely,
+checks its recorded digest, and atomically republishes those exact bytes before
+publishing the result or consumer events. Removal, damaged source copies,
+wrong slot selection or failed publication misses. No receipt or input check
+is omitted. Version 7 records this layout; earlier replay records miss.
+
+The recency list is scheduling data, excluded with the other slots. It confers
+no authority. Eviction removes a slot, so its old replay record misses; other
+slots' observations remain independently bound. Unknown names or links in the
+slot directory refuse slot use rather than being evicted. Cargo target/source
+exclusions and the two-second settle rule are unchanged.
+
+Cargo's build-script contract vector is sorted by complete unit identity before
+publication. No contract or field is dropped: identical fresh journals in another
+order retain identical bytes, including the compiler-family export. This is
+metadata determinism, not query normalization or reduced proof admission.

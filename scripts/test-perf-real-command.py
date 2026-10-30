@@ -35,6 +35,26 @@ class Commands(unittest.TestCase):
         self.assertIsNone(results[0]['control'])
         self.assertEqual(results[0]['argv'], ['literal argument'])
 
+    def test_diagnostics_are_opt_in_and_use_one_constant_arm_path(self):
+        text = Path(__file__).with_name('perf-real.sh').read_text()
+        function = 'diagnostic_environment()' + text.split('diagnostic_environment()', 1)[1].split('\nverus_cmd()', 1)[0]
+        probe = ('import json,os; print(json.dumps({k:v for k,v in os.environ.items() '
+                 'if k in ["SAIL_EXPLAIN","SAIL_JOB_EVENTS","SAIL_MANAGED_NOOP_TRACE","SAIL_SHIPPED_TRACE"]}))')
+        for flag, mode, enabled in [('0', 'sail', False), ('1', 'plain', False),
+                                     ('1', 'sail', True), ('1', 'fork-sail', True),
+                                     ('1', 'incremental', True)]:
+            env = {k: v for k, v in os.environ.items() if not k.startswith('SAIL_')}
+            env['SAIL_PERF_DIAG'] = flag
+            result = subprocess.run(['bash', '-c', function +
+                '\ndiagnostic_environment "$1" /constant/arm; python3 -c "$2"', 'bash', mode, probe],
+                env=env, capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            actual = json.loads(result.stdout)
+            expected = {'SAIL_EXPLAIN': '1', 'SAIL_JOB_EVENTS': '/constant/arm/events.jsonl',
+                        'SAIL_MANAGED_NOOP_TRACE': '/constant/arm/noop.trace',
+                        'SAIL_SHIPPED_TRACE': '/constant/arm/shipped'} if enabled else {}
+            self.assertEqual(actual, expected)
+
     def test_run_one_records_wrapped_failure_and_disabled_memory(self):
         text = Path(__file__).with_name('perf-real.sh').read_text()
         commands = 'measured()' + text.split('measured()', 1)[1].split('\nstats()', 1)[0]
@@ -67,6 +87,20 @@ class Commands(unittest.TestCase):
                 self.assertFalse(list((root / 'out/r1').glob('*.go')))
                 if enabled == '0':
                     self.assertEqual(row[-3:], ['NA', 'NA', 'NA'])
+
+    def test_full_path_profile_count_preserves_original_phase_and_disables_replay(self):
+        text = Path(__file__).with_name('perf-real.sh').read_text()
+        block = '  local noreplay=' + text.split('  local noreplay=', 1)[1].split('\n  case "$mode"', 1)[0]
+        for count, phases in [('0', []), ('1', ['unchanged-noreplay']),
+                              ('3', ['unchanged-noreplay', 'unchanged-noreplay2', 'unchanged-noreplay3'])]:
+            script = ('run_one() { printf "%s %s\\n" "$4" "$5"; }; '
+                      'profile() { local i round=1 mode=sail dir=/owned;\n' + block +
+                      '\n}; profile')
+            result = subprocess.run(['bash', '-c', script],
+                                    env=dict(os.environ, SAIL_PERF_NOREPLAY=count),
+                                    capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.splitlines(), [p + ' SAIL_MANAGED_NOOP=0' for p in phases])
 
     def run_command(self, mode, selector, baseline="", sample=False):
         text = Path(__file__).with_name("perf-real.sh").read_text()

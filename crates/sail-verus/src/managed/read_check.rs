@@ -13,7 +13,7 @@
 //! otherwise unchanged result reports Unknown.
 
 use super::InputSnapshot;
-use super::files::{digest, json};
+use super::files::digest;
 use super::input::proposed_order;
 use crate::{Error, Result};
 use sail_acceptance::inputs::{InputFact, InputValue, compare_readback};
@@ -47,21 +47,37 @@ struct Record {
 ///
 /// # Errors
 /// `SAIL3102` if the record cannot be written atomically.
+#[cfg(test)]
 pub(super) fn record(
     context: &Path,
     revision: &str,
     files: Vec<(PathBuf, Option<String>)>,
     bindings: BTreeMap<PathBuf, PathBuf>,
 ) -> Result<()> {
-    json(
-        &context.join(FILE),
-        &Record {
-            version: VERSION,
-            revision: revision.to_owned(),
-            files,
-            bindings,
-        },
-    )
+    record_in(context, None, revision, files, bindings)
+}
+
+/// Publish the latest-context view and the same exact body in its invocation
+/// slot. The slot is independently bound by an unchanged-call replay.
+pub(super) fn record_in(
+    context: &Path,
+    slot: Option<&Path>,
+    revision: &str,
+    files: Vec<(PathBuf, Option<String>)>,
+    bindings: BTreeMap<PathBuf, PathBuf>,
+) -> Result<()> {
+    let bytes = serde_json::to_vec(&Record {
+        version: VERSION,
+        revision: revision.to_owned(),
+        files,
+        bindings,
+    })
+    .map_err(|error| Error::new("SAIL3102", error.to_string()))?;
+    super::files::bytes_if_changed(&context.join(FILE), &bytes)?;
+    if let Some(slot) = slot {
+        super::files::bytes_if_changed(&slot.join(FILE), &bytes)?;
+    }
+    Ok(())
 }
 
 /// The recorded files of one run: the run's input digests narrowed to the
@@ -317,6 +333,7 @@ fn compare_observed(record: &Record, reads: &[(u8, &Path, Observation)]) -> (boo
 
 #[cfg(test)]
 mod tests {
+    use super::super::files::json;
     use super::*;
     type TestResult = std::result::Result<(), Box<dyn std::error::Error>>;
 

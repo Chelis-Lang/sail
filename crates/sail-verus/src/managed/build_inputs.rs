@@ -489,6 +489,16 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<bool
             .as_ref()
             .is_none_or(|(output, _)| output.parent().is_some_and(Path::is_dir))
     });
+    // Cargo's journal order varies even when every unit is fresh. Preserve
+    // every distinct contract in a stable order, so an unchanged observation
+    // does not invalidate another invocation's replay or family export.
+    previous.sort_by(|left, right| {
+        (&left.package_id, &left.unit_out_dir, &left.output).cmp(&(
+            &right.package_id,
+            &right.unit_out_dir,
+            &right.output,
+        ))
+    });
     super::files::json(path, &previous)?;
     Ok(complete)
 }
@@ -496,6 +506,62 @@ pub(super) fn update(path: &Path, artifacts: &Path, data: &Value) -> Result<bool
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn journal_order_does_not_change_any_retained_script_contract()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!("sail-script-order-{}", std::process::id()));
+        let build = root.join("target/debug/build");
+        let units = [("a-host", "a"), ("a-target", "a"), ("b-host", "b")];
+        for (unit, package) in units {
+            std::fs::create_dir_all(build.join(unit).join("out"))?;
+            std::fs::write(
+                build.join(unit).join("output"),
+                "cargo:rerun-if-changed=data.txt\n",
+            )?;
+            std::fs::create_dir_all(root.join(package))?;
+            std::fs::write(root.join(package).join("data.txt"), package)?;
+            std::fs::write(root.join(package).join("Cargo.toml"), "[package]\n")?;
+        }
+        let data = serde_json::json!({"packages":[
+            {"id":"a","name":"a","manifest_path":root.join("a/Cargo.toml"),
+                "targets":[{"kind":["custom-build"]}]},
+            {"id":"b","name":"b","manifest_path":root.join("b/Cargo.toml"),
+                "targets":[{"kind":["custom-build"]}]}
+        ]});
+        let entries: Vec<_> = units
+            .iter()
+            .map(|(unit, package)| {
+                serde_json::json!({"reason":"build-script-executed","package_id":package,
+                "out_dir":build.join(unit).join("out")})
+                .to_string()
+            })
+            .collect();
+        let artifacts = root.join("artifacts.jsonl");
+        let first = root.join("first.json");
+        let second = root.join("second.json");
+        std::fs::write(&artifacts, entries.join("\n"))?;
+        update(&first, &artifacts, &data)?;
+        std::fs::write(
+            &artifacts,
+            entries.into_iter().rev().collect::<Vec<_>>().join("\n"),
+        )?;
+        update(&second, &artifacts, &data)?;
+        assert_eq!(std::fs::read(&first)?, std::fs::read(&second)?);
+        let records = read::<Vec<BuildInput>>(&first).ok_or("records missing")?;
+        assert_eq!(records.len(), units.len());
+        assert_eq!(
+            records
+                .iter()
+                .map(|r| &r.output)
+                .collect::<BTreeSet<_>>()
+                .len(),
+            units.len()
+        );
+        assert_eq!(stale(&first, &data).0, Vec::<String>::new());
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
     #[test]
     fn unselected_workspace_scripts_do_not_require_an_observation() {
         let script = |id: &str| serde_json::json!({"id": id, "name": id, "targets": [{"kind": ["custom-build"]}]});
