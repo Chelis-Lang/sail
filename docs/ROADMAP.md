@@ -95,7 +95,8 @@ Current v0.2.0 implementation gates:
 | Final source-vector observation (#558) | Implemented; Anvil recording calls save 65 ms Linux / 44 ms Mac | Four-project first-unchanged parity remains open |
 | Invocation slots (#576) | Implemented; Mac Anvil/Vest alternation qualifies | Linux/Mac root/subdirectory controls pass; output exclusion separate |
 | Unqualified native Cargo (#561) | Implemented; Linux/Mac median within stock +0.1 s, no proof reuse; real Cargo 1.92 repeated human-output controls pass | Full fast/standard and all 21 mutants pass; deep release tiers remain |
-| Exact extra vstd profiles / settled digest observations | Owner-approved ADRs 0090/0091 (#618) | Independent implementation and native qualification |
+| Exact extra vstd profiles (#563) | ADR 0090 implemented; Linux/Mac factories and first-Serve pass; Linux cold pairs improve | Quiet Mac timing and final release gates; CapybaraKV/Anvil closures remain open |
+| Settled source / owned-target digests (#560) | ADR 0091 implemented as separate opt-ins; native component gates pass; Linux target pairs save 442 ms; Mac target settle guard refuses | Both default off; combined gates, platform selection and full release matrix |
 
 These component results do not establish v0.2.0 acceptance. The final release
 still needs the unchanged correctness tiers and six-round parity measurements.

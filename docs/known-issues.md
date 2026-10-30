@@ -262,3 +262,13 @@ custom wrappers keep the existing late no-reuse fallback. Its performance
 component timing qualifies on Linux and Mac; full native output and release
 qualification remain tracked in #561. See the
 [record](validation/unsupported-cargo-fallback.md).
+
+## Settled digest candidates
+
+The ADR 0091 switches remain off by default. The initial Linux source memo
+regresses warm Anvil time; the refined Mac source memo saves about 48 ms.
+The target memo saves about 442 ms on Linux but refuses publication on Mac
+because build-script directory full stamps change during unchanged calls.
+The two-second guard is retained. None of these component results establishes
+full-path parity or release acceptance
+([qualification](validation/settled-digest-observations.md)).
