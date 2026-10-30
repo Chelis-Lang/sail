@@ -13,6 +13,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 
 INTERVAL = 0.05
 
@@ -160,6 +161,7 @@ def run(args):
             with args.go.open('rb', buffering=0) as gate:
                 if not gate.read(1):
                     return 2
+        command_started = time.monotonic()
         try:
             child = subprocess.Popen(args.command)
         except OSError as error:
@@ -189,6 +191,7 @@ def run(args):
             sampler.start()
         try:
             _, wait_status, usage = os.wait4(child.pid, 0)
+            wall_seconds = time.monotonic() - command_started
             code = os.waitstatus_to_exitcode(wait_status)
             child.returncode = code
         finally:
@@ -201,6 +204,7 @@ def run(args):
                   'largest_kb': largest_kb(usage.ru_maxrss, sys.platform),
                   'daemon_peak_kb': tracker.daemon_peak,
                   'interval_ms': 50, 'samples': tracker.samples, 'exit': code}
+        result['wall_seconds'] = wall_seconds
         if errors:
             result.update(tree_peak_kb=None, daemon_peak_kb=None, errors=errors)
         if args.no_sample:

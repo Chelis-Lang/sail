@@ -322,3 +322,10 @@ For changes that overlap managed input checks and receipt reads, also run
 native host. It removes only the selected receipt, mutates the proof during the
 actual retry's Cargo cleanup, and requires a real failed proof with no Current
 result. This is a local acceptance control, outside CI and timed benchmarks.
+
+Real-project command clocks use the memory helper's monotonic spawn-to-child-
+exit interval, for sampled and disabled controls alike. Sampler preparation,
+completion inventory and teardown are outside that interval. The harness
+removes its `SAIL_PERF_MEMORY` switch before starting the command, preserving
+identical measured environments. Invalid timing is a retained failed sample.
+Older reports retain their original clock method; compare matching methods.

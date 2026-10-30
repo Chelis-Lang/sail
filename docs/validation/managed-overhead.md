@@ -448,7 +448,7 @@ not qualify memory overhead; its failed result remains in the memory record.
 ## Guarded package-local Cargo outputs (#576)
 
 Status: candidate; complete native gate/E2E/PR and Mac host controls pass.
-Full-fast/standard qualification remains pending. Ordinary source, declared
+Full-fast/standard qualification passes. Ordinary source, declared
 inputs and marker changes retain their existing checks. A physical package
 `target/` with the bounded regular Cargo marker can avoid irrelevant output
 churn only when no global package/target root or declared input conflicts.
@@ -478,3 +478,15 @@ Indexed attempts (2026-10-30): `f3f0aff5`, Clippy semicolon refusal;
 module path and similar names; `abf6361f`, incomplete positive metadata
 fixture supplied a null guard. The corrected fixtures retain all assertions;
 no lint is allowed or conformance check weakened.
+
+Final joined source `64145ee1`, native c7i.4xlarge/us-east-1: the full image
+gate passes 1,264 ordinary tests (54 skipped). All four full-fast arms match
+147/147 units and 3,451 functions; all four standard arms match 159/159 units
+and 13,166 functions. All 21 mutants and reverts agree. There are zero
+unstable/different/infrastructure errors or skipped projects; resource drift
+is separately reported for 11 fast and 17 standard units. The current-main
+restack changes no production Rust. These are correctness qualifications;
+quiet-host Mac timing and the final release matrix remain open.
+
+Final native gate/full-fast/standard/mutation log SHA-256:
+`84e16561f0425167828f72dfee01b8be92e41784ba1f9d3fbf7483853fe39314`.
