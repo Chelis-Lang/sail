@@ -146,9 +146,11 @@ fn mode(_: &std::fs::Metadata) -> Option<u32> {
 
 fn expected_files(bundle: &Path, manifest: &Manifest, members: &Files) -> Option<BTreeSet<String>> {
     let mut expected = BTreeSet::from(["manifest.json".to_owned(), "Cargo.lock".to_owned()]);
-    // A release may carry its default proof and one independently recorded
-    // raised-limit proof. Both keep exact keys and complete member admission.
-    if !(1..=2).contains(&manifest.units.len()) {
+    // Every exact profile keeps its own source policy and establishing run.
+    // The member ceiling is unchanged; a ninth proof unit is never admitted.
+    if !(1..=super::PROFILE_LIMIT).contains(&manifest.units.len())
+        || manifest.profiles.keys().ne(manifest.units.keys())
+    {
         return None;
     }
     for key in manifest.units.keys() {
@@ -164,6 +166,17 @@ fn expected_files(bundle: &Path, manifest: &Manifest, members: &Files) -> Option
         }
         let unit: Unit = serde_json::from_slice(&raw).ok()?;
         if unit.schema != SCHEMA || unit.key != *key || !unit.verifying || unit.crate_name != "vstd"
+        {
+            return None;
+        }
+        let profile = manifest.profiles.get(key)?;
+        if unit.establishing_run.is_empty()
+            || profile.establishing_run != unit.establishing_run
+            || profile.source_policy != unit.source_policy
+            || !unit
+                .source_policy
+                .as_deref()
+                .is_some_and(super::admission::known_policy)
         {
             return None;
         }
@@ -416,7 +429,8 @@ mod tests {
             let manifest = json!({
                 "schema":SCHEMA, "kind":super::super::KIND,
                 "identity":"identity", "runtime":"variant", "virtual_base":"/rustc-dev/test",
-                "units":{KEY:"vstd registry"}
+                "units":{KEY:"vstd registry"},
+                "profiles":{KEY:{"source_policy":super::super::admission::default_policy_sha256(), "establishing_run":"original"}}
             });
             fixture.add(
                 "deps/variant/manifest.json",
@@ -432,6 +446,7 @@ mod tests {
                 "schema":SCHEMA, "key":KEY, "crate_name":"vstd", "package":"vstd registry",
                 "verifying":true, "args":[], "environment":{}, "source_tree":{},
                 "establishing_run":"original", "compiler_reads":null,
+                "source_policy":super::super::admission::default_policy_sha256(),
                 "files":[file("libvstd.rmeta", b"metadata")], "dep_info":"", "sources":[],
                 "declared":[], "stdout":file("stdout", b"stdout"), "stderr":file("stderr", b"stderr")
             });
@@ -788,9 +803,9 @@ mod tests {
     }
 
     #[test]
-    fn two_profiles_bind_each_unit_and_reject_a_third() -> Result {
+    fn eight_profiles_bind_each_unit_and_reject_a_ninth() -> Result {
         let mut fixture = Installation::new()?;
-        for key in ["b".repeat(64), "c".repeat(64)] {
+        for key in ["b", "c", "d", "e", "f", "0", "1", "2"].map(|key| key.repeat(64)) {
             let original = fixture.bundle.join("units").join(KEY);
             for name in ["files/libvstd.rmeta", "stdout", "stderr"] {
                 fixture.add(
@@ -807,6 +822,10 @@ mod tests {
             let mut manifest: serde_json::Value =
                 serde_json::from_slice(&std::fs::read(fixture.bundle.join("manifest.json"))?)?;
             manifest["units"][&key] = json!("vstd registry");
+            manifest["profiles"][&key] = json!({
+                "source_policy":unit["source_policy"],
+                "establishing_run":unit["establishing_run"],
+            });
             fixture.add(
                 "deps/variant/manifest.json",
                 &serde_json::to_vec(&manifest)?,
@@ -820,7 +839,7 @@ mod tests {
                 std::fs::write(fixture.root.join(&name), raw)?;
                 assert!(fixture.admit().is_some());
             } else {
-                assert!(fixture.admit().is_none());
+                assert_eq!(fixture.admit().is_some(), !key.starts_with('2'));
             }
         }
         Ok(())

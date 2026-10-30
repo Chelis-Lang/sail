@@ -5,6 +5,13 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Record Vest's exact shipped-vstd source/features profile without changing
+  consumer manifests or locks. Each schema-13 unit binds its own closed source
+  policy and establishing run; releases admit at most eight explicit units.
+  Native factories and first-Serve pass on Linux and Mac; Linux cold-call
+  comparisons improve. Quiet-host Mac performance and release qualification
+  remain pending.
+
 - Remember a previously observed unqualified Cargo and take the existing
   no-reuse fallback before managed setup when its native tool identities,
   rustup selection, invocation, environment and metadata stamps still match.

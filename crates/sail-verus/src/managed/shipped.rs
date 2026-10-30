@@ -7,7 +7,7 @@
 //! installed sysroot, solver bytes and the recorded compiler environment.
 //!
 //! This reuses the original shipped-build serializer and source-path mapping;
-//! schema 12 also refuses raw encoded environment-value collisions. It neither
+//! schema 13 binds each exact source policy; schema 12 also refuses raw encoded environment-value collisions. It neither
 //! reads nor enables the quarantined machine-local v1 store. Explicit recording,
 //! machine-local and alternate-bundle modes require `SAIL_VSTD_BOUNDARY_RESEARCH=1`.
 //! A valid adjacent release index permits normal serving. Fresh native inputs
@@ -37,7 +37,7 @@ pub(crate) struct ContractSourceClosure(admission::Closure);
 /// Admit actual Cargo resolution against the independently qualified source policy.
 pub(crate) fn contract_source_closure(metadata: &Value) -> Option<ContractSourceClosure> {
     let registry = registry_dir(metadata)?;
-    admission::Closure::resolve(metadata, &registry).map(ContractSourceClosure)
+    admission::Closure::resolve_default(metadata, &registry).map(ContractSourceClosure)
 }
 
 impl ContractSourceClosure {
@@ -53,7 +53,8 @@ impl ContractSourceClosure {
 }
 
 /// Layout version of a shipped build and of its keys.
-const SCHEMA: u32 = 12;
+const SCHEMA: u32 = 13;
+const PROFILE_LIMIT: usize = 8;
 const KIND: &str = "sail-vstd-compile-boundary";
 const MANIFEST: &str = "manifest.json";
 const UNITS: &str = "units";
@@ -306,11 +307,21 @@ struct Manifest {
     virtual_base: String,
     /// Recorded invocations: key to `<crate> <package>`.
     units: BTreeMap<String, String>,
+    /// Each exact unit's independently confirmed source policy and run.
+    #[serde(default)]
+    profiles: BTreeMap<String, Profile>,
     /// The recording sysroot's [`sysroot_shape`], which lets a consumer whose
     /// sysroot differs refuse the proof before hashing it. Absent in bundles
     /// recorded before #286; those are decided by the complete identity alone.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     sysroot_shape: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Profile {
+    source_policy: Option<String>,
+    establishing_run: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -335,6 +346,8 @@ struct Unit {
     source_tree: BTreeMap<String, String>,
     /// Full invocation which originally established this complete proof.
     establishing_run: String,
+    /// The exact embedded policy in this unit's compiler-boundary key.
+    source_policy: Option<String>,
     /// Separate successful verification and erased-compiler input records.
     compiler_reads: Option<compiler::Document>,
     /// Compiler outputs, stored under `files/`; the dep-info is stored with
@@ -1101,6 +1114,7 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
         ))
     })?;
     let mut units = BTreeMap::new();
+    let mut profiles = BTreeMap::new();
     let mut verified = false;
     for entry in std::fs::read_dir(out.join(UNITS))
         .map_err(|e| failed(format!("{}: {e}", out.display())))?
@@ -1115,6 +1129,13 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
         )
         .map_err(|e| failed(format!("{name}: {e}")))?;
         verified |= unit.verifying;
+        profiles.insert(
+            name.clone(),
+            Profile {
+                source_policy: unit.source_policy,
+                establishing_run: unit.establishing_run,
+            },
+        );
         units.insert(name, format!("{} {}", unit.crate_name, unit.package));
     }
     if !verified {
@@ -1141,6 +1162,7 @@ pub(crate) fn finish_record(plan: &Plan, cargo_verus: &Path, workspace: &Path) -
         runtime,
         virtual_base: plan.virtual_base.clone(),
         units,
+        profiles,
         sysroot_shape: Some(sysroot_shape),
     };
     std::fs::write(
@@ -2368,6 +2390,11 @@ impl<'a> Call<'a> {
             environment: self.environment.clone(),
             source_tree: self.source_tree.clone().unwrap_or_default(),
             establishing_run: self.plan.run_id.clone(),
+            source_policy: self
+                .plan
+                .closure
+                .as_ref()
+                .map(|closure| closure.policy_sha256().to_owned()),
             compiler_reads,
             files,
             dep_info,
@@ -2577,7 +2604,16 @@ impl<'a> Call<'a> {
         let bytes = self.read_unit_bytes(entry, lookup.key)?;
         let unit: Unit = serde_json::from_slice(&bytes)
             .map_err(|e| Refusal::Damaged(format!("unreadable entry: {e}")))?;
-        if unit.schema != SCHEMA || unit.key != lookup.key || unit.verifying != self.verifying {
+        if unit.schema != SCHEMA
+            || unit.key != lookup.key
+            || unit.verifying != self.verifying
+            || unit.source_policy.as_deref()
+                != self
+                    .plan
+                    .closure
+                    .as_ref()
+                    .map(admission::Closure::policy_sha256)
+        {
             return Err(Refusal::Damaged("entry of another key".to_owned()));
         }
         if self
@@ -3273,6 +3309,7 @@ mod tests {
             runtime: "variant".into(),
             virtual_base: call.virtual_base.clone(),
             units: BTreeMap::new(),
+            profiles: BTreeMap::new(),
             sysroot_shape: None,
         };
         assert!(ordinary_serve(&call, &adjacent, &manifest));
@@ -3407,7 +3444,7 @@ mod tests {
                 sha256: digest(b"actual solver adapter A"),
             });
             machine.plan.closure = Some(serde_json::from_value(serde_json::json!({
-                "policy_sha256": "same-pinned-policy", "registry": machine.plan.registry,
+                "policy_sha256": admission::default_policy_sha256(), "registry": machine.plan.registry,
                 "packages": [policy["vstd"]],
             }))?);
         }
@@ -4184,6 +4221,7 @@ mod tests {
                 runtime: String::new(),
                 virtual_base: String::new(),
                 units: BTreeMap::new(),
+                profiles: BTreeMap::new(),
                 sysroot_shape: Some(sysroot_shape(sysroot).ok_or("no shape")?),
             })
         };

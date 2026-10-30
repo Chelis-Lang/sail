@@ -38,6 +38,7 @@ REGISTRY = 'registry+https://github.com/rust-lang/crates.io-index'
 VERUS_GIT_URL = 'https://github.com/verus-lang/verus.git'
 NAMES = {
     'boundary': 'vstd-boundary-inputs.json',
+    'boundary-vest': 'vstd-boundary-vest-inputs.json',
     'public': 'retained-public-inputs.json',
     'vest': 'retained-vest-inputs.json',
     'public-vest': 'retained-public-vest-inputs.json',
@@ -341,6 +342,25 @@ def public_vest_policy(work, env, crates, vstd, boundary, sources, commit, corpu
             'kind': 'sail-retained-public-vest-inputs', 'packages': packages, 'schema': 1, 'verus_source_commit': commit}
 
 
+def vest_boundary_policy(public):
+    """The exact current-pin registry Vest closure, without changing its features."""
+    packages = {}
+    for name, original in public['packages'].items():
+        assert original['origin']['kind'] == 'crates-io'
+        entry = {field: original[field] for field in
+                 ('name', 'version', 'features', 'files', 'compiler_files')}
+        entry['archive_sha256'] = original['origin']['archive_sha256']
+        if original['name'] == 'vstd':
+            entry['compiler_checksums'] = {
+                name: {'blake3': value['checksum'].removeprefix('blake3='), 'size': value['size']}
+                for name, value in entry['compiler_files'].items()}
+        packages[name] = entry
+    vstd = [name for name, package in packages.items() if package['name'] == 'vstd']
+    assert len(vstd) == 1
+    return {'kind': 'sail-vstd-boundary-source-policy', 'packages': packages,
+            'schema': 2, 'vstd': vstd[0]}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--verus-repo', type=Path, required=True, help="a Git clone holding the fork commit")
@@ -369,6 +389,8 @@ def main():
     outputs['vest'] = dump(official)
     sources = [sha256(outputs['boundary']), sha256(outputs['vest'])]
     outputs['public-vest'] = dump(public_vest_policy(work, env, crates, vstd, boundary, sources, commit, corpus))
+
+    outputs['boundary-vest'] = dump(vest_boundary_policy(json.loads(outputs['public-vest'])))
 
     differ = []
     for kind, data in outputs.items():
