@@ -1,5 +1,8 @@
 //! Cargo metadata and declared input revision tracking.
 
+#[cfg(all(test, unix))]
+mod cargo_outputs_tests;
+
 use super::files::{digest_all_tagged, read_outcome_keys_match};
 use crate::{Error, Result};
 use sail_acceptance::inputs::{
@@ -541,13 +544,250 @@ pub(super) fn hint_path(cache: &Path, invocation: &Path, args: &[String]) -> Pat
 
 /// The metadata fields [`snapshot_metadata_home`] reads, besides each
 /// package's `manifest_path`.
-pub(super) const SNAPSHOT_FIELDS: [&str; 5] = [
+pub(super) const SNAPSHOT_FIELDS: [&str; 6] = [
     "workspace_root",
     "sail_invocation_directory",
     "sail_cache_directory",
     "target_directory",
     "sail_source_inputs",
+    OUTPUT_GUARDS,
 ];
+
+pub(super) const OUTPUT_GUARDS: &str = "sail_cargo_output_guards";
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OutputGuards {
+    roots: Vec<PathBuf>,
+    extras: Vec<PathBuf>,
+}
+
+/// Preserve global source roots and script declarations when target metadata
+/// is narrowed. Missing or malformed guards retain the complete source walk.
+pub(super) fn output_guards(data: &Value, extras: &[PathBuf]) -> Value {
+    let guards = || -> Option<OutputGuards> {
+        let mut roots = Vec::new();
+        for package in data.get("packages")?.as_array()? {
+            roots.push(
+                Path::new(package.get("manifest_path")?.as_str()?)
+                    .parent()?
+                    .to_owned(),
+            );
+            for target in package.get("targets")?.as_array()? {
+                roots.push(PathBuf::from(target.get("src_path")?.as_str()?));
+            }
+        }
+        roots
+            .iter()
+            .chain(extras)
+            .all(|path| path.is_absolute())
+            .then_some(())?;
+        Some(OutputGuards {
+            roots,
+            extras: extras.to_vec(),
+        })
+    };
+    guards()
+        .and_then(|guards| serde_json::to_value(guards).ok())
+        .unwrap_or_default()
+}
+
+/// Per-package observer inputs. Target source roots prevent treating a source
+/// tree as Cargo output; other target metadata does not select this walk.
+pub(super) fn package_projection(package: &Value) -> Value {
+    let mut projected = serde_json::json!({"manifest_path":package["manifest_path"]});
+    if let Some(targets) = package.get("targets") {
+        projected["targets"] = targets.as_array().map_or_else(
+            || targets.clone(),
+            |targets| {
+                Value::Array(
+                    targets
+                        .iter()
+                        .map(|target| serde_json::json!({"src_path":target["src_path"]}))
+                        .collect(),
+                )
+            },
+        );
+    }
+    projected
+}
+
+// Cargo's marker is a routing hint, never source or proof authority. Actual
+// compiler/build-script declarations and target source roots still win.
+const CARGO_TAG: &[u8] = b"Signature: 8a477f597d28d172789f06886806bc55\n\
+# This file is a cache directory tag created by cargo.\n";
+
+struct CargoOutput {
+    directory: PathBuf,
+    tag: PathBuf,
+    digest: String,
+}
+
+impl CargoOutput {
+    fn admit(root: &Path, source_roots: &[PathBuf], declarations: &[PathBuf]) -> Option<Self> {
+        use std::io::Read as _;
+        let directory = root.join("target");
+        std::fs::symlink_metadata(&directory)
+            .ok()?
+            .is_dir()
+            .then_some(())?;
+        (directory.canonicalize().ok()? == directory).then_some(())?;
+        let tag = directory.join("CACHEDIR.TAG");
+        let mut bytes = Vec::new();
+        super::dependency_snapshot::open(&tag)?
+            .take(4097)
+            .read_to_end(&mut bytes)
+            .ok()?;
+        (bytes.len() <= 4096 && bytes.starts_with(CARGO_TAG)).then_some(())?;
+        let inside = |path: &Path| {
+            path.starts_with(&directory)
+                || path
+                    .canonicalize()
+                    .is_ok_and(|path| path.starts_with(&directory))
+        };
+        if source_roots.iter().any(|path| inside(path))
+            || declarations.iter().any(|path| {
+                inside(path)
+                    || (path.is_dir()
+                        && (directory.starts_with(path)
+                            || path
+                                .canonicalize()
+                                .is_ok_and(|path| directory.starts_with(path))))
+            })
+        {
+            return None;
+        }
+        Some(Self {
+            directory,
+            tag,
+            digest: super::files::digest(&bytes),
+        })
+    }
+}
+
+struct Exclusions {
+    paths: Vec<PathBuf>,
+    canonical: HashSet<PathBuf>,
+    outputs: Vec<CargoOutput>,
+}
+
+impl Exclusions {
+    fn new(data: &Value, extras: &[PathBuf], invocation: &Path) -> Self {
+        let outputs = Self::cargo_outputs(data, extras).unwrap_or_default();
+        let mut paths: Vec<_> = ["sail_cache_directory", "target_directory"]
+            .into_iter()
+            .filter_map(|name| data[name].as_str().map(|p| invocation.join(p)))
+            .chain(outputs.iter().map(|output| output.directory.clone()))
+            .collect();
+        if let Ok(path) = crate::cache_dir() {
+            paths.push(invocation.join(path));
+        }
+        paths.sort();
+        paths.dedup();
+        let canonical = paths
+            .iter()
+            .filter_map(|path| path.canonicalize().ok())
+            .collect();
+        Self {
+            paths,
+            canonical,
+            outputs,
+        }
+    }
+
+    fn cargo_outputs(data: &Value, extras: &[PathBuf]) -> Option<Vec<CargoOutput>> {
+        let global: OutputGuards = serde_json::from_value(data.get(OUTPUT_GUARDS)?.clone()).ok()?;
+        global
+            .roots
+            .iter()
+            .chain(&global.extras)
+            .all(|path| path.is_absolute())
+            .then_some(())?;
+        let packages = data.get("packages")?.as_array()?;
+        let roots: Vec<_> = packages
+            .iter()
+            .map(|package| {
+                Some(
+                    Path::new(package.get("manifest_path")?.as_str()?)
+                        .parent()?
+                        .to_owned(),
+                )
+            })
+            .collect::<Option<_>>()?;
+        let mut source_roots = roots.clone();
+        source_roots.extend(global.roots);
+        for package in packages {
+            for target in package.get("targets")?.as_array()? {
+                let path = PathBuf::from(target.get("src_path")?.as_str()?);
+                path.is_absolute().then_some(())?;
+                source_roots.push(path);
+            }
+        }
+        let declarations: Vec<_> = data
+            .get("sail_source_inputs")?
+            .as_array()?
+            .iter()
+            .map(|path| path.as_str().map(PathBuf::from))
+            .collect::<Option<_>>()?;
+        let declarations: Vec<_> = declarations
+            .into_iter()
+            .chain(global.extras)
+            .chain(extras.iter().cloned())
+            .collect();
+        Some(
+            roots
+                .iter()
+                .filter_map(|root| CargoOutput::admit(root, &source_roots, &declarations))
+                .collect(),
+        )
+    }
+
+    fn markers_match(&self, digests: &BTreeMap<PathBuf, String>) -> bool {
+        use std::io::Read as _;
+        self.outputs.iter().all(|output| {
+            if !std::fs::symlink_metadata(&output.directory).is_ok_and(|metadata| metadata.is_dir())
+                || !output
+                    .directory
+                    .canonicalize()
+                    .is_ok_and(|path| path == output.directory)
+            {
+                return false;
+            }
+            let digest = digests.get(&output.tag).cloned().or_else(|| {
+                let mut bytes = Vec::new();
+                super::dependency_snapshot::open(&output.tag)?
+                    .take(4097)
+                    .read_to_end(&mut bytes)
+                    .ok()?;
+                (bytes.len() <= 4096).then(|| super::files::digest(&bytes))
+            });
+            digest.as_ref() == Some(&output.digest)
+                && std::fs::symlink_metadata(&output.tag).is_ok_and(|metadata| metadata.is_file())
+        })
+    }
+
+    fn same_namespace(&self, selected: &HashSet<PathBuf>, observed: &InputSnapshot) -> bool {
+        let relevant = |path: &PathBuf| {
+            selected
+                .iter()
+                .any(|root| path.starts_with(root) || root.starts_with(path))
+        };
+        let previous: HashSet<_> = observed
+            .excluded
+            .iter()
+            .map(|path| path.canonicalize().unwrap_or_else(|_| path.clone()))
+            .filter(relevant)
+            .collect();
+        previous
+            == self
+                .paths
+                .iter()
+                .map(|path| path.canonicalize().unwrap_or_else(|_| path.clone()))
+                .filter(relevant)
+                .collect::<HashSet<_>>()
+            && self.markers_match(&observed.digests)
+    }
+}
 
 pub(super) fn snapshot_metadata_home(
     data: &Value,
@@ -653,20 +893,10 @@ fn stamped_snapshot(
     let mut files = Vec::new();
     let mut visited = Seen::new();
     let mut bindings = Bindings::default();
-    let mut excluded: Vec<PathBuf> = ["sail_cache_directory", "target_directory"]
-        .into_iter()
-        .filter_map(|name| data[name].as_str().map(|p| invocation.join(p)))
-        .collect();
-    if let Ok(path) = crate::cache_dir() {
-        excluded.push(invocation.join(path));
-    }
-    let excluded_canonical: HashSet<_> = excluded
-        .iter()
-        .filter_map(|p| p.canonicalize().ok())
-        .collect();
+    let exclusions = Exclusions::new(data, extras, invocation);
+    let excluded_canonical = &exclusions.canonical;
     visited.extend(excluded_canonical.iter().cloned());
-    excluded.sort();
-    excluded.dedup();
+    files.extend(exclusions.outputs.iter().map(|output| output.tag.clone()));
     let mut roots = Vec::new();
     let mut complete = !workspace.as_os_str().is_empty();
     for p in data["packages"].as_array().into_iter().flatten() {
@@ -720,6 +950,7 @@ fn stamped_snapshot(
     let original = OriginalCapture::begin(stamp_before.as_deref().map(str::as_bytes));
     let (revision, readable, digests) = contents_revision(&files, &bindings.paths);
     complete &= readable;
+    complete &= exclusions.markers_match(&digests);
     let stamp_after = stamp_paths(&observation_paths);
     let capture = SnapshotGuard::finish(
         original,
@@ -736,7 +967,7 @@ fn stamped_snapshot(
             workspace,
             revision,
             roots,
-            excluded,
+            excluded: exclusions.paths,
             complete,
             observation_paths,
             digests,
@@ -754,6 +985,7 @@ struct Projection {
     files: BTreeSet<PathBuf>,
     bindings: BTreeMap<PathBuf, PathBuf>,
     ranges: Vec<PathBuf>,
+    excluded: Vec<PathBuf>,
 }
 
 impl Projection {
@@ -899,7 +1131,7 @@ fn projected_snapshot(
         workspace: projection.workspace,
         revision,
         roots: projection.roots,
-        excluded: observed.excluded.clone(),
+        excluded: projection.excluded,
         complete,
         observation_paths,
         digests,
@@ -1019,6 +1251,10 @@ fn projected_selection(
         }
     }
     roots.extend(source_inputs);
+    let exclusions = Exclusions::new(data, extras, invocation);
+    if !exclusions.same_namespace(&selected, observed) {
+        return None;
+    }
     let contains = |path: &Path| path.ancestors().any(|parent| selected.contains(parent));
     // Disjoint canonical roots select contiguous ranges in Path's component
     // order. Avoid a per-file scan of all package roots or ancestor hashes.
@@ -1124,6 +1360,7 @@ fn projected_selection(
         files,
         bindings,
         ranges,
+        excluded: exclusions.paths,
     })
 }
 

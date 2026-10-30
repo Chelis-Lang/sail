@@ -2903,7 +2903,7 @@ fn target_revision_with(
         .into_iter()
         .flatten()
         .filter(|p| p["id"].as_str().is_some_and(|id| closure.contains(id)))
-        .map(|p| serde_json::json!({ "manifest_path": p["manifest_path"] }))
+        .map(super::input::package_projection)
         .collect();
     package_data["packages"] = Value::Array(packages);
     if let Some(observed) = data["sail_source_inputs_by_package"].as_object() {
@@ -3659,6 +3659,7 @@ fn run_recorded(
     extras.extend(native_includes.iter().cloned());
     extras.extend(script_roots.clone());
     let extras = ordered_extras(extras);
+    data[super::input::OUTPUT_GUARDS] = super::input::output_guards(&data, &extras);
     let selection = super::input::SnapshotHint {
         version: super::input::SNAPSHOT_HINT_VERSION,
         projection: snapshot_projection(&data, &data["sail_source_inputs"]),
@@ -4071,6 +4072,8 @@ fn run_recorded(
         after_data["sail_invocation_directory"] = data["sail_invocation_directory"].clone();
         after_data["sail_build_environment"] = data["sail_build_environment"].clone();
         after_data["sail_source_inputs"] = sources;
+        after_data[super::input::OUTPUT_GUARDS] =
+            super::input::output_guards(&after_data, &after_extras);
         after_data["sail_source_inputs_by_package"] =
             serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
         after_data["sail_source_inputs_by_target"] =
@@ -4580,7 +4583,7 @@ fn snapshot_projection(data: &Value, sources: &Value) -> Value {
                 .as_array()
                 .into_iter()
                 .flatten()
-                .map(|p| serde_json::json!({ "manifest_path": p["manifest_path"] }))
+                .map(super::input::package_projection)
                 .collect(),
         ),
     );
@@ -4589,19 +4592,20 @@ fn snapshot_projection(data: &Value, sources: &Value) -> Value {
 
 /// Whether two metadata documents select the same snapshot, given the same
 /// invocation and cache directories and source inputs: the same workspace
-/// root, target directory and package manifests, in the same order.
+/// root, target directory, package source roots and global output guards.
 fn same_snapshot_selection(before: &Value, after: &Value) -> bool {
-    let manifests = |data: &Value| -> Vec<Value> {
+    let packages = |data: &Value| -> Vec<Value> {
         data["packages"]
             .as_array()
             .into_iter()
             .flatten()
-            .map(|p| p["manifest_path"].clone())
+            .map(super::input::package_projection)
             .collect()
     };
     before["workspace_root"] == after["workspace_root"]
         && before["target_directory"] == after["target_directory"]
-        && manifests(before) == manifests(after)
+        && before[super::input::OUTPUT_GUARDS] == after[super::input::OUTPUT_GUARDS]
+        && packages(before) == packages(after)
 }
 
 /// The inputs observed after a run's invocation (see `run_engine_held`).
@@ -7818,6 +7822,14 @@ mod tests {
             packages.pop();
         }
         assert!(!same_snapshot_selection(&before, &fewer));
+        let mut widened = before.clone();
+        widened["packages"][0]["targets"][0]["src_path"] =
+            serde_json::json!(app.join("target/source.rs"));
+        assert!(!same_snapshot_selection(&before, &widened));
+        widened = before.clone();
+        widened[super::super::input::OUTPUT_GUARDS] =
+            serde_json::json!({"roots":[app], "extras":extras});
+        assert!(!same_snapshot_selection(&before, &widened));
         let mut moved = after;
         moved["target_directory"] = Value::String("elsewhere".into());
         assert!(!same_snapshot_selection(&before, &moved));

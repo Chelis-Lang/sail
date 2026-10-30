@@ -360,3 +360,47 @@ Cargo's build-script contract vector is sorted by complete unit identity before
 publication. No contract or field is dropped: identical fresh journals in another
 order retain identical bytes, including the compiler-family export. This is
 metadata determinism, not query normalization or reduced proof admission.
+
+## Amendment: marked package-local Cargo outputs (2026-10-29, #576)
+
+The authorized #576 implementation may leave a package's physical `target/`
+output directory out of the source walk and its replay vector only when its
+regular, non-aliased `CACHEDIR.TAG` carries Cargo's signature/creator prefix.
+A name alone never qualifies. The marker is bounded, read without following
+links or blocking on special files, and retained by complete bytes/digest and
+full stat stamp. Its originally admitted bytes must equal the captured bytes.
+No parent source directory, source/configuration file or declared input is
+removed from its ordinary binding.
+
+Refuse this exclusion when any resolved package root, Cargo target's source
+root, compiler-declared input or build-script declared input falls in it.
+A declared directory covering the candidate also refuses it. Explicit inputs
+are independently collected even beneath excluded output directories, as before.
+New compiler/script declarations widen the after-run observation; they cannot
+project old unread bytes or establish Current under a changed namespace.
+Target-source paths therefore remain part of the private snapshot projection.
+Global package/target roots and script declarations remain in a separate
+private projection field when a target narrows its package or include list.
+Missing or malformed global guards retain the complete walk.
+Projection reuse checks the exact relevant exclusion set and marker bytes.
+The marker remains in the full source observation and replay vector. Scoped
+proof revisions retain their existing declared-input selection: an unrelated
+marker change must not request verification when Cargo performs no compilation.
+The marker's bounded byte read is still checked inside the original stamp
+bracket when that scoped revision does not include its digest.
+
+Cargo's marker is a routing hint, not proof authority. Cargo freshness uses
+source dep-info and script declarations rather than arbitrary output contents;
+the complete Currentness, receipt, native/artifact, environment and output
+checks remain. Cargo output churn may preserve a replay only after a complete
+Current observation with this exclusion. Removing/changing the marker, adding
+a protected source/declaration, an alias, malformed metadata or any ambiguity
+keeps the full walk. Nondefault output directories remain bound.
+
+First creation of `target/` still changes its parent and may require a full
+call. A newly discovered include beneath it may require another observation
+before Current can be established. A virtual workspace's root outputs that
+were already outside package source walks do not gain a new marker input.
+No settle interval, recording predicate, transcript or verdict is changed.
+The implementation remains a candidate until native controls, real pinned
+Cargo output/replay comparisons, full E2E and conformance qualify it.

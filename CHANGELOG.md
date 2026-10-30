@@ -30,8 +30,18 @@ semantic versioning once the API is published.
 - Retain the final source mutation vector for unchanged-call recording from
   the same keyed reads used by currentness, avoiding a second source stat
   pass while preserving every replay and recording guard (#558).
+- Preserve unchanged-call replay across writes to an existing package-local
+  Cargo `target/` only when its physical Cargo marker qualifies and no source
+  or declared input is inside; marker changes and ambiguity keep full checks.
 - Bind cached SMT command keys to their owned original input and independently
   acknowledged solver writes; freeze complete delivery before terminal metadata.
+- Answer Cargo-Verus's own `cargo metadata` call from Sail's identical read in
+  the same managed run when program, arguments, directory, effective
+  environment and every stamped metadata and toolchain input match; anything
+  else runs Cargo. `SAIL_MANAGED_METADATA_MEMO=0` turns this off and
+  `SAIL_MANAGED_METADATA_MEMO_TRACE=FILE` checks it against real Cargo. Skip
+  receipt reads and the dep-info walk when their results would go unused
+  (#560).
 - Preserve the release factory's proof evidence during native source sync,
   including root-owned evidence, while retaining tracked-source overrides.
 - Retain optional per-arm benchmark diagnostics, run notes and retention costs
@@ -614,10 +624,6 @@ known issues.
 
 - Reserve dependency-publication staging directories exclusively, leaving
   another publisher’s files untouched on a collision.
-- Compare standalone verification-progress notes independent of worker order,
-  with exact text and counts, under the owner-approved VI-0012 exception.
-  Verdicts, errors and other output retain their exact checks.
-
 - Discover initial watch inputs before starting filesystem notifications.
   Cargo's startup creation of `Cargo.lock` no longer cancels the first
   verification when macOS delivers that notification late. Later input edits
