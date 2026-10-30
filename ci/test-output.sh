@@ -361,6 +361,10 @@ echo "e2e: seeded mutants ($smoke_mutants), their reverts, unchanged and forced 
 # `option_env!` read the compiler's arguments and environment; each proof
 # holds only if Sail adds something plain Cargo-Verus does not give it. Both
 # sides must reject all three, plain and with `--output json`.
+# This witness deliberately asserts that no managed setting exists. Keep
+# its original clean-environment assertion, even during opt-in qualification.
+# The independent ambient case below checks the caller-visible settings too.
+(
 cp Cargo.toml "$work/Cargo.toml.keep"
 cp Cargo.lock "$work/Cargo.lock.keep"
 cp src/lib.rs "$work/lib.rs.keep"
@@ -411,6 +415,8 @@ proof fn injected_runtime_is_present() {
 
 } // verus!
 RS
+(
+unset SAIL_MANAGED_SOURCE_DIGEST_MEMO SAIL_MANAGED_TARGET_DIGEST_MEMO
 plain_run visible-plain stock_cargo verus verify
 sail_run visible-sail "$sail" verify
 same visible-plain visible-sail
@@ -418,10 +424,21 @@ grep -q "verification results:: 0 verified, 3 errors" "$work/visible-plain.out"
 CARGO_TARGET_DIR="$work/target-plain" quiet_run visible-again stock_cargo verus verify
 CARGO_TARGET_DIR="$work/target-sail" quiet_run visible-json "$sail" verify --output json
 same visible-again visible-json "rc err"
+)
+if [ "${SAIL_MANAGED_SOURCE_DIGEST_MEMO:-}" = 1 ] || [ "${SAIL_MANAGED_TARGET_DIGEST_MEMO:-}" = 1 ]; then
+  # A macro's untracked environment scan cannot invalidate Cargo itself.
+  # Change source bytes for a genuinely new compilation of this caller case.
+  printf '\n// Explicit opt-in caller witness.\n' >> src/lib.rs
+  plain_run visible-optin-plain stock_cargo verus verify
+  sail_run visible-optin-sail "$sail" verify
+  same visible-optin-plain visible-optin-sail
+  grep -q "verification results:: 1 verified, 2 errors" "$work/visible-optin-plain.out"
+fi
 cp "$work/Cargo.toml.keep" Cargo.toml
 cp "$work/Cargo.lock.keep" Cargo.lock
 cp "$work/lib.rs.keep" src/lib.rs
 rm -r witness
+)
 echo "e2e: the compiler's arguments and environment as plain cargo verus verify gives them (#385, #393)"
 
 fi

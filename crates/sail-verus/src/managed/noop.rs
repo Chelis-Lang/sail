@@ -486,12 +486,14 @@ fn per_run(path: &Path, context: &Path, family: &Path, slot: Option<&Path>) -> b
     let (Some(parent), Some(name)) = (path.parent(), path.file_name()) else {
         return false;
     };
-    (parent == context
-        && (name == RUNTIME
-            || slot.is_some()
-                && super::invocation_slots::VIEWS
-                    .iter()
-                    .any(|view| name == *view)))
+    (slot.is_some_and(|slot| parent == slot)
+        && (name == super::digest_memo::FILE || name == super::target_digest_memo::FILE))
+        || (parent == context
+            && (name == RUNTIME
+                || slot.is_some()
+                    && super::invocation_slots::VIEWS
+                        .iter()
+                        .any(|view| name == *view)))
         || (parent == family && name == super::transport::FILE)
 }
 

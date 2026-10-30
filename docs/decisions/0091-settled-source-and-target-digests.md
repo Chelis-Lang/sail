@@ -1,6 +1,6 @@
 # 0091: Settled source and owned-target digest observations
 
-- **Status:** accepted by the owner on 2026-10-29; separate implementation qualification pending
+- **Status:** accepted by the owner on 2026-10-29; opt-in implementation qualified; platform selection pending
 - **Date:** 2026-10-29
 - **Amends:** [ADR 0082](0082-unchanged-call-replay.md), [freshness](../freshness.md)
 - **Tracks:** [#560](https://github.com/Chelis-Lang/sail/issues/560)

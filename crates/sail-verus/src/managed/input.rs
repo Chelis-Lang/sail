@@ -41,6 +41,7 @@ pub struct InputSnapshot {
 pub(super) struct SnapshotGuard {
     guard: OriginalGuard,
     paths: Arc<BTreeSet<PathBuf>>,
+    source: Option<Arc<super::digest_memo::Source>>,
 }
 
 impl Clone for SnapshotGuard {
@@ -48,6 +49,7 @@ impl Clone for SnapshotGuard {
         Self {
             guard: self.guard.duplicate(),
             paths: Arc::clone(&self.paths),
+            source: self.source.clone(),
         }
     }
 }
@@ -58,12 +60,14 @@ impl SnapshotGuard {
         after: Option<&str>,
         revision: &str,
         paths: &BTreeSet<PathBuf>,
+        source: Option<Arc<super::digest_memo::Source>>,
     ) -> Option<Self> {
         original
             .finish(after.map(str::as_bytes), revision.as_bytes())
             .map(|guard| Self {
                 guard,
                 paths: Arc::new(paths.clone()),
+                source,
             })
     }
 }
@@ -171,6 +175,7 @@ fn project_guard_facts(
     Some(SnapshotGuard {
         guard,
         paths: Arc::clone(&capture.paths),
+        source: capture.source.clone(),
     })
 }
 
@@ -544,13 +549,14 @@ pub(super) fn hint_path(cache: &Path, invocation: &Path, args: &[String]) -> Pat
 
 /// The metadata fields [`snapshot_metadata_home`] reads, besides each
 /// package's `manifest_path`.
-pub(super) const SNAPSHOT_FIELDS: [&str; 6] = [
+pub(super) const SNAPSHOT_FIELDS: [&str; 7] = [
     "workspace_root",
     "sail_invocation_directory",
     "sail_cache_directory",
     "target_directory",
     "sail_source_inputs",
     OUTPUT_GUARDS,
+    super::digest_memo::FIELD,
 ];
 
 pub(super) const OUTPUT_GUARDS: &str = "sail_cargo_output_guards";
@@ -946,9 +952,10 @@ fn stamped_snapshot(
     );
     let observation_paths = path_set(observation_paths);
     let files = RevisionScope::retain(data, path_set(files));
-    let stamp_before = stamp_paths(&observation_paths);
+    let (stamp_before, source) = source_before(data, &files, &bindings.paths, &observation_paths);
     let original = OriginalCapture::begin(stamp_before.as_deref().map(str::as_bytes));
-    let (revision, readable, digests) = contents_revision(&files, &bindings.paths);
+    let (revision, readable, digests) =
+        contents_with_memo(&files, &bindings.paths, source.as_deref());
     complete &= readable;
     complete &= exclusions.markers_match(&digests);
     let stamp_after = stamp_paths(&observation_paths);
@@ -957,6 +964,7 @@ fn stamped_snapshot(
         stamp_after.as_deref(),
         &revision,
         &observation_paths,
+        source,
     );
     complete &= capture.is_some();
     complete &= bindings_current(&bindings.paths);
@@ -979,6 +987,67 @@ fn stamped_snapshot(
 }
 
 /// The selected namespace, validated against one complete source observation.
+/// Publish only from the caller's successful complete Current observation.
+/// The source stamps were captured around these original content reads.
+pub(super) fn publish_source_digests(
+    snapshot: &InputSnapshot,
+    run: &str,
+    started: std::time::SystemTime,
+) {
+    if snapshot.complete
+        && let Some(source) = snapshot
+            .capture
+            .as_ref()
+            .and_then(|capture| capture.source.as_ref())
+    {
+        source.publish(&snapshot.digests, run, started);
+    }
+}
+
+#[cfg(unix)]
+fn source_before(
+    data: &Value,
+    files: &BTreeSet<PathBuf>,
+    bindings: &BTreeMap<PathBuf, PathBuf>,
+    observed: &BTreeSet<PathBuf>,
+) -> (Option<String>, Option<Arc<super::digest_memo::Source>>) {
+    let path = super::digest_memo::enabled()
+        .then(|| data[super::digest_memo::FIELD].as_str())
+        .flatten();
+    let Some(path) = path else {
+        return (stamp_paths(observed), None);
+    };
+    let names: Vec<_> = observed.iter().map(PathBuf::as_path).collect();
+    let stats = crate::parallel::in_order(&names, |&path| (path, std::fs::symlink_metadata(path)));
+    let stamp = stamp_readback(observed, &stats);
+    let regular = stats
+        .iter()
+        .filter_map(|(path, metadata)| {
+            let metadata = metadata.as_ref().ok()?;
+            metadata
+                .is_file()
+                .then(|| (path.to_path_buf(), super::noop::Stamp::of(metadata)))
+        })
+        .collect();
+    let source = stamp
+        .as_ref()
+        .and_then(|_| {
+            super::digest_memo::Source::new(PathBuf::from(path), files, bindings, regular)
+        })
+        .map(Arc::new);
+    (stamp, source)
+}
+
+#[cfg(not(unix))]
+fn source_before(
+    _data: &Value,
+    _files: &BTreeSet<PathBuf>,
+    _bindings: &BTreeMap<PathBuf, PathBuf>,
+    observed: &BTreeSet<PathBuf>,
+) -> (Option<String>, Option<Arc<super::digest_memo::Source>>) {
+    (stamp_paths(observed), None)
+}
+
 struct Projection {
     workspace: PathBuf,
     roots: Vec<PathBuf>,
@@ -1510,6 +1579,30 @@ fn contents_revision(
 ) -> (String, bool, BTreeMap<PathBuf, String>) {
     let paths: Vec<&Path> = files.iter().map(PathBuf::as_path).collect();
     fold_contents(files, bindings, digest_all_tagged(&paths))
+}
+
+fn contents_with_memo(
+    files: &BTreeSet<PathBuf>,
+    bindings: &BTreeMap<PathBuf, PathBuf>,
+    source: Option<&super::digest_memo::Source>,
+) -> (String, bool, BTreeMap<PathBuf, String>) {
+    let cached = source
+        .and_then(super::digest_memo::Source::read)
+        .filter(|cached| !cached.is_empty());
+    match cached {
+        Some(cached) => {
+            let paths: Vec<_> = files.iter().map(PathBuf::as_path).collect();
+            let reads = crate::parallel::in_order(&paths, |&path| {
+                let digest = cached
+                    .get(path)
+                    .cloned()
+                    .map_or_else(|| super::files::file_digest(path), Ok);
+                (path, digest)
+            });
+            fold_contents(files, bindings, reads)
+        }
+        None => contents_revision(files, bindings),
+    }
 }
 
 fn fold_contents<'a, S: AsRef<str>>(

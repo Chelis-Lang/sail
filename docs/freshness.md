@@ -102,10 +102,10 @@ run of that context yet), requests never coalesce.
 
 ## How a run decides it is Current
 
-Every verification call reads the current input bytes. Its checks can share a
+By default, every verification call reads the current input bytes. Its checks can share a
 complete source observation within that call while the original mutation
 stamps and selected paths still agree. Changes, newly discovered inputs,
-uncovered aliases or incomplete coverage require fresh reads. Source hashes
+uncovered aliases or incomplete coverage require fresh reads. Default source hashes
 are not carried between calls, and compiler identity checks still read the
 actual compiler bytes.
 
@@ -623,3 +623,25 @@ source/configuration paths and script/compiler declarations always win. A
 missing or changed marker, unknown metadata or aliases keep the complete walk.
 First creation of the directory may still require a full call. See the
 [ADR 0082 amendment](decisions/0082-unchanged-call-replay.md#amendment-marked-package-local-cargo-outputs-2026-10-29-576).
+
+## Settled source observation prototype
+
+The default still reads source contents afresh. The opt-in
+`SAIL_MANAGED_SOURCE_DIGEST_MEMO=1` candidate implements the owner-approved
+[ADR 0091](decisions/0091-settled-source-and-target-digests.md): fresh namespace
+and alias discovery, complete original stat equality, successful Current
+provenance and the original two-second settle rule guard individual source
+digests across calls. Unknown data, changed entries, retries and forced calls
+read afresh. Source and target optimizations require separate platform
+qualification; see the [record](validation/settled-digest-observations.md).
+
+The separate `SAIL_MANAGED_TARGET_DIGEST_MEMO=1` candidate additionally
+requires a freshly matched complete owned target, exact receipt bytes and
+complete source/metadata/context bindings. It retains dirty cleanup and
+refuses aliases or any changed entry. Pure receipt projections also bind their
+exact original selection and target keys; each batch still checks the fresh
+source observation. Native component gates pass; corrected Linux warm Anvil pairs save about 0.43 s.
+The Mac target candidate refuses because build-script directory stamps change
+during unchanged calls. Both switches remain off by default; neither result
+establishes release parity. See the separate scopes in the
+[qualification record](validation/settled-digest-observations.md).
