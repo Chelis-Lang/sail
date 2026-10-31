@@ -81,6 +81,12 @@ The service-wide acceptance theorem is not complete
 
 Current numbers are in [performance](performance.md).
 
+- The [broader algorithm/corpus candidate](validation/general-performance.md)
+  is not qualified for selection. Its first new temporal-logic loop correctly
+  refuses an invalid final edit (nat addition assigned to int); the corrected
+  local passes a minimal stock control, with the real loop rerun pending.
+  Native before/after, held-out and macOS gates remain separate.
+
 - **The first unchanged call after a verification is slower than stock**
   ([#558](https://github.com/Chelis-Lang/sail/issues/558)). It takes the full path and records
   the replay: on macOS 0.1.0 (measured as `0.1.0-rc.7`), Anvil 2.11 s

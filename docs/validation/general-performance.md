@@ -67,6 +67,15 @@ it supplies no complete-key or restoration acceptance.
 
 ## Failed attempts
 
+- 2026-10-31, `b9466ece` benchmark with first external loop catalogue: the four
+  arithmetic edit expectations and first five temporal-logic expectations
+  pass; the final refinement matches stock's compiler failure and refuses
+  its expected-positive outcome. Stock's minimal reproduction
+  reports E0308 (`nat` addition assigned to `int`), zero verified/functions
+  and zero verification errors. The matching nat local passes a native minimal control; the real loop rerun remains pending. Do not
+  count the matching compiler failure as passing edit qualification. See
+  [VI-0038](../verus-issues/VI-0038-literal-addition-infers-nat.md).
+
 - 2026-10-31, `b9466ece` diagnostic controller: perf discovery did not follow
   the installed kernel-tools directory symlink; the retry then lacked an
   explicit shipped vstd lock beside its wrapper. Both refused before a timed
