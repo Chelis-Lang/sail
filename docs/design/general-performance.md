@@ -105,8 +105,8 @@ restoration before another performance experiment, not after it.
 
 The bounded finer per-artifact digest proposal in
 [ADR 0092](../decisions/0092-per-file-owned-target-digests.md) amends
-[ADR 0091](../decisions/0091-settled-source-and-target-digests.md) and requires
-concrete owner approval before implementation/adoption. It must preserve fresh
+[ADR 0091](../decisions/0091-settled-source-and-target-digests.md) and has owner approval for the bounded prototype. Implementation and native
+qualification remain separate from platform selection. It must preserve fresh
 complete namespace/binding discovery, original full stamps, the original
 two-second rule, Current provenance, changed/unsettled fresh reads and dirty
 cleanup. The current candidate does not implement or authorize that extension.

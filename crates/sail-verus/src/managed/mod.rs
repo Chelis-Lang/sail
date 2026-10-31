@@ -11,6 +11,7 @@ mod dependency_snapshot;
 mod diagnostics;
 mod digest_memo;
 mod environment;
+mod file_target_digest_memo;
 mod files;
 mod freshness;
 pub(crate) mod ghost_environment;

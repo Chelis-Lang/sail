@@ -2058,6 +2058,7 @@ fn receipt_covered_targets(
 #[derive(Clone, Copy)]
 struct RevisionObservation<'a> {
     target_memo: Option<&'a TargetDigestRequest>,
+    file_target_memo: Option<&'a FileTargetDigestRequest>,
     snapshot: &'a super::input::InputSnapshot,
     stamp: Option<&'a String>,
     /// Only this invocation's original observation shares projection work.
@@ -2068,6 +2069,13 @@ struct TargetDigestRequest {
     file: PathBuf,
     started: SystemTime,
     records: std::sync::Arc<super::observations::JsonRecord<super::target_digest_memo::Record>>,
+}
+
+struct FileTargetDigestRequest {
+    file: PathBuf,
+    started: SystemTime,
+    records:
+        std::sync::Arc<super::observations::JsonRecord<super::file_target_digest_memo::Record>>,
 }
 
 fn target_digest_candidate(
@@ -2107,11 +2115,47 @@ fn target_digest_observation(
 ) -> Option<super::target_digest_memo::Candidate> {
     let source = observation?;
     let request = source.target_memo?;
+    let binding = target_digest_binding(paths, data, context, source)?;
+    super::target_digest_memo::Candidate::begin(
+        &paths.target,
+        request.file.clone(),
+        binding,
+        request.started,
+        std::sync::Arc::clone(&request.records),
+    )
+}
+
+fn file_target_digest_candidate(
+    paths: &Paths,
+    data: &Value,
+    context: &str,
+    observation: Option<RevisionObservation<'_>>,
+) -> Option<super::file_target_digest_memo::Candidate> {
+    let source = observation?;
+    let request = source.file_target_memo?;
+    if !source.snapshot.complete || !super::input::unchanged_since(source.snapshot, source.stamp) {
+        return None;
+    }
+    super::file_target_digest_memo::Candidate::begin(
+        &paths.target,
+        request.file.clone(),
+        target_digest_binding(paths, data, context, source)?,
+        request.started,
+        std::sync::Arc::clone(&request.records),
+    )
+}
+
+fn target_digest_binding(
+    paths: &Paths,
+    data: &Value,
+    context: &str,
+    source: RevisionObservation<'_>,
+) -> Option<String> {
     if !source.snapshot.complete {
         return None;
     }
     let receipts = super::target_digest_memo::receipt_binding(&paths.receipts)?;
-    let binding = super::files::json_digest(&(
+    super::files::json_digest(&(
         context,
         &paths.target,
         data,
@@ -2122,14 +2166,7 @@ fn target_digest_observation(
         source.stamp?,
         receipts,
     ))
-    .ok()?;
-    super::target_digest_memo::Candidate::begin(
-        &paths.target,
-        request.file.clone(),
-        binding,
-        request.started,
-        std::sync::Arc::clone(&request.records),
-    )
+    .ok()
 }
 
 /// Pure target projections from one complete source observation. Every batch
@@ -2226,6 +2263,7 @@ fn dirty_receipt_packages(
 /// Internal admission facts, kept separate from the serialized user result.
 struct RecordedTargets {
     target_digests: Option<super::target_digest_memo::Pending>,
+    file_target_digests: Option<super::file_target_digest_memo::Pending>,
     targets: Vec<TargetResult>,
     missing: BTreeSet<String>,
     /// Names required by exactly the proof records admitted for this result.
@@ -2320,15 +2358,30 @@ fn target_records_in(
     // Each stored receipt is read once, and every file that the receipts and
     // the produced artifacts bind is read in one overlapping batch: a
     // dependency's artifacts are also each dependent's inputs.
-    let target_candidate = (!force)
-        .then(|| target_digest_candidate(paths, data, context, observation))
+    let mut file_target_candidate = (!force)
+        .then(|| file_target_digest_candidate(paths, data, context, observation))
         .flatten();
-    let digests = PhaseDigests::observed(
+    let target_candidate = (!force)
+        .then(|| {
+            if file_target_candidate.is_some() {
+                // Pure revision publication only: the finer candidate has just
+                // checked the complete source. Do not import whole-tree digest
+                // values without their original per-file read provenance.
+                target_digest_observation(paths, data, context, observation)
+            } else {
+                target_digest_candidate(paths, data, context, observation)
+            }
+        })
+        .flatten();
+    let observed = if let Some(candidate) = &mut file_target_candidate {
+        candidate.read().unwrap_or_default()
+    } else {
         target_candidate
             .as_ref()
             .and_then(super::target_digest_memo::Candidate::read)
-            .unwrap_or_default(),
-    );
+            .unwrap_or_default()
+    };
+    let digests = PhaseDigests::observed(observed);
     let mut stored: HashMap<PathBuf, Option<Receipt>> = HashMap::new();
     let mut batch: Vec<PathBuf> = Vec::new();
     for artifact in &artifacts {
@@ -2665,9 +2718,13 @@ fn target_records_in(
             "multiple proof reports name one Cargo target",
         ));
     }
+    let successful = (target_candidate.is_some() || file_target_candidate.is_some())
+        .then(|| digests.successful_reads());
+    let file_target_digests =
+        file_target_candidate.and_then(|candidate| candidate.finish(successful.as_ref()?));
     let target_digests = target_candidate.and_then(|candidate| {
         candidate.finish(
-            digests.successful_reads(),
+            successful.unwrap_or_default(),
             observation
                 .and_then(|source| source.revisions)
                 .map(RevisionMemo::snapshot)
@@ -2676,6 +2733,7 @@ fn target_records_in(
     });
     Ok(RecordedTargets {
         target_digests,
+        file_target_digests,
         targets: results,
         // Missing targets supply no returned report authority. Shown Cargo
         // no-ops may omit them; structured runs enforce requested coverage
@@ -4027,11 +4085,25 @@ fn run_recorded(
             })
         })
         .flatten();
+    let file_target_digest_request =
+        (super::file_target_digest_memo::enabled() && paths.reuse && !forced)
+            .then(|| {
+                Some(FileTargetDigestRequest {
+                    file: paths
+                        .invocation_slot
+                        .as_ref()?
+                        .join(super::file_target_digest_memo::FILE),
+                    started: started_wall,
+                    records: std::sync::Arc::default(),
+                })
+            })
+            .flatten();
     let observed_revisions = target_revision_proposals(
         &paths,
         &data,
         &hash,
         Some(RevisionObservation {
+            file_target_memo: None,
             target_memo: target_digest_request.as_ref(),
             snapshot: &before,
             stamp: before_observation_stamp.as_ref(),
@@ -4040,6 +4112,7 @@ fn run_recorded(
     );
     let revision_memo = RevisionMemo::observed(observed_revisions);
     let observation = RevisionObservation {
+        file_target_memo: file_target_digest_request.as_ref(),
         target_memo: target_digest_request.as_ref(),
         snapshot: &before,
         stamp: before_observation_stamp.as_ref(),
@@ -4340,6 +4413,7 @@ fn run_recorded(
     let mut overlapped = Some(after_thread.unwrap_or_else(|_| Err(reader_failed())));
     let RecordedTargets {
         target_digests,
+        file_target_digests,
         mut targets,
         missing,
         receipt_environment,
@@ -4394,6 +4468,7 @@ fn run_recorded(
         &paths.run,
         &after_data,
         Some(RevisionObservation {
+            file_target_memo: None,
             target_memo: None,
             snapshot: &after,
             stamp: after_stamp.as_ref(),
@@ -4720,6 +4795,9 @@ fn run_recorded(
     {
         super::input::publish_source_digests(&after, &result.run_id, started_wall);
         if let Some(pending) = target_digests {
+            pending.publish(&result.run_id);
+        }
+        if let Some(pending) = file_target_digests {
             pending.publish(&result.run_id);
         }
     }
@@ -7903,6 +7981,7 @@ mod tests {
         let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
         let revision_memo = RevisionMemo::default();
         let observation = Some(RevisionObservation {
+            file_target_memo: None,
             target_memo: None,
             snapshot: &observed,
             stamp: stamp.as_ref(),
@@ -8149,6 +8228,7 @@ mod tests {
         let (snapshot, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
         let memo = RevisionMemo::default();
         let observation = RevisionObservation {
+            file_target_memo: None,
             target_memo: Some(&request),
             snapshot: &snapshot,
             stamp: stamp.as_ref(),
@@ -8216,6 +8296,7 @@ mod tests {
                 &data,
                 "context",
                 Some(RevisionObservation {
+                    file_target_memo: None,
                     target_memo: Some(&request),
                     snapshot,
                     stamp,
@@ -8265,6 +8346,72 @@ mod tests {
                 .read()
                 .is_none()
         );
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn file_target_digests_keep_complete_source_and_receipt_guards()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let f = NegativeGeneration::new("file-target-source")?;
+        let workspace = f.root.join("source");
+        std::fs::create_dir_all(&workspace)?;
+        let source = workspace.join("lib.rs");
+        std::fs::write(&source, "unchanged source")?;
+        std::fs::write(workspace.join("Cargo.toml"), "[package]\nname='input'\n")?;
+        std::fs::create_dir_all(&f.paths.target)?;
+        let artifact = f.paths.target.join("original.rmeta");
+        std::fs::write(&artifact, "original artifact")?;
+        std::thread::sleep(std::time::Duration::from_millis(2100));
+        let data = serde_json::json!({"workspace_root":workspace,
+            "target_directory":f.paths.target,
+            "packages":[{"id":"input","manifest_path":workspace.join("Cargo.toml")}],
+            "resolve":{"nodes":[{"id":"input","dependencies":[]}]}});
+        let request = FileTargetDigestRequest {
+            file: f.root.join(super::super::file_target_digest_memo::FILE),
+            started: SystemTime::now(),
+            records: std::sync::Arc::default(),
+        };
+        let candidate = |snapshot, stamp| {
+            file_target_digest_candidate(
+                &f.paths,
+                &data,
+                "context",
+                Some(RevisionObservation {
+                    file_target_memo: Some(&request),
+                    target_memo: None,
+                    snapshot,
+                    stamp,
+                    revisions: None,
+                }),
+            )
+        };
+        let (before, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        assert!(before.complete);
+        let hashes = BTreeMap::from([(artifact, digest(b"original artifact"))]);
+        candidate(&before, stamp.as_ref())
+            .ok_or("original candidate")?
+            .finish(&hashes)
+            .ok_or("original readback")?
+            .publish("original-current");
+        assert_eq!(
+            candidate(&before, stamp.as_ref()).and_then(|mut c| c.read()),
+            Some(hashes)
+        );
+        std::fs::write(f.paths.receipts.join("new-receipt.json"), "changed receipt")?;
+        assert!(
+            candidate(&before, stamp.as_ref())
+                .ok_or("changed receipt")?
+                .read()
+                .is_none()
+        );
+        let original_time = std::fs::metadata(&source)?.modified()?;
+        std::fs::write(&source, "unchanged source")?;
+        std::fs::File::options()
+            .write(true)
+            .open(&source)?
+            .set_times(std::fs::FileTimes::new().set_modified(original_time))?;
+        assert!(candidate(&before, stamp.as_ref()).is_none());
         Ok(())
     }
 
@@ -8413,6 +8560,7 @@ mod tests {
         let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
         let revision_memo = RevisionMemo::default();
         let observation = Some(RevisionObservation {
+            file_target_memo: None,
             target_memo: None,
             snapshot: &observed,
             stamp: stamp.as_ref(),
@@ -8606,6 +8754,7 @@ mod tests {
         let (observed, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
         let revision_memo = RevisionMemo::default();
         let observation = Some(RevisionObservation {
+            file_target_memo: None,
             target_memo: None,
             snapshot: &observed,
             stamp: stamp.as_ref(),

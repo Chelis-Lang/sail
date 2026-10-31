@@ -42,28 +42,65 @@ mod selection_tests {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Tree {
-    root: PathBuf,
+pub(super) struct Tree {
+    pub(super) root: PathBuf,
     /// Fresh physical ancestor identities; unrelated sibling writes do not
     /// change this target namespace. The root itself keeps its full stamp.
     ancestors: BTreeMap<PathBuf, (u64, u64, u32)>,
     /// Every directory/file in the complete target, including the root.
-    stamps: BTreeMap<PathBuf, Stamp>,
+    pub(super) stamps: BTreeMap<PathBuf, Stamp>,
 }
 
+/// Physical directory identities, without treating their times as file bytes.
+pub(super) type DirectoryBindings = BTreeMap<PathBuf, (u64, u64, u32)>;
+
 impl Tree {
-    fn observe(root: &Path) -> Option<Self> {
+    pub(super) fn observe(root: &Path) -> Option<Self> {
+        Self::observe_in(root, |_, _| {})
+    }
+
+    /// The identical complete walk, additionally retaining directory identities
+    /// for ADR 0092. The ordinary whole-tree record's encoding is unchanged.
+    #[cfg(unix)]
+    pub(super) fn observe_bound(root: &Path) -> Option<(Self, DirectoryBindings)> {
+        use std::os::unix::fs::MetadataExt as _;
+        let mut directories = BTreeMap::new();
+        let tree = Self::observe_in(root, |path, metadata| {
+            directories.insert(
+                path.to_owned(),
+                (metadata.dev(), metadata.ino(), metadata.mode()),
+            );
+        })?;
+        for (path, identity) in &tree.ancestors {
+            if directories
+                .insert(path.clone(), *identity)
+                .is_some_and(|previous| previous != *identity)
+            {
+                return None;
+            }
+        }
+        Some((tree, directories))
+    }
+
+    #[cfg(not(unix))]
+    pub(super) fn observe_bound(_root: &Path) -> Option<(Self, DirectoryBindings)> {
+        None
+    }
+
+    fn observe_in(
+        root: &Path,
+        mut directory: impl FnMut(&Path, &std::fs::Metadata),
+    ) -> Option<Self> {
         if !root.is_absolute() || root.canonicalize().ok()?.as_path() != root {
             return None;
         }
         let ancestors = physical_ancestors(root)?;
-        let mut stamps = BTreeMap::from([(
-            root.to_owned(),
-            Stamp::of(&std::fs::symlink_metadata(root).ok()?),
-        )]);
+        let metadata = std::fs::symlink_metadata(root).ok()?;
+        directory(root, &metadata);
+        let mut stamps = BTreeMap::from([(root.to_owned(), Stamp::of(&metadata))]);
         let mut pending = vec![root.to_owned()];
-        while let Some(directory) = pending.pop() {
-            for entry in std::fs::read_dir(directory).ok()? {
+        while let Some(parent) = pending.pop() {
+            for entry in std::fs::read_dir(parent).ok()? {
                 let entry = entry.ok()?;
                 let metadata = std::fs::symlink_metadata(entry.path()).ok()?;
                 // Aliases and special files retain complete ordinary reads.
@@ -72,6 +109,7 @@ impl Tree {
                 }
                 let path = entry.path();
                 if metadata.is_dir() {
+                    directory(&path, &metadata);
                     pending.push(path.clone());
                 }
                 if stamps.insert(path, Stamp::of(&metadata)).is_some() || stamps.len() > ENTRIES {

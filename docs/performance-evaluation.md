@@ -186,11 +186,12 @@ Pair it with the existing `SAIL_JOB_EVENTS` setup phase timings when diagnosing
 a stage, then rerun without either observer for performance qualification.
 
 Two ignored Rust diagnostics isolate index construction/traversal and exact
-JSON hashing. Run them only on a native host:
+JSON hashing. The solver CI job excludes these new timing diagnostics. Run
+their explicit local-only step on a native host:
 
 ```sh
-cargo test --release -p sail-verus indexed_dependency_graph_scaling -- --ignored --nocapture
-cargo test --release -p sail-verus json_digest_scaling -- --ignored --nocapture
+ci/local.sh managed-components  # native Linux CI image
+ci/run.sh managed-components    # native host, including macOS
 ```
 
 These component results and generated programs establish algorithmic behavior,

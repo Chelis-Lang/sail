@@ -5,6 +5,14 @@ Run Linux checks on a native EC2 host with `ci/local.sh`; use `ci/run.sh host`
 for the macOS platform check. Performance measurements require a quiet native
 host, separate from builds and gates.
 
+The optional `ci/local.sh managed-components` step runs the new graph/JSON
+component timing diagnostics on native Linux; `ci/run.sh managed-components`
+runs them directly on a native host, including macOS. This step refuses CI.
+The ordinary equivalence tests stay in the workspace gate, and the solver
+job excludes only these two new timing diagnostics in addition to its existing
+external-witness exclusions. Component timings do not establish product gains;
+see [general performance evaluation](performance-evaluation.md).
+
 Local containers use a Cargo target volume per physical checkout (#475).
 Distinct worktrees cannot reuse one another's binaries merely because both are
 mounted at `/work`; normal edits and symlink aliases retain the same checkout's

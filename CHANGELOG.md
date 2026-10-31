@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add an opt-in per-file owned-target digest prototype under ADR 0092:
+  `SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO=1`. Original settled file observations
+  may survive unrelated target-directory changes, with fresh complete current
+  barriers and unchanged proof admission. It is off by default everywhere;
+  native performance and platform qualification remain open.
 - Add explicit corpus selection to conformance and benchmark tools, validated
   fork selection for paired benchmarks, and broader local performance recipes
   with pinned intake projects, held-out workloads and scaling controls.

@@ -509,4 +509,6 @@ planned for releases after 0.1.0. The owner answered all twelve on
     existing whole-tree gate. Platform defaults require independent native
     material gains; first-after-cold parity is not implied.
 
-    **Pending:** concrete owner approval before implementation/adoption.
+    **Answered 2026-10-31 (owner):** approve ADR 0092’s bounded prototype.
+    Keep it off by default and qualify native material gains and all controls
+    before platform selection. This does not establish release acceptance.

@@ -487,7 +487,9 @@ fn per_run(path: &Path, context: &Path, family: &Path, slot: Option<&Path>) -> b
         return false;
     };
     (slot.is_some_and(|slot| parent == slot)
-        && (name == super::digest_memo::FILE || name == super::target_digest_memo::FILE))
+        && (name == super::digest_memo::FILE
+            || name == super::target_digest_memo::FILE
+            || name == super::file_target_digest_memo::FILE))
         || (parent == context
             && (name == RUNTIME
                 || slot.is_some()

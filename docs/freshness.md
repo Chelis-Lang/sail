@@ -649,3 +649,16 @@ The Mac target candidate refuses because build-script directory stamps change
 during unchanged calls. Source observations remain opt-in on both platforms. Target selection on
 Linux does not establish release parity. See the separate scopes in the
 [qualification record](validation/settled-digest-observations.md).
+
+The separate `SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO=1` prototype implements
+owner-approved [ADR 0092](decisions/0092-per-file-owned-target-digests.md).
+It is off by default on every platform; exactly `1` opts in on Unix. It
+retains complete fresh current target namespace/barrier checks, original full
+file stamps and ancestor identities, original Current run/start and settlement,
+and complete source/context/selection/receipt binding. Unrelated directory
+entries or times can change across calls; changed/unsettled files read afresh.
+Inherited entries never acquire a later provenance or age into trust.
+Dirty cleanup and all proof checks remain. This ledger supplies no proof
+revisions, and first-after-cold artifacts still require fresh reads. Native
+qualification and platform selection are open; see the
+[general qualification record](validation/general-performance.md).

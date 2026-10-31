@@ -15,6 +15,7 @@ strict stock source-suite failure retain their original scope and requirements.
 | Run-scoped observations | Fresh-byte decode sharing, borrowed source projection basis, indexed dependency traversal and exact streamed JSON hashing implemented | Initial two-round candidate is mostly flat/slower than previous Sail; composed closing-barrier candidate requires selection measurements |
 | Linux functional controls | `32f7bba6` passes the complete ordinary gate, including 1,284 tests (56 skipped) and eight evaluation controls; composed functional checks below pass | Separate ordinary-gate correction; no overall pass claimed for the earlier controller that continued after Clippy failure |
 | Algorithmic scaling | Native single-chain lookup including index construction: 4,096 nodes, 83.888 ms legacy / 1.574 ms indexed; identical closure | One component diagnostic, not repeated whole-program acceptance. JSON timing benefit is small and variable; bounded intermediate allocation is the distinct change |
+| Per-file artifact observations | Owner-approved ADR 0092 prototype implemented behind exact opt-in; every platform defaults off | Native build, active controls and independent on/off whole-call measurements pending; no first-after-cold parity implied |
 | macOS | No result for this candidate | Native host gate, paired performance and release memory gates remain |
 | Compiler reuse | No persistent frontend reuse implemented or selected | ADR 0052 complete-input/output shadow qualification remains open |
 
@@ -24,7 +25,8 @@ matching failed baseline as a passing real-project workload.
 
 ## Linux functional scope
 
-On native c7i.4xlarge / us-east-1, source `ab5fcddb` passes 53 solver tests,
+On native c7i.4xlarge / us-east-1, source `ab5fcddb` passes 53 ignored tests
+(51 solver/fault controls plus two component diagnostics),
 the complete E2E command including the local extra cases, and all four fast
 and standard conformance arms. Each fast arm reports 147 same / 3,451
 functions; each standard arm reports 159 same / 13,166 functions. All report

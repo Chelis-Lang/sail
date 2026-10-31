@@ -1,6 +1,6 @@
 # 0092: Per-file owned-target digest observations
 
-- **Status:** proposed; owner approval required before adoption
+- **Status:** owner-approved bounded prototype on 2026-10-31; implementation and qualification in progress; no platform default selected
 - **Date:** 2026-10-31
 - **Amends:** [ADR 0091](0091-settled-source-and-target-digests.md), item 2
 - **Tracks:** #560, #630
@@ -24,7 +24,7 @@ call does not make those original observations eligible. The first call must
 still read them afresh; this proposal does not authorize moving that work into
 the cold call, synthesizing a transcript or promoting an inherited observation.
 
-## Decision (proposed)
+## Decision
 
 Prototype a separately controlled, local owned-target **content digest** memo.
 Keep the current whole-tree memo and its platform defaults unchanged until
