@@ -48,9 +48,13 @@ def main():
     args.out.mkdir(parents=True, exist_ok=False)
     summary = args.out / "syscalls.txt"
     argv = ["strace", "-f", "-c", "-qq", "-e",
-            "trace=%file,read,readv,pread64,getdents64,close", "-o", str(summary), "--", *command]
+            "trace=%file,read,readv,pread64,getdents64,close", "-o", str(summary), "-E",
+            ("LC_ALL=" + os.environ["LC_ALL"] if "LC_ALL" in os.environ else "LC_ALL"),
+            "--", *command]
     record = {"schema_version": 1, "command": command, "cwd": str(Path.cwd()),
               "diagnostic_only": True, "started_unix": time.time()}
+    # Parse a stable tracer summary without changing the measured child's
+    # locale or its compiler/receipt environment identity.
     env = dict(os.environ, LC_ALL="C")
     result = subprocess.run(argv, env=env, check=False)
     record["exit"] = result.returncode

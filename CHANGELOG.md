@@ -16,6 +16,9 @@ semantic versioning once the API is published.
   selection, and stream existing JSON checksums without changing their bytes.
   All original freshness/admission checks remain; native performance
   qualification is tracked separately.
+- Add exact arithmetic and temporal-logic proof edit/failure/fix catalogues.
+  Evaluation refuses changed capture inputs; diagnostic syscall accounting
+  preserves the measured child command's locale.
 
 - Prime the same memory inventory in both overhead-control arms and reduce
   Mac observer priority after command spawn, preserving the command's priority,

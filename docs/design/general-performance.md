@@ -83,6 +83,13 @@ compare complete output plus current diagnostic locations. Restoration needs
 complete coverage and the ADR's existing wall-time gate including key and
 restore costs. A serialized Debug value or matching hash is not that evidence.
 
+The [operation audit](frontend-lowering-boundary.md) identifies concrete
+context and diagnostic effects omitted by the previous capture. AST-to-SST
+mutates the function map and can emit warnings or interpreter diagnostics;
+returning the same SST alone would not restore the fresh operation. The
+current serde/Debug span representations are also incomplete. This blocks
+restoration before another performance experiment, not after it.
+
 Finer per-artifact digest reuse is a separate possible extension to
 [ADR 0091](../decisions/0091-settled-source-and-target-digests.md), requiring a
 concrete owner-approved amendment before adoption. It must preserve fresh
@@ -103,3 +110,15 @@ Selection requires unchanged conformance and demonstrated native gains across
 that broader coverage. Do not select a component improvement solely because
 its asymptotic bound or synthetic timing is better. Per-workload regressions,
 incompatible projects, failed controls and incomplete coverage remain explicit.
+
+## Closing barrier candidate
+
+Pure cached revision proposals are now collected before their batch without a
+redundant early source sweep. They cannot authorize a receipt or cleanup
+choice: `target_revisions` performs its original closing whole-source readback
+and discards every proposal if that readback changes. The ordinary artifact
+memo path retains its own earlier source guard. Target memo disabled means
+no added observation work. This is within-call guard placement, not additional
+cross-call trust. A regression deliberately supplies stale proposals after a
+source edit and requires the same revisions as the fresh path. Native
+before/after and platform selection remain qualification gates.

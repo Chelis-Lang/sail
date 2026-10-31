@@ -11,9 +11,9 @@ strict stock source-suite failure retain their original scope and requirements.
 
 | Gate | Current evidence | Limit |
 |---|---|---|
-| Broader selection | 18 reviewable workloads; four new repository pins; Verus-TLA baseline passes (141 functions compared); hekate-math baseline passes all 18 units (1,848 function records compared) | Baselines compare stock with bare stock/shim; selected-fork, managed and targeted-edit coverage remain separate |
-| Run-scoped observations | Fresh-byte decode sharing, borrowed source projection basis, indexed dependency traversal and exact streamed JSON hashing implemented | Native whole-invocation benefit not yet measured |
-| Linux functional controls | Graph/projection composition passes strict Clippy, 1,280 ordinary tests (56 skipped), doctests, documentation/layering/dependency gates and six evaluation controls on c7i.8xlarge / us-east-1 | Subsequent workspace-preparation fix needs its own completed result |
+| Broader selection | 18 reviewable workloads; four new repository pins; Verus-TLA baseline passes (141 functions compared); hekate-math passes all 18 units (1,848 records); semi-persistent passes all three selected packages (2,430 / 909 / 29 records) | Baselines compare stock with bare stock/shim; selected-fork, managed and targeted-edit coverage remain separate |
+| Run-scoped observations | Fresh-byte decode sharing, borrowed source projection basis, indexed dependency traversal and exact streamed JSON hashing implemented | Two-round broader whole-call screen completed; previous-Sail control and final closing-barrier candidate still require selection measurements |
+| Linux functional controls | Complete workspace-preparation composition passes strict Clippy, 1,283 ordinary tests (56 skipped), doctests, documentation/layering/dependency gates and six evaluation controls on c7i.8xlarge / us-east-1 | Closing-barrier cut and seven-control revision require final gate |
 | Algorithmic scaling | Native single-chain lookup including index construction: 4,096 nodes, 83.888 ms legacy / 1.574 ms indexed; identical closure | One component diagnostic, not repeated whole-program acceptance. JSON timing benefit is small and variable; bounded intermediate allocation is the distinct change |
 | macOS | No result for this candidate | Native host gate, paired performance and release memory gates remain |
 | Compiler reuse | No persistent frontend reuse implemented or selected | ADR 0052 complete-input/output shadow qualification remains open |
@@ -42,8 +42,10 @@ Semi-persistent exposes a harness preparation defect: patching only the
 selected package leaves conflicting exact vstd pins in other Cargo workspace
 members. The candidate now discovers the complete workspace with Cargo's
 offline, dependency-free metadata and adjusts each scratch member consistently
-on both sides. Its native rerun remains pending. Fetched sources and proof
-bodies are unchanged.
+on both sides. The clean `b9466ece` rerun passes all three selected packages: containers,
+abstract domains and AU, with 2,430 / 909 / 29 function records compared.
+Fetched sources and proof bodies are unchanged. Selected-fork held-out
+timing and proof edits remain separate gates.
 
 The TLSF pin does not compile with the pinned vstd: `Set::new` returns an
 `Option<Set<_>>`, and `Map::new` expects a set rather than its predicate argument.
@@ -51,7 +53,29 @@ Both arms report the same two E0308 errors and compare zero functions. This
 is an incompatible candidate, not a successful allocator baseline. No proof
 port or runtime substitution is included.
 
+## Evaluation controls
+
+The subsequent seven-control harness passes natively on c7i.4xlarge /
+us-east-1. It additionally refuses changed or missing measurement inputs.
+Two actual syscall-observer executions preserve an unset child `LC_ALL` and
+an explicitly supplied `C.UTF-8` value. Their native commands exit zero and
+produce complete syscall records. Archive SHA-256:
+`9d3feb9245421e9cdd6e0db9fbef44ebe50cc3c54078737e275e41f83e6842f9`.
+This is harness correctness, not a product speedup. The compiler operation
+[audit](../design/frontend-lowering-boundary.md) is static source review;
+it supplies no complete-key or restoration acceptance.
+
 ## Failed attempts
+
+- 2026-10-31, `b9466ece` diagnostic controller: perf discovery did not follow
+  the installed kernel-tools directory symlink; the retry then lacked an
+  explicit shipped vstd lock beside its wrapper. Both refused before a timed
+  invocation. Corrected the diagnostic controller paths.
+- 2026-10-31, `b9466ece` first syscall diagnostic: setting the tracer's locale
+  also changed the child's `LC_ALL`, causing receipt invalidation and verifier
+  work. Interrupted that capture and retained it as an invalid unchanged-call
+  diagnostic. The helper now restores the original child's locale; the next
+  profile sets one consistent locale for cold and all subsequent calls.
 
 - 2026-10-31, `8f298701`: workspace preparation composition failed to compile
   because registry-adjustment logging lost its repository-root parameter

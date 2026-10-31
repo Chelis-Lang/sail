@@ -48,6 +48,19 @@ class EvaluationControls(unittest.TestCase):
             path.write_text(json.dumps(report))
             self.assertEqual(suite.conformance_status(path)[1:], (False, False))
 
+    def test_changed_or_removed_measurement_input_refuses_the_capture(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tool"
+            path.write_bytes(b"original")
+            expected = suite.file_digests([path])
+            self.assertTrue(suite.inputs_intact(expected))
+            replacement = Path(tmp) / "replacement"
+            replacement.write_bytes(b"changed")
+            replacement.replace(path)
+            self.assertFalse(suite.inputs_intact(expected))
+            path.unlink()
+            self.assertFalse(suite.inputs_intact(expected))
+
     def test_missing_executable_retains_a_failed_command_and_log(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "command.log"

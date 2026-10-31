@@ -74,8 +74,10 @@ python3 scripts/perf-corpus.py run --phase accept \
 
 `screen` records two rounds; `accept` records six. The latter names a capture
 recipe, **not release acceptance**. A frozen candidate must equal the full
-clean checkout HEAD. The runner checks completeness and retains refusals; an
-exit of zero says the requested comparisons and captures completed.
+clean checkout HEAD. The runner checks completeness and retains refusals. It records source state
+and input digests, then refuses a capture if the source state, executable,
+manifest or runner changes during the run. An exit of zero says the requested
+comparisons and captures completed.
 
 Managed workloads use `perf-real.sh`: cold, first and second unchanged calls,
 an unchanged call with replay disabled and a comment edit. Direct units use
@@ -119,6 +121,38 @@ stock-with-shim diagnostic control. New result metadata explicitly labels that
 control or records the selected fork manifest digest. `--out` applies to cold,
 warm, edit, agent-loop and history-replay results; its default remains
 `bench/results`. Fragility retains its existing output and runtime interface.
+
+## Real proof edits
+
+The additional local catalogues edit original functions at their pinned source:
+`corpus/performance-edits.toml` covers a bit-vector proof body, contract,
+false assertion and an imported specification body in hekate-math.
+`corpus/performance-loops.toml` changes a Verus-TLA proof body and contract,
+introduces a false assertion, fixes it and refines the fixed body. Expected
+outcomes remain hypotheses until the actual stock run confirms them.
+
+```sh
+sail-bench edit --corpus corpus/performance-candidates.toml \
+  --edits corpus/performance-edits.toml --rounds 1 \
+  --sail-verus-build "$SAIL_PERF_VERUS_BUILD" \
+  --out "$HOME/sail-perf/proof-edits.json"
+sail-bench agent-loop --corpus corpus/performance-candidates.toml \
+  --loops corpus/performance-loops.toml --rounds 1 \
+  --sail-verus-build "$SAIL_PERF_VERUS_BUILD" \
+  --out "$HOME/sail-perf/proof-loop.json"
+```
+
+Run six independently retained one-round captures. The existing result schema
+stores the last observed outcome, so one-round captures allow checking every
+stock outcome against its expectation. Require four edits with two `same`
+comparisons each, and six loop states with one `same` comparison each; require
+zero differences, instability or infrastructure errors and complete samples.
+The initial loop state must verify. The benchmark command alone does not
+reject a wrong expected outcome: audit the result fields before claiming a
+passing edit qualification. These runs use the selected fork and exact query
+cache; they do not establish managed receipt or replay performance for edits.
+Cargo projects use the existing cumulative loop harness; the single-edit
+harness remains limited to direct Verus units.
 
 ## Scaling and work accounting
 

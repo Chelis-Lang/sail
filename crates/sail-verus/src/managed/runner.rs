@@ -2077,8 +2077,37 @@ fn target_digest_candidate(
     observation: Option<RevisionObservation<'_>>,
 ) -> Option<super::target_digest_memo::Candidate> {
     let source = observation?;
-    let request = source.target_memo?;
+    source.target_memo?;
     if !source.snapshot.complete || !super::input::unchanged_since(source.snapshot, source.stamp) {
+        return None;
+    }
+    target_digest_observation(paths, data, context, observation)
+}
+
+/// Pure revision proposals only. Their complete source binding is checked by
+/// target_revisions after the whole projection batch, before a cleanup decision
+/// can consume them. Artifact digest admission keeps its earlier independent
+/// source readback through target_digest_candidate.
+fn target_revision_proposals(
+    paths: &Paths,
+    data: &Value,
+    context: &str,
+    observation: Option<RevisionObservation<'_>>,
+) -> BTreeMap<(String, String), String> {
+    target_digest_observation(paths, data, context, observation)
+        .and_then(|candidate| candidate.revisions())
+        .unwrap_or_default()
+}
+
+fn target_digest_observation(
+    paths: &Paths,
+    data: &Value,
+    context: &str,
+    observation: Option<RevisionObservation<'_>>,
+) -> Option<super::target_digest_memo::Candidate> {
+    let source = observation?;
+    let request = source.target_memo?;
+    if !source.snapshot.complete {
         return None;
     }
     let receipts = super::target_digest_memo::receipt_binding(&paths.receipts)?;
@@ -2105,8 +2134,10 @@ fn target_digest_candidate(
 
 /// Pure target projections from one complete source observation. Every batch
 /// rechecks that observation's original stamp. The opt-in ADR 0091 initializer
-/// additionally requires a fresh complete owned-target/receipt/source binding;
-/// retries always start without an observation or memo.
+/// additionally binds the complete owned target/receipts/source. Its pure
+/// revision proposals remain subject to that batch's closing source readback;
+/// artifact digests retain their separate source admission check. Retries
+/// always start without an observation or memo.
 #[derive(Default)]
 struct RevisionMemo {
     entries: std::sync::Mutex<HashMap<(String, String), String>>,
@@ -3996,7 +4027,7 @@ fn run_recorded(
             })
         })
         .flatten();
-    let observed_revisions = target_digest_candidate(
+    let observed_revisions = target_revision_proposals(
         &paths,
         &data,
         &hash,
@@ -4006,9 +4037,7 @@ fn run_recorded(
             stamp: before_observation_stamp.as_ref(),
             revisions: None,
         }),
-    )
-    .and_then(|candidate| candidate.revisions())
-    .unwrap_or_default();
+    );
     let revision_memo = RevisionMemo::observed(observed_revisions);
     let observation = RevisionObservation {
         target_memo: target_digest_request.as_ref(),
@@ -8092,6 +8121,68 @@ mod tests {
         moved["target_directory"] = Value::String("elsewhere".into());
         assert!(!same_snapshot_selection(&before, &moved));
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn revision_proposals_are_rejected_by_the_closing_source_readback()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let f = NegativeGeneration::new("proposed-source-barrier")?;
+        let workspace = f.root.join("source");
+        std::fs::create_dir_all(&workspace)?;
+        let source = workspace.join("lib.rs");
+        std::fs::write(&source, "original source")?;
+        std::fs::write(workspace.join("Cargo.toml"), "[package]\nname='input'\n")?;
+        std::fs::create_dir_all(&f.paths.target)?;
+        let artifact = f.paths.target.join("original.rmeta");
+        std::fs::write(&artifact, "original artifact")?;
+        std::thread::sleep(std::time::Duration::from_millis(2100));
+        let data = serde_json::json!({"workspace_root":workspace,
+            "target_directory":f.paths.target,
+            "packages":[{"id":"input","manifest_path":workspace.join("Cargo.toml")}],
+            "resolve":{"nodes":[{"id":"input","dependencies":[]}]}});
+        let request = TargetDigestRequest {
+            file: f.root.join("target-digests.json"),
+            started: SystemTime::now(),
+            records: std::sync::Arc::default(),
+        };
+        let (snapshot, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
+        let memo = RevisionMemo::default();
+        let observation = RevisionObservation {
+            target_memo: Some(&request),
+            snapshot: &snapshot,
+            stamp: stamp.as_ref(),
+            revisions: Some(&memo),
+        };
+        let ids = vec!["input".to_owned()];
+        let original = target_revisions(&data, &ids, Some(observation));
+        target_digest_candidate(&f.paths, &data, "context", Some(observation))
+            .ok_or("original candidate")?
+            .finish(
+                BTreeMap::from([(artifact, digest(b"original artifact"))]),
+                memo.snapshot(),
+            )
+            .ok_or("original phase")?
+            .publish("original-current");
+        assert!(request.file.is_file());
+        std::fs::write(source, "changed source")?;
+        assert!(target_digest_candidate(&f.paths, &data, "context", Some(observation)).is_none());
+        // Reading proposals is not source admission. The cached original
+        // revisions are deliberately still available at this point.
+        let proposals = target_revision_proposals(&f.paths, &data, "context", Some(observation));
+        assert!(!proposals.is_empty());
+        let proposed = RevisionMemo::observed(proposals);
+        let observed = target_revisions(
+            &data,
+            &ids,
+            Some(RevisionObservation {
+                revisions: Some(&proposed),
+                ..observation
+            }),
+        );
+        assert_eq!(observed, target_revisions(&data, &ids, None));
+        assert_ne!(observed, original);
+        Ok(())
     }
 
     #[cfg(unix)]

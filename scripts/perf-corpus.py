@@ -47,6 +47,26 @@ def selection(entry):
     return args
 
 
+def file_digests(paths):
+    return {str(path): hashlib.sha256(Path(path).read_bytes()).hexdigest() for path in paths}
+
+
+def inputs_intact(expected):
+    try:
+        return file_digests(expected) == expected
+    except OSError:
+        return False
+
+
+def source_state():
+    tracked_diff = subprocess.check_output(["git", "diff", "--binary", "HEAD", "--"], cwd=ROOT)
+    return {"tracked_diff_sha256": hashlib.sha256(tracked_diff).hexdigest(),
+            "head": subprocess.check_output(["git", "rev-parse", "HEAD"],
+                                             cwd=ROOT, text=True).strip(),
+            "status": subprocess.check_output(
+                ["git", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT, text=True)}
+
+
 def execute(argv, output, env):
     started = time.time()
     with output.open("w") as log:
@@ -119,12 +139,16 @@ def run(args, entries):
             raise ValueError(name + " is not on PATH")
         binaries[name] = {"path": path,
                           "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest()}
-    if args.frozen_candidate:
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-        dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=all"],
-                                        cwd=ROOT, text=True)
-        if args.frozen_candidate != head or dirty:
-            raise ValueError("frozen candidate must equal the full clean source HEAD")
+    source = source_state()
+    if args.frozen_candidate and (args.frozen_candidate != source["head"] or source["status"]):
+        raise ValueError("frozen candidate must equal the full clean source HEAD")
+    input_paths = [Path(value["path"]) for value in binaries.values()]
+    input_paths += [CATALOGUE, ROOT / "scripts/perf-corpus.py", ROOT / "scripts/perf-real.sh"]
+    input_paths += [ROOT / "corpus" / name for name in
+                    ("corpus.toml", "performance-candidates.toml", "toolchain.toml")]
+    if args.sail_verus_build:
+        input_paths.append(args.sail_verus_build / "sail-build.json")
+    inputs = file_digests(input_paths)
     args.out.mkdir(parents=True, exist_ok=False)
     shutil.copyfile(CATALOGUE, args.out / CATALOGUE.name)
     for name in ("corpus.toml", "performance-candidates.toml", "toolchain.toml"):
@@ -219,11 +243,17 @@ def run(args, entries):
         (args.out / "index.json").write_text(json.dumps({
             "schema_version": 1, "phase": args.phase,
             "machine": args.machine,
-            "binaries": binaries,
+            "binaries": binaries, "source": source, "inputs_sha256": inputs,
             "frozen_candidate": args.frozen_candidate,
             "results": results}, indent=2) + "\n")
-    return 0 if all(record["status"] in ("timing-complete", "intake-comparison-complete")
-                    for record in results) else 1
+    intact = inputs_intact(inputs) and source_state() == source
+    index = args.out / "index.json"
+    record = json.loads(index.read_text())
+    record["inputs_unchanged"] = intact
+    index.write_text(json.dumps(record, indent=2) + "\n")
+    return 0 if intact and all(record["status"] in ("timing-complete", "intake-comparison-complete")
+                               for record in results) else 1
+
 
 
 def main():
