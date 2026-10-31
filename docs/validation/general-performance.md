@@ -7,6 +7,13 @@ Mac host/managed controls pass, but installed output and broader-verdict gates
 fail (#633, #634), so Mac timing/memory selection stops. No new performance,
 frontend-reuse or release acceptance is claimed.
 
+The continued #633 diagnosis reproduces the same extra second verification on
+native Linux when the temporary directory has a symlink ancestor. The candidate
+preserves only unaffected script observations for newly discovered source
+aliases; proof Currentness and receipt publication are unchanged. Its native
+end-to-end and Mac qualification are pending, so the original failed gate
+remains open. Raw controls are retained externally for the final evidence seal.
+
 The [review](../design/general-performance.md) defines the unchanged authority
 boundaries. The [evaluation guide](../performance-evaluation.md) defines the
 expanded corpus, explicit runtime selection and separate diagnostic controls.

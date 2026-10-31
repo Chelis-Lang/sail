@@ -4491,7 +4491,7 @@ fn run_recorded(
     };
     let scripts_unchanged = currentness == Currentness::Historical
         && !absent.changed
-        && before_run.bindings == after_run.bindings
+        && discovered_source_bindings(&before_run, &after_run, &after_data)
         && super::build_inputs::family::scripts_unchanged_by_run(
             &paths.build_inputs,
             &after_data,
@@ -4935,6 +4935,40 @@ fn without_generated(
         view.bindings.retain(|path, _| !path.starts_with(target));
     }
     view
+}
+
+/// A newly declared external source can introduce a lexical symlink ancestor
+/// (macOS's `/var`, for example). It still makes the proof Historical. For the
+/// separate, non-authorizing script export, permit only those new bindings:
+/// every original binding must remain exact, and the bound source content must
+/// itself be newly discovered. `scripts_unchanged_by_run` separately rejects
+/// discoveries inside script packages or among their declared inputs.
+fn discovered_source_bindings(
+    before: &super::input::InputSnapshot,
+    after: &super::input::InputSnapshot,
+    data: &Value,
+) -> bool {
+    if !before
+        .bindings
+        .iter()
+        .all(|(alias, target)| after.bindings.get(alias) == Some(target))
+    {
+        return false;
+    }
+    after.bindings.keys().all(|alias| {
+        before.bindings.contains_key(alias)
+            || data["sail_source_inputs"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(Path::new)
+                .filter(|source| source.starts_with(alias))
+                .filter_map(|source| source.canonicalize().ok())
+                .any(|source| {
+                    after.digests.contains_key(&source) && !before.digests.contains_key(&source)
+                })
+    })
 }
 
 /// Targets established in this run by the stock fallback after an engine fault.
@@ -7891,6 +7925,53 @@ mod tests {
         assert!(completed_receipts(&run, &data, None).is_err());
         assert!(!run.join("committed.json").exists());
         assert!(std::fs::remove_dir_all(root).is_ok());
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn discovered_source_aliases_preserve_only_original_script_bindings()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root =
+            std::env::temp_dir().join(format!("sail-discovered-alias-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("physical/project/src"))?;
+        let root = root.canonicalize()?;
+        let physical = root.join("physical");
+        let alias = root.join("alias");
+        std::os::unix::fs::symlink(&physical, &alias)?;
+        let project = physical.join("project");
+        let outside = physical.join("outside.txt");
+        std::fs::write(project.join("Cargo.toml"), "manifest")?;
+        std::fs::write(project.join("src/lib.rs"), "source")?;
+        std::fs::write(&outside, "included source")?;
+        let mut data = serde_json::json!({
+            "workspace_root":project,
+            "packages":[{"manifest_path":project.join("Cargo.toml")}],
+        });
+        let before = snapshot_metadata(&data, &[]);
+        data["sail_source_inputs"] = serde_json::json!([alias.join("outside.txt"), outside]);
+        let after = snapshot_metadata(&data, &[]);
+        assert!(before.complete && after.complete);
+        assert_ne!(before.digests, after.digests);
+        assert_ne!(before.bindings, after.bindings);
+        assert!(discovered_source_bindings(&before, &after, &data));
+        // No permission to lose or retarget any binding observed before.
+        let mut previous = before.clone();
+        previous.bindings.insert(alias.clone(), root.join("other"));
+        assert!(!discovered_source_bindings(&previous, &after, &data));
+        previous.bindings = after.bindings.clone();
+        assert!(!discovered_source_bindings(&previous, &before, &data));
+        // A new alias for previously observed content is not a discovery.
+        previous = before.clone();
+        previous.digests.insert(outside.clone(), "old".to_owned());
+        assert!(!discovered_source_bindings(&previous, &after, &data));
+        // Neither an unrelated alias nor an undeclared path qualifies.
+        let mut unrelated = after.clone();
+        unrelated.bindings.insert(root.join("unrelated"), physical);
+        assert!(!discovered_source_bindings(&before, &unrelated, &data));
+        data["sail_source_inputs"] = serde_json::json!([outside]);
+        assert!(!discovered_source_bindings(&before, &after, &data));
+        std::fs::remove_dir_all(root)?;
         Ok(())
     }
 

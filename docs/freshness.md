@@ -145,6 +145,15 @@ checks could not be made), with the note "inputs could not be confirmed
 unchanged; re-run for a current result". Verification itself still runs and
 its report is kept as the record of that run.
 
+A newly discovered external include can introduce a source-path alias as well
+as new content, for example an absolute path through macOS's `/var` symlink.
+The discovering proof stays Historical and publishes no proof receipt. Its
+separate Cargo build-script observations may survive only when every original
+binding is unchanged, each new binding belongs to newly discovered compiler
+source, and the existing script-package and declared-input checks confirm that
+no script input changed. Later calls still validate those script observations
+and freshly read the declared sources; this does not authorize proof reuse.
+
 Build-script coverage does not wait for scripts outside an explicit `-p`
 selection's dependency closure, because they never run for it. Without an exact
 selection or a complete, unambiguous resolve graph, every resolved package is in

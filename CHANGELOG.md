@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Preserve unaffected build-script observations when a newly discovered
+  external compiler input introduces a symlink ancestor. Existing source
+  bindings must remain exact; the discovering proof stays Historical and
+  publishes no proof receipt. Native Mac release qualification remains open.
+
 - Broader native validation records two release blockers: installed Mac
   external-input discovery can recompile an unchanged project (#633), and
   a Mac abstract-domain proof differs between stock and the fork even with
