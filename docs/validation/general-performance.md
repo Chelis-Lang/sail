@@ -67,6 +67,12 @@ it supplies no complete-key or restoration acceptance.
 
 ## Failed attempts
 
+- 2026-10-31, `ab5fcddb` / `0ea95898`: composed ordinary gate stops at
+  Clippy on two unquoted Rust identifiers in the closing-barrier comments.
+  Its controller continues the independent solver/E2E/conformance checks;
+  those results do not establish an ordinary-gate pass. Quote the identifiers
+  and rerun the complete ordinary gate.
+
 - 2026-10-31, `b9466ece` held-out capture: Git exited zero while warning
   that a build-output directory was unreadable. The initial runner treated
   this as a clean checkout; full clean-source inventory was not established.

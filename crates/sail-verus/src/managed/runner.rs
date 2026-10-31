@@ -2085,9 +2085,9 @@ fn target_digest_candidate(
 }
 
 /// Pure revision proposals only. Their complete source binding is checked by
-/// target_revisions after the whole projection batch, before a cleanup decision
+/// `target_revisions` after the whole projection batch, before a cleanup decision
 /// can consume them. Artifact digest admission keeps its earlier independent
-/// source readback through target_digest_candidate.
+/// source readback through `target_digest_candidate`.
 fn target_revision_proposals(
     paths: &Paths,
     data: &Value,
