@@ -55,6 +55,7 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0036](VI-0036-ghost-env-reads-missing-from-dep-info.md) | Ghost-only environment reads are missing from the final dep-info | open; Sail workaround (#386) | not fixed: Sail declares the verification phase's reads the fork reports | `corpus/repros/verus-ghost-env-dep-info/` |
 | [VI-0037](VI-0037-ghost-file-reads-missing-from-dep-info.md) | Files read only by ghost code are missing from the final dep-info | open; Sail workaround (#439) | not fixed: Sail declares the verification phase's files the fork reports | `corpus/repros/verus-ghost-file-dep-info/` |
 | [VI-0038](VI-0038-literal-addition-infers-nat.md) | Literal addition infers nat in a proof local | Expected typing; invalid performance edit corrected | No fork change proposed | `corpus/repros/literal-addition-nat/` |
+| [VI-0039](VI-0039-concurrent-cargo-json-framing.md) | Concurrent Cargo-Verus JSON output loses framing | Unresolved; strict parallel corpus profile refuses | No fork change selected | `corpus/repros/verus-parallel-json/` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The

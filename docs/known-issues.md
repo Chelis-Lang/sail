@@ -82,12 +82,15 @@ The service-wide acceptance theorem is not complete
 Current numbers are in [performance](performance.md).
 
 - The [broader algorithm/corpus candidate](validation/general-performance.md)
-  is not qualified for selection. Its first new temporal-logic loop correctly
-  refuses an invalid final edit (nat addition assigned to int); the corrected
-  local passes a minimal stock control, with the real loop rerun pending.
-  Generated workspace qualification also refuses invalid binary targets
-  missing the Verus prelude (#631); its generator correction awaits the full
-  all-targets rerun. Native before/after, held-out and macOS gates remain separate.
+  is not qualified for selection. Its corrected proof-edit/failure/fix
+  catalogue passes six rounds. The generated binaries' missing prelude is
+  corrected (#631), but the valid parallel workspace exposes malformed
+  combined verifier JSON (#632,
+  [VI-0039](verus-issues/VI-0039-concurrent-cargo-json-framing.md)). The strict
+  comparison remains failed; a serial control also refuses two shapes because
+  independent crate document order changes. Complete compiler-invocation
+  identity is not established by matching aggregate counts.
+  Composed native gains, complete held-out and Mac gates remain open.
 
 - **The first unchanged call after a verification is slower than stock**
   ([#558](https://github.com/Chelis-Lang/sail/issues/558)). It takes the full path and records

@@ -60,6 +60,19 @@ read failure, malformed payload, over-limit record or redirected file cannot
 reuse an earlier decode. It retains one record for one managed run. Source
 digest reuse stays opt-in; target digest platform defaults remain unchanged.
 
+Native diagnostic profiles of `b9466ece` support the distinction between
+these costs. On c7i.8xlarge / us-east-1, an unchanged full-path call makes
+107,610 `statx` calls for multilog, 350,932 for Anvil and 205,357 for the
+semi-persistent containers package. Separate CPU-clock captures attribute
+roughly 43–53%, 19–22% and 31–37% of sampled userspace CPU respectively to
+SHA-256; path-component comparisons and input-order checks also recur.
+All traced calls exit zero, with the same locale used for their cold setup
+and subsequent calls. Tracing distorts execution: these are work/call-stack
+diagnostics, not wall-time acceptance or a prediction that removing that
+fraction of CPU will remove the same fraction of elapsed time. The remaining
+repeated namespace/stamp and byte-observation boundaries need complete
+authority arguments before work can be shared across them.
+
 ## What generalizes, and what does not
 
 [Rustc's red-green algorithm](https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html)
@@ -90,9 +103,10 @@ returning the same SST alone would not restore the fresh operation. The
 current serde/Debug span representations are also incomplete. This blocks
 restoration before another performance experiment, not after it.
 
-Finer per-artifact digest reuse is a separate possible extension to
-[ADR 0091](../decisions/0091-settled-source-and-target-digests.md), requiring a
-concrete owner-approved amendment before adoption. It must preserve fresh
+The bounded finer per-artifact digest proposal in
+[ADR 0092](../decisions/0092-per-file-owned-target-digests.md) amends
+[ADR 0091](../decisions/0091-settled-source-and-target-digests.md) and requires
+concrete owner approval before implementation/adoption. It must preserve fresh
 complete namespace/binding discovery, original full stamps, the original
 two-second rule, Current provenance, changed/unsettled fresh reads and dirty
 cleanup. The current candidate does not implement or authorize that extension.

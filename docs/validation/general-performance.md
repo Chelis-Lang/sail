@@ -12,8 +12,8 @@ strict stock source-suite failure retain their original scope and requirements.
 | Gate | Current evidence | Limit |
 |---|---|---|
 | Broader selection | 18 reviewable workloads; four new repository pins; Verus-TLA baseline passes (141 functions compared); hekate-math passes all 18 units (1,848 records); semi-persistent passes all three selected packages (2,430 / 909 / 29 records) | Baselines compare stock with bare stock/shim; selected-fork, managed and targeted-edit coverage remain separate |
-| Run-scoped observations | Fresh-byte decode sharing, borrowed source projection basis, indexed dependency traversal and exact streamed JSON hashing implemented | Two-round broader whole-call screen completed; previous-Sail control and final closing-barrier candidate still require selection measurements |
-| Linux functional controls | Complete workspace-preparation composition passes strict Clippy, 1,283 ordinary tests (56 skipped), doctests, documentation/layering/dependency gates and six evaluation controls on c7i.8xlarge / us-east-1 | Closing-barrier cut and seven-control revision require final gate |
+| Run-scoped observations | Fresh-byte decode sharing, borrowed source projection basis, indexed dependency traversal and exact streamed JSON hashing implemented | Initial two-round candidate is mostly flat/slower than previous Sail; composed closing-barrier candidate requires selection measurements |
+| Linux functional controls | `32f7bba6` passes the complete ordinary gate, including 1,284 tests (56 skipped) and eight evaluation controls; composed functional checks below pass | Separate ordinary-gate correction; no overall pass claimed for the earlier controller that continued after Clippy failure |
 | Algorithmic scaling | Native single-chain lookup including index construction: 4,096 nodes, 83.888 ms legacy / 1.574 ms indexed; identical closure | One component diagnostic, not repeated whole-program acceptance. JSON timing benefit is small and variable; bounded intermediate allocation is the distinct change |
 | macOS | No result for this candidate | Native host gate, paired performance and release memory gates remain |
 | Compiler reuse | No persistent frontend reuse implemented or selected | ADR 0052 complete-input/output shadow qualification remains open |
@@ -21,6 +21,29 @@ strict stock source-suite failure retain their original scope and requirements.
 Raw records stay outside git. Add their source/runtime/environment identities,
 scope and SHA-256 here after completed captures; do not describe a build or
 matching failed baseline as a passing real-project workload.
+
+## Linux functional scope
+
+On native c7i.4xlarge / us-east-1, source `ab5fcddb` passes 53 solver tests,
+the complete E2E command including the local extra cases, and all four fast
+and standard conformance arms. Each fast arm reports 147 same / 3,451
+functions; each standard arm reports 159 same / 13,166 functions. All report
+zero different, unstable, infrastructure errors or skipped projects; resource
+limit drift appears in 11 fast / 17 standard units. Standard mutation/revert
+checks also pass. Its earlier ordinary Clippy failure remains a failure.
+
+The corrected source `32f7bba6` changes only the two Rust comment spellings
+relative to that production implementation, and passes the complete ordinary
+gate on c7i.8xlarge / us-east-1. Its release stages and strict clean-source
+intake control build and pass; the later generated comparison refuses as
+recorded below. No complete controller success or release acceptance follows.
+
+Conformance archive SHA-256:
+`cdc12f0bf5a9146b99cf4ce223e4a371dcafe6a4865cef057e0d5549db15412f`.
+Its gate log SHA-256:
+`0e9b0212600f1ffa46bdedfbcb00367330c3c28d9f8007fd22c77d74c253de03`.
+The corrected ordinary-gate/build/control log SHA-256:
+`327debb625c64a8036d4bfc7c69fad35c1b6f44cb61f0a17a1d84234133cd153`.
 
 ## Compatibility findings
 
@@ -67,6 +90,19 @@ it supplies no complete-key or restoration acceptance.
 
 ## Failed attempts
 
+- 2026-10-31, fixed generated source `7e7ec297`, candidate `32f7bba6`:
+  serial Cargo retains all targets and produces complete JSON streams, but
+  independent crate order differs. Chain compares same; diamond/shared
+  compare different in function details (1 same / 2 different). Equal
+  aggregate verified totals do not close per-function or parallel acceptance.
+
+- 2026-10-31, fixed generated source `7e7ec297`: all three parallel
+  workspace/all-targets comparisons still refuse. Every arm exits zero, but
+  repeated stock output fails JSON parsing after 1–7 complete documents;
+  function/verified totals are incomplete. Preserve 3 different / 0 same and
+  the additional plain controls. A serial-Cargo control is separate; see
+  [VI-0039](../verus-issues/VI-0039-concurrent-cargo-json-framing.md), #632.
+
 - 2026-10-31, `ab5fcddb` / `0ea95898`: composed ordinary gate stops at
   Clippy on two unquoted Rust identifiers in the closing-barrier comments.
   Its controller continues the independent solver/E2E/conformance checks;
@@ -85,14 +121,19 @@ it supplies no complete-key or restoration acceptance.
   lack the required Verus prelude; parallel Cargo failures produce different
   trailers and partially completed crate output (3 different, 0 same). The
   generator now imports the prelude and checks a root-library call. Original
-  comparator checks remain unchanged; the complete rerun is pending (#631).
+  comparator checks remain unchanged; the valid rerun exposes the separate
+  framing/identity failures above (#631, #632).
 
 - 2026-10-31, `b9466ece` benchmark with first external loop catalogue: the four
   arithmetic edit expectations and first five temporal-logic expectations
   pass; the final refinement matches stock's compiler failure and refuses
   its expected-positive outcome. Stock's minimal reproduction
   reports E0308 (`nat` addition assigned to `int`), zero verified/functions
-  and zero verification errors. The matching nat local passes a native minimal control; the real loop rerun remains pending. Do not
+  and zero verification errors. The matching nat local passes a native minimal
+  control. The corrected four-edit/six-state catalogue passes six complete
+  rounds: 84 same comparisons, every expected stock outcome matched, zero
+  different/unstable/infrastructure errors. This qualifies exact-query-cache
+  edit behavior, not a managed-receipt speedup. Do not
   count the matching compiler failure as passing edit qualification. See
   [VI-0038](../verus-issues/VI-0038-literal-addition-infers-nat.md).
 

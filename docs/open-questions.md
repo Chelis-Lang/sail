@@ -496,3 +496,17 @@ planned for releases after 0.1.0. The owner answered all twelve on
     dirty cleanup and fail-closed controls remain. Qualify both optimizations
     separately before selection; approval is for the bounded implementation
     and its measured qualification, not an acceptance claim.
+
+45. **Per-file owned-target digest observations.**
+    Approve the bounded, separately controlled prototype in
+    [ADR 0092](decisions/0092-per-file-owned-target-digests.md)? ADR 0091
+    currently requires the entire original owned-target tree to match before
+    reusing any artifact digest. The proposed amendment permits unchanged
+    settled file digests despite unrelated entry/directory-time changes, while
+    retaining fresh complete current barriers, original full file stamps and
+    Current provenance, complete source/context/receipt checks, dirty cleanup
+    and fresh reads for changed/unsettled files. Pure revisions retain their
+    existing whole-tree gate. Platform defaults require independent native
+    material gains; first-after-cold parity is not implied.
+
+    **Pending:** concrete owner approval before implementation/adoption.
