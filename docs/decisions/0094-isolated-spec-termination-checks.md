@@ -28,11 +28,17 @@ program-specific spelling adjustment would leave the same structural risk.
 
 ## Decision
 
-Prototype the existing Verus spinoff mechanism for every `QueryOp::SpecTermination`.
-Each such check receives a fresh pinned solver with the complete existing
-bucket context at that point. It executes every original command and retains
+Prototype one lazy companion solver per bucket for default-prover
+`QueryOp::SpecTermination` checks. Before the first check it receives the full
+existing bucket context; before later checks it receives each newly admitted
+context batch exactly once. This bounds total context loading to at most
+twice the original, avoiding repeated growing-prefix loads. Explicit nonlinear,
+bitvector, profiling reruns and `--spinoff-all` retain their existing routes.
+The companion executes every original command and retains
 the existing prover options, limits, errors, source spans and failure handling.
-Its solver history never enters the ordinary proof solver. Nonrecursive specs
+Its solver history never enters the ordinary proof solver. Both solvers
+contribute complete resource/timing totals and one combined bucket profile
+whose independent graph components have disjoint instance identifiers. Nonrecursive specs
 with no termination query and ordinary proof queries keep their existing route.
 
 This is an explicit extension of ADR 0039's narrow fork policy, recorded here
