@@ -28,7 +28,8 @@ use sail_verus::corpus::{Corpus, Tier, Unit};
 use sail_verus::run::{machine_info, prepare_unit};
 use sail_verus::toolchain::{Installed, Pins};
 
-const USAGE: &str = "usage:
+const USAGE: &str =
+    "usage (corpus workloads accept --corpus PATH; cold/warm/edit/agent-loop/history-replay also accept --out PATH and --sail-verus-build PATH):
   sail-bench cold   [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                     [--rounds N] [--name NAME] [--shim PATH]
   sail-bench warm   (cold's options) [--rounds WARM_ROUNDS] [--sail PATH]
@@ -117,6 +118,9 @@ fn sail_commit() -> String {
 
 /// Options shared by the `cold`, `warm` and `edit` workloads.
 struct Options {
+    corpus: PathBuf,
+    out: Option<PathBuf>,
+    sail_verus_build: Option<PathBuf>,
     tier: Tier,
     projects: Vec<String>,
     filter: Option<String>,
@@ -130,6 +134,9 @@ struct Options {
 
 fn parse_options(args: &[String]) -> Result<Options, String> {
     let mut o = Options {
+        corpus: PathBuf::from("corpus/corpus.toml"),
+        out: None,
+        sail_verus_build: None,
         tier: Tier::Fast,
         projects: Vec::new(),
         filter: None,
@@ -148,6 +155,9 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
                 .ok_or(format!("{arg} needs a value\n{USAGE}"))
         };
         match arg.as_str() {
+            "--corpus" => o.corpus = value()?.into(),
+            "--out" => o.out = Some(value()?.into()),
+            "--sail-verus-build" => o.sail_verus_build = Some(value()?.into()),
             "--tier" => {
                 o.tier = value()?
                     .parse()
@@ -176,20 +186,35 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
 /// Everything a workload run needs, located and prepared.
 struct Prepared {
     installed: Installed,
+    sail_installed: Option<Installed>,
+    fork_manifest: Option<String>,
     corpus: Corpus,
     cache: PathBuf,
     shim: PathBuf,
     started: u64,
     scratch: PathBuf,
+    result_path: Option<PathBuf>,
 }
 
-fn prepare(shim: Option<PathBuf>) -> Result<Prepared, String> {
+fn prepare(o: &Options) -> Result<Prepared, String> {
     let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
-    let corpus = Corpus::load(Path::new("corpus/corpus.toml")).map_err(|e| e.to_string())?;
+    let corpus = Corpus::load(&o.corpus).map_err(|e| e.to_string())?;
     corpus.check_pins(&pins).map_err(|e| e.to_string())?;
     let installed = Installed::locate(pins).map_err(|e| e.to_string())?;
+    let fork = o
+        .sail_verus_build
+        .as_ref()
+        .map(|path| sail_verus::engine::Installed::at(path, &installed.pins))
+        .transpose()
+        .map_err(|e| e.to_string())?;
+    let fork_manifest = fork.as_ref().map(|fork| fork.manifest_sha256.clone());
+    let sail_installed = fork.map(|fork| Installed {
+        verus: fork.verus,
+        cargo_verus: fork.cargo_verus,
+        ..installed.clone()
+    });
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
-    let shim = match shim {
+    let shim = match o.shim.clone() {
         Some(s) => s,
         None => std::env::current_exe()
             .map_err(|e| e.to_string())?
@@ -207,11 +232,14 @@ fn prepare(shim: Option<PathBuf>) -> Result<Prepared, String> {
     let scratch = cache.join("bench").join(started.to_string());
     Ok(Prepared {
         installed,
+        sail_installed,
+        fork_manifest,
         corpus,
         cache,
         shim,
         started,
         scratch,
+        result_path: o.out.clone(),
     })
 }
 
@@ -236,6 +264,13 @@ fn write_result(out: Output, name: Option<String>, p: &Prepared) -> Result<(), S
             p.started
         )
     });
+    let mut machine = machine_info();
+    machine.insert(
+        "sail_verus".into(),
+        p.fork_manifest
+            .clone()
+            .unwrap_or_else(|| "stock-shim-diagnostic".into()),
+    );
     let file = BenchFile {
         schema_version: 1,
         workload: out.workload.to_owned(),
@@ -245,14 +280,19 @@ fn write_result(out: Output, name: Option<String>, p: &Prepared) -> Result<(), S
         z3_version: p.installed.pins.z3.version.clone(),
         sail_commit: sail_commit(),
         started_unix: p.started,
-        machine: machine_info(),
+        machine,
         units: out.units,
         edits: out.edits,
         loops: out.loops,
         commits: out.commits,
     };
-    let path = Path::new("bench/results").join(format!("{name}.json"));
-    std::fs::create_dir_all("bench/results").map_err(|e| e.to_string())?;
+    let path = p
+        .result_path
+        .clone()
+        .unwrap_or_else(|| Path::new("bench/results").join(format!("{name}.json")));
+    if let Some(parent) = path.parent().filter(|path| !path.as_os_str().is_empty()) {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
     let json = serde_json::to_vec_pretty(&file).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
     println!("wrote {}", path.display());
@@ -266,7 +306,7 @@ fn tier_name(tier: Tier) -> String {
 fn cold_cmd(args: &[String]) -> Result<(), String> {
     let o = parse_options(args)?;
     let rounds = o.rounds.unwrap_or(3);
-    let p = prepare(o.shim.clone())?;
+    let p = prepare(&o)?;
     let selection = Selection {
         tier: o.tier,
         projects: &o.projects,
@@ -274,16 +314,24 @@ fn cold_cmd(args: &[String]) -> Result<(), String> {
     };
     let units = select_units(&selection, &p.corpus, &p.installed, &p.cache, &p.scratch)?;
     eprintln!("cold workload: {} units x {rounds} rounds", units.len());
-    let results = cold::run(&p.installed, &units, &p.shim, rounds, &p.scratch, |r| {
-        eprintln!(
-            "{:<60} plain {:>8.0} ms  sail {:>8.0} ms  same {}/{}",
-            r.id,
-            cold::median(&r.plain.wall_ms).unwrap_or(0.0),
-            cold::median(&r.sail.wall_ms).unwrap_or(0.0),
-            r.same,
-            r.same + r.different + r.infra_errors
-        );
-    });
+    let results = cold::run(
+        &p.installed,
+        p.sail_installed.as_ref(),
+        &units,
+        &p.shim,
+        rounds,
+        &p.scratch,
+        |r| {
+            eprintln!(
+                "{:<60} plain {:>8.0} ms  sail {:>8.0} ms  same {}/{}",
+                r.id,
+                cold::median(&r.plain.wall_ms).unwrap_or(0.0),
+                cold::median(&r.sail.wall_ms).unwrap_or(0.0),
+                r.same,
+                r.same + r.different + r.infra_errors
+            );
+        },
+    );
     let out = Output {
         workload: "cold",
         tier: tier_name(o.tier),
@@ -307,7 +355,7 @@ fn warm_cmd(args: &[String]) -> Result<(), String> {
     if rounds == 0 {
         return Err("--rounds must be at least 1 for the warm workload".to_owned());
     }
-    let p = prepare(o.shim.clone())?;
+    let p = prepare(&o)?;
     let sail = daemon::locate_sail(o.sail.clone())?;
     let selection = Selection {
         tier: o.tier,
@@ -321,6 +369,7 @@ fn warm_cmd(args: &[String]) -> Result<(), String> {
     );
     let setup = warm::Setup {
         installed: &p.installed,
+        sail_installed: p.sail_installed.as_ref(),
         shim: &p.shim,
         sail: &sail,
         scratch: &p.scratch,
@@ -366,7 +415,7 @@ fn edit_cmd(args: &[String]) -> Result<(), String> {
             e.id
         ));
     }
-    let p = prepare(o.shim.clone())?;
+    let p = prepare(&o)?;
     let sail = daemon::locate_sail(o.sail.clone())?;
     // Edits name their units: select from every tier, limited to their
     // projects.
@@ -390,6 +439,7 @@ fn edit_cmd(args: &[String]) -> Result<(), String> {
     eprintln!("edit workload: {} edits x {rounds} rounds", edits.len());
     let setup = warm::Setup {
         installed: &p.installed,
+        sail_installed: p.sail_installed.as_ref(),
         shim: &p.shim,
         sail: &sail,
         scratch: &p.scratch,
@@ -430,7 +480,7 @@ fn agent_loop_cmd(args: &[String]) -> Result<(), String> {
         return Err("--rounds must be at least 1".to_owned());
     }
     let catalogue = agent_loop::Catalogue::load(&o.loops)?;
-    let p = prepare(o.shim.clone())?;
+    let p = prepare(&o)?;
     let sail = daemon::locate_sail(o.sail.clone())?;
     let mut projects: Vec<String> = catalogue
         .loops
@@ -455,6 +505,7 @@ fn agent_loop_cmd(args: &[String]) -> Result<(), String> {
     );
     let setup = warm::Setup {
         installed: &p.installed,
+        sail_installed: p.sail_installed.as_ref(),
         shim: &p.shim,
         sail: &sail,
         scratch: &p.scratch,
@@ -507,7 +558,7 @@ fn history_replay_cmd(args: &[String]) -> Result<(), String> {
         return Err("--commits must be at least 1".to_owned());
     }
     let o = parse_options(&rest)?;
-    let p = prepare(o.shim.clone())?;
+    let p = prepare(&o)?;
     let sail = daemon::locate_sail(o.sail.clone())?;
     let proj = p
         .corpus
@@ -539,6 +590,7 @@ fn history_replay_cmd(args: &[String]) -> Result<(), String> {
     );
     let setup = warm::Setup {
         installed: &p.installed,
+        sail_installed: p.sail_installed.as_ref(),
         shim: &p.shim,
         sail: &sail,
         scratch: &p.scratch,
@@ -629,7 +681,14 @@ fn parse_fragility(args: &[String]) -> Result<FragilityArgs, String> {
                 rest.push(arg.clone());
                 if matches!(
                     arg.as_str(),
-                    "--tier" | "--project" | "--filter" | "--name" | "--shim"
+                    "--tier"
+                        | "--project"
+                        | "--filter"
+                        | "--name"
+                        | "--shim"
+                        | "--corpus"
+                        | "--out"
+                        | "--sail-verus-build"
                 ) {
                     rest.push(value()?);
                 }
@@ -646,7 +705,10 @@ fn parse_fragility(args: &[String]) -> Result<FragilityArgs, String> {
 fn fragility_cmd(args: &[String]) -> Result<(), String> {
     let f = parse_fragility(args)?;
     let o = &f.selection;
-    let p = prepare(o.shim.clone())?;
+    if o.out.is_some() || o.sail_verus_build.is_some() {
+        return Err("--out and --sail-verus-build apply to cold/warm/edit/agent-loop/history-replay, not fragility".into());
+    }
+    let p = prepare(o)?;
     let selection = Selection {
         tier: o.tier,
         projects: &o.projects,

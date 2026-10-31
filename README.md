@@ -122,6 +122,7 @@ A repair is accepted only when the whole target verifies. See the
 - [Documentation index](docs/README.md)
 - [Performance](docs/performance.md), [error codes](docs/errors.md),
   [compatibility](docs/compatibility.md)
+- [Broader performance evaluation](docs/performance-evaluation.md)
 - [Disk use and cleanup](docs/workspace-hygiene.md),
   [caching Sail in CI](docs/ci-cache.md)
 - Experimental features: fragility measurement, seed portfolios, team caching

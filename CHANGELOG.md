@@ -5,6 +5,18 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add explicit corpus selection to conformance and benchmark tools, validated
+  fork selection for paired benchmarks, and broader local performance recipes
+  with pinned intake projects, held-out workloads and scaling controls.
+- Prepare the complete scratch Cargo workspace for corpus comparisons,
+  including non-selected members whose exact Verus pins participate in shared
+  resolution. Fetched repositories and proof bodies remain unchanged.
+- Consolidate immutable source projection and target-record decoding work
+  within managed runs; index dependency traversal and digest prefetch
+  selection, and stream existing JSON checksums without changing their bytes.
+  All original freshness/admission checks remain; native performance
+  qualification is tracked separately.
+
 - Prime the same memory inventory in both overhead-control arms and reduce
   Mac observer priority after command spawn, preserving the command's priority,
   environment and arguments. Refuse busy Mac measurement before timing;

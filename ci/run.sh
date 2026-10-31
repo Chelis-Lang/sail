@@ -213,6 +213,7 @@ case "$step" in
     python3 scripts/test-perf-mac-quiet.py
     python3 scripts/test-perf-real-command.py
     python3 scripts/test-perf-real-report.py
+    python3 scripts/test-perf-corpus.py
     python3 scripts/test-perf-host-sync.py
     python3 scripts/test-private-dependencies.py
     python3 scripts/test-check-acceptance-proofs.py

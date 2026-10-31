@@ -20,6 +20,7 @@ pub(crate) mod metadata_memo;
 mod native_include_hints;
 mod native_tools;
 pub mod noop;
+mod observations;
 pub mod projects;
 mod read_check;
 mod receipts;

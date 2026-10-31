@@ -57,7 +57,7 @@ struct Record {
 
 impl Record {
     fn checksum(&self) -> Option<String> {
-        serde_json::to_vec(&(
+        files::json_digest(&(
             &self.kind,
             self.schema,
             &self.namespace,
@@ -67,7 +67,6 @@ impl Record {
             &self.entries,
         ))
         .ok()
-        .map(|bytes| files::digest(&bytes))
     }
 }
 
@@ -94,7 +93,7 @@ impl Source {
             return None;
         }
         regular.retain(|path, _| paths.contains(path));
-        let namespace = files::digest(&serde_json::to_vec(&(KIND, paths, bindings)).ok()?);
+        let namespace = files::json_digest(&(KIND, paths, bindings)).ok()?;
         Some(Self {
             file,
             namespace,

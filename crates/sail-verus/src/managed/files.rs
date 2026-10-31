@@ -4,12 +4,34 @@ use crate::{Error, Result};
 use sail_acceptance::inputs::{InputFact, InputValue, reads_complete, selection_covered};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 pub(crate) fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
+}
+
+/// Hash the same complete JSON byte stream as `to_vec` followed by `digest`,
+/// without allocating an intermediate buffer proportional to the input graph.
+pub(super) fn json_digest(value: &impl Serialize) -> serde_json::Result<String> {
+    struct Writer(Sha256);
+    impl Write for Writer {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.update(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut writer = std::io::BufWriter::with_capacity(8192, Writer(Sha256::new()));
+    serde_json::to_writer(&mut writer, value)?;
+    let writer = writer
+        .into_inner()
+        .map_err(|error| serde_json::Error::io(error.into_error()))?;
+    Ok(format!("{:x}", writer.0.finalize()))
 }
 
 pub(crate) fn file_digest(path: &Path) -> Result<String> {
@@ -123,9 +145,12 @@ impl FileDigests {
     /// error in the original order.
     pub(super) fn prefetch<'a>(&mut self, paths: impl IntoIterator<Item = &'a Path>) {
         let mut pending: Vec<(PathBuf, &Path)> = Vec::new();
+        let mut selected = BTreeSet::new();
         for path in paths {
             let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
-            if !self.0.contains_key(&canonical) && !pending.iter().any(|(c, _)| *c == canonical) {
+            // Retain the first lexical descriptor and its input order, while
+            // avoiding a linear scan of every earlier path for every file.
+            if !self.0.contains_key(&canonical) && selected.insert(canonical.clone()) {
                 pending.push((canonical, path));
             }
         }
@@ -397,6 +422,79 @@ pub(crate) fn event(value: &serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore = "native allocation/serialization diagnostic; not a product timing gate"]
+    fn json_digest_scaling() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        for count in [64, 1024, 4096, 16384] {
+            let entries: BTreeMap<_, _> = (0..count)
+                .map(|index| {
+                    (
+                        PathBuf::from(format!("/workspace/dependency-{index}/src/module.rs")),
+                        "0123456789abcdef".repeat(4),
+                    )
+                })
+                .collect();
+            for round in 0..6 {
+                let fresh = || -> std::result::Result<_, serde_json::Error> {
+                    let started = std::time::Instant::now();
+                    let bytes = serde_json::to_vec(&entries)?;
+                    Ok((
+                        digest(&bytes),
+                        started.elapsed().as_secs_f64() * 1000.0,
+                        bytes.len(),
+                    ))
+                };
+                let streamed = || -> std::result::Result<_, serde_json::Error> {
+                    let started = std::time::Instant::now();
+                    let hash = json_digest(&entries)?;
+                    Ok((hash, started.elapsed().as_secs_f64() * 1000.0))
+                };
+                let (old, new) = if round % 2 == 0 {
+                    let old = fresh()?;
+                    (old, streamed()?)
+                } else {
+                    let new = streamed()?;
+                    (fresh()?, new)
+                };
+                assert_eq!(old.0, new.0);
+                println!(
+                    "{}",
+                    serde_json::json!({"kind":"json-digest-scaling", "entries":count,
+                    "round":round, "buffered_ms":old.1, "streamed_ms":new.1,
+                    "legacy_intermediate_bytes":old.2, "stream_buffer_bytes":8192})
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn streaming_json_digest_preserves_the_complete_existing_byte_encoding()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        for count in [0, 1, 64, 4096] {
+            let entries: BTreeMap<_, _> = (0..count)
+                .map(|index| {
+                    (
+                        PathBuf::from(format!("/workspace/λ/{index}/quoted\"\\file.rs")),
+                        (index, "a\n\t\"\\λ".repeat(8)),
+                    )
+                })
+                .collect();
+            let value = ("sail-existing-schema", &entries, Option::<String>::None);
+            assert_eq!(json_digest(&value)?, digest(&serde_json::to_vec(&value)?));
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn streaming_json_digest_preserves_non_utf8_refusal() {
+        use std::os::unix::ffi::OsStringExt as _;
+        let invalid = PathBuf::from(std::ffi::OsString::from_vec(vec![b'/', 255]));
+        assert!(serde_json::to_vec(&invalid).is_err());
+        assert!(json_digest(&invalid).is_err());
+    }
 
     #[test]
     fn stable_sidecar_preserves_time_only_for_identical_bytes()

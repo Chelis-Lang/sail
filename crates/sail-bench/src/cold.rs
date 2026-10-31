@@ -140,6 +140,7 @@ pub fn judge(plains: &[RunRecord], sail: &RunRecord) -> (Judgement, usize, Vec<S
 /// Runs the cold workload over `units` for `rounds` rounds.
 pub fn run(
     installed: &Installed,
+    sail_installed: Option<&Installed>,
     units: &[Unit],
     shim: &Path,
     rounds: usize,
@@ -170,8 +171,14 @@ pub fn run(
         let work: PathBuf = scratch.join("work");
         for round in 0..rounds {
             let plain_first = round % 2 == 0;
-            let go =
-                |solver: &Solver, side: &str| run_unit(installed, unit, solver, &work.join(side));
+            let go = |solver: &Solver, side: &str| {
+                let runtime = if matches!(solver, Solver::Plain) {
+                    installed
+                } else {
+                    sail_installed.unwrap_or(installed)
+                };
+                run_unit(runtime, unit, solver, &work.join(side))
+            };
             let (p, s) = if plain_first {
                 let p = go(&Solver::Plain, "plain");
                 (p, go(&sail_solver, "sail"))

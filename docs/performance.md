@@ -12,6 +12,12 @@ current installed Linux/macOS timing and memory qualification and its remaining
 gates. These are development measurements, not a qualified release. The rc.7
 measurements below retain their original source and observer scope.
 
+The [broader evaluation](performance-evaluation.md) adds real-project structures,
+four pinned repository candidates and dependency/file/target scaling controls.
+Its [algorithm review](design/general-performance.md) and
+[qualification status](validation/general-performance.md) distinguish general
+implementation changes from measured product gains.
+
 ## 0.1.0-rc.7
 
 The numbers below time the installed `0.1.0-rc.7` release archives, built from
