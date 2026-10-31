@@ -1,6 +1,6 @@
 # 0093: Named order exceptions in stock source-suite debug snapshots
 
-- **Status:** proposed; owner approval required before implementation or adoption
+- **Status:** owner-approved 2026-10-31; implementation under native qualification
 - **Date:** 2026-10-31
 
 ## Context
@@ -24,11 +24,12 @@ This proposal does not change either failed result.
 The operating guide says, "Never weaken a conformance check, golden, test or
 benchmark baseline to make a change pass. If a check looks wrong, raise it
 with evidence." Changing this order requirement needs an explicit owner
-decision. No exception is implemented or authorized by this proposal.
+decision. The owner approved these two exceptions on 2026-10-31 and directed the
+comparison to focus on meaningful behavioral agreement.
 
 ## Decision
 
-If approved, permit exactly these two order differences in the active pinned
+Permit exactly these two order differences in the active pinned
 **stock source-suite debug snapshots**, without modifying stock sources:
 
 1. The order of entries in the `func-details` object.
@@ -54,7 +55,7 @@ Before adoption, require original real failing snapshots, negative controls
 for changed verdicts/messages/notes/counts/ordinary array orders, unknown and
 malformed debug fragments, exact fork refusals, and a complete native source
 suite. Document the accepted scope in the charter appendix and divergences.
-Until owner approval and qualification, #627 remains a release blocker.
+Implementation is authorized; #627 remains open until native qualification.
 
 ## Consequences
 

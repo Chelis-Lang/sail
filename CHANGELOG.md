@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Record the owner-approved pinned-stock source-test debug-order exceptions
+  separately while preserving all values, diagnostics, original differences
+  and raw captures (ADR 0093).
+
+
 - Run memory inventories in a separate observer process so inventory parsing
   cannot hold the command waiter's Python execution lock. The command and its
   waiter retain their caller's priority; only the Mac sampler lowers its own

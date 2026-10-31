@@ -24,6 +24,8 @@ use serde::Serialize;
 
 use crate::{Verdict, diagnostics, first_difference};
 
+mod stock_debug;
+
 /// Every difference between a plain run and a sail run of one test.
 #[must_use]
 pub fn compare_tests(plain: &TestRecord, sail: &TestRecord) -> Vec<String> {
@@ -87,12 +89,72 @@ pub struct TestClassification {
     /// Whether sail matched one complete plain run after the approved
     /// path, thread-id and libtest-timing normalization.
     pub matches_a_plain_run: bool,
+    /// Named owner-approved order exceptions used for this comparison.
+    pub accepted_order_exceptions: Vec<String>,
+    /// Original comparison differences retained before an order exception.
+    pub strict_differences: Vec<String>,
 }
 
 /// Classifies a sail run of a test against one or more plain runs.
 #[must_use]
 pub fn classify_tests(plains: &[TestRecord], sail: &TestRecord) -> TestClassification {
     classify_tests_with(plains, sail, false)
+}
+
+/// Classifies the pinned stock source test with ADR 0093's two order exceptions.
+///
+/// Recognition requires the exact source identity, test binary, debug helper
+/// header and embedded producer identity. All raw records remain the caller's
+/// responsibility; the classification retains the original strict differences.
+#[must_use]
+pub fn classify_stock_test(
+    plains: &[TestRecord],
+    sail: &TestRecord,
+    source_commit: &str,
+    test_binary: &str,
+) -> TestClassification {
+    let original = classify_tests(plains, sail);
+    if source_commit != stock_debug::STOCK || test_binary != "output_json" {
+        return original;
+    }
+    let Some(stderr) = stock_debug::canonical(&sail.stderr) else {
+        return original;
+    };
+    let mut candidate = sail.clone();
+    candidate.stderr = stderr;
+    let mut baselines = Vec::new();
+    for plain in plains {
+        let Some(stderr) = stock_debug::canonical(&plain.stderr) else {
+            return original;
+        };
+        let mut baseline = plain.clone();
+        baseline.stderr = stderr;
+        baselines.push(baseline);
+    }
+    let mut result = classify_tests(&baselines, &candidate);
+    let changed = plains
+        .iter()
+        .zip(&baselines)
+        .any(|(a, b)| a.stderr != b.stderr)
+        || sail.stderr != candidate.stderr;
+    if changed {
+        result.strict_differences = original.differences;
+        if let Some(first) = plains.first() {
+            for (i, other) in plains.iter().enumerate().skip(1) {
+                result.strict_differences.extend(
+                    compare_tests(first, other)
+                        .into_iter()
+                        .map(|d| format!("plain 1 vs plain {}: {d}", i + 1)),
+                );
+            }
+        }
+        if result.verdict == Verdict::Same && !result.strict_differences.is_empty() {
+            result.accepted_order_exceptions.push(
+                "ADR 0093: stock output_json function-detail/proof-note set order".to_owned(),
+            );
+        }
+    }
+    result
 }
 
 /// Classifies deterministic fork runs with ordered, exact stderr and passing
@@ -114,6 +176,8 @@ fn classify_tests_with(
             plain_runs: 0,
             plain_varies: false,
             matches_a_plain_run: false,
+            accepted_order_exceptions: Vec::new(),
+            strict_differences: Vec::new(),
         };
     };
     let mut differences = compare_tests_with(first, sail, exact);
@@ -147,6 +211,8 @@ fn classify_tests_with(
         plain_runs: plains.len(),
         plain_varies,
         matches_a_plain_run,
+        accepted_order_exceptions: Vec::new(),
+        strict_differences: Vec::new(),
     }
 }
 

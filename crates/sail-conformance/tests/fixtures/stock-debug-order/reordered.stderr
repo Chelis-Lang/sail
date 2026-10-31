@@ -1,0 +1,72 @@
+[rust_verify_test/tests/output_json.rs:277:5] json = Object {
+    "func-details": Object {
+        "test_crate::caller": Object {
+            "obligation_proof_notes": Array [],
+            "failed_proof_notes": Array [],
+        },
+        "test_crate::example": Object {
+            "obligation_proof_notes": Array [
+                String("Property 732"),
+                String("Label 451"),
+            ],
+            "failed_proof_notes": Array [
+                String("Property 732"),
+                String("Label 451"),
+            ],
+        },
+    },
+    "verification-results": Object {
+        "encountered-error": Bool(true),
+        "encountered-vir-error": Bool(false),
+        "success": Bool(false),
+        "verified": Number(1),
+        "errors": Number(1),
+        "is-verifying-entire-crate": Bool(true),
+    },
+    "verus": Object {
+        "profile": String("release"),
+        "version": String("0.2026.10.18.7d82994"),
+        "platform": Object {
+            "os": String("linux"),
+            "arch": String("x86_64"),
+        },
+        "toolchain": String("1.99.1-x86_64-unknown-linux-gnu"),
+        "commit": String("7d829946231d6413a398f6e4160cdfe951261dad"),
+    },
+}
+[rust_verify_test/tests/output_json.rs:277:5] json = Object {
+    "func-details": Object {
+        "test_crate::caller": Object {
+            "obligation_proof_notes": Array [],
+            "failed_proof_notes": Array [],
+        },
+        "test_crate::example": Object {
+            "obligation_proof_notes": Array [
+                String("Property 732"),
+                String("Label 451"),
+            ],
+            "failed_proof_notes": Array [
+                String("Property 732"),
+                String("Label 451"),
+            ],
+        },
+    },
+    "verification-results": Object {
+        "encountered-error": Bool(true),
+        "encountered-vir-error": Bool(false),
+        "success": Bool(false),
+        "verified": Number(1),
+        "errors": Number(1),
+        "is-verifying-entire-crate": Bool(true),
+    },
+    "verus": Object {
+        "profile": String("release"),
+        "version": String("0.2026.10.18.7d82994"),
+        "platform": Object {
+            "os": String("linux"),
+            "arch": String("x86_64"),
+        },
+        "toolchain": String("1.99.1-x86_64-unknown-linux-gnu"),
+        "commit": String("7d829946231d6413a398f6e4160cdfe951261dad"),
+    },
+}

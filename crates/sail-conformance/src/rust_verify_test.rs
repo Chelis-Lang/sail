@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 use sail_conformance::Verdict;
-use sail_conformance::rvt::{classify_tests, classify_tests_exact};
+use sail_conformance::rvt::{classify_stock_test, classify_tests_exact};
 use sail_verus::run::{Solver, copy_tree, machine_info};
 use sail_verus::rvt::{Outcome, Suite, TestCase, TestRecord, kept_input_dir};
 use sail_verus::source_build;
@@ -114,6 +114,8 @@ struct TestReport {
     /// Whether sail matched a complete plain run after approved normalization.
     matches_a_plain_run: bool,
     differences: Vec<String>,
+    accepted_order_exceptions: Vec<String>,
+    strict_differences: Vec<String>,
     infra_error: Option<String>,
     plain_ms: f64,
     sail_ms: f64,
@@ -132,6 +134,8 @@ struct Summary {
     plain_ok: usize,
     plain_failed: usize,
     plain_unknown: usize,
+    /// Tests with an explicitly reported ADR 0093 order exception.
+    accepted_order_exceptions: usize,
     plain_ms: f64,
     sail_ms: f64,
     wall_s: f64,
@@ -178,6 +182,8 @@ fn infra(test: &TestCase, message: String) -> TestReport {
         plain_varies: false,
         matches_a_plain_run: false,
         differences: Vec::new(),
+        accepted_order_exceptions: Vec::new(),
+        strict_differences: Vec::new(),
         infra_error: Some(message),
         plain_ms: 0.0,
         sail_ms: 0.0,
@@ -255,6 +261,8 @@ fn run_one(cx: &Context, test: &TestCase) -> TestReport {
             plain_varies: false,
             matches_a_plain_run: false,
             differences: Vec::new(),
+            accepted_order_exceptions: Vec::new(),
+            strict_differences: Vec::new(),
             infra_error: None,
             plain_ms: 0.0,
             sail_ms: 0.0,
@@ -270,10 +278,12 @@ fn run_one(cx: &Context, test: &TestCase) -> TestReport {
         Ok(s) => s,
         Err(e) => return infra(test, e.to_string()),
     };
-    let classify = if cx.exact {
-        classify_tests_exact
-    } else {
-        classify_tests
+    let classify = |plains: &[TestRecord], sail: &TestRecord| {
+        if cx.exact {
+            classify_tests_exact(plains, sail)
+        } else {
+            classify_stock_test(plains, sail, &cx.suite.manifest.commit, &test.binary)
+        }
     };
     let mut c = classify(&plains, &sail);
     for _ in 0..cx.confirm_runs {
@@ -287,7 +297,7 @@ fn run_one(cx: &Context, test: &TestCase) -> TestReport {
         c = classify(&plains, &sail);
     }
     let mut artifacts = None;
-    if c.verdict != Verdict::Same {
+    if c.verdict != Verdict::Same || !c.strict_differences.is_empty() {
         let dir = cx.out.join("tests").join(slug(&test.id()));
         if std::fs::create_dir_all(&dir).is_ok() {
             for (i, p) in plains.iter().enumerate() {
@@ -312,6 +322,8 @@ fn run_one(cx: &Context, test: &TestCase) -> TestReport {
         plain_varies: c.plain_varies,
         matches_a_plain_run: c.matches_a_plain_run,
         differences: c.differences,
+        accepted_order_exceptions: c.accepted_order_exceptions,
+        strict_differences: c.strict_differences,
         infra_error: None,
         plain_ms: first.map_or(0.0, |p| p.wall_ms),
         sail_ms: sail.wall_ms,
@@ -372,6 +384,7 @@ fn summarize(tests: &[TestReport], wall_s: f64) -> Summary {
         ..Summary::default()
     };
     for t in tests {
+        s.accepted_order_exceptions += usize::from(!t.accepted_order_exceptions.is_empty());
         match t.verdict {
             Verdict::Same => s.same += 1,
             Verdict::Unstable => s.unstable += 1,
@@ -564,7 +577,7 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
         selection.push(format!("every:{}", o.every));
     }
     let report = Report {
-        schema_version: 1,
+        schema_version: 2,
         suite: "rust_verify_test",
         verus_release: verus.release.clone(),
         verus_commit: verus.commit.clone(),

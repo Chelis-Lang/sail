@@ -297,3 +297,12 @@ Each entry names the charter text it qualifies and the ADR that records it.
     truthful reporting remain required for the effective inputs Sail verifies.
     Unrelated differences remain failures. No conformance comparison, corpus
     case or proof obligation is weakened, and no runtime or backend is selected.
+
+13. *Source-suite oracle: incidental stock debug set order* (owner decision,
+    2026-10-31). The pinned stock `output_json` test helper may reorder
+    `func-details` entries and the two set-valued proof-note arrays in its
+    debug dump. ADR 0093 binds recognition to the producer/helper identity,
+    preserves every value, note, count, other array order and surrounding
+    diagnostic, and records accepted exceptions separately with original raw
+    differences. Fork comparisons remain exact. This changes no solver input,
+    cache identity or product verdict.

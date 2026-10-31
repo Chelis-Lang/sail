@@ -34,7 +34,12 @@ It compares complete diagnostic messages as a multiset under
 counts, all other stderr, stdout, outcomes and exit codes remain exact.
 Stock instability follows [ADR 0009](decisions/0009-solver-nondeterminism-and-unstable-results.md):
 the candidate must match a complete observed stock run. Unseen or hybrid
-outputs remain differences. JSON test output is not normalized.
+outputs remain differences. The pinned stock `output_json` helper has two owner-approved debug-order
+exceptions (ADR 0093): `func-details` entries and the two proof-note sets.
+Every value and count remains checked; other arrays and fork output remain
+exact. Report schema 2 records `accepted_order_exceptions` and
+`strict_differences` per test, a summary exception count, and original raw
+captures even when an order exception permits a match.
 
 These source-suite arms do not compare stock and fork runtimes with each
 other. That equivalence remains the corpus conformance harness's job, in
