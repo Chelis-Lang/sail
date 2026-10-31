@@ -58,13 +58,20 @@ def inputs_intact(expected):
         return False
 
 
+def git_output(*args):
+    result = subprocess.run(["git", *args], cwd=ROOT, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, check=False)
+    if result.returncode or result.stderr:
+        raise ValueError("incomplete Git source inventory: " +
+                         result.stderr.decode(errors="replace").strip())
+    return result.stdout
+
+
 def source_state():
-    tracked_diff = subprocess.check_output(["git", "diff", "--binary", "HEAD", "--"], cwd=ROOT)
+    tracked_diff = git_output("diff", "--binary", "HEAD", "--")
     return {"tracked_diff_sha256": hashlib.sha256(tracked_diff).hexdigest(),
-            "head": subprocess.check_output(["git", "rev-parse", "HEAD"],
-                                             cwd=ROOT, text=True).strip(),
-            "status": subprocess.check_output(
-                ["git", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT, text=True)}
+            "head": git_output("rev-parse", "HEAD").decode().strip(),
+            "status": git_output("status", "--porcelain", "--untracked-files=all").decode()}
 
 
 def execute(argv, output, env):

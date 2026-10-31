@@ -7,6 +7,8 @@ from pathlib import Path
 import tempfile
 import tomllib
 import unittest
+from unittest.mock import patch
+import subprocess
 
 
 def module(name):
@@ -47,6 +49,12 @@ class EvaluationControls(unittest.TestCase):
             report["summary"]["projects_skipped"] = 1
             path.write_text(json.dumps(report))
             self.assertEqual(suite.conformance_status(path)[1:], (False, False))
+
+    def test_git_warning_cannot_certify_a_clean_frozen_source(self):
+        result = subprocess.CompletedProcess(["git"], 0, b"", b"warning: unreadable directory")
+        with patch.object(suite.subprocess, "run", return_value=result):
+            with self.assertRaisesRegex(ValueError, "incomplete Git source inventory"):
+                suite.source_state()
 
     def test_changed_or_removed_measurement_input_refuses_the_capture(self):
         with tempfile.TemporaryDirectory() as tmp:

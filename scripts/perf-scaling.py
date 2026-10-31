@@ -21,7 +21,7 @@ def edges(shape, index):
     return [index - 1, index - 2] if offset == 0 else [index - offset]
 
 
-def generate(out, shape, packages, files, targets, padding, vstd):
+def generate(out, shape, packages, files, targets, padding, vstd, default_all_members=False):
     if min(packages, files, targets) < 1 or padding < 0:
         raise ValueError("packages, files and targets must be positive; padding nonnegative")
     if not (vstd / "Cargo.toml").is_file():
@@ -34,9 +34,10 @@ def generate(out, shape, packages, files, targets, padding, vstd):
     leaves = [name for name in names if name not in depended]
     graph["sail-scale-root"] = leaves
     members = ", ".join(json.dumps("units/" + name) for name in graph)
+    defaults = members if default_all_members else json.dumps("units/sail-scale-root")
     (out / "Cargo.toml").write_text(
         '[workspace]\nresolver = "2"\nmembers = [' + members + ']\n'
-        'default-members = ["units/sail-scale-root"]\n')
+        'default-members = [' + defaults + ']\n')
     for name, dependencies in graph.items():
         directory = out / "units" / name
         (directory / "src").mkdir(parents=True)
@@ -71,7 +72,8 @@ def generate(out, shape, packages, files, targets, padding, vstd):
         (directory / "Cargo.toml").write_text(manifest)
     record = {"schema_version": 1, "shape": shape, "packages": packages,
               "files_per_package": files, "root_binary_targets": targets,
-              "padding_bytes_per_module": padding, "dependencies": graph}
+              "padding_bytes_per_module": padding, "dependencies": graph,
+              "default_all_members": default_all_members}
     (out / "sail-scaling.json").write_text(json.dumps(record, indent=2) + "\n")
 
 
@@ -84,8 +86,10 @@ def main():
     parser.add_argument("--files", type=int, default=16)
     parser.add_argument("--targets", type=int, default=1)
     parser.add_argument("--padding", type=int, default=0)
+    parser.add_argument("--default-all-members", action="store_true")
     args = parser.parse_args()
-    generate(args.out, args.shape, args.packages, args.files, args.targets, args.padding, args.vstd)
+    generate(args.out, args.shape, args.packages, args.files, args.targets, args.padding,
+             args.vstd, args.default_all_members)
 
 
 if __name__ == "__main__":

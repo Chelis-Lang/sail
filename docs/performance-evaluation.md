@@ -76,7 +76,8 @@ python3 scripts/perf-corpus.py run --phase accept \
 recipe, **not release acceptance**. A frozen candidate must equal the full
 clean checkout HEAD. The runner checks completeness and retains refusals. It records source state
 and input digests, then refuses a capture if the source state, executable,
-manifest or runner changes during the run. An exit of zero says the requested
+manifest or runner changes during the run. Git warnings or failed source
+inventory also refuse capture. An exit of zero says the requested
 comparisons and captures completed.
 
 Managed workloads use `perf-real.sh`: cold, first and second unchanged calls,
@@ -155,6 +156,11 @@ Cargo projects use the existing cumulative loop harness; the single-edit
 harness remains limited to direct Verus units.
 
 ## Scaling and work accounting
+
+`--default-all-members` makes every generated package a default Cargo target;
+without it, the aggregate root remains the sole default member and reaches
+all packages through dependencies. This lets the same generated graph cover
+multiple requested packages as well as dependency-only verification.
 
 `perf-scaling.py` generates reproducible verified Cargo workspaces. Vary one
 dimension at a time: packages, files, shared dependencies, root binary targets

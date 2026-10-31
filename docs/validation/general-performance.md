@@ -67,6 +67,13 @@ it supplies no complete-key or restoration acceptance.
 
 ## Failed attempts
 
+- 2026-10-31, `b9466ece` held-out capture: Git exited zero while warning
+  that a build-output directory was unreadable. The initial runner treated
+  this as a clean checkout; full clean-source inventory was not established.
+  The interrupted capture remains limited evidence. The runner now refuses
+  Git warnings, with an actual native warning-refusal and clean-source control;
+  composed-candidate timings require a new sealed capture.
+
 - 2026-10-31, `b9466ece` generated source `0f63559f`: all three shapes
   refuse the full workspace/all-targets comparison. Generated binary targets
   lack the required Verus prelude; parallel Cargo failures produce different
