@@ -652,6 +652,9 @@ Linux does not establish release parity. See the separate scopes in the
 
 The separate `SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO=1` prototype implements
 owner-approved [ADR 0092](decisions/0092-per-file-owned-target-digests.md).
+It remains off on every platform: native seven-project Linux evaluation shows
+no warm median gain, and Mac correctness gates (#633, #634) prevent timing
+selection. See the [current record](validation/general-performance.md).
 It is off by default on every platform; exactly `1` opts in on Unix. It
 retains complete fresh current target namespace/barrier checks, original full
 file stamps and ancestor identities, original Current run/start and settlement,

@@ -135,3 +135,11 @@ source readback. Its mutation regression and native functional gates pass,
 but the bundle earns no material whole-call gain across the expanded cases.
 The current runtime retains `715c0f5e`'s original early and closing guards;
 the per-file ledger never supplies revision proposals.
+
+The expanded Mac corpus exposes a fork/direct-pinned-Z3 verdict difference
+([VI-0040](../verus-issues/VI-0040-macos-abstract-domain-verdict.md), #634).
+Stock/shim and stock/managed controls pass; fork/bare and direct-Z3 controls
+fail the same proof. Repairing that compiler/query boundary is required before
+Mac performance selection. Separately, installed baseline external-input
+discovery causes an extra recompile (#633). Neither failure is waived by
+component timings or the passing Linux gates.

@@ -1,8 +1,11 @@
 # General performance qualification
 
-**Current status:** broader tooling implemented; initial runtime bundle
-unselected after native whole-call evaluation. The separate ADR 0092
-prototype is implemented, off by default and undergoing native qualification. No new release performance acceptance or frontend reuse is claimed.
+**Current status:** broader tooling and the owner-approved ADR 0092 bounded
+prototype are implemented. Both optimization experiments remain unselected
+on Linux; every platform keeps its previous defaults. Native Linux gates pass.
+Mac host/managed controls pass, but installed output and broader-verdict gates
+fail (#633, #634), so Mac timing/memory selection stops. No new performance,
+frontend-reuse or release acceptance is claimed.
 
 The [review](../design/general-performance.md) defines the unchanged authority
 boundaries. The [evaluation guide](../performance-evaluation.md) defines the
@@ -12,17 +15,91 @@ strict stock source-suite failure retain their original scope and requirements.
 
 | Gate | Current evidence | Limit |
 |---|---|---|
-| Broader selection | 18 reviewable workloads; four new repository pins; Verus-TLA baseline passes (141 functions compared); hekate-math passes all 18 units (1,848 records); semi-persistent passes all three selected packages (2,430 / 909 / 29 records) | Baselines compare stock with bare stock/shim; selected-fork, managed and targeted-edit coverage remain separate |
+| Broader selection | 18 workloads, four new repository pins; final Linux four arms each match 23 units / 5,357 function records | 22 passing units plus one matching incompatible TLSF compile; Mac has 22 same / 1 different (#634) |
 | Run-scoped observations | `32f7bba6` bundle evaluated in complete native real-project and generated whole-call controls | Unselected; no material gain, with small warm-call regressions. Runtime paths retain `715c0f5e` behavior |
-| Linux functional controls | `32f7bba6` passes the complete ordinary gate, including 1,284 tests (56 skipped) and eight evaluation controls; composed functional checks below pass | Separate ordinary-gate correction; no overall pass claimed for the earlier controller that continued after Clippy failure |
+| Linux functional controls | Final `6cfa1606`: ordinary 1,288/54 skipped, solver51, complete E2E plus extra, four fast and standard arms and 18 mutations/reverts pass | Full release and strict stock source-suite requirements remain separate |
 | Algorithmic scaling | 2 generated units / 4,314 functions compare same; 84 complete whole-call samples match stock bytes, with Current/no-verifier warm checks | 8/64-package full-call medians remain flat/slower. The earlier 54× lookup component result does not justify selection |
-| Per-file artifact observations | Owner-approved ADR 0092 prototype implemented behind exact opt-in; every platform defaults off | `b980b77c` ordinary gate and eight controls pass; active integration and independent on/off measurements continue. The narrower composition requires requalification; no first-after-cold parity implied |
-| macOS | No result for this candidate | Native host gate, paired performance and release memory gates remain |
+| Per-file artifact observations | Approved bounded prototype built/tested on Linux/Mac; 280-row Linux on/off audit passes but every warm median is flat/slower | Unselected on Linux; Mac correctness gates prevent timing/default selection; off everywhere |
+| macOS | `6cfa1606` host Clippy + 1,277 tests/54 skipped and unbundled managed suite pass; both factories pass | Installed output failure #633 and stock/fork verdict difference #634; timing/memory selection stopped |
 | Compiler reuse | No persistent frontend reuse implemented or selected | ADR 0052 complete-input/output shadow qualification remains open |
 
 Raw records stay outside git. Add their source/runtime/environment identities,
 scope and SHA-256 here after completed captures; do not describe a build or
 matching failed baseline as a passing real-project workload.
+
+## Final native functional scope
+
+Final producer `6cfa1606` on c7i.4xlarge / us-east-1 passes the complete
+ordinary image gate (1,288 tests / 54 skipped), 51 solver/fault controls,
+complete E2E including extra, all four fast arms (147 same / 3,451 functions)
+and all four standard arms (159 same / 13,166 functions), plus all 18
+mutations, ordinary revert and forced revert. Conformance reports zero
+different/unstable/infrastructure/skipped results; resource drift remains
+visible in 11 fast / 17 standard units.
+
+Its additional candidate-manifest pass-through, cache-fill, cache-warm and
+engine arms each report 23 same / 5,357 function records, zero failures,
+and resource drift in 13 units; the engine focuses 22 units. RLSF remains a
+matching failed compilation, not a passing allocator baseline. These arms
+compare fork/solver integration and do not themselves exercise the CLI's
+artifact memo; actual memo consumers are covered by E2E and the separate
+producer-audited whole-call experiment.
+
+Complete final conformance archive SHA-256:
+`1a93ca651ea534bebbbfe6fb97adea36c0c71823f753fb7358dbe3ac5d690562`.
+Factory archive SHA-256:
+`a9ccb391de0536ed7ddd286a8b2710c2406be2e4a6a42cb3a807150160a5761c`.
+Full gate log SHA-256:
+`851a38137925d1f0782037c1bdc61ffb747abd4c923f912bfcba525897059b4a`.
+Broader-controller log SHA-256:
+`f18df18880ecc1d1dc953602642d2546411fc1ed661124e801abcc6d643c2430`.
+
+## Mac qualification
+
+Native mac-m4.metal / us-east-1c, macOS 27 arm64, source `6cfa1606`, Sail
+Rust 1.99.0 and verifier Rust 1.99.1. Strict host Clippy and all 1,277 tests
+(54 skipped) pass, including the eight finer-observation controls. All 13
+memory, 19 command, five quiet-host and eight evaluation-harness controls
+pass. Current and previous `715c0f5e` native builds and actual release
+factories use the same fork `47fb3be6`, Mac runtime manifest
+`ea6853a815475820ad3cfeb2a6d9b684e4fff82506eac8fba0cc938ef6359996`.
+The complete native managed suite passes in its original unbundled-runtime
+context, including restored-mtime failures, fresh copies, native compiler
+replacement, missing receipts, prune, jobs, MCP and generated/ghost inputs.
+
+Installed output E2E fails its external-input discovery case on current and
+previous Sail; the default baseline with the prototype absent also fails.
+The checked-in one-function reduction independently reproduces the extra
+second verification, with the following call a no-op on both sides (#633).
+This remains a failed installed-output gate, not an accepted integration
+exception or evidence of a wrong solver answer.
+
+The wider Mac comparator reports 22 same / 1 different over 5,357 function
+records. The abstract-domain proof passes three stock runs and fails the
+fork arm (VI-0040, #634). Independent whole-package controls give:
+
+| Runtime / integration | Result, 909 function records |
+|---|---|
+| Stock / bare shim | Same, no resource drift |
+| Stock / managed flags and shim | Same, no resource drift |
+| Fork / bare shim | Different, same postcondition |
+| Fork / managed flags and shim | Different, same postcondition |
+| Fork / direct pinned stock Z3, no managed flags or Sail shim | Different, same postcondition |
+
+The failing comparisons retain all three stock confirmations and their
+original messages. This places the observed difference outside the cache
+prototype and shim; the exact fork/query change and standalone reduction
+remain open. No proof, limit, output or comparison is altered. Mac performance
+and memory selection stops at correctness, with every default unchanged.
+The earlier complete release matrix and sampler-overhead failures retain
+their original requirements; no acceptance is inferred from this host gate.
+
+Full Mac factory/functional/corpus/isolation/reproduction archive SHA-256:
+`f71416129dfb411543e700962b76374bade14793830a58467b95b9cdd049bb30`.
+Isolation log SHA-256:
+`48520bca2fe4d5141d3c71eddea6deaef35eb659af14113c387d93a768817a44`.
+Checked-in parameterized reproduction execution log SHA-256:
+`2cbff1c6c9decb76a29ca0615ea56a3ff5fced745105dadd0e4643fe2c0abf1b`.
 
 ## Whole-call selection
 
@@ -90,6 +167,66 @@ Its gate log SHA-256:
 The corrected ordinary-gate/build/control log SHA-256:
 `327debb625c64a8036d4bfc7c69fad35c1b6f44cb61f0a17a1d84234133cd153`.
 
+## Linux per-file selection
+
+Source `6cfa1606`, native c7i.8xlarge / us-east-1; current runtime versus itself
+with exact ADR 0092 opt-in off/on. Two fresh cold contexts per project provide
+ten rotated repeated warm full-path pairs, not ten independent cold rounds.
+All 280/280 rows pass completeness, exit, immutable source/binary and producer
+audits. Every controlled warm call is Current, starts zero verifiers, retains
+unchanged input/context and requested-target proof reports, and has no
+no-reuse or infrastructure error. The off arm creates no fine ledger; every
+on sample has eligible original entries. Ledger presence records observation,
+not proof that a digest was admitted.
+
+| Workload | Off full path, ms | On full path, ms | Median paired change, ms | On faster, pairs |
+|---|---:|---:|---:|---:|
+| pmemlog | 135.912 | 141.608 | +4.769 | 1/10 |
+| verus-tla | 139.576 | 143.018 | +2.952 | 2/10 |
+| semi-containers | 554.900 | 556.609 | +1.696 | 3/10 |
+| anvil | 1090.744 | 1105.969 | +14.844 | 1/10 |
+| vest | 437.646 | 439.760 | +1.534 | 5/10 |
+| ironkv | 140.278 | 144.665 | +5.956 | 2/10 |
+| capybarakv | 333.401 | 334.998 | +3.481 | 3/10 |
+
+No workload shows a warm median gain. The finer memo is **unselected on
+Linux** and remains off by default. Cold/first calls are one observation per
+flag/project and establish no acceptance; first pmemlog increases from
+180.613 to 223.869 ms. No first-after-cold parity, edit-cycle, memory or
+release acceptance follows. Mac has a different existing whole-tree default
+and is qualified independently.
+
+The full native archive includes every earlier compatibility, edit, generated,
+failed/interrupted and diagnostic control plus this seven-project run.
+Archive SHA-256:
+`e01fa4cd6b571c3e53bcd463aa6dc0bdce0be965a66f079733d3aa6fda502580`.
+Audit log SHA-256:
+`e11589827b5232a8eb8daf6d3fe7bf73fffd554bb1612b37c31c5660b6b495d4`.
+Exact producer source bundle SHA-256:
+`22c23ff8fc27ffc908a6b550ae8a4b22a22c1aa395dcb23c2beed863507aec63`.
+
+## Approved prototype controls
+
+The broader prototype source `e6c6ddf4` passes its complete native controller
+on c7i.4xlarge / us-east-1: ordinary gate (1,292 passed / 56 skipped),
+51 solver/fault controls, complete E2E including extra, all four fast arms
+(147 same / 3,451 functions each), all four standard arms
+(159 same / 13,166 functions each), and all 18 mutation cases plus revert.
+All conformance arms report zero different/unstable/infrastructure/skipped
+results; resource drift is retained in 11 fast / 17 standard units. The eight
+new prototype controls cover explicit selection, provenance and settlement,
+namespace churn, full stamps and ancestor replacement, malformed records,
+phase/publication mutation, and the actual Runner source/receipt bridge.
+This source still includes the unselected initial runtime bundle; it is not
+qualification of the narrower final composition or a speedup claim.
+
+Prototype conformance archive SHA-256:
+`c368f2d797cb54ac027c7ee69dca43bb56ffbb2b138d95a190545833013ab056`.
+Factory evidence archive SHA-256:
+`8fc3045a6fa0405d51f036fdbe8bf49e9e1fc225354b73c5bc0e264fdc27991d`.
+Complete controller log SHA-256:
+`1d741ab34b62620c08fe441382e474abb3fe91010fa2cbfa2f137c4cfa3f0191`.
+
 ## Compatibility findings
 
 The initial successful baselines use stock `0.2026.10.18.7d82994`, its pinned
@@ -98,6 +235,16 @@ dependency adjustment; hekate-math runs its original 18 standalone proof roots.
 Both arms of every passing unit exit zero with zero verification errors;
 hekate-math reports 3,050 verified occurrences per arm across its roots. These
 are compatibility/comparator controls, not timing acceptance.
+
+The corrected selected-fork comparison at `32f7bba6` subsequently passes
+all 23 candidate units: 5,357 function records, zero different/unstable/
+infrastructure/skipped results, with resource drift in 13 units. Twenty-two
+units have passing plain and fork baselines. The RLSF unit retains its
+matching compilation failure and zero verified functions. This compares the
+fork's managed verifier flags/shim with stock; it does not execute managed
+receipt reuse or establish that the finer artifact memo is used. Source and
+binary/manifest end seals remain unchanged. Mac and final-composition
+qualification stay separate.
 
 Initial intake/component archive SHA-256:
 `1b28f575e3317810594778665e628f017ab8267ad0a6fcd94eb426ff7aeecc67`.
@@ -135,6 +282,29 @@ it supplies no complete-key or restoration acceptance.
 
 ## Failed attempts
 
+- 2026-10-31, `6cfa1606`, native Mac installed output E2E:
+  external-input discovery adds vstd/target totals on an unchanged call;
+  unchanged baseline and default-baseline controls reproduce it (#633).
+  The original E2E collector reaches its unchanged 1,024-file ceiling;
+  critical original streams remain, archive marked incomplete.
+- 2026-10-31, `6cfa1606`, Mac broader manifest: 22 same / 1 different;
+  abstract-domain postcondition fails only in the fork arm. Bare-shim and
+  direct-pinned-Z3 controls repeat it; cause remains unestablished (#634).
+- 2026-10-31, `6cfa1606`, first Mac managed-suite invocation:
+  the prune counter expects two verifiers in its unbundled test context,
+  but the controller supplies an adjacent shipped proof bundle and observes
+  one. The original assertion remains; the unbundled-context rerun passes.
+- 2026-10-31, `6cfa1606`, Mac controller setup: streamed bootstrap does not
+  execute the Rust/gate steps after Homebrew; uploaded-file execution completes
+  them. A subsequent stock-path assumption fails before verifier work; the
+  installed path is used for the completed runs. Neither is product acceptance.
+
+- 2026-10-31, `32f7bba6`, initial selected-fork broader comparison:
+  23 different because the private controller supplies a relative engine
+  path, which cannot be found after the harness enters a scratch directory.
+  Sail arms exit 127; the unchanged comparator correctly refuses them.
+  The absolute-path rerun above passes; the failed reports remain retained.
+
 - 2026-10-31, `b980b77c`, active ADR 0092 E2E: the compiler-environment
   witness's clean-caller block leaves the new opt-in setting present. Stock
   and Sail have identical streams/exit 101 with 1 verified / 2 errors, but
@@ -159,7 +329,7 @@ it supplies no complete-key or restoration acceptance.
 
 - 2026-10-31, `ab5fcddb` / `0ea95898`: composed ordinary gate stops at
   Clippy on two unquoted Rust identifiers in the closing-barrier comments.
-  Its controller continues the independent solver/E2E/conformance checks;
+  Its controller continued the independent solver/E2E/conformance checks;
   those results do not establish an ordinary-gate pass. Quote the identifiers
   and rerun the complete ordinary gate.
 

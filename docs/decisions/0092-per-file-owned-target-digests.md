@@ -1,6 +1,6 @@
 # 0092: Per-file owned-target digest observations
 
-- **Status:** owner-approved bounded prototype on 2026-10-31; implementation and qualification in progress; no platform default selected
+- **Status:** owner-approved bounded prototype on 2026-10-31; implemented; Linux evaluation unselected, Mac correctness gate failed; no platform default selected
 - **Date:** 2026-10-31
 - **Amends:** [ADR 0091](0091-settled-source-and-target-digests.md), item 2
 - **Tracks:** #560, #630
@@ -12,11 +12,10 @@ owned target tree, complete source, metadata/selection, context and receipt
 bytes match. One unrelated target entry or directory stamp change refuses all
 stored digests. The Mac default remains off. A finer byte-observation boundary
 could avoid hashing unchanged files when unrelated Cargo bookkeeping changes.
-The initial broader run-scoped candidate is mostly flat/slower in its
-two-round screen; its composed closing-barrier candidate is still being
-measured. The [review](../design/general-performance.md) records native
+The initial broader run-scoped candidate is unselected after its complete
+real-project and generated whole-call controls remain mostly flat/slower. The [review](../design/general-performance.md) records native
 filesystem/hash diagnostics across three structurally different projects.
-There is no measured product gain for this proposal.
+Seven-project native Linux evaluation finds no warm median gain; the prototype remains unselected there. Mac correctness gates fail before timing selection. There is no accepted product gain for this proposal.
 
 This cannot solve the first unchanged call after a cold build: newly created
 artifacts were unsettled at the original cold run's start. Waiting on a later

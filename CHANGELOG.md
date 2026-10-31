@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Broader native validation records two release blockers: installed Mac
+  external-input discovery can recompile an unchanged project (#633), and
+  a Mac abstract-domain proof differs between stock and the fork even with
+  direct pinned Z3 (#634). No new performance default is selected.
+
 - Add an opt-in per-file owned-target digest prototype under ADR 0092:
   `SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO=1`. Original settled file observations
   may survive unrelated target-directory changes, with fresh complete current

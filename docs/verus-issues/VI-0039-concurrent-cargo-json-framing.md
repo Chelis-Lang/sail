@@ -19,6 +19,16 @@ with concurrent compiler writers interleaving records; no per-writer trace
 has yet established the exact write sequence. A serial Cargo control is a
 separate diagnostic configuration, not acceptance of the parallel command.
 
+A bounded stock-only reduction uses a shared workspace with two packages,
+one module per package and one root binary, `CARGO_BUILD_JOBS=4`, and a fresh
+Cargo target directory for each of three invocations. All exit zero. The first
+two fail syntax after one/five complete documents; the third contains nine
+complete documents. This establishes an intermittent smaller reproduction;
+the successful syntax round establishes no proof equivalence. Generator source
+`32f7bba6` and the runtime/native environment above are unchanged. All stdout,
+stderr and the non-reproducing round remain in external archive SHA-256
+`547fb8df191271c267014541b6713fd992a857806ea54ffbbf619a50fa09e458`.
+
 The separate `--jobs 1` rerun retains every workspace/test/binary target and
 uses candidate `32f7bba6`. All streams parse completely, but the strict
 comparison reports one same (chain) and two different (diamond/shared).

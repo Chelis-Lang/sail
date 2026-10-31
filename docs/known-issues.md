@@ -49,6 +49,26 @@ relations remain open; source/hash binding does not establish them.
 
 ## Input coverage and cache integrity
 
+- The Mac broader-corpus gate has a genuine stock/fork-arm verdict
+  disagreement in semi-persistent's abstract-domain proof
+  ([VI-0040](verus-issues/VI-0040-macos-abstract-domain-verdict.md),
+  [#634](https://github.com/Chelis-Lang/sail/issues/634)). Stock
+  passes three runs; the managed verifier arm fails a postcondition. Cause
+  remains unknown, the comparison stays failed, and no platform performance
+  or release acceptance follows from unrelated passing gates.
+
+- **An installed Mac workspace can recompile after discovering an external
+  input** ([#633](https://github.com/Chelis-Lang/sail/issues/633),
+  [reproduction](../corpus/repros/macos-external-input-rebuild/README.md)).
+  Main baseline `715c0f5e` and candidate `6cfa1606` print vstd/target verification
+  totals on an unchanged call where stock prints nothing. A one-function
+  external `include_str!` reduction reproduces this with the prototype absent;
+  the following call is a no-op on both sides. All exits are zero, and no
+  wrong solver answer is demonstrated. Root cause is unknown. The installed
+  Mac output gate remains failed; neither comparison nor evidence limits are
+  weakened. Ordinary host tests and independent corpus checks have separate
+  scopes and do not authorize release acceptance.
+
 - Compiler input observations report an empty-file checksum and size for
   non-UTF-8 `include_bytes!` inputs
   ([#599](https://github.com/Chelis-Lang/sail/issues/599)). Ordinary `.vir`

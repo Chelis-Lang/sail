@@ -9,8 +9,8 @@ therefore reports differences; no parallel conformance pass follows.
 
 The original complete reproduction has eight packages, four modules each and
 two root binaries. Its pinned generated source is
-`7e7ec297896d3f9a6c5a4d48d3076622696b5c44`. To generate a smaller candidate
-with the same concurrent library/test/binary output pattern, set
+`7e7ec297896d3f9a6c5a4d48d3076622696b5c44`. The smaller two-package shared
+workspace below also reproduces the failure. Set
 `SAIL_VSTD_SOURCE` to `source/vstd` in the pinned Verus source checkout:
 
 ```sh
@@ -27,9 +27,13 @@ python3 corpus/repros/verus-parallel-json/check-stream.py "$SAIL_REPRO_OUT/paral
 
 Repeat with a fresh `CARGO_TARGET_DIR` and separate stdout/stderr captures;
 scheduling varies. An unchanged Cargo no-op does not reproduce compiler
-output framing. The two-package reduction remains a
-candidate until executed. The fully captured eight-package reproduction is
-the established evidence. The checker only diagnoses JSON syntax, including
+output framing. Three native stock runs of the two-package reduction all
+exit zero. The first two fail syntax after one and five complete documents;
+the third parses all nine documents. All three attempts, including the
+non-reproducing round, remain in the external archive with SHA-256
+`547fb8df191271c267014541b6713fd992a857806ea54ffbbf619a50fa09e458`.
+The generator source is `32f7bba6`; runtime and environment are as above.
+The checker only diagnoses JSON syntax, including
 duplicate keys; it never normalizes output or judges proof equivalence.
 
 A separate `--jobs 1` Cargo control keeps every workspace and test/binary
