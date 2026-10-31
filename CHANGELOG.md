@@ -16,11 +16,6 @@ semantic versioning once the API is published.
 - Prepare the complete scratch Cargo workspace for corpus comparisons,
   including non-selected members whose exact Verus pins participate in shared
   resolution. Fetched repositories and proof bodies remain unchanged.
-- Consolidate immutable source projection and target-record decoding work
-  within managed runs; index dependency traversal and digest prefetch
-  selection, and stream existing JSON checksums without changing their bytes.
-  All original freshness/admission checks remain; native performance
-  qualification is tracked separately.
 - Add exact arithmetic and temporal-logic proof edit/failure/fix catalogues.
   Evaluation refuses changed capture inputs; diagnostic syscall accounting
   preserves the measured child command's locale.

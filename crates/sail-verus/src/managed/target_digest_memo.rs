@@ -6,8 +6,8 @@
 use super::{files, noop::Stamp};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::io::Read as _;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::SystemTime;
 
 pub(super) const FILE: &str = "target-digests.json";
@@ -152,7 +152,7 @@ fn physical_ancestors(_root: &Path) -> Option<BTreeMap<PathBuf, (u64, u64, u32)>
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct Record {
+struct Record {
     kind: String,
     schema: u32,
     origin: String,
@@ -174,7 +174,7 @@ fn is_digest(hash: &str) -> bool {
 
 impl Record {
     fn checksum(&self) -> Option<String> {
-        files::json_digest(&(
+        serde_json::to_vec(&(
             &self.kind,
             self.schema,
             &self.origin,
@@ -186,6 +186,7 @@ impl Record {
             &self.projections,
         ))
         .ok()
+        .map(|bytes| files::digest(&bytes))
     }
 }
 
@@ -196,7 +197,6 @@ pub(super) struct Candidate {
     binding: String,
     tree: Tree,
     started: SystemTime,
-    records: Arc<super::observations::JsonRecord<Record>>,
 }
 
 impl Candidate {
@@ -205,7 +205,6 @@ impl Candidate {
         file: PathBuf,
         binding: String,
         started: SystemTime,
-        records: Arc<super::observations::JsonRecord<Record>>,
     ) -> Option<Self> {
         if !file.is_absolute() {
             return None;
@@ -215,33 +214,33 @@ impl Candidate {
             binding,
             tree: Tree::observe(target)?,
             started,
-            records,
         })
     }
 
     pub(super) fn read(&self) -> Option<BTreeMap<PathBuf, String>> {
-        self.load().map(|record| record.digests.clone())
+        self.load().map(|record| record.digests)
     }
 
     pub(super) fn revisions(&self) -> Option<BTreeMap<(String, String), String>> {
         Some(
             self.load()?
                 .projections
-                .iter()
-                .map(|(selection, id, revision)| {
-                    ((selection.clone(), id.clone()), revision.clone())
-                })
+                .into_iter()
+                .map(|(selection, id, revision)| ((selection, id), revision))
                 .collect(),
         )
     }
 
-    fn load(&self) -> Option<Arc<Record>> {
-        // Every phase rereads the complete sidecar. Only byte-identical data
-        // shares decoding/checksumming; all contextual and tree checks below
-        // still run freshly, including the closing full namespace readback.
-        let record = self.records.read(&self.file, LIMIT, |record| {
-            record.checksum().as_deref() == Some(record.checksum.as_str())
-        })?;
+    fn load(&self) -> Option<Record> {
+        let mut bytes = Vec::new();
+        super::dependency_snapshot::open(&self.file)?
+            .take(LIMIT + 1)
+            .read_to_end(&mut bytes)
+            .ok()?;
+        if bytes.len() as u64 > LIMIT {
+            return None;
+        }
+        let record: Record = serde_json::from_slice(&bytes).ok()?;
         if record.kind != KIND
             || record.schema != 1
             || record.origin != "current"
@@ -260,6 +259,7 @@ impl Candidate {
                 .projections
                 .windows(2)
                 .any(|pair| (&pair[0].0, &pair[0].1) >= (&pair[1].0, &pair[1].1))
+            || record.checksum().as_deref() != Some(record.checksum.as_str())
             || !record.digests.iter().all(|(path, hash)| {
                 path.starts_with(&self.tree.root)
                     && self.tree.stamps.contains_key(path)
@@ -390,7 +390,6 @@ mod tests {
                 self.0.join("slot").join(FILE),
                 binding.into(),
                 started,
-                Arc::default(),
             )
         }
         fn digests(&self) -> crate::Result<BTreeMap<PathBuf, String>> {

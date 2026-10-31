@@ -158,52 +158,25 @@ fn project_guard_facts(
     revision: &str,
     selected: &[InputFact<'_>],
 ) -> Option<SnapshotGuard> {
-    ProjectionBasis::new(observed).guard(revision, selected)
-}
-
-/// Borrow one immutable observation for a pure projection batch. The original
-/// source descriptors and native ordering proposal are built once; the core
-/// still checks both complete order certificates and coverage on every use.
-/// This value cannot outlive or mutate its source, and establishes no fresh
-/// filesystem observation. The caller retains the original closing readback.
-pub(super) struct ProjectionBasis<'a> {
-    observed: &'a InputSnapshot,
-    source: Vec<InputFact<'a>>,
-    order: Vec<usize>,
-    inverse: Vec<usize>,
-}
-
-impl<'a> ProjectionBasis<'a> {
-    pub(super) fn new(observed: &'a InputSnapshot) -> Self {
-        let source = snapshot_facts(&observed.digests, &observed.bindings);
-        let (order, inverse) = proposed_order(&source);
-        Self {
-            observed,
-            source,
-            order,
-            inverse,
-        }
-    }
-
-    fn guard(&self, revision: &str, selected: &[InputFact<'_>]) -> Option<SnapshotGuard> {
-        let capture = self.observed.capture.as_ref()?;
-        let (selected_order, selected_inverse) = proposed_order(selected);
-        let guard = capture.guard.project(
-            self.observed.revision.as_bytes(),
-            revision.as_bytes(),
-            &self.source,
-            selected,
-            &self.order,
-            &self.inverse,
-            &selected_order,
-            &selected_inverse,
-        )?;
-        Some(SnapshotGuard {
-            guard,
-            paths: Arc::clone(&capture.paths),
-            source: capture.source.clone(),
-        })
-    }
+    let capture = observed.capture.as_ref()?;
+    let source = snapshot_facts(&observed.digests, &observed.bindings);
+    let (source_order, source_inverse) = proposed_order(&source);
+    let (selected_order, selected_inverse) = proposed_order(selected);
+    let guard = capture.guard.project(
+        observed.revision.as_bytes(),
+        revision.as_bytes(),
+        &source,
+        selected,
+        &source_order,
+        &source_inverse,
+        &selected_order,
+        &selected_inverse,
+    )?;
+    Some(SnapshotGuard {
+        guard,
+        paths: Arc::clone(&capture.paths),
+        source: capture.source.clone(),
+    })
 }
 
 #[derive(Default)]
@@ -1239,46 +1212,38 @@ fn projected_snapshot(
 /// Only the logical revision of the same validated selection. The caller
 /// still checks the original whole-observation stamp after its batch; no
 /// incomplete snapshot or new proof authority is manufactured here.
-#[cfg(test)]
-fn snapshot_revision_projected(
+pub(super) fn snapshot_revision_projected(
     data: &Value,
     extras: &[PathBuf],
     observed: &InputSnapshot,
 ) -> Option<(String, bool)> {
-    ProjectionBasis::new(observed).revision(data, extras)
-}
-
-impl ProjectionBasis<'_> {
-    pub(super) fn revision(&self, data: &Value, extras: &[PathBuf]) -> Option<(String, bool)> {
-        let observed = self.observed;
-        let home = std::env::var_os("CARGO_HOME")
-            .map(PathBuf::from)
-            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
-        let projection = projected_selection(data, extras, home.as_deref(), observed)?;
-        let (revision, complete) = fold_revision(
-            &projection.files,
-            &projection.bindings,
-            projection.reads(observed),
-            |_, _| {},
-        );
-        let selected: Vec<_> = projection
-            .reads(observed)
-            .map(|(path, read)| InputFact {
-                namespace: 0,
-                name: path.as_os_str().as_encoded_bytes(),
-                value: read.map_or(InputValue::Unreadable, |hash| {
-                    InputValue::Present(hash.as_bytes())
-                }),
-            })
-            .chain(projection.bindings.iter().map(|(alias, target)| InputFact {
-                namespace: 1,
-                name: alias.as_os_str().as_encoded_bytes(),
-                value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
-            }))
-            .collect();
-        self.guard(&revision, &selected)?;
-        Some((revision, complete))
-    }
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cargo")));
+    let projection = projected_selection(data, extras, home.as_deref(), observed)?;
+    let (revision, complete) = fold_revision(
+        &projection.files,
+        &projection.bindings,
+        projection.reads(observed),
+        |_, _| {},
+    );
+    let selected: Vec<_> = projection
+        .reads(observed)
+        .map(|(path, read)| InputFact {
+            namespace: 0,
+            name: path.as_os_str().as_encoded_bytes(),
+            value: read.map_or(InputValue::Unreadable, |hash| {
+                InputValue::Present(hash.as_bytes())
+            }),
+        })
+        .chain(projection.bindings.iter().map(|(alias, target)| InputFact {
+            namespace: 1,
+            name: alias.as_os_str().as_encoded_bytes(),
+            value: InputValue::Present(target.as_os_str().as_encoded_bytes()),
+        }))
+        .collect();
+    project_guard_facts(observed, &revision, &selected)?;
+    Some((revision, complete))
 }
 
 #[allow(

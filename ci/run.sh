@@ -10,8 +10,6 @@
 #   refinements          source-shared production bodies and refinement controls
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
-#   managed-components   local-only: native graph/JSON component diagnostics;
-#                        no product performance acceptance
 #   boundary-witness admission|shapes
 #                        local-only external compiler witnesses; requires
 #                        frozen inputs and the owning bounded runner
@@ -109,11 +107,8 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|managed-components|boundary-witness|cargo-range|e2e-build|e2e|conformance|extension|host|bench|release|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|boundary-witness|cargo-range|e2e-build|e2e|conformance|extension|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
-
-# These ignored tests time components and must never enter the solver CI job.
-managed_components='test(=managed::runner::tests::indexed_dependency_graph_scaling) or test(=managed::files::tests::json_digest_scaling)'
 
 release_build() {
   cargo build --release --locked -p sail-cli -p sail-shim "$@"
@@ -217,8 +212,8 @@ case "$step" in
     python3 scripts/test-perf-mem.py
     python3 scripts/test-perf-mac-quiet.py
     python3 scripts/test-perf-real-command.py
-    python3 scripts/test-perf-real-report.py
     python3 scripts/test-perf-corpus.py
+    python3 scripts/test-perf-real-report.py
     python3 scripts/test-perf-host-sync.py
     python3 scripts/test-private-dependencies.py
     python3 scripts/test-check-acceptance-proofs.py
@@ -242,17 +237,11 @@ case "$step" in
 
   solver)
     : "${SAIL_TEST_Z3:?SAIL_TEST_Z3 must name the pinned z3 (set in the CI image)}"
-    # These ignored entrypoints require separately captured compiler inputs,
+    # These two ignored entrypoints require separately captured compiler inputs,
     # not just Z3. Keep their strict missing-input failures in the local witness
     # invocation rather than treating them as solver fixtures.
     cargo nextest run --workspace --locked --profile ci --run-ignored only \
-      -E "not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes) or test(=managed::build_environment::tests::qualified_cargo_range_self_test) or $managed_components)"
-    ;;
-
-  managed-components)
-    local_only managed-components "$@"
-    cargo nextest run --release -p sail-verus --locked --run-ignored only --nocapture \
-      -E "$managed_components"
+      -E 'not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes) or test(=managed::build_environment::tests::qualified_cargo_range_self_test))'
     ;;
 
   cargo-range)

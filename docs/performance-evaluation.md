@@ -185,15 +185,11 @@ changes timing: `work.json` is diagnostic only, never a benchmark sample.
 Pair it with the existing `SAIL_JOB_EVENTS` setup phase timings when diagnosing
 a stage, then rerun without either observer for performance qualification.
 
-Two ignored Rust diagnostics isolate index construction/traversal and exact
-JSON hashing. The solver CI job excludes these new timing diagnostics. Run
-their explicit local-only step on a native host:
+The initial index/JSON component diagnostics belong to the unselected
+`32f7bba6` experiment, not to the current runtime or CI gate. Their recorded
+component results did not predict a material whole-invocation improvement;
+see the [qualification record](validation/general-performance.md).
 
-```sh
-ci/local.sh managed-components  # native Linux CI image
-ci/run.sh managed-components    # native host, including macOS
-```
-
-These component results and generated programs establish algorithmic behavior,
-not real-project speedups. Keep raw logs outside git and cite their hashes in
-the qualification record.
+Generated programs and component timings establish a bounded diagnostic
+scope, not real-project speedups. Keep raw logs outside git and cite their
+hashes in the qualification record.

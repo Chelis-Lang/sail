@@ -2068,7 +2068,6 @@ struct RevisionObservation<'a> {
 struct TargetDigestRequest {
     file: PathBuf,
     started: SystemTime,
-    records: std::sync::Arc<super::observations::JsonRecord<super::target_digest_memo::Record>>,
 }
 
 struct FileTargetDigestRequest {
@@ -2092,17 +2091,15 @@ fn target_digest_candidate(
     target_digest_observation(paths, data, context, observation)
 }
 
-/// Pure revision proposals only. Their complete source binding is checked by
-/// `target_revisions` after the whole projection batch, before a cleanup decision
-/// can consume them. Artifact digest admission keeps its earlier independent
-/// source readback through `target_digest_candidate`.
+/// Preserve the original early and closing complete source guards. The finer
+/// artifact ledger never supplies these pure revision proposals.
 fn target_revision_proposals(
     paths: &Paths,
     data: &Value,
     context: &str,
     observation: Option<RevisionObservation<'_>>,
 ) -> BTreeMap<(String, String), String> {
-    target_digest_observation(paths, data, context, observation)
+    target_digest_candidate(paths, data, context, observation)
         .and_then(|candidate| candidate.revisions())
         .unwrap_or_default()
 }
@@ -2121,7 +2118,6 @@ fn target_digest_observation(
         request.file.clone(),
         binding,
         request.started,
-        std::sync::Arc::clone(&request.records),
     )
 }
 
@@ -2749,31 +2745,15 @@ pub(super) fn dependency_closure<'a>(
     data: &Value,
     roots: impl IntoIterator<Item = &'a str>,
 ) -> BTreeSet<String> {
-    DependencyGraph::new(data).closure(roots)
-}
-
-/// First-match index of immutable Cargo nodes. A traversal visits reachable
-/// nodes and edges without rescanning the whole node array for each package.
-struct DependencyGraph<'a>(BTreeMap<&'a str, &'a Value>);
-
-impl<'a> DependencyGraph<'a> {
-    fn new(data: &'a Value) -> Self {
-        let mut nodes = BTreeMap::new();
-        for node in data["resolve"]["nodes"].as_array().into_iter().flatten() {
-            if let Some(id) = node["id"].as_str() {
-                nodes.entry(id).or_insert(node);
-            }
-        }
-        Self(nodes)
-    }
-
-    fn closure<'b>(&self, roots: impl IntoIterator<Item = &'b str>) -> BTreeSet<String> {
-        let mut closure: BTreeSet<String> = roots.into_iter().map(str::to_owned).collect();
-        let mut pending: Vec<String> = closure.iter().cloned().collect();
-        while let Some(id) = pending.pop() {
-            let Some(node) = self.0.get(id.as_str()) else {
-                continue;
-            };
+    let mut closure: BTreeSet<String> = roots.into_iter().map(str::to_owned).collect();
+    let mut pending: Vec<String> = closure.iter().cloned().collect();
+    while let Some(id) = pending.pop() {
+        if let Some(node) = data["resolve"]["nodes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|n| n["id"].as_str() == Some(id.as_str()))
+        {
             for dependency in node["dependencies"]
                 .as_array()
                 .into_iter()
@@ -2785,8 +2765,8 @@ impl<'a> DependencyGraph<'a> {
                 }
             }
         }
-        closure
     }
+    closure
 }
 
 /// The packages Cargo can compile for the selected targets, or `None` when
@@ -2838,7 +2818,6 @@ fn target_revisions(
     if requested.is_empty() {
         return HashMap::new();
     }
-    let graph = DependencyGraph::new(data);
     if let Some(source) = observation
         && source.snapshot.complete
         && source.stamp.is_some()
@@ -2864,10 +2843,6 @@ fn target_revisions(
                 .ok()
                 .map(|bytes| digest(&bytes))
         });
-        // Misses share only immutable descriptors and ordering proposals.
-        // A memo-only batch does not construct them. Every projection still
-        // passes the acceptance core, followed by the original whole readback.
-        let basis = std::sync::OnceLock::new();
         let projected = crate::parallel::in_order(&requested, |&id| {
             let cached = source
                 .revisions
@@ -2875,10 +2850,8 @@ fn target_revisions(
             (
                 id,
                 cached.unwrap_or_else(|| {
-                    target_revision_indexed(data, id, &graph, |selected, extras| {
-                        basis
-                            .get_or_init(|| super::input::ProjectionBasis::new(source.snapshot))
-                            .revision(selected, extras)
+                    target_revision_with(data, id, |selected, extras| {
+                        super::input::snapshot_revision_projected(selected, extras, source.snapshot)
                     })
                 }),
             )
@@ -2894,15 +2867,7 @@ fn target_revisions(
     }
     // Fresh reads are per target: an unavailable revision is missing for its
     // own target only (that receipt is dirty), never for the whole batch.
-    let fresh = crate::parallel::in_order(&requested, |&id| {
-        (
-            id,
-            target_revision_indexed(data, id, &graph, |selected, extras| {
-                let snapshot = snapshot_metadata(selected, extras);
-                Some((snapshot.revision, snapshot.complete))
-            }),
-        )
-    });
+    let fresh = crate::parallel::in_order(&requested, |&id| (id, target_revision(data, id)));
     target_revision_entries(&requested, fresh).unwrap_or_default()
 }
 
@@ -3080,21 +3045,12 @@ fn target_revision_with(
     key: &str,
     snapshot: impl FnOnce(&Value, &[PathBuf]) -> Option<(String, bool)>,
 ) -> String {
-    target_revision_indexed(data, key, &DependencyGraph::new(data), snapshot)
-}
-
-fn target_revision_indexed(
-    data: &Value,
-    key: &str,
-    graph: &DependencyGraph<'_>,
-    snapshot: impl FnOnce(&Value, &[PathBuf]) -> Option<(String, bool)>,
-) -> String {
     let (package_id, unit) = match serde_json::from_str::<(String, String, Vec<String>)>(key) {
         Ok((package_id, name, kinds)) => (package_id, Some((name, kinds))),
         Err(_) => (key.to_owned(), None),
     };
     let package_id = package_id.as_str();
-    let closure = graph.closure([package_id]);
+    let closure = dependency_closure(data, [package_id]);
     // Only the fields the snapshot reads: copying the whole metadata (several
     // MB on vest) for each target cost more than the snapshot itself.
     let mut package_data = serde_json::Map::new();
@@ -4081,7 +4037,6 @@ fn run_recorded(
                     .as_ref()?
                     .join(super::target_digest_memo::FILE),
                 started: started_wall,
-                records: std::sync::Arc::default(),
             })
         })
         .flatten();
@@ -5043,86 +4998,6 @@ fn completed_receipts(
 
 #[cfg(test)]
 mod tests {
-    fn legacy_dependency_closure(data: &Value, root: &str) -> BTreeSet<String> {
-        let mut closure = BTreeSet::from([root.to_owned()]);
-        let mut pending = vec![root.to_owned()];
-        while let Some(id) = pending.pop() {
-            if let Some(node) = data["resolve"]["nodes"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .find(|node| node["id"].as_str() == Some(id.as_str()))
-            {
-                for dependency in node["dependencies"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(Value::as_str)
-                {
-                    if closure.insert(dependency.to_owned()) {
-                        pending.push(dependency.to_owned());
-                    }
-                }
-            }
-        }
-        closure
-    }
-
-    #[test]
-    fn indexed_graph_preserves_cycles_missing_nodes_and_first_duplicate_identity() {
-        for count in [0usize, 1, 4, 16, 64] {
-            let mut nodes: Vec<_> = (0..count)
-                .map(|index| {
-                    serde_json::json!({"id":format!("node-{index}"),
-                    "dependencies":[format!("node-{}", index.saturating_sub(1)),
-                        format!("node-{}", index / 2), "missing", null]})
-                })
-                .collect();
-            nodes.push(serde_json::json!({"id":"node-0", "dependencies":["second-only"]}));
-            nodes.push(serde_json::json!({"id":null, "dependencies":["invalid-id"]}));
-            let data = serde_json::json!({"resolve":{"nodes":nodes}});
-            let graph = DependencyGraph::new(&data);
-            for root in [
-                "node-0".to_owned(),
-                format!("node-{}", count.saturating_sub(1)),
-                "unknown".into(),
-            ] {
-                assert_eq!(
-                    graph.closure([root.as_str()]),
-                    legacy_dependency_closure(&data, &root)
-                );
-            }
-        }
-    }
-
-    #[test]
-    #[ignore = "native scaling diagnostic; wall measurements do not belong in CI"]
-    fn indexed_dependency_graph_scaling() {
-        for count in [64usize, 256, 1024, 4096] {
-            let nodes: Vec<_> = (0..count)
-                .map(|index| {
-                    serde_json::json!({"id":format!("node-{index}"),
-                    "dependencies": if index == 0 { Vec::<String>::new() }
-                        else {vec![format!("node-{}", index - 1)]}})
-                })
-                .collect();
-            let data = serde_json::json!({"resolve":{"nodes":nodes}});
-            let root = format!("node-{}", count - 1);
-            let started = Instant::now();
-            let expected = legacy_dependency_closure(&data, &root);
-            let legacy_ms = started.elapsed().as_secs_f64() * 1000.0;
-            let started = Instant::now();
-            let graph = DependencyGraph::new(&data);
-            assert_eq!(graph.closure([root.as_str()]), expected);
-            println!(
-                "{}",
-                serde_json::json!({"kind":"dependency-graph-scaling", "nodes":count,
-                "legacy_ms":legacy_ms, "indexed_including_build_ms":started.elapsed().as_secs_f64()*1000.0,
-                "legacy_array_comparisons":count*(count+1)/2})
-            );
-        }
-    }
-
     #[test]
     fn store_attachment_selection_keeps_candidates_and_skips_unused_receipt_reads() {
         let reads = std::cell::Cell::new(0);
@@ -8204,69 +8079,6 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn revision_proposals_are_rejected_by_the_closing_source_readback()
-    -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let f = NegativeGeneration::new("proposed-source-barrier")?;
-        let workspace = f.root.join("source");
-        std::fs::create_dir_all(&workspace)?;
-        let source = workspace.join("lib.rs");
-        std::fs::write(&source, "original source")?;
-        std::fs::write(workspace.join("Cargo.toml"), "[package]\nname='input'\n")?;
-        std::fs::create_dir_all(&f.paths.target)?;
-        let artifact = f.paths.target.join("original.rmeta");
-        std::fs::write(&artifact, "original artifact")?;
-        std::thread::sleep(std::time::Duration::from_millis(2100));
-        let data = serde_json::json!({"workspace_root":workspace,
-            "target_directory":f.paths.target,
-            "packages":[{"id":"input","manifest_path":workspace.join("Cargo.toml")}],
-            "resolve":{"nodes":[{"id":"input","dependencies":[]}]}});
-        let request = TargetDigestRequest {
-            file: f.root.join("target-digests.json"),
-            started: SystemTime::now(),
-            records: std::sync::Arc::default(),
-        };
-        let (snapshot, stamp) = super::super::input::snapshot_metadata_stamped(&data, &[]);
-        let memo = RevisionMemo::default();
-        let observation = RevisionObservation {
-            file_target_memo: None,
-            target_memo: Some(&request),
-            snapshot: &snapshot,
-            stamp: stamp.as_ref(),
-            revisions: Some(&memo),
-        };
-        let ids = vec!["input".to_owned()];
-        let original = target_revisions(&data, &ids, Some(observation));
-        target_digest_candidate(&f.paths, &data, "context", Some(observation))
-            .ok_or("original candidate")?
-            .finish(
-                BTreeMap::from([(artifact, digest(b"original artifact"))]),
-                memo.snapshot(),
-            )
-            .ok_or("original phase")?
-            .publish("original-current");
-        assert!(request.file.is_file());
-        std::fs::write(source, "changed source")?;
-        assert!(target_digest_candidate(&f.paths, &data, "context", Some(observation)).is_none());
-        // Reading proposals is not source admission. The cached original
-        // revisions are deliberately still available at this point.
-        let proposals = target_revision_proposals(&f.paths, &data, "context", Some(observation));
-        assert!(!proposals.is_empty());
-        let proposed = RevisionMemo::observed(proposals);
-        let observed = target_revisions(
-            &data,
-            &ids,
-            Some(RevisionObservation {
-                revisions: Some(&proposed),
-                ..observation
-            }),
-        );
-        assert_eq!(observed, target_revisions(&data, &ids, None));
-        assert_ne!(observed, original);
-        Ok(())
-    }
-
-    #[cfg(unix)]
-    #[test]
     fn target_digest_reuse_binds_original_source_stamps_and_namespace()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let f = NegativeGeneration::new("target-source-stamps")?;
@@ -8288,7 +8100,6 @@ mod tests {
         let request = TargetDigestRequest {
             file: ledger.clone(),
             started: SystemTime::now(),
-            records: std::sync::Arc::default(),
         };
         let candidate = |snapshot, stamp| {
             target_digest_candidate(

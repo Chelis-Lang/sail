@@ -1,10 +1,11 @@
 # General performance: algorithm and implementation review
 
 This review covers the pinned Verus fork `47fb3be6`, stock `7d829946`, and the
-managed implementation based on Sail `715c0f5e`. The accompanying candidate
-changes data representation and repeated work; it does not change proof keys,
-admission conditions, query bytes or diagnostic policy. Native acceptance is
-recorded [separately](../validation/general-performance.md).
+managed implementation based on Sail `715c0f5e`. The initial data-representation/repeated-work bundle is unselected after
+broader whole-invocation measurements. The current runtime retains the
+`715c0f5e` implementation of those paths and adds only the separately controlled
+ADR 0092 prototype. No proof key, query byte or diagnostic policy changes.
+Native qualification is recorded [separately](../validation/general-performance.md).
 
 ## Where work is avoided
 
@@ -30,12 +31,12 @@ prunes the crate, constructs context, lowers to SST, applies polymorphism
 lowering and verifies the resulting bucket. A solver hit occurs downstream
 of that work.
 
-## Cost model and candidate changes
+## Cost model and unselected experiment
 
 Let `F` be observed files, `V/E` resolved dependency nodes/edges, `M` requested
 target projections and `B` required filesystem observation boundaries.
 
-| Boundary | Required work and authority | Candidate improvement and remaining limit |
+| Boundary | Required work and authority | Reviewed experiment and remaining limit |
 |---|---|---|
 | Runtime identity | Complete executable/tool inputs and physical bindings | Replace quadratic duplicate selection with an ordered index; retain first lexical descriptors, input order and alias confirmation |
 | Source inventory | Fresh discovery, absent names, bindings, complete byte digests or explicitly admitted settled observations | Share borrowed source descriptors and their native order proposal within a pure projection batch; every acceptance-core order/coverage check and closing mutation readback still runs |
@@ -54,7 +55,7 @@ encoding and validation can still grow with the total selected material over
 `M` projections. These changes do not justify a claim that every invocation
 is linear in the number of unique files.
 
-The run-scoped JSON observation is not a freshness cache. Its cache key is
+The unselected run-scoped JSON observation is not a freshness cache. Its cache key is
 the complete bytes freshly read from a bounded regular sidecar. A replacement,
 read failure, malformed payload, over-limit record or redirected file cannot
 reuse an earlier decode. It retains one record for one managed run. Source
@@ -109,7 +110,8 @@ The bounded finer per-artifact digest proposal in
 qualification remain separate from platform selection. It must preserve fresh
 complete namespace/binding discovery, original full stamps, the original
 two-second rule, Current provenance, changed/unsettled fresh reads and dirty
-cleanup. The current candidate does not implement or authorize that extension.
+cleanup. The bounded implementation is opt-in and off by default everywhere.
+Independent native and platform qualification remain open.
 
 ## Qualification
 
@@ -125,14 +127,11 @@ that broader coverage. Do not select a component improvement solely because
 its asymptotic bound or synthetic timing is better. Per-workload regressions,
 incompatible projects, failed controls and incomplete coverage remain explicit.
 
-## Closing barrier candidate
+## Closing barrier experiment
 
-Pure cached revision proposals are now collected before their batch without a
-redundant early source sweep. They cannot authorize a receipt or cleanup
-choice: `target_revisions` performs its original closing whole-source readback
-and discards every proposal if that readback changes. The ordinary artifact
-memo path retains its own earlier source guard. Target memo disabled means
-no added observation work. This is within-call guard placement, not additional
-cross-call trust. A regression deliberately supplies stale proposals after a
-source edit and requires the same revisions as the fresh path. Native
-before/after and platform selection remain qualification gates.
+The unselected `32f7bba6` bundle collected pure revision proposals before a
+batch without its earlier redundant source sweep, retaining the closing whole
+source readback. Its mutation regression and native functional gates pass,
+but the bundle earns no material whole-call gain across the expanded cases.
+The current runtime retains `715c0f5e`'s original early and closing guards;
+the per-file ledger never supplies revision proposals.

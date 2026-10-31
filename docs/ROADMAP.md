@@ -91,7 +91,7 @@ Current v0.2.0 implementation gates:
 
 | Slice | State | Remaining gate |
 |---|---|---|
-| General algorithm and corpus evaluation | [Broader catalogue and run-scoped observation candidate](design/general-performance.md) implemented | [New repository compatibility, native gains, held-out and platform qualification](validation/general-performance.md) |
+| General algorithm and corpus evaluation | [Broader tooling implemented; initial runtime bundle unselected; ADR 0092 opt-in prototype implemented](design/general-performance.md) | [New repository compatibility, native gains, held-out and platform qualification](validation/general-performance.md) |
 | Memory harness, native source sync, cache selection/aliases, metadata memo | Merged (#613–#615); Linux/Mac functional controls and complete eight-project/platform matrix recorded | Below-noise sampler requirement remains unqualified (#562) |
 | Stable sidecars and within-call target projections (#560) | Implemented; native/Mac gates and combined matrix recorded | Full-path and tiny-edit parity remain open |
 | Final source-vector observation (#558) | Implemented; Anvil recording calls save 65 ms Linux / 44 ms Mac | Four-project first-unchanged parity remains open |

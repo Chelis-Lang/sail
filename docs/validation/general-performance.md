@@ -1,7 +1,8 @@
 # General performance qualification
 
-**Current status:** implementation candidate; broader native qualification in
-progress. No new release performance acceptance or frontend reuse is claimed.
+**Current status:** broader tooling implemented; initial runtime bundle
+unselected after native whole-call evaluation. The separate ADR 0092
+prototype is implemented, off by default and undergoing native qualification. No new release performance acceptance or frontend reuse is claimed.
 
 The [review](../design/general-performance.md) defines the unchanged authority
 boundaries. The [evaluation guide](../performance-evaluation.md) defines the
@@ -12,16 +13,58 @@ strict stock source-suite failure retain their original scope and requirements.
 | Gate | Current evidence | Limit |
 |---|---|---|
 | Broader selection | 18 reviewable workloads; four new repository pins; Verus-TLA baseline passes (141 functions compared); hekate-math passes all 18 units (1,848 records); semi-persistent passes all three selected packages (2,430 / 909 / 29 records) | Baselines compare stock with bare stock/shim; selected-fork, managed and targeted-edit coverage remain separate |
-| Run-scoped observations | Fresh-byte decode sharing, borrowed source projection basis, indexed dependency traversal and exact streamed JSON hashing implemented | Initial two-round candidate is mostly flat/slower than previous Sail; composed closing-barrier candidate requires selection measurements |
+| Run-scoped observations | `32f7bba6` bundle evaluated in complete native real-project and generated whole-call controls | Unselected; no material gain, with small warm-call regressions. Runtime paths retain `715c0f5e` behavior |
 | Linux functional controls | `32f7bba6` passes the complete ordinary gate, including 1,284 tests (56 skipped) and eight evaluation controls; composed functional checks below pass | Separate ordinary-gate correction; no overall pass claimed for the earlier controller that continued after Clippy failure |
-| Algorithmic scaling | Native single-chain lookup including index construction: 4,096 nodes, 83.888 ms legacy / 1.574 ms indexed; identical closure | One component diagnostic, not repeated whole-program acceptance. JSON timing benefit is small and variable; bounded intermediate allocation is the distinct change |
-| Per-file artifact observations | Owner-approved ADR 0092 prototype implemented behind exact opt-in; every platform defaults off | Native build, active controls and independent on/off whole-call measurements pending; no first-after-cold parity implied |
+| Algorithmic scaling | 2 generated units / 4,314 functions compare same; 84 complete whole-call samples match stock bytes, with Current/no-verifier warm checks | 8/64-package full-call medians remain flat/slower. The earlier 54× lookup component result does not justify selection |
+| Per-file artifact observations | Owner-approved ADR 0092 prototype implemented behind exact opt-in; every platform defaults off | `b980b77c` ordinary gate and eight controls pass; active integration and independent on/off measurements continue. The narrower composition requires requalification; no first-after-cold parity implied |
 | macOS | No result for this candidate | Native host gate, paired performance and release memory gates remain |
 | Compiler reuse | No persistent frontend reuse implemented or selected | ADR 0052 complete-input/output shadow qualification remains open |
 
 Raw records stay outside git. Add their source/runtime/environment identities,
 scope and SHA-256 here after completed captures; do not describe a build or
 matching failed baseline as a passing real-project workload.
+
+## Whole-call selection
+
+Source `32f7bba6`, previous Sail `715c0f5e`, fork `47fb3be6`, stock
+`7d829946`, native c7i.8xlarge / us-east-1. Six rotated blocks retain every
+stock/current/previous sample on pmemlog, Verus-TLA and held-out containers:
+288/288 rows, no refusals, unchanged source and executable identities. Values
+below are Sail medians in seconds; first and full-path rows are distinct.
+
+| Workload | Previous first | Candidate first | Previous full path | Candidate full path |
+|---|---:|---:|---:|---:|
+| pmemlog | 0.18195 | 0.19471 | 0.13351 | 0.15038 |
+| Verus-TLA | 0.17861 | 0.19039 | 0.13757 | 0.14869 |
+| Containers | 0.92503 | 0.90681 | 0.55707 | 0.54127 |
+| Anvil, separate control | 1.82556 | 1.91660 | 1.09161 | 1.08376 |
+
+Anvil contributes 28/28 successful rows: two fresh contexts per version,
+with ten repeated full-path calls per version, not ten independent cold
+rounds. It has no stock timing-acceptance claim. Cold medians in the three
+paired projects remain broadly flat; their paired stock controls are retained.
+Stock full-path medians are 0.10078 / 0.09892 / 0.20572 respectively. The
+bundle does not remove the first/full-path parity blocker and is unselected.
+
+The separate serial-Cargo generated control uses source
+`6f9241658d4fee01155a4919d480087d47302f91`: chain 8/64 packages, four
+modules/package, one root binary and every package a default member. Its
+strict stock/fork comparison reports 2 same / 4,314 functions, zero
+different/unstable/infrastructure/skipped results, with resource drift in two
+units. All 84 timed rows match stock stdout/stderr/exit exactly. Every warm
+Sail observation is Current with zero verifier starts and complete requested
+targets. Two fresh contexts/mode supply ten repeated full calls per size;
+these are not ten independent cold rounds.
+
+| Packages | Stock full path | Previous Sail | Candidate Sail |
+|---|---:|---:|---:|
+| 8 | 0.11203 | 0.17735 | 0.18255 |
+| 64 | 0.17443 | 0.32924 | 0.32855 |
+
+This complete whole-call control does not close the separate parallel
+workspace/all-targets framing/identity failure. Archive SHA-256:
+`72f783b6adb904ddd7f2a4528f16d30691de7d5e3a78e58e5deba7b99942e421`.
+It retains reports, every sample, raw outputs and Current producer records.
 
 ## Linux functional scope
 
