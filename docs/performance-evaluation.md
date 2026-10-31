@@ -159,7 +159,11 @@ harness remains limited to direct Verus units.
 `perf-scaling.py` generates reproducible verified Cargo workspaces. Vary one
 dimension at a time: packages, files, shared dependencies, root binary targets
 or bytes per file. Chains, repeated diamonds and shared dependencies expose
-different traversal costs. Supply the pinned vstd source explicitly.
+different traversal costs. Every root binary imports the Verus prelude and
+checks a call into its generated root library. Supply the pinned vstd source
+explicitly. A generation/control-test pass does not establish that the
+resulting programs compile: run the complete workspace/all-targets comparison
+and require a passing plain baseline before recording scaling performance.
 
 ```sh
 python3 scripts/perf-scaling.py --shape diamond --packages 16 --files 16 \

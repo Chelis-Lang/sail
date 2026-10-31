@@ -62,7 +62,10 @@ def generate(out, shape, packages, files, targets, padding, vstd):
         if name == "sail-scale-root":
             for index in range(targets):
                 source = f"src/bin{index:04}.rs"
-                (directory / source).write_text('fn main() {}\n')
+                (directory / source).write_text(
+                    'use vstd::prelude::*;\nverus! {\nfn main() {\n'
+                    '    let result = sail_scale_root::f0000::probe(1u64);\n'
+                    '    assert(result == 1u64);\n}\n}\n')
                 manifest += ('\n[[bin]]\nname = "sail-scale-bin-' + str(index) + '"\n'
                              'path = ' + json.dumps(source) + '\n')
         (directory / "Cargo.toml").write_text(manifest)

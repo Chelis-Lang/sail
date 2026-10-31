@@ -1,0 +1,21 @@
+[package]
+name = "sail-scaling-missing-prelude"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[package.metadata.verus]
+verify = true
+
+[dependencies]
+vstd = "=0.0.0-2026-10-18-0147"
+
+[[bin]]
+name = "sail-scaling-left"
+path = "src/left.rs"
+
+[[bin]]
+name = "sail-scaling-right"
+path = "src/right.rs"

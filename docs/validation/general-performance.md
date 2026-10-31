@@ -67,6 +67,13 @@ it supplies no complete-key or restoration acceptance.
 
 ## Failed attempts
 
+- 2026-10-31, `b9466ece` generated source `0f63559f`: all three shapes
+  refuse the full workspace/all-targets comparison. Generated binary targets
+  lack the required Verus prelude; parallel Cargo failures produce different
+  trailers and partially completed crate output (3 different, 0 same). The
+  generator now imports the prelude and checks a root-library call. Original
+  comparator checks remain unchanged; the complete rerun is pending (#631).
+
 - 2026-10-31, `b9466ece` benchmark with first external loop catalogue: the four
   arithmetic edit expectations and first five temporal-logic expectations
   pass; the final refinement matches stock's compiler failure and refuses

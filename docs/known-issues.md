@@ -85,7 +85,9 @@ Current numbers are in [performance](performance.md).
   is not qualified for selection. Its first new temporal-logic loop correctly
   refuses an invalid final edit (nat addition assigned to int); the corrected
   local passes a minimal stock control, with the real loop rerun pending.
-  Native before/after, held-out and macOS gates remain separate.
+  Generated workspace qualification also refuses invalid binary targets
+  missing the Verus prelude (#631); its generator correction awaits the full
+  all-targets rerun. Native before/after, held-out and macOS gates remain separate.
 
 - **The first unchanged call after a verification is slower than stock**
   ([#558](https://github.com/Chelis-Lang/sail/issues/558)). It takes the full path and records
