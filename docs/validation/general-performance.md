@@ -92,6 +92,15 @@ it supplies no complete-key or restoration acceptance.
 
 ## Failed attempts
 
+- 2026-10-31, `b980b77c`, active ADR 0092 E2E: the compiler-environment
+  witness's clean-caller block leaves the new opt-in setting present. Stock
+  and Sail have identical streams/exit 101 with 1 verified / 2 errors, but
+  the unchanged clean-caller assertion requires 0 verified / 3 errors. Extend
+  that block's existing unset list and its separate ambient-caller case to
+  the new switch; retain both strict tallies and byte comparisons. The failure
+  collector reaches its existing 1,024-file limit; relevant original streams
+  are captured but the archive is explicitly incomplete. No limit is raised.
+
 - 2026-10-31, fixed generated source `7e7ec297`, candidate `32f7bba6`:
   serial Cargo retains all targets and produces complete JSON streams, but
   independent crate order differs. Chain compares same; diamond/shared
