@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Run memory inventories in a separate observer process so inventory parsing
+  cannot hold the command waiter's Python execution lock. The command and its
+  waiter retain their caller's priority; only the Mac sampler lowers its own
+  priority. Sampling intervals, memory definitions and overhead gates remain.
+
 - Preserve unaffected build-script observations when a newly discovered
   external compiler input introduces a symlink ancestor. Existing source
   bindings must remain exact; the discovering proof stays Historical and

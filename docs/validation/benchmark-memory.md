@@ -235,3 +235,19 @@ a fresh corrected-helper matrix is separate, with bounded startup checks.
 Retained full Mac outputs, refused observations, harnesses and staged identities
 archive SHA-256:
 `ce8bea751487a45a2fc476006c4a6008e5707aefb3ab74ac31845db1602c9b61`.
+
+## Independent observer candidate
+
+The continued #562 implementation moves recurring inventories into a separate
+Python process, primed before either control arm releases its command. The
+wait4 reporter retains its original priority and records child exit before
+observer teardown. Only the Mac inventory process and its `ps` children lower
+their priority. The complete inventory, 50 ms interval, summed RSS definitions,
+largest-process observation, daemon identities and original within-range
+acceptance rule are unchanged.
+
+All 13 memory controls pass on native x86-64 Linux, including an actual process
+boundary with one second of CPU-bound inventory work, delayed teardown, equal
+priming, unchanged command priority, child allocation, daemon retention and
+stream/environment/signal forwarding. Native performance and Mac qualification
+are pending; this does not resolve or reclassify any earlier overhead failure.

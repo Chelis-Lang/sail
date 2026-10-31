@@ -10,9 +10,10 @@ import json
 import os
 from pathlib import Path
 import signal
+import select
+import struct
 import subprocess
 import sys
-import threading
 import time
 
 INTERVAL = 0.05
@@ -126,11 +127,8 @@ def daemon_hwm(table, pids):
     return values
 
 
-def run(args):
-    # Keep CPU-bound inventory parsing from delaying the wait4 reporter behind
-    # Python's default 5 ms GIL quantum. The executed child keeps its own runtime.
-    # Apply the same observer scheduling in both measurement/control arms.
-    sys.setswitchinterval(.001)
+def prime(args):
+    """Observe the initial inventory before either arm releases its command."""
     known = load(args.state, {})
     if not isinstance(known, dict):
         known = {}
@@ -149,8 +147,49 @@ def run(args):
     # must not reject that authoritative PID. Retain the observed start identity.
     if pid in table:
         known[str(pid)] = table[pid][2]
-    tracker = Tracker(known)
+    return Tracker(known), table, errors
+
+
+def observe(args):
+    """Separate interpreter: inventories cannot hold the command waiter's GIL."""
+    tracker, _, errors = prime(args)
+    # Only this observer and its future ps children receive low priority.
+    # The command and wait4 reporter keep their caller's scheduling priority.
+    if sys.platform == 'darwin':
+        try:
+            os.setpriority(os.PRIO_PROCESS, 0, 19)
+        except OSError as error:
+            errors.append(f'cannot lower observer priority: {error}')
+    sys.stdout.buffer.write(b'R')
+    sys.stdout.buffer.flush()
+    message = b''
+    while len(message) < 8:
+        chunk = os.read(0, 8-len(message))
+        if not chunk:
+            return 2
+        message += chunk
+    root, = struct.unpack('!q', message)
+    try:
+        if args.no_sample:
+            os.read(0, 1)
+        else:
+            while True:
+                tracker.sample(processes(), root)
+                if select.select([0], [], [], INTERVAL)[0]:
+                    os.read(0, 1)
+                    break
+    except (OSError, subprocess.SubprocessError) as error:
+        errors.append(str(error))
+    result = dict(tree_peak_kb=tracker.tree_peak, daemon_peak_kb=tracker.daemon_peak,
+                  samples=tracker.samples, daemons=tracker.daemons, errors=errors)
+    sys.stdout.write(json.dumps(result)+'\n')
+    sys.stdout.flush()
+    return 0
+
+
+def run(args):
     if args.snapshot:
+        tracker, table, errors = prime(args)
         tracker.sample(table, None)
         # A server may have detached between samples before it was ever seen
         # as a descendant. The harness supplies fresh status after the call;
@@ -160,27 +199,35 @@ def run(args):
                                          tracker.daemon_peak),
                       daemon_hwm_kb=daemon_hwm(table, tracker.daemons))
     else:
+        command = [sys.executable, '-I', str(Path(__file__).resolve()), '--observer',
+                   '--output', str(args.output)]
+        for name in ('state', 'status'):
+            if value := getattr(args, name):
+                command += ['--'+name, str(value)]
+        if args.no_sample:
+            command.append('--no-sample')
+        observer = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        if observer.stdout.read(1) != b'R':
+            observer.communicate()
+            print('perf-mem: observer failed before readiness', file=sys.stderr)
+            return 2
         # Preparing Python and the initial process inventory is harness setup,
         # before run_one starts its clock. The FIFO releases the actual command.
         if args.ready:
             args.ready.write_text('ready\n')
             with args.go.open('rb', buffering=0) as gate:
                 if not gate.read(1):
+                    observer.communicate()
                     return 2
         command_started = time.monotonic()
         try:
             child = subprocess.Popen(args.command)
         except OSError as error:
+            observer.communicate()
             print(f'perf-mem: {error}', file=sys.stderr)
             return 127 if isinstance(error, FileNotFoundError) else 126
-        # The command has already inherited its caller's priority. Lower only
-        # Darwin's observer and its future ps children, in both control arms.
-        # The 50 ms cadence and complete process inventory stay unchanged.
-        if sys.platform == 'darwin':
-            try:
-                os.setpriority(os.PRIO_PROCESS, 0, 19)
-            except OSError as error:
-                errors.append(f'cannot lower observer priority: {error}')
+        observer.stdin.write(struct.pack('!q', child.pid))
+        observer.stdin.flush()
         # Forward termination so an interrupted wrapper never intentionally
         # leaves its measured command running. Preserve shell signal status.
         previous = {}
@@ -191,33 +238,29 @@ def run(args):
                 pass
         for signum in (signal.SIGTERM, signal.SIGINT):
             previous[signum] = signal.signal(signum, forward)
-        stopped = threading.Event()
-        def sample():
-            try:
-                while True:
-                    tracker.sample(processes(), child.pid)
-                    if stopped.wait(INTERVAL):
-                        break
-            except (OSError, subprocess.SubprocessError) as error:
-                errors.append(str(error))
-        sampler = None if args.no_sample else threading.Thread(target=sample)
-        if sampler:
-            sampler.start()
         try:
             _, wait_status, usage = os.wait4(child.pid, 0)
             wall_seconds = time.monotonic() - command_started
             code = os.waitstatus_to_exitcode(wait_status)
             child.returncode = code
         finally:
-            stopped.set()
-            if sampler:
-                sampler.join()
+            observed, _ = observer.communicate(b'x')
             for signum, handler in previous.items():
                 signal.signal(signum, handler)
-        result = {'tree_peak_kb': tracker.tree_peak,
+        try:
+            observation = json.loads(observed)
+            if observer.returncode != 0:
+                raise ValueError(f'observer exit {observer.returncode}')
+            errors = observation['errors']
+            tracker = Tracker(observation['daemons'])
+        except (ValueError, KeyError, TypeError) as error:
+            observation = dict(tree_peak_kb=None, daemon_peak_kb=None, samples=0)
+            errors = [f'invalid observer result: {error}']
+            tracker = Tracker({})
+        result = {'tree_peak_kb': observation['tree_peak_kb'],
                   'largest_kb': largest_kb(usage.ru_maxrss, sys.platform),
-                  'daemon_peak_kb': tracker.daemon_peak,
-                  'interval_ms': 50, 'samples': tracker.samples, 'exit': code}
+                  'daemon_peak_kb': observation['daemon_peak_kb'],
+                  'interval_ms': 50, 'samples': observation['samples'], 'exit': code}
         result['wall_seconds'] = wall_seconds
         if errors:
             result.update(tree_peak_kb=None, daemon_peak_kb=None, errors=errors)
@@ -239,17 +282,18 @@ def main():
     parser.add_argument('--status', type=Path)
     parser.add_argument('--snapshot', action='store_true')
     parser.add_argument('--no-sample', action='store_true')
+    parser.add_argument('--observer', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--ready', type=Path)
     parser.add_argument('--go', type=Path)
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.command[:1] == ['--']:
         args.command.pop(0)
-    if not args.command and not args.snapshot:
+    if not args.command and not args.snapshot and not args.observer:
         parser.error('a command is required after --')
     if bool(args.ready) != bool(args.go):
         parser.error('--ready and --go must be supplied together')
-    return run(args)
+    return observe(args) if args.observer else run(args)
 
 
 if __name__ == '__main__':

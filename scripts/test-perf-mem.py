@@ -8,8 +8,6 @@ import signal
 import subprocess
 import sys
 import tempfile
-from types import SimpleNamespace
-from unittest import mock
 import time
 import unittest
 
@@ -57,83 +55,74 @@ class Memory(unittest.TestCase):
                         process.terminate()
                     process.communicate(timeout=5)
 
+    def observer_fixture(self, root, body):
+        # Exercise the real wrapper/observer boundary, with an intentionally
+        # expensive inventory in a private copy of the actual executable.
+        script = root/'perf-mem.py'
+        override = '\n_inventory_calls = 0\ndef processes():\n    global _inventory_calls\n    _inventory_calls += 1\n'
+        override += '    Path('+repr(str(root/'calls'))+').write_text(str(_inventory_calls))\n'
+        override += body+'\n    return {}\n\n'
+        script.write_text(SCRIPT.read_text().replace("if __name__ == '__main__':", override+"if __name__ == '__main__':"))
+        return script
+
     def test_child_clock_excludes_slow_sampler_teardown(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             marker, output = root/'exited', root/'memory.json'
-            calls = 0
-            def inventory():
-                nonlocal calls
-                calls += 1
-                if calls > 1:
-                    deadline = time.monotonic() + 5
-                    while not marker.exists() and time.monotonic() < deadline:
-                        time.sleep(.005)
-                    time.sleep(.5)
-                return {}
-            args = SimpleNamespace(snapshot=False, output=output, state=None, status=None,
-                ready=None, go=None, no_sample=False, command=[sys.executable, '-c',
-                    'import os,pathlib,sys; pathlib.Path(sys.argv[1]).write_text("done"); os._exit(0)', str(marker)])
+            script = self.observer_fixture(root,
+                '    if _inventory_calls > 1:\n'
+                '        deadline = time.monotonic()+5\n'
+                '        while not Path('+repr(str(marker))+').exists() and time.monotonic() < deadline:\n'
+                '            time.sleep(.005)\n'
+                '        time.sleep(.5)')
             start = time.monotonic()
-            with mock.patch.object(mem, 'processes', side_effect=inventory):
-                self.assertEqual(mem.run(args), 0)
-            elapsed = time.monotonic() - start
+            result = subprocess.run([sys.executable, '-I', str(script), '--output', str(output),
+                '--', sys.executable, '-c',
+                'import time,pathlib,sys; time.sleep(.1); pathlib.Path(sys.argv[1]).write_text("done")',
+                str(marker)], capture_output=True, timeout=10)
+            elapsed = time.monotonic()-start
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertGreaterEqual(int((root/'calls').read_text()), 2)
             usage = json.loads(output.read_text())
-            self.assertGreaterEqual(calls, 2)
             self.assertGreater(usage['wall_seconds'], 0)
             self.assertGreater(elapsed-usage['wall_seconds'], .2)
 
     def test_child_clock_is_not_held_by_sampler_cpu_work(self):
         with tempfile.TemporaryDirectory() as temporary:
-            output = Path(temporary)/'memory.json'
-            calls = 0
-            def inventory():
-                nonlocal calls
-                calls += 1
-                if calls > 1:
-                    # Deliberately occupy the GIL across the child's exit.
-                    deadline = time.monotonic()+1
-                    while time.monotonic() < deadline:
-                        pass
-                return {}
-            args = SimpleNamespace(snapshot=False, output=output, state=None,
-                status=None, ready=None, go=None, no_sample=False,
-                command=[sys.executable, '-c', 'import time; time.sleep(.1)'])
-            original = sys.getswitchinterval()
-            try:
-                sys.setswitchinterval(1)
-                with mock.patch.object(mem, 'processes', side_effect=inventory):
-                    self.assertEqual(mem.run(args), 0)
-            finally:
-                sys.setswitchinterval(original)
-            self.assertGreaterEqual(calls, 2)
-            # Joining still waits for the inventory; its CPU work cannot add
-            # nearly a full second to the reported command interval.
+            root = Path(temporary)
+            output = root/'memory.json'
+            script = self.observer_fixture(root,
+                '    if _inventory_calls > 1:\n'
+                '        deadline = time.monotonic()+1\n'
+                '        while time.monotonic() < deadline:\n'
+                '            pass')
+            result = subprocess.run([sys.executable, '-I', str(script), '--output', str(output),
+                '--', sys.executable, '-c', 'import time; time.sleep(.1)'],
+                capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertGreaterEqual(int((root/'calls').read_text()), 2)
+            # A whole second of inventory CPU cannot hold the command reporter.
             self.assertLess(json.loads(output.read_text())['wall_seconds'], .75)
 
-    def test_both_arms_prime_inventory_before_spawn_and_lower_only_the_observer(self):
+    def test_both_arms_prime_before_spawn_and_keep_command_priority(self):
         for sampled in [False, True]:
             with self.subTest(sampled=sampled), tempfile.TemporaryDirectory() as temporary:
-                events = []
-                def inventory():
-                    events.append('inventory')
-                    return {}
-                original = subprocess.Popen
-                def spawn(*args, **kwargs):
-                    events.append('spawn')
-                    return original(*args, **kwargs)
-                def lower(*args):
-                    self.assertEqual(args, (os.PRIO_PROCESS, 0, 19))
-                    events.append('lower-observer')
-                args = SimpleNamespace(snapshot=False, output=Path(temporary)/'memory.json',
-                    state=None, status=None, ready=None, go=None, no_sample=not sampled,
-                    command=[sys.executable, '-c', 'pass'])
-                with mock.patch.object(mem, 'processes', side_effect=inventory), \
-                     mock.patch.object(mem.subprocess, 'Popen', side_effect=spawn), \
-                     mock.patch.object(mem.sys, 'platform', 'darwin'), \
-                     mock.patch.object(mem.os, 'setpriority', side_effect=lower):
-                    self.assertEqual(mem.run(args), 0)
-                self.assertEqual(events[:3], ['inventory', 'spawn', 'lower-observer'])
+                root = Path(temporary)
+                output, marker = root/'memory.json', root/'primed'
+                script = self.observer_fixture(root,
+                    '    Path('+repr(str(marker))+').write_text(str(os.getpid()))')
+                command = [sys.executable, '-I', str(script), '--output', str(output)]
+                if not sampled:
+                    command.append('--no-sample')
+                command += ['--', sys.executable, '-c',
+                    'import os,pathlib,sys; p=pathlib.Path(sys.argv[1]); '
+                    'assert p.exists(); assert int(p.read_text()) != os.getpid(); '
+                    'print(os.getpriority(os.PRIO_PROCESS,0))', str(marker)]
+                priority = os.getpriority(os.PRIO_PROCESS, 0)
+                result = subprocess.run(command, capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(int(result.stdout), priority)
+                self.assertEqual(os.getpriority(os.PRIO_PROCESS, 0), priority)
 
     def test_tree_sum_daemon_reparent_and_pid_reuse(self):
         tracker = mem.Tracker({})
