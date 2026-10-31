@@ -241,7 +241,7 @@ mod tests {
         let result = classify(FIRST, REORDERED);
         assert_eq!(result.verdict, Verdict::Same);
         assert_eq!(result.accepted_order_exceptions.len(), 1);
-        assert!(!result.strict_differences.is_empty());
+        assert_ne!(result.strict_differences, Vec::<String>::new());
         assert_eq!(
             classify_tests_exact(&[record(FIRST)], &record(REORDERED)).verdict,
             Verdict::Different
@@ -258,7 +258,7 @@ mod tests {
         let result = classify(a, b);
         assert_eq!(result.verdict, Verdict::Same);
         assert_eq!(result.accepted_order_exceptions.len(), 1);
-        assert!(!result.strict_differences.is_empty());
+        assert_ne!(result.strict_differences, Vec::<String>::new());
     }
 
     #[test]
@@ -308,7 +308,7 @@ mod tests {
         for (pin, binary) in [(STOCK, "other"), ("other", "output_json")] {
             let result = classify_stock_test(&[record(FIRST)], &record(REORDERED), pin, binary);
             assert_ne!(result.verdict, Verdict::Same);
-            assert!(result.accepted_order_exceptions.is_empty());
+            assert_eq!(result.accepted_order_exceptions, Vec::<String>::new());
         }
     }
 

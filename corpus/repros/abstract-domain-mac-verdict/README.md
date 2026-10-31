@@ -37,3 +37,12 @@ flags, still fails. Full controls archive SHA-256:
 `f71416129dfb411543e700962b76374bade14793830a58467b95b9cdd049bb30`.
 These controls localize the behavior outside the artifact memo and shim;
 they do not identify the exact fork change or establish a wrong Z3 answer.
+
+Continued literal replay isolates two earlier completed specification
+termination scopes, while the later proof query is byte-identical. The
+bounded companion-context prototype passes this unchanged full package on
+both platforms and all 23 broader units on both, but remains unselected
+pending source-suite, full corpus and cost qualification. The original
+failed runtime is still a reproduction. See
+[VI-0040](../../../docs/verus-issues/VI-0040-macos-abstract-domain-verdict.md)
+and [ADR 0094](../../../docs/decisions/0094-isolated-spec-termination-checks.md).

@@ -321,3 +321,12 @@ fresh managed target-selection gates are scoped separately in the
 | Initial complete controller log | `6924fb28d45d7d73c4af769f90b9eb8e9a3c44119f6f776c77387feeec9aef38` |
 | Fresh complete four-arm reports, all confirming outputs and reproductions | `043608a3ad67bed39d0726b9b2107ecdbaad30c77195c59ef64d9a01c0938c27` |
 | Fresh complete controller log | `9037c47f4fbf3a0b140326fecf0ca15b2216db06e913f69764c3b57a1a048c11` |
+
+Continued qualification, 2026-10-31: owner approved ADR 0093's two named
+stock debug-set order exceptions. Implementation `28e2ddfe` passes all 14
+focused native RVT comparator controls, including both original failing
+set/object snapshots and changed-value/outcome/diagnostic/ordinary-array
+refusals. Its first complete gate stops on three `assert_is_empty` test-style
+Clippy errors; assertions now use value-reporting comparisons. This is not
+a completed source-suite or release result. Original failed stock runs remain
+retained; new reports explicitly preserve raw captures and strict differences.
