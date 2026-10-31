@@ -91,7 +91,7 @@ Current v0.2.0 implementation gates:
 
 | Slice | State | Remaining gate |
 |---|---|---|
-| General algorithm and corpus evaluation | [Broader tooling and ADR 0092 prototype implemented; both runtime experiments unselected on Linux after complete whole-call controls](design/general-performance.md) | [Mac installed output failure #633 and fork verdict difference #634; no new default or release acceptance](validation/general-performance.md) |
+| General algorithm and corpus evaluation | [Broader tooling and ADR 0092 prototype implemented; both runtime experiments unselected on Linux after complete whole-call controls](design/general-performance.md) | [#633 repair passes native installed loops on both platforms; #634 bounded compiler passes original package on both and broader Mac; full qualification and selection pending](validation/general-performance.md) |
 | Memory harness, native source sync, cache selection/aliases, metadata memo | Merged (#613–#615); Linux/Mac functional controls and complete eight-project/platform matrix recorded | Below-noise sampler requirement remains unqualified (#562) |
 | Stable sidecars and within-call target projections (#560) | Implemented; native/Mac gates and combined matrix recorded | Full-path and tiny-edit parity remain open |
 | Final source-vector observation (#558) | Implemented; Anvil recording calls save 65 ms Linux / 44 ms Mac | Four-project first-unchanged parity remains open |
@@ -102,8 +102,9 @@ Current v0.2.0 implementation gates:
 
 These results do not establish v0.2.0 acceptance. Six-round measurements are
 complete, with the original failures retained. The strict stock source-suite
-control also fails (#627); all three fork arms pass
-([scope](validation/deep-tier.md#v020-performance-candidate)). Remaining parity,
+control originally fails (#627); all three original fork arms pass. The
+owner-approved ADR 0093 exceptions are implemented and under native
+qualification ([scope](validation/deep-tier.md#v020-performance-candidate)). Remaining parity,
 overhead and correctness gates retain their original requirements.
 
 | Row | Measured, Sail against stock | Spike finding | Issue |

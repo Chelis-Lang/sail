@@ -604,13 +604,14 @@ pub fn main(args: &[String]) -> Result<ExitCode, String> {
     std::fs::write(&path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
     let s = &report.summary;
     println!(
-        "rust_verify_test conformance: {} tests ({} ignored), {} same, {} unstable, {} different, {} infra errors; plain outcomes {} ok, {} FAILED, {} unknown; {:.0}s\nreport: {}",
+        "rust_verify_test conformance: {} tests ({} ignored), {} same, {} unstable, {} different, {} infra errors, {} approved stock debug-order exceptions; plain outcomes {} ok, {} FAILED, {} unknown; {:.0}s\nreport: {}",
         s.tests,
         s.ignored,
         s.same,
         s.unstable,
         s.different,
         s.infra_error,
+        s.accepted_order_exceptions,
         s.plain_ok,
         s.plain_failed,
         s.plain_unknown,

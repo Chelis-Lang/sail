@@ -1,18 +1,18 @@
 # General performance qualification
 
 **Current status:** broader tooling and the owner-approved ADR 0092 bounded
-prototype are implemented. Both optimization experiments remain unselected
-on Linux; every platform keeps its previous defaults. Native Linux gates pass.
-Mac host/managed controls pass, but installed output and broader-verdict gates
-fail (#633, #634), so Mac timing/memory selection stops. No new performance,
-frontend-reuse or release acceptance is claimed.
+prototype are implemented. Both optimization experiments remain unselected;
+platform defaults are unchanged. Continued fixes now pass #633's original
+installed-output control on both platforms. The bounded compiler candidate
+for #634 passes the original 909-function comparison on both platforms and
+all 23 broader Mac units / 5,357 function records. The broader Linux run,
+source suites and final runtime selection remain in progress. No release or
+new performance-default acceptance is claimed.
 
-The continued #633 diagnosis reproduces the same extra second verification on
-native Linux when the temporary directory has a symlink ancestor. The candidate
-preserves only unaffected script observations for newly discovered source
-aliases; proof Currentness and receipt publication are unchanged. Its native
-end-to-end and Mac qualification are pending, so the original failed gate
-remains open. Raw controls are retained externally for the final evidence seal.
+The owner approved ADR 0093's two stock debug-set ordering exceptions on
+2026-10-31. Their explicit reporting and negative controls are implemented
+and under native qualification; this does not replace the original failed
+stock source-suite results.
 
 The [review](../design/general-performance.md) defines the unchanged authority
 boundaries. The [evaluation guide](../performance-evaluation.md) defines the
@@ -33,6 +33,47 @@ strict stock source-suite failure retain their original scope and requirements.
 Raw records stay outside git. Add their source/runtime/environment identities,
 scope and SHA-256 here after completed captures; do not describe a build or
 matching failed baseline as a passing real-project workload.
+
+## Continued installed-output repair (#633)
+
+The fix in `7627b9bd` preserves non-authorizing script observations when a
+compiler first discovers a genuinely new source alias. Every old alias must
+remain identical; script-package/declaration changes still reject reuse.
+The establishing proof remains Historical and publishes no proof receipt.
+No Currentness or complete-source checks are relaxed.
+
+The same three-call control reproduced on native Linux with a symlinked
+`TMPDIR`. Old `6cfa1606` (Linux) / `715c0f5e` (Mac) runs start one verifier,
+then two, then none. Candidate `64fa9a0e` starts one, then none, then none.
+All calls exit zero; both unchanged candidate calls have stock's empty output.
+The full installed edit/no-op loop passes on Linux and Mac, retaining every
+original mutation, restored-mtime, JSON, partial-scope and revert check.
+The complete unbundled Mac managed suite also passes. Linux's complete image
+gate passes 1,289 tests / 54 skipped; Mac's host gate passes Clippy and
+1,278 tests / 54 skipped. These are the repair's functional results, not
+final composed release qualification.
+
+An independent seal compares all 419 Rust implementation/manifests, fork and
+artifact pins, and observer-source files with committed `64fa9a0e` on both
+hosts. Linux's original checkout metadata is `c975b8a7` plus the exact changed
+files; Mac is clean `64fa9a0e`. This records tested-input equivalence without
+claiming a new execution at a later commit. Native Linux is c7i.8xlarge /
+us-east-1; Mac is mac-m4.metal / us-east-1c, macOS 27, Rust 1.99.0 / verifier
+1.99.1, fork `47fb3be6`, pinned Z3.
+
+| External evidence | SHA-256 |
+|---|---|
+| Linux old/new three-call outputs, producer reports and 419-file seal | `b44d24eec9352370a8ef16ed233005901b8c4718c34e3b8a0e4b44621327cc69` |
+| Linux complete installed-output loop log | `8152f7f4d7e51980dd126f4386b2a3ee26dfe2f7e2ed2315113c028c5eff36b8` |
+| Linux full gate/factory log, including later controller setup failure | `2af1eb6c008a22a2b33763ce9d0bdc20a4642a16b336ad1017060b475381df38` |
+| Mac controls, installed loop, managed suite, factories and 419-file seal | `c47e077f2906062b7de6c176c24be58ed28e6d494f7061fa622ea6995f0d2de5` |
+| Mac host/build preparation | `8377a3a09d50f3d32675c14226bfde328096c64e0e5c759081cc54898e8345a5` |
+| Mac old/new controls, complete installed loop and managed controller | `229af3bd89e40c7945f43f5f0bc6e70fa1936f94e3a7bdbbc978d9c2045ba6a3` |
+
+The earlier failures remain historical evidence. One Linux controller attempt
+completed the gate/factory but omitted the required E2E-build directory;
+its corrected setup and the installed test subsequently pass. No check or
+output expectation changed. The standalone repair has not yet merged.
 
 ## Final native functional scope
 

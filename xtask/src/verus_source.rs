@@ -390,6 +390,7 @@ fn compile(
         .output()
         .map_err(|e| format!("failed to run vargo test: {e}"))?;
     if !output.status.success() {
+        report_build_failure(&output.stdout);
         return Err(format!("vargo test --no-run exited with {}", output.status));
     }
     let executables = test_executables(&String::from_utf8_lossy(&output.stdout));
@@ -397,6 +398,28 @@ fn compile(
         return Err("vargo test --no-run reported no rust_verify_test binaries".to_owned());
     }
     Ok(executables)
+}
+
+fn report_build_failure(output: &[u8]) {
+    // Cargo's JSON compiler messages are on captured stdout, rather than
+    // inherited stderr. Surface the actual error before its exit status.
+    let stdout = String::from_utf8_lossy(output);
+    let mut rendered = false;
+    for line in stdout.lines() {
+        if let Ok(message) = serde_json::from_str::<serde_json::Value>(line)
+            && message.get("reason").and_then(serde_json::Value::as_str) == Some("compiler-message")
+            && let Some(diagnostic) = message
+                .get("message")
+                .and_then(|message| message.get("rendered"))
+                .and_then(serde_json::Value::as_str)
+        {
+            eprint!("{diagnostic}");
+            rendered = true;
+        }
+    }
+    if !rendered && !stdout.is_empty() {
+        eprintln!("{stdout}");
+    }
 }
 
 /// Where an installed `rust-src` component puts the standard library

@@ -249,6 +249,19 @@ mod tests {
     }
 
     #[test]
+    fn real_stock_function_detail_entry_orders_are_explicit_matches() {
+        let a = include_str!("../../tests/fixtures/stock-debug-order/object-first.stderr");
+        let b = include_str!("../../tests/fixtures/stock-debug-order/object-reordered.stderr");
+        assert_ne!(a, b);
+        assert!(canonical(a).is_some());
+        assert_eq!(canonical(a), canonical(b));
+        let result = classify(a, b);
+        assert_eq!(result.verdict, Verdict::Same);
+        assert_eq!(result.accepted_order_exceptions.len(), 1);
+        assert!(!result.strict_differences.is_empty());
+    }
+
+    #[test]
     fn altered_notes_values_diagnostics_and_outcomes_remain_different() {
         for changed in [
             REORDERED.replace("Property 732", "Property 733"),

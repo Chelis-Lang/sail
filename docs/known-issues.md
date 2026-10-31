@@ -53,9 +53,11 @@ relations remain open; source/hash binding does not establish them.
   disagreement in semi-persistent's abstract-domain proof
   ([VI-0040](verus-issues/VI-0040-macos-abstract-domain-verdict.md),
   [#634](https://github.com/Chelis-Lang/sail/issues/634)). Stock
-  passes three runs; the managed verifier arm fails a postcondition. Cause
-  remains unknown, the comparison stays failed, and no platform performance
-  or release acceptance follows from unrelated passing gates.
+  passes three runs; the shipped fork fails a postcondition. Literal replay
+  isolates sensitivity to two earlier completed specification-termination
+  checks. The bounded companion-context candidate passes the original package
+  on both platforms and the broader Mac corpus; full source-suite, corpus,
+  cost and release qualification remain pending. See ADR 0094.
 
 - **An installed Mac workspace can recompile after discovering an external
   input** ([#633](https://github.com/Chelis-Lang/sail/issues/633),
@@ -64,10 +66,13 @@ relations remain open; source/hash binding does not establish them.
   totals on an unchanged call where stock prints nothing. A one-function
   external `include_str!` reduction reproduces this with the prototype absent;
   the following call is a no-op on both sides. All exits are zero, and no
-  wrong solver answer is demonstrated. Root cause is unknown. The installed
-  Mac output gate remains failed; neither comparison nor evidence limits are
-  weakened. Ordinary host tests and independent corpus checks have separate
-  scopes and do not authorize release acceptance.
+  wrong solver answer is demonstrated. Continued diagnosis reproduces the
+  issue on Linux with a symlinked temporary directory. The repair preserves
+  unaffected script observations when discovering new source aliases; the
+  first proof stays Historical. Old/new three-call controls and complete
+  installed output loops pass on both platforms. The repair remains unmerged;
+  [qualification](validation/general-performance.md#continued-installed-output-repair-633)
+  does not authorize the final composed release.
 
 - Compiler input observations report an empty-file checksum and size for
   non-UTF-8 `include_bytes!` inputs
@@ -310,7 +315,10 @@ A strict v0.2.0 stock source-suite control reports a JSON debug-order
 disagreement after eleven confirming plain runs ([#627](https://github.com/Chelis-Lang/sail/issues/627)).
 All three exact fork arms are 4,902 Same, with all 4,839 nonignored tests
 passing. Two strict stock attempts remain failed; their JSON object-key and
-proof-note order symptoms match VI-0008 / VI-0021. No comparator is relaxed
+proof-note order symptoms match VI-0008 / VI-0021. The owner approved the two
+named incidental debug-order exceptions in ADR 0093 on 2026-10-31; their
+implementation is under native qualification. Original strict failures and
+raw bytes stay retained, with accepted order exceptions reported separately
 ([current scope](validation/deep-tier.md#v020-performance-candidate)).
 
 ## Settled digest candidates
