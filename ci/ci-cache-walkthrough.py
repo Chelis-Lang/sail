@@ -76,7 +76,9 @@ def main():
         # turn modified verifier bytes into a successful Current proof.
         status = call("runtime-status", [args.sail, "engine", "status", "--output", "json"])
         assert status.returncode == 0, status.stderr
-        runtime = Path(json.loads(status.stdout)["build"]) / "rust_verify"
+        installed = json.loads(status.stdout)
+        runtime = Path(installed["verus"]).with_name("rust_verify")
+        assert Path(installed["build"]).resolve() in runtime.resolve().parents, installed
         assert runtime.is_file() and not runtime.is_symlink(), runtime
         original_runtime = runtime.read_bytes()
         try:
