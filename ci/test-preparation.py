@@ -60,6 +60,24 @@ def main():
     source.write_text(source.read_text().replace("proof fn sail_preparation_probe() { assert(true); }", "proof fn sail_preparation_probe() { assert(false); }"))
     failed = json.loads(call("failure", [args.sail, "verify", "--output", "json"], project, 101).stdout)
     assert failed["execution"]["verifier_invocations"] > 0, failed
+    source.write_text(original)
+    policy = json.loads(call("policy-original", [args.sail, "verify", "--output", "json"], project).stdout)
+    disabled_env = dict(env, SAIL_BACKGROUND_PREPARE="0")
+    policy_disabled = json.loads(call("policy-disabled", [args.sail, "verify", "--output", "json"],
+                                      project, environment=disabled_env).stdout)
+    assert policy_disabled["currentness"] == "current", policy_disabled
+    assert policy_disabled["context_sha256"] == policy["context_sha256"], (policy, policy_disabled)
+    assert policy_disabled["execution"]["verifier_invocations"] == 0, policy_disabled
+    # The scheduling policy alone is not a compiler configuration change, but
+    # an actual ghost-only read of it remains a declared proof input.
+    source.write_text(original + '\nverus! { proof fn preparation_environment() {\n'
+                      'let observed = option_env!("SAIL_BACKGROUND_PREPARE");\n'
+                      'assert(match observed { None => true, Some(_) => false });\n} }\n')
+    observed = json.loads(call("environment-original", [args.sail, "verify", "--output", "json"], project).stdout)
+    assert observed["currentness"] == "current", observed
+    rejected = json.loads(call("environment-changed", [args.sail, "verify", "--output", "json"],
+                               project, 101, disabled_env).stdout)
+    assert rejected["execution"]["verifier_invocations"] > 0, rejected
     (out / "records.json").write_text(json.dumps(records, indent=2) + "\n")
     print("PASS: actual new-project preparation, immediate foreground call, prepared replay and edit invalidation")
 
