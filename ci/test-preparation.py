@@ -98,7 +98,7 @@ def main():
     assert whole["execution"]["verifier_invocations"] > 0, whole
     assert all(target["complete"] for target in whole["targets"] if target["requested"]), whole
     (out / "records.json").write_text(json.dumps(records, indent=2) + "\n")
-    print("PASS: actual new-project preparation, immediate foreground call, prepared replay and edit invalidation")
+    print("PASS: actual preparation/replay, edit invalidation, policy/ghost-read changes and exact-focus/whole isolation")
 
 
 if __name__ == "__main__":
