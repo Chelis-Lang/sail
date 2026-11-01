@@ -1,0 +1,61 @@
+# Local-only compatibility intake. These are candidates, not accepted corpus
+# baselines. Run with --corpus corpus/performance-candidates.toml --tier deep.
+# Keep the ordinary CI corpus and its expectations unchanged. Full source pins
+# and the existing differential comparator apply to every attempted unit.
+schema_version = 1
+verus_release = "0.2026.10.18.7d82994"
+verus_commit = "7d829946231d6413a398f6e4160cdfe951261dad"
+
+[[project]]
+name = "semi-persistent"
+url = "https://github.com/yaspar-org/semi-persistent"
+commit = "10de512a3374ef7e8245746e95d114163acdc714"
+license = "Apache-2.0"
+tier = "deep"
+verus_version_compat = "unqualified"
+compat_evidence = "Native stock/bare-shim baselines pass all three selected packages; see docs/validation/general-performance.md. Held out from optimization tuning; product/platform qualification remains separate."
+build = "cargo-verus"
+cargo_verus_command = "focus"
+crate_roots = ["containers-verus", "abstract-domains", "au-verus"]
+patch_verus_deps = true
+expected = "unqualified"
+
+[[project]]
+name = "verus-tla"
+url = "https://github.com/anvil-verifier/verus-tla"
+commit = "84487a0ef8c01e79fa6aaa035476d0970775bac1"
+license = "MIT"
+tier = "deep"
+verus_version_compat = "unqualified"
+compat_evidence = "Native stock/bare-shim baseline passes 141 function records; library and mutex binary share the intake selection. See docs/validation/general-performance.md for scope and product/platform limits."
+build = "cargo-verus"
+cargo_verus_command = "focus"
+crate_roots = ["."]
+patch_verus_deps = true
+expected = "unqualified"
+
+[[project]]
+name = "rlsf-verified"
+url = "https://github.com/unsoundsystem/rlsf-verified"
+commit = "a973020873d9f8fac88e073ec34b27e353e33575"
+license = "MIT"
+tier = "deep"
+verus_version_compat = "unqualified"
+compat_evidence = "Native ordinary-runtime intake refuses with matching E0308 vstd API errors and zero verified functions; see docs/validation/general-performance.md. The project script also supplies Singular; that workflow is unqualified."
+build = "verus"
+crate_roots = ["src/lib.rs"]
+extra_verus_args = ["--crate-type=lib", "--expand-errors", "--multiple-errors=10", "--triggers-mode", "silent", "--rlimit", "1000"]
+expected = "unqualified"
+
+[[project]]
+name = "hekate-math"
+url = "https://github.com/oumuamua-labs/hekate-math"
+commit = "9a5c781dbdbd0b704b7f1521b10db09f11161780"
+license = "Apache-2.0"
+tier = "deep"
+verus_version_compat = "unqualified"
+compat_evidence = "Native stock/bare-shim baselines pass verify.sh's 18 roots, excluding exec twins and axioms_t.rs; see docs/validation/general-performance.md. Held out from optimization tuning; product/platform qualification remains separate."
+build = "verus"
+crate_roots_dir = "verus"
+exclude = ["verus/exec/", "verus/axioms_t.rs"]
+expected = "unqualified"

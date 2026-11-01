@@ -92,3 +92,12 @@ Owner decision, 2026-10-21: ignore the six random temporary SMT-log-directory
 characters in the exact pinned dispatch query regression's printed rerun
 commands. This applies only to its source-hash-bound test scaffolding; query
 bytes, diagnostics and outcomes remain checked. See ADR 0042.
+
+Owner decision, 2026-10-31: the pinned stock source suite's incidental
+`output_json.rs:277:5` debug snapshot may reorder `func-details` object
+entries and the `obligation_proof_notes`/`failed_proof_notes` sets. Complete
+values, keys, notes, counts and other array orders remain checked. Unknown or
+duplicate syntax is refused; other stderr remains subject to the existing
+diagnostic comparison. Reports retain strict differences, raw captures and a
+named exception count. Deterministic fork source tests remain exact. See
+[ADR 0093](decisions/0093-stock-source-suite-debug-order.md).

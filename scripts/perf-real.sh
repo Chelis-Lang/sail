@@ -137,7 +137,38 @@ case "$vstd_mode" in source | registry) ;; *) echo "SAIL_PERF_VSTD must be sourc
 # the target `fn` (body, fail, fix, spec), or the insertion point (comment,
 # lemma). See apply_op for the operations.
 cargs=() vargs=() rust_targets=()
+corpus_manifest="$sail_root/corpus/corpus.toml"
 case "$project" in
+  multilog | pmemlog)
+    entry=verified-storage src=verified-storage-41cab9505122
+    if [ "$project" = multilog ]; then pkg=multilog/multilog; else pkg=pmemlog; fi
+    cargs=(--no-default-features)
+    noop_file="$pkg/src/lib.rs"
+    edits() { :; }
+    ;;
+  vest-generated)
+    entry=vest-generated src=vest-11af01ddaef7 pkg=vest_tests
+    vargs=(--verify-module tls)
+    noop_file=vest_tests/src/lib.rs
+    edits() { :; }
+    ;;
+  verus-tla)
+    entry=verus-tla src=verus-tla-84487a0ef8c0 pkg=.
+    corpus_manifest="$sail_root/corpus/performance-candidates.toml"
+    noop_file=src/lib.rs
+    edits() { :; }
+    ;;
+  semi-containers | semi-abstract-domains | semi-au)
+    entry=semi-persistent src=semi-persistent-10de512a3374
+    corpus_manifest="$sail_root/corpus/performance-candidates.toml"
+    case "$project" in
+      semi-containers) pkg=containers-verus ;;
+      semi-abstract-domains) pkg=abstract-domains ;;
+      semi-au) pkg=au-verus ;;
+    esac
+    noop_file="$pkg/src/lib.rs"
+    edits() { :; }
+    ;;
   vest)
     entry=vest src=vest-11af01ddaef7 pkg=vest_lib
     noop_file=vest_lib/src/asn1/der_ord.rs
@@ -215,7 +246,7 @@ fail fail src/controllers/vdeployment_controller/proof/liveness/resource_match.r
 fix fix src/controllers/vdeployment_controller/proof/liveness/resource_match.rs 1874 0
 EOF
     } ;;
-  *) echo "unknown project \`$project\` (vest, capybarakv, verismo, ironkv, anvil)" >&2; exit 2 ;;
+  *) echo "unknown project \`$project\`; see docs/performance.md for supported projects" >&2; exit 2 ;;
 esac
 
 # The incidental acceptance catalogue is opt-in; historical L40 edits and
@@ -308,9 +339,9 @@ now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
 
 if [ ! -d "$corpus/$src" ] || [ ! -d "$verus_src" ]; then
   if [ -n "${SAIL_PERF_STOCK_HOME:-}" ]; then
-    SAIL_VERUS_HOME="$SAIL_PERF_STOCK_HOME" sail-conformance fetch --tier standard --project "$entry" >&2
+    SAIL_VERUS_HOME="$SAIL_PERF_STOCK_HOME" sail-conformance fetch --corpus "$corpus_manifest" --tier deep --project "$entry" >&2
   else
-    sail-conformance fetch --tier standard --project "$entry" >&2
+    sail-conformance fetch --corpus "$corpus_manifest" --tier deep --project "$entry" >&2
   fi
 fi
 
@@ -340,11 +371,11 @@ use std::collections::{BTreeMap, BTreeSet};
 fn main() -> std::process::ExitCode {
     let a: Vec<String> = std::env::args().skip(1).collect();
     let result = match a.as_slice() {
-        [mode, package, root, verus] if mode == "source" => {
-            sail_verus::patch::patch_verus_deps(package.as_ref(), root.as_ref(), verus.as_ref())
-                .map(|p| vec![format!("patched {:?}: {}", p.manifest, p.crates.join(", "))])
+        [mode, package, root, verus, toolchain] if mode == "source" => {
+            sail_verus::patch::patch_verus_workspace(package.as_ref(), root.as_ref(), verus.as_ref(), Some(toolchain))
+                .map(|patches| patches.into_iter().map(|p| format!("patched {:?}: {}", p.manifest, p.crates.join(", "))).collect())
         }
-        [mode, package, root, git, versions @ ..] if mode == "registry" => {
+        [mode, package, root, toolchain, git, versions @ ..] if mode == "registry" => {
             let git: BTreeSet<String> =
                 git.split(',').filter(|n| !n.is_empty()).map(ToOwned::to_owned).collect();
             let versions: BTreeMap<String, String> = versions
@@ -352,7 +383,7 @@ fn main() -> std::process::ExitCode {
                 .filter_map(|kv| kv.split_once('='))
                 .map(|(k, v)| (k.to_owned(), v.to_owned()))
                 .collect();
-            sail_verus::patch::pin_verus_deps_to_registry(package.as_ref(), root.as_ref(), &versions, &git)
+            sail_verus::patch::pin_verus_workspace_to_registry(package.as_ref(), root.as_ref(), &versions, &git, Some(toolchain))
         }
         _ => return std::process::ExitCode::from(2),
     };
@@ -376,7 +407,7 @@ EOF
   cp -r "$corpus/$src" "$p"
   rm -rf "$p/.git"
   if [ "$vstd_mode" = source ]; then
-    "$patcher/target/release/sail-perf-patcher" source "$p/$pkg" "$p" "$verus_src"
+    "$patcher/target/release/sail-perf-patcher" source "$p/$pkg" "$p" "$verus_src" "$rust_toolchain"
     (cd "$p/$pkg" && CARGO_TARGET_DIR="$out/metadata-target" cargo metadata --format-version 1 >/dev/null)
   else
     pin_registry "$patcher/target/release/sail-perf-patcher" "$p"
@@ -396,7 +427,7 @@ verus_git_crates() { # DIR
 pin_registry() { # PATCHER DIR: Verus crates to the shipped lock's crates.io versions
   local patcher="$1" p="$2" git versions=()
   while read -r v; do versions+=("$v"); done < <(python3 -I "$here/perf-matrix.py" vstd-versions "$vstd_lock")
-  "$patcher" registry "$p/$pkg" "$p" "" "${versions[@]}" >"$out/vstd-adjustments.txt"
+  "$patcher" registry "$p/$pkg" "$p" "$rust_toolchain" "" "${versions[@]}" >"$out/vstd-adjustments.txt"
   # A git dependency's own Verus git dependencies (anvil's verus-tla, for
   # example) follow through Verus's git source. When they cannot even
   # resolve beside the registry crates (Verus's git head can pin other
@@ -406,7 +437,7 @@ pin_registry() { # PATCHER DIR: Verus crates to the shipped lock's crates.io ver
     git=$(printf '%s\n' "${versions[@]}" | cut -d= -f1 | paste -sd, -)
   fi
   if [ -n "$git" ]; then
-    "$patcher" registry "$p/$pkg" "$p" "$git" "${versions[@]}" >>"$out/vstd-adjustments.txt"
+    "$patcher" registry "$p/$pkg" "$p" "$rust_toolchain" "$git" "${versions[@]}" >>"$out/vstd-adjustments.txt"
     git=$(verus_git_crates "$p" 2>"$out/metadata.err") || { cat "$out/metadata.err" >&2; return 1; }
     [ -z "$git" ] || { echo "Verus git crates remain after pinning: $git" >&2; return 1; }
     # Every added patch must be used, or each build would warn about it.
@@ -847,7 +878,9 @@ prepare_pristine
 # Resource validation belongs outside every timed command. An observed busy
 # headless Mac cannot qualify a native comparison merely by being dedicated.
 if [ "$(uname -s)" = Darwin ]; then
-  python3 -I "$here/perf-mac-quiet.py" --output "$out/host-quiet.json"
+  # Let project preparation drain before the unchanged fresh CPU preflight.
+  sleep "${SAIL_PERF_SETTLE:-5}"
+  python3 -I "$here/perf-mac-quiet.py" --wait-seconds 120 --output "$out/host-quiet.json"
 fi
 
 if [ "$cmd" = det ]; then

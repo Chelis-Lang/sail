@@ -1,0 +1,44 @@
+# Exact edits of pinned real functions. Expected outcomes are checked against
+# stock during qualification; a mismatch refuses the case. These are local
+# evaluation cases, not additions to the CI timing tier.
+schema_version = 1
+
+[[edit]]
+id = "hekate-pack-body"
+unit = "hekate-math/verus/tower/block16.rs"
+kind = "body"
+file = "verus/tower/block16.rs"
+description = "Add a local true assertion to the existing bit-vector proof"
+expected = "verified"
+find = "    assert(pack(l1 ^ l2, h1 ^ h2) == pack(l1, h1) ^ pack(l2, h2)) by (bit_vector);"
+replace = "    assert(true);\n    assert(pack(l1 ^ l2, h1 ^ h2) == pack(l1, h1) ^ pack(l2, h2)) by (bit_vector);"
+
+[[edit]]
+id = "hekate-pack-spec"
+unit = "hekate-math/verus/tower/block16.rs"
+kind = "spec"
+file = "verus/tower/block16.rs"
+description = "Strengthen the pack-xor contract with a redundant true conjunct"
+expected = "verified"
+find = "    ensures pack(l1 ^ l2, h1 ^ h2) == pack(l1, h1) ^ pack(l2, h2)"
+replace = "    ensures pack(l1 ^ l2, h1 ^ h2) == pack(l1, h1) ^ pack(l2, h2), true"
+
+[[edit]]
+id = "hekate-pack-failure"
+unit = "hekate-math/verus/tower/block16.rs"
+kind = "body"
+file = "verus/tower/block16.rs"
+description = "A false assertion must fail before the existing pack-xor proof"
+expected = "errors"
+find = "    assert(pack(l1 ^ l2, h1 ^ h2) == pack(l1, h1) ^ pack(l2, h2)) by (bit_vector);"
+replace = "    assert(1 + 1 == 3);\n    assert(pack(l1 ^ l2, h1 ^ h2) == pack(l1, h1) ^ pack(l2, h2)) by (bit_vector);"
+
+[[edit]]
+id = "hekate-imported-proof-body"
+unit = "hekate-math/verus/tower/block16.rs"
+kind = "body"
+file = "verus/tower/block8.rs"
+description = "Add an identity binding in an imported spec body while checking its dependent unit"
+expected = "verified"
+find = "pub open spec fn mul_tau8(a: u8) -> u8 {"
+replace = "pub open spec fn mul_tau8(a: u8) -> u8 {\n    let a = a;"

@@ -190,7 +190,12 @@ fn one(setup: &Setup, r: &mut CommitResult, unit: &Unit, daemon: &Daemon) {
     let installed: &Installed = setup.installed;
     let p = run_unit(installed, unit, &Solver::Plain, &work.join("plain"));
     let before = daemon.stats();
-    let s = run_unit(installed, unit, &sail_solver, &work.join("sail"));
+    let s = run_unit(
+        setup.runtime(&sail_solver),
+        unit,
+        &sail_solver,
+        &work.join("sail"),
+    );
     if let (Some(b), Some(a)) = (before, daemon.stats()) {
         r.cache.push(CacheRun::between("commit", &b, &a));
     }

@@ -277,7 +277,6 @@ fn compile(
     jobs: &str,
     singular: bool,
     engine: bool,
-    fork_tests: bool,
 ) -> Result<Vec<(String, PathBuf)>> {
     // The toolchain and components Verus's rust-toolchain.toml lists
     // (rustc-dev, llvm-tools, rustfmt).
@@ -312,27 +311,25 @@ fn compile(
         cmd
     };
 
-    if engine || fork_tests {
-        // The release workflow writes a toolchain manifest for the build's
-        // own version before building, so `cargo verus new` can name the
-        // matching vstd. Without it the runtime's `cargo verus new` fails
-        // ("no known toolchain manifest", VI-0018). The file is untracked,
-        // so the version is not marked dirty, and no verifier byte changes.
-        println!("writing the toolchain manifest (create-manifest, as the release does)");
-        run(
-            clean(Command::new("cargo").current_dir(&source), jobs).args([
-                "run",
-                "--locked",
-                "-p",
-                "cargo-verus-toolchains",
-                "--bin",
-                "create-manifest",
-                "--",
-                "--write-to-dir",
-                "cargo-verus/toolchain-manifests",
-            ]),
-        )?;
-    }
+    // The release workflow writes a toolchain manifest for the build's
+    // own version before building, so `cargo verus new` can name the
+    // matching vstd. Without it the runtime's `cargo verus new` fails
+    // ("no known toolchain manifest", VI-0018). The file is untracked,
+    // so the version is not marked dirty, and no verifier byte changes.
+    println!("writing the toolchain manifest (create-manifest, as the release does)");
+    run(
+        clean(Command::new("cargo").current_dir(&source), jobs).args([
+            "run",
+            "--locked",
+            "-p",
+            "cargo-verus-toolchains",
+            "--bin",
+            "create-manifest",
+            "--",
+            "--write-to-dir",
+            "cargo-verus/toolchain-manifests",
+        ]),
+    )?;
 
     println!("building Verus (vargo build --release; verifies vstd)");
     run(&mut vargo(&["build", "--release"]))?;
@@ -390,6 +387,7 @@ fn compile(
         .output()
         .map_err(|e| format!("failed to run vargo test: {e}"))?;
     if !output.status.success() {
+        report_build_failure(&output.stdout);
         return Err(format!("vargo test --no-run exited with {}", output.status));
     }
     let executables = test_executables(&String::from_utf8_lossy(&output.stdout));
@@ -397,6 +395,28 @@ fn compile(
         return Err("vargo test --no-run reported no rust_verify_test binaries".to_owned());
     }
     Ok(executables)
+}
+
+fn report_build_failure(output: &[u8]) {
+    // Cargo's JSON compiler messages are on captured stdout, rather than
+    // inherited stderr. Surface the actual error before its exit status.
+    let stdout = String::from_utf8_lossy(output);
+    let mut rendered = false;
+    for line in stdout.lines() {
+        if let Ok(message) = serde_json::from_str::<serde_json::Value>(line)
+            && message.get("reason").and_then(serde_json::Value::as_str) == Some("compiler-message")
+            && let Some(diagnostic) = message
+                .get("message")
+                .and_then(|message| message.get("rendered"))
+                .and_then(serde_json::Value::as_str)
+        {
+            eprint!("{diagnostic}");
+            rendered = true;
+        }
+    }
+    if !rendered && !stdout.is_empty() {
+        eprintln!("{stdout}");
+    }
 }
 
 /// Where an installed `rust-src` component puts the standard library
@@ -556,6 +576,12 @@ pub fn build(args: &[String]) -> Result<()> {
         && m.rust_toolchain == *toolchain
         && m.features == features
         && m.z3_sha256 == z3_sha256
+        // Stock source tests also exercise `cargo verus new`. Older caches
+        // predate the release's own-version scaffold data; rebuild them.
+        && (o.engine || o.fork_tests || source_build::checkout_dir(&build)
+            .join("source/cargo-verus/toolchain-manifests")
+            .join(format!("{}.toml", pins.verus.release))
+            .is_file())
         && (if o.engine {
             sail_verus::engine::Installed::at(&build, &pins).is_ok()
         } else {
@@ -570,9 +596,9 @@ pub fn build(args: &[String]) -> Result<()> {
         return Ok(());
     }
     let started = Instant::now();
-    if o.force {
-        let _ = std::fs::remove_file(build.join(source_build::MANIFEST));
-    }
+    // Once a rebuild starts, an interruption must not revive an older
+    // manifest after new scaffold data has been generated.
+    let _ = std::fs::remove_file(build.join(source_build::MANIFEST));
     std::fs::create_dir_all(&build)
         .map_err(|e| format!("cannot create {}: {e}", build.display()))?;
     let checkout = if o.engine || o.fork_tests {
@@ -630,7 +656,6 @@ pub fn build(args: &[String]) -> Result<()> {
         &jobs,
         features.iter().any(|feature| feature == "singular"),
         o.engine,
-        o.fork_tests,
     )?;
     let test_binaries = relative_binaries(&build, &executables)?;
 

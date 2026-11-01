@@ -7,6 +7,101 @@ merged as `731b3052`; all required checks and the main workflow pass. Ordinary e
 profile, not every project or platform. [Paired qualification](proof-reuse-integration.md)
 separates the current source from earlier component results.
 
+## Corrected runtime ordinary installed qualification (`b28d14a8`)
+
+Both native platforms pass the complete 16-call Stock/Sail cycle using fork
+`0ad405eb` and the actual indexed release bundle, with no research override.
+The cold call serves shipped vstd and runs exactly one project verifier.
+The failing edit fails; the fix verifies. Both returned A reports are complete
+and Current, preserve their original per-target establishing provenance and
+payloads, and start no verifier, shim or solver. Independently fresh stock
+reports agree on all 3,127 Vest and 1,871 vstd functions for both returns.
+These are functional controls, not latency or memory acceptance.
+
+Mac: mac-m4.metal / us-east-1c, macOS 26.7, verifier Rust 1.99.1,
+runtime manifest `9f49060ec8714c5e5b3acc72859025a55c7189cf6f8c841c972675227002b866`.
+The capture also includes the explicitly rebuilt b28 factory, installed-output
+and complete managed suites. `b28-mac-functional-ordinary.tgz` SHA-256:
+`f938f06cac772d134f19e9e778afca0ddf9af34863c28c79bdf85f87b3f19ea6`.
+Linux: c7i.8xlarge / us-east-1, verifier Rust 1.99.1,
+runtime manifest `799aac308bd8d8c64a17901cf9a04b9b093689c5e274b5743c60750e2ce9df9d`.
+Its ordinary record is complete; raw capture follows the isolated matrix.
+Final cost, conformance and runtime-adoption requirements remain separate.
+
+## Guarded specification-context runtime candidate (`4cd6bd5f`)
+
+Status: **bounded research and ordinary-route functional cycles pass on both
+platforms; final measured costs and composed release acceptance remain pending.**
+The candidate constants now bind the newly built platform manifests. This is
+staged qualification work, not selected or published runtime adoption.
+
+| Native platform | Sail producer | Runtime manifest SHA-256 |
+|---|---|---|
+| c7i.8xlarge / us-east-1, Ubuntu 24.04 | `65b97036` | `95ad9ca903b1c85549972bd7ef0ff6eb157710d215557ea88f03fb37b834f2a9` |
+| mac-m4.metal / us-east-1c, macOS 27 arm64 | `8513ca43` | `efe2d7e59969dc6dd2d2842aeb6cde122c043fa3d15400a33fd7d6219253028e` |
+
+Both actual release factories pass. Before changing ordinary selection, the
+existing `SAIL_RETAINED_CONTENT_RESEARCH=1` route exercises Vest's public
+alloc/std profile with `-- --rlimit 100`. Each platform runs eight calls per
+stock/Sail arm: cold, unchanged, forced full-path unchanged, body edit and
+return, failing edit, fix and return. A private functional wrapper retains
+ProjectResults after the command. Timing and memory acceptance are explicitly
+excluded; correctness jobs share the Linux host and the Mac is not quiet.
+
+All 32 calls retain expected exits, including both arms' deliberate failures.
+Every Sail result is Current. Each edit/fail/fix starts one verifier; both
+returned A calls start no verifier, shim session or solver and reuse both
+complete targets. Their establishing run and entire report payload equal the
+cold A records. Failure remains incomplete with an actual failed function.
+The existing output checker validates both restored target reports against a
+fresh stock run on each platform: 3,127 Vest function records and 1,871 vstd
+records agree for each return. Stock's two raw JSON documents are kept intact
+and checked against their corresponding target, avoiding cross-crate mixing.
+All original capture/output data is retained.
+
+Completed external captures (raw logs, ProjectResults, audits and stock checks):
+Linux `retained-linux-4cd-evidence.tgz`, SHA-256
+`a94ddd69013f4d37803955f8436f97482adb202ece9c0e58da038205fd178a60`;
+Mac `retained-mac-4cd-evidence.tgz`, SHA-256
+`09a73a780a2fcff78799b770414358ee609b31b5f93ee1833fa2f2a05d26e4f0`.
+
+Failed setup/diagnostic attempts remain separate: 2026-11-01, Linux `65b97036`,
+first wrapper stops before samples because Cargo is absent from PATH;
+corrected wrapper uses the installed Rustup proxies. Mac `8513ca43`, first
+post-check names the benchmark's already-retired workspace; a fresh pristine
+copy supplies the stock control. Its first comparison combines stock's two
+crate documents against one target and refuses missing functions; subsequent
+per-target checks preserve every function and both raw documents. The first
+Mac raw export fails under system Python 3.9's stream-compression API; the
+completed capture uses installed Python 3.13. None changes a product guard,
+source proof, resource limit or expected result.
+
+### Ordinary route (`d18961a1`)
+
+With `SAIL_RETAINED_CONTENT_RESEARCH` absent, the same eight calls per arm pass
+on both platforms. Each returned A keeps both complete Current reports and
+exact cold-A report payloads and establishing provenance, with zero verifier,
+shim or solver starts. Edits, deliberate failure and fix execute the requested
+verifier. These are functional controls, with diagnostics checked against the
+fresh stock arm; their wall times do not qualify performance.
+
+Linux uses the actual installed bundle: its cold call must serve shipped vstd,
+retain that target's shipped establishing origin and start exactly one
+requested-target verifier. The earlier private audit incorrectly required two
+cold verifiers; its failed result is preserved. The installed-bundle audit
+explicitly requires the observed shipped proof and unchanged complete return
+reports. Capture `d189-linux-ordinary-retained.tgz`, SHA-256
+`b1cb7b4f80f09fd34cedde538e860c1bf5e53537fcb20bc15008e2af8d4253a8`.
+
+Mac's eight-call functional wrapper is unbundled and verifies both cold
+targets. It establishes ordinary retained reuse, not bundled cold performance.
+The separate actual installed-bundle first-use check serves vstd and starts one
+requested verifier. Both scopes and the original raw records are retained in
+`mac-d189-complete-evidence.tgz`, SHA-256
+`e1b7399e1a58b3dc6d16a5067cfce0036c464627e17de334574883a353bdadc2`.
+This capture uses macOS 27; subsequent macOS 26.7 functional and timing scopes
+are recorded separately in the [general qualification](general-performance.md).
+
 ## Runtime `f8589ed4` requalification
 
 Runtime `7d829946…-81186034d2e137a2` (fork `f8589ed4`, R3, manifest

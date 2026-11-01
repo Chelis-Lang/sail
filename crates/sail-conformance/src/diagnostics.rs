@@ -445,6 +445,18 @@ mod tests {
     const M4_ERROR: &str = "debug_expand.rs:251:16";
 
     #[test]
+    fn native_benchmark_warning_and_error_order_uses_the_same_contract() {
+        let stock = include_str!("../tests/fixtures/benchmark-mixed-diagnostic-order/stock.stderr");
+        let sail = include_str!("../tests/fixtures/benchmark-mixed-diagnostic-order/sail.stderr");
+        assert_ne!(stock, sail);
+        assert_eq!(split(stock).messages.len(), 4);
+        assert_eq!(compare_stderr(stock, sail), Vec::<String>::new());
+        let changed_body = sail.replacen("assert(1 + 1 == 3)", "assert(1 + 1 == 2)", 1);
+        assert_ne!(changed_body, sail);
+        assert_ne!(compare_stderr(stock, &changed_body), Vec::<String>::new());
+    }
+
+    #[test]
     fn the_debug_expand_module_orders_are_the_same_diagnostics() {
         assert_ne!(M4_FIRST, ROOT_FIRST);
         let (a, b) = (split(M4_FIRST), split(ROOT_FIRST));

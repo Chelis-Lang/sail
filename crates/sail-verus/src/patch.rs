@@ -183,6 +183,118 @@ pub struct Patched {
     pub crates: Vec<String>,
 }
 
+/// Cargo's workspace inventory, before dependency resolution or pin changes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Workspace {
+    /// The actual Cargo workspace root, confined to the scratch repository.
+    pub root: PathBuf,
+    /// Every member package directory, including non-selected members Cargo
+    /// still resolves. All paths are physical directories inside the scratch.
+    pub packages: Vec<PathBuf>,
+}
+
+/// Discover every member using Cargo's own glob, exclusion and auto-membership
+/// rules. `--no-deps --offline` does not resolve the conflicting old/new Verus
+/// pins this preparation is about to replace. Never patches fetched source.
+///
+/// # Errors
+///
+/// `SAIL3016` on failed metadata, missing/ambiguous members, or a workspace or
+/// member outside the supplied scratch repository, including symlink escapes.
+pub fn workspace_packages(
+    target: &Path,
+    repo_root: &Path,
+    toolchain: Option<&str>,
+) -> Result<Workspace> {
+    let fail = |message: String| Error::new("SAIL3016", message);
+    let repository = repo_root.canonicalize().map_err(|e| fail(e.to_string()))?;
+    let target = target.canonicalize().map_err(|e| fail(e.to_string()))?;
+    if !target.starts_with(&repository) {
+        return Err(fail("workspace target is outside scratch".into()));
+    }
+    let mut command = std::process::Command::new("cargo");
+    command.current_dir(&target).args([
+        "metadata",
+        "--no-deps",
+        "--offline",
+        "--format-version",
+        "1",
+    ]);
+    if let Some(toolchain) = toolchain {
+        command.env("RUSTUP_TOOLCHAIN", toolchain);
+    }
+    let output = command.output().map_err(|e| fail(e.to_string()))?;
+    if !output.status.success() {
+        return Err(fail(format!(
+            "cannot inspect scratch workspace: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    let data: serde_json::Value =
+        serde_json::from_slice(&output.stdout).map_err(|e| fail(e.to_string()))?;
+    let root = data["workspace_root"]
+        .as_str()
+        .and_then(|root| Path::new(root).canonicalize().ok())
+        .filter(|root| root.starts_with(&repository))
+        .ok_or_else(|| {
+            fail("workspace root is outside the scratch repository or unreadable".into())
+        })?;
+    let members = data["workspace_members"]
+        .as_array()
+        .ok_or_else(|| fail("workspace member inventory is missing".into()))?;
+    let packages = data["packages"]
+        .as_array()
+        .ok_or_else(|| fail("workspace package inventory is missing".into()))?;
+    let mut directories = BTreeSet::new();
+    for member in members {
+        let matching: Vec<_> = packages
+            .iter()
+            .filter(|package| package["id"] == *member)
+            .collect();
+        let directory = match matching.as_slice() {
+            [package] => package["manifest_path"]
+                .as_str()
+                .and_then(|manifest| Path::new(manifest).parent())
+                .and_then(|directory| directory.canonicalize().ok())
+                .filter(|directory| directory.starts_with(&repository)),
+            _ => None,
+        }
+        .ok_or_else(|| {
+            fail("workspace member is ambiguous, unreadable or outside scratch".into())
+        })?;
+        if !directories.insert(directory) {
+            return Err(fail("workspace member directory is duplicated".into()));
+        }
+    }
+    if directories.is_empty() {
+        return Err(fail("workspace has no member packages".into()));
+    }
+    Ok(Workspace {
+        root,
+        packages: directories.into_iter().collect(),
+    })
+}
+
+/// Patch the entire Cargo workspace in scratch, including non-selected
+/// members whose exact pins participate in Cargo's shared resolution.
+/// Both sides of a comparison receive this same prepared source.
+///
+/// # Errors
+///
+/// `SAIL3016` on workspace discovery or manifest patch errors.
+pub fn patch_verus_workspace(
+    target: &Path,
+    repo_root: &Path,
+    verus_repo: &Path,
+    toolchain: Option<&str>,
+) -> Result<Vec<Patched>> {
+    let workspace = workspace_packages(target, repo_root, toolchain)?;
+    std::iter::once(&workspace.root)
+        .chain(&workspace.packages)
+        .map(|package| patch_at_root(package, &workspace.root, verus_repo))
+        .collect()
+}
+
 /// Points the Verus dependencies of the Cargo package in `target` (inside
 /// the scratch repository `repo_root`) at the packages of `verus_repo`.
 /// Does nothing if the project references no Verus package.
@@ -192,8 +304,12 @@ pub struct Patched {
 /// `SAIL3016` if the workspace manifest cannot be read, parsed or written,
 /// or its `[patch]` is not a table.
 pub fn patch_verus_deps(target: &Path, repo_root: &Path, verus_repo: &Path) -> Result<Patched> {
-    let crates = verus_crates(verus_repo);
     let root = workspace_root(target, repo_root);
+    patch_at_root(target, &root, verus_repo)
+}
+
+fn patch_at_root(target: &Path, root: &Path, verus_repo: &Path) -> Result<Patched> {
+    let crates = verus_crates(verus_repo);
     let root_manifest = root.join("Cargo.toml");
     let target_manifest = target.join("Cargo.toml");
     let mut names = BTreeSet::new();
@@ -323,6 +439,43 @@ pub fn pin_verus_deps_to_registry(
     git_names: &BTreeSet<String>,
 ) -> Result<Vec<String>> {
     let root = workspace_root(target, repo_root);
+    pin_at_root(target, &root, repo_root, versions, git_names)
+}
+
+/// Pin every scratch workspace member to the same registry Verus packages,
+/// keeping Cargo's complete workspace resolution consistent across both arms.
+///
+/// # Errors
+///
+/// `SAIL3016` on workspace discovery or manifest pinning errors.
+pub fn pin_verus_workspace_to_registry(
+    target: &Path,
+    repo_root: &Path,
+    versions: &BTreeMap<String, String>,
+    git_names: &BTreeSet<String>,
+    toolchain: Option<&str>,
+) -> Result<Vec<String>> {
+    let workspace = workspace_packages(target, repo_root, toolchain)?;
+    let mut lines = Vec::new();
+    for package in std::iter::once(&workspace.root).chain(&workspace.packages) {
+        lines.extend(pin_at_root(
+            package,
+            &workspace.root,
+            repo_root,
+            versions,
+            git_names,
+        )?);
+    }
+    Ok(lines)
+}
+
+fn pin_at_root(
+    target: &Path,
+    root: &Path,
+    repo_root: &Path,
+    versions: &BTreeMap<String, String>,
+    git_names: &BTreeSet<String>,
+) -> Result<Vec<String>> {
     let root_manifest = root.join("Cargo.toml");
     let target_manifest = target.join("Cargo.toml");
     let mut manifests = vec![root_manifest.clone()];
@@ -453,6 +606,86 @@ mod tests {
         );
         s.write("verus/source/air/Cargo.toml", "[package]\nname = \"air\"\n");
         s.0.join("verus")
+    }
+
+    #[test]
+    fn workspace_patch_updates_nonselected_glob_members_and_keeps_exclusions()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let s = Scratch::new("all-members");
+        let verus = verus(&s);
+        s.write("repo/Cargo.toml", "[workspace]\nresolver = \"2\"\nmembers = [\"units/*\"]\nexclude = [\"units/excluded\"]\n");
+        let original = "[package]\nname = \"NAME\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nvstd = \"=0.0.0-old\" # keep comment\n";
+        for name in ["a", "b", "excluded"] {
+            s.write(
+                &format!("repo/units/{name}/Cargo.toml"),
+                &original.replace("NAME", name),
+            );
+            s.write(&format!("repo/units/{name}/src/lib.rs"), "");
+        }
+        let repo = s.0.join("repo");
+        let workspace = workspace_packages(&repo.join("units/a"), &repo, None)?;
+        assert_eq!(workspace.packages.len(), 2);
+        patch_verus_workspace(&repo.join("units/a"), &repo, &verus, None)?;
+        for name in ["a", "b"] {
+            assert!(
+                s.read(&format!("repo/units/{name}/Cargo.toml"))
+                    .contains("vstd = \"=0.0.0-new\" # keep comment")
+            );
+        }
+        assert_eq!(
+            s.read("repo/units/excluded/Cargo.toml"),
+            original.replace("NAME", "excluded")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn registry_workspace_pins_every_member_without_losing_features()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let s = Scratch::new("registry-all-members");
+        s.write(
+            "repo/Cargo.toml",
+            "[workspace]\nresolver = \"2\"\nmembers = [\"a\", \"b\"]\n",
+        );
+        for name in ["a", "b"] {
+            s.write(&format!("repo/{name}/Cargo.toml"), &format!(
+                "[package]\nname = \"{name}\"\nversion = \"0.1.0\"\n[dependencies]\nvstd = {{version = \"=0.0.0-old\", default-features = false, features = [\"alloc\"]}}\n"));
+            s.write(&format!("repo/{name}/src/lib.rs"), "");
+        }
+        let repo = s.0.join("repo");
+        pin_verus_workspace_to_registry(
+            &repo.join("a"),
+            &repo,
+            &BTreeMap::from([("vstd".into(), "0.0.0-new".into())]),
+            &BTreeSet::new(),
+            None,
+        )?;
+        for name in ["a", "b"] {
+            let text = s.read(&format!("repo/{name}/Cargo.toml"));
+            assert!(text.contains("=0.0.0-new"));
+            assert!(text.contains("default-features = false"));
+            assert!(text.contains("features = [\"alloc\"]"));
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn workspace_discovery_refuses_a_target_outside_the_scratch_repository()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let s = Scratch::new("workspace-escape");
+        s.write("repo/Cargo.toml", "[workspace]\n");
+        s.write(
+            "outside/Cargo.toml",
+            "[package]\nname = \"outside\"\nversion = \"0.1.0\"\n",
+        );
+        std::os::unix::fs::symlink(s.0.join("outside"), s.0.join("repo/alias"))?;
+        assert!(workspace_packages(&s.0.join("repo/alias"), &s.0.join("repo"), None).is_err());
+        assert_eq!(
+            s.read("outside/Cargo.toml"),
+            "[package]\nname = \"outside\"\nversion = \"0.1.0\"\n"
+        );
+        Ok(())
     }
 
     #[test]

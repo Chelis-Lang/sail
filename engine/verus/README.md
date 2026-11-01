@@ -163,6 +163,10 @@ use an already built variant; CI never compiles Verus.
   and [ADR 0056](../../docs/decisions/0056-stable-smt-function-spellings.md))
   rename symbols, so raw SMT against stock is not asserted; `summary.json`
   records, per session, whether it equals stock's and both input digests.
+  The owner-approved ADR 0094 recursive fixture requires the exact stock
+  one-session and qualified fork two-session inventories; unknown runtimes
+  and any other inventory change fail. The extra termination session and its
+  complete engine/fork input bytes are retained in the summary.
   Fixtures cover bitvectors, termination, failed focus, failed other
   functions, macro diagnostic spans, missing and ambiguous exact selectors,
   Rust frontend errors and late EXEC errors.

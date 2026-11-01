@@ -8,8 +8,6 @@ import signal
 import subprocess
 import sys
 import tempfile
-from types import SimpleNamespace
-from unittest import mock
 import time
 import unittest
 
@@ -57,83 +55,74 @@ class Memory(unittest.TestCase):
                         process.terminate()
                     process.communicate(timeout=5)
 
+    def observer_fixture(self, root, body):
+        # Exercise the real wrapper/observer boundary, with an intentionally
+        # expensive inventory in a private copy of the actual executable.
+        script = root/'perf-mem.py'
+        override = '\n_inventory_calls = 0\ndef processes(*_args):\n    global _inventory_calls\n    _inventory_calls += 1\n'
+        override += '    Path('+repr(str(root/'calls'))+').write_text(str(_inventory_calls))\n'
+        override += body+'\n    return {}\n\n'
+        script.write_text(SCRIPT.read_text().replace("if __name__ == '__main__':", override+"if __name__ == '__main__':"))
+        return script
+
     def test_child_clock_excludes_slow_sampler_teardown(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             marker, output = root/'exited', root/'memory.json'
-            calls = 0
-            def inventory():
-                nonlocal calls
-                calls += 1
-                if calls > 1:
-                    deadline = time.monotonic() + 5
-                    while not marker.exists() and time.monotonic() < deadline:
-                        time.sleep(.005)
-                    time.sleep(.5)
-                return {}
-            args = SimpleNamespace(snapshot=False, output=output, state=None, status=None,
-                ready=None, go=None, no_sample=False, command=[sys.executable, '-c',
-                    'import os,pathlib,sys; pathlib.Path(sys.argv[1]).write_text("done"); os._exit(0)', str(marker)])
+            script = self.observer_fixture(root,
+                '    if _inventory_calls > 1:\n'
+                '        deadline = time.monotonic()+5\n'
+                '        while not Path('+repr(str(marker))+').exists() and time.monotonic() < deadline:\n'
+                '            time.sleep(.005)\n'
+                '        time.sleep(.5)')
             start = time.monotonic()
-            with mock.patch.object(mem, 'processes', side_effect=inventory):
-                self.assertEqual(mem.run(args), 0)
-            elapsed = time.monotonic() - start
+            result = subprocess.run([sys.executable, '-I', str(script), '--output', str(output),
+                '--', sys.executable, '-c',
+                'import time,pathlib,sys; time.sleep(.1); pathlib.Path(sys.argv[1]).write_text("done")',
+                str(marker)], capture_output=True, timeout=10)
+            elapsed = time.monotonic()-start
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertGreaterEqual(int((root/'calls').read_text()), 2)
             usage = json.loads(output.read_text())
-            self.assertGreaterEqual(calls, 2)
             self.assertGreater(usage['wall_seconds'], 0)
             self.assertGreater(elapsed-usage['wall_seconds'], .2)
 
     def test_child_clock_is_not_held_by_sampler_cpu_work(self):
         with tempfile.TemporaryDirectory() as temporary:
-            output = Path(temporary)/'memory.json'
-            calls = 0
-            def inventory():
-                nonlocal calls
-                calls += 1
-                if calls > 1:
-                    # Deliberately occupy the GIL across the child's exit.
-                    deadline = time.monotonic()+1
-                    while time.monotonic() < deadline:
-                        pass
-                return {}
-            args = SimpleNamespace(snapshot=False, output=output, state=None,
-                status=None, ready=None, go=None, no_sample=False,
-                command=[sys.executable, '-c', 'import time; time.sleep(.1)'])
-            original = sys.getswitchinterval()
-            try:
-                sys.setswitchinterval(1)
-                with mock.patch.object(mem, 'processes', side_effect=inventory):
-                    self.assertEqual(mem.run(args), 0)
-            finally:
-                sys.setswitchinterval(original)
-            self.assertGreaterEqual(calls, 2)
-            # Joining still waits for the inventory; its CPU work cannot add
-            # nearly a full second to the reported command interval.
+            root = Path(temporary)
+            output = root/'memory.json'
+            script = self.observer_fixture(root,
+                '    if _inventory_calls > 1:\n'
+                '        deadline = time.monotonic()+1\n'
+                '        while time.monotonic() < deadline:\n'
+                '            pass')
+            result = subprocess.run([sys.executable, '-I', str(script), '--output', str(output),
+                '--', sys.executable, '-c', 'import time; time.sleep(.1)'],
+                capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertGreaterEqual(int((root/'calls').read_text()), 2)
+            # A whole second of inventory CPU cannot hold the command reporter.
             self.assertLess(json.loads(output.read_text())['wall_seconds'], .75)
 
-    def test_both_arms_prime_inventory_before_spawn_and_lower_only_the_observer(self):
+    def test_both_arms_prime_before_spawn_and_keep_command_priority(self):
         for sampled in [False, True]:
             with self.subTest(sampled=sampled), tempfile.TemporaryDirectory() as temporary:
-                events = []
-                def inventory():
-                    events.append('inventory')
-                    return {}
-                original = subprocess.Popen
-                def spawn(*args, **kwargs):
-                    events.append('spawn')
-                    return original(*args, **kwargs)
-                def lower(*args):
-                    self.assertEqual(args, (os.PRIO_PROCESS, 0, 19))
-                    events.append('lower-observer')
-                args = SimpleNamespace(snapshot=False, output=Path(temporary)/'memory.json',
-                    state=None, status=None, ready=None, go=None, no_sample=not sampled,
-                    command=[sys.executable, '-c', 'pass'])
-                with mock.patch.object(mem, 'processes', side_effect=inventory), \
-                     mock.patch.object(mem.subprocess, 'Popen', side_effect=spawn), \
-                     mock.patch.object(mem.sys, 'platform', 'darwin'), \
-                     mock.patch.object(mem.os, 'setpriority', side_effect=lower):
-                    self.assertEqual(mem.run(args), 0)
-                self.assertEqual(events[:3], ['inventory', 'spawn', 'lower-observer'])
+                root = Path(temporary)
+                output, marker = root/'memory.json', root/'primed'
+                script = self.observer_fixture(root,
+                    '    Path('+repr(str(marker))+').write_text(str(os.getpid()))')
+                command = [sys.executable, '-I', str(script), '--output', str(output)]
+                if not sampled:
+                    command.append('--no-sample')
+                command += ['--', sys.executable, '-c',
+                    'import os,pathlib,sys; p=pathlib.Path(sys.argv[1]); '
+                    'assert p.exists(); assert int(p.read_text()) != os.getpid(); '
+                    'print(os.getpriority(os.PRIO_PROCESS,0))', str(marker)]
+                priority = os.getpriority(os.PRIO_PROCESS, 0)
+                result = subprocess.run(command, capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(int(result.stdout), priority)
+                self.assertEqual(os.getpriority(os.PRIO_PROCESS, 0), priority)
 
     def test_tree_sum_daemon_reparent_and_pid_reuse(self):
         tracker = mem.Tracker({})
@@ -181,9 +170,105 @@ class Memory(unittest.TestCase):
         result = subprocess.CompletedProcess([], 0,
             ' 42 17 4096 Thu Oct 29 14:00:00 2026 /usr/local/bin/sail serve --socket a\n')
         with patch.object(mem.subprocess, 'run', return_value=result):
-            actual = mem.mac_processes()[42]
+            actual = mem.mac_ps_processes()[42]
         self.assertEqual(actual, (17, 4096, 'Thu Oct 29 14:00:00 2026',
                                   ['/usr/local/bin/sail', 'serve', '--socket', 'a']))
+
+    def test_mac_argument_buffer_preserves_spaces_and_excludes_environment(self):
+        import struct
+        argv = ['/a path/sail', 'serve', '--socket', 'a socket']
+        data = struct.pack('=i', len(argv)) + b'/a path/sail\0\0'
+        data += b'\0'.join(os.fsencode(arg) for arg in argv) + b'\0SECRET=value\0'
+        self.assertEqual(mem.MacCollector.decode_argv(data), argv)
+        for invalid in [b'', struct.pack('=i', -1), struct.pack('=i', 3) + b'x\0']:
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                mem.MacCollector.decode_argv(invalid)
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'Darwin process API')
+    def test_mac_native_forest_matches_ps_for_stable_child_and_excludes_unrelated(self):
+        # A separate sleeping process makes the RSS comparison independent of
+        # the observer's own Python allocations and ps-output parsing.
+        body = 'import time; data=bytearray(64*1024*1024); print("ready",flush=True); time.sleep(10)'
+        child = subprocess.Popen([sys.executable, '-c', body], stdout=subprocess.PIPE)
+        unrelated = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(10)'])
+        try:
+            self.assertEqual(child.stdout.readline(), b'ready\n')
+            time.sleep(.1)
+            collector = mem.MacCollector()
+            native = collector.collect({child.pid})
+            oracle = mem.mac_ps_processes()
+            self.assertEqual(set(native), {child.pid})
+            self.assertNotIn(unrelated.pid, native)
+            self.assertEqual(native[child.pid][:3], oracle[child.pid][:3])
+            self.assertGreaterEqual(native[child.pid][1], 64*1024)
+            self.assertEqual(native.backend, 'darwin-libproc')
+        finally:
+            child.terminate(); unrelated.terminate()
+            child.communicate(timeout=5); unrelated.communicate(timeout=5)
+
+    def test_mac_child_listing_permission_failure_is_not_an_empty_tree(self):
+        import errno
+        from unittest.mock import Mock
+        collector = object.__new__(mem.MacCollector)
+        collector.lib = Mock()
+        def result(error):
+            def call(*_args):
+                mem.ctypes.set_errno(error)
+                return 0
+            return call
+        collector.lib.proc_listchildpids.side_effect = result(errno.EPERM)
+        with self.assertRaises(PermissionError):
+            collector.children(42)
+        collector.lib.proc_listchildpids.side_effect = result(errno.ESRCH)
+        self.assertEqual(collector.children(42), [])
+
+    def test_mac_permission_failure_preserves_the_complete_ps_fallback(self):
+        from unittest.mock import Mock, patch
+        rows = {42: (17, 4096, 'old', ['cargo']), 99: (42, 8192, 'child', ['worker'])}
+        collector = Mock()
+        collector.collect.side_effect = PermissionError('protected descendant')
+        with patch.object(mem, '_MAC_COLLECTOR', collector), \
+                patch.object(mem, 'mac_ps_processes', return_value=rows):
+            actual = mem.mac_processes({42})
+        self.assertEqual(actual, rows)
+        self.assertEqual(actual.backend, 'darwin-ps')
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'Darwin SDK and process API')
+    def test_mac_sdk_layout_and_real_sail_argv_with_spaces(self):
+        # The SDK is an independent ABI oracle; a real executable named sail
+        # also exercises KERN_PROCARGS2, not only the byte-buffer decoder.
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)/'directory with spaces'
+            directory.mkdir()
+            source, binary = directory/'layout.c', directory/'sail'
+            source.write_text("""#include <stddef.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/proc_info.h>
+_Static_assert(sizeof(struct proc_bsdinfo) == 136, "bsd ABI");
+_Static_assert(sizeof(struct proc_taskinfo) == 96, "task ABI");
+_Static_assert(sizeof(struct proc_taskallinfo) == 232, "combined ABI");
+_Static_assert(offsetof(struct proc_bsdinfo, pbi_pid) == 12, "pid offset");
+_Static_assert(offsetof(struct proc_bsdinfo, pbi_ppid) == 16, "parent offset");
+_Static_assert(offsetof(struct proc_bsdinfo, pbi_start_tvsec) == 120, "start offset");
+_Static_assert(offsetof(struct proc_taskinfo, pti_resident_size) == 8, "RSS offset");
+int main(void) { puts("ready"); fflush(stdout); sleep(10); return 0; }
+""")
+            subprocess.run(['xcrun', 'clang', '-Wall', '-Werror', str(source), '-o', str(binary)],
+                           check=True, capture_output=True)
+            argv = [str(binary), 'serve', '--socket', 'a socket']
+            child = subprocess.Popen(argv, stdout=subprocess.PIPE)
+            try:
+                self.assertEqual(child.stdout.readline(), b'ready\n')
+                table = mem.MacCollector().collect({child.pid})
+                self.assertEqual(table[child.pid][3], argv)
+                self.assertTrue(mem.daemon(table[child.pid][3]))
+                tracker = mem.Tracker({})
+                tracker.sample(table, child.pid)
+                self.assertEqual(tracker.tree_peak, 0)
+                self.assertGreater(tracker.daemon_peak, 0)
+            finally:
+                child.terminate(); child.communicate(timeout=5)
 
     def wrap(self, root, command, **kwargs):
         output = root / 'memory.json'
@@ -202,6 +287,8 @@ class Memory(unittest.TestCase):
         self.assertGreaterEqual(usage['tree_peak_kb'], 96 * 1024)
         self.assertGreaterEqual(usage['largest_kb'], 48 * 1024)
         self.assertEqual(usage['daemon_peak_kb'], 0)
+        if sys.platform == 'darwin':
+            self.assertEqual(usage['collection_backends'], ['darwin-libproc'])
 
     def test_exit_streams_arguments_and_environment_are_unchanged(self):
         child = ('import json,os,sys; print(json.dumps(dict(os.environ)),flush=True); '

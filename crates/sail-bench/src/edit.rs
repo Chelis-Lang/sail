@@ -253,8 +253,9 @@ fn pair(
         observation_logs: false,
     };
     let work = setup.scratch.join("work");
-    let go =
-        |solver: &Solver, side: &str| run_unit(setup.installed, unit, solver, &work.join(side));
+    let go = |solver: &Solver, side: &str| {
+        run_unit(setup.runtime(solver), unit, solver, &work.join(side))
+    };
     let before = daemon.stats();
     let (p, s) = if round % 2 == 0 {
         let p = go(&Solver::Plain, "plain");

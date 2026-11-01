@@ -12,6 +12,11 @@ pub(crate) fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
+/// Hash the existing complete JSON encoding without changing its bytes.
+pub(super) fn json_digest(value: &impl Serialize) -> serde_json::Result<String> {
+    serde_json::to_vec(value).map(|bytes| digest(&bytes))
+}
+
 pub(crate) fn file_digest(path: &Path) -> Result<String> {
     // One read buffer per thread: a snapshot reads thousands of small files,
     // and zeroing a new 64 KiB buffer for each cost more than reading it.

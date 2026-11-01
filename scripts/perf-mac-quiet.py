@@ -56,16 +56,54 @@ def assess(before, after, seconds):
                 processes=sorted(rows, key=lambda row: row['cores'], reverse=True))
 
 
+def measure_once():
+    before = snapshot()
+    started = time.monotonic()
+    time.sleep(1)
+    return assess(before, snapshot(), time.monotonic()-started)
+
+
+def wait_for_quiet(wait_seconds, *, probe=None, record=None, clock=None, sleeper=None):
+    """Wait only during setup; retain every window and require a fresh pass.
+
+    The zero default preserves the original single-check refusal. No workload
+    runs here. A busy reading may consume setup time, never a measured sample;
+    exhausting the bounded wait still refuses the run.
+    """
+    if not 0 <= wait_seconds <= 120:
+        raise ValueError('setup wait must be finite and between zero and 120 seconds')
+    probe = probe or measure_once
+    clock = clock or time.monotonic
+    sleeper = sleeper or time.sleep
+    deadline = clock() + wait_seconds
+    observations = []
+    while True:
+        result = probe()  # unreadable/invalid inventories propagate as refusals
+        observations.append(result)
+        summary = dict(result, setup_wait_seconds=wait_seconds,
+                       observations=list(observations))
+        if record is not None:
+            record(summary)
+        if result['quiet']:
+            return summary
+        remaining = deadline - clock()
+        if remaining <= 0:
+            return summary
+        sleeper(min(5, remaining))
+        if clock() >= deadline:
+            return summary
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--wait-seconds', type=float, default=0,
+                        help='bounded setup wait for the unchanged fresh CPU ceiling (max 120)')
     args = parser.parse_args()
     try:
-        before = snapshot()
-        started = time.monotonic()
-        time.sleep(1)
-        result = assess(before, snapshot(), time.monotonic()-started)
-        args.output.write_text(json.dumps(result, indent=2)+'\n')
+        result = wait_for_quiet(
+            args.wait_seconds,
+            record=lambda value: args.output.write_text(json.dumps(value, indent=2)+'\n'))
         if not result['quiet']:
             print('Mac measurement refused: background CPU uses '
                   f"{result['total_cores']:.3f} cores (limit {MAX_CORES:.2f}); "

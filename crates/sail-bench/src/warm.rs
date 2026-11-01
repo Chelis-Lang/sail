@@ -22,6 +22,9 @@ use crate::daemon::{CacheRun, Daemon, dir_bytes};
 pub struct Setup<'a> {
     /// The pinned Verus and Z3.
     pub installed: &'a Installed,
+    /// Validated Sail fork for the shim arm. `None` retains the historical
+    /// stock-with-shim diagnostic control; the plain arm always stays stock.
+    pub sail_installed: Option<&'a Installed>,
     /// The `sail-z3` shim.
     pub shim: &'a Path,
     /// The `sail` binary (`sail serve`).
@@ -31,6 +34,15 @@ pub struct Setup<'a> {
 }
 
 impl Setup<'_> {
+    pub(crate) fn runtime(&self, solver: &Solver) -> &Installed {
+        match solver {
+            Solver::Plain => self.installed,
+            Solver::Shim { .. } | Solver::Engine(_) => {
+                self.sail_installed.unwrap_or(self.installed)
+            }
+        }
+    }
+
     /// The socket path for this run's daemons (kept short: see
     /// [`crate::daemon::MAX_SOCKET_PATH`]).
     #[must_use]
@@ -94,8 +106,9 @@ fn run_one(setup: &Setup, index: usize, unit: &Unit, warm_rounds: usize) -> Unit
     for round in 0..=warm_rounds {
         let phase = if round == 0 { "fill" } else { "warm" };
         let before = daemon.stats();
-        let go =
-            |solver: &Solver, side: &str| run_unit(setup.installed, unit, solver, &work.join(side));
+        let go = |solver: &Solver, side: &str| {
+            run_unit(setup.runtime(solver), unit, solver, &work.join(side))
+        };
         let (p, s) = if round % 2 == 0 {
             let p = go(&Solver::Plain, "plain");
             (p, go(&sail_solver, "sail"))

@@ -1,0 +1,57 @@
+# Cumulative failure/fix/refinement on a real temporal-logic proof function.
+schema_version = 1
+
+[[loop]]
+id = "tla-unfold-fail-fix"
+unit = "verus-tla"
+description = "Fail, fix and refine an existing proof helper"
+
+[[loop.step]]
+id = "proof-body"
+file = "src/rules.rs"
+description = "Add an assertion to an existing proof body"
+expected = "verified"
+find = """
+proof fn later_unfold_ex<T>(ex: Execution<T>, p: TempPred<T>)
+    requires later(p).satisfied_by(ex),
+    ensures p.satisfied_by(ex.suffix(1)),
+{}
+"""
+replace = """
+proof fn later_unfold_ex<T>(ex: Execution<T>, p: TempPred<T>)
+    requires later(p).satisfied_by(ex),
+    ensures p.satisfied_by(ex.suffix(1)),
+{ assert(true); }
+"""
+
+[[loop.step]]
+id = "proof-contract"
+file = "src/rules.rs"
+description = "Conjoin a true postcondition in the existing helper contract"
+expected = "verified"
+find = "    ensures p.satisfied_by(ex.suffix(1)),"
+replace = "    ensures p.satisfied_by(ex.suffix(1)) && true,"
+
+[[loop.step]]
+id = "wrong-arithmetic"
+file = "src/rules.rs"
+description = "Insert a false arithmetic assertion"
+expected = "errors"
+find = "{ assert(true); }"
+replace = "{ assert(1 + 1 == 3); }"
+
+[[loop.step]]
+id = "fix-arithmetic"
+file = "src/rules.rs"
+description = "Correct the arithmetic while retaining a changed proof body"
+expected = "verified"
+find = "{ assert(1 + 1 == 3); }"
+replace = "{ assert(1 + 1 == 2); }"
+
+[[loop.step]]
+id = "refine-body"
+file = "src/rules.rs"
+description = "Name the arithmetic result before asserting it"
+expected = "verified"
+find = "{ assert(1 + 1 == 2); }"
+replace = "{ let result: nat = 1 + 1; assert(result == 2); }"

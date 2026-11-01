@@ -5,6 +5,57 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Collect macOS benchmark memory from the watched process forest through
+  the public process APIs, avoiding recurring ps launches. Permission or
+  ABI failures retain the complete original ps observation. The cadence,
+  clock, memory definitions and overhead criterion remain unchanged.
+  Allow project setup to settle before the existing fresh CPU preflight.
+  Preflight may wait up to 120 seconds during setup for a fresh passing
+  reading; every reading is retained, and timeout still refuses the run.
+
+- Compare benchmark diagnostics with ADR 0042's existing multiset rule using
+  the Rust splitter, retaining complete message bytes and multiplicity while
+  allowing their print order to vary. Remaining output stays ordered.
+
+- Record the owner-approved pinned-stock source-test debug-order exceptions
+  separately while preserving all values, diagnostics, original differences
+  and raw captures (ADR 0093).
+
+- Run memory inventories in a separate observer process so inventory parsing
+  cannot hold the command waiter's Python execution lock. The command and its
+  waiter retain their caller's priority; only the Mac sampler lowers its own
+  priority. Sampling intervals, memory definitions and overhead gates remain.
+
+- Preserve unaffected build-script observations when a newly discovered
+  external compiler input introduces a symlink ancestor. Existing source
+  bindings must remain exact; the discovering proof stays Historical and
+  publishes no proof receipt.
+
+- Preserve the original solver-version check in the specification-termination
+  companion, including programs with no ordinary proof query. The existing
+  version request, explicit opt-out, solver commands and limits are unchanged.
+
+- Isolate specification termination checks from ordinary proof history,
+  repairing the demonstrated Mac abstract-domain disagreement (#634).
+  The bounded runtime passes native correctness and whole-call cost controls
+  on Linux and macOS and is published and consumed from the Verus fork
+  (ADR 0094). First/full-path overhead and Mac Anvil cold remain open.
+
+- Add an opt-in per-file owned-target digest prototype under ADR 0092:
+  `SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO=1`. Original settled file observations
+  may survive unrelated target-directory changes, with fresh complete current
+  barriers and unchanged proof admission. It is off by default everywhere;
+  the complete Linux experiment found no whole-call gain.
+- Add explicit corpus selection to conformance and benchmark tools, validated
+  fork selection for paired benchmarks, and broader local performance recipes
+  with pinned intake projects, held-out workloads and scaling controls.
+- Prepare the complete scratch Cargo workspace for corpus comparisons,
+  including non-selected members whose exact Verus pins participate in shared
+  resolution. Fetched repositories and proof bodies remain unchanged.
+- Add exact arithmetic and temporal-logic proof edit/failure/fix catalogues.
+  Evaluation refuses changed capture inputs; diagnostic syscall accounting
+  preserves the measured child command's locale.
+
 - Prime the same memory inventory in both overhead-control arms and reduce
   Mac observer priority after command spawn, preserving the command's priority,
   environment and arguments. Refuse busy Mac measurement before timing;
@@ -25,9 +76,8 @@ semantic versioning once the API is published.
 - Record Vest's exact shipped-vstd source/features profile without changing
   consumer manifests or locks. Each schema-13 unit binds its own closed source
   policy and establishing run; releases admit at most eight explicit units.
-  Native factories and first-Serve pass on Linux and Mac; six-round Vest
-  cold medians improve on both platforms. Sampler-overhead, stock parity
-  and complete release qualification remain open.
+  Native factories and first-Serve pass on Linux and Mac. Complete release
+  performance qualification remains open.
 
 - Remember a previously observed unqualified Cargo and take the existing
   no-reuse fallback before managed setup when its native tool identities,

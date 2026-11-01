@@ -81,28 +81,34 @@ jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
 Rows still slower than stock. Direction: spike each row's tractability first
 (what it costs and what would remove it), then fix in the order the spikes
 justify. Numbers are in [performance](performance.md). The rc.7 results do not
-record memory. The combined candidate now records all four projects on both
+record memory. The earlier combined candidate records all four projects on both
 platforms, with six paired rounds and 864 populated timing/memory rows
-([record](validation/v020-performance.md)). The separate sampler-overhead gate
-fails; first-unchanged medians exceed stock in 8/8 project/platform rows and
-full-path medians in 7/8. Release acceptance remains open.
+([record](validation/v020-performance.md)). That sampler-overhead gate failed;
+the revised observer now passes separately on both platforms
+([record](validation/benchmark-memory.md)). Corrected-runtime product
+measurement and native core qualification are complete on both platforms
+([record](validation/general-performance.md)); first/full-path gaps and Mac
+Anvil cold remain. This selects the core increment, not stock parity or a
+new Sail release.
 
-Current v0.2.0 implementation gates:
+Next-release implementation gates:
 
 | Slice | State | Remaining gate |
 |---|---|---|
-| Memory harness, native source sync, cache selection/aliases, metadata memo | Merged (#613–#615); Linux/Mac functional controls and complete eight-project/platform matrix recorded | Below-noise sampler requirement remains unqualified (#562) |
+| General algorithm and corpus evaluation | [Broader tooling and ADR 0092 prototype implemented; both runtime experiments unselected on Linux after complete whole-call controls](design/general-performance.md) | [#633/#634 repairs, full source/corpus controls, both-platform costs, factories and installed controls pass; runtimes merged, published and consumed](validation/general-performance.md) |
+| Memory harness, native source sync, cache selection/aliases, metadata memo | Merged (#613–#615); revised observer passes all 440 samples / 22 strata on each native platform | Both final four-project cohorts pass all 432 samples each; original instrumentation failures retained |
 | Stable sidecars and within-call target projections (#560) | Implemented; native/Mac gates and combined matrix recorded | Full-path and tiny-edit parity remain open |
 | Final source-vector observation (#558) | Implemented; Anvil recording calls save 65 ms Linux / 44 ms Mac | Four-project first-unchanged parity remains open |
 | Invocation slots and guarded Cargo outputs (#576) | Implemented; Linux/Mac root/subdirectory controls pass; native output E2E and Mac host guards pass | Complete release qualification |
-| Unqualified native Cargo (#561) | Implemented; Linux/Mac median within stock +0.1 s, no proof reuse; real Cargo 1.92 repeated human-output controls pass | Full fast/standard and all 21 mutation/control comparisons pass; strict stock-RVT and release gates remain |
+| Unqualified native Cargo (#561) | Implemented; Linux/Mac median within stock +0.1 s, no proof reuse; real Cargo 1.92 repeated human-output controls pass | Full fast/standard and all 21 mutation/control comparisons pass; corrected complete stock-RVT passes; composed release gates remain |
 | Exact extra vstd profiles (#563) | ADR 0090 implemented; Linux/Mac factories and first-Serve pass; six-round Vest cold medians improve on both platforms | CapybaraKV native provenance and Anvil focused scope remain open; full release gates |
-| Settled source / owned-target digests (#560) | ADR 0091 Linux target default selected after ten controlled pairs save 430 ms; native/Mac functional gates pass | Source and Mac target stay off by default; stock parity, sampler-overhead and release qualification remain open |
+| Settled source / owned-target digests (#560) | ADR 0091 Linux target default selected after ten controlled pairs save 430 ms; native/Mac functional gates pass | Source and Mac target stay off; final native cohorts pass, existing stock gaps remain |
 
-These results do not establish v0.2.0 acceptance. Six-round measurements are
+These results do not establish v0.2.0 acceptance. Original six-round measurements are
 complete, with the original failures retained. The strict stock source-suite
-control also fails (#627); all three fork arms pass
-([scope](validation/deep-tier.md#v020-performance-candidate)). Remaining parity,
+control originally fails (#627); all three original fork arms pass. The
+owner-approved ADR 0093 implementation passes the corrected full stock suite,
+including every nonignored test ([scope](validation/general-performance.md)). Remaining parity,
 overhead and correctness gates retain their original requirements.
 
 | Row | Measured, Sail against stock | Spike finding | Issue |

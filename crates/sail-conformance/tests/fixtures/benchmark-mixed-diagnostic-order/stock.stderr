@@ -1,0 +1,52 @@
+warning: recommendation not met
+   --> src/host_protocol_t.rs:253:17
+    |
+253 |     let owner = pre.delegation_map[k];
+    |                 ^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: src/delegation_map_t.rs:35:20
+    |
+ 35 |         recommends self.0.dom().contains(key)
+    |                    -------------------------- recommendation not met
+
+warning: recommendation not met
+   --> src/host_protocol_t.rs:369:21
+    |
+369 |       let recipient = m.arrow_Shard_recipient();
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: src/message_t.rs:12:1
+    |
+ 12 | / pub enum Message {
+ 13 | |     GetRequest {
+ 14 | |         key: AbstractKey,
+ 15 | |     },
+...   |
+ 35 | |     },
+ 36 | | }
+    | |_- recommendation not met
+
+warning: recommendation not met
+   --> src/host_protocol_t.rs:370:14
+    |
+370 |       let kr = m.arrow_Shard_range();
+    |                ^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: src/message_t.rs:12:1
+    |
+ 12 | / pub enum Message {
+ 13 | |     GetRequest {
+ 14 | |         key: AbstractKey,
+ 15 | |     },
+...   |
+ 35 | |     },
+ 36 | | }
+    | |_- recommendation not met
+
+error: assertion failed
+   --> src/host_impl_v.rs:644:14
+    |
+644 |     { assert(1 + 1 == 3);
+    |              ^^^^^^^^^^ assertion failed
+
+verification results:: 312 verified, 1 errors

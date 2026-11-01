@@ -1,11 +1,79 @@
 # Real-project memory instrumentation (#562)
 
-Status: implemented; functional controls pass on native Linux and macOS.
-The combined candidate records all four projects on both platforms, six paired
-rounds each: 864 expected exits and populated memory rows
-([complete matrix](v020-performance.md)). Release-wide memory acceptance
-remains unqualified because the separate below-noise sampler requirement fails.
-The [testing guide](../testing.md) defines the columns and measurement limits.
+Status: the independent-process observer passes the original overhead
+criterion on native Linux and macOS, with all 440 retained samples / 22
+arm/phase groups on each platform. The completed Mac cohort uses frozen
+telemetry source `252e575e` and the unchanged `64fa9a0e` / `47fb3be6`
+product capsule. Final `b28d14a8` / `0ad405eb` product measurements remain
+separate and are running with the qualified collector.
+
+The Mac cohort retains all 20 IronKV attempts, 360 IronKV observations and
+80 demo observations. Every expected exit, memory field, 50 ms cadence and
+command clock passes its audit; all five captured helper/binary hashes remain
+unchanged. All 180 sampled IronKV observations use `darwin-libproc`, with no
+fallback. Demo stock unchanged calls differ by 0.254 ms, within their
+3.107 ms largest arm range.
+
+Raw cohort `observer-guarded-before-summary-fix-evidence.tgz` SHA-256:
+`b71e2fc6119845fc58dc8e6924fc3d1e80be77cb2e27e2889291ea7d7208da5a`.
+Native summary `observer-guarded-mac-summary.json` SHA-256:
+`6acd1d27667dc97c618047e9dc4440221f7f3a5a1ea07ba109c274772a675b05`.
+The capture audit binds every original record and the corrected private
+postprocessors: `observer-guarded-mac-record-audit.json`, SHA-256
+`ef1ff78b8046e6a77edaf3c3e1e99d7a2a008b3b3dbe55638b7d599a2bef5be4`.
+
+Earlier failed attempts retain their results. The original ps-based Mac
+cohort's 80 demo observations fail stock unchanged overhead (5.213 ms against
+a 2.680 ms range), then its first IronKV preflight refuses 0.245 cores.
+
+The new Mac collector queries only the measured process forest, retained
+detached processes and known daemons using public libproc APIs. It avoids
+recurring ps launches and unrelated-process RSS queries. The original
+complete ps snapshot remains the fallback on access or ABI failures;
+unknown memory is never reported as zero. Backend names are retained in
+each observation. Readiness, wait4 command timing, 50 ms interval, RSS
+definitions, child arguments/environment and the overhead criterion remain.
+
+All 18 native Mac memory controls pass, including SDK-compiled ABI/offset
+checks, exact stable-child RSS/parent/start comparison with ps, structured
+arguments containing spaces, native-only child allocation and complete
+fallback coverage. Linux passes 16 applicable controls with two Darwin
+skips. The 19 command controls and all eight quiet-guard controls pass on
+Mac, including the five unchanged ceiling/inventory controls.
+
+Project preparation receives the existing five-second settle pause before
+the fresh 0.10-core CPU guard. An optional bounded setup wait (maximum 120
+seconds) retains every busy and passing CPU observation. No measurement
+command starts until a fresh one-second reading passes the same ceiling;
+timeout or unreadable inventory still refuses the run. The default
+standalone guard remains the original single check. Fixed measured sample
+counts, command failures and the overhead criterion are unchanged.
+
+Original refusals remain recorded. The first native-collector cohort also
+refuses a setup reading of 0.226 cores after an earlier 0.057 pass; it starts
+no measured command and supplies no overhead samples. The completed native
+cohort above qualifies the revised collector; the earlier matrix retains its
+original failed instrumentation scope.
+
+| Date | Source | Attempt | Result |
+|---|---|---|---|
+| 2026-11-01 | `252e575e`, complete fixed Mac cohort | Initial private summary | All 20 attempts finish, then summary mistakes `run-exits.tsv` for a sample directory; original exit/log retained. Filtering directories permits reprocessing the same 440 observations; all 22 strata pass, with no measurement repeated or dropped |
+| 2026-11-01 | Same retained cohort | First postprocess identity check | Relative helper names checked from the wrong directory; original failure retained. Checking from the frozen checkout verifies every original hash |
+
+Telemetry source `252e575e` passes the complete native Linux workspace gate;
+its Rust, Cargo, engine-pin and corpus inputs are byte-identical to product
+source `b28d14a8`. The gate uses the cached complete CI image with the
+explicitly validated local `0ad405eb` runtime; this is not a fresh public
+runtime download or new-image acceptance. Gate capture
+`telemetry-252e-gate.tgz` SHA-256:
+`01f168f2fed6cf5ec7f8e026e8e47d7bd7803622cb1aa242a2e9a683dc05d8fd`.
+The native Mac host gate also passes Clippy and all 1,285 nonignored tests
+(54 skipped) with this collector. These functional gates do not establish
+the overhead criterion; the fixed ten-pair experiment remains separate.
+
+The earlier 864-row matrix and its failed overhead gate retain their own
+helper/runtime scope. The [testing guide](../testing.md) defines columns and
+sampling limits.
 
 ## Source and scope
 
@@ -235,3 +303,64 @@ a fresh corrected-helper matrix is separate, with bounded startup checks.
 Retained full Mac outputs, refused observations, harnesses and staged identities
 archive SHA-256:
 `ce8bea751487a45a2fc476006c4a6008e5707aefb3ab74ac31845db1602c9b61`.
+
+## Independent observer candidate
+
+The continued #562 implementation moves recurring inventories into a separate
+Python process, primed before either control arm releases its command. The
+wait4 reporter retains its original priority and records child exit before
+observer teardown. Only the Mac inventory process and its `ps` children lower
+their priority. The complete inventory, 50 ms interval, summed RSS definitions,
+largest-process observation, daemon identities and original within-range
+acceptance rule are unchanged.
+
+All 13 memory controls pass on native x86-64 Linux, including an actual process
+boundary with one second of CPU-bound inventory work, delayed teardown, equal
+priming, unchanged command priority, child allocation, daemon retention and
+stream/environment/signal forwarding. The same 13 controls also pass on native
+Mac. Earlier overhead failures remain unchanged; the new native qualification
+below has its own source and scope.
+
+### Native Linux acceptance of the independent observer
+
+`64fa9a0e`'s helper, native c7i.8xlarge / us-east-1, unchanged `6cfa1606`
+product capsule (fork `47fb3be6`, Rust 1.99.1) on both control arms. Every
+command retains its original argv, environment, priority, streams and exit.
+The complete process inventory, three RSS definitions and 50 ms cadence
+remain unchanged.
+
+The complete fixed-ten-pair batch retains **360 IronKV rows and 80 demo
+rows**, including every original three-pair sample. All 18 IronKV and four
+demo arm/phase groups satisfy the original condition:
+`abs(median_on - median_off) < max(within-arm range)`.
+Intentional failing-proof rows retain exit 101; all other rows exit zero.
+A separate native audit checks every memory field, observer error list, exit,
+clock and cadence, all demo outcomes and the unchanged helper/product seals.
+
+| Demo arm / phase | Disabled median, ms | Sampled median, ms | Absolute difference, ms | Largest within-arm range, ms |
+|---|---:|---:|---:|---:|
+| Stock unchanged | 99.348 | 98.675 | 0.673 | 9.086 |
+| Stock edit | 699.813 | 698.421 | 1.392 | 25.482 |
+| Sail unchanged | 127.108 | 128.767 | 1.660 | 35.940 |
+| Sail edit | 846.760 | 857.032 | 10.272 | 52.235 |
+
+The first three-pair batch remains failed: its stock unchanged demo median
+was 6.442 ms faster when sampled, outside a 6.241 ms within-arm range;
+all 18 original IronKV groups passed. The ten-pair plan was fixed before the
+initial IronKV batch completed, extends **every** group by seven pairs and
+includes all original observations. Its protocol SHA-256 is
+`28bcf2b6c2ee374a6b66fb87499d0d7f10bfbbf8ce627083665610cb3bb7aa0e`.
+This establishes the corrected Linux observer's bounded overhead, not a new
+runtime speedup or a completed release matrix.
+
+Completed raw records, original and final summaries, identity seals and the
+complete 440-row audit are retained externally, archive SHA-256
+`47dfdc227fc0644903a959bccca67846a8b8fdf1994ad471cdd96cabae3b5e82`.
+One extension-controller attempt stopped before any new sample because it
+tried to recreate the retained demo directory. The corrected controller checks
+and reuses that workspace. That failed remote log was overwritten on resume;
+the failure is indexed here, and no timing row was lost or removed.
+
+Mac's unchanged 0.10-core preflight still refuses busy observations; no
+protected service, authentication setting or ceiling is disabled to admit a
+sample. No Mac timing from these refused starts is claimed.

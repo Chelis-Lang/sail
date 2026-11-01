@@ -15,7 +15,9 @@ rounds, with every sample recorded and its output checked against stock's.
 `engine/`, `deps/`), installed as the README says; `--stock-verus` holds the
 stock release's `cargo-verus`, `verus` and `z3` (`cargo xtask fetch-verus`).
 The pinned Rust toolchain (corpus/toolchain.toml) must be installed, with
-`rust-src` (README step 2). `--tools` holds `sail-conformance`, which the
+`rust-src` (README step 2). Build the diagnostic helper with
+`cargo build --release -p sail-conformance --example check_diagnostics`.
+`--tools` holds `sail-conformance` and `examples/check_diagnostics`, which the
 real-project rows need to fetch the corpus (default: `target/release`).
 
 Scenarios (`list` prints them):
@@ -54,7 +56,11 @@ Sail refusals included, and none is ever dropped. A sample passes its
 identity check when its exit code and normalized output (verification
 summaries and diagnostic headlines and locations, without Cargo status lines
 or timings, with each arm's own copy directory replaced by `<copy>`) equal
-the paired stock sample's. For partial verification (anvil), Sail's JSON
+the paired stock sample's. Complete spanned diagnostics use ADR 0042's
+existing multiset policy through the Rust comparator's splitter: full message
+bytes and multiplicity agree, while the remaining normalized output stays
+ordered. Legacy captures without complete messages retain their original
+strict check. For partial verification (anvil), Sail's JSON
 report is compared through the counts its Verus run printed (Verus counts
 checks, not functions: a function with a separate loop query counts twice),
 after checking them against the report's per-function verdicts. When Cargo answers a stock
@@ -111,6 +117,7 @@ CARGO_STATUS = re.compile(
     r"Downloaded|Downloading|Unpacking|Packaging|Verifying|Building|Creating|Created)\b")
 KEEP = [
     re.compile(r"^verification results:: \d+ verified, \d+ errors"),
+    re.compile(r"^\x00<diagnostic messages>\x00$"),
     re.compile(r"^(error|warning)(\[[A-Za-z0-9]+\])?: "),
     re.compile(r"^\s*--> \S"),
 ]
@@ -203,6 +210,51 @@ def normalize(text, roots=()):
         if any(p.match(line) for p in KEEP):
             out.append(re.sub(r"\s+", " ", line.strip()))
     return out + summaries
+
+
+def diagnostic_output(text, roots, helper):
+    """Keep full message bytes/counts using the authoritative Rust splitter.
+
+    Cargo/status and arm-root treatment of the ordered remainder stays the
+    existing benchmark policy. Only ADR 0042's complete spanned messages may
+    reorder; changing a body still fails even when its headline is identical.
+    """
+    for root in path_forms(roots):
+        text = text.replace(root, "<copy>")
+    result = subprocess.run([str(helper)], input=text, text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if result.returncode:
+        raise ValueError("diagnostic splitter refused output: " + result.stderr.strip())
+    value = json.loads(result.stdout)
+    if (not isinstance(value, dict)
+            or value.get("kind") != "sail-diagnostic-split"
+            or type(value.get("version")) is not int or value["version"] != 1
+            or not isinstance(value.get("rest"), str)
+            or not isinstance(value.get("messages"), list)
+            or not all(isinstance(message, str) for message in value["messages"])):
+        raise ValueError("invalid diagnostic splitter result")
+    return {"messages": sorted(value["messages"]), "ordered": normalize(value["rest"])}
+
+
+def diagnostic_identity(value):
+    """Refuse incomplete metadata rather than silently using headline checks."""
+    if (not isinstance(value, dict) or set(value) != {"messages", "ordered"}
+            or not all(isinstance(value[key], list)
+                       and all(isinstance(part, str) for part in value[key])
+                       for key in ("messages", "ordered"))):
+        return None
+    return tuple(sorted(value["messages"])), tuple(value["ordered"])
+
+
+def output_matches(stock, sail):
+    if "diagnostic_output" in stock or "diagnostic_output" in sail:
+        actual = diagnostic_identity(sail.get("diagnostic_output"))
+        expected = diagnostic_identity(stock.get("diagnostic_output"))
+        reference = diagnostic_identity(stock.get("diagnostic_reference"))
+        return actual is not None and expected is not None and actual in (expected, reference)
+    # Retained legacy captures have no complete-message data. Their original
+    # strict comparison is preserved; a later report must not invent it.
+    return sail["normalized"] in (stock["normalized"], stock["reference"])
 
 
 def verified(norm):
@@ -330,6 +382,10 @@ class Runner:
         self.path = os.pathsep.join([str(self.install / "bin"), str(self.stock),
                                      str(self.tools), os.environ.get("PATH", "")])
         self.last_stock = {}
+        self.last_stock_diagnostics = {}
+        candidate_helper = Path(getattr(args, "diagnostics_helper", None) or
+                                self.tools / "examples/check_diagnostics")
+        self.diagnostics_helper = candidate_helper if candidate_helper.is_file() else None
         # Extra variables for both arms (for example SAIL_VERUS_BUILD for a
         # trial with a source build instead of a release archive).
         self.extra = dict(kv.split("=", 1) for kv in (args.env or []))
@@ -556,6 +612,12 @@ class Runner:
         rel = str(log.relative_to(self.out)) if log.is_relative_to(self.out) else str(log)
         sample = dict(round=rnd, arm=arm, project=project, scenario=scenario, wall=wall,
                       exit=code, log=rel, note=note, normalized=norm, reference=norm, **extra)
+        if self.diagnostics_helper is not None:
+            try:
+                sample["diagnostic_output"] = diagnostic_output(text, roots, self.diagnostics_helper)
+                sample["diagnostic_reference"] = sample["diagnostic_output"]
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                sample["note"] = (str(note) + "; " if note else "") + str(error)
         if arm == "stock":
             seq = (rnd, project)
             if code == 0 and not verified(norm) and scenario in ("unchanged", "revert", "worktree"):
@@ -563,8 +625,13 @@ class Runner:
                 # copy's previous verifying stock output.
                 sample["reference"] = self.last_stock.get(seq, norm)
                 sample["reference_from"] = "previous verifying stock output"
+                if "diagnostic_output" in sample:
+                    sample["diagnostic_reference"] = self.last_stock_diagnostics.get(
+                        seq, sample["diagnostic_output"])
             elif verified(norm):
                 self.last_stock[seq] = norm
+                if "diagnostic_output" in sample:
+                    self.last_stock_diagnostics[seq] = sample["diagnostic_output"]
         self.record(**sample)
 
 
@@ -611,6 +678,9 @@ def cmd_run(args):
     scenarios = set(args.scenario or SMALL + REAL)
     projects = args.project or ["small"] + PROJECTS
     r = Runner(args)
+    if r.diagnostics_helper is None:
+        sys.exit("missing check_diagnostics; build it with `cargo build --release -p "
+                 "sail-conformance --example check_diagnostics`, or set --diagnostics-helper")
     if any(project != "small" for project in projects):
         for tool in ("sail-conformance", "jq", "perl", "git"):
             if not shutil.which(tool, path=r.path):
@@ -625,6 +695,8 @@ def cmd_run(args):
                   sail_sha256=file_sha256(r.install / "bin/sail"),
                   stock_cargo_verus_sha256=file_sha256(r.stock / "cargo-verus"),
                   runtime_manifest_sha256=file_sha256(runtime_manifest(r.install, r.extra)),
+                  diagnostic_policy="ADR 0042 complete-message multiset",
+                  diagnostics_helper_sha256=file_sha256(r.diagnostics_helper),
                   corpus_sha256=file_sha256(ROOT / "corpus/corpus.toml"),
                   vstd_lock_sha256=file_sha256(r.vstd_lock),
                   extra_verus_args_by_project={p: real_verus_args(p) for p in projects if real_verus_args(p)},
@@ -694,7 +766,7 @@ def judge(samples):
         # A stock rerun that Cargo answered without Verus matches either
         # the same no-op or that copy's previous verifying output.
         same = bool(st and sa and st["exit"] is not None and st["exit"] == sa["exit"]
-                    and sa["normalized"] in (st["normalized"], st["reference"]))
+                    and output_matches(st, sa))
         for s in (st, sa):
             if s is not None:
                 s["identity"] = "same" if same else ("unpaired" if not (st and sa) else "different")
@@ -895,6 +967,7 @@ def main():
     run.add_argument("--project", action="append", choices=["small"] + PROJECTS)
     run.add_argument("--machine")
     run.add_argument("--tools", default=str(ROOT / "target" / "release"))
+    run.add_argument("--diagnostics-helper", help="built check_diagnostics example (default: TOOLS/examples/check_diagnostics)")
     run.add_argument("--settle", type=float, default=5.0)
     run.add_argument("--env", action="append", metavar="KEY=VALUE",
                      help="pass a variable to both arms (trials only; recorded in header.json)")

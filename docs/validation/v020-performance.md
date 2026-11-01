@@ -396,3 +396,28 @@ Stock daemon observations are zero in every row. Tree and daemon peaks occur ind
 | fix-revert | 4358.6 (4325.9–4432.8) | 3636.4 (3619.4–3652.4) | 2994.9 (2970.7–3105.4) | 3388.9 (3379.8–3418.6) | 78.2 (77.5–79.3) |
 
 Stock daemon observations are zero in every row. Tree and daemon peaks occur independently and must not be added as a simultaneous peak.
+
+## Benchmark diagnostic comparison repair
+
+The first `d18961a1` / fork `4cd6bd5f` native Linux IronKV failing-edit
+sample has the same assertion error, three recommendation warnings, locations,
+counts and exit 101, with warnings/error printed in a different order. The
+benchmark's ordered headline check rejects it, although ADR 0042 already
+admits complete diagnostic messages as a multiset. Original samples and the
+failed ordered check stay retained.
+
+The benchmark adapter now calls the existing Rust diagnostic splitter. It
+keeps full message bytes and multiplicity plus the ordered normalized
+remainder. Changed bodies, missing/duplicated diagnostics, reordered remainder,
+incomplete metadata and invalid no-op references fail. Legacy captures keep
+their original strict result until their raw logs are explicitly reprocessed.
+No wall-time sample, round, performance threshold or observer requirement changes.
+
+The [native four-message fixture](../../crates/sail-conformance/tests/fixtures/benchmark-mixed-diagnostic-order/README.md)
+passes both the core comparator and benchmark adapter; changing only its
+assertion text fails. The adapter passes native Clippy, 33 Python controls and
+the complete image gate: 1,296 tests / 54 skipped. All six code/fixture hashes
+match the executed native files. Gate log SHA-256:
+`5bf4a4741dd4903b42444cd0421200bf6665485a040d60593abbd26a79dc62ad`.
+The isolated six-round matrix remains in progress; these are comparator
+qualification results, not product-performance acceptance.

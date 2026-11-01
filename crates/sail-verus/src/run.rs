@@ -374,7 +374,13 @@ pub fn prepare_unit(
     if unit.patch_verus_deps {
         let verus = verus_source
             .ok_or_else(|| fail("patch_verus_deps needs the pinned Verus source".to_owned()))?;
-        crate::patch::patch_verus_deps(&package, &src, verus).map_err(|e| fail(e.to_string()))?;
+        crate::patch::patch_verus_workspace(
+            &package,
+            &src,
+            verus,
+            Some(&installed.pins.verus.rust_toolchain),
+        )
+        .map_err(|e| fail(e.to_string()))?;
     }
     let mut cmd = Command::new("cargo");
     cargo_env(&mut cmd, installed);

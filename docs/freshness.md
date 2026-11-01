@@ -145,6 +145,15 @@ checks could not be made), with the note "inputs could not be confirmed
 unchanged; re-run for a current result". Verification itself still runs and
 its report is kept as the record of that run.
 
+A newly discovered external include can introduce a source-path alias as well
+as new content, for example an absolute path through macOS's `/var` symlink.
+The discovering proof stays Historical and publishes no proof receipt. Its
+separate Cargo build-script observations may survive only when every original
+binding is unchanged, each new binding belongs to newly discovered compiler
+source, and the existing script-package and declared-input checks confirm that
+no script input changed. Later calls still validate those script observations
+and freshly read the declared sources; this does not authorize proof reuse.
+
 Build-script coverage does not wait for scripts outside an explicit `-p`
 selection's dependency closure, because they never run for it. Without an exact
 selection or a complete, unambiguous resolve graph, every resolved package is in
@@ -649,3 +658,19 @@ The Mac target candidate refuses because build-script directory stamps change
 during unchanged calls. Source observations remain opt-in on both platforms. Target selection on
 Linux does not establish release parity. See the separate scopes in the
 [qualification record](validation/settled-digest-observations.md).
+
+The separate `SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO=1` prototype implements
+owner-approved [ADR 0092](decisions/0092-per-file-owned-target-digests.md).
+It remains off on every platform: native seven-project Linux evaluation shows
+no warm median gain, and Mac correctness gates (#633, #634) prevent timing
+selection. See the [current record](validation/general-performance.md).
+It is off by default on every platform; exactly `1` opts in on Unix. It
+retains complete fresh current target namespace/barrier checks, original full
+file stamps and ancestor identities, original Current run/start and settlement,
+and complete source/context/selection/receipt binding. Unrelated directory
+entries or times can change across calls; changed/unsettled files read afresh.
+Inherited entries never acquire a later provenance or age into trust.
+Dirty cleanup and all proof checks remain. This ledger supplies no proof
+revisions, and first-after-cold artifacts still require fresh reads. Native
+qualification and platform selection are open; see the
+[general qualification record](validation/general-performance.md).

@@ -416,7 +416,7 @@ proof fn injected_runtime_is_present() {
 } // verus!
 RS
 (
-unset SAIL_MANAGED_SOURCE_DIGEST_MEMO SAIL_MANAGED_TARGET_DIGEST_MEMO
+unset SAIL_MANAGED_SOURCE_DIGEST_MEMO SAIL_MANAGED_TARGET_DIGEST_MEMO SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO
 plain_run visible-plain stock_cargo verus verify
 sail_run visible-sail "$sail" verify
 same visible-plain visible-sail
@@ -425,7 +425,7 @@ CARGO_TARGET_DIR="$work/target-plain" quiet_run visible-again stock_cargo verus 
 CARGO_TARGET_DIR="$work/target-sail" quiet_run visible-json "$sail" verify --output json
 same visible-again visible-json "rc err"
 )
-if [ "${SAIL_MANAGED_SOURCE_DIGEST_MEMO:-}" = 1 ] || [ "${SAIL_MANAGED_TARGET_DIGEST_MEMO:-}" = 1 ]; then
+if [ "${SAIL_MANAGED_SOURCE_DIGEST_MEMO:-}" = 1 ] || [ "${SAIL_MANAGED_TARGET_DIGEST_MEMO:-}" = 1 ] || [ "${SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO:-}" = 1 ]; then
   # A macro's untracked environment scan cannot invalidate Cargo itself.
   # Change source bytes for a genuinely new compilation of this caller case.
   printf '\n// Explicit opt-in caller witness.\n' >> src/lib.rs

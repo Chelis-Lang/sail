@@ -41,7 +41,7 @@ use sail_verus::run::{EngineRun, RunRecord, Solver, machine_info, prepare_unit, 
 use sail_verus::toolchain::{Installed, Pins};
 use serde::Serialize;
 
-const USAGE: &str = "usage:
+const USAGE: &str = "usage (fetch/run/engine accept --corpus PATH; default corpus/corpus.toml):
   sail-conformance fetch [--tier fast|standard|deep] [--project NAME]...
   sail-conformance run   [--tier fast|standard|deep] [--project NAME]... [--filter SUBSTR]
                          [--jobs N] [--trace] [--out DIR] [--shim PATH]
@@ -76,6 +76,7 @@ const USAGE: &str = "usage:
     reason = "one bool per independent command-line switch"
 )]
 struct Options {
+    corpus: PathBuf,
     command: String,
     tier: Tier,
     projects: Vec<String>,
@@ -100,6 +101,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
     let mut it = args.iter();
     let command = it.next().cloned().ok_or(USAGE)?;
     let mut o = Options {
+        corpus: PathBuf::from("corpus/corpus.toml"),
         command,
         tier: Tier::Fast,
         projects: Vec::new(),
@@ -124,6 +126,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
                 .ok_or(format!("{arg} needs a value\n{USAGE}"))
         };
         match arg.as_str() {
+            "--corpus" => o.corpus = value()?.into(),
             "--tier" => {
                 o.tier = value()?
                     .parse()
@@ -311,9 +314,9 @@ fn is_zero(n: &usize) -> bool {
     *n == 0
 }
 
-fn load() -> Result<(Corpus, Installed, PathBuf), String> {
+fn load(corpus_path: &Path) -> Result<(Corpus, Installed, PathBuf), String> {
     let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
-    let corpus = Corpus::load(Path::new("corpus/corpus.toml")).map_err(|e| e.to_string())?;
+    let corpus = Corpus::load(corpus_path).map_err(|e| e.to_string())?;
     corpus.check_pins(&pins).map_err(|e| e.to_string())?;
     let installed = Installed::locate(pins).map_err(|e| e.to_string())?;
     let cache = sail_verus::cache_dir().map_err(|e| e.to_string())?;
@@ -753,7 +756,7 @@ fn engine_arm(o: &Options, installed: &Installed) -> Result<Option<EngineBuild>,
     reason = "one linear run: select, execute, summarize and report"
 )]
 fn run(o: &Options) -> Result<ExitCode, String> {
-    let (corpus, installed, cache) = load()?;
+    let (corpus, installed, cache) = load(&o.corpus)?;
     let engine = engine_arm(o, &installed)?;
     let fork = sail_verus(o, &installed)?;
     let shim = match &o.shim {
@@ -896,7 +899,7 @@ fn main() -> ExitCode {
     let result = parse(&args).and_then(|o| match o.command.as_str() {
         "run" | "engine" => run(&o),
         "fetch" => {
-            let (corpus, installed, cache) = load()?;
+            let (corpus, installed, cache) = load(&o.corpus)?;
             let n = select(&o, &corpus, &cache, &installed.pins.verus, None)?
                 .units
                 .len();

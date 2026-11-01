@@ -1,0 +1,32 @@
+[rust_verify_test/tests/output_json.rs:277:5] json = Object {
+    "func-details": Object {
+        "test_crate::func_with_precond": Object {
+            "obligation_proof_notes": Array [],
+            "failed_proof_notes": Array [],
+        },
+        "test_crate::caller": Object {
+            "obligation_proof_notes": Array [
+                String("Precondition known to fail"),
+            ],
+            "failed_proof_notes": Array [
+                String("Assumption forbidden by no-cheating"),
+                String("Precondition known to fail"),
+            ],
+        },
+    },
+    "verification-results": Object {
+        "encountered-error": Bool(true),
+        "encountered-vir-error": Bool(true),
+        "success": Bool(false),
+    },
+    "verus": Object {
+        "profile": String("release"),
+        "version": String("0.2026.10.18.7d82994"),
+        "platform": Object {
+            "os": String("linux"),
+            "arch": String("x86_64"),
+        },
+        "toolchain": String("1.99.1-x86_64-unknown-linux-gnu"),
+        "commit": String("7d829946231d6413a398f6e4160cdfe951261dad"),
+    },
+}

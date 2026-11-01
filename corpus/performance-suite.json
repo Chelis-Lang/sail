@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "workloads": [
+    {"id":"ironkv", "project":"verified-ironkv", "managed":"ironkv", "tags":["distributed", "cargo"]},
+    {"id":"vest", "project":"vest", "managed":"vest", "verus_args":["--rlimit", "100"], "tags":["parsers", "cargo"]},
+    {"id":"anvil", "project":"anvil", "managed":"anvil", "toolchain":"project", "tags":["controllers", "large-dependency-graph", "partial"]},
+    {"id":"capybarakv", "project":"verified-storage", "filter":"capybaraKV/capybarakv", "managed":"capybarakv", "tags":["storage", "cargo"]},
+    {"id":"multilog", "project":"verified-storage", "filter":"multilog/multilog", "managed":"multilog", "tags":["persistent-log", "cargo"]},
+    {"id":"pmemlog", "project":"verified-storage", "filter":"/pmemlog", "managed":"pmemlog", "tags":["persistent-log", "cargo"]},
+    {"id":"verismo", "project":"verismo-main", "managed":"verismo", "tags":["native-build-scripts", "no-std", "cross-target"]},
+    {"id":"vest-generated", "project":"vest-generated", "managed":"vest-generated", "tags":["generated", "partial", "cargo"]},
+    {"id":"node-replication", "project":"verified-node-replication", "tags":["concurrency", "direct"]},
+    {"id":"page-table", "project":"page-table", "tags":["memory-management", "direct", "known-resource-limit"]},
+    {"id":"human-eval", "project":"human-eval-verus", "tags":["algorithms", "direct"]},
+    {"id":"vstd", "project":"vstd", "tags":["library", "direct"]},
+    {"id":"verus-tla", "project":"verus-tla", "managed":"verus-tla", "candidate":true, "tags":["temporal-logic", "cargo"]},
+    {"id":"semi-containers", "project":"semi-persistent", "filter":"/containers-verus", "managed":"semi-containers", "candidate":true, "held_out":true, "tags":["containers", "features", "workspace"]},
+    {"id":"semi-abstract-domains", "project":"semi-persistent", "filter":"/abstract-domains", "managed":"semi-abstract-domains", "candidate":true, "held_out":true, "tags":["bit-vectors", "workspace"]},
+    {"id":"semi-au", "project":"semi-persistent", "filter":"/au-verus", "managed":"semi-au", "candidate":true, "held_out":true, "tags":["proof-library", "workspace"]},
+    {"id":"rlsf-verified", "project":"rlsf-verified", "candidate":true, "tags":["allocator", "bit-vectors", "direct", "singular-intake"]},
+    {"id":"hekate-math", "project":"hekate-math", "candidate":true, "held_out":true, "tags":["arithmetic", "bit-vectors", "direct"]}
+  ]
+}

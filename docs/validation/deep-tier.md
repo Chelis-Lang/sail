@@ -1,11 +1,60 @@
 # Deep-tier soundness validation
 
-The current pinned fork is `47fb3be6`. Fresh combined source `c60dc918`
-passes all three complete fork source-suite arms, including cache fill/warm;
-all 4,839 nonignored plain tests pass in each. The independent strict stock
-control fails on JSON debug ordering, so aggregate release qualification is
-failed ([current scope and evidence](#v020-performance-candidate)).
-The earlier records below retain their original sources and outcomes.
+The selected runtime remains fork `47fb3be6`. Corrected staged candidate
+`0ad405eb` passes all three complete exact fork source-suite arms, and the corrected
+stock control passes under owner-approved ADR 0093. Runtime adoption still
+requires the remaining corpus and whole-call cost gates. Earlier failed
+records below retain their original sources, comparisons and outcomes.
+
+## Corrected companion version-check source-suite gate
+
+Native c7i.8xlarge / us-east-1, Linux x86-64, Verus Rust 1.99.1 and
+pinned Z3 4.16.0. Sail harness `c69473b7` plus the recorded exact fork-pin
+patch builds fork `0ad405eb`, ForkTests variant `3493f52b57d35d8e`.
+All 41 focused controls and 146 AIR tests pass. Each complete exact fork
+arm passes 4,907 Same cases: 4,844 nonignored passing tests and 63 ignored,
+with zero Different, unstable, infrastructure errors, failed or unknown
+plain outcomes. Pass-through takes 1,242 seconds, cache fill 1,264 seconds
+and cache warm 1,153 seconds. No debug-order exception applies to these fork
+arms. The unchanged corrected stock control below remains separately scoped.
+
+The capture includes the original actual-Z3 version-response negative
+control, source identity and patch, and every arm's complete report and log.
+`source-0ad-complete-evidence.tgz` SHA-256:
+`ca4b0e61e554a2032fbb99da284f9389dddfc7596b3f73bf24e68024fbe8a2f6`.
+The original Linux build manifests are retained separately, including all
+163 test-executable digests for the exact ForkTests variant and the runtime
+artifact digests: `source-0ad-linux-build-manifests.tgz`, SHA-256
+`9099d9df21a3aae7c7f0ddb3df5f65dba578e6b8e3f5be996338837b921ed514`.
+This qualifies the source suite; installed factories, ordinary retained
+proof reuse, corpus conformance and final native costs are separate gates.
+
+## Guarded candidate source-suite gate
+
+Native c7i.8xlarge / us-east-1, Linux x86-64, Rust 1.99.1 and pinned Z3
+4.16.0. The fork harness is Sail `8513ca43`, with comparator implementation
+equal to `3c309dcf`, testing exact fork `4cd6bd5f` over stock source
+`7d829946`. Stock builder `6e10d56a` generates the pinned release's own
+Cargo-Verus scaffolding before compiling its unchanged source. All 19
+focused Cargo source controls pass.
+
+| Arm | Same | Nonignored passing | Ignored | Different / unstable / infrastructure | Approved order exceptions |
+|---|---:|---:|---:|---|---:|
+| Exact fork pass-through | 4,906 | 4,843 | 63 | 0 / 0 / 0 | 0 |
+| Exact fork cache fill | 4,906 | 4,843 | 63 | 0 / 0 / 0 | 0 |
+| Exact fork cache warm | 4,906 | 4,843 | 63 | 0 / 0 / 0 | 0 |
+| Stock pass-through | 4,867 | 4,804 | 63 | 0 / 0 / 0 | 3 |
+
+There are no failed nonignored tests. The stock report retains each original
+strict debug-order difference and its explicitly accepted ADR 0093 exception;
+actual diagnostics, values and outcomes remain checked. The fork arms retain
+their exact output comparisons. These results qualify the source-suite gate,
+not the remaining runtime corpus, factory or performance requirements.
+
+| Complete raw capture outside Git | SHA-256 |
+|---|---|
+| `guarded-rvt-4cd-evidence.tgz` | `6420dcebb54430dc1c2869addf5b66c23d7a73e802bad631032febc8fb9b4b55` |
+| `stock-source-corrected-evidence.tgz` | `0c510bceecbbafdc9f2749103cbfeec9b2aa3d40e1fb87a7f3ea5b8ac7f3486f` |
 
 ## Fork source-suite gate (#124)
 
@@ -321,3 +370,12 @@ fresh managed target-selection gates are scoped separately in the
 | Initial complete controller log | `6924fb28d45d7d73c4af769f90b9eb8e9a3c44119f6f776c77387feeec9aef38` |
 | Fresh complete four-arm reports, all confirming outputs and reproductions | `043608a3ad67bed39d0726b9b2107ecdbaad30c77195c59ef64d9a01c0938c27` |
 | Fresh complete controller log | `9037c47f4fbf3a0b140326fecf0ca15b2216db06e913f69764c3b57a1a048c11` |
+
+Continued qualification, 2026-10-31: owner approved ADR 0093's two named
+stock debug-set order exceptions. Implementation `28e2ddfe` passes all 14
+focused native RVT comparator controls, including both original failing
+set/object snapshots and changed-value/outcome/diagnostic/ordinary-array
+refusals. Its first complete gate stops on three `assert_is_empty` test-style
+Clippy errors; assertions now use value-reporting comparisons. This is not
+a completed source-suite or release result. Original failed stock runs remain
+retained; new reports explicitly preserve raw captures and strict differences.

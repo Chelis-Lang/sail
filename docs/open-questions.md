@@ -496,3 +496,28 @@ planned for releases after 0.1.0. The owner answered all twelve on
     dirty cleanup and fail-closed controls remain. Qualify both optimizations
     separately before selection; approval is for the bounded implementation
     and its measured qualification, not an acceptance claim.
+
+45. **Per-file owned-target digest observations.**
+    Approve the bounded, separately controlled prototype in
+    [ADR 0092](decisions/0092-per-file-owned-target-digests.md)? ADR 0091
+    currently requires the entire original owned-target tree to match before
+    reusing any artifact digest. The proposed amendment permits unchanged
+    settled file digests despite unrelated entry/directory-time changes, while
+    retaining fresh complete current barriers, original full file stamps and
+    Current provenance, complete source/context/receipt checks, dirty cleanup
+    and fresh reads for changed/unsettled files. Pure revisions retain their
+    existing whole-tree gate. Platform defaults require independent native
+    material gains; first-after-cold parity is not implied.
+
+    **Answered 2026-10-31 (owner):** approve ADR 0092’s bounded prototype.
+    Keep it off by default and qualify native material gains and all controls
+    before platform selection. This does not establish release acceptance.
+
+46. **Incidental ordering in pinned stock source-test debug dumps.**
+    **Answered 2026-10-31 (owner):** approve
+    [ADR 0093](decisions/0093-stock-source-suite-debug-order.md). Permit only
+    reordered `func-details` entries and the two named proof-note sets in the
+    recognized stock helper dump. Preserve all values, actual diagnostics,
+    test outcomes and original strict differences, with explicit exception
+    records. This approval addresses reproduced incidental ordering; other
+    differences and runtime selection still require their own evidence.
