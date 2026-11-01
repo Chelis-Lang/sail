@@ -78,6 +78,25 @@ def main():
     rejected = json.loads(call("environment-changed", [args.sail, "verify", "--output", "json"],
                                project, 101, disabled_env).stdout)
     assert rejected["execution"]["verifier_invocations"] > 0, rejected
+    source.write_text(original + '\npub mod sail_prepare_focus { use vstd::prelude::*;\n'
+                      'verus! { pub proof fn selected() { assert(true); } } }\n')
+    ready_before = status()["ready"]
+    focused_args = [args.sail, "verify", "--output", "json", "--", "--verify-module", "sail_prepare_focus"]
+    focused = json.loads(call("focused", focused_args, project).stdout)
+    assert focused["currentness"] == "current" and focused["execution"]["verifier_invocations"] > 0, focused
+    assert all(not target["complete"] for target in focused["targets"] if target["requested"]), focused
+    deadline = time.monotonic() + 90
+    while status()["ready"] <= ready_before:
+        assert time.monotonic() < deadline, "exact focused scope was not prepared"
+        time.sleep(0.1)
+    focused_replay = json.loads(call("focused-prepared", focused_args, project).stdout)
+    assert focused_replay["currentness"] == "current" and focused_replay["execution"]["verifier_invocations"] == 0, focused_replay
+    assert all(not target["complete"] for target in focused_replay["targets"] if target["requested"]), focused_replay
+    focused_runs = list((out / "cache/projects").glob("*/*/runs/" + focused_replay["run_id"]))
+    assert len(focused_runs) == 1 and not (focused_runs[0] / "cargo.stdout").exists(), focused_replay
+    whole = json.loads(call("whole-after-focus", [args.sail, "verify", "--output", "json"], project).stdout)
+    assert whole["execution"]["verifier_invocations"] > 0, whole
+    assert all(target["complete"] for target in whole["targets"] if target["requested"]), whole
     (out / "records.json").write_text(json.dumps(records, indent=2) + "\n")
     print("PASS: actual new-project preparation, immediate foreground call, prepared replay and edit invalidation")
 

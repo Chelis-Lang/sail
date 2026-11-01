@@ -84,17 +84,18 @@ fn verification(config: &Config) -> Option<sail_api::jobs::Submission> {
     })
 }
 fn eligible(config: &Config, result: &ProjectResult) -> bool {
+    let exact_scope = sail_verus::managed::partial(&config.args);
     !config.force
         && result.exit_code == Some(0)
         && result.currentness == Currentness::Current
+        && result.engine.is_none()
         && result.no_reuse.is_none()
-        && !sail_verus::managed::partial(&config.args)
         && result.targets.iter().any(|target| target.requested)
         && result
             .targets
             .iter()
             .filter(|target| target.requested)
-            .all(|target| target.complete)
+            .all(|target| target.complete || exact_scope)
 }
 
 pub(crate) fn after_verification(config: &Config, json: bool, result: &ProjectResult) {

@@ -13,6 +13,9 @@ semantic versioning once the API is published.
   with foreground priority and `SAIL_BACKGROUND_PREPARE=0` opt-out. New projects
   can begin ordinary preparation after `sail new` returns. Implementation is
   under qualification; see `docs/background-preparation.md`.
+- Add focused repair validation for standalone Verus files through
+  `sail repair-check`, durable jobs and MCP, with provisional focus and
+  independent complete Current full validation.
 - Add opt-in managed-project byte budgeting and oldest-first pruning with
   `sail cache projects budget` and `prune --to-bytes`. Busy workspaces and the
   newest workspace remain protected; a soft-cap overage stays visible.

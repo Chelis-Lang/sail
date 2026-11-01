@@ -23,13 +23,16 @@ workspace. Ordinary jobs and connection-owned foreground CLI leases preempt
 preparation. Cancellation and shutdown kill and reap the owned worker group;
 unfinished work does not resume after a daemon restart.
 
-Successful complete Current Cargo verification may enqueue its exact invocation,
+Successful Current ordinary Cargo verification may enqueue its exact invocation,
 output decision, environment, context and input revision. After settlement can
 be established by a **new** observation, a private worker performs a genuine
 unchanged managed call. Only the existing replay recording predicates can
 publish its actual transcript, report and events. A changed origin, started
 verifier, incomplete observation or transient output declines publication.
 No transcript is synthesized and no inherited unsettled read ages into trust.
+The existing exact-scope replay predicate may also admit a focused invocation.
+Its original partial target markers and argument-bound key remain unchanged; it
+never establishes a whole-target proof. Interactive-engine focus is ineligible.
 
 The caller returns independently of preparation. An immediate follow-up takes
 foreground priority and the ordinary verification path if preparation is not

@@ -3,11 +3,14 @@
 Implementation is in progress for the next release; native product qualification
 is pending. Published 0.1.0 does not provide this behavior.
 
-After a complete successful Cargo verification, Sail can prepare the next
+After a successful Current Cargo verification, Sail can prepare the next
 unchanged invocation in its daemon while your command has already returned.
 `sail new` can also start ordinary project verification after creating the project,
 without waiting for Cargo or verification to finish. This uses the same pinned
-runtime and proof checks as explicit verification.
+runtime and proof checks as explicit verification. Exact focused Cargo invocations
+can prepare only that same argument-bound scope; their target remains incomplete,
+and a later whole-target call still requires independent full verification.
+Interactive-engine focus is not prepared.
 
 Ordinary verification, watch, repair and jobs take priority. An immediate call
 cancels unfinished preparation and verifies normally; it does not wait for a

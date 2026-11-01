@@ -23,7 +23,9 @@ assertions. The ordinary output comparisons retain product defaults. Native
 preparation acceptance uses `ci/qualify-expansion.sh EVIDENCE_DIR` with the actual
 pinned engine and stock Verus available; it separately requires default-enabled
 new-project preparation, immediate foreground calls, genuine zero-Cargo replay
-and edit invalidation. Oversized private output declines capture.
+and edit invalidation, scheduling-policy versus declared ghost-read changes,
+exact focused replay and independent whole-target verification afterward.
+Oversized private output declines capture.
 
 `scripts/perf-real.sh` records `SAIL_PERF_BACKGROUND_PREPARE=0|1` when supplied;
 unset retains the product default. Use the explicit off control to isolate
