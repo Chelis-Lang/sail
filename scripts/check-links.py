@@ -84,6 +84,11 @@ def main():
                 resolved = posixpath.normpath(posixpath.join(posixpath.dirname(md), path))
                 if resolved not in files and resolved not in dirs:
                     problem = 'missing'
+            # Installers copy one skill folder, not the surrounding repository.
+            if problem is None and md.startswith('skills/'):
+                package = '/'.join(md.split('/')[:2])
+                if resolved != package and not resolved.startswith(package + '/'):
+                    problem = 'link leaves installable skill package; use an upstream URL'
             if problem is None and fragment and resolved.endswith('.md'):
                 if fragment.lower() not in anchors(resolved):
                     problem = 'missing anchor'

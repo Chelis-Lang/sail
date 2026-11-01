@@ -90,6 +90,16 @@ and [freshness](docs/freshness.md).
 
 ## Agents (MCP)
 
+Install the [Sail skill](skills/sail-verification/SKILL.md) to give a coding
+agent the verification and SMT workflows:
+
+```sh
+npx skills add Chelis-Lang/sail --skill sail-verification
+```
+
+The skill works with the CLI or an already configured MCP server. It does not
+install Sail itself; use the installation instructions above first.
+
 `sail mcp` runs an MCP server on stdio. To register it with Claude Code, run
 this from the project directory:
 

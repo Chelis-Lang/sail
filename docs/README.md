@@ -13,6 +13,7 @@ verification.
 | Restore an earlier proof after undoing an edit | [Instant revert](instant-revert.md) |
 | Check a proof repair, explain failures, compare saved baselines | [Repair walkthrough](proof-repair-walkthrough.md), [repair reference](proof-repair.md) |
 | Connect an agent over MCP | [MCP](mcp.md) |
+| Install the agent skill and follow verification/SMT workflows | [Sail skill](../skills/sail-verification/SKILL.md) |
 | Read the JSON report | [Output schema](output-schema.md) |
 | Read job status and results from Rust | [Result client](result-client.md) |
 | Cache Sail in CI | [CI cache](ci-cache.md) |
@@ -26,7 +27,7 @@ verification.
 | What changed in a release | [0.1.0 release notes](release-notes/0.1.0.md), [changelog](../CHANGELOG.md) |
 
 Standalone-file development: [verify, watch and MCP](standalone-verification.md)
-(feature branch; qualification pending).
+(qualified on main for the next release; not in published 0.1.0).
 
 ## Experimental features
 
