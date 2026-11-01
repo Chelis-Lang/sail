@@ -45,6 +45,13 @@ def main():
         assert (document["exit_code"] == 0) == succeeds, (label, document)
         return document
 
+    def walkthrough_provenance(document):
+        functions = [function for target in document["targets"] if target["requested"]
+                     for crate in target["report"]["crates"] for function in crate["functions"]
+                     if function["function"].endswith("::cache_walkthrough")]
+        assert len(functions) == 1 and functions[0]["verdict"] == "verified", document
+        return functions[0]["provenance"]
+
     if args.phase == "cold":
         assert not project.exists(), "cold producer must start without the fixture"
         result = call("new", [args.sail, "new", "--lib", "project"], cwd=root)
@@ -53,6 +60,7 @@ def main():
         source.write_text(source.read_text() + "\nverus! { proof fn cache_walkthrough() { assert(true); } }\n")
         cold = verify("cold")
         assert cold["execution"]["verifier_invocations"] > 0, cold
+        assert walkthrough_provenance(cold)["checks_solved"] > 0, cold
         assert (project / "Cargo.lock").is_file()
     else:
         restored = verify("restored")
@@ -60,6 +68,9 @@ def main():
             assert restored["execution"]["verifier_invocations"] == 0, restored
         else:
             assert restored["execution"]["verifier_invocations"] > 0, restored
+            # The fixture's own query must be served, rather than counting a
+            # shipped dependency hit as proof that restoration helped it.
+            assert walkthrough_provenance(restored)["checks_served"] > 0, restored
             status = call("restored-cache-status", [args.sail, "status", "--json"])
             assert status.returncode == 0, status.stderr
             assert json.loads(status.stdout)["stats"]["hits"] > 0, status.stdout
