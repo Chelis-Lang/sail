@@ -312,27 +312,25 @@ fn compile(
         cmd
     };
 
-    if engine || fork_tests {
-        // The release workflow writes a toolchain manifest for the build's
-        // own version before building, so `cargo verus new` can name the
-        // matching vstd. Without it the runtime's `cargo verus new` fails
-        // ("no known toolchain manifest", VI-0018). The file is untracked,
-        // so the version is not marked dirty, and no verifier byte changes.
-        println!("writing the toolchain manifest (create-manifest, as the release does)");
-        run(
-            clean(Command::new("cargo").current_dir(&source), jobs).args([
-                "run",
-                "--locked",
-                "-p",
-                "cargo-verus-toolchains",
-                "--bin",
-                "create-manifest",
-                "--",
-                "--write-to-dir",
-                "cargo-verus/toolchain-manifests",
-            ]),
-        )?;
-    }
+    // The release workflow writes a toolchain manifest for the build's
+    // own version before building, so `cargo verus new` can name the
+    // matching vstd. Without it the runtime's `cargo verus new` fails
+    // ("no known toolchain manifest", VI-0018). The file is untracked,
+    // so the version is not marked dirty, and no verifier byte changes.
+    println!("writing the toolchain manifest (create-manifest, as the release does)");
+    run(
+        clean(Command::new("cargo").current_dir(&source), jobs).args([
+            "run",
+            "--locked",
+            "-p",
+            "cargo-verus-toolchains",
+            "--bin",
+            "create-manifest",
+            "--",
+            "--write-to-dir",
+            "cargo-verus/toolchain-manifests",
+        ]),
+    )?;
 
     println!("building Verus (vargo build --release; verifies vstd)");
     run(&mut vargo(&["build", "--release"]))?;
@@ -579,6 +577,12 @@ pub fn build(args: &[String]) -> Result<()> {
         && m.rust_toolchain == *toolchain
         && m.features == features
         && m.z3_sha256 == z3_sha256
+        // Stock source tests also exercise `cargo verus new`. Older caches
+        // predate the release's own-version scaffold data; rebuild them.
+        && (o.engine || o.fork_tests || source_build::checkout_dir(&build)
+            .join("source/cargo-verus/toolchain-manifests")
+            .join(format!("{}.toml", pins.verus.release))
+            .is_file())
         && (if o.engine {
             sail_verus::engine::Installed::at(&build, &pins).is_ok()
         } else {
@@ -593,9 +597,9 @@ pub fn build(args: &[String]) -> Result<()> {
         return Ok(());
     }
     let started = Instant::now();
-    if o.force {
-        let _ = std::fs::remove_file(build.join(source_build::MANIFEST));
-    }
+    // Once a rebuild starts, an interruption must not revive an older
+    // manifest after new scaffold data has been generated.
+    let _ = std::fs::remove_file(build.join(source_build::MANIFEST));
     std::fs::create_dir_all(&build)
         .map_err(|e| format!("cannot create {}: {e}", build.display()))?;
     let checkout = if o.engine || o.fork_tests {

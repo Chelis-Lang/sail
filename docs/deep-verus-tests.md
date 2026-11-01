@@ -101,3 +101,11 @@ default. Explicit thread overrides are never dropped to repair a conflicting
 test invocation. Exported `reproduce.txt` commands show the same effective
 `VERUS_EXTRA_ARGS`, including an explicit empty value when the original test
 supplies the default. See the [correction and retained failed run](validation/rvt-progress-option.md).
+
+Source builds generate the current version's Cargo-Verus toolchain manifest,
+as the release builder does, for both stock and fork suites. This leaves
+tracked verifier sources unchanged and lets the original `cargo_new_*` tests
+create their matching vstd dependency. An older cached stock suite without
+this data rebuilds automatically. Starting a rebuild withdraws its previous
+completion manifest so an interruption cannot reuse an earlier incomplete
+setup.
