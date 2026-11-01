@@ -33,6 +33,19 @@ struct Inner {
     foreground: usize,
     status: Status,
 }
+impl Inner {
+    fn preempt(&mut self, key: &Path) {
+        if let Some(active) = &self.active {
+            active.cancel.store(true, Ordering::SeqCst);
+        }
+        let before = self.pending.len();
+        self.pending.retain(|task| task.key != key);
+        self.status.superseded = self
+            .status
+            .superseded
+            .saturating_add((before - self.pending.len()) as u64);
+    }
+}
 #[derive(Default)]
 pub(super) struct Coordinator(Mutex<Inner>);
 
@@ -47,15 +60,7 @@ impl Coordinator {
     }
     pub(super) fn preempt(&self, key: &Path) {
         if let Ok(mut inner) = self.0.lock() {
-            if let Some(active) = &inner.active {
-                active.cancel.store(true, Ordering::SeqCst);
-            }
-            let before = inner.pending.len();
-            inner.pending.retain(|task| task.key != key);
-            inner.status.superseded = inner
-                .status
-                .superseded
-                .saturating_add((before - inner.pending.len()) as u64);
+            inner.preempt(key);
         }
     }
     pub(super) fn enqueue(&self, mut request: Submission) -> io::Result<Status> {
@@ -136,9 +141,11 @@ pub(super) fn foreground(
         ));
     }
     let key = super::schedule::workspace_key(project, args);
-    state.preparation.preempt(&key);
     {
         let mut inner = state.preparation.0.lock().map_err(super::lock_error)?;
+        // Cancellation and admission must share the lock with `take`: no
+        // preparation may start between preemption and acquiring this lease.
+        inner.preempt(&key);
         inner.foreground = inner.foreground.saturating_add(1);
     }
     state.activity.fetch_add(1, Ordering::SeqCst);
