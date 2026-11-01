@@ -28,12 +28,14 @@ program-specific spelling adjustment would leave the same structural risk.
 
 ## Decision
 
-Prototype one lazy companion solver per bucket for default-prover
+Prototype one lazy companion solver per bucket for the pinned Z3 with its
+default Z3 encoding and default-prover
 `QueryOp::SpecTermination` checks. Before the first check it receives the full
 existing bucket context; before later checks it receives each newly admitted
 context batch exactly once. This bounds total context loading to at most
 twice the original, avoiding repeated growing-prefix loads. Explicit nonlinear,
-bitvector, profiling reruns and `--spinoff-all` retain their existing routes.
+bitvector, profiling reruns, CVC5 (including CVC5-compatible SMT-LIB on Z3)
+and `--spinoff-all` retain their existing routes.
 The companion executes every original command and retains
 the existing prover options, limits, errors, source spans and failure handling.
 Its solver history never enters the ordinary proof solver. Both solvers
