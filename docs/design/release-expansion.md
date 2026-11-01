@@ -5,7 +5,7 @@ standalone-file workflow; it does not select a release version or publication.
 
 | Slice | State | Acceptance |
 |---|---|---|
-| Full-path observations | Bounded indexing/readback candidate implemented; timing selection pending | Shared complete observations at existing boundaries; native whole-call gain |
+| Full-path observations | Indexed reads and corrected first-family snapshot guards implemented; timing selection pending | Shared complete observations at existing boundaries; native whole-call gain |
 | Daemon preparation | Implemented; real Linux preparation/replay passes; broader/platform qualification open | Foreground priority, real unchanged recording, cancellation and freshness controls |
 | Mac Anvil cold | Open | Same focused workload, native paired measurements below stock |
 | Standalone repair | Implemented; real Linux focus/full/job/negative controls pass; Mac qualification open | Exact function focus plus independent full Current validation through CLI/MCP |

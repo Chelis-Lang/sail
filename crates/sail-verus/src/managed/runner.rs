@@ -2098,16 +2098,15 @@ fn target_digest_candidate(
     target_digest_observation(paths, data, context, observation)
 }
 
-/// Pure proposals only: `target_revisions` checks the complete original source
-/// stamp after the entire projection batch before using any proposal. Artifact
-/// digests retain their separate early source guard in `target_digest_candidate`.
+/// Preserve the original early and closing complete source guards. The finer
+/// artifact ledger never supplies these pure revision proposals.
 fn target_revision_proposals(
     paths: &Paths,
     data: &Value,
     context: &str,
     observation: Option<RevisionObservation<'_>>,
 ) -> BTreeMap<(String, String), String> {
-    target_digest_observation(paths, data, context, observation)
+    target_digest_candidate(paths, data, context, observation)
         .and_then(|candidate| candidate.revisions())
         .unwrap_or_default()
 }
@@ -3684,11 +3683,7 @@ fn run_recorded(
         extras.extend(super::native_include_hints::roots(&data, |name| {
             std::env::var_os(name)
         }));
-        let hint = super::input::SnapshotHint {
-            version: super::input::SNAPSHOT_HINT_VERSION,
-            projection: snapshot_projection(&data, &serde_json::json!([])),
-            extras: ordered_extras(extras),
-        };
+        let hint = first_snapshot_hint(&data, extras);
         std::thread::Builder::new()
             .name("sail-first-inputs".to_owned())
             .spawn(move || {
@@ -4847,6 +4842,21 @@ fn snapshot_projection(data: &Value, sources: &Value) -> Value {
         ),
     );
     Value::Object(projection)
+}
+
+/// Include the same explicit output namespace as the later selected snapshot.
+/// An absent field differs from even an empty guard, so omitting it made every
+/// first-family speculative read miss its exact selection check. Later learned
+/// inputs and changed guards still refuse this hint without changing that check.
+fn first_snapshot_hint(data: &Value, extras: Vec<PathBuf>) -> super::input::SnapshotHint {
+    let extras = ordered_extras(extras);
+    let mut projection = snapshot_projection(data, &serde_json::json!([]));
+    projection[super::input::OUTPUT_GUARDS] = super::input::output_guards(data, &extras);
+    super::input::SnapshotHint {
+        version: super::input::SNAPSHOT_HINT_VERSION,
+        projection,
+        extras,
+    }
 }
 
 /// Whether two metadata documents select the same snapshot, given the same
@@ -8179,6 +8189,62 @@ mod tests {
         moved["target_directory"] = Value::String("elsewhere".into());
         assert!(!same_snapshot_selection(&before, &moved));
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn first_family_snapshot_survives_output_churn_but_not_source_edits()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir()
+            .canonicalize()?
+            .join(format!("sail-first-snapshot-{}", std::process::id()));
+        let app = root.join("app");
+        std::fs::create_dir_all(app.join("src"))?;
+        std::fs::create_dir_all(app.join("target"))?;
+        std::fs::write(app.join("Cargo.toml"), "[package]\nname='first'\n")?;
+        let source = app.join("src/lib.rs");
+        std::fs::write(&source, "before")?;
+        std::fs::write(
+            app.join("target/CACHEDIR.TAG"),
+            "Signature: 8a477f597d28d172789f06886806bc55\n# This file is a cache directory tag created by cargo.\n",
+        )?;
+        let mut data = serde_json::json!({"workspace_root":app,
+            "target_directory":root.join("managed"),
+            "packages":[{"id":"first","manifest_path":app.join("Cargo.toml"),
+                "targets":[{"src_path":source}]}]});
+        let hint = first_snapshot_hint(&data, Vec::new());
+        let (snapshot, stamp) =
+            super::super::input::snapshot_metadata_stamped(&hint.projection, &hint.extras);
+        assert!(snapshot.complete);
+        // A genuine Cargo output changes while the independent query runs.
+        std::fs::write(app.join("target/query-output"), "new output")?;
+        data[super::super::input::OUTPUT_GUARDS] = super::super::input::output_guards(&data, &[]);
+        let selected = super::super::input::SnapshotHint {
+            version: super::super::input::SNAPSHOT_HINT_VERSION,
+            projection: snapshot_projection(&data, &serde_json::json!([])),
+            extras: Vec::new(),
+        };
+        assert!(
+            hint == selected,
+            "the first observation must name the exact final selection"
+        );
+        assert!(super::super::input::unchanged_since(
+            &snapshot,
+            stamp.as_ref()
+        ));
+        std::fs::write(&source, "edited")?;
+        assert!(!super::super::input::unchanged_since(
+            &snapshot,
+            stamp.as_ref()
+        ));
+        assert_ne!(snapshot.revision, snapshot_metadata(&data, &[]).revision);
+        let extra = root.join("new-declaration");
+        assert_ne!(
+            first_snapshot_hint(&data, vec![extra]).projection,
+            selected.projection
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[cfg(unix)]

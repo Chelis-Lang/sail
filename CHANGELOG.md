@@ -19,6 +19,10 @@ semantic versioning once the API is published.
 - Add opt-in managed-project byte budgeting and oldest-first pruning with
   `sail cache projects budget` and `prune --to-bytes`. Busy workspaces and the
   newest workspace remain protected; a soft-cap overage stays visible.
+- Preserve the complete output-guard namespace in a new family's speculative
+  source snapshot, allowing its existing exact admission check to reuse that
+  observation instead of reading the inputs twice. Native timing selection
+  remains separate from the regression control.
 - Reject incomplete trailing solver output in both session test comparators,
   even after all expected replies have arrived (#611).
 
