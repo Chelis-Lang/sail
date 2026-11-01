@@ -11,6 +11,7 @@ import tempfile
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
 SPEC = importlib.util.spec_from_file_location("perf_matrix", Path(__file__).with_name("perf-matrix.py"))
 pm = importlib.util.module_from_spec(SPEC)
@@ -209,6 +210,72 @@ class ShippedVstd(unittest.TestCase):
 def sample(rnd, arm, scenario, wall, norm, ref=None, code=0, project="small", note=""):
     return dict(round=rnd, arm=arm, project=project, scenario=scenario, wall=wall, exit=code,
                 log="x", note=note, normalized=norm, reference=ref if ref is not None else norm)
+
+
+class CompleteDiagnostics(unittest.TestCase):
+    def test_malformed_helper_payload_keeps_the_failed_sample(self):
+        malformed = [None, [], 7, "wrong shape", {
+            "kind": "sail-diagnostic-split", "version": True,
+            "messages": [], "rest": "",
+        }]
+        with tempfile.TemporaryDirectory() as directory:
+            runner = object.__new__(pm.Runner)
+            runner.out = Path(directory)
+            runner.diagnostics_helper = Path("unused-helper")
+            runner.last_stock = {}
+            runner.last_stock_diagnostics = {}
+            samples = []
+            runner.record = lambda **sample: samples.append(sample)
+            log = runner.out / "command.log"
+            log.write_text("verification results:: 1 verified, 0 errors\n")
+            for payload in malformed:
+                with self.subTest(payload=payload), mock.patch.object(
+                        pm.subprocess, "run", return_value=subprocess.CompletedProcess(
+                            [], 0, json.dumps(payload), "")):
+                    runner.finish(1, "sail", "small", "small-edit", 0.1, 0, log, "")
+                    self.assertIn("invalid diagnostic splitter result", samples[-1]["note"])
+                    self.assertNotIn("diagnostic_output", samples[-1])
+            self.assertEqual(len(samples), len(malformed))
+
+    def pair(self, stock_messages, sail_messages, stock_ordered=None, sail_ordered=None):
+        stock = sample(1, "stock", "small-edit", 1.0, ["same headline"])
+        sail = sample(1, "sail", "small-edit", 1.0, ["same headline"])
+        ordered = ["\0<diagnostic messages>\0", "verification results:: 1 verified, 1 errors"]
+        stock["diagnostic_output"] = {"messages": stock_messages, "ordered": stock_ordered or ordered}
+        sail["diagnostic_output"] = {"messages": sail_messages, "ordered": sail_ordered or ordered}
+        return stock, sail
+
+    def test_complete_messages_may_reorder_under_adr_0042(self):
+        a = "warning: recommendation not met\n --> a.rs:1:2\n complete body A\n\n"
+        b = "error: assertion failed\n --> b.rs:2:3\n complete body B\n\n"
+        stock, sail = self.pair([a, b], [b, a])
+        stock["normalized"] = ["warning first"]
+        sail["normalized"] = ["error first"]
+        self.assertTrue(pm.output_matches(stock, sail))
+
+    def test_same_headline_never_hides_changed_missing_or_duplicate_bodies(self):
+        message = "error: assertion failed\n --> a.rs:1:2\n original body\n\n"
+        for changed in ([message.replace("original", "changed")], [], [message, message]):
+            with self.subTest(changed=changed):
+                self.assertFalse(pm.output_matches(*self.pair([message], changed)))
+
+    def test_ordered_remainder_and_incomplete_metadata_remain_failures(self):
+        stock, sail = self.pair(["message"], ["message"], sail_ordered=["summary moved before messages"])
+        self.assertFalse(pm.output_matches(stock, sail))
+        for malformed in (None, {}, {"messages": [7], "ordered": []}):
+            stock, sail = self.pair(["message"], ["message"])
+            sail["diagnostic_output"] = malformed
+            self.assertFalse(pm.output_matches(stock, sail))
+        stock, sail = self.pair([], [])
+        del sail["diagnostic_output"]
+        self.assertFalse(pm.output_matches(stock, sail))
+
+    def test_noop_reference_keeps_its_own_complete_messages(self):
+        stock, sail = self.pair([], ["old message"], stock_ordered=["no-op"])
+        stock["diagnostic_reference"] = dict(sail["diagnostic_output"])
+        self.assertTrue(pm.output_matches(stock, sail))
+        stock["diagnostic_reference"]["messages"] = ["altered old message"]
+        self.assertFalse(pm.output_matches(stock, sail))
 
 
 class Report(unittest.TestCase):

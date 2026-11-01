@@ -9,8 +9,8 @@ separates the current source from earlier component results.
 
 ## Guarded specification-context runtime candidate (`4cd6bd5f`)
 
-Status: **bounded functional research-route checks pass on Linux and Mac;
-ordinary-route candidate validation and composed release gates remain pending.**
+Status: **bounded research and ordinary-route functional cycles pass on both
+platforms; final measured costs and composed release acceptance remain pending.**
 The candidate constants now bind the newly built platform manifests. This is
 staged qualification work, not selected or published runtime adoption.
 
@@ -54,6 +54,32 @@ per-target checks preserve every function and both raw documents. The first
 Mac raw export fails under system Python 3.9's stream-compression API; the
 completed capture uses installed Python 3.13. None changes a product guard,
 source proof, resource limit or expected result.
+
+### Ordinary route (`d18961a1`)
+
+With `SAIL_RETAINED_CONTENT_RESEARCH` absent, the same eight calls per arm pass
+on both platforms. Each returned A keeps both complete Current reports and
+exact cold-A report payloads and establishing provenance, with zero verifier,
+shim or solver starts. Edits, deliberate failure and fix execute the requested
+verifier. These are functional controls, with diagnostics checked against the
+fresh stock arm; their wall times do not qualify performance.
+
+Linux uses the actual installed bundle: its cold call must serve shipped vstd,
+retain that target's shipped establishing origin and start exactly one
+requested-target verifier. The earlier private audit incorrectly required two
+cold verifiers; its failed result is preserved. The installed-bundle audit
+explicitly requires the observed shipped proof and unchanged complete return
+reports. Capture `d189-linux-ordinary-retained.tgz`, SHA-256
+`b1cb7b4f80f09fd34cedde538e860c1bf5e53537fcb20bc15008e2af8d4253a8`.
+
+Mac's eight-call functional wrapper is unbundled and verifies both cold
+targets. It establishes ordinary retained reuse, not bundled cold performance.
+The separate actual installed-bundle first-use check serves vstd and starts one
+requested verifier. Both scopes and the original raw records are retained in
+`mac-d189-complete-evidence.tgz`, SHA-256
+`e1b7399e1a58b3dc6d16a5067cfce0036c464627e17de334574883a353bdadc2`.
+This capture uses macOS 27; subsequent macOS 26.7 functional and timing scopes
+are recorded separately in the [general qualification](general-performance.md).
 
 ## Runtime `f8589ed4` requalification
 

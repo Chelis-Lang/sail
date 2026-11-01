@@ -56,8 +56,9 @@ relations remain open; source/hash binding does not establish them.
   passes three runs; the shipped fork fails a postcondition. Literal replay
   isolates sensitivity to two earlier completed specification-termination
   checks. The bounded companion-context candidate passes the original package
-  on both platforms and the broader Mac corpus; full source-suite, corpus,
-  cost and release qualification remain pending. See ADR 0094.
+  on both platforms and the broader Mac corpus; full Linux pass-through/fill/warm source suites and both platform
+  functional controls pass. Final corpus/cost qualification and runtime
+  adoption remain pending. See ADR 0094.
 
 - **An installed Mac workspace can recompile after discovering an external
   input** ([#633](https://github.com/Chelis-Lang/sail/issues/633),
@@ -311,15 +312,16 @@ open, tracked in #561. See the
   before timing. No threshold changes ([instrumentation](validation/benchmark-memory.md),
   [current matrix](validation/v020-performance.md)).
 
-A strict v0.2.0 stock source-suite control reports a JSON debug-order
-disagreement after eleven confirming plain runs ([#627](https://github.com/Chelis-Lang/sail/issues/627)).
-All three exact fork arms are 4,902 Same, with all 4,839 nonignored tests
-passing. Two strict stock attempts remain failed; their JSON object-key and
-proof-note order symptoms match VI-0008 / VI-0021. The owner approved the two
-named incidental debug-order exceptions in ADR 0093 on 2026-10-31; their
-implementation is under native qualification. Original strict failures and
-raw bytes stay retained, with accepted order exceptions reported separately
-([current scope](validation/deep-tier.md#v020-performance-candidate)).
+The original strict v0.2.0 stock source-suite control fails on reproduced debug
+JSON order ([#627](https://github.com/Chelis-Lang/sail/issues/627)). The approved
+ADR 0093 implementation now passes the corrected complete native stock suite:
+4,867 Same cases, all 4,804 nonignored tests passing, 63 ignored and three
+explicit debug-order exceptions. The separate stock Cargo scaffolding setup
+failure is corrected by generating the release's own toolchain manifest.
+All three guarded `4cd6bd5f` fork source arms pass 4,906 Same cases and all
+4,843 nonignored tests. Original failures and raw bytes remain retained;
+these corrections are not yet merged and do not establish final release
+acceptance ([current qualification](validation/general-performance.md)).
 
 ## Settled digest candidates
 

@@ -5,10 +5,13 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Compare benchmark diagnostics with ADR 0042's existing multiset rule using
+  the Rust splitter, retaining complete message bytes and multiplicity while
+  allowing their print order to vary. Remaining output stays ordered.
+
 - Record the owner-approved pinned-stock source-test debug-order exceptions
   separately while preserving all values, diagnostics, original differences
   and raw captures (ADR 0093).
-
 
 - Run memory inventories in a separate observer process so inventory parsing
   cannot hold the command waiter's Python execution lock. The command and its
@@ -18,18 +21,18 @@ semantic versioning once the API is published.
 - Preserve unaffected build-script observations when a newly discovered
   external compiler input introduces a symlink ancestor. Existing source
   bindings must remain exact; the discovering proof stays Historical and
-  publishes no proof receipt. Native Mac release qualification remains open.
+  publishes no proof receipt.
 
-- Broader native validation records two release blockers: installed Mac
-  external-input discovery can recompile an unchanged project (#633), and
-  a Mac abstract-domain proof differs between stock and the fork even with
-  direct pinned Z3 (#634). No new performance default is selected.
+- Stage a bounded compiler candidate that isolates specification termination
+  checks from ordinary proof history, repairing the demonstrated Mac
+  abstract-domain disagreement (#634). Runtime selection remains subject to
+  complete native correctness and whole-call cost qualification (ADR 0094).
 
 - Add an opt-in per-file owned-target digest prototype under ADR 0092:
   `SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO=1`. Original settled file observations
   may survive unrelated target-directory changes, with fresh complete current
   barriers and unchanged proof admission. It is off by default everywhere;
-  native performance and platform qualification remain open.
+  the complete Linux experiment found no whole-call gain.
 - Add explicit corpus selection to conformance and benchmark tools, validated
   fork selection for paired benchmarks, and broader local performance recipes
   with pinned intake projects, held-out workloads and scaling controls.
@@ -60,9 +63,8 @@ semantic versioning once the API is published.
 - Record Vest's exact shipped-vstd source/features profile without changing
   consumer manifests or locks. Each schema-13 unit binds its own closed source
   policy and establishing run; releases admit at most eight explicit units.
-  Native factories and first-Serve pass on Linux and Mac; six-round Vest
-  cold medians improve on both platforms. Sampler-overhead, stock parity
-  and complete release qualification remain open.
+  Native factories and first-Serve pass on Linux and Mac. Complete release
+  performance qualification remains open.
 
 - Remember a previously observed unqualified Cargo and take the existing
   no-reuse fallback before managed setup when its native tool identities,

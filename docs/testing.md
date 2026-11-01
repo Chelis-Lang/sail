@@ -42,8 +42,8 @@ an arm, and never treat disabled or failed sampling as memory acceptance.
 The wrapper signals readiness before the wall clock starts and waits on an
 owned FIFO; the harness then releases the actual command. Python startup and
 the initial process inventory are outside the timed interval. Disabled
-sampling uses the same readiness path, with no process scans or sampler
-thread, so the overhead control retains the same command-launch boundary.
+sampling primes the same initial inventory but performs no timed process
+inventories, so the overhead control retains the same command-launch boundary.
 Native sampler overhead and the four-project Linux/macOS memory matrix must
 be measured before claiming memory acceptance for a release.
 `cargo xtask fetch-verus` and stock-runtime lookup share cache selection:
@@ -135,6 +135,14 @@ minutes, and a bound that is itself under test must not include the start of a
 new executable. A test that needs another package's binary supplies a stand-in
 (Cargo builds `sail-bench`, for example, only when that package is selected)
 and leaves checks of the real binary to that package's tests.
+
+On a fresh Mac, configure the terminal used for validation under System
+Settings → Privacy & Security → Developer Tools, following
+[Nextest's macOS instructions](https://nexte.st/docs/installation/macos/).
+Run `ci/run.sh host` from that terminal. Nextest documents launch scanning
+that can delay executables before their own code runs. Retain failed runs
+and rerun the unchanged gate after configuring the development environment;
+record the actual launch environment with the qualification results.
 
 ## Release performance matrix
 
@@ -343,7 +351,8 @@ services busy; confirm a quiet host after establishing its console session and
 allowing initial indexing to settle. Native hardware alone does not establish
 an uncontended benchmark. See the memory acceptance record for actual limits.
 
-The memory observer uses a 1 ms Python interpreter scheduling quantum in both
-control arms so inventory parsing yields promptly to the command waiter.
-Executed Python children retain their own interpreter scheduling. This does
-not change the 50 ms RSS cadence or the overhead acceptance threshold.
+The memory inventory runs in a separate process from the command waiter.
+Inventory parsing therefore cannot hold the waiter's Python execution lock.
+The command and waiter keep their original priority; on Mac only the observer
+and its `ps` children receive lower priority. Sampling cadence and overhead
+acceptance thresholds remain unchanged.

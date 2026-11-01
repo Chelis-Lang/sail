@@ -1,11 +1,37 @@
 # Deep-tier soundness validation
 
-The current pinned fork is `47fb3be6`. Fresh combined source `c60dc918`
-passes all three complete fork source-suite arms, including cache fill/warm;
-all 4,839 nonignored plain tests pass in each. The independent strict stock
-control fails on JSON debug ordering, so aggregate release qualification is
-failed ([current scope and evidence](#v020-performance-candidate)).
-The earlier records below retain their original sources and outcomes.
+The selected runtime remains fork `47fb3be6`. Staged candidate `4cd6bd5f`
+passes all three complete exact fork source-suite arms, and the corrected
+stock control passes under owner-approved ADR 0093. Runtime adoption still
+requires the remaining corpus and whole-call cost gates. Earlier failed
+records below retain their original sources, comparisons and outcomes.
+
+## Guarded candidate source-suite gate
+
+Native c7i.8xlarge / us-east-1, Linux x86-64, Rust 1.99.1 and pinned Z3
+4.16.0. The fork harness is Sail `8513ca43`, with comparator implementation
+equal to `3c309dcf`, testing exact fork `4cd6bd5f` over stock source
+`7d829946`. Stock builder `6e10d56a` generates the pinned release's own
+Cargo-Verus scaffolding before compiling its unchanged source. All 19
+focused Cargo source controls pass.
+
+| Arm | Same | Nonignored passing | Ignored | Different / unstable / infrastructure | Approved order exceptions |
+|---|---:|---:|---:|---|---:|
+| Exact fork pass-through | 4,906 | 4,843 | 63 | 0 / 0 / 0 | 0 |
+| Exact fork cache fill | 4,906 | 4,843 | 63 | 0 / 0 / 0 | 0 |
+| Exact fork cache warm | 4,906 | 4,843 | 63 | 0 / 0 / 0 | 0 |
+| Stock pass-through | 4,867 | 4,804 | 63 | 0 / 0 / 0 | 3 |
+
+There are no failed nonignored tests. The stock report retains each original
+strict debug-order difference and its explicitly accepted ADR 0093 exception;
+actual diagnostics, values and outcomes remain checked. The fork arms retain
+their exact output comparisons. These results qualify the source-suite gate,
+not the remaining runtime corpus, factory or performance requirements.
+
+| Complete raw capture outside Git | SHA-256 |
+|---|---|
+| `guarded-rvt-4cd-evidence.tgz` | `6420dcebb54430dc1c2869addf5b66c23d7a73e802bad631032febc8fb9b4b55` |
+| `stock-source-corrected-evidence.tgz` | `0c510bceecbbafdc9f2749103cbfeec9b2aa3d40e1fb87a7f3ea5b8ac7f3486f` |
 
 ## Fork source-suite gate (#124)
 

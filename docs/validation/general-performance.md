@@ -3,34 +3,57 @@
 **Current status:** broader tooling and the owner-approved ADR 0092 bounded
 prototype are implemented. Both optimization experiments remain unselected;
 platform defaults are unchanged. The installed-output repair (#633) passes its
-original controls on both platforms. The guarded compiler candidate `4cd6bd5f`
-passes all 40 targeted source regressions on Linux and Mac. Its complete Linux
-source run passes all 4,843 nonignored tests (63 ignored), with no output
-differences; cache-fill and warm-cache source runs remain in progress. Its actual release factories pass on both platforms,
-and the expanded Mac corpus reports 23 matching units / 5,357 function records
-(22 passing units and one matching incompatible RLSF compilation). These are
-candidate results, not release acceptance.
+original controls on both platforms. Guarded fork `4cd6bd5f` passes all 40
+focused regressions and 146 AIR tests on Linux and Mac. All three complete
+Linux source-suite arms (pass-through, cache-fill, cache-warm) report 4,906
+Same cases, including 4,843 passing nonignored tests and 63 ignored tests;
+there are no differences, instability, infrastructure failures or failed tests.
 
-The owner approved ADR 0093's two stock debug-set ordering exceptions on
-2026-10-31. The implemented comparator reports 4,867 matching stock source
-cases and four explicit order exceptions. Two stock Cargo scaffolding tests
-failed identically in both arms; they were not counted as passing tests.
-The source builder now generates the release's own Cargo-Verus scaffolding
-manifest for stock variants as well. All 19 targeted Cargo source tests now
-pass on both arms; the corrected full stock suite is running. Original
-failures remain visible.
+Corrected stock source qualification passes 4,867 Same cases: all 4,804
+nonignored tests pass, with 63 ignored and three explicitly recorded
+owner-approved ADR 0093 debug-order exceptions. The source builder generates
+the release's own Cargo-Verus scaffolding data for stock variants. Earlier
+matching-failure and strict-debug-order results remain separate.
+
+Candidate Sail `d18961a1` passes the complete native Linux workspace gate
+(1,295 tests / 54 skipped), 51 solver controls, complete E2E including extra
+and all four fast arms (147 Same / 3,451 function records). All four standard
+arms also pass (159 Same / 13,166 function records), with all 18 mutations
+and both return controls matching. Deep and final expanded-corpus
+qualification remain in progress. All six additional Linux rounds of four
+Hekate proof edits and six TLA edit/failure/fix states pass their strict audit;
+these are functional controls, not isolated performance measurements. Fresh macOS 26.7 qualification passes
+Clippy and 1,284 host tests / 54 skipped, the actual factory, installed-output
+loop, complete managed suite and fast comparison (147 Same / 3,451 function
+records). The broader Mac comparison is
+23 Same / 5,357 function records: 22 passing units and one matching incompatible
+RLSF compilation. These are candidate results, not release acceptance.
+
+Ordinary retained proof reuse passes the Vest fail/fix/return cycle on both
+platforms. Both returned A calls preserve their complete Current reports and
+original establishing provenance with zero verifier, shim or solver starts.
+Linux's installed first run serves vstd and invokes only the requested-target
+verifier. A separate public installed-bundle Mac first-use control also serves
+vstd and starts one verifier; its earlier unbundled functional wrapper does
+not establish bundled cold performance. See the [reuse record](instant-revert.md).
 
 The corrected observer passes its fixed ten-pair Linux experiment: all 440
 samples / 22 strata satisfy the original noise criterion. This qualifies the
-observer on the measured unchanged product capsule, not the new runtime's
-performance. Mac timing remains pending a quiet host. Retained-proof reuse passes the functional Vest fail/fix/return cycle on both
-newly built runtimes: both returns preserve the original complete Current
-report and provenance with no verifier or solver start. Mac's restored Vest
-and vstd function records also match fresh stock output using the existing
-checker on both platforms. Candidate ordinary selection now names those exact
-manifest digests; final ordinary-route checks and release adoption remain
-pending.
-No release or new performance-default acceptance is claimed.
+observer on the measured unchanged capsule, not new-runtime performance.
+The fixed six-round Linux release matrix and expanded native screen are
+running on isolated measurement hosts. Its first IronKV failing-edit block
+exposes an overly strict benchmark order check: complete diagnostic bytes and
+counts match under the already accepted ADR 0042. The corrected benchmark
+adapter uses the authoritative Rust splitter, with body/multiplicity negative
+controls; original ordered-headline failures stay retained.
+
+Mac 27 quiet-host checks remain refused at about two background CPU cores,
+with repeated App Store scheduled activity observed in retained traces.
+Fresh macOS 26.7 functional qualification passes on the same native hardware;
+its fixed baseline, edit, determinism and observer controls precede new timing.
+There are zero accepted new Mac timing rows. Earlier captures remain separate,
+with unchanged measurement and conformance requirements. No release or new
+performance-default acceptance is claimed.
 
 The [review](../design/general-performance.md) defines the unchanged authority
 boundaries. The [evaluation guide](../performance-evaluation.md) defines the
@@ -45,7 +68,7 @@ strict stock source-suite failure retain their original scope and requirements.
 | Linux functional controls | Final `6cfa1606`: ordinary 1,288/54 skipped, solver51, complete E2E plus extra, four fast and standard arms and 18 mutations/reverts pass | Full release and strict stock source-suite requirements remain separate |
 | Algorithmic scaling | 2 generated units / 4,314 functions compare same; 84 complete whole-call samples match stock bytes, with Current/no-verifier warm checks | 8/64-package full-call medians remain flat/slower. The earlier 54× lookup component result does not justify selection |
 | Per-file artifact observations | Approved bounded prototype built/tested on Linux/Mac; 280-row Linux on/off audit passes but every warm median is flat/slower | Unselected on Linux; Mac correctness gates prevent timing/default selection; off everywhere |
-| macOS | Original host gate passes; #633 installed loop and managed controls pass; guarded `4cd6bd5f` factory, 40 source regressions and broader 23-unit comparison pass | Final composed host/output controls, ordinary retained reuse and quiet-host timing remain |
+| macOS | Composed `d18961a1` host, factory, installed-output, complete managed, fast and broader gates pass on macOS 26.7; earlier Mac 27 has 40 passing fork regressions and ordinary retained reuse | Final controls and quiet-host timing remain |
 | Compiler reuse | No persistent frontend reuse implemented or selected | ADR 0052 complete-input/output shadow qualification remains open |
 
 Raw records stay outside git. Add their source/runtime/environment identities,
@@ -120,7 +143,7 @@ Full gate log SHA-256:
 Broader-controller log SHA-256:
 `f18df18880ecc1d1dc953602642d2546411fc1ed661124e801abcc6d643c2430`.
 
-## Mac qualification
+## Original Mac qualification on fork `47fb3be6`
 
 Native mac-m4.metal / us-east-1c, macOS 27 arm64, source `6cfa1606`, Sail
 Rust 1.99.0 and verifier Rust 1.99.1. Strict host Clippy and all 1,277 tests
@@ -451,9 +474,85 @@ it supplies no complete-key or restoration acceptance.
   attempts refused Cargo resolution due to incomplete scratch workspace pin
   adjustment. TLSF reports matching compiler errors. Both remain explicit.
 
+## Completed candidate captures
+
+Composed candidate `d18961a1`, guarded fork `4cd6bd5f`, native c7i.8xlarge /
+us-east-1: the complete image workspace gate, 51 solver controls, complete
+E2E including extra, all four fast arms and all four standard arms pass.
+Fast/standard have 147/159 Same units and 3,451/13,166 function records;
+all report zero different, unstable, infrastructure or skipped results.
+Resource drift remains visible in 25/32 units. All 18 standard mutations,
+ordinary return and forced return match. Complete raw capture
+`d189-linux-core-and-standard.tgz`, SHA-256
+`4ac157c68db31c6bf6d5dd4821efd2ec61da519d65a203a401136e609c38385a`.
+Six additional rounds retain all four Hekate edits and six TLA loop states per
+round, with their expected verdicts, complete sample sets and exact comparison
+counts. All pass; functional jobs share this host, so their timings do not
+qualify costs. Audited capture `d189-linux-broader-edits-audited.tgz`, SHA-256
+`fd336e8b6b0d0d8a24fa887892247ba91bab6c3621e46c1b6e9d3b769c13295d`.
+Deep, expanded-corpus and measured-cost requirements remain separate.
+
+All three complete exact fork arms and the corrected stock source control
+pass. Counts, source/runtime identities, the three explicit stock ordering
+exceptions and complete archive hashes are in the
+[source-suite gate record](deep-tier.md#guarded-candidate-source-suite-gate).
+
+Mac 27 candidate `d18961a1` host/factory/installed/managed/ordinary checks and
+retained diagnostic records are in `mac-d189-complete-evidence.tgz`, SHA-256
+`e1b7399e1a58b3dc6d16a5067cfce0036c464627e17de334574883a353bdadc2`.
+Its busy-host timing refusals remain refusals. Bundled first-use and unbundled
+functional cases are explicitly distinguished in their raw captures.
+
+Fresh macOS 26.7 / native mac-m4.metal / us-east-1c, Sail `d18961a1`, Rust
+1.99.0, verifier Rust 1.99.1, exact fork `4cd6bd5f` and runtime manifest
+`efe2d7e…9253028e`: Clippy and all 1,284 host tests pass (54 skipped), along
+with 13 memory, 19 command, five quiet-guard and eight corpus-harness controls.
+The actual factory, installed-output loop and complete unbundled managed
+suite pass. Fast conformance matches 147 units / 3,451 function records;
+broader conformance matches 23 units / 5,357 records, with 22 passing units
+and the matching incompatible RLSF compilation. Both comparisons have zero
+different, unstable, infrastructure or skipped results; resource drift remains
+visible in 25/13 units. These are functional gates, not timing acceptance.
+Complete capture `mac26-d189-functional-evidence.tgz`, SHA-256
+`954eb2953e011eaf160e7cf5ba86efdd7ee11fa73f67fe884655705a422a11d7`.
+
 ## Composed candidate attempts
 
-- 2026-11-01, `9a24d39e`: Mac host gate fails Clippy because unconditional
+- 2026-11-01, `d18961a1`, macOS 26.7: the initial SSH host gate has child-launch
+  timeouts; an isolated daemon case also fails before its socket appears.
+  The unchanged case passes in 0.3 s from a Terminal configured under
+  Developer Tools; the complete unchanged host gate then passes there.
+  The SSH control remains failed. The first subsequent factory attempt
+  cannot fetch the unpublished fork source; a local mirror of the exact pinned
+  Git objects permits the existing notices and factory checks to pass.
+  Original logs remain in the fresh Mac capture above.
+
+- 2026-11-01, `9a24d39e`: Linux workspace and Mac host gates fail Clippy because unconditional
   scaffolding generation leaves an unused private `fork_tests` argument.
   The argument and its call-site value are removed; no lint or test changes.
   The composed gates and ordinary-route checks require the corrected source.
+
+- 2026-11-01, `d18961a1`: the first private Linux ordinary-reuse audit
+  assumes two cold verifiers and a cold-run vstd origin. The actual bundled
+  run correctly starts one verifier and has a shipped vstd origin. The
+  installed-bundle audit explicitly requires served vstd, its shipped origin,
+  one requested verifier and exact preserved per-target return provenance;
+  all checks pass. Original samples and failed assumption remain retained.
+- 2026-11-01, `d18961a1`: the first IronKV matrix negative edit fails the
+  ordered-headline check although all four complete diagnostics match under
+  ADR 0042. Their original ordering and raw logs are retained in the
+  [minimal output fixture](../../crates/sail-conformance/tests/fixtures/benchmark-mixed-diagnostic-order/README.md).
+  Full-message checking and unchanged ordered-remainder checks pass.
+
+The authoritative splitter adapter additionally rejects non-object JSON and
+non-integer schema versions, retaining a failed benchmark row rather than
+aborting the capture. Native Linux's complete gate passes 1,296 tests / 54
+skipped, including 34 Python matrix controls and the real mixed-diagnostic
+Rust fixture. The same 34 Python controls pass on macOS 26.7; its previously
+qualified Rust helper is unchanged. The native diagnostic checkouts contain
+`d18961a1` plus the exact diagnostic implementation and fixture, separately
+sealed; frozen measurement checkouts and binaries remain `d18961a1`.
+Linux capture `benchmark-diagnostics-r2-gate.tgz`, SHA-256
+`ebfec6dbf1cb9ed719d26b5db1a25eac552fde26058bd401515b23e519be4ce7`;
+Mac control capture `mac26-benchmark-diagnostics-r2.tgz`, SHA-256
+`d36015528c4e51621ef1f8e08bbc883041f67a67991289fee7812a6b87c28ef9`.

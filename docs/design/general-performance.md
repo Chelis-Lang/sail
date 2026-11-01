@@ -111,7 +111,9 @@ qualification remain separate from platform selection. It must preserve fresh
 complete namespace/binding discovery, original full stamps, the original
 two-second rule, Current provenance, changed/unsettled fresh reads and dirty
 cleanup. The bounded implementation is opt-in and off by default everywhere.
-Independent native and platform qualification remain open.
+The complete Linux experiment finds no whole-call gain, leaving the prototype
+unselected and off on both platforms. Mac functional controls do not establish
+a performance benefit; final composed gates remain separate.
 
 ## Qualification
 
@@ -139,7 +141,17 @@ the per-file ledger never supplies revision proposals.
 The expanded Mac corpus exposes a fork/direct-pinned-Z3 verdict difference
 ([VI-0040](../verus-issues/VI-0040-macos-abstract-domain-verdict.md), #634).
 Stock/shim and stock/managed controls pass; fork/bare and direct-Z3 controls
-fail the same proof. Repairing that compiler/query boundary is required before
-Mac performance selection. Separately, installed baseline external-input
-discovery causes an extra recompile (#633). Neither failure is waived by
-component timings or the passing Linux gates.
+fail the same proof. The bounded repair in [ADR 0094](../decisions/0094-isolated-spec-termination-checks.md)
+uses one lazy companion solver per bucket for specification termination. Each
+context batch loads at most once in each of the two streams, bounding context
+loading without replaying a growing prefix for every termination query. Both
+streams execute their original queries and retain complete accounting; this
+separates a demonstrated solver-history interaction, not source-level proof
+semantics. Original-package, regression and source-suite controls pass, while
+whole-call costs and final runtime selection remain open.
+
+Separately, the installed external-input repair (#633) retains only unaffected
+non-authorizing script observations while keeping the discovering proof
+Historical. Both-platform original controls pass. Neither repair is accepted
+for release on component evidence alone; the [qualification record](../validation/general-performance.md)
+retains the remaining corpus and measured-cost gates.

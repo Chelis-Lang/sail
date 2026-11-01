@@ -91,20 +91,20 @@ Current v0.2.0 implementation gates:
 
 | Slice | State | Remaining gate |
 |---|---|---|
-| General algorithm and corpus evaluation | [Broader tooling and ADR 0092 prototype implemented; both runtime experiments unselected on Linux after complete whole-call controls](design/general-performance.md) | [#633 repair passes installed loops on both platforms; guarded #634 compiler passes 40 source regressions on both and broader Mac; full qualification and selection pending](validation/general-performance.md) |
+| General algorithm and corpus evaluation | [Broader tooling and ADR 0092 prototype implemented; both runtime experiments unselected on Linux after complete whole-call controls](design/general-performance.md) | [#633 repair passes installed loops on both platforms; guarded #634 compiler passes full Linux source arms, both-platform regressions and broader Mac; stock source gate also passes; costs and final qualification pending](validation/general-performance.md) |
 | Memory harness, native source sync, cache selection/aliases, metadata memo | Merged (#613–#615); Linux/Mac functional controls and complete eight-project/platform matrix recorded | Fixed ten-pair Linux observer gate passes all 440 samples / 22 strata; Mac observer and final product measurements remain (#562) |
 | Stable sidecars and within-call target projections (#560) | Implemented; native/Mac gates and combined matrix recorded | Full-path and tiny-edit parity remain open |
 | Final source-vector observation (#558) | Implemented; Anvil recording calls save 65 ms Linux / 44 ms Mac | Four-project first-unchanged parity remains open |
 | Invocation slots and guarded Cargo outputs (#576) | Implemented; Linux/Mac root/subdirectory controls pass; native output E2E and Mac host guards pass | Complete release qualification |
-| Unqualified native Cargo (#561) | Implemented; Linux/Mac median within stock +0.1 s, no proof reuse; real Cargo 1.92 repeated human-output controls pass | Full fast/standard and all 21 mutation/control comparisons pass; strict stock-RVT and release gates remain |
+| Unqualified native Cargo (#561) | Implemented; Linux/Mac median within stock +0.1 s, no proof reuse; real Cargo 1.92 repeated human-output controls pass | Full fast/standard and all 21 mutation/control comparisons pass; corrected complete stock-RVT passes; composed release gates remain |
 | Exact extra vstd profiles (#563) | ADR 0090 implemented; Linux/Mac factories and first-Serve pass; six-round Vest cold medians improve on both platforms | CapybaraKV native provenance and Anvil focused scope remain open; full release gates |
 | Settled source / owned-target digests (#560) | ADR 0091 Linux target default selected after ten controlled pairs save 430 ms; native/Mac functional gates pass | Source and Mac target stay off by default; stock parity, sampler-overhead and release qualification remain open |
 
 These results do not establish v0.2.0 acceptance. Six-round measurements are
 complete, with the original failures retained. The strict stock source-suite
 control originally fails (#627); all three original fork arms pass. The
-owner-approved ADR 0093 exceptions are implemented and under native
-qualification ([scope](validation/deep-tier.md#v020-performance-candidate)). Remaining parity,
+owner-approved ADR 0093 implementation passes the corrected full stock suite,
+including every nonignored test ([scope](validation/general-performance.md)). Remaining parity,
 overhead and correctness gates retain their original requirements.
 
 | Row | Measured, Sail against stock | Spike finding | Issue |

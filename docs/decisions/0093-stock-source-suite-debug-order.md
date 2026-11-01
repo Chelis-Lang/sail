@@ -1,6 +1,6 @@
 # 0093: Named order exceptions in stock source-suite debug snapshots
 
-- **Status:** owner-approved 2026-10-31; implementation under native qualification
+- **Status:** owner-approved 2026-10-31; implemented and qualified against the pinned stock source suite
 - **Date:** 2026-10-31
 
 ## Context

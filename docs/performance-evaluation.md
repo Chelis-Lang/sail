@@ -193,3 +193,21 @@ see the [qualification record](validation/general-performance.md).
 Generated programs and component timings establish a bounded diagnostic
 scope, not real-project speedups. Keep raw logs outside git and cite their
 hashes in the qualification record.
+
+## Diagnostic order in benchmark identity
+
+Benchmark comparisons use ADR 0042's existing complete-message rule. Build
+its Rust adapter before using the release matrix:
+
+```sh
+cargo build --release -p sail-conformance --example check_diagnostics
+```
+
+The default adapter is `target/release/examples/check_diagnostics`;
+`perf-matrix.py run --diagnostics-helper PATH` selects another built copy.
+Complete spanned diagnostic bytes and counts are compared as a multiset;
+normalized summaries and remaining output stay ordered. Missing, duplicated
+or changed message bodies still fail. Adapter refusal keeps the sample and
+marks it failed. Legacy captures retain their original strict comparison
+unless their retained raw logs are separately reprocessed with this adapter;
+no message data is inferred from headlines alone.

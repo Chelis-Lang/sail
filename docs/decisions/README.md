@@ -100,6 +100,6 @@ Use [the template](0000-template.md) for a new decision.
 - [0090: Additional exact shipped-vstd profiles](0090-additional-exact-vstd-profiles.md) (accepted; implemented, factories qualified, release qualification open)
 - [0091: Settled source and owned-target digest observations](0091-settled-source-and-target-digests.md) (accepted; implementation qualified, Linux target default selected, release qualification open)
 
-- [0092: Per-file owned-target digest observations](0092-per-file-owned-target-digests.md) (owner-approved bounded prototype; implementation/qualification in progress)
-- [0093: Named order exceptions in stock source-suite debug snapshots](0093-stock-source-suite-debug-order.md) (proposed; owner approval required)
+- [0092: Per-file owned-target digest observations](0092-per-file-owned-target-digests.md) (owner-approved bounded prototype; implemented, off by default and unselected)
+- [0093: Named order exceptions in stock source-suite debug snapshots](0093-stock-source-suite-debug-order.md) (owner-approved; implemented and qualified against the pinned stock suite)
 - [0094: Isolated specification termination checks](0094-isolated-spec-termination-checks.md) (proposed; bounded compiler candidate)
