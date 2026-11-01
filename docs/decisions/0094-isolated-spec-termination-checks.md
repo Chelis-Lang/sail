@@ -60,6 +60,17 @@ may be staged for these gates, explicitly unqualified and unpublished. Adopt
 the runtime only after qualification; replay or a candidate build does not
 establish release acceptance.
 
+## Qualification correction
+
+The `0ad405eb` candidate also inherits the ordinary context's expected solver
+version when the existing check is enabled. A recursive-spec-only negative
+control exposed its omission in `4cd6bd5f`. The solver version request was
+already unconditional, so this restores response validation without adding
+commands or changing the actual query stream. The existing explicit opt-out
+remains. All 41 focused regressions pass on both platforms; full source,
+ordinary-mode and final cost qualification remain separately recorded in the
+[gate record](../validation/general-performance.md).
+
 ## Consequences
 
 The strategy removes a demonstrated cross-stage solver-history dependency

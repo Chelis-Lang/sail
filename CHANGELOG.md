@@ -23,6 +23,10 @@ semantic versioning once the API is published.
   bindings must remain exact; the discovering proof stays Historical and
   publishes no proof receipt.
 
+- Preserve the original solver-version check in the specification-termination
+  companion, including programs with no ordinary proof query. The existing
+  version request, explicit opt-out, solver commands and limits are unchanged.
+
 - Stage a bounded compiler candidate that isolates specification termination
   checks from ordinary proof history, repairing the demonstrated Mac
   abstract-domain disagreement (#634). Runtime selection remains subject to

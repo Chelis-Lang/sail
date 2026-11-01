@@ -1,6 +1,42 @@
 # General performance qualification
 
-**Current status:** broader tooling and the owner-approved ADR 0092 bounded
+**Corrected runtime candidate (`0ad405eb`):** both native runtimes are built
+and locally packed. All 41 focused regressions pass on Linux and macOS;
+Mac's broader comparison matches all 23 units / 5,357 function records,
+including the original abstract-domain proof. Two complete Linux fork source
+arms pass 4,907 Same / 4,844 nonignored passing tests / 63 ignored; the warm
+arm is still running. This stages the corrected artifact identities, not
+ordinary-mode or release acceptance.
+
+Review found that `4cd6bd5f`'s companion omitted the original solver-version
+check. A recursive-spec-only negative control forwards the actual pinned Z3
+but changes its version response: the old runtime rejects it, while `4cd6bd5f`
+reports an error yet exits zero. The correction copies the original expected
+version to the companion. The version request was already unconditional;
+no SMT command, query or limit is added or rewritten. A new regression checks
+both rejection and the existing explicit opt-out.
+
+Both platforms' bounded research-route Vest cycles pass all 16 stock/Sail
+calls, including failure/fix and both returned A reports. Both targets remain
+complete and Current, keep their original establishing runs and exact report
+payloads, and start no verifier, shim or solver on either return. Fresh stock
+comparisons agree on all 3,127 Vest and 1,871 vstd functions for both returns.
+Ordinary-route qualification is the next gate for these exact manifest pins.
+Raw captures: Linux `retained-0ad-linux-evidence.tgz`, SHA-256
+`9f7c2bf871f26d0098bf1fd5af0bd8f25c02220c576121c480569b92e39a9248`;
+Mac `retained-0ad-mac-evidence.tgz`, SHA-256
+`d1055339b6518ffa0800b960f36ff1f5348609d17525e652cc19e2bbe82e55e4`.
+
+The earlier `d18961a1` / `4cd6bd5f` results below retain their actual identities.
+Its complete six-round Linux matrix has 432 rows and passes complete-message
+reprocessing under ADR 0042, preserving all six original IronKV ordered-headline
+failures. Raw capture SHA-256
+`96f673a82cab54dea84bf040eb2ec4d17457465521179ed7ab7018deac221fbd`.
+Cold medians are faster on all four projects; every first-unchanged and
+replay-disabled median remains slower. These timings do not establish parity
+or qualify the corrected runtime's final artifact.
+
+**Earlier composed status (`d18961a1` / `4cd6bd5f`):** broader tooling and the owner-approved ADR 0092 bounded
 prototype are implemented. Both optimization experiments remain unselected;
 platform defaults are unchanged. The installed-output repair (#633) passes its
 original controls on both platforms. Guarded fork `4cd6bd5f` passes all 40
@@ -556,3 +592,8 @@ Linux capture `benchmark-diagnostics-r2-gate.tgz`, SHA-256
 `ebfec6dbf1cb9ed719d26b5db1a25eac552fde26058bd401515b23e519be4ce7`;
 Mac control capture `mac26-benchmark-diagnostics-r2.tgz`, SHA-256
 `d36015528c4e51621ef1f8e08bbc883041f67a67991289fee7812a6b87c28ef9`.
+- 2026-11-01, fork `f2e551f`: the new version-control regression's negative
+  half passes, but its positive half uses an invalid bare opt-out option.
+  The fixture now uses the existing `-V no-solver-version-check`; all five
+  termination controls and both platforms' 41 focused regressions pass at
+  `0ad405eb`. The original failed test results remain retained.

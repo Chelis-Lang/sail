@@ -58,7 +58,10 @@ relations remain open; source/hash binding does not establish them.
   checks. The bounded companion-context candidate passes the original package
   on both platforms and the broader Mac corpus; full Linux pass-through/fill/warm source suites and both platform
   functional controls pass. Final corpus/cost qualification and runtime
-  adoption remain pending. See ADR 0094.
+  adoption remain pending. The corrected `0ad405eb` candidate also restores
+  the companion's omitted solver-version check: all 41 focused regressions
+  pass on both platforms, with ordinary-route and final artifact qualification
+  still open. See ADR 0094.
 
 - **An installed Mac workspace can recompile after discovering an external
   input** ([#633](https://github.com/Chelis-Lang/sail/issues/633),
