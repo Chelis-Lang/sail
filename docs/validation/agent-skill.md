@@ -1,6 +1,7 @@
 # Agent skill validation
 
-Status: local package and task checks pass; required PR CI remains the merge gate.
+Status: local package/task checks and all six required PR checks passed;
+canonical package merged in PR #640 at `ec052397`.
 Date: 1 November 2026.
 
 ## Scope
@@ -13,7 +14,8 @@ standard/deep corpus runs and new performance measurements are not required.
 ## Package and cold readings
 
 The package validates with the skill frontmatter validator and is discovered
-and copied by `skills` CLI 1.7.4 into a clean temporary project. Its references
+and copied by `skills` CLI 1.7.4 into clean local and public-GitHub temporary
+projects. Every remotely installed package file matched source. Its references
 and MIT license travel inside the package. Package snapshot SHA-256:
 `6058172373ce53cebe4bf9acc4e75c8fb90c94b5cb466cf0016b356e51b5e5a8`.
 
@@ -26,6 +28,10 @@ skill version 1.0.0 as the Sail binary version were rejected. Skill and runtime
 versions are separate. One truncated technical call was excluded; its completed
 replacement supplies the technical reading. Raw requests, responses and
 accepted/rejected dispositions stay outside the repository.
+
+A separate metadata-only activation probe selected four relevant Verus/SMT
+tasks and declined four unrelated tasks. This checks a few activation decisions,
+not triggering behavior across clients.
 
 ## Bounded task comparison
 
@@ -55,7 +61,10 @@ included the package-relative-link regression test, fmt, strict Clippy, 1,303
 nextest tests, doctests, rustdoc, layering, dependency policy and generated
 benchmark-page freshness. The documented commands and model-generated artifacts
 were exercised separately as described above. No new network/model/browser
-integration tests enter CI.
+integration tests enter CI. All six required checks passed on PR #640, including
+solver tests, ten end-to-end phases and fast conformance. Distribution-status
+updates reuse this identical-code native gate evidence; no runtime or checker
+source changed in the status update.
 
 ## Failed or incomplete attempts
 
