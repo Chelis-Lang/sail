@@ -115,7 +115,14 @@ def main():
                 assert time.monotonic() < deadline, value
                 time.sleep(0.1)
             assert value["repair"]["accepted"] and value["repair"]["batch"]["batched"], value
-            assert value["repair"]["batch"]["full"]["currentness"] == "current", value
+            # Durable jobs retain the full graph once, in `result`; the
+            # standalone CLI document instead carries it in `batch.full`.
+            full = value["result"]
+            assert full["currentness"] == "current" and full["exit_code"] == 0, value
+            assert full["targets"] and all(target["complete"] for target in full["targets"]
+                                           if target["requested"]), value
+            assert all(item["verdict"] == "verified" for target in full["targets"]
+                       for crate in target["report"]["crates"] for item in crate["functions"]), value
         finally:
             mcp.stdin.close()
             try:
