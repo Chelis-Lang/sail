@@ -61,6 +61,19 @@ keep their proofs, and queries the solver has already answered come from the
 cache. When nothing at all has changed, Sail replays the previous result
 without running Cargo.
 
+## Existing Verus files (next release)
+
+Start from a tutorial file or proof experiment without creating a Cargo project:
+
+```sh
+sail verify proof.rs
+sail watch proof.rs
+```
+
+The same file works through MCP with `source_file: "proof.rs"`. Complete
+successful proofs can be reused on unchanged calls and undo. This feature is
+qualified on native Linux and macOS for the next release; see the [standalone workflow](docs/standalone-verification.md).
+
 ## Everyday commands
 
 ```sh
@@ -104,7 +117,8 @@ A repair is accepted only when the whole target verifies. See the
 - Sail runs only its own Verus, built from
   [Sail's Verus fork](https://github.com/Chelis-Lang/verus) at the release it
   pins. Projects that need another Verus release aren't supported yet.
-- Only Cargo projects are supported. `verus file.rs` is not.
+- Published 0.1.0 supports Cargo projects. Standalone file support is qualified
+  on main for the next release.
 - The first unchanged call after a verification, and unchanged calls that
   can't replay, are slower than plain Verus: about 0.3–0.6 s more on mid-sized
   projects, and up to 2 s more on large ones.
@@ -149,3 +163,4 @@ The `fetch` step downloads Sail's pinned Verus runtime from the
 
 Sail is MIT licensed; see [LICENSE](LICENSE). Issues are welcome. Outside pull
 requests aren't accepted at the moment; see [CONTRIBUTING.md](CONTRIBUTING.md).
+

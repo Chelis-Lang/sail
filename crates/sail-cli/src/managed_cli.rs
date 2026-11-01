@@ -279,14 +279,25 @@ pub(crate) fn verify(
     let mut config = config;
     config.args = args;
     let interactive = mode == sail_api::jobs::Mode::Interactive;
-    if !worker && !options.json && sail_verus::managed::partial(&config.args) {
+    let standalone = sail_verus::managed::standalone::source(&config.args).is_some();
+    if standalone && interactive {
+        return failure(
+            "error[SAIL3150]: standalone verification does not support the interactive engine",
+            out,
+            err,
+            options.json,
+        );
+    }
+    if !standalone && !worker && !options.json && sail_verus::managed::partial(&config.args) {
         // Plain `cargo verus verify` refuses partial verification and asks for
         // `cargo verus focus`; so does `sail verify` without `--output json`.
         // JSON and job callers (MCP's scoped `verify`) keep their focused,
         // partial report, which says so in its notes.
         return crate::verify::plain_verify(&config.args, err);
     }
-    let result = if interactive && options.json {
+    let result = if standalone {
+        sail_verus::managed::standalone::run(&config, out, err, !options.json)
+    } else if interactive && options.json {
         sail_verus::engine::verify(&config, err)
     } else if interactive {
         sail_verus::engine::verify_showing_output(&config, out, err)

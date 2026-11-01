@@ -36,9 +36,16 @@ impl FreshnessIndex {
         cache: &Path,
         workspace: &Path,
         context: &str,
-        _environment: &BTreeMap<String, String>,
+        environment: &BTreeMap<String, String>,
     ) -> Result<InputSnapshot> {
         // The environment is bound by the context identity itself.
+        if cache
+            .join("standalone/contexts")
+            .join(format!("{context}.json"))
+            .is_file()
+        {
+            return super::standalone::refresh(cache, workspace, context, environment);
+        }
         super::read_check::check(cache, workspace, context)
     }
 }

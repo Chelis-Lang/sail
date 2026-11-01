@@ -435,6 +435,10 @@ RS
       # `sail verify` against plain `cargo verus verify` across the edit loop
       # (ADR 0046), then unchanged-call replay and its misses (ADR 0082).
       (cd "$sail_checkout" && SAIL_E2E_OUTPUT_OUT="$sail_output_evidence" bash ci/test-output.sh "$sail" loop noop)
+      mkdir -p "$sail_output_evidence"
+      standalone_out="${SAIL_STANDALONE_OUT:-$(mktemp -d "$sail_output_evidence/standalone.XXXXXX")/evidence}"
+      python3 "$sail_checkout/ci/test-standalone.py" --sail "$sail" \
+        --stock "$(command -v verus)" --runtime "$SAIL_ENGINE_BUILD" --out "$standalone_out"
     fi
     if [ "$phase" = full ] || [ "$phase" = loader ]; then
       # A loader variable: verified without proof reuse, with one note.

@@ -173,8 +173,12 @@ Current numbers are in [performance](performance.md).
   needs another Verus release cannot use Sail yet. `SAIL_CARGO_VERUS` runs
   another `cargo-verus` only as a labelled development override
   (`warning[SAIL0108]`).
-- **No single-file projects.** `verus file.rs` projects are not supported
-  ([#164](https://github.com/Chelis-Lang/sail/issues/164)).
+- **Published 0.1.0 supports Cargo projects.** Standalone verification through
+  CLI, watch and MCP is implemented and qualified on native Linux and macOS
+  for the next release. Standalone watch requires source and discovered
+  inputs beneath its working directory; CLI/MCP support external inputs.
+  See [standalone verification](standalone-verification.md) and
+  [#164](https://github.com/Chelis-Lang/sail/issues/164).
 - **Instant revert applies to qualified dependency profiles only.** Retention
   keeps up to 16 revisions per target (1 GiB), with the first verified
   revision pinned. It is skipped for unqualified profiles and for targets too

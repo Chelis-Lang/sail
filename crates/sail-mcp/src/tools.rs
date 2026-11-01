@@ -200,6 +200,7 @@ fn run_schema() -> Value {
         "additionalProperties": false,
         "properties": {
             "project_dir": string_schema("The Cargo project to verify (absolute, or relative to the server's working directory). Default: the server's working directory."),
+            "source_file": string_schema("Standalone .rs file, absolute or relative to project_dir. Uses Sail directly without a Cargo project."),
             "engine": {"type":"string","enum":["stock","interactive"],"description":"Optional pinned source engine, unavailable until installed explicitly."},
             "package": string_schema("Verify only this workspace package (`-p`)."),
             "module": string_schema("Verify only this module and its descendants, relative to the crate root (Verus `--verify-module`, e.g. `arith` or `foo::bar`)."),
@@ -231,7 +232,7 @@ pub fn definitions() -> Value {
         {
             "name": "verify",
             "title": "Verify with sail",
-            "description": "Verify a Verus crate (or one module or function) with `sail verify --output json`, which gives the same verdicts as `cargo verus verify` but serves unchanged solver work from sail's cache. Returns a failures-first summary and, for the requested targets, counts, each failed function's failing obligations with locations and source-level counterexample variables, and error diagnostics; dependency targets such as vstd are only counted. `detail: \"targets\"` adds the requested targets' complete schema-v1 reports (docs/output-schema.md); `detail: \"full\"` returns everything, including dependencies and raw models. `provisional` and `unknown` are never `verified`. Default verification uses a persistent workspace job: like `sail verify`, it reuses a Current report for unchanged inputs and says which run established it. Results are recorded for `cached_result` and `counterexample`; those tools remain responsive during verification.",
+            "description": "Verify a Cargo project or a standalone Verus file (`source_file`), optionally one module or function, with `sail verify --output json`, which preserves the pinned verifier’s verdicts while serving unchanged solver work from sail's cache. Returns a failures-first summary and, for the requested targets, counts, each failed function's failing obligations with locations and source-level counterexample variables, and error diagnostics; dependency targets such as vstd are only counted. `detail: \"targets\"` adds the requested targets' complete schema-v1 reports (docs/output-schema.md); `detail: \"full\"` returns everything, including dependencies and raw models. `provisional` and `unknown` are never `verified`. Default verification uses a persistent workspace job: like `sail verify`, it reuses a Current report for unchanged inputs and says which run established it. Results are recorded for `cached_result` and `counterexample`; those tools remain responsive during verification.",
             "inputSchema": run_schema(),
             "annotations": {"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false}
         },

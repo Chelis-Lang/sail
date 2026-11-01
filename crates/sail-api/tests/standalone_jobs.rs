@@ -1,0 +1,45 @@
+#![forbid(unsafe_code)]
+//! Old endpoints must reject standalone submissions before any worker starts.
+
+#[cfg(unix)]
+#[test]
+fn standalone_submission_requires_explicit_capability() -> std::io::Result<()> {
+    use sail_api::jobs::{Client, Mode, Request, Response, Submission};
+    use std::os::unix::net::UnixListener;
+    let socket =
+        std::env::temp_dir().join(format!("sail-standalone-cap-{}.sock", std::process::id()));
+    let listener = UnixListener::bind(&socket)?;
+    let worker = std::thread::spawn(move || -> std::io::Result<()> {
+        let (mut stream, _) = listener.accept()?;
+        assert!(matches!(
+            sail_api::jobs::read_frame::<Request>(&mut stream)?,
+            Request::Capabilities
+        ));
+        let old: Response = serde_json::from_str(
+            r#"{"response":"capabilities","value":{"proof_version":1,"repair":true}}"#,
+        )?;
+        sail_api::jobs::write_frame(&mut stream, &old)?;
+        listener.set_nonblocking(true)?;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        assert!(
+            matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
+        );
+        Ok(())
+    });
+    let result = Client::new(&socket).call(&Request::Submit {
+        submission: Submission {
+            mode: Mode::Standalone,
+            project_dir: std::env::temp_dir(),
+            args: vec!["proof.rs".into()],
+            force: false,
+            environment: std::collections::BTreeMap::new(),
+            input_revision: None,
+        },
+    });
+    assert!(result.is_err_and(|error| error.to_string().contains("does not support standalone")));
+    worker
+        .join()
+        .map_err(|_| std::io::Error::other("capability fixture failed"))??;
+    std::fs::remove_file(socket)?;
+    Ok(())
+}

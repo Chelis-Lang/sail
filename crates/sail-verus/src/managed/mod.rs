@@ -34,6 +34,7 @@ pub(crate) mod retained;
 mod runner;
 pub(crate) mod shipped;
 mod source_inputs;
+pub mod standalone;
 mod store;
 mod target_digest_memo;
 mod tool_digests;

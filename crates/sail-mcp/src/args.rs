@@ -67,6 +67,8 @@ fn str_list(args: &Map<String, Value>, key: &str) -> Result<Vec<String>, String>
 pub struct RunArgs {
     /// The project directory (default: the server's working directory).
     pub project_dir: Option<String>,
+    /// Standalone Rust file, relative to `project_dir`.
+    pub source_file: Option<String>,
     /// `-p <package>`.
     pub package: Option<String>,
     /// Explicit optional source engine; stock remains the default.
@@ -90,6 +92,7 @@ impl RunArgs {
     /// The keys `verify` accepts.
     pub const KEYS: &[&str] = &[
         "project_dir",
+        "source_file",
         "package",
         "engine",
         "module",
@@ -109,6 +112,7 @@ impl RunArgs {
         check_keys(args, Self::KEYS)?;
         let parsed = Self {
             project_dir: opt_str(args, "project_dir")?,
+            source_file: opt_value(args, "source_file")?,
             package: opt_value(args, "package")?,
             engine: opt_value(args, "engine")?,
             module: opt_value(args, "module")?,
@@ -160,6 +164,22 @@ impl RunArgs {
                     .to_owned(),
             );
         }
+        if let Some(source) = &parsed.source_file {
+            if std::path::Path::new(source)
+                .extension()
+                .is_none_or(|e| e != "rs")
+            {
+                return Err("`source_file` must name a .rs file".into());
+            }
+            if parsed.package.is_some()
+                || !parsed.cargo_args.is_empty()
+                || parsed.engine.as_deref() == Some("interactive")
+                || parsed.measure_fragility
+                || parsed.portfolio.is_some()
+            {
+                return Err("standalone files do not accept Cargo selectors, interactive repair or solver experiments".into());
+            }
+        }
         Ok(parsed)
     }
 
@@ -176,6 +196,9 @@ impl RunArgs {
         }
         if let Some(engine) = &self.engine {
             out.extend(["--engine".into(), engine.clone()]);
+        }
+        if let Some(source) = &self.source_file {
+            out.push(source.clone());
         }
         out.extend(self.cargo_args.iter().cloned());
         if let Some(p) = &self.package {

@@ -55,6 +55,26 @@ pub fn watch(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitC
 fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), String> {
     let root = std::env::current_dir().map_err(|error| error.to_string())?;
     let (jsonl, args) = arguments(args)?;
+    if let Some(file) = sail_verus::managed::standalone::source(&args) {
+        standalone_watch_roots(&root, &[root.join(file)])?;
+    }
+    if sail_verus::managed::standalone::source(&args).is_some()
+        && args.iter().skip(1).any(|arg| {
+            [
+                "--compile",
+                "--out-dir",
+                "--emit",
+                "--export",
+                "--log",
+                "-o",
+            ]
+            .iter()
+            .any(|prefix| arg.starts_with(prefix))
+        })
+    {
+        return Err("standalone watch is verify-only; use sail verify for compilation and explicit output files".into());
+    }
+
     let stop = Arc::new(AtomicBool::new(false));
     let stopping = Arc::clone(&stop);
     ctrlc::set_handler(move || stopping.store(true, Ordering::SeqCst))
@@ -114,6 +134,9 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
         }
         live.poll(out, err)?;
         if let Some(observed) = live.observed_inputs.take() {
+            if sail_verus::managed::standalone::source(&args).is_some() {
+                standalone_watch_roots(&root, &observed)?;
+            }
             extra = observed;
             refresh_roots(
                 &mut monitoring,
@@ -169,6 +192,27 @@ fn refresh_roots(
 }
 
 fn refresh_inputs(inputs: &mut Inputs, project: &Path, args: &[String], extra: &[PathBuf]) {
+    if sail_verus::managed::standalone::source(args).is_some() {
+        let snapshot = crate::jobs::revision(project, args);
+        inputs.roots = snapshot
+            .as_ref()
+            .map_or_else(|| vec![project.to_owned()], |s| s.roots.clone());
+        inputs.excluded = snapshot.map_or_else(
+            || {
+                let mut excluded = vec![project.join(".git")];
+                if let Ok(cache) = sail_verus::cache_dir() {
+                    excluded.push(std::fs::canonicalize(&cache).unwrap_or(cache));
+                }
+                excluded
+            },
+            |s| s.excluded,
+        );
+        inputs.roots.extend_from_slice(extra);
+        path_aliases(&mut inputs.roots);
+        path_aliases(&mut inputs.excluded);
+        return;
+    }
+
     let snapshot = crate::jobs::revision(project, args);
     let mut next = snapshot.map_or_else(
         || vec![project.to_path_buf()],
@@ -223,6 +267,15 @@ fn path_aliases(paths: &mut Vec<PathBuf>) {
     paths.extend(aliases);
     paths.sort();
     paths.dedup();
+}
+
+fn standalone_watch_roots(project: &Path, roots: &[PathBuf]) -> Result<(), String> {
+    let mut resolved = roots.to_vec();
+    path_aliases(&mut resolved);
+    if resolved.iter().any(|path| !path.starts_with(project)) {
+        return Err("SAIL3150: standalone watch requires its source and discovered inputs within the working directory; run from their common source directory or use sail verify".into());
+    }
+    Ok(())
 }
 
 fn desired_subscriptions(roots: &[PathBuf]) -> BTreeMap<PathBuf, bool> {

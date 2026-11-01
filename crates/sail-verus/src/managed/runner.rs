@@ -116,7 +116,7 @@ fn selected(args: &[String], names: &BTreeSet<String>) -> Vec<String> {
     clippy::too_many_lines,
     reason = "The context explicitly enumerates all executable and environment bindings."
 )]
-fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<Context> {
+pub(super) fn context(config: &Config, engine: Option<&crate::engine::Request>) -> Result<Context> {
     let mut identity = Vec::new();
     let mut hashed = super::files::FileDigests::default();
     if let Some(engine) = engine {
@@ -462,11 +462,11 @@ fn sysroot_files(sysroots: &BTreeSet<PathBuf>) -> Result<Vec<PathBuf>> {
     Ok(files.into_iter().collect())
 }
 
-struct Context {
+pub(super) struct Context {
     /// The verifier toolchain's `rust-src` copy of the standard library, when
     /// installed ([`shipped_rust_src`]).
     rust_src: Option<PathBuf>,
-    hash: String,
+    pub(super) hash: String,
     compiler_hash: String,
     /// The dependency store's view of the compiler family
     /// ([`store_family_hash`]), or `None` when the native tools have no
@@ -3280,6 +3280,18 @@ pub fn refresh_result(
     result: &ProjectResult,
     environment: &BTreeMap<String, String>,
 ) -> Result<super::input::InputSnapshot> {
+    if result
+        .targets
+        .iter()
+        .any(|target| target.kind.iter().any(|kind| kind == "standalone"))
+    {
+        return super::standalone::refresh(
+            cache,
+            Path::new(&result.workspace),
+            &result.context_sha256,
+            environment,
+        );
+    }
     refresh_context(
         cache,
         Path::new(&result.workspace),
