@@ -52,13 +52,27 @@ An MCP client calls `verify` or `start_verification` with:
 ```
 
 Existing `module`, `function` and `verus_args` selectors apply. Partial
-checks stay partial and run freshly. File requests reject Cargo selectors,
-interactive repair and solver experiments. Standalone verification currently
+checks stay partial and run freshly. File verification requests reject Cargo
+selectors and solver experiments. Standalone verification currently
 uses pinned Z3; an explicit cvc5 request is refused rather than attributed
 to the wrong solver. Compilation, custom extern/search
 paths, explicit output side effects and unsupported reuse configurations
 run fresh Verus with the solver cache. Such a successful execution is not
 promoted to reusable evidence unless its complete inputs are established.
+
+Standalone repair is implemented with native qualification in progress:
+
+```sh
+sail repair-check proof.rs --function proof::lemma --engine interactive --output json
+```
+
+MCP's `start_repair_validation` accepts `source_file`, `function` and
+`engine: "interactive"` instead of Cargo package/kind/target selectors. It
+returns a durable job. The selected function's focused result remains
+provisional; acceptance requires independent successful Current verification
+of the complete file and the engine's normal late compiler seal. A failed
+full phase, missing selector, engine fault or stale source never accepts a
+repair. No Cargo project is generated. See [repair](proof-repair.md).
 
 `SAIL3150` identifies standalone setup/protocol errors. A `SAIL3151` JSON
 note means input coverage could not establish a reusable Current proof;

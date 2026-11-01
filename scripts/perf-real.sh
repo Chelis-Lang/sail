@@ -98,6 +98,8 @@
 #                      (for sampler overhead controls only)
 #   SAIL_PERF_DIAG    1 retains per-arm explanations, setup events, replay
 #                      traces and run result notes; never use for timed acceptance
+#   SAIL_PERF_BACKGROUND_PREPARE  0 or 1 explicitly controls daemon preparation
+#                      for all measured arms; unset retains product defaults
 #   SAIL_PERF_VSTD_LOCK  the shipped build's Cargo.lock for `registry`
 #                      (default: the one in the release beside `sail`)
 # Needs sail, sail-z3, sail-conformance, cargo verus, python3, perl, git, jq.
@@ -130,6 +132,10 @@ rust_toolchain=$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' "$sail_root/corpus/t
 vstd_mode="${SAIL_PERF_VSTD:-source}"
 case "${SAIL_PERF_VERUS_TIMES:-1}" in 1) time_args=(--time-expanded) ;; 0) time_args=() ;; *) echo "SAIL_PERF_VERUS_TIMES must be 0 or 1" >&2; exit 2 ;; esac
 case "$vstd_mode" in source | registry) ;; *) echo "SAIL_PERF_VSTD must be source or registry" >&2; exit 2 ;; esac
+case "${SAIL_PERF_BACKGROUND_PREPARE-unset}" in
+  unset | 0 | 1) ;;
+  *) echo "SAIL_PERF_BACKGROUND_PREPARE must be 0 or 1" >&2; exit 2 ;;
+esac
 
 # Project definitions: corpus entry, source directory, package directory,
 # cargo and Verus arguments, the file noop comments go to, and the edits.
@@ -583,6 +589,9 @@ measured() { # Actual executable and arguments, with the mode's environment.
 }
 
 diagnostic_environment() { # MODE DIRECTORY: called only inside the measured subshell.
+  if [ "${SAIL_PERF_BACKGROUND_PREPARE+x}" = x ]; then
+    export SAIL_BACKGROUND_PREPARE="$SAIL_PERF_BACKGROUND_PREPARE"
+  fi
   case "$1" in sail | fork-sail | incremental)
     if [ "${SAIL_PERF_DIAG:-0}" = 1 ]; then
       export SAIL_EXPLAIN=1 SAIL_JOB_EVENTS="$2/events.jsonl" SAIL_MANAGED_NOOP_TRACE="$2/noop.trace" \
@@ -852,6 +861,7 @@ header() {
   echo "sail: $(sail --version 2>/dev/null | head -1) at $(command -v sail)"
   echo "verus: $(verus --version 2>&1 | sed -n 's/^ *Version: //p')"
   echo "vstd: $vstd_mode${vstd_lock:+ (shipped lock $vstd_lock)}"
+  echo "background preparation: ${SAIL_PERF_BACKGROUND_PREPARE-product default}"
   echo 'wall clock: command spawn through child exit; sampler setup and teardown excluded'
   [ ! -s "$out/vstd-adjustments.txt" ] || sed 's/^/  adjusted: /' "$out/vstd-adjustments.txt"
   [ ! -s "$out/vstd-setup.txt" ] || sed 's/^/  /' "$out/vstd-setup.txt"

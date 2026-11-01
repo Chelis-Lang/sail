@@ -124,15 +124,21 @@ fn check_tools(value: &Value) -> Result<(), String> {
             json!(["job_id", "package_id", "target", "kind", "function"]),
         ),
         ("save_baseline", json!(["job_id", "name"])),
-        (
-            "start_repair_validation",
-            json!(["package", "kind", "function", "engine"]),
-        ),
+        ("start_repair_validation", json!(["function", "engine"])),
     ];
     for (name, fields) in required {
         if schema(name)?["required"] != fields {
             return Err(format!("{name} must require {fields}"));
         }
+    }
+    let repair = schema("start_repair_validation")?;
+    if repair["oneOf"] != json!([{"required":["source_file"]},{"required":["package","kind"]}])
+        || repair["additionalProperties"] != json!(false)
+        || repair["properties"]["engine"]["enum"] != json!(["interactive"])
+    {
+        return Err(
+            "repair validation must declare the exact standalone or Cargo selection".into(),
+        );
     }
     if schema("verification_events")?["properties"]["after"]["minimum"] != json!(0) {
         return Err("verification_events cursors must be non-negative".to_owned());

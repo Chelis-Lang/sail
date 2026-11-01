@@ -444,6 +444,10 @@ echo "e2e: the compiler's arguments and environment as plain cargo verus verify 
 fi
 
 if [ "$noop_part" = noop ]; then
+# Exercise the synchronous recorder itself. Automatic preparation has its own
+# actual-worker controls; it can otherwise finish this recording before the
+# foreground call whose exact trace transition this block asserts.
+export SAIL_BACKGROUND_PREPARE=0
 # Unchanged-call replay (ADR 0082). The first unchanged call after a
 # verification takes the full path and records; an identical later call
 # replays it without Cargo. Every change below must miss, and every output
@@ -853,6 +857,8 @@ echo "e2e: --no-verify, --config, --tests and --target-dir verified as plain car
 fi
 
 if [ "$part" = cargo-range ]; then
+# This block asserts foreground recording transitions, as the noop block does.
+export SAIL_BACKGROUND_PREPARE=0
 # Projects that pin their own Rust (ADR 0058 keeps the project's Cargo) with
 # a build script that declares Cargo-generated inputs. Each qualified Cargo
 # (ADR 0084) must match plain Cargo-Verus under the same toolchain file,

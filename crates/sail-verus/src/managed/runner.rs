@@ -2098,15 +2098,16 @@ fn target_digest_candidate(
     target_digest_observation(paths, data, context, observation)
 }
 
-/// Preserve the original early and closing complete source guards. The finer
-/// artifact ledger never supplies these pure revision proposals.
+/// Pure proposals only: `target_revisions` checks the complete original source
+/// stamp after the entire projection batch before using any proposal. Artifact
+/// digests retain their separate early source guard in `target_digest_candidate`.
 fn target_revision_proposals(
     paths: &Paths,
     data: &Value,
     context: &str,
     observation: Option<RevisionObservation<'_>>,
 ) -> BTreeMap<(String, String), String> {
-    target_digest_candidate(paths, data, context, observation)
+    target_digest_observation(paths, data, context, observation)
         .and_then(|candidate| candidate.revisions())
         .unwrap_or_default()
 }

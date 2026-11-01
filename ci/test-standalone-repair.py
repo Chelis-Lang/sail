@@ -60,7 +60,7 @@ def main():
     assert negative["batch"]["full"]["exit_code"] == 1, negative
     assert negative["batch"]["focus"] is not None, negative
     source.write_text(passing)
-    missing = repair("missing-selector", function + "_absent")
+    missing = repair("missing-selector", function + "_absent", 1)
     assert not missing["accepted"] and missing["batch"]["selection_error"], missing
 
     # A retained full-phase job is independently reread after source changes.
@@ -69,14 +69,14 @@ def main():
                                           "--background", "--output", "json"]).stdout)
     deadline = time.monotonic() + 180
     while True:
-        retained = json.loads(call("job-result", [args.sail, "jobs", "result", submitted["id"], "--output", "json"]).stdout)
+        retained = json.loads(call("job-result", [args.sail, "jobs", "result", submitted["id"], "--output", "json"]).stdout)["value"]
         if retained["job"]["state"] == "completed":
             break
         assert time.monotonic() < deadline, retained
         time.sleep(0.1)
     assert retained["repair"]["accepted"], retained
     source.write_text(passing.replace("assert(true)", "assert(false)", 1))
-    stale = json.loads(call("historical", [args.sail, "jobs", "result", submitted["id"], "--output", "json"]).stdout)
+    stale = json.loads(call("historical", [args.sail, "jobs", "result", submitted["id"], "--output", "json"]).stdout)["value"]
     assert stale["job"]["currentness"] != "current", stale
     assert not stale["repair"]["accepted"], stale
     assert not (work / "Cargo.toml").exists() and not (work / "Cargo.lock").exists()

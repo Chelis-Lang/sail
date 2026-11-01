@@ -141,7 +141,11 @@ pub fn prune(cache: &Path, key: &str) -> std::io::Result<Pruned> {
     prune_observed(cache, key, None)
 }
 
-fn prune_observed(cache: &Path, key: &str, last_used: Option<u64>) -> std::io::Result<Pruned> {
+fn prune_observed(
+    cache: &Path,
+    key: &str,
+    usage: Option<&UseObservation>,
+) -> std::io::Result<Pruned> {
     if !valid_key(key) {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
@@ -179,9 +183,7 @@ fn prune_observed(cache: &Path, key: &str, last_used: Option<u64>) -> std::io::R
         }
         held.push(file);
     }
-    if last_used
-        .is_some_and(|observed| project(&directory, key.to_owned()).last_used_unix > observed)
-    {
+    if usage.is_some_and(|observed| use_observation(&directory).as_ref().ok() != Some(observed)) {
         return Ok(Pruned::Busy);
     }
     let bytes = size(&directory);
@@ -196,6 +198,44 @@ fn prune_observed(cache: &Path, key: &str, last_used: Option<u64>) -> std::io::R
     drop(held);
     removed?;
     Ok(Pruned::Removed(bytes))
+}
+
+/// Fine-grained run-directory observation for eviction only, never proof reuse.
+#[derive(PartialEq, Eq)]
+struct UseObservation {
+    latest: SystemTime,
+    stamps: std::collections::BTreeMap<PathBuf, Option<super::noop::Stamp>>,
+}
+
+fn use_observation(directory: &Path) -> std::io::Result<UseObservation> {
+    let root = std::fs::symlink_metadata(directory)?;
+    let root_stamp = super::noop::Stamp::of(&root);
+    let mut observed = UseObservation {
+        latest: root.modified()?,
+        stamps: std::collections::BTreeMap::from([(directory.to_owned(), Some(root_stamp))]),
+    };
+    for context in std::fs::read_dir(directory)? {
+        let context = context?;
+        if !context.file_type()?.is_dir() {
+            continue;
+        }
+        let runs = context.path().join("runs");
+        let stamp = match std::fs::symlink_metadata(&runs) {
+            Ok(metadata) => {
+                observed.latest = observed.latest.max(metadata.modified()?);
+                Some(super::noop::Stamp::of(&metadata))
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error),
+        };
+        observed.stamps.insert(runs, stamp);
+    }
+    if super::noop::Stamp::of(&std::fs::symlink_metadata(directory)?) != root_stamp {
+        return Err(std::io::Error::other(
+            "workspace usage changed while listed",
+        ));
+    }
+    Ok(observed)
 }
 
 /// Opens and locks `path`, waiting until `deadline`; `shared` for a run's

@@ -68,6 +68,21 @@ read-back currentness that includes the runtime (#389), setup cuts (#407,
 `sail new`, MCP, proof repair and the evidence commands. D.I.V.E. temporal
 jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
 
+## Next-release expansion
+
+The owner selected the [expanded implementation package](design/release-expansion.md)
+alongside standalone-file development. No release version or publication is selected.
+
+| Deliverable | Current state | Remaining gate |
+|---|---|---|
+| Daemon preparation and post-creation verification | Implemented; real Linux preparation/replay and immediate-call controls pass | Mac, preemption/failure and broader workload costs |
+| Standalone focused repair through CLI/jobs/MCP | Implemented; real Linux positive, unrelated-failure, selector and historical-job controls pass | Mac and full integration gates |
+| Opt-in cache byte budgets | Implemented; LRU, newest/busy and same-second reuse guards pass on Linux | Native composed gates |
+| Hosted CI-cache walkthrough | Workflow and driver implemented | Actual separate-runner cold/restore/invalidation acceptance |
+| First/full-path and Mac Anvil overhead | Bounded indexing/readback candidate implemented; native timing selection open | Paired whole-call/cold measurements and broader corpus |
+| Binary compiler-input metadata (#599) | Corrected fork builds; Linux loader-byte and source regressions pass | Mac, complete runtime qualification, fork merge and consumption |
+| Incidental edits | Existing fifteen-edit catalogue | Final-runtime catalogue plus Anvil control |
+
 ## Performance tracks
 
 | Track | State | Open work |

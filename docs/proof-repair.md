@@ -104,6 +104,14 @@ then independently checks the full requested target in the engine's compiler
 batch. It does not change what existing `verify --function` means. Additional
 scope filters are rejected because they would defeat full validation.
 
+For an existing standalone file, use `sail repair-check proof.rs --function
+proof::lemma --engine interactive --output json` (implementation under native
+qualification). This uses the same focused/full compiler hooks and normal
+terminal seal, with no generated Cargo project. Add `--background` for a job,
+or supply `source_file` to MCP's `start_repair_validation` instead of Cargo
+selectors. Verify-only full scope is required; compilation/output-writing flags
+and additional scope filters are refused. Full verification always runs fresh.
+
 Every repair function shares one Cargo target with the other engine runs of
 the same workspace and arguments, as plain `cargo verus` shares one target
 directory. Repairing a new function therefore does not compile or verify vstd

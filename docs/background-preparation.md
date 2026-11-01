@@ -28,7 +28,8 @@ counters, not evidence that your current source is proved. The regular command's
 diagnostics, exit status and JSON report remain authoritative.
 
 Preparation uses at most one additional worker. Requests are bounded and newer
-workspace requests replace older ones. Stopping the daemon cancels its work;
+workspace requests replace older ones. Each captured output stream is limited to
+16 MiB; exceeding that limit drains the output and declines replay publication. Stopping the daemon cancels its work;
 unfinished work is not resumed on restart. An unavailable or older daemon simply
 leaves ordinary verification available. Explicitly selected unavailable services
 are not replaced by project creation.

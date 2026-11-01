@@ -41,6 +41,20 @@ proof receipts. For CapybaraKV with `git restore-mtime`, an unchanged commit
 then takes 0.9 s on a new runner against 12 s with a cached `target/`; an edit
 commit costs about the same either way.
 
+## Hosted walkthrough
+
+The optional [CI cache walkthrough](../.github/workflows/ci-cache-walkthrough.yml)
+installs the attested published release on four fresh Ubuntu runners: cold and
+restored jobs for solver replies alone and for managed receipts. It preserves
+the source paths and file times, checks actual solver hits or zero-verifier
+receipt reuse, and requires source edits, configuration changes and modified
+runtime bytes to refuse the previous proof. Every invocation retains its full
+output and timing in workflow artifacts. Credentials are confined to installation.
+
+The workflow and [acceptance driver](../ci/ci-cache-walkthrough.py) are implemented;
+hosted execution is pending. These checks do not establish a cross-runner speedup
+until their actual hosted results pass. They are separate from required PR CI.
+
 ## GitHub Actions example
 
 This workflow persists the solver replies for every project, and the Cargo

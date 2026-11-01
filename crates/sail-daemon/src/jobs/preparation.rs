@@ -268,6 +268,7 @@ fn execute(state: &State, task: &Submission, cancel: &AtomicBool) -> io::Result<
     sail_api::jobs::write_frame(&mut super::store::output(&request_file)?, task)?;
     let result = directory.join("outcome.json");
     let stdout = super::store::output(&result)?;
+    let stderr = super::store::output(&directory.join("stderr"))?;
     let mut process = super::worker::Process(
         Command::new(&state.executable)
             .arg("_prepare-worker")
@@ -277,7 +278,7 @@ fn execute(state: &State, task: &Submission, cancel: &AtomicBool) -> io::Result<
             .envs(&task.verification.environment)
             .stdin(Stdio::piped())
             .stdout(stdout)
-            .stderr(Stdio::null())
+            .stderr(stderr)
             .process_group(0)
             .spawn()?,
     );

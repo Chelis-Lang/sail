@@ -58,7 +58,7 @@ def main():
     assert not (runs[0] / "cargo.stdout").exists(), "prepared call still ran Cargo"
     assert [target["establishing_run"] for target in replay["targets"]] == [target["establishing_run"] for target in changed["targets"]]
     source.write_text(source.read_text().replace("proof fn sail_preparation_probe() { assert(true); }", "proof fn sail_preparation_probe() { assert(false); }"))
-    failed = json.loads(call("failure", [args.sail, "verify", "--output", "json"], project, 1).stdout)
+    failed = json.loads(call("failure", [args.sail, "verify", "--output", "json"], project, 101).stdout)
     assert failed["execution"]["verifier_invocations"] > 0, failed
     (out / "records.json").write_text(json.dumps(records, indent=2) + "\n")
     print("PASS: actual new-project preparation, immediate foreground call, prepared replay and edit invalidation")

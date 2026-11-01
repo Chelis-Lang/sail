@@ -12,6 +12,27 @@ use sail_api::project::{Currentness, ProjectResult};
 use sail_verus::managed::{Config, noop};
 
 const HANDOFF_WAIT: Duration = Duration::from_millis(25);
+const CAPTURE_LIMIT: usize = 16 * 1024 * 1024;
+
+#[derive(Default)]
+struct Capture {
+    bytes: Vec<u8>,
+    overflow: bool,
+}
+
+impl io::Write for Capture {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        let remaining = CAPTURE_LIMIT.saturating_sub(self.bytes.len());
+        self.bytes
+            .extend_from_slice(&bytes[..bytes.len().min(remaining)]);
+        self.overflow |= bytes.len() > remaining;
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 
 fn enabled() -> bool {
     std::env::var_os("SAIL_BACKGROUND_PREPARE").is_none_or(|value| value == "1")
@@ -153,6 +174,7 @@ pub(crate) fn new_project(directory: &Path) {
     let _ = Command::new(executable)
         .arg("_serve-prepare-new")
         .arg(&request.verification.project_dir)
+        .arg(if request.colour { "1" } else { "0" })
         .args(["--socket"])
         .arg(socket)
         .stdin(Stdio::null())
@@ -167,12 +189,18 @@ pub(crate) fn serve_new(
     err: &mut dyn io::Write,
     extensions: &crate::Extensions,
 ) -> ExitCode {
-    let Some((directory, args)) = args.split_first() else {
+    let [directory, colour, args @ ..] = args else {
         return ExitCode::from(2);
     };
-    let Some(request) = new_submission(Path::new(directory)) else {
+    let colour = match colour.as_str() {
+        "0" => false,
+        "1" => true,
+        _ => return ExitCode::from(2),
+    };
+    let Some(mut request) = new_submission(Path::new(directory)) else {
         return ExitCode::from(2);
     };
+    request.colour = colour;
     crate::serve_prepared(args, err, extensions, Some(request))
 }
 
@@ -215,10 +243,13 @@ fn worker_result(args: &[String]) -> Result<Outcome, String> {
     if task.origin.as_ref().is_some_and(|origin| origin.key != key) {
         return Err("invocation changed".into());
     }
-    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+    let (mut stdout, mut stderr) = (Capture::default(), Capture::default());
     let shown: Option<&mut dyn io::Write> = if task.json { None } else { Some(&mut stdout) };
     let (result, pending) = sail_verus::managed::run_for_replay(&config, shown, &mut stderr, &key)
         .map_err(|error| error.to_string())?;
+    if stdout.overflow || stderr.overflow {
+        return Err("output exceeds preparation capture limit".into());
+    }
     if !eligible(&config, &result) {
         return Err("complete Current proof unavailable".into());
     }
@@ -234,9 +265,27 @@ fn worker_result(args: &[String]) -> Result<Outcome, String> {
     }
     let can_record =
         task.origin.is_some() && result.execution.verifier_invocations == 0 && pending.is_some();
-    let ready = can_record && pending.is_some_and(|pending| pending.commit(stdout, stderr));
+    let ready =
+        can_record && pending.is_some_and(|pending| pending.commit(stdout.bytes, stderr.bytes));
     Ok(Outcome {
         ready,
         origin: task.origin.is_none().then_some(origin),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CAPTURE_LIMIT, Capture};
+    use std::io::Write as _;
+
+    #[test]
+    fn oversized_capture_drains_output_but_cannot_be_recorded() -> std::io::Result<()> {
+        let mut capture = Capture::default();
+        capture.write_all(&vec![b'a'; CAPTURE_LIMIT])?;
+        assert!(!capture.overflow);
+        capture.write_all(b"tail")?;
+        assert!(capture.overflow);
+        assert_eq!(capture.bytes.len(), CAPTURE_LIMIT);
+        Ok(())
+    }
 }

@@ -70,3 +70,5 @@ Use the next `VI-NNNN` number. Record the Verus version, the date found, a
 reproduction (prefer a minimal one under `corpus/repros/`), the impact on
 sail, the workaround, and a description written as an upstream report would
 be. Update this table, including the Fork column when the fork fixes it.
+
+- [VI-0041: Binary compiler-read metadata](VI-0041-binary-compiler-read-metadata.md) — #599; exact-read correction in implementation

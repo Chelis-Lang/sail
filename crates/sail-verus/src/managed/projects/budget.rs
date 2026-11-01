@@ -108,16 +108,23 @@ pub fn enforce(cache: &Path, max_bytes: u64, dry_run: bool) -> io::Result<Report
     if max_bytes == 0 {
         return Err(io::Error::other("project budget must be greater than zero"));
     }
-    let mut projects = super::list(cache)?;
-    projects.sort_by(|a, b| {
-        a.last_used_unix
-            .cmp(&b.last_used_unix)
+    let mut projects = super::list(cache)?
+        .into_iter()
+        .map(|project| {
+            let usage = super::use_observation(&super::root(cache).join(&project.key))?;
+            Ok((project, usage))
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+    projects.sort_by(|(a, a_usage), (b, b_usage)| {
+        a_usage
+            .latest
+            .cmp(&b_usage.latest)
             .then_with(|| a.key.cmp(&b.key))
     });
     let before_bytes = projects
         .iter()
-        .fold(0u64, |sum, p| sum.saturating_add(p.bytes));
-    let protected = projects.last().map(|p| p.key.clone());
+        .fold(0u64, |sum, (project, _)| sum.saturating_add(project.bytes));
+    let protected = projects.last().map(|(project, _)| project.key.clone());
     let mut report = Report {
         max_bytes,
         dry_run,
@@ -130,7 +137,7 @@ pub fn enforce(cache: &Path, max_bytes: u64, dry_run: bool) -> io::Result<Report
         busy: Vec::new(),
         failed: Vec::new(),
     };
-    for project in projects {
+    for (project, usage) in projects {
         if report.remaining_bytes <= max_bytes {
             break;
         }
@@ -140,7 +147,7 @@ pub fn enforce(cache: &Path, max_bytes: u64, dry_run: bool) -> io::Result<Report
         let outcome = if dry_run {
             Ok(Pruned::Removed(project.bytes))
         } else {
-            super::prune_observed(cache, &project.key, Some(project.last_used_unix))
+            super::prune_observed(cache, &project.key, Some(&usage))
         };
         match outcome {
             Ok(Pruned::Removed(bytes)) => {
@@ -237,6 +244,33 @@ mod tests {
         assert!(load(&fixture.0).is_err());
         std::fs::write(fixture.0.join(POLICY), [b' '; 4097])?;
         assert!(load(&fixture.0).is_err());
+        Ok(())
+    }
+    #[test]
+    fn a_new_run_in_the_same_display_second_prevents_eviction() -> io::Result<()> {
+        let fixture = Fixture::new()?;
+        let directory = fixture.project('a', 10)?;
+        let runs = directory.join("context/runs");
+        std::fs::create_dir_all(&runs)?;
+        File::open(&runs)?
+            .set_times(FileTimes::new().set_modified(UNIX_EPOCH + Duration::new(20, 100)))?;
+        File::open(&directory)?
+            .set_times(FileTimes::new().set_modified(UNIX_EPOCH + Duration::from_secs(10)))?;
+        let observed = super::super::use_observation(&directory)?;
+        let key = "a".repeat(64);
+        let first = super::super::project(&directory, key.clone()).last_used_unix;
+        std::fs::create_dir(runs.join("new-run"))?;
+        File::open(&runs)?
+            .set_times(FileTimes::new().set_modified(UNIX_EPOCH + Duration::new(20, 200)))?;
+        assert_eq!(
+            first,
+            super::super::project(&directory, key.clone()).last_used_unix
+        );
+        assert_eq!(
+            super::super::prune_observed(&fixture.0, &key, Some(&observed))?,
+            Pruned::Busy
+        );
+        assert!(directory.is_dir());
         Ok(())
     }
 }
