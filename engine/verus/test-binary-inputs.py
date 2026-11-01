@@ -25,7 +25,9 @@ def main():
             os.utime(binary_path, ns=(previous.st_atime_ns, previous.st_mtime_ns))
         source.write_text('use vstd::prelude::*;\nverus! { proof fn witness() {\n'
                           'let data = include_bytes!("data.bin"); assert(data.len() == '
-                          + str(len(data)) + ');\n} }\nfn main() {}\n')
+                          + str(len(data)) + ');\n} }\nfn main() {\n'
+                          'let data = include_bytes!("data.bin"); assert_eq!(data.len(), '
+                          + str(len(data)) + ');\n}\n')
         for spelling in ("relative", "absolute"):
             label = f"{number}-{spelling}"
             observation = out / label
@@ -50,11 +52,13 @@ def main():
             assert results[0].stderr == results[1].stderr, (label, "diagnostics differ")
             document = json.loads((observation / "inputs.json").read_text())
             assert document["complete"] and document["schema"] == 2, document
-            sources = document["phases"]["verification"]["sources"]
-            binary = [value for path, value in sources.items() if Path(path).name == "data.bin"]
-            assert binary == [{"checksum": "sha256=" + hashlib.sha256(data).hexdigest(),
-                               "size": len(data)}], (label, binary)
-    print("PASS: compiler-returned non-UTF-8 and UTF-8 bytes; same-size mutation; relative/absolute inputs; exact stock outputs")
+            assert set(document["phases"]) == {"verification", "compilation"}, document
+            for phase, observed in document["phases"].items():
+                binary = [value for path, value in observed["sources"].items()
+                          if Path(path).name == "data.bin"]
+                assert binary == [{"checksum": "sha256=" + hashlib.sha256(data).hexdigest(),
+                                   "size": len(data)}], (label, phase, binary)
+    print("PASS: both compiler phases return exact non-UTF-8 and UTF-8 bytes; same-size mutation; relative/absolute inputs; exact stock outputs")
 
 
 if __name__ == "__main__":
