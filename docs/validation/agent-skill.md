@@ -33,6 +33,12 @@ A separate metadata-only activation probe selected four relevant Verus/SMT
 tasks and declined four unrelated tasks. This checks a few activation decisions,
 not triggering behavior across clients.
 
+Tessl CLI 0.119.0 also installed the published `jeffreykent/sail-verification`
+plugin 1.0.2 into a clean temporary project. Skill and both references matched
+source byte for byte. The canonical license text also matched, under
+`LICENSE.md`: Tessl omits the extensionless filename. The registry wrapper adds
+metadata and this license alias, with no separate skill instructions.
+
 ## Bounded task comparison
 
 Eight fresh response-generation calls compared the prior website skill with

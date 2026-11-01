@@ -67,9 +67,9 @@ the current flow before sending anything. The canonical package was published in
 
 | Channel | Route and fit | Checked disposition |
 | --- | --- | --- |
-| [Tessl](https://tessl.io/registry/skills/submit) | GitHub repository analysis/submission or `tessl skill publish`; registry review and versioned packages | Ready for submission; existing workspace and owner login required |
+| [Tessl](https://tessl.io/registry/skills/submit) | GitHub repository analysis/submission or `tessl skill publish`; registry review and versioned packages | Published in existing jeffreykent workspace; moderation passed |
 | [skills.sh](https://www.skills.sh/docs/faq) | GitHub installation through `npx skills`; aggregate installs drive discovery | GitHub install verified; catalog page still unavailable |
-| [ClawHub](https://docs.openclaw.ai/clawhub) | CLI 0.25.0 uses `clawhub skill publish` to upload a versioned folder | Held for publisher namespace confirmation |
+| [ClawHub](https://docs.openclaw.ai/clawhub) | CLI 0.25.0 uses `clawhub skill publish` to upload a versioned folder | CLI updated and dry run passed; device authorization incomplete |
 | [Skill.Fish](https://github.com/knoxgraeme/skillfish) | `skillfish submit owner/repo`; repository review | Submitted through CLI; MCP Market is the same submission channel |
 | [Skillstore](https://skillstore.io/submit) | Public GitHub repository or skill-directory form; anonymous submission supported | Submitted; automated processing completed, final review pending |
 | [Skills Directory](https://www.skillsdirectory.com/submit) | GitHub sign-in and reviewed submission | Sign-in required; no new account created |
@@ -119,14 +119,33 @@ Checked on 1 November 2026 after source publication:
   the public GitHub package and all files matched source. The catalog URL still
   displayed “isn't available” when checked, despite returning HTTP 200.
   Validation installs used `DO_NOT_TRACK=1` rather than generating install counts.
-- **Tessl:** CLI 0.119.0 and live form require login. Continue after the owner
-  authenticates with `tessl login --device` and chooses an existing workspace.
-- **ClawHub:** publication is held for owner confirmation of the publisher
-  namespace after device login with CLI 0.25.0. No bundle has been uploaded.
+- **Tessl: published, moderation passed and search verified.**
+  https://tessl.io/registry/jeffreykent/sail-verification
+  CLI 0.119.0 published into the existing `jeffreykent` workspace. The current
+  registry plugin is `1.0.2`; its skill and supporting references are unchanged from
+  source commit `ec052397`, skill version `1.0.0`. The registry wrapper adds the
+  upstream repository, canonical package homepage, MIT license and Jeffrey Kent
+  attribution. Tessl filters the extensionless `LICENSE` on installation, so the
+  export also carries its exact contents as `LICENSE.md`. It does not carry
+  separate instructions. Lint and publication
+  dry run passed. A clean Tessl install retained the skill, both references and
+  license text, all byte-identical to source (license filename excepted). No
+  paid eval campaign was requested.
+- **ClawHub: device authorization incomplete.** CLI was updated from 0.9.0 to
+  0.25.0. Its four-file, source-attributed publication dry run passed, but web
+  approval did not complete and the device session ended with an unknown error.
+  `whoami` remained signed out. No bundle has been uploaded.
 
 Skills Directory and SkillRouter also require account access. SkillsLLM's
 published minimum is not met. Tencent SkillHub requires identity verification.
 The remaining channels are sourcing leads, not completed submissions.
+
+For Tessl updates, export the merged canonical folder outside ignored repository
+paths, import it with `tessl skill import --workspace jeffreykent --public PATH`,
+and retain repository/homepage/license metadata in its generated
+`.tessl-plugin/plugin.json`. Copy the canonical `LICENSE` to `LICENSE.md` in the
+export so Tessl retains the license text. Run lint and a dry run, then publish a new registry
+version from that export. Do not independently edit the skill instructions.
 
 For Agent Skill Hub updates, the documented refresh endpoint is
 `POST https://agentskillhub.dev/api/v1/skills/refresh-from-source` with
