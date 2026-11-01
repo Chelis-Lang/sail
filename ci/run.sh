@@ -204,6 +204,7 @@ case "$step" in
     bash scripts/test-runtime-scan.sh
     # The image's engine installer: corrupt or stale runtimes never install.
     python3 ci/test-engine-artifact.py
+    python3 engine/verus/test-engine-oracle.py
     python3 ci/test-output-evidence.py
     python3 ci/test-local-target.py
     python3 ci/test-timeout.py

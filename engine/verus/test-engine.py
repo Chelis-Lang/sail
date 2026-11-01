@@ -4,7 +4,8 @@
 Each fixture runs three ways: stock Verus, the fork runtime without the engine
 ("fork") and the fork runtime with the engine ("engine"). The engine must match
 the plain fork run exactly, raw SMT included. Against stock, exit status,
-diagnostics, counters, verdicts and the SMT session inventory must match; the
+diagnostics, counters, verdicts and the SMT session inventory must match (except the exact owner-approved
+recursive isolation inventory on the two qualified 0ad405eb runtimes); the
 raw SMT is only recorded, because the fork's accepted divergences rename
 solver symbols (ADR 0054, spec parameters; ADR 0056, trait function spellings).
 """
@@ -38,10 +39,36 @@ def pipe(path):
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
+ISOLATED_RECURSIVE = ["root.smt_transcript", "rootdemo!count._00.smt_transcript"]
+ISOLATED_MANIFESTS = {
+    "799aac308bd8d8c64a17901cf9a04b9b093689c5e274b5743c60750e2ce9df9d",
+    "9f49060ec8714c5e5b3acc72859025a55c7189cf6f8c841c972675227002b866",
+}
+
+
+def isolated_runtime(engine):
+    # Owner-approved ADR 0094 inventory correction is bound to the two exact
+    # qualified 0ad405eb manifests. Unknown runtimes retain the original check.
+    for parent in pathlib.Path(engine).resolve().parents:
+        manifest = parent / "sail-build.json"
+        if manifest.is_file():
+            return sha(manifest) in ISOLATED_MANIFESTS
+    return False
+
+
+def check_inventory(name, reference, left, right, isolated):
+    if name == "recursive" and isolated:
+        expected = ["root.smt_transcript"] if reference == "stock" else ISOLATED_RECURSIVE
+        assert left == expected and right == ISOLATED_RECURSIVE, (name, reference, "isolated session inventory", left, right)
+    else:
+        assert left == right, (name, reference, "session inventory", left, right)
+
+
 def run(args):
     out = pathlib.Path(args.out).absolute()
     out.mkdir(parents=True, exist_ok=True)
     results = []
+    isolated = isolated_runtime(args.engine)
     for name, body in FIXTURES.items():
         work = out / name
         work.mkdir(exist_ok=True)
@@ -82,7 +109,7 @@ def run(args):
             assert left_json["func-details"] == right_json["func-details"], (name, label)
             assert verdicts(left_json) == verdicts(right_json), (name, label, "function verdicts differ")
             logs = sorted((work / reference).glob("*.smt_transcript"))
-            assert [p.name for p in logs] == [p.name for p in engine_logs], (name, label, "session inventory")
+            check_inventory(name, reference, [p.name for p in logs], [p.name for p in engine_logs], isolated)
             return logs
         engine_logs = sorted((work / "engine").glob("*.smt_transcript"))
         for left, right in zip(agree("fork", "engine vs fork"), engine_logs):
@@ -91,7 +118,8 @@ def run(args):
         stock_sessions = [{"name": left.name, "equal": pipe(left) == pipe(right),
                            "stock_input_sha256": hashlib.sha256(pipe(left)).hexdigest(),
                            "engine_input_sha256": hashlib.sha256(pipe(right)).hexdigest()}
-                          for left, right in zip(agree("stock", "engine vs stock"), engine_logs)]
+                          for left in agree("stock", "engine vs stock")
+                          for right in [work / "engine" / left.name]]
         events = [json.loads(line) for line in (work / "events.jsonl").read_text().splitlines()]
         assert events[-1]["event"] == "compiler-sealed", (name, "missing compiler terminal seal")
         assert events[-1]["payload"]["normal_termination"] is True, (name, "missing normal driver completion")
@@ -110,7 +138,9 @@ def run(args):
         results.append({"fixture": name, "exit_code": engine.returncode, "diagnostics_sha256": hashlib.sha256(engine.stderr).hexdigest(),
                         "full_sessions": [{"name": p.name, "bytes": len(pipe(p)), "input_sha256": hashlib.sha256(pipe(p)).hexdigest()} for p in engine_logs],
                         "stock_smt": stock_sessions,
-                        "normal_termination": events[-1]["payload"]["normal_termination"]})
+                        "normal_termination": events[-1]["payload"]["normal_termination"],
+                        "stock_inventory_policy": "adr0094-recursive-0ad405eb" if name == "recursive" and isolated else "identical",
+                        "engine_only_sessions": [p.name for p in engine_logs if not (work / "stock" / p.name).exists()]})
         differing = sum(not session["equal"] for session in stock_sessions)
         note = f" (raw SMT differs from stock in {differing} of {len(stock_sessions)} sessions)" if differing else ""
         print(name, "matches" + note, flush=True)

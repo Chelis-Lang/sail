@@ -115,6 +115,13 @@ The complete Linux experiment finds no whole-call gain, leaving the prototype
 unselected and off on both platforms. Mac functional controls do not establish
 a performance benefit; final composed gates remain separate.
 
+That Linux study adds the per-file ledger while retaining the whole-tree
+memo's Linux default. Their candidates perform independent complete target
+observations. The per-file-only combination remains unqualified. A separate
+four-way comparison of the existing settings (fresh reads, whole-tree alone,
+per-file alone and both) is queued across seven real workloads, using the
+unchanged implementation and authority checks.
+
 ## Qualification
 
 The [broader evaluation](../performance-evaluation.md) combines real project

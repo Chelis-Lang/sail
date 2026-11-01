@@ -102,4 +102,4 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0092: Per-file owned-target digest observations](0092-per-file-owned-target-digests.md) (owner-approved bounded prototype; implemented, off by default and unselected)
 - [0093: Named order exceptions in stock source-suite debug snapshots](0093-stock-source-suite-debug-order.md) (owner-approved; implemented and qualified against the pinned stock suite)
-- [0094: Isolated specification termination checks](0094-isolated-spec-termination-checks.md) (proposed; bounded compiler candidate)
+- [0094: Isolated specification termination checks](0094-isolated-spec-termination-checks.md) (accepted bounded correction; qualified and selected on Linux and macOS)

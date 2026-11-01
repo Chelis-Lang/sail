@@ -1,6 +1,6 @@
 # 0094: Isolate specification termination checks from later proof history
 
-- **Status:** proposed; bounded compiler candidate, not a selected runtime
+- **Status:** accepted bounded correction; `0ad405eb` qualified and selected on Linux and macOS
 - **Date:** 2026-10-31
 
 ## Context
@@ -71,6 +71,12 @@ remains. All 41 focused regressions pass on both platforms; full source,
 ordinary-mode and final cost qualification remain separately recorded in the
 [gate record](../validation/general-performance.md).
 
+The compiler implementation is merged in
+[fork PR #15](https://github.com/Chelis-Lang/verus/pull/15). Its merge of
+current fork documentation changes no compiler source or Cargo input relative
+to tested `0ad405eb`; native artifacts retain that exact source identity.
+Both native runtime archives are published and consumed as recorded in the gate record; final Sail release composition remains separate.
+
 ## Consequences
 
 The strategy removes a demonstrated cross-stage solver-history dependency
@@ -80,3 +86,15 @@ cost nor whole-corpus verdict agreement is established by the replay. Other
 queries can still be history-sensitive and require independent evidence.
 The original stock source-suite debug-order blocker and sampler-overhead
 requirement remain separate.
+
+## Source-engine fixture inventory
+
+Owner approval, 2026-11-01: on the exact qualified Linux/Mac `0ad405eb`
+manifests, the recursive source-engine fixture requires stock's single
+`root.smt_transcript` and the fork/engine's exact pair, adding
+`rootdemo!count._00.smt_transcript`. All verdict, complete diagnostic and
+function-detail comparisons remain exact; fork/engine session inventories
+and complete SMT bytes remain exact. Unknown runtimes, other fixtures,
+missing sessions, duplicates and additional sessions retain strict rejection.
+The original equal-inventory failure remains recorded; this does not excuse
+any verdict difference or qualify an unmeasured runtime.

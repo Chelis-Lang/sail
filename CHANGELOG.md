@@ -10,6 +10,8 @@ semantic versioning once the API is published.
   ABI failures retain the complete original ps observation. The cadence,
   clock, memory definitions and overhead criterion remain unchanged.
   Allow project setup to settle before the existing fresh CPU preflight.
+  Preflight may wait up to 120 seconds during setup for a fresh passing
+  reading; every reading is retained, and timeout still refuses the run.
 
 - Compare benchmark diagnostics with ADR 0042's existing multiset rule using
   the Rust splitter, retaining complete message bytes and multiplicity while
@@ -33,10 +35,11 @@ semantic versioning once the API is published.
   companion, including programs with no ordinary proof query. The existing
   version request, explicit opt-out, solver commands and limits are unchanged.
 
-- Stage a bounded compiler candidate that isolates specification termination
-  checks from ordinary proof history, repairing the demonstrated Mac
-  abstract-domain disagreement (#634). Runtime selection remains subject to
-  complete native correctness and whole-call cost qualification (ADR 0094).
+- Isolate specification termination checks from ordinary proof history,
+  repairing the demonstrated Mac abstract-domain disagreement (#634).
+  The bounded runtime passes native correctness and whole-call cost controls
+  on Linux and macOS and is published and consumed from the Verus fork
+  (ADR 0094). First/full-path overhead and Mac Anvil cold remain open.
 
 - Add an opt-in per-file owned-target digest prototype under ADR 0092:
   `SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO=1`. Original settled file observations

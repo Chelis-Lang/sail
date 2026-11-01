@@ -206,6 +206,22 @@ class Memory(unittest.TestCase):
             child.terminate(); unrelated.terminate()
             child.communicate(timeout=5); unrelated.communicate(timeout=5)
 
+    def test_mac_child_listing_permission_failure_is_not_an_empty_tree(self):
+        import errno
+        from unittest.mock import Mock
+        collector = object.__new__(mem.MacCollector)
+        collector.lib = Mock()
+        def result(error):
+            def call(*_args):
+                mem.ctypes.set_errno(error)
+                return 0
+            return call
+        collector.lib.proc_listchildpids.side_effect = result(errno.EPERM)
+        with self.assertRaises(PermissionError):
+            collector.children(42)
+        collector.lib.proc_listchildpids.side_effect = result(errno.ESRCH)
+        self.assertEqual(collector.children(42), [])
+
     def test_mac_permission_failure_preserves_the_complete_ps_fallback(self):
         from unittest.mock import Mock, patch
         rows = {42: (17, 4096, 'old', ['cargo']), 99: (42, 8192, 'child', ['worker'])}

@@ -880,7 +880,7 @@ prepare_pristine
 if [ "$(uname -s)" = Darwin ]; then
   # Let project preparation drain before the unchanged fresh CPU preflight.
   sleep "${SAIL_PERF_SETTLE:-5}"
-  python3 -I "$here/perf-mac-quiet.py" --output "$out/host-quiet.json"
+  python3 -I "$here/perf-mac-quiet.py" --wait-seconds 120 --output "$out/host-quiet.json"
 fi
 
 if [ "$cmd" = det ]; then

@@ -19,7 +19,7 @@ Same, two Unstable and one Different. All exact fork arms pass. The retained
 original bytes and source/runtime scope are in
 [the deep-tier record](../validation/deep-tier.md) and
 [the performance qualification](../validation/v020-performance.md).
-This proposal does not change either failed result.
+This decision does not change either failed result.
 
 The operating guide says, "Never weaken a conformance check, golden, test or
 benchmark baseline to make a change pass. If a check looks wrong, raise it
@@ -55,11 +55,15 @@ Before adoption, require original real failing snapshots, negative controls
 for changed verdicts/messages/notes/counts/ordinary array orders, unknown and
 malformed debug fragments, exact fork refusals, and a complete native source
 suite. Document the accepted scope in the charter appendix and divergences.
-Implementation is authorized; #627 remains open until native qualification.
+The complete native stock suite now passes 4,867 Same cases, including every
+one of its 4,804 nonignored tests, with 63 ignored and three explicitly
+recorded order exceptions. The [deep-tier record](../validation/deep-tier.md)
+binds the result and retained original failures. This qualifies this source
+comparison policy; the composed release has separate remaining gates.
 
 ## Consequences
 
-The stock oracle would continue to check complete values while acknowledging
+The stock oracle continues to check complete values while acknowledging
 two reproduced serialization-order defects in an incidental test dump. This
 explicitly relaxes those two order requirements; it is not a product fix or
 evidence that stock output is deterministic. Other serialization differences,

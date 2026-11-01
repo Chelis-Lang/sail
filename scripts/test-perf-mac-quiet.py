@@ -38,6 +38,47 @@ class Quiet(unittest.TestCase):
             with self.subTest(text=text), self.assertRaises(ValueError):
                 quiet.parse(text)
 
+    def test_setup_wait_retains_busy_windows_and_requires_a_fresh_pass(self):
+        now, records = [0.], []
+        windows = iter([.2, .02])
+        def probe():
+            now[0] += 1
+            return quiet.assess({1: ('same', 0., 'one')},
+                                {1: ('same', next(windows), 'one')}, 1)
+        def sleep(seconds):
+            now[0] += seconds
+        result = quiet.wait_for_quiet(10, probe=probe, record=records.append,
+                                      clock=lambda: now[0], sleeper=sleep)
+        self.assertTrue(result['quiet'])
+        self.assertEqual(result['maximum_cores'], .10)
+        self.assertEqual([r['quiet'] for r in result['observations']], [False, True])
+        self.assertEqual(len(records), 2)
+
+    def test_single_check_and_exhausted_setup_wait_still_refuse(self):
+        for budget in [0, 2]:
+            now, records = [0.], []
+            def probe():
+                now[0] += 1
+                return quiet.assess({1: ('same', 0., 'one')},
+                                    {1: ('same', .2, 'one')}, 1)
+            def sleep(seconds):
+                now[0] += seconds
+            result = quiet.wait_for_quiet(budget, probe=probe, record=records.append,
+                                          clock=lambda: now[0], sleeper=sleep)
+            self.assertFalse(result['quiet'])
+            self.assertEqual(result['maximum_cores'], .10)
+            self.assertTrue(all(not r['quiet'] for r in result['observations']))
+            self.assertLessEqual(now[0], max(1, budget))
+        for budget in [-1, 121, float('nan'), float('inf')]:
+            with self.subTest(budget=budget), self.assertRaises(ValueError):
+                quiet.wait_for_quiet(budget)
+
+    def test_unreadable_inventory_cannot_wait_into_a_passing_result(self):
+        def probe():
+            raise ValueError('incomplete inventory')
+        with self.assertRaises(ValueError):
+            quiet.wait_for_quiet(120, probe=probe)
+
     def test_bad_intervals_and_backwards_counters_refuse(self):
         for seconds in [0, -1, 10, float('nan')]:
             with self.subTest(seconds=seconds), self.assertRaises(ValueError):

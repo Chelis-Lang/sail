@@ -1,6 +1,65 @@
 # General performance qualification
 
-**Corrected runtime candidate (`0ad405eb`):** both native runtimes are built
+**Current selection, 2026-11-01:** the bounded `0ad405eb` correction and
+installed-output repair are qualified on native Linux and macOS. The compiler
+fix is merged in Verus PR #15. Both original runtime archives are public build
+dependencies: [Linux](https://github.com/Chelis-Lang/verus/releases/tag/engine-runtime-0ad405eb-linux)
+and [Apple-silicon macOS](https://github.com/Chelis-Lang/verus/releases/tag/engine-runtime-0ad405eb-macos).
+This selects the core increment; it does not cut a Sail release or establish
+stock performance parity. Standalone CLI/watch/MCP is a separate follow-up.
+
+The final Mac `b28d14a8` / `0ad405eb` cohort on mac-m4.metal, us-east-1c,
+macOS 26.7 passes all 24 runs / 432 samples, followed by all 36 predecessor/
+candidate runs / 432 samples across pmemlog, Verus-TLA and semi-persistent
+containers. Inputs, expected exits, complete diagnostics, clocks and memory
+fields pass. Against predecessor `6cfa1606`, cold medians change from 18.863
+to 18.947 s, 8.660 to 8.609 s and 52.969 to 53.800 s respectively; warm
+whole-call costs remain broadly flat. The ordinary screen completes all 17
+workloads, preserving RLSF's matching incompatible compile. Verismo separately
+passes its cross-target comparison and all two-round screen calls, with memory
+sampling intentionally disabled; the temporary target is removed afterward.
+The fresh-PATH core archive smoke passes bundled selection, shipped vstd,
+edits and repair. Its first wrapper stopped before execution because a
+prerequisites directory already existed; the completed retry uses fresh paths.
+Raw `final-guarded-mac-evidence.tgz` SHA-256:
+`0e8bb1c112f0f552b3cb912df92980bfdfa63071ed4680a7cf07d537fc77152c`.
+
+| Mac project | Cold stock → Sail (s) | First unchanged | Full path |
+|---|---:|---:|---:|
+| Vest | 38.766 → 29.533 | 0.185 → 1.051 | 0.179 → 0.445 |
+| IronKV | 20.365 → 11.666 | 0.130 → 0.184 | 0.129 → 0.144 |
+| CapybaraKV | 31.076 → 28.959 | 0.154 → 0.464 | 0.146 → 0.332 |
+| Anvil | 96.404 → 97.843 | 0.249 → 1.733 | 0.203 → 1.300 |
+
+Body/edit-return medians improve on all four projects; later replay takes
+15–31 ms. Anvil cold and all first/full-path rows remain explicit follow-ups.
+The focused Anvil benchmark scope is unchanged. No broader parity claim follows.
+
+Mac's updated 11 source-engine fixtures and actual blocked-worker cancellation/
+restart pass, including the exact owner-approved recursive inventory and full
+fork/engine SMT equality. The same capture also contains the separately scoped
+standalone successor's host/factory/functional qualification at Sail `9ecd57da`:
+`standalone-mac-evidence.tgz`, SHA-256
+`129c65a8509b8b539bf98200951ee34aecc9ba82a835633bb8a3424e35954fd1`.
+Anonymous Mac runtime download, unchanged release-index composition and ordinary
+first/unchanged verification pass in that successor package: one project
+verifier with shipped vstd, then zero verifiers, both Current. Its candidate
+archive also passes fresh-PATH smoke. This is runtime consumption by the
+successor, not a relabeling of the core binaries. Raw
+`standalone-delivery-mac.tgz` SHA-256:
+`7cd71c1a663fa661b55f55979be4f7623e056e0ab8b2d727d3c6ef986adeadc2`.
+Linux anonymous indexed-package consumption is separately captured in
+`public-compose-0ad-linux.tgz`, SHA-256
+`23778593edb29e6f029c5638144396be9fead909b6ddabe59307637b7ca7854a`.
+The final core Linux workspace gate passes; its capture
+`core-public-linux-evidence.tgz` has SHA-256
+`f9e07ad80a5b22bd7e27f6d5beab758b364e9741c3fa11ab5c055c1eca873541`.
+
+The detailed earlier records below retain their actual source and attempt
+scope. They do not supersede this completed selection.
+
+
+**Corrected runtime qualification (`0ad405eb`):** both native runtimes are built
 and locally packed. All 41 focused regressions pass on Linux and macOS;
 Mac's broader comparison matches all 23 units / 5,357 function records,
 including the original abstract-domain proof. All three complete Linux fork source
@@ -8,11 +67,58 @@ arms pass 4,907 Same / 4,844 nonignored passing tests / 63 ignored, with
 zero differences, unstable results, infrastructure failures or failed tests. The source-suite capture `source-0ad-complete-evidence.tgz` has SHA-256
 `ca4b0e61e554a2032fbb99da284f9389dddfc7596b3f73bf24e68024fbe8a2f6`.
 Sail `b28d14a8` passes the native Mac host gate (Clippy, 1,285 tests /
-54 skipped); its indexed factory and installed qualification are running. The first Mac
+54 skipped), indexed factory and installed qualification. The first Mac
 packaging wrapper selected examples without rebuilding release bins; that
 capture retains its older copied binary identities and is not candidate
 acceptance. The corrected wrapper builds bins explicitly before staging.
 This stages the corrected artifact identities, not release acceptance.
+
+The compiler change is reviewable in
+[fork PR #15](https://github.com/Chelis-Lang/verus/pull/15). Its integration
+with current fork `sail` changes only existing documentation relative to the
+tested source; compiler and Cargo inputs remain byte-identical to `0ad405eb`.
+The merged compiler and its hosted CI are supplemented by the completed native cost gates above.
+Hosted [fork CI](https://github.com/Chelis-Lang/verus/actions/runs/41297932741)
+passes at PR head `45921a13`: full compiler/vstd build, all three library
+test suites, fork regressions/basic tests and release-style vstd build.
+Its complete log SHA-256 is
+`803f078d8c620cb1ece9248c46922f2ff83a44fd3c7b6c6e21a4756eab65b691`.
+
+The corrected Linux product matrix is complete: actual indexed `b28d14a8` /
+`0ad405eb`, native c7i.8xlarge / us-east-1, six rotated blocks across all four
+projects. All 24 runs / 432 samples pass complete-message, expected-exit,
+clock, memory-field and immutable-input checks. The archive also retains the
+ordinary installed proof loop and factory records:
+`final-b28-linux-matrix-ordinary.tgz`, SHA-256
+`493a53fbc4ec7d12e595661cd3030afe0c8c313394271b30d029977a4d8f2f61`.
+
+Medians below are stock → Sail, in seconds; first unchanged records replay,
+while full path explicitly disables it.
+
+| Project | Cold | First unchanged | Full path |
+|---|---:|---:|---:|
+| Vest | 68.971 → 46.349 | 0.194 → 0.601 | 0.194 → 0.449 |
+| IronKV | 38.336 → 17.527 | 0.100 → 0.196 | 0.101 → 0.140 |
+| CapybaraKV | 54.812 → 51.192 | 0.144 → 0.499 | 0.137 → 0.343 |
+| Anvil | 179.070 → 169.957 | 0.330 → 1.850 | 0.294 → 1.109 |
+
+Cold, body-edit and return medians improve on every project. Later unchanged
+replay takes 0.022–0.040 seconds, but first-unchanged and full-path medians
+remain slower on all four projects. Stock parity and release acceptance
+remain open; final Mac product measurements are recorded above.
+
+The corrected Linux functional run also completes all four fast arms
+(147 Same / 3,451 functions), all four standard and deep corpus arms
+(159 Same / 13,166 functions each), all 18 standard mutations with their
+return controls, and all 205 deep mutations plus 12 cold/ordinary/forced
+return controls. The workspace gate (1,296 tests / 54 skipped), 51 solver
+controls and complete E2E including extra pass. All four broader-corpus arms
+also match 23 units / 5,357 functions, with zero differences, unstable results,
+infrastructure failures or skipped projects; RLSF remains a matching
+incompatible compilation. Linux determinism passes all 147 fast-tier units
+over three runs. Complete functional and determinism capture
+`final-b28-linux-functional.tgz` SHA-256:
+`b15817f19413d8517c01882afc9780aff1c26cccade82240f48f79e8b42a6f10`.
 
 Review found that `4cd6bd5f`'s companion omitted the original solver-version
 check. A recursive-spec-only negative control forwards the actual pinned Z3
@@ -41,7 +147,10 @@ units are deterministic over three actual `0ad405eb` runs. The completed
 Mac compiler/AIR/focused-regression build record and original manifest
 inventories are retained in `source-0ad-mac-native-evidence.tgz`, SHA-256
 `2f86f112d00a46fa4253f4b32f47b3e7fe9880e89718989c84bc38306d787f26`.
-Final observer controls, edit loops and product costs remain separate gates.
+Six additional Mac rounds of all four Hekate edits and all six TLA
+edit/failure/fix/return states pass their strict functional audit.
+The revised observer passes all 440 samples / 22 strata on each platform
+([record](benchmark-memory.md)); final product costs remain separate gates.
 Raw captures: Linux `retained-0ad-linux-evidence.tgz`, SHA-256
 `9f7c2bf871f26d0098bf1fd5af0bd8f25c02220c576121c480569b92e39a9248`;
 Mac `retained-0ad-mac-evidence.tgz`, SHA-256
@@ -55,6 +164,30 @@ failures. Raw capture SHA-256
 Cold medians are faster on all four projects; every first-unchanged and
 replay-disabled median remains slower. These timings do not establish parity
 or qualify the corrected runtime's final artifact.
+
+The earlier `d18961a1` / `4cd6bd5f` Linux broader screen completes all 17
+ordinary workloads with two rounds each: 16 supply successful timings;
+RLSF remains a matching incompatible compilation. Six paired blocks against
+exact predecessor `6cfa1606` complete all 36 runs / 432 samples across
+pmemlog, Verus-TLA and semi-persistent containers. Cold medians change from
+36.918 to 36.332 seconds, 13.511 to 13.425 seconds and 84.443 to 84.515
+seconds respectively. Warm whole-call costs remain broadly flat. These
+retain the earlier runtime identity; `0ad405eb` restores version-response
+validation without adding an SMT command or changing proof queries or limits.
+The corrected candidate's separate four-project matrix remains required.
+
+Actual `b28d14a8` / `0ad405eb` also passes the Linux Verismo cross-target
+control (one matching unit / 1,208 functions) and all 24 two-round screen
+calls. This screen intentionally disables memory sampling and establishes no
+memory claim. The temporary cross-target installation is removed before
+the final toolchain inventory is compared. The earlier `d18961a1` cross-target
+attempt is refused by the corrected harness's runtime-identity check before
+timing; it supplies no cross-target samples. The corrected private Linux
+archive passes the fresh-PATH bundled-engine, first-Serve, edit and repair
+smoke test. These are candidate archives with the existing version, not a
+new published release. Complete Linux broader/cost/cross-target/smoke capture
+`final-linux-broad-cost-cross-smoke.tgz` SHA-256:
+`e9de84a52e88e285aa0768312dc63e9a0d1e088c294a35bf4bad63d9979b7fd4`.
 
 **Earlier composed status (`d18961a1` / `4cd6bd5f`):** broader tooling and the owner-approved ADR 0092 bounded
 prototype are implemented. Both optimization experiments remain unselected;
@@ -617,3 +750,32 @@ Mac control capture `mac26-benchmark-diagnostics-r2.tgz`, SHA-256
   The fixture now uses the existing `-V no-solver-version-check`; all five
   termination controls and both platforms' 41 focused regressions pass at
   `0ad405eb`. The original failed test results remain retained.
+
+
+## Fork integration and public Linux delivery
+
+Verus PR #15 merged as `d35faae` on 2026-11-01. Its compiler sources match
+qualified `0ad405eb`; integration documentation differs. The Linux runtime
+is published as `engine-runtime-0ad405eb-linux`, with the original qualified
+archive and manifest digests. Both native Linux source-engine fixture arms
+and all 11 stock comparisons pass under the owner-approved exact recursive
+inventory policy, with complete fork/engine SMT equality and cancellation/
+restart. Evidence `engine-consumer-0ad-linux.tgz` SHA-256:
+`5076fbce2a90a77ab507ec00cee1a912b1356944239f277460d20dec346f007c`.
+
+Anonymous public download, archive validation and composition into the
+unchanged indexed release layout pass. A fresh ordinary project serves the
+shipped vstd proof with one project verifier; its unchanged call starts none,
+and both results are Current. The earlier external development override
+verified correctly but did not qualify the package's shipped-proof boundary.
+A first manual composition retained cache directory modes; the unchanged
+release index rejected it. Applying the recorded package directory modes,
+as the installer does, fixes composition without changing the index.
+
+The complete four-configuration target-memo follow-up retains all 560 rows
+across seven workloads and ten rotated warm blocks per configuration. All
+producer, input, verdict and diagnostic controls pass; no general per-file
+improvement over the selected whole-tree memo is established. The per-file
+prototype remains unselected. Evidence `target-memo-factorial-linux.tgz`
+SHA-256: `679bebfeeeed5d4f20f4f9d615aaf58383df3c30fcdfc7b3aa8eac6324495ccc`.
+Cold and first-call samples in this screen remain diagnostic, not acceptance.

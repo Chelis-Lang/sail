@@ -22,6 +22,10 @@ The capture includes the original actual-Z3 version-response negative
 control, source identity and patch, and every arm's complete report and log.
 `source-0ad-complete-evidence.tgz` SHA-256:
 `ca4b0e61e554a2032fbb99da284f9389dddfc7596b3f73bf24e68024fbe8a2f6`.
+The original Linux build manifests are retained separately, including all
+163 test-executable digests for the exact ForkTests variant and the runtime
+artifact digests: `source-0ad-linux-build-manifests.tgz`, SHA-256
+`9099d9df21a3aae7c7f0ddb3df5f65dba578e6b8e3f5be996338837b921ed514`.
 This qualifies the source suite; installed factories, ordinary retained
 proof reuse, corpus conformance and final native costs are separate gates.
 

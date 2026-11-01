@@ -112,8 +112,9 @@ class MacCollector:
             entries = (ctypes.c_int * capacity)()
             ctypes.set_errno(0)
             count = self.lib.proc_listchildpids(pid, entries, ctypes.sizeof(entries))
-            if count < 0:
-                raise OSError(ctypes.get_errno(), 'cannot enumerate process children')
+            error = ctypes.get_errno()
+            if count < 0 or (count == 0 and error not in (0, errno.ESRCH, errno.ENOENT)):
+                raise OSError(error, 'cannot enumerate process children')
             if count < capacity:
                 return [child for child in entries[:count] if child > 0]
             capacity *= 4
