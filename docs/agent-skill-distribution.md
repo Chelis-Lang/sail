@@ -69,7 +69,7 @@ the current flow before sending anything. The canonical package was published in
 | --- | --- | --- |
 | [Tessl](https://tessl.io/registry/skills/submit) | GitHub repository analysis/submission or `tessl skill publish`; registry review and versioned packages | Ready for submission; existing workspace and owner login required |
 | [skills.sh](https://www.skills.sh/docs/faq) | GitHub installation through `npx skills`; aggregate installs drive discovery | GitHub install verified; catalog page still unavailable |
-| [ClawHub](https://docs.openclaw.ai/clawhub) | Installed CLI 0.9.0 uses `clawhub publish` to upload a versioned folder | Held for publisher namespace confirmation |
+| [ClawHub](https://docs.openclaw.ai/clawhub) | CLI 0.25.0 uses `clawhub skill publish` to upload a versioned folder | Held for publisher namespace confirmation |
 | [Skill.Fish](https://github.com/knoxgraeme/skillfish) | `skillfish submit owner/repo`; repository review | Submitted through CLI; MCP Market is the same submission channel |
 | [Skillstore](https://skillstore.io/submit) | Public GitHub repository or skill-directory form; anonymous submission supported | Submitted; automated processing completed, final review pending |
 | [Skills Directory](https://www.skillsdirectory.com/submit) | GitHub sign-in and reviewed submission | Sign-in required; no new account created |
@@ -122,7 +122,7 @@ Checked on 1 November 2026 after source publication:
 - **Tessl:** CLI 0.119.0 and live form require login. Continue after the owner
   authenticates with `tessl login --device` and chooses an existing workspace.
 - **ClawHub:** publication is held for owner confirmation of the publisher
-  namespace. No bundle has been uploaded.
+  namespace after device login with CLI 0.25.0. No bundle has been uploaded.
 
 Skills Directory and SkillRouter also require account access. SkillsLLM's
 published minimum is not met. Tencent SkillHub requires identity verification.
