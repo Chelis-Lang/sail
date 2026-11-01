@@ -1,11 +1,13 @@
 # Real-project memory instrumentation (#562)
 
-Status: implemented; functional controls pass on native Linux and macOS.
-The combined candidate records all four projects on both platforms, six paired
-rounds each: 864 expected exits and populated memory rows
-([complete matrix](v020-performance.md)). Release-wide memory acceptance
-remains unqualified because the separate below-noise sampler requirement fails.
-The [testing guide](../testing.md) defines the columns and measurement limits.
+Status: independent-process observation is implemented. The native Linux
+qualification now passes the original overhead criterion in all 22 arm/phase
+groups across 440 retained samples. Mac functional controls pass; its fresh
+overhead batch is still waiting for a quiet host. Release-wide acceptance
+remains open. The earlier 864-row matrix and its failed overhead gate retain
+their original helper/runtime scope; they do not qualify the corrected helper
+or the new compiler candidate. The [testing guide](../testing.md) defines the
+columns and sampling limits.
 
 ## Source and scope
 
@@ -249,5 +251,50 @@ acceptance rule are unchanged.
 All 13 memory controls pass on native x86-64 Linux, including an actual process
 boundary with one second of CPU-bound inventory work, delayed teardown, equal
 priming, unchanged command priority, child allocation, daemon retention and
-stream/environment/signal forwarding. Native performance and Mac qualification
-are pending; this does not resolve or reclassify any earlier overhead failure.
+stream/environment/signal forwarding. The same 13 controls also pass on native
+Mac. Earlier overhead failures remain unchanged; the new native qualification
+below has its own source and scope.
+
+### Native Linux acceptance of the independent observer
+
+`64fa9a0e`'s helper, native c7i.8xlarge / us-east-1, unchanged `6cfa1606`
+product capsule (fork `47fb3be6`, Rust 1.99.1) on both control arms. Every
+command retains its original argv, environment, priority, streams and exit.
+The complete process inventory, three RSS definitions and 50 ms cadence
+remain unchanged.
+
+The complete fixed-ten-pair batch retains **360 IronKV rows and 80 demo
+rows**, including every original three-pair sample. All 18 IronKV and four
+demo arm/phase groups satisfy the original condition:
+`abs(median_on - median_off) < max(within-arm range)`.
+Intentional failing-proof rows retain exit 101; all other rows exit zero.
+A separate native audit checks every memory field, observer error list, exit,
+clock and cadence, all demo outcomes and the unchanged helper/product seals.
+
+| Demo arm / phase | Disabled median, ms | Sampled median, ms | Absolute difference, ms | Largest within-arm range, ms |
+|---|---:|---:|---:|---:|
+| Stock unchanged | 99.348 | 98.675 | 0.673 | 9.086 |
+| Stock edit | 699.813 | 698.421 | 1.392 | 25.482 |
+| Sail unchanged | 127.108 | 128.767 | 1.660 | 35.940 |
+| Sail edit | 846.760 | 857.032 | 10.272 | 52.235 |
+
+The first three-pair batch remains failed: its stock unchanged demo median
+was 6.442 ms faster when sampled, outside a 6.241 ms within-arm range;
+all 18 original IronKV groups passed. The ten-pair plan was fixed before the
+initial IronKV batch completed, extends **every** group by seven pairs and
+includes all original observations. Its protocol SHA-256 is
+`28bcf2b6c2ee374a6b66fb87499d0d7f10bfbbf8ce627083665610cb3bb7aa0e`.
+This establishes the corrected Linux observer's bounded overhead, not a new
+runtime speedup or a completed release matrix.
+
+Completed raw records, original and final summaries, identity seals and the
+complete 440-row audit are retained externally, archive SHA-256
+`47dfdc227fc0644903a959bccca67846a8b8fdf1994ad471cdd96cabae3b5e82`.
+One extension-controller attempt stopped before any new sample because it
+tried to recreate the retained demo directory. The corrected controller checks
+and reuses that workspace. That failed remote log was overwritten on resume;
+the failure is indexed here, and no timing row was lost or removed.
+
+Mac's unchanged 0.10-core preflight still refuses busy observations; no
+protected service, authentication setting or ceiling is disabled to admit a
+sample. No Mac timing from these refused starts is claimed.

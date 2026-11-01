@@ -65,10 +65,17 @@ vstd (2,059 / 0). The unchanged full package is 909 Same on both; each complete
 broader comparison is 23 Same / 5,357 records with zero unstable, Different,
 infrastructure or skipped results (13 resource-drift units). One of those
 23 units is the existing matching incompatible RLSF compile, not a passing
-allocator. Source-test compilation then caught an invalid macro invocation
-in the new regression test. Commit `c964917` corrects only that test syntax;
-its complete source-suite and runtime qualification remain in progress.
-Neither prototype is selected or shipped. The original failures stay retained.
+allocator. Source-test fixture errors were corrected before qualification.
+
+The complete `c6649ed8` Linux source run then exposed one genuine integration
+regression: the unchanged CVC5-SMT-LIB-on-Z3 fixture expected one solver log
+and saw two (4,905 Same / one Different; 4,842 nonignored passing tests / one
+failure). Candidate `4cd6bd5f` restricts the companion to both the Z3 solver
+and Z3 encoding; the original CVC5 fixture is unchanged. All 40 targeted
+regressions and 146 AIR tests pass on both native platforms. Its actual
+engine builds and release factories pass on both; the complete Linux suite,
+remaining corpus/cost controls and final runtime adoption remain in progress.
+Neither candidate is selected or shipped. The original failures stay retained.
 
 Original full logged input/transcripts are retained externally: Linux archive
 SHA-256 `e0fe9977a540b86b1782505de40441c82cb776d1bb9bed76f2aab9b08b836434`,

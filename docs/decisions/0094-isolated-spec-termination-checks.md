@@ -55,8 +55,10 @@ fork regressions and nonignored source tests, fast/standard/deep conformance,
 determinism, actual release factories and installed-output controls. Measure
 the new solver startup/context cost across the broader corpus and the original
 release workloads. Preserve every old failure and any newly exposed difference.
-No source/profile expectation or baseline is weakened. Do not re-pin a runtime
-or claim release acceptance from replay or the bounded compiler candidate.
+No source/profile expectation or baseline is weakened. Packed candidate pins
+may be staged for these gates, explicitly unqualified and unpublished. Adopt
+the runtime only after qualification; replay or a candidate build does not
+establish release acceptance.
 
 ## Consequences
 

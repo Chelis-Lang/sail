@@ -7,6 +7,54 @@ merged as `731b3052`; all required checks and the main workflow pass. Ordinary e
 profile, not every project or platform. [Paired qualification](proof-reuse-integration.md)
 separates the current source from earlier component results.
 
+## Guarded specification-context runtime candidate (`4cd6bd5f`)
+
+Status: **bounded functional research-route checks pass on Linux and Mac;
+ordinary-route candidate validation and composed release gates remain pending.**
+The candidate constants now bind the newly built platform manifests. This is
+staged qualification work, not selected or published runtime adoption.
+
+| Native platform | Sail producer | Runtime manifest SHA-256 |
+|---|---|---|
+| c7i.8xlarge / us-east-1, Ubuntu 24.04 | `65b97036` | `95ad9ca903b1c85549972bd7ef0ff6eb157710d215557ea88f03fb37b834f2a9` |
+| mac-m4.metal / us-east-1c, macOS 27 arm64 | `8513ca43` | `efe2d7e59969dc6dd2d2842aeb6cde122c043fa3d15400a33fd7d6219253028e` |
+
+Both actual release factories pass. Before changing ordinary selection, the
+existing `SAIL_RETAINED_CONTENT_RESEARCH=1` route exercises Vest's public
+alloc/std profile with `-- --rlimit 100`. Each platform runs eight calls per
+stock/Sail arm: cold, unchanged, forced full-path unchanged, body edit and
+return, failing edit, fix and return. A private functional wrapper retains
+ProjectResults after the command. Timing and memory acceptance are explicitly
+excluded; correctness jobs share the Linux host and the Mac is not quiet.
+
+All 32 calls retain expected exits, including both arms' deliberate failures.
+Every Sail result is Current. Each edit/fail/fix starts one verifier; both
+returned A calls start no verifier, shim session or solver and reuse both
+complete targets. Their establishing run and entire report payload equal the
+cold A records. Failure remains incomplete with an actual failed function.
+The existing output checker validates both restored target reports against a
+fresh stock run on each platform: 3,127 Vest function records and 1,871 vstd
+records agree for each return. Stock's two raw JSON documents are kept intact
+and checked against their corresponding target, avoiding cross-crate mixing.
+All original capture/output data is retained.
+
+Completed external captures (raw logs, ProjectResults, audits and stock checks):
+Linux `retained-linux-4cd-evidence.tgz`, SHA-256
+`a94ddd69013f4d37803955f8436f97482adb202ece9c0e58da038205fd178a60`;
+Mac `retained-mac-4cd-evidence.tgz`, SHA-256
+`09a73a780a2fcff78799b770414358ee609b31b5f93ee1833fa2f2a05d26e4f0`.
+
+Failed setup/diagnostic attempts remain separate: 2026-11-01, Linux `65b97036`,
+first wrapper stops before samples because Cargo is absent from PATH;
+corrected wrapper uses the installed Rustup proxies. Mac `8513ca43`, first
+post-check names the benchmark's already-retired workspace; a fresh pristine
+copy supplies the stock control. Its first comparison combines stock's two
+crate documents against one target and refuses missing functions; subsequent
+per-target checks preserve every function and both raw documents. The first
+Mac raw export fails under system Python 3.9's stream-compression API; the
+completed capture uses installed Python 3.13. None changes a product guard,
+source proof, resource limit or expected result.
+
 ## Runtime `f8589ed4` requalification
 
 Runtime `7d829946…-81186034d2e137a2` (fork `f8589ed4`, R3, manifest

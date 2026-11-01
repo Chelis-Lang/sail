@@ -2,17 +2,35 @@
 
 **Current status:** broader tooling and the owner-approved ADR 0092 bounded
 prototype are implemented. Both optimization experiments remain unselected;
-platform defaults are unchanged. Continued fixes now pass #633's original
-installed-output control on both platforms. The bounded compiler candidate
-for #634 passes the original 909-function comparison on both platforms and
-all 23 broader Mac units / 5,357 function records. The broader Linux run,
-source suites and final runtime selection remain in progress. No release or
-new performance-default acceptance is claimed.
+platform defaults are unchanged. The installed-output repair (#633) passes its
+original controls on both platforms. The guarded compiler candidate `4cd6bd5f`
+passes all 40 targeted source regressions on Linux and Mac. Its complete Linux
+source run passes all 4,843 nonignored tests (63 ignored), with no output
+differences; cache-fill and warm-cache source runs remain in progress. Its actual release factories pass on both platforms,
+and the expanded Mac corpus reports 23 matching units / 5,357 function records
+(22 passing units and one matching incompatible RLSF compilation). These are
+candidate results, not release acceptance.
 
 The owner approved ADR 0093's two stock debug-set ordering exceptions on
-2026-10-31. Their explicit reporting and negative controls are implemented
-and under native qualification; this does not replace the original failed
-stock source-suite results.
+2026-10-31. The implemented comparator reports 4,867 matching stock source
+cases and four explicit order exceptions. Two stock Cargo scaffolding tests
+failed identically in both arms; they were not counted as passing tests.
+The source builder now generates the release's own Cargo-Verus scaffolding
+manifest for stock variants as well. All 19 targeted Cargo source tests now
+pass on both arms; the corrected full stock suite is running. Original
+failures remain visible.
+
+The corrected observer passes its fixed ten-pair Linux experiment: all 440
+samples / 22 strata satisfy the original noise criterion. This qualifies the
+observer on the measured unchanged product capsule, not the new runtime's
+performance. Mac timing remains pending a quiet host. Retained-proof reuse passes the functional Vest fail/fix/return cycle on both
+newly built runtimes: both returns preserve the original complete Current
+report and provenance with no verifier or solver start. Mac's restored Vest
+and vstd function records also match fresh stock output using the existing
+checker on both platforms. Candidate ordinary selection now names those exact
+manifest digests; final ordinary-route checks and release adoption remain
+pending.
+No release or new performance-default acceptance is claimed.
 
 The [review](../design/general-performance.md) defines the unchanged authority
 boundaries. The [evaluation guide](../performance-evaluation.md) defines the
@@ -22,12 +40,12 @@ strict stock source-suite failure retain their original scope and requirements.
 
 | Gate | Current evidence | Limit |
 |---|---|---|
-| Broader selection | 18 workloads, four new repository pins; final Linux four arms each match 23 units / 5,357 function records | 22 passing units plus one matching incompatible TLSF compile; Mac has 22 same / 1 different (#634) |
+| Broader selection | 18 workloads, four new repository pins; final Linux four arms each match 23 units / 5,357 function records | 22 passing units plus one matching incompatible TLSF compile; original Mac runtime has 22 same / 1 different (#634); guarded candidate has 23 same, with remaining qualification separate |
 | Run-scoped observations | `32f7bba6` bundle evaluated in complete native real-project and generated whole-call controls | Unselected; no material gain, with small warm-call regressions. Runtime paths retain `715c0f5e` behavior |
 | Linux functional controls | Final `6cfa1606`: ordinary 1,288/54 skipped, solver51, complete E2E plus extra, four fast and standard arms and 18 mutations/reverts pass | Full release and strict stock source-suite requirements remain separate |
 | Algorithmic scaling | 2 generated units / 4,314 functions compare same; 84 complete whole-call samples match stock bytes, with Current/no-verifier warm checks | 8/64-package full-call medians remain flat/slower. The earlier 54× lookup component result does not justify selection |
 | Per-file artifact observations | Approved bounded prototype built/tested on Linux/Mac; 280-row Linux on/off audit passes but every warm median is flat/slower | Unselected on Linux; Mac correctness gates prevent timing/default selection; off everywhere |
-| macOS | `6cfa1606` host Clippy + 1,277 tests/54 skipped and unbundled managed suite pass; both factories pass | Installed output failure #633 and stock/fork verdict difference #634; timing/memory selection stopped |
+| macOS | Original host gate passes; #633 installed loop and managed controls pass; guarded `4cd6bd5f` factory, 40 source regressions and broader 23-unit comparison pass | Final composed host/output controls, ordinary retained reuse and quiet-host timing remain |
 | Compiler reuse | No persistent frontend reuse implemented or selected | ADR 0052 complete-input/output shadow qualification remains open |
 
 Raw records stay outside git. Add their source/runtime/environment identities,

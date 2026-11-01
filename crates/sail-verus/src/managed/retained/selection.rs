@@ -8,8 +8,8 @@ use std::path::Path;
 // qualification on that platform. They stay separate constants so a re-pin
 // cannot select reuse unqualified; tests require each to equal
 // `manifest_sha256` in its engine/verus/artifact-*.json pin.
-const LINUX_MANIFEST: &str = "d6096d5bd4952df54f8fdd0fdc157a1bb610298318166495604ccb7201dbe44b";
-const MACOS_MANIFEST: &str = "ea6853a815475820ad3cfeb2a6d9b684e4fff82506eac8fba0cc938ef6359996";
+const LINUX_MANIFEST: &str = "95ad9ca903b1c85549972bd7ef0ff6eb157710d215557ea88f03fb37b834f2a9";
+const MACOS_MANIFEST: &str = "efe2d7e59969dc6dd2d2842aeb6cde122c043fa3d15400a33fd7d6219253028e";
 
 /// The runtime manifest ordinary reuse is qualified on for `host`, if any.
 fn qualified_manifest(host: &str) -> Option<&'static str> {
