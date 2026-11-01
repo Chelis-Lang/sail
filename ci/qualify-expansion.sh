@@ -8,7 +8,7 @@ work="$(mktemp -d /tmp/sail-expansion.XXXXXX)"
 capture() {
   # Keep raw streams/sources outside caches, including unsuccessful attempts.
   rsync -a --exclude cache "$work/" "$out/" || true
-  for lane in repair preparation; do
+  for lane in repair preparation budget; do
     if [ -f "$work/$lane/cache/daemon.log" ]; then
       cp "$work/$lane/cache/daemon.log" "$out/$lane-daemon.log"
     fi
@@ -23,3 +23,4 @@ sail="$(pwd)/target/release/sail"
 python3 ci/test-standalone-repair.py --sail "$sail" --stock "$(command -v verus)" \
   --runtime "${SAIL_ENGINE_BUILD:?requires validated runtime}" --out "$work/repair"
 python3 ci/test-preparation.py --sail "$sail" --runtime "$SAIL_ENGINE_BUILD" --out "$work/preparation"
+python3 ci/test-project-budget.py --sail "$sail" --runtime "$SAIL_ENGINE_BUILD" --out "$work/budget"
