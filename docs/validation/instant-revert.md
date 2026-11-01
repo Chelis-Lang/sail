@@ -7,6 +7,27 @@ merged as `731b3052`; all required checks and the main workflow pass. Ordinary e
 profile, not every project or platform. [Paired qualification](proof-reuse-integration.md)
 separates the current source from earlier component results.
 
+## Corrected runtime ordinary installed qualification (`b28d14a8`)
+
+Both native platforms pass the complete 16-call Stock/Sail cycle using fork
+`0ad405eb` and the actual indexed release bundle, with no research override.
+The cold call serves shipped vstd and runs exactly one project verifier.
+The failing edit fails; the fix verifies. Both returned A reports are complete
+and Current, preserve their original per-target establishing provenance and
+payloads, and start no verifier, shim or solver. Independently fresh stock
+reports agree on all 3,127 Vest and 1,871 vstd functions for both returns.
+These are functional controls, not latency or memory acceptance.
+
+Mac: mac-m4.metal / us-east-1c, macOS 26.7, verifier Rust 1.99.1,
+runtime manifest `9f49060ec8714c5e5b3acc72859025a55c7189cf6f8c841c972675227002b866`.
+The capture also includes the explicitly rebuilt b28 factory, installed-output
+and complete managed suites. `b28-mac-functional-ordinary.tgz` SHA-256:
+`f938f06cac772d134f19e9e778afca0ddf9af34863c28c79bdf85f87b3f19ea6`.
+Linux: c7i.8xlarge / us-east-1, verifier Rust 1.99.1,
+runtime manifest `799aac308bd8d8c64a17901cf9a04b9b093689c5e274b5743c60750e2ce9df9d`.
+Its ordinary record is complete; raw capture follows the isolated matrix.
+Final cost, conformance and runtime-adoption requirements remain separate.
+
 ## Guarded specification-context runtime candidate (`4cd6bd5f`)
 
 Status: **bounded research and ordinary-route functional cycles pass on both

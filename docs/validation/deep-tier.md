@@ -1,10 +1,29 @@
 # Deep-tier soundness validation
 
-The selected runtime remains fork `47fb3be6`. Staged candidate `4cd6bd5f`
-passes all three complete exact fork source-suite arms, and the corrected
+The selected runtime remains fork `47fb3be6`. Corrected staged candidate
+`0ad405eb` passes all three complete exact fork source-suite arms, and the corrected
 stock control passes under owner-approved ADR 0093. Runtime adoption still
 requires the remaining corpus and whole-call cost gates. Earlier failed
 records below retain their original sources, comparisons and outcomes.
+
+## Corrected companion version-check source-suite gate
+
+Native c7i.8xlarge / us-east-1, Linux x86-64, Verus Rust 1.99.1 and
+pinned Z3 4.16.0. Sail harness `c69473b7` plus the recorded exact fork-pin
+patch builds fork `0ad405eb`, ForkTests variant `3493f52b57d35d8e`.
+All 41 focused controls and 146 AIR tests pass. Each complete exact fork
+arm passes 4,907 Same cases: 4,844 nonignored passing tests and 63 ignored,
+with zero Different, unstable, infrastructure errors, failed or unknown
+plain outcomes. Pass-through takes 1,242 seconds, cache fill 1,264 seconds
+and cache warm 1,153 seconds. No debug-order exception applies to these fork
+arms. The unchanged corrected stock control below remains separately scoped.
+
+The capture includes the original actual-Z3 version-response negative
+control, source identity and patch, and every arm's complete report and log.
+`source-0ad-complete-evidence.tgz` SHA-256:
+`ca4b0e61e554a2032fbb99da284f9389dddfc7596b3f73bf24e68024fbe8a2f6`.
+This qualifies the source suite; installed factories, ordinary retained
+proof reuse, corpus conformance and final native costs are separate gates.
 
 ## Guarded candidate source-suite gate
 

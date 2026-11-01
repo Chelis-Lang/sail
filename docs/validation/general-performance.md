@@ -3,10 +3,16 @@
 **Corrected runtime candidate (`0ad405eb`):** both native runtimes are built
 and locally packed. All 41 focused regressions pass on Linux and macOS;
 Mac's broader comparison matches all 23 units / 5,357 function records,
-including the original abstract-domain proof. Two complete Linux fork source
-arms pass 4,907 Same / 4,844 nonignored passing tests / 63 ignored; the warm
-arm is still running. This stages the corrected artifact identities, not
-ordinary-mode or release acceptance.
+including the original abstract-domain proof. All three complete Linux fork source
+arms pass 4,907 Same / 4,844 nonignored passing tests / 63 ignored, with
+zero differences, unstable results, infrastructure failures or failed tests. The source-suite capture `source-0ad-complete-evidence.tgz` has SHA-256
+`ca4b0e61e554a2032fbb99da284f9389dddfc7596b3f73bf24e68024fbe8a2f6`.
+Sail `b28d14a8` passes the native Mac host gate (Clippy, 1,285 tests /
+54 skipped); its indexed factory and installed qualification are running. The first Mac
+packaging wrapper selected examples without rebuilding release bins; that
+capture retains its older copied binary identities and is not candidate
+acceptance. The corrected wrapper builds bins explicitly before staging.
+This stages the corrected artifact identities, not release acceptance.
 
 Review found that `4cd6bd5f`'s companion omitted the original solver-version
 check. A recursive-spec-only negative control forwards the actual pinned Z3
@@ -21,7 +27,21 @@ calls, including failure/fix and both returned A reports. Both targets remain
 complete and Current, keep their original establishing runs and exact report
 payloads, and start no verifier, shim or solver on either return. Fresh stock
 comparisons agree on all 3,127 Vest and 1,871 vstd functions for both returns.
-Ordinary-route qualification is the next gate for these exact manifest pins.
+The ordinary installed route now passes on Sail `b28d14a8` on both
+platforms: shipped vstd is served, only one project verifier runs cold, and
+both complete returned reports match fresh stock per-function results.
+Mac's explicitly rebuilt release binaries also pass the actual four-unit
+factory, installed output loop, full managed suite, fast 147 / 3,451 and
+broader 23 / 5,357 comparisons. Its complete functional and ordinary-route
+capture is `b28-mac-functional-ordinary.tgz`, SHA-256
+`f938f06cac772d134f19e9e778afca0ddf9af34863c28c79bdf85f87b3f19ea6`.
+Linux's corresponding raw capture follows its isolated measurement cohort;
+its indexed bundle/SDK is already retained separately. All 147 Mac fast-tier
+units are deterministic over three actual `0ad405eb` runs. The completed
+Mac compiler/AIR/focused-regression build record and original manifest
+inventories are retained in `source-0ad-mac-native-evidence.tgz`, SHA-256
+`2f86f112d00a46fa4253f4b32f47b3e7fe9880e89718989c84bc38306d787f26`.
+Final observer controls, edit loops and product costs remain separate gates.
 Raw captures: Linux `retained-0ad-linux-evidence.tgz`, SHA-256
 `9f7c2bf871f26d0098bf1fd5af0bd8f25c02220c576121c480569b92e39a9248`;
 Mac `retained-0ad-mac-evidence.tgz`, SHA-256

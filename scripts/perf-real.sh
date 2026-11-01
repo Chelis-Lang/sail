@@ -878,6 +878,8 @@ prepare_pristine
 # Resource validation belongs outside every timed command. An observed busy
 # headless Mac cannot qualify a native comparison merely by being dedicated.
 if [ "$(uname -s)" = Darwin ]; then
+  # Let project preparation drain before the unchanged fresh CPU preflight.
+  sleep "${SAIL_PERF_SETTLE:-5}"
   python3 -I "$here/perf-mac-quiet.py" --output "$out/host-quiet.json"
 fi
 

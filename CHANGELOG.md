@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Collect macOS benchmark memory from the watched process forest through
+  the public process APIs, avoiding recurring ps launches. Permission or
+  ABI failures retain the complete original ps observation. The cadence,
+  clock, memory definitions and overhead criterion remain unchanged.
+  Allow project setup to settle before the existing fresh CPU preflight.
+
 - Compare benchmark diagnostics with ADR 0042's existing multiset rule using
   the Rust splitter, retaining complete message bytes and multiplicity while
   allowing their print order to vary. Remaining output stays ordered.

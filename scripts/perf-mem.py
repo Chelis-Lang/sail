@@ -6,6 +6,8 @@ RSS is KiB on both platforms. Shared pages are counted once per process;
 50 ms sampling can miss short-lived processes and peaks between samples.
 """
 import argparse
+import ctypes
+import errno
 import json
 import os
 from pathlib import Path
@@ -38,7 +40,7 @@ def linux_processes(root=Path('/proc')):
     return processes
 
 
-def mac_processes():
+def mac_ps_processes():
     result = subprocess.run(['ps', '-A', '-o', 'pid=,ppid=,rss=,lstart=,command='],
                             check=True, capture_output=True, text=True)
     processes = {}
@@ -50,8 +52,144 @@ def mac_processes():
     return processes
 
 
-def processes():
-    return linux_processes() if sys.platform.startswith('linux') else mac_processes()
+class _MacBsdInfo(ctypes.Structure):
+    # Public Darwin sys/proc_info.h, LP64 proc_bsdinfo (136 bytes).
+    _fields_ = [(name, ctypes.c_uint32) for name in
+                'flags status xstatus pid ppid uid gid ruid rgid svuid svgid reserved'.split()]
+    _fields_ += [('comm', ctypes.c_char * 16), ('name', ctypes.c_char * 32)]
+    _fields_ += [(name, ctypes.c_uint32) for name in 'nfiles pgid pjobc tdev tpgid'.split()]
+    _fields_ += [('nice', ctypes.c_int32), ('seconds', ctypes.c_uint64),
+                ('micros', ctypes.c_uint64)]
+
+
+class _MacTaskInfo(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_uint64) for name in
+                'virtual resident user system threads_user threads_system'.split()]
+    _fields_ += [(name, ctypes.c_int32) for name in
+                 'policy faults pageins cow sent received syscalls_mach syscalls_unix '
+                 'csw threads running priority'.split()]
+
+
+class _MacAllInfo(ctypes.Structure):
+    _fields_ = [('bsd', _MacBsdInfo), ('task', _MacTaskInfo)]
+
+
+class ProcessTable(dict):
+    """A process snapshot with its actual observation backend."""
+    def __init__(self, *args, backend):
+        super().__init__(*args)
+        self.backend = backend
+
+
+class MacCollector:
+    """Observe the watched forest directly; never enumerate unrelated RSS.
+
+    proc_listchildpids computes the same descendant closure as Tracker's full
+    table scan. Previously observed/reparented processes are additional roots.
+    A permission/ABI failure falls back to the complete original ps snapshot;
+    unknown memory is never substituted with zero. Both routes retain ps's
+    start-time identity representation so retained daemon state stays valid.
+    """
+    def __init__(self):
+        if (ctypes.sizeof(_MacBsdInfo), ctypes.sizeof(_MacTaskInfo),
+                ctypes.sizeof(_MacAllInfo)) != (136, 96, 232):
+            raise OSError('unsupported Darwin process-info ABI')
+        self.lib = ctypes.CDLL('/usr/lib/libproc.dylib', use_errno=True)
+        self.lib.proc_pidinfo.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_uint64,
+                                         ctypes.c_void_p, ctypes.c_int]
+        self.lib.proc_pidinfo.restype = ctypes.c_int
+        self.lib.proc_listchildpids.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+        self.lib.proc_listchildpids.restype = ctypes.c_int
+        self.system = ctypes.CDLL(None, use_errno=True)
+        self.system.sysctl.argtypes = [ctypes.POINTER(ctypes.c_int), ctypes.c_uint,
+                                      ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t),
+                                      ctypes.c_void_p, ctypes.c_size_t]
+        self.system.sysctl.restype = ctypes.c_int
+
+    def children(self, pid):
+        capacity = 16
+        for _ in range(5):
+            entries = (ctypes.c_int * capacity)()
+            ctypes.set_errno(0)
+            count = self.lib.proc_listchildpids(pid, entries, ctypes.sizeof(entries))
+            if count < 0:
+                raise OSError(ctypes.get_errno(), 'cannot enumerate process children')
+            if count < capacity:
+                return [child for child in entries[:count] if child > 0]
+            capacity *= 4
+        raise OSError('process child inventory exceeded its bound')
+
+    @staticmethod
+    def decode_argv(data):
+        if len(data) < 4:
+            raise ValueError('truncated Darwin argument header')
+        count, = struct.unpack_from('=i', data)
+        if not 0 < count <= len(data) - 4:
+            raise ValueError('invalid Darwin argument count')
+        offset = data.index(b'\0', 4) + 1  # kernel's executable pathname
+        while offset < len(data) and data[offset] == 0:
+            offset += 1
+        argv = []
+        for _ in range(count):
+            end = data.index(b'\0', offset)
+            argv.append(os.fsdecode(data[offset:end]))
+            offset = end + 1
+        return argv
+
+    def argv(self, pid):
+        # CTL_KERN/KERN_PROCARGS2: the counted argv is distinct from environ.
+        mib = (ctypes.c_int * 3)(1, 49, pid)
+        size = ctypes.c_size_t()
+        if self.system.sysctl(mib, 3, None, ctypes.byref(size), None, 0):
+            raise OSError(ctypes.get_errno(), 'cannot size process arguments')
+        if not 4 < size.value <= 16 * 1024 * 1024:
+            raise OSError('invalid process-argument buffer bound')
+        data = ctypes.create_string_buffer(size.value)
+        if self.system.sysctl(mib, 3, data, ctypes.byref(size), None, 0):
+            raise OSError(ctypes.get_errno(), 'cannot read process arguments')
+        return self.decode_argv(data.raw[:size.value])
+
+    def collect(self, roots):
+        table = ProcessTable(backend='darwin-libproc')
+        pending, seen = list(roots), set()
+        while pending:
+            pid = pending.pop()
+            if pid <= 0 or pid in seen:
+                continue
+            seen.add(pid)
+            info = _MacAllInfo()
+            ctypes.set_errno(0)
+            size = self.lib.proc_pidinfo(pid, 2, 0, ctypes.byref(info), ctypes.sizeof(info))
+            if not size and ctypes.get_errno() in (errno.ESRCH, errno.ENOENT):
+                continue
+            if size != ctypes.sizeof(info) or info.bsd.pid != pid:
+                raise OSError(ctypes.get_errno(), 'incomplete process information')
+            name = os.fsdecode(info.bsd.name or info.bsd.comm)
+            argv = self.argv(pid) if name == 'sail' else [name]
+            # Keep the existing lstart identity and PID-reuse comparisons.
+            started = ' '.join(time.ctime(info.bsd.seconds).split())
+            table[pid] = (info.bsd.ppid, info.task.resident // 1024, started, argv)
+            pending.extend(self.children(pid))
+        return table
+
+
+_MAC_COLLECTOR = None
+
+
+def mac_processes(roots=None):
+    global _MAC_COLLECTOR
+    try:
+        if _MAC_COLLECTOR is None:
+            _MAC_COLLECTOR = MacCollector()
+        return _MAC_COLLECTOR.collect(roots if roots is not None else {os.getpid()})
+    except (OSError, ValueError, AttributeError):
+        # Protected/setuid descendants and unsupported OS interfaces retain the
+        # complete original observation instead of silently losing their RSS.
+        return ProcessTable(mac_ps_processes(), backend='darwin-ps')
+
+
+def processes(roots=None):
+    return linux_processes() if sys.platform.startswith('linux') else mac_processes(roots)
 
 
 def daemon(argv):
@@ -74,8 +212,10 @@ class Tracker:
         self.tree_peak = 0
         self.daemon_peak = 0
         self.samples = 0
+        self.backends = set()
 
     def sample(self, table, root):
+        self.backends.add(getattr(table, 'backend', 'linux-procfs' if sys.platform.startswith('linux') else 'unspecified'))
         self.owned = {pid: start for pid, start in self.owned.items()
                       if pid in table and table[pid][2] == start}
         self.daemons = {pid: start for pid, start in self.daemons.items()
@@ -136,7 +276,12 @@ def prime(args):
     try:
         # Prime the same inventory before readiness in both arms. Otherwise
         # the control changes pre-command work as well as recurring sampling.
-        table = processes()
+        status = load(args.status, {})
+        pid = (status.get('info') or {}).get('pid')
+        roots = {int(value) for value in known} | {os.getpid()}
+        if isinstance(pid, int) and pid > 0:
+            roots.add(pid)
+        table = processes(roots)
     except (OSError, subprocess.SubprocessError) as error:
         errors.append(str(error))
         table = {}
@@ -147,7 +292,9 @@ def prime(args):
     # must not reject that authoritative PID. Retain the observed start identity.
     if pid in table:
         known[str(pid)] = table[pid][2]
-    return Tracker(known), table, errors
+    tracker = Tracker(known)
+    tracker.backends.add(getattr(table, 'backend', 'linux-procfs' if sys.platform.startswith('linux') else 'unspecified'))
+    return tracker, table, errors
 
 
 def observe(args):
@@ -174,14 +321,15 @@ def observe(args):
             os.read(0, 1)
         else:
             while True:
-                tracker.sample(processes(), root)
+                tracker.sample(processes(set(tracker.owned) | set(tracker.daemons) | {root}), root)
                 if select.select([0], [], [], INTERVAL)[0]:
                     os.read(0, 1)
                     break
     except (OSError, subprocess.SubprocessError) as error:
         errors.append(str(error))
     result = dict(tree_peak_kb=tracker.tree_peak, daemon_peak_kb=tracker.daemon_peak,
-                  samples=tracker.samples, daemons=tracker.daemons, errors=errors)
+                  samples=tracker.samples, daemons=tracker.daemons, errors=errors,
+                  collection_backends=sorted(tracker.backends))
     sys.stdout.write(json.dumps(result)+'\n')
     sys.stdout.flush()
     return 0
@@ -195,6 +343,7 @@ def run(args):
         # as a descendant. The harness supplies fresh status after the call;
         # retain that completion observation and seed the following phase.
         result = load(args.output, {})
+        result['collection_backends'] = sorted(set(result.get('collection_backends', [])) | tracker.backends)
         result.update(daemon_peak_kb=max(result.get('daemon_peak_kb') or 0,
                                          tracker.daemon_peak),
                       daemon_hwm_kb=daemon_hwm(table, tracker.daemons))
@@ -260,7 +409,8 @@ def run(args):
         result = {'tree_peak_kb': observation['tree_peak_kb'],
                   'largest_kb': largest_kb(usage.ru_maxrss, sys.platform),
                   'daemon_peak_kb': observation['daemon_peak_kb'],
-                  'interval_ms': 50, 'samples': observation['samples'], 'exit': code}
+                  'interval_ms': 50, 'samples': observation['samples'], 'exit': code,
+                  'collection_backends': observation.get('collection_backends', [])}
         result['wall_seconds'] = wall_seconds
         if errors:
             result.update(tree_peak_kb=None, daemon_peak_kb=None, errors=errors)

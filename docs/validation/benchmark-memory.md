@@ -1,13 +1,33 @@
 # Real-project memory instrumentation (#562)
 
-Status: independent-process observation is implemented. The native Linux
-qualification now passes the original overhead criterion in all 22 arm/phase
-groups across 440 retained samples. Mac functional controls pass; its fresh
-overhead batch is still waiting for a quiet host. Release-wide acceptance
-remains open. The earlier 864-row matrix and its failed overhead gate retain
-their original helper/runtime scope; they do not qualify the corrected helper
-or the new compiler candidate. The [testing guide](../testing.md) defines the
-columns and sampling limits.
+Status: the native Linux independent-process observer passes the original
+overhead criterion in all 22 arm/phase groups across 440 retained samples.
+The fresh macOS 26.7 run retains all 80 demo samples: plain unchanged calls
+add 5.213 ms, exceeding their 2.680 ms within-arm range; the first IronKV
+preflight then refuses 0.245 observed cores. That gate remains failed.
+
+The new Mac collector queries only the measured process forest, retained
+detached processes and known daemons using public libproc APIs. It avoids
+recurring ps launches and unrelated-process RSS queries. The original
+complete ps snapshot remains the fallback on access or ABI failures;
+unknown memory is never reported as zero. Backend names are retained in
+each observation. Readiness, wait4 command timing, 50 ms interval, RSS
+definitions, child arguments/environment and the overhead criterion remain.
+
+All 17 native Mac memory controls pass, including SDK-compiled ABI/offset
+checks, exact stable-child RSS/parent/start comparison with ps, structured
+arguments containing spaces, native-only child allocation and complete
+fallback coverage. Linux passes 15 applicable controls with two Darwin
+skips. The 19 command and five unchanged quiet-guard controls also pass on
+Mac. Project preparation now receives the existing five-second settle
+pause before the fresh 0.10-core CPU guard. This changes no sampled command
+or CPU ceiling. Original refusals remain recorded. The fixed-count native
+overhead qualification must pass before this candidate qualifies memory
+acceptance.
+
+The earlier 864-row matrix and its failed overhead gate retain their own
+helper/runtime scope. The [testing guide](../testing.md) defines columns and
+sampling limits.
 
 ## Source and scope
 
