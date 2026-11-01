@@ -341,6 +341,11 @@ changes in `CHANGELOG.md`. `docs/benchmarks.md` is generated from data under
 `bench/` and never edited by hand.
 
 Documentation is part of implementation and every agent handoff:
+- The consumer skill in `skills/sail-verification/` is authoritative for agents
+  using Sail. Update its affected instructions/examples when CLI, MCP or release
+  availability changes. Websites link to it; registry packages derive from this
+  folder and are never edited independently. It is separate from this contributor
+  guide. See `docs/agent-skill-distribution.md` for publishing and listing status.
 - Update the relevant user guide with commands, setup, observable behavior,
   errors and material limitations when a feature changes. Link new guides from
   `docs/README.md` and the main README where users need them.

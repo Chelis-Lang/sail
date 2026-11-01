@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add the installable `sail-verification` agent skill for Verus proof iteration,
+  proof-repair checks and cached Z3 queries. The Sail repository is its canonical
+  source; see `skills/sail-verification/SKILL.md`.
+
 - Add standalone Verus-file verification without a Cargo project, sharing
   successful proof reuse, durable jobs, watch and MCP (`source_file`). Native
   Linux/macOS qualification passes; see `docs/standalone-verification.md`.
