@@ -450,3 +450,10 @@ it supplies no complete-key or restoration acceptance.
 - 2026-10-31, working tree based on `715c0f5e`: semi-persistent's three package
   attempts refused Cargo resolution due to incomplete scratch workspace pin
   adjustment. TLSF reports matching compiler errors. Both remain explicit.
+
+## Composed candidate attempts
+
+- 2026-11-01, `9a24d39e`: Mac host gate fails Clippy because unconditional
+  scaffolding generation leaves an unused private `fork_tests` argument.
+  The argument and its call-site value are removed; no lint or test changes.
+  The composed gates and ordinary-route checks require the corrected source.

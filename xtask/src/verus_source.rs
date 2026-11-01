@@ -277,7 +277,6 @@ fn compile(
     jobs: &str,
     singular: bool,
     engine: bool,
-    fork_tests: bool,
 ) -> Result<Vec<(String, PathBuf)>> {
     // The toolchain and components Verus's rust-toolchain.toml lists
     // (rustc-dev, llvm-tools, rustfmt).
@@ -657,7 +656,6 @@ pub fn build(args: &[String]) -> Result<()> {
         &jobs,
         features.iter().any(|feature| feature == "singular"),
         o.engine,
-        o.fork_tests,
     )?;
     let test_binaries = relative_binaries(&build, &executables)?;
 
