@@ -117,6 +117,7 @@ fn absent_or_future_capability_refuses_before_any_submission() -> TestResult {
                     proof_version: 1,
                     repair: false,
                     standalone: false,
+                    standalone_repair: false,
                     neutral_contracts_version: version,
                     neutral_contract_profiles: vec![1, 2],
                     assurance_version: None,
@@ -183,6 +184,7 @@ fn profile_two_refuses_endpoint_without_explicit_profile_support() -> TestResult
                 mutation_version: None,
                 repair: false,
                 standalone: false,
+                standalone_repair: false,
             },
         )?;
         listener.set_nonblocking(true)?;

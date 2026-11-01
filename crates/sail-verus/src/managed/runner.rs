@@ -59,6 +59,8 @@ pub struct Config {
     /// which prints only Verus's own output, does not (ADR 0047).
     /// Interactive-engine runs always log.
     pub attribution_logs: bool,
+    /// Resolved caller colour for an owned preparation; ordinary calls use `None`.
+    pub invocation_colour: Option<bool>,
 }
 
 #[derive(Clone)]
@@ -1225,7 +1227,12 @@ fn invocation_command(
         // Cargo writes to Sail's pipe, not the terminal, so it would print
         // no colour; ask for it as plain Cargo-Verus would on this terminal.
         // An argument, not CARGO_TERM_COLOR, so it is not a proof input.
-        .args(invocation_colour(&config.args, show_output).then_some("--color=always"))
+        .args(
+            config
+                .invocation_colour
+                .unwrap_or_else(|| invocation_colour(&config.args, show_output))
+                .then_some("--color=always"),
+        )
         .args(&config.args[split..])
         .env("RUSTC_BOOTSTRAP", "1")
         // Only Cargo-Verus sees the alias; the alias gives the real Cargo the
@@ -5085,6 +5092,7 @@ mod tests {
                 args: Vec::new(),
                 force: false,
                 attribution_logs: false,
+                invocation_colour: None,
             };
             let error = super::run_engine_held(&config, None, &mut Vec::new(), None)
                 .err()
@@ -5348,6 +5356,7 @@ mod tests {
             args: Vec::new(),
             force: true,
             attribution_logs: true,
+            invocation_colour: None,
         })
     }
 
@@ -7817,6 +7826,7 @@ mod tests {
             args: Vec::new(),
             force: true,
             attribution_logs: true,
+            invocation_colour: None,
         };
         std::fs::write(runtime.join("z3"), b"tampered")?;
         let error = context(&config, Some(&request))
@@ -8946,6 +8956,7 @@ mod tests {
             args: args.iter().map(|&a| a.to_owned()).collect(),
             force: true,
             attribution_logs: true,
+            invocation_colour: None,
         };
         let focus = config(&["-p", "input", "--", "--verify-function", "input"]);
         let full = config(&["-p", "input"]);
@@ -9147,6 +9158,7 @@ mod tests {
             args: args.iter().map(|&a| a.to_owned()).collect(),
             force: true,
             attribution_logs: true,
+            invocation_colour: None,
         };
         let fresh = |args: &[String]| -> std::result::Result<bool, Box<dyn std::error::Error>> {
             let output = Command::new("cargo")

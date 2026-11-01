@@ -14,6 +14,8 @@ List and remove managed workspaces' compiled targets, receipts and run records.
 USAGE:
     sail cache projects list [--json]
     sail cache projects prune (--all | [--older-than DAYS] [--missing]) [--dry-run] [--json]
+    sail cache projects prune --to-bytes N [--dry-run] [--json]
+    sail cache projects budget [--max-bytes N | --disable] [--json]
 
 Managed runs (`sail verify`, jobs, MCP and repairs) keep each
 workspace's compiled dependencies, proof receipts and run records under
@@ -24,11 +26,14 @@ COMMANDS:
                            and whether the path still exists
     prune                  remove workspaces' directories; the next run of a
                            removed workspace compiles and verifies again
+    budget                 inspect or configure opt-in background eviction
 
 PRUNE OPTIONS (criteria combine: a workspace must meet each one given):
     --older-than DAYS      last used at least DAYS days ago
     --missing              its recorded path no longer exists
     --all                  every workspace
+    --to-bytes N           evict oldest idle workspaces to a soft byte cap,
+                           protecting the most recently used workspace
     --dry-run              show what would be removed; remove nothing
 
 A workspace that a running managed run or job holds is skipped and reported.
@@ -81,6 +86,43 @@ pub fn run(
             list(&cache, &listed, json, out);
             ExitCode::SUCCESS
         }
+        Parsed::Budget { setting, json } => budget(&cache, &listed, setting, json, out, err),
+        Parsed::Trim {
+            max_bytes,
+            dry_run,
+            json,
+        } => {
+            let result = projects::budget::enforce(&cache, max_bytes, dry_run);
+            match result {
+                Ok(report) => {
+                    if json {
+                        print_json(out, &serde_json::json!(report));
+                    } else {
+                        let _ = writeln!(
+                            out,
+                            "{} {}; {} remains (cap {}); {} busy, {} failed{}",
+                            if dry_run { "would free" } else { "freed" },
+                            crate::ops::human(report.freed_bytes),
+                            crate::ops::human(report.remaining_bytes),
+                            crate::ops::human(max_bytes),
+                            report.busy.len(),
+                            report.failed.len(),
+                            if report.over_budget {
+                                "; over budget: protected, busy or failed data remains"
+                            } else {
+                                ""
+                            }
+                        );
+                    }
+                    if report.failed.is_empty() {
+                        ExitCode::SUCCESS
+                    } else {
+                        ExitCode::from(1)
+                    }
+                }
+                Err(error) => budget_error(&error, err),
+            }
+        }
         Parsed::Prune {
             selection,
             dry_run,
@@ -90,7 +132,22 @@ pub fn run(
 }
 
 #[derive(Debug, PartialEq, Eq)]
+enum BudgetSetting {
+    Set(u64),
+    Disable,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 enum Parsed {
+    Budget {
+        setting: Option<BudgetSetting>,
+        json: bool,
+    },
+    Trim {
+        max_bytes: u64,
+        dry_run: bool,
+        json: bool,
+    },
     List {
         json: bool,
     },
@@ -106,10 +163,19 @@ fn parse(args: &[String]) -> Result<Parsed, String> {
     let mut json = false;
     let mut dry_run = false;
     let mut selection = Selection::default();
+    let mut setting = None;
+    let mut to_bytes = None;
     let mut it = rest.iter();
     while let Some(arg) = it.next() {
         match (command.as_str(), arg.as_str()) {
             (_, "--json") => json = true,
+            ("budget", "--max-bytes") if setting.is_none() => {
+                setting = Some(BudgetSetting::Set(byte_limit(it.next())?));
+            }
+            ("budget", "--disable") if setting.is_none() => setting = Some(BudgetSetting::Disable),
+            ("prune", "--to-bytes") if to_bytes.is_none() => {
+                to_bytes = Some(byte_limit(it.next())?);
+            }
             ("prune", "--dry-run") => dry_run = true,
             ("prune", "--all") => selection.all = true,
             ("prune", "--missing") => selection.missing = true,
@@ -130,6 +196,15 @@ fn parse(args: &[String]) -> Result<Parsed, String> {
     }
     match command.as_str() {
         "list" => Ok(Parsed::List { json }),
+        "budget" => Ok(Parsed::Budget { setting, json }),
+        "prune" if to_bytes.is_some() && !selection.is_empty() => {
+            Err("--to-bytes cannot be combined with --all, --older-than or --missing".into())
+        }
+        "prune" if to_bytes.is_some() => Ok(Parsed::Trim {
+            max_bytes: to_bytes.unwrap_or_default(),
+            dry_run,
+            json,
+        }),
         "prune" if selection.is_empty() => {
             Err("`projects prune` needs --all, --older-than DAYS or --missing".into())
         }
@@ -143,6 +218,70 @@ fn parse(args: &[String]) -> Result<Parsed, String> {
         }),
         other => Err(format!("unknown projects command `{other}`")),
     }
+}
+
+fn byte_limit(value: Option<&String>) -> Result<u64, String> {
+    value
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|bytes| *bytes > 0)
+        .ok_or_else(|| "byte limit requires a positive whole number of bytes".into())
+}
+
+fn budget_error(error: &std::io::Error, err: &mut dyn std::io::Write) -> ExitCode {
+    let _ = writeln!(
+        err,
+        "error[SAIL0504]: cannot manage project budget: {error}"
+    );
+    ExitCode::from(1)
+}
+
+fn budget(
+    cache: &Path,
+    listed: &[Project],
+    setting: Option<BudgetSetting>,
+    json: bool,
+    out: &mut dyn std::io::Write,
+    err: &mut dyn std::io::Write,
+) -> ExitCode {
+    let result = setting.map_or_else(
+        || projects::budget::load(cache),
+        |setting| {
+            let limit = match setting {
+                BudgetSetting::Set(bytes) => Some(bytes),
+                BudgetSetting::Disable => None,
+            };
+            projects::budget::save(cache, limit).map(|()| limit)
+        },
+    );
+    let limit = match result {
+        Ok(limit) => limit,
+        Err(error) => return budget_error(&error, err),
+    };
+    let bytes = listed
+        .iter()
+        .fold(0u64, |sum, p| sum.saturating_add(p.bytes));
+    if json {
+        print_json(
+            out,
+            &serde_json::json!({ "enabled": limit.is_some(), "max_bytes": limit,
+            "bytes": bytes, "over_budget": limit.is_some_and(|cap| bytes > cap) }),
+        );
+    } else if let Some(cap) = limit {
+        let _ = writeln!(
+            out,
+            "managed project budget: {}; accounted {}{}",
+            crate::ops::human(cap),
+            crate::ops::human(bytes),
+            if bytes > cap { " (over budget)" } else { "" }
+        );
+    } else {
+        let _ = writeln!(
+            out,
+            "managed project budget: disabled; accounted {}",
+            crate::ops::human(bytes)
+        );
+    }
+    ExitCode::SUCCESS
 }
 
 fn now() -> u64 {

@@ -162,7 +162,9 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
         let snapshot = refresh(state, job, &project);
         status.currentness = classify(project.currentness, &project.input_revision, snapshot);
         apply_currentness(&mut project, status.currentness);
-        if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
+        if let sail_api::jobs::Mode::Repair(_) | sail_api::jobs::Mode::StandaloneRepair { .. } =
+            job.submission.mode
+        {
             // The full phase is sent once, as `result`.
             let mut envelope = repair_project(state, job)?;
             envelope.batch.full = None;
@@ -209,7 +211,10 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
         return Ok(frames.select(currentness));
     }
     // This parse uses the same bytes whose exact seal was checked above.
-    let (mut project, repair) = if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
+    let (mut project, repair) = if let sail_api::jobs::Mode::Repair(_)
+    | sail_api::jobs::Mode::StandaloneRepair { .. } =
+        job.submission.mode
+    {
         let mut envelope: sail_api::repair::ResultDocument =
             serde_json::from_slice(&bytes).map_err(io::Error::other)?;
         (full_phase(&mut envelope)?, Some(Box::new(envelope)))
@@ -260,7 +265,10 @@ fn frame_key(job: &Stored, projection: &Projection) -> io::Result<String> {
     }
     serde_json::to_vec(&Key {
         status: &job.status,
-        repair: matches!(job.submission.mode, sail_api::jobs::Mode::Repair(_)),
+        repair: matches!(
+            job.submission.mode,
+            sail_api::jobs::Mode::Repair(_) | sail_api::jobs::Mode::StandaloneRepair { .. }
+        ),
         stdout_sha256: &projection.stdout_sha256,
         proof_authority_revision: projection.proof_authority_revision,
     })
@@ -332,7 +340,9 @@ fn classify(
 }
 fn project(state: &State, job: &Stored) -> io::Result<sail_api::project::ProjectResult> {
     let bytes = project_bytes(state, job)?;
-    let mut project = if let sail_api::jobs::Mode::Repair(_) = job.submission.mode {
+    let mut project = if let sail_api::jobs::Mode::Repair(_)
+    | sail_api::jobs::Mode::StandaloneRepair { .. } = job.submission.mode
+    {
         let mut envelope: sail_api::repair::ResultDocument =
             serde_json::from_slice(&bytes).map_err(io::Error::other)?;
         full_phase(&mut envelope)?

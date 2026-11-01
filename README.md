@@ -14,8 +14,9 @@ A typical one-line edit verifies 1.2–2.5 times faster than plain Verus, and
 an undone edit up to 30 times faster. See [performance](docs/performance.md)
 for measurements, including where Sail is still slower.
 
-If anything in Sail fails, verification falls back to the pinned Z3 and the
-result stays correct. Sail runs on Linux x86-64 and Apple-silicon macOS.
+Solver-service failures fall back to the pinned Z3. If Sail cannot establish
+complete verification evidence, it reports an error or an unconfirmed result
+instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 
 ## Install
 

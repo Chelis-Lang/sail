@@ -118,7 +118,12 @@ fn replies(output: &[u8]) -> Vec<(bool, Vec<u8>)> {
         })
         .collect();
     let mut items = Vec::new();
-    ResponseSplitter::new().push(output, &mut items);
+    let mut responses = ResponseSplitter::new();
+    responses.push(output, &mut items);
+    assert!(
+        responses.finish().is_none(),
+        "incomplete trailing solver response"
+    );
     assert_eq!(items.len(), stats.len());
     stats
         .into_iter()
@@ -1129,4 +1134,31 @@ fn check_sat_using_reply_is_framed_stored_and_served() {
     let record = take_record(&records);
     assert_eq!(record["replies_served"], 2, "both check replies are served");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn reply_comparison_rejects_incomplete_output_after_all_expected_replies() {
+    let mut commands = Vec::new();
+    let mut splitter = CommandSplitter::new();
+    splitter.push(INPUT, &mut commands);
+    let count = commands
+        .iter()
+        .filter_map(|c| classify(&c.bytes).ok())
+        .filter(|c| c.kind.output() == Output::One)
+        .count();
+    let complete = b"unsat\n".repeat(count);
+    assert_eq!(replies(&complete).len(), count);
+    for tail in [
+        b"(".as_slice(),
+        b"(:model (",
+        b"\"unfinished",
+        b"|unfinished",
+    ] {
+        let mut truncated = complete.clone();
+        truncated.extend_from_slice(tail);
+        assert!(
+            std::panic::catch_unwind(|| replies(&truncated)).is_err(),
+            "a complete prefix must not hide an incomplete suffix"
+        );
+    }
 }

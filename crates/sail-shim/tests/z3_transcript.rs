@@ -71,6 +71,10 @@ fn replies(output: &[u8]) -> Vec<(bool, Vec<u8>)> {
     let mut items = Vec::new();
     let mut responses = ResponseSplitter::new();
     responses.push(output, &mut items);
+    assert!(
+        responses.finish().is_none(),
+        "incomplete trailing solver response"
+    );
     assert_eq!(
         items.len(),
         stats.len(),
@@ -109,5 +113,32 @@ fn shim_replies_match_direct_z3() {
         } else {
             assert_eq!(a, b, "reply {i} differs");
         }
+    }
+}
+
+#[test]
+fn reply_comparison_rejects_incomplete_output_after_all_expected_replies() {
+    let mut commands = Vec::new();
+    let mut splitter = CommandSplitter::new();
+    splitter.push(INPUT, &mut commands);
+    let count = commands
+        .iter()
+        .filter_map(|c| classify(&c.bytes).ok())
+        .filter(|c| c.kind.output() == Output::One)
+        .count();
+    let complete = b"unsat\n".repeat(count);
+    assert_eq!(replies(&complete).len(), count);
+    for tail in [
+        b"(".as_slice(),
+        b"(:model (",
+        b"\"unfinished",
+        b"|unfinished",
+    ] {
+        let mut truncated = complete.clone();
+        truncated.extend_from_slice(tail);
+        assert!(
+            std::panic::catch_unwind(|| replies(&truncated)).is_err(),
+            "a complete prefix must not hide an incomplete suffix"
+        );
     }
 }

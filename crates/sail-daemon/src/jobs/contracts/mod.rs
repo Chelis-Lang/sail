@@ -71,7 +71,7 @@ fn submit_inner(state: &State, source: &Submission, deduplicate: bool) -> io::Re
         .lock()
         .map_err(lock_error)?
         .push(status.id.clone(), key);
-    state.ready.notify_one();
+    state.ready.notify_all();
     Ok(status)
 }
 

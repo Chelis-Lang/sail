@@ -117,6 +117,7 @@ pub(crate) fn config(
         args,
         force: std::env::var_os("SAIL_MANAGED_FORCE").is_some_and(|v| v == "1"),
         attribution_logs,
+        invocation_colour: None,
     })
 }
 
@@ -224,7 +225,7 @@ fn managed(
     let shown: Option<&mut dyn std::io::Write> = if json { None } else { Some(&mut tee_out) };
     match sail_verus::managed::run_for_replay(config, shown, &mut tee_err, &key) {
         Ok((result, Some(pending))) => {
-            pending.commit(stdout, stderr);
+            let _ = pending.commit(stdout, stderr);
             Ok(result)
         }
         Ok((result, None)) => {
@@ -295,6 +296,7 @@ pub(crate) fn verify(
         // partial report, which says so in its notes.
         return crate::verify::plain_verify(&config.args, err);
     }
+    let _foreground = crate::preparation::foreground(&config);
     let result = if standalone {
         sail_verus::managed::standalone::run(&config, out, err, !options.json)
     } else if interactive && options.json {
@@ -306,6 +308,9 @@ pub(crate) fn verify(
     };
     match result {
         Ok(mut result) => {
+            if !standalone && !interactive {
+                crate::preparation::after_verification(&config, options.json, &result);
+            }
             if options.json {
                 result.notes.extend(crate::verify::daemon_note());
                 let _ = writeln!(

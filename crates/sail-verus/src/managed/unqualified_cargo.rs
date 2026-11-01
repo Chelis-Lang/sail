@@ -298,6 +298,7 @@ mod tests {
             args: Vec::new(),
             force: false,
             attribution_logs: false,
+            invocation_colour: None,
         };
         let environment = BTreeMap::from([
             (b"RUSTUP_TOOLCHAIN".to_vec(), b"1.92.0".to_vec()),

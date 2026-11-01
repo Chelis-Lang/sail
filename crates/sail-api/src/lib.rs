@@ -28,6 +28,7 @@ pub mod literal_witness;
 pub mod mutation;
 pub mod output;
 pub mod policy;
+pub mod preparation;
 pub mod project;
 pub mod proof;
 pub mod protocol;

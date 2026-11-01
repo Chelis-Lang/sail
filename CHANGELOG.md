@@ -9,6 +9,16 @@ semantic versioning once the API is published.
   proof-repair checks and cached Z3 queries. The Sail repository is its canonical
   source; see `skills/sail-verification/SKILL.md`.
 
+- Prepare subsequent Cargo verification through an optional daemon-owned worker,
+  with foreground priority and `SAIL_BACKGROUND_PREPARE=0` opt-out. New projects
+  can begin ordinary preparation after `sail new` returns. Implementation is
+  under qualification; see `docs/background-preparation.md`.
+- Add opt-in managed-project byte budgeting and oldest-first pruning with
+  `sail cache projects budget` and `prune --to-bytes`. Busy workspaces and the
+  newest workspace remain protected; a soft-cap overage stays visible.
+- Reject incomplete trailing solver output in both session test comparators,
+  even after all expected replies have arrived (#611).
+
 - Add standalone Verus-file verification without a Cargo project, sharing
   successful proof reuse, durable jobs, watch and MCP (`source_file`). Native
   Linux/macOS qualification passes; see `docs/standalone-verification.md`.

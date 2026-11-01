@@ -143,6 +143,12 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, s
                 .arg("--selection-json")
                 .arg(serde_json::to_string(selection).map_err(io::Error::other)?);
         }
+        Mode::StandaloneRepair { function } => {
+            command
+                .arg("_repair-file-worker")
+                .arg("--function")
+                .arg(function);
+        }
         Mode::Stock | Mode::Standalone | Mode::Interactive => {
             command.arg("verify").args(["--output", "json"]);
             if job.submission.mode == Mode::Interactive {
@@ -242,7 +248,8 @@ fn read_document(
     mode: &Mode,
 ) -> io::Result<(ProjectResult, store::Projection)> {
     let bytes = store::read_bytes(&directory.join("stdout"))?;
-    let document: ProjectResult = if matches!(mode, Mode::Repair(_)) {
+    let document: ProjectResult = if matches!(mode, Mode::Repair(_) | Mode::StandaloneRepair { .. })
+    {
         let mut repair: sail_api::repair::ResultDocument =
             serde_json::from_slice(&bytes).map_err(io::Error::other)?;
         if repair.version != sail_api::repair::VERSION {

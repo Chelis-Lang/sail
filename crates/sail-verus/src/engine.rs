@@ -565,7 +565,10 @@ impl Request {
     }
 }
 
-fn request(config: &crate::managed::Config, function: Option<String>) -> Result<(Request, String)> {
+pub(crate) fn request(
+    config: &crate::managed::Config,
+    function: Option<String>,
+) -> Result<(Request, String)> {
     let pins = Pins::embedded()?;
     let build = resolve_build(&config.workspace.join(&config.cache), &pins);
     // This private request has not authorized execution. The context phase

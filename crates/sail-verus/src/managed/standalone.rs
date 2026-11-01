@@ -356,6 +356,20 @@ pub fn run(
     err: &mut dyn Write,
     show: bool,
 ) -> Result<ProjectResult> {
+    run_with_engine(config, out, err, show, None)
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "The direct compiler lifecycle keeps input and terminal sealing together."
+)]
+fn run_with_engine(
+    config: &Config,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+    show: bool,
+    engine: Option<&crate::engine::Request>,
+) -> Result<ProjectResult> {
     let started = Instant::now();
     let file = source(&config.args).ok_or_else(|| fail("expected a Rust source file"))?;
     let source = config.workspace.join(file);
@@ -377,7 +391,7 @@ pub fn run(
     }
     let mut bound_config = config.clone();
     bound_config.args[0] = source.display().to_string();
-    let runtime = runner::context(&bound_config, None)?;
+    let runtime = runner::context(&bound_config, engine)?;
     let context = digest(&encode(&(
         VERSION,
         runtime.hash.clone(),
@@ -474,7 +488,11 @@ pub fn run(
     }
     let mut observation = ghost_environment::Observation::begin(&run, &run_id, &context);
     let flags = crate::verus_stdout::UserFlags::of_verus(args.iter());
-    let mut command = Command::new(config.cargo_verus.with_file_name("verus"));
+    let executable = engine.map_or_else(
+        || config.cargo_verus.with_file_name("verus"),
+        |request| request.cargo_verus.with_file_name("verus"),
+    );
+    let mut command = Command::new(executable);
     command
         .current_dir(root)
         .arg(file)
@@ -496,6 +514,16 @@ pub fn run(
         "SAIL_ENGINE_CONTEXT",
     ] {
         command.env_remove(key);
+    }
+    if let Some(engine) = engine {
+        command
+            .env("SAIL_ENGINE", "interactive")
+            .env("SAIL_ENGINE_EVENTS", run.join("engine.events.jsonl"))
+            .env("SAIL_ENGINE_CONTEXT", &context)
+            .env("SAIL_ENGINE_FOCUS_REPORT", run.join("focus.source.json"));
+        if let Some(function) = &engine.function {
+            command.env("SAIL_ENGINE_FUNCTION", function);
+        }
     }
     if !args.iter().any(|a| a.contains("checksum-hash-algorithm")) {
         command.args(ghost_environment::OPTIONS);
@@ -525,6 +553,20 @@ pub fn run(
         observation.started(child.id());
     }
     let output = child.wait_with_output().map_err(|e| fail(e.to_string()))?;
+    if engine.is_some()
+        && !crate::engine_events::completed(
+            &run.join("engine.events.jsonl"),
+            &output.stdout,
+            output.status.code(),
+        )
+    {
+        let _ = std::fs::write(run.join("engine.failed.stdout"), &output.stdout);
+        let _ = std::fs::write(run.join("engine.failed.stderr"), &output.stderr);
+        return Err(Error::new(
+            "SAIL3123",
+            "standalone engine did not establish a normal complete compiler seal",
+        ));
+    }
     let stdout = crate::verus_stdout::rebuild(&output.stdout, flags);
     if show {
         out.write_all(&stdout).map_err(|e| fail(e.to_string()))?;
@@ -533,7 +575,14 @@ pub fn run(
         .map_err(|e| fail(e.to_string()))?;
     let (docs, _) = attribution::json_documents(&output.stdout);
     let log_files = log_request
-        .then(|| attribution::read_logs(&logs).ok())
+        .then(|| {
+            attribution::read_logs(&if engine.is_some() {
+                logs.join("full")
+            } else {
+                logs.clone()
+            })
+            .ok()
+        })
         .flatten();
     let provenance = if config.socket.is_some() {
         attribution::Provenance::Records(attribution::read_session_records(&trace))
@@ -547,7 +596,7 @@ pub fn run(
         Some("standalone obligation logs unavailable"),
     );
     let diagnostics = crate::diagnostics::parse(&String::from_utf8_lossy(&output.stderr));
-    let report = crate::report::build(&crate::report::Inputs {
+    let mut report = crate::report::build(&crate::report::Inputs {
         args: &config.args,
         exit_code: output.status.code(),
         solver_path: Some(config.z3.display().to_string()),
@@ -556,6 +605,9 @@ pub fn run(
         attribution: &attributed,
         diagnostics: &diagnostics,
     });
+    if let Some(engine) = engine {
+        report.engine = Some(engine.provenance(sail_api::output::EngineEstablishment::Engine));
+    }
     let observed = observation.and_then(|o| o.observed());
     let mut actual_reads: BTreeSet<_> = observed
         .as_ref()
@@ -649,7 +701,7 @@ pub fn run(
             vec!["SAIL3151: standalone input coverage is incomplete; fresh verification produced no reusable proof".into()]
         },
         error: None,
-        engine: None,
+        engine: engine.map(crate::engine::Request::identity),
         no_reuse: None,
     };
     if let Some(inputs) = after {
@@ -728,6 +780,164 @@ fn save_proof(base: &Path, revision: &str, record: &Record) -> Result<()> {
         count -= 1;
     }
     Ok(())
+}
+
+/// Focus one exact standalone function and independently verify the complete file.
+///
+/// # Errors
+/// Returns engine availability, selection or ordinary standalone setup errors.
+pub fn repair(
+    config: &Config,
+    function: &str,
+    err: &mut dyn Write,
+) -> Result<sail_api::repair::BatchResult> {
+    if !function.contains("::") || function.starts_with('-') || super::partial(&config.args) {
+        return Err(Error::new(
+            "SAIL3120",
+            "standalone repair requires an exact crate-qualified function and full file scope",
+        ));
+    }
+    let (request, manifest_sha256) = crate::engine::request(config, Some(function.to_owned()))?;
+    let mut config = config.clone();
+    config.force = true;
+    let full = match run_with_engine(&config, &mut Vec::new(), err, false, Some(&request)) {
+        Ok(full) => full,
+        Err(fault) => {
+            let mut full = run(&config, &mut Vec::new(), err, false)?;
+            full.engine = Some(request.identity());
+            for target in &mut full.targets {
+                target.report.engine =
+                    Some(request.provenance(sail_api::output::EngineEstablishment::StockFallback));
+            }
+            let compiler_invocations =
+                full.execution.verifier_invocations + u64::from(fault.code == "SAIL3123");
+            return Ok(sail_api::repair::BatchResult {
+                focus: None,
+                full: Some(full),
+                manifest_sha256,
+                compiler_invocations,
+                batched: false,
+                selection_error: None,
+                engine_fault: Some(sail_api::output::ErrorInfo {
+                    code: fault.code.into(),
+                    message: fault.to_string(),
+                }),
+            });
+        }
+    };
+    let path = config
+        .cache
+        .join("standalone")
+        .join(digest(config.workspace.as_os_str().as_encoded_bytes()))
+        .join(&full.context_sha256)
+        .join("runs")
+        .join(&full.run_id);
+    let focus = standalone_focus(&config, &full, function, &path);
+    let (focus, selection_error) = match focus {
+        Ok(focus) => (Some(focus), None),
+        Err(error) => (
+            None,
+            Some(sail_api::output::ErrorInfo {
+                code: error.code.into(),
+                message: error.to_string(),
+            }),
+        ),
+    };
+    Ok(sail_api::repair::BatchResult {
+        batched: focus.is_some(),
+        focus,
+        compiler_invocations: full.execution.verifier_invocations,
+        full: Some(full),
+        manifest_sha256,
+        selection_error,
+        engine_fault: None,
+    })
+}
+
+fn standalone_focus(
+    config: &Config,
+    full: &ProjectResult,
+    function: &str,
+    run: &Path,
+) -> Result<ProjectResult> {
+    let mut bytes = Vec::new();
+    std::fs::File::open(run.join("focus.source.json"))
+        .and_then(|file| file.take(MAX_RECORD + 1).read_to_end(&mut bytes))
+        .map_err(|e| Error::new("SAIL3122", e.to_string()))?;
+    if bytes.len() as u64 > MAX_RECORD {
+        return Err(Error::new("SAIL3122", "focused evidence exceeds limit"));
+    }
+    let source: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|e| Error::new("SAIL3122", e.to_string()))?;
+    if source["function"].as_str() != Some(function) {
+        return Err(Error::new(
+            "SAIL3122",
+            "exact standalone repair function was not established",
+        ));
+    }
+    let logs = attribution::read_logs(&run.join("logs/focus")).unwrap_or_default();
+    let attr = attribution::attribute(
+        &[source["verus"].clone()],
+        Some(&logs),
+        &attribution::Provenance::NoCache,
+        None,
+    );
+    let mut report = crate::report::build(&crate::report::Inputs {
+        args: &config.args,
+        exit_code: Some(i32::from(
+            source["verus"]["verification-results"]["errors"]
+                .as_u64()
+                .unwrap_or(1)
+                > 0
+                || source["verus"]["verification-results"]["encountered-error"] == true
+                || source["verus"]["verification-results"]["encountered-vir-error"] == true,
+        )),
+        solver_path: Some(config.z3.display().to_string()),
+        solver_sha256: Some(file_digest(&config.z3)?),
+        daemon: false,
+        attribution: &attr,
+        diagnostics: &[],
+    });
+    report.diagnostics = source["diagnostics"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(crate::engine_events::diagnostic)
+        .collect();
+    let selected = report
+        .crates
+        .iter()
+        .flat_map(|krate| &krate.functions)
+        .filter(|item| item.function == function)
+        .count();
+    if selected != 1 {
+        return Err(Error::new(
+            "SAIL3122",
+            "standalone repair function is missing or ambiguous",
+        ));
+    }
+    report.command.extend([
+        "--".into(),
+        "--sail-repair-function".into(),
+        function.into(),
+    ]);
+    for krate in &mut report.crates {
+        krate.functions.retain(|item| item.function == function);
+        for item in &mut krate.functions {
+            item.establishment = sail_api::output::EstablishmentName::Provisional;
+            item.evidence_tier = None;
+            item.verdict = sail_api::output::VerdictName::Provisional;
+        }
+    }
+    report.summary = sail_api::output::Summary::of(&report.crates);
+    let mut result = full.clone();
+    result.exit_code = report.exit_code;
+    for target in &mut result.targets {
+        target.report = report.clone();
+        target.complete = false;
+        target.reused = false;
+    }
+    Ok(result)
 }
 
 #[cfg(test)]

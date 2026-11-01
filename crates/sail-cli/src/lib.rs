@@ -18,6 +18,7 @@ mod new;
 mod ops;
 mod portfolio;
 mod portfolio_scope;
+mod preparation;
 mod product_cli;
 mod projects_cli;
 mod remote_cache;
@@ -163,8 +164,11 @@ fn run(
         Some("engine") => engine_cli::run(&args[1..], out, err),
         Some("runtime") => runtime_cli::run(&args[1..], out, err, extensions),
         Some("repair-check") => product_cli::repair(&args[1..], out, err),
+        Some("_prepare-worker") => preparation::worker(&args[1..], out, err),
+        Some("_serve-prepare-new") => preparation::serve_new(&args[1..], err, extensions),
         Some("_contracts-worker") => contract_worker::run(&args[1..], out, err),
         Some("_repair-worker") => product_cli::worker(&args[1..], out, err),
+        Some("_repair-file-worker") => product_cli::standalone_worker(&args[1..], out, err),
         Some("explain" | "baseline" | "compare" | "assurance") => {
             product_cli::evidence(args, out, err)
         }
@@ -340,6 +344,16 @@ fn serve_config(
 
 #[cfg(unix)]
 fn serve(args: &[String], err: &mut dyn std::io::Write, extensions: &Extensions) -> ExitCode {
+    serve_prepared(args, err, extensions, None)
+}
+
+#[cfg(unix)]
+fn serve_prepared(
+    args: &[String],
+    err: &mut dyn std::io::Write,
+    extensions: &Extensions,
+    preparation: Option<sail_api::preparation::Submission>,
+) -> ExitCode {
     let (socket, root, config) = match serve_config(args) {
         Ok(c) => c,
         Err(e) => {
@@ -385,8 +399,12 @@ fn serve(args: &[String], err: &mut dyn std::io::Write, extensions: &Extensions)
         &root.join("projects/jobs"),
         &executable,
     )
-    .and_then(sail_daemon::jobs::JobServer::spawn)
-    {
+    .and_then(|server| {
+        if let Some(preparation) = preparation {
+            server.enqueue_preparation(preparation)?;
+        }
+        server.spawn()
+    }) {
         Ok(handle) => handle,
         Err(e) => {
             let _ = writeln!(err, "error[SAIL0800]: cannot start job service: {e}");

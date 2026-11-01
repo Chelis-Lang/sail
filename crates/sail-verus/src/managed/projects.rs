@@ -17,6 +17,8 @@ use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+pub mod budget;
+
 /// The lock file, in each workspace directory, that runs hold shared and
 /// pruning takes exclusively.
 pub(super) const WORKSPACE_LOCK: &str = "workspace.lock";
@@ -136,6 +138,10 @@ pub fn total_bytes(cache: &Path) -> u64 {
 /// moved or removed. A failed removal leaves a hidden directory that a later
 /// prune removes; it is never used by a run.
 pub fn prune(cache: &Path, key: &str) -> std::io::Result<Pruned> {
+    prune_observed(cache, key, None)
+}
+
+fn prune_observed(cache: &Path, key: &str, last_used: Option<u64>) -> std::io::Result<Pruned> {
     if !valid_key(key) {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
@@ -172,6 +178,11 @@ pub fn prune(cache: &Path, key: &str) -> std::io::Result<Pruned> {
             return Ok(Pruned::Busy);
         }
         held.push(file);
+    }
+    if last_used
+        .is_some_and(|observed| project(&directory, key.to_owned()).last_used_unix > observed)
+    {
+        return Ok(Pruned::Busy);
     }
     let bytes = size(&directory);
     let nanos = SystemTime::now()

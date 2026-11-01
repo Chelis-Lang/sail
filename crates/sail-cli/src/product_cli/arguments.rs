@@ -157,6 +157,123 @@ pub(super) fn worker_args(selection: &Selection, args: &[String]) -> Result<Vec<
     Ok(arguments)
 }
 
+pub(super) fn standalone_repair(
+    args: &[String],
+) -> Result<(String, Vec<String>, bool, bool), String> {
+    let source = args
+        .first()
+        .filter(|_| sail_verus::managed::standalone::source(args).is_some())
+        .ok_or("standalone repair requires a first positional .rs file")?;
+    let mut passed = vec![source.clone()];
+    let (mut function, mut engine, mut background, mut json) = (None, false, false, false);
+    let mut iter = args.iter().skip(1);
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--function" if function.is_none() => function = iter.next().cloned(),
+            "--engine" if !engine => {
+                if iter.next().map(String::as_str) != Some("interactive") {
+                    return Err("repair requires --engine interactive".into());
+                }
+                engine = true;
+            }
+            "--background" => background = true,
+            "--output=json" | "--json" => json = true,
+            "--output" => {
+                if iter.next().map(String::as_str) != Some("json") {
+                    return Err("repair output must be json".into());
+                }
+                json = true;
+            }
+            "--" => {
+                passed.push(arg.clone());
+                passed.extend(iter.cloned());
+                break;
+            }
+            "--function" | "--engine" => return Err(format!("duplicate repair selector {arg}")),
+            other => passed.push(other.to_owned()),
+        }
+    }
+    let function = function
+        .filter(|name| name.contains("::") && !name.starts_with('-'))
+        .ok_or("standalone repair requires one exact crate-qualified --function")?;
+    if !engine {
+        return Err("repair requires explicit --engine interactive".into());
+    }
+    if sail_verus::managed::partial(&passed)
+        || passed.iter().skip(1).any(|arg| {
+            arg.starts_with("--verify-")
+                || arg == "--no-verify"
+                || arg == "--compile"
+                || arg.starts_with("--emit")
+                || arg.starts_with("--out-dir")
+                || arg == "-o"
+                || arg == "-p"
+                || arg.starts_with("--package")
+                || arg == "--lib"
+                || arg.starts_with("--bin")
+                || arg.starts_with("--manifest-path")
+                || arg.starts_with("--workspace")
+        })
+    {
+        return Err(
+            "standalone repair requires verify-only full-file scope without Cargo selectors".into(),
+        );
+    }
+    Ok((function, passed, background, json))
+}
+
+#[cfg(test)]
+mod standalone_tests {
+    use super::standalone_repair;
+    fn args(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).into()).collect()
+    }
+    #[test]
+    fn direct_file_repair_keeps_exact_source_scope_and_requires_full_validation()
+    -> Result<(), String> {
+        let input = args(&[
+            "proof.rs",
+            "--function",
+            "proof::lemma",
+            "--engine",
+            "interactive",
+            "--background",
+            "--output",
+            "json",
+            "--",
+            "--crate-type",
+            "lib",
+        ]);
+        let (function, forwarded, background, json) = standalone_repair(&input)?;
+        assert_eq!(function, "proof::lemma");
+        assert_eq!(forwarded, args(&["proof.rs", "--", "--crate-type", "lib"]));
+        assert!(background && json);
+        for extra in [
+            "--verify-module=x",
+            "--verify-function=x",
+            "--no-verify",
+            "--compile",
+            "--package=demo",
+        ] {
+            let mut scoped = input.clone();
+            scoped.push(extra.into());
+            assert!(standalone_repair(&scoped).is_err());
+        }
+        assert!(
+            standalone_repair(&args(&[
+                "proof.rs",
+                "--function",
+                "lemma",
+                "--engine",
+                "interactive"
+            ]))
+            .is_err()
+        );
+        assert!(standalone_repair(&args(&["proof.rs", "--function", "proof::lemma"])).is_err());
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

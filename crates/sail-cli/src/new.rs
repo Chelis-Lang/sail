@@ -72,6 +72,7 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
     };
     match create(&options) {
         Ok(created) => {
+            crate::preparation::new_project(&options.path);
             let kind = if options.lib { "library" } else { "binary" };
             let path = options.path.display();
             let vstd = created

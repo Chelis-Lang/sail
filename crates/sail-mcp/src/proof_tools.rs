@@ -14,7 +14,7 @@ pub(super) fn definitions() -> Vec<Value> {
         json!({"name":"save_baseline","title":"Save immutable baseline evidence","description":"Save a completed job under a new immutable name, independently of job retention. Negative, incomplete or provisional evidence remains as reported; saving never proves current inputs or accepts a repair. Existing names cannot be overwritten.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id","name"],"properties":{"job_id":string(),"name":baseline_schema()}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
         json!({"name":"list_baselines","title":"List immutable baselines","description":"List saved baseline names for this server's local job service. Names are sorted; listing establishes no proof or currentness.","inputSchema":{"type":"object","additionalProperties":false,"properties":{}},"annotations":{"readOnlyHint":true,"destructiveHint":false,"openWorldHint":false}}),
         json!({"name":"get_baseline","title":"Read immutable baseline evidence","description":"Read version-one baseline evidence for its recorded job, revision, context and exact targets. Currentness is historical, independently of today's workspace and job pruning. Provisional verdicts remain provisional.","inputSchema":{"type":"object","additionalProperties":false,"required":["name"],"properties":{"name":baseline_schema()}},"annotations":{"readOnlyHint":true,"destructiveHint":false,"openWorldHint":false}}),
-        json!({"name":"start_repair_validation","title":"Start focused and full repair validation","description":"Submit an explicit optional interactive-engine batch: exact selected-function phase followed by independent full-target validation. Returns a durable job immediately. Focus success is provisional; accepted requires complete successful Current full evidence and late compiler seal. The engine must be installed and validated; no automated editing.","inputSchema":{"type":"object","additionalProperties":false,"required":["package","kind","function","engine"],"properties":{"project_dir":string(),"package":string(),"kind":{"type":"string","enum":["lib","bin"]},"target":string(),"function":string(),"engine":{"type":"string","enum":["interactive"]},"cargo_args":{"type":"array","items":{"type":"string"}},"verus_args":{"type":"array","items":{"type":"string"}}}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
+        json!({"name":"start_repair_validation","title":"Start focused and full repair validation","description":"Submit an explicit optional interactive-engine batch for a Cargo target or standalone source_file: exact selected-function phase followed by independent full-target validation. Returns a durable job immediately. Focus success is provisional; accepted requires complete successful Current full evidence and late compiler seal. The engine must be installed and validated; no automated editing.","inputSchema":{"type":"object","additionalProperties":false,"required":["function","engine"],"oneOf":[{"required":["source_file"]},{"required":["package","kind"]}],"properties":{"project_dir":string(),"source_file":string(),"package":string(),"kind":{"type":"string","enum":["lib","bin"]},"target":string(),"function":string(),"engine":{"type":"string","enum":["interactive"]},"cargo_args":{"type":"array","items":{"type":"string"}},"verus_args":{"type":"array","items":{"type":"string"}}}},"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
     ]
 }
 
@@ -121,6 +121,7 @@ fn arguments(
         "get_baseline" => &["name"],
         "start_repair_validation" => &[
             "project_dir",
+            "source_file",
             "package",
             "kind",
             "target",
@@ -220,24 +221,54 @@ fn repair(args: &Map<String, Value>) -> Result<(Vec<String>, Option<String>), St
     if value(args, "engine")? != "interactive" {
         return Err("repair engine must be interactive".into());
     }
-    let kind = value(args, "kind")?;
-    let mut out = vec![
-        "repair-check".into(),
-        "--engine".into(),
-        "interactive".into(),
-        "--background".into(),
-        "--output".into(),
-        "json".into(),
-        "--package".into(),
-        value(args, "package")?,
-        "--function".into(),
-        value(args, "function")?,
-    ];
-    match kind.as_str() {
-        "lib" if !args.contains_key("target") => out.push("--lib".into()),
-        "bin" => out.extend(["--bin".into(), value(args, "target")?]),
-        _ => return Err("select lib without target, or bin with target".into()),
-    }
+    let mut out = if args.contains_key("source_file") {
+        if ["package", "kind", "target", "cargo_args"]
+            .iter()
+            .any(|field| args.contains_key(*field))
+        {
+            return Err(
+                "source_file repair cannot combine with Cargo selectors or arguments".into(),
+            );
+        }
+        let source = value(args, "source_file")?;
+        if std::path::Path::new(&source)
+            .extension()
+            .is_none_or(|extension| extension != "rs")
+        {
+            return Err("source_file must name a .rs file".into());
+        }
+        vec![
+            "repair-check".into(),
+            source,
+            "--engine".into(),
+            "interactive".into(),
+            "--background".into(),
+            "--output".into(),
+            "json".into(),
+            "--function".into(),
+            value(args, "function")?,
+        ]
+    } else {
+        let kind = value(args, "kind")?;
+        let mut out = vec![
+            "repair-check".into(),
+            "--engine".into(),
+            "interactive".into(),
+            "--background".into(),
+            "--output".into(),
+            "json".into(),
+            "--package".into(),
+            value(args, "package")?,
+            "--function".into(),
+            value(args, "function")?,
+        ];
+        match kind.as_str() {
+            "lib" if !args.contains_key("target") => out.push("--lib".into()),
+            "bin" => out.extend(["--bin".into(), value(args, "target")?]),
+            _ => return Err("select lib without target, or bin with target".into()),
+        }
+        out
+    };
     for key in ["cargo_args", "verus_args"] {
         if let Some(values) = args.get(key) {
             let list = values
@@ -421,5 +452,33 @@ mod tests {
             "verification_events",
             &json!({"version":2,"next":{"stream_id":"job","after":0},"events":[],"terminal":false,"gap":null})
         ));
+    }
+}
+
+#[cfg(test)]
+mod standalone_repair_tests {
+    use super::*;
+    #[test]
+    fn standalone_repair_uses_existing_tool_without_cargo_selectors() {
+        let input =
+            json!({"source_file":"proof.rs", "function":"proof::lemma", "engine":"interactive"});
+        let parsed = arguments(
+            "start_repair_validation",
+            input.as_object().unwrap_or_else(|| unreachable!()),
+        );
+        assert!(
+            matches!(&parsed, Ok((args, _)) if args.first().map(String::as_str) == Some("repair-check") && args.get(1).map(String::as_str) == Some("proof.rs") && !args.iter().any(|arg| arg == "--package"))
+        );
+        for field in ["package", "kind", "target", "cargo_args"] {
+            let mut mixed = input.clone();
+            mixed[field] = json!("ambiguous");
+            assert!(
+                arguments(
+                    "start_repair_validation",
+                    mixed.as_object().unwrap_or_else(|| unreachable!())
+                )
+                .is_err()
+            );
+        }
     }
 }
