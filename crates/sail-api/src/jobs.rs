@@ -38,6 +38,8 @@ pub enum Mode {
     /// Existing stock pinned Verus verification.
     #[default]
     Stock,
+    /// Direct standalone Verus file; requires explicit endpoint support.
+    Standalone,
     /// Optional explicitly selected Sail-managed interactive engine.
     Interactive,
     /// One engine batch containing focus and independent full validation.
@@ -285,6 +287,9 @@ pub enum Response {
         /// Absent from services without the engine, which decode as false.
         #[serde(default)]
         repair: bool,
+        /// Direct-file jobs are understood; false on older endpoints.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        standalone: bool,
     },
     /// Authenticated bounded mutation evidence, independent of proof tiers.
     Mutation(Box<crate::mutation::View>),
@@ -720,7 +725,7 @@ impl Client {
         connected: impl FnOnce(std::os::unix::net::UnixStream),
     ) -> io::Result<Response> {
         use std::os::unix::net::UnixStream;
-        if matches!(request, Request::Submit { submission } if submission.mode != Mode::Stock)
+        if matches!(request, Request::Submit { submission } if matches!(submission.mode, Mode::Interactive | Mode::Repair(_)))
             && !matches!(
                 self.call(&Request::Capabilities)?,
                 Response::Capabilities {
@@ -732,6 +737,19 @@ impl Client {
         {
             return Err(io::Error::other(
                 "SAIL0903: endpoint does not support proof/repair contracts",
+            ));
+        }
+        if matches!(request, Request::Submit { submission } if submission.mode == Mode::Standalone)
+            && !matches!(
+                self.call(&Request::Capabilities)?,
+                Response::Capabilities {
+                    standalone: true,
+                    ..
+                }
+            )
+        {
+            return Err(io::Error::other(
+                "SAIL3150: endpoint does not support standalone file jobs; restart Sail's daemon",
             ));
         }
         let mut stream = UnixStream::connect(&self.socket)?;

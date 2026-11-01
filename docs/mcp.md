@@ -329,6 +329,7 @@ point; whole-project requests use `cargo verus verify`.
 
 | Argument | Meaning |
 |---|---|
+| `source_file` | Optional standalone `.rs` file, relative to `project_dir`. No Cargo project is generated; Cargo selectors and interactive repair cannot be combined with it. |
 | `project_dir` | The project. Default: the server's working directory. Relative paths resolve against it. |
 | `package` | `-p <package>`. |
 | `module` | Verus `--verify-module <module>`: this module and its descendants (with `function`, `--verify-only-module` selects that function’s owning module), relative to the crate root (`arith`, `foo::bar`). |

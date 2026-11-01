@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add standalone Verus-file verification without a Cargo project, sharing
+  successful proof reuse, durable jobs, watch and MCP (`source_file`). Native
+  Linux/macOS qualification passes; see `docs/standalone-verification.md`.
+
 - Collect macOS benchmark memory from the watched process forest through
   the public process APIs, avoiding recurring ps launches. Permission or
   ABI failures retain the complete original ps observation. The cadence,

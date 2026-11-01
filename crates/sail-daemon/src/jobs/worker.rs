@@ -143,7 +143,7 @@ fn execute(state: &State, id: &str) -> io::Result<(Option<i32>, ProjectResult, s
                 .arg("--selection-json")
                 .arg(serde_json::to_string(selection).map_err(io::Error::other)?);
         }
-        Mode::Stock | Mode::Interactive => {
+        Mode::Stock | Mode::Standalone | Mode::Interactive => {
             command.arg("verify").args(["--output", "json"]);
             if job.submission.mode == Mode::Interactive {
                 command.args(["--engine", "interactive"]);

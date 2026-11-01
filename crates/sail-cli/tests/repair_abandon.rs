@@ -59,6 +59,7 @@ fn fake_service(
                 mutation_version: None,
                 proof_version: 1,
                 repair: true,
+                standalone: false,
             },
             Request::Submit { submission } => {
                 assert!(matches!(submission.mode, sail_api::jobs::Mode::Repair(_)));

@@ -139,11 +139,14 @@ USAGE:
     (
         "watch",
         "\
-Re-verify the workspace (managed, like `sail verify`) 300 ms after files
+Re-verify a workspace or standalone Verus file 300 ms after files
 stop changing. Each edit cancels the previous run. Ctrl-C stops.
 
 USAGE:
     sail watch [--output jsonl] [CARGO VERUS VERIFY ARGS] [-- VERUS ARGS]
+    sail watch FILE.rs [--output jsonl] [-- VERUS ARGS]
+
+Standalone watch is verify-only; use sail verify for compilation or explicit output files.
 ",
     ),
     (
@@ -213,9 +216,13 @@ own Cargo target under the Sail cache; your `target/` is never touched.
 
 USAGE:
     sail verify [SAIL OPTIONS] [CARGO VERUS VERIFY ARGS] [-- VERUS ARGS]
+    sail verify FILE.rs [SAIL OPTIONS] [-- VERUS ARGS]
 
 {VERIFY_OPTIONS}
-All other arguments go to `cargo verus verify`, run with Sail's own Verus
+An explicit first positional FILE.rs verifies that file directly, without a Cargo
+project. `sail watch FILE.rs` uses the same standalone workflow.
+
+For Cargo projects, all other arguments go to `cargo verus verify`, run with Sail's own Verus
 (built from Sail's Verus fork and shipped with Sail); its help follows when
 that Verus is installed (`sail engine status` checks it).
 "

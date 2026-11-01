@@ -43,7 +43,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ),
     (
         "verify",
-        "verify a crate; accepts the same arguments as `cargo verus verify`",
+        "verify a Cargo project or a standalone Verus .rs file",
     ),
     (
         "repair-check",
@@ -65,7 +65,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "engine",
         "install or inspect Sail's Verus (fork runtime and repair engine)",
     ),
-    ("watch", "re-verify the workspace as files change"),
+    (
+        "watch",
+        "re-verify a workspace or standalone file as it changes",
+    ),
     ("jobs", "inspect, follow, or cancel local verification jobs"),
     (
         "mcp",

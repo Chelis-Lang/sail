@@ -121,7 +121,10 @@ found up to date. Only `--engine interactive` still verifies a loader run
 inside managed verification (`verified_as` is then `managed`). Unset the
 variable for the `sail verify` command to get reuse back.
 
-`--verus-source FILE` (a single file with `verus FILE`) is only for the
+For existing standalone files, use `sail verify FILE.rs` or `sail watch FILE.rs`;
+see [standalone verification](standalone-verification.md).
+
+The older `--verus-source FILE` experiment remains only for the
 opt-in portfolio. `--measure-fragility` and `--portfolio accept-first-proof`
 are explicit solver experiments: they run `cargo verus verify` with
 `sail-z3` directly and print one schema-v2 report, and they do not take

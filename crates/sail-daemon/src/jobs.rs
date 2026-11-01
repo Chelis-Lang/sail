@@ -287,6 +287,7 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
         Request::Capabilities => Ok(Response::Capabilities {
             proof_version: sail_api::proof::VERSION,
             repair: true,
+            standalone: true,
             neutral_contracts_version: Some(sail_api::contracts::VERSION),
             neutral_contract_profiles: vec![1, 2],
             assurance_version: Some(sail_api::assurance::VERSION),
@@ -416,6 +417,13 @@ fn get(state: &State, id: &str) -> io::Result<Stored> {
 fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     if state.stop.load(Ordering::SeqCst) {
         return Err(io::Error::other("SAIL0815: job service is stopping"));
+    }
+    if (submission.mode == sail_api::jobs::Mode::Standalone)
+        != sail_verus::managed::standalone::source(&submission.args).is_some()
+    {
+        return Err(io::Error::other(
+            "SAIL3150: standalone job mode and source argument disagree",
+        ));
     }
     submission.project_dir = submission.project_dir.canonicalize()?;
     if !submission.project_dir.is_dir() || submission.args.iter().any(|arg| arg.contains('\0')) {

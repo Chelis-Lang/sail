@@ -255,3 +255,10 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 `SAIL3134`: the disabled retained-content experiment could not remove a
 partially restored output. The attempt refuses; do not treat it as a cache miss
 or reuse a receipt. A fresh owned target is required before retrying.
+
+## Standalone Verus files
+
+| Code | Meaning | Action |
+|---|---|---|
+| `SAIL3150` | Standalone setup, input observation or job protocol is unsupported or unavailable | Read the named input or setup error; restart an older daemon when requested |
+| `SAIL3151` | Fresh standalone verification could not establish complete input coverage for a reusable Current proof | Read the verifier verdict and diagnostics; unsupported observations run fresh without receipt reuse |

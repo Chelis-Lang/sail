@@ -25,6 +25,9 @@ verification.
 | Error codes | [Errors](errors.md) |
 | What changed in a release | [0.1.0 release notes](release-notes/0.1.0.md), [changelog](../CHANGELOG.md) |
 
+Standalone-file development: [verify, watch and MCP](standalone-verification.md)
+(feature branch; qualification pending).
+
 ## Experimental features
 
 These work but may change in any release, and `sail --help` doesn't list

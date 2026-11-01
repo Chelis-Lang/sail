@@ -15,8 +15,12 @@ Sail's Verus fork is an accepted way to get speed (ADR 0039, ADR 0043). The
 product is a CLI with Linux and macOS binaries. Final release composition is
 the owner's decision.
 
-Milestone **0.2.0** targets performance parity on Vest, IronKV, CapybaraKV and
-Anvil on Linux and macOS, including cold runs and peak memory. The
+Owner direction, 2026-11-01: the next release adds standalone Verus-file
+development through CLI, watch and MCP alongside qualified core improvements.
+Existing first/full-path losses stay visible as follow-up work, not a serial
+blocker for every feature. Correctness and prevention of new regressions remain
+required. The earlier **0.2.0** performance-parity target covers Vest, IronKV,
+CapybaraKV and Anvil on Linux and macOS, including cold runs and peak memory. The
 [milestone](https://github.com/Chelis-Lang/sail/milestone/12) tracks its
 deliverables. M11 (*Verus core and performance*) holds performance work, ordered in
 [#168](https://github.com/Chelis-Lang/sail/issues/168). M10 is the
@@ -91,6 +95,12 @@ measurement and native core qualification are complete on both platforms
 Anvil cold remain. This selects the core increment, not stock parity or a
 new Sail release.
 
+Standalone implementation: [workflow](standalone-verification.md),
+[ADR 0095](decisions/0095-standalone-verus-files.md). Native gates, installed
+CLI/watch/MCP controls, original-file comparisons and candidate archive smoke
+pass on Linux and macOS ([record](validation/standalone-verification.md)).
+Protected PR checks and final release composition remain separate.
+
 Next-release implementation gates:
 
 | Slice | State | Remaining gate |
@@ -104,12 +114,12 @@ Next-release implementation gates:
 | Exact extra vstd profiles (#563) | ADR 0090 implemented; Linux/Mac factories and first-Serve pass; six-round Vest cold medians improve on both platforms | CapybaraKV native provenance and Anvil focused scope remain open; full release gates |
 | Settled source / owned-target digests (#560) | ADR 0091 Linux target default selected after ten controlled pairs save 430 ms; native/Mac functional gates pass | Source and Mac target stay off; final native cohorts pass, existing stock gaps remain |
 
-These results do not establish v0.2.0 acceptance. Original six-round measurements are
-complete, with the original failures retained. The strict stock source-suite
-control originally fails (#627); all three original fork arms pass. The
-owner-approved ADR 0093 implementation passes the corrected full stock suite,
-including every nonignored test ([scope](validation/general-performance.md)). Remaining parity,
-overhead and correctness gates retain their original requirements.
+Core native qualification and both final six-round measurement cohorts are
+complete, with original failures retained. The owner-approved ADR 0093
+implementation also passes the corrected full stock suite, including every
+nonignored test ([scope](validation/general-performance.md)). Existing parity
+gaps remain follow-up work. Protected PR checks and final release composition
+remain required before delivering a new Sail release.
 
 | Row | Measured, Sail against stock | Spike finding | Issue |
 |---|---|---|---|
@@ -137,7 +147,6 @@ overhead and correctness gates retain their original requirements.
 | Compiler-boundary local reuse as default fallback | #222 |
 | Background prebuild; bulk prefetch from a team store | #241, #243 |
 | Cargo bypass when only target sources change | #245 |
-| Single-file projects | #164 |
 | CI image pull time | #195 |
 | M10 verification runtime | #146 |
 

@@ -119,6 +119,10 @@ pub(crate) fn revision(
     project: &std::path::Path,
     args: &[String],
 ) -> Option<sail_verus::managed::InputSnapshot> {
+    if sail_verus::managed::standalone::source(args).is_some() {
+        let cache = sail_verus::cache_dir().ok()?;
+        return sail_verus::managed::standalone::snapshot(project, &cache, args).ok();
+    }
     let (cargo, toolchain) = crate::managed_cli::cargo(project).unwrap_or_else(|| {
         (
             PathBuf::from("cargo"),
@@ -361,6 +365,12 @@ pub(crate) fn engine_options(args: &[String]) -> Result<(Mode, Vec<String>), Str
         } else {
             rest.push(arg.clone());
         }
+    }
+    if sail_verus::managed::standalone::source(&rest).is_some() {
+        if mode != Mode::Stock {
+            return Err("SAIL3150: standalone files require the default engine".into());
+        }
+        mode = Mode::Standalone;
     }
     Ok((mode, rest))
 }
