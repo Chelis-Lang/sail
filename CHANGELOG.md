@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Bind idle cache-budget maintenance to the configured managed-project cache,
+  independently of the daemon job store and solver-reply store.
+
 - Add the installable `sail-verification` agent skill for Verus proof iteration,
   proof-repair checks and cached Z3 queries. The Sail repository is its canonical
   source; see `skills/sail-verification/SKILL.md`.

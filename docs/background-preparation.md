@@ -44,5 +44,6 @@ This uses idle CPU and disk after the command returns. Whether it reduces an
 immediate call, and its total CPU/memory cost, are separate measurements. It does
 not enable unselected digest optimizations or change focused verification scope.
 
-An already-started opt-in budget inventory may finish before cancellation takes
-effect. Its cap is soft; foreground verification does not wait for maintenance.
+An opt-in budget maintenance pass that already started may finish. Its cap is
+soft, and pruning rechecks workspace locks before removal; an already-started
+removal can finish before a new call acquires that workspace.

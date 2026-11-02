@@ -88,3 +88,19 @@ serves the fixture's own function from cache. Both arms reject an invalid source
 edit and changed runtime, and reverify changed configuration. This is fixture
 acceptance, not general-project timing. Raw `hosted-cache-evidence.tgz`, SHA-256
 `59b39ce059b980c12d33d988d3641fc313fbfc679c15d5d975fcaf81d311cb34`.
+
+Final `91bd82a1` standard qualification completes all four arms at 159 Same /
+13,166 function records, plus all 18 mutations, cold and both return controls.
+Its workspace gate and current-head hosted CI pass. These results qualify the
+unchanged proof/cache admission paths; they did not exercise automatic idle
+budget enforcement.
+
+A new actual-daemon test confirms a candidate bug: manual pruning and policy
+persistence pass, but automatic maintenance reads the policy beneath the solver
+job-store root instead of the managed-project root. Two genuinely verified
+workspaces remain despite a one-byte budget. The correction supplies an explicit
+managed cache to both service entry points and removes root inference. Direct
+job-server callers without that configuration perform no budget maintenance.
+The extended installed test and managed CI phase now require real idle eviction;
+Linux/Mac qualification of this correction is pending. No main bug issue is
+filed for this unmerged candidate defect.

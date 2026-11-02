@@ -47,6 +47,7 @@ pub struct JobServer {
     listener: UnixListener,
     state: Arc<State>,
     workers: usize,
+    project_cache: Option<PathBuf>,
 }
 
 /// Lifetime and idle-activity handle for a running project service.
@@ -88,6 +89,7 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
         socket,
         listener,
         workers: schedule::workers(),
+        project_cache: None,
         state: Arc::new(State {
             root,
             executable,
@@ -106,6 +108,20 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
 }
 
 impl JobServer {
+    /// Select the managed-project cache for optional idle budget maintenance.
+    ///
+    /// The job store and solver-reply store do not identify this namespace.
+    /// A server without an explicit project cache performs no budget pruning.
+    ///
+    /// # Errors
+    /// Returns an error if the cache path cannot be made absolute.
+    pub fn with_project_cache(mut self, cache: &Path) -> io::Result<Self> {
+        self.project_cache = Some(sail_verus::managed::canonical_cache_root(
+            std::path::absolute(cache)?,
+        ));
+        Ok(self)
+    }
+
     /// Queue optional preparation before starting this service's workers.
     ///
     /// # Errors
@@ -146,9 +162,10 @@ impl JobServer {
             }
         }
         let preparation_state = Arc::clone(&self.state);
+        let project_cache = self.project_cache;
         match std::thread::Builder::new()
             .name("sail-preparation".to_owned())
-            .spawn(move || preparation::run(&preparation_state))
+            .spawn(move || preparation::run(&preparation_state, project_cache.as_deref()))
         {
             Ok(worker) => workers.push(worker),
             Err(error) => {

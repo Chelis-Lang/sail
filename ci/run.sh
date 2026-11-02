@@ -483,6 +483,16 @@ RS
       SAIL_MANAGED_ACCEPTANCE_OUT="$sail_managed_evidence" \
         python3 "$sail_managed_test" "$sail" "$managed_part"
       if [ "$phase" = full ] || [ "$phase" = managed ]; then
+        # Exercise automatic idle maintenance through the real CLI daemon;
+        # manual pruning alone cannot detect a mismatched project-cache root.
+        sail_budget_out="$(mktemp -d /tmp/sail-budget-e2e.XXXXXX)"
+        sail_budget_code=0
+        python3 "$sail_checkout/ci/test-project-budget.py" --sail "$sail" \
+          --runtime "$SAIL_ENGINE_BUILD" --out "$sail_budget_out" || sail_budget_code=$?
+        mkdir -p "$sail_managed_evidence/budget"
+        rsync -a --exclude cache "$sail_budget_out/" "$sail_managed_evidence/budget/"
+        rm -rf "$sail_budget_out"
+        [ "$sail_budget_code" = 0 ] || exit "$sail_budget_code"
         # A real MCP client (pinned Claude Code) must list sail's tools.
         bash "$sail_checkout/ci/test-claude-code.sh" "$sail"
       fi

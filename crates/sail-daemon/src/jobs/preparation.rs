@@ -179,7 +179,7 @@ impl Drop for Foreground<'_> {
     }
 }
 
-pub(super) fn run(state: &State) {
+pub(super) fn run(state: &State, project_cache: Option<&Path>) {
     let mut budget_after = Instant::now();
     while !state.stop.load(Ordering::SeqCst) {
         let (idle, task) = match state.queue.lock() {
@@ -224,7 +224,7 @@ pub(super) fn run(state: &State) {
                 .is_ok_and(|inner| inner.foreground == 0 && inner.active.is_none())
         {
             budget_after = Instant::now() + Duration::from_secs(60);
-            if let Some(cache) = cache_root(state)
+            if let Some(cache) = project_cache
                 && let Ok(Some(limit)) = sail_verus::managed::projects::budget::load(cache)
             {
                 let _ = sail_verus::managed::projects::budget::enforce(cache, limit, false);
@@ -235,12 +235,6 @@ pub(super) fn run(state: &State) {
     }
 }
 
-fn cache_root(state: &State) -> Option<&Path> {
-    let projects = state.root.parent()?;
-    (projects.file_name()? == "projects")
-        .then(|| projects.parent())
-        .flatten()
-}
 fn take(coordinator: &Coordinator) -> Option<(Task, Arc<AtomicBool>)> {
     let mut inner = coordinator.0.lock().ok()?;
     if inner.foreground != 0 || inner.active.is_some() {

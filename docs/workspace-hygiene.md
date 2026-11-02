@@ -74,7 +74,11 @@ sail cache projects prune --to-bytes 21474836480 --dry-run --json
 sail cache projects prune --to-bytes 21474836480
 ```
 
-The daemon enforces a configured budget during idle maintenance. It removes the
+The daemon enforces a configured budget during idle maintenance. It uses the
+managed cache selected by `SAIL_CACHE_DIR` (or the default cache), independently
+of its job store. `sail serve --cache DIR` selects the SMT-reply store; it does
+not move managed workspaces or their budget. Keep the same `SAIL_CACHE_DIR` in
+your CLI and service environments. It removes the
 least recently used whole workspaces with the same nonblocking locks as manual
 pruning. Active workspaces and the most recently used workspace are protected.
 A protected workspace can itself exceed the cap: the budget is soft, and JSON
