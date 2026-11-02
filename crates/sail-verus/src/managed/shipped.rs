@@ -3434,7 +3434,7 @@ mod tests {
         })?;
         let policy: Value = serde_json::from_str(include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../engine/verus/vstd-boundary-inputs.json"
+            "/resources/engine/verus/vstd-boundary-inputs.json"
         )))?;
         for machine in [&mut a, &mut b] {
             let path = machine.root.join("z3");

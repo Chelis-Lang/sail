@@ -13,11 +13,11 @@ use crate::toolchain::Pins;
 use crate::{Error, Result};
 
 /// The fork pin: repository, branch, exact commit and upstream base.
-pub const FORK: &str = include_str!("../../../engine/verus/fork.toml");
+pub const FORK: &str = include_str!("../resources/engine/verus/fork.toml");
 /// Source-event sidecar contract version.
 pub const EVENT_VERSION: u32 = 1;
 /// Exact dependency resolution used for the optional source worker.
-pub const SOURCE_LOCK: &str = include_str!("../../../engine/verus/Cargo.lock");
+pub const SOURCE_LOCK: &str = include_str!("../resources/engine/verus/Cargo.lock");
 
 /// The `[fork]` table of `engine/verus/fork.toml`.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
@@ -1074,7 +1074,7 @@ mod tests {
     fn fork_pin_is_complete_and_based_on_the_pinned_upstream_commit()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let fork = fork()?;
-        let pins: Pins = toml::from_str(include_str!("../../../corpus/toolchain.toml"))?;
+        let pins: Pins = toml::from_str(include_str!("../resources/corpus/toolchain.toml"))?;
         assert_eq!(fork.upstream, pins.verus.commit);
         assert_eq!(fork.repo, "https://github.com/Chelis-Lang/verus");
         assert_eq!(features()[0], format!("sail-fork:{}", fork.commit));
@@ -1084,14 +1084,14 @@ mod tests {
     #[test]
     fn prebuilt_runtime_pins_install_where_default_discovery_looks()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let pins: Pins = toml::from_str(include_str!("../../../corpus/toolchain.toml"))?;
+        let pins: Pins = toml::from_str(include_str!("../resources/corpus/toolchain.toml"))?;
         for (text, host) in [
             (
-                include_str!("../../../engine/verus/artifact-linux.json"),
+                include_str!("../resources/engine/verus/artifact-linux.json"),
                 "x86_64-unknown-linux-gnu",
             ),
             (
-                include_str!("../../../engine/verus/artifact-macos.json"),
+                include_str!("../resources/engine/verus/artifact-macos.json"),
                 "aarch64-apple-darwin",
             ),
         ] {
@@ -1120,7 +1120,7 @@ mod tests {
     #[test]
     fn a_bundled_runtime_is_found_beside_the_executable_only_when_the_cache_has_none()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let pins: Pins = toml::from_str(include_str!("../../../corpus/toolchain.toml"))?;
+        let pins: Pins = toml::from_str(include_str!("../resources/corpus/toolchain.toml"))?;
         let exe = std::env::current_exe()?.canonicalize()?;
         let bundled = bundled_dir(&pins).ok_or("no bundled location")?;
         let release = exe
@@ -1403,9 +1403,10 @@ mod tests {
         // The engine records no Cargo feature, like the stock release, and
         // the committed runtime pin says the same.
         assert_eq!(runtime_cargo_features(), Vec::<String>::new());
-        let pin: serde_json::Value =
-            serde_json::from_str(include_str!("../../../engine/verus/artifact-linux.json"))
-                .unwrap_or_default();
+        let pin: serde_json::Value = serde_json::from_str(include_str!(
+            "../resources/engine/verus/artifact-linux.json"
+        ))
+        .unwrap_or_default();
         assert_eq!(
             pin["verus_features"],
             serde_json::json!(runtime_cargo_features())

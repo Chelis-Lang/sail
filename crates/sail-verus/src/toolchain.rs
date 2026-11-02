@@ -116,7 +116,7 @@ impl Pins {
     ///
     /// `SAIL3002` for malformed embedded pins or `SAIL3004` for an unknown release.
     pub fn embedded() -> Result<Self> {
-        let pins: Self = toml::from_str(include_str!("../../../corpus/toolchain.toml"))
+        let pins: Self = toml::from_str(include_str!("../resources/corpus/toolchain.toml"))
             .map_err(|e| Error::new("SAIL3002", format!("cannot parse embedded pins: {e}")))?;
         match std::env::var(ENV_RELEASE).ok().filter(|r| !r.is_empty()) {
             Some(release) => pins.select(&release),
@@ -447,15 +447,15 @@ z3_sha256 = ""
     /// which must require and lock exactly the pinned vstd (ADR 0059).
     #[test]
     fn shipped_dependency_project_locks_the_pinned_vstd() {
-        let pins: Pins = match toml::from_str(include_str!("../../../corpus/toolchain.toml")) {
+        let pins: Pins = match toml::from_str(include_str!("../resources/corpus/toolchain.toml")) {
             Ok(p) => p,
             Err(e) => unreachable!("{e}"),
         };
         let vstd = pins.verus.vstd.unwrap_or_default();
         assert!(!vstd.is_empty(), "the primary pin names its vstd");
-        let manifest = include_str!("../../../scripts/shipped-deps/Cargo.toml");
+        let manifest = include_str!("../resources/scripts/shipped-deps/manifest.toml");
         assert!(manifest.contains(&format!("vstd = \"={vstd}\"\n")));
-        let lock = include_str!("../../../scripts/shipped-deps/Cargo.lock");
+        let lock = include_str!("../resources/scripts/shipped-deps/Cargo.lock");
         assert!(lock.contains(&format!("name = \"vstd\"\nversion = \"{vstd}\"\n")));
     }
 }

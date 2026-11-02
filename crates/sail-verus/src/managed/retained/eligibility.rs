@@ -15,16 +15,16 @@ use std::path::{Path, PathBuf};
 
 const POLICY: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../engine/verus/retained-vest-inputs.json"
+    "/resources/engine/verus/retained-vest-inputs.json"
 ));
 const PUBLIC_POLICY: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../engine/verus/retained-public-inputs.json"
+    "/resources/engine/verus/retained-public-inputs.json"
 ));
 
 const PUBLIC_VEST_POLICY: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../engine/verus/retained-public-vest-inputs.json"
+    "/resources/engine/verus/retained-public-vest-inputs.json"
 ));
 
 /// Each profile is independently closed; path provenance never substitutes for

@@ -77,7 +77,7 @@ fn main() {}
 ";
 
 fn installed() -> Installed {
-    let pins = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/toolchain.toml");
+    let pins = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/corpus/toolchain.toml");
     match Pins::load(&pins).and_then(Installed::locate) {
         Ok(i) => i,
         Err(e) => unreachable!("the pinned Verus is needed: {e}"),
@@ -280,7 +280,7 @@ fn renaming_or_moving_a_function_changes_its_identity() {
 #[test]
 #[ignore = "needs the pinned Verus"]
 fn trait_implementation_collisions_preserve_plain_verdicts_without_guessing() {
-    let source = include_str!("../../../corpus/repros/verus-ambiguous-friendly-name/input.rs");
+    let source = include_str!("../resources/corpus/repros/verus-ambiguous-friendly-name/input.rs");
     let plain = run("trait-collision-plain", source, false);
     let logged = run("trait-collision-logged", source, true);
     assert_eq!(plain.exit, Some(0));

@@ -166,7 +166,7 @@ mod tests {
         // here instead of silently turning instant revert off.
         let pin: serde_json::Value = serde_json::from_str(include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../engine/verus/artifact-linux.json"
+            "/resources/engine/verus/artifact-linux.json"
         )))?;
         assert_eq!(pin["manifest_sha256"].as_str(), Some(LINUX_MANIFEST));
         assert_eq!(
@@ -182,7 +182,7 @@ mod tests {
         // The same rule for the macOS pin and its own qualification.
         let pin: serde_json::Value = serde_json::from_str(include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../engine/verus/artifact-macos.json"
+            "/resources/engine/verus/artifact-macos.json"
         )))?;
         assert_eq!(pin["manifest_sha256"].as_str(), Some(MACOS_MANIFEST));
         assert_eq!(

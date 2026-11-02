@@ -96,7 +96,7 @@ pub(crate) fn hash(bytes: &[u8]) -> String {
 }
 
 fn pin() -> Result<Option<(String, String)>, Error> {
-    let pins: toml::Value = toml::from_str(include_str!("../../../corpus/toolchain.toml"))
+    let pins: toml::Value = toml::from_str(include_str!("../resources/corpus/toolchain.toml"))
         .map_err(|e| invalid("invalid_config", e.to_string()))?;
     let host = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => "aarch64-apple-darwin",
