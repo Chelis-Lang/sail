@@ -42,10 +42,7 @@ fn connect(config: &Config) -> Option<UnixStream> {
     connection(&socket)
 }
 fn connection(socket: &Path) -> Option<UnixStream> {
-    let stream = UnixStream::connect(socket).ok()?;
-    stream.set_read_timeout(Some(HANDOFF_WAIT)).ok()?;
-    stream.set_write_timeout(Some(HANDOFF_WAIT)).ok()?;
-    Some(stream)
+    sail_api::client::connect_stream(socket, HANDOFF_WAIT).ok()
 }
 
 /// Retaining this connection keeps maintenance below the foreground call.

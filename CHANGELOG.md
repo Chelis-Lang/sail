@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Bound Unix connection establishment for preparation, solver-cache and job
+  clients, so a full listener backlog cannot indefinitely delay handoff or
+  pinned-solver fallback. Existing read/write deadlines remain.
+
 - Reject already-edited queued preparation before it enters managed verification, preserving dependency observations for the foreground edit (#648).
 
 - Bind idle cache-budget maintenance to the configured managed-project cache,
