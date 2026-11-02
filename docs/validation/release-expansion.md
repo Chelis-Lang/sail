@@ -2,7 +2,9 @@
 
 Status: real installed feature controls pass on native Linux and macOS using
 qualified fork `0ad405eb`. The complete closing-revision feature passes Linux E2E and PR conformance;
-the final rebased workspace gate and hosted cache example are continuing. Binary compiler-input correction is a separate runtime upgrade;
+the final rebased workspace gate, full standard conformance and hosted cache example pass.
+The later idle-budget correction passes Linux validation and Mac platform/installed
+controls. Binary compiler-input correction is a separate runtime upgrade;
 this feature increment retains the existing qualified runtime. No Sail release
 version or publication is selected.
 
@@ -75,7 +77,9 @@ controls. Raw `feature057-evidence.tgz`, SHA-256
   path, preserving all proof/replay and changed-script checks.
 
 The branch is rebased onto `d7342acf` (two documentation-only main successors).
-Production Rust and Cargo inputs remain identical to `b1ae4b4b`. The canonical
+At `91bd82a1`, production Rust and Cargo inputs remain identical to `b1ae4b4b`.
+The subsequent idle-budget correction changes service configuration and maintenance,
+while preserving proof/cache admission. The canonical
 consumer skill now covers standalone repair, preparation versus explicit jobs,
 optional budgets and CI cache guidance; registry packages are not published by
 this change.
@@ -102,7 +106,13 @@ workspaces remain despite a one-byte budget. The correction supplies an explicit
 managed cache to both service entry points and removes root inference. Direct
 job-server callers without that configuration perform no budget maintenance.
 The extended installed test and managed CI phase now require real idle eviction;
-Linux/Mac qualification of this correction is pending. No main bug issue is
+Native Linux Clippy and 1,320 tests pass at `f281d40f`. The corrected
+managed wrapper at `9e11d293` passes the full managed E2E phase, including actual
+idle eviction, newest-workspace protection and genuine verification after eviction.
+Mac `9e11d293` passes Clippy, 1,309 non-solver tests and all installed
+repair, preparation/generated-input and budget controls, including actual idle eviction.
+Raw `budget-root-mac-evidence.tgz`, SHA-256
+`878b8348b7f19027395faf806c4163fddb72645442659c3074202cac8ccea9aa`. No main bug issue is
 filed for this unmerged candidate defect.
 
 - 2026-11-02, idle-budget correction `653223d7`: native Clippy stops on two
@@ -113,3 +123,24 @@ filed for this unmerged candidate defect.
   the new managed-phase wrapper passes an existing directory to a driver that
   requires a fresh evidence path. The wrapper now passes a new child path;
   the driver's fresh-directory guard is retained.
+
+The before/after root controls and Linux gate are captured in
+`budget-root-linux-evidence.tgz`, SHA-256
+`95e705987d5d83d7d21fb7d390588593226c41e1b0d080c547cf1b8e9e43d323`.
+The final pre-correction standard run is captured in
+`feature-final-standard-evidence.tgz`, SHA-256
+`5a630b2cc9822f457758dae35eb9e17d141a06bd67a7c5215f6399b5282b7ec3`.
+Its admission-path evidence is reused for the later maintenance-only change;
+the new actual-daemon control separately covers the behavior it missed.
+
+The canonical consumer skill has independent fresh-context technical and
+usability reviews at `91bd82a1`, both approving the package. These reviews use
+42 frozen-output assertions, 19 package/help assertions and a workflow comparison;
+they are not a model-evaluation campaign or a new native benchmark. The technical
+review's minor target-directory clarification is incorporated. A clean local
+project install with `skills@1.7.4`, telemetry disabled, copies all four package
+files exactly. Registry exports remain at their recorded published revisions.
+Review artifacts: `consumer-skill-technical-review.md`, SHA-256
+`2b00f1cea3b323132ed961d09c4b9f9c58d00d2c9e0868dcaa77c0c3f35ba235`;
+`consumer-skill-usability-review.md`, SHA-256
+`ef933c6113dd122df6071e6c785f40f7e3dcfa3e8d041ab0cde625582e97887c`.

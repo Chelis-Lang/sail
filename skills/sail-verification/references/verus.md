@@ -4,7 +4,8 @@
 
 For a Cargo/Verus project, run `sail verify --output json` from the project
 directory. Existing `cargo verus verify` arguments can be passed to `sail verify`.
-Sail builds in its own target directory. Switching back is running
+In managed mode Sail builds in its own target directory; a reported `SAIL3112`
+fallback uses the project target directory. Switching back is running
 `cargo verus verify` again.
 
 Standalone files are supported on main for the next release, not published

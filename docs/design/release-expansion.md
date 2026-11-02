@@ -10,7 +10,7 @@ standalone-file workflow; it does not select a release version or publication.
 | Mac Anvil cold | Open | Same focused workload, native paired measurements below stock |
 | Standalone repair | Implemented; real Linux focus/full/job/negative controls pass; Mac installed controls pass; composed qualification open | Exact function focus plus independent full Current validation through CLI/MCP |
 | New-project preparation | Implemented; Linux immediate-call and edit controls pass | Ordinary low-priority verification after creation; no caller wait |
-| Cache budget | Manual LRU/protection controls pass on both platforms; automatic root-binding correction implemented, native qualification pending | Opt-in LRU pruning, skip busy/protect newest, visible soft-cap overage |
+| Cache budget | Manual LRU/protection controls pass on both platforms; automatic root-binding correction passes Linux workspace/managed E2E and Mac platform/installed controls | Opt-in LRU pruning, skip busy/protect newest, visible soft-cap overage |
 | CI-cache workflow | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Cold and restored separate runners, edits and invalidation controls |
 | Binary compiler-input observation | Separate runtime upgrade: initial fix merged; native BLAKE3 regression reproduced and corrected; qualification open (#599) | Actual compiler-read bytes or explicit incomplete coverage |
 | Reply comparator completion | Implemented; regression controls pass (#611) | Complete expected prefix cannot hide incomplete trailing output |

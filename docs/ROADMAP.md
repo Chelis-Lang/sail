@@ -77,7 +77,7 @@ alongside standalone-file development. No release version or publication is sele
 |---|---|---|
 | Daemon preparation and post-creation verification | Native Linux/Mac installed replay, immediate-call, priority and generated-input controls pass | Repeated broader workload timing and costs |
 | Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Final PR gates |
-| Opt-in cache byte budgets | Native Linux/Mac installed budget, LRU, newest/busy and fresh rebuild controls pass | Final PR gates |
+| Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Current-head PR gates |
 | Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Publish the qualified walkthrough with the feature PR |
 | First/full-path and Mac Anvil overhead | Bounded indexing/readback candidate implemented; native timing selection open | Paired whole-call/cold measurements and broader corpus |
 | Binary compiler-input metadata (#599) | Separate runtime upgrade; initial fix merged, native BLAKE3 regression corrected | Complete new-runtime source/factory/corpus/cost qualification and consumption |
