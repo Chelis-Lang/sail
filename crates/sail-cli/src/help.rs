@@ -81,6 +81,8 @@ USAGE:
     sail repair-check --engine interactive --package P (--lib | --bin NAME)
                       --function CRATE::PATH [--background] [--output json]
                       [CARGO VERUS VERIFY ARGS] [-- VERUS ARGS]
+    sail repair-check FILE.rs --engine interactive --function CRATE::PATH
+                      [--background] [--output json] [-- VERUS ARGS]
 
 Exits 0 when the repair is accepted, 1 when it is not, 2 on a setup or
 service error (SAIL3120 when the engine is not installed).

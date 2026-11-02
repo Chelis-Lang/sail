@@ -117,6 +117,7 @@ pub(crate) fn config(
         args,
         force: std::env::var_os("SAIL_MANAGED_FORCE").is_some_and(|v| v == "1"),
         attribution_logs,
+        invocation_colour: None,
     })
 }
 
@@ -222,13 +223,26 @@ fn managed(
         copy: &mut stderr,
     };
     let shown: Option<&mut dyn std::io::Write> = if json { None } else { Some(&mut tee_out) };
-    match sail_verus::managed::run_for_replay(config, shown, &mut tee_err, &key) {
-        Ok((result, Some(pending))) => {
-            pending.commit(stdout, stderr);
-            Ok(result)
-        }
-        Ok((result, None)) => {
-            noop::forget(&config.cache, &key);
+    let mut closing_revision = None;
+    match sail_verus::managed::run_for_preparation(
+        config,
+        shown,
+        &mut tee_err,
+        &key,
+        &mut closing_revision,
+    ) {
+        Ok((result, pending)) => {
+            if let Some(pending) = pending {
+                let _ = pending.commit(stdout, stderr);
+            } else {
+                noop::forget(&config.cache, &key);
+            }
+            crate::preparation::after_verification(
+                config,
+                json,
+                &result,
+                closing_revision.as_deref(),
+            );
             Ok(result)
         }
         Err(error) => {
@@ -295,6 +309,7 @@ pub(crate) fn verify(
         // partial report, which says so in its notes.
         return crate::verify::plain_verify(&config.args, err);
     }
+    let _foreground = crate::preparation::foreground(&config);
     let result = if standalone {
         sail_verus::managed::standalone::run(&config, out, err, !options.json)
     } else if interactive && options.json {

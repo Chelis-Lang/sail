@@ -17,6 +17,7 @@ verification.
 | Read the JSON report | [Output schema](output-schema.md) |
 | Read job status and results from Rust | [Result client](result-client.md) |
 | Cache Sail in CI | [CI cache](ci-cache.md) |
+| Prepare the next verification in the background | [Background preparation](background-preparation.md) |
 | Manage disk use | [Disk use and cleanup](workspace-hygiene.md) |
 | Where Sail is faster and where it isn't | [Performance](performance.md), [generated benchmarks](benchmarks.md), [memory instrumentation](validation/benchmark-memory.md), [v0.2.0 candidate qualification](validation/v020-performance.md) |
 | Evaluate broader projects, dependency scaling and native work counts | [Performance evaluation](performance-evaluation.md), [algorithm review](design/general-performance.md), [compiler boundary audit](design/frontend-lowering-boundary.md) |

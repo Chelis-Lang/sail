@@ -190,7 +190,9 @@ impl Bindings {
         let mut complete = true;
         for ancestor in path.ancestors() {
             if !self.examined.insert(ancestor.to_owned()) {
-                continue;
+                // An earlier walk examined this path and all its ancestors.
+                // Its failure, if any, already made the complete walk fail.
+                break;
             }
             match std::fs::symlink_metadata(ancestor) {
                 Ok(metadata) if metadata.file_type().is_symlink() => {

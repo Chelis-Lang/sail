@@ -5,7 +5,7 @@ Each fixture runs three ways: stock Verus, the fork runtime without the engine
 ("fork") and the fork runtime with the engine ("engine"). The engine must match
 the plain fork run exactly, raw SMT included. Against stock, exit status,
 diagnostics, counters, verdicts and the SMT session inventory must match (except the exact owner-approved
-recursive isolation inventory on the two qualified 0ad405eb runtimes); the
+recursive isolation inventory on the explicitly qualified runtimes below); the
 raw SMT is only recorded, because the fork's accepted divergences rename
 solver symbols (ADR 0054, spec parameters; ADR 0056, trait function spellings).
 """
@@ -43,12 +43,14 @@ ISOLATED_RECURSIVE = ["root.smt_transcript", "rootdemo!count._00.smt_transcript"
 ISOLATED_MANIFESTS = {
     "799aac308bd8d8c64a17901cf9a04b9b093689c5e274b5743c60750e2ce9df9d",
     "9f49060ec8714c5e5b3acc72859025a55c7189cf6f8c841c972675227002b866",
+    "158efe0283d8a6ab4f3927a9887a7696f6e6bf38f5fe0becf07c177f6cb34de3",
+    "3bf480b8e432db44b7f710ae622f03013173fc6b3bc74f5b4bad8ea98554209d",
 }
 
 
 def isolated_runtime(engine):
-    # Owner-approved ADR 0094 inventory correction is bound to the two exact
-    # qualified 0ad405eb manifests. Unknown runtimes retain the original check.
+    # Owner-approved ADR 0094 inventory correction remains bound to exact
+    # qualified manifests. Unknown runtimes retain the original check.
     for parent in pathlib.Path(engine).resolve().parents:
         manifest = parent / "sail-build.json"
         if manifest.is_file():
@@ -139,7 +141,7 @@ def run(args):
                         "full_sessions": [{"name": p.name, "bytes": len(pipe(p)), "input_sha256": hashlib.sha256(pipe(p)).hexdigest()} for p in engine_logs],
                         "stock_smt": stock_sessions,
                         "normal_termination": events[-1]["payload"]["normal_termination"],
-                        "stock_inventory_policy": "adr0094-recursive-0ad405eb" if name == "recursive" and isolated else "identical",
+                        "stock_inventory_policy": "adr0094-recursive-exact-runtime" if name == "recursive" and isolated else "identical",
                         "engine_only_sessions": [p.name for p in engine_logs if not (work / "stock" / p.name).exists()]})
         differing = sum(not session["equal"] for session in stock_sessions)
         note = f" (raw SMT differs from stock in {differing} of {len(stock_sessions)} sessions)" if differing else ""

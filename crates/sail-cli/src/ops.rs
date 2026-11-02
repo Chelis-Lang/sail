@@ -249,6 +249,13 @@ pub fn status(
         return ExitCode::from(EXIT_NO_DAEMON);
     };
     let disk = info.as_ref().map(|i| DiskCache::new(&i.cache_root).usage());
+    let preparation = sail_api::jobs::Client::new(sail_api::jobs::socket_path(&socket))
+        .call(&sail_api::jobs::Request::PreparationStatus)
+        .ok()
+        .and_then(|response| match response {
+            sail_api::jobs::Response::Preparation(prepared) => Some(prepared),
+            _ => None,
+        });
     if json {
         print_json(
             out,
@@ -258,6 +265,7 @@ pub fn status(
                 "info": info,
                 "stats": stats,
                 "disk": disk,
+                "preparation": preparation,
             }),
         );
         return ExitCode::SUCCESS;

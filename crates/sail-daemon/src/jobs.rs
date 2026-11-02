@@ -3,6 +3,7 @@
 
 mod contracts;
 mod mutation;
+mod preparation;
 mod product;
 mod result_cache;
 mod schedule;
@@ -37,6 +38,7 @@ struct State {
     proofs: crate::proof_journal::Journals,
     freshness: sail_verus::managed::FreshnessIndex,
     result_cache: result_cache::ResultCache,
+    preparation: preparation::Coordinator,
 }
 
 /// A bound project endpoint; it owns a bounded pool of verification workers.
@@ -45,6 +47,7 @@ pub struct JobServer {
     listener: UnixListener,
     state: Arc<State>,
     workers: usize,
+    project_cache: Option<PathBuf>,
 }
 
 /// Lifetime and idle-activity handle for a running project service.
@@ -86,6 +89,7 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
         socket,
         listener,
         workers: schedule::workers(),
+        project_cache: None,
         state: Arc::new(State {
             root,
             executable,
@@ -98,11 +102,36 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
             proofs: crate::proof_journal::Journals::default(),
             freshness: sail_verus::managed::FreshnessIndex,
             result_cache,
+            preparation: preparation::Coordinator::default(),
         }),
     })
 }
 
 impl JobServer {
+    /// Select the managed-project cache for optional idle budget maintenance.
+    ///
+    /// The job store and solver-reply store do not identify this namespace.
+    /// A server without an explicit project cache performs no budget pruning.
+    ///
+    /// # Errors
+    /// Returns an error if the cache path cannot be made absolute.
+    pub fn with_project_cache(mut self, cache: &Path) -> io::Result<Self> {
+        self.project_cache = Some(sail_verus::managed::canonical_cache_root(
+            std::path::absolute(cache)?,
+        ));
+        Ok(self)
+    }
+
+    /// Queue optional preparation before starting this service's workers.
+    ///
+    /// # Errors
+    /// Returns invalid request or queue-capacity errors; this grants no proof.
+    pub fn enqueue_preparation(
+        &self,
+        submission: sail_api::preparation::Submission,
+    ) -> io::Result<()> {
+        self.state.preparation.enqueue(submission).map(|_| ())
+    }
     /// Overrides the number of concurrent verifier workers (at least one).
     #[must_use]
     pub fn with_workers(mut self, workers: usize) -> Self {
@@ -130,6 +159,22 @@ impl JobServer {
                     }
                     return Err(error);
                 }
+            }
+        }
+        let preparation_state = Arc::clone(&self.state);
+        let project_cache = self.project_cache;
+        match std::thread::Builder::new()
+            .name("sail-preparation".to_owned())
+            .spawn(move || preparation::run(&preparation_state, project_cache.as_deref()))
+        {
+            Ok(worker) => workers.push(worker),
+            Err(error) => {
+                self.state.stop.store(true, Ordering::SeqCst);
+                self.state.ready.notify_all();
+                for worker in workers {
+                    let _ = worker.join();
+                }
+                return Err(error);
             }
         }
         let endpoint_state = Arc::clone(&self.state);
@@ -236,6 +281,21 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                     let _ = stream.set_read_timeout(timeout);
                     let _ = stream.set_write_timeout(timeout);
                     let outcome = match sail_api::jobs::read_frame(&mut stream) {
+                        Ok(Request::Foreground {
+                            version,
+                            project_dir,
+                            args,
+                        }) => {
+                            let _ = preparation::foreground(
+                                &state,
+                                &mut stream,
+                                version,
+                                &project_dir,
+                                &args,
+                            );
+                            clients.fetch_sub(1, Ordering::SeqCst);
+                            return;
+                        }
                         Ok(Request::Result { id }) => get(&state, &id)
                             .and_then(|job| store::result_frame(&state, &job))
                             .map(|frame| (None, Some(frame))),
@@ -282,12 +342,29 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "Explicit RPC routing keeps each operation's authority and capabilities visible."
+)]
 fn dispatch(state: &Arc<State>, request: Request) -> Response {
     let result = match request {
+        Request::PreparationStatus => state.preparation.status().map(Response::Preparation),
+        Request::Prepare(submission) => {
+            let result = state
+                .preparation
+                .enqueue(submission)
+                .map(Response::Preparation);
+            state.ready.notify_all();
+            result
+        }
+        Request::Foreground { .. } => Err(io::Error::other(
+            "SAIL0802: foreground requires a lease connection",
+        )),
         Request::Capabilities => Ok(Response::Capabilities {
             proof_version: sail_api::proof::VERSION,
             repair: true,
             standalone: true,
+            standalone_repair: true,
             neutral_contracts_version: Some(sail_api::contracts::VERSION),
             neutral_contract_profiles: vec![1, 2],
             assurance_version: Some(sail_api::assurance::VERSION),
@@ -418,8 +495,10 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     if state.stop.load(Ordering::SeqCst) {
         return Err(io::Error::other("SAIL0815: job service is stopping"));
     }
-    if (submission.mode == sail_api::jobs::Mode::Standalone)
-        != sail_verus::managed::standalone::source(&submission.args).is_some()
+    if matches!(
+        submission.mode,
+        sail_api::jobs::Mode::Standalone | sail_api::jobs::Mode::StandaloneRepair { .. }
+    ) != sail_verus::managed::standalone::source(&submission.args).is_some()
     {
         return Err(io::Error::other(
             "SAIL3150: standalone job mode and source argument disagree",
@@ -433,6 +512,7 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
         establish_revision(state, &mut submission)?;
     }
     let key = schedule::workspace_key(&submission.project_dir, &submission.args);
+    state.preparation.preempt(&key);
     let mut jobs = state.jobs.lock().map_err(lock_error)?;
     if let Some(job) = jobs.values().find(|job| {
         !job.status.state.terminal()
@@ -456,9 +536,20 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     let status = job.status.clone();
     jobs.insert(id.clone(), job);
     state.activity.fetch_add(1, Ordering::SeqCst);
-    state.queue.lock().map_err(lock_error)?.push(id, key);
-    state.ready.notify_one();
+    queue_job(state, id, key)?;
     Ok(status)
+}
+
+fn queue_job(state: &State, id: String, key: PathBuf) -> io::Result<()> {
+    // Preparation takes work under this same queue owner. Once admitted, an
+    // ordinary job prevents another preparation from starting and cancels one
+    // that started before admission, including work for another workspace.
+    let mut queue = state.queue.lock().map_err(lock_error)?;
+    state.preparation.preempt(&key);
+    queue.push(id, key);
+    drop(queue);
+    state.ready.notify_all();
+    Ok(())
 }
 fn establish_revision(state: &State, submission: &mut Submission) -> io::Result<()> {
     // Refresh remembered inputs outside the lock and without Cargo/downloads.

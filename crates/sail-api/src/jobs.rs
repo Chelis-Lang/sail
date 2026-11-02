@@ -40,6 +40,11 @@ pub enum Mode {
     Stock,
     /// Direct standalone Verus file; requires explicit endpoint support.
     Standalone,
+    /// Exact standalone repair focus plus independent full-file validation.
+    StandaloneRepair {
+        /// Exact crate-qualified function reported by Verus.
+        function: String,
+    },
     /// Optional explicitly selected Sail-managed interactive engine.
     Interactive,
     /// One engine batch containing focus and independent full validation.
@@ -142,6 +147,19 @@ pub struct Chunk {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 pub enum Request {
+    /// Negotiate and inspect optional daemon-owned preparation.
+    PreparationStatus,
+    /// Enqueue optional work; never changes the original verification result.
+    Prepare(crate::preparation::Submission),
+    /// Hold foreground priority until this connection closes.
+    Foreground {
+        /// Preparation protocol version.
+        version: u32,
+        /// Originating working directory.
+        project_dir: PathBuf,
+        /// Arguments used to resolve the workspace scheduling key.
+        args: Vec<String>,
+    },
     /// Fail-closed negotiation before any non-stock submission.
     Capabilities,
     /// Start a bounded owned mutation campaign over an authenticated source job.
@@ -267,6 +285,8 @@ pub enum Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "response", content = "value", rename_all = "snake_case")]
 pub enum Response {
+    /// Optional preparation negotiation, status, or handoff acknowledgement.
+    Preparation(crate::preparation::Status),
     /// Supported product contracts; does not claim an optional engine is installed.
     Capabilities {
         /// Independent proof stream version.
@@ -290,6 +310,9 @@ pub enum Response {
         /// Direct-file jobs are understood; false on older endpoints.
         #[serde(default, skip_serializing_if = "std::ops::Not::not")]
         standalone: bool,
+        /// Standalone repair is explicitly understood; absent on older endpoints.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        standalone_repair: bool,
     },
     /// Authenticated bounded mutation evidence, independent of proof tiers.
     Mutation(Box<crate::mutation::View>),
@@ -750,6 +773,21 @@ impl Client {
         {
             return Err(io::Error::other(
                 "SAIL3150: endpoint does not support standalone file jobs; restart Sail's daemon",
+            ));
+        }
+        if matches!(request, Request::Submit { submission } if matches!(submission.mode, Mode::StandaloneRepair { .. }))
+            && !matches!(
+                self.call(&Request::Capabilities)?,
+                Response::Capabilities {
+                    proof_version: crate::proof::VERSION,
+                    repair: true,
+                    standalone_repair: true,
+                    ..
+                }
+            )
+        {
+            return Err(io::Error::other(
+                "SAIL3150: endpoint does not support standalone repair; restart Sail's daemon",
             ));
         }
         let mut stream = UnixStream::connect(&self.socket)?;

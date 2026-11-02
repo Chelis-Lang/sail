@@ -105,7 +105,7 @@ class Commands(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines(), [p + ' SAIL_MANAGED_NOOP=0' for p in phases])
 
-    def run_command(self, mode, selector, baseline="", sample=False):
+    def run_command(self, mode, selector, baseline="", sample=False, candidate=False):
         text = Path(__file__).with_name("perf-real.sh").read_text()
         command = text.split("partial=0\n", 1)[1].split("\nmode_path()", 1)[0]
         with tempfile.TemporaryDirectory(prefix="sail-perf-command-") as tmp:
@@ -121,6 +121,9 @@ class Commands(unittest.TestCase):
             sail = root / "sail"
             sail.write_bytes(cargo.read_bytes())
             sail.chmod(0o755)
+            candidate_sail = root / "candidate-sail"
+            candidate_sail.write_text(cargo.read_text().replace("print(json.dumps({", "print(json.dumps({'candidate':True,"))
+            candidate_sail.chmod(0o755)
             shim = root / "sail-z3"
             shim.write_text("#!/bin/sh\nexit 0\n")
             shim.chmod(0o755)
@@ -128,6 +131,8 @@ class Commands(unittest.TestCase):
                    if not key.startswith(("SAIL_", "VERUS_"))}
             env.update(PATH=f"{root}:{env['PATH']}", MODE=mode, SELECTOR=selector,
                        FORK=str(root / "fork"), BASELINE=baseline, SAIL_DAEMON_SOCKET=str(root / "d.sock"))
+            if candidate:
+                env['SAIL_PERF_FORK_SAIL'] = str(candidate_sail)
             setup = ''
             if sample:
                 setup = ('memory_file="$MEMORY_OUTPUT"; memory_state="$MEMORY_STATE"; '
@@ -159,6 +164,26 @@ class Commands(unittest.TestCase):
                     self.assertEqual(output['runtime'], '/owned/baseline/cargo-verus')
                 elif mode == 'fork-sail':
                     self.assertEqual(output['runtime'], str(Path(solver).with_name('cargo-verus')))
+
+    def test_explicit_cli_revision_changes_only_the_fork_sail_arm(self):
+        for mode, selected in [('sail', False), ('fork-sail', True)]:
+            result, output, _, _ = self.run_command(mode, '--verify-module=module', candidate=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(output.get('candidate', False), selected)
+            self.assertIsNone(output['runtime'])
+            self.assertEqual(output['args'][:3], ['verify', '--output', 'json'])
+            self.assertIn('--verify-module=module', output['args'])
+
+    def test_explicit_cli_keeps_the_callers_path(self):
+        text = Path(__file__).with_name('perf-real.sh').read_text()
+        function = 'mode_path()' + text.split('mode_path()', 1)[1].split('\nstats()', 1)[0]
+        for candidate, expected in [('', '/owned/fork:' + os.environ['PATH']),
+                                    ('/owned/candidate/sail', os.environ['PATH'])]:
+            result = subprocess.run(['bash', '-c', function + '\nfork=/owned/fork; mode_path fork-sail'],
+                                    env=dict(os.environ, SAIL_PERF_FORK_SAIL=candidate),
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), expected)
 
     def test_focused_shim_uses_fork_solver_and_owned_daemon(self):
         result, output, shim, solver = self.run_command("fork-shim", "--verify-module=module")

@@ -54,12 +54,9 @@ relations remain open; source/hash binding does not establish them.
   ([#599](https://github.com/Chelis-Lang/sail/issues/599)). Ordinary `.vir`
   includes are retained with their correct checksums. Sail independently hashes
   actual dependency files for receipt currentness; no stale Sail proof has
-  been demonstrated. The compiler-read metadata defect remains open.
-- Native host synchronization from a linked Git worktree copies its local
-  `.git` pointer without reconstructing usable remote repository metadata
-  ([#589](https://github.com/Chelis-Lang/sail/issues/589)). Git-based source
-  validation then refuses before running proofs. Use a standalone checkout
-  from the frozen Git bundle for qualification; do not disable source checks.
+  been demonstrated. The producer correction is merged in
+  [Verus fork PR #16](https://github.com/Chelis-Lang/verus/pull/16);
+  native runtime adoption remains pending.
 - Read-back currentness brackets its reads with metadata stamps of every
   recorded path (#387). A concurrent edit that restores every stamped
   field, including the inode change time, is not detected; that needs a
@@ -81,8 +78,10 @@ The service-wide acceptance theorem is not complete
 
 Current numbers are in [performance](performance.md).
 
-- The [broader algorithm/corpus candidate](validation/general-performance.md)
-  is not qualified for selection. Its corrected proof-edit/failure/fix
+- The original data-representation experiment in the
+  [broader algorithm/corpus review](validation/general-performance.md)
+  remains unselected. The separate runtime and installed-output corrections
+  are qualified and consumed on main. The corrected proof-edit/failure/fix
   catalogue passes six rounds. The generated binaries' missing prelude is
   corrected (#631), but the valid parallel workspace exposes malformed
   combined verifier JSON (#632,

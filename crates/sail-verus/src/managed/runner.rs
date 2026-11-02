@@ -59,6 +59,8 @@ pub struct Config {
     /// which prints only Verus's own output, does not (ADR 0047).
     /// Interactive-engine runs always log.
     pub attribution_logs: bool,
+    /// Resolved caller colour for an owned preparation; ordinary calls use `None`.
+    pub invocation_colour: Option<bool>,
 }
 
 #[derive(Clone)]
@@ -1225,7 +1227,12 @@ fn invocation_command(
         // Cargo writes to Sail's pipe, not the terminal, so it would print
         // no colour; ask for it as plain Cargo-Verus would on this terminal.
         // An argument, not CARGO_TERM_COLOR, so it is not a proof input.
-        .args(invocation_colour(&config.args, show_output).then_some("--color=always"))
+        .args(
+            config
+                .invocation_colour
+                .unwrap_or_else(|| invocation_colour(&config.args, show_output))
+                .then_some("--color=always"),
+        )
         .args(&config.args[split..])
         .env("RUSTC_BOOTSTRAP", "1")
         // Only Cargo-Verus sees the alias; the alias gives the real Cargo the
@@ -3419,7 +3426,7 @@ pub(crate) fn run_engine_held(
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<(ProjectResult, File)> {
-    run_recorded(config, out, err, engine, None)
+    run_recorded(config, out, err, engine, None, None)
 }
 
 /// [`run`] or [`run_showing_output`] for `sail verify`, which may record this
@@ -3436,7 +3443,34 @@ pub fn run_for_replay(
     key: &str,
 ) -> Result<(ProjectResult, Option<super::noop::Pending>)> {
     let mut pending = None;
-    let result = run_recorded(config, out, err, None, Some((key, &mut pending)));
+    let result = run_recorded(config, out, err, None, Some((key, &mut pending)), None);
+    result.map(|(result, _)| (result, pending))
+}
+
+/// [`run_for_replay`], also retaining the complete closing input revision for
+/// optional background preparation. Published results keep their original
+/// establishing revision. Generated inputs first discovered during a cold build
+/// are included in this closing revision; it grants no replay or proof authority.
+///
+/// # Errors
+/// As [`run`].
+pub fn run_for_preparation(
+    config: &Config,
+    out: Option<&mut dyn Write>,
+    err: &mut dyn Write,
+    key: &str,
+    closing_revision: &mut Option<String>,
+) -> Result<(ProjectResult, Option<super::noop::Pending>)> {
+    *closing_revision = None;
+    let mut pending = None;
+    let result = run_recorded(
+        config,
+        out,
+        err,
+        None,
+        Some((key, &mut pending)),
+        Some(closing_revision),
+    );
     result.map(|(result, _)| (result, pending))
 }
 
@@ -3467,6 +3501,7 @@ fn run_recorded(
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
     record: Option<(&str, &mut Option<super::noop::Pending>)>,
+    closing_revision: Option<&mut Option<String>>,
 ) -> Result<(ProjectResult, File)> {
     let research = super::research::selected()?;
     // A replay emits the run's consumer-visible job events again (ADR 0082).
@@ -3676,11 +3711,7 @@ fn run_recorded(
         extras.extend(super::native_include_hints::roots(&data, |name| {
             std::env::var_os(name)
         }));
-        let hint = super::input::SnapshotHint {
-            version: super::input::SNAPSHOT_HINT_VERSION,
-            projection: snapshot_projection(&data, &serde_json::json!([])),
-            extras: ordered_extras(extras),
-        };
+        let hint = first_snapshot_hint(&data, extras);
         std::thread::Builder::new()
             .name("sail-first-inputs".to_owned())
             .spawn(move || {
@@ -4806,6 +4837,12 @@ fn run_recorded(
         .flatten()
         .and_then(super::noop::prepare);
     }
+    if result.currentness == Currentness::Current
+        && result.exit_code == Some(0)
+        && let Some(closing_revision) = closing_revision
+    {
+        *closing_revision = Some(after.revision.clone());
+    }
     drop(publication);
     // Freeing the metadata and snapshots (tens of thousands of allocations on
     // vest, about 15 ms) does not hold up the caller; nothing reads them.
@@ -4839,6 +4876,21 @@ fn snapshot_projection(data: &Value, sources: &Value) -> Value {
         ),
     );
     Value::Object(projection)
+}
+
+/// Include the same explicit output namespace as the later selected snapshot.
+/// An absent field differs from even an empty guard, so omitting it made every
+/// first-family speculative read miss its exact selection check. Later learned
+/// inputs and changed guards still refuse this hint without changing that check.
+fn first_snapshot_hint(data: &Value, extras: Vec<PathBuf>) -> super::input::SnapshotHint {
+    let extras = ordered_extras(extras);
+    let mut projection = snapshot_projection(data, &serde_json::json!([]));
+    projection[super::input::OUTPUT_GUARDS] = super::input::output_guards(data, &extras);
+    super::input::SnapshotHint {
+        version: super::input::SNAPSHOT_HINT_VERSION,
+        projection,
+        extras,
+    }
 }
 
 /// Whether two metadata documents select the same snapshot, given the same
@@ -5085,6 +5137,7 @@ mod tests {
                 args: Vec::new(),
                 force: false,
                 attribution_logs: false,
+                invocation_colour: None,
             };
             let error = super::run_engine_held(&config, None, &mut Vec::new(), None)
                 .err()
@@ -5348,6 +5401,7 @@ mod tests {
             args: Vec::new(),
             force: true,
             attribution_logs: true,
+            invocation_colour: None,
         })
     }
 
@@ -7817,6 +7871,7 @@ mod tests {
             args: Vec::new(),
             force: true,
             attribution_logs: true,
+            invocation_colour: None,
         };
         std::fs::write(runtime.join("z3"), b"tampered")?;
         let error = context(&config, Some(&request))
@@ -8168,6 +8223,62 @@ mod tests {
         moved["target_directory"] = Value::String("elsewhere".into());
         assert!(!same_snapshot_selection(&before, &moved));
         assert!(std::fs::remove_dir_all(root).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn first_family_snapshot_survives_output_churn_but_not_source_edits()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir()
+            .canonicalize()?
+            .join(format!("sail-first-snapshot-{}", std::process::id()));
+        let app = root.join("app");
+        std::fs::create_dir_all(app.join("src"))?;
+        std::fs::create_dir_all(app.join("target"))?;
+        std::fs::write(app.join("Cargo.toml"), "[package]\nname='first'\n")?;
+        let source = app.join("src/lib.rs");
+        std::fs::write(&source, "before")?;
+        std::fs::write(
+            app.join("target/CACHEDIR.TAG"),
+            "Signature: 8a477f597d28d172789f06886806bc55\n# This file is a cache directory tag created by cargo.\n",
+        )?;
+        let mut data = serde_json::json!({"workspace_root":app,
+            "target_directory":root.join("managed"),
+            "packages":[{"id":"first","manifest_path":app.join("Cargo.toml"),
+                "targets":[{"src_path":source}]}]});
+        let hint = first_snapshot_hint(&data, Vec::new());
+        let (snapshot, stamp) =
+            super::super::input::snapshot_metadata_stamped(&hint.projection, &hint.extras);
+        assert!(snapshot.complete);
+        // A genuine Cargo output changes while the independent query runs.
+        std::fs::write(app.join("target/query-output"), "new output")?;
+        data[super::super::input::OUTPUT_GUARDS] = super::super::input::output_guards(&data, &[]);
+        let selected = super::super::input::SnapshotHint {
+            version: super::super::input::SNAPSHOT_HINT_VERSION,
+            projection: snapshot_projection(&data, &serde_json::json!([])),
+            extras: Vec::new(),
+        };
+        assert!(
+            hint == selected,
+            "the first observation must name the exact final selection"
+        );
+        assert!(super::super::input::unchanged_since(
+            &snapshot,
+            stamp.as_ref()
+        ));
+        std::fs::write(&source, "edited")?;
+        assert!(!super::super::input::unchanged_since(
+            &snapshot,
+            stamp.as_ref()
+        ));
+        assert_ne!(snapshot.revision, snapshot_metadata(&data, &[]).revision);
+        let extra = root.join("new-declaration");
+        assert_ne!(
+            first_snapshot_hint(&data, vec![extra]).projection,
+            selected.projection
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
     }
 
     #[cfg(unix)]
@@ -8946,6 +9057,7 @@ mod tests {
             args: args.iter().map(|&a| a.to_owned()).collect(),
             force: true,
             attribution_logs: true,
+            invocation_colour: None,
         };
         let focus = config(&["-p", "input", "--", "--verify-function", "input"]);
         let full = config(&["-p", "input"]);
@@ -9147,6 +9259,7 @@ mod tests {
             args: args.iter().map(|&a| a.to_owned()).collect(),
             force: true,
             attribution_logs: true,
+            invocation_colour: None,
         };
         let fresh = |args: &[String]| -> std::result::Result<bool, Box<dyn std::error::Error>> {
             let output = Command::new("cargo")

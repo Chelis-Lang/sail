@@ -66,12 +66,7 @@ fn submit_inner(state: &State, source: &Submission, deduplicate: bool) -> io::Re
     let status = job.status.clone();
     jobs.insert(status.id.clone(), job);
     state.activity.fetch_add(1, Ordering::SeqCst);
-    state
-        .queue
-        .lock()
-        .map_err(lock_error)?
-        .push(status.id.clone(), key);
-    state.ready.notify_one();
+    super::queue_job(state, status.id.clone(), key)?;
     Ok(status)
 }
 

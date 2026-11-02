@@ -7,6 +7,11 @@ broader whole-invocation measurements. The current runtime retains the
 ADR 0092 prototype. No proof key, query byte or diagnostic policy changes.
 Native qualification is recorded [separately](../validation/general-performance.md).
 
+The next-release package separately implements daemon-owned preparation under
+[ADR 0096](../decisions/0096-daemon-owned-preparation.md), amending the earlier
+exclusion of background recording. It preserves actual transcript recording and
+all admission barriers; it does not select the existing opt-in digest prototypes.
+
 ## Where work is avoided
 
 The largest established gains remove complete stages: shipped vstd avoids

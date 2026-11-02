@@ -77,7 +77,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | `SAIL0501` | `sail cache verify` found bad cache files | Run `sail cache verify --remove`; a bad entry is only ever a miss |
 | `SAIL0502` | `sail cache clear` needs confirmation | Pass `--yes` |
 | `SAIL0503` | Cannot clear the cache directory | Check permissions |
-| `SAIL0504` | `sail cache projects` cannot read the managed `projects/` directory | Check permissions on `<cache>/projects` |
+| `SAIL0504` | `sail cache projects` cannot read its inventory or read/write its budget policy | Check permissions on `<cache>/projects` and `<cache>/project-budget.json`; replace an invalid policy with `budget --disable` or `budget --max-bytes N` |
 | `SAIL0505` | `sail cache projects prune` cannot remove a workspace's directory | Check permissions; a later prune removes anything left over, and no run uses it |
 
 ## Shared cache tier

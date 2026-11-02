@@ -25,8 +25,9 @@ empty memo supplies no exemption. See the
 [validation record](validation/unscheduled-script-cleaning.md) for scope.
 
 These directories grow with every workspace, copy and configuration you
-verify: one copy of a mid-sized project can take 2 GB. Nothing removes them
-automatically. `sail cache stats` shows their total on its last line, and
+verify: one copy of a mid-sized project can take 2 GB. Automatic removal is
+disabled until you configure a project byte budget. `sail cache stats` shows
+their total on its last line, and
 `sail cache projects` lists and removes them per workspace:
 
 ```sh
@@ -60,6 +61,36 @@ waits for the prune and then starts cold. Runs of Sail versions without
 
 `sail cache stats|verify|gc|clear` manage only SMT reply entries and never
 touch these directories.
+
+## Optional project byte budget
+
+Configure a soft cap over managed workspace data, in bytes:
+
+```sh
+sail cache projects budget --max-bytes 21474836480  # 20 GiB
+sail cache projects budget --json
+sail cache projects budget --disable
+sail cache projects prune --to-bytes 21474836480 --dry-run --json
+sail cache projects prune --to-bytes 21474836480
+```
+
+The daemon enforces a configured budget during idle maintenance. It uses the
+managed cache selected by `SAIL_CACHE_DIR` (or the default cache), independently
+of its job store. `sail serve --cache DIR` selects the SMT-reply store; it does
+not move managed workspaces or their budget. Keep the same `SAIL_CACHE_DIR` in
+your CLI and service environments. It removes the
+least recently used whole workspaces with the same nonblocking locks as manual
+pruning. Active workspaces and the most recently used workspace are protected.
+A protected workspace can itself exceed the cap: the budget is soft, and JSON
+reports `over_budget` instead of removing active or newest data. Byte accounting
+uses the existing workspace sizes, counting hard links once within each workspace;
+it is not a filesystem allocation quota. There is no automatic eviction by default.
+
+`prune --to-bytes` applies the same oldest-first/protect-newest policy immediately.
+It cannot combine with `--all`, `--missing` or `--older-than`. Its JSON preserves
+removed, busy and failed entries. Dry runs leave project data unchanged. Existing
+`prune --all` remains the explicit way to remove every idle workspace. Removing
+workspaces always removes their targets and receipts together.
 
 ## Dependency store
 

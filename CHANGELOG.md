@@ -5,9 +5,34 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Reject already-edited queued preparation before it enters managed verification, preserving dependency observations for the foreground edit (#648).
+
+- Bind idle cache-budget maintenance to the configured managed-project cache,
+  independently of the daemon job store and solver-reply store.
+
 - Add the installable `sail-verification` agent skill for Verus proof iteration,
   proof-repair checks and cached Z3 queries. The Sail repository is its canonical
   source; see `skills/sail-verification/SKILL.md`.
+- Bind background preparation to the complete closing revision, so a cold build
+  that discovers generated inputs can prepare its next unchanged call. Preserve
+  proof provenance and require an exact fresh closing-revision match.
+
+- Prepare subsequent Cargo verification through an optional daemon-owned worker,
+  with foreground priority and `SAIL_BACKGROUND_PREPARE=0` opt-out. New projects
+  can begin ordinary preparation after `sail new` returns. Implementation is
+  under qualification; see `docs/background-preparation.md`.
+- Add focused repair validation for standalone Verus files through
+  `sail repair-check`, durable jobs and MCP, with provisional focus and
+  independent complete Current full validation.
+- Add opt-in managed-project byte budgeting and oldest-first pruning with
+  `sail cache projects budget` and `prune --to-bytes`. Busy workspaces and the
+  newest workspace remain protected; a soft-cap overage stays visible.
+- Preserve the complete output-guard namespace in a new family's speculative
+  source snapshot, allowing its existing exact admission check to reuse that
+  observation instead of reading the inputs twice. Native timing selection
+  remains separate from the regression control.
+- Reject incomplete trailing solver output in both session test comparators,
+  even after all expected replies have arrived (#611).
 
 - Add standalone Verus-file verification without a Cargo project, sharing
   successful proof reuse, durable jobs, watch and MCP (`source_file`). Native

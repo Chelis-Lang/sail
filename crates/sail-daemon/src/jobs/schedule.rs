@@ -20,6 +20,10 @@ pub(super) struct Queue {
 }
 
 impl Queue {
+    /// Whether optional maintenance can start without competing with a job.
+    pub(super) fn idle(&self) -> bool {
+        self.pending.is_empty() && self.running.is_empty()
+    }
     /// Appends a job behind every earlier job.
     pub(super) fn push(&mut self, id: String, key: PathBuf) {
         self.pending.push_back((id, key));

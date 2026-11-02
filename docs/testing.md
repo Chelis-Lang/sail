@@ -17,6 +17,27 @@ a clean Git checkout does not establish which binary Cargo executed.
 Real-project benchmarks keep their timings and logs and delete each completed
 arm's temporary source, build artifacts and cache before starting the next arm.
 
+The explicit recorder-transition blocks in `ci/test-output.sh` set
+`SAIL_BACKGROUND_PREPARE=0`, retaining their exact foreground miss/record/hit
+assertions. The ordinary output comparisons retain product defaults. Native
+preparation acceptance uses `ci/qualify-expansion.sh EVIDENCE_DIR` with the actual
+pinned engine and stock Verus available; it separately requires default-enabled
+new-project preparation, immediate foreground calls, genuine zero-Cargo replay
+and edit invalidation, scheduling-policy versus declared ghost-read changes,
+exact focused replay and independent whole-target verification afterward.
+Oversized private output declines capture.
+
+`scripts/perf-real.sh` records `SAIL_PERF_BACKGROUND_PREPARE=0|1` when supplied;
+unset retains the product default. Use the explicit off control to isolate
+full-path cost, and compare default-enabled immediate and delayed calls separately.
+A diagnostic run does not qualify a performance selection.
+`SAIL_PERF_FORK_SAIL=/absolute/path/to/sail` selects a separate CLI for the
+existing `fork-sail` arm, preserving its caller's `PATH` and normal runtime
+selection. Use independently staged CLIs with matching pins to isolate a CLI
+change. Without this setting the arm retains its explicit development runtime
+override. The stock arm, selectors, output checks and report classifications
+are unchanged.
+
 `scripts/perf-real.sh` wraps each measured command with `python3 -I
 scripts/perf-mem.py`. Each `rN/MODE.PHASE.memory.json` records process-tree
 peak RSS, largest accounted child high-water RSS and separate daemon peak RSS,

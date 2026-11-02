@@ -417,11 +417,19 @@ pub fn key(config: &Config, json: bool) -> Option<String> {
         // Cargo and everything it starts write only to Sail's pipes, so the
         // caller's terminals reach the run's output only through the colour
         // Sail asks Cargo for (#573).
-        super::runner::invocation_colour(&config.args, !json),
+        config
+            .invocation_colour
+            .unwrap_or_else(|| super::runner::invocation_colour(&config.args, !json)),
         key_environment(std::env::vars_os())?,
     ))
     .ok()?;
     Some(super::files::digest(&identity))
+}
+
+/// Resolve the caller's output decision before transferring preparation ownership.
+#[must_use]
+pub fn caller_colour(args: &[String], json: bool) -> bool {
+    super::runner::invocation_colour(args, !json)
 }
 
 fn record_path(cache: &Path, key: &str) -> PathBuf {
@@ -667,8 +675,9 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
 
 impl Pending {
     /// Store the record with what the run printed. A failure only means the
-    /// next unchanged call takes the ordinary path.
-    pub fn commit(mut self, stdout: Vec<u8>, stderr: Vec<u8>) {
+    /// next unchanged call takes the ordinary path. Returns whether publication succeeded.
+    #[must_use]
+    pub fn commit(mut self, stdout: Vec<u8>, stderr: Vec<u8>) -> bool {
         let mut timing = trace_timer();
         if let Some(line) = transient_status(&stderr) {
             // A later stock run would not print it, so this output is not
@@ -676,15 +685,15 @@ impl Pending {
             // record of this key behind either.
             let _ = std::fs::remove_file(&self.path);
             trace(&format!("not recorded: transient Cargo status {line:?}"));
-            return;
+            return false;
         }
         self.record.stdout = stdout;
         self.record.stderr = stderr;
         let Ok(bytes) = serde_json::to_vec(&self.record) else {
-            return;
+            return false;
         };
         let Some(parent) = self.path.parent() else {
-            return;
+            return false;
         };
         let temporary = parent.join(format!(".{}.{}", self.record.key, std::process::id()));
         if std::fs::create_dir_all(parent).is_err()
@@ -692,6 +701,7 @@ impl Pending {
             || std::fs::rename(&temporary, &self.path).is_err()
         {
             let _ = std::fs::remove_file(&temporary);
+            false
         } else {
             trace_phase(&mut timing, "commit");
             trace(&format!(
@@ -700,6 +710,7 @@ impl Pending {
                 self.record.contents.len(),
                 self.record.copies.len()
             ));
+            true
         }
     }
 }
@@ -1051,6 +1062,7 @@ mod tests {
             args: Vec::new(),
             force: false,
             attribution_logs: true,
+            invocation_colour: None,
         };
         let operation = std::fs::read_to_string(root.join("operation"))?;
         if operation == "forced" {
@@ -1107,7 +1119,7 @@ mod tests {
                 assert!(pending.is_none(), "unknown admission must not record");
             } else {
                 assert!(std::env::var_os(SHADOW).is_none());
-                pending.ok_or("actual prepare refused fixture")?.commit(
+                let _ = pending.ok_or("actual prepare refused fixture")?.commit(
                     b"verified report\n".to_vec(),
                     b"Finished dev target(s) in 0.01s\n".to_vec(),
                 );
@@ -1387,6 +1399,7 @@ mod tests {
             args: Vec::new(),
             force: false,
             attribution_logs: true,
+            invocation_colour: None,
         };
         let root_config = config(root.join("workspace"));
         let member_config = config(root.join("workspace/member"));
@@ -1401,7 +1414,7 @@ mod tests {
             std::fs::write(slot.join("unscheduled-scripts.json"), text)?;
             let key = key(config, true).ok_or("key unavailable")?;
             let result = receipt_fixture_result(&root);
-            prepare(Facts {
+            let _ = prepare(Facts {
                 key: &key,
                 cache: &cache,
                 start: SystemTime::now() + Duration::from_secs(3),
@@ -1766,6 +1779,7 @@ mod tests {
             args: Vec::new(),
             force: false,
             attribution_logs: false,
+            invocation_colour: None,
         }
     }
 
@@ -1882,15 +1896,15 @@ mod tests {
             },
         };
         let finished = b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s\n";
-        pending("k").commit(Vec::new(), finished.to_vec());
+        let _ = pending("k").commit(Vec::new(), finished.to_vec());
         assert!(record_path(&cache, "k").is_file());
         // The same key under contention: not recorded, and the older record
         // is gone, so the next unchanged call takes the full path.
         let mut blocked = b"    Blocking waiting for file lock on package cache\n".to_vec();
         blocked.extend_from_slice(finished);
-        pending("k").commit(Vec::new(), blocked.clone());
+        let _ = pending("k").commit(Vec::new(), blocked.clone());
         assert!(!record_path(&cache, "k").exists());
-        pending("fresh").commit(Vec::new(), blocked);
+        let _ = pending("fresh").commit(Vec::new(), blocked);
         assert!(!record_path(&cache, "fresh").exists());
         std::fs::remove_dir_all(&root)
     }

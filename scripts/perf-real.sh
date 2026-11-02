@@ -59,6 +59,9 @@
 #   SAIL_PERF_VERUS_BUILD  Sail's Verus for the Sail modes, passed as
 #                      SAIL_VERUS_BUILD (each Sail run has its own empty cache,
 #                      so Sail cannot find a runtime installed in ~/.cache/sail)
+#   SAIL_PERF_FORK_SAIL  absolute CLI path for fork-sail (default: sail on PATH),
+#                      using that CLI's normal runtime selection and PATH;
+#                      without it, fork-sail uses the development runtime override
 #   SAIL_PERF_EDITS    edits to run (default: all of the project's; `none`
 #                      selects only cold and requested unchanged calls)
 #   SAIL_PERF_CATALOGUE  incidental: frozen comment/blank/helper/rename edits
@@ -98,6 +101,8 @@
 #                      (for sampler overhead controls only)
 #   SAIL_PERF_DIAG    1 retains per-arm explanations, setup events, replay
 #                      traces and run result notes; never use for timed acceptance
+#   SAIL_PERF_BACKGROUND_PREPARE  0 or 1 explicitly controls daemon preparation
+#                      for all measured arms; unset retains product defaults
 #   SAIL_PERF_VSTD_LOCK  the shipped build's Cargo.lock for `registry`
 #                      (default: the one in the release beside `sail`)
 # Needs sail, sail-z3, sail-conformance, cargo verus, python3, perl, git, jq.
@@ -130,6 +135,10 @@ rust_toolchain=$(sed -n 's/^rust_toolchain = "\(.*\)"/\1/p' "$sail_root/corpus/t
 vstd_mode="${SAIL_PERF_VSTD:-source}"
 case "${SAIL_PERF_VERUS_TIMES:-1}" in 1) time_args=(--time-expanded) ;; 0) time_args=() ;; *) echo "SAIL_PERF_VERUS_TIMES must be 0 or 1" >&2; exit 2 ;; esac
 case "$vstd_mode" in source | registry) ;; *) echo "SAIL_PERF_VSTD must be source or registry" >&2; exit 2 ;; esac
+case "${SAIL_PERF_BACKGROUND_PREPARE-unset}" in
+  unset | 0 | 1) ;;
+  *) echo "SAIL_PERF_BACKGROUND_PREPARE must be 0 or 1" >&2; exit 2 ;;
+esac
 
 # Project definitions: corpus entry, source directory, package directory,
 # cargo and Verus arguments, the file noop comments go to, and the edits.
@@ -306,6 +315,12 @@ fi
 fork="${SAIL_PERF_FORK:-}"
 if [ -n "$fork" ] && [ ! -x "$fork/cargo-verus" ]; then
   echo "SAIL_PERF_FORK=$fork has no cargo-verus" >&2; exit 1
+fi
+if [ -n "${SAIL_PERF_FORK_SAIL:-}" ]; then
+  case "$SAIL_PERF_FORK_SAIL" in
+    /*) [ -x "$SAIL_PERF_FORK_SAIL" ] || { echo "SAIL_PERF_FORK_SAIL is not executable" >&2; exit 2; } ;;
+    *) echo "SAIL_PERF_FORK_SAIL must be absolute" >&2; exit 2 ;;
+  esac
 fi
 baseline="${SAIL_PERF_BASELINE:-}"
 if [ -n "$baseline" ] && [ ! -x "$baseline/cargo-verus" ]; then
@@ -583,6 +598,9 @@ measured() { # Actual executable and arguments, with the mode's environment.
 }
 
 diagnostic_environment() { # MODE DIRECTORY: called only inside the measured subshell.
+  if [ "${SAIL_PERF_BACKGROUND_PREPARE+x}" = x ]; then
+    export SAIL_BACKGROUND_PREPARE="$SAIL_PERF_BACKGROUND_PREPARE"
+  fi
   case "$1" in sail | fork-sail | incremental)
     if [ "${SAIL_PERF_DIAG:-0}" = 1 ]; then
       export SAIL_EXPLAIN=1 SAIL_JOB_EVENTS="$2/events.jsonl" SAIL_MANAGED_NOOP_TRACE="$2/noop.trace" \
@@ -606,16 +624,25 @@ verus_cmd() { # MODE EXTRA_VERUS_ARGS...
       else
         measured sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
       fi ;;
-    # Sail never searches PATH for Verus (ADR 0043); the development
-    # override is the only way to run another build under Sail.
-    fork-sail) SAIL_CARGO_VERUS="$fork/cargo-verus" measured sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    fork-sail)
+      if [ -n "${SAIL_PERF_FORK_SAIL:-}" ]; then
+        measured "$SAIL_PERF_FORK_SAIL" verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+      else
+        # Sail never searches PATH for Verus (ADR 0043). This arm explicitly
+        # selects a development build; an installed CLI comparison above does not.
+        SAIL_CARGO_VERUS="$fork/cargo-verus" measured sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+      fi ;;
     incremental) measured sail verify --incremental ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     *) echo "unknown performance mode: $mode" >&2; return 2 ;;
   esac
 }
 
 mode_path() { # MODE: PATH for the mode
-  case "$1" in fork-*) echo "$fork:$PATH" ;; *) echo "$PATH" ;; esac
+  if [ "$1" = fork-sail ] && [ -n "${SAIL_PERF_FORK_SAIL:-}" ]; then
+    echo "$PATH"
+  else
+    case "$1" in fork-*) echo "$fork:$PATH" ;; *) echo "$PATH" ;; esac
+  fi
 }
 
 stats() { # -> "hellos gets hits puts" of the daemon for SAIL_CACHE_DIR, or zeros
@@ -850,8 +877,12 @@ header() {
   echo "project: $project ($src, package $pkg, cargo args: ${cargs[*]:-none}, verus args: ${vargs[*]:-none})"
   echo "machine: ${SAIL_PERF_MACHINE:-unspecified}; $(uname -sm); $(cpu); $(getconf _NPROCESSORS_ONLN) cores"
   echo "sail: $(sail --version 2>/dev/null | head -1) at $(command -v sail)"
+  if [ -n "${SAIL_PERF_FORK_SAIL:-}" ]; then
+    echo "fork-sail CLI (normal runtime selection): $("$SAIL_PERF_FORK_SAIL" --version 2>/dev/null | head -1) at $SAIL_PERF_FORK_SAIL"
+  fi
   echo "verus: $(verus --version 2>&1 | sed -n 's/^ *Version: //p')"
   echo "vstd: $vstd_mode${vstd_lock:+ (shipped lock $vstd_lock)}"
+  echo "background preparation: ${SAIL_PERF_BACKGROUND_PREPARE-product default}"
   echo 'wall clock: command spawn through child exit; sampler setup and teardown excluded'
   [ ! -s "$out/vstd-adjustments.txt" ] || sed 's/^/  adjusted: /' "$out/vstd-adjustments.txt"
   [ ! -s "$out/vstd-setup.txt" ] || sed 's/^/  /' "$out/vstd-setup.txt"
@@ -861,9 +892,11 @@ header() {
   if [ "${SAIL_PERF_CATALOGUE:-}" = incidental ]; then
     python3 -I "$here/perf-incidental.py" check "$corpus" >"$out/catalogue-manifest.json"
     python3 - "$sail_root" "$baseline" "$fork" <<'PY'
-import hashlib, json, pathlib, shutil, sys
+import hashlib, json, os, pathlib, shutil, sys
 files = [pathlib.Path(sys.argv[1]) / 'corpus/incidental-edits.json']
 files += [pathlib.Path(p) for n in ('sail', 'sail-z3', 'cargo-verus', 'verus') if (p := shutil.which(n))]
+if os.environ.get('SAIL_PERF_FORK_SAIL'):
+    files.append(pathlib.Path(os.environ['SAIL_PERF_FORK_SAIL']))
 for directory in sys.argv[2:]:
     if directory:
         files += [pathlib.Path(directory) / n for n in ('cargo-verus', 'verus', 'z3', 'version.txt')]

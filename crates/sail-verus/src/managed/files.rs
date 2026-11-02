@@ -128,9 +128,10 @@ impl FileDigests {
     /// error in the original order.
     pub(super) fn prefetch<'a>(&mut self, paths: impl IntoIterator<Item = &'a Path>) {
         let mut pending: Vec<(PathBuf, &Path)> = Vec::new();
+        let mut selected = std::collections::BTreeSet::new();
         for path in paths {
             let canonical = path.canonicalize().unwrap_or_else(|_| path.to_owned());
-            if !self.0.contains_key(&canonical) && !pending.iter().any(|(c, _)| *c == canonical) {
+            if !self.0.contains_key(&canonical) && selected.insert(canonical.clone()) {
                 pending.push((canonical, path));
             }
         }

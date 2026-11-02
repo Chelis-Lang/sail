@@ -105,3 +105,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0094: Isolated specification termination checks](0094-isolated-spec-termination-checks.md) (accepted bounded correction; qualified and selected on Linux and macOS)
 
 - [0095: Standalone Verus files](0095-standalone-verus-files.md) (implemented and qualified on native Linux and macOS)
+
+- [0096: Daemon-owned optional preparation](0096-daemon-owned-preparation.md) — owner-approved plan; implementation and qualification in progress

@@ -14,8 +14,9 @@ A typical one-line edit verifies 1.2–2.5 times faster than plain Verus, and
 an undone edit up to 30 times faster. See [performance](docs/performance.md)
 for measurements, including where Sail is still slower.
 
-If anything in Sail fails, verification falls back to the pinned Z3 and the
-result stays correct. Sail runs on Linux x86-64 and Apple-silicon macOS.
+Solver-service failures fall back to the pinned Z3. If Sail cannot establish
+complete verification evidence, it reports an error or an unconfirmed result
+instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 
 ## Install
 
@@ -68,11 +69,14 @@ Start from a tutorial file or proof experiment without creating a Cargo project:
 ```sh
 sail verify proof.rs
 sail watch proof.rs
+sail repair-check proof.rs --function proof::lemma --engine interactive
 ```
 
 The same file works through MCP with `source_file: "proof.rs"`. Complete
 successful proofs can be reused on unchanged calls and undo. This feature is
-qualified on native Linux and macOS for the next release; see the [standalone workflow](docs/standalone-verification.md).
+qualified on native Linux and macOS for the next release. Repair checks add an
+exact function focus followed by fresh full-file validation; see the
+[standalone workflow](docs/standalone-verification.md).
 
 ## Everyday commands
 
@@ -87,6 +91,11 @@ sail status                 # cache daemon state
 Each result says whether it is **Current** (its inputs are unchanged),
 **Historical** or **Unknown**. See [workspace verification](docs/workspace-verification.md)
 and [freshness](docs/freshness.md).
+
+The next-release [background preparation](docs/background-preparation.md)
+worker can prepare the next unchanged Cargo call after verification returns,
+and start verifying a newly created project while you begin editing. Foreground
+work takes priority. Use `SAIL_BACKGROUND_PREPARE=0` to opt out.
 
 ## Agents (MCP)
 
@@ -148,7 +157,8 @@ A repair is accepted only when the whole target verifies. See the
   [compatibility](docs/compatibility.md)
 - [Broader performance evaluation](docs/performance-evaluation.md)
 - [Disk use and cleanup](docs/workspace-hygiene.md),
-  [caching Sail in CI](docs/ci-cache.md)
+  [caching Sail in CI](docs/ci-cache.md),
+  [background preparation](docs/background-preparation.md)
 - Experimental features: fragility measurement, seed portfolios, team caching
   and integration APIs. They aren't listed in `sail --help`; see the
   [documentation index](docs/README.md#experimental-features).

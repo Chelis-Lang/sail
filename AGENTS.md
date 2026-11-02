@@ -224,7 +224,8 @@ phases and succeeds only when all complete successfully:
   every change that must miss it;
 - `flags`: the setups verified as plain Cargo-Verus verifies them;
 - `loader`: a loader variable (no proof reuse, one note);
-- `managed`: managed receipts, failing-first reuse, prune, durable jobs, MCP
+- `managed`: managed receipts, failing-first reuse, prune, automatic project-budget
+  enforcement, durable jobs, MCP
   and Claude Code's tool listing;
 - `managed-copies`: two fresh member workspaces establish their own vstd and
   requested-target proofs, then reuse only their own receipts;
