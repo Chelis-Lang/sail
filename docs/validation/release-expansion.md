@@ -3,7 +3,9 @@
 Status: feature `c590de7f` passes native Linux workspace, solver, complete E2E
 and PR conformance gates, plus Mac platform and installed controls. The queued
 origin correction has a real before/after regression witness. The corrected fifteen-edit catalogue and Anvil return controls pass their native
-execution audits. Current-head CI passes. Performance acceptance remains open
+execution audits. Feature PR CI passes; the post-merge managed run exposes
+startup polling defect #650, corrected by the bounded readiness change below.
+Performance acceptance remains open
 with the evidence limitations below. The feature retains
 qualified fork `0ad405eb`. The separate runtime upgrade and performance selection
 do not select a Sail release version or publication.
@@ -52,6 +54,21 @@ The regression writes a failing edit while preparation is queued and requires
 no additional managed verification result. The unchanged old Linux binary fails that
 exact assertion; corrected Linux and Mac controls pass. Changes racing an
 already-running transaction still take the existing cancellation/fail-safe path.
+
+The post-merge `c2c000e0` managed run fails before any budget operation:
+its readiness poll requires exit zero before the newly started daemon has bound
+its socket. `status --json` correctly returns exit 4, `SAIL0401` and the missing-
+daemon JSON. The fixture now retries only that complete documented response,
+requires the child to stay alive and eventually report running, and retains the
+ten-second deadline and every budget/proof assertion. Other errors still fail.
+
+Native c7i.4xlarge / us-east-1 / Ubuntu 24.04 controls deliberately delay the
+actual daemon by one second. The unchanged old fixture fails its first poll;
+the corrected fixture observes missing sockets at both startup points and then
+passes the complete two-workspace LRU, automatic eviction and genuine rebuild
+workflow. The native workspace gate passes Clippy, all 1,320 tests and remaining
+documentation/policy checks. Production Rust and proof admission are unchanged;
+the later correction only validates the missing-state JSON in this Python poll.
 
 The earlier generated-input correction binds the successful runner's complete
 closing revision, including inputs first discovered during compilation, while
@@ -114,6 +131,9 @@ whose runtime source/factory acceptance is recorded in its own upgrade.
 | `guard-edit-execution-complete.log` (catalogue and Anvil execution audit; raw files unavailable) | `822537fb9d283f89a074c7a88b7b8b5361290e7364eedd267db88733791db077` |
 | `guard-native-matrix-execution-complete.log` (execution only, not raw timing acceptance) | `14861f6a33dd9a60f211c708597d16d3157bfcb467a7f698f4abcab19f657f60` |
 | `mac-guard-first-cohort-evidence.tgz` (original corrected cohort, including refusals and cost controls) | `675d4c6f2271aabca07721d259378d74805884703812dfb7764716d12edb2e1c` |
+| `budget-readiness-native-evidence.tgz` (real delayed-daemon old/new controls) | `73eae0725c198711c105be4e558f8d5c73ecdd2697f9ed4e9c29638bef41c44a` |
+| `budget-readiness-native-execution.log` (corrected actual controls) | `f08f615a5590f955e8e3c68313b19668418d001a38ad5f3ac77771caf3320852` |
+| `budget-readiness-r1-execution.log` (complete workspace gate and first-patch refusal) | `b3d6ab3e69cf36dca970bf4bf8873de0ecc37d3c02f9927d8ae5a416ec3b5b60` |
 | `consumer-skill-technical-review.md` | `2b00f1cea3b323132ed961d09c4b9f9c58d00d2c9e0868dcaa77c0c3f35ba235` |
 | `consumer-skill-usability-review.md` | `ef933c6113dd122df6071e6c785f40f7e3dcfa3e8d041ab0cde625582e97887c` |
 
@@ -142,3 +162,10 @@ whose runtime source/factory acceptance is recorded in its own upgrade.
   catalogue execution audits pass, but final Linux raw files are unavailable
   after host expiry. Mac's original CPU ceiling refuses later rounds; the retained
   failed cohort is followed by a fresh quiet-host retry. Performance remains open.
+
+- 2026-11-02, `c2c000e0` main CI: budget fixture rejects documented
+  `SAIL0401` before the daemon listens (#650). The first native patch preserves
+  the workspace gate but incorrectly assumes empty missing-state stdout; its
+  actual delayed-daemon control refuses that assumption. Requiring the exact
+  missing-state JSON passes the original full workflow. First failed capture:
+  `794cb63835fe570597097b66a42cbd8c732b904ab111fd3d6a9d0853a60b3768`.

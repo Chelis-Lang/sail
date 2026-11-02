@@ -21,16 +21,17 @@ def main():
     env.pop("SAIL_DAEMON_SOCKET", None)
     records = []
 
-    def call(label, command, cwd=out, code=0):
+    def call(label, command, cwd=out, code=0, timeout=180):
         start = time.monotonic()
         result = subprocess.run([str(item) for item in command], cwd=cwd, env=env,
-                                capture_output=True, timeout=180)
+                                capture_output=True, timeout=timeout)
         (out / (label + ".stdout")).write_bytes(result.stdout)
         (out / (label + ".stderr")).write_bytes(result.stderr)
         records.append({"label": label, "exit_code": result.returncode,
                         "wall_seconds": time.monotonic() - start})
         (out / "records.json").write_text(json.dumps(records, indent=2) + "\n")
-        assert result.returncode == code, (label, result.returncode, result.stderr)
+        expected = code if isinstance(code, tuple) else (code,)
+        assert result.returncode in expected, (label, result.returncode, result.stderr)
         return result
 
     def projects(label):
@@ -59,9 +60,20 @@ def main():
             deadline = time.monotonic() + 10
             while True:
                 assert child.poll() is None, (label, child.returncode)
-                status = json.loads(call(label + "-ready-" + str(len(records)),
-                                         [args.sail, "status", "--json"]).stdout)
-                if status["running"]:
+                # Until serve binds its socket, status correctly returns
+                # SAIL0401/4. Retry only that documented startup condition;
+                # all later commands and budget assertions stay exact.
+                result = call(label + "-ready-" + str(len(records)),
+                              [args.sail, "status", "--json"], code=(0, 4),
+                              timeout=max(.001, deadline - time.monotonic()))
+                status = json.loads(result.stdout)
+                if result.returncode == 4:
+                    assert set(status) == {"running", "socket"} and status["running"] is False, status
+                    assert isinstance(status["socket"], str) and status["socket"], status
+                    missing = ("error[SAIL0401]: no sail daemon is listening on " + status["socket"]
+                               + " (`sail serve` starts one; `sail verify` starts one on demand)\n")
+                    assert result.stderr == missing.encode(), result
+                elif status["running"]:
                     return child
                 assert time.monotonic() < deadline, label
                 time.sleep(.05)

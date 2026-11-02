@@ -75,10 +75,10 @@ alongside standalone-file development. No release version or publication is sele
 
 | Deliverable | Current state | Remaining gate |
 |---|---|---|
-| Daemon preparation and post-creation verification | Installed controls pass; broader edits expose queued-origin defect #648; guard passes Linux/Mac, Linux old-binary witness and corrected real edit catalogue pass | Full performance acceptance remains separate |
-| Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Current-head CI passes; land the feature PR |
-| Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Current-head PR gates |
-| Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Publish the qualified walkthrough with the feature PR |
+| Daemon preparation and post-creation verification | Merged in #647; Linux/Mac replay, generated-input, foreground and queued-edit controls pass | Full performance acceptance remains separate |
+| Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Merged in #647; runtime-composed acceptance remains separate |
+| Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Merged in #647; startup-fixture correction #650 |
+| Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Merged in #647 |
 | First/full-path and Mac Anvil overhead | Bounded indexing/readback candidate implemented; native timing selection open | Paired whole-call/cold measurements and broader corpus |
 | Binary compiler-input metadata (#599) | Separate runtime upgrade; initial fix merged, native BLAKE3 regression corrected | Complete new-runtime source/factory/corpus/cost qualification and consumption |
 | Incidental edits | Existing fifteen-edit catalogue | Final-runtime catalogue plus Anvil control |
