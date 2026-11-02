@@ -40,3 +40,18 @@ and per-file digest prototypes remain disabled.
   pass, while actual preparation/factory checks expose the native BLAKE3
   provenance regression. Feature landing retains `0ad405eb`; runtime correction
   and its stronger compiler controls stay with the separate upgrade.
+
+The retained real Anvil diagnostic at `554bccf3` proves a preparation refusal:
+its context remains equal, but its opening revision predates newly discovered
+generated inputs. The worker freshly ends Current with zero verifier invocations
+and a different revision, and correctly declines the mismatched origin. The
+correction supplies the successful runner's complete closing revision for the
+handoff and retains exact worker equality, existing proof results and every
+replay admission check. A generated-include cold/replay/changed-script control
+and real Anvil retry are running; no Anvil timing win is claimed yet.
+
+Completed prior standard qualification: all four arms have 159 Same / 13,166
+function records, with all 18 seeded mutations and both return controls Same.
+Mac `05760ad9` passes Clippy, 1,309 non-solver tests and all installed feature
+controls. Raw `feature057-evidence.tgz`, SHA-256
+`a17abfcb2d603d8e5e0e353746db1e74d86b4892a5200433c70086c95a258026`.

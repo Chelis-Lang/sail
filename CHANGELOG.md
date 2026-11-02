@@ -8,6 +8,9 @@ semantic versioning once the API is published.
 - Add the installable `sail-verification` agent skill for Verus proof iteration,
   proof-repair checks and cached Z3 queries. The Sail repository is its canonical
   source; see `skills/sail-verification/SKILL.md`.
+- Bind background preparation to the complete closing revision, so a cold build
+  that discovers generated inputs can prepare its next unchanged call. Preserve
+  proof provenance and require an exact fresh closing-revision match.
 
 - Prepare subsequent Cargo verification through an optional daemon-owned worker,
   with foreground priority and `SAIL_BACKGROUND_PREPARE=0` opt-out. New projects

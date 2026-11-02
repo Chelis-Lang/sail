@@ -14,7 +14,9 @@ pub struct Origin {
     pub key: String,
     /// Original verification context.
     pub context: String,
-    /// Original complete input revision.
+    /// Complete closing input revision of the successful origin, including
+    /// generated inputs discovered by that run. Published proof revisions and
+    /// establishing provenance are independent and remain unchanged.
     pub revision: String,
 }
 

@@ -223,13 +223,26 @@ fn managed(
         copy: &mut stderr,
     };
     let shown: Option<&mut dyn std::io::Write> = if json { None } else { Some(&mut tee_out) };
-    match sail_verus::managed::run_for_replay(config, shown, &mut tee_err, &key) {
-        Ok((result, Some(pending))) => {
-            let _ = pending.commit(stdout, stderr);
-            Ok(result)
-        }
-        Ok((result, None)) => {
-            noop::forget(&config.cache, &key);
+    let mut closing_revision = None;
+    match sail_verus::managed::run_for_preparation(
+        config,
+        shown,
+        &mut tee_err,
+        &key,
+        &mut closing_revision,
+    ) {
+        Ok((result, pending)) => {
+            if let Some(pending) = pending {
+                let _ = pending.commit(stdout, stderr);
+            } else {
+                noop::forget(&config.cache, &key);
+            }
+            crate::preparation::after_verification(
+                config,
+                json,
+                &result,
+                closing_revision.as_deref(),
+            );
             Ok(result)
         }
         Err(error) => {
@@ -308,9 +321,6 @@ pub(crate) fn verify(
     };
     match result {
         Ok(mut result) => {
-            if !standalone && !interactive {
-                crate::preparation::after_verification(&config, options.json, &result);
-            }
             if options.json {
                 result.notes.extend(crate::verify::daemon_note());
                 let _ = writeln!(

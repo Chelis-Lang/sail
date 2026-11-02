@@ -12,9 +12,10 @@ capture() {
     if [ -f "$work/$lane/cache/daemon.log" ]; then
       cp "$work/$lane/cache/daemon.log" "$out/$lane-daemon.log"
     fi
-    if [ -f "$work/$lane/cache/projects/jobs/preparation/stderr" ]; then
-      cp "$work/$lane/cache/projects/jobs/preparation/stderr" "$out/$lane-worker.stderr"
-    fi
+    for worker in "$work/$lane/cache/results/projects/jobs/preparation/stderr" \
+                  "$work/$lane/cache/projects/jobs/preparation/stderr"; do
+      if [ -f "$worker" ]; then cp "$worker" "$out/$lane-worker.stderr"; fi
+    done
   done
 }
 trap capture EXIT

@@ -98,10 +98,18 @@ fn eligible(config: &Config, result: &ProjectResult) -> bool {
             .all(|target| target.complete || exact_scope)
 }
 
-pub(crate) fn after_verification(config: &Config, json: bool, result: &ProjectResult) {
+pub(crate) fn after_verification(
+    config: &Config,
+    json: bool,
+    result: &ProjectResult,
+    closing_revision: Option<&str>,
+) {
     if !enabled() || !eligible(config, result) || result.execution.verifier_invocations == 0 {
         return;
     }
+    let Some(revision) = closing_revision else {
+        return;
+    };
     let (Some(key), Some(verification)) = (noop::key(config, json), verification(config)) else {
         return;
     };
@@ -115,7 +123,7 @@ pub(crate) fn after_verification(config: &Config, json: bool, result: &ProjectRe
             origin: Some(Origin {
                 key,
                 context: result.context_sha256.clone(),
-                revision: result.input_revision.clone(),
+                revision: revision.to_owned(),
             }),
         },
     );
@@ -246,8 +254,15 @@ fn worker_result(args: &[String]) -> Result<Outcome, String> {
     }
     let (mut stdout, mut stderr) = (Capture::default(), Capture::default());
     let shown: Option<&mut dyn io::Write> = if task.json { None } else { Some(&mut stdout) };
-    let (result, pending) = sail_verus::managed::run_for_replay(&config, shown, &mut stderr, &key)
-        .map_err(|error| error.to_string())?;
+    let mut closing_revision = None;
+    let (result, pending) = sail_verus::managed::run_for_preparation(
+        &config,
+        shown,
+        &mut stderr,
+        &key,
+        &mut closing_revision,
+    )
+    .map_err(|error| error.to_string())?;
     if stdout.overflow || stderr.overflow {
         return Err("output exceeds preparation capture limit".into());
     }
@@ -257,7 +272,7 @@ fn worker_result(args: &[String]) -> Result<Outcome, String> {
     let origin = Origin {
         key,
         context: result.context_sha256.clone(),
-        revision: result.input_revision.clone(),
+        revision: closing_revision.ok_or("closing Current input revision unavailable")?,
     };
     if let Some(expected) = &task.origin
         && *expected != origin

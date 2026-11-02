@@ -3426,7 +3426,7 @@ pub(crate) fn run_engine_held(
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
 ) -> Result<(ProjectResult, File)> {
-    run_recorded(config, out, err, engine, None)
+    run_recorded(config, out, err, engine, None, None)
 }
 
 /// [`run`] or [`run_showing_output`] for `sail verify`, which may record this
@@ -3443,7 +3443,34 @@ pub fn run_for_replay(
     key: &str,
 ) -> Result<(ProjectResult, Option<super::noop::Pending>)> {
     let mut pending = None;
-    let result = run_recorded(config, out, err, None, Some((key, &mut pending)));
+    let result = run_recorded(config, out, err, None, Some((key, &mut pending)), None);
+    result.map(|(result, _)| (result, pending))
+}
+
+/// [`run_for_replay`], also retaining the complete closing input revision for
+/// optional background preparation. Published results keep their original
+/// establishing revision. Generated inputs first discovered during a cold build
+/// are included in this closing revision; it grants no replay or proof authority.
+///
+/// # Errors
+/// As [`run`].
+pub fn run_for_preparation(
+    config: &Config,
+    out: Option<&mut dyn Write>,
+    err: &mut dyn Write,
+    key: &str,
+    closing_revision: &mut Option<String>,
+) -> Result<(ProjectResult, Option<super::noop::Pending>)> {
+    *closing_revision = None;
+    let mut pending = None;
+    let result = run_recorded(
+        config,
+        out,
+        err,
+        None,
+        Some((key, &mut pending)),
+        Some(closing_revision),
+    );
     result.map(|(result, _)| (result, pending))
 }
 
@@ -3474,6 +3501,7 @@ fn run_recorded(
     err: &mut dyn Write,
     engine: Option<crate::engine::Request>,
     record: Option<(&str, &mut Option<super::noop::Pending>)>,
+    closing_revision: Option<&mut Option<String>>,
 ) -> Result<(ProjectResult, File)> {
     let research = super::research::selected()?;
     // A replay emits the run's consumer-visible job events again (ADR 0082).
@@ -4808,6 +4836,12 @@ fn run_recorded(
         })
         .flatten()
         .and_then(super::noop::prepare);
+    }
+    if result.currentness == Currentness::Current
+        && result.exit_code == Some(0)
+        && let Some(closing_revision) = closing_revision
+    {
+        *closing_revision = Some(after.revision.clone());
     }
     drop(publication);
     // Freeing the metadata and snapshots (tens of thousands of allocations on

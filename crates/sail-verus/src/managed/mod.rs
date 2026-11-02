@@ -49,7 +49,8 @@ pub use freshness::FreshnessIndex;
 pub use input::{InputSnapshot, snapshot};
 pub(crate) use receipts::{Invocation, Runtime, TargetIdentity, retire as retire_receipts};
 pub use runner::{
-    Config, refresh_context, refresh_result, run, run_for_replay, run_showing_output,
+    Config, refresh_context, refresh_result, run, run_for_preparation, run_for_replay,
+    run_showing_output,
 };
 pub(crate) use runner::{run_engine, run_engine_held};
 pub use shipped::new_project_lockfile;

@@ -24,7 +24,11 @@ preparation. Cancellation and shutdown kill and reap the owned worker group;
 unfinished work does not resume after a daemon restart.
 
 Successful Current ordinary Cargo verification may enqueue its exact invocation,
-output decision, environment, context and input revision. After settlement can
+output decision, environment, context and complete closing input revision.
+The closing revision includes generated inputs first discovered during that
+successful run; published proof revisions and establishing provenance stay
+unchanged. The worker independently reobserves and exactly matches that closing
+revision. After settlement can
 be established by a **new** observation, a private worker performs a genuine
 unchanged managed call. Only the existing replay recording predicates can
 publish its actual transcript, report and events. A changed origin, started
