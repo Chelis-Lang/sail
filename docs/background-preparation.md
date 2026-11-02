@@ -35,6 +35,10 @@ completed-record, superseded and failure counts. These are lifetime activity
 counters, not evidence that your current source is proved. The regular command's
 diagnostics, exit status and JSON report remain authoritative.
 
+The optional connection attempt and its individual reads/writes use a 25 ms
+timeout. A full listener backlog declines preparation through the ordinary
+verification path.
+
 Preparation uses at most one additional worker. Requests are bounded and newer
 workspace requests replace older ones. Each captured output stream is limited to
 16 MiB; exceeding that limit drains the output and declines replay publication. Stopping the daemon cancels its work;

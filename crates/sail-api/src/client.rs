@@ -3,6 +3,7 @@
 //! Every call has timeouts. Any failure is reported as an error, which the
 //! shim treats as a miss and falls back to the pinned solver.
 
+use socket2::{Domain, SockAddr, Socket, Type};
 use std::io::Write as _;
 use std::os::unix::net::UnixStream;
 use std::path::Path;
@@ -20,6 +21,30 @@ pub const TIMEOUT: Duration = Duration::from_secs(10);
 /// buffer, so the daemon never blocks writing them while the client writes.
 const PUT_WINDOW: usize = 64;
 
+/// Connect to a Unix endpoint with a bounded connect and per-operation I/O timeouts.
+///
+/// # Errors
+/// Returns connection/configuration errors, including an unavailable or full
+/// listener, expiration of `timeout`, or a zero `timeout`.
+pub fn connect_stream(path: &Path, timeout: Duration) -> std::io::Result<UnixStream> {
+    if timeout.is_zero() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "Unix connection timeout must be nonzero",
+        ));
+    }
+    // Setting read/write timeouts after a blocking connect leaves a saturated
+    // listener backlog unbounded. The runtime client already uses this safe,
+    // nonblocking-connect implementation on both supported platforms.
+    let socket = Socket::new(Domain::UNIX, Type::STREAM, None)?;
+    socket.connect_timeout(&SockAddr::unix(path)?, timeout)?;
+    let fd: std::os::fd::OwnedFd = socket.into();
+    let stream = UnixStream::from(fd);
+    stream.set_read_timeout(Some(timeout))?;
+    stream.set_write_timeout(Some(timeout))?;
+    Ok(stream)
+}
+
 /// A connection to the daemon.
 #[derive(Debug)]
 pub struct Client {
@@ -36,17 +61,16 @@ impl Client {
         Self::connect_with_timeout(path, TIMEOUT)
     }
 
-    /// Connects to the daemon socket at `path`, with `timeout` for each
+    /// Connects to the daemon socket at `path`, with `timeout` for the connect and each
     /// read and write instead of [`TIMEOUT`].
     ///
     /// # Errors
     ///
     /// Connection errors, or a zero `timeout`.
     pub fn connect_with_timeout(path: &Path, timeout: Duration) -> std::io::Result<Self> {
-        let stream = UnixStream::connect(path)?;
-        stream.set_read_timeout(Some(timeout))?;
-        stream.set_write_timeout(Some(timeout))?;
-        Ok(Self { stream })
+        Ok(Self {
+            stream: connect_stream(path, timeout)?,
+        })
     }
 
     fn call(&mut self, req: &Request) -> std::io::Result<Vec<u8>> {

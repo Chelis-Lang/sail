@@ -121,6 +121,7 @@ and slow daemon tests.
 | Scenario | Safe outcome | Observed outcome |
 |---|---|---|
 | Daemon socket missing, or stale (nobody listening) | Pass-through | Pass-through; exact replies |
+| Listening daemon with a full accept queue | Bounded connection failure and pass-through | Real backlog and pinned-solver byte controls in [connection qualification](validation/unix-connect-deadlines.md) |
 | Daemon dies at `HELLO` (closed, or mid-reply) | Pass-through | Pass-through; exact replies |
 | Daemon dies while serving from cache (at `GET` 1, 4 or 9; mid-reply at `GET` 3 or 7) | The command is a miss; the solver replays the prefix | Exact replies, exit 0; the session finishes on the solver without recording |
 | Daemon dies while recording after a miss (at `PUT` 1, 5 or 20; mid-reply at `PUT` 2 or 12) | Forwarding is unaffected; recording stops | Exact replies, exit 0; entries stored before the death pass the replay check |

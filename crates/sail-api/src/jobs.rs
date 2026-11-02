@@ -747,7 +747,6 @@ impl Client {
         request: &Request,
         connected: impl FnOnce(std::os::unix::net::UnixStream),
     ) -> io::Result<Response> {
-        use std::os::unix::net::UnixStream;
         if matches!(request, Request::Submit { submission } if matches!(submission.mode, Mode::Interactive | Mode::Repair(_)))
             && !matches!(
                 self.call(&Request::Capabilities)?,
@@ -790,11 +789,9 @@ impl Client {
                 "SAIL3150: endpoint does not support standalone repair; restart Sail's daemon",
             ));
         }
-        let mut stream = UnixStream::connect(&self.socket)?;
+        let mut stream =
+            crate::client::connect_stream(&self.socket, std::time::Duration::from_secs(5))?;
         connected(stream.try_clone()?);
-        let timeout = Some(std::time::Duration::from_secs(5));
-        stream.set_read_timeout(timeout)?;
-        stream.set_write_timeout(timeout)?;
         write_frame(&mut stream, request)?;
         match read_frame(&mut stream)? {
             Response::Error(message) => Err(io::Error::other(message)),
