@@ -436,8 +436,10 @@ unsat\n<<DONE>>\n";
 
     #[test]
     fn verus_toy_fixture_pairs_completely() {
-        let input = include_bytes!("../../sail-smtlib/tests/fixtures/verus-toy.in.smt2");
-        let output = include_bytes!("../../sail-smtlib/tests/fixtures/verus-toy.out.txt");
+        let input =
+            include_bytes!("../resources/crates/sail-smtlib/tests/fixtures/verus-toy.in.smt2");
+        let output =
+            include_bytes!("../resources/crates/sail-smtlib/tests/fixtures/verus-toy.out.txt");
         let t = Transcript::new(input, output);
         assert_eq!(t.unpaired_batches, 0);
         let checks = t.checks();

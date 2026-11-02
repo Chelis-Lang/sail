@@ -910,7 +910,7 @@ mod tests {
     /// recorded attribution fixture (two failed functions).
     fn project() -> Value {
         let report: Value = serde_json::from_str(include_str!(
-            "../../sail-cli/tests/fixtures/attr/report.golden.json"
+            "../resources/crates/sail-cli/tests/fixtures/attr/report.golden.json"
         ))
         .unwrap_or_default();
         let target = |name: &str, requested: bool| {

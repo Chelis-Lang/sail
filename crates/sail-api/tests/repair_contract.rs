@@ -5,7 +5,7 @@ use sail_api::repair::BatchResult;
 
 fn project() -> Result<ProjectResult, Box<dyn std::error::Error>> {
     let report: Report = serde_json::from_str(include_str!(
-        "../../sail-cli/tests/fixtures/attr/report.golden.json"
+        "../resources/crates/sail-cli/tests/fixtures/attr/report.golden.json"
     ))?;
     Ok(ProjectResult {
         kind: "sail-project-result".into(),

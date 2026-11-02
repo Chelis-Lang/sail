@@ -63,9 +63,10 @@ jobs:
           path: |
             ~/.cargo/registry
             target
-          key: crate-publish-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.event.release.tag_name || inputs.tag }}
+          key: crate-publish-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('Cargo.lock') }}-${{ github.event.release.tag_name || inputs.tag }}
           restore-keys: |
-            crate-publish-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+            crate-publish-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('Cargo.lock') }}-
+            crate-publish-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-
       - name: Check publication controls without credentials
         run: python3 scripts/test-publish-crates.py
       - name: Verify and publish the selected crates

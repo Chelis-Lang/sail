@@ -1,18 +1,29 @@
 [package]
-name = "sail-cli"
-description = "The sail command-line interface"
+name = "sail-solve"
+description = "Fast, cached Verus verification for Rust: standalone files, projects, watch and agent workflows"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
+homepage = "https://github.com/Chelis-Lang/sail"
+
+[lib]
+name = "sail_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sail-solve-z3"
+path = "src/shim_main.rs"
 
 [[bin]]
 name = "sail"
 path = "src/main.rs"
 
 [dependencies]
+sail-shim.workspace = true
 notify.workspace = true
 ctrlc.workspace = true
 sail-api.workspace = true

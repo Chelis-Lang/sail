@@ -726,7 +726,7 @@ mod legacy_authority_tests {
     fn zero_function_project()
     -> Result<sail_api::project::ProjectResult, Box<dyn std::error::Error>> {
         let mut report: sail_api::output::Report = serde_json::from_str(include_str!(
-            "../../../sail-cli/tests/fixtures/attr/report.golden.json"
+            "../../resources/crates/sail-cli/tests/fixtures/attr/report.golden.json"
         ))?;
         report.exit_code = Some(0);
         for krate in &mut report.crates {

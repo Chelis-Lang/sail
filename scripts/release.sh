@@ -144,7 +144,8 @@ package_stages() {
   linux="$(cd "$linux" && pwd -P)" || die "cannot open Linux stage"
   macos="$(cd "$macos" && pwd -P)" || die "cannot open macOS stage"
   workspace="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
-  case "$version" in "$workspace"|"$workspace"-*) ;; *) die "VERSION must start with the workspace version $workspace" ;; esac
+  [ "$version" = "$workspace" ] || die "VERSION must equal the workspace version $workspace for matching crate publication"
+  python3 scripts/crate-resources.py check
   case "$version" in *[!a-zA-Z0-9.+-]*) die "invalid package version" ;; esac
   # Verify both complete indexes before creating either archive, and refuse
   # platform swaps by the pinned runtime manifest, never by directory names.
@@ -204,7 +205,7 @@ release() {
   package dist/stage/linux "sail-$version-x86_64-unknown-linux-gnu"
 
   # macOS: build and stage here.
-  cargo build --release --locked -p sail-cli -p sail-shim
+  cargo build --release --locked -p sail-solve -p sail-shim
   # The pinned, qualified runtime (engine/verus/artifact-macos.json) from the
   # fork's public release; install checks its digest and every file.
   local build

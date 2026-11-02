@@ -8,6 +8,7 @@
 
 mod contract_worker;
 mod engine_cli;
+mod engine_download;
 mod fragility;
 mod fragility_join;
 mod help;

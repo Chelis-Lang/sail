@@ -51,6 +51,7 @@ class PublicationControls(unittest.TestCase):
         environment = run.call_args.kwargs["env"]
         self.assertNotIn("CARGO_REGISTRY_TOKEN", environment)
         self.assertNotIn("CARGO_REGISTRIES_CRATES_IO_TOKEN", environment)
+        self.assertIs(run.call_args.kwargs["stdin"], PUBLISH.subprocess.DEVNULL)
 
     def test_dirty_source_is_rejected(self):
         with patch.object(PUBLISH, "run", return_value=" M Cargo.toml\n"):

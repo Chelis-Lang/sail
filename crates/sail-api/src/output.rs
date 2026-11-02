@@ -916,7 +916,8 @@ mod tests {
     }
     #[test]
     fn the_example_document_is_valid_v2_with_rendered_itf_values() {
-        let text = include_str!("../../sail-cli/tests/fixtures/attr/report.golden.json");
+        let text =
+            include_str!("../resources/crates/sail-cli/tests/fixtures/attr/report.golden.json");
         let golden: Report =
             serde_json::from_str(text).unwrap_or_else(|e| unreachable!("fixture: {e}"));
         let schema: serde_json::Value = serde_json::from_str(JSON_SCHEMA).unwrap_or_default();
@@ -951,7 +952,7 @@ mod tests {
     #[test]
     fn engine_provenance_is_additive_and_matches_the_schemas() {
         let stock: Report = serde_json::from_str(include_str!(
-            "../../sail-cli/tests/fixtures/attr/report.golden.json"
+            "../resources/crates/sail-cli/tests/fixtures/attr/report.golden.json"
         ))
         .unwrap_or_else(|e| unreachable!("fixture: {e}"));
         // Stock documents serialize exactly as before: no engine fields.
@@ -1010,7 +1011,7 @@ mod tests {
     #[test]
     fn verus_totals_clear_unknown_functions_only_when_every_error_is_accounted_for() {
         let golden: Report = serde_json::from_str(include_str!(
-            "../../sail-cli/tests/fixtures/attr/report.golden.json"
+            "../resources/crates/sail-cli/tests/fixtures/attr/report.golden.json"
         ))
         .unwrap_or_else(|e| unreachable!("fixture: {e}"));
         // The fixture: 8 functions, 2 failed, and Verus reports 2 errors.
@@ -1044,7 +1045,7 @@ mod tests {
     #[test]
     fn portfolio_evidence_matches_the_schema() {
         let mut r: Report = serde_json::from_str(include_str!(
-            "../../sail-cli/tests/fixtures/attr/report.golden.json"
+            "../resources/crates/sail-cli/tests/fixtures/attr/report.golden.json"
         ))
         .unwrap_or_else(|e| unreachable!("fixture: {e}"));
         let attempt = PortfolioAttempt {

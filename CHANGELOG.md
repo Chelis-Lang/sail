@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add crates.io distribution as `sail-solve`, installing the CLI and companion
+  shim together. `sail engine install` fetches and validates the exact pinned
+  verifier runtime without a source checkout. Future released tags publish
+  their matching verified crate versions automatically.
+
 - Bound Unix connection establishment for preparation, solver-cache and job
   clients, so a full listener backlog cannot indefinitely delay handoff or
   pinned-solver fallback. Existing read/write deadlines remain.

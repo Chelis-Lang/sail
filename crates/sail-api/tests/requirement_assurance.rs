@@ -9,15 +9,15 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 fn recorded(positive: bool) -> TestResult<ResultDocument> {
     let manifest: LoweringManifest = serde_json::from_str(include_str!(
-        "../../sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"
+        "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"
     ))?;
     let backend: ProjectResult = serde_json::from_str(if positive {
         include_str!(
-            "../../sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json"
+            "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json"
         )
     } else {
         include_str!(
-            "../../sail-verus/tests/fixtures/neutral-contracts/body-edit-requested-target.json"
+            "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/body-edit-requested-target.json"
         )
     })?;
     let proof = assurance::observed_contract_proof(&manifest, &backend);

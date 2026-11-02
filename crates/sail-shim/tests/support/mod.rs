@@ -20,7 +20,8 @@ use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, ItemKind, ResponseSplitter};
 
 /// The recorded Verus session used throughout.
-pub const TOY: &[u8] = include_bytes!("../../../sail-smtlib/tests/fixtures/verus-toy.in.smt2");
+pub const TOY: &[u8] =
+    include_bytes!("../../resources/crates/sail-smtlib/tests/fixtures/verus-toy.in.smt2");
 
 /// How long any single session may take before it counts as hung.
 pub const DEADLINE: Duration = Duration::from_secs(60);

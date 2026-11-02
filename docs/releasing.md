@@ -24,8 +24,49 @@ Sail ships prebuilt binaries for Linux and macOS as GitHub release assets on
 release script creates a **draft** and never publishes one; publishing is a
 separate step that follows a verified attestation of both archives.
 
-Releases are built locally. CI stays Linux-only and never builds, packages or
-publishes a release (ADR 0013); there are no macOS runners.
+Release archives are built and qualified locally. Ordinary CI stays Linux-only
+and runs the fast gate (ADR 0013); there are no macOS runners. The separate
+crate-publication workflow verifies and uploads the selected source packages
+after a qualified GitHub release is published (ADR 0098).
+
+## Crates.io publication
+
+The owner authorized `sail-solve` and its public dependency set. The initial
+registry prerelease is `0.2.0-rc.1`; publishing it does not close the wider
+release performance gate. The CLI package retains the `sail` executable and
+installs `sail-solve-z3` beside it. Contributor tools and the private temporal
+extension remain unpublished.
+
+Before each release, set the workspace version and all exact internal
+dependency requirements together, update both workspace locks, and synchronize
+package-local resources after changing their authoritative pins or policies:
+
+```sh
+python3 scripts/crate-resources.py sync
+python3 scripts/crate-resources.py check
+python3 scripts/test-publish-crates.py
+python3 scripts/publish-crates.py --dry-run --version VERSION
+```
+
+The publisher requires a clean committed source and matching versions. Cargo
+packages and verifies the selected workspace together, including unpublished
+internal dependencies. Existing registry versions are skipped only when their
+complete archive checksum matches and they are not yanked. Publish and retry
+from the same commit: Cargo records Git provenance inside each archive.
+
+For initial publication, pass an owner-authorized token file to
+`scripts/publish-crates.py --version VERSION --token-file PATH`. The token is
+loaded only for upload, passed through Cargo's environment, and redacted from
+output. It must never be committed, printed or placed in command arguments.
+
+Future published GitHub releases automatically run
+`.github/workflows/publish-crates.yml` against their exact tag. The tag must
+equal `v` plus the workspace version. The release-only `CARGO_REGISTRY_TOKEN`
+repository secret supplies upload authorization; ordinary CI receives no
+publication credential. Manual retries accept only an already published tag.
+After publication, independently install the exact registry version with an
+empty Cargo package cache, outside the checkout, and exercise engine setup,
+verification, unchanged reuse and the negative input controls on both platforms.
 
 Source-suite validation checks both runtime-artifact and test-executable
 SHA-256 digests before reusing a cached build. A suite manifest without test
@@ -388,8 +429,8 @@ qualifying the macOS runtime against it).
    scripts/release.sh VERSION
    ```
 
-   `VERSION` must start with the workspace version (for example `0.1.0` or
-   `0.1.0-rc.1`). Both platforms build with `SAIL_VERSION=VERSION`, so
+   `VERSION` must equal the workspace version, including any prerelease suffix
+   (for example `0.2.0-rc.1`). Both platforms build with `SAIL_VERSION=VERSION`, so
    `sail --version` and every report's `sail_version` (and the MCP server's
    version) state the exact release version, suffix included (a build without
    `SAIL_VERSION` reports the workspace version). The script:

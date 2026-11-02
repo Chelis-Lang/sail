@@ -19,7 +19,7 @@ capture() {
   done
 }
 trap capture EXIT
-cargo build --release --locked -p sail-cli -p sail-shim
+cargo build --release --locked -p sail-solve -p sail-shim
 sail="$(pwd)/target/release/sail"
 python3 ci/test-standalone-repair.py --sail "$sail" --stock "$(command -v verus)" \
   --runtime "${SAIL_ENGINE_BUILD:?requires validated runtime}" --out "$work/repair"

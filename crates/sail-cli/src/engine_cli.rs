@@ -29,9 +29,10 @@ fn command(args: &[String]) -> Result<sail_verus::engine::Status, String> {
     let pins = sail_verus::toolchain::Pins::embedded().map_err(|error| error.to_string())?;
     match args.as_slice() {
         [command] if command == "status" => sail_verus::engine::status(&cache, &pins).map_err(|error| error.to_string()),
+        [command] if command == "install" => crate::engine_download::install(&cache, &pins),
         [command, from, path] if command == "install" && from == "--from" => {
             sail_verus::engine::import(&cache, &pins, Path::new(path)).map_err(|error| error.to_string())
         }
-        _ => Err("error[SAIL3120]: usage: sail engine status [--output json] | sail engine install --from PATH [--output json]; build with cargo xtask build-verus-engine".into()),
+        _ => Err("error[SAIL3120]: usage: sail engine status [--output json] | sail engine install [--from PATH] [--output json]".into()),
     }
 }

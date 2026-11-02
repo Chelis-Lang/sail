@@ -12,7 +12,8 @@ use std::sync::Arc;
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, ResponseSplitter};
 
-const INPUT: &[u8] = include_bytes!("../../sail-smtlib/tests/fixtures/verus-toy.in.smt2");
+const INPUT: &[u8] =
+    include_bytes!("../resources/crates/sail-smtlib/tests/fixtures/verus-toy.in.smt2");
 
 fn z3() -> String {
     match std::env::var("SAIL_TEST_Z3") {
@@ -376,7 +377,7 @@ fn stderr_warnings_survive_cold_and_warm_sessions() {
     }
     let input = [
         b"(get-info :version)\n".as_slice(),
-        include_bytes!("../../../corpus/repros/z3-stderr-cache-warning/input.smt2"),
+        include_bytes!("../resources/corpus/repros/z3-stderr-cache-warning/input.smt2"),
     ]
     .concat();
     let direct = input_run(&solver, None, &input);
@@ -630,7 +631,7 @@ fn new_no_output_suffix_cannot_hide_diagnostics_after_cache_hits() {
         "certified quiet input must hit"
     );
     let mut warning = b"(get-info :version)\n".to_vec();
-    let repro = include_bytes!("../../../corpus/repros/z3-stderr-cache-warning/input.smt2");
+    let repro = include_bytes!("../resources/corpus/repros/z3-stderr-cache-warning/input.smt2");
     warning.extend(
         String::from_utf8_lossy(repro)
             .replace("(check-sat)\n", "")

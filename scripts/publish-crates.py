@@ -37,7 +37,8 @@ def run(arguments, capture=False):
     """Run a preparation command without passing a publication token."""
     return subprocess.run(
         arguments, cwd=ROOT, env=public_environment(), check=True,
-        text=True, stdout=subprocess.PIPE if capture else None,
+        text=True, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE if capture else None,
     ).stdout
 
 

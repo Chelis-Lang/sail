@@ -13,13 +13,44 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 RESOURCES = {
+    "sail-api": (
+        "crates/sail-cli/tests/fixtures/attr/report.golden.json",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/body-edit-requested-target.json",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json",
+    ),
     "sail-cli": (
         "ci/engine-artifact.py",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/body_edit.rs",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.rs",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs",
         "engine/verus/artifact-linux.json",
         "engine/verus/artifact-macos.json",
     ),
+    "sail-daemon": (
+        "crates/sail-cli/tests/fixtures/attr/report.golden.json",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.rs",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.v1-manifest.json",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.v1-manifest.json",
+    ),
+    "sail-mcp": (
+        "crates/sail-cli/tests/fixtures/attr/report.golden.json",
+    ),
+    "sail-portfolio": (
+        "crates/sail-smtlib/tests/fixtures/verus-toy.in.smt2",
+        "crates/sail-smtlib/tests/fixtures/verus-toy.out.txt",
+    ),
     "sail-runtime": (
         "corpus/toolchain.toml",
+    ),
+    "sail-shim": (
+        "corpus/repros/z3-stderr-cache-warning/input.smt2",
+        "crates/sail-smtlib/tests/fixtures/verus-toy.in.smt2",
     ),
     "sail-verus": (
         "corpus/repros/verus-ambiguous-friendly-name/input.rs",
@@ -37,6 +68,7 @@ RESOURCES = {
         "scripts/shipped-deps/Cargo.toml",
     ),
 }
+
 # Cargo excludes nested packages; a metadata-only copied manifest must not
 # retain the Cargo.toml filename that marks its directory as a package.
 RESOURCE_NAMES = {

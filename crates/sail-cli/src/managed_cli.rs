@@ -89,7 +89,7 @@ pub(crate) fn config(
     let cargo_verus =
         crate::verify::cargo_verus().map_err(|message| format!("error[SAIL0101]: {message}"))?;
     let sail = std::env::current_exe().map_err(|e| e.to_string())?;
-    let shim = sail.with_file_name("sail-z3");
+    let shim = crate::verify::shim_for(&sail);
     if !shim.is_file() {
         return Err("error[SAIL0102]: sail-z3 must be installed next to sail".into());
     }

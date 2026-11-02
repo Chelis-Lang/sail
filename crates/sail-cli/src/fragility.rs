@@ -307,7 +307,7 @@ pub fn fragility(
         Err(e) => return fail(err, "SAIL0110", &e),
     };
     let shim = match std::env::current_exe() {
-        Ok(me) => me.with_file_name("sail-z3"),
+        Ok(me) => crate::verify::shim_for(&me),
         Err(e) => return fail(err, "SAIL0102", &format!("cannot locate sail: {e}")),
     };
     let cargo_verus = crate::verify::cargo_verus();

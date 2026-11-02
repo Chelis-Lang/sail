@@ -195,7 +195,7 @@ pub fn locate_sail(explicit: Option<PathBuf>) -> Result<PathBuf, String> {
         Ok(sail)
     } else {
         Err(format!(
-            "sail not found at {} (build it with `cargo build --release -p sail-cli`, or pass --sail)",
+            "sail not found at {} (build it with `cargo build --release -p sail-solve`, or pass --sail)",
             sail.display()
         ))
     }

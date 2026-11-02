@@ -93,7 +93,7 @@ The separate installed-service acceptance runner defaults to strict positive
 kill acceptance:
 
 ```sh
-cargo run -p sail-cli --example check_mutation_jobs -- \
+cargo run -p sail-solve --example check_mutation_jobs -- \
   path/to/installed/sail path/to/fresh-evidence-directory
 ```
 
@@ -106,7 +106,7 @@ To qualify the remaining API and evidence controls while recording the current
 actual incomplete-quantifiers solver unknown, run a separate fresh directory:
 
 ```sh
-cargo run -p sail-cli --example check_mutation_jobs -- \
+cargo run -p sail-solve --example check_mutation_jobs -- \
   path/to/installed/sail path/to/fresh-observation-directory \
   --observe-inconclusive
 ```

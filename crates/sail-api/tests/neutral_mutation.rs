@@ -6,15 +6,15 @@ use sail_api::{
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn recorded(positive: bool) -> TestResult<WorkerResult> {
     let manifest: LoweringManifest = serde_json::from_str(include_str!(
-        "../../sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"
+        "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"
     ))?;
     let backend = serde_json::from_str(if positive {
         include_str!(
-            "../../sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json"
+            "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json"
         )
     } else {
         include_str!(
-            "../../sail-verus/tests/fixtures/neutral-contracts/body-edit-requested-target.json"
+            "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/body-edit-requested-target.json"
         )
     })?;
     let proof = sail_api::assurance::observed_contract_proof(&manifest, &backend);
@@ -93,7 +93,8 @@ fn changed_guarantee_tool_or_missing_evidence_can_never_be_killed() -> TestResul
 )]
 fn recorded_receipt() -> TestResult<(mutation::View, WorkerResult)> {
     use mutation::{OriginalEvidence, Plan, State, Submission, View};
-    let original = include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.rs");
+    let original =
+        include_str!("../resources/crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs");
     let baseline = recorded(true)?;
     let source = sail_api::contracts::Submission {
         profile: 1,

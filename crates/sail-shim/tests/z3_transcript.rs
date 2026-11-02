@@ -19,7 +19,8 @@ use std::process::{Command, Stdio};
 use sail_smtlib::command::{CommandKind, Output, classify};
 use sail_smtlib::split::{CommandSplitter, ResponseSplitter};
 
-const INPUT: &[u8] = include_bytes!("../../sail-smtlib/tests/fixtures/verus-toy.in.smt2");
+const INPUT: &[u8] =
+    include_bytes!("../resources/crates/sail-smtlib/tests/fixtures/verus-toy.in.smt2");
 
 fn z3() -> String {
     match std::env::var("SAIL_TEST_Z3") {
