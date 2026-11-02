@@ -22,9 +22,9 @@ relations remain open; source/hash binding does not establish them.
   its origin's revision only after managed verification. An edit made while the
   worker was queued could enter verification, then be cancelled after consuming
   build-script observations. Native IronKV reproduces the resulting vstd rebuild;
-  disabling preparation avoids it. An initial Current read-back guard and actual
-  queued-edit regression control are implemented; native qualification and the
-  wider comparison retry remain pending. The feature PR remains draft.
+  disabling preparation avoids it. The Current read-back guard and actual
+  queued-edit regression pass native Linux and Mac controls; the unchanged old binary fails the exact new assertion.
+  The wider comparison retry remains pending. The feature PR remains draft.
 
 ## Accepted integration limit
 

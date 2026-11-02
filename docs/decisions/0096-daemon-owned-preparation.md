@@ -27,8 +27,14 @@ Successful Current ordinary Cargo verification may enqueue its exact invocation,
 output decision, environment, context and complete closing input revision.
 The closing revision includes generated inputs first discovered during that
 successful run; published proof revisions and establishing provenance stay
-unchanged. The worker independently reobserves and exactly matches that closing
-revision. After settlement can
+unchanged. Preparation protocol v2 also carries the canonical origin workspace
+and its public read-back revision. Before entering managed verification, the
+worker requires a fresh complete Current read-back of that origin; an edit
+already made while queued declines without consuming build-script observations.
+The worker still independently reobserves and exactly matches the closing
+revision after its run. The public read-back revision can legitimately advance
+to the complete closing revision during that run; it is a pre-execution guard,
+not a replacement for any original closing-origin equality check. After settlement can
 be established by a **new** observation, a private worker performs a genuine
 unchanged managed call. Only the existing replay recording predicates can
 publish its actual transcript, report and events. A changed origin, started
@@ -42,7 +48,7 @@ The caller returns independently of preparation. An immediate follow-up takes
 foreground priority and the ordinary verification path if preparation is not
 ready. `SAIL_BACKGROUND_PREPARE=0` disables new preparation. Unavailable or
 incompatible services preserve ordinary behavior. The separate preparation
-protocol explicitly negotiates version one through its status response.
+protocol explicitly negotiates version two through its status response.
 
 Project creation can start the daemon with one initial ordinary verification
 request, without waiting for daemon startup or verification. This can schedule

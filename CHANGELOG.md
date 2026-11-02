@@ -5,7 +5,7 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
-- Reject already-edited queued preparation before it enters managed verification, preserving dependency observations for the foreground edit (#648; qualification pending).
+- Reject already-edited queued preparation before it enters managed verification, preserving dependency observations for the foreground edit (#648).
 
 - Bind idle cache-budget maintenance to the configured managed-project cache,
   independently of the daemon job store and solver-reply store.
