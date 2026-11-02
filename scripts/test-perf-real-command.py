@@ -170,8 +170,20 @@ class Commands(unittest.TestCase):
             result, output, _, _ = self.run_command(mode, '--verify-module=module', candidate=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(output.get('candidate', False), selected)
+            self.assertIsNone(output['runtime'])
             self.assertEqual(output['args'][:3], ['verify', '--output', 'json'])
             self.assertIn('--verify-module=module', output['args'])
+
+    def test_explicit_cli_keeps_the_callers_path(self):
+        text = Path(__file__).with_name('perf-real.sh').read_text()
+        function = 'mode_path()' + text.split('mode_path()', 1)[1].split('\nstats()', 1)[0]
+        for candidate, expected in [('', '/owned/fork:' + os.environ['PATH']),
+                                    ('/owned/candidate/sail', os.environ['PATH'])]:
+            result = subprocess.run(['bash', '-c', function + '\nfork=/owned/fork; mode_path fork-sail'],
+                                    env=dict(os.environ, SAIL_PERF_FORK_SAIL=candidate),
+                                    text=True, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), expected)
 
     def test_focused_shim_uses_fork_solver_and_owned_daemon(self):
         result, output, shim, solver = self.run_command("fork-shim", "--verify-module=module")

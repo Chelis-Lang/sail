@@ -60,7 +60,8 @@
 #                      SAIL_VERUS_BUILD (each Sail run has its own empty cache,
 #                      so Sail cannot find a runtime installed in ~/.cache/sail)
 #   SAIL_PERF_FORK_SAIL  absolute CLI path for fork-sail (default: sail on PATH),
-#                      allowing paired CLI revisions with the same runtime
+#                      using that CLI's normal runtime selection and PATH;
+#                      without it, fork-sail uses the development runtime override
 #   SAIL_PERF_EDITS    edits to run (default: all of the project's; `none`
 #                      selects only cold and requested unchanged calls)
 #   SAIL_PERF_CATALOGUE  incidental: frozen comment/blank/helper/rename edits
@@ -623,16 +624,25 @@ verus_cmd() { # MODE EXTRA_VERUS_ARGS...
       else
         measured sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
       fi ;;
-    # Sail never searches PATH for Verus (ADR 0043); the development
-    # override is the only way to run another build under Sail.
-    fork-sail) SAIL_CARGO_VERUS="$fork/cargo-verus" measured "${SAIL_PERF_FORK_SAIL:-sail}" verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
+    fork-sail)
+      if [ -n "${SAIL_PERF_FORK_SAIL:-}" ]; then
+        measured "$SAIL_PERF_FORK_SAIL" verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+      else
+        # Sail never searches PATH for Verus (ADR 0043). This arm explicitly
+        # selects a development build; an installed CLI comparison above does not.
+        SAIL_CARGO_VERUS="$fork/cargo-verus" measured sail verify ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@"
+      fi ;;
     incremental) measured sail verify --incremental ${sail_output[@]+"${sail_output[@]}"} ${cargs[@]+"${cargs[@]}"} -- ${vargs[@]+"${vargs[@]}"} "$@" ;;
     *) echo "unknown performance mode: $mode" >&2; return 2 ;;
   esac
 }
 
 mode_path() { # MODE: PATH for the mode
-  case "$1" in fork-*) echo "$fork:$PATH" ;; *) echo "$PATH" ;; esac
+  if [ "$1" = fork-sail ] && [ -n "${SAIL_PERF_FORK_SAIL:-}" ]; then
+    echo "$PATH"
+  else
+    case "$1" in fork-*) echo "$fork:$PATH" ;; *) echo "$PATH" ;; esac
+  fi
 }
 
 stats() { # -> "hellos gets hits puts" of the daemon for SAIL_CACHE_DIR, or zeros
@@ -868,7 +878,7 @@ header() {
   echo "machine: ${SAIL_PERF_MACHINE:-unspecified}; $(uname -sm); $(cpu); $(getconf _NPROCESSORS_ONLN) cores"
   echo "sail: $(sail --version 2>/dev/null | head -1) at $(command -v sail)"
   if [ -n "${SAIL_PERF_FORK_SAIL:-}" ]; then
-    echo "fork-sail CLI: $("$SAIL_PERF_FORK_SAIL" --version 2>/dev/null | head -1) at $SAIL_PERF_FORK_SAIL"
+    echo "fork-sail CLI (normal runtime selection): $("$SAIL_PERF_FORK_SAIL" --version 2>/dev/null | head -1) at $SAIL_PERF_FORK_SAIL"
   fi
   echo "verus: $(verus --version 2>&1 | sed -n 's/^ *Version: //p')"
   echo "vstd: $vstd_mode${vstd_lock:+ (shipped lock $vstd_lock)}"
