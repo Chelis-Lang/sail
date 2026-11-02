@@ -60,3 +60,7 @@ controls. Raw `feature057-evidence.tgz`, SHA-256
   the new generated fixture is rejected because its public spec function lacks
   an explicit visibility modifier. The intended public definition now uses
   `pub open spec`; the cold/replay/changed-script assertions are unchanged.
+- 2026-11-02, generated-input Mac retry: actual prepared replay passes;
+  the following request-path assertion compares a logical temporary path with
+  the service's canonical path. It now requires the exact canonical project
+  path, preserving all proof/replay and changed-script checks.

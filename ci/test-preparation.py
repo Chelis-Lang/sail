@@ -129,7 +129,7 @@ def main():
     assert [target["establishing_run"] for target in prepared["targets"]] == [target["establishing_run"] for target in cold["targets"]]
     request_path = out / "cache/results/projects/jobs/preparation/request.json"
     request = json.loads(request_path.read_bytes()[4:])["body"]
-    assert request["verification"]["project_dir"] == str(generated)
+    assert request["verification"]["project_dir"] == str(generated.resolve())
     assert request["origin"]["revision"] != cold["input_revision"], "fixture did not discover generated inputs"
     script.write_text(script.read_text().replace("{ 7 }", "{ 8 }"))
     changed = json.loads(call("generated-input-changed", [args.sail, "verify", "--output", "json"], generated, 101).stdout)
