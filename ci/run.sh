@@ -488,7 +488,7 @@ RS
         sail_budget_out="$(mktemp -d /tmp/sail-budget-e2e.XXXXXX)"
         sail_budget_code=0
         python3 "$sail_checkout/ci/test-project-budget.py" --sail "$sail" \
-          --runtime "$SAIL_ENGINE_BUILD" --out "$sail_budget_out" || sail_budget_code=$?
+          --runtime "$SAIL_ENGINE_BUILD" --out "$sail_budget_out/evidence" || sail_budget_code=$?
         mkdir -p "$sail_managed_evidence/budget"
         rsync -a --exclude cache "$sail_budget_out/" "$sail_managed_evidence/budget/"
         rm -rf "$sail_budget_out"

@@ -108,3 +108,8 @@ filed for this unmerged candidate defect.
 - 2026-11-02, idle-budget correction `653223d7`: native Clippy stops on two
   unqualified standard-library error names in the new CLI adapters. Corrected
   before the actual after-fix daemon controls; no test or baseline changed.
+
+- 2026-11-02, idle-budget native gate at `f281d40f`: workspace checks pass;
+  the new managed-phase wrapper passes an existing directory to a driver that
+  requires a fresh evidence path. The wrapper now passes a new child path;
+  the driver's fresh-directory guard is retained.
