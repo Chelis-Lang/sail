@@ -12,7 +12,7 @@ can prepare only that same argument-bound scope; their target remains incomplete
 and a later whole-target call still requires independent full verification.
 Interactive-engine focus is not prepared.
 
-Ordinary verification, watch, repair and jobs take priority. An immediate call
+Ordinary verification, watch, repair and jobs take priority across workspaces. An immediate call
 cancels unfinished preparation and verifies normally; it does not wait for a
 prepared result. Later reuse still checks current inputs and keeps the original
 proof's establishing run. Edits invalidate old preparation. Background progress
@@ -40,3 +40,6 @@ are not replaced by project creation.
 This uses idle CPU and disk after the command returns. Whether it reduces an
 immediate call, and its total CPU/memory cost, are separate measurements. It does
 not enable unselected digest optimizations or change focused verification scope.
+
+An already-started opt-in budget inventory may finish before cancellation takes
+effect. Its cap is soft; foreground verification does not wait for maintenance.

@@ -519,9 +519,20 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     let status = job.status.clone();
     jobs.insert(id.clone(), job);
     state.activity.fetch_add(1, Ordering::SeqCst);
-    state.queue.lock().map_err(lock_error)?.push(id, key);
-    state.ready.notify_all();
+    queue_job(state, id, key)?;
     Ok(status)
+}
+
+fn queue_job(state: &State, id: String, key: PathBuf) -> io::Result<()> {
+    // Preparation takes work under this same queue owner. Once admitted, an
+    // ordinary job prevents another preparation from starting and cancels one
+    // that started before admission, including work for another workspace.
+    let mut queue = state.queue.lock().map_err(lock_error)?;
+    state.preparation.preempt(&key);
+    queue.push(id, key);
+    drop(queue);
+    state.ready.notify_all();
+    Ok(())
 }
 fn establish_revision(state: &State, submission: &mut Submission) -> io::Result<()> {
     // Refresh remembered inputs outside the lock and without Cargo/downloads.

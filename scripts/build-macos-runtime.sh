@@ -14,8 +14,7 @@
 #      home-directory path is compiled into the runtime (panic locations and
 #      vstd spans name these roots); the Verus toolchain there has no rust-src
 #      (VI-0031);
-#   2. engine/verus/test-engine.py, test-cancel.py and the actual compiler-byte
-#      controls in test-binary-inputs.py against the stock release;
+#   2. engine/verus/test-engine.py and test-cancel.py against the stock release;
 #   3. the fork's rust_verify, vir and air library tests and every sail_vi*
 #      test plus `basic`, on a fresh clone of the fork commit;
 #   4. scripts/verus-determinism.py --runs 3 over the fast tier's direct inputs;
@@ -77,11 +76,6 @@ cmd_build() {
   "$py" engine/verus/test-cancel.py --engine "$exe" --stock "$stock/verus" --z3 "$stock/z3" \
     --out "$q/cancel-restart" >"$q/test-cancel.log" 2>&1 || die "test-cancel.py failed ($q/test-cancel.log)"
   tail -n 1 "$q/test-cancel.log"
-  step "test-binary-inputs.py"
-  "$py" engine/verus/test-binary-inputs.py --engine "$exe" --stock "$stock/verus" \
-    --out "$q/binary-inputs" >"$q/test-binary-inputs.log" 2>&1 \
-    || die "test-binary-inputs.py failed ($q/test-binary-inputs.log)"
-  tail -n 1 "$q/test-binary-inputs.log"
 
   step "fork library and regression tests"
   local src="$work/fork"

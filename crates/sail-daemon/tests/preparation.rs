@@ -161,3 +161,41 @@ fn malformed_worker_output_never_counts_as_ready() -> io::Result<()> {
     assert_eq!(status.ready, 0);
     Ok(())
 }
+
+#[test]
+fn ordinary_jobs_block_queued_preparation_in_another_workspace() -> io::Result<()> {
+    let fixture = Fixture::new(
+        "case \"$1\" in _prepare-worker) touch ../prepared ;; *) touch ../ordinary ;; esac\nsleep 30",
+    )?;
+    let mut submission = fixture.request("project")?.verification;
+    submission.input_revision = Some("a".repeat(64));
+    assert!(matches!(
+        Client::new(&fixture.socket).call(&Request::Submit { submission })?,
+        Response::Status(_)
+    ));
+    fixture.wait(|_| fixture.root.join("ordinary").exists())?;
+    fixture.call(&Request::Prepare(fixture.request("other")?))?;
+    std::thread::sleep(Duration::from_millis(650));
+    let status = fixture.status()?;
+    assert_eq!(status.queued, 1);
+    assert!(status.running.is_none());
+    assert!(!fixture.root.join("prepared").exists());
+    Ok(())
+}
+
+#[test]
+fn ordinary_job_admission_cancels_another_workspaces_running_preparation() -> io::Result<()> {
+    let fixture = Fixture::new("sleep 30")?;
+    fixture.call(&Request::Prepare(fixture.request("other")?))?;
+    fixture.wait(|status| status.running.is_some())?;
+    let mut submission = fixture.request("project")?.verification;
+    submission.input_revision = Some("a".repeat(64));
+    assert!(matches!(
+        Client::new(&fixture.socket).call(&Request::Submit { submission })?,
+        Response::Status(_)
+    ));
+    let status = fixture.wait(|status| status.running.is_none())?;
+    assert_eq!(status.superseded, 1);
+    assert_eq!(status.ready, 0);
+    Ok(())
+}

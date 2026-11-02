@@ -182,8 +182,13 @@ impl Drop for Foreground<'_> {
 pub(super) fn run(state: &State) {
     let mut budget_after = Instant::now();
     while !state.stop.load(Ordering::SeqCst) {
-        let idle = state.queue.lock().is_ok_and(|queue| queue.idle());
-        let task = if idle { take(&state.preparation) } else { None };
+        let (idle, task) = match state.queue.lock() {
+            Ok(queue) => {
+                let idle = queue.idle();
+                (idle, if idle { take(&state.preparation) } else { None })
+            }
+            Err(_) => break,
+        };
         if let Some((task, cancel)) = task {
             state.activity.fetch_add(1, Ordering::SeqCst);
             let outcome = execute(state, &task.request, &cancel);
