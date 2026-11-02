@@ -329,7 +329,7 @@ point; whole-project requests use `cargo verus verify`.
 
 | Argument | Meaning |
 |---|---|
-| `source_file` | Optional standalone `.rs` file, relative to `project_dir`. No Cargo project is generated; Cargo selectors and interactive repair cannot be combined with it. |
+| `source_file` | Optional standalone `.rs` file, relative to `project_dir`. No Cargo project is generated; Cargo selectors cannot be combined with it. Use `start_repair_validation` for standalone interactive repair. |
 | `project_dir` | The project. Default: the server's working directory. Relative paths resolve against it. |
 | `package` | `-p <package>`. |
 | `module` | Verus `--verify-module <module>`: this module and its descendants (with `function`, `--verify-only-module` selects that function’s owning module), relative to the crate root (`arith`, `foo::bar`). |
@@ -641,10 +641,12 @@ Use `sail engine status --output json` to inspect the selected installation;
 see the [repair walkthrough](proof-repair-walkthrough.md) for setup and a complete
 focus/full regression example.
 
-- `start_repair_validation` requires `package`, `kind` (`lib` or `bin`), exact
-  crate-qualified `function`, and `engine: interactive`. A binary also requires
-  `target`; a library omits it. Optional `project_dir`, `cargo_args` and
-  `verus_args` preserve verification configuration. It returns a durable job ID
+- `start_repair_validation` requires an exact crate-qualified `function` and
+  `engine: interactive`. Select either `source_file` for an existing standalone
+  `.rs` file, or `package` and `kind` (`lib` or `bin`) for Cargo. A binary also
+  requires `target`; a library omits it. Standalone repair rejects Cargo selectors
+  and `cargo_args`. Optional `project_dir` and `verus_args` preserve verification
+  configuration; Cargo repair also accepts `cargo_args`. It returns a durable job ID
   immediately. Read the independent focused/full bundle with
   `verification_result`; a focus success never authorizes the repair.
 - `verification_events` takes `job_id`, optional `stream_id` and unsigned

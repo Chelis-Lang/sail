@@ -25,7 +25,9 @@ empty memo supplies no exemption. See the
 [validation record](validation/unscheduled-script-cleaning.md) for scope.
 
 These directories grow with every workspace, copy and configuration you
-verify: one copy of a mid-sized project can take 2 GB. Automatic removal is disabled until you configure a project byte budget. `sail cache stats` shows their total on its last line, and
+verify: one copy of a mid-sized project can take 2 GB. Automatic removal is
+disabled until you configure a project byte budget. `sail cache stats` shows
+their total on its last line, and
 `sail cache projects` lists and removes them per workspace:
 
 ```sh
