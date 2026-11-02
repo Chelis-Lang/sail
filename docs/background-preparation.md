@@ -16,8 +16,10 @@ Ordinary verification, watch, repair and jobs take priority across workspaces. A
 cancels unfinished preparation and verifies normally; it does not wait for a
 prepared result. Later reuse still checks current inputs and keeps the original
 proof's establishing run. The handoff binds the successful run's complete closing input revision,
-including generated inputs first discovered by a cold build. The worker requires
-that exact revision again before recording; ordinary result revisions and
+including generated inputs first discovered by a cold build. Before entering managed
+verification, the worker freshly checks the origin's Current input record and declines
+a source edit already made while it was queued. It requires the exact closing
+revision again before recording; ordinary result revisions and
 establishing proof provenance are preserved. Edits invalidate old preparation. Background progress
 is never itself a verified result.
 

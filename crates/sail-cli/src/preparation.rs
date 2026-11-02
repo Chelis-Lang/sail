@@ -124,6 +124,8 @@ pub(crate) fn after_verification(
                 key,
                 context: result.context_sha256.clone(),
                 revision: revision.to_owned(),
+                workspace: result.workspace.clone().into(),
+                readback_revision: result.input_revision.clone(),
             }),
         },
     );
@@ -252,6 +254,21 @@ fn worker_result(args: &[String]) -> Result<Outcome, String> {
     if task.origin.as_ref().is_some_and(|origin| origin.key != key) {
         return Err("invocation changed".into());
     }
+    // Decline a queued origin that was already edited before entering the
+    // managed transaction. A cancelled transaction may consume its family's
+    // script observations, so discovering this only after Cargo is too late.
+    if let Some(origin) = &task.origin {
+        let snapshot = sail_verus::managed::refresh_context(
+            &config.cache,
+            &origin.workspace,
+            &origin.context,
+            &task.verification.environment,
+        )
+        .map_err(|error| error.to_string())?;
+        if !snapshot.complete || snapshot.revision != origin.readback_revision {
+            return Err("origin inputs changed before preparation".into());
+        }
+    }
     let (mut stdout, mut stderr) = (Capture::default(), Capture::default());
     let shown: Option<&mut dyn io::Write> = if task.json { None } else { Some(&mut stdout) };
     let mut closing_revision = None;
@@ -273,9 +290,17 @@ fn worker_result(args: &[String]) -> Result<Outcome, String> {
         key,
         context: result.context_sha256.clone(),
         revision: closing_revision.ok_or("closing Current input revision unavailable")?,
+        workspace: result.workspace.clone().into(),
+        readback_revision: result.input_revision.clone(),
     };
+    // Keep every original closing-origin equality check. The read-back
+    // revision was checked before execution; an unchanged run can publish a
+    // later public revision after first-discovered generated inputs.
     if let Some(expected) = &task.origin
-        && *expected != origin
+        && (expected.key != origin.key
+            || expected.context != origin.context
+            || expected.revision != origin.revision
+            || expected.workspace != origin.workspace)
     {
         return Err("source or verification context changed".into());
     }

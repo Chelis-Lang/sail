@@ -75,7 +75,7 @@ alongside standalone-file development. No release version or publication is sele
 
 | Deliverable | Current state | Remaining gate |
 |---|---|---|
-| Daemon preparation and post-creation verification | Native Linux/Mac installed replay, immediate-call, priority and generated-input controls pass | Repeated broader workload timing and costs |
+| Daemon preparation and post-creation verification | Installed controls pass; broader edits expose queued-origin defect #648; initial read-back guard implemented | Guard qualification, wider edit comparisons and costs |
 | Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Final PR gates |
 | Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Current-head PR gates |
 | Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Publish the qualified walkthrough with the feature PR |

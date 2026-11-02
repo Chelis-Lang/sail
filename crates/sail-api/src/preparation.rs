@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// Preparation protocol version, negotiated independently of ordinary jobs.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 /// The successful invocation whose next-call recording is being prepared.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -18,6 +18,11 @@ pub struct Origin {
     /// generated inputs discovered by that run. Published proof revisions and
     /// establishing provenance are independent and remain unchanged.
     pub revision: String,
+    /// Canonical workspace of the origin's Current read-back record.
+    pub workspace: PathBuf,
+    /// Public establishing revision identified by that read-back record.
+    /// This can differ from the closing revision after generated-input discovery.
+    pub readback_revision: String,
 }
 
 /// One best-effort preparation request, owned by the receiving service.

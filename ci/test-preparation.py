@@ -57,6 +57,25 @@ def main():
     assert len(runs) == 1 and (runs[0] / "result.json").is_file(), replay
     assert not (runs[0] / "cargo.stdout").exists(), "prepared call still ran Cargo"
     assert [target["establishing_run"] for target in replay["targets"]] == [target["establishing_run"] for target in changed["targets"]]
+    # A later edit during the two-second queue delay must be rejected before
+    # a managed run can consume script observations or invoke any verifier.
+    failed_before = status()["failed"]
+    stale_base = source.read_text()
+    queued = stale_base + "\nverus! { proof fn queued_origin() { assert(true); } }\n"
+    source.write_text(queued)
+    origin = json.loads(call("queued-origin", [args.sail, "verify", "--output", "json"], project).stdout)
+    assert origin["currentness"] == "current" and origin["execution"]["verifier_invocations"] > 0, origin
+    origin_runs = set((out / "cache/projects").glob("*/*/runs/*/result.json"))
+    source.write_text(queued.replace("proof fn queued_origin() { assert(true); }", "proof fn queued_origin() { assert(false); }"))
+    deadline = time.monotonic() + 30
+    while True:
+        progress = status()
+        if progress["failed"] > failed_before and not progress["queued"] and progress["running"] is None:
+            break
+        assert time.monotonic() < deadline, progress
+        time.sleep(.1)
+    assert set((out / "cache/projects").glob("*/*/runs/*/result.json")) == origin_runs, "stale preparation entered managed verification"
+    source.write_text(stale_base)
     source.write_text(source.read_text().replace("proof fn sail_preparation_probe() { assert(true); }", "proof fn sail_preparation_probe() { assert(false); }"))
     failed = json.loads(call("failure", [args.sail, "verify", "--output", "json"], project, 101).stdout)
     assert failed["execution"]["verifier_invocations"] > 0, failed

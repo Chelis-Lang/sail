@@ -144,3 +144,24 @@ Review artifacts: `consumer-skill-technical-review.md`, SHA-256
 `2b00f1cea3b323132ed961d09c4b9f9c58d00d2c9e0868dcaa77c0c3f35ba235`;
 `consumer-skill-usability-review.md`, SHA-256
 `ef933c6113dd122df6071e6c785f40f7e3dcfa3e8d041ab0cde625582e97887c`.
+
+The subsequent real-project edit qualification finds candidate defect
+[#648](https://github.com/Chelis-Lang/sail/issues/648): an origin was checked only
+after verification, so already-edited queued work could consume build-script
+observations before cancellation. Native IronKV's second edit takes 29.79 s with
+preparation and 4.66 s with it disabled; the former recompiles vstd. These are
+traced diagnostic controls, not performance acceptance. The initial read-back
+guard and no-managed-run queued-edit assertion are implemented and unqualified;
+PR #647 remains draft. Every existing closing-origin equality and publication
+check is retained. Preparation protocol v2 carries the origin workspace and
+public read-back revision separately from its complete closing revision.
+
+Enabled diagnostic `iron-successive-diagnostic.tgz`, SHA-256
+`51cef682405e8957ef4eaa2693edd5a791e4e9c6d4912b0f8be70885d3da0143`;
+disabled diagnostic `iron-successive-disabled-diagnostic.tgz`, SHA-256
+`783a119dfb6c3c2f6256fcc6cc6f359403f844f396f11fe819416a7c6451955a`.
+The original Mac six-round candidate fails output comparison (19/26 rows valid);
+its added/missing verification summaries and all slower/refused samples remain
+in `mac-a0e-matrix-selected-evidence.tgz`, SHA-256
+`ffc60269097ca39405f652e0adbaa22469226a24ac578b60c12ebcb7daaf0062`.
+This does not change any failed classification or establish a verdict discrepancy.
