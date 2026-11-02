@@ -1,0 +1,74 @@
+name: Publish crates
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Already published, qualified release tag (vVERSION)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-crates-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'Chelis-Lang/sail'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SAIL_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Require an already published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$SAIL_RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.+-]+)?$ ]]
+          gh release view "$SAIL_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,isDraft,publishedAt > "$RUNNER_TEMP/sail-crate-release.json"
+          python3 - "$RUNNER_TEMP/sail-crate-release.json" <<'PY'
+          import json, os, sys
+          release = json.load(open(sys.argv[1]))
+          if release['isDraft'] or not release['publishedAt'] or release['tagName'] != os.environ['SAIL_RELEASE_TAG']:
+              raise SystemExit('crate publication requires the selected published release')
+          PY
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+      - name: Check version and install the pinned Rust toolchain
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, pathlib, subprocess, tomllib
+          version = tomllib.loads(pathlib.Path('Cargo.toml').read_text())['workspace']['package']['version']
+          if os.environ['SAIL_RELEASE_TAG'] != 'v' + version:
+              raise SystemExit('release tag and workspace version differ')
+          toolchain = tomllib.loads(pathlib.Path('rust-toolchain.toml').read_text())['toolchain']
+          command = ['rustup', 'toolchain', 'install', toolchain['channel'], '--profile', toolchain.get('profile', 'minimal')]
+          for component in toolchain.get('components', []):
+              command += ['--component', component]
+          subprocess.run(command, check=True)
+          PY
+      - name: Cache Cargo dependencies and package verification builds
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            target
+          key: crate-publish-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.event.release.tag_name || inputs.tag }}
+          restore-keys: |
+            crate-publish-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+      - name: Check publication controls without credentials
+        run: python3 scripts/test-publish-crates.py
+      - name: Verify and publish the selected crates
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: python3 scripts/publish-crates.py --version "${SAIL_RELEASE_TAG#v}"
