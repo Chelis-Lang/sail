@@ -51,17 +51,25 @@ receipt reuse, and requires source edits, configuration changes and modified
 runtime bytes to refuse the previous proof. Every invocation retains its full
 output and timing in workflow artifacts. Credentials are confined to installation.
 
-The workflow and [acceptance driver](../ci/ci-cache-walkthrough.py) are implemented;
-hosted execution is pending. These checks do not establish a cross-runner speedup
-until their actual hosted results pass. They are separate from required PR CI.
+The workflow and [acceptance driver](../ci/ci-cache-walkthrough.py) pass on four
+independent Ubuntu 24.04 runners using attested published Sail 0.1.0
+([hosted run](https://github.com/Chelis-Lang/sail/actions/runs/41381191209)).
+The managed fixture takes 11.69 s cold and 0.69 s after restore, with Current
+evidence and zero verifier invocations. The solver-only fixture records genuine
+hits for its own function, but takes 16.84 s after restore against 16.21 s cold;
+this tiny fixture establishes cache reuse, not a solver-only speedup. Both
+restored arms freshly reject an invalid proof edit, run a verifier after a
+configuration change, and refuse modified runtime bytes. These are one-run
+fixture results, separate from the real-project measurements below and required
+PR CI.
 
 ## GitHub Actions example
 
 This workflow persists the solver replies for every project, and the Cargo
 registry and `target/` as for any Rust project. Replace `SAIL_VERSION` with
 the release you use. Add the arguments you pass to `cargo verus verify`. The
-workflow is assembled from the steps measured below, but it has not itself
-been run on GitHub's runners.
+workflow illustrates the persistence policy. The separately linked walkthrough
+above is the workflow actually exercised on GitHub's runners.
 
 ```yaml
 name: verify

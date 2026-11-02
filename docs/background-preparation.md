@@ -1,7 +1,7 @@
 # Background preparation
 
-Implementation is in progress for the next release; native product qualification
-is pending. Published 0.1.0 does not provide this behavior.
+Implemented for the next release; installed feature controls pass on native
+Linux and macOS. Repeated real-project timing and cost qualification continues. Published 0.1.0 does not provide this behavior.
 
 After a successful Current Cargo verification, Sail can prepare the next
 unchanged invocation in its daemon while your command has already returned.

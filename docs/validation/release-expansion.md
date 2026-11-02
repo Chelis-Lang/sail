@@ -79,3 +79,12 @@ Production Rust and Cargo inputs remain identical to `b1ae4b4b`. The canonical
 consumer skill now covers standalone repair, preparation versus explicit jobs,
 optional budgets and CI cache guidance; registry packages are not published by
 this change.
+
+The hosted cache walkthrough passes all four independent Ubuntu 24.04 jobs at
+`cdb95e58`, using the attested published 0.1.0 archive:
+[run 41381191209](https://github.com/Chelis-Lang/sail/actions/runs/41381191209).
+Managed restore is Current with zero verifier invocations; solver-only restore
+serves the fixture's own function from cache. Both arms reject an invalid source
+edit and changed runtime, and reverify changed configuration. This is fixture
+acceptance, not general-project timing. Raw `hosted-cache-evidence.tgz`, SHA-256
+`59b39ce059b980c12d33d988d3641fc313fbfc679c15d5d975fcaf81d311cb34`.

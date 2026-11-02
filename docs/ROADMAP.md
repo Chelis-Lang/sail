@@ -75,10 +75,10 @@ alongside standalone-file development. No release version or publication is sele
 
 | Deliverable | Current state | Remaining gate |
 |---|---|---|
-| Daemon preparation and post-creation verification | Implemented; real Linux preparation/replay and immediate-call controls pass | Mac, preemption/failure and broader workload costs |
-| Standalone focused repair through CLI/jobs/MCP | Implemented; real Linux positive, unrelated-failure, selector and historical-job controls pass | Final composed integration checks |
-| Opt-in cache byte budgets | Implemented; LRU, newest/busy and same-second reuse guards pass on Linux | Native composed gates |
-| Hosted CI-cache walkthrough | Workflow and driver implemented | Actual separate-runner cold/restore/invalidation acceptance |
+| Daemon preparation and post-creation verification | Native Linux/Mac installed replay, immediate-call, priority and generated-input controls pass | Repeated broader workload timing and costs |
+| Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Final PR gates |
+| Opt-in cache byte budgets | Native Linux/Mac installed budget, LRU, newest/busy and fresh rebuild controls pass | Final PR gates |
+| Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Publish the qualified walkthrough with the feature PR |
 | First/full-path and Mac Anvil overhead | Bounded indexing/readback candidate implemented; native timing selection open | Paired whole-call/cold measurements and broader corpus |
 | Binary compiler-input metadata (#599) | Separate runtime upgrade; initial fix merged, native BLAKE3 regression corrected | Complete new-runtime source/factory/corpus/cost qualification and consumption |
 | Incidental edits | Existing fifteen-edit catalogue | Final-runtime catalogue plus Anvil control |
