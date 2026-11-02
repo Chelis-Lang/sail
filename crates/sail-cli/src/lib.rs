@@ -399,11 +399,7 @@ fn serve_prepared(
         &root.join("projects/jobs"),
         &executable,
     )
-    .and_then(|server| {
-        let cache =
-            sail_verus::cache_dir().map_err(|error| std::io::Error::other(error.to_string()))?;
-        server.with_project_cache(&cache)
-    })
+    .and_then(configure_project_cache)
     .and_then(|server| {
         if let Some(preparation) = preparation {
             server.enqueue_preparation(preparation)?;
@@ -461,6 +457,15 @@ fn serve_prepared(
     }
 }
 
+#[cfg(unix)]
+fn configure_project_cache(
+    server: sail_daemon::jobs::JobServer,
+) -> std::io::Result<sail_daemon::jobs::JobServer> {
+    let cache =
+        sail_verus::cache_dir().map_err(|error| std::io::Error::other(error.to_string()))?;
+    server.with_project_cache(&cache)
+}
+
 /// A jobs-only sidecar for an explicitly selected, older cache daemon.
 #[cfg(unix)]
 fn serve_jobs(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
@@ -473,11 +478,7 @@ fn serve_jobs(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
             &root.join("projects/jobs"),
             &executable,
         )
-        .and_then(|server| {
-            let cache = sail_verus::cache_dir()
-                .map_err(|error| std::io::Error::other(error.to_string()))?;
-            server.with_project_cache(&cache)
-        })
+        .and_then(configure_project_cache)
         .and_then(sail_daemon::jobs::JobServer::spawn)
         .map_err(|error| error.to_string())?;
         Ok::<_, String>((jobs, config.idle_timeout))
