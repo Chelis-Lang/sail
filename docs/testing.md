@@ -32,9 +32,11 @@ unset retains the product default. Use the explicit off control to isolate
 full-path cost, and compare default-enabled immediate and delayed calls separately.
 A diagnostic run does not qualify a performance selection.
 `SAIL_PERF_FORK_SAIL=/absolute/path/to/sail` selects a separate CLI for the
-existing `fork-sail` arm. Its default remains the CLI on `PATH`. This permits
-paired CLI revisions under the same pinned runtime and retains the original
-stock arm, selectors, output checks and report classifications.
+existing `fork-sail` arm, preserving its caller's `PATH` and normal runtime
+selection. Use independently staged CLIs with matching pins to isolate a CLI
+change. Without this setting the arm retains its explicit development runtime
+override. The stock arm, selectors, output checks and report classifications
+are unchanged.
 
 `scripts/perf-real.sh` wraps each measured command with `python3 -I
 scripts/perf-mem.py`. Each `rN/MODE.PHASE.memory.json` records process-tree
