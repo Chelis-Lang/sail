@@ -22,6 +22,20 @@ Run watch from a directory containing the source and its modules/includes.
 The full standalone workflow and its release status are maintained at:
 https://github.com/Chelis-Lang/sail/blob/main/docs/standalone-verification.md
 
+## Preparation after return
+
+Next-release builds can prepare the next unchanged Cargo invocation in the
+background after a successful Current result. The command returns its own
+result first; preparation is additional CPU and disk work. Foreground work takes
+priority. Check `sail status --json` for preparation activity, and use
+`SAIL_BACKGROUND_PREPARE=0 sail verify` to opt out. Activity counters do not
+establish a proof. The next call still checks its inputs and reports scope,
+verdict and currentness. This behavior is not in published 0.1.0.
+
+This automatic preparation differs from `sail verify --background`: the latter
+submits the requested verification as a job whose completed result must be read.
+See the [preparation guide](https://github.com/Chelis-Lang/sail/blob/main/docs/background-preparation.md).
+
 ## MCP
 
 Use an already configured Sail server's `verify` tool. Read the installed tool
@@ -64,6 +78,18 @@ In a Cargo project, select the real package and function, for example:
 sail repair-check --engine interactive --package demo --lib --function demo::sum_to
 ```
 
+Next-release builds also support a standalone repair check:
+
+```sh
+sail repair-check proof.rs --function proof::lemma --engine interactive --output json
+```
+
+Inspect `sail repair-check --help` and the installed MCP schema before using
+this form; published 0.1.0 lacks it. Development builds may still report 0.1.0.
+Where exposed, `standalone_repair` in capabilities identifies this support.
+A focused pass remains provisional until the independent full-target check
+passes with Current evidence.
+
 Through MCP, use `start_repair_validation`, then the job tools to read its
 result. Read the completed result and accept a repair only when the whole
 target verifies.
@@ -73,3 +99,22 @@ https://github.com/Chelis-Lang/sail/blob/main/docs/proof-repair-walkthrough.md
 
 Currentness and partial verification:
 https://github.com/Chelis-Lang/sail/blob/main/docs/freshness.md
+
+## Keep reusable work and manage disk use
+
+For CI, persist solver replies and, in managed mode, project targets and receipts
+from trusted workflows. Read the [CI cache guide](https://github.com/Chelis-Lang/sail/blob/main/docs/ci-cache.md)
+for paths, tool/path requirements and the limits of restored caches.
+
+On builds with `sail cache projects budget`, an optional soft byte cap can prune
+old idle workspaces. Inspect help and use a dry run before manual pruning:
+
+```sh
+sail cache projects prune --to-bytes 21474836480 --dry-run --json
+```
+
+The newest and active workspaces are protected, so a configured cap can remain
+exceeded. Defaults do not evict automatically. Pruning removes targets and
+receipts together; later calls verify again. The [disk-use guide](https://github.com/Chelis-Lang/sail/blob/main/docs/workspace-hygiene.md)
+describes configuration and reporting. These budget commands are next-release
+features, absent from published 0.1.0.
