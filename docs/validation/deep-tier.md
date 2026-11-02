@@ -1,10 +1,18 @@
 # Deep-tier soundness validation
 
-The selected runtime remains fork `47fb3be6`. Corrected staged candidate
-`0ad405eb` passes all three complete exact fork source-suite arms, and the corrected
-stock control passes under owner-approved ADR 0093. Runtime adoption still
-requires the remaining corpus and whole-call cost gates. Earlier failed
-records below retain their original sources, comparisons and outcomes.
+Main consumes fork `0ad405eb`. The next-runtime candidate pins checksum-corrected
+`a0e11cff`: all three complete Linux fork source-suite arms have 4,907 Same
+(4,844 nonignored passing / 63 ignored), with zero Different, unstable or
+infrastructure errors. The independent stock control has 4,867 Same, with only
+four existing ADR 0093 debug-order exceptions. Mac's 163 raw source targets pass
+4,844 tests with 63 ignored. These source results do not establish complete
+runtime adoption or release acceptance. Strict Mac determinism retains a
+consumed-statistics failure despite identical solver streams. Owner-approved
+ADR 0097's native retained-capture recheck qualifies 416 strict matches and one
+separately reported counter-only input. See
+[binary compiler inputs](binary-compiler-inputs.md) for exact
+identities, evidence and remaining gates. Historical records below retain their
+original sources and outcomes.
 
 ## Corrected companion version-check source-suite gate
 

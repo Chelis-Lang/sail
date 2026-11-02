@@ -1,6 +1,6 @@
 # 0092: Per-file owned-target digest observations
 
-- **Status:** owner-approved bounded prototype on 2026-10-31; implemented; Linux evaluation unselected, Mac correctness gate failed; no platform default selected
+- **Status:** owner-approved bounded prototype on 2026-10-31; implemented; Linux and Mac whole-call evaluations unselected; no platform default selected
 - **Date:** 2026-10-31
 - **Amends:** [ADR 0091](0091-settled-source-and-target-digests.md), item 2
 - **Tracks:** #560, #630
@@ -15,7 +15,9 @@ could avoid hashing unchanged files when unrelated Cargo bookkeeping changes.
 The initial broader run-scoped candidate is unselected after its complete
 real-project and generated whole-call controls remain mostly flat/slower. The [review](../design/general-performance.md) records native
 filesystem/hash diagnostics across three structurally different projects.
-Seven-project native Linux evaluation finds no warm median gain; the prototype remains unselected there. Mac correctness gates fail before timing selection. There is no accepted product gain for this proposal.
+Seven-project native Linux evaluation finds no warm median gain; the prototype remains unselected there. Clean Mac host and actual opt-in managed controls pass. The seven-project Mac
+study finds flat/slower medians and retains failed observer/teardown controls;
+there is no accepted product gain for this proposal.
 
 This cannot solve the first unchanged call after a cold build: newly created
 artifacts were unsettled at the original cold run's start. Waiting on a later

@@ -1,7 +1,8 @@
 # Unix connection deadlines
 
-Status: native Linux workspace, solver, complete E2E, full fast/standard
-conformance and actual fault controls pass; Mac platform and fault controls pass.
+Status: the initial client fix passes native Linux workspace, solver, complete
+E2E, full fast/standard conformance and actual fault controls, plus Mac platform
+and fault controls. The remaining-probe follow-up below also passes its composed native gates.
 No dependency, protocol, proof key, admission check or solver input changes.
 
 The preparation, solver-cache and job clients previously called blocking
@@ -65,3 +66,60 @@ this transport repair does not establish a new performance claim.
   reaching a usable before/after result. The retry first requires successful
   healthy creation, then applies the unchanged fault checks. Original capture
   SHA-256 `5421460aaa7def89201612034d7be4bdcfd83f580d1766b4104640da9328edf2`.
+
+## Remaining presence probes (#654)
+
+Status: the follow-up passes native Linux Clippy, 1,324 workspace tests,
+solver51, every E2E phase and all four full fast/standard conformance arms.
+Each standard arm matches 159 units / 13,166 function records; all 21
+mutation/cold/return comparisons match, with zero false verified results and
+both returns obtaining their own answers. Native Mac Clippy and all 1,313
+tests pass. Complete composed captures are bound in the
+[runtime record](binary-compiler-inputs.md#current-composition-and-outstanding-qualification).
+The earlier accepted client gates above retain their original scope.
+
+The first fix leaves blocking presence probes before CLI verification, explicit
+service startup, job/MCP startup, repair-harness ownership and shutdown wakeups.
+Native c7i.4xlarge / us-east-1 / Ubuntu 24.04 reproduces actual `sail verify` and
+`sail serve` blocked beyond three seconds on the unchanged `791381bf` binary,
+whose production Rust matches main `000e8edd`. The driver kills and reaps both
+children. Capture `startup-probe-before-r4.tgz`, SHA-256
+`947facc38bd2586241c4f32837cd8d4d17c8dd44ab2731bc1911858107cd4eb6`.
+
+Presence and wakeup calls now use the existing bounded connection helper with
+a 25 ms deadline. Missing/refused connections retain ordinary startup and
+stale-socket recovery; every other error is propagated rather than authorizing
+unlink or replacement. Foreground verification retains its pinned fallback;
+job/runtime requests retain their existing explicit error paths. Healthy,
+missing/stale, invalid-path and saturated-listener controls retain the original
+cache-client deadline test. No proof or protocol authority changes.
+
+Native macOS 26.7 reports ECONNREFUSED for both a saturated listener and a stale
+socket. The probe preserves that existing refusal classification; it cannot
+establish which cause applies. Linux's distinct full-queue error and its
+non-removal control are not claimed on Mac. No stronger cross-platform stale-
+socket guarantee follows from a connection attempt alone.
+
+- 2026-11-02, first private reproduction: the wrapper omits EAGAIN handling,
+  then misses the ordinary runtime override; neither reaches the startup probe.
+  The explicit validated runtime and valid Cargo fixture reproduce both hangs.
+  Setup-refusal capture `startup-probe-before-r3.tgz`, SHA-256
+  `7074dca163ab9dc8ad3bb665db4837b69a136a6fcb8a21c151a8046abea9b56c`.
+- 2026-11-02, `5179621d`: native Clippy rejects a now-unused `UnixStream`
+  import after the probe replacements; no test or conformance result is claimed.
+  Failed gate capture SHA-256:
+  `609790b6acaa8557a05ddffe3710fd80ba9548782466a84f86d60e79564703ca`.
+- 2026-11-02, `9b5066c8`: Clippy and 1,323 tests pass; the unchanged long-socket
+  fixture rejects a generic probe error replacing its existing diagnostic.
+  The candidate preserves the original path-limit explanation before propagating
+  an uncertain probe error. Failed gate SHA-256:
+  `2ccecc0c180001ec030b0db1abef764c77aa9a66fa9968be19d62c15643d24e3`.
+
+Actual `37af55b8` Linux controls complete behind the same saturated cache
+listener: standalone verification returns the exact pinned-stock stdout/stderr
+and exit zero in 0.945 s; explicit service startup refuses in 0.002 s, jobs
+refuse with their stable error in 0.002 s and runtime MCP returns its existing
+error in 0.001 s. Every action preserves the original socket inode and its
+queued connection. These are fault controls, not healthy-path benchmarks.
+Capture `startup-after-controls.tgz`, SHA-256
+`996a300c36510b67078736647699eb5657c009583ef4860289e81a6f16fd6ffb`.

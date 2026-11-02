@@ -49,14 +49,6 @@ relations remain open; source/hash binding does not establish them.
 
 ## Input coverage and cache integrity
 
-- Compiler input observations report an empty-file checksum and size for
-  non-UTF-8 `include_bytes!` inputs
-  ([#599](https://github.com/Chelis-Lang/sail/issues/599)). Ordinary `.vir`
-  includes are retained with their correct checksums. Sail independently hashes
-  actual dependency files for receipt currentness; no stale Sail proof has
-  been demonstrated. The producer correction is merged in
-  [Verus fork PR #16](https://github.com/Chelis-Lang/verus/pull/16);
-  native runtime adoption remains pending.
 - Read-back currentness brackets its reads with metadata stamps of every
   recorded path (#387). A concurrent edit that restores every stamped
   field, including the inode change time, is not detected; that needs a

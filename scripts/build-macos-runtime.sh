@@ -14,10 +14,12 @@
 #      home-directory path is compiled into the runtime (panic locations and
 #      vstd spans name these roots); the Verus toolchain there has no rust-src
 #      (VI-0031);
-#   2. engine/verus/test-engine.py and test-cancel.py against the stock release;
+#   2. engine/verus/test-engine.py, test-cancel.py and the actual compiler-byte
+#      controls in test-binary-inputs.py against the stock release;
 #   3. the fork's rust_verify, vir and air library tests and every sail_vi*
 #      test plus `basic`, on a fresh clone of the fork commit;
-#   4. scripts/verus-determinism.py --runs 3 over the fast tier's direct inputs;
+#   4. scripts/verus-determinism.py --runs 3 over the fast tier's direct inputs,
+#      with ADR 0097's explicit consumed-resource classification;
 #   5. ci/engine-artifact.py pack --platform macos, which rewrites
 #      engine/verus/artifact-macos.json, and scripts/scan-host-paths.sh over
 #      the complete bytes of every archive file for /Users/ and /home/ paths
@@ -76,6 +78,16 @@ cmd_build() {
   "$py" engine/verus/test-cancel.py --engine "$exe" --stock "$stock/verus" --z3 "$stock/z3" \
     --out "$q/cancel-restart" >"$q/test-cancel.log" 2>&1 || die "test-cancel.py failed ($q/test-cancel.log)"
   tail -n 1 "$q/test-cancel.log"
+  step "test-binary-inputs.py"
+  "$py" engine/verus/test-binary-inputs.py --engine "$exe" --stock "$stock/verus" \
+    --out "$q/binary-inputs" >"$q/test-binary-inputs.log" 2>&1 \
+    || die "test-binary-inputs.py failed ($q/test-binary-inputs.log)"
+  tail -n 1 "$q/test-binary-inputs.log"
+  step "test-native-inputs.py"
+  "$py" engine/verus/test-native-inputs.py --engine "$exe" --stock "$stock/verus" \
+    --out "$q/native-inputs" >"$q/test-native-inputs.log" 2>&1 \
+    || die "test-native-inputs.py failed ($q/test-native-inputs.log)"
+  tail -n 1 "$q/test-native-inputs.log"
 
   step "fork library and regression tests"
   local src="$work/fork"
@@ -111,9 +123,9 @@ cmd_build() {
     ls "$corpus"/human-eval-verus-*/tasks/*.rs)
   local here="$PWD"
   (cd "$work" && VERUS_Z3_PATH="$stock/z3" "$py" "$here/scripts/verus-determinism.py" --runs 3 \
-    --out "$q/determinism" --inputs "${inputs[@]}" -- "$exe" --crate-type=lib {} \
+    --classify-consumed-resources --out "$q/determinism" --inputs "${inputs[@]}" -- "$exe" --crate-type=lib {} \
     --output-json --time --no-report-long-running -Z write-long-types-to-disk=no) >"$q/determinism.log" 2>&1 \
-    || echo "determinism: differences found; review $q/determinism.log (Z3's own rlimit counts can vary, corpus/repros/z3-nla-rlimit-nondeterminism)"
+    || die "determinism qualification failed ($q/determinism.log; captures retained)"
   tail -n 1 "$q/determinism.log"
 
   step "pack and scan"

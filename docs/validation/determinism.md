@@ -13,6 +13,25 @@ the fork on identical input, lists the fixes, and states what remains.
 | Scope | Fast tier (147 units: `verus-examples`, `vstd`, `human-eval-verus`, direct `verus`); standard tier `vest`, `vest-generated`, `verismo` (2 units) and `verismo-main` (`cargo verus focus`, Verus dependencies patched to the pinned upstream source, as the harness does), plus `vest` patched to the fork's own source (fork macros) after the fixes; before only, 10 runs: `verified-node-replication`, `verified-ironkv`, `verified-storage` `multilog` and `pmemlog` |
 | Limits | 3 runs per unit after the fixes (10 before for the fast tier); `page-table`, `anvil` and `capybarakv` not measured. One host and OS; macOS not measured. The flags are the conformance harness's (`--output-json --time --no-report-long-running -Z write-long-types-to-disk=no`) |
 
+## Current qualification mode
+
+The strict command remains the default. Owner-approved
+[ADR 0097](../decisions/0097-consumed-resource-statistics-in-determinism.md)
+adds `--classify-consumed-resources` for the three named Verus JSON consumption
+fields. For example, add that flag to the command below when qualifying the
+pinned fork. Every other stdout byte and ordering after the existing wall-time
+handling, complete stderr, exit and exact solver-stream multiset remain checked.
+Requested solver limits remain exact.
+
+A counter-only result prints `stats`, reports every original value/path and
+writes `consumed-resource-classifications.json`. It is distinguished from
+`strict-same`; its raw captures are retained even without `--out`. Malformed,
+duplicate, oversized or unrecognized JSON differences fail. No solver input,
+runtime cache key or default verifier behavior changes. The original A0e Mac
+strict failure remains in the [runtime record](binary-compiler-inputs.md).
+The new parser and actual CLI capture/failure paths have bounded controls;
+native qualification of this mode is recorded with its implementation.
+
 ## Method
 
 Each run captured the exact bytes Verus sent to every solver process (a

@@ -90,8 +90,24 @@ def main():
     source.write_text("use vstd::prelude::*; verus! { proof fn selected() { let data = include_bytes!(\"binary.dat\"); assert(data.len() == 1); } } fn main() {}\n")
     (work / "binary.dat").write_bytes(b"\xff")
     binary = verify("binary-include")
-    assert binary["currentness"] != "current" and not binary["targets"][0]["reused"], binary
-    assert verify("binary-repeat")["execution"]["verifier_invocations"] == 1
+    assert binary["currentness"] == "current" and binary["targets"][0]["complete"], binary
+    assert not binary["targets"][0]["reused"], binary
+    binary_repeat = verify("binary-repeat")
+    assert binary_repeat["currentness"] == "current" and binary_repeat["targets"][0]["reused"], binary_repeat
+    assert binary_repeat["execution"]["verifier_invocations"] == 0, binary_repeat
+    assert binary_repeat["targets"][0]["establishing_run"] == binary["targets"][0]["establishing_run"]
+    binary_stat = (work / "binary.dat").stat()
+    (work / "binary.dat").write_bytes(b"\xfe")
+    os.utime(work / "binary.dat", ns=(binary_stat.st_atime_ns, binary_stat.st_mtime_ns))
+    binary_changed = verify("binary-restored-mtime")
+    assert binary_changed["currentness"] == "current" and not binary_changed["targets"][0]["reused"], binary_changed
+    assert binary_changed["execution"]["verifier_invocations"] == 1, binary_changed
+    (work / "binary.dat").write_bytes(b"")
+    binary_plain = call("binary-empty-stock", [args.stock, "proof.rs"], 1)
+    binary_empty = verify("binary-empty", 1)
+    assert not binary_empty["targets"][0]["complete"] and not binary_empty["targets"][0]["reused"], binary_empty
+    assert binary_empty["execution"]["verifier_invocations"] == 1, binary_empty
+    assert (out / "binary-empty.stderr").read_bytes() == binary_plain.stderr
     source.write_text(passing)
     partial = verify("partial", extra=("--", "--verify-root", "--verify-function", "selected"))
     assert not partial["targets"][0]["complete"], partial

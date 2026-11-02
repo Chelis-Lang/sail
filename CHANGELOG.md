@@ -8,6 +8,9 @@ semantic versioning once the API is published.
 - Bound Unix connection establishment for preparation, solver-cache and job
   clients, so a full listener backlog cannot indefinitely delay handoff or
   pinned-solver fallback. Existing read/write deadlines remain.
+- Bound remaining service startup and shutdown probes; uncertain connection failures leave the existing endpoint in place (#654).
+- Add an explicit determinism-qualification mode for ADR 0097’s three consumed-resource counters, retaining strict comparison by default, original values and exact solver/verdict/diagnostic checks.
+
 
 - Reject already-edited queued preparation before it enters managed verification, preserving dependency observations for the foreground edit (#648).
 
@@ -21,6 +24,9 @@ semantic versioning once the API is published.
   that discovers generated inputs can prepare its next unchanged call. Preserve
   proof provenance and require an exact fresh closing-revision match.
 
+- Observe actual compiler-returned bytes for non-UTF-8 binary includes in both
+  compiler phases (#599). Standalone proofs can retain Current binary-input
+  receipts; same-size/restored-mtime changes still require fresh verification.
 - Prepare subsequent Cargo verification through an optional daemon-owned worker,
   with foreground priority and `SAIL_BACKGROUND_PREPARE=0` opt-out. New projects
   can begin ordinary preparation after `sail new` returns. Implementation is

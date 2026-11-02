@@ -84,8 +84,9 @@ fn stop_group(child: &mut Child, first: &str, grace: Duration) {
     }
 }
 
-fn socket_alive(path: &Path) -> bool {
-    std::os::unix::net::UnixStream::connect(path).is_ok()
+fn socket_alive(path: &Path) -> Result<bool, String> {
+    sail_api::client::probe_listener(path)
+        .map_err(|error| format!("cannot probe service at {}: {error}", path.display()))
 }
 
 /// One arm's private environment.
@@ -138,7 +139,7 @@ impl OwnedDaemon {
             return Err(format!("socket path {} is too long", socket.display()));
         }
         for path in [socket.clone(), sail_api::jobs::socket_path(&socket)] {
-            if socket_alive(&path) {
+            if socket_alive(&path)? {
                 return Err(format!(
                     "refusing to adopt the live service at {}",
                     path.display()

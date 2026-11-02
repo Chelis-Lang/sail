@@ -41,6 +41,8 @@ def sha(path):
 
 ISOLATED_RECURSIVE = ["root.smt_transcript", "rootdemo!count._00.smt_transcript"]
 ISOLATED_MANIFESTS = {
+    "1d23c074efd3335a60f3ca24f97ab5eb130fafd2454a06f5fc9d279da188c03c",
+    "6bdbf6c1e51757212463ac0f491e07e7d9cacb20920264738d5bcf596f262173",
     "799aac308bd8d8c64a17901cf9a04b9b093689c5e274b5743c60750e2ce9df9d",
     "9f49060ec8714c5e5b3acc72859025a55c7189cf6f8c841c972675227002b866",
     "158efe0283d8a6ab4f3927a9887a7696f6e6bf38f5fe0becf07c177f6cb34de3",

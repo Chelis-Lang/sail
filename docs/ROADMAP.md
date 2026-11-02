@@ -77,11 +77,11 @@ alongside standalone-file development. No release version or publication is sele
 |---|---|---|
 | Daemon preparation and post-creation verification | Merged in #647; Linux/Mac replay, generated-input, foreground and queued-edit controls pass | Full performance acceptance remains separate |
 | Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Merged in #647; runtime-composed acceptance remains separate |
-| Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Merged in #647; startup-fixture correction #650 |
+| Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Merged in #647; readiness correction merged in #651; final runtime composition remains |
 | Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Merged in #647 |
-| First/full-path and Mac Anvil overhead | Bounded indexing/readback candidate implemented; native timing selection open | Paired whole-call/cold measurements and broader corpus |
-| Binary compiler-input metadata (#599) | Separate runtime upgrade; initial fix merged, native BLAKE3 regression corrected | Complete new-runtime source/factory/corpus/cost qualification and consumption |
-| Incidental edits | Existing fifteen-edit catalogue | Final-runtime catalogue plus Anvil control |
+| First/full-path and Mac Anvil overhead | Run-scoped and per-file experiments remain unselected; Linux and Mac whole-call controls show no general gain | Full-path and Mac Anvil-cold gaps remain; complete paired release qualification |
+| Binary compiler-input metadata (#599) | Fork fix merged; both native runtimes published and pinned, source suites and exact-read controls pass | Final composed product/corpus/cost acceptance |
+| Incidental edits | Corrected fifteen-edit catalogue and Anvil controls pass native execution audits | Final raw performance evidence; earlier Linux raw files lost at host expiry |
 
 ## Performance tracks
 

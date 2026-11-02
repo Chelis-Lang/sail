@@ -779,3 +779,36 @@ improvement over the selected whole-tree memo is established. The per-file
 prototype remains unselected. Evidence `target-memo-factorial-linux.tgz`
 SHA-256: `679bebfeeeed5d4f20f4f9d615aaf58383df3c30fcdfc7b3aa8eac6324495ccc`.
 Cold and first-call samples in this screen remain diagnostic, not acceptance.
+
+
+## Mac per-file digest study
+
+Frozen `039fb996` / A0e on native mac-m4.metal / us-east-1c / macOS 26.7:
+all seven workloads complete ten rotated uninstrumented full-path blocks for
+the current default, explicit per-file prototype and previous `4af47cea` build.
+The 546-row capture includes cold/setup and separate observer calls; it is not
+546 independent cold runs. Inputs and binaries remain unchanged.
+
+| Workload | Default median | Per-file median |
+|---|---:|---:|
+| pmemlog | 0.199 s | 0.199 s |
+| verus-tla | 0.194 s | 0.202 s |
+| semi-containers | 1.144 s | 1.153 s |
+| Anvil | 2.305 s | 2.363 s |
+| Vest | 0.623 s | 0.629 s |
+| IronKV | 0.188 s | 0.191 s |
+| CapybaraKV | 0.631 s | 0.652 s |
+
+No material whole-call gain is observed. The aggregate remains failed: two
+post-measurement processes exceed their teardown wait and are terminated, and
+the first sampled observer call in every arm selects a different context and
+starts verifiers. Those are not valid warm observer-overhead controls. The
+failed states are retained; no sample or check is dropped to select a default.
+The prototype stays disabled. This result does not qualify cold/first-call,
+memory or release performance acceptance.
+
+Complete capture `mac-file-memo-039-r4-evidence.tgz`, SHA-256
+`7b2bd376b1ab32014aeb6f6692b3be6f48a96c25e25a5ff35b974f6937c14cb9`.
+Offline audit of these retained native observations, with the original failures
+preserved: SHA-256
+`12418efe064b8240569ea9b0a12a5fd72667b54d43657aa51cba672c3bb7da36`.

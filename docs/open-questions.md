@@ -521,3 +521,11 @@ planned for releases after 0.1.0. The owner answered all twelve on
     test outcomes and original strict differences, with explicit exception
     records. This approval addresses reproduced incidental ordering; other
     differences and runtime selection still require their own evidence.
+
+47. **Consumed resource statistics in determinism qualification.**
+    Resolved 2026-11-02: the owner approved
+    [ADR 0097](decisions/0097-consumed-resource-statistics-in-determinism.md).
+    The explicit mode classifies only the three known consumed-counter paths,
+    preserving exact solver input/multiplicity, requested limits, verdicts,
+    diagnostics, stderr and exits. Original strict failures and counter values
+    remain visible; qualification of the implementation is recorded separately.

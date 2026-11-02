@@ -133,9 +133,10 @@ pub(crate) fn ensure_daemon(socket: &Path, show: bool) -> bool {
 
 #[cfg(unix)]
 fn start_daemon(socket: &Path) -> Result<(), String> {
-    use std::os::unix::net::UnixStream;
+    use sail_api::client::probe_listener;
     use std::os::unix::process::CommandExt as _;
-    if UnixStream::connect(socket).is_ok() {
+    let listening = probe_listener(socket);
+    if matches!(&listening, Ok(true)) {
         return Ok(());
     }
     if !sail_api::jobs::socket_fits(socket) {
@@ -146,6 +147,7 @@ fn start_daemon(socket: &Path) -> Result<(), String> {
             sail_api::jobs::MAX_SOCKET_PATH
         ));
     }
+    listening.map_err(|error| format!("cannot probe daemon: {error}"))?;
     let me = std::env::current_exe().map_err(|e| format!("cannot locate sail: {e}"))?;
     let mut child = Command::new(me)
         .arg("serve")
@@ -159,12 +161,12 @@ fn start_daemon(socket: &Path) -> Result<(), String> {
         .map_err(|e| format!("cannot run `sail serve`: {e}"))?;
     let deadline = Instant::now() + Duration::from_secs(5);
     while Instant::now() < deadline {
-        if UnixStream::connect(socket).is_ok() {
+        if probe_listener(socket).map_err(|error| format!("cannot probe daemon: {error}"))? {
             return Ok(());
         }
         if let Ok(Some(status)) = child.try_wait() {
             // Another client's daemon may have won the race to bind.
-            if UnixStream::connect(socket).is_ok() {
+            if probe_listener(socket).map_err(|error| format!("cannot probe daemon: {error}"))? {
                 return Ok(());
             }
             return Err(format!(

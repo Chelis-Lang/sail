@@ -25,6 +25,10 @@ inputs and reuses that proof. JSON records the original `establishing_run`,
 `reused` and actual current invocation counters. History retains up to 16
 revisions within 1 GiB, keeping the first successful revision pinned.
 Changed files, includes, namespaces, environment or runtime invalidate reuse.
+The candidate's corrected runtime also covers non-UTF-8 `include_bytes!` inputs:
+unchanged proofs can be Current and reused, while a same-size edit with restored
+mtime still requires verification. Emptying a binary used by the proof preserves
+the fresh compiler's failure. See [qualification](validation/binary-compiler-inputs.md).
 External source reads also bind every intervening discovery directory;
 unrelated changes in those ancestor directories can conservatively prevent reuse.
 Missing compiler observations cause fresh verification. `SAIL_MANAGED_FORCE=1`
@@ -60,7 +64,7 @@ paths, explicit output side effects and unsupported reuse configurations
 run fresh Verus with the solver cache. Such a successful execution is not
 promoted to reusable evidence unless its complete inputs are established.
 
-Standalone repair is implemented with native qualification in progress:
+Validate a repair to one function, then the complete file:
 
 ```sh
 sail repair-check proof.rs --function proof::lemma --engine interactive --output json
