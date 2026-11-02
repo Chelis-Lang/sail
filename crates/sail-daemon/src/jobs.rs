@@ -13,7 +13,7 @@ mod worker;
 use std::collections::BTreeMap;
 use std::io::{self, Write as _};
 use std::os::unix::fs::PermissionsExt as _;
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -72,7 +72,7 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
         std::fs::create_dir_all(parent)?;
     }
     if socket.exists() {
-        if UnixStream::connect(&socket).is_ok() {
+        if sail_api::client::probe_listener(&socket)? {
             return Err(io::Error::new(
                 io::ErrorKind::AddrInUse,
                 "SAIL0803: job endpoint already running",
@@ -222,7 +222,7 @@ impl JobHandle {
         }
         if let Some(thread) = self.listener.take() {
             // Wake a blocked accept; its bounded wait remains the fallback.
-            let _ = UnixStream::connect(&self.socket);
+            let _ = sail_api::client::connect_stream(&self.socket, sail_api::client::PROBE_TIMEOUT);
             let _ = thread.join();
         }
         for thread in self.workers.drain(..) {

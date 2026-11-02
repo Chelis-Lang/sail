@@ -35,6 +35,13 @@ completed-record, superseded and failure counts. These are lifetime activity
 counters, not evidence that your current source is proved. The regular command's
 diagnostics, exit status and JSON report remain authoritative.
 
+If no preparation is offered, inspect `sail verify --output json` for Currentness
+and `no_reuse`. An unqualified Cargo setup verifies normally without managed
+proof reuse or preparation. The primary Verus pin uses Rust/Cargo 1.99.1; when
+compatible with your project, select it explicitly with
+`RUSTUP_TOOLCHAIN=1.99.1 sail verify`. Sail continues to honor project toolchain
+choices rather than silently replacing them.
+
 The optional connection attempt and its individual reads/writes use a 25 ms
 timeout. A full listener backlog declines preparation through the ordinary
 verification path.

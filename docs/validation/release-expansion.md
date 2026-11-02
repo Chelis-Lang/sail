@@ -23,7 +23,7 @@ do not select a Sail release version or publication.
 | Standard admission paths | Reused `91bd82a1` full standard: four arms each 159 Same / 13,166 function records, all 18 seeded mutations, cold and both returns. Later changes bind idle maintenance and add a pre-execution preparation refusal; proof/cache admission is unchanged and their changed behavior has separate actual-daemon controls |
 | Hosted CI cache | Four independent Ubuntu 24.04 jobs pass at `cdb95e58`, using the attested published 0.1.0 archive; fixture scope only |
 | Real edit catalogue | Native `039fb996` composition: all fifteen edits across Vest, IronKV and CapybaraKV, two stock/candidate rounds, pass full output/diagnostic, exit and memory/clock audits (96 samples); Anvil body/failure/fix/returns also pass (18 samples). Complete execution log retained; raw per-sample files were lost on host expiry |
-| Default-workflow timing | Corrected Linux execution reports all 23 paired-workflow rows valid; three required mutation cohorts remain unattached. Raw final Linux timing files were lost on host expiry, so this is not performance acceptance. Mac retry refuses background CPU above the unchanged 0.10 ceiling; original failures and samples are retained |
+| Default-workflow timing | Corrected Linux execution reports all 23 paired-workflow rows valid; three required mutation cohorts remain unattached. Raw final Linux timing files were lost on host expiry, so this is not performance acceptance. Mac six-round quiet retry completes all 23 paired workflow rows with exact outputs; three mutation cohorts remain absent. Original refusals and all samples are retained |
 
 Scheduling/cancellation unit tests use synthetic workers; these are not proof
 acceptance. Installed controls use real pinned runtimes. No source or per-file
@@ -106,6 +106,10 @@ Mac's original corrected cohort preserves its first two rounds and all subsequen
 refusals. Background CPU rises above the existing 0.10-core ceiling; refused
 rounds are not dropped or accepted. A fresh cohort uses the same source/runtime
 with the animated wallpaper paused and the original quietness check unchanged.
+The fresh six-round Mac cohort completes all 23 paired workflow rows with
+exact outputs and retained ranges; three realistic mutation cohorts remain
+absent. Its [runtime record](binary-compiler-inputs.md#corrected-mac-workflow-measurements)
+gives measured first-use gains and the remaining full-path/Anvil-cold gaps.
 The separate post-return CPU controls complete for Vest, IronKV and Anvil;
 Capybara's observer refuses an empty preparation queue, so its preparation cost
 is unqualified. Caller and observer exits remain separate. No cause for the

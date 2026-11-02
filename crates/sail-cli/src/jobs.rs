@@ -54,7 +54,9 @@ pub(crate) fn connect_or_start() -> Result<Client, String> {
         return Ok(client);
     }
     let executable = std::env::current_exe().map_err(|error| error.to_string())?;
-    let command = if std::os::unix::net::UnixStream::connect(&socket).is_ok() {
+    let command = if sail_api::client::probe_listener(&socket)
+        .map_err(|error| format!("SAIL0810: cannot probe cache daemon: {error}"))?
+    {
         "_serve-jobs"
     } else {
         "serve"

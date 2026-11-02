@@ -170,6 +170,13 @@ use an already built variant; CI never compiles Verus.
   Fixtures cover bitvectors, termination, failed focus, failed other
   functions, macro diagnostic spans, missing and ambiguous exact selectors,
   Rust frontend errors and late EXEC errors.
+- `test-binary-inputs.py` compares actual compiler input bytes with stock in
+  both compiler phases, including non-UTF-8 includes, relative/absolute paths,
+  restored-mtime changes, text, empty and CRLF inputs. The pinned correction and
+  its qualification are recorded in [binary compiler inputs](../../docs/validation/binary-compiler-inputs.md).
+- `test-native-inputs.py` exercises the actual ordinary Cargo-wrapper compiler
+  path with SHA-256 and BLAKE3, non-UTF-8/empty/CRLF includes, exact stock output
+  and dep-info, and independently checks observer bytes against stock checksums.
 - `test-cancel.py` kills a worker at an actual blocked solver check, requires
   no terminal seal or unfinished focus report, and verifies the restart
   against stock. It retains each command and cancelled/restart/stock stdout
@@ -196,6 +203,9 @@ those of earlier pins in [the M7 validation record](../../docs/validation/m7.md)
 (Gate 1, engine build and qualification). A new fork commit needs its own
 run, including the determinism check
 ([determinism record](../../docs/validation/determinism.md)).
+The Mac runtime builder uses ADR 0097's explicit consumption classification,
+retains the original statistics and stops before packing on any other
+determinism difference. The standalone check remains strict by default.
 The [compiler-read origin runtime record](../../docs/validation/compiler-read-origin-runtime.md)
 records the built Linux schema2 candidate and its remaining acceptance/platform gates;
 its local pack/install result does not select that runtime.

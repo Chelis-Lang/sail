@@ -672,7 +672,7 @@ impl Handle {
             }
             // Wake the accept thread so it can exit (best effort: it is
             // left blocked if the socket file is gone).
-            let _ = UnixStream::connect(&self.socket);
+            let _ = sail_api::client::connect_stream(&self.socket, sail_api::client::PROBE_TIMEOUT);
         }
     }
 }
@@ -706,7 +706,7 @@ pub fn bind(
     counters: Arc<Stats>,
     config: &Config,
 ) -> std::io::Result<Server> {
-    if socket.exists() && UnixStream::connect(socket).is_err() {
+    if socket.exists() && !sail_api::client::probe_listener(socket)? {
         std::fs::remove_file(socket)?;
     }
     if let Some(parent) = socket.parent() {

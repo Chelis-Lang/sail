@@ -61,14 +61,16 @@ fn endpoint(ctx: &Context) -> Result<PathBuf, String> {
 }
 
 fn connect(ctx: &Context, cancel: &Cancel) -> Result<Client, String> {
-    use std::os::unix::{net::UnixStream, process::CommandExt as _};
+    use std::os::unix::process::CommandExt as _;
     let cache_socket = endpoint(ctx)?;
     let client = Client::new(transport::socket_path(&cache_socket));
     if client.capabilities().is_ok() {
         return Ok(client);
     }
     // Existing older daemons must be restarted, never bypassed by another backend.
-    if UnixStream::connect(&cache_socket).is_ok() {
+    if sail_api::client::probe_listener(&cache_socket)
+        .map_err(|error| format!("SAIL6201: cannot probe Sail daemon: {error}"))?
+    {
         return Err(
             "SAIL6201: the running daemon has no compatible runtime endpoint; restart sail serve"
                 .into(),

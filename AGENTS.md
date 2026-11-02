@@ -312,7 +312,11 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   are recorded separately from the solver suite.
 - *Determinism (local, before re-pinning the fork):* `scripts/verus-determinism.py
   --runs 3` over the fast tier with the new runtime; see
-  `docs/validation/determinism.md`.
+  `docs/validation/determinism.md`. Owner-approved ADR 0097 permits the explicit
+  `--classify-consumed-resources` mode only for its three named consumption
+  fields. Preserve original strict failures, actual counters and captures;
+  all solver bytes/multiplicity, requested limits, verdicts, diagnostics,
+  stderr and exits remain exact.
 
 ## Tracking
 

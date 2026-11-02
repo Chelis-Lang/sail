@@ -106,4 +106,6 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0095: Standalone Verus files](0095-standalone-verus-files.md) (implemented and qualified on native Linux and macOS)
 
-- [0096: Daemon-owned optional preparation](0096-daemon-owned-preparation.md) — owner-approved plan; implementation and qualification in progress
+- [0096: Daemon-owned optional preparation](0096-daemon-owned-preparation.md) — owner-approved; feature merged, native functional controls pass; performance acceptance open
+
+- [0097: Consumed resource statistics in determinism](0097-consumed-resource-statistics-in-determinism.md) (accepted; strict default retained, explicit consumed-counter classification)

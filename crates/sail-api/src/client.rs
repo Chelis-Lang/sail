@@ -16,6 +16,9 @@ use crate::protocol::{
 /// Timeout for each request/response exchange.
 pub const TIMEOUT: Duration = Duration::from_secs(10);
 
+/// Connect deadline for service-presence probes and best-effort wakeups.
+pub const PROBE_TIMEOUT: Duration = Duration::from_millis(25);
+
 /// Most `PUT`s [`Client::put_all`] sends before reading their
 /// acknowledgements. The unread acknowledgements stay far below any socket
 /// buffer, so the daemon never blocks writing them while the client writes.
@@ -43,6 +46,31 @@ pub fn connect_stream(path: &Path, timeout: Duration) -> std::io::Result<UnixStr
     stream.set_read_timeout(Some(timeout))?;
     stream.set_write_timeout(Some(timeout))?;
     Ok(stream)
+}
+
+/// Check whether an endpoint accepts a connection without waiting indefinitely.
+///
+/// `false` means only that the path is absent or the connection was refused.
+/// A successful probe establishes listener presence, not protocol readiness.
+/// Some platforms also refuse connections when a live listener's queue is full;
+/// this probe does not distinguish that refusal from a stale socket.
+///
+/// # Errors
+/// Returns every other connection error, including a full listener backlog,
+/// timeout or denied access. These errors never establish that a socket is stale.
+pub fn probe_listener(path: &Path) -> std::io::Result<bool> {
+    match connect_stream(path, PROBE_TIMEOUT) {
+        Ok(_) => Ok(true),
+        Err(error)
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::NotFound | std::io::ErrorKind::ConnectionRefused
+            ) =>
+        {
+            Ok(false)
+        }
+        Err(error) => Err(error),
+    }
 }
 
 /// A connection to the daemon.

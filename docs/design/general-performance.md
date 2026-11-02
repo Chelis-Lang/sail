@@ -122,10 +122,11 @@ a performance benefit; final composed gates remain separate.
 
 That Linux study adds the per-file ledger while retaining the whole-tree
 memo's Linux default. Their candidates perform independent complete target
-observations. The per-file-only combination remains unqualified. A separate
-four-way comparison of the existing settings (fresh reads, whole-tree alone,
-per-file alone and both) is queued across seven real workloads, using the
-unchanged implementation and authority checks.
+observations. The per-file-only combination remains unqualified. The separate
+four-way comparison of fresh reads, whole-tree alone, per-file alone and both
+completes all 560 Linux rows without establishing a general improvement. The
+[seven-project Mac study](../validation/general-performance.md#mac-per-file-digest-study)
+also leaves the prototype unselected; its observer/cleanup failures are retained.
 
 ## Qualification
 
