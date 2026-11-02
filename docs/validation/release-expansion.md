@@ -104,3 +104,7 @@ job-server callers without that configuration perform no budget maintenance.
 The extended installed test and managed CI phase now require real idle eviction;
 Linux/Mac qualification of this correction is pending. No main bug issue is
 filed for this unmerged candidate defect.
+
+- 2026-11-02, idle-budget correction `653223d7`: native Clippy stops on two
+  unqualified standard-library error names in the new CLI adapters. Corrected
+  before the actual after-fix daemon controls; no test or baseline changed.

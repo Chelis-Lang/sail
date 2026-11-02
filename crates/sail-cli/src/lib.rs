@@ -400,7 +400,8 @@ fn serve_prepared(
         &executable,
     )
     .and_then(|server| {
-        let cache = sail_verus::cache_dir().map_err(|error| io::Error::other(error.to_string()))?;
+        let cache =
+            sail_verus::cache_dir().map_err(|error| std::io::Error::other(error.to_string()))?;
         server.with_project_cache(&cache)
     })
     .and_then(|server| {
@@ -473,8 +474,8 @@ fn serve_jobs(args: &[String], err: &mut dyn std::io::Write) -> ExitCode {
             &executable,
         )
         .and_then(|server| {
-            let cache =
-                sail_verus::cache_dir().map_err(|error| io::Error::other(error.to_string()))?;
+            let cache = sail_verus::cache_dir()
+                .map_err(|error| std::io::Error::other(error.to_string()))?;
             server.with_project_cache(&cache)
         })
         .and_then(sail_daemon::jobs::JobServer::spawn)
