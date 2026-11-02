@@ -1,8 +1,8 @@
 # Release-expansion feature qualification
 
 Status: real installed feature controls pass on native Linux and macOS using
-qualified fork `0ad405eb`. Final feature PR gates and the hosted cache example
-are continuing. Binary compiler-input correction is a separate runtime upgrade;
+qualified fork `0ad405eb`. The complete closing-revision feature passes Linux E2E and PR conformance;
+the final rebased workspace gate and hosted cache example are continuing. Binary compiler-input correction is a separate runtime upgrade;
 this feature increment retains the existing qualified runtime. No Sail release
 version or publication is selected.
 
@@ -17,8 +17,8 @@ presented as proof acceptance.
 
 Linux `ed3feb63` passes Clippy, 1,318 non-solver tests, 51 solver controls,
 installed feature checks, complete E2E including extra, and all four fast arms
-(147 Same / 3,451 functions each). Its standard run and mutation controls are
-finishing. Mac's same production Rust passes Clippy, 1,307 tests and the installed
+(147 Same / 3,451 functions each). Its standard run completes all four arms at 159 Same / 13,166 function
+records, with all 18 seeded mutations and both return controls Same. Mac's same production Rust passes Clippy, 1,307 tests and the installed
 feature controls. Later ordinary-queue admission changes close a stale-idle
 preparation race; their two new native priority tests pass on both platforms.
 The feature composition reruns its workspace/platform checks before pushing.
@@ -47,8 +47,17 @@ generated inputs. The worker freshly ends Current with zero verifier invocations
 and a different revision, and correctly declines the mismatched origin. The
 correction supplies the successful runner's complete closing revision for the
 handoff and retains exact worker equality, existing proof results and every
-replay admission check. A generated-include cold/replay/changed-script control
-and real Anvil retry are running; no Anvil timing win is claimed yet.
+replay admission check. The generated-include cold/replay/changed-script control passes on both native
+platforms. Linux `96c0037d` also passes complete E2E including extra and all four
+PR conformance arms (33 Same / 311 functions each). Mac passes Clippy, 1,309
+non-solver tests and installed repair, preparation and budget controls. Raw
+`closing-feature-evidence.tgz`, SHA-256
+`b570fca90cceac192692925cddc838356c8a518218229deccad7313a70b56240`.
+
+A separate real Anvil diagnostic using the corrected `a0e11cff` runtime and
+closing-revision code completes preparation and both subsequent replays without
+a verifier. This is one diagnostic round, not paired performance acceptance.
+The repeated timing cohort and wider runtime upgrade qualification remain open.
 
 Completed prior standard qualification: all four arms have 159 Same / 13,166
 function records, with all 18 seeded mutations and both return controls Same.
@@ -64,3 +73,9 @@ controls. Raw `feature057-evidence.tgz`, SHA-256
   the following request-path assertion compares a logical temporary path with
   the service's canonical path. It now requires the exact canonical project
   path, preserving all proof/replay and changed-script checks.
+
+The branch is rebased onto `d7342acf` (two documentation-only main successors).
+Production Rust and Cargo inputs remain identical to `b1ae4b4b`. The canonical
+consumer skill now covers standalone repair, preparation versus explicit jobs,
+optional budgets and CI cache guidance; registry packages are not published by
+this change.
