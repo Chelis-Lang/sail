@@ -55,3 +55,8 @@ function records, with all 18 seeded mutations and both return controls Same.
 Mac `05760ad9` passes Clippy, 1,309 non-solver tests and all installed feature
 controls. Raw `feature057-evidence.tgz`, SHA-256
 `a17abfcb2d603d8e5e0e353746db1e74d86b4892a5200433c70086c95a258026`.
+
+- 2026-11-02, closing-revision control: native workspace/platform gates pass;
+  the new generated fixture is rejected because its public spec function lacks
+  an explicit visibility modifier. The intended public definition now uses
+  `pub open spec`; the cold/replay/changed-script assertions are unchanged.

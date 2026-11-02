@@ -107,7 +107,7 @@ def main():
     script.write_text('fn main() {\n'
                       'let output = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());\n'
                       'std::fs::write(output.join("generated.rs"), '
-                      '"verus! { pub spec fn generated_value() -> int { 7 } }\\n").unwrap();\n'
+                      '"verus! { pub open spec fn generated_value() -> int { 7 } }\\n").unwrap();\n'
                       'println!("cargo:rerun-if-changed=build.rs");\n}\n')
     lib = generated / "src/lib.rs"
     lib.write_text(lib.read_text() + '\ninclude!(concat!(env!("OUT_DIR"), "/generated.rs"));\n'
