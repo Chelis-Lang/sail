@@ -75,8 +75,8 @@ alongside standalone-file development. No release version or publication is sele
 
 | Deliverable | Current state | Remaining gate |
 |---|---|---|
-| Daemon preparation and post-creation verification | Installed controls pass; broader edits expose queued-origin defect #648; initial read-back guard and old-binary regression witness pass on Linux/Mac | Wider corrected edit comparisons, costs and current-head PR gates |
-| Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Final PR gates |
+| Daemon preparation and post-creation verification | Installed controls pass; broader edits expose queued-origin defect #648; guard passes Linux/Mac, Linux old-binary witness and corrected real edit catalogue pass | Full performance acceptance remains separate |
+| Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Current-head CI passes; land the feature PR |
 | Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Current-head PR gates |
 | Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Publish the qualified walkthrough with the feature PR |
 | First/full-path and Mac Anvil overhead | Bounded indexing/readback candidate implemented; native timing selection open | Paired whole-call/cold measurements and broader corpus |
@@ -90,7 +90,7 @@ alongside standalone-file development. No release version or publication is sele
 | 1. Cold runs and first use (#232) | Shipped vstd proof and replies; pinned Cargo; pipelined native admission (ADR 0061); first-use hashing and daemon start cut (#424, levers 1.5/1.6); solver identity reused under a settled stamp (#417) | macOS Anvil cold, 0.9 s on rc.7 (#232); macro-closure compile is most of the remaining first use (#234) |
 | 2. Frontend floor (#162) | Profiled; persistent frontend reuse unqualified | Parked after 0.1.0 |
 | 3. Solver work on misses (#158, #244) | Longest-first bucket dispatch by a static size estimate shipped in fork commit `ee8dd97d` (runtime `f8589ed4` onward): Vest 10–15% faster at 7–15 threads, no gain on Anvil | Parked after 0.1.0 |
-| 4. Incidental edits (#118) | Closure identity, spec-parameter names and trait spellings merged; original catalogue exposes #648 | Corrected fifteen-edit catalogue and Anvil return controls |
+| 4. Incidental edits (#118) | Closure identity, spec-parameter names and trait spellings merged; original catalogue exposes #648 | Corrected fifteen-edit catalogue and Anvil return controls pass execution audits; raw timing acceptance remains open |
 | 5. Managed overhead | Unchanged-call replay; unit-graph and script-snapshot reuse (#407); build-script receipts for Cargo 1.93–1.99 (ADR 0084) | [Performance parity](#performance-parity) |
 | 6. Instant revert (#163) | Linux and macOS for qualified profiles; 16 revisions with pinned baseline; `SAIL3146` explains skips | More dependency profiles |
 | CI and team caches (#240, #242) | Measured recipe in [CI caching](ci-cache.md); restored caches reused across runners (#428) | Four-runner hosted walkthrough passes; publish with the feature PR |

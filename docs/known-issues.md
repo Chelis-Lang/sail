@@ -15,17 +15,6 @@ no general service-performance or completed-service claim follows.
 Native capacity/lifetime, external owner/EOF and solver interpretation
 relations remain open; source/hash binding does not establish them.
 
-## Next-release candidate
-
-- **Queued preparation can trigger dependency rebuilding**
-  ([#648](https://github.com/Chelis-Lang/sail/issues/648)). The candidate checked
-  its origin's revision only after managed verification. An edit made while the
-  worker was queued could enter verification, then be cancelled after consuming
-  build-script observations. Native IronKV reproduces the resulting vstd rebuild;
-  disabling preparation avoids it. The Current read-back guard and actual
-  queued-edit regression pass native Linux and Mac controls; the unchanged old binary fails the exact new assertion.
-  The wider comparison retry remains pending. The feature PR remains draft.
-
 ## Accepted integration limit
 
 - A hosted cached-session statistics control intermittently took the genuine

@@ -2,8 +2,9 @@
 
 Status: feature `c590de7f` passes native Linux workspace, solver, complete E2E
 and PR conformance gates, plus Mac platform and installed controls. The queued
-origin correction has a real before/after regression witness. Broader corrected
-edit/timing qualification continues; PR #647 remains draft. The feature retains
+origin correction has a real before/after regression witness. The corrected fifteen-edit catalogue and Anvil return controls pass their native
+execution audits. Current-head CI passes. Performance acceptance remains open
+with the evidence limitations below. The feature retains
 qualified fork `0ad405eb`. The separate runtime upgrade and performance selection
 do not select a Sail release version or publication.
 
@@ -19,7 +20,8 @@ do not select a Sail release version or publication.
 | Byte budgets | Both platforms: manual LRU/newest/busy/rebuild controls and actual idle-daemon eviction from the correct managed cache root |
 | Standard admission paths | Reused `91bd82a1` full standard: four arms each 159 Same / 13,166 function records, all 18 seeded mutations, cold and both returns. Later changes bind idle maintenance and add a pre-execution preparation refusal; proof/cache admission is unchanged and their changed behavior has separate actual-daemon controls |
 | Hosted CI cache | Four independent Ubuntu 24.04 jobs pass at `cdb95e58`, using the attested published 0.1.0 archive; fixture scope only |
-| Default-workflow timing | Original six-round candidate fails output comparison on both platforms (19/26 rows valid); corrected paired timing and the fifteen-edit catalogue are running. No full-path or Mac Anvil parity is claimed |
+| Real edit catalogue | Native `039fb996` composition: all fifteen edits across Vest, IronKV and CapybaraKV, two stock/candidate rounds, pass full output/diagnostic, exit and memory/clock audits (96 samples); Anvil body/failure/fix/returns also pass (18 samples). Complete execution log retained; raw per-sample files were lost on host expiry |
+| Default-workflow timing | Corrected Linux execution reports all 23 paired-workflow rows valid; three required mutation cohorts remain unattached. Raw final Linux timing files were lost on host expiry, so this is not performance acceptance. Mac retry refuses background CPU above the unchanged 0.10 ceiling; original failures and samples are retained |
 
 Scheduling/cancellation unit tests use synthetic workers; these are not proof
 acceptance. Installed controls use real pinned runtimes. No source or per-file
@@ -47,7 +49,7 @@ separately from its complete closing revision. Before entering managed
 verification the worker freshly checks the origin's Current record. Every
 original key/context/closing-revision equality and publication check remains.
 The regression writes a failing edit while preparation is queued and requires
-no additional managed verification result. The unchanged old binary fails that
+no additional managed verification result. The unchanged old Linux binary fails that
 exact assertion; corrected Linux and Mac controls pass. Changes racing an
 already-running transaction still take the existing cancellation/fail-safe path.
 
@@ -72,6 +74,26 @@ comparison, not a model-evaluation campaign or a new native benchmark. A clean
 project-scope `skills@1.7.4` copy install, telemetry disabled, retains all four
 updated files byte-for-byte. Registry exports remain at their recorded revisions.
 
+## Performance evidence limits
+
+The corrected native catalogue passes all 114 samples. The corrected six-round
+Linux execution reports 23 valid paired-workflow rows; the separate realistic
+mutation cohorts were not attached, so its overall report remains incomplete.
+The completed hosts subsequently expired before final raw-data collection. The
+complete local execution logs survive, but they cannot substitute for the raw
+streams/JSON in a performance acceptance claim. Functional gate captures above
+were already collected and remain intact. The missing performance evidence is
+being rerun with capture queued as part of the job.
+
+Mac's original corrected cohort preserves its first two rounds and all subsequent
+refusals. Background CPU rises above the existing 0.10-core ceiling; refused
+rounds are not dropped or accepted. A fresh cohort uses the same source/runtime
+with the animated wallpaper paused and the original quietness check unchanged.
+The separate post-return CPU controls complete for Vest, IronKV and Anvil;
+Capybara's observer refuses an empty preparation queue, so its preparation cost
+is unqualified. Caller and observer exits remain separate. No cause for the
+empty queue is established.
+
 ## Evidence
 
 Raw artifacts stay outside Git; source/runtime inventories and original streams
@@ -89,6 +111,9 @@ whose runtime source/factory acceptance is recorded in its own upgrade.
 | `iron-successive-diagnostic.tgz` (enabled) | `51cef682405e8957ef4eaa2693edd5a791e4e9c6d4912b0f8be70885d3da0143` |
 | `iron-successive-disabled-diagnostic.tgz` | `783a119dfb6c3c2f6256fcc6cc6f359403f844f396f11fe819416a7c6451955a` |
 | `mac-a0e-matrix-selected-evidence.tgz` (failed original cohort, complete selected streams/metrics) | `ffc60269097ca39405f652e0adbaa22469226a24ac578b60c12ebcb7daaf0062` |
+| `guard-edit-execution-complete.log` (catalogue and Anvil execution audit; raw files unavailable) | `822537fb9d283f89a074c7a88b7b8b5361290e7364eedd267db88733791db077` |
+| `guard-native-matrix-execution-complete.log` (execution only, not raw timing acceptance) | `14861f6a33dd9a60f211c708597d16d3157bfcb467a7f698f4abcab19f657f60` |
+| `mac-guard-first-cohort-evidence.tgz` (original corrected cohort, including refusals and cost controls) | `675d4c6f2271aabca07721d259378d74805884703812dfb7764716d12edb2e1c` |
 | `consumer-skill-technical-review.md` | `2b00f1cea3b323132ed961d09c4b9f9c58d00d2c9e0868dcaa77c0c3f35ba235` |
 | `consumer-skill-usability-review.md` | `ef933c6113dd122df6071e6c785f40f7e3dcfa3e8d041ab0cde625582e97887c` |
 
@@ -112,3 +137,8 @@ whose runtime source/factory acceptance is recorded in its own upgrade.
   fail output identity; queued-origin defect #648 is reproduced independently.
   Background work on the next edit also makes those edit timings unsuitable for
   acceptance. Original classifications and samples remain retained.
+
+- 2026-11-02, corrected performance qualification `039fb996`: native workflow and
+  catalogue execution audits pass, but final Linux raw files are unavailable
+  after host expiry. Mac's original CPU ceiling refuses later rounds; the retained
+  failed cohort is followed by a fresh quiet-host retry. Performance remains open.
