@@ -31,7 +31,7 @@ use serde_json::{Value, json};
 
 use super::workspace::{
     DaemonState, PROTOCOL, Workspace, daemon_state, execute, retained_receipts,
-    separate_sail_notes, stop_daemon, verus_build_from_env, write_fresh,
+    sail_notes_are_unique, separate_sail_notes, stop_daemon, verus_build_from_env, write_fresh,
 };
 use super::{Setup, class_of, false_verified, load_meta, plain_outcome, sidecar, value};
 use crate::cold::{Judgement, judge};
@@ -269,9 +269,9 @@ impl Round<'_> {
             }
         };
         let notices = separate_sail_notes(&mut sail);
-        if notices.len() > 1 {
+        if !sail_notes_are_unique(&notices) {
             sample["diagnostic_error"] =
-                json!("more than one bundle-miss notice in one invocation");
+                json!("repeated or unknown Sail operational notice in one invocation");
         }
         sample["sail_operational_notes"] = json!(notices);
         let plains = self.plains.entry(step.clone()).or_default();

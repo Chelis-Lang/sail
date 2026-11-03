@@ -322,19 +322,19 @@ pub(super) fn parse_outputs(stdout: &[u8]) -> (Vec<Value>, String) {
     (docs, String::from_utf8_lossy(&rest).trim().to_owned())
 }
 
-/// Separates the CLI's intentional bundle-miss notice from Verus diagnostics.
+const BUNDLE_NOTICE: &str = "note[SAIL3138]: Sail's preverified vstd proof was not used because ";
+const RETENTION_NOTICE: &str = "note[SAIL3146]: instant revert did not apply because ";
+
+/// Separates the CLI's intentional explanation notices from Verus diagnostics.
 /// Raw stderr remains in the captured log; every other byte stays comparable.
 pub(super) fn separate_sail_notes(run: &mut RunRecord) -> Vec<String> {
-    const PREFIX: &str = "note[SAIL3138]: Sail's preverified vstd proof was not used because ";
-    // Why instant revert did not apply (SAIL3146), also explanation only.
-    const RETENTION: &str = "note[SAIL3146]: instant revert did not apply because ";
     let mut diagnostics = String::new();
     let mut notices = Vec::new();
     for line in run.stderr.split_inclusive('\n') {
         let text = line.trim_end_matches(['\r', '\n']);
-        if text.starts_with(PREFIX)
+        if text.starts_with(BUNDLE_NOTICE)
             && text.ends_with(", so this run verified vstd itself; verification is unaffected")
-            || text.starts_with(RETENTION) && text.ends_with("; verification is unaffected")
+            || text.starts_with(RETENTION_NOTICE) && text.ends_with("; verification is unaffected")
         {
             notices.push(text.to_owned());
         } else {
@@ -343,6 +343,20 @@ pub(super) fn separate_sail_notes(run: &mut RunRecord) -> Vec<String> {
     }
     run.stderr = diagnostics;
     notices
+}
+
+/// Each already recognized explanation may appear once in an invocation.
+/// Unknown entries remain a refusal even though the separator excludes them.
+pub(super) fn sail_notes_are_unique(notices: &[String]) -> bool {
+    let bundle = notices
+        .iter()
+        .filter(|n| n.starts_with(BUNDLE_NOTICE))
+        .count();
+    let retention = notices
+        .iter()
+        .filter(|n| n.starts_with(RETENTION_NOTICE))
+        .count();
+    bundle <= 1 && retention <= 1 && bundle + retention == notices.len()
 }
 
 /// Runs `cmd` to completion, retaining its streams in `log` and stopping
@@ -776,6 +790,34 @@ mod tests {
         run.stderr = "note[SAIL3146]: instant revert did not apply because demo last compiled in 5 ms; verification is unaffected\nerror: failed\n".to_owned();
         assert_eq!(separate_sail_notes(&mut run).len(), 1);
         assert_eq!(run.stderr, "error: failed\n");
+    }
+
+    #[test]
+    fn explanation_notices_are_unique_per_known_code() {
+        let bundle = "note[SAIL3138]: Sail's preverified vstd proof was not used because features differ, so this run verified vstd itself; verification is unaffected".to_owned();
+        let retention = "note[SAIL3146]: instant revert did not apply because the dependency profile is not qualified; verification is unaffected".to_owned();
+        for notices in [
+            vec![],
+            vec![bundle.clone()],
+            vec![retention.clone()],
+            vec![bundle.clone(), retention.clone()],
+            vec![retention.clone(), bundle.clone()],
+        ] {
+            assert!(sail_notes_are_unique(&notices));
+        }
+        for notices in [
+            vec![bundle.clone(), bundle.clone()],
+            vec![retention.clone(), retention.clone()],
+            vec![bundle.clone(), retention.clone(), bundle.clone()],
+            vec![bundle.clone(), retention.clone(), retention.clone()],
+            vec![
+                bundle.clone(),
+                bundle.replace("features differ", "source differs"),
+            ],
+            vec!["note[SAIL3102]: unrelated explanation".to_owned()],
+        ] {
+            assert!(!sail_notes_are_unique(&notices));
+        }
     }
 
     #[test]
