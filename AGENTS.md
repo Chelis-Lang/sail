@@ -56,8 +56,11 @@ acting. The charter's appendix records corrections made since it was written.
 - **Publishing.** The Sail repository and the Verus fork are public (since
   2026-10-28). Releases ship as archives on GitHub Releases, starting with
   0.1.0. Agents publish a release's archives once it has passed qualification,
-  without a separate owner sign-off. Nothing is published to crates.io: the
-  workspace keeps `publish = false` (ADR 0010).
+  without a separate owner sign-off. The owner authorized crates.io distribution
+  as `sail-solve` on 2026-11-02 (ADR 0098). Explicitly selected core packages
+  publish to crates.io; the workspace default, contributor tools and private
+  extensions remain unpublished. Future released tags publish their matching
+  crate versions through the release workflow.
 - **Fork a backend only for a proven gain.** Forking a backend or tool (as
   ADR 0039 forks Verus) needs a rigorously measured gain, proven before any
   Sail use of the fork ships.

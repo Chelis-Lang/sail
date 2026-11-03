@@ -111,7 +111,7 @@ step="${1:?usage: ci/run.sh gate|solver|boundary-witness|cargo-range|e2e-build|e
 shift
 
 release_build() {
-  cargo build --release --locked -p sail-cli -p sail-shim "$@"
+  cargo build --release --locked -p sail-solve -p sail-shim "$@"
 }
 
 # The temporal extension workspace, built into its own directory under
@@ -199,6 +199,8 @@ case "$step" in
     exit "$sail_proof_status"
     ;;
   gate)
+    python3 scripts/crate-resources.py check
+    python3 scripts/test-publish-crates.py
     bash ci/test-completion.sh
     bash scripts/test-ai-markers.sh
     bash scripts/test-runtime-scan.sh
@@ -228,7 +230,7 @@ case "$step" in
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
     # check_mcp drives the e2e legacy phase; its own unit tests stay here.
-    cargo test --locked -p sail-cli --example check_mcp
+    cargo test --locked -p sail-solve --example check_mcp
     cargo test --workspace --doc --locked
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
     cargo xtask check-layering

@@ -5,7 +5,7 @@ use sail_api::proof::{InputEvent, Observation, Phase, Target};
 
 fn function() -> Result<FunctionReport, Box<dyn std::error::Error>> {
     let report: Report = serde_json::from_str(include_str!(
-        "../../sail-cli/tests/fixtures/attr/report.golden.json"
+        "../resources/crates/sail-cli/tests/fixtures/attr/report.golden.json"
     ))?;
     report
         .crates

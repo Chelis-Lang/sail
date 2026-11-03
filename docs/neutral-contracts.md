@@ -12,8 +12,8 @@ checks. Matching requirement IDs do not establish contract faithfulness.
 [Neutral source jobs](neutral-contract-jobs.md) expose that actual helper through
 the existing local Sail job service without caller-created shadows or tools.
 
-Use the crate from the Sail workspace or a pinned Git revision of it. It is
-not published to crates.io. The [version-one specification](spec/neutral-contracts.md)
+Use `sail-contracts = "=0.2.0-rc.1"` for the initial registry prerelease,
+or use the Sail workspace or a pinned Git revision. The [version-one specification](spec/neutral-contracts.md)
 defines the accepted source subset and the separate backend boundary.
 
 ```rust

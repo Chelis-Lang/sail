@@ -7,7 +7,39 @@ Sail currently supports Linux x86-64 with glibc 2.39 or newer (Ubuntu 24.04,
 for example), and Apple-silicon macOS. It ships its own Verus and pinned Z3.
 Your existing Verus installation is left alone. Sail is distributed as
 prebuilt archives on [GitHub releases](https://github.com/Chelis-Lang/sail/releases)
-under the MIT licence.
+under the MIT licence. Cargo distribution is implemented for the initial
+`sail-solve 0.2.0-rc.1` registry prerelease; its package and installation
+qualification is recorded in the [crate-publication gate](validation/crates-io.md).
+
+## Cargo installation
+
+Use Rust 1.99 or newer, a C toolchain, Rustup and Python 3. Install the
+verifier's Rust pin, then the CLI and its pinned runtime:
+
+```sh
+rustup toolchain install 1.99.1 --profile minimal --component rust-src
+cargo +1.99.1 install sail-solve --version 0.2.0-rc.1 --locked
+sail engine install
+sail engine status
+sail verify proof.rs
+```
+
+Cargo installs `sail` and the adjacent `sail-solve-z3` shim. The explicit engine
+installer downloads the committed runtime over HTTPS, checks its archive
+digest, provenance and every runtime file, and installs it under Sail's cache.
+It uses the same installer as source/CI runtime setup. It needs no repository
+checkout or GitHub credential. Existing conflicting or corrupted runtime
+installs are refused; they are never silently overwritten. `sail engine install
+--from PATH` continues to import an existing validated runtime.
+
+The registry version is initially a prerelease while full release qualification
+continues. Cargo installations establish their own vstd and target proofs;
+GitHub archives additionally ship their preverified vstd and signed replies.
+Reuse still requires the same complete inputs and Current provenance.
+Rustup installs the explicit verifier toolchain without changing your default.
+Project toolchain choices remain authoritative; see
+[background preparation](background-preparation.md) when a setup verifies
+without managed reuse.
 
 ## Guided installation
 

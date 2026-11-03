@@ -83,7 +83,7 @@ mod tests {
     //! (each batch keeps only `push`, `pop`, `check-sat`, `get-info`,
     //! `get-model`, `set-option` and `echo`; replies are verbatim; AIR logs
     //! keep their comments and `check-valid` lines). Regenerate the golden
-    //! file with `SAIL_BLESS=1 cargo test -p sail-cli`.
+    //! file with `SAIL_BLESS=1 cargo test -p sail-solve`.
     use super::*;
     use sail_api::output::SourceSummaryName as S;
     use sail_api::output::{AttributionStatus, FunctionReport, Report};

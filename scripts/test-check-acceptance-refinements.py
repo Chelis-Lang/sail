@@ -172,7 +172,8 @@ class SourceCaptureTests(unittest.TestCase):
         with self.assertRaises(CHECKER.Refusal):
             CHECKER.compiled_subset(CHECKER.SYNTAX, changed)
 
-    def test_cargo_paths_and_private_token_fields_cannot_change_without_review(self):
+    def assembly_snapshots(self) -> dict[str, bytes]:
+        """Capture the assembly inputs used by the manifest refusal controls."""
         paths = ["Cargo.toml", "Cargo.lock", "crates/sail-acceptance/Cargo.toml", "crates/sail-acceptance/src/lib.rs",
             "crates/sail-acceptance/src/query.rs", "crates/sail-acceptance/src/inputs.rs",
             "crates/sail-api/src/acceptance.rs", "crates/sail-api/src/lib.rs",
@@ -182,23 +183,25 @@ class SourceCaptureTests(unittest.TestCase):
         paths += [str(path.relative_to(ROOT)) for path in (ROOT / "crates/sail-acceptance/src").glob("cache_*.rs")]
         paths += ["crates/sail-acceptance/src/" + name + ".rs" for name in
             ("query_raw", "key_prefix", "query_prefix", "query_delivery")]
-        snapshots = {path: (ROOT / path).read_bytes() for path in paths}
+        return {path: (ROOT / path).read_bytes() for path in paths}
+
+    def test_cargo_paths_and_private_token_fields_cannot_change_without_review(self):
+        snapshots = self.assembly_snapshots()
         CHECKER.validate_assembly(snapshots)
+        version = CHECKER.tomllib.loads(snapshots["Cargo.toml"].decode())["workspace"]["package"]["version"]
+        def dependency(name):
+            return f'{name} = {{ path = "crates/{name}", version = "={version}" }}'.encode()
         for path, before, after in (
             ("crates/sail-acceptance/Cargo.toml", b"[lints]", b'[lib]\npath="../../elsewhere.rs"\n\n[lints]'),
             ("crates/sail-api/Cargo.toml", b"[lints]", b'[lib]\npath="alternate.rs"\n\n[lints]'),
             ("crates/sail-key/Cargo.toml", b"[lints]", b'[lib]\npath="alternate.rs"\n\n[lints]'),
             ("crates/sail-key/Cargo.toml", b'name = "sail-key"', b'name = "sail-key"\nbuild = "outside.rs"'),
-            ("Cargo.toml", b'sail-api = { path = "crates/sail-api" }', b'sail-api = { path = "alternate/sail-api" }'),
-            ("Cargo.toml", b'sail-api = { path = "crates/sail-api" }', b'sail-api = { path = "crates/sail-api", default-features = false }'),
-            ("Cargo.toml", b'sail-daemon = { path = "crates/sail-daemon" }',
-                b'sail-daemon = { path = "alternate/sail-daemon" }'),
-            ("Cargo.toml", b'sail-daemon = { path = "crates/sail-daemon" }',
-                b'sail-daemon = { path = "crates/sail-daemon", default-features = false }'),
-            ("Cargo.toml", b'sail-daemon = { path = "crates/sail-daemon" }',
-                b'sail-daemon = { path = "crates/sail-daemon", features = ["x"] }'),
-            ("Cargo.toml", b'sail-daemon = { path = "crates/sail-daemon" }',
-                b'sail-daemon = { git = "https://example.invalid/sail" }'),
+            ("Cargo.toml", dependency("sail-api"), dependency("sail-api").replace(b"crates/", b"alternate/")),
+            ("Cargo.toml", dependency("sail-api"), dependency("sail-api").replace(b" }", b", default-features = false }")),
+            ("Cargo.toml", dependency("sail-daemon"), dependency("sail-daemon").replace(b"crates/", b"alternate/")),
+            ("Cargo.toml", dependency("sail-daemon"), dependency("sail-daemon").replace(b" }", b", default-features = false }")),
+            ("Cargo.toml", dependency("sail-daemon"), dependency("sail-daemon").replace(b" }", b', features = ["x"] }')),
+            ("Cargo.toml", dependency("sail-daemon"), b'sail-daemon = { git = "https://example.invalid/sail" }'),
             ("Cargo.toml", b'[workspace]', b'[replace]\n"sail-acceptance:0.1.0" = { path = "alternate" }\n[workspace]'),
             ("crates/sail-acceptance/src/lib.rs", b"pub mod authority;", b'#[path="hidden.rs"] pub mod authority;'),
             ("crates/sail-api/src/acceptance.rs", b"report: &'a Report,", b"pub report: &'a Report,"),
@@ -212,6 +215,45 @@ class SourceCaptureTests(unittest.TestCase):
             candidate[path] = candidate[path].replace(before, after, 1)
             with self.subTest(path=path, after=after), self.assertRaises(CHECKER.Refusal):
                 CHECKER.validate_assembly(candidate)
+
+    def test_publication_metadata_requires_the_exact_reviewed_shape(self):
+        snapshots = self.assembly_snapshots()
+        CHECKER.validate_assembly(snapshots)
+        for name in ("sail-acceptance", "sail-api", "sail-key"):
+            path = "crates/" + name + "/Cargo.toml"
+            for before, after in (
+                (b'publish = ["crates-io"]', b'publish.workspace = true'),
+                (b'publish = ["crates-io"]', b'publish = ["other-registry"]'),
+                (b'publish = ["crates-io"]', b'publish = ["crates-io", "other-registry"]'),
+                (b'readme = "README.md"', b'readme = "../README.md"'),
+                (b'readme = "README.md"\n', b''),
+                (b'homepage = "https://github.com/Chelis-Lang/sail"', b'homepage = "https://example.invalid/sail"'),
+                (b'homepage = "https://github.com/Chelis-Lang/sail"\n', b''),
+                (b'[lints]', b'[package.metadata]\nunchecked = true\n\n[lints]'),
+                (b'license.workspace = true', b'license.workspace = true\nkeywords = ["unreviewed"]'),
+            ):
+                candidate = dict(snapshots)
+                self.assertIn(before, candidate[path])
+                candidate[path] = candidate[path].replace(before, after, 1)
+                with self.subTest(package=name, after=after), self.assertRaises(CHECKER.Refusal):
+                    CHECKER.validate_assembly(candidate)
+
+    def test_protected_dependency_versions_must_match_the_workspace_exactly(self):
+        snapshots = self.assembly_snapshots()
+        version = CHECKER.tomllib.loads(snapshots["Cargo.toml"].decode())["workspace"]["package"]["version"]
+        for name in ("sail-acceptance", "sail-api", "sail-cache", "sail-shim", "sail-verus", "sail-daemon", "sail-smtlib", "sail-session", "sail-key"):
+            before = f'{name} = {{ path = "crates/{name}", version = "={version}" }}'.encode()
+            for after in (
+                f'{name} = {{ path = "crates/{name}" }}'.encode(),
+                before.replace(f'"={version}"'.encode(), f'"{version}"'.encode()),
+                before.replace(f'"={version}"'.encode(), b'"=9.9.9"'),
+                before.replace(b' }', b', registry = "other-registry" }'),
+            ):
+                candidate = dict(snapshots)
+                self.assertIn(before, candidate["Cargo.toml"])
+                candidate["Cargo.toml"] = candidate["Cargo.toml"].replace(before, after, 1)
+                with self.subTest(package=name, after=after), self.assertRaisesRegex(CHECKER.Refusal, "protected dependency"):
+                    CHECKER.validate_assembly(candidate)
 
     def test_pending_parser_cannot_authorize_any_normal_qualification(self):
         manifest = CHECKER.json.loads((ROOT / CHECKER.MANIFEST).read_bytes())

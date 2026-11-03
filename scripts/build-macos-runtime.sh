@@ -152,7 +152,7 @@ cmd_published() {
   cache="$(mktemp -d /tmp/sail-engine-fetch.XXXXXX)/cache"
   rt="$("$py" ci/engine-artifact.py fetch --pin engine/verus/artifact-macos.json --cache "$cache")"
   echo "fetched and validated: $rt"
-  cargo build --release --locked -q -p sail-cli -p sail-shim
+  cargo build --release --locked -q -p sail-solve -p sail-shim
   SAIL_CACHE_DIR="$cache" ./target/release/sail engine status
   SAIL_ENGINE_BUILD="$rt" SAIL_VERUS_BUILD="$rt" SAIL_CONFORMANCE_OUT="${cache%/cache}/conformance" \
     ci/run.sh conformance fast pr 2>&1 | grep -E '^conformance|^engine conformance|cache entries'

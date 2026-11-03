@@ -364,16 +364,21 @@ fn main() -> TestResult {
     }
     std::fs::create_dir(&output)?;
     let output = std::fs::canonicalize(output)?;
-    let original = include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.rs");
-    let changed = include_str!("../../sail-verus/tests/fixtures/neutral-contracts/body_edit.rs");
+    let original =
+        include_str!("../resources/crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs");
+    let changed = include_str!(
+        "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/body_edit.rs"
+    );
     if changed != original.replace("    input + 1\n", "    input\n") {
         return Err("body edit differs beyond intended implementation".into());
     }
     runtime_witness(&output, changed)?;
-    let compound =
-        include_str!("../../sail-verus/tests/fixtures/neutral-contracts/compound_field.rs");
-    let guarded =
-        include_str!("../../sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs");
+    let compound = include_str!(
+        "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.rs"
+    );
+    let guarded = include_str!(
+        "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs"
+    );
     compound_runtime_witness(&output, compound)?;
     let (service, client) = start(&sail, &output)?;
     let positive = one(&client, &output, "positive", original, ProofState::Proved)?;

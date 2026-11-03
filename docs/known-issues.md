@@ -15,6 +15,17 @@ no general service-performance or completed-service claim follows.
 Native capacity/lifetime, external owner/EOF and solver interpretation
 relations remain open; source/hash binding does not establish them.
 
+## Mutation harness qualification
+
+The ongoing native CapybaraKV catalogue matches stock but its cold cases fail
+the explanation-note count: one existing `SAIL3138` and one existing `SAIL3146`
+are incorrectly labeled a repeated bundle-miss note
+([#655](https://github.com/Chelis-Lang/sail/issues/655)). The original failed
+samples and complete output remain retained. A narrow per-code correction is
+drafted and being qualified; owner approval remains pending. This affects
+release-performance classification, without changing product code, solver
+input or proof authority. Independent crate-installation qualification continues.
+
 ## Accepted integration limit
 
 - A hosted cached-session statistics control intermittently took the genuine

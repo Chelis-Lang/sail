@@ -23,7 +23,7 @@ dive-ir = { git = "https://github.com/Chelis-Lang/dive", rev = "1025cd6a0510183b
 sail-dive = { path = "crates/sail-dive" }
 # Sail's own crates, unchanged, from the main workspace.
 sail-api = { path = "../../crates/sail-api" }
-sail-cli = { path = "../../crates/sail-cli" }
+sail-cli = { package = "sail-solve", path = "../../crates/sail-cli" }
 sail-daemon = { path = "../../crates/sail-daemon" }
 sail-runtime = { path = "../../crates/sail-runtime" }
 # The same requirements as the root workspace; Cargo.lock started from its lock.

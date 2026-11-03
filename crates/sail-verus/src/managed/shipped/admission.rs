@@ -11,12 +11,12 @@ use serde_json::Value;
 
 const POLICY: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../engine/verus/vstd-boundary-inputs.json"
+    "/resources/engine/verus/vstd-boundary-inputs.json"
 ));
 
 const VEST_POLICY: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../engine/verus/vstd-boundary-vest-inputs.json"
+    "/resources/engine/verus/vstd-boundary-vest-inputs.json"
 ));
 const POLICIES: [&str; 2] = [POLICY, VEST_POLICY];
 

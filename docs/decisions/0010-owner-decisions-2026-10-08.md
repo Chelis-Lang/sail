@@ -93,3 +93,10 @@ workspace sets `license = "MIT"`, and `publish = false` stays until the owner
 decides to publish crates. `CONTRIBUTING.md` records the contribution policy:
 no outside pull requests for now, issues welcome, and private vulnerability
 reports through GitHub.
+
+## Update 2026-11-02: crates.io distribution
+
+The owner authorized publishing Sail as `sail-solve` and using crates.io for
+future releases. ADR 0098 supersedes the crate-publication restriction above
+for the explicitly selected public dependency set. Tooling and private
+extensions retain `publish = false`.

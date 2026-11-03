@@ -306,3 +306,10 @@ Each entry names the charter text it qualifies and the ADR that records it.
     diagnostic, and records accepted exceptions separately with original raw
     differences. Fork comparisons remain exact. This changes no solver input,
     cache identity or product verdict.
+
+14. *Distribution and crate publishing* (owner decision, 2026-11-02). The
+    owner authorized publishing Sail as `sail-solve` on crates.io and making
+    crate publication part of future releases. ADR 0098 records the selected
+    public package set, exact versioned dependencies and installation route.
+    Contributor tooling and private temporal extensions stay unpublished;
+    proof and release-qualification requirements are unchanged.

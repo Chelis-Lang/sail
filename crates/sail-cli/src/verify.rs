@@ -224,7 +224,7 @@ fn managed_setup() -> Result<Setup, SetupError> {
 fn setup() -> Result<Setup, SetupError> {
     let cargo_verus = cargo_verus().map_err(|message| SetupError("SAIL0101", message))?;
     let shim = std::env::current_exe()
-        .map(|me| me.with_file_name("sail-z3"))
+        .map(|me| shim_for(&me))
         .map_err(|e| SetupError("SAIL0102", format!("cannot locate sail: {e}")))?;
     if !shim.is_file() {
         return Err(SetupError(
@@ -253,6 +253,16 @@ fn setup() -> Result<Setup, SetupError> {
         socket,
         cargo_toolchain: sail_verus::managed::CargoToolchain::Caller,
     })
+}
+
+/// Both distribution channels install the same small shim beside the CLI.
+pub(crate) fn shim_for(executable: &Path) -> PathBuf {
+    let cargo = executable.with_file_name("sail-solve-z3");
+    if cargo.is_file() {
+        cargo
+    } else {
+        executable.with_file_name("sail-z3")
+    }
 }
 
 /// `cargo verus verify <args>` with sail's environment; the daemon is

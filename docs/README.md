@@ -59,7 +59,7 @@ them.
 - [Native source sync](testing.md): linked-worktree support,
   dirty-input preservation and [qualification](validation/host-source-sync.md).
 - [Releasing](releasing.md): release procedure, archive layout, how `sail`
-  finds its bundled Verus.
+  finds its bundled Verus, and [crate-publication qualification](validation/crates-io.md).
 - [Sail's Verus](../engine/verus/README.md): the fork runtime and its
   interactive engine.
 - [Managed runs](managed-cold-start.md): what a first run costs and when

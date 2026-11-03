@@ -4,9 +4,11 @@ description = "The Z3-compatible binary Verus invokes; falls back to direct Z3 o
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
+homepage = "https://github.com/Chelis-Lang/sail"
 
 [[bin]]
 name = "sail-z3"

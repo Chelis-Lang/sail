@@ -97,14 +97,16 @@ used by repair-check.
 
 USAGE:
     sail engine status [--output json]
-    sail engine install --from PATH [--output json]
+    sail engine install [--from PATH] [--output json]
 
-`status` checks every runtime file against its pin. The release archives
-bundle Sail's Verus beside `sail`, so it needs no setup. SAIL_VERUS_BUILD
-names a build to use instead. In a Sail source checkout, download it with
-`python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json
---cache ~/.cache/sail` (artifact-macos.json on macOS), or build it with
-`cargo xtask build-verus-engine`.
+`install` downloads the exact pinned runtime over HTTPS using Python 3,
+checks its archive digest, provenance and every runtime file, and installs
+it in Sail's cache. It never replaces a conflicting or corrupt install.
+`--from PATH` imports an existing validated build instead. Install the
+runtime's pinned Rust toolchain with rust-src before verification.
+`status` checks every runtime file against its pin. Release archives bundle
+Sail's Verus, so they need no runtime download. SAIL_VERUS_BUILD names an
+explicit build to use instead.
 ",
     ),
     (

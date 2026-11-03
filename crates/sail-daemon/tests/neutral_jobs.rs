@@ -76,8 +76,10 @@ impl Fixture {
         Client::new(self.root.join("j.sock"))
     }
     fn input(&self) -> TestResult<Submission> {
-        let source =
-            include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.rs").to_owned();
+        let source = include_str!(
+            "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs"
+        )
+        .to_owned();
         let input = Submission {
             profile: 1,
             source_sha256: sail_key::QueryKey(sail_key::sha256(source.as_bytes())).to_string(),
@@ -407,8 +409,10 @@ fn safe_version_one_results_and_baselines_keep_the_original_bytes() -> TestResul
     let fixture = Fixture::new()?;
     let job = retain_version_one(
         &fixture,
-        include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.rs"),
-        include_str!("../../sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"),
+        include_str!("../resources/crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs"),
+        include_str!(
+            "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"
+        ),
     )?;
     let raw = fixture.root.join("jobs").join(&job).join("stdout");
     let original = std::fs::read(&raw)?;
@@ -454,17 +458,19 @@ fn safe_version_one_results_and_baselines_keep_the_original_bytes() -> TestResul
 fn affected_version_one_history_is_refused_even_with_intact_content_seals() -> TestResult {
     for (source, manifest) in [
         (
-            include_str!("../../sail-verus/tests/fixtures/neutral-contracts/compound_field.rs"),
             include_str!(
-                "../../sail-verus/tests/fixtures/neutral-contracts/compound_field.v1-manifest.json"
+                "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.rs"
+            ),
+            include_str!(
+                "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.v1-manifest.json"
             ),
         ),
         (
             include_str!(
-                "../../sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs"
+                "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs"
             ),
             include_str!(
-                "../../sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.v1-manifest.json"
+                "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.v1-manifest.json"
             ),
         ),
     ] {
@@ -510,7 +516,7 @@ fn a_new_worker_cannot_supply_even_an_unaffected_version_one_projection() -> Tes
     let path = fixture.root.join("fixture.json");
     let mut worker: WorkerResult = serde_json::from_slice(&std::fs::read(&path)?)?;
     worker.contracts.manifest = serde_json::from_str(include_str!(
-        "../../sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"
+        "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"
     ))?;
     std::fs::write(path, serde_json::to_vec(&worker)?)?;
     let mut server = fixture.server()?;

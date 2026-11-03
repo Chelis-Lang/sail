@@ -42,7 +42,7 @@ import tomllib
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'THIRD-PARTY-NOTICES'
 TARGETS = ('x86_64-unknown-linux-gnu', 'aarch64-apple-darwin')
-SAIL_ROOTS = ('sail-cli', 'sail-shim')
+SAIL_ROOTS = ('sail-solve', 'sail-shim')
 VERUS_ROOTS = ('rust_verify', 'verus', 'cargo-verus', 'verus_builtin', 'verus_builtin_macros',
                'verus_state_machines_macros')
 LICENSE_FILE = re.compile(r'^(licen[cs]e|copying|notice|copyright|unlicense|authors)([-._].*)?$', re.I)

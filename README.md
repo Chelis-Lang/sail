@@ -8,7 +8,7 @@ diagnostics and exit codes, but it:
 - caches Z3 answers across edits;
 - reuses the proofs of targets whose inputs haven't changed;
 - restores the earlier proof when you undo an edit;
-- ships a preverified `vstd` for new projects.
+- ships a preverified `vstd` in release archives for new projects.
 
 A typical one-line edit verifies 1.2–2.5 times faster than plain Verus, and
 an undone edit up to 30 times faster. See [performance](docs/performance.md)
@@ -19,6 +19,19 @@ complete verification evidence, it reports an error or an unconfirmed result
 instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 
 ## Install
+
+The initial crates.io package is `sail-solve 0.2.0-rc.1`:
+
+```sh
+rustup toolchain install 1.99.1 --profile minimal --component rust-src
+cargo +1.99.1 install sail-solve --version 0.2.0-rc.1 --locked
+sail engine install
+```
+
+This installs `sail` and its companion shim from Rust sources, then downloads
+and checks the pinned Verus/Z3 runtime. It requires Rust 1.99 or newer, a C
+toolchain, Rustup and Python 3. The [installation guide](docs/install.md)
+records platform support and the differences from prebuilt archives.
 
 Sail is distributed as a prebuilt archive per platform on
 [GitHub releases](https://github.com/Chelis-Lang/sail/releases). Each archive
@@ -170,7 +183,7 @@ A repair is accepted only when the whole target verifies. See the
 ```sh
 git clone https://github.com/Chelis-Lang/sail
 cd sail
-cargo build --release -p sail-cli -p sail-shim
+cargo build --release -p sail-solve -p sail-shim
 export PATH="$PWD/target/release:$PATH"
 python3 ci/engine-artifact.py fetch --pin engine/verus/artifact-linux.json \
   --cache ~/.cache/sail          # use artifact-macos.json on macOS

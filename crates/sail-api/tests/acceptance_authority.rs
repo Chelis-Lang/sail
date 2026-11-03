@@ -15,7 +15,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 fn passing_report() -> Result<Report, Box<dyn std::error::Error>> {
     let mut report: Report = serde_json::from_str(include_str!(
-        "../../sail-cli/tests/fixtures/attr/report.golden.json"
+        "../resources/crates/sail-cli/tests/fixtures/attr/report.golden.json"
     ))?;
     report.exit_code = Some(0);
     report.error = None;

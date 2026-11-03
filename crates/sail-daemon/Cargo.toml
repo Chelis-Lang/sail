@@ -4,9 +4,11 @@ description = "The long-lived service: scheduling, speculation, cancellation and
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 license.workspace = true
 repository.workspace = true
+readme = "README.md"
+homepage = "https://github.com/Chelis-Lang/sail"
 
 [dependencies]
 sail-acceptance.workspace = true

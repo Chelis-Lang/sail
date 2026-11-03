@@ -283,7 +283,7 @@ cargo xtask gen-mutants --project vest --name vest --seed 20261020 --per-class 5
 # On native Linux x86-64 (the reference platform), with stock Verus installed
 # (`cargo xtask fetch-verus`): three stock runs per mutant settle `expected`
 # and drop mutants that vary, never compile or do not finish.
-cargo build --release -p sail-cli -p sail-shim -p sail-bench
+cargo build --release -p sail-solve -p sail-shim -p sail-bench
 ./target/release/sail-bench mutants oracle --catalogue corpus/mutants/vest.toml --jobs 4
 ```
 

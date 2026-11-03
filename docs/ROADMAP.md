@@ -29,8 +29,8 @@ multi-backend verification runtime (#146).
 ## 0.1.0
 
 Sail 0.1.0 was published on 2026-10-29 as GitHub release `v0.1.0`
-(`b56889f1`), MIT-licensed, with attested macOS and Linux archives; nothing
-goes to crates.io. It was qualified as `0.1.0-rc.7` (`8797ccd4`)
+(`b56889f1`), MIT-licensed, with attested macOS and Linux archives. That version
+was not published to crates.io. It was qualified as `0.1.0-rc.7` (`8797ccd4`)
 ([record](validation/release-candidate.md),
 [release notes](release-notes/0.1.0.md)). Open defects and limits are in
 [known issues](known-issues.md).
@@ -71,10 +71,13 @@ jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
 ## Next-release expansion
 
 The owner selected the [expanded implementation package](design/release-expansion.md)
-alongside standalone-file development. No release version or publication is selected.
+alongside standalone-file development. The owner also authorized initial
+`sail-solve 0.2.0-rc.1` crate publication; broader archive-release composition
+and performance acceptance remain separate.
 
 | Deliverable | Current state | Remaining gate |
 |---|---|---|
+| Crates.io distribution (`sail-solve`) | Owner authorized initial and future publication; all eighteen source packages, Linux/Mac native gates, normal user setup and complete installed workflows pass ([record](validation/crates-io.md)) | Protected PR, initial registry upload and anonymous registry installations |
 | Daemon preparation and post-creation verification | Merged in #647; Linux/Mac replay, generated-input, foreground and queued-edit controls pass | Full performance acceptance remains separate |
 | Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Merged in #647; runtime-composed acceptance remains separate |
 | Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Merged in #647; readiness correction merged in #651; final runtime composition remains |

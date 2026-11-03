@@ -107,8 +107,9 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
         ],
     ),
     (
-        "sail-cli",
+        "sail-solve",
         &[
+            "sail-shim",
             "sail-contracts",
             "sail-api",
             "sail-cache",
@@ -135,7 +136,7 @@ pub const EXTENSION: &str = "extensions/temporal";
 pub const EXTENSION_ALLOWED: &[(&str, &[&str])] = &[
     ("sail-dive", &["sail-api", "sail-runtime"]),
     ("sail-runtime-worker", &["sail-dive"]),
-    ("sail-temporal", &["sail-cli", "sail-dive"]),
+    ("sail-temporal", &["sail-solve", "sail-dive"]),
 ];
 
 #[cfg(test)]

@@ -1,0 +1,2710 @@
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         246
+ :mk-clause-binary    33
+ :num-allocs          49645
+ :propagations        29
+ :rlimit-count        24862)
+<<DONE>>
+(:added-eqs           73
+ :binary-propagations 29
+ :max-memory          17.69
+ :memory              17.69
+ :mk-bool-var         246
+ :mk-clause-binary    33
+ :num-allocs          49645
+ :propagations        29
+ :rlimit-count        24906)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unsat
+<<DONE>>
+(:added-eqs                 85
+ :arith-assert-diseq        6
+ :arith-assert-lower        12
+ :arith-assert-upper        4
+ :arith-conflicts           2
+ :arith-eq-adapter          3
+ :arith-num-rows            5
+ :arith-pivots              4
+ :arith-row-summations      5
+ :arith-tableau-max-columns 29
+ :arith-tableau-max-rows    5
+ :binary-propagations       32
+ :conflicts                 5
+ :decisions                 4
+ :del-clause                15
+ :max-generation            1
+ :max-memory                17.69
+ :memory                    17.69
+ :mk-bool-var               282
+ :mk-clause                 40
+ :mk-clause-binary          33
+ :num-allocs                49645
+ :num-checks                1
+ :propagations              60
+ :quant-instantiations      4
+ :rlimit-count              25688)
+<<DONE>>
+(:added-eqs                 85
+ :arith-assert-diseq        6
+ :arith-assert-lower        12
+ :arith-assert-upper        4
+ :arith-conflicts           2
+ :arith-eq-adapter          3
+ :arith-num-rows            5
+ :arith-pivots              6
+ :arith-row-summations      5
+ :arith-tableau-max-columns 29
+ :arith-tableau-max-rows    5
+ :binary-propagations       32
+ :conflicts                 5
+ :decisions                 4
+ :del-clause                40
+ :max-generation            1
+ :max-memory                17.69
+ :memory                    17.69
+ :mk-bool-var               284
+ :mk-clause                 40
+ :mk-clause-binary          33
+ :num-allocs                49645
+ :num-checks                1
+ :propagations              60
+ :quant-instantiations      4
+ :rlimit-count              26108)
+<<DONE>>
+(:added-eqs                 85
+ :arith-assert-diseq        6
+ :arith-assert-lower        12
+ :arith-assert-upper        4
+ :arith-conflicts           2
+ :arith-eq-adapter          3
+ :arith-num-rows            5
+ :arith-pivots              6
+ :arith-row-summations      5
+ :arith-tableau-max-columns 29
+ :arith-tableau-max-rows    5
+ :binary-propagations       32
+ :conflicts                 5
+ :decisions                 4
+ :del-clause                40
+ :max-generation            1
+ :max-memory                17.69
+ :memory                    17.69
+ :mk-bool-var               284
+ :mk-clause                 40
+ :mk-clause-binary          33
+ :num-allocs                49645
+ :num-checks                1
+ :propagations              60
+ :quant-instantiations      4
+ :rlimit-count              26227)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unknown
+<<DONE>>
+(:reason-unknown "(incomplete (theory arithmetic))")
+<<DONE>>
+(
+  ;; universe for Dcr:
+  ;;   Dcr!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Dcr!val!0 () Dcr)
+  ;; cardinality constraint:
+  (forall ((x Dcr)) (= x Dcr!val!0))
+  ;; -----------
+  ;; universe for distinct-elems!0:
+  ;;   distinct-elems!0!val!35 distinct-elems!0!val!34 distinct-elems!0!val!43 distinct-elems!0!val!40 distinct-elems!0!val!39 distinct-elems!0!val!4 distinct-elems!0!val!3 distinct-elems!0!val!27 distinct-elems!0!val!36 distinct-elems!0!val!45 distinct-elems!0!val!12 distinct-elems!0!val!8 distinct-elems!0!val!10 distinct-elems!0!val!5 distinct-elems!0!val!28 distinct-elems!0!val!48 distinct-elems!0!val!38 distinct-elems!0!val!19 distinct-elems!0!val!6 distinct-elems!0!val!33 distinct-elems!0!val!1 distinct-elems!0!val!41 distinct-elems!0!val!42 distinct-elems!0!val!30 distinct-elems!0!val!50 distinct-elems!0!val!29 distinct-elems!0!val!11 distinct-elems!0!val!46 distinct-elems!0!val!49 distinct-elems!0!val!53 distinct-elems!0!val!37 distinct-elems!0!val!13 distinct-elems!0!val!24 distinct-elems!0!val!23 distinct-elems!0!val!15 distinct-elems!0!val!31 distinct-elems!0!val!2 distinct-elems!0!val!55 distinct-elems!0!val!21 distinct-elems!0!val!17 distinct-elems!0!val!20 distinct-elems!0!val!26 distinct-elems!0!val!18 distinct-elems!0!val!14 distinct-elems!0!val!0 distinct-elems!0!val!25 distinct-elems!0!val!44 distinct-elems!0!val!57 distinct-elems!0!val!56 distinct-elems!0!val!7 distinct-elems!0!val!47 distinct-elems!0!val!9 distinct-elems!0!val!54 distinct-elems!0!val!52 distinct-elems!0!val!16 distinct-elems!0!val!22 distinct-elems!0!val!32 distinct-elems!0!val!51 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun distinct-elems!0!val!35 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!34 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!43 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!40 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!39 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!4 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!3 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!27 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!36 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!45 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!12 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!8 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!10 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!5 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!28 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!48 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!38 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!19 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!6 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!33 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!1 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!41 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!42 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!30 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!50 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!29 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!11 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!46 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!49 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!53 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!37 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!13 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!24 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!23 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!15 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!31 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!2 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!55 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!21 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!17 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!20 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!26 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!18 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!14 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!0 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!25 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!44 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!57 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!56 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!7 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!47 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!9 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!54 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!52 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!16 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!22 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!32 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!51 () distinct-elems!0)
+  ;; cardinality constraint:
+  (forall ((x distinct-elems!0))
+          (or (= x distinct-elems!0!val!35)
+              (= x distinct-elems!0!val!34)
+              (= x distinct-elems!0!val!43)
+              (= x distinct-elems!0!val!40)
+              (= x distinct-elems!0!val!39)
+              (= x distinct-elems!0!val!4)
+              (= x distinct-elems!0!val!3)
+              (= x distinct-elems!0!val!27)
+              (= x distinct-elems!0!val!36)
+              (= x distinct-elems!0!val!45)
+              (= x distinct-elems!0!val!12)
+              (= x distinct-elems!0!val!8)
+              (= x distinct-elems!0!val!10)
+              (= x distinct-elems!0!val!5)
+              (= x distinct-elems!0!val!28)
+              (= x distinct-elems!0!val!48)
+              (= x distinct-elems!0!val!38)
+              (= x distinct-elems!0!val!19)
+              (= x distinct-elems!0!val!6)
+              (= x distinct-elems!0!val!33)
+              (= x distinct-elems!0!val!1)
+              (= x distinct-elems!0!val!41)
+              (= x distinct-elems!0!val!42)
+              (= x distinct-elems!0!val!30)
+              (= x distinct-elems!0!val!50)
+              (= x distinct-elems!0!val!29)
+              (= x distinct-elems!0!val!11)
+              (= x distinct-elems!0!val!46)
+              (= x distinct-elems!0!val!49)
+              (= x distinct-elems!0!val!53)
+              (= x distinct-elems!0!val!37)
+              (= x distinct-elems!0!val!13)
+              (= x distinct-elems!0!val!24)
+              (= x distinct-elems!0!val!23)
+              (= x distinct-elems!0!val!15)
+              (= x distinct-elems!0!val!31)
+              (= x distinct-elems!0!val!2)
+              (= x distinct-elems!0!val!55)
+              (= x distinct-elems!0!val!21)
+              (= x distinct-elems!0!val!17)
+              (= x distinct-elems!0!val!20)
+              (= x distinct-elems!0!val!26)
+              (= x distinct-elems!0!val!18)
+              (= x distinct-elems!0!val!14)
+              (= x distinct-elems!0!val!0)
+              (= x distinct-elems!0!val!25)
+              (= x distinct-elems!0!val!44)
+              (= x distinct-elems!0!val!57)
+              (= x distinct-elems!0!val!56)
+              (= x distinct-elems!0!val!7)
+              (= x distinct-elems!0!val!47)
+              (= x distinct-elems!0!val!9)
+              (= x distinct-elems!0!val!54)
+              (= x distinct-elems!0!val!52)
+              (= x distinct-elems!0!val!16)
+              (= x distinct-elems!0!val!22)
+              (= x distinct-elems!0!val!32)
+              (= x distinct-elems!0!val!51)))
+  ;; -----------
+  ;; universe for FuelId:
+  ;;   FuelId!val!16 FuelId!val!14 FuelId!val!28 FuelId!val!34 FuelId!val!56 FuelId!val!22 FuelId!val!33 FuelId!val!44 FuelId!val!4 FuelId!val!32 FuelId!val!2 FuelId!val!25 FuelId!val!30 FuelId!val!51 FuelId!val!46 FuelId!val!36 FuelId!val!19 FuelId!val!52 FuelId!val!10 FuelId!val!31 FuelId!val!27 FuelId!val!29 FuelId!val!35 FuelId!val!50 FuelId!val!18 FuelId!val!41 FuelId!val!24 FuelId!val!21 FuelId!val!0 FuelId!val!9 FuelId!val!49 FuelId!val!38 FuelId!val!55 FuelId!val!54 FuelId!val!11 FuelId!val!45 FuelId!val!20 FuelId!val!39 FuelId!val!57 FuelId!val!53 FuelId!val!42 FuelId!val!43 FuelId!val!26 FuelId!val!17 FuelId!val!8 FuelId!val!48 FuelId!val!3 FuelId!val!15 FuelId!val!37 FuelId!val!5 FuelId!val!6 FuelId!val!47 FuelId!val!23 FuelId!val!1 FuelId!val!7 FuelId!val!13 FuelId!val!40 FuelId!val!12 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun FuelId!val!16 () FuelId)
+  (declare-fun FuelId!val!14 () FuelId)
+  (declare-fun FuelId!val!28 () FuelId)
+  (declare-fun FuelId!val!34 () FuelId)
+  (declare-fun FuelId!val!56 () FuelId)
+  (declare-fun FuelId!val!22 () FuelId)
+  (declare-fun FuelId!val!33 () FuelId)
+  (declare-fun FuelId!val!44 () FuelId)
+  (declare-fun FuelId!val!4 () FuelId)
+  (declare-fun FuelId!val!32 () FuelId)
+  (declare-fun FuelId!val!2 () FuelId)
+  (declare-fun FuelId!val!25 () FuelId)
+  (declare-fun FuelId!val!30 () FuelId)
+  (declare-fun FuelId!val!51 () FuelId)
+  (declare-fun FuelId!val!46 () FuelId)
+  (declare-fun FuelId!val!36 () FuelId)
+  (declare-fun FuelId!val!19 () FuelId)
+  (declare-fun FuelId!val!52 () FuelId)
+  (declare-fun FuelId!val!10 () FuelId)
+  (declare-fun FuelId!val!31 () FuelId)
+  (declare-fun FuelId!val!27 () FuelId)
+  (declare-fun FuelId!val!29 () FuelId)
+  (declare-fun FuelId!val!35 () FuelId)
+  (declare-fun FuelId!val!50 () FuelId)
+  (declare-fun FuelId!val!18 () FuelId)
+  (declare-fun FuelId!val!41 () FuelId)
+  (declare-fun FuelId!val!24 () FuelId)
+  (declare-fun FuelId!val!21 () FuelId)
+  (declare-fun FuelId!val!0 () FuelId)
+  (declare-fun FuelId!val!9 () FuelId)
+  (declare-fun FuelId!val!49 () FuelId)
+  (declare-fun FuelId!val!38 () FuelId)
+  (declare-fun FuelId!val!55 () FuelId)
+  (declare-fun FuelId!val!54 () FuelId)
+  (declare-fun FuelId!val!11 () FuelId)
+  (declare-fun FuelId!val!45 () FuelId)
+  (declare-fun FuelId!val!20 () FuelId)
+  (declare-fun FuelId!val!39 () FuelId)
+  (declare-fun FuelId!val!57 () FuelId)
+  (declare-fun FuelId!val!53 () FuelId)
+  (declare-fun FuelId!val!42 () FuelId)
+  (declare-fun FuelId!val!43 () FuelId)
+  (declare-fun FuelId!val!26 () FuelId)
+  (declare-fun FuelId!val!17 () FuelId)
+  (declare-fun FuelId!val!8 () FuelId)
+  (declare-fun FuelId!val!48 () FuelId)
+  (declare-fun FuelId!val!3 () FuelId)
+  (declare-fun FuelId!val!15 () FuelId)
+  (declare-fun FuelId!val!37 () FuelId)
+  (declare-fun FuelId!val!5 () FuelId)
+  (declare-fun FuelId!val!6 () FuelId)
+  (declare-fun FuelId!val!47 () FuelId)
+  (declare-fun FuelId!val!23 () FuelId)
+  (declare-fun FuelId!val!1 () FuelId)
+  (declare-fun FuelId!val!7 () FuelId)
+  (declare-fun FuelId!val!13 () FuelId)
+  (declare-fun FuelId!val!40 () FuelId)
+  (declare-fun FuelId!val!12 () FuelId)
+  ;; cardinality constraint:
+  (forall ((x FuelId))
+          (or (= x FuelId!val!16)
+              (= x FuelId!val!14)
+              (= x FuelId!val!28)
+              (= x FuelId!val!34)
+              (= x FuelId!val!56)
+              (= x FuelId!val!22)
+              (= x FuelId!val!33)
+              (= x FuelId!val!44)
+              (= x FuelId!val!4)
+              (= x FuelId!val!32)
+              (= x FuelId!val!2)
+              (= x FuelId!val!25)
+              (= x FuelId!val!30)
+              (= x FuelId!val!51)
+              (= x FuelId!val!46)
+              (= x FuelId!val!36)
+              (= x FuelId!val!19)
+              (= x FuelId!val!52)
+              (= x FuelId!val!10)
+              (= x FuelId!val!31)
+              (= x FuelId!val!27)
+              (= x FuelId!val!29)
+              (= x FuelId!val!35)
+              (= x FuelId!val!50)
+              (= x FuelId!val!18)
+              (= x FuelId!val!41)
+              (= x FuelId!val!24)
+              (= x FuelId!val!21)
+              (= x FuelId!val!0)
+              (= x FuelId!val!9)
+              (= x FuelId!val!49)
+              (= x FuelId!val!38)
+              (= x FuelId!val!55)
+              (= x FuelId!val!54)
+              (= x FuelId!val!11)
+              (= x FuelId!val!45)
+              (= x FuelId!val!20)
+              (= x FuelId!val!39)
+              (= x FuelId!val!57)
+              (= x FuelId!val!53)
+              (= x FuelId!val!42)
+              (= x FuelId!val!43)
+              (= x FuelId!val!26)
+              (= x FuelId!val!17)
+              (= x FuelId!val!8)
+              (= x FuelId!val!48)
+              (= x FuelId!val!3)
+              (= x FuelId!val!15)
+              (= x FuelId!val!37)
+              (= x FuelId!val!5)
+              (= x FuelId!val!6)
+              (= x FuelId!val!47)
+              (= x FuelId!val!23)
+              (= x FuelId!val!1)
+              (= x FuelId!val!7)
+              (= x FuelId!val!13)
+              (= x FuelId!val!40)
+              (= x FuelId!val!12)))
+  ;; -----------
+  ;; universe for Type:
+  ;;   Type!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Type!val!0 () Type)
+  ;; cardinality constraint:
+  (forall ((x Type)) (= x Type!val!0))
+  ;; -----------
+  (define-fun fuel%vstd!std_specs.vecdeque.group_vec_dequeue_axioms. () FuelId
+    FuelId!val!55)
+  (define-fun fuel%vstd!std_specs.hash.group_hash_axioms. () FuelId
+    FuelId!val!52)
+  (define-fun fuel%vstd!laws_eq.u64_laws.group_laws_eq. () FuelId
+    FuelId!val!14)
+  (define-fun fuel%vstd!laws_eq.u16_laws.group_laws_eq. () FuelId
+    FuelId!val!10)
+  (define-fun fuel%vstd!seq.group_seq_lemmas. () FuelId
+    FuelId!val!39)
+  (define-fun fuel%vstd!laws_eq.tuple_8_laws.group_laws_eq. () FuelId
+    FuelId!val!27)
+  (define-fun i@0 () Int
+    153)
+  (define-fun fuel%vstd!std_specs.nonzero.group_nonzero_axioms. () FuelId
+    FuelId!val!56)
+  (define-fun fuel%vstd!laws_cmp.group_laws_cmp. () FuelId
+    FuelId!val!6)
+  (define-fun fuel%vstd!laws_eq.bool_laws.group_laws_eq. () FuelId
+    FuelId!val!7)
+  (define-fun $ () Dcr
+    Dcr!val!0)
+  (define-fun fuel%vstd!laws_eq.tuple_7_laws.group_laws_eq. () FuelId
+    FuelId!val!26)
+  (define-fun fuel%vstd!std_specs.fmt.group_fmt_axioms. () FuelId
+    FuelId!val!48)
+  (define-fun fuel%vstd!imap.group_imap_lemmas. () FuelId
+    FuelId!val!4)
+  (define-fun fuel%vstd!std_specs.iter.group_iter_axioms. () FuelId
+    FuelId!val!49)
+  (define-fun fuel%vstd!function.axiom_fn_mut_call_requires. () FuelId
+    FuelId!val!0)
+  (define-fun fuel%vstd!mut_ref.group_mut_ref_axioms. () FuelId
+    FuelId!val!37)
+  (define-fun fuel%vstd!laws_eq.tuple_6_laws.group_laws_eq. () FuelId
+    FuelId!val!25)
+  (define-fun fuel%vstd!laws_eq.i8_laws.group_laws_eq. () FuelId
+    FuelId!val!9)
+  (define-fun fuel%vstd!function.group_function_axioms. () FuelId
+    FuelId!val!3)
+  (define-fun fuel%vstd!string.group_string_axioms. () FuelId
+    FuelId!val!45)
+  (define-fun fuel%vstd!std_specs.manually_drop.group_manually_drop_axioms. () FuelId
+    FuelId!val!50)
+  (define-fun fuel%vstd!set_lib.group_set_lib_default. () FuelId
+    FuelId!val!43)
+  (define-fun fuel%vstd!laws_eq.usize_laws.group_laws_eq. () FuelId
+    FuelId!val!18)
+  (define-fun fuel%vstd!laws_eq.tuple_1_laws.group_laws_eq. () FuelId
+    FuelId!val!20)
+  (define-fun fuel%vstd!seq_lib.group_seq_lib_default. () FuelId
+    FuelId!val!41)
+  (define-fun SZ () Int
+    32)
+  (define-fun fuel%vstd!array.group_array_axioms. () FuelId
+    FuelId!val!2)
+  (define-fun fuel%vstd!laws_eq.u32_laws.group_laws_eq. () FuelId
+    FuelId!val!12)
+  (define-fun fuel%vstd!laws_eq.tuple_11_laws.group_laws_eq. () FuelId
+    FuelId!val!30)
+  (define-fun fuel%vstd!group_vstd_default. () FuelId
+    FuelId!val!57)
+  (define-fun fuel%vstd!laws_eq.group_laws_eq. () FuelId
+    FuelId!val!32)
+  (define-fun fuel%vstd!raw_ptr.group_raw_ptr_axioms. () FuelId
+    FuelId!val!38)
+  (define-fun fuel%vstd!laws_eq.tuple_3_laws.group_laws_eq. () FuelId
+    FuelId!val!22)
+  (define-fun fuel%vstd!laws_eq.tuple_5_laws.group_laws_eq. () FuelId
+    FuelId!val!24)
+  (define-fun fuel%vstd!laws_eq.u8_laws.group_laws_eq. () FuelId
+    FuelId!val!8)
+  (define-fun fuel%vstd!laws_eq.i32_laws.group_laws_eq. () FuelId
+    FuelId!val!13)
+  (define-fun fuel%vstd!std_specs.btree.group_btree_axioms. () FuelId
+    FuelId!val!51)
+  (define-fun fuel%vstd!laws_eq.tuple_10_laws.group_laws_eq. () FuelId
+    FuelId!val!29)
+  (define-fun fuel%vstd!laws_eq.isize_laws.group_laws_eq. () FuelId
+    FuelId!val!19)
+  (define-fun fuel_defaults () Bool
+    true)
+  (define-fun fuel%vstd!laws_eq.u128_laws.group_laws_eq. () FuelId
+    FuelId!val!16)
+  (define-fun fuel%vstd!laws_eq.i128_laws.group_laws_eq. () FuelId
+    FuelId!val!17)
+  (define-fun fuel%vstd!laws_eq.tuple_2_laws.group_laws_eq. () FuelId
+    FuelId!val!21)
+  (define-fun i@1 () Int
+    154)
+  (define-fun fuel%vstd!laws_eq.i64_laws.group_laws_eq. () FuelId
+    FuelId!val!15)
+  (define-fun fuel%vstd!layout.group_layout_axioms. () FuelId
+    FuelId!val!34)
+  (define-fun fuel%vstd!laws_eq.tuple_12_laws.group_laws_eq. () FuelId
+    FuelId!val!31)
+  (define-fun fuel%vstd!set.group_set_lemmas. () FuelId
+    FuelId!val!42)
+  (define-fun fuel%vstd!laws_eq.tuple_9_laws.group_laws_eq. () FuelId
+    FuelId!val!28)
+  (define-fun fuel%vstd!laws_eq.tuple_4_laws.group_laws_eq. () FuelId
+    FuelId!val!23)
+  (define-fun fuel%vstd!std_specs.vec.group_vec_axioms. () FuelId
+    FuelId!val!54)
+  (define-fun n! () Int
+    189)
+  (define-fun fuel%vstd!slice.group_slice_axioms. () FuelId
+    FuelId!val!44)
+  (define-fun fuel%vstd!function.axiom_fn_mut_call_ensures. () FuelId
+    FuelId!val!1)
+  (define-fun fuel%vstd!layout.group_align_properties. () FuelId
+    FuelId!val!33)
+  (define-fun %%location_label%%1 () Bool
+    true)
+  (define-fun fuel%vstd!iset.group_iset_lemmas. () FuelId
+    FuelId!val!5)
+  (define-fun fuel%vstd!map.group_map_lemmas. () FuelId
+    FuelId!val!35)
+  (define-fun fuel%vstd!std_specs.range.group_range_axioms. () FuelId
+    FuelId!val!53)
+  (define-fun decrease%init0%0 () Int
+    36)
+  (define-fun fuel%vstd!std_specs.control_flow.group_control_flow_axioms. () FuelId
+    FuelId!val!47)
+  (define-fun fuel%vstd!std_specs.bits.group_bits_axioms. () FuelId
+    FuelId!val!46)
+  (define-fun TYPE%tuple%0. () Type
+    Type!val!0)
+  (define-fun fuel%vstd!seq_lib.group_filter_ensures. () FuelId
+    FuelId!val!40)
+  (define-fun fuel%vstd!multiset.group_multiset_axioms. () FuelId
+    FuelId!val!36)
+  (define-fun fuel%vstd!laws_eq.i16_laws.group_laws_eq. () FuelId
+    FuelId!val!11)
+  (define-fun s@0 () Int
+    18446744073709551462)
+  (define-fun %%location_label%%0 () Bool
+    false)
+  (define-fun s@1 () Int
+    0)
+  (define-fun %%location_label%%2 () Bool
+    false)
+  (define-fun $dyn () Dcr
+    Dcr!val!0)
+  (define-fun REAL () Type
+    Type!val!0)
+  (define-fun $slice () Dcr
+    Dcr!val!0)
+  (define-fun ALLOCATOR_GLOBAL () Type
+    Type!val!0)
+  (define-fun zero () Fuel
+    Fuel!val!0)
+  (define-fun CHAR () Type
+    Type!val!0)
+  (define-fun ISIZE () Type
+    Type!val!0)
+  (define-fun BOOL () Type
+    Type!val!0)
+  (define-fun s! () Int
+    0)
+  (define-fun %%location_label%%4 () Bool
+    false)
+  (define-fun %%global_location_label%%0 () Bool
+    false)
+  (define-fun STRSLICE () Type
+    Type!val!0)
+  (define-fun INT () Type
+    Type!val!0)
+  (define-fun %%location_label%%5 () Bool
+    false)
+  (define-fun %%location_label%%3 () Bool
+    false)
+  (define-fun USIZE () Type
+    Type!val!0)
+  (define-fun NAT () Type
+    Type!val!0)
+  (define-fun uClip ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 64) (= x!1 153)) 153
+      154))
+  (define-fun Mul ((x!0 Int) (x!1 Int)) Int
+    36893488147419102924)
+  (define-fun iLo ((x!0 Int)) Int
+    (ite (= x!0 16) (- 32768)
+    (ite (= x!0 32) (- 2147483648)
+    (ite (= x!0 64) (- 9223372036854775808)
+    (ite (= x!0 128) (- 170141183460469231731687303715884105728)
+      (- 128))))))
+  (define-fun uHi ((x!0 Int)) Int
+    (ite (= x!0 16) 65536
+    (ite (= x!0 32) 4294967296
+    (ite (= x!0 64) 18446744073709551616
+    (ite (= x!0 128) 340282366920938463463374607431768211456
+      256)))))
+  (define-fun iHi ((x!0 Int)) Int
+    (ite (= x!0 16) 32768
+    (ite (= x!0 32) 2147483648
+    (ite (= x!0 64) 9223372036854775808
+    (ite (= x!0 128) 170141183460469231731687303715884105728
+      128)))))
+  (define-fun EucDiv ((x!0 Int) (x!1 Int)) Int
+    18446744073709551462)
+  (define-fun sized ((x!0 Dcr)) Bool
+    true)
+  (define-fun tr_bound%core!marker.Tuple. ((x!0 Dcr) (x!1 Type)) Bool
+    true)
+  (define-fun fuel_bool_default ((x!0 FuelId)) Bool
+    true)
+  (define-fun Sub ((x!0 Int) (x!1 Int)) Int
+    36)
+  (define-fun uInv ((x!0 Int) (x!1 Int)) Bool
+    (ite (and (= x!0 64) (= x!1 18446744073709551616)) false
+      true))
+  (define-fun Add ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 18446744073709551462) (= x!1 154)) 18446744073709551616
+      154))
+  (define-fun ens%toy!sum_to. ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun %I ((x!0 Poly)) Int
+    0)
+  (define-fun NEVER ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun iInv ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun charClip ((x!0 Int)) Int
+    0)
+  (define-fun ens%toy!max. ((x!0 Int) (x!1 Int) (x!2 Int)) Bool
+    false)
+  (define-fun req%toy!sum_to. ((x!0 Int)) Bool
+    false)
+  (define-fun RC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun bitand ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun bitshl ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun tr_bound%core!ops.function.FnMut. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Bool
+    false)
+  (define-fun charInv ((x!0 Int)) Bool
+    false)
+  (define-fun %B ((x!0 Poly)) Bool
+    false)
+  (define-fun DST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun RDiv ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun GHOST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun closure_req ((x!0 Type) (x!1 Dcr) (x!2 Type) (x!3 Poly) (x!4 Poly)) Bool
+    false)
+  (define-fun F ((x!0 fndef)) Poly
+    Poly!val!0)
+  (define-fun check_decrease_height ((x!0 Poly) (x!1 Poly) (x!2 Bool)) Bool
+    false)
+  (define-fun iClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun %Poly%tuple%0. ((x!0 Poly)) tuple%0.
+    tuple%0./tuple%0)
+  (define-fun fuel_bool ((x!0 FuelId)) Bool
+    false)
+  (define-fun bitor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun R ((x!0 Real)) Poly
+    Poly!val!0)
+  (define-fun %F ((x!0 Poly)) fndef
+    fndef_singleton)
+  (define-fun proj%%core!ops.function.FnOnce./Output ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Dcr
+    Dcr!val!0)
+  (define-fun RAdd ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun BOX ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun SLICE ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!0)
+  (define-fun height ((x!0 Poly)) Height
+    Height!val!0)
+  (define-fun const_int ((x!0 Type)) Int
+    0)
+  (define-fun CONST_BOOL ((x!0 Bool)) Type
+    Type!val!0)
+  (define-fun nClip ((x!0 Int)) Int
+    0)
+  (define-fun fun_from_recursive_field ((x!0 Poly)) Poly
+    Poly!val!0)
+  (define-fun singular_mod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun ARRAY ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!0)
+  (define-fun const_bool ((x!0 Type)) Bool
+    false)
+  (define-fun RMul ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun ARC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun tr_bound%core!ops.function.Fn. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Bool
+    false)
+  (define-fun SINT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun mut_ref_update_current% ((x!0 Poly) (x!1 Poly)) Poly
+    Poly!val!0)
+  (define-fun succ ((x!0 Fuel)) Fuel
+    Fuel!val!0)
+  (define-fun Poly%tuple%0. ((x!0 tuple%0.)) Poly
+    Poly!val!0)
+  (define-fun CONST_PTR ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun tr_bound%core!alloc.Allocator. ((x!0 Dcr) (x!1 Type)) Bool
+    false)
+  (define-fun ext_eq ((x!0 Bool) (x!1 Type) (x!2 Poly) (x!3 Poly)) Bool
+    false)
+  (define-fun %R ((x!0 Poly)) Real
+    0.0)
+  (define-fun B ((x!0 Bool)) Poly
+    Poly!val!0)
+  (define-fun mut_ref_future% ((x!0 Poly)) Poly
+    Poly!val!0)
+  (define-fun has_type ((x!0 Poly) (x!1 Type)) Bool
+    false)
+  (define-fun bitnot ((x!0 Poly)) Int
+    0)
+  (define-fun RSub ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun I ((x!0 Int)) Poly
+    Poly!val!0)
+  (define-fun default_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun height_lt ((x!0 Height) (x!1 Height)) Bool
+    false)
+  (define-fun mk_fun ((x!0 Type) (x!1 %%Function%%)) %%Function%%
+    %%Function%%!val!0)
+  (define-fun CONST_INT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun tr_bound%core!ops.function.FnOnce. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Bool
+    false)
+  (define-fun as_type ((x!0 Poly) (x!1 Type)) Poly
+    Poly!val!0)
+  (define-fun mut_ref_current% ((x!0 Poly)) Poly
+    Poly!val!0)
+  (define-fun bitshr ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun TRACKED ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun closure_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun MUTREF ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!0)
+  (define-fun EucMod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun has_resolved ((x!0 Dcr) (x!1 Type) (x!2 Poly)) Bool
+    false)
+  (define-fun proj%core!ops.function.FnOnce./Output ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Type
+    Type!val!0)
+  (define-fun FLOAT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun PTR ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!0)
+  (define-fun UINT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun bitxor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+)
+<<DONE>>
+(:added-eqs                 145
+ :arith-assert-diseq        7
+ :arith-assert-lower        58
+ :arith-assert-upper        32
+ :arith-bound-prop          2
+ :arith-conflicts           5
+ :arith-eq-adapter          24
+ :arith-fixed-eqs           12
+ :arith-num-rows            28
+ :arith-offset-eqs          6
+ :arith-pivots              49
+ :arith-row-summations      121
+ :arith-tableau-max-columns 70
+ :arith-tableau-max-rows    28
+ :binary-propagations       35
+ :conflicts                 10
+ :decisions                 13
+ :del-clause                162
+ :final-checks              1
+ :max-generation            1
+ :max-memory                17.98
+ :memory                    17.98
+ :minimized-lits            4
+ :mk-bool-var               435
+ :mk-clause                 202
+ :mk-clause-binary          33
+ :num-allocs                83484
+ :num-checks                2
+ :propagations              135
+ :quant-instantiations      25
+ :rlimit-count              31473)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unknown
+<<DONE>>
+(:reason-unknown "(incomplete (theory arithmetic))")
+<<DONE>>
+(
+  ;; universe for Dcr:
+  ;;   Dcr!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Dcr!val!0 () Dcr)
+  ;; cardinality constraint:
+  (forall ((x Dcr)) (= x Dcr!val!0))
+  ;; -----------
+  ;; universe for distinct-elems!0:
+  ;;   distinct-elems!0!val!35 distinct-elems!0!val!34 distinct-elems!0!val!43 distinct-elems!0!val!40 distinct-elems!0!val!39 distinct-elems!0!val!4 distinct-elems!0!val!3 distinct-elems!0!val!27 distinct-elems!0!val!36 distinct-elems!0!val!45 distinct-elems!0!val!12 distinct-elems!0!val!8 distinct-elems!0!val!10 distinct-elems!0!val!5 distinct-elems!0!val!28 distinct-elems!0!val!48 distinct-elems!0!val!38 distinct-elems!0!val!19 distinct-elems!0!val!6 distinct-elems!0!val!33 distinct-elems!0!val!1 distinct-elems!0!val!41 distinct-elems!0!val!42 distinct-elems!0!val!30 distinct-elems!0!val!50 distinct-elems!0!val!29 distinct-elems!0!val!11 distinct-elems!0!val!46 distinct-elems!0!val!49 distinct-elems!0!val!53 distinct-elems!0!val!37 distinct-elems!0!val!13 distinct-elems!0!val!24 distinct-elems!0!val!23 distinct-elems!0!val!15 distinct-elems!0!val!31 distinct-elems!0!val!2 distinct-elems!0!val!55 distinct-elems!0!val!21 distinct-elems!0!val!17 distinct-elems!0!val!20 distinct-elems!0!val!26 distinct-elems!0!val!18 distinct-elems!0!val!14 distinct-elems!0!val!0 distinct-elems!0!val!25 distinct-elems!0!val!44 distinct-elems!0!val!57 distinct-elems!0!val!56 distinct-elems!0!val!7 distinct-elems!0!val!47 distinct-elems!0!val!9 distinct-elems!0!val!54 distinct-elems!0!val!52 distinct-elems!0!val!16 distinct-elems!0!val!22 distinct-elems!0!val!32 distinct-elems!0!val!51 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun distinct-elems!0!val!35 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!34 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!43 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!40 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!39 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!4 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!3 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!27 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!36 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!45 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!12 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!8 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!10 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!5 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!28 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!48 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!38 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!19 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!6 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!33 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!1 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!41 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!42 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!30 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!50 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!29 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!11 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!46 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!49 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!53 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!37 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!13 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!24 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!23 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!15 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!31 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!2 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!55 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!21 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!17 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!20 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!26 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!18 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!14 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!0 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!25 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!44 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!57 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!56 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!7 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!47 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!9 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!54 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!52 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!16 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!22 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!32 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!51 () distinct-elems!0)
+  ;; cardinality constraint:
+  (forall ((x distinct-elems!0))
+          (or (= x distinct-elems!0!val!35)
+              (= x distinct-elems!0!val!34)
+              (= x distinct-elems!0!val!43)
+              (= x distinct-elems!0!val!40)
+              (= x distinct-elems!0!val!39)
+              (= x distinct-elems!0!val!4)
+              (= x distinct-elems!0!val!3)
+              (= x distinct-elems!0!val!27)
+              (= x distinct-elems!0!val!36)
+              (= x distinct-elems!0!val!45)
+              (= x distinct-elems!0!val!12)
+              (= x distinct-elems!0!val!8)
+              (= x distinct-elems!0!val!10)
+              (= x distinct-elems!0!val!5)
+              (= x distinct-elems!0!val!28)
+              (= x distinct-elems!0!val!48)
+              (= x distinct-elems!0!val!38)
+              (= x distinct-elems!0!val!19)
+              (= x distinct-elems!0!val!6)
+              (= x distinct-elems!0!val!33)
+              (= x distinct-elems!0!val!1)
+              (= x distinct-elems!0!val!41)
+              (= x distinct-elems!0!val!42)
+              (= x distinct-elems!0!val!30)
+              (= x distinct-elems!0!val!50)
+              (= x distinct-elems!0!val!29)
+              (= x distinct-elems!0!val!11)
+              (= x distinct-elems!0!val!46)
+              (= x distinct-elems!0!val!49)
+              (= x distinct-elems!0!val!53)
+              (= x distinct-elems!0!val!37)
+              (= x distinct-elems!0!val!13)
+              (= x distinct-elems!0!val!24)
+              (= x distinct-elems!0!val!23)
+              (= x distinct-elems!0!val!15)
+              (= x distinct-elems!0!val!31)
+              (= x distinct-elems!0!val!2)
+              (= x distinct-elems!0!val!55)
+              (= x distinct-elems!0!val!21)
+              (= x distinct-elems!0!val!17)
+              (= x distinct-elems!0!val!20)
+              (= x distinct-elems!0!val!26)
+              (= x distinct-elems!0!val!18)
+              (= x distinct-elems!0!val!14)
+              (= x distinct-elems!0!val!0)
+              (= x distinct-elems!0!val!25)
+              (= x distinct-elems!0!val!44)
+              (= x distinct-elems!0!val!57)
+              (= x distinct-elems!0!val!56)
+              (= x distinct-elems!0!val!7)
+              (= x distinct-elems!0!val!47)
+              (= x distinct-elems!0!val!9)
+              (= x distinct-elems!0!val!54)
+              (= x distinct-elems!0!val!52)
+              (= x distinct-elems!0!val!16)
+              (= x distinct-elems!0!val!22)
+              (= x distinct-elems!0!val!32)
+              (= x distinct-elems!0!val!51)))
+  ;; -----------
+  ;; universe for FuelId:
+  ;;   FuelId!val!16 FuelId!val!14 FuelId!val!28 FuelId!val!34 FuelId!val!56 FuelId!val!22 FuelId!val!33 FuelId!val!44 FuelId!val!4 FuelId!val!32 FuelId!val!2 FuelId!val!25 FuelId!val!30 FuelId!val!51 FuelId!val!46 FuelId!val!36 FuelId!val!19 FuelId!val!52 FuelId!val!10 FuelId!val!31 FuelId!val!27 FuelId!val!29 FuelId!val!35 FuelId!val!50 FuelId!val!18 FuelId!val!41 FuelId!val!24 FuelId!val!21 FuelId!val!0 FuelId!val!9 FuelId!val!49 FuelId!val!38 FuelId!val!55 FuelId!val!54 FuelId!val!11 FuelId!val!45 FuelId!val!20 FuelId!val!39 FuelId!val!57 FuelId!val!53 FuelId!val!42 FuelId!val!43 FuelId!val!26 FuelId!val!17 FuelId!val!8 FuelId!val!48 FuelId!val!3 FuelId!val!15 FuelId!val!37 FuelId!val!5 FuelId!val!6 FuelId!val!47 FuelId!val!23 FuelId!val!1 FuelId!val!7 FuelId!val!13 FuelId!val!40 FuelId!val!12 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun FuelId!val!16 () FuelId)
+  (declare-fun FuelId!val!14 () FuelId)
+  (declare-fun FuelId!val!28 () FuelId)
+  (declare-fun FuelId!val!34 () FuelId)
+  (declare-fun FuelId!val!56 () FuelId)
+  (declare-fun FuelId!val!22 () FuelId)
+  (declare-fun FuelId!val!33 () FuelId)
+  (declare-fun FuelId!val!44 () FuelId)
+  (declare-fun FuelId!val!4 () FuelId)
+  (declare-fun FuelId!val!32 () FuelId)
+  (declare-fun FuelId!val!2 () FuelId)
+  (declare-fun FuelId!val!25 () FuelId)
+  (declare-fun FuelId!val!30 () FuelId)
+  (declare-fun FuelId!val!51 () FuelId)
+  (declare-fun FuelId!val!46 () FuelId)
+  (declare-fun FuelId!val!36 () FuelId)
+  (declare-fun FuelId!val!19 () FuelId)
+  (declare-fun FuelId!val!52 () FuelId)
+  (declare-fun FuelId!val!10 () FuelId)
+  (declare-fun FuelId!val!31 () FuelId)
+  (declare-fun FuelId!val!27 () FuelId)
+  (declare-fun FuelId!val!29 () FuelId)
+  (declare-fun FuelId!val!35 () FuelId)
+  (declare-fun FuelId!val!50 () FuelId)
+  (declare-fun FuelId!val!18 () FuelId)
+  (declare-fun FuelId!val!41 () FuelId)
+  (declare-fun FuelId!val!24 () FuelId)
+  (declare-fun FuelId!val!21 () FuelId)
+  (declare-fun FuelId!val!0 () FuelId)
+  (declare-fun FuelId!val!9 () FuelId)
+  (declare-fun FuelId!val!49 () FuelId)
+  (declare-fun FuelId!val!38 () FuelId)
+  (declare-fun FuelId!val!55 () FuelId)
+  (declare-fun FuelId!val!54 () FuelId)
+  (declare-fun FuelId!val!11 () FuelId)
+  (declare-fun FuelId!val!45 () FuelId)
+  (declare-fun FuelId!val!20 () FuelId)
+  (declare-fun FuelId!val!39 () FuelId)
+  (declare-fun FuelId!val!57 () FuelId)
+  (declare-fun FuelId!val!53 () FuelId)
+  (declare-fun FuelId!val!42 () FuelId)
+  (declare-fun FuelId!val!43 () FuelId)
+  (declare-fun FuelId!val!26 () FuelId)
+  (declare-fun FuelId!val!17 () FuelId)
+  (declare-fun FuelId!val!8 () FuelId)
+  (declare-fun FuelId!val!48 () FuelId)
+  (declare-fun FuelId!val!3 () FuelId)
+  (declare-fun FuelId!val!15 () FuelId)
+  (declare-fun FuelId!val!37 () FuelId)
+  (declare-fun FuelId!val!5 () FuelId)
+  (declare-fun FuelId!val!6 () FuelId)
+  (declare-fun FuelId!val!47 () FuelId)
+  (declare-fun FuelId!val!23 () FuelId)
+  (declare-fun FuelId!val!1 () FuelId)
+  (declare-fun FuelId!val!7 () FuelId)
+  (declare-fun FuelId!val!13 () FuelId)
+  (declare-fun FuelId!val!40 () FuelId)
+  (declare-fun FuelId!val!12 () FuelId)
+  ;; cardinality constraint:
+  (forall ((x FuelId))
+          (or (= x FuelId!val!16)
+              (= x FuelId!val!14)
+              (= x FuelId!val!28)
+              (= x FuelId!val!34)
+              (= x FuelId!val!56)
+              (= x FuelId!val!22)
+              (= x FuelId!val!33)
+              (= x FuelId!val!44)
+              (= x FuelId!val!4)
+              (= x FuelId!val!32)
+              (= x FuelId!val!2)
+              (= x FuelId!val!25)
+              (= x FuelId!val!30)
+              (= x FuelId!val!51)
+              (= x FuelId!val!46)
+              (= x FuelId!val!36)
+              (= x FuelId!val!19)
+              (= x FuelId!val!52)
+              (= x FuelId!val!10)
+              (= x FuelId!val!31)
+              (= x FuelId!val!27)
+              (= x FuelId!val!29)
+              (= x FuelId!val!35)
+              (= x FuelId!val!50)
+              (= x FuelId!val!18)
+              (= x FuelId!val!41)
+              (= x FuelId!val!24)
+              (= x FuelId!val!21)
+              (= x FuelId!val!0)
+              (= x FuelId!val!9)
+              (= x FuelId!val!49)
+              (= x FuelId!val!38)
+              (= x FuelId!val!55)
+              (= x FuelId!val!54)
+              (= x FuelId!val!11)
+              (= x FuelId!val!45)
+              (= x FuelId!val!20)
+              (= x FuelId!val!39)
+              (= x FuelId!val!57)
+              (= x FuelId!val!53)
+              (= x FuelId!val!42)
+              (= x FuelId!val!43)
+              (= x FuelId!val!26)
+              (= x FuelId!val!17)
+              (= x FuelId!val!8)
+              (= x FuelId!val!48)
+              (= x FuelId!val!3)
+              (= x FuelId!val!15)
+              (= x FuelId!val!37)
+              (= x FuelId!val!5)
+              (= x FuelId!val!6)
+              (= x FuelId!val!47)
+              (= x FuelId!val!23)
+              (= x FuelId!val!1)
+              (= x FuelId!val!7)
+              (= x FuelId!val!13)
+              (= x FuelId!val!40)
+              (= x FuelId!val!12)))
+  ;; -----------
+  ;; universe for Type:
+  ;;   Type!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Type!val!0 () Type)
+  ;; cardinality constraint:
+  (forall ((x Type)) (= x Type!val!0))
+  ;; -----------
+  (define-fun fuel%vstd!std_specs.vecdeque.group_vec_dequeue_axioms. () FuelId
+    FuelId!val!55)
+  (define-fun fuel%vstd!std_specs.hash.group_hash_axioms. () FuelId
+    FuelId!val!52)
+  (define-fun fuel%vstd!laws_eq.u64_laws.group_laws_eq. () FuelId
+    FuelId!val!14)
+  (define-fun $ () Dcr
+    Dcr!val!0)
+  (define-fun fuel%vstd!seq.group_seq_lemmas. () FuelId
+    FuelId!val!39)
+  (define-fun fuel%vstd!laws_eq.i16_laws.group_laws_eq. () FuelId
+    FuelId!val!11)
+  (define-fun i@0 () Int
+    481)
+  (define-fun fuel%vstd!std_specs.nonzero.group_nonzero_axioms. () FuelId
+    FuelId!val!56)
+  (define-fun fuel%vstd!layout.group_layout_axioms. () FuelId
+    FuelId!val!34)
+  (define-fun fuel%vstd!laws_eq.bool_laws.group_laws_eq. () FuelId
+    FuelId!val!7)
+  (define-fun fuel%vstd!laws_cmp.group_laws_cmp. () FuelId
+    FuelId!val!6)
+  (define-fun fuel%vstd!laws_eq.tuple_7_laws.group_laws_eq. () FuelId
+    FuelId!val!26)
+  (define-fun fuel%vstd!std_specs.fmt.group_fmt_axioms. () FuelId
+    FuelId!val!48)
+  (define-fun fuel%vstd!imap.group_imap_lemmas. () FuelId
+    FuelId!val!4)
+  (define-fun fuel%vstd!std_specs.iter.group_iter_axioms. () FuelId
+    FuelId!val!49)
+  (define-fun fuel%vstd!function.axiom_fn_mut_call_requires. () FuelId
+    FuelId!val!0)
+  (define-fun fuel%vstd!mut_ref.group_mut_ref_axioms. () FuelId
+    FuelId!val!37)
+  (define-fun fuel%vstd!laws_eq.tuple_6_laws.group_laws_eq. () FuelId
+    FuelId!val!25)
+  (define-fun fuel%vstd!string.group_string_axioms. () FuelId
+    FuelId!val!45)
+  (define-fun fuel%vstd!laws_eq.usize_laws.group_laws_eq. () FuelId
+    FuelId!val!18)
+  (define-fun fuel%vstd!laws_eq.tuple_2_laws.group_laws_eq. () FuelId
+    FuelId!val!21)
+  (define-fun fuel%vstd!std_specs.manually_drop.group_manually_drop_axioms. () FuelId
+    FuelId!val!50)
+  (define-fun s@1 () Int
+    18446744073709551615)
+  (define-fun fuel%vstd!set_lib.group_set_lib_default. () FuelId
+    FuelId!val!43)
+  (define-fun fuel%vstd!function.group_function_axioms. () FuelId
+    FuelId!val!3)
+  (define-fun fuel%vstd!seq_lib.group_seq_lib_default. () FuelId
+    FuelId!val!41)
+  (define-fun SZ () Int
+    32)
+  (define-fun fuel%vstd!laws_eq.tuple_1_laws.group_laws_eq. () FuelId
+    FuelId!val!20)
+  (define-fun fuel%vstd!array.group_array_axioms. () FuelId
+    FuelId!val!2)
+  (define-fun fuel%vstd!laws_eq.tuple_11_laws.group_laws_eq. () FuelId
+    FuelId!val!30)
+  (define-fun fuel%vstd!group_vstd_default. () FuelId
+    FuelId!val!57)
+  (define-fun fuel%vstd!laws_eq.group_laws_eq. () FuelId
+    FuelId!val!32)
+  (define-fun fuel%vstd!raw_ptr.group_raw_ptr_axioms. () FuelId
+    FuelId!val!38)
+  (define-fun fuel%vstd!laws_eq.tuple_3_laws.group_laws_eq. () FuelId
+    FuelId!val!22)
+  (define-fun fuel%vstd!laws_eq.u32_laws.group_laws_eq. () FuelId
+    FuelId!val!12)
+  (define-fun fuel%vstd!laws_eq.u8_laws.group_laws_eq. () FuelId
+    FuelId!val!8)
+  (define-fun fuel%vstd!laws_eq.i32_laws.group_laws_eq. () FuelId
+    FuelId!val!13)
+  (define-fun fuel%vstd!laws_eq.tuple_5_laws.group_laws_eq. () FuelId
+    FuelId!val!24)
+  (define-fun fuel%vstd!std_specs.btree.group_btree_axioms. () FuelId
+    FuelId!val!51)
+  (define-fun fuel%vstd!laws_eq.isize_laws.group_laws_eq. () FuelId
+    FuelId!val!19)
+  (define-fun fuel%vstd!laws_eq.tuple_10_laws.group_laws_eq. () FuelId
+    FuelId!val!29)
+  (define-fun fuel_defaults () Bool
+    true)
+  (define-fun fuel%vstd!laws_eq.i128_laws.group_laws_eq. () FuelId
+    FuelId!val!17)
+  (define-fun fuel%vstd!laws_eq.u128_laws.group_laws_eq. () FuelId
+    FuelId!val!16)
+  (define-fun i@1 () Int
+    482)
+  (define-fun fuel%vstd!std_specs.range.group_range_axioms. () FuelId
+    FuelId!val!53)
+  (define-fun fuel%vstd!laws_eq.i64_laws.group_laws_eq. () FuelId
+    FuelId!val!15)
+  (define-fun fuel%vstd!laws_eq.tuple_12_laws.group_laws_eq. () FuelId
+    FuelId!val!31)
+  (define-fun fuel%vstd!set.group_set_lemmas. () FuelId
+    FuelId!val!42)
+  (define-fun TYPE%tuple%0. () Type
+    Type!val!0)
+  (define-fun fuel%vstd!laws_eq.tuple_4_laws.group_laws_eq. () FuelId
+    FuelId!val!23)
+  (define-fun fuel%vstd!std_specs.vec.group_vec_axioms. () FuelId
+    FuelId!val!54)
+  (define-fun n! () Int
+    565)
+  (define-fun fuel%vstd!slice.group_slice_axioms. () FuelId
+    FuelId!val!44)
+  (define-fun fuel%vstd!function.axiom_fn_mut_call_ensures. () FuelId
+    FuelId!val!1)
+  (define-fun fuel%vstd!layout.group_align_properties. () FuelId
+    FuelId!val!33)
+  (define-fun %%location_label%%1 () Bool
+    false)
+  (define-fun fuel%vstd!iset.group_iset_lemmas. () FuelId
+    FuelId!val!5)
+  (define-fun fuel%vstd!laws_eq.tuple_9_laws.group_laws_eq. () FuelId
+    FuelId!val!28)
+  (define-fun %%location_label%%4 () Bool
+    true)
+  (define-fun decrease%init0%0 () Int
+    84)
+  (define-fun fuel%vstd!map.group_map_lemmas. () FuelId
+    FuelId!val!35)
+  (define-fun fuel%vstd!std_specs.bits.group_bits_axioms. () FuelId
+    FuelId!val!46)
+  (define-fun fuel%vstd!seq_lib.group_filter_ensures. () FuelId
+    FuelId!val!40)
+  (define-fun fuel%vstd!std_specs.control_flow.group_control_flow_axioms. () FuelId
+    FuelId!val!47)
+  (define-fun fuel%vstd!multiset.group_multiset_axioms. () FuelId
+    FuelId!val!36)
+  (define-fun fuel%vstd!laws_eq.u16_laws.group_laws_eq. () FuelId
+    FuelId!val!10)
+  (define-fun s@0 () Int
+    18446744073709551133)
+  (define-fun fuel%vstd!laws_eq.tuple_8_laws.group_laws_eq. () FuelId
+    FuelId!val!27)
+  (define-fun fuel%vstd!laws_eq.i8_laws.group_laws_eq. () FuelId
+    FuelId!val!9)
+  (define-fun %%location_label%%0 () Bool
+    false)
+  (define-fun %%location_label%%2 () Bool
+    false)
+  (define-fun $dyn () Dcr
+    Dcr!val!0)
+  (define-fun REAL () Type
+    Type!val!0)
+  (define-fun $slice () Dcr
+    Dcr!val!0)
+  (define-fun ALLOCATOR_GLOBAL () Type
+    Type!val!0)
+  (define-fun zero () Fuel
+    Fuel!val!0)
+  (define-fun CHAR () Type
+    Type!val!0)
+  (define-fun ISIZE () Type
+    Type!val!0)
+  (define-fun BOOL () Type
+    Type!val!0)
+  (define-fun s! () Int
+    0)
+  (define-fun %%global_location_label%%0 () Bool
+    false)
+  (define-fun STRSLICE () Type
+    Type!val!0)
+  (define-fun INT () Type
+    Type!val!0)
+  (define-fun %%location_label%%5 () Bool
+    false)
+  (define-fun %%location_label%%3 () Bool
+    false)
+  (define-fun USIZE () Type
+    Type!val!0)
+  (define-fun NAT () Type
+    Type!val!0)
+  (define-fun uClip ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 64) (= x!1 481)) 481
+    (ite (and (= x!0 64) (= x!1 18446744073709551615)) 18446744073709551615
+      482)))
+  (define-fun Mul ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 482) (= x!1 483)) 17758
+      36893488147419102267))
+  (define-fun iLo ((x!0 Int)) Int
+    (ite (= x!0 16) (- 32768)
+    (ite (= x!0 32) (- 2147483648)
+    (ite (= x!0 64) (- 9223372036854775808)
+    (ite (= x!0 128) (- 170141183460469231731687303715884105728)
+      (- 128))))))
+  (define-fun uHi ((x!0 Int)) Int
+    (ite (= x!0 16) 65536
+    (ite (= x!0 32) 4294967296
+    (ite (= x!0 64) 18446744073709551616
+    (ite (= x!0 128) 340282366920938463463374607431768211456
+      256)))))
+  (define-fun iHi ((x!0 Int)) Int
+    (ite (= x!0 16) 32768
+    (ite (= x!0 32) 2147483648
+    (ite (= x!0 64) 9223372036854775808
+    (ite (= x!0 128) 170141183460469231731687303715884105728
+      128)))))
+  (define-fun EucDiv ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 17758) (= x!1 2)) 8879
+      18446744073709551133))
+  (define-fun sized ((x!0 Dcr)) Bool
+    true)
+  (define-fun tr_bound%core!marker.Tuple. ((x!0 Dcr) (x!1 Type)) Bool
+    true)
+  (define-fun fuel_bool_default ((x!0 FuelId)) Bool
+    true)
+  (define-fun Sub ((x!0 Int) (x!1 Int)) Int
+    84)
+  (define-fun uInv ((x!0 Int) (x!1 Int)) Bool
+    true)
+  (define-fun Add ((x!0 Int) (x!1 Int)) Int
+    (ite (and (= x!0 18446744073709551133) (= x!1 482)) 18446744073709551615
+    (ite (and (= x!0 482) (= x!1 1)) 483
+      482)))
+  (define-fun ens%toy!sum_to. ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun %I ((x!0 Poly)) Int
+    0)
+  (define-fun NEVER ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun iInv ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun charClip ((x!0 Int)) Int
+    0)
+  (define-fun ens%toy!max. ((x!0 Int) (x!1 Int) (x!2 Int)) Bool
+    false)
+  (define-fun req%toy!sum_to. ((x!0 Int)) Bool
+    false)
+  (define-fun RC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun bitand ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun bitshl ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun tr_bound%core!ops.function.FnMut. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Bool
+    false)
+  (define-fun charInv ((x!0 Int)) Bool
+    false)
+  (define-fun %B ((x!0 Poly)) Bool
+    false)
+  (define-fun DST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun RDiv ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun GHOST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun closure_req ((x!0 Type) (x!1 Dcr) (x!2 Type) (x!3 Poly) (x!4 Poly)) Bool
+    false)
+  (define-fun F ((x!0 fndef)) Poly
+    Poly!val!0)
+  (define-fun check_decrease_height ((x!0 Poly) (x!1 Poly) (x!2 Bool)) Bool
+    false)
+  (define-fun iClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun %Poly%tuple%0. ((x!0 Poly)) tuple%0.
+    tuple%0./tuple%0)
+  (define-fun fuel_bool ((x!0 FuelId)) Bool
+    false)
+  (define-fun bitor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun R ((x!0 Real)) Poly
+    Poly!val!0)
+  (define-fun %F ((x!0 Poly)) fndef
+    fndef_singleton)
+  (define-fun proj%%core!ops.function.FnOnce./Output ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Dcr
+    Dcr!val!0)
+  (define-fun RAdd ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun BOX ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun SLICE ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!0)
+  (define-fun height ((x!0 Poly)) Height
+    Height!val!0)
+  (define-fun const_int ((x!0 Type)) Int
+    0)
+  (define-fun CONST_BOOL ((x!0 Bool)) Type
+    Type!val!0)
+  (define-fun nClip ((x!0 Int)) Int
+    0)
+  (define-fun fun_from_recursive_field ((x!0 Poly)) Poly
+    Poly!val!0)
+  (define-fun singular_mod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun ARRAY ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!0)
+  (define-fun const_bool ((x!0 Type)) Bool
+    false)
+  (define-fun RMul ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun ARC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun tr_bound%core!ops.function.Fn. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Bool
+    false)
+  (define-fun SINT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun mut_ref_update_current% ((x!0 Poly) (x!1 Poly)) Poly
+    Poly!val!0)
+  (define-fun succ ((x!0 Fuel)) Fuel
+    Fuel!val!0)
+  (define-fun Poly%tuple%0. ((x!0 tuple%0.)) Poly
+    Poly!val!0)
+  (define-fun CONST_PTR ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun tr_bound%core!alloc.Allocator. ((x!0 Dcr) (x!1 Type)) Bool
+    false)
+  (define-fun ext_eq ((x!0 Bool) (x!1 Type) (x!2 Poly) (x!3 Poly)) Bool
+    false)
+  (define-fun %R ((x!0 Poly)) Real
+    0.0)
+  (define-fun B ((x!0 Bool)) Poly
+    Poly!val!0)
+  (define-fun mut_ref_future% ((x!0 Poly)) Poly
+    Poly!val!0)
+  (define-fun has_type ((x!0 Poly) (x!1 Type)) Bool
+    false)
+  (define-fun bitnot ((x!0 Poly)) Int
+    0)
+  (define-fun RSub ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun I ((x!0 Int)) Poly
+    Poly!val!0)
+  (define-fun default_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun height_lt ((x!0 Height) (x!1 Height)) Bool
+    false)
+  (define-fun mk_fun ((x!0 Type) (x!1 %%Function%%)) %%Function%%
+    %%Function%%!val!0)
+  (define-fun CONST_INT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun tr_bound%core!ops.function.FnOnce. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Bool
+    false)
+  (define-fun as_type ((x!0 Poly) (x!1 Type)) Poly
+    Poly!val!0)
+  (define-fun mut_ref_current% ((x!0 Poly)) Poly
+    Poly!val!0)
+  (define-fun bitshr ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun TRACKED ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun closure_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun MUTREF ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!0)
+  (define-fun EucMod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun has_resolved ((x!0 Dcr) (x!1 Type) (x!2 Poly)) Bool
+    false)
+  (define-fun proj%core!ops.function.FnOnce./Output ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Type
+    Type!val!0)
+  (define-fun FLOAT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun PTR ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!0)
+  (define-fun UINT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun bitxor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unsat
+<<DONE>>
+(:added-eqs                 243
+ :arith-assert-diseq        12
+ :arith-assert-lower        119
+ :arith-assert-upper        68
+ :arith-bound-prop          11
+ :arith-conflicts           7
+ :arith-eq-adapter          57
+ :arith-fixed-eqs           32
+ :arith-num-rows            44
+ :arith-offset-eqs          18
+ :arith-pivots              110
+ :arith-row-summations      270
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       37
+ :conflicts                 12
+ :decisions                 19
+ :del-clause                381
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               596
+ :mk-clause                 381
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                4
+ :propagations              233
+ :quant-instantiations      53
+ :rlimit-count              37230)
+<<DONE>>
+(:added-eqs                 243
+ :arith-assert-diseq        12
+ :arith-assert-lower        119
+ :arith-assert-upper        68
+ :arith-bound-prop          11
+ :arith-conflicts           7
+ :arith-eq-adapter          57
+ :arith-fixed-eqs           32
+ :arith-num-rows            44
+ :arith-offset-eqs          18
+ :arith-pivots              110
+ :arith-row-summations      270
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       37
+ :conflicts                 12
+ :decisions                 19
+ :del-clause                381
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               596
+ :mk-clause                 381
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                4
+ :propagations              233
+ :quant-instantiations      53
+ :rlimit-count              37332)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unsat
+<<DONE>>
+(:added-eqs                 300
+ :arith-assert-diseq        13
+ :arith-assert-lower        135
+ :arith-assert-upper        80
+ :arith-bound-prop          13
+ :arith-conflicts           8
+ :arith-eq-adapter          82
+ :arith-fixed-eqs           37
+ :arith-num-rows            44
+ :arith-offset-eqs          21
+ :arith-pivots              122
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      280
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       40
+ :conflicts                 17
+ :decisions                 23
+ :del-clause                545
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               758
+ :mk-clause                 565
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                5
+ :propagations              316
+ :quant-instantiations      82
+ :rlimit-count              39418)
+<<DONE>>
+(:added-eqs                 300
+ :arith-assert-diseq        13
+ :arith-assert-lower        135
+ :arith-assert-upper        80
+ :arith-bound-prop          13
+ :arith-conflicts           8
+ :arith-eq-adapter          82
+ :arith-fixed-eqs           37
+ :arith-num-rows            44
+ :arith-offset-eqs          21
+ :arith-pivots              122
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      280
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       40
+ :conflicts                 17
+ :decisions                 23
+ :del-clause                565
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               758
+ :mk-clause                 565
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                5
+ :propagations              316
+ :quant-instantiations      82
+ :rlimit-count              39425)
+<<DONE>>
+(:added-eqs                 300
+ :arith-assert-diseq        13
+ :arith-assert-lower        135
+ :arith-assert-upper        80
+ :arith-bound-prop          13
+ :arith-conflicts           8
+ :arith-eq-adapter          82
+ :arith-fixed-eqs           37
+ :arith-num-rows            44
+ :arith-offset-eqs          21
+ :arith-pivots              122
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      280
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       40
+ :conflicts                 17
+ :decisions                 23
+ :del-clause                565
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               758
+ :mk-clause                 565
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                5
+ :propagations              316
+ :quant-instantiations      82
+ :rlimit-count              39512)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unsat
+<<DONE>>
+(:added-eqs                 334
+ :arith-assert-diseq        13
+ :arith-assert-lower        163
+ :arith-assert-upper        94
+ :arith-bound-prop          15
+ :arith-conflicts           10
+ :arith-eq-adapter          92
+ :arith-fixed-eqs           41
+ :arith-num-rows            44
+ :arith-offset-eqs          24
+ :arith-pivots              139
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      329
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       43
+ :conflicts                 25
+ :decisions                 30
+ :del-clause                654
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               867
+ :mk-clause                 680
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                6
+ :propagations              380
+ :quant-instantiations      100
+ :rlimit-count              41976)
+<<DONE>>
+(:added-eqs                 334
+ :arith-assert-diseq        13
+ :arith-assert-lower        163
+ :arith-assert-upper        94
+ :arith-bound-prop          15
+ :arith-conflicts           10
+ :arith-eq-adapter          92
+ :arith-fixed-eqs           41
+ :arith-num-rows            44
+ :arith-offset-eqs          24
+ :arith-pivots              143
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      331
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       43
+ :conflicts                 25
+ :decisions                 30
+ :del-clause                680
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               867
+ :mk-clause                 680
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                6
+ :propagations              380
+ :quant-instantiations      100
+ :rlimit-count              42019)
+<<DONE>>
+(:added-eqs                 334
+ :arith-assert-diseq        13
+ :arith-assert-lower        163
+ :arith-assert-upper        94
+ :arith-bound-prop          15
+ :arith-conflicts           10
+ :arith-eq-adapter          92
+ :arith-fixed-eqs           41
+ :arith-num-rows            44
+ :arith-offset-eqs          24
+ :arith-pivots              143
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      331
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       43
+ :conflicts                 25
+ :decisions                 30
+ :del-clause                680
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               867
+ :mk-clause                 680
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                6
+ :propagations              380
+ :quant-instantiations      100
+ :rlimit-count              42102)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unsat
+<<DONE>>
+(:added-eqs                 357
+ :arith-assert-diseq        14
+ :arith-assert-lower        183
+ :arith-assert-upper        105
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          99
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              150
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      349
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       44
+ :conflicts                 26
+ :decisions                 30
+ :del-clause                680
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               929
+ :mk-clause                 746
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                7
+ :propagations              407
+ :quant-instantiations      110
+ :rlimit-count              43478)
+<<DONE>>
+(:added-eqs                 357
+ :arith-assert-diseq        14
+ :arith-assert-lower        183
+ :arith-assert-upper        105
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          99
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              154
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      353
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       44
+ :conflicts                 26
+ :decisions                 30
+ :del-clause                746
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               930
+ :mk-clause                 746
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                7
+ :propagations              407
+ :quant-instantiations      110
+ :rlimit-count              43759)
+<<DONE>>
+(:added-eqs                 357
+ :arith-assert-diseq        14
+ :arith-assert-lower        183
+ :arith-assert-upper        105
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          99
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              154
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      353
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       44
+ :conflicts                 26
+ :decisions                 30
+ :del-clause                746
+ :final-checks              2
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               930
+ :mk-clause                 746
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                7
+ :propagations              407
+ :quant-instantiations      110
+ :rlimit-count              43780)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unknown
+<<DONE>>
+(:reason-unknown "(incomplete quantifiers)")
+<<DONE>>
+(
+  ;; universe for Dcr:
+  ;;   Dcr!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Dcr!val!0 () Dcr)
+  ;; cardinality constraint:
+  (forall ((x Dcr)) (= x Dcr!val!0))
+  ;; -----------
+  ;; universe for distinct-elems!0:
+  ;;   distinct-elems!0!val!35 distinct-elems!0!val!34 distinct-elems!0!val!43 distinct-elems!0!val!40 distinct-elems!0!val!39 distinct-elems!0!val!4 distinct-elems!0!val!3 distinct-elems!0!val!27 distinct-elems!0!val!36 distinct-elems!0!val!45 distinct-elems!0!val!12 distinct-elems!0!val!8 distinct-elems!0!val!10 distinct-elems!0!val!5 distinct-elems!0!val!28 distinct-elems!0!val!48 distinct-elems!0!val!38 distinct-elems!0!val!19 distinct-elems!0!val!6 distinct-elems!0!val!33 distinct-elems!0!val!1 distinct-elems!0!val!41 distinct-elems!0!val!42 distinct-elems!0!val!30 distinct-elems!0!val!50 distinct-elems!0!val!29 distinct-elems!0!val!11 distinct-elems!0!val!46 distinct-elems!0!val!49 distinct-elems!0!val!53 distinct-elems!0!val!37 distinct-elems!0!val!13 distinct-elems!0!val!24 distinct-elems!0!val!23 distinct-elems!0!val!15 distinct-elems!0!val!31 distinct-elems!0!val!2 distinct-elems!0!val!55 distinct-elems!0!val!21 distinct-elems!0!val!17 distinct-elems!0!val!20 distinct-elems!0!val!26 distinct-elems!0!val!18 distinct-elems!0!val!14 distinct-elems!0!val!0 distinct-elems!0!val!25 distinct-elems!0!val!44 distinct-elems!0!val!57 distinct-elems!0!val!56 distinct-elems!0!val!7 distinct-elems!0!val!47 distinct-elems!0!val!9 distinct-elems!0!val!54 distinct-elems!0!val!52 distinct-elems!0!val!16 distinct-elems!0!val!22 distinct-elems!0!val!32 distinct-elems!0!val!51 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun distinct-elems!0!val!35 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!34 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!43 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!40 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!39 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!4 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!3 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!27 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!36 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!45 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!12 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!8 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!10 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!5 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!28 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!48 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!38 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!19 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!6 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!33 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!1 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!41 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!42 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!30 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!50 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!29 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!11 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!46 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!49 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!53 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!37 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!13 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!24 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!23 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!15 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!31 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!2 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!55 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!21 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!17 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!20 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!26 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!18 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!14 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!0 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!25 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!44 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!57 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!56 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!7 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!47 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!9 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!54 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!52 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!16 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!22 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!32 () distinct-elems!0)
+  (declare-fun distinct-elems!0!val!51 () distinct-elems!0)
+  ;; cardinality constraint:
+  (forall ((x distinct-elems!0))
+          (or (= x distinct-elems!0!val!35)
+              (= x distinct-elems!0!val!34)
+              (= x distinct-elems!0!val!43)
+              (= x distinct-elems!0!val!40)
+              (= x distinct-elems!0!val!39)
+              (= x distinct-elems!0!val!4)
+              (= x distinct-elems!0!val!3)
+              (= x distinct-elems!0!val!27)
+              (= x distinct-elems!0!val!36)
+              (= x distinct-elems!0!val!45)
+              (= x distinct-elems!0!val!12)
+              (= x distinct-elems!0!val!8)
+              (= x distinct-elems!0!val!10)
+              (= x distinct-elems!0!val!5)
+              (= x distinct-elems!0!val!28)
+              (= x distinct-elems!0!val!48)
+              (= x distinct-elems!0!val!38)
+              (= x distinct-elems!0!val!19)
+              (= x distinct-elems!0!val!6)
+              (= x distinct-elems!0!val!33)
+              (= x distinct-elems!0!val!1)
+              (= x distinct-elems!0!val!41)
+              (= x distinct-elems!0!val!42)
+              (= x distinct-elems!0!val!30)
+              (= x distinct-elems!0!val!50)
+              (= x distinct-elems!0!val!29)
+              (= x distinct-elems!0!val!11)
+              (= x distinct-elems!0!val!46)
+              (= x distinct-elems!0!val!49)
+              (= x distinct-elems!0!val!53)
+              (= x distinct-elems!0!val!37)
+              (= x distinct-elems!0!val!13)
+              (= x distinct-elems!0!val!24)
+              (= x distinct-elems!0!val!23)
+              (= x distinct-elems!0!val!15)
+              (= x distinct-elems!0!val!31)
+              (= x distinct-elems!0!val!2)
+              (= x distinct-elems!0!val!55)
+              (= x distinct-elems!0!val!21)
+              (= x distinct-elems!0!val!17)
+              (= x distinct-elems!0!val!20)
+              (= x distinct-elems!0!val!26)
+              (= x distinct-elems!0!val!18)
+              (= x distinct-elems!0!val!14)
+              (= x distinct-elems!0!val!0)
+              (= x distinct-elems!0!val!25)
+              (= x distinct-elems!0!val!44)
+              (= x distinct-elems!0!val!57)
+              (= x distinct-elems!0!val!56)
+              (= x distinct-elems!0!val!7)
+              (= x distinct-elems!0!val!47)
+              (= x distinct-elems!0!val!9)
+              (= x distinct-elems!0!val!54)
+              (= x distinct-elems!0!val!52)
+              (= x distinct-elems!0!val!16)
+              (= x distinct-elems!0!val!22)
+              (= x distinct-elems!0!val!32)
+              (= x distinct-elems!0!val!51)))
+  ;; -----------
+  ;; universe for FuelId:
+  ;;   FuelId!val!16 FuelId!val!14 FuelId!val!28 FuelId!val!34 FuelId!val!56 FuelId!val!22 FuelId!val!33 FuelId!val!44 FuelId!val!4 FuelId!val!32 FuelId!val!2 FuelId!val!25 FuelId!val!30 FuelId!val!51 FuelId!val!46 FuelId!val!36 FuelId!val!19 FuelId!val!52 FuelId!val!10 FuelId!val!31 FuelId!val!27 FuelId!val!29 FuelId!val!35 FuelId!val!50 FuelId!val!18 FuelId!val!41 FuelId!val!24 FuelId!val!21 FuelId!val!0 FuelId!val!9 FuelId!val!49 FuelId!val!38 FuelId!val!55 FuelId!val!54 FuelId!val!11 FuelId!val!45 FuelId!val!20 FuelId!val!39 FuelId!val!57 FuelId!val!53 FuelId!val!42 FuelId!val!43 FuelId!val!26 FuelId!val!17 FuelId!val!8 FuelId!val!48 FuelId!val!3 FuelId!val!15 FuelId!val!37 FuelId!val!5 FuelId!val!6 FuelId!val!47 FuelId!val!23 FuelId!val!1 FuelId!val!7 FuelId!val!13 FuelId!val!40 FuelId!val!12 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun FuelId!val!16 () FuelId)
+  (declare-fun FuelId!val!14 () FuelId)
+  (declare-fun FuelId!val!28 () FuelId)
+  (declare-fun FuelId!val!34 () FuelId)
+  (declare-fun FuelId!val!56 () FuelId)
+  (declare-fun FuelId!val!22 () FuelId)
+  (declare-fun FuelId!val!33 () FuelId)
+  (declare-fun FuelId!val!44 () FuelId)
+  (declare-fun FuelId!val!4 () FuelId)
+  (declare-fun FuelId!val!32 () FuelId)
+  (declare-fun FuelId!val!2 () FuelId)
+  (declare-fun FuelId!val!25 () FuelId)
+  (declare-fun FuelId!val!30 () FuelId)
+  (declare-fun FuelId!val!51 () FuelId)
+  (declare-fun FuelId!val!46 () FuelId)
+  (declare-fun FuelId!val!36 () FuelId)
+  (declare-fun FuelId!val!19 () FuelId)
+  (declare-fun FuelId!val!52 () FuelId)
+  (declare-fun FuelId!val!10 () FuelId)
+  (declare-fun FuelId!val!31 () FuelId)
+  (declare-fun FuelId!val!27 () FuelId)
+  (declare-fun FuelId!val!29 () FuelId)
+  (declare-fun FuelId!val!35 () FuelId)
+  (declare-fun FuelId!val!50 () FuelId)
+  (declare-fun FuelId!val!18 () FuelId)
+  (declare-fun FuelId!val!41 () FuelId)
+  (declare-fun FuelId!val!24 () FuelId)
+  (declare-fun FuelId!val!21 () FuelId)
+  (declare-fun FuelId!val!0 () FuelId)
+  (declare-fun FuelId!val!9 () FuelId)
+  (declare-fun FuelId!val!49 () FuelId)
+  (declare-fun FuelId!val!38 () FuelId)
+  (declare-fun FuelId!val!55 () FuelId)
+  (declare-fun FuelId!val!54 () FuelId)
+  (declare-fun FuelId!val!11 () FuelId)
+  (declare-fun FuelId!val!45 () FuelId)
+  (declare-fun FuelId!val!20 () FuelId)
+  (declare-fun FuelId!val!39 () FuelId)
+  (declare-fun FuelId!val!57 () FuelId)
+  (declare-fun FuelId!val!53 () FuelId)
+  (declare-fun FuelId!val!42 () FuelId)
+  (declare-fun FuelId!val!43 () FuelId)
+  (declare-fun FuelId!val!26 () FuelId)
+  (declare-fun FuelId!val!17 () FuelId)
+  (declare-fun FuelId!val!8 () FuelId)
+  (declare-fun FuelId!val!48 () FuelId)
+  (declare-fun FuelId!val!3 () FuelId)
+  (declare-fun FuelId!val!15 () FuelId)
+  (declare-fun FuelId!val!37 () FuelId)
+  (declare-fun FuelId!val!5 () FuelId)
+  (declare-fun FuelId!val!6 () FuelId)
+  (declare-fun FuelId!val!47 () FuelId)
+  (declare-fun FuelId!val!23 () FuelId)
+  (declare-fun FuelId!val!1 () FuelId)
+  (declare-fun FuelId!val!7 () FuelId)
+  (declare-fun FuelId!val!13 () FuelId)
+  (declare-fun FuelId!val!40 () FuelId)
+  (declare-fun FuelId!val!12 () FuelId)
+  ;; cardinality constraint:
+  (forall ((x FuelId))
+          (or (= x FuelId!val!16)
+              (= x FuelId!val!14)
+              (= x FuelId!val!28)
+              (= x FuelId!val!34)
+              (= x FuelId!val!56)
+              (= x FuelId!val!22)
+              (= x FuelId!val!33)
+              (= x FuelId!val!44)
+              (= x FuelId!val!4)
+              (= x FuelId!val!32)
+              (= x FuelId!val!2)
+              (= x FuelId!val!25)
+              (= x FuelId!val!30)
+              (= x FuelId!val!51)
+              (= x FuelId!val!46)
+              (= x FuelId!val!36)
+              (= x FuelId!val!19)
+              (= x FuelId!val!52)
+              (= x FuelId!val!10)
+              (= x FuelId!val!31)
+              (= x FuelId!val!27)
+              (= x FuelId!val!29)
+              (= x FuelId!val!35)
+              (= x FuelId!val!50)
+              (= x FuelId!val!18)
+              (= x FuelId!val!41)
+              (= x FuelId!val!24)
+              (= x FuelId!val!21)
+              (= x FuelId!val!0)
+              (= x FuelId!val!9)
+              (= x FuelId!val!49)
+              (= x FuelId!val!38)
+              (= x FuelId!val!55)
+              (= x FuelId!val!54)
+              (= x FuelId!val!11)
+              (= x FuelId!val!45)
+              (= x FuelId!val!20)
+              (= x FuelId!val!39)
+              (= x FuelId!val!57)
+              (= x FuelId!val!53)
+              (= x FuelId!val!42)
+              (= x FuelId!val!43)
+              (= x FuelId!val!26)
+              (= x FuelId!val!17)
+              (= x FuelId!val!8)
+              (= x FuelId!val!48)
+              (= x FuelId!val!3)
+              (= x FuelId!val!15)
+              (= x FuelId!val!37)
+              (= x FuelId!val!5)
+              (= x FuelId!val!6)
+              (= x FuelId!val!47)
+              (= x FuelId!val!23)
+              (= x FuelId!val!1)
+              (= x FuelId!val!7)
+              (= x FuelId!val!13)
+              (= x FuelId!val!40)
+              (= x FuelId!val!12)))
+  ;; -----------
+  ;; universe for Type:
+  ;;   Type!val!0 
+  ;; -----------
+  ;; definitions for universe elements:
+  (declare-fun Type!val!0 () Type)
+  ;; cardinality constraint:
+  (forall ((x Type)) (= x Type!val!0))
+  ;; -----------
+  (define-fun fuel%vstd!std_specs.vecdeque.group_vec_dequeue_axioms. () FuelId
+    FuelId!val!55)
+  (define-fun fuel%vstd!std_specs.hash.group_hash_axioms. () FuelId
+    FuelId!val!52)
+  (define-fun fuel%vstd!laws_eq.u64_laws.group_laws_eq. () FuelId
+    FuelId!val!14)
+  (define-fun fuel%vstd!laws_eq.u16_laws.group_laws_eq. () FuelId
+    FuelId!val!10)
+  (define-fun fuel%vstd!seq.group_seq_lemmas. () FuelId
+    FuelId!val!39)
+  (define-fun fuel%vstd!laws_cmp.group_laws_cmp. () FuelId
+    FuelId!val!6)
+  (define-fun fuel%vstd!std_specs.nonzero.group_nonzero_axioms. () FuelId
+    FuelId!val!56)
+  (define-fun $ () Dcr
+    Dcr!val!0)
+  (define-fun fuel%vstd!laws_eq.bool_laws.group_laws_eq. () FuelId
+    FuelId!val!7)
+  (define-fun fuel%vstd!laws_eq.i8_laws.group_laws_eq. () FuelId
+    FuelId!val!9)
+  (define-fun fuel%vstd!laws_eq.tuple_7_laws.group_laws_eq. () FuelId
+    FuelId!val!26)
+  (define-fun fuel%vstd!std_specs.fmt.group_fmt_axioms. () FuelId
+    FuelId!val!48)
+  (define-fun fuel%vstd!imap.group_imap_lemmas. () FuelId
+    FuelId!val!4)
+  (define-fun fuel%vstd!std_specs.iter.group_iter_axioms. () FuelId
+    FuelId!val!49)
+  (define-fun fuel%vstd!function.axiom_fn_mut_call_requires. () FuelId
+    FuelId!val!0)
+  (define-fun fuel%vstd!mut_ref.group_mut_ref_axioms. () FuelId
+    FuelId!val!37)
+  (define-fun fuel%vstd!laws_eq.tuple_6_laws.group_laws_eq. () FuelId
+    FuelId!val!25)
+  (define-fun fuel%vstd!function.group_function_axioms. () FuelId
+    FuelId!val!3)
+  (define-fun fuel%vstd!string.group_string_axioms. () FuelId
+    FuelId!val!45)
+  (define-fun fuel%vstd!laws_eq.usize_laws.group_laws_eq. () FuelId
+    FuelId!val!18)
+  (define-fun fuel%vstd!std_specs.manually_drop.group_manually_drop_axioms. () FuelId
+    FuelId!val!50)
+  (define-fun fuel%vstd!set_lib.group_set_lib_default. () FuelId
+    FuelId!val!43)
+  (define-fun fuel%vstd!laws_eq.u32_laws.group_laws_eq. () FuelId
+    FuelId!val!12)
+  (define-fun fuel%vstd!laws_eq.tuple_1_laws.group_laws_eq. () FuelId
+    FuelId!val!20)
+  (define-fun fuel%vstd!seq_lib.group_seq_lib_default. () FuelId
+    FuelId!val!41)
+  (define-fun SZ () Int
+    32)
+  (define-fun fuel%vstd!array.group_array_axioms. () FuelId
+    FuelId!val!2)
+  (define-fun %%location_label%%0 () Bool
+    true)
+  (define-fun fuel%vstd!laws_eq.tuple_11_laws.group_laws_eq. () FuelId
+    FuelId!val!30)
+  (define-fun fuel%vstd!group_vstd_default. () FuelId
+    FuelId!val!57)
+  (define-fun fuel%vstd!laws_eq.group_laws_eq. () FuelId
+    FuelId!val!32)
+  (define-fun fuel%vstd!raw_ptr.group_raw_ptr_axioms. () FuelId
+    FuelId!val!38)
+  (define-fun r! () Int
+    0)
+  (define-fun fuel%vstd!laws_eq.tuple_3_laws.group_laws_eq. () FuelId
+    FuelId!val!22)
+  (define-fun fuel%vstd!laws_eq.tuple_5_laws.group_laws_eq. () FuelId
+    FuelId!val!24)
+  (define-fun fuel%vstd!laws_eq.u8_laws.group_laws_eq. () FuelId
+    FuelId!val!8)
+  (define-fun fuel%vstd!laws_eq.i32_laws.group_laws_eq. () FuelId
+    FuelId!val!13)
+  (define-fun fuel%vstd!std_specs.btree.group_btree_axioms. () FuelId
+    FuelId!val!51)
+  (define-fun fuel%vstd!laws_eq.tuple_10_laws.group_laws_eq. () FuelId
+    FuelId!val!29)
+  (define-fun fuel%vstd!laws_eq.isize_laws.group_laws_eq. () FuelId
+    FuelId!val!19)
+  (define-fun fuel_defaults () Bool
+    true)
+  (define-fun fuel%vstd!laws_eq.u128_laws.group_laws_eq. () FuelId
+    FuelId!val!16)
+  (define-fun fuel%vstd!laws_eq.i128_laws.group_laws_eq. () FuelId
+    FuelId!val!17)
+  (define-fun fuel%vstd!laws_eq.tuple_2_laws.group_laws_eq. () FuelId
+    FuelId!val!21)
+  (define-fun fuel%vstd!laws_eq.i64_laws.group_laws_eq. () FuelId
+    FuelId!val!15)
+  (define-fun fuel%vstd!layout.group_layout_axioms. () FuelId
+    FuelId!val!34)
+  (define-fun fuel%vstd!laws_eq.tuple_12_laws.group_laws_eq. () FuelId
+    FuelId!val!31)
+  (define-fun fuel%vstd!set.group_set_lemmas. () FuelId
+    FuelId!val!42)
+  (define-fun fuel%vstd!laws_eq.tuple_9_laws.group_laws_eq. () FuelId
+    FuelId!val!28)
+  (define-fun fuel%vstd!laws_eq.tuple_4_laws.group_laws_eq. () FuelId
+    FuelId!val!23)
+  (define-fun fuel%vstd!std_specs.vec.group_vec_axioms. () FuelId
+    FuelId!val!54)
+  (define-fun fuel%vstd!slice.group_slice_axioms. () FuelId
+    FuelId!val!44)
+  (define-fun fuel%vstd!function.axiom_fn_mut_call_ensures. () FuelId
+    FuelId!val!1)
+  (define-fun fuel%vstd!layout.group_align_properties. () FuelId
+    FuelId!val!33)
+  (define-fun fuel%vstd!iset.group_iset_lemmas. () FuelId
+    FuelId!val!5)
+  (define-fun fuel%vstd!map.group_map_lemmas. () FuelId
+    FuelId!val!35)
+  (define-fun fuel%vstd!std_specs.range.group_range_axioms. () FuelId
+    FuelId!val!53)
+  (define-fun x! () Int
+    0)
+  (define-fun fuel%vstd!std_specs.control_flow.group_control_flow_axioms. () FuelId
+    FuelId!val!47)
+  (define-fun fuel%vstd!std_specs.bits.group_bits_axioms. () FuelId
+    FuelId!val!46)
+  (define-fun TYPE%tuple%0. () Type
+    Type!val!0)
+  (define-fun fuel%vstd!seq_lib.group_filter_ensures. () FuelId
+    FuelId!val!40)
+  (define-fun fuel%vstd!multiset.group_multiset_axioms. () FuelId
+    FuelId!val!36)
+  (define-fun fuel%vstd!laws_eq.i16_laws.group_laws_eq. () FuelId
+    FuelId!val!11)
+  (define-fun fuel%vstd!laws_eq.tuple_8_laws.group_laws_eq. () FuelId
+    FuelId!val!27)
+  (define-fun $dyn () Dcr
+    Dcr!val!0)
+  (define-fun REAL () Type
+    Type!val!0)
+  (define-fun $slice () Dcr
+    Dcr!val!0)
+  (define-fun ALLOCATOR_GLOBAL () Type
+    Type!val!0)
+  (define-fun zero () Fuel
+    Fuel!val!0)
+  (define-fun CHAR () Type
+    Type!val!0)
+  (define-fun ISIZE () Type
+    Type!val!0)
+  (define-fun BOOL () Type
+    Type!val!0)
+  (define-fun %%global_location_label%%0 () Bool
+    false)
+  (define-fun STRSLICE () Type
+    Type!val!0)
+  (define-fun INT () Type
+    Type!val!0)
+  (define-fun USIZE () Type
+    Type!val!0)
+  (define-fun NAT () Type
+    Type!val!0)
+  (define-fun iLo ((x!0 Int)) Int
+    (ite (= x!0 16) (- 32768)
+    (ite (= x!0 32) (- 2147483648)
+    (ite (= x!0 64) (- 9223372036854775808)
+    (ite (= x!0 128) (- 170141183460469231731687303715884105728)
+      (- 128))))))
+  (define-fun uHi ((x!0 Int)) Int
+    (ite (= x!0 16) 65536
+    (ite (= x!0 32) 4294967296
+    (ite (= x!0 64) 18446744073709551616
+    (ite (= x!0 128) 340282366920938463463374607431768211456
+      256)))))
+  (define-fun iHi ((x!0 Int)) Int
+    (ite (= x!0 16) 32768
+    (ite (= x!0 32) 2147483648
+    (ite (= x!0 64) 9223372036854775808
+    (ite (= x!0 128) 170141183460469231731687303715884105728
+      128)))))
+  (define-fun sized ((x!0 Dcr)) Bool
+    true)
+  (define-fun tr_bound%core!marker.Tuple. ((x!0 Dcr) (x!1 Type)) Bool
+    true)
+  (define-fun fuel_bool_default ((x!0 FuelId)) Bool
+    true)
+  (define-fun uInv ((x!0 Int) (x!1 Int)) Bool
+    true)
+  (define-fun ens%toy!sum_to. ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun %I ((x!0 Poly)) Int
+    0)
+  (define-fun NEVER ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun iInv ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun charClip ((x!0 Int)) Int
+    0)
+  (define-fun ens%toy!max. ((x!0 Int) (x!1 Int) (x!2 Int)) Bool
+    false)
+  (define-fun req%toy!sum_to. ((x!0 Int)) Bool
+    false)
+  (define-fun RC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun bitand ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun bitshl ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun tr_bound%core!ops.function.FnMut. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Bool
+    false)
+  (define-fun charInv ((x!0 Int)) Bool
+    false)
+  (define-fun %B ((x!0 Poly)) Bool
+    false)
+  (define-fun DST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun RDiv ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun GHOST ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun closure_req ((x!0 Type) (x!1 Dcr) (x!2 Type) (x!3 Poly) (x!4 Poly)) Bool
+    false)
+  (define-fun F ((x!0 fndef)) Poly
+    Poly!val!0)
+  (define-fun check_decrease_height ((x!0 Poly) (x!1 Poly) (x!2 Bool)) Bool
+    false)
+  (define-fun iClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun %Poly%tuple%0. ((x!0 Poly)) tuple%0.
+    tuple%0./tuple%0)
+  (define-fun ens%toy!bad. ((x!0 Int) (x!1 Int)) Bool
+    false)
+  (define-fun fuel_bool ((x!0 FuelId)) Bool
+    false)
+  (define-fun bitor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun R ((x!0 Real)) Poly
+    Poly!val!0)
+  (define-fun %F ((x!0 Poly)) fndef
+    fndef_singleton)
+  (define-fun proj%%core!ops.function.FnOnce./Output ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Dcr
+    Dcr!val!0)
+  (define-fun RAdd ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun BOX ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun SLICE ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!0)
+  (define-fun EucDiv ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun height ((x!0 Poly)) Height
+    Height!val!0)
+  (define-fun Add ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun const_int ((x!0 Type)) Int
+    0)
+  (define-fun uClip ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun CONST_BOOL ((x!0 Bool)) Type
+    Type!val!0)
+  (define-fun nClip ((x!0 Int)) Int
+    0)
+  (define-fun fun_from_recursive_field ((x!0 Poly)) Poly
+    Poly!val!0)
+  (define-fun singular_mod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun REF ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun ARRAY ((x!0 Dcr) (x!1 Type) (x!2 Dcr) (x!3 Type)) Type
+    Type!val!0)
+  (define-fun const_bool ((x!0 Type)) Bool
+    false)
+  (define-fun RMul ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun ARC ((x!0 Dcr) (x!1 Type) (x!2 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun tr_bound%core!ops.function.Fn. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Bool
+    false)
+  (define-fun SINT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun mut_ref_update_current% ((x!0 Poly) (x!1 Poly)) Poly
+    Poly!val!0)
+  (define-fun succ ((x!0 Fuel)) Fuel
+    Fuel!val!0)
+  (define-fun Poly%tuple%0. ((x!0 tuple%0.)) Poly
+    Poly!val!0)
+  (define-fun CONST_PTR ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun tr_bound%core!alloc.Allocator. ((x!0 Dcr) (x!1 Type)) Bool
+    false)
+  (define-fun ext_eq ((x!0 Bool) (x!1 Type) (x!2 Poly) (x!3 Poly)) Bool
+    false)
+  (define-fun %R ((x!0 Poly)) Real
+    0.0)
+  (define-fun B ((x!0 Bool)) Poly
+    Poly!val!0)
+  (define-fun mut_ref_future% ((x!0 Poly)) Poly
+    Poly!val!0)
+  (define-fun has_type ((x!0 Poly) (x!1 Type)) Bool
+    false)
+  (define-fun Mul ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun bitnot ((x!0 Poly)) Int
+    0)
+  (define-fun RSub ((x!0 Real) (x!1 Real)) Real
+    0.0)
+  (define-fun I ((x!0 Int)) Poly
+    Poly!val!0)
+  (define-fun default_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun height_lt ((x!0 Height) (x!1 Height)) Bool
+    false)
+  (define-fun mk_fun ((x!0 Type) (x!1 %%Function%%)) %%Function%%
+    %%Function%%!val!0)
+  (define-fun CONST_INT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun tr_bound%core!ops.function.FnOnce. ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Bool
+    false)
+  (define-fun as_type ((x!0 Poly) (x!1 Type)) Poly
+    Poly!val!0)
+  (define-fun mut_ref_current% ((x!0 Poly)) Poly
+    Poly!val!0)
+  (define-fun bitshr ((x!0 Poly) (x!1 Poly)) Int
+    0)
+  (define-fun TRACKED ((x!0 Dcr)) Dcr
+    Dcr!val!0)
+  (define-fun closure_ens ((x!0 Type)
+   (x!1 Dcr)
+   (x!2 Type)
+   (x!3 Poly)
+   (x!4 Poly)
+   (x!5 Poly)) Bool
+    false)
+  (define-fun MUTREF ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!0)
+  (define-fun EucMod ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun Sub ((x!0 Int) (x!1 Int)) Int
+    0)
+  (define-fun has_resolved ((x!0 Dcr) (x!1 Type) (x!2 Poly)) Bool
+    false)
+  (define-fun proj%core!ops.function.FnOnce./Output ((x!0 Dcr)
+   (x!1 Type)
+   (x!2 Dcr)
+   (x!3 Type)) Type
+    Type!val!0)
+  (define-fun FLOAT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun PTR ((x!0 Dcr) (x!1 Type)) Type
+    Type!val!0)
+  (define-fun UINT ((x!0 Int)) Type
+    Type!val!0)
+  (define-fun bitxor ((x!0 Poly) (x!1 Poly)) Int
+    0)
+)
+<<DONE>>
+(:added-eqs                 360
+ :arith-assert-diseq        14
+ :arith-assert-lower        186
+ :arith-assert-upper        106
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          100
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              154
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      353
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       47
+ :conflicts                 28
+ :decisions                 33
+ :del-clause                758
+ :final-checks              3
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               946
+ :mk-clause                 762
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                8
+ :propagations              415
+ :quant-instantiations      113
+ :rlimit-count              44359)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unsat
+<<DONE>>
+(:added-eqs                 360
+ :arith-assert-diseq        14
+ :arith-assert-lower        186
+ :arith-assert-upper        106
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          100
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              154
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      353
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       47
+ :conflicts                 28
+ :decisions                 33
+ :del-clause                762
+ :final-checks              3
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               946
+ :mk-clause                 762
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                9
+ :propagations              415
+ :quant-instantiations      113
+ :rlimit-count              44368)
+<<DONE>>
+(:added-eqs                 360
+ :arith-assert-diseq        14
+ :arith-assert-lower        186
+ :arith-assert-upper        106
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          100
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              154
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      353
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       47
+ :conflicts                 28
+ :decisions                 33
+ :del-clause                762
+ :final-checks              3
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               946
+ :mk-clause                 762
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                9
+ :propagations              415
+ :quant-instantiations      113
+ :rlimit-count              44377)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unsat
+<<DONE>>
+(:added-eqs                 360
+ :arith-assert-diseq        14
+ :arith-assert-lower        186
+ :arith-assert-upper        106
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          100
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              154
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      353
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       47
+ :conflicts                 28
+ :decisions                 33
+ :del-clause                762
+ :final-checks              3
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               946
+ :mk-clause                 762
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                10
+ :propagations              415
+ :quant-instantiations      113
+ :rlimit-count              44379)
+<<DONE>>
+(:added-eqs                 360
+ :arith-assert-diseq        14
+ :arith-assert-lower        186
+ :arith-assert-upper        106
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          100
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              154
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      353
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       47
+ :conflicts                 28
+ :decisions                 33
+ :del-clause                762
+ :final-checks              3
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               946
+ :mk-clause                 762
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                10
+ :propagations              415
+ :quant-instantiations      113
+ :rlimit-count              44386)
+<<DONE>>
+(:added-eqs                 360
+ :arith-assert-diseq        14
+ :arith-assert-lower        186
+ :arith-assert-upper        106
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          100
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              154
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      353
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       47
+ :conflicts                 28
+ :decisions                 33
+ :del-clause                762
+ :final-checks              3
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               946
+ :mk-clause                 762
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                10
+ :propagations              415
+ :quant-instantiations      113
+ :rlimit-count              44392)
+<<DONE>>
+(:version "4.16.0")
+<<DONE>>
+unsat
+<<DONE>>
+(:added-eqs                 360
+ :arith-assert-diseq        14
+ :arith-assert-lower        186
+ :arith-assert-upper        106
+ :arith-bound-prop          19
+ :arith-conflicts           11
+ :arith-eq-adapter          100
+ :arith-fixed-eqs           43
+ :arith-num-rows            44
+ :arith-offset-eqs          29
+ :arith-pivots              154
+ :arith-pseudo-nonlinear    1
+ :arith-row-summations      353
+ :arith-tableau-max-columns 98
+ :arith-tableau-max-rows    44
+ :binary-propagations       47
+ :conflicts                 28
+ :decisions                 33
+ :del-clause                762
+ :final-checks              3
+ :max-generation            2
+ :max-memory                18.07
+ :memory                    18.07
+ :minimized-lits            4
+ :mk-bool-var               946
+ :mk-clause                 762
+ :mk-clause-binary          33
+ :num-allocs                112366
+ :num-checks                11
+ :propagations              415
+ :quant-instantiations      113
+ :rlimit-count              44394)
+<<DONE>>
