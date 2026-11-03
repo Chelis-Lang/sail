@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+### 0.2.0 candidate
+
+The source version is prepared as `0.2.0` for qualification. Stable archives
+and crate versions remain unpublished pending explicit owner approval of the
+exact candidate. The published registry prerelease remains `0.2.0-rc.1`.
+
 - Add crates.io distribution as `sail-solve`, installing the CLI and companion
   shim together. `sail engine install` fetches and validates the exact pinned
   verifier runtime without a source checkout. Future released tags publish
@@ -35,7 +41,7 @@ semantic versioning once the API is published.
 - Prepare subsequent Cargo verification through an optional daemon-owned worker,
   with foreground priority and `SAIL_BACKGROUND_PREPARE=0` opt-out. New projects
   can begin ordinary preparation after `sail new` returns. Implementation is
-  under qualification; see `docs/background-preparation.md`.
+  qualified on native Linux/macOS; see `docs/background-preparation.md`.
 - Add focused repair validation for standalone Verus files through
   `sail repair-check`, durable jobs and MCP, with provisional focus and
   independent complete Current full validation.

@@ -10,6 +10,9 @@ prebuilt archives on [GitHub releases](https://github.com/Chelis-Lang/sail/relea
 under the MIT licence. Cargo distribution is implemented for the initial
 `sail-solve 0.2.0-rc.1` registry prerelease; its package and installation
 qualification is recorded in the [crate-publication gate](validation/crates-io.md).
+The checkout's `0.2.0` source version is an unpublished candidate awaiting
+qualification and explicit owner approval. Installation commands below retain
+the published prerelease version.
 
 ## Cargo installation
 

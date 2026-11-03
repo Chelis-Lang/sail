@@ -20,7 +20,11 @@ instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 
 ## Install
 
-The initial crates.io package is `sail-solve 0.2.0-rc.1`:
+The published crates.io package is `sail-solve 0.2.0-rc.1`.
+
+The checkout's `0.2.0` source version is an unpublished candidate. Stable
+publication requires qualification and explicit owner approval; the command
+below installs the published prerelease.
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rust-src
@@ -75,7 +79,7 @@ keep their proofs, and queries the solver has already answered come from the
 cache. When nothing at all has changed, Sail replays the previous result
 without running Cargo.
 
-## Existing Verus files (next release)
+## Existing Verus files
 
 Start from a tutorial file or proof experiment without creating a Cargo project:
 
@@ -87,7 +91,8 @@ sail repair-check proof.rs --function proof::lemma --engine interactive
 
 The same file works through MCP with `source_file: "proof.rs"`. Complete
 successful proofs can be reused on unchanged calls and undo. This feature is
-qualified on native Linux and macOS for the next release. Repair checks add an
+available in the published registry prerelease and qualified on native Linux
+and macOS. Repair checks add an
 exact function focus followed by fresh full-file validation; see the
 [standalone workflow](docs/standalone-verification.md).
 
@@ -105,7 +110,7 @@ Each result says whether it is **Current** (its inputs are unchanged),
 **Historical** or **Unknown**. See [workspace verification](docs/workspace-verification.md)
 and [freshness](docs/freshness.md).
 
-The next-release [background preparation](docs/background-preparation.md)
+The prerelease's [background preparation](docs/background-preparation.md)
 worker can prepare the next unchanged Cargo call after verification returns,
 and start verifying a newly created project while you begin editing. Foreground
 work takes priority. Use `SAIL_BACKGROUND_PREPARE=0` to opt out.

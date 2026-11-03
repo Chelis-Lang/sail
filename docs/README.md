@@ -25,10 +25,10 @@ verification.
 | Trust model and differences from plain Verus | [Trust](trust.md), [divergences](divergences.md) |
 | Limitations and open problems | [Known issues](known-issues.md) |
 | Error codes | [Errors](errors.md) |
-| What changed in a release | [0.1.0 release notes](release-notes/0.1.0.md), [changelog](../CHANGELOG.md) |
+| What changed in a release | [0.2.0 candidate notes](release-notes/0.2.0.md), [0.1.0 release notes](release-notes/0.1.0.md), [changelog](../CHANGELOG.md) |
 
 Standalone-file development: [verify, watch and MCP](standalone-verification.md)
-(qualified on main for the next release; not in published 0.1.0).
+(available in registry prerelease `0.2.0-rc.1`; not in published 0.1.0).
 
 ## Experimental features
 

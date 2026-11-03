@@ -5,18 +5,49 @@ verified targets and exact solver answers. Edits still pay Rust compilation
 and the Verus frontend for changed targets. Undoing an edit can restore an
 original complete proof when retaining that target was worth its cost.
 
-## v0.2.0 implementation candidate
+## 0.2.0 candidate
 
-The [combined candidate record](validation/v020-performance.md) reports the
-current installed Linux/macOS timing and memory qualification and its remaining
-gates. These are development measurements, not a qualified release. The rc.7
-measurements below retain their original source and observer scope.
+The complete core composition uses source `039fb996`, pinned A0e Verus,
+six rotated stock/candidate blocks on native c7i.4xlarge / us-east-1 /
+Ubuntu 24.04 and mac-m4.metal / us-east-1c / macOS 26.7. It includes 23
+paired workflow rows and three complete mutation catalogues: 972 paired
+mutation/cold/return steps per platform. This measures the qualified core
+composition, separately from the final versioned archive builds.
 
-The [broader evaluation](performance-evaluation.md) adds real-project structures,
-four pinned repository candidates and dependency/file/target scaling controls.
-Its [algorithm review](design/general-performance.md) and
-[qualification status](validation/general-performance.md) distinguish general
-implementation changes from measured product gains.
+| Complete edit loop | Linux stock/Sail | Mac stock/Sail |
+|---|---:|---:|
+| Vest, 52 edits per round | 1.22x | 1.44x |
+| IronKV, 48 edits per round | 1.51x | 1.55x |
+| CapybaraKV, 53 edits per round | 2.19x | 2.38x |
+
+All 1,944 retained paired steps recheck Same with zero false verified results.
+The corrected explanation-note counter yields separate reports with 26/26
+valid rows on each platform; original strict failures and every timing remain
+unchanged. Every individual mutant median is faster in these catalogues.
+The [feature record](validation/release-expansion.md#complete-frozen-composition-measurements)
+contains exact identities, full ranges, hashes and interpretation limits.
+
+Five workflow medians remain slower, with disjoint ranges in this cohort:
+Linux tiny edits/reverts add 0.19/0.15 s; Mac adds 0.11/0.10 s, and Anvil cold
+is 98.94 s against stock's 96.87 s. Calls that miss replay still pay frontend
+and input-checking costs. Background preparation can help a later call but is
+additional work; CapybaraKV's separate Mac post-return cost observer remains
+unqualified. These results do not establish universal parity or a resource bound.
+
+The [stable candidate record](validation/stable-candidate.md) separately binds
+the new versioned archives, fresh installation/replay controls and release
+gates. The exact rc.1 archives also preserve the original fifteen-edit and
+Anvil catalogue's 114 raw samples/platform and passing execution audits
+([record](validation/release-expansion.md#recovered-incidental-edit-qualification)).
+Final release publication remains subject to explicit owner approval.
+
+The earlier [combined candidate record](validation/v020-performance.md) keeps
+its original source and observer scope. The [broader evaluation](performance-evaluation.md)
+adds real-project structures, pinned repository candidates and dependency/file/
+target scaling controls. Its [algorithm review](design/general-performance.md)
+and [qualification status](validation/general-performance.md) distinguish
+implementation experiments from measured product gains. The rc.7 measurements
+below retain their original source, machine and observer scope.
 
 ## 0.1.0-rc.7
 

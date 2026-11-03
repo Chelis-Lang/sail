@@ -5,8 +5,12 @@ Apple-silicon macOS. Both native runtime archives are published; anonymous
 downloads match their pins. Complete source, producer/library, engine,
 cancellation, factory and installed controls pass. Owner-approved ADR 0097
 qualifies the one Mac consumed-counter difference separately from strict
-matches. Additional composed corpus and cost qualification remains open;
-no Sail release version or publication is selected.
+matches. Complete composed workflow/mutation captures and corrected 26/26
+comparison reports now exist on both platforms; the [feature record](release-expansion.md)
+binds their exact sources and raw data. First/full-path, Mac Anvil cold and
+CapybaraKV Mac post-return cost limitations remain explicit. Stable version
+`0.2.0` has separate [candidate qualification](stable-candidate.md); final
+publication is not approved.
 
 ## Source and environment
 
@@ -114,10 +118,11 @@ The [transport record](unix-connect-deadlines.md#remaining-presence-probes-654)
 retains actual blocked-before/correct-after CLI, jobs and MCP controls.
 Protected PR checks and release performance acceptance remain separate.
 
-The corrected fifteen-edit catalogue and Anvil failure/fix/return sequence pass
-all 114 native execution audits. Final Linux raw per-sample performance files
-were lost at host expiry; their retained execution logs do not establish timing
-acceptance. The old broader-screen execution log reaches all eighteen workloads
+The corrected fifteen-edit catalogue and Anvil failure/fix/return sequence now
+have all 114 raw samples/platform and passing execution audits on the exact
+rc.1 archives ([record](release-expansion.md#recovered-incidental-edit-qualification)).
+The earlier lost Linux attempt remains historical; its logs alone were not
+accepted as timing evidence. The old broader-screen execution log reaches all eighteen workloads
 but cannot establish their individual outcomes without the lost report. A fresh
 frozen `039fb996` screen, separate required-target Verismo control and six-round
 paired workflow cohort run with automatic capture on native c7i.4xlarge,
@@ -140,9 +145,10 @@ Private diagnostic result SHA-256:
 
 Frozen `039fb996`, A0e runtime, native mac-m4.metal / us-east-1c / macOS 26.7:
 six rotated stock/candidate blocks complete with the original CPU ceiling.
-All 23 paired workflow rows pass their output comparisons; three required
-realistic mutation cohorts are absent, so the report remains 23/26 valid and
-is not release performance acceptance. Scripted edits are diagnostic only.
+All 23 paired workflow rows pass their output comparisons. This earlier partial
+report omitted the three mutation cohorts; the later complete raw capture and
+corrected report have 26/26 valid rows ([record](release-expansion.md#complete-frozen-composition-measurements)).
+Original partial/strict failures remain retained. Scripted edits are diagnostic only.
 
 | Workflow | Stock median | Sail median |
 |---|---:|---:|

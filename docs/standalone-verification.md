@@ -1,7 +1,8 @@
 # Verify an existing Verus file
 
-Standalone verification is implemented and qualified on native Linux and
-macOS for the next release. It is not in published 0.1.0.
+Standalone verification is available in the published registry prerelease
+`0.2.0-rc.1` and the stable `0.2.0` candidate, with native Linux/macOS
+qualification. It is not in published 0.1.0.
 See the [qualification record](validation/standalone-verification.md).
 
 Use your existing Verus source without creating a Cargo package:

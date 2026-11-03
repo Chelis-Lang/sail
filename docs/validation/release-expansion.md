@@ -7,7 +7,10 @@ execution audits. Feature PR CI passes; the post-merge managed run exposes
 startup polling defect #650, corrected by the bounded readiness change below.
 The later complete frozen composition now has all workflow and full mutation
 captures on both platforms, recorded below. Its unchanged strict reporter
-accepts 25/26 rows because of explanation-note classification #655.
+accepts 25/26 rows because of explanation-note classification #655. The merged
+per-code correction independently rechecks all 1,944 retained paired steps; a
+separate report has 26/26 valid rows on each platform, preserving every timing
+and original strict failure.
 Performance acceptance and final owner approval remain open. The feature retains
 qualified fork `0ad405eb`. The separate runtime upgrade and performance selection
 do not select a Sail release version or publication.
@@ -24,8 +27,8 @@ do not select a Sail release version or publication.
 | Byte budgets | Both platforms: manual LRU/newest/busy/rebuild controls and actual idle-daemon eviction from the correct managed cache root |
 | Standard admission paths | Reused `91bd82a1` full standard: four arms each 159 Same / 13,166 function records, all 18 seeded mutations, cold and both returns. Later changes bind idle maintenance and add a pre-execution preparation refusal; proof/cache admission is unchanged and their changed behavior has separate actual-daemon controls |
 | Hosted CI cache | Four independent Ubuntu 24.04 jobs pass at `cdb95e58`, using the attested published 0.1.0 archive; fixture scope only |
-| Real edit catalogue | Native `039fb996` composition: all fifteen edits across Vest, IronKV and CapybaraKV, two stock/candidate rounds, pass full output/diagnostic, exit and memory/clock audits (96 samples); Anvil body/failure/fix/returns also pass (18 samples). Complete execution log retained; raw per-sample files were lost on host expiry |
-| Default-workflow timing | Latest frozen `039fb996` / A0e cohort: all 23 workflow rows and all three complete mutation catalogues captured on both platforms, six rotated blocks. Unchanged strict combined reporting remains 25/26 valid because of #655; no performance acceptance or release approval follows |
+| Real edit catalogue | Exact `81c41be8` rc.1 archives on native Linux/Mac: fifteen edits across Vest, IronKV and CapybaraKV, two seeded stock/candidate rounds plus Anvil body/failure/fix/returns; all 114 samples/platform and all four execution audits pass, with complete raw captures. The earlier lost attempt remains indexed below |
+| Default-workflow timing | Latest frozen `039fb996` / A0e cohort: all 23 workflow rows and all three complete mutation catalogues captured on both platforms, six rotated blocks. Original strict reporting remains 25/26 valid; merged #657 retained-output rechecking gives a separate 26/26-valid report, with all timings unchanged; no performance acceptance or release approval follows |
 
 Scheduling/cancellation unit tests use synthetic workers; these are not proof
 acceptance. Installed controls use real pinned runtimes. No source or per-file
@@ -105,24 +108,43 @@ answers. The Linux capture additionally preserves all 276 workflow invocation
 logs and all 1,320 Vest step streams; the independent IronKV/CapybaraKV captures
 and full Mac capture retain their complete paired streams.
 
-The unchanged strict combined reporter accepts 25 of 26 rows on each platform.
-CapybaraKV's row remains invalid: six cold calls each print one recognized
-`SAIL3138` and one recognized `SAIL3146` explanation, but the old combined
-count treats them as duplicate bundle notices. Proposed ADR 0099 and its
-qualified implementation in [PR #657](https://github.com/Chelis-Lang/sail/pull/657)
-remain pending owner adoption. No original sample, failed exit or strict result
-is rewritten or accepted here.
+The original strict combined reporter accepts 25 of 26 rows on each platform.
+CapybaraKV's six cold calls each print one recognized `SAIL3138` and one
+recognized `SAIL3146` explanation; the old counter mistakes their combined
+length for a repeated note. ADR 0099's qualified per-code correction is merged
+in [#657](https://github.com/Chelis-Lang/sail/pull/657).
+
+The corrected Rust retained-log checker at `f023b69c` independently rechecks all
+1,944 original paired mutation/cold/return steps on native c7i.4xlarge. All
+compare Same with zero false verified results. Each original raw archive hash
+is checked, each flagged raw stderr equals its two recorded notes and stock
+stderr is empty. A separate projection changes only `diagnostic_error` in the
+twelve affected cold rows (six per platform); every header and every other
+sample value, including timings, memory, verdicts, functions, exits, provenance,
+daemon and return checks, stays identical. The unmodified frozen matrix
+reporter then finds **26/26 valid rows on both platforms**. Its exit remains 2
+for slower workflow medians; this is not blanket performance acceptance.
+
+The corrected interpretation, exact checker output, source identities and
+unchanged timing projections have 33 sealed members, archive SHA-256
+`07f28bd8b7d7534105efd55ce98019a6def3e5738d53eeb9ea66518c6fffb289`.
+Original strict reports, exits and raw samples remain unchanged.
 
 | Valid complete mutation loop | Linux speedup | Mac speedup |
 |---|---:|---:|
 | Vest, 52 edits per round | 1.22x | 1.44x |
 | IronKV, 48 edits per round | 1.51x | 1.55x |
+| CapybaraKV, 53 edits per round | 2.19x | 2.38x |
 
-CapybaraKV timings remain unaccepted under the original classifier. Linux has
-two slower workflow medians: small edits add 0.19 s and small reverts add
+Every individual mutant median is faster in all three complete catalogues on
+both platforms. Linux still has two slower workflow medians: small edits add 0.19 s and small reverts add
 0.15 s. Mac has three: small edits add 0.11 s, small reverts add 0.10 s and
-Anvil cold adds 2.07 s (96.87 s stock / 98.94 s Sail). Ranges and individual
-slower edits stay in the retained reports. The separate no-replay full-path
+Anvil cold adds 2.07 s (96.87 s stock / 98.94 s Sail). All five slower workflow ranges are disjoint in this six-round cohort, so
+these are retained engineering gaps rather than dismissed as measurement noise.
+Tiny operations add at most 0.19 s; Mac Anvil cold adds about 2.1%. No cause or
+new optimization is inferred from those medians. Every mutant median remains
+faster; full-path misses are a separate workload. Ranges and complete samples
+stay in the retained reports. The separate no-replay full-path
 gaps in the [runtime record](binary-compiler-inputs.md#corrected-mac-workflow-measurements)
 remain open; replay improvements do not establish general parity.
 
@@ -135,8 +157,34 @@ remain open; replay improvements do not establish general parity.
 
 These measure the frozen core/archive composition, not the later Cargo
 installation's exact binaries. Final candidate artifact qualification remains
-separate. The fifteen incidental-edit catalogue below is a different workload;
-the full mutation catalogues do not replace its lost raw timing evidence.
+separate. The fifteen incidental-edit catalogue is a different workload; its original
+raw timing loss is retained below. A later rerun of that exact catalogue on
+rc.1 archives repairs its evidence gap as recorded next.
+
+## Recovered incidental-edit qualification
+
+Exact `81c41be8` rc.1 archives, native c7i.4xlarge / us-east-1 / Ubuntu 24.04
+and mac-m4.metal / us-east-1c / macOS 26.7: the original fifteen-edit catalogue
+across Vest, IronKV and CapybaraKV runs in two seeded stock/candidate rounds.
+All 96 samples plus Anvil's 18 body/failure/fix/return samples pass complete
+output/diagnostic, exit, memory-cadence and clock audits. Each platform retains
+all 114 raw samples and all four phase-audit results. These are the actual
+incidental edits, not a substitution by the larger mutation catalogues.
+
+Both archives also pass clean-PATH first-use/repair smoke and fixed three-call
+ordinary Cargo JSON verification with final zero-verifier Current replay.
+The initial setup refusals remain in each capture: Mac had `cargo-verus` on
+PATH; Linux needed the same three catalogue prerequisites prefetched. Only
+harness prerequisites changed before the complete reruns.
+
+| Completed rc.1 archive/install/catalogue capture | SHA-256 |
+|---|---|
+| Linux, 8,468 sealed members | `26f5206d0b0c8b14779fb4cc2a1dfc6db3fb9004e93b10b3b9dfc47798bc2cd6` |
+| Mac, 6,138 sealed members | `6667367fb05d6ededb4afef5814e93d2ef4bce1c9a333f9e14bcfc994fdd6895` |
+
+These qualify rc.1 artifact/workload composition. Stable versioned archives
+have their own [candidate record](stable-candidate.md). Neither capture closes
+the separate first/full-path or Mac Anvil-cold performance goals.
 
 ## Earlier performance attempts
 

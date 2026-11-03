@@ -186,14 +186,16 @@ The release factory and smoke scripts require Python 3.12 or newer. Set
 `SAIL_RELEASE_PYTHON=python3.12` if the default `python3` is older. This is a
 packaging/test prerequisite, not a dependency of the installed Sail binaries.
 
-The candidate release stage additionally records one complete vstd proof with
-its final stripped Sail/shim binaries and installs it under `deps/<variant>`.
+The release stage additionally records one complete vstd proof with its final
+stripped Sail/shim binaries and installs it under `deps/<variant>`.
 `release-files.json` binds every regular file and directory mode, including the
-proof bundle. Actual Mac staged first-use components pass at different physical
-Rustup/sysroot roots. The candidate is not yet a qualified release: Linux
-producer/clean-consumer acceptance and measured fresh-machine installation cost
-remain pending. A changed-root test does not establish that fresh-machine
-boundary.
+proof bundle. Qualification belongs to the exact release source and artifacts:
+[0.1.0](validation/release-candidate.md) was qualified as rc.7; the new native
+factories and clean archive consumers are tracked in the
+[0.2.0 candidate record](validation/stable-candidate.md).
+Compiler-boundary research components retain their own source and acceptance
+scope. A changed-root component alone does not establish fresh-machine
+installation performance.
 
 The record recipe is `scripts/shipped-deps`: exact vstd version, canonical
 Cargo-produced lock, one requested proof. `scripts/release-shipped.py record`
