@@ -5,8 +5,10 @@ and PR conformance gates, plus Mac platform and installed controls. The queued
 origin correction has a real before/after regression witness. The corrected fifteen-edit catalogue and Anvil return controls pass their native
 execution audits. Feature PR CI passes; the post-merge managed run exposes
 startup polling defect #650, corrected by the bounded readiness change below.
-Performance acceptance remains open
-with the evidence limitations below. The feature retains
+The later complete frozen composition now has all workflow and full mutation
+captures on both platforms, recorded below. Its unchanged strict reporter
+accepts 25/26 rows because of explanation-note classification #655.
+Performance acceptance and final owner approval remain open. The feature retains
 qualified fork `0ad405eb`. The separate runtime upgrade and performance selection
 do not select a Sail release version or publication.
 
@@ -23,7 +25,7 @@ do not select a Sail release version or publication.
 | Standard admission paths | Reused `91bd82a1` full standard: four arms each 159 Same / 13,166 function records, all 18 seeded mutations, cold and both returns. Later changes bind idle maintenance and add a pre-execution preparation refusal; proof/cache admission is unchanged and their changed behavior has separate actual-daemon controls |
 | Hosted CI cache | Four independent Ubuntu 24.04 jobs pass at `cdb95e58`, using the attested published 0.1.0 archive; fixture scope only |
 | Real edit catalogue | Native `039fb996` composition: all fifteen edits across Vest, IronKV and CapybaraKV, two stock/candidate rounds, pass full output/diagnostic, exit and memory/clock audits (96 samples); Anvil body/failure/fix/returns also pass (18 samples). Complete execution log retained; raw per-sample files were lost on host expiry |
-| Default-workflow timing | Corrected Linux execution reports all 23 paired-workflow rows valid; three required mutation cohorts remain unattached. Raw final Linux timing files were lost on host expiry, so this is not performance acceptance. Mac six-round quiet retry completes all 23 paired workflow rows with exact outputs; three mutation cohorts remain absent. Original refusals and all samples are retained |
+| Default-workflow timing | Latest frozen `039fb996` / A0e cohort: all 23 workflow rows and all three complete mutation catalogues captured on both platforms, six rotated blocks. Unchanged strict combined reporting remains 25/26 valid because of #655; no performance acceptance or release approval follows |
 
 Scheduling/cancellation unit tests use synthetic workers; these are not proof
 acceptance. Installed controls use real pinned runtimes. No source or per-file
@@ -91,7 +93,53 @@ comparison, not a model-evaluation campaign or a new native benchmark. A clean
 project-scope `skills@1.7.4` copy install, telemetry disabled, retains all four
 updated files byte-for-byte. Registry exports remain at their recorded revisions.
 
-## Performance evidence limits
+## Complete frozen composition measurements
+
+Source `039fb996`, pinned A0e runtime, six rotated stock/candidate blocks:
+native c7i.4xlarge / us-east-1 / Ubuntu 24.04 and mac-m4.metal /
+us-east-1c / macOS 26.7. All 23 paired workflow rows and the complete
+52-edit Vest, 48-edit IronKV and 53-edit CapybaraKV catalogues are captured
+on both platforms. Each platform has 972 paired mutation/cold/return steps,
+with matching verdicts and every ordinary/forced return receiving its own
+answers. The Linux capture additionally preserves all 276 workflow invocation
+logs and all 1,320 Vest step streams; the independent IronKV/CapybaraKV captures
+and full Mac capture retain their complete paired streams.
+
+The unchanged strict combined reporter accepts 25 of 26 rows on each platform.
+CapybaraKV's row remains invalid: six cold calls each print one recognized
+`SAIL3138` and one recognized `SAIL3146` explanation, but the old combined
+count treats them as duplicate bundle notices. Proposed ADR 0099 and its
+qualified implementation in [PR #657](https://github.com/Chelis-Lang/sail/pull/657)
+remain pending owner adoption. No original sample, failed exit or strict result
+is rewritten or accepted here.
+
+| Valid complete mutation loop | Linux speedup | Mac speedup |
+|---|---:|---:|
+| Vest, 52 edits per round | 1.22x | 1.44x |
+| IronKV, 48 edits per round | 1.51x | 1.55x |
+
+CapybaraKV timings remain unaccepted under the original classifier. Linux has
+two slower workflow medians: small edits add 0.19 s and small reverts add
+0.15 s. Mac has three: small edits add 0.11 s, small reverts add 0.10 s and
+Anvil cold adds 2.07 s (96.87 s stock / 98.94 s Sail). Ranges and individual
+slower edits stay in the retained reports. The separate no-replay full-path
+gaps in the [runtime record](binary-compiler-inputs.md#corrected-mac-workflow-measurements)
+remain open; replay improvements do not establish general parity.
+
+| Complete raw capture | SHA-256 |
+|---|---|
+| Linux workflows/Vest and composition, 37,067 sealed members | `75a6399a04086a3608615dbd55fe14820e2cbb9cabd3476dde743d9694a4e1e4` |
+| Linux IronKV | `677ae4da130a1d3bb693432cdf1eb43ccc671b0cd937415a68888ce41cfa1e4f` |
+| Linux CapybaraKV, original classification failed | `f33e06633d2918b96c0c68719f5d72d46666dd658cdf6a08986a8de2588b2788` |
+| Mac workflows/all three catalogues, 5,941 sealed members | `25be7412764974416e870c06b32d8c5b05fd319f115528f23d7f2543a241aa79` |
+
+These measure the frozen core/archive composition, not the later Cargo
+installation's exact binaries. Final candidate artifact qualification remains
+separate. The fifteen incidental-edit catalogue below is a different workload;
+the full mutation catalogues do not replace its lost raw timing evidence.
+
+## Earlier performance attempts
+
 
 The corrected native catalogue passes all 114 samples. The corrected six-round
 Linux execution reports 23 valid paired-workflow rows; the separate realistic

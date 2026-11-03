@@ -55,8 +55,12 @@ acting. The charter's appendix records corrections made since it was written.
   upstream is a human decision.
 - **Publishing.** The Sail repository and the Verus fork are public (since
   2026-10-28). Releases ship as archives on GitHub Releases, starting with
-  0.1.0. Agents publish a release's archives once it has passed qualification,
-  without a separate owner sign-off. The owner authorized crates.io distribution
+  0.1.0. Agents prepare, build, qualify and stage release candidates. Passing
+  qualification does not authorize final publication: the owner must explicitly
+  approve the exact final candidate before publishing its GitHub release or
+  stable crates.io versions (owner direction, 2026-11-03). Separately authorized
+  prerelease publication retains its scope; the initial `0.2.0-rc.1` crate
+  publication is already authorized. The owner authorized crates.io distribution
   as `sail-solve` on 2026-11-02 (ADR 0098). Explicitly selected core packages
   publish to crates.io; the workspace default, contributor tools and private
   extensions remain unpublished. Future released tags publish their matching
