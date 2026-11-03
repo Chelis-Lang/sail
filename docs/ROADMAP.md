@@ -80,14 +80,14 @@ the final GitHub release or stable crate publication.
 
 | Deliverable | Current state | Remaining gate |
 |---|---|---|
-| Crates.io distribution (`sail-solve`) | Owner authorized initial and future publication; all eighteen source packages, Linux/Mac native gates, normal user setup and complete installed workflows pass ([record](validation/crates-io.md)) | #656 merged and rc.1 tagged; email verification is complete, upload is progressing under the new-name rate limit, then anonymous registry installations |
+| Crates.io distribution (`sail-solve`) | Owner authorized initial and future publication; all eighteen source packages, Linux/Mac native gates, normal user setup and complete installed workflows pass ([record](validation/crates-io.md)) | All eighteen rc.1 versions published and anonymous Linux/Mac installs pass; final stable-commit packages and owner approval remain |
 | Daemon preparation and post-creation verification | Merged in #647; Linux/Mac replay, generated-input, foreground and queued-edit controls pass | Full performance acceptance remains separate |
-| Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Merged in #647; runtime-composed acceptance remains separate |
-| Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Merged in #647; readiness correction merged in #651; final runtime composition remains |
+| Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Stable native/archive composition passes; final source assembly and owner rollout remain |
+| Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Merged in #647/#651; stable native/archive composition passes; owner rollout remains |
 | Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Merged in #647 |
 | First/full-path and Mac Anvil overhead | Run-scoped and per-file experiments remain unselected; Linux and Mac whole-call controls show no general gain | Full-path and Mac Anvil-cold gaps remain; complete paired release qualification |
-| Binary compiler-input metadata (#599) | Fork fix merged; both native runtimes published and pinned, source suites and exact-read controls pass | Final composed product/corpus/cost acceptance |
-| Incidental edits | Corrected fifteen-edit catalogue and Anvil controls pass native execution audits | Final raw performance evidence; earlier Linux raw files lost at host expiry |
+| Binary compiler-input metadata (#599) | Fork fix merged; both native runtimes published and pinned, source suites and exact-read controls pass | Stable native product/corpus gates and both archive consumers pass; stated cost/performance limits and owner approval remain |
+| Incidental edits | Corrected fifteen-edit catalogue and Anvil controls pass native execution audits | Exact rc.1 archives: 114 samples/platform, raw files captured and audits pass; earlier lost attempt stays indexed |
 
 ## Performance tracks
 
@@ -166,7 +166,7 @@ remain required before delivering a new Sail release.
 | Fragility hardening | — |
 | Portfolio tidy | — |
 | Compiler-boundary local reuse as default fallback | #222 |
-| Background prebuild; bulk prefetch from a team store | #241, #243 |
+| Bulk prefetch from a team store; preparation beyond the implemented bounded worker | #241, #243 |
 | Cargo bypass when only target sources change | #245 |
 | CI image pull time | #195 |
 | M10 verification runtime | #146 |

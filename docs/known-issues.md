@@ -27,9 +27,12 @@ under [ADR 0099](decisions/0099-mutation-explanation-note-cardinality.md)
 is implemented and qualified on both platforms
 ([scope](validation/mutation-notice-cardinality.md)). It corrects uniqueness
 of existing recognized notes; no new diagnostic exception is added.
-Original strict failures remain recorded; corrected interpretation and final
-release approval are separate. Product code, proof authority and solver input are unchanged.
-Crate-installation qualification remains separate.
+Original strict failures remain recorded. Complete retained-output rechecking
+now compares all 1,944 paired steps Same, and a separate corrected report has
+26/26 valid rows on each platform. Timings remain unchanged, including the
+slower cases below. Product code, proof authority and solver input are unchanged.
+Actual anonymous rc.1 crate installation passes on both platforms; stable
+publication and final release approval remain separate.
 
 ## Accepted integration limit
 

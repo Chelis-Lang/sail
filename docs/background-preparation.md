@@ -1,7 +1,8 @@
 # Background preparation
 
-Implemented for the next release; installed feature controls pass on native
-Linux and macOS. Repeated real-project timing and cost qualification continues. Published 0.1.0 does not provide this behavior.
+Available in the published registry prerelease `0.2.0-rc.1` and the stable
+`0.2.0` candidate. Installed feature controls pass on native Linux and macOS;
+performance limits remain below. Published 0.1.0 does not provide this behavior.
 
 After a successful Current Cargo verification, Sail can prepare the next
 unchanged invocation in its daemon while your command has already returned.

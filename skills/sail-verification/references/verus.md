@@ -8,10 +8,10 @@ In managed mode Sail builds in its own target directory; a reported `SAIL3112`
 fallback uses the project target directory. Switching back is running
 `cargo verus verify` again.
 
-Standalone files are supported on main for the next release, not published
-0.1.0. Check `sail --help` for standalone `.rs` support. Development builds can
-also report version 0.1.0, so the version string alone does not identify this
-capability. On a build that includes it:
+Standalone files are available in the published registry prerelease
+`0.2.0-rc.1` and the stable `0.2.0` candidate, absent from published 0.1.0.
+Check `sail --help` for standalone `.rs` support; older development builds may
+retain an older version string. On a build that includes it:
 
 ```sh
 sail verify proof.rs --output json
@@ -25,7 +25,7 @@ https://github.com/Chelis-Lang/sail/blob/main/docs/standalone-verification.md
 
 ## Preparation after return
 
-Next-release builds can prepare the next unchanged Cargo invocation in the
+The registry prerelease and stable candidate can prepare the next unchanged Cargo invocation in the
 background after a successful Current result. The command returns its own
 result first; preparation is additional CPU and disk work. Foreground work takes
 priority. Check `sail status --json` for preparation activity, and use
@@ -79,14 +79,14 @@ In a Cargo project, select the real package and function, for example:
 sail repair-check --engine interactive --package demo --lib --function demo::sum_to
 ```
 
-Next-release builds also support a standalone repair check:
+The registry prerelease and stable candidate also support a standalone repair check:
 
 ```sh
 sail repair-check proof.rs --function proof::lemma --engine interactive --output json
 ```
 
 Inspect `sail repair-check --help` and the installed MCP schema before using
-this form; published 0.1.0 lacks it. Development builds may still report 0.1.0.
+this form; published 0.1.0 lacks it. Older development builds may report 0.1.0.
 Where exposed, `standalone_repair` in capabilities identifies this support.
 A focused pass remains provisional until the independent full-target check
 passes with Current evidence.
@@ -117,5 +117,5 @@ sail cache projects prune --to-bytes 21474836480 --dry-run --json
 The newest and active workspaces are protected, so a configured cap can remain
 exceeded. Defaults do not evict automatically. Pruning removes targets and
 receipts together; later calls verify again. The [disk-use guide](https://github.com/Chelis-Lang/sail/blob/main/docs/workspace-hygiene.md)
-describes configuration and reporting. These budget commands are next-release
-features, absent from published 0.1.0.
+describes configuration and reporting. These budget commands are available in
+registry prerelease `0.2.0-rc.1` and the stable candidate, absent from published 0.1.0.

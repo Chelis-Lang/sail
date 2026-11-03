@@ -1275,11 +1275,11 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "sail-acceptance"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 
 [[package]]
 name = "sail-api"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "rustix",
  "sail-acceptance",
@@ -1293,7 +1293,7 @@ dependencies = [
 
 [[package]]
 name = "sail-bench"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "sail-api",
  "sail-conformance",
@@ -1310,7 +1310,7 @@ dependencies = [
 
 [[package]]
 name = "sail-cache"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "ed25519-dalek",
  "sail-acceptance",
@@ -1322,7 +1322,7 @@ dependencies = [
 
 [[package]]
 name = "sail-conformance"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "sail-verus",
  "serde",
@@ -1331,14 +1331,14 @@ dependencies = [
 
 [[package]]
 name = "sail-contracts"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "sail-contracts-macros",
 ]
 
 [[package]]
 name = "sail-contracts-ir"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1347,7 +1347,7 @@ dependencies = [
 
 [[package]]
 name = "sail-contracts-macros"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1357,7 +1357,7 @@ dependencies = [
 
 [[package]]
 name = "sail-daemon"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "bytes",
  "http-body-util",
@@ -1381,7 +1381,7 @@ dependencies = [
 
 [[package]]
 name = "sail-key"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "sail-acceptance",
@@ -1392,11 +1392,11 @@ dependencies = [
 
 [[package]]
 name = "sail-ledger"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 
 [[package]]
 name = "sail-mcp"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "sail-api",
  "serde",
@@ -1406,7 +1406,7 @@ dependencies = [
 
 [[package]]
 name = "sail-portfolio"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "sail-smtlib",
  "sail-solver",
@@ -1415,7 +1415,7 @@ dependencies = [
 
 [[package]]
 name = "sail-runtime"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "sail-api",
  "sail-cache",
@@ -1429,7 +1429,7 @@ dependencies = [
 
 [[package]]
 name = "sail-session"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "sail-smtlib",
@@ -1437,7 +1437,7 @@ dependencies = [
 
 [[package]]
 name = "sail-shim"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "sail-acceptance",
@@ -1453,7 +1453,7 @@ dependencies = [
 
 [[package]]
 name = "sail-smtlib"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "sail-acceptance",
@@ -1461,7 +1461,7 @@ dependencies = [
 
 [[package]]
 name = "sail-solve"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "ctrlc",
  "notify",
@@ -1483,7 +1483,7 @@ dependencies = [
 
 [[package]]
 name = "sail-solver"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "serde",
  "sha2",
@@ -1491,7 +1491,7 @@ dependencies = [
 
 [[package]]
 name = "sail-verus"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "inotify",
  "num-bigint",
@@ -2359,7 +2359,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "sail-verus",
  "serde",

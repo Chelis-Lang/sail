@@ -57,6 +57,12 @@ reviews. A submission acknowledgement is not a published listing. A listing is
 not evidence that users completed verification successfully. Record these
 outcomes separately; use install counts only where the service exposes them.
 
+The canonical Verus reference now identifies actual registry prerelease
+`0.2.0-rc.1` availability for standalone repair, preparation and budgets.
+Commands and evidence rules are unchanged. Versioned registry exports below
+retain their recorded revisions; this documentation update does not republish
+them.
+
 ## Distribution landscape
 
 Primary sources checked on 1 November 2026. Similar names below identify
