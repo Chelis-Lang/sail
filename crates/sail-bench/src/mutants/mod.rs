@@ -295,7 +295,7 @@ pub fn recheck(dir: &Path) -> Result<String, String> {
                 let _ = writeln!(
                     t,
                     "{name}: false verified {fv:?}; {} ({} accepted divergences){}",
-                    if c.differences.is_empty() && notices.len() <= 1 {
+                    if c.differences.is_empty() && workspace::sail_notes_are_unique(&notices) {
                         "same"
                     } else {
                         "different"
