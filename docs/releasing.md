@@ -1,7 +1,11 @@
 # Releasing Sail
 
 Development and performance work follow current main, including the Oyster
-integration. Release composition remains the owner's decision. Do not create
+integration. Release composition and final publication require the owner's
+explicit approval of the exact candidate. Agents complete the builds, checks,
+staging and review package before requesting that approval. The initial
+`sail-solve 0.2.0-rc.1` crate prerelease has separate authorization; it does not
+authorize the final release. Do not create
 a release branch, tag or draft merely because a sprint validation completes.
 
 Published releases are on the repository's
@@ -499,9 +503,15 @@ qualifying the macOS runtime against it).
 
    Record the run id and both results in the
    [release record](validation/release-candidate.md).
-6. Only after both archives verify, publish the draft (`gh release edit
-   vVERSION --repo Chelis-Lang/sail --draft=false`). A failed or missing
-   attestation blocks publication; fix it on the draft.
+6. Present the owner with the exact version/source commit, archive checksums,
+   qualification results, user-visible changes and unresolved limitations.
+   Stop before final publication. Both successful qualification and explicit
+   owner approval of that candidate are required. After approval, publish the
+   draft (`gh release edit vVERSION --repo Chelis-Lang/sail --draft=false`).
+   A failed or missing attestation blocks publication; fix it on the draft.
+   The published release triggers its matching crate upload. General permission
+   to prepare candidates or maintain crate publishing does not replace this
+   final approval.
 
 When the installed stages have already passed the native matrix, full mutation
 cohorts and walkthroughs, package those same bytes on an Apple-silicon Mac:

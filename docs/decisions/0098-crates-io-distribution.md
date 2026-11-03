@@ -63,6 +63,13 @@ recheck HEAD and the tag/workspace version before running source commands or
 exposing the upload token. A moved tag therefore fails instead of selecting
 different source; checksum-identical resume still requires the original commit.
 
+The owner clarified the final publication boundary on 2026-11-03: complete
+candidate preparation and qualification, then obtain explicit approval of that
+exact final candidate before publishing its GitHub release or stable crates.
+The already-authorized initial `0.2.0-rc.1` crate prerelease may complete.
+Future crate automation follows an approved published release; this ADR grants
+no independent authority to publish a final release.
+
 ## Consequences
 
 Users can install the real CLI and shim with one Cargo command and install

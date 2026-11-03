@@ -313,3 +313,13 @@ Each entry names the charter text it qualifies and the ADR that records it.
     public package set, exact versioned dependencies and installation route.
     Contributor tooling and private temporal extensions stay unpublished;
     proof and release-qualification requirements are unchanged.
+
+
+15. *Final release approval* (owner decision, 2026-11-03). Agents should
+    complete implementation, candidate preparation and qualification up to the
+    publication boundary. Final release publication requires the owner's
+    explicit approval of the candidate; qualification alone is insufficient.
+    This supersedes the earlier automatic-publication instruction in
+    `AGENTS.md`. The separately authorized initial `sail-solve 0.2.0-rc.1`
+    crate prerelease may complete. Future crate automation follows the
+    owner-approved release; it is not independent final-release authorization.
