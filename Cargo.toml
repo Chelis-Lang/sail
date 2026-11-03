@@ -88,12 +88,19 @@ unwrap_used = "deny"
 dbg_macro = "deny"
 
 # Line tables keep backtraces useful without full debuginfo's disk cost on
-# CI runners. Use `--profile profiling` for full symbols.
+# CI runners and in per-agent worktrees; dependencies carry no debuginfo. Use
+# `--profile profiling` or CARGO_PROFILE_DEV_DEBUG=2 for a debugger session.
 [profile.dev]
 debug = "line-tables-only"
 
+[profile.dev.package."*"]
+debug = false
+
 [profile.test]
 debug = "line-tables-only"
+
+[profile.test.package."*"]
+debug = false
 
 # The shared serving deadline includes strict Ed25519 verification. Use the
 # production arithmetic optimization in dev/test too, retaining their debug
