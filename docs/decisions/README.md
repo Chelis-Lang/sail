@@ -111,3 +111,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0097: Consumed resource statistics in determinism](0097-consumed-resource-statistics-in-determinism.md) (accepted; strict default retained, explicit consumed-counter classification)
 
 - [0098: Publish Sail as sail-solve on crates.io](0098-crates-io-distribution.md) (owner-authorized; native package and installed-command qualification complete, initial registry publication pending)
+
+- [0099: Mutation explanation-note cardinality](0099-mutation-explanation-note-cardinality.md) (accepted; existing per-code uniqueness corrected, native Linux/Mac witness and negative controls qualified)
