@@ -4,12 +4,12 @@ Sail makes Verus verification fast and usable from the command line and coding
 agents. Verify an existing Rust file or Cargo project, watch edits, retain
 successful proofs, and independently validate focused repairs.
 
-Install the first crates.io prerelease with Rust 1.99 or newer, a C toolchain,
+Install Sail 0.2.0 with Rust 1.99 or newer, a C toolchain,
 Rustup and Python 3:
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rust-src
-cargo +1.99.1 install sail-solve --version 0.2.0-rc.1 --locked
+cargo +1.99.1 install sail-solve --version 0.2.0 --locked
 sail engine install
 ```
 
@@ -41,8 +41,7 @@ provenance and every runtime file. Supported runtime platforms are Linux x86-64
 with glibc 2.39 or newer and macOS on Apple silicon. No source checkout or
 separate Verus installation is needed.
 
-The first registry version is a prerelease while full release qualification
-continues. Cargo installations build the CLI from source and establish their
+Cargo installations build the CLI from source and establish their
 own proofs; GitHub release archives additionally provide preverified vstd and
 signed solver replies. Both routes keep the same proof-admission checks.
 

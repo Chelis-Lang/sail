@@ -1,14 +1,12 @@
 # Crates.io distribution qualification
 
-Status: the owner authorized initial `sail-solve 0.2.0-rc.1` publication and
-crate publishing for future releases (ADR 0098). All eighteen source packages
-and actual installed commands pass native Linux and macOS qualification.
-The protected implementation PR #656 is merged; immutable tag
-`v0.2.0-rc.1` selects merged source `81c41be8`. All eighteen packages verify
-from that exact final source. Actual upload was attempted and crates.io
-requires the publishing account to verify its email. Initial publication and
-anonymous registry installations on both platforms remain pending. This does not close the broader release
-performance gate.
+Status: all eighteen `0.2.0-rc.1` packages are published, non-yanked, and
+independently checked against the full archives from immutable source
+`81c41be8d80850d4a59d4b845656f22fc616fcc4` and tag `v0.2.0-rc.1`.
+Actual anonymous, empty-cache registry installations and complete user workflows
+pass on native Linux and macOS. Stable `0.2.0` publication remains unapproved;
+its separate [candidate gate](stable-candidate.md) continues. Publication does
+not close the broader release performance goals.
 
 ## Scope and current gates
 
@@ -26,7 +24,7 @@ Source `ef6d53da`, pinned A0e runtime, c7i.4xlarge / us-east-1 / Ubuntu 24.04:
 | End to end and fast conformance | Every local E2E phase including `extra` passes; all four fast arms report 147 Same / 3,451 functions, zero disagreements, instability, infrastructure errors or skipped projects |
 | Refinement and private extension | All 316 direct Stock actual-body/refinement cases pass; private extension Clippy and all 22 tests pass; original executable/proof guards remain exact |
 | macOS | Same production source, separate physical source/target, native mac-m4.metal / us-east-1c / macOS 26.7: Clippy and all 1,313 tests pass; both installed binaries, fresh runtime download, the normal quickstart and complete standalone driver pass |
-| Registry consumer | Pending actual upload: anonymous `cargo install --locked` from an empty package cache outside the checkout on Linux and macOS |
+| Registry consumer | Final `81c41be8`: actual anonymous `cargo +1.99.1 install sail-solve --version 0.2.0-rc.1 --locked` from empty caches outside the checkout passes on Linux and macOS; full cached source archives match public registry checksums and clean Git provenance |
 
 The package/install capture has 171 regular members, each checked against its
 size and SHA-256 seal; archive SHA-256
@@ -73,8 +71,34 @@ to the archive channel's shipped-vstd acceleration or new timing acceptance.
 The separate ongoing CapybaraKV timing run also exposes the explanation-note
 cardinality defect [#655](https://github.com/Chelis-Lang/sail/issues/655),
 retained as a failed harness classification with matching verification output.
-Its proposed correction and performance interpretation do not authorize or
+Its merged correction and separate performance interpretation do not authorize or
 replace this package gate's actual installation and verification controls.
+
+## Completed public-registry qualification
+
+Both platforms independently install from the registry without publication
+credentials, download and validate the public pinned runtime, reuse it with
+broken HTTP proxies, and run the normal quickstart with no runtime-selection
+override. Eleven normal-discovery calls require first/settled/replay verifier
+counts of 1/0/0, a genuine invalid-source rejection and successful restored-proof
+reuse. The complete standalone CLI/jobs/watch/MCP driver passes 68 recorded
+Linux calls and 67 platform-specific Mac calls; counts are not equated by
+omitting a case.
+
+The package cache's complete `sail-solve` archive has SHA-256
+`287cf34cfe67d6fae9838e57ee16c290af5f9e6fdb107fd04f92ff8f1da6d2a8`,
+matching the public sparse index and source `81c41be8`. Every dependency package
+is independently checked the same way. The retained archive of all eighteen
+published source packages has SHA-256
+`0f115bf86813ccbeec0772e03f99054b30a6ffef2cccb39f48ed8d043426a4a5`.
+
+| Actual anonymous consumer | Retained raw archive SHA-256 |
+|---|---|
+| Linux c7i.4xlarge / us-east-1 / Ubuntu 24.04, 203 sealed members | `52a33b8df939aa053477ddb4fd8268f66addf3ac3aa585abe637c9cc7bbaf5b3` |
+| Mac mac-m4.metal / us-east-1c / macOS 26.7, 204 sealed members | `eee3e7be1d592a061c356c6d9d06043a4b76816831ea9eb11ce1cbd254e19fb5` |
+
+These are actual registry consumers of the final immutable prerelease, not
+copies of repository binaries. All per-file size/SHA seals are read back.
 
 ## Retained attempts
 
@@ -95,8 +119,22 @@ replace this package gate's actual installation and verification controls.
 
 - `81c41be8`, 2026-11-03: all eighteen final-source packages verify; actual
   upload returns HTTP 400 requiring a verified publishing-account email.
-  No successful registry publication is claimed. Retained redacted upload log
+  Initial attempt only; completed publication is recorded above. Retained redacted upload log
   SHA-256 `82fa8897c92379c4c50f9ee3dbf52c5ed63af6459c2b63735d83b721755a661f`.
+
+- `81c41be8`, 2026-11-03: new-name rate limiting and delayed sparse-index
+  visibility interrupted partial uploads. Retrying the same immutable source
+  completed all eighteen versions; no conflicting archive was accepted.
+- `81c41be8`, 2026-11-03: initial registry-consumer harnesses assumed a
+  `.cargo-checksum.json` file that Cargo install does not supply. Both actual
+  installs succeeded before the harness refusal; the corrected harness checks
+  the full cached `.crate` against the authoritative public sparse index.
+  Mac failed capture SHA-256
+  `c4dc003527afcf6a50416e8aa5e0fc46c4e5856d96e96438f7b2ee9e18e3935e`.
+- `81c41be8`, 2026-11-03: a Linux wrapper lost stdin before its workflow steps;
+  independent capture validation rejected the incomplete run despite the wrapper
+  exit. Explicit null child stdin fixes the harness; the complete pass above
+  retains every required workflow assertion.
 
 ## Publication procedure
 

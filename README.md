@@ -20,7 +20,11 @@ instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 
 ## Install
 
-The initial crates.io package is `sail-solve 0.2.0-rc.1`:
+The published crates.io package is `sail-solve 0.2.0-rc.1`.
+
+The checkout's `0.2.0` source version is an unpublished candidate. Stable
+publication requires qualification and explicit owner approval; the command
+below installs the published prerelease.
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rust-src
