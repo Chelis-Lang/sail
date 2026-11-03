@@ -55,7 +55,13 @@ from a clean committed source, retain registry checksums, and resume only
 identical non-yanked versions. Keep the token out of preparation commands,
 arguments, source and logs. Release publication uses a repository Actions
 secret, isolated from ordinary CI. Future published GitHub releases trigger
-the publisher for their exact matching source tag and workspace version.
+the publisher for their immutable event commit SHA. Before checkout, resolve
+the published tag through any annotated tag objects and require its commit to
+match the event SHA. Manual retries require an explicit full qualified commit
+SHA and the same tag-resolution check. Check out that commit directly and
+recheck HEAD and the tag/workspace version before running source commands or
+exposing the upload token. A moved tag therefore fails instead of selecting
+different source; checksum-identical resume still requires the original commit.
 
 ## Consequences
 

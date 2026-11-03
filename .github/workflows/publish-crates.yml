@@ -9,6 +9,10 @@ on:
         description: Already published, qualified release tag (vVERSION)
         required: true
         type: string
+      commit:
+        description: Full 40-character qualified commit SHA for the published tag
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -25,29 +29,73 @@ jobs:
     env:
       SAIL_RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
-      - name: Require an already published release
+      - name: Resolve the published release to its qualified commit
+        id: source
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          [[ "$SAIL_RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.+-]+)?$ ]]
-          gh release view "$SAIL_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-            --json tagName,isDraft,publishedAt > "$RUNNER_TEMP/sail-crate-release.json"
-          python3 - "$RUNNER_TEMP/sail-crate-release.json" <<'PY'
-          import json, os, sys
-          release = json.load(open(sys.argv[1]))
-          if release['isDraft'] or not release['publishedAt'] or release['tagName'] != os.environ['SAIL_RELEASE_TAG']:
-              raise SystemExit('crate publication requires the selected published release')
-          PY
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
-          persist-credentials: false
-      - name: Check version and install the pinned Rust toolchain
+          SAIL_QUALIFIED_COMMIT: ${{ inputs.commit }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
+          # BEGIN crate-release-source
+          import json, os, re, subprocess
+          tag = os.environ['SAIL_RELEASE_TAG']
+          if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+([+-][A-Za-z0-9.+-]+)?', tag):
+              raise SystemExit('release tag must be vVERSION')
+          event = os.environ['GITHUB_EVENT_NAME']
+          if event == 'release':
+              source = os.environ.get('GITHUB_SHA', '')
+          elif event == 'workflow_dispatch':
+              source = os.environ.get('SAIL_QUALIFIED_COMMIT', '')
+          else:
+              raise SystemExit('unsupported crate-publication event')
+          if not re.fullmatch(r'[0-9a-f]{40}', source):
+              raise SystemExit('crate publication requires a full qualified commit SHA')
+          repository = os.environ['GITHUB_REPOSITORY']
+          def request(arguments):
+              return json.loads(subprocess.run(arguments, check=True, capture_output=True, text=True).stdout)
+          release = request(['gh', 'release', 'view', tag, '--repo', repository,
+                             '--json', 'tagName,isDraft,publishedAt'])
+          if release.get('isDraft') is not False or not release.get('publishedAt') or release.get('tagName') != tag:
+              raise SystemExit('crate publication requires the selected published release')
+          reference = request(['gh', 'api', f'repos/{repository}/git/ref/tags/{tag}'])
+          if reference.get('ref') != 'refs/tags/' + tag:
+              raise SystemExit('resolved reference is not the selected release tag')
+          target = reference['object']
+          seen = set()
+          for _ in range(16):
+              sha = target['sha']
+              if not re.fullmatch(r'[0-9a-f]{40}', sha) or sha in seen:
+                  raise SystemExit('invalid or cyclic release tag target')
+              seen.add(sha)
+              if target['type'] == 'commit':
+                  break
+              if target['type'] != 'tag':
+                  raise SystemExit('release tag must resolve to a commit')
+              target = request(['gh', 'api', f'repos/{repository}/git/tags/{sha}'])['object']
+          else:
+              raise SystemExit('release tag nesting exceeds the resolution limit')
+          if sha != source:
+              raise SystemExit('release tag and qualified commit differ')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('sha=' + source + '\n')
+          # END crate-release-source
+          PY
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          persist-credentials: false
+      - name: Check version and install the pinned Rust toolchain
+        env:
+          SAIL_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          # BEGIN crate-release-checkout
           import os, pathlib, subprocess, tomllib
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          if head != os.environ['SAIL_SOURCE_SHA']:
+              raise SystemExit('checkout and qualified commit differ')
           version = tomllib.loads(pathlib.Path('Cargo.toml').read_text())['workspace']['package']['version']
           if os.environ['SAIL_RELEASE_TAG'] != 'v' + version:
               raise SystemExit('release tag and workspace version differ')
@@ -56,6 +104,7 @@ jobs:
           for component in toolchain.get('components', []):
               command += ['--component', component]
           subprocess.run(command, check=True)
+          # END crate-release-checkout
           PY
       - name: Cache Cargo dependencies and package verification builds
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

@@ -54,16 +54,29 @@ internal dependencies. Existing registry versions are skipped only when their
 complete archive checksum matches and they are not yanked. Publish and retry
 from the same commit: Cargo records Git provenance inside each archive.
 
+The publishing account must have a [verified email address](https://crates.io/settings/profile);
+crates.io refuses upload until this account setup is complete.
+
 For initial publication, pass an owner-authorized token file to
 `scripts/publish-crates.py --version VERSION --token-file PATH`. The token is
 loaded only for upload, passed through Cargo's environment, and redacted from
 output. It must never be committed, printed or placed in command arguments.
 
 Future published GitHub releases automatically run
-`.github/workflows/publish-crates.yml` against their exact tag. The tag must
-equal `v` plus the workspace version. The release-only `CARGO_REGISTRY_TOKEN`
+`.github/workflows/publish-crates.yml` against the release event's immutable
+commit SHA. Before checkout, the workflow resolves the published tag, including
+annotated tags, and requires its commit to equal that SHA. Checkout uses the
+full commit, then checks HEAD and requires the tag to equal `v` plus the
+workspace version. The release-only `CARGO_REGISTRY_TOKEN`
 repository secret supplies upload authorization; ordinary CI receives no
-publication credential. Manual retries accept only an already published tag.
+publication credential. Manual retries require an already published tag and
+the full 40-character qualified commit SHA; a moved tag fails rather than
+selecting different source. Supply the original qualified commit on every retry:
+
+```sh
+gh workflow run publish-crates.yml -f tag=vVERSION -f commit=FULL_QUALIFIED_COMMIT
+```
+
 After publication, independently install the exact registry version with an
 empty Cargo package cache, outside the checkout, and exercise engine setup,
 verification, unchanged reuse and the negative input controls on both platforms.

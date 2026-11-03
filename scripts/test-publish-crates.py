@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError
@@ -16,6 +17,13 @@ from urllib.error import HTTPError
 SPEC = importlib.util.spec_from_file_location("publish_crates", Path(__file__).with_name("publish-crates.py"))
 PUBLISH = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PUBLISH)
+WORKFLOW = Path(__file__).resolve().parents[1] / ".github/workflows/publish-crates.yml"
+
+
+def workflow_code(name):
+    """Execute the workflow's actual bounded Python controls without YAML dependencies."""
+    source = WORKFLOW.read_text().split(f"# BEGIN {name}\n", 1)[1].split(f"# END {name}", 1)[0]
+    return compile(textwrap.dedent(source), str(WORKFLOW) + ":" + name, "exec")
 
 
 def metadata():
@@ -129,6 +137,106 @@ class PublicationControls(unittest.TestCase):
         self.assertEqual(popen.call_args.kwargs["env"]["CARGO_REGISTRY_TOKEN"], token)
         self.assertNotIn(token, output.getvalue())
         self.assertIn("[REDACTED]", output.getvalue())
+
+
+class ReleaseSourceControls(unittest.TestCase):
+    sha = "1" * 40
+    other = "2" * 40
+    tag = "v0.2.0-rc.1"
+
+    def resolve(self, event="release", commit=None, target=None, release=None, reference=None, tags=None):
+        """Run pre-checkout code against an exact mocked GitHub response sequence."""
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "output"
+            environment = {
+                "SAIL_RELEASE_TAG": self.tag, "GITHUB_EVENT_NAME": event,
+                "GITHUB_SHA": self.sha, "GITHUB_REPOSITORY": "Chelis-Lang/sail",
+                "GITHUB_OUTPUT": str(output),
+            }
+            if commit is not None:
+                environment["SAIL_QUALIFIED_COMMIT"] = commit
+            responses = [
+                release if release is not None else {"tagName": self.tag, "isDraft": False, "publishedAt": "2026-11-03T00:00:00Z"},
+                {"ref": reference or "refs/tags/" + self.tag,
+                 "object": target or {"type": "commit", "sha": self.sha}},
+            ] + [{"object": item} for item in (tags or [])]
+            with patch.dict(os.environ, environment, clear=True), \
+                 patch("subprocess.run", side_effect=[Mock(stdout=json.dumps(item)) for item in responses]) as run:
+                self.requests = run
+                exec(workflow_code("crate-release-source"), {})
+            return output.read_text()
+
+    def test_release_uses_event_commit_and_ignores_dispatch_input(self):
+        self.assertEqual(self.resolve(commit=self.other), "sha=" + self.sha + "\n")
+        self.assertEqual(self.requests.call_args_list[1].args[0][-1],
+                         "repos/Chelis-Lang/sail/git/ref/tags/" + self.tag)
+
+    def test_dispatch_requires_matching_explicit_qualified_commit(self):
+        self.assertEqual(self.resolve(event="workflow_dispatch", commit=self.sha), "sha=" + self.sha + "\n")
+        with self.assertRaisesRegex(SystemExit, "tag and qualified commit differ"):
+            self.resolve(event="workflow_dispatch", commit=self.other)
+
+    def test_missing_or_malformed_dispatch_commit_fails_before_network(self):
+        for commit in [None, "", "1" * 39, "1" * 41, "main", "refs/tags/" + self.tag, "g" * 40, " " + self.sha]:
+            with self.subTest(commit=commit), self.assertRaisesRegex(SystemExit, "full qualified commit"):
+                self.resolve(event="workflow_dispatch", commit=commit)
+            self.requests.assert_not_called()
+
+    def test_retargeted_release_tag_is_rejected(self):
+        with self.assertRaisesRegex(SystemExit, "tag and qualified commit differ"):
+            self.resolve(target={"type": "commit", "sha": self.other})
+
+    def test_annotated_and_nested_tags_resolve_to_qualified_commit(self):
+        self.assertEqual(self.resolve(target={"type": "tag", "sha": self.other},
+                                     tags=[{"type": "commit", "sha": self.sha}]), "sha=" + self.sha + "\n")
+        self.assertEqual(self.resolve(target={"type": "tag", "sha": self.other},
+                                     tags=[{"type": "tag", "sha": "3" * 40},
+                                           {"type": "commit", "sha": self.sha}]), "sha=" + self.sha + "\n")
+
+    def test_invalid_tag_targets_are_rejected(self):
+        for target in [{"type": "tree", "sha": self.sha}, {"type": "commit", "sha": "bad"}]:
+            with self.subTest(target=target), self.assertRaises(SystemExit):
+                self.resolve(target=target)
+        with self.assertRaisesRegex(SystemExit, "cyclic"):
+            self.resolve(target={"type": "tag", "sha": self.other},
+                         tags=[{"type": "tag", "sha": self.other}])
+        with self.assertRaisesRegex(SystemExit, "nesting"):
+            self.resolve(target={"type": "tag", "sha": f"{2:040x}"},
+                         tags=[{"type": "tag", "sha": f"{number:040x}"} for number in range(3, 19)])
+
+    def test_draft_unpublished_or_wrong_release_is_rejected(self):
+        for release in [{"tagName": self.tag, "isDraft": True, "publishedAt": "date"},
+                        {"tagName": self.tag, "isDraft": False, "publishedAt": None},
+                        {"tagName": "v0.2.0", "isDraft": False, "publishedAt": "date"}]:
+            with self.subTest(release=release), self.assertRaisesRegex(SystemExit, "published release"):
+                self.resolve(release=release)
+        with self.assertRaisesRegex(SystemExit, "selected release tag"):
+            self.resolve(reference="refs/heads/main")
+
+    def checkout(self, head=None, version="0.2.0-rc.1"):
+        with tempfile.TemporaryDirectory() as directory, contextlib.chdir(directory):
+            Path("Cargo.toml").write_text('[workspace.package]\nversion = "' + version + '"\n')
+            Path("rust-toolchain.toml").write_text('[toolchain]\nchannel = "1.99.0"\nprofile = "minimal"\ncomponents = ["clippy"]\n')
+            with patch.dict(os.environ, {"SAIL_SOURCE_SHA": self.sha, "SAIL_RELEASE_TAG": self.tag}, clear=True), \
+                 patch("subprocess.check_output", return_value=(head or self.sha) + "\n"), \
+                 patch("subprocess.run") as run:
+                self.toolchain = run
+                exec(workflow_code("crate-release-checkout"), {})
+
+    def test_checkout_matches_source_and_prerelease_version_before_rustup(self):
+        self.checkout()
+        self.toolchain.assert_called_once_with(["rustup", "toolchain", "install", "1.99.0", "--profile", "minimal", "--component", "clippy"], check=True)
+        for arguments, message in [({"head": self.other}, "checkout and qualified commit"),
+                                   ({"version": "0.2.0"}, "workspace version")]:
+            with self.subTest(arguments=arguments), self.assertRaisesRegex(SystemExit, message):
+                self.checkout(**arguments)
+            self.toolchain.assert_not_called()
+
+    def test_workflow_checks_out_and_rechecks_resolved_commit(self):
+        source = WORKFLOW.read_text()
+        self.assertIn("ref: ${{ steps.source.outputs.sha }}", source)
+        self.assertIn("SAIL_SOURCE_SHA: ${{ steps.source.outputs.sha }}", source)
+        self.assertNotIn("ref: refs/tags/", source)
 
 
 if __name__ == "__main__":

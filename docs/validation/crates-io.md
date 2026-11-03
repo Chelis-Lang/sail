@@ -3,8 +3,11 @@
 Status: the owner authorized initial `sail-solve 0.2.0-rc.1` publication and
 crate publishing for future releases (ADR 0098). All eighteen source packages
 and actual installed commands pass native Linux and macOS qualification.
-The protected PR, initial upload and anonymous registry installations
-on both platforms remain pending. This does not close the broader release
+The protected implementation PR #656 is merged; immutable tag
+`v0.2.0-rc.1` selects merged source `81c41be8`. All eighteen packages verify
+from that exact final source. Actual upload was attempted and crates.io
+requires the publishing account to verify its email. Initial publication and
+anonymous registry installations on both platforms remain pending. This does not close the broader release
 performance gate.
 
 ## Scope and current gates
@@ -90,6 +93,11 @@ replace this package gate's actual installation and verification controls.
   independent packaging with checkout-scoped Git trust passes above. Failure
   log remains in the full native capture.
 
+- `81c41be8`, 2026-11-03: all eighteen final-source packages verify; actual
+  upload returns HTTP 400 requiring a verified publishing-account email.
+  No successful registry publication is claimed. Retained redacted upload log
+  SHA-256 `82fa8897c92379c4c50f9ee3dbf52c5ed63af6459c2b63735d83b721755a661f`.
+
 ## Publication procedure
 
 Publish only the final clean merged source and preserve its immutable version
@@ -98,3 +106,22 @@ identical non-yanked registry checksums, and refuses conflicting bytes.
 Future published releases invoke the same publisher with a release-only
 repository secret. See [releasing](../releasing.md#cratesio-publication) and
 [installation](../install.md#cargo-installation).
+
+## Fixed release source
+
+Source `a252bd69` binds release-event publication to its fixed event SHA and
+manual retry to an explicitly supplied qualified commit. The published tag
+must resolve to that commit, including annotated tags, before checkout.
+Checkout and workspace version are checked again before source commands or
+the upload credential. All eighteen publication controls pass, including the
+actual inline workflow code, moved tags, malformed/missing commits, published
+release state and checkout/version disagreement. A read-only preflight against
+actual published `v0.1.0` accepts its qualified commit and rejects a different
+commit; it uploads nothing and reads no Cargo token.
+
+The complete native workspace gate passes on c7i.4xlarge / us-east-1 /
+Ubuntu 24.04. Its full log, source and both successful exit markers are sealed
+and checked after transfer; archive SHA-256 `9438133e477a82ed706b867bbb4fce0702a525822c18e3f0d48c409d782a4dc6`.
+Production Rust, package resources, manifests, locks and runtime pins are
+unchanged, so the earlier Linux/Mac product results retain their recorded scope.
+The initial crate prerelease remains bound to `81c41be8`; its tag is unchanged.

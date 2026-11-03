@@ -77,7 +77,7 @@ and performance acceptance remain separate.
 
 | Deliverable | Current state | Remaining gate |
 |---|---|---|
-| Crates.io distribution (`sail-solve`) | Owner authorized initial and future publication; all eighteen source packages, Linux/Mac native gates, normal user setup and complete installed workflows pass ([record](validation/crates-io.md)) | Protected PR, initial registry upload and anonymous registry installations |
+| Crates.io distribution (`sail-solve`) | Owner authorized initial and future publication; all eighteen source packages, Linux/Mac native gates, normal user setup and complete installed workflows pass ([record](validation/crates-io.md)) | #656 merged and rc.1 tagged; initial upload requires account email verification, then anonymous registry installations |
 | Daemon preparation and post-creation verification | Merged in #647; Linux/Mac replay, generated-input, foreground and queued-edit controls pass | Full performance acceptance remains separate |
 | Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Merged in #647; runtime-composed acceptance remains separate |
 | Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Merged in #647; readiness correction merged in #651; final runtime composition remains |
