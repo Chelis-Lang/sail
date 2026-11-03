@@ -131,8 +131,11 @@ its release on the AWS side and `down` terminates the instance at once.
 
 **Workspace hygiene.** Each worktree builds into its own `target/`; never
 point `CARGO_TARGET_DIR` at a shared or home-level directory. Once a branch is
-merged or abandoned, check for uncommitted source, then run `cargo clean`,
-`git worktree remove <path>` and `git worktree prune`. Discard regenerable
+merged or abandoned, check for uncommitted source, then run
+`cargo clean --target-dir target` from the worktree root, `git worktree remove
+<path>` and `git worktree prune`. A bare `cargo clean` deletes whatever
+`CARGO_TARGET_DIR` or `build.target-dir` names, which may be a shared cache
+inherited from your shell, not this worktree's `target/`. Discard regenerable
 build intermediates freely. Cleanup is routine and is not recorded in git.
 
 ## Repository layout
