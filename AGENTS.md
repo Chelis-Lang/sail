@@ -114,7 +114,8 @@ In PR mode:
 plus benchmark deltas for any performance change.
 
 **Parallel agents** work in separate worktrees under `.claude/worktrees/` on
-their own branches. The lead reviews and merges.
+their own branches, never in sibling checkouts beside the repository. The lead
+reviews and merges.
 
 **Native Linux hosts.** Linux validation, gates and all performance work run
 on native x86-64 EC2 hosts (ADR 0038). Use `scripts/perf-host.sh up LANE`,
@@ -128,9 +129,11 @@ host (`scripts/perf-host-mac.sh`), which needs the owner's approval: Apple's
 licence bills a Mac dedicated host for at least 24 hours, so `up` schedules
 its release on the AWS side and `down` terminates the instance at once.
 
-**Workspace hygiene.** Remove worktrees once their branch is merged or
-archived, after checking for uncommitted source. Discard regenerable build
-intermediates freely. Cleanup is routine and is not recorded in git.
+**Workspace hygiene.** Each worktree builds into its own `target/`; never
+point `CARGO_TARGET_DIR` at a shared or home-level directory. Once a branch is
+merged or abandoned, check for uncommitted source, then run `cargo clean`,
+`git worktree remove <path>` and `git worktree prune`. Discard regenerable
+build intermediates freely. Cleanup is routine and is not recorded in git.
 
 ## Repository layout
 
