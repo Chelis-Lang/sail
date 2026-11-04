@@ -5,7 +5,7 @@ verified targets and exact solver answers. Edits still pay Rust compilation
 and the Verus frontend for changed targets. Undoing an edit can restore an
 original complete proof when retaining that target was worth its cost.
 
-## 0.2.0 candidate
+## 0.2.0
 
 The complete core composition uses source `039fb996`, pinned A0e Verus,
 six rotated stock/candidate blocks on native c7i.4xlarge / us-east-1 /
@@ -31,15 +31,15 @@ Five workflow medians remain slower, with disjoint ranges in this cohort:
 Linux tiny edits/reverts add 0.19/0.15 s; Mac adds 0.11/0.10 s, and Anvil cold
 is 98.94 s against stock's 96.87 s. Calls that miss replay still pay frontend
 and input-checking costs. Background preparation can help a later call but is
-additional work; CapybaraKV's separate Mac post-return cost observer remains
-unqualified. These results do not establish universal parity or a resource bound.
+additional work; the bounded Mac preparation-cost control completes with the
+intended toolchain ([record](validation/binary-compiler-inputs.md#completed-mac-preparation-cost-controls)). These results do not establish universal parity or a resource bound.
 
 The [stable candidate record](validation/stable-candidate.md) separately binds
 the new versioned archives, fresh installation/replay controls and release
 gates. The exact rc.1 archives also preserve the original fifteen-edit and
 Anvil catalogue's 114 raw samples/platform and passing execution audits
 ([record](validation/release-expansion.md#recovered-incidental-edit-qualification)).
-Final release publication remains subject to explicit owner approval.
+The owner approved this candidate; [0.2.0 is published](https://github.com/Chelis-Lang/sail/releases/tag/v0.2.0).
 
 The earlier [combined candidate record](validation/v020-performance.md) keeps
 its original source and observer scope. The [broader evaluation](performance-evaluation.md)

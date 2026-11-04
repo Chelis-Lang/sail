@@ -1,12 +1,18 @@
 # Crates.io distribution qualification
 
-Status: all eighteen `0.2.0-rc.1` packages are published, non-yanked, and
-independently checked against the full archives from immutable source
-`81c41be8d80850d4a59d4b845656f22fc616fcc4` and tag `v0.2.0-rc.1`.
-Actual anonymous, empty-cache registry installations and complete user workflows
-pass on native Linux and macOS. Stable `0.2.0` publication remains unapproved;
-its separate [candidate gate](stable-candidate.md) continues. Publication does
-not close the broader release performance goals.
+Status: all eighteen stable `0.2.0` packages are published, non-yanked and
+independently matched byte-for-byte against the approved packages from
+`3d7782bf70bf54efbfe0378eac8fbdf7b2276c20`, tag `v0.2.0`.
+Actual anonymous stable registry installs, runtime setup, full standalone/repair/
+preparation/budget controls and public archive installation pass on native
+Linux and macOS. All eighteen docs.rs library targets build successfully.
+The automatic [publication workflow](https://github.com/Chelis-Lang/sail/actions/runs/41830064285)
+passes. Stable installed-consumer results are recorded in the
+[release record](stable-candidate.md).
+
+The earlier sections below retain the actual initial `0.2.0-rc.1` source
+`81c41be8d80850d4a59d4b845656f22fc616fcc4` and its independent Linux/Mac
+consumer results. Stable publication does not close the broader performance goals.
 
 ## Scope and current gates
 

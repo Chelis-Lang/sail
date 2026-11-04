@@ -1,6 +1,6 @@
 # Known issues and limits
 
-Open Sail defects and current product limits in the published 0.1.0 and on
+Open Sail defects and current product limits in published 0.2.0 and on
 main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
@@ -31,8 +31,9 @@ Original strict failures remain recorded. Complete retained-output rechecking
 now compares all 1,944 paired steps Same, and a separate corrected report has
 26/26 valid rows on each platform. Timings remain unchanged, including the
 slower cases below. Product code, proof authority and solver input are unchanged.
-Actual anonymous rc.1 crate installation passes on both platforms; stable
-publication and final release approval remain separate.
+The exact stable candidate was approved and published as 0.2.0. Its native
+consumer scope is recorded in [release qualification](validation/stable-candidate.md);
+publication does not close the slower cases above.
 
 ## Accepted integration limit
 

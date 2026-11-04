@@ -1,8 +1,8 @@
 # Verify an existing Verus file
 
-Standalone verification is available in the published registry prerelease
-`0.2.0-rc.1` and the stable `0.2.0` candidate, with native Linux/macOS
-qualification. It is not in published 0.1.0.
+Standalone verification is available in published `0.2.0`, with native
+Linux/macOS qualification. It was also available in registry prerelease
+`0.2.0-rc.1`; it is absent from 0.1.0.
 See the [qualification record](validation/standalone-verification.md).
 
 Use your existing Verus source without creating a Cargo package:
@@ -26,7 +26,7 @@ inputs and reuses that proof. JSON records the original `establishing_run`,
 `reused` and actual current invocation counters. History retains up to 16
 revisions within 1 GiB, keeping the first successful revision pinned.
 Changed files, includes, namespaces, environment or runtime invalidate reuse.
-The candidate's corrected runtime also covers non-UTF-8 `include_bytes!` inputs:
+The released runtime also covers non-UTF-8 `include_bytes!` inputs:
 unchanged proofs can be Current and reused, while a same-size edit with restored
 mtime still requires verification. Emptying a binary used by the proof preserves
 the fresh compiler's failure. See [qualification](validation/binary-compiler-inputs.md).

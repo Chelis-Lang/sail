@@ -1,12 +1,30 @@
 # Release-candidate validation
 
-**Current status:** Sail 0.1.0 is published (tag `v0.1.0`, `b56889f1`,
-2026-10-29). It was qualified as `0.1.0-rc.7`, which passed every functional
-qualification gate on native Linux and macOS. The one installer defect found
-during qualification (#591) was fixed before the release (#593). Between rc.7
-and `v0.1.0` only the installer, its tests, docs and the changelog changed.
-Performance is in [performance](../performance.md). The slower rows ship as
-known issues.
+**Current status:** [Sail 0.2.0 is published](https://github.com/Chelis-Lang/sail/releases/tag/v0.2.0)
+(tag `v0.2.0`, `3d7782bf`, 2026-11-04), with both attested native archives and
+eighteen matching crates.io packages. The owner approved the exact candidate
+before its tag, draft and rollout. Its native gates, measured performance
+scopes, archive identities, attestation and installed consumers are recorded in
+the [0.2.0 qualification record](stable-candidate.md). The earlier 0.1.0
+release and rc.7 gates below retain their original sources and scope.
+
+## 0.2.0 release
+
+[Attestation run 41829722273](https://github.com/Chelis-Lang/sail/actions/runs/41829722273)
+passes on the tagged source. Both uploaded draft archives match the qualified
+bytes and independently verify before publication. The
+[crate publication workflow](https://github.com/Chelis-Lang/sail/actions/runs/41830064285)
+passes from that exact tag/commit; all eighteen public package archives and
+VCS identities match the approved merged-source packages in
+[PR #661](https://github.com/Chelis-Lang/sail/pull/661).
+
+Archive builds retain their actual `e6adf3c0` identity. Final source `3d7782bf`
+changes only documentation and separately qualified dev/test dependency-debug
+settings relative to that build; release inputs are identical. See the
+[release notes](../release-notes/0.2.0.md) and [performance](../performance.md)
+for user-visible scope and remaining first/full-path, tiny-edit and Mac Anvil
+limitations. The [0.2.0 record](stable-candidate.md) holds exact archive hashes
+and the separate native published-consumer results.
 
 ## 0.1.0 release
 
