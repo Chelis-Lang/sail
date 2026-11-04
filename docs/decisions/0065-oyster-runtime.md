@@ -1,6 +1,7 @@
 # 0065: One verification runtime for Oyster
 
-- **Status:** implementation in progress
+- **Status:** delivered bounded slices maintained; expansion ordering superseded
+  by [ADR 0100](0100-mutation-first-roadmap.md) on 2026-11-04
 - **Date:** 2026-10-21
 
 ## Context

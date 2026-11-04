@@ -15,25 +15,11 @@ no general service-performance or completed-service claim follows.
 Native capacity/lifetime, external owner/EOF and solver interpretation
 relations remain open; source/hash binding does not establish them.
 
-## Mutation harness qualification
-
-The completed native Linux/Mac CapybaraKV catalogues match stock and both
-original-source returns get their own answers, but their cold cases fail the
-combined explanation-note count: one existing `SAIL3138` and one existing
-`SAIL3146` are incorrectly labeled a repeated bundle-miss note
-([#655](https://github.com/Chelis-Lang/sail/issues/655)). Original failed
-samples and complete output remain retained. The narrow per-code correction
-under [ADR 0099](decisions/0099-mutation-explanation-note-cardinality.md)
-is implemented and qualified on both platforms
-([scope](validation/mutation-notice-cardinality.md)). It corrects uniqueness
-of existing recognized notes; no new diagnostic exception is added.
-Original strict failures remain recorded. Complete retained-output rechecking
-now compares all 1,944 paired steps Same, and a separate corrected report has
-26/26 valid rows on each platform. Timings remain unchanged, including the
-slower cases below. Product code, proof authority and solver input are unchanged.
-The exact stable candidate was approved and published as 0.2.0. Its native
-consumer scope is recorded in [release qualification](validation/stable-candidate.md);
-publication does not close the slower cases above.
+Resolved defects are retained in the [changelog](../CHANGELOG.md) and
+[backlog reconciliation](reports/2026-11-04-roadmap-review.md). In particular,
+0.2.0 includes the per-code explanation-note correction (#655), trailing-output
+oracle completion (#611), and compound-field lowering/retained-read correction
+(#323). Original failures and source-specific qualification stay unchanged.
 
 ## Accepted integration limit
 
@@ -101,11 +87,15 @@ Current numbers are in [performance](performance.md).
   comparison remains failed; a serial control also refuses two shapes because
   independent crate document order changes. Complete compiler-invocation
   identity is not established by matching aggregate counts.
-  Composed native gains, complete held-out and Mac gates remain open.
+  Runtime/installed corrections and their both-platform gates are delivered;
+  complete parallel scaling acceptance remains open under #632/#629. The
+  unselected optimization experiments establish no general speedup.
 
-- **The first unchanged call after a verification is slower than stock**
-  ([#558](https://github.com/Chelis-Lang/sail/issues/558)). It takes the full path and records
-  the replay: on macOS 0.1.0 (measured as `0.1.0-rc.7`), Anvil 2.11 s
+- **A first unchanged call can still take the slower full path**
+  ([#558](https://github.com/Chelis-Lang/sail/issues/558)) when post-return
+  preparation has not completed. Preparation ships in 0.2.0; an immediate call
+  does not wait for it. Historical macOS 0.1.0 measurements (`0.1.0-rc.7`)
+  recorded Anvil 2.11 s
   against 0.30 s, Vest 0.80 s against 0.26 s, CapybaraKV 0.59 s against
   0.23 s and IronKV 0.29 s against 0.21 s. Later unchanged calls replay in
   0.04–0.09 s on macOS and 0.03–0.06 s on Linux
@@ -127,7 +117,10 @@ Current numbers are in [performance](performance.md).
   ([#232](https://github.com/Chelis-Lang/sail/issues/232),
   [#466](https://github.com/Chelis-Lang/sail/pull/466)): on 0.1.0 its median
   is 0.9 s slower on 100 s (100.3 s against 99.4 s), with overlapping ranges.
-  Linux cold medians are faster on all four measured projects.
+  Linux cold medians are faster on all four measured rc.7 projects.
+  The later complete 0.2.0 composition measures 98.94 s Sail / 96.87 s stock
+  (+2.07 s), with disjoint ranges; the regression remains active
+  ([record](validation/release-expansion.md)).
 - **macOS Vest reverts sometimes miss the restore fast path**
   ([#595](https://github.com/Chelis-Lang/sail/issues/595)). In two of six
   0.1.0 rounds the Vest revert and fix revert took about 12 s instead of
@@ -184,10 +177,10 @@ Current numbers are in [performance](performance.md).
   needs another Verus release cannot use Sail yet. `SAIL_CARGO_VERUS` runs
   another `cargo-verus` only as a labelled development override
   (`warning[SAIL0108]`).
-- **Published 0.1.0 supports Cargo projects.** Standalone verification through
-  CLI, watch and MCP is implemented and qualified on native Linux and macOS
-  for the next release. Standalone watch requires source and discovered
-  inputs beneath its working directory; CLI/MCP support external inputs.
+- **Published 0.2.0 supports Cargo and standalone files.** Standalone
+  verification through CLI, watch and MCP is delivered on native Linux/macOS.
+  Standalone watch requires source and discovered inputs beneath its working
+  directory; CLI/MCP support external inputs.
   See [standalone verification](standalone-verification.md) and
   [#164](https://github.com/Chelis-Lang/sail/issues/164).
 - **Instant revert applies to qualified dependency profiles only.** Retention
@@ -208,8 +201,9 @@ Current numbers are in [performance](performance.md).
 - **Repair selectors have a bounded source scope.** An arbitrary external
   include may need a full run in a new selector context before Current
   evidence is available; changed external bytes still force verification.
-- **Managed compiler targets are removed only by `sail cache projects prune`.**
-  There is no quota or automatic collection
+- **Managed cache budgets are opt-in soft caps.** Busy workspaces and the
+  newest workspace stay protected, so configured usage can exceed the cap.
+  Manual pruning and idle-daemon budget maintenance are available in 0.2.0
   ([disk use and cleanup](workspace-hygiene.md#managed-compiler-targets)).
 - **No `singular` feature.** Like the stock release, Sail's Verus has no
   `singular`, so `by(integer_ring)` proofs fail as they do in stock. The
@@ -231,20 +225,9 @@ Current numbers are in [performance](performance.md).
 - A failed Verus function can retain an unknown primary obligation; the
   neutral contract projection returns `NotProved` and keeps the unknown count
   and reason ([reproduction](../corpus/repros/neutral-contract-unknown/README.md)).
-- Lowering version two preserves compound-field definedness; new workers
-  require it and retained reads refuse affected version-one projections. The
-  source-job hold stays until the correction is qualified
-  ([#323](https://github.com/Chelis-Lang/sail/issues/323)).
 
 ## Tests and environment
 
-- **Incomplete trailing output in two test comparators.**
-  `z3_transcript::replies` and `cached_session::replies` check completed reply
-  counts but omit `ResponseSplitter::finish()`, so an incomplete trailing
-  suffix can be ignored ([#611](https://github.com/Chelis-Lang/sail/issues/611)).
-  The bounded input-prefix cost runner additionally checks stream completion;
-  it does not fix these repository helpers. No production wrong answer is
-  demonstrated. The helpers already check reply cardinality.
 - **Short fixture deadlines under heavy parallel load on macOS.** Exec of a
   freshly written executable has taken up to 10.5 s during
   `cargo nextest run --workspace -j 32` on an 8-core Mac. Fixtures whose
@@ -286,31 +269,19 @@ deep gate compares exactly.
   arm counts it as `engine-lacks-feature`
   ([reproduction](../corpus/repros/engine-without-singular/)).
 
-The v0.2.0 unqualified-Cargo early-refusal candidate is limited to rustup's
-installed native Cargo programs and proxy. External path toolchains and
-custom wrappers keep the existing late no-reuse fallback. Its performance
-component timing and repeated native-Cargo human-output controls qualify on
-Linux and Mac; the strict deep-rvt aggregate and release qualification remain
-open, tracked in #561. See the
-[record](validation/unsupported-cargo-fallback.md).
+The unqualified-Cargo early-refusal optimization ships in 0.2.0. It remains
+limited to installed native Rustup Cargo programs/proxies; custom wrappers and
+external path toolchains keep late no-reuse fallback. Both-platform component
+costs and composed release controls pass; this is not full-path parity
+([qualification](validation/unsupported-cargo-fallback.md)).
 
-- Native macOS27 sampler-overhead qualification remains open. Earlier
-  component numbers affected by background audio/configuration CPU remain
-  diagnostic. The complete authenticated-console matrix passes the bounded
-  startup preflight, but the independent overhead controls fail or refuse
-  before timing. No threshold changes ([instrumentation](validation/benchmark-memory.md),
-  [current matrix](validation/v020-performance.md)).
-
-The original strict v0.2.0 stock source-suite control fails on reproduced debug
-JSON order ([#627](https://github.com/Chelis-Lang/sail/issues/627)). The approved
-ADR 0093 implementation now passes the corrected complete native stock suite:
-4,867 Same cases, all 4,804 nonignored tests passing, 63 ignored and three
-explicit debug-order exceptions. The separate stock Cargo scaffolding setup
-failure is corrected by generating the release's own toolchain manifest.
-All three guarded `4cd6bd5f` fork source arms pass 4,906 Same cases and all
-4,843 nonignored tests. Original failures and raw bytes remain retained;
-these corrections are not yet merged and do not establish final release
-acceptance ([current qualification](validation/general-performance.md)).
+The native macOS memory-observer and pinned-stock source-suite corrections are
+qualified and included in 0.2.0. Earlier macOS27 failures and strict stock debug
+order failures (#627) remain historical evidence, not unmerged release blockers.
+The independently qualified observer and ADR 0093 retain their exact scopes
+([observer](validation/benchmark-memory.md),
+[source suites](validation/general-performance.md),
+[stable release](validation/stable-candidate.md)).
 
 ## Settled digest candidates
 

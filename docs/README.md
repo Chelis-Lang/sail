@@ -49,6 +49,13 @@ them.
 
 ## Working on Sail
 
+Current ordering: [roadmap](ROADMAP.md),
+[next-release mutation feature](design/verus-mutation-release.md),
+[ADR 0100](decisions/0100-mutation-first-roadmap.md) and
+[0.2.0 backlog reconciliation](reports/2026-11-04-roadmap-review.md).
+Oyster integration expansion and temporal packaging are held; existing
+experimental surfaces remain maintained.
+
 - [AGENTS.md](../AGENTS.md): workflow, Rust conventions, gates and
   documentation rules.
 - [Charter](CHARTER.md): scope and the correctness contract.

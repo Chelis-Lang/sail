@@ -323,3 +323,15 @@ Each entry names the charter text it qualifies and the ADR that records it.
     `AGENTS.md`. The separately authorized initial `sail-solve 0.2.0-rc.1`
     crate prerelease may complete. Future crate automation follows the
     owner-approved release; it is not independent final-release authorization.
+
+16. *Roadmap ordering* (owner direction, 2026-11-04). Verus-aware mutation
+    testing is the next release headline through CLI, JSON and MCP together.
+    Changed-proof performance and Mac Anvil cold continue alongside it; frontend
+    reuse receives a bounded go/no-go study and never gates release. A real-crate
+    Kani pilot precedes cvc5. Oyster is design-first: maintain existing interfaces
+    but hold integration expansion, neutral-subset widening and SDK migration
+    until its design is settled. Temporal packaging waits for D.I.V.E.'s
+    distribution decision. Correctness-test gaps and the independent service-wide
+    acceptance proof remain work. This supersedes appendix entry 8's active
+    integration ordering, preserving its delivered behavior and correctness
+    obligations. See ADR 0100.

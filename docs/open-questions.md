@@ -529,3 +529,14 @@ planned for releases after 0.1.0. The owner answered all twelve on
     preserving exact solver input/multiplicity, requested limits, verdicts,
     diagnostics, stderr and exits. Original strict failures and counter values
     remain visible; qualification of the implementation is recorded separately.
+
+48. **Post-0.2.0 investment order and Oyster design.**
+    **Answered 2026-11-04 (owner):** mutation testing is the next-release
+    headline; performance and the service-wide acceptance proof continue in
+    parallel. A real-crate Kani pilot precedes cvc5. Oyster expansion, neutral
+    subset widening and SDK migration are held pending a short design answering
+    user/problem/session/why requirements. Temporal packaging waits for D.I.V.E.'s
+    distribution decision. Maintain existing surfaces and reconcile shipped work
+    with tracking. This supersedes active ordering in questions 27 and 37;
+    correctness and explicit final release approval remain. See
+    [ADR 0100](decisions/0100-mutation-first-roadmap.md).

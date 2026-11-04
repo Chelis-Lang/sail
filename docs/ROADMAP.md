@@ -1,222 +1,148 @@
 # Roadmap
 
-Current state of main and the next work. This page holds status and gates
-only; [performance](performance.md) has the numbers,
-[known issues](known-issues.md) the open defects and limits.
+Current ordering follows the owner's 2026-11-04 direction, recorded in
+[ADR 0100](decisions/0100-mutation-first-roadmap.md). The latest stable release
+is **0.2.0**. The next release has no selected version or publication date;
+final publication requires the owner's approval of its exact candidate.
 
 ## Goal
 
-Sail must be clearly faster than plain `cargo verus
-verify` (stock Verus) in normal use. Most scenarios should be faster; Sail
-may add only modest overhead on runs that are already tiny, and must never
-make a run genuinely slower, cold runs included (owner direction
-2026-10-20). Verdicts, diagnostics and exit codes stay identical to stock.
-Sail's Verus fork is an accepted way to get speed (ADR 0039, ADR 0043). The
-product is a CLI with Linux and macOS binaries. Final release composition is
-the owner's decision.
+Make Verus verification faster and help developers and agents discover whether
+their specifications catch plausible implementation bugs. Preserve default-mode
+correctness, explicit scope, provenance and conservative handling of uncertainty.
+Most verification scenarios should be faster than stock Verus; existing losses
+remain engineering work, including cold runs. No baseline is relaxed.
 
-Owner direction, 2026-11-01: the next release adds standalone Verus-file
-development through CLI, watch and MCP alongside qualified core improvements.
-Existing first/full-path losses stay visible as follow-up work, not a serial
-blocker for every feature. Correctness and prevention of new regressions remain
-required. The earlier **0.2.0** performance-parity target covers Vest, IronKV,
-CapybaraKV and Anvil on Linux and macOS, including cold runs and peak memory. The
-[milestone](https://github.com/Chelis-Lang/sail/milestone/12) tracks its
-deliverables. M11 (*Verus core and performance*) holds performance work, ordered in
-[#168](https://github.com/Chelis-Lang/sail/issues/168). M10 is the
-multi-backend verification runtime (#146).
+## Next release: Verus-aware mutation testing
 
-## 0.1.0
+The headline feature answers: **my program verifies, but would my specifications
+catch plausible bugs?** It serves existing Verus projects independently of
+Oyster, neutral contracts and additional backends.
 
-Sail 0.1.0 was published on 2026-10-29 as GitHub release `v0.1.0`
-(`b56889f1`), MIT-licensed, with attested macOS and Linux archives. That version
-was not published to crates.io. It was qualified as `0.1.0-rc.7` (`8797ccd4`)
-([record](validation/release-candidate.md),
-[release notes](release-notes/0.1.0.md)). Open defects and limits are in
-[known issues](known-issues.md).
-
-| Gate | State | Next |
+| Work | Required outcome | Tracker |
 |---|---|---|
-| Shared cache transaction | Complete 65/113 Stock root and nine ordinary controls pass; fresh Linux runtime/conformance and component-cost checks pass | Bounded adoption accepted; native-host/origin refinement; [limits](design/checked-cache-persistence.md) |
-| Fork runtime | `47fb3be6` on upstream Verus 0.2026.10.18.7d82994 (Rust 1.99.1), Linux and macOS; schema2 archives built, qualified and shipped in 0.1.0 | — |
-| Compiler-input currentness | Source-origin protocol, durable pre-Cargo invalidation and complete native workspace gates; Linux full corpus and Mac runtime/bounded consumer controls pass ([record](validation/compiler-read-origin.md)) | Service-wide theorem remains #368 |
-| Shared stream parser | Command-extension root 135/213 and all 54 ordinary controls pass; parent parser/Holding corpus and cost evidence retain their original scope | Command/cache Linux E2E, full conformance and component cost pass; Mac host passes; bounded adoption accepted; physical caller/owner relations remain open ([scope](design/checked-stream-parser.md)) |
-| Command classification | Shared shallow classifier and Session response delegate; complete parser/command roots and ordinary controls pass; fresh Linux full E2E, conformance and component cost pass | Mac host passes; bounded adoption accepted; [scope](design/checked-command-classifier.md) |
-| Cache persistence | Whole 65/113 root and all nine ordinary controls pass; fresh Linux full E2E, conformance and component cost pass | Mac host passes; bounded adoption accepted; native-host/origin refinement; [scope](design/checked-cache-persistence.md) |
-| Input prefix and delivery | Complete 182/264 Stock root and all 37 ordinary controls; native full E2E/corpus, Mac host and 400-session component cost pass | Final evidence/lead review and current-head CI; physical image/writer origin and service theorem remain open; [scope](design/checked-input-prefix-delivery.md) |
-| Shipped vstd proof and solver replies | Done (#249, #287; ADR 0048, ADR 0062) | — |
-| Default output identical to stock | Done: human stderr is byte-identical by default; Sail notes only with `SAIL_EXPLAIN=1` or in JSON (#391) | — |
-| Default-mode verdict conformance | Done: #385, #386, #393 fixed. Sail's named settings stay compiler-visible as an accepted exception (ADR 0088, #435) | — |
-| Proof-reuse input coverage | Done: replay binds ghost-only environment reads (#552), effective compiler inputs are bound across reuse (#551), managed cleanup forwards profile and target selectors (#553), and replay output matches stock (#573, #574) and binds the supplied daemon socket (#571) | — |
-| Unchanged calls | Later unchanged calls replay in 0.03–0.09 s against stock's 0.11–0.31 s on rc.7, both platforms (ADR 0082, #402, #437). The first unchanged call and calls that miss replay are slower | [Performance parity](#performance-parity) |
-| Tiny edits | One-line edits, failing edits, fixes and reverts faster than stock on all four real projects and both platforms (rc.7); tiny-project edits still slower | [Performance parity](#performance-parity) |
-| Cold runs | rc.7: Linux medians faster on all four projects; macOS Anvil 100.3 s against 99.4 s, ranges overlapping (#466) | #232 |
-| CI cache reuse | Done: tools identified by content, so restored caches are reused on a new runner (#428); [guide](ci-cache.md) | — |
-| Feature set | Done (#423): repair, `explain`, `baseline`, `compare` and MCP supported; fragility, portfolio, team cache and integration APIs experimental | — |
-| Release attestations | Done: rc.7 draft archives attested (run 40762232461); `gh attestation verify` and the installer's check pass on both platforms | — |
-| Release-candidate qualification | rc.7 passes every gate on Linux and macOS: workspace, solver, full e2e, fast/standard/deep conformance, deep-rvt, determinism, Mac host gate, smoke, install walkthrough and six-round performance ([record](validation/release-candidate.md)). Installer umask defect #591 fixed by #593, which 0.1.0 includes | — |
-| Owner review and publication | Done: 0.1.0 published 2026-10-29; slower rows under [performance parity](#performance-parity) accepted as known issues | Point releases |
+| Native outcome diagnosis first | Reproduce existing literal-mutant Unknown cases, distinguish verifier rejection from independently confirmed counterexamples, and qualify useful killed/survived/inconclusive observations without relabeling Unknown | #140, [#664](https://github.com/Chelis-Lang/sail/issues/664); [existing evidence](validation/neutral-mutation.md) |
+| Verus-aware mutation | Bounded executable-code changes in copies; preserve specifications, proof/ghost code and original user files | #140 |
+| Campaigns and reports | Per-function inventory, budgets and killed/survived/inconclusive outcomes through CLI, JSON and MCP together; omitted/unsupported work stays visible | #141 |
+| Native qualification | Passing baselines, plausible bugs, survivors, Unknown, cancellation and limits; real projects on Linux/macOS; unchanged-contract evidence and actual campaign costs | #140, #141 |
 
-**On main for 0.1.0:** managed verification by default (ADR 0046), the
-pinned Cargo (ADR 0058), shipped verified vstd and signed vstd replies,
-instant revert with 16 retained revisions and a pinned baseline (#405),
-unchanged-call replay (ADR 0082) with solver-identity reuse (#417),
-per-target revision scoping (#395, #414), single-frame cached replies with
-replay checked against served bytes and fail-closed journals (#392),
-read-back currentness that includes the runtime (#389), setup cuts (#407,
-#424), watch fixes (#420), the guided installer, output schema v2,
-`sail new`, MCP, proof repair and the evidence commands. D.I.V.E. temporal
-jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
+Survivors are actionable observations about specification strength, not proof of
+adequacy or vacuity. Existing benchmark mutation catalogues and neutral literal
+campaigns are groundwork, not the general product. Expected cache savings must
+be measured across complete campaigns, including setup and unsuccessful work.
+See the [feature brief](design/verus-mutation-release.md) and
+[next-release milestone](https://github.com/Chelis-Lang/sail/milestone/13).
 
-## 0.2.0 (2026-11-04)
+## Alongside: performance and acceptance
 
-The owner selected the [expanded implementation package](design/release-expansion.md)
-alongside standalone-file development, then approved the exact `3d7782bf`
-candidate on 2026-11-04. Stable 0.2.0 is published as attested native archives
-and eighteen matching crates.io packages. The [release record](validation/stable-candidate.md)
-binds the exact artifacts and installed-consumer scope. Future publication
-still requires explicit approval of its own candidate.
-
-| Deliverable | Current state | Next |
+| Lane | Current basis | Next outcome |
 |---|---|---|
-| Crates.io distribution (`sail-solve`) | All eighteen stable packages published; automatic workflow passes and independent full archive/VCS checks match the approved source ([record](validation/crates-io.md)) | Future published tags use source-bound crate publication |
-| Daemon preparation and post-creation verification | Delivered; Linux/Mac replay, generated-input, foreground and queued-edit controls pass | General resource-cost and first/full-path improvements remain separate |
-| Standalone verification and focused repair through CLI/jobs/watch/MCP | Delivered; native focus/full, unrelated-failure, selector and historical-job controls pass | Documented scope limits remain |
-| Opt-in cache byte budgets | Delivered; manual and actual idle maintenance, LRU/newest/busy protection and rebuild controls pass | Soft cap is intentional |
-| Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Broader project claims need their own measurements |
-| First/full-path and Mac Anvil overhead | Run-scoped/per-file experiments remain unselected after no general gain | Original first/full-path and Mac Anvil-cold goals remain open |
-| Binary compiler-input metadata (#599) | Corrected fork runtimes published/pinned; source suites, exact-read controls, stable corpus gates and both archive consumers pass | Existing compatibility and performance limits remain |
-| Incidental edits | Exact rc.1 archives: fifteen edits plus Anvil controls, all 114 samples/platform captured and audited | Earlier lost attempt retains its original scope |
+| Changed-proof cost (#158, #244) | Static longest-first dispatch shipped; measured Vest gain, no Anvil gain | Profile critical paths; evaluate recorded-cost scheduling and useful miss reductions on broader edit workloads |
+| Mac Anvil cold (#232) | Latest composed cohort: 98.94 s Sail / 96.87 s stock; retained 2.07 s regression | Attribute and fix with native paired measurements; retain original rows |
+| Frontend feasibility (#162) | Persistent reuse unqualified; incomplete inputs and diagnostic mappings identified | Bounded go/no-go for complete inputs, current diagnostics and net whole-call benefit; never a release dependency |
+| First use and full-path overhead (#234, #558, #560) | Shipped vstd, replay and daemon preparation delivered; misses still cost more | Bounded improvements alongside the feature; no selection of experiments without general gains |
+| Correctness-test gaps (#632) | Trailing-output comparison fixed in 0.2.0 (#611); parallel verifier-output capture remains incomplete | Lossless per-compiler capture and original parallel controls; no serial substitute or weaker comparison |
+| Service-wide acceptance proof (#368) | Source-shared parser, classification, persistence and delivery components adopted | Concrete service composition and host/origin refinements; no complete-service theorem claimed |
 
-## Performance tracks
+Performance work covers both native platforms and the broader
+[evaluation corpus](performance-evaluation.md). Record whole-call latency, memory,
+resource costs and regressions. A component gain or moving work after return does
+not alone establish a campaign or product speedup. Every useful edit improvement
+also benefits mutation campaigns.
 
-| Track | State | Open work |
+## Then: Kani pilot before cvc5
+
+[#135](https://github.com/Chelis-Lang/sail/issues/135) starts with an executable
+pilot on a real pinned ordinary Rust crate. Compare direct Kani with the proposed
+Sail path, exercise concrete failures and retain exact tool identities, bounds,
+unsupported cases and costs. Assess the experimental function-contract interface
+in the go/no-go decision before committing to a production backend. The pilot
+must not depend on widening Oyster's neutral-contract subset.
+
+cvc5, certificates, Creusot, Prusti, kernel provers, sampled-tier integration,
+cross-backend portfolios and Dafny remain future options under #146. They are
+not parallel commitments for the next release.
+
+## Oyster: design first, engineering on hold
+
+Maintain and test the experimental raw SMT, neutral contracts, source jobs and
+assurance reads already consumed by Oyster. Do not expand those surfaces, widen
+the neutral subset or migrate Oyster's SDK while the design is unsettled.
+
+The next Oyster deliverable is a short design document answering who the user
+is, their present problem, one successful end-to-end session, and why a
+requirements layer adds value beyond direct specifications, contracts and
+mutation feedback. The owner's supplied colleague feedback is the deciding
+input. Design resolution precedes renewed integration engineering.
+
+## Temporal: wait for distribution
+
+The native D.I.V.E. extension exists internally; public Sail archives have no
+temporal backend (ADR 0083). Hold packaging and expansion until D.I.V.E.'s
+private-source distribution decision is made. Preserve current behavior and
+regression coverage; do not introduce a TLC fallback.
+
+## Delivered releases
+
+| Release | Delivered scope | Evidence |
 |---|---|---|
-| 1. Cold runs and first use (#232) | Shipped vstd proof and replies; pinned Cargo; pipelined native admission (ADR 0061); first-use hashing and daemon start cut (#424, levers 1.5/1.6); solver identity reused under a settled stamp (#417) | macOS Anvil cold, 0.9 s on rc.7 (#232); macro-closure compile is most of the remaining first use (#234) |
-| 2. Frontend floor (#162) | Profiled; persistent frontend reuse unqualified | Parked after 0.1.0 |
-| 3. Solver work on misses (#158, #244) | Longest-first bucket dispatch by a static size estimate shipped in fork commit `ee8dd97d` (runtime `f8589ed4` onward): Vest 10–15% faster at 7–15 threads, no gain on Anvil | Parked after 0.1.0 |
-| 4. Incidental edits (#118) | Closure identity, spec-parameter names and trait spellings merged; original catalogue exposes #648 | Corrected fifteen-edit catalogue and Anvil return controls pass execution audits; raw timing acceptance remains open |
-| 5. Managed overhead | Unchanged-call replay; unit-graph and script-snapshot reuse (#407); build-script receipts for Cargo 1.93–1.99 (ADR 0084) | [Performance parity](#performance-parity) |
-| 6. Instant revert (#163) | Linux and macOS for qualified profiles; 16 revisions with pinned baseline; `SAIL3146` explains skips | More dependency profiles |
-| CI and team caches (#240, #242) | Measured recipe in [CI caching](ci-cache.md); restored caches reused across runners (#428) | Four-runner hosted walkthrough passes; publish with the feature PR |
+| 0.1.0, 2026-10-29 | Cargo verification, managed receipts, exact solver caches, shipped vstd/replies, instant revert, replay, watch/jobs/MCP, repair and evidence commands; native archives | [Notes](release-notes/0.1.0.md), [qualification](validation/release-candidate.md) |
+| 0.2.0, 2026-11-04 | Standalone verification/repair/watch/jobs/MCP, daemon preparation, project byte budgets, hosted CI-cache recipe, consumer skill, corrected compiler-input runtime, core improvements and eighteen crates.io packages | [Notes](release-notes/0.2.0.md), [stable qualification](validation/stable-candidate.md), [feature qualification](validation/release-expansion.md) |
+
+The final 0.2.0 composition has complete native workflow/mutation captures and
+all 1,944 retained paired mutation steps compare Same after the separately
+qualified explanation-note correction. Small edits/reverts and Mac Anvil cold
+still have slower medians. First/full-path parity is not established. Earlier
+failed attempts and source-specific results retain their original scope.
+See [performance](performance.md), [known issues](known-issues.md) and the
+[backlog reconciliation](reports/2026-11-04-roadmap-review.md).
 
 ## Performance parity
 
-Rows still slower than stock. Direction: spike each row's tractability first
-(what it costs and what would remove it), then fix in the order the spikes
-justify. Numbers are in [performance](performance.md). The rc.7 results do not
-record memory. The earlier combined candidate records all four projects on both
-platforms, with six paired rounds and 864 populated timing/memory rows
-([record](validation/v020-performance.md)). That sampler-overhead gate failed;
-the revised observer now passes separately on both platforms
-([record](validation/benchmark-memory.md)). Corrected-runtime product
-measurement and native core qualification are complete on both platforms
-([record](validation/general-performance.md)); first/full-path gaps and Mac
-Anvil cold remain. This selects the core increment, not stock parity or a
-new Sail release.
+The original four-project Linux/macOS parity goal remains open engineering work;
+it is not evidence that published 0.2.0 is awaiting release. Historical rc.7
+first-unchanged numbers and later component savings retain their original source
+and environment. The [feature qualification](validation/release-expansion.md)
+records the final composition's slower cases; the
+[runtime record](validation/binary-compiler-inputs.md) separately records
+full-path misses. Do not replace those rows with cached/replayed timings.
 
-Standalone implementation: [workflow](standalone-verification.md),
-[ADR 0095](decisions/0095-standalone-verus-files.md). Native gates, installed
-CLI/watch/MCP controls, original-file comparisons and candidate archive smoke
-pass on Linux and macOS ([record](validation/standalone-verification.md)).
-Protected PR checks and final release composition remain separate.
+## Lower-priority backlog
 
-Next-release implementation gates:
+<a id="after-010-parked"></a>
 
-| Slice | State | Remaining gate |
-|---|---|---|
-| General algorithm and corpus evaluation | [Broader tooling and ADR 0092 prototype implemented; both runtime experiments unselected on Linux after complete whole-call controls](design/general-performance.md) | [#633/#634 repairs, full source/corpus controls, both-platform costs, factories and installed controls pass; runtimes merged, published and consumed](validation/general-performance.md) |
-| Memory harness, native source sync, cache selection/aliases, metadata memo | Merged (#613–#615); revised observer passes all 440 samples / 22 strata on each native platform | Both final four-project cohorts pass all 432 samples each; original instrumentation failures retained |
-| Stable sidecars and within-call target projections (#560) | Implemented; native/Mac gates and combined matrix recorded | Full-path and tiny-edit parity remain open |
-| Final source-vector observation (#558) | Implemented; Anvil recording calls save 65 ms Linux / 44 ms Mac | Four-project first-unchanged parity remains open |
-| Invocation slots and guarded Cargo outputs (#576) | Implemented; Linux/Mac root/subdirectory controls pass; native output E2E and Mac host guards pass | Complete release qualification |
-| Unqualified native Cargo (#561) | Implemented; Linux/Mac median within stock +0.1 s, no proof reuse; real Cargo 1.92 repeated human-output controls pass | Full fast/standard and all 21 mutation/control comparisons pass; corrected complete stock-RVT passes; composed release gates remain |
-| Exact extra vstd profiles (#563) | ADR 0090 implemented; Linux/Mac factories and first-Serve pass; six-round Vest cold medians improve on both platforms | CapybaraKV native provenance and Anvil focused scope remain open; full release gates |
-| Settled source / owned-target digests (#560) | ADR 0091 Linux target default selected after ten controlled pairs save 430 ms; native/Mac functional gates pass | Source and Mac target stay off; final native cohorts pass, existing stock gaps remain |
+The old "After 0.1.0 (parked)" anchor remains for existing links. This is future
+work, not a prerequisite chain for mutation testing.
 
-Core native qualification and both final six-round measurement cohorts are
-complete, with original failures retained. The owner-approved ADR 0093
-implementation also passes the corrected full stock suite, including every
-nonignored test ([scope](validation/general-performance.md)). Existing parity
-gaps remain follow-up work. Protected PR checks and final release composition
-remain required before delivering a new Sail release.
-
-| Row | Measured, Sail against stock | Spike finding | Issue |
-|---|---|---|---|
-| First unchanged call after a verification (full path, records replay) | rc.7: Anvil 2.44 s against 0.36 s (Linux), 2.11 s against 0.30 s (macOS); Vest 0.80 s against 0.26 s (macOS) | A settle pass that records replay at the end of the verifying run is not worth its cost | #558 |
-| Unchanged call that misses replay (`touch`, recent ctime, other arguments) | rc.7: Anvil 2.13 s against 0.32 s (Linux), 1.63 s against 0.25 s (macOS) | Near its floor without cross-run trust. Full runs under other keys no longer invalidate records (#575, fixed); root/subdirectory alternation and a package-local `target/` thrash (#576) | #560, #576 |
-| Unchanged `SAIL3112` setups | Anvil 0.90 s with no proof reuse ([record](validation/unsupported-cargo-fallback.md)), stock about 0.3 s | Loader-variable runs now verify in the project's own target (#577, fixed) | #561 |
-| Tiny-project edits | About 0.4 s (Linux) and 0.7 s (macOS) more, `fc7cd0c7` matrix | — | #560 |
-| macOS Anvil cold | rc.7: 100.3 s against 99.4 s, ranges overlapping (#466) | — | #232 |
-
-## After 0.1.0 (parked)
-
-| Item | Issue |
+| Work | Tracker or condition |
 |---|---|
-| Acceptance integration draft and its staged input-coverage fixes | #378 |
-| Service-wide acceptance theorem and refinements | #368, #371–#376 |
-| Recorded-cost dispatch hints in the fork | #244 |
-| Heavy-bucket split and opt-in automatic spinoff | #244, #158 |
-| Edit-triggered live-prefix preparation (question 31, ADR 0051) | #158 |
-| EXEC-pass skip | #162 |
-| Warm frontend: position-independent VIR key (ADR 0052) | #162 |
-| Prebuilt macro crates as pinned tools (question 35) | #239 |
-| More vstd versions | #237 |
-| Fragility hardening | — |
-| Portfolio tidy | — |
-| Compiler-boundary local reuse as default fallback | #222 |
-| Bulk prefetch from a team store; preparation beyond the implemented bounded worker | #241, #243 |
-| Cargo bypass when only target sources change | #245 |
-| CI image pull time | #195 |
-| M10 verification runtime | #146 |
+| More exact vstd profiles and versions | #563, #237; preserve every admission check |
+| Remaining incidental edits and restore misses | #118, #595 |
+| Prebuilt macro tools | #239; owner question 35 and actual measured gain |
+| Broader first-sight preparation and team prefetch | #241, #243; bounded worker already ships |
+| Cargo bypass / compiler-boundary fallback | #245, #222; separate authority and cost qualification |
+| CI image startup | #195; retain required checks and job budgets |
+| Fragility / portfolio polish | Existing experimental modes; demand-led |
+| Broader verification runtime | #146; design/distribution holds above |
 
-## Integration (Oyster and neutral contracts)
+## Measured and unselected
 
-These are experimental integration APIs, not part of the supported 0.1.0
-command set.
-
-| Slice | State | Remaining |
-|---|---|---|
-| Raw SMT shared runtime | Implemented | Consumer qualification at its selected SDK |
-| Neutral source jobs and baselines | Implemented ([ADR 0070](decisions/0070-neutral-contract-jobs.md)) | Broader source profiles |
-| Requirement assurance | Source-bound proof views implemented | Independent links belong to Oyster |
-| Bounded neutral-source mutation | Implemented ([ADR 0074](decisions/0074-bounded-neutral-mutation.md)) | Positive native kills unestablished |
-| Scalar literal-contract witnesses | Implemented ([ADR 0077](decisions/0077-scalar-literal-contract-witnesses.md)) | — |
-| Native D.I.V.E. temporal worker | Built only by the extension workspace (ADR 0083) | Not in 0.1.0 |
-| Neutral lowering version two (#323) | Implemented | Qualification before lifting the source-job hold |
-
-## Decisions pending
-
-| Decision | Who | Blocks |
-|---|---|---|
-| Prebuilt macro crates under ADR 0053 parity ([question 35](open-questions.md)) | Owner | #239 |
-| Question 31, continuation timing oracle | Owner | Live-prefix preparation |
-| ADR 0048 status: research path to release default | Lead | — |
-| ADRs 0051, 0052 still proposed | Lead | Tracks 2 and 3 |
-
-## Measured and closed
-
-| Idea | Result |
+| Idea | Disposition |
 |---|---|
-| Rust pre-solver (M9) | Covers 0.1% of solve time (ADR 0038) |
-| Warm solver pools | A warm fast-tier run starts a solver for 26 of 1,526 sessions |
-| Warm exact-prefix sessions | 9–19 ms per HumanEval cycle, 107 ms per Vest cycle ([ADR 0040](decisions/0040-warm-solver-sessions.md), not built) |
-| Stack-only keys as default | Identical answers, rlimit deltas up to 17× (ADR 0008); default stays full-prefix |
-| Stock `-V spinoff-all` | Floor 1.7–1.8× worse, cold 1.4–1.8× slower, one verdict change ([report](reports/2026-10-15-real-project-performance.md)) |
-| Parked Z3 fork snapshots | Not state-identical ([report](reports/2026-10-16-solver-snapshots.md)) |
-| Read-only pruning traversal | Inconclusive ([validation](validation/warm-frontend.md)) |
-| v1 native-artifact store | Disabled: unsound as designed (#187, ADR 0053) |
+| Rust pre-solver (M9) | Covered 0.1% of solve time; closed |
+| Warm solver pools / exact-prefix sessions | Small measured opportunity; no selected pool implementation |
+| Stack-only default keys | Model/effort differences; default binds exact process prefix (ADR 0008) |
+| Stock spinoff-all / parked Z3 snapshots | Regressions or nonidentical state; unselected |
+| Persistent frontend reuse | No complete reusable operation boundary; bounded feasibility only |
+| Run-scoped / per-file digest experiments | No general whole-call gain; unselected defaults unchanged |
+| General v1 native-artifact store | Disabled under ADR 0053 |
 
-Not funded: Z3 version or option sweeps, unsat-core pruning, instantiation
-replay.
+<a id="delivered-milestones"></a>
 
-## Delivered milestones
+## Milestones
 
-| Milestone | State |
-|---|---|
-| M0–M4 foundation: workspace, survey, shim, corpus, conformance | Done 2026-10-08 |
-| M5 initial product | Done 2026-10-09 |
-| M6 live workspace verification, jobs, watch, MCP, HTTP team cache | Done |
-| M7 proof engine and repair workflow | Accepted 2026-10-26 ([validation](validation/m7.md)) |
-| Fork as default runtime (ADR 0043) | Selected |
-| M11 Verus core and performance | In progress (#168) |
+M0–M6 are delivered. M7 was accepted 2026-10-26. M11 remains the continuous
+Verus performance lane; M10 records the broader runtime ambition with explicit
+holds. The next-release mutation milestone is feature-based until the owner
+selects a version. Genuine 0.2.0 residual work moves to its current lane rather
+than remaining an apparent publication blocker.
