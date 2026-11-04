@@ -91,14 +91,20 @@ checks changed in this distribution update.
 | Installation source | Version / client | Result |
 | --- | --- | --- |
 | Public GitHub | `skills` 1.7.4 | Clean project install; all four files match canonical bytes |
-| ClawHub | Skill 1.0.0 / CLI 0.25.0 | Owner-authorized upload became public; ordinary owner-scoped install passed, without bypassing scans; all four files match |
+| ClawHub | Skill 1.0.0 / CLI 0.25.0 | Owner-authorized upload became public; ordinary and anonymous owner-scoped installs passed, without bypassing scans; all four files match |
 | Tessl | Wrapper 1.0.3 / CLI 0.119.0 | Publication moderation passed; clean strict install matches instructions, both references and license text under `LICENSE.md` |
 | Agent Skill Hub | Snapshot 2026.11.04 / `skhub` 0.14.1 | Source commit, manifest blob hashes and sizes match; clean snapshot install retains all four files |
+| LobeHub | Registry 1.0.1 / official SDK 0.46.1 | Anonymous public import became available; downloaded ZIP contains exactly the four canonical files, all byte-identical; installing CLI not tested |
 
 The public Skillstore refresh was accepted and entered review (service-created
 PR #4080). The live
 skills.rest form reported successful submission, with indexing within 24 hours.
 Neither acknowledgement establishes publication of the refreshed files.
+SkillRouter owner pairing completed, and the service accepted `Chelis-Lang/sail`
+with state `queued`; publication awaits its next crawl. LobeHub's public SDK
+import succeeded without credentials. Its owner-login route required a separate
+GitHub connection, which the owner rejected; that attempt was stopped and GitHub
+remains disconnected. No request was sent through the Turnstile-gated web form.
 Skill.Fish reports an existing queue entry and returns 403 on search. Current
 Agent Skills CLI marketplace search still exposes the canonical skill path;
 skills.sh owner-filtered search returns no result. Account and eligibility
@@ -117,7 +123,7 @@ Raw registry replies, form outcomes, source manifest and installed-file hashes
 remain outside the repository. Installed-file manifest SHA-256:
 `c695d8299ee935b630194a5ae4b27be476b14fa9c6f4452df11d0b62f5e7ef12`.
 Evidence-index SHA-256:
-`fb791c5f2a1004d92b8a1a4f50cf0a3107933e65764fc214d1031ada2df9204f`.
+`15ff865eaa72b50c583c180a37ede391ae929a2bc5edca65996fae79dfb9e41a`.
 
 Bounded failed checks at `d8e6c340`, 4 November: the first Skillstore refresh
 used the wrong URL field and returned 400, corrected before the accepted

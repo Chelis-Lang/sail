@@ -79,7 +79,7 @@ requirements can change; verify the current flow before sending anything.
 | [Skill.Fish / MCP Market](https://github.com/knoxgraeme/skillfish) | One repository-submission channel serving both catalogs | Repository remains queued; resubmission reports already queued, search returns 403 |
 | [Agent Skills CLI marketplace](https://www.agentskills.in/) | Repository discovery and CLI search | Search still returns the canonical skill, owner and package path |
 | [Skills Directory](https://app.skillsdirectory.com/submit) | Account-based repository submission | Redirects to sign-in; no new account created |
-| [SkillRouter](https://skillrouter.org/us/submit) | CLI repository submission after device pairing | Owner pairing requested; repository submission still requires login |
+| [SkillRouter](https://skillrouter.org/us/submit) | CLI repository submission after device pairing | Owner pairing completed; repository accepted into the next-crawl queue |
 | [SkillsLLM](https://skillsllm.com/llms.txt) | GitHub submissions with a published 100-star minimum | Not eligible: Sail still has 1 star; do not manufacture stars |
 | [SkillsMP](https://skillsmp.com/about) | Indexes public GitHub skills | Search fetch is challenged; no verified author-submission route |
 | [Smithery](https://www.smithery.ai/) | Current service concerns MCP tools; old skills URL returns 404 | No verified skill-publishing route; do not substitute an MCP listing |
@@ -89,7 +89,7 @@ requirements can change; verify the current flow before sending anything.
 | [skills.rest](https://skills.rest/contribute) | Public repository/folder form, automatic indexing | Submission succeeded; service says indexing occurs within 24 hours |
 | [FindSkills](https://findskills.org/) | Indexes GitHub and ClawHub | Public search does not return the exact skill; no verified submission route |
 | [Tencent SkillHub](https://skillhub.cn/dashboard/publish) | Individual publication requires account and real-name verification | Owner-only identity verification remains outstanding |
-| [LobeHub](https://lobehub.com/skills) | Versioned package publication through `lhm skill publish` | Publishing route verified; owner login required |
+| [LobeHub](https://lobehub.com/skills) | Public GitHub import through the official SDK | Published `1.0.1`; anonymous download contains all four canonical files |
 
 New accounts, fees and outreach messages require the owner's involvement; do not
 silently create accounts or buy promotion. A challenged or failed request does
@@ -101,7 +101,7 @@ not establish that a skill is absent from an index.
   https://clawhub.ai/jeffreykentjr/skills/sail-verification
   The owner approved device authorization. CLI `0.25.0` uploaded version `1.0.0`
   from source `d8e6c340`, then the service completed its publication checks.
-  A normal noninteractive install of the owner-scoped package succeeded without
+  Normal and anonymous noninteractive installs of the owner-scoped package succeeded without
   a scan bypass. All four installed files match source byte for byte. The public
   audit verdict is clean; one component retains a low-severity warning. ClawHub
   displays its platform license as MIT-0; the unchanged canonical MIT `LICENSE`
@@ -151,11 +151,30 @@ publication and installed contents remain unverified. The
 [SkillHub.club upload UI](https://www.skillhub.club/app/skills) accepts a ZIP
 selection but its API returns 401 and the UI displays “Login required.” No
 anonymous skill was created. Skills Directory also redirects to sign-in.
-SkillRouter uses owner device pairing before repository submission. LobeHub's
-current CLI exposes `lhm skill publish --identifier ID --dir PATH`, but an
-attempt with the canonical export reports “Not logged in. Run `lhm login`
-first.” Account creation and identity checks on these remaining services need
-owner involvement.
+SkillRouter uses owner device pairing; the completed pairing allowed `Chelis-Lang/sail` to be
+submitted, and the service reports `queued` and `submitted_by_you: true`.
+Account creation and identity checks on the remaining account-based services
+need owner involvement.
+
+**LobeHub: public bundle verified without GitHub permissions.**
+https://lobehub.com/skills/chelis-lang-sail-sail-verification
+The official SDK `@lobehub/market-sdk` `0.46.1` provides
+`marketSkills.reportGitHubSkill({gitUrl, branch})`, which accepted the public
+repository anonymously and queued exactly one skill. Registry version `1.0.1`
+then became available. Its anonymous download contains exactly the four
+canonical files, all byte-identical to source `d8e6c340`, including the MIT
+license. This is bundle verification, not a test of LobeHub's installing CLI or
+an adoption measurement.
+
+The owner completed LobeHub CLI login, but rejected the subsequent GitHub OAuth
+permissions. That connection attempt was stopped; a current connection check
+confirms GitHub is disconnected. The CLI's `skill publish` updates an
+already-owned listing and was unnecessary for the public import. The website's
+request UI stopped at a Turnstile check, and no request was submitted through
+that form. Use the documented public import API for discovery submissions;
+do not request the rejected GitHub grant for this distribution. On later
+refreshes, inspect the actual hosted version and contents rather than assuming
+an import acknowledgement updates an existing bundle.
 
 For Tessl updates, export the merged canonical folder outside ignored repository
 paths, import it with `tessl skill import --workspace jeffreykent --public PATH`,
