@@ -57,94 +57,105 @@ reviews. A submission acknowledgement is not a published listing. A listing is
 not evidence that users completed verification successfully. Record these
 outcomes separately; use install counts only where the service exposes them.
 
-The canonical Verus reference now identifies actual registry prerelease
-`0.2.0-rc.1` availability for standalone repair, preparation and budgets.
-Commands and evidence rules are unchanged. Versioned registry exports below
-retain their recorded revisions; this documentation update does not republish
-them.
+The canonical package describes the published Sail `0.2.0` workflows, including
+standalone verification and repair, background preparation and cache budgets.
+The refreshed exports below use merged source
+`d8e6c3407d8194a6c39f25353364fe0eba52ea7e`; the skill metadata version remains
+`1.0.0`. Registry wrapper versions are independent of both versions.
 
 ## Distribution landscape
 
-Primary sources checked on 1 November 2026. Similar names below identify
-different services. Availability and publishing requirements can change; verify
-the current flow before sending anything. The canonical package was published in
-[PR #640](https://github.com/Chelis-Lang/sail/pull/640), source commit
-`ec052397ea6bd96b72bb6c163be8c417b893dd42`, package version `1.0.0`.
+Primary sources and actual registry operations checked on 4 November 2026.
+Similar names below identify different services. Availability and publishing
+requirements can change; verify the current flow before sending anything.
 
 | Channel | Route and fit | Checked disposition |
 | --- | --- | --- |
-| [Tessl](https://tessl.io/registry/skills/submit) | GitHub repository analysis/submission or `tessl skill publish`; registry review and versioned packages | Published in existing jeffreykent workspace; moderation passed |
-| [skills.sh](https://www.skills.sh/docs/faq) | GitHub installation through `npx skills`; aggregate installs drive discovery | GitHub install verified; catalog page still unavailable |
-| [ClawHub](https://docs.openclaw.ai/clawhub) | CLI 0.25.0 uses `clawhub skill publish` to upload a versioned folder | CLI updated and dry run passed; device authorization incomplete |
-| [Skill.Fish](https://github.com/knoxgraeme/skillfish) | `skillfish submit owner/repo`; repository review | Submitted through CLI; MCP Market is the same submission channel |
-| [Skillstore](https://skillstore.io/submit) | Public GitHub repository or skill-directory form; anonymous submission supported | Submitted; automated processing completed, final review pending |
-| [Skills Directory](https://www.skillsdirectory.com/submit) | GitHub sign-in and reviewed submission | Sign-in required; no new account created |
-| [SkillRouter](https://skillrouter.org/us/submit) | Repository submission, optional ownership proof and author statistics | Account connection required; held for owner login |
-| [Agent Skill Hub](https://doc.agentskillhub.dev/guide/publishing) | Documented public GitHub analyze/import API, snapshots package files | Published; source revision and all four package files verified |
-| [SkillsLLM](https://skillsllm.com/llms.txt) | Community submissions via GitHub OAuth; publishes a 100-star minimum | Not currently eligible: Sail has 1 star; do not manufacture stars |
-| [Agent Skills CLI marketplace](https://www.agentskills.in/) | Repository form and `agent-skills-cli submit-repo owner/repo` | Published in search; canonical source path verified |
-| [SkillsMP](https://skillsmp.com/about) | Indexes public GitHub skills | No Sail result found in checked search; no verified submission route |
-| [Smithery](https://github.com/smithery-ai/cli) | Skills catalog and upstream installer; documented publishing commands concern MCP servers | Check catalog; no verified skill-publishing route found |
-| [Playbooks](https://playbooks.com/skills) | Skill catalog with GitHub-based installation | Check catalog; no verified submission route found |
-| [SkillHub.space](https://docs.skillhub.space/) | OpenClaw skill registry; `shsc publish` described in docs | Secondary: verify live publishing/auth flow; CLI reference is sparse |
-| [SkillHub.club](https://www.skillhub.club/) | Evaluated skills catalog advertises publishing | Discovery API and installer documented; author-publishing route unverified |
-| [skills.rest](https://skills.rest/) | Skills library and GitHub package installation | Secondary: no verified submission route found |
-| [FindSkills](https://findskills.org/) | Search/index API with GitHub and ClawHub sources | Secondary indexing check; no verified author-submission route found |
-| [Tencent SkillHub](https://skillhub.tencent.com/) | Login and real-name verification for individual publication | Held: requires Tencent face verification |
-| [LobeHub](https://lobehub.com/skills) | Skills marketplace | Secondary: public fetch refused; publishing route not verified |
+| [ClawHub](https://docs.openclaw.ai/clawhub) | Versioned folder upload with source provenance | Published `1.0.0`; normal CLI install passed and all four files match source |
+| [Tessl](https://tessl.io/registry/jeffreykent/sail-verification) | Versioned hosted package | Updated to wrapper `1.0.3`; moderation passed and clean install matches source |
+| [Agent Skill Hub](https://doc.agentskillhub.dev/guide/publishing) | Public GitHub import and source refresh API | Refreshed to `2026.11.04`; source revision, manifest and clean install verified |
+| [skills.sh](https://www.skills.sh/docs/faq) | Public GitHub installation; genuine aggregate installs drive discovery | Clean GitHub install passed; owner-filtered search still returns no result |
+| [Skillstore](https://skillstore.io/submit) | Anonymous skill-folder submission and automated review | Original listing is public; updated-source submission is in review |
+| [Skill.Fish / MCP Market](https://github.com/knoxgraeme/skillfish) | One repository-submission channel serving both catalogs | Repository remains queued; resubmission reports already queued, search returns 403 |
+| [Agent Skills CLI marketplace](https://www.agentskills.in/) | Repository discovery and CLI search | Search still returns the canonical skill, owner and package path |
+| [Skills Directory](https://app.skillsdirectory.com/submit) | Account-based repository submission | Redirects to sign-in; no new account created |
+| [SkillRouter](https://skillrouter.org/us/submit) | CLI repository submission after device pairing | Owner pairing requested; repository submission still requires login |
+| [SkillsLLM](https://skillsllm.com/llms.txt) | GitHub submissions with a published 100-star minimum | Not eligible: Sail still has 1 star; do not manufacture stars |
+| [SkillsMP](https://skillsmp.com/about) | Indexes public GitHub skills | Search fetch is challenged; no verified author-submission route |
+| [Smithery](https://www.smithery.ai/) | Current service concerns MCP tools; old skills URL returns 404 | No verified skill-publishing route; do not substitute an MCP listing |
+| [Playbooks](https://playbooks.com/) | Previous skills catalog | Skills route returns 404; current homepage serves a coming-soon shell |
+| [SkillHub.space](https://docs.skillhub.space/docs/cli) | Advertises an OpenClaw registry and `shsc` CLI | Live CLI/API reference pages contain headings only; publishing/auth flow unverified |
+| [SkillHub.club](https://www.skillhub.club/app/skills) | Live skill upload and publication UI | Live upload requires login; anonymous upload returns 401 |
+| [skills.rest](https://skills.rest/contribute) | Public repository/folder form, automatic indexing | Submission succeeded; service says indexing occurs within 24 hours |
+| [FindSkills](https://findskills.org/) | Indexes GitHub and ClawHub | Public search does not return the exact skill; no verified submission route |
+| [Tencent SkillHub](https://skillhub.cn/dashboard/publish) | Individual publication requires account and real-name verification | Owner-only identity verification remains outstanding |
+| [LobeHub](https://lobehub.com/skills) | Versioned package publication through `lhm skill publish` | Publishing route verified; owner login required |
 
-This list separates verified publishing flows from sourcing leads rather than
-assuming every catalog accepts submissions. Reassess a service if its concrete
-route or audience fit improves. New accounts, fees and outreach messages require
-the owner's involvement; do not silently create accounts or buy promotion.
+New accounts, fees and outreach messages require the owner's involvement; do not
+silently create accounts or buy promotion. A challenged or failed request does
+not establish that a skill is absent from an index.
 
 ## Listing state
 
-Checked on 1 November 2026 after source publication:
-
-- **Agent Skill Hub: published.**
-  https://agentskillhub.dev/u/Chelis-Lang/sk/sail-verification
-  The public API reports the canonical repository, `skills/sail-verification`,
-  source commit `ec052397ea6bd96b72bb6c163be8c417b893dd42` and all four package
-  files. Its registry version is `2026.11.01`; the upstream skill version remains
-  `1.0.0`. Refresh from source rather than editing the hosted copy.
-- **Skillstore: in review.**
-  https://skillstore.io/submissions/72564182-6044-4efb-b1d7-574d3762597c
-  Processing created https://github.com/aiskillstore/marketplace/pull/4036;
-  final review is pending. The submitted source is the canonical skill folder.
-- **Skill.Fish / MCP Market: accepted submission.** `skillfish` 1.0.39 reported
-  success and discovered `sail-verification`. Public listing not yet verified;
-  do not count the acknowledgement as publication.
-- **Agent Skills CLI marketplace: searchable listing verified.**
-  https://www.agentskills.in/api/repos/submit?repo=Chelis-Lang%2Fsail
-  A subsequent `search sail-verification --json` returned the canonical skill
-  name, owner, main branch and `skills/sail-verification/SKILL.md` path. The
-  repository status reports two entries; Sail maintains one consumer skill
-  package. Do not count both entries as maintained consumer skills.
-- **skills.sh: installation verified, listing pending.** CLI 1.7.4 installed
-  the public GitHub package and all files matched source. The catalog URL still
-  displayed “isn't available” when checked, despite returning HTTP 200.
-  Validation installs used `DO_NOT_TRACK=1` rather than generating install counts.
-- **Tessl: published, moderation passed and search verified.**
+- **ClawHub: public and installed.**
+  https://clawhub.ai/jeffreykentjr/skills/sail-verification
+  The owner approved device authorization. CLI `0.25.0` uploaded version `1.0.0`
+  from source `d8e6c340`, then the service completed its publication checks.
+  A normal noninteractive install of the owner-scoped package succeeded without
+  a scan bypass. All four installed files match source byte for byte. The public
+  audit verdict is clean; one component retains a low-severity warning. ClawHub
+  displays its platform license as MIT-0; the unchanged canonical MIT `LICENSE`
+  is included in the installed package.
+- **Tessl: updated, moderation passed and installed.**
   https://tessl.io/registry/jeffreykent/sail-verification
-  CLI 0.119.0 published into the existing `jeffreykent` workspace. The current
-  registry plugin is `1.0.2`; its skill and supporting references are unchanged from
-  source commit `ec052397`, skill version `1.0.0`. The registry wrapper adds the
-  upstream repository, canonical package homepage, MIT license and Jeffrey Kent
-  attribution. Tessl filters the extensionless `LICENSE` on installation, so the
-  export also carries its exact contents as `LICENSE.md`. It does not carry
-  separate instructions. Lint and publication
-  dry run passed. A clean Tessl install retained the skill, both references and
-  license text, all byte-identical to source (license filename excepted). No
-  paid eval campaign was requested.
-- **ClawHub: device authorization incomplete.** CLI was updated from 0.9.0 to
-  0.25.0. Its four-file, source-attributed publication dry run passed, but web
-  approval did not complete and the device session ended with an unknown error.
-  `whoami` remained signed out. No bundle has been uploaded.
+  Existing workspace `jeffreykent` now publishes wrapper `1.0.3` from source
+  `d8e6c340`, replacing `1.0.2` as latest. Lint and publication dry run passed.
+  A clean strict install with CLI `0.119.0` retained the skill and both
+  references byte for byte. The export carries the canonical license text as
+  `LICENSE.md`, because Tessl filters the extensionless filename. The wrapper
+  adds repository/homepage/license/author metadata, without separate
+  instructions. No paid evaluation campaign was requested.
+- **Agent Skill Hub: refreshed and installed.**
+  https://agentskillhub.dev/u/Chelis-Lang/sk/sail-verification
+  Registry version `2026.11.04` reports exact source `d8e6c340`, the canonical
+  directory and all four files. Every manifest blob hash and file size matches
+  source. A clean `skhub` `0.14.1` install of that version retained all four
+  files byte for byte.
+- **skills.sh: GitHub installation verified; discovery still pending.**
+  CLI `1.7.4` installed the current public GitHub package into a clean Codex
+  project; all four files match source. `find sail-verification --owner
+  Chelis-Lang` returns no result. The service populates its catalog from genuine
+  aggregate usage; there is no verified manual-submission route. Validation
+  installs use `DO_NOT_TRACK=1`, not manufactured installation counts.
+- **Skillstore: original public listing; refresh submitted.**
+  https://skillstore.io/skills/chelis-lang-sail-verification
+  The original submission was published. The updated canonical folder is in review,
+  tracked at
+  https://skillstore.io/submissions/cb45db69-05bb-4d82-994f-b33a0a8be755.
+  The service created [review PR #4080](https://github.com/aiskillstore/marketplace/pull/4080).
+  A successful submission is not evidence that the public bundle has refreshed.
+- **Skill.Fish / MCP Market: still queued.** CLI `1.0.39` says the repository
+  is already in its queue. Its current search request returns 403, so public
+  listing and current file contents remain unverified. Do not count the two
+  catalog names as independent submissions.
+- **Agent Skills CLI marketplace: searchable listing remains verified.**
+  A current `search sail-verification --json` returns one exact skill with owner
+  `Chelis-Lang`, branch `main` and path
+  `skills/sail-verification/SKILL.md`. This is discovery evidence; that response
+  does not expose a pinned package revision or establish a full bundle install.
 
-Skills Directory and SkillRouter also require account access. SkillsLLM's
-published minimum is not met. Tencent SkillHub requires identity verification.
-The remaining channels are sourcing leads, not completed submissions.
+The public [skills.rest contribution form](https://skills.rest/contribute)
+accepted the canonical skill-directory URL and reported successful submission,
+with indexing within 24 hours. It returned no versioned listing or status URL;
+publication and installed contents remain unverified. The
+[SkillHub.club upload UI](https://www.skillhub.club/app/skills) accepts a ZIP
+selection but its API returns 401 and the UI displays “Login required.” No
+anonymous skill was created. Skills Directory also redirects to sign-in.
+SkillRouter uses owner device pairing before repository submission. LobeHub's
+current CLI exposes `lhm skill publish --identifier ID --dir PATH`, but an
+attempt with the canonical export reports “Not logged in. Run `lhm login`
+first.” Account creation and identity checks on these remaining services need
+owner involvement.
 
 For Tessl updates, export the merged canonical folder outside ignored repository
 paths, import it with `tessl skill import --workspace jeffreykent --public PATH`,
@@ -152,6 +163,12 @@ and retain repository/homepage/license metadata in its generated
 `.tessl-plugin/plugin.json`. Copy the canonical `LICENSE` to `LICENSE.md` in the
 export so Tessl retains the license text. Run lint and a dry run, then publish a new registry
 version from that export. Do not independently edit the skill instructions.
+
+For ClawHub updates, export the merged canonical folder and use
+`clawhub skill publish PATH --slug sail-verification --version VERSION` with
+the source repository, commit, ref and package path flags. Bump the registry
+version for changed files, wait for publication, then test an ordinary
+owner-scoped install. Do not bypass scans to call a queued version published.
 
 For Agent Skill Hub updates, the documented refresh endpoint is
 `POST https://agentskillhub.dev/api/v1/skills/refresh-from-source` with
