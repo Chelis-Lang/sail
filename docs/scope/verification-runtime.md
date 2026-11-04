@@ -275,8 +275,8 @@ Embedded through D.I.V.E.'s library API, for these job kinds:
 
 Future temporal caching would bind spec content, configuration and engine
 identity, with separately qualified ledger tiers and bounds. Current internal
-execution does not cache temporal evidence or establish those assurance tiers. A Sail-owned worker links the pinned
-D.I.V.E. Rust library. Sail controls cancellation and deadlines by terminating
+execution does not cache temporal evidence or establish those assurance tiers.
+A Sail-owned worker links the pinned D.I.V.E. Rust library. Sail controls cancellation and deadlines by terminating
 and reaping that worker, including during binding. No TLC backend, fallback
 or Java execution is part of this route. Backend conformance compares against
 the pinned D.I.V.E. library directly.
@@ -358,34 +358,28 @@ The broader program remains under
 has the next-release milestone; performance uses M11. Other rows are maintained
 implemented scope or future/deferred capabilities, as their issues record.
 
-| Stage | Item | Issue |
+| Current disposition | Item | Issue |
 |---|---|---|
-| Specification | Neutral contract syntax crate | [#127](https://github.com/Chelis-Lang/sail/issues/127) |
-| Specification | Request and verdict API, evidence tiers, ITF values | [#128](https://github.com/Chelis-Lang/sail/issues/128) |
-| Specification | Native temporal job interface and D.I.V.E. worker | [#129](https://github.com/Chelis-Lang/sail/issues/129) |
-| First after specifications | SMT-LIB service (Z3, cvc5) | [#137](https://github.com/Chelis-Lang/sail/issues/137) |
-| Parallel | Verus lowering | [#130](https://github.com/Chelis-Lang/sail/issues/130) |
-| Parallel | Kernel-checked prover interface (Lean, Rocq) | [#131](https://github.com/Chelis-Lang/sail/issues/131) |
-| Parallel | Vermilion | [#132](https://github.com/Chelis-Lang/sail/issues/132) |
-| Parallel | Creusot through Why3 | [#133](https://github.com/Chelis-Lang/sail/issues/133) |
-| Parallel | Prusti through Viper | [#134](https://github.com/Chelis-Lang/sail/issues/134) |
-| Parallel | Kani | [#135](https://github.com/Chelis-Lang/sail/issues/135) |
-| Parallel | Sampled tier | [#136](https://github.com/Chelis-Lang/sail/issues/136) |
-| Parallel | Proof certificates (Alethe, Carcara) | [#138](https://github.com/Chelis-Lang/sail/issues/138) |
-| Parallel | TLA+ jobs through D.I.V.E. | [#139](https://github.com/Chelis-Lang/sail/issues/139) |
-| Parallel | Verus-aware mutator | [#140](https://github.com/Chelis-Lang/sail/issues/140) |
-| Parallel | Library mode and configuration surface | [#144](https://github.com/Chelis-Lang/sail/issues/144) |
-| Dependent | Mutation gate | [#141](https://github.com/Chelis-Lang/sail/issues/141) |
-| Dependent | Backend selection and portfolios | [#142](https://github.com/Chelis-Lang/sail/issues/142) |
-| Dependent | Per-requirement assurance view | [#143](https://github.com/Chelis-Lang/sail/issues/143) |
-| Evaluation | Dafny reach | [#145](https://github.com/Chelis-Lang/sail/issues/145) |
+| Next-release headline | Verus-aware mutator | [#140](https://github.com/Chelis-Lang/sail/issues/140) |
+| Next-release headline | Per-function campaigns through CLI/JSON/MCP | [#141](https://github.com/Chelis-Lang/sail/issues/141) |
+| First executable task | Native Unknown diagnosis | [#664](https://github.com/Chelis-Lang/sail/issues/664) |
+| Later pilot | Kani on a real ordinary Rust crate | [#135](https://github.com/Chelis-Lang/sail/issues/135) |
+| Maintain bounded implementation | Neutral runtime syntax and IR | [#127](https://github.com/Chelis-Lang/sail/issues/127) |
+| Maintain bounded implementation | Versioned request/results, tiers and ITF | [#128](https://github.com/Chelis-Lang/sail/issues/128) |
+| Maintain bounded implementation | Verus profile-one/two lowering | [#130](https://github.com/Chelis-Lang/sail/issues/130) |
+| Maintain bounded implementation | Source-job requirement assurance | [#143](https://github.com/Chelis-Lang/sail/issues/143) |
+| Maintain bounded implementation | Embedded runtime and SDK; wider configuration deferred | [#144](https://github.com/Chelis-Lang/sail/issues/144) |
+| Maintain Z3; cvc5/handles deferred | SMT-LIB service | [#137](https://github.com/Chelis-Lang/sail/issues/137) |
+| Maintain internal extension; packaging held | Native temporal interface / execution | [#129](https://github.com/Chelis-Lang/sail/issues/129), [#139](https://github.com/Chelis-Lang/sail/issues/139) |
+| Deferred future option | Kernel provers, Vermilion, Creusot, Prusti | [#131](https://github.com/Chelis-Lang/sail/issues/131), [#132](https://github.com/Chelis-Lang/sail/issues/132), [#133](https://github.com/Chelis-Lang/sail/issues/133), [#134](https://github.com/Chelis-Lang/sail/issues/134) |
+| Deferred future option | Sampled tier, certificates, cross-backend portfolios, Dafny | [#136](https://github.com/Chelis-Lang/sail/issues/136), [#138](https://github.com/Chelis-Lang/sail/issues/138), [#142](https://github.com/Chelis-Lang/sail/issues/142), [#145](https://github.com/Chelis-Lang/sail/issues/145) |
 
 ## Decisions to record
 
-ADRs, each written when its workstream starts: the Verus lowering strategy,
-Why3 integration depth, the kernel-prover interface, neutral quantifier
-forms, and the certificate cost policy. The owner's answers to questions
-16–27 in [open questions](../open-questions.md) set the direction of each.
+Existing contract, source-job and profile-two boundaries are recorded in ADRs
+0066, 0070 and 0076. New mutation interfaces, any selected Kani adapter, and
+future Why3/kernel/certificate designs need their own decisions when selected.
+Historical answers to questions 16–27 do not override ADR 0100's current holds.
 
 ## Guardrails
 
