@@ -153,8 +153,8 @@ A repair is accepted only when the whole target verifies. See the
 - Sail runs only its own Verus, built from
   [Sail's Verus fork](https://github.com/Chelis-Lang/verus) at the release it
   pins. Projects that need another Verus release aren't supported yet.
-- Published 0.1.0 supports Cargo projects. Standalone file support is qualified
-  on main for the next release.
+- Published 0.2.0 supports Cargo projects and standalone Verus files. Standalone
+  watch requires its source and discovered inputs beneath the working directory.
 - The first unchanged call after a verification, and unchanged calls that
   can't replay, are slower than plain Verus: about 0.3–0.6 s more on mid-sized
   projects, and up to 2 s more on large ones.

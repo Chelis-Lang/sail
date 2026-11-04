@@ -1,10 +1,10 @@
 # Scope: Sail as a general verification runtime
 
-- **Status:** the owner authorized the Oyster integration path alongside M11 on
-  2026-10-21. The earlier hold until M11 completes is superseded by charter
-  appendix entry 8 and [ADR 0065](../decisions/0065-oyster-runtime.md). Each
-  slice requires an executable interface, native qualification and green
-  protected builds before merging.
+- **Status:** delivered surfaces maintained. Owner direction, 2026-11-04
+  ([ADR 0100](../decisions/0100-mutation-first-roadmap.md)), puts mutation first,
+  then a Kani pilot before cvc5. Oyster expansion and SDK migration are held for
+  design; temporal packaging is held for distribution. The 2026-10-21 active
+  integration ordering is historical.
 - **Owner answers:** questions 16–29 in [open questions](../open-questions.md),
   answered 2026-10-15.
 - **Source:** owner direction, 2026-10-15.
@@ -15,8 +15,8 @@
 Sail today serves Verus. It runs Sail's Verus (built from the fork,
 [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)) with the pinned
 Z3 behind a caching shim, and returns the same verdicts and diagnostics as
-plain stock Verus. This document records where the owner wants Sail to go
-next: one verification server for a family of tools. The
+plain stock Verus. This document preserves the longer-term ambition of
+one verification server for a family of tools; ADR 0100 controls current order. The
 [charter](../CHARTER.md) and its correctness contract govern all of it
 unchanged (charter appendix entry 5). Where this scope and the charter
 conflict, the charter wins; the conflicts found so far are listed under
@@ -24,7 +24,12 @@ conflict, the charter wins; the conflicts found so far are listed under
 
 ## Current state
 
-The Oyster runtime slices are being implemented on independent branches.
+Raw Z3 execution, neutral source jobs and source-bound assurance are implemented
+experimental APIs. Native temporal execution exists in the internal extension,
+absent from public archives. Maintain these surfaces and tests; do not widen the
+neutral subset or migrate Oyster's SDK while design is held. The backend list
+below is long-term scope, not simultaneous implementation work. The next
+release's Verus-aware mutation feature has no Oyster dependency.
 The existing Verus path supplies these reusable components:
 
 - one verifier (Verus) and one solver (Z3), with solver identity already
@@ -47,6 +52,9 @@ specification alone does not establish backend support.
 
 ## Mission
 
+The longer-term ambition below is not a list of delivered capabilities or
+simultaneous implementation commitments. Existing scope is described above.
+
 Sail becomes one cached runtime and one ledger behind three kinds of input:
 
 1. **Annotated Rust source.** Contracts in a neutral syntax, tagged with
@@ -62,8 +70,9 @@ identity and, where present, requirement ID.
 
 ## Sibling projects
 
-Two projects are built concurrently in their own repositories. Sail designs
-for them and never depends on their internals.
+These sibling projects have their own repositories. Oyster engineering is
+held for design and temporal packaging for distribution. Existing dependency
+boundaries remain; Sail never depends on Oyster's internals.
 
 - **Oyster** is a requirements tool. It refines EARS-style requirements with
   stakeholders, formalizes each into a typed model, and checks requirements
@@ -264,9 +273,9 @@ Embedded through D.I.V.E.'s library API, for these job kinds:
 - validate an ITF trace against a spec;
 - replay spec-generated traces.
 
-Jobs are cached by spec content, configuration and engine identity. Results
-become ledger verdicts: bounded tier where configuration bounds the state
-space, with bounds as qualifiers. A Sail-owned worker links the pinned
+Future temporal caching would bind spec content, configuration and engine
+identity, with separately qualified ledger tiers and bounds. Current internal
+execution does not cache temporal evidence or establish those assurance tiers. A Sail-owned worker links the pinned
 D.I.V.E. Rust library. Sail controls cancellation and deadlines by terminating
 and reaping that worker, including during binding. No TLC backend, fallback
 or Java execution is part of this route. Backend conformance compares against
@@ -274,15 +283,17 @@ the pinned D.I.V.E. library directly.
 
 ### Mutation gate
 
-A property that kills no mutants of the code it constrains is vacuous. The
-gate runs mutants of the bound implementation through the same backend that
-verified the property, records per property which mutants it killed, and
-flags properties that killed none as vacuous in the ledger.
+The next release runs bounded executable-code mutations in copies, preserving
+contracts, proof and ghost code. Report per-function killed, survived and
+inconclusive observations, explicit limits and unsupported/omitted work through
+CLI, JSON and MCP together. Unknown is never a kill; survivors and zero observed
+kills do not prove adequacy or vacuity. Start with existing native Unknown
+diagnosis. Scalar contract witnesses retain their separate evidence family.
+See the [feature brief](../design/verus-mutation-release.md).
 
-`cargo-mutants` covers code outside `verus!` but cannot see inside the macro.
-A **Verus-aware mutator** mutates executable code inside `verus!` blocks and
-leaves ghost and specification code intact. It serves every Verus user,
-independent of the rest of this scope.
+The general requirement-assurance mutation gate is future scope. Existing seeded
+benchmark catalogues and bounded neutral campaigns do not establish completion
+of the general Verus product.
 
 ### Packaging and modes
 
@@ -322,38 +333,36 @@ different audience from this mission.
 
 ## Dependency graph
 
-**Start condition.** The owner authorized the Oyster critical path on
-2026-10-21 alongside Verus performance work. New runtime code remains outside
-the existing Verus hot path. The older hold until M11 completes is historical.
+**Current order (owner, 2026-11-04).**
 
-1. **Interface specifications first:** the contract syntax, the request and
-   verdict API, and the TLA+ job interface. They are documents that Oyster
-   and D.I.V.E. are blocked on.
-2. **Then the SMT-LIB service first,** because Oyster depends on it first.
-   The backend workstreams fan out alongside it: each verifier backend
-   independently; certificate checking (on the SMT-LIB service); the TLA+ job
-   path with its D.I.V.E. worker; the Verus-aware mutator (needs no
-   specification); packaging modes.
-3. **Dependent work:**
-   - the mutation gate's generic layer depends on the backends it drives;
-   - the assurance view depends on the ledger carrying requirement IDs and
-     tiers;
-   - portfolio selection across backends depends on at least two backends
-     sharing obligations.
+1. Verus-aware mutation (#140, #141), independent of neutral/Oyster integration.
+2. Alongside: changed-proof costs (#158, #244), Mac Anvil cold (#232), bounded
+   frontend go/no-go (#162), correctness-test gaps and acceptance proof (#368).
+3. Then a real-crate Kani pilot (#135), before cvc5 and certificates. Production
+   adoption follows the pilot's explicit go/no-go decision.
+4. Maintain delivered SMT, contracts and assurance. Oyster engineering resumes
+   only after a settled user/problem/session/requirements design; no neutral
+   expansion or SDK migration meanwhile.
+5. Temporal packaging waits for D.I.V.E.'s distribution decision.
+
+The old interface-first/SMT-first fan-out is historical. Delivered interfaces
+are not a new prerequisite chain for mutation testing.
 
 Each workstream lives in its own crates with strict dependency direction. New
 crates and edges are decisions (ADR) and enter `xtask/src/layering.rs`.
 
 ### Tracking issues
 
-All are on milestone *M10: Verification runtime*, under umbrella
-[#146](https://github.com/Chelis-Lang/sail/issues/146).
+The broader program remains under
+[#146](https://github.com/Chelis-Lang/sail/issues/146). Mutation (#140/#141)
+has the next-release milestone; performance uses M11. Other rows are maintained
+implemented scope or future/deferred capabilities, as their issues record.
 
 | Stage | Item | Issue |
 |---|---|---|
 | Specification | Neutral contract syntax crate | [#127](https://github.com/Chelis-Lang/sail/issues/127) |
 | Specification | Request and verdict API, evidence tiers, ITF values | [#128](https://github.com/Chelis-Lang/sail/issues/128) |
-| Specification | TLA+ job interface and D.I.V.E. worker | [#129](https://github.com/Chelis-Lang/sail/issues/129) |
+| Specification | Native temporal job interface and D.I.V.E. worker | [#129](https://github.com/Chelis-Lang/sail/issues/129) |
 | First after specifications | SMT-LIB service (Z3, cvc5) | [#137](https://github.com/Chelis-Lang/sail/issues/137) |
 | Parallel | Verus lowering | [#130](https://github.com/Chelis-Lang/sail/issues/130) |
 | Parallel | Kernel-checked prover interface (Lean, Rocq) | [#131](https://github.com/Chelis-Lang/sail/issues/131) |
@@ -435,9 +444,11 @@ Each was resolved in the charter's favour until the owner answered on
    never count as established.
 7. **Publishing.** The scope describes the contract syntax as "published from
    this workspace" and also says not to publish crates. **Resolved (question
-   20):** the work is staged; nothing is open-sourced or published to
-   crates.io until the owner orchestrates the rollout, and the workspace keeps
-   `publish = false` (ADR 0010). Until then Oyster depends on Sail by git.
+   20, historical):** publication waited for the owner's rollout. The owner
+   subsequently approved eighteen packages at 0.2.0 (ADR 0098); root
+   `publish = false` remains a default with explicit selected-crate opt-ins.
+   Private temporal extensions stay unpublished. Oyster's existing Git SDK
+   pin remains frozen during the design hold.
 8. **Filing outside this repository.** The scope asks for interface needs to be
    raised as issues or proposals for Oyster and D.I.V.E. **Resolved (question
    21):** agents may open issues and PRs in this line of work's repositories
@@ -445,8 +456,9 @@ Each was resolved in the charter's favour until the owner answered on
    repositories. `AGENTS.md` lists them.
 9. **Roadmap review deferral.** The 2026-10-13 review deferred more SMT
    backends, certificates and other verifiers for lack of user pull. This
-   owner direction schedules them after 0.1.0, starting once the 0.1.0
-   performance scope is ready for brittonr's review (question 27).
+   earlier owner direction scheduled them after 0.1.0 (question 27).
+   ADR 0100 now prioritizes mutation, then a Kani pilot before cvc5, with
+   explicit Oyster design and temporal distribution holds.
 10. **Rule 1 and trigger choice in the oracle.** Stock Verus, the
     conformance oracle for lowered crates, picks triggers differently run to
     run (VI-0015), which would make oracle comparisons flaky. **Resolved

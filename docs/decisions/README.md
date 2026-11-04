@@ -113,3 +113,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0098: Publish Sail as sail-solve on crates.io](0098-crates-io-distribution.md) (owner-authorized; native package and installed-command qualification complete, initial registry publication pending)
 
 - [0099: Mutation explanation-note cardinality](0099-mutation-explanation-note-cardinality.md) (accepted; existing per-code uniqueness corrected, native Linux/Mac witness and negative controls qualified)
+
+- [0100: Mutation-first roadmap and design-first Oyster hold (accepted)](0100-mutation-first-roadmap.md)
