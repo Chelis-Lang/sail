@@ -3,9 +3,11 @@
 Development and performance work follow current main, including the Oyster
 integration. Release composition and final publication require the owner's
 explicit approval of the exact candidate. Agents complete the builds, checks,
-staging and review package before requesting that approval. The initial
-`sail-solve 0.2.0-rc.1` crate prerelease has separate authorization; it does not
-authorize the final release. Do not create
+staging and review package before requesting that approval. Stable 0.2.0 was
+explicitly approved and published on 2026-11-04; see its
+[qualification record](validation/stable-candidate.md). Its earlier
+`0.2.0-rc.1` registry publication retains a separate source and authorization.
+Do not create
 a release branch, tag or draft merely because a sprint validation completes.
 
 Published releases are on the repository's
@@ -35,9 +37,10 @@ after a qualified GitHub release is published (ADR 0098).
 
 ## Crates.io publication
 
-The owner authorized `sail-solve` and its public dependency set. The initial
-registry prerelease is `0.2.0-rc.1`; publishing it does not close the wider
-release performance gate. The CLI package retains the `sail` executable and
+The owner authorized `sail-solve` and its public dependency set. The current stable
+registry release is `0.2.0`, following initial prerelease `0.2.0-rc.1`.
+Publication does not close the wider performance goals. The CLI package retains
+the `sail` executable and
 installs `sail-solve-z3` beside it. Contributor tools and the private temporal
 extension remain unpublished.
 
@@ -192,7 +195,7 @@ stripped Sail/shim binaries and installs it under `deps/<variant>`.
 proof bundle. Qualification belongs to the exact release source and artifacts:
 [0.1.0](validation/release-candidate.md) was qualified as rc.7; the new native
 factories and clean archive consumers are tracked in the
-[0.2.0 candidate record](validation/stable-candidate.md).
+[0.2.0 qualification record](validation/stable-candidate.md).
 Compiler-boundary research components retain their own source and acceptance
 scope. A changed-root component alone does not establish fresh-machine
 installation performance.

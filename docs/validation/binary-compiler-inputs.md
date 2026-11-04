@@ -1,16 +1,16 @@
 # Exact binary compiler-input qualification
 
-Status: the candidate consumes checksum-corrected fork `a0e11cff` on Linux and
+Status: published Sail 0.2.0 consumes checksum-corrected fork `a0e11cff` on Linux and
 Apple-silicon macOS. Both native runtime archives are published; anonymous
 downloads match their pins. Complete source, producer/library, engine,
 cancellation, factory and installed controls pass. Owner-approved ADR 0097
 qualifies the one Mac consumed-counter difference separately from strict
 matches. Complete composed workflow/mutation captures and corrected 26/26
 comparison reports now exist on both platforms; the [feature record](release-expansion.md)
-binds their exact sources and raw data. First/full-path, Mac Anvil cold and
-CapybaraKV Mac post-return cost limitations remain explicit. Stable version
-`0.2.0` has separate [candidate qualification](stable-candidate.md); final
-publication is not approved.
+binds their exact sources and raw data. First/full-path and Mac Anvil cold
+limitations remain explicit. The bounded Mac preparation-cost retry below
+completes with its intended toolchain; no general resource bound follows.
+Stable `0.2.0` is published with separate [release qualification](stable-candidate.md).
 
 ## Source and environment
 

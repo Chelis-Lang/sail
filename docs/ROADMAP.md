@@ -68,26 +68,25 @@ read-back currentness that includes the runtime (#389), setup cuts (#407,
 `sail new`, MCP, proof repair and the evidence commands. D.I.V.E. temporal
 jobs are not in 0.1.0; they build only in the extension workspace (ADR 0083).
 
-## Next-release expansion
+## 0.2.0 (2026-11-04)
 
 The owner selected the [expanded implementation package](design/release-expansion.md)
-alongside standalone-file development. The owner also authorized initial
-`sail-solve 0.2.0-rc.1` crate publication; broader archive-release composition
-and performance acceptance remain separate. Final publication requires explicit
-owner approval of the exact candidate (2026-11-03). Candidate preparation and
-qualification continue up to that boundary; green gates alone do not authorize
-the final GitHub release or stable crate publication.
+alongside standalone-file development, then approved the exact `3d7782bf`
+candidate on 2026-11-04. Stable 0.2.0 is published as attested native archives
+and eighteen matching crates.io packages. The [release record](validation/stable-candidate.md)
+binds the exact artifacts and installed-consumer scope. Future publication
+still requires explicit approval of its own candidate.
 
-| Deliverable | Current state | Remaining gate |
+| Deliverable | Current state | Next |
 |---|---|---|
-| Crates.io distribution (`sail-solve`) | Owner authorized initial and future publication; all eighteen source packages, Linux/Mac native gates, normal user setup and complete installed workflows pass ([record](validation/crates-io.md)) | All eighteen rc.1 versions published and anonymous Linux/Mac installs pass; final stable-commit packages and owner approval remain |
-| Daemon preparation and post-creation verification | Merged in #647; Linux/Mac replay, generated-input, foreground and queued-edit controls pass | Full performance acceptance remains separate |
-| Standalone focused repair through CLI/jobs/MCP | Native Linux/Mac CLI/MCP focus/full, unrelated-failure, selector and historical-job controls pass | Stable native/archive composition passes; final source assembly and owner rollout remain |
-| Opt-in cache byte budgets | Manual LRU/newest/busy/rebuild controls pass on both platforms; actual idle-maintenance root defect corrected and Linux/Mac controls pass | Merged in #647/#651; stable native/archive composition passes; owner rollout remains |
-| Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Merged in #647 |
-| First/full-path and Mac Anvil overhead | Run-scoped and per-file experiments remain unselected; Linux and Mac whole-call controls show no general gain | Full-path and Mac Anvil-cold gaps remain; complete paired release qualification |
-| Binary compiler-input metadata (#599) | Fork fix merged; both native runtimes published and pinned, source suites and exact-read controls pass | Stable native product/corpus gates and both archive consumers pass; stated cost/performance limits and owner approval remain |
-| Incidental edits | Corrected fifteen-edit catalogue and Anvil controls pass native execution audits | Exact rc.1 archives: 114 samples/platform, raw files captured and audits pass; earlier lost attempt stays indexed |
+| Crates.io distribution (`sail-solve`) | All eighteen stable packages published; automatic workflow passes and independent full archive/VCS checks match the approved source ([record](validation/crates-io.md)) | Future published tags use source-bound crate publication |
+| Daemon preparation and post-creation verification | Delivered; Linux/Mac replay, generated-input, foreground and queued-edit controls pass | General resource-cost and first/full-path improvements remain separate |
+| Standalone verification and focused repair through CLI/jobs/watch/MCP | Delivered; native focus/full, unrelated-failure, selector and historical-job controls pass | Documented scope limits remain |
+| Opt-in cache byte budgets | Delivered; manual and actual idle maintenance, LRU/newest/busy protection and rebuild controls pass | Soft cap is intentional |
+| Hosted CI-cache walkthrough | Four independent hosted runners pass cold/restore and source/config/runtime invalidation | Broader project claims need their own measurements |
+| First/full-path and Mac Anvil overhead | Run-scoped/per-file experiments remain unselected after no general gain | Original first/full-path and Mac Anvil-cold goals remain open |
+| Binary compiler-input metadata (#599) | Corrected fork runtimes published/pinned; source suites, exact-read controls, stable corpus gates and both archive consumers pass | Existing compatibility and performance limits remain |
+| Incidental edits | Exact rc.1 archives: fifteen edits plus Anvil controls, all 114 samples/platform captured and audited | Earlier lost attempt retains its original scope |
 
 ## Performance tracks
 

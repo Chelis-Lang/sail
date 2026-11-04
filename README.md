@@ -10,9 +10,11 @@ diagnostics and exit codes, but it:
 - restores the earlier proof when you undo an edit;
 - ships a preverified `vstd` in release archives for new projects.
 
-A typical one-line edit verifies 1.2–2.5 times faster than plain Verus, and
-an undone edit up to 30 times faster. See [performance](docs/performance.md)
-for measurements, including where Sail is still slower.
+Complete editing loops measured 1.22–2.38 times faster than plain Verus across
+Vest, IronKV and CapybaraKV in six paired rounds on Linux and Mac. Standalone
+files can also reuse an unchanged successful proof in a few hundredths of a
+second. See [performance](docs/performance.md) for the measured scopes and
+cases where Sail is still slower.
 
 Solver-service failures fall back to the pinned Z3. If Sail cannot establish
 complete verification evidence, it reports an error or an unconfirmed result
@@ -20,15 +22,12 @@ instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 
 ## Install
 
-The published crates.io package is `sail-solve 0.2.0-rc.1`.
-
-The checkout's `0.2.0` source version is an unpublished candidate. Stable
-publication requires qualification and explicit owner approval; the command
-below installs the published prerelease.
+Sail 0.2.0 is published as native archives and as the crates.io package
+`sail-solve`. The executable remains `sail`.
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rust-src
-cargo +1.99.1 install sail-solve --version 0.2.0-rc.1 --locked
+cargo +1.99.1 install sail-solve --version 0.2.0 --locked
 sail engine install
 ```
 

@@ -11,9 +11,11 @@ accepts 25/26 rows because of explanation-note classification #655. The merged
 per-code correction independently rechecks all 1,944 retained paired steps; a
 separate report has 26/26 valid rows on each platform, preserving every timing
 and original strict failure.
-Performance acceptance and final owner approval remain open. The feature retains
-qualified fork `0ad405eb`. The separate runtime upgrade and performance selection
-do not select a Sail release version or publication.
+The owner approved the exact stable candidate on 2026-11-04 and 0.2.0 is
+published; see [release qualification](stable-candidate.md). Original global
+performance goals remain open. The feature snapshot below retains qualified
+fork `0ad405eb`; the later runtime upgrade and published archives retain their
+separate source/runtime scopes.
 
 ## Current gates
 
@@ -156,8 +158,8 @@ remain open; replay improvements do not establish general parity.
 | Mac workflows/all three catalogues, 5,941 sealed members | `25be7412764974416e870c06b32d8c5b05fd319f115528f23d7f2543a241aa79` |
 
 These measure the frozen core/archive composition, not the later Cargo
-installation's exact binaries. Final candidate artifact qualification remains
-separate. The fifteen incidental-edit catalogue is a different workload; its original
+installation's exact binaries. Final versioned archive qualification is recorded
+separately in [the release record](stable-candidate.md). The fifteen incidental-edit catalogue is a different workload; its original
 raw timing loss is retained below. A later rerun of that exact catalogue on
 rc.1 archives repairs its evidence gap as recorded next.
 
@@ -206,10 +208,12 @@ The fresh six-round Mac cohort completes all 23 paired workflow rows with
 exact outputs and retained ranges; three realistic mutation cohorts remain
 absent. Its [runtime record](binary-compiler-inputs.md#corrected-mac-workflow-measurements)
 gives measured first-use gains and the remaining full-path/Anvil-cold gaps.
-The separate post-return CPU controls complete for Vest, IronKV and Anvil;
-Capybara's observer refuses an empty preparation queue, so its preparation cost
-is unqualified. Caller and observer exits remain separate. No cause for the
-empty queue is established.
+The original post-return CPU controls complete for Vest, IronKV and Anvil;
+Capybara's original observer refuses an empty queue. The separate corrected
+Rust/Cargo 1.99.1 retry completes genuine preparation and a Current replay,
+with its retained CPU capture in [the completed control](binary-compiler-inputs.md#completed-mac-preparation-cost-controls).
+The original inherited-toolchain refusal remains recorded; caller latency and
+background CPU cost stay separate, with no general resource bound.
 
 ## Evidence
 

@@ -7,12 +7,10 @@ Sail currently supports Linux x86-64 with glibc 2.39 or newer (Ubuntu 24.04,
 for example), and Apple-silicon macOS. It ships its own Verus and pinned Z3.
 Your existing Verus installation is left alone. Sail is distributed as
 prebuilt archives on [GitHub releases](https://github.com/Chelis-Lang/sail/releases)
-under the MIT licence. Cargo distribution is implemented for the initial
-`sail-solve 0.2.0-rc.1` registry prerelease; its package and installation
-qualification is recorded in the [crate-publication gate](validation/crates-io.md).
-The checkout's `0.2.0` source version is an unpublished candidate awaiting
-qualification and explicit owner approval. Installation commands below retain
-the published prerelease version.
+under the MIT licence. Stable `sail-solve 0.2.0` is also published to crates.io;
+its package and installation qualification is recorded in the
+[crate-publication gate](validation/crates-io.md). The native archives and
+attestations are bound in the [release record](validation/stable-candidate.md).
 
 ## Cargo installation
 
@@ -21,7 +19,7 @@ verifier's Rust pin, then the CLI and its pinned runtime:
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rust-src
-cargo +1.99.1 install sail-solve --version 0.2.0-rc.1 --locked
+cargo +1.99.1 install sail-solve --version 0.2.0 --locked
 sail engine install
 sail engine status
 sail verify proof.rs
@@ -35,8 +33,7 @@ checkout or GitHub credential. Existing conflicting or corrupted runtime
 installs are refused; they are never silently overwritten. `sail engine install
 --from PATH` continues to import an existing validated runtime.
 
-The registry version is initially a prerelease while full release qualification
-continues. Cargo installations establish their own vstd and target proofs;
+Cargo installations establish their own vstd and target proofs;
 GitHub archives additionally ship their preverified vstd and signed replies.
 Reuse still requires the same complete inputs and Current provenance.
 Rustup installs the explicit verifier toolchain without changing your default.

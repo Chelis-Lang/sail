@@ -5,11 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
-### 0.2.0 candidate
+## 0.2.0 (2026-11-04)
 
-The source version is prepared as `0.2.0` for qualification. Stable archives
-and crate versions remain unpublished pending explicit owner approval of the
-exact candidate. The published registry prerelease remains `0.2.0-rc.1`.
+Published as attested Linux/macOS archives and eighteen matching crates.io
+packages from `3d7782bf`. The owner approved the exact candidate and rollout;
+see [release qualification](docs/validation/stable-candidate.md).
 
 - Add crates.io distribution as `sail-solve`, installing the CLI and companion
   shim together. `sail engine install` fetches and validates the exact pinned

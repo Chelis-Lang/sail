@@ -1,10 +1,12 @@
-# Stable 0.2.0 candidate qualification
+# Sail 0.2.0 release qualification
 
-Status: native stable candidate gates and both exact archives are qualified.
-Final source assembly and merged-commit package provenance are tracked in
-[PR #661](https://github.com/Chelis-Lang/sail/pull/661). Final owner approval
-remains required; no stable publication is approved. The published registry
-prerelease is a separate immutable source and is not repackaged as stable.
+Status: Sail 0.2.0 is published after explicit owner approval on 2026-11-04.
+Tag `v0.2.0` binds protected merge
+`3d7782bf70bf54efbfe0378eac8fbdf7b2276c20` ([PR #661](https://github.com/Chelis-Lang/sail/pull/661)).
+The two exact qualified archives were attested and independently verified before
+[GitHub publication](https://github.com/Chelis-Lang/sail/releases/tag/v0.2.0).
+All eighteen stable crate archives match the approved merged-source packages.
+The earlier registry prerelease retains its separate immutable source.
 
 ## Source and scope
 
@@ -27,9 +29,10 @@ workspace/extension gate at
 [`0955f4aa`](https://github.com/Chelis-Lang/sail/commit/0955f4aa5ef5cc803efe691c965b8526ae639248)
 passes with the changed development assembly.
 Later documentation amendments have no compiled input changes. Final source/package Git
-provenance must be bound after the protected merge; earlier execution is never
-relabeled as a new run. The final source packages must be regenerated and
-verified from that clean merged commit before requesting publication approval.
+provenance binds the protected `3d7782bf` merge; earlier execution is never
+relabeled as a new run. All eighteen packages were regenerated and verified
+from that clean merge before owner approval, then independently matched to
+the published registry bytes.
 
 ## Current gates
 
@@ -43,7 +46,7 @@ verified from that clean merged commit before requesting publication approval.
 | Cargo source packages | Independent native Linux lane: all eighteen extracted stable packages verify together with `--locked`; no credentials loaded or uploads attempted |
 | Stable archive installation | Both exact `0.2.0` archives pass clean-PATH first-use/repair smoke and fixed three-call ordinary-Cargo JSON verification; every call is Current/complete and the final call invokes zero verifiers |
 | Protected source PR | Normal six-check current-main squash merge and final-commit package results are bound in [PR #661](https://github.com/Chelis-Lang/sail/pull/661); green checks do not authorize publication |
-| Final publication | Not approved; no stable tag, draft or upload created |
+| Final publication | Owner approved 2026-11-04; GitHub stable release and all eighteen matching stable crates published |
 
 The runtime is the already-qualified pinned A0e fork. Its source suites,
 determinism, exact binary-input controls and full installed feature controls
@@ -55,7 +58,7 @@ change the solver algorithms or verifier. Fresh native gates, package and
 archive controls qualify its changed assembly rather than claiming earlier
 executables were built with version `0.2.0`.
 
-## Exact staged archives
+## Exact published archives
 
 These are native `0.2.0` builds of `e6adf3c0`, with new version metadata;
 they are not renamed rc.1 binaries. Both factories check the CLI/MCP version,
@@ -79,7 +82,7 @@ are captured separately from the completed native corpus qualification:
 The independent all-eighteen-package/factory capture has 27 sealed members,
 SHA-256 `692b80eef6d2dae8f90814d10e628ede5075a956cd31ae4c6ddceba0714bd080`.
 Its packages have the actual tested e6adf3c0 Git provenance; final merged-source
-packages are regenerated separately. No publication credential was used.
+packages were regenerated and checked separately. No publication credential was used.
 
 The refreshed development-profile/extension gate capture includes the two
 initial setup failures (Git worktree metadata absent from Docker; missing
@@ -102,12 +105,64 @@ Fast and standard have no skipped projects. Deep records exactly the optional
 Singular and a Singular-enabled source build (ADR 0021); this does not qualify
 that separate optional configuration.
 
-## Release boundary
+## Publication and installed consumers
 
-The [release notes](../release-notes/0.2.0.md) describe user-visible scope and
-remaining performance gaps. Before requesting owner approval, complete native
-gates and raw capture, record exact archive checksums, merge the source PR and
-verify final-commit source packages. After explicit approval only, create the
-exact stable tag/draft, attest and independently verify these archive bytes,
-and publish. The published-release workflow then publishes matching crates
-from the immutable approved commit. Required attestation failure stops rollout.
+Owner approval on 2026-11-04 covers the exact source and archive/crate identities
+presented in PR #661. The [attestation run](https://github.com/Chelis-Lang/sail/actions/runs/41829722273)
+passes at the tagged source; both draft archives were downloaded again,
+matched against their approved SHA-256 values and independently verified with
+`gh attestation verify` before publication. The
+[crate workflow](https://github.com/Chelis-Lang/sail/actions/runs/41830064285)
+then passes on the same immutable source. Every public `.crate` archive and its
+clean VCS identity is independently checked against the eighteen approved
+package hashes in PR #661.
+
+Final merged-source package capture SHA-256:
+`872b62553d634b6b9472a0d198a12e23682758052b71c3b3c39adb2b9be5ac68`.
+Its individual crate hashes bind publication bytes; the outer tar identifies
+only the retained package capture.
+
+Actual public stable consumption passes on native c7i.4xlarge / us-east-1 /
+Ubuntu 24.04 and mac-m4.metal / us-east-1c / macOS 27.0, using Rust/Cargo
+1.99.1 and rust-src. Each installs `sail-solve 0.2.0 --locked` outside the
+checkout from an empty Cargo package cache, without registry or GitHub tokens.
+The downloaded root crate matches the approved hash and clean `3d7782bf` VCS
+identity. Fresh public runtime installation, reuse with broken download proxies,
+normal-discovery pass/fail/restore and zero-verifier unchanged calls all pass.
+Both platforms also pass the complete standalone CLI/jobs/watch/MCP driver,
+focused repair, generated-input/background preparation and actual cache-budget
+controls. They install the archive through public `--version 0.2.0` discovery
+and pass strict release smoke, including first-use shipped-proof admission and
+repair. Anonymous installers check checksums and report their documented lack
+of signed-in `gh`; the identical archive bytes were independently attested and
+verified on the controller before publication.
+
+| Stable consumer capture | Regular members including seals | SHA-256 |
+|---|---:|---|
+| Linux | 404 | `b3e564c0ab747aa40b01b31ee13090db84de9f2a2486bc6e6ed64535a40153d7` |
+| macOS | 404 | `779f5f1df5d4203afb91bea5b69352aee2c0fd5ec74d8e1246e69b6600bc7000` |
+
+Every raw file's size/hash seal is verified after transfer. These are actual
+installed-consumer controls, not a new whole-call performance measurement or
+an installation-time claim. Existing rc.1 consumers and prepublication archive
+smoke retain their own sources. docs.rs builds all eighteen stable library
+targets successfully; all 54 inspected crate/build/rustdoc pages are captured.
+The publication/registry/docs.rs provenance capture has SHA-256
+`f028411fbb983fb8b302f0b2ba877a0bf99895ff41b3eb8340553761c90b5fe5`.
+
+Retained rollout attempts, all 2026-11-04 / `3d7782bf`:
+
+- Attestation dispatch by raw commit ref: GitHub rejects that ref; dispatch by
+  the exact annotated `v0.2.0` tag passes at the same commit.
+- Mac Terminal launcher and unprivileged system-domain launchctl submission:
+  setup refuses before consumer execution; a system LaunchDaemon under the
+  normal user completes the unchanged controls.
+- Mac capture through SSH's Python 3.9, then an absent Python 3.12 executable:
+  collection refuses after all consumer controls passed; the installed Homebrew
+  Python collects the same raw files and every seal verifies. No test or product
+  input changes.
+
+
+Known first/full-path, tiny-operation and Mac Anvil-cold limits remain in the
+[release notes](../release-notes/0.2.0.md). Publication does not establish
+universal speedups or enable the unselected digest experiments.
