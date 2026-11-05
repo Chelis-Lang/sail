@@ -97,7 +97,7 @@ Download it with its `.sha256` file, check it, unpack it and put its `bin/`
 on `PATH`:
 
 ```sh
-VERSION=0.1.0                      # the release you are installing
+VERSION=0.2.0                      # the release you are installing
 TARGET=x86_64-unknown-linux-gnu    # or aarch64-apple-darwin
 base="https://github.com/Chelis-Lang/sail/releases/download/v$VERSION"
 curl -fLO "$base/sail-$VERSION-$TARGET.tar.gz"

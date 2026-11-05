@@ -16,3 +16,5 @@ bench/results/*.raw.json
 /dist
 /release-out
 /extensions/temporal/target
+
+/.cache/

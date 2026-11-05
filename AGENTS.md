@@ -353,6 +353,12 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
 
 ## Documentation style
 
+The user book is in `book/`, built with mdBook 0.5.2. Its chapters include
+the guides in `docs/`; edit those sources instead of copying prose. Run
+`python3 scripts/test-book.py`, `mdbook build book`, and
+`python3 scripts/check-book-links.py target/book` for book changes. The
+required CI completion check also requires the documentation job.
+
 Docs describe the current state. Use repo-relative paths only: no absolute local
 paths and no personal emails. Public APIs carry rustdoc. Record user-visible
 changes in `CHANGELOG.md`. `docs/benchmarks.md` is generated from data under

@@ -20,6 +20,9 @@ Solver-service failures fall back to the pinned Z3. If Sail cannot establish
 complete verification evidence, it reports an error or an unconfirmed result
 instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 
+Read the [Sail book](https://jeffreykent.dev/docs/sail/) for the quickstart,
+workflows, and architecture. Its sources are maintained in this repository.
+
 ## Install
 
 Sail 0.2.0 is published as native archives and as the crates.io package
@@ -90,8 +93,7 @@ sail repair-check proof.rs --function proof::lemma --engine interactive
 
 The same file works through MCP with `source_file: "proof.rs"`. Complete
 successful proofs can be reused on unchanged calls and undo. This feature is
-available in the published registry prerelease and qualified on native Linux
-and macOS. Repair checks add an
+available in published 0.2.0 and qualified on native Linux and macOS. Repair checks add an
 exact function focus followed by fresh full-file validation; see the
 [standalone workflow](docs/standalone-verification.md).
 
@@ -109,7 +111,7 @@ Each result says whether it is **Current** (its inputs are unchanged),
 **Historical** or **Unknown**. See [workspace verification](docs/workspace-verification.md)
 and [freshness](docs/freshness.md).
 
-The prerelease's [background preparation](docs/background-preparation.md)
+Sail's [background preparation](docs/background-preparation.md)
 worker can prepare the next unchanged Cargo call after verification returns,
 and start verifying a newly created project while you begin editing. Foreground
 work takes priority. Use `SAIL_BACKGROUND_PREPARE=0` to opt out.

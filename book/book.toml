@@ -1,0 +1,20 @@
+[book]
+title = "Sail"
+authors = ["Sail contributors"]
+description = "Verus verification, proof reuse, and solver tools for developers and coding agents."
+language = "en"
+src = "src"
+
+[build]
+build-dir = "../target/book"
+create-missing = false
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/Chelis-Lang/sail"
+site-url = "/docs/sail/"
+
+[preprocessor.source-links]
+command = "python3 ../scripts/book-links.py"
+after = ["links"]

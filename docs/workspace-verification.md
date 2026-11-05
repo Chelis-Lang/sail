@@ -23,8 +23,9 @@ for the differences that remain.
 `--incremental` was the opt-in for this mode before it became the default.
 It is still accepted and does nothing.
 
-Cargo runs on every request. Sail owns a separate Cargo target directory, so it
-never cleans the caller's artifacts. Successful complete target reports get
+A matching unchanged-call replay returns before running Cargo. Other requests
+run Cargo. Sail owns a separate target directory, so it never cleans the caller's
+artifacts. Successful complete target reports get
 proof receipts bound to the verification context and actual Cargo artifacts.
 When Cargo reports an artifact fresh and its receipt matches, Sail returns the
 complete establishing report without invoking Verus for that target. A missing

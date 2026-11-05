@@ -1,7 +1,8 @@
 # Documentation
 
-Start with the [README](../README.md) for installation and a first
-verification.
+Read the [Sail book](https://jeffreykent.dev/docs/sail/) or start with the
+[quickstart](quickstart.md). The [reuse guide](reuse.md) explains solver caching,
+proof receipts, and replay.
 
 ## Using Sail
 
