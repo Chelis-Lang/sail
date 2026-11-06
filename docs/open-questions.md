@@ -540,3 +540,9 @@ planned for releases after 0.1.0. The owner answered all twelve on
     with tracking. This supersedes active ordering in questions 27 and 37;
     correctness and explicit final release approval remain. See
     [ADR 0100](decisions/0100-mutation-first-roadmap.md).
+    **Superseded in part 2026-11-06:** the Oyster owner resumed Oyster for
+    shelf completion: Oyster migrates its SDK to the published 0.2.0 crates,
+    and D.I.V.E. work resumes in Sail behind a default-off flag with a queued
+    pull request that enables it once D.I.V.E. is distributed. Public temporal
+    packaging still waits for that distribution. See
+    [ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md).

@@ -63,11 +63,20 @@ cvc5, certificates, Creusot, Prusti, kernel provers, sampled-tier integration,
 cross-backend portfolios and Dafny remain future options under #146. They are
 not parallel commitments for the next release.
 
-## Oyster: design first, engineering on hold
+## Oyster: shelf completion; Sail surfaces held
+
+On 2026-11-06 the Oyster owner resumed Oyster for shelf completion: Oyster
+migrates its SDK to the published 0.2.0 crates and requalifies native
+temporal work against the flagged build
+([ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md)). That
+direction supersedes the SDK-migration hold in the next paragraph. The rest
+of the guidance below still applies to Sail's own surfaces. This section was
+first titled "Oyster: design first, engineering on hold."
 
 Maintain and test the experimental raw SMT, neutral contracts, source jobs and
-assurance reads already consumed by Oyster. Do not expand those surfaces, widen
-the neutral subset or migrate Oyster's SDK while the design is unsettled.
+assurance reads already consumed by Oyster. Do not expand those surfaces or
+widen the neutral subset while the design is unsettled. (Superseded on
+2026-11-06: the original text also said not to migrate Oyster's SDK.)
 
 The next Oyster deliverable is a short design document answering who the user
 is, their present problem, one successful end-to-end session, and why a
@@ -75,12 +84,22 @@ requirements layer adds value beyond direct specifications, contracts and
 mutation feedback. The owner's supplied colleague feedback is the deciding
 input. Design resolution precedes renewed integration engineering.
 
-## Temporal: wait for distribution
+## Temporal: behind a default-off flag
 
-The native D.I.V.E. extension exists internally; public Sail archives have no
-temporal backend (ADR 0083). Hold packaging and expansion until D.I.V.E.'s
-private-source distribution decision is made. Preserve current behavior and
-regression coverage; do not introduce a TLC fallback.
+Superseding the earlier hold: on 2026-11-06 the Oyster owner resumed Oyster
+for shelf completion, covering its SDK migration to the published 0.2.0
+crates and D.I.V.E. work in Sail behind a default-off flag
+([ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md)).
+
+| Gate | State |
+|---|---|
+| Default builds, crates.io and public archives link no temporal backend | Enforced by `cargo xtask check-layering` and the CLI tests |
+| Extension build and tests at the pinned D.I.V.E. revision | Local tier, `ci/local.sh extension` |
+| Internal D.I.V.E.-enabled `sail` | `ci/run.sh extension-install DIR` |
+| Public temporal packaging | Waits for D.I.V.E.'s public distribution; flip queued as a draft pull request |
+
+Preserve current behavior and regression coverage; do not introduce a TLC
+fallback.
 
 ## Delivered releases
 

@@ -139,9 +139,50 @@ pub const EXTENSION_ALLOWED: &[(&str, &[&str])] = &[
     ("sail-temporal", &["sail-solve", "sail-dive"]),
 ];
 
+/// The private D.I.V.E. repository. Only the extension lock may name it.
+pub const DIVE_REPOSITORY: &str = "github.com/Chelis-Lang/dive";
+
+/// Entries of the main workspace's `Cargo.lock` that would put D.I.V.E. in a
+/// public build (ADR 0101): any package fetched from [`DIVE_REPOSITORY`],
+/// any `dive-*` package and any extension crate. An empty result means the
+/// lock resolves without the private sources.
+///
+/// # Errors
+///
+/// When the lock is not TOML or has no package list.
+pub fn private_lock_entries(lock: &str) -> Result<Vec<String>, String> {
+    let lock: toml::Table = lock
+        .parse()
+        .map_err(|e| format!("cannot parse Cargo.lock: {e}"))?;
+    let packages = lock
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .ok_or("Cargo.lock has no package list")?;
+    let extension: Vec<&str> = EXTENSION_ALLOWED.iter().map(|(name, _)| *name).collect();
+    let mut found = Vec::new();
+    for package in packages {
+        let name = package
+            .get("name")
+            .and_then(toml::Value::as_str)
+            .unwrap_or_default();
+        let source = package
+            .get("source")
+            .and_then(toml::Value::as_str)
+            .unwrap_or_default();
+        if source.contains(DIVE_REPOSITORY)
+            || name.starts_with("dive-")
+            || extension.contains(&name)
+        {
+            found.push(format!("{name} {source}").trim_end().to_owned());
+        }
+    }
+    found.sort();
+    Ok(found)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{ALLOWED, EXTENSION_ALLOWED};
+    use super::{ALLOWED, EXTENSION_ALLOWED, private_lock_entries};
     use std::collections::{BTreeMap, BTreeSet};
 
     fn graph() -> BTreeMap<&'static str, &'static [&'static str]> {
@@ -195,6 +236,33 @@ mod tests {
         for (name, _) in ALLOWED.iter().chain(EXTENSION_ALLOWED) {
             assert!(!reachable(name).contains(name), "{name} reaches itself");
         }
+    }
+
+    #[test]
+    fn public_lock_refuses_every_private_source() -> Result<(), String> {
+        let clean = "version = 4\n\n[[package]]\nname = \"sail-api\"\nversion = \"0.2.0\"\n";
+        assert_eq!(private_lock_entries(clean)?, Vec::<String>::new());
+        for (entry, expected) in [
+            (
+                "name = \"dive-api\"\nversion = \"0.0.0\"\nsource = \"git+https://github.com/Chelis-Lang/dive?rev=1#1\"",
+                "dive-api git+https://github.com/Chelis-Lang/dive?rev=1#1",
+            ),
+            (
+                "name = \"other\"\nversion = \"0.0.0\"\nsource = \"git+https://github.com/Chelis-Lang/dive#2\"",
+                "other git+https://github.com/Chelis-Lang/dive#2",
+            ),
+            ("name = \"dive-ir\"\nversion = \"0.1.0\"", "dive-ir"),
+            ("name = \"sail-dive\"\nversion = \"0.1.0\"", "sail-dive"),
+            (
+                "name = \"sail-temporal\"\nversion = \"0.1.0\"",
+                "sail-temporal",
+            ),
+        ] {
+            let lock = format!("{clean}\n[[package]]\n{entry}\n");
+            assert_eq!(private_lock_entries(&lock)?, vec![expected.to_owned()]);
+        }
+        assert!(private_lock_entries("version = 4").is_err());
+        Ok(())
     }
 
     #[test]
