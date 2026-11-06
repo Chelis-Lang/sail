@@ -20,7 +20,7 @@ Solver-service failures fall back to the pinned Z3. If Sail cannot establish
 complete verification evidence, it reports an error or an unconfirmed result
 instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 
-Read the [Sail book](https://jeffreykent.dev/docs/sail/) for the quickstart,
+Read the [Sail book](https://cproof.ai/docs/sail/) for the quickstart,
 workflows, and architecture. Its sources are maintained in this repository.
 
 ## Install

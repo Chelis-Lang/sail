@@ -1,6 +1,6 @@
 # Documentation
 
-Read the [Sail book](https://jeffreykent.dev/docs/sail/) or start with the
+Read the [Sail book](https://cproof.ai/docs/sail/) or start with the
 [quickstart](quickstart.md). The [reuse guide](reuse.md) explains solver caching,
 proof receipts, and replay.
 
