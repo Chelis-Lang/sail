@@ -1,6 +1,8 @@
 # 0083: The temporal backend is an extension workspace
 
-- **Status:** accepted; amended 2026-10-26 (the extension check is local-only)
+- **Status:** accepted; amended 2026-10-26 (the extension check is local-only);
+  amended by [0101](0101-dive-behind-a-default-off-flag.md) (main-gate guards
+  and the named install step)
 - **Date:** 2026-10-26
 - **Supersedes:** [0080](0080-optional-temporal-runtime.md)
 

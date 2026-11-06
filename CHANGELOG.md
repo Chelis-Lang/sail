@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Keep D.I.V.E. behind a default-off build flag (ADR 0101): the required
+  layering check now refuses a root lock that names D.I.V.E. or an extension
+  crate, and a publishable extension crate. `ci/run.sh extension-install DIR`
+  installs the internal D.I.V.E.-enabled `sail` with its staged worker.
+  Default builds still report temporal `installed: false`.
+
 ## 0.2.0 (2026-11-04)
 
 Published as attested Linux/macOS archives and eighteen matching crates.io

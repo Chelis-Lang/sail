@@ -37,6 +37,31 @@ target/temporal/debug/sail runtime capabilities
 clippy and tests. `cargo xtask check-layering` checks both workspaces without
 resolving dependencies, so it needs no credential.
 
+## The default-off flag
+
+Selecting the extension is the only way to build a `sail` with D.I.V.E.
+([ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md)). No
+main-workspace crate has a `dive` feature: Cargo resolves optional git
+dependencies into the lock, and crates.io refuses a package that has one.
+`cargo xtask check-layering`, part of the required `Workspace gate`, refuses
+a root `Cargo.lock` that names the D.I.V.E. repository, a `dive-*` package or
+an extension crate, and an extension crate without `publish = false`. The
+default `sail` reports temporal `installed: false`, which `sail-solve`'s CLI
+tests check.
+
+To install the D.I.V.E.-enabled `sail` for internal or Oyster use:
+
+```sh
+ci/run.sh extension-install DIR
+DIR/bin/sail runtime capabilities
+```
+
+It builds the extension's release `sail` and `sail-runtime-worker` into
+`DIR/bin`, stages the worker manifest beside them, and fails unless the
+installed `sail` reports temporal installed at the pinned revision. The
+directory holds no verifier engine, and the step checks only the temporal
+capability.
+
 ## Local check, not CI
 
 Temporal jobs do not ship in 0.1.0, so Sail's CI does not build or test the

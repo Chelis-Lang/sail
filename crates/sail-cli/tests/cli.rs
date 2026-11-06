@@ -98,6 +98,38 @@ fn mcp_server_states_the_cli_version() {
     assert_eq!(format!("sail {served}\n"), version, "{text}");
 }
 
+/// The default `sail` links no temporal backend (ADR 0101): its capability
+/// says so, and it never reaches worker discovery, even with a worker
+/// manifest beside it.
+#[test]
+fn default_build_reports_no_temporal_backend() {
+    let dir = isolated_sail("no-temporal");
+    assert!(std::fs::write(dir.join("sail-runtime-worker.json"), "{}").is_ok());
+    let output = Command::new(dir.join("sail"))
+        .args(["runtime", "capabilities", "--cache"])
+        .arg(&dir)
+        .env("SAIL_CACHE_DIR", &dir)
+        .output();
+    let _ = std::fs::remove_dir_all(&dir);
+    let output = match output {
+        Ok(output) => output,
+        Err(e) => unreachable!("cannot run sail: {e}"),
+    };
+    assert!(output.status.success(), "{output:?}");
+    let capabilities: serde_json::Value = match serde_json::from_slice(&output.stdout) {
+        Ok(value) => value,
+        Err(e) => unreachable!("capabilities are not JSON: {e}"),
+    };
+    let temporal = &capabilities["temporal"];
+    assert_eq!(temporal["installed"], false);
+    assert_eq!(temporal["worker_sha256"], serde_json::Value::Null);
+    assert_eq!(temporal["error"]["kind"], "unavailable");
+    assert_eq!(
+        temporal["error"]["message"],
+        sail_runtime::temporal::NOT_INCLUDED
+    );
+}
+
 /// A directory holding this build's `sail` under its own name, so `sail
 /// bench` resolves `sail-bench` beside it there. Cargo builds `sail-bench` only
 /// for a test run that selects that package, so the delegation tests supply

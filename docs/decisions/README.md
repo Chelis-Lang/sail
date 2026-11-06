@@ -115,3 +115,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0099: Mutation explanation-note cardinality](0099-mutation-explanation-note-cardinality.md) (accepted; existing per-code uniqueness corrected, native Linux/Mac witness and negative controls qualified)
 
 - [0100: Mutation-first roadmap and design-first Oyster hold (accepted)](0100-mutation-first-roadmap.md)
+
+- [0101: D.I.V.E. behind a default-off build flag](0101-dive-behind-a-default-off-flag.md) (accepted; extension workspace is the flag, main-gate lock and publish guards, flip queued)

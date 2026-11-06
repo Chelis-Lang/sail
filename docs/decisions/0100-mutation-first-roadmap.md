@@ -36,7 +36,12 @@ experimental interfaces and tests. A short Oyster design must identify user,
 current problem, one successful session and the value of requirements over
 direct specs/contracts/mutation feedback. Product direction remains unsettled.
 
-Hold temporal packaging until D.I.V.E.'s distribution decision. Preserve native
+Hold temporal packaging until D.I.V.E.'s distribution decision.
+(Superseded in part on 2026-11-06: the Oyster owner resumed Oyster for shelf
+completion, covering its SDK migration to the published 0.2.0 crates and
+D.I.V.E. work in Sail behind a default-off flag. See
+[ADR 0101](0101-dive-behind-a-default-off-flag.md). Public temporal packaging
+still waits for D.I.V.E.'s distribution.) Preserve native
 worker boundaries and the no-TLC policy. Keep original plans and evidence intact,
 adding superseding current instructions rather than rewriting history.
 

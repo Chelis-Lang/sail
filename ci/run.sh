@@ -58,6 +58,11 @@
 #                        ADR 0083): fmt, clippy and tests. The only step
 #                        that needs the private D.I.V.E. sources, so the
 #                        only one given SAIL_DEPENDENCY_READ_TOKEN
+#   extension-install DIR
+#                        local-only: the flagged build (ADR 0101). Builds the
+#                        extension's release `sail` and worker into DIR/bin,
+#                        stages the worker manifest, and requires the
+#                        installed `sail` to report temporal installed
 #   host                 local-only, outside the image, on the developer's
 #                        own machine (macOS or Linux): clippy and the
 #                        non-solver tests
@@ -107,7 +112,7 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|boundary-witness|cargo-range|e2e-build|e2e|conformance|extension|host|bench|release|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|boundary-witness|cargo-range|e2e-build|e2e|conformance|extension|extension-install|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
@@ -520,6 +525,22 @@ RS
     cargo clippy "${extension_cargo[@]}" --workspace --all-targets --locked -- -D warnings
     cargo nextest run "${extension_cargo[@]}" --workspace --locked \
       --config-file .config/nextest.toml --profile ci
+    ;;
+
+  extension-install)
+    # The D.I.V.E.-enabled `sail` for internal and Oyster use (ADR 0101),
+    # never a public archive: the extension's release binaries and the
+    # worker manifest that binds them to the pinned revision.
+    local_only extension-install "$@"
+    install_dir="${1:?usage: ci/run.sh extension-install DIR}"
+    cargo build "${extension_cargo[@]}" --release --locked -p sail-temporal -p sail-runtime-worker
+    mkdir -p "$install_dir/bin"
+    cp target/temporal/release/sail "$install_dir/bin/sail"
+    python3 -B scripts/stage-temporal-worker.py target/temporal/release/sail-runtime-worker "$install_dir/bin"
+    install_cache="$(mktemp -d)"
+    SAIL_CACHE_DIR="$install_cache" "$install_dir/bin/sail" runtime capabilities --cache "$install_cache" \
+      | python3 -c 'import json, sys; t = json.load(sys.stdin)["temporal"]; assert t["installed"], t; print("temporal installed:", t["backend_revision"], t["worker_sha256"])'
+    rm -rf "$install_cache"
     ;;
 
   host)

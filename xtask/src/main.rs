@@ -135,12 +135,51 @@ fn check_layering() -> Result<()> {
     let main = check_workspace(&root, layering::ALLOWED)?;
     let extension = check_workspace(&root.join(layering::EXTENSION), layering::EXTENSION_ALLOWED)
         .map_err(|e| format!("{}: {e}", layering::EXTENSION))?;
+    // ADR 0101: D.I.V.E. stays behind the extension. The main lock, which
+    // every public build resolves, names none of it, and no extension crate
+    // can be published.
+    let lock = std::fs::read_to_string(root.join("Cargo.lock"))
+        .map_err(|e| format!("cannot read Cargo.lock: {e}"))?;
+    let private = layering::private_lock_entries(&lock)?;
+    if !private.is_empty() {
+        return Err(format!(
+            "Cargo.lock resolves private temporal sources; keep them in {} (ADR 0101):\n  {}",
+            layering::EXTENSION,
+            private.join("\n  ")
+        ));
+    }
+    check_unpublished(&root.join(layering::EXTENSION))?;
     println!("layering ok ({main} crates, {extension} extension crates)");
     Ok(())
 }
 
-/// Checks one workspace's members against `table`; returns the member count.
-fn check_workspace(root: &Path, table: &[(&str, &[&str])]) -> Result<usize> {
+/// Refuses an extension member that names any registry it may publish to.
+fn check_unpublished(root: &Path) -> Result<()> {
+    let meta = metadata(root)?;
+    let mut publishable = Vec::new();
+    for package in meta["packages"].as_array().into_iter().flatten() {
+        // `publish = false` is an empty registry list; absent means any.
+        let unpublished = package["publish"]
+            .as_array()
+            .is_some_and(std::vec::Vec::is_empty);
+        if !unpublished {
+            publishable.push(package["name"].as_str().unwrap_or_default().to_owned());
+        }
+    }
+    if publishable.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "{}: extension crates must set publish = false (ADR 0101): {}",
+            layering::EXTENSION,
+            publishable.join(", ")
+        ))
+    }
+}
+
+/// `cargo metadata --no-deps --offline` for the workspace at `root`; it
+/// resolves nothing, so it needs no private source.
+fn metadata(root: &Path) -> Result<serde_json::Value> {
     let raw = run_capture(
         Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned()))
             .current_dir(root)
@@ -152,8 +191,12 @@ fn check_workspace(root: &Path, table: &[(&str, &[&str])]) -> Result<usize> {
                 "--offline",
             ]),
     )?;
-    let meta: serde_json::Value =
-        serde_json::from_str(&raw).map_err(|e| format!("cannot parse cargo metadata: {e}"))?;
+    serde_json::from_str(&raw).map_err(|e| format!("cannot parse cargo metadata: {e}"))
+}
+
+/// Checks one workspace's members against `table`; returns the member count.
+fn check_workspace(root: &Path, table: &[(&str, &[&str])]) -> Result<usize> {
+    let meta = metadata(root)?;
     let allowed: BTreeMap<&str, BTreeSet<&str>> = table
         .iter()
         .map(|(name, deps)| (*name, deps.iter().copied().collect()))

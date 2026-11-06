@@ -203,6 +203,7 @@ ci/local.sh refinements           # local-only: actual production bodies and ref
 ci/local.sh e2e [PHASE]           # `sail verify` vs `cargo verus verify`: identical output (all phases + extra)
 ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
 ci/local.sh extension             # local-only: temporal extension workspace fmt, clippy, tests (needs D.I.V.E. access)
+ci/run.sh extension-install DIR   # local-only: the D.I.V.E.-enabled `sail` and worker in DIR/bin (ADR 0101)
 ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
 
