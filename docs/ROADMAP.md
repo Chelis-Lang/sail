@@ -63,17 +63,20 @@ cvc5, certificates, Creusot, Prusti, kernel provers, sampled-tier integration,
 cross-backend portfolios and Dafny remain future options under #146. They are
 not parallel commitments for the next release.
 
-## Oyster: design first, engineering on hold
+## Oyster: shelf completion; Sail surfaces held
 
 On 2026-11-06 the Oyster owner resumed Oyster for shelf completion: Oyster
 migrates its SDK to the published 0.2.0 crates and requalifies native
 temporal work against the flagged build
-([ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md)). The remaining
-guidance below still applies to Sail's own surfaces.
+([ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md)). That
+direction supersedes the SDK-migration hold in the next paragraph. The rest
+of the guidance below still applies to Sail's own surfaces. This section was
+first titled "Oyster: design first, engineering on hold."
 
 Maintain and test the experimental raw SMT, neutral contracts, source jobs and
-assurance reads already consumed by Oyster. Do not expand those surfaces, widen
-the neutral subset or migrate Oyster's SDK while the design is unsettled.
+assurance reads already consumed by Oyster. Do not expand those surfaces or
+widen the neutral subset while the design is unsettled. (Superseded on
+2026-11-06: the original text also said not to migrate Oyster's SDK.)
 
 The next Oyster deliverable is a short design document answering who the user
 is, their present problem, one successful end-to-end session, and why a

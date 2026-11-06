@@ -66,7 +66,10 @@ Three facts constrain the shape of that flag:
   states that revision as `temporal::DIVE_REVISION`, and consumers check a
   worker's reported revision against it. A pin bump moves the adapter, the
   extension lock and `DIVE_REVISION` together, and needs a `sail-api` release
-  that consumers adopt.
+  that consumers adopt. The flagged build therefore reports the same
+  revision as published 0.2.0, and consumers requalify against `1025cd6a`.
+  The bump to current D.I.V.E. and requalification on its new engine wait
+  for the flip's preconditions.
 - **The flip.** When D.I.V.E. publishes a public v0.1 source, its engine
   cutover has landed, and a `sail-api` release carrying the new revision is
   consumed downstream, a queued pull request moves the extension crates into

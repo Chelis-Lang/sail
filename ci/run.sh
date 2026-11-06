@@ -95,7 +95,7 @@ set -euo pipefail
 # argument or a persisted Git URL/configuration, and every other step builds
 # the main workspace, which resolves no private source.
 case "${1:-}" in
-  extension|release)
+  extension|extension-install|release)
     if [ -n "${SAIL_DEPENDENCY_READ_TOKEN:-}" ] && [ "${SAIL_PRIVATE_GIT_READY:-}" != 1 ]; then
       exec "$(dirname "$0")/../scripts/with-private-dependencies.sh" "$0" "$@"
     fi
