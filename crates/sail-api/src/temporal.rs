@@ -23,7 +23,9 @@ pub struct ItfTrace {
 }
 
 /// Exact embedded source identity. Moving it requires native conformance.
-pub const DIVE_REVISION: &str = "1025cd6a0510183bc16abc1e6e3eea4f9305c5a9";
+pub const DIVE_REVISION: &str = "693138bc48b1f77811c8573fa85d5338032df792";
+/// The native report schema that [`DIVE_REVISION`] emits; it moves with it.
+pub const NATIVE_SCHEMA_VERSION: u64 = 3;
 /// Worker payload protocol version.
 pub const VERSION: u32 = 1;
 /// Maximum encoded request or response, before JSON decoding.
@@ -284,8 +286,10 @@ pub fn validate_response(
         response.outcome,
         Outcome::Holds | Outcome::Refuted | Outcome::Sampled | Outcome::Valid | Outcome::Invalid
     );
-    if conclusive && report["schema_version"] != 2 {
-        return Err("SAIL4213: conclusive outcome lacks native schema-2 evidence".into());
+    if conclusive && report["schema_version"] != NATIVE_SCHEMA_VERSION {
+        return Err(format!(
+            "SAIL4213: conclusive outcome lacks native schema-{NATIVE_SCHEMA_VERSION} evidence"
+        ));
     }
     let compatible = match response.outcome {
         Outcome::Holds => {

@@ -142,9 +142,6 @@ build intermediates freely. Cleanup is routine and is not recorded in git.
 
 ```
 crates/sail-*        one crate per charter component (see docs/CHARTER.md)
-extensions/temporal/ separate Cargo workspace for the temporal-enabled `sail`
-                     and its worker, the only build of the private D.I.V.E.
-                     sources (ADR 0083, docs/private-dependencies.md)
 xtask/               cargo xtask: install-hooks, check-layering, protect-main,
                      fetch-verus, build-verus-source
 corpus/              pinned Verus/Z3 toolchain and corpus project pins
@@ -157,14 +154,15 @@ scripts/             small shell helpers used by hooks and CI
 ```
 
 **Layering.** `xtask/src/layering.rs` is the single table of permitted internal
-dependency edges, and `cargo xtask check-layering` enforces it in CI for both
-the main workspace and the temporal extension. Three structural rules are
-tested:
+dependency edges, and `cargo xtask check-layering` enforces it in CI. It
+also refuses a published package that depends on a git source, a `dive-*`
+crate or a temporal package (`sail-dive`, `sail-runtime-worker`,
+`sail-temporal`; ADR 0102). Three structural rules are tested:
 - `sail-shim` must not reach the daemon, cache, solver pool, portfolio or Verus
   crates, so its fallback path stays small;
 - the protocol, session, key and cache layers must not depend on `sail-verus`;
-- no main-workspace crate may depend on an extension crate, so the main
-  workspace builds without the private D.I.V.E. sources.
+- only the temporal packages reach the temporal backend, so published crates
+  never carry D.I.V.E.
 
 ## Rust conventions
 
@@ -202,8 +200,8 @@ ci/local.sh proofs                # local-only: direct stock-Verus model proofs 
 ci/local.sh refinements           # local-only: actual production bodies and refinement controls
 ci/local.sh e2e [PHASE]           # `sail verify` vs `cargo verus verify`: identical output (all phases + extra)
 ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
-ci/local.sh extension             # local-only: temporal extension workspace fmt, clippy, tests (needs D.I.V.E. access)
-ci/run.sh extension-install DIR   # local-only: the D.I.V.E.-enabled `sail` and worker in DIR/bin (ADR 0101)
+ci/local.sh extension             # temporal packages' clippy and tests alone (gate covers them too)
+ci/run.sh extension-install DIR   # local-only: the temporal-enabled `sail` and worker in DIR/bin (ADR 0102)
 ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
 
@@ -287,12 +285,9 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   the PR; never label an unrun suite passed. See ADR 0087.
 - *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
   Run it before pushing changes that touch platform-specific code.
-- *Temporal extension (local):* `ci/local.sh extension` (or `ci/run.sh
-  extension`): the `extensions/temporal` workspace's fmt, clippy and tests,
-  with D.I.V.E. access (see `docs/private-dependencies.md`). Temporal jobs do
-  not ship in 0.1.0, so CI does not run it. Run it before pushing changes to
-  `extensions/` or the `TemporalBackend` interface, and put the result in
-  the PR.
+- *Temporal packages:* `Workspace gate` builds and tests `sail-dive`,
+  `sail-runtime-worker` and `sail-temporal` with the rest of the workspace
+  (ADR 0102). `ci/run.sh extension` runs them alone for diagnosis.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
   `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
   suite, the pinned fork with and without `sail-z3`, with exact output checks,

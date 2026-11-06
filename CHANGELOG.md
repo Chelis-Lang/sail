@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Ship native temporal jobs: release archives install the temporal-enabled
+  `sail` with its worker and manifest, linking D.I.V.E. at `693138bc` through
+  its Core engine (ADR 0102). `sail_api::temporal::DIVE_REVISION` and the new
+  `NATIVE_SCHEMA_VERSION` move with the pin. crates.io `sail-solve` still
+  reports temporal unavailable.
+
 - Keep D.I.V.E. behind a default-off build flag (ADR 0101): the required
   layering check now refuses a root lock that names D.I.V.E. or an extension
   crate, and a publishable extension crate. `ci/run.sh extension-install DIR`

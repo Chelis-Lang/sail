@@ -1,8 +1,11 @@
 # Temporal jobs, version 1
 
 Status: specification for implementation review. This interface uses the native
-D.I.V.E. library at revision `1025cd6a0510183bc16abc1e6e3eea4f9305c5a9`.
-It never executes a D.I.V.E. command, TLC, or Java and has no alternate backend.
+D.I.V.E. library at revision `693138bc48b1f77811c8573fa85d5338032df792`, through
+its Core engine with native report schema 3. Core never falls back to another
+D.I.V.E. engine; a construct it does not implement is a named `unsupported`
+outcome. It never executes a D.I.V.E. command, TLC, or Java and has no
+alternate backend.
 
 ## Inputs and execution
 
@@ -17,7 +20,8 @@ Built-in standard module identity is bound by the backend revision.
 The first slice admits only the pure embedded `Naturals`, `Integers`,
 `Sequences`, `FiniteSets` and `Bags` modules. Semantic analysis checks the
 actual loaded origins before binding; host-capable modules such as `TLC`,
-`Json` and `Randomization` are unsupported even on an untaken branch.
+`Json` and `Randomization` are unsupported even on an untaken branch, as are
+module sources that D.I.V.E. bundles.
 The guard also inspects actual lowered native overrides and effects. Native
 overrides match module names even for user-provided files, so a substituted
 `TLC.tla` cannot grant printing or other host capabilities.

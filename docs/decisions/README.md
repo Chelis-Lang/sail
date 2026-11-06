@@ -117,3 +117,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0100: Mutation-first roadmap and design-first Oyster hold (accepted)](0100-mutation-first-roadmap.md)
 
 - [0101: D.I.V.E. behind a default-off build flag](0101-dive-behind-a-default-off-flag.md) (accepted; extension workspace is the flag, main-gate lock and publish guards, flip queued)
+
+- [0102: Fold the temporal backend into the workspace](0102-fold-the-temporal-backend-into-the-workspace.md) (proposed; queued until D.I.V.E. is public, its engine cutover lands and consumers adopt the new revision)

@@ -1,5 +1,6 @@
 //! The temporal-enabled `sail`: Sail's command line with the D.I.V.E.
-//! backend linked into its runtime endpoint (ADR 0083).
+//! backend linked into its runtime endpoint (ADRs 0083 and 0102). Archives
+//! install it as `bin/sail`.
 #![forbid(unsafe_code)]
 
 fn main() -> std::process::ExitCode {

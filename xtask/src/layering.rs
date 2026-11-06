@@ -123,85 +123,75 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
             "sail-bench",
         ],
     ),
-];
-
-/// The temporal extension workspace (`extensions/temporal`, ADR 0083).
-///
-/// Its crates may depend on each other and on main-workspace crates; no
-/// main-workspace crate may depend on them, which [`ALLOWED`] enforces by
-/// not naming them.
-pub const EXTENSION: &str = "extensions/temporal";
-
-/// `(extension crate, crates it may depend on directly)`.
-pub const EXTENSION_ALLOWED: &[(&str, &[&str])] = &[
     ("sail-dive", &["sail-api", "sail-runtime"]),
     ("sail-runtime-worker", &["sail-dive"]),
     ("sail-temporal", &["sail-solve", "sail-dive"]),
 ];
 
-/// The private D.I.V.E. repository. Only the extension lock may name it.
-pub const DIVE_REPOSITORY: &str = "github.com/Chelis-Lang/dive";
+/// The native temporal backend's packages (ADR 0102). They are never
+/// published, and no published crate may depend on them or on D.I.V.E.,
+/// which [`published_dependency_violations`] enforces.
+pub const TEMPORAL: &[&str] = &["sail-dive", "sail-runtime-worker", "sail-temporal"];
 
-/// Entries of the main workspace's `Cargo.lock` that would put D.I.V.E. in a
-/// public build (ADR 0101): any package fetched from [`DIVE_REPOSITORY`],
-/// any `dive-*` package and any extension crate. An empty result means the
-/// lock resolves without the private sources.
-///
-/// # Errors
-///
-/// When the lock is not TOML or has no package list.
-pub fn private_lock_entries(lock: &str) -> Result<Vec<String>, String> {
-    let lock: toml::Table = lock
-        .parse()
-        .map_err(|e| format!("cannot parse Cargo.lock: {e}"))?;
-    let packages = lock
-        .get("package")
-        .and_then(toml::Value::as_array)
-        .ok_or("Cargo.lock has no package list")?;
-    let extension: Vec<&str> = EXTENSION_ALLOWED.iter().map(|(name, _)| *name).collect();
-    let mut found = Vec::new();
+/// One workspace package as `cargo metadata --no-deps` states it.
+pub struct Package<'a> {
+    /// Package name.
+    pub name: &'a str,
+    /// Whether any registry may receive it (`publish` is not `false`).
+    pub publishable: bool,
+    /// Normal and build dependencies: name and source (`None` for a path or
+    /// registry dependency).
+    pub dependencies: Vec<(&'a str, Option<&'a str>)>,
+}
+
+/// Published packages that would carry D.I.V.E. (ADR 0102): a publishable
+/// package depending on a git source, a `dive-*` crate or a temporal
+/// package, and a temporal package that is publishable. Dev-dependencies
+/// are not published and are exempt.
+#[must_use]
+pub fn published_dependency_violations(packages: &[Package<'_>]) -> Vec<String> {
+    let mut violations = Vec::new();
     for package in packages {
-        let name = package
-            .get("name")
-            .and_then(toml::Value::as_str)
-            .unwrap_or_default();
-        let source = package
-            .get("source")
-            .and_then(toml::Value::as_str)
-            .unwrap_or_default();
-        if source.contains(DIVE_REPOSITORY)
-            || name.starts_with("dive-")
-            || extension.contains(&name)
-        {
-            found.push(format!("{name} {source}").trim_end().to_owned());
+        if TEMPORAL.contains(&package.name) && package.publishable {
+            violations.push(format!("{}: must set publish = false", package.name));
+        }
+        if !package.publishable {
+            continue;
+        }
+        for (dependency, source) in &package.dependencies {
+            if source.is_some_and(|s| s.starts_with("git+"))
+                || dependency.starts_with("dive-")
+                || TEMPORAL.contains(dependency)
+            {
+                violations.push(format!(
+                    "{} is published and depends on {dependency}",
+                    package.name
+                ));
+            }
         }
     }
-    found.sort();
-    Ok(found)
+    violations.sort();
+    violations
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ALLOWED, EXTENSION_ALLOWED, private_lock_entries};
+    use super::{ALLOWED, Package, TEMPORAL, published_dependency_violations};
     use std::collections::{BTreeMap, BTreeSet};
 
     fn graph() -> BTreeMap<&'static str, &'static [&'static str]> {
-        ALLOWED.iter().chain(EXTENSION_ALLOWED).copied().collect()
+        ALLOWED.iter().copied().collect()
     }
 
     #[test]
-    fn main_workspace_never_reaches_the_extension() {
-        let main: BTreeSet<&str> = ALLOWED.iter().map(|(name, _)| *name).collect();
-        for (name, deps) in ALLOWED {
-            for dep in *deps {
+    fn only_temporal_packages_reach_the_temporal_backend() {
+        for (name, _) in ALLOWED {
+            if !TEMPORAL.contains(name) {
                 assert!(
-                    main.contains(dep),
-                    "{name} -> {dep} leaves the main workspace"
+                    !reachable(name).iter().any(|dep| TEMPORAL.contains(dep)),
+                    "{name} reaches the temporal backend"
                 );
             }
-        }
-        for (name, _) in EXTENSION_ALLOWED {
-            assert!(!main.contains(name), "{name} is listed in both workspaces");
         }
     }
 
@@ -221,7 +211,7 @@ mod tests {
     #[test]
     fn every_edge_targets_a_listed_crate() {
         let g = graph();
-        for (name, deps) in ALLOWED.iter().chain(EXTENSION_ALLOWED) {
+        for (name, deps) in ALLOWED {
             for dep in *deps {
                 assert!(
                     g.contains_key(dep),
@@ -233,36 +223,55 @@ mod tests {
 
     #[test]
     fn permitted_graph_is_acyclic() {
-        for (name, _) in ALLOWED.iter().chain(EXTENSION_ALLOWED) {
+        for (name, _) in ALLOWED {
             assert!(!reachable(name).contains(name), "{name} reaches itself");
         }
     }
 
     #[test]
-    fn public_lock_refuses_every_private_source() -> Result<(), String> {
-        let clean = "version = 4\n\n[[package]]\nname = \"sail-api\"\nversion = \"0.2.0\"\n";
-        assert_eq!(private_lock_entries(clean)?, Vec::<String>::new());
-        for (entry, expected) in [
+    fn published_packages_never_carry_dive() {
+        let package = |name, publishable, dependencies| Package {
+            name,
+            publishable,
+            dependencies,
+        };
+        let git = Some("git+https://github.com/Chelis-Lang/dive?rev=1#1");
+        let clean = [
+            package("sail-api", true, vec![("serde", None)]),
+            package(
+                "sail-dive",
+                false,
+                vec![("dive-api", git), ("sail-api", None)],
+            ),
+            package("sail-temporal", false, vec![("sail-dive", None)]),
+        ];
+        assert_eq!(
+            published_dependency_violations(&clean),
+            Vec::<String>::new()
+        );
+        for (broken, expected) in [
             (
-                "name = \"dive-api\"\nversion = \"0.0.0\"\nsource = \"git+https://github.com/Chelis-Lang/dive?rev=1#1\"",
-                "dive-api git+https://github.com/Chelis-Lang/dive?rev=1#1",
+                package("sail-solve", true, vec![("sail-dive", None)]),
+                "sail-solve is published and depends on sail-dive",
             ),
             (
-                "name = \"other\"\nversion = \"0.0.0\"\nsource = \"git+https://github.com/Chelis-Lang/dive#2\"",
-                "other git+https://github.com/Chelis-Lang/dive#2",
+                package("sail-api", true, vec![("dive-ir", None)]),
+                "sail-api is published and depends on dive-ir",
             ),
-            ("name = \"dive-ir\"\nversion = \"0.1.0\"", "dive-ir"),
-            ("name = \"sail-dive\"\nversion = \"0.1.0\"", "sail-dive"),
             (
-                "name = \"sail-temporal\"\nversion = \"0.1.0\"",
-                "sail-temporal",
+                package("sail-api", true, vec![("other", git)]),
+                "sail-api is published and depends on other",
+            ),
+            (
+                package("sail-runtime-worker", true, vec![]),
+                "sail-runtime-worker: must set publish = false",
             ),
         ] {
-            let lock = format!("{clean}\n[[package]]\n{entry}\n");
-            assert_eq!(private_lock_entries(&lock)?, vec![expected.to_owned()]);
+            assert_eq!(
+                published_dependency_violations(&[broken]),
+                vec![expected.to_owned()]
+            );
         }
-        assert!(private_lock_entries("version = 4").is_err());
-        Ok(())
     }
 
     #[test]

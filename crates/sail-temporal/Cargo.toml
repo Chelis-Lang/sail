@@ -7,8 +7,10 @@ rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
 
+# Not `sail`: that name belongs to sail-solve in this workspace. Archives
+# install this binary as `bin/sail` (scripts/release.sh, ADR 0102).
 [[bin]]
-name = "sail"
+name = "sail-temporal"
 path = "src/main.rs"
 
 [dependencies]

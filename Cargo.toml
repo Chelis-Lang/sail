@@ -2,9 +2,6 @@
 resolver = "3"
 members = ["crates/*", "xtask"]
 default-members = ["crates/*"]
-# The temporal extension is its own workspace with its own lock (ADR 0083):
-# nothing this workspace resolves names the private D.I.V.E. sources.
-exclude = ["extensions"]
 
 [workspace.package]
 version = "0.2.0"
@@ -44,6 +41,12 @@ sail-mcp = { path = "crates/sail-mcp", version = "=0.2.0" }
 sail-cli = { package = "sail-solve", path = "crates/sail-cli", version = "=0.2.0" }
 sail-conformance = { path = "crates/sail-conformance", version = "=0.2.0" }
 sail-bench = { path = "crates/sail-bench", version = "=0.2.0" }
+# The native temporal backend (ADR 0102). These packages are never published:
+# crates.io refuses git dependencies, and no published crate may depend on them
+# (`cargo xtask check-layering`). sail_api::temporal::DIVE_REVISION states the pin.
+dive-api = { git = "https://github.com/Chelis-Lang/dive", rev = "693138bc48b1f77811c8573fa85d5338032df792" }
+dive-ir = { git = "https://github.com/Chelis-Lang/dive", rev = "693138bc48b1f77811c8573fa85d5338032df792" }
+sail-dive = { path = "crates/sail-dive" }
 
 # Live workspace events and optional HTTP shared-cache service (ADRs 0024/0025).
 notify = "8.2"

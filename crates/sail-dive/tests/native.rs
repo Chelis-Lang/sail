@@ -165,20 +165,23 @@ fn direct_pinned_library_parity_preserves_deciding_native_outcome() -> TestResul
             directory.join("M.cfg"),
             "INIT Init\nNEXT Next\nINVARIANT Inv\n",
         )?;
-        let native = dive_api::check_file(&dive_api::CheckRequest {
-            file: directory.join("M.tla"),
-            config: Some(directory.join("M.cfg")),
-            store: dive_api::Store::Exact,
-            seed: Some(0),
-            fp: Some(0),
-            workers: Some(1),
-            temporal: dive_api::TemporalMode::Ordinary,
-            max_states: Some(100),
-            max_depth: Some(100),
-            time_limit: dive_api::BudgetSetting::Unlimited,
-            max_memory: dive_api::BudgetSetting::Unlimited,
-            ..Default::default()
-        })?;
+        let native = dive_api::check_file_engine(
+            &dive_api::CheckRequest {
+                file: directory.join("M.tla"),
+                config: Some(directory.join("M.cfg")),
+                store: dive_api::Store::Exact,
+                seed: Some(0),
+                fp: Some(0),
+                workers: Some(1),
+                temporal: dive_api::TemporalMode::Ordinary,
+                max_states: Some(100),
+                max_depth: Some(100),
+                time_limit: dive_api::BudgetSetting::Unlimited,
+                max_memory: dive_api::BudgetSetting::Unlimited,
+                ..Default::default()
+            },
+            dive_api::Engine::Core,
+        )?;
         let adapted =
             sail_dive::execute(&request(COUNTER, "INIT Init\nNEXT Next\nINVARIANT Inv\n"));
         let native = native.to_json();

@@ -44,6 +44,6 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 
-# No git sources: the private D.I.V.E. source is resolved only by the temporal
-# extension workspace (extensions/temporal, ADR 0083).
-allow-git = []
+# D.I.V.E., pinned by revision for the unpublished temporal packages only
+# (ADR 0102). `cargo xtask check-layering` refuses it in any published crate.
+allow-git = ["https://github.com/Chelis-Lang/dive"]

@@ -93,10 +93,10 @@ crates and D.I.V.E. work in Sail behind a default-off flag
 
 | Gate | State |
 |---|---|
-| Default builds, crates.io and public archives link no temporal backend | Enforced by `cargo xtask check-layering` and the CLI tests |
-| Extension build and tests at the pinned D.I.V.E. revision | Local tier, `ci/local.sh extension` |
-| Internal D.I.V.E.-enabled `sail` | `ci/run.sh extension-install DIR` |
-| Public temporal packaging | Waits for D.I.V.E.'s public distribution; flip queued as a draft pull request |
+| Temporal packages in the workspace, tested by `Workspace gate` | [ADR 0102](decisions/0102-fold-the-temporal-backend-into-the-workspace.md), D.I.V.E. `693138bc`, Core engine |
+| Published crates carry no D.I.V.E. dependency | Enforced by `cargo xtask check-layering` |
+| Archives ship the temporal-enabled `sail` and worker | `scripts/release.sh stage` |
+| Preconditions | D.I.V.E. public v0.1, its engine cutover, a consumed `sail-api` release with the new revision |
 
 Preserve current behavior and regression coverage; do not introduce a TLC
 fallback.

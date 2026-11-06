@@ -3,7 +3,8 @@
 
 A release archive (scripts/release.sh) holds:
 
-- `bin/sail` and `bin/sail-z3`, which statically link their crates.io
+- `bin/sail` (the temporal-enabled `sail-temporal`), `bin/sail-runtime-worker`
+  and `bin/sail-z3`, which statically link their crates.io and D.I.V.E.
   dependencies and the Rust standard library;
 - `engine/<variant>/`, Sail's Verus: the fork's `verus`, `cargo-verus`,
   `rust_verify` (which also compiles in Verus's copies of rustc crates),
@@ -16,8 +17,8 @@ A release archive (scripts/release.sh) holds:
 that library is not redistributed.
 
 The crates come from `cargo metadata` under each lock file, for Linux x86-64
-and macOS arm64: Sail's workspace (Cargo.lock) for `sail-cli` and
-`sail-shim`, and the pinned fork commit (engine/verus/fork.toml, built with
+and macOS arm64: Sail's workspace (Cargo.lock) for `sail-temporal`,
+`sail-runtime-worker`, `sail-cli` and `sail-shim`, and the pinned fork commit (engine/verus/fork.toml, built with
 engine/verus/Cargo.lock) for the runtime packages. Each crate's notice is the
 licence files its package contains, copied verbatim.
 
@@ -42,7 +43,7 @@ import tomllib
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'THIRD-PARTY-NOTICES'
 TARGETS = ('x86_64-unknown-linux-gnu', 'aarch64-apple-darwin')
-SAIL_ROOTS = ('sail-solve', 'sail-shim')
+SAIL_ROOTS = ('sail-temporal', 'sail-runtime-worker', 'sail-solve', 'sail-shim')
 VERUS_ROOTS = ('rust_verify', 'verus', 'cargo-verus', 'verus_builtin', 'verus_builtin_macros',
                'verus_state_machines_macros')
 LICENSE_FILE = re.compile(r'^(licen[cs]e|copying|notice|copyright|unlicense|authors)([-._].*)?$', re.I)

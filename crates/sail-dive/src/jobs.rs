@@ -121,21 +121,26 @@ fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response, Failure> {
     } else {
         TemporalMode::FinalShort
     };
-    let report = dive_api::check_file(&CheckRequest {
-        file: input.root.clone(),
-        config: Some(input.config.clone()),
-        library_paths: input.libraries.clone(),
-        store: Store::Exact,
-        seed: Some(0),
-        fp: Some(0),
-        workers: Some(1),
-        temporal,
-        time_limit: BudgetSetting::Unlimited,
-        max_memory: BudgetSetting::Unlimited,
-        max_states: Some(states),
-        max_depth: Some(depth),
-        ..Default::default()
-    })
+    // The Core engine, which never falls back to the retiring Reference
+    // runtime: a construct it does not implement is a named `unsupported`.
+    let report = dive_api::check_file_engine(
+        &CheckRequest {
+            file: input.root.clone(),
+            config: Some(input.config.clone()),
+            library_paths: input.libraries.clone(),
+            store: Store::Exact,
+            seed: Some(0),
+            fp: Some(0),
+            workers: Some(1),
+            temporal,
+            time_limit: BudgetSetting::Unlimited,
+            max_memory: BudgetSetting::Unlimited,
+            max_states: Some(states),
+            max_depth: Some(depth),
+            ..Default::default()
+        },
+        dive_api::Engine::Core,
+    )
     .map_err(|e| api_error(&e))?;
     let native = report.to_json();
     let mut response = Response::new(Outcome::Error, native.clone());
@@ -194,16 +199,19 @@ fn simulate(input: &Frozen, traces: u64, depth: usize) -> Result<Response, Failu
             "SAIL4207: simulation requires finite admitted positive counts".into(),
         ));
     }
-    let report = dive_api::simulate_file(&dive_api::SimulateRequest {
-        file: input.root.clone(),
-        config: Some(input.config.clone()),
-        library_paths: input.libraries.clone(),
-        seed: Some(0),
-        workers: Some(1),
-        traces,
-        depth: Some(depth),
-        ..Default::default()
-    })
+    let report = dive_api::simulate_file_engine(
+        &dive_api::SimulateRequest {
+            file: input.root.clone(),
+            config: Some(input.config.clone()),
+            library_paths: input.libraries.clone(),
+            seed: Some(0),
+            workers: Some(1),
+            traces,
+            depth: Some(depth),
+            ..Default::default()
+        },
+        dive_api::Engine::Core,
+    )
     .map_err(|e| api_error(&e))?;
     let native = report.to_json();
     let outcome = match native["result"].as_str() {
