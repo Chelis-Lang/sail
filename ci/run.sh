@@ -54,14 +54,13 @@
 #                        `pr` limits the fast tier to the guide examples;
 #                        otherwise extra arguments (for example
 #                        `--project anvil`) are passed to sail-conformance
-#   extension            the temporal extension workspace (extensions/temporal,
-#                        ADR 0083): fmt, clippy and tests. The only step
-#                        that needs the private D.I.V.E. sources, so the
-#                        only one given SAIL_DEPENDENCY_READ_TOKEN
+#   extension            the temporal backend packages (sail-dive,
+#                        sail-runtime-worker, sail-temporal; ADR 0102):
+#                        clippy and tests only, for focused runs. `gate`
+#                        covers them too
 #   extension-install DIR
-#                        local-only: the flagged build (ADR 0101). Builds the
-#                        extension's release `sail` and worker into DIR/bin,
-#                        stages the worker manifest, and requires the
+#                        local-only: the temporal-enabled `sail` and worker
+#                        in DIR/bin with the worker manifest; requires the
 #                        installed `sail` to report temporal installed
 #   host                 local-only, outside the image, on the developer's
 #                        own machine (macOS or Linux): clippy and the
@@ -71,8 +70,8 @@
 #                        mutants NAME ROUNDS` runs corpus/mutants/NAME.toml
 #   release              local-only: stage the Linux release tree (binaries
 #                        and the prebuilt engine) in $SAIL_RELEASE_OUT for
-#                        scripts/release.sh; SAIL_RELEASE_TEMPORAL=1 stages
-#                        the internal temporal-enabled variant instead
+#                        scripts/release.sh, with the temporal-enabled
+#                        `sail` and its worker (ADR 0102)
 #   build-verus-source [--force] [--keep-intermediates] [--fork]
 #                        a source build of the pinned Verus commit with its
 #                        rust_verify_test binaries, under the cache
@@ -86,22 +85,10 @@
 #                        rust-verify-test` (for example --filter modes::)
 #
 # CI runs gate, solver, e2e and `conformance fast pr`. Every other tier
-# (including `proofs`, `refinements` and `extension`)
+# (including `proofs` and `refinements`)
 # and every benchmark is local-only: run them with ci/local.sh
 # (`host` runs directly: ci/run.sh host).
 set -euo pipefail
-# Only the extension workspace's command-time Git access receives the
-# read-only private-dependency secret (ADR 0083). It is never a Docker build
-# argument or a persisted Git URL/configuration, and every other step builds
-# the main workspace, which resolves no private source.
-case "${1:-}" in
-  extension|extension-install|release)
-    if [ -n "${SAIL_DEPENDENCY_READ_TOKEN:-}" ] && [ "${SAIL_PRIVATE_GIT_READY:-}" != 1 ]; then
-      exec "$(dirname "$0")/../scripts/with-private-dependencies.sh" "$0" "$@"
-    fi
-    ;;
-esac
-
 cd "$(dirname "$0")/.."
 
 # CI runs only the fast, per-PR steps (ADR 0013). Long runs are local-only.
@@ -119,9 +106,8 @@ release_build() {
   cargo build --release --locked -p sail-solve -p sail-shim "$@"
 }
 
-# The temporal extension workspace, built into its own directory under
-# target/ (one cache and container volume for both workspaces).
-extension_cargo=(--manifest-path extensions/temporal/Cargo.toml --target-dir target/temporal)
+# The packages of the temporal-enabled `sail` (ADR 0102), never published.
+temporal_packages=(-p sail-dive -p sail-runtime-worker -p sail-temporal)
 
 # The binaries every e2e phase uses, relative to target/release.
 e2e_binaries=(sail sail-z3 sail-conformance examples/check_output examples/check_mcp examples/check_contract_jobs)
@@ -517,26 +503,22 @@ RS
     ;;
 
   extension)
-    # The temporal extension workspace (ADR 0083): its own lock, the pinned
-    # private D.I.V.E. sources, and Sail's crates by path. Its tests cover the
-    # native worker, the D.I.V.E. client and backend, the shared runtime
-    # endpoint with the backend linked, and the temporal-enabled `sail`.
-    cargo fmt --all --check --manifest-path extensions/temporal/Cargo.toml
-    cargo clippy "${extension_cargo[@]}" --workspace --all-targets --locked -- -D warnings
-    cargo nextest run "${extension_cargo[@]}" --workspace --locked \
+    # The temporal backend packages (ADR 0102): the pinned D.I.V.E. client
+    # and backend, the native worker, the shared runtime endpoint with the
+    # backend linked, and the temporal-enabled `sail`. `gate` runs them too.
+    cargo clippy "${temporal_packages[@]}" --all-targets --locked -- -D warnings
+    cargo nextest run "${temporal_packages[@]}" --locked \
       --config-file .config/nextest.toml --profile ci
     ;;
 
   extension-install)
-    # The D.I.V.E.-enabled `sail` for internal and Oyster use (ADR 0101),
-    # never a public archive: the extension's release binaries and the
-    # worker manifest that binds them to the pinned revision.
+    # The temporal-enabled `sail` and its worker, as archives ship them.
     local_only extension-install "$@"
     install_dir="${1:?usage: ci/run.sh extension-install DIR}"
-    cargo build "${extension_cargo[@]}" --release --locked -p sail-temporal -p sail-runtime-worker
+    cargo build --release --locked -p sail-temporal -p sail-runtime-worker
     mkdir -p "$install_dir/bin"
-    cp target/temporal/release/sail "$install_dir/bin/sail"
-    python3 -B scripts/stage-temporal-worker.py target/temporal/release/sail-runtime-worker "$install_dir/bin"
+    cp target/release/sail-temporal "$install_dir/bin/sail"
+    python3 -B scripts/stage-temporal-worker.py target/release/sail-runtime-worker "$install_dir/bin"
     install_cache="$(mktemp -d)"
     SAIL_CACHE_DIR="$install_cache" "$install_dir/bin/sail" runtime capabilities --cache "$install_cache" \
       | python3 -c 'import json, sys; t = json.load(sys.stdin)["temporal"]; assert t["installed"], t; print("temporal installed:", t["backend_revision"], t["worker_sha256"])'
@@ -625,11 +607,8 @@ RS
     # The Linux release tree (scripts/release.sh): release binaries and the
     # image's validated prebuilt engine, staged in $SAIL_RELEASE_OUT.
     local_only release "$@"
-    release_build
-    if [ "${SAIL_RELEASE_TEMPORAL:-}" = 1 ]; then
-      # Internal temporal-enabled variant (ADR 0083); never a public archive.
-      cargo build "${extension_cargo[@]}" --release --locked -p sail-temporal -p sail-runtime-worker
-    fi
+    # Archives ship the temporal-enabled `sail` and its worker (ADR 0102).
+    release_build -p sail-temporal -p sail-runtime-worker
     # The disposable CI container also installs verismo's bare-metal target.
     # A distributed proof uses the README's minimal verifier toolchain; its
     # exact sysroot identity includes every installed target library.

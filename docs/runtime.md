@@ -148,18 +148,15 @@ traces and validation evidence. Native stopped/unsupported/error outcomes are
 explicit. Neither finite simulation nor trace validity is an exhaustive proof.
 This slice does not cache temporal evidence or establish assurance tiers.
 
-Internal installations build the temporal-enabled `sail` and the worker from
-the [temporal extension workspace](private-dependencies.md), which needs read
-access to the private D.I.V.E. source, then stage the worker beside that
-`sail`:
+Release archives ship the temporal-enabled `sail` with the worker and its
+installation manifest ([temporal packaging](private-dependencies.md)). A
+source installation builds both and stages the worker beside that `sail`:
 
 ```sh
-cargo build --locked --manifest-path extensions/temporal/Cargo.toml --target-dir target/temporal
-python3 scripts/stage-temporal-worker.py target/temporal/debug/sail-runtime-worker target/temporal/debug
+ci/run.sh extension-install DIR
 ```
 
 The manifest records the exact linked source revision, payload protocol,
-platform and worker digest. Internal release staging
-(`SAIL_RELEASE_TEMPORAL=1`) uses the same helper after stripping final bytes
-and binds both files in its release inventory. No PATH search,
+platform and worker digest. Release staging uses the same helper after
+stripping final bytes and binds both files in its release inventory. No PATH search,
 caller-selected executable, Java or TLC process participates.

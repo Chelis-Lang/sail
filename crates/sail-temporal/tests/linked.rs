@@ -7,7 +7,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 fn temporal_capability_reaches_worker_discovery() -> TestResult {
     let cache = std::env::temp_dir().join(format!("sail-temporal-linked-{}", std::process::id()));
     std::fs::create_dir_all(&cache)?;
-    let output = Command::new(env!("CARGO_BIN_EXE_sail"))
+    let output = Command::new(env!("CARGO_BIN_EXE_sail-temporal"))
         .args(["runtime", "capabilities", "--cache"])
         .arg(&cache)
         .env("SAIL_CACHE_DIR", &cache)
