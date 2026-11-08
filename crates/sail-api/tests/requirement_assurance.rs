@@ -156,7 +156,7 @@ fn struct_field_names_never_change_the_recomputed_assurance_view() -> TestResult
         .ok_or("input!")?;
     input["sort"] = "neutral!Row.".into();
     input["value"] = "(neutral!Row./Row false 3)".into();
-    input["itf"] = serde_json::Value::Null;
+    input["itf"] = serde_json::json!({"#unserializable": "(neutral!Row./Row false 3)"});
     let view = assurance::from_contract_result(&document)?;
     let named = FieldNames::from([("Row".into(), vec!["flag".into(), "count".into()])]);
     let field_names = |names: &FieldNames| -> TestResult<Vec<String>> {
