@@ -77,6 +77,10 @@ Maintain and test the experimental raw SMT, neutral contracts, source jobs and
 assurance reads already consumed by Oyster. Do not expand those surfaces or
 widen the neutral subset while the design is unsettled. (Superseded on
 2026-11-06: the original text also said not to migrate Oyster's SDK.)
+On 2026-11-08 the owner lifted the widening hold for a named set of
+neutral and attribution items only, under explicit neutral source profile
+three ([ADR 0103](decisions/0103-scoped-neutral-widening.md)). Everything
+else in this paragraph still holds.
 
 The next Oyster deliverable is a short design document answering who the user
 is, their present problem, one successful end-to-end session, and why a

@@ -35,6 +35,9 @@ Hold Oyster integration expansion and SDK migration. Maintain delivered
 experimental interfaces and tests. A short Oyster design must identify user,
 current problem, one successful session and the value of requirements over
 direct specs/contracts/mutation feedback. Product direction remains unsettled.
+(Amended in part on 2026-11-08: the owner lifted the neutral-widening hold
+for a named set of items only. See
+[ADR 0103](0103-scoped-neutral-widening.md).)
 
 Hold temporal packaging until D.I.V.E.'s distribution decision.
 (Superseded in part on 2026-11-06: the Oyster owner resumed Oyster for shelf
