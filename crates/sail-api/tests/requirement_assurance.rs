@@ -69,7 +69,7 @@ fn complete_recorded_proof_establishes_only_snapshot_contract_to_code() -> TestR
     assert_eq!(evidence.mutation, MutationStatus::NotEstablished);
     assert_ne!(evidence.solvers, [] as [sail_api::output::SolverInfo; 0]);
     assert_eq!(
-        assurance::decoded_inputs(&document, &Default::default())?.rows,
+        assurance::decoded_inputs(&document, &sail_api::counterexample::FieldNames::new())?.rows,
         []
     );
     assert!(evidence.qualifiers.iter().any(|q| q.contains("entailment")));
@@ -99,7 +99,8 @@ fn recorded_unknown_is_not_a_refutation_or_an_established_tier() -> TestResult {
     assert!(!serde_json::to_string(&view)?.contains("counterexample"));
     // The failed check's model decodes to source names; fuel and other internal
     // constants are dropped from the decoded view and stay in the raw model.
-    let inputs_view = assurance::decoded_inputs(&document, &Default::default())?;
+    let inputs_view =
+        assurance::decoded_inputs(&document, &sail_api::counterexample::FieldNames::new())?;
     assert_eq!(inputs_view.job_id, view.job_id);
     let [row] = inputs_view.rows.as_slice() else {
         return Err("one decoded row".into());
@@ -133,7 +134,9 @@ fn recorded_unknown_is_not_a_refutation_or_an_established_tier() -> TestResult {
     assert!(raw.contains("fuel%vstd") && raw.contains(&decoded.obligation));
     document.contracts.as_mut().ok_or("contracts")?.proof.state = ProofState::Proved;
     assert!(assurance::from_contract_result(&document).is_err());
-    assert!(assurance::decoded_inputs(&document, &Default::default()).is_err());
+    assert!(
+        assurance::decoded_inputs(&document, &sail_api::counterexample::FieldNames::new()).is_err()
+    );
     Ok(())
 }
 
