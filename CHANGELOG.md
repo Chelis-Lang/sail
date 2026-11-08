@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add explicit neutral source profile three (ADR 0103). Its specifications
+  admit `/` and `%` with Rust's truncating semantics, defined only for a nonzero
+  divisor and a representable result. Profile three lowers with version four;
+  profiles one and two and their bytes are unchanged. The service advertises
+  profiles one to three.
 - Keep D.I.V.E. behind a default-off build flag (ADR 0101): the required
   layering check now refuses a root lock that names D.I.V.E. or an extension
   crate, and a publishable extension crate. `ci/run.sh extension-install DIR`

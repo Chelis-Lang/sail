@@ -174,7 +174,7 @@ pub(super) fn signature(
                     ));
                 }
                 let ty = resolve_type(&input.ty, value, owner.as_deref(), structs)?;
-                if profile == 2 && matches!(ty, Type::Named(_) | Type::Enum(_)) {
+                if profile >= 2 && matches!(ty, Type::Named(_) | Type::Enum(_)) {
                     return Err(unsupported(
                         "profile two nominal inputs require shared references; owning non-Copy inputs need separate postcondition ownership analysis",
                     ));
@@ -242,7 +242,7 @@ fn scalar_struct(value: &syn::ItemStruct, profile: u32) -> Result<()> {
         }
     }
     if (profile == 1 && derives != BTreeSet::from(["Clone".to_owned(), "Copy".to_owned()]))
-        || (profile == 2 && derives != BTreeSet::from(["Debug".to_owned()]))
+        || (profile >= 2 && derives != BTreeSet::from(["Debug".to_owned()]))
     {
         return Err(unsupported(
             "scalar structs must derive exactly Clone and Copy; arbitrary trait implementations are unsupported",
@@ -256,7 +256,7 @@ fn scalar_struct(value: &syn::ItemStruct, profile: u32) -> Result<()> {
 
 fn file_passive(attributes: &[syn::Attribute], profile: u32) -> Result<()> {
     for attribute in attributes {
-        if profile == 2
+        if profile >= 2
             && attribute.path().is_ident("forbid")
             && attribute
                 .parse_args::<syn::Ident>()
@@ -355,7 +355,7 @@ fn items(values: &[syn::Item], profile: u32) -> Result<()> {
         match value {
             syn::Item::Fn(function) if annotated(&function.attrs) => {}
             syn::Item::Struct(_) => {}
-            syn::Item::Enum(_) if profile == 2 => {}
+            syn::Item::Enum(_) if profile >= 2 => {}
             syn::Item::Use(import) if import.leading_colon.is_none() => imports(&import.tree)?,
             syn::Item::Mod(module) => {
                 passive(&module.attrs)?;

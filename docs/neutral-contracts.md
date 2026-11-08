@@ -129,3 +129,25 @@ The [lowering specification](spec/neutral-verus-lowering.md) and
 Runtime checks evaluate the actual borrowed result and original state. They do
 not establish source proof, conclusive mutant rejection or whole-application
 correctness. Backend UNKNOWN remains explicit.
+
+## Select widened profile three
+
+Set `Submission.profile` to `3` for the forms the owner authorized in
+[ADR 0103](decisions/0103-scoped-neutral-widening.md). The service advertises
+profile three in `neutral_contract_profiles`; clients refuse it on endpoints that
+do not. Profile three admits everything in profile two, plus:
+
+- **Division and remainder in specifications.** `/` and `%` follow Rust's
+  checked integer semantics. Division truncates toward zero, and the remainder
+  takes the sign of the dividend, so `-7 / 2 == -3` and `-7 % 2 == -1`. Each
+  operation is defined only for a nonzero divisor and a representable result.
+  The signed minimum divided by negative one is undefined, and so is the signed
+  minimum's remainder by negative one, exactly as Rust's checked operations
+  refuse them. An undefined operation never makes a guarantee true. Both
+  operands share one fixed-width integer type.
+
+Profile three lowers with version four and contract version three. Its manifest
+names the truncating rule in its arithmetic qualifier. Profiles one and two still
+refuse specification division and remainder, and their emitted bytes are
+unchanged. Executable-body division was already admitted in every profile, and
+Verus proves its divisor and overflow obligations.

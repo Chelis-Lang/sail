@@ -165,7 +165,7 @@ pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
         || contracts.version != crate::contracts::VERSION
         || !matches!(
             (manifest.version, manifest.contract_version),
-            (1 | 2, 1) | (3, 2)
+            (1 | 2, 1) | (3, 2) | (4, 3)
         )
         || manifest.bindings.is_empty()
         || document.job.input_revision.as_deref() != Some(manifest.original_sha256.as_str())

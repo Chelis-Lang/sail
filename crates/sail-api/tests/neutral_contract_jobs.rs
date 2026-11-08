@@ -155,7 +155,7 @@ fn explicit_profiles_preserve_legacy_exact_bytes_and_reject_unknown_profiles() -
     assert!(bytes.contains("\"profile\":2"));
     assert_eq!(serde_json::from_str::<Submission>(&bytes)?, selected);
     assert!(selected.validate().is_ok());
-    for profile in [0, 3, u32::MAX] {
+    for profile in [0, 4, u32::MAX] {
         selected.profile = profile;
         assert!(selected.validate().is_err());
     }

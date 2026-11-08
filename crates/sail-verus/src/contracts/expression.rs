@@ -255,9 +255,12 @@ impl Environment<'_> {
         if numeric(operation) {
             ty.numeric()?;
             if matches!(operation, syn::BinOp::Div(_) | syn::BinOp::Rem(_)) {
-                return Err(unsupported(
-                    "division and remainder specification lowering needs separately qualified signedness semantics",
-                ));
+                if self.profile < 3 {
+                    return Err(unsupported(
+                        "division and remainder specification lowering needs separately qualified signedness semantics",
+                    ));
+                }
+                return truncating(&ty, operation, &l, &r, &ld, &rd);
             }
             let expression = quote!((#l) #operation (#r));
             let bounds = ty.bounds(&expression)?;
@@ -414,7 +417,7 @@ impl Environment<'_> {
     }
 
     fn admit_nominal_value(&self, ty: &Type) -> Result<()> {
-        if self.profile == 2 && matches!(ty, Type::Named(_) | Type::Enum(_)) {
+        if self.profile >= 2 && matches!(ty, Type::Named(_) | Type::Enum(_)) {
             return Err(unsupported(
                 "profile two conditional and block expressions cannot move a non-Copy nominal value; use direct flat fields or scalar expressions",
             ));
@@ -458,6 +461,47 @@ impl Environment<'_> {
             defined: quote!((#condition_defined) && if #condition_value { #then_defined } else { #else_defined }),
         })
     }
+}
+
+/// Profile-three division and remainder with Rust's exact checked semantics.
+///
+/// Both operands share one fixed-width type. Unsigned operands are nonnegative,
+/// so Verus's Euclidean `int` operators already truncate. Signed operands use
+/// the generated truncating helpers. Each operation is defined only when its
+/// operands are, the divisor is nonzero and the result is representable; a
+/// signed remainder of the minimum by negative one is undefined, as Rust's
+/// checked remainder is, even though its mathematical value is zero.
+fn truncating(
+    ty: &Type,
+    operation: &syn::BinOp,
+    l: &TokenStream,
+    r: &TokenStream,
+    ld: &TokenStream,
+    rd: &TokenStream,
+) -> Result<Value> {
+    let Type::Integer { signed, bits } = ty else {
+        return Err(unsupported(
+            "arithmetic needs an admitted fixed-width integer",
+        ));
+    };
+    let division = matches!(operation, syn::BinOp::Div(_));
+    let expression = match (signed, division) {
+        (false, _) => quote!((#l) #operation (#r)),
+        (true, true) => quote!(crate::__sail_truncating_div(#l, #r)),
+        (true, false) => quote!(crate::__sail_truncating_rem(#l, #r)),
+    };
+    let bounds = ty.bounds(&expression)?;
+    let overflow = if *signed && !division {
+        let name: syn::Ident = syn::parse_str(&format!("i{bits}")).map_err(super::syntax)?;
+        quote!(&& !((#l) == (#name::MIN as int) && (#r) == -1))
+    } else {
+        TokenStream::new()
+    };
+    Ok(Value {
+        ty: ty.clone(),
+        defined: quote!((#ld) && (#rd) && ((#r) != 0) #overflow && (#bounds)),
+        expression,
+    })
 }
 
 fn value_of(ty: Type, source: TokenStream) -> Value {

@@ -97,7 +97,7 @@ pub fn parse_function(
     parse_function_with_profile(item, outer, 1)
 }
 
-/// Parse explicitly selected neutral source profile one or two.
+/// Parse explicitly selected neutral source profile one, two or three.
 /// # Errors
 /// Rejects unknown profiles and syntax outside the selected profile.
 pub fn parse_function_with_profile(
@@ -105,7 +105,7 @@ pub fn parse_function_with_profile(
     outer: Option<(AttributeKind, TokenStream)>,
     profile: u32,
 ) -> syn::Result<ContractFunction> {
-    if !matches!(profile, 1 | 2) {
+    if !matches!(profile, 1..=3) {
         return Err(unsupported(&item.sig, "unsupported source profile"));
     }
     validate_signature(&item, profile)?;
@@ -233,7 +233,7 @@ fn validate_signature(item: &ItemFn, profile: u32) -> syn::Result<()> {
 }
 
 fn validate_profile_type(value: &Type, profile: u32) -> syn::Result<()> {
-    if profile == 2
+    if profile >= 2
         && let Type::Reference(reference) = value
     {
         if reference.lifetime.is_some() {

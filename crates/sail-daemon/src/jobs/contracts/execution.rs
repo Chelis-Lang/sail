@@ -97,10 +97,10 @@ pub(in crate::jobs) fn execute(
         )));
     }
     let result = decode(&bytes, &input)?;
-    let expected_lowering = if input.profile == 2 {
-        3
-    } else {
-        sail_verus::contracts::LOWERING_VERSION
+    let expected_lowering = match input.profile {
+        2 => 3,
+        3 => sail_verus::contracts::PROFILE_THREE_LOWERING_VERSION,
+        _ => sail_verus::contracts::LOWERING_VERSION,
     };
     if result.contracts.manifest.version != expected_lowering {
         return Err(error(
