@@ -5,7 +5,8 @@
 //! under a home directory with `~/.cargo/config.toml` would otherwise refuse
 //! every neutral job. Shadows stay in the configured cache when no parent is
 //! configured; otherwise they move to a private per-user directory with no
-//! configured parent. The refusal policy itself is unchanged: the admission
+//! configured parent, named for the cache so caches never share shadows. The
+//! refusal policy itself is unchanged: the admission
 //! check still runs on the chosen placement, and when no candidate qualifies the
 //! default placement is returned so that check reports an actionable refusal.
 
@@ -31,11 +32,14 @@ pub(super) fn shadow_root(
     if !ancestor_configured(cache)? {
         return Ok(preferred);
     }
+    // Each cache keeps its own private root, as it had its own shadow root in
+    // the cache: shadows of different caches or Sail versions never collide.
+    let owner = cache_digest(cache);
     let candidates = runtime
         .filter(|path| path.is_absolute())
-        .map(|path| path.join(format!("sail-{SHADOWS}")))
+        .map(|path| path.join(format!("sail-{owner}-{SHADOWS}")))
         .into_iter()
-        .chain(private_name().map(|name| temporary.join(name)));
+        .chain(private_name(&owner).map(|name| temporary.join(name)));
     for candidate in candidates {
         if let Some(parent) = candidate.parent()
             && parent.is_dir()
@@ -48,26 +52,34 @@ pub(super) fn shadow_root(
     Ok(preferred)
 }
 
+/// A short digest of the cache's resolved path, naming its private root.
+fn cache_digest(cache: &Path) -> String {
+    let resolved = cache.canonicalize().unwrap_or_else(|_| cache.to_path_buf());
+    let mut digest = super::digest(resolved.as_os_str().as_encoded_bytes());
+    digest.truncate(16);
+    digest
+}
+
 /// A shared temporary directory needs a per-user name.
 #[cfg(unix)]
 #[allow(
     clippy::unnecessary_wraps,
     reason = "Platforms without user identities have no private temporary name."
 )]
-fn private_name() -> Option<String> {
+fn private_name(owner: &str) -> Option<String> {
     Some(format!(
-        "sail-{}-{SHADOWS}",
+        "sail-{}-{owner}-{SHADOWS}",
         rustix::process::getuid().as_raw()
     ))
 }
 
 #[cfg(not(unix))]
-const fn private_name() -> Option<String> {
+const fn private_name(_: &str) -> Option<String> {
     None
 }
 
 /// Create `path` if absent; accept only a real directory owned by this user
-/// that no other user can write.
+/// that no other user can read, write or enter.
 #[cfg(unix)]
 fn private(path: &Path) -> bool {
     use std::os::unix::fs::{DirBuilderExt as _, MetadataExt as _};
@@ -76,7 +88,7 @@ fn private(path: &Path) -> bool {
         metadata.is_dir()
             && !metadata.file_type().is_symlink()
             && metadata.uid() == rustix::process::getuid().as_raw()
-            && metadata.mode() & 0o022 == 0
+            && metadata.mode() & 0o077 == 0
     })
 }
 
@@ -118,8 +130,9 @@ mod tests {
         assert_eq!(place(Some(runtime.clone())), Ok(cache.join(SHADOWS)));
         std::fs::create_dir_all(home.join(".cargo"))?;
         std::fs::write(home.join(".cargo/config.toml"), "[build]\n")?;
-        let in_runtime = runtime.join(format!("sail-{SHADOWS}"));
-        let in_temporary = temporary.join(private_name().unwrap_or_default());
+        let owner = cache_digest(&cache);
+        let in_runtime = runtime.join(format!("sail-{owner}-{SHADOWS}"));
+        let in_temporary = temporary.join(private_name(&owner).unwrap_or_default());
         for (runtime, expected) in [
             (Some(runtime.clone()), in_runtime.clone()),
             (None, in_temporary.clone()),
@@ -129,7 +142,16 @@ mod tests {
             let mode = std::fs::metadata(&expected)?.permissions().mode();
             assert_eq!(mode & 0o077, 0, "{mode:o}");
         }
-        // A writable-by-others directory or a link is never adopted.
+        // Another cache under the same configured parent gets its own root.
+        let other = home.join("cache/other");
+        std::fs::create_dir_all(&other)?;
+        let other_root = shadow_root(&other, Some(runtime.clone()), &temporary)
+            .map_err(|error| error.message)?;
+        assert_eq!(other_root.parent(), Some(runtime.as_path()));
+        assert_ne!(other_root, in_runtime);
+        // A directory others can read or write, or a link, is never adopted.
+        std::fs::set_permissions(&in_runtime, std::fs::Permissions::from_mode(0o755))?;
+        assert_eq!(place(Some(runtime.clone())), Ok(in_temporary.clone()));
         std::fs::set_permissions(&in_runtime, std::fs::Permissions::from_mode(0o777))?;
         std::fs::remove_dir(&in_temporary)?;
         std::os::unix::fs::symlink(&cache, &in_temporary)?;
