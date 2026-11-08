@@ -103,11 +103,13 @@ fn validate_assurance(
     output: &Path,
     label: &str,
     document: &sail_api::jobs::ResultDocument,
-    digest: &str,
+    source: &str,
     expected: ProofState,
 ) -> TestResult {
+    let digest = sha(source.as_bytes());
     let assurance = client.requirement_assurance(&document.job.id)?;
-    if assurance != sail_api::assurance::from_contract_result(document)?
+    let fields = sail_verus::contracts::struct_field_names(source);
+    if assurance != sail_api::assurance::from_contract_result_named(document, &fields)?
         || assurance.currentness != sail_api::project::Currentness::Unknown
         || assurance.requirements.is_empty()
         || assurance.requirements.iter().any(|requirement| {
@@ -123,6 +125,7 @@ fn validate_assurance(
     {
         return Err("assurance changed proof, snapshot scope or missing mutation evidence".into());
     }
+    validate_counterexample(label, &assurance)?;
     std::fs::write(
         output.join(format!("{label}.assurance.json")),
         serde_json::to_vec_pretty(&assurance)?,
@@ -186,7 +189,7 @@ fn one(
         return Err("owned snapshot has no qualified backend evidence".into());
     }
     validate_compound_failure(label, &backend)?;
-    validate_assurance(client, output, label, &document, &digest, expected)?;
+    validate_assurance(client, output, label, &document, source, expected)?;
     std::fs::write(
         output.join(format!("{label}.result.json")),
         serde_json::to_vec_pretty(&document)?,
@@ -230,6 +233,37 @@ fn one(
         "{label}: installed negotiated service, exact source and worker bytes, {expected:?}, live currentness unknown"
     );
     Ok(job.id)
+}
+/// Failed rows decode source-named model inputs; proved rows carry none.
+fn validate_counterexample(label: &str, assurance: &sail_api::assurance::View) -> TestResult {
+    use sail_api::counterexample::Value;
+    for row in assurance.requirements.iter().flat_map(|r| &r.evidence) {
+        let decoded = row.counterexample.as_ref();
+        let names: Vec<&str> = decoded
+            .iter()
+            .flat_map(|d| &d.inputs)
+            .map(|input| input.name.as_str())
+            .collect();
+        let ok = match label {
+            "body-edit" => names.contains(&"input") && decoded.is_some_and(|d| d.omitted > 0),
+            "compound-field" => decoded.is_some_and(|d| {
+                d.inputs
+                    .iter()
+                    .filter(|i| i.name == "a" || i.name == "b")
+                    .all(|i| {
+                        matches!(&i.value, Value::Record { constructor, fields }
+                        if constructor == "Row" && fields.len() == 1 && fields[0].name == "flag")
+                    })
+                    && names.contains(&"x")
+            }),
+            _ => row.outcome != ProofState::Proved || decoded.is_none(),
+        };
+        if !ok {
+            return Err(format!("{label}: unexpected decoded counterexample {decoded:?}").into());
+        }
+        println!("{label}: decoded model inputs {names:?}");
+    }
+    Ok(())
 }
 fn validate_compound_failure(
     label: &str,

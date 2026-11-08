@@ -68,6 +68,7 @@ fn complete_recorded_proof_establishes_only_snapshot_contract_to_code() -> TestR
     assert_eq!(evidence.scope, Scope::SourceSnapshot);
     assert_eq!(evidence.mutation, MutationStatus::NotEstablished);
     assert_ne!(evidence.solvers, [] as [sail_api::output::SolverInfo; 0]);
+    assert_eq!(evidence.counterexample, None);
     assert!(evidence.qualifiers.iter().any(|q| q.contains("entailment")));
     assert!(
         evidence
@@ -90,6 +91,33 @@ fn recorded_unknown_is_not_a_refutation_or_an_established_tier() -> TestResult {
     assert_eq!(evidence.outcome, ProofState::NotProved);
     assert_eq!(evidence.establishment, None);
     assert_eq!(evidence.tier, None);
+    // The failed check's model decodes to source names; fuel and other internal
+    // constants are dropped from the decoded view and stay in the raw model.
+    let decoded = evidence.counterexample.as_ref().ok_or("decoded inputs")?;
+    let inputs: Vec<_> = decoded
+        .inputs
+        .iter()
+        .map(|i| (i.name.as_str(), i.smt_name.as_str(), &i.value))
+        .collect();
+    let int = |n: &str| sail_api::counterexample::Value::Scalar {
+        itf: sail_api::output::ItfValue::BigInt { bigint: n.into() },
+    };
+    assert_eq!(
+        inputs,
+        [
+            ("input", "input!", &int("97")),
+            ("result", "result!", &int("97"))
+        ]
+    );
+    assert!(decoded.omitted > 50, "{}", decoded.omitted);
+    assert!(
+        decoded
+            .qualifiers
+            .iter()
+            .any(|q| q.contains("not a validated concrete counterexample"))
+    );
+    let raw = document.result.as_ref().ok_or("backend")?.to_string();
+    assert!(raw.contains("fuel%vstd") && raw.contains(&decoded.obligation));
     document.contracts.as_mut().ok_or("contracts")?.proof.state = ProofState::Proved;
     assert!(assurance::from_contract_result(&document).is_err());
     Ok(())

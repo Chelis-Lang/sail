@@ -122,6 +122,10 @@ pub struct Evidence {
     pub qualifiers: Vec<String>,
     /// Mutation establishment is never inferred from a passing proof.
     pub mutation: MutationStatus,
+    /// Source-named inputs from the solver model of the function's first failed
+    /// or unknown check, with struct fields named by position; absent when proved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub counterexample: Option<crate::counterexample::Decoded>,
 }
 
 /// Attributed evidence grouped by requirement identity.
@@ -245,6 +249,9 @@ pub fn from_project_result(
                 solvers: solvers.clone(),
                 qualifiers,
                 mutation: MutationStatus::NotEstablished,
+                counterexample: (!proved && unique)
+                    .then(|| decoded(&targets, &item.function))
+                    .flatten(),
             });
     }
     Ok(View {
@@ -259,6 +266,20 @@ pub fn from_project_result(
             })
             .collect(),
     })
+}
+
+/// Model inputs of the one reported function; fields are named by position
+/// because ordinary source is not retained.
+fn decoded(
+    targets: &[&crate::project::TargetResult],
+    function: &str,
+) -> Option<crate::counterexample::Decoded> {
+    targets
+        .iter()
+        .flat_map(|t| &t.report.crates)
+        .flat_map(|c| &c.functions)
+        .find(|f| f.function == function)
+        .and_then(|f| crate::counterexample::decode(f, &crate::counterexample::FieldNames::new()))
 }
 
 fn qualifiers(unique: bool, complete_identity: bool, current: bool) -> Vec<String> {

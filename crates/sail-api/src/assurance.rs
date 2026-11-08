@@ -104,6 +104,10 @@ pub struct Evidence {
     pub qualifiers: Vec<String>,
     /// Mutation establishment is never inferred from a passing proof.
     pub mutation: MutationStatus,
+    /// Source-named inputs from the solver model of the function's first failed
+    /// or unknown check; absent when proved, without a model, or from older services.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub counterexample: Option<crate::counterexample::Decoded>,
 }
 
 /// Evidence grouped by stable requirement identity.
@@ -146,11 +150,23 @@ pub(crate) fn valid_digest(value: &str) -> bool {
 /// # Errors
 /// Refuses unfinished jobs, missing evidence, mismatched attribution and invalid
 /// content identities. Unknown and incomplete proofs retain no established tier.
+pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
+    from_contract_result_named(document, &crate::counterexample::FieldNames::new())
+}
+
+/// [`from_contract_result`], naming decoded struct fields from the retained
+/// source's declaration order instead of by position.
+///
+/// # Errors
+/// As [`from_contract_result`].
 #[allow(
     clippy::too_many_lines,
     reason = "One projection checks all attribution before constructing any assurance row."
 )]
-pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
+pub fn from_contract_result_named(
+    document: &ResultDocument,
+    fields: &crate::counterexample::FieldNames,
+) -> Result<View, String> {
     let invalid = || "SAIL3143: invalid or incomplete neutral assurance evidence".to_owned();
     let contracts = document.contracts.as_deref().ok_or_else(invalid)?;
     let backend: ProjectResult =
@@ -236,6 +252,10 @@ pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
                 solvers: solvers.clone(),
                 qualifiers,
                 mutation: MutationStatus::NotEstablished,
+                counterexample: (contracts.proof.state != ProofState::Proved)
+                    .then(|| unique_function(&backend, &binding.lowered_function))
+                    .flatten()
+                    .and_then(|function| crate::counterexample::decode(function, fields)),
             });
     }
     let requirements = grouped
@@ -254,6 +274,19 @@ pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
         currentness: Currentness::Unknown,
         requirements,
     })
+}
+
+/// The single requested-target report for `function`, if exactly one exists.
+fn unique_function<'a>(backend: &'a ProjectResult, function: &str) -> Option<&'a FunctionReport> {
+    let mut matches = backend
+        .targets
+        .iter()
+        .filter(|t| t.requested)
+        .flat_map(|t| &t.report.crates)
+        .flat_map(|c| &c.functions)
+        .filter(|f| f.function == function);
+    let first = matches.next()?;
+    matches.next().is_none().then_some(first)
 }
 
 /// Recompute the conservative neutral proof projection from original backend records.

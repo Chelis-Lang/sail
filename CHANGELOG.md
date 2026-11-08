@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Decode source-named counterexample inputs (ADR 0106): neutral and attributed
+  assurance rows that are not proved carry the parameters, return binder and
+  named struct fields from the failed check's solver model, without fuel and
+  other internal constants. The raw model is retained, and decoded values are
+  never presented as a validated counterexample.
 - Attribute ordinary Verus jobs to requirements (ADR 0104):
   `sail verify --background --requirement ID=FUNCTION` retains submitter
   attributions, and `sail assurance JOB --attributed` reports conservative,

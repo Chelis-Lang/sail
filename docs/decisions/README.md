@@ -123,3 +123,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0104: Submitter requirement attribution for ordinary Verus jobs](0104-ordinary-job-requirement-attribution.md) (accepted; separate negotiated view, never neutral assurance)
 
 - [0105: Place neutral shadows away from inherited Cargo configuration](0105-neutral-shadow-placement.md) (accepted; private per-user placement, unchanged refusal with named cause)
+
+- [0106: Decode source-named inputs from failed-proof models](0106-decoded-counterexample-inputs.md) (accepted; parameters and named struct fields, raw model retained, never a validated refutation)
