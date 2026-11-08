@@ -418,6 +418,124 @@ fn inherited_configuration(sail: &Path, output: &Path, original: &str) -> TestRe
     drop(service);
     Ok(())
 }
+/// Submit one attributed job for the project in `dir` through the installed CLI
+/// and wait for it to finish.
+fn submit_attributed(
+    sail: &Path,
+    client: &Client,
+    output: &Path,
+    dir: &Path,
+    rows: &[(&str, bool)],
+) -> TestResult<String> {
+    let mut command = Command::new(sail);
+    command
+        .current_dir(dir)
+        .env("SAIL_CACHE_DIR", output.join("cache"))
+        .env("SAIL_DAEMON_SOCKET", output.join("d.sock"))
+        .args(["verify", "--background", "--output", "json"]);
+    for (function, _) in rows {
+        command.args([
+            "--requirement",
+            &format!("R-{function}=attributed::{function}"),
+        ]);
+    }
+    let submitted = command.output()?;
+    if !submitted.status.success() {
+        return Err(format!(
+            "attributed submission failed: {}",
+            String::from_utf8_lossy(&submitted.stderr)
+        )
+        .into());
+    }
+    let status: sail_api::jobs::Status = serde_json::from_slice(&submitted.stdout)?;
+    let deadline = Instant::now() + Duration::from_secs(600);
+    loop {
+        let Response::Status(current) = client.call(&Request::Status {
+            id: status.id.clone(),
+        })?
+        else {
+            return Err("wrong status response".into());
+        };
+        if current.state.terminal() {
+            return Ok(status.id);
+        }
+        if Instant::now() > deadline {
+            return Err("attributed job deadline".into());
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
+/// Attributed ordinary jobs through the installed CLI and service, on one Cargo
+/// project so vstd builds once. A function that proves only through
+/// `assume(false)` is `Proved` like an honest one, but neither earns a tier
+/// without `--no-cheating`; a failed function decodes its model inputs and
+/// makes every row `NotProved`.
+fn attributed_jobs(sail: &Path, client: &Client, output: &Path) -> TestResult {
+    let dir = output.join("attributed");
+    std::fs::create_dir_all(dir.join("src"))?;
+    let pins = sail_verus::toolchain::Pins::embedded().map_err(|e| e.message)?;
+    let vstd = pins.verus.vstd.ok_or("no pinned vstd")?;
+    std::fs::write(
+        dir.join("Cargo.toml"),
+        format!(
+            "[package]\nname = \"attributed\"\nversion = \"0.0.0\"\nedition = \"2024\"\npublish = false\n[package.metadata.verus]\nverify = true\n[lib]\npath = \"src/lib.rs\"\n[dependencies]\nvstd = \"={vstd}\"\n[workspace]\n"
+        ),
+    )?;
+    let honest = "    pub fn honest(x: u8) -> (r: u8)\n        requires x < 100\n        ensures r == x + 1\n    {\n        x + 1\n    }\n";
+    let cheat = "    pub fn cheat(x: u8) -> (r: u8)\n        ensures r == x + 1\n    {\n        assume(false);\n        x\n    }\n";
+    let bad = "    pub fn bad(x: u8) -> (r: u8)\n        requires x < 100\n        ensures r == x + 1\n    {\n        x\n    }\n";
+    let both = format!("{honest}{cheat}");
+    let failing = format!("{honest}{bad}");
+    let cases: [(&str, &[(&str, bool)]); 2] = [
+        (&both, &[("cheat", true), ("honest", true)]),
+        (&failing, &[("bad", false), ("honest", false)]),
+    ];
+    for (index, (body, rows)) in cases.into_iter().enumerate() {
+        std::fs::write(
+            dir.join("src/lib.rs"),
+            format!("use vstd::prelude::*;\nverus! {{\n{body}}}\n"),
+        )?;
+        let id = submit_attributed(sail, client, output, &dir, rows)?;
+        let view = client.attributed_assurance(&id)?;
+        std::fs::write(
+            output.join(format!("attributed-{index}.json")),
+            serde_json::to_vec_pretty(&view)?,
+        )?;
+        if view.currentness != Currentness::Current || view.requirements.len() != rows.len() {
+            return Err(format!("attributed job {index}: unexpected view {view:?}").into());
+        }
+        for (function, proved) in rows {
+            let row = view
+                .requirements
+                .iter()
+                .find(|r| r.requirement_id == format!("R-{function}"))
+                .and_then(|r| r.evidence.first())
+                .ok_or("attributed row")?;
+            let cheating = row
+                .qualifiers
+                .iter()
+                .any(|q| q.contains("did not pass Verus --no-cheating"));
+            let decoded = row.counterexample.as_ref().is_some_and(|d| {
+                d.inputs.iter().any(|i| i.name == "x") && d.inputs.iter().any(|i| i.name == "r")
+            });
+            if !row.function_reported
+                || (row.outcome == ProofState::Proved) != *proved
+                || row.tier.is_some()
+                || row.establishment.is_some()
+                || !cheating
+                || decoded != (*function == "bad")
+            {
+                return Err(format!("attributed {function}: unexpected row {row:?}").into());
+            }
+            println!(
+                "attributed {function}: {:?}, tier {:?}, decoded inputs {decoded}",
+                row.outcome, row.tier
+            );
+        }
+    }
+    Ok(())
+}
 fn main() -> TestResult {
     let mut args = std::env::args_os().skip(1);
     let sail = PathBuf::from(
@@ -470,6 +588,7 @@ fn main() -> TestResult {
         ProofState::Proved,
     )?;
     let jobs = [positive, negative, unsafe_field, guarded_field];
+    attributed_jobs(&sail, &client, &output)?;
     drop(service);
     let (service, client) = start(&sail, &output)?;
     for (label, id) in [

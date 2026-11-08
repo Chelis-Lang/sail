@@ -87,15 +87,42 @@ The version-one attributed view groups rows by requirement ID. Each row has the
 source. It never reports `contract-to-code` and is never neutral-contract
 assurance. A row is `Proved` only when the whole job completed, the verifier
 reported exactly one requested-target function with that exact name, and that
-function proved. A `confirmed`, `smt-verified` tier additionally needs actual
-original solver identities and inputs the service classifies as current. Every
-row carries the neutral view's shared qualifiers plus qualifiers stating that
-the link is an unchecked submitter claim, that no neutral contract was admitted
-or checked, and that the Verus specifications and toolchain are trusted. An
-unreported function, missing solver identity or non-current input adds its own
+function proved. The service reads the job against its live inputs first, so a
+job whose inputs are no longer current reads `NotProved`.
+
+Verus reports a function that proves only through `assume(false)` as verified,
+and the view cannot see assumptions in the source. A `confirmed`,
+`smt-verified` tier therefore needs all of:
+
+- actual original solver identities;
+- inputs the service classifies as current;
+- Verus's `--no-cheating` among the job's Verus arguments (after `--`), which
+  refuses `assume`, `admit`, `external_body` and `assume_specification` in the
+  verified crate;
+- no other Verus arguments outside a reviewed set of selection, resource-limit,
+  threading, report-detail and standalone crate-naming options
+  (`--verify-root`, `--verify-module`, `--verify-only-module`,
+  `--verify-function`, `--rlimit`, `--num-threads`, `--multiple-errors`,
+  `--expand-errors`, `--time`, `--time-expanded`, `--crate-name`,
+  `--crate-type`, `--edition`).
+
+In a Cargo project, `cargo verus verify` forwards the Verus arguments after
+`--` to every verified package, including the `vstd` dependency, which uses
+`assume`, `admit` and `external_body` itself. A Cargo job with `--no-cheating`
+therefore fails in `vstd`, and its rows read `NotProved`. Standalone-file jobs
+record no per-check solver provenance, so their rows also read `NotProved`.
+Attributed rows therefore report `Proved` without a tier until Sail can apply
+the check to the requested package alone.
+
+The view records the job's arguments verbatim. Every row carries the neutral
+view's shared qualifiers plus qualifiers stating that the link is an unchecked
+submitter claim, that no neutral contract was admitted or checked, that the
+Verus specifications and toolchain are trusted, and whether the job passed
+`--no-cheating`. An unreported function, missing solver identity, non-current
+input, missing `--no-cheating` or unreviewed Verus argument adds its own
 qualifier and establishes no tier. Mutation status is always `not-established`.
-A row that is not `Proved` carries decoded model inputs as for neutral jobs,
-with struct fields named by position.
+A row that is not `Proved` carries decoded model inputs, with struct fields
+named by position.
 
 The client negotiates `attribution_version = 1` and fails for older services.
 Reading attributed evidence for a neutral job, or for a job submitted without

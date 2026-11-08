@@ -354,10 +354,17 @@ fn valid(name: &str, document: &Value) -> bool {
     }
 }
 
+/// The response names the requested job and is the requested kind of view.
 fn requested_assurance_matches(name: &str, args: &Map<String, Value>, document: &Value) -> bool {
+    let kind = if args.get("attributed") == Some(&Value::Bool(true)) {
+        "attributed_assurance"
+    } else {
+        "assurance"
+    };
     name != "requirement_assurance"
-        || document.pointer("/value/job_id").and_then(Value::as_str)
+        || (document.pointer("/value/job_id").and_then(Value::as_str)
             == args.get("job_id").and_then(Value::as_str)
+            && document.pointer("/response").and_then(Value::as_str) == Some(kind))
 }
 
 #[cfg(test)]
@@ -425,11 +432,30 @@ mod tests {
             Box::new(sail_api::attribution::View {
                 version: sail_api::attribution::VERSION,
                 job_id: "job-123".into(),
+                arguments: Vec::new(),
                 currentness: sail_api::jobs::Currentness::Unknown,
                 requirements: Vec::new(),
             }),
         ))?;
         assert!(valid("requirement_assurance", &attributed));
+        // Each kind answers only its own request.
+        let attributed_args = json!({"job_id":"job-123","attributed":true});
+        let attributed_args = attributed_args.as_object().ok_or("args")?;
+        assert!(requested_assurance_matches(
+            "requirement_assurance",
+            attributed_args,
+            &attributed
+        ));
+        assert!(!requested_assurance_matches(
+            "requirement_assurance",
+            attributed_args,
+            &document
+        ));
+        assert!(!requested_assurance_matches(
+            "requirement_assurance",
+            args.as_object().ok_or("args")?,
+            &attributed
+        ));
         Ok(())
     }
     fn parse(name: &str, value: &Value) -> Result<(Vec<String>, Option<String>), String> {
