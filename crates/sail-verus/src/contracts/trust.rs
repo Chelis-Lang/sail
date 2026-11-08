@@ -190,10 +190,14 @@ fn validate_environment(environment: &BTreeMap<OsString, OsString>, pinned: &str
     Ok(())
 }
 
-fn absent_configurations(
-    workspace: &Path,
-    environment: &BTreeMap<OsString, OsString>,
-) -> Result<()> {
+/// Refusal for a configuration file Cargo would load from a parent of the shadow.
+pub(super) const ANCESTOR_REFUSAL: &str = "neutral translation refuses unreviewed Cargo configuration files: a parent directory of the neutral shadow workspace has `.cargo/config` or `.cargo/config.toml`, and no private placement without one was available; set SAIL_CACHE_DIR to a directory with no such parent configuration";
+/// Refusal for configuration in the Cargo home the compiler would load.
+pub(super) const HOME_REFUSAL: &str = "neutral translation refuses unreviewed Cargo configuration files: the Cargo home (`CARGO_HOME`, else `$HOME/.cargo`) has `config` or `config.toml`; run Sail with CARGO_HOME naming a Cargo home that has no configuration files";
+
+/// Every `.cargo/config[.toml]` path Cargo would search from `workspace`, by
+/// both its absolute and resolved spelling.
+fn ancestor_paths(workspace: &Path) -> Result<BTreeSet<PathBuf>> {
     let mut paths = BTreeSet::new();
     for root in [std::path::absolute(workspace), workspace.canonicalize()] {
         let root =
@@ -204,6 +208,25 @@ fn absent_configurations(
             }
         }
     }
+    Ok(paths)
+}
+
+/// Whether any path exists in any form; a dangling link is not absence.
+fn any_present(paths: &BTreeSet<PathBuf>) -> bool {
+    paths.iter().any(|path| {
+        !matches!(std::fs::symlink_metadata(path), Err(error) if error.kind() == std::io::ErrorKind::NotFound)
+    })
+}
+
+/// Whether Cargo would load a configuration file from `directory` or a parent.
+pub(super) fn ancestor_configured(directory: &Path) -> Result<bool> {
+    Ok(any_present(&ancestor_paths(directory)?))
+}
+
+fn absent_configurations(
+    workspace: &Path,
+    environment: &BTreeMap<OsString, OsString>,
+) -> Result<()> {
     let home = environment
         .get(std::ffi::OsStr::new("CARGO_HOME"))
         .map(PathBuf::from)
@@ -218,18 +241,15 @@ fn absent_configurations(
     } else {
         workspace.join(home)
     };
-    for file in ["config", "config.toml"] {
-        paths.insert(home.join(file));
+    let home: BTreeSet<PathBuf> = ["config", "config.toml"]
+        .iter()
+        .map(|file| home.join(file))
+        .collect();
+    if any_present(&home) {
+        return Err(unsupported(HOME_REFUSAL));
     }
-    for path in paths {
-        match std::fs::symlink_metadata(path) {
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            _ => {
-                return Err(unsupported(
-                    "neutral translation refuses unreviewed Cargo configuration files",
-                ));
-            }
-        }
+    if any_present(&ancestor_paths(workspace)?) {
+        return Err(unsupported(ANCESTOR_REFUSAL));
     }
     Ok(())
 }
@@ -303,12 +323,18 @@ mod tests {
                 BTreeMap::from([("CARGO_HOME".into(), home.clone().into_os_string())]);
             absent_configurations(&workspace, &environment)?;
             std::fs::write(home.join("config"), "")?;
-            assert!(absent_configurations(&workspace, &environment).is_err());
+            assert_eq!(
+                absent_configurations(&workspace, &environment).map_err(|e| e.message),
+                Err(HOME_REFUSAL.to_owned())
+            );
             std::fs::remove_file(home.join("config"))?;
             std::fs::create_dir(workspace.join(".cargo"))?;
             // Even a dangling link cannot be treated as absent configuration.
             std::os::unix::fs::symlink(root.join("missing"), workspace.join(".cargo/config.toml"))?;
-            assert!(absent_configurations(&workspace, &environment).is_err());
+            assert_eq!(
+                absent_configurations(&workspace, &environment).map_err(|e| e.message),
+                Err(ANCESTOR_REFUSAL.to_owned())
+            );
             Ok(())
         })();
         std::fs::remove_dir_all(&root)?;

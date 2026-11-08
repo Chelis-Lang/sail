@@ -91,7 +91,13 @@ pub fn verify_profile(
     let manifest =
         serde_json::to_vec_pretty(&lowering.manifest).map_err(|e| drift(e.to_string()))?;
     let key = digest(&manifest);
-    let root = config.cache.join("neutral-contracts-v1");
+    // Cargo would load configuration from every parent of the shadow, so a
+    // cache under a configured parent places shadows privately elsewhere.
+    let root = super::placement::shadow_root(
+        &config.cache,
+        std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from),
+        &std::env::temp_dir(),
+    )?;
     directory(&root)?;
     let root = canonical(&root)?;
     let lock_path = root.join(format!("{key}.lock"));
@@ -123,7 +129,7 @@ pub fn verify_profile(
     // the configured parent cache cannot also be the backend cache of its shadow.
     let mut backend_config = config.clone();
     backend_config.workspace.clone_from(&shadow);
-    backend_config.cache = root.with_file_name("neutral-contract-backend-v1");
+    backend_config.cache = canonical(&config.cache)?.join("neutral-contract-backend-v1");
     backend_config.attribution_logs = true;
     directory(&backend_config.cache)?;
     // Refuse environmental code selection before any metadata or lockfile probe.

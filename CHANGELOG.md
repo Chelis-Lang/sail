@@ -16,6 +16,10 @@ semantic versioning once the API is published.
   divisor and a representable result. Profile three lowers with version four;
   profiles one and two and their bytes are unchanged. The service advertises
   profiles one to three.
+- Place neutral shadow workspaces in a private per-user directory when a parent of
+  the Sail cache has a Cargo configuration file, instead of refusing every
+  neutral job (ADR 0103, item 6). The refusal for unreviewed configuration is
+  unchanged and now names its cause and the setting that avoids it.
 - Keep D.I.V.E. behind a default-off build flag (ADR 0101): the required
   layering check now refuses a root lock that names D.I.V.E. or an extension
   crate, and a publishable extension crate. `ci/run.sh extension-install DIR`

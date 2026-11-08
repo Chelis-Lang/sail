@@ -120,4 +120,6 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0103: Scoped lifting of the neutral-widening hold](0103-scoped-neutral-widening.md) (accepted by owner; named items only, under explicit profile three)
 
+- [0105: Place neutral shadows away from inherited Cargo configuration](0105-neutral-shadow-placement.md) (accepted; private per-user placement, unchanged refusal with named cause)
+
 - [0104: Submitter requirement attribution for ordinary Verus jobs](0104-ordinary-job-requirement-attribution.md) (accepted; separate negotiated view, never neutral assurance)

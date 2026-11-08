@@ -30,6 +30,35 @@ stops the entire worker process group and returns `SAIL3143`. Invalid source
 identities or retained evidence report `SAIL3142`. No partial output establishes
 a proof. Cancellation uses the existing durable job cancellation operation.
 
+## Cargo configuration and shadow placement
+
+Neutral translation refuses every unreviewed Cargo configuration file with
+`SAIL3140`, because such a file could select another compiler, patch vstd or
+change build settings. Cargo reads `.cargo/config` and `.cargo/config.toml`
+from every parent of the directory it runs in, plus `config` and
+`config.toml` in the Cargo home.
+
+Sail keeps shadows in its cache (`neutral-contracts-v1`) when no parent of the
+cache has a Cargo configuration file. When one does, as with a cache under a
+home directory that has `~/.cargo/config.toml`, Sail places the shadows in a
+private per-user directory instead: `$XDG_RUNTIME_DIR/sail-neutral-contracts-v1`,
+else `sail-UID-neutral-contracts-v1` in the system temporary directory. Sail
+uses a directory only if it is a real directory owned by the current user,
+writable by no other user, and has no configured parent. Verifier build
+output stays in the cache. The same refusal check still runs on the chosen
+shadow before and after every backend run.
+
+The refusal names its cause:
+
+- A configured Cargo home (`CARGO_HOME`, else `$HOME/.cargo`): run the service
+  with `CARGO_HOME` naming a Cargo home that has no configuration files.
+  Placement cannot avoid this file.
+- A configured parent with no private placement available: set
+  `SAIL_CACHE_DIR` to a directory with no configured parent.
+
+The [decision](decisions/0105-neutral-shadow-placement.md) records the
+placement rules.
+
 `Proved` means every mapped function has complete attributed proof evidence
 under its stated preconditions. `NotProved` includes incomplete, failed and
 unknown outcomes; it is not a concrete refutation. Every underlying solver

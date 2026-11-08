@@ -9,6 +9,7 @@ mod expression;
 pub mod literal_witness;
 mod lower;
 pub mod mutation;
+mod placement;
 mod runner;
 mod trust;
 mod types;
