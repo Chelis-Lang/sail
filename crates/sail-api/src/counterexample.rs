@@ -4,8 +4,8 @@
 //! value as a constructor application such as `(krate!Row./Row false 3)`, whose
 //! arguments follow the struct's declaration order. A model also defines many
 //! internal constants: fuel, type identities, location labels and versioned
-//! locals. Decoding keeps only source-named parameters and the return binder,
-//! renders their values, and names struct fields when the caller supplies the
+//! locals. Decoding keeps only constants Verus names `IDENT!`, which include
+//! the parameters and the return binder, renders their values, and names struct fields when the caller supplies the
 //! declaration order. The raw model is never replaced: it stays in the
 //! obligation's [`crate::output::Counterexample`].
 //!
