@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Attribute ordinary Verus jobs to requirements (ADR 0104):
+  `sail verify --background --requirement ID=FUNCTION` retains submitter
+  attributions, and `sail assurance JOB --attributed` reports conservative,
+  qualified per-requirement evidence that is never neutral-contract assurance.
+  MCP `start_verification` takes `requirements`; `requirement_assurance` takes
+  `attributed`.
 - Add explicit neutral source profile three (ADR 0103). Its specifications
   admit `/` and `%` with Rust's truncating semantics, defined only for a nonzero
   divisor and a representable result. Profile three lowers with version four;

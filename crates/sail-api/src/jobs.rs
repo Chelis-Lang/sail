@@ -197,6 +197,18 @@ pub enum Request {
     },
     /// Submit exact neutral source with Sail-owned execution controls.
     SubmitContracts(crate::contracts::Submission),
+    /// Submit an ordinary job that retains submitter requirement attributions.
+    SubmitAttributed {
+        /// Requested stock or standalone verification.
+        submission: Submission,
+        /// Canonical, non-empty submitter attributions.
+        requirements: Vec<crate::attribution::RequirementAttribution>,
+    },
+    /// Read attributed assurance for an ordinary job submitted with attributions.
+    AttributedAssurance {
+        /// Exact durable job identity.
+        id: String,
+    },
     /// Read bounded version-one proof observations using a resumable cursor.
     ProofEvents {
         /// Durable job identity.
@@ -300,6 +312,9 @@ pub enum Response {
         /// Requirement assurance view version; absent on older services.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         assurance_version: Option<u32>,
+        /// Ordinary-job requirement attribution view version; absent on older services.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        attribution_version: Option<u32>,
         /// Bounded mutation protocol, absent on older services.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         mutation_version: Option<u32>,
@@ -326,6 +341,8 @@ pub enum Response {
     Explanation(Box<crate::evidence::Explanation>),
     /// Snapshot-scoped contract-to-code evidence grouped by requirement identity.
     Assurance(Box<crate::assurance::View>),
+    /// Submitter-attributed ordinary Verus evidence; never neutral-contract assurance.
+    AttributedAssurance(Box<crate::attribution::View>),
     /// Independently retained immutable evidence.
     Baseline(Box<crate::evidence::Baseline>),
     /// Immutable baseline names.
@@ -692,6 +709,74 @@ impl Client {
             _ => Err(io::Error::other(
                 "SAIL3143: invalid assurance response attribution",
             )),
+        }
+    }
+
+    /// Submit an ordinary stock or standalone job with submitter requirement
+    /// attributions, only after explicit capability negotiation.
+    ///
+    /// # Errors
+    /// Refuses older services, unsupported modes and invalid attributions
+    /// without falling back to an unattributed submission.
+    pub fn submit_attributed(
+        &self,
+        submission: Submission,
+        requirements: Vec<crate::attribution::RequirementAttribution>,
+    ) -> io::Result<Status> {
+        let requirements = crate::attribution::canonical(requirements).map_err(io::Error::other)?;
+        if !crate::attribution::mode_supported(&submission.mode) {
+            return Err(io::Error::other(
+                "SAIL3160: requirement attribution applies only to stock and standalone jobs",
+            ));
+        }
+        self.require_attribution()?;
+        match self.call(&Request::SubmitAttributed {
+            submission,
+            requirements,
+        })? {
+            Response::Status(status) => Ok(status),
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other(
+                "SAIL3160: unexpected attributed submission response",
+            )),
+        }
+    }
+
+    /// Read submitter-attributed ordinary Verus evidence after version negotiation.
+    ///
+    /// # Errors
+    /// Refuses unsupported services, unknown or unattributed jobs and invalid evidence.
+    pub fn attributed_assurance(&self, id: &str) -> io::Result<crate::attribution::View> {
+        if id.is_empty() || id.len() > 256 || id.contains('\0') {
+            return Err(io::Error::other("SAIL3160: invalid assurance job identity"));
+        }
+        self.require_attribution()?;
+        match self.call(&Request::AttributedAssurance { id: id.into() })? {
+            Response::AttributedAssurance(view)
+                if view.version == crate::attribution::VERSION && view.job_id == id =>
+            {
+                Ok(*view)
+            }
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other(
+                "SAIL3160: invalid attributed assurance response",
+            )),
+        }
+    }
+
+    fn require_attribution(&self) -> io::Result<()> {
+        if matches!(
+            self.call(&Request::Capabilities)?,
+            Response::Capabilities {
+                attribution_version: Some(crate::attribution::VERSION),
+                ..
+            }
+        ) {
+            Ok(())
+        } else {
+            Err(io::Error::other(
+                "SAIL3160: endpoint does not support requirement attribution; restart Sail's daemon",
+            ))
         }
     }
 

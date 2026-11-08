@@ -7,7 +7,7 @@ pub(super) fn definitions() -> Vec<Value> {
     let string = || json!({"type":"string","minLength":1});
     let target = json!({"type":"object","additionalProperties":false,"required":["job_id","package_id","target","kind","function"],"properties":{"job_id":string(),"package_id":string(),"target":string(),"kind":{"type":"string","enum":["lib","bin"]},"function":string(),"obligation":string()}});
     vec![
-        json!({"name":"requirement_assurance","title":"Read requirement assurance","description":"Experimental: integration tool. Read versioned contract-to-code evidence grouped by requirement identity for an exact neutral source job. Source-snapshot scope, unknown live currentness, actual tiers and mutation limitations remain explicit.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string()}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
+        json!({"name":"requirement_assurance","title":"Read requirement assurance","description":"Experimental: integration tool. Read versioned contract-to-code evidence grouped by requirement identity for an exact neutral source job. Source-snapshot scope, unknown live currentness, actual tiers and mutation limitations remain explicit.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"attributed":{"type":"boolean","description":"Read submitter-attributed ordinary Verus evidence for a job started with requirements; never neutral-contract assurance."}}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"verification_events","title":"Read proof observations","description":"Read one bounded page from proof stream v1. Resume using next.stream_id/after. Gap is explicit; early observations remain provisional. Completed target reports independently seal final proof evidence.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"stream_id":string(),"after":{"type":"integer","minimum":0}}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"explain_failure","title":"Explain exact failure evidence","description":"Return a function/obligation report, raw models, diagnostics and establishing provenance for an exact package/target/kind identity. Unattributed diagnostics remain explicitly unattributed. No proof edits are generated.","inputSchema":target,"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"compare_verification","title":"Compare verification evidence","description":"Compare a completed job with an explicit earlier job or immutable named baseline. Scope/configuration mismatches are descriptive, never labelled proof regressions; partial scopes cannot prove removal.","inputSchema":{"type":"object","additionalProperties":false,"required":["after_job"],"properties":{"after_job":string(),"before_job":string(),"baseline":baseline_schema()}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
@@ -100,12 +100,22 @@ fn requested_baseline_matches(name: &str, args: &Map<String, Value>, document: &
         _ => true,
     }
 }
+/// `assurance JOB [--attributed]`: attributed ordinary evidence is opt-in.
+fn assurance(args: &Map<String, Value>) -> Result<Vec<String>, String> {
+    let mut out = vec!["assurance".into(), value(args, "job_id")?];
+    match args.get("attributed") {
+        None | Some(Value::Bool(false)) => {}
+        Some(Value::Bool(true)) => out.push("--attributed".into()),
+        Some(_) => return Err("attributed must be a boolean".into()),
+    }
+    Ok(out)
+}
 fn arguments(
     name: &str,
     args: &Map<String, Value>,
 ) -> Result<(Vec<String>, Option<String>), String> {
     let allowed: &[&str] = match name {
-        "requirement_assurance" => &["job_id"],
+        "requirement_assurance" => &["job_id", "attributed"],
         "verification_events" => &["job_id", "stream_id", "after"],
         "explain_failure" => &[
             "job_id",
@@ -136,7 +146,7 @@ fn arguments(
         return Err(format!("unknown argument {key}"));
     }
     let out = match name {
-        "requirement_assurance" => vec!["assurance".into(), value(args, "job_id")?],
+        "requirement_assurance" => assurance(args)?,
         "save_baseline" => vec![
             "baseline".into(),
             "save".into(),
@@ -308,6 +318,9 @@ fn valid(name: &str, document: &Value) -> bool {
             if view.version == sail_api::assurance::VERSION
                 && view.currentness == sail_api::project::Currentness::Unknown
                 && !view.job_id.is_empty())
+                || matches!(serde_json::from_value::<sail_api::jobs::Response>(document.clone()),
+            Ok(sail_api::jobs::Response::AttributedAssurance(view))
+            if view.version == sail_api::attribution::VERSION && !view.job_id.is_empty())
         }
         "verification_events" => serde_json::from_value::<sail_api::proof::Page>(document.clone())
             .is_ok_and(|page| page.version == 1),
@@ -389,6 +402,34 @@ mod tests {
             )
             .is_err()
         );
+        assert_eq!(
+            arguments(
+                "requirement_assurance",
+                json!({"job_id":"job-123","attributed":true})
+                    .as_object()
+                    .ok_or("args")?
+            )?
+            .0,
+            vec!["assurance", "job-123", "--attributed", "--output", "json"]
+        );
+        assert!(
+            arguments(
+                "requirement_assurance",
+                json!({"job_id":"job-123","attributed":"yes"})
+                    .as_object()
+                    .ok_or("args")?
+            )
+            .is_err()
+        );
+        let attributed = serde_json::to_value(sail_api::jobs::Response::AttributedAssurance(
+            Box::new(sail_api::attribution::View {
+                version: sail_api::attribution::VERSION,
+                job_id: "job-123".into(),
+                currentness: sail_api::jobs::Currentness::Unknown,
+                requirements: Vec::new(),
+            }),
+        ))?;
+        assert!(valid("requirement_assurance", &attributed));
         Ok(())
     }
     fn parse(name: &str, value: &Value) -> Result<(Vec<String>, Option<String>), String> {

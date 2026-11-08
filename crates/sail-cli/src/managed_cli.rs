@@ -11,9 +11,11 @@ struct Options {
     background: bool,
     json: bool,
     args: Vec<String>,
+    requirements: Vec<sail_api::attribution::RequirementAttribution>,
 }
 
-/// Sail's own options before any `--`: `--background` and `--output json`.
+/// Sail's own options before any `--`: `--background`, `--output json` and
+/// `--requirement ID=FUNCTION` (background jobs only).
 /// (`--incremental` is removed earlier; `--engine` is read with the
 /// arguments by [`crate::jobs::engine_options`].) Everything else goes to
 /// `cargo verus verify`.
@@ -22,6 +24,7 @@ fn options(args: &[String]) -> Result<Options, (&'static str, String)> {
         background: false,
         json: false,
         args: Vec::new(),
+        requirements: Vec::new(),
     };
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
@@ -32,6 +35,16 @@ fn options(args: &[String]) -> Result<Options, (&'static str, String)> {
                 break;
             }
             "--background" => result.background = true,
+            "--requirement" => {
+                result
+                    .requirements
+                    .push(requirement(iter.next().map(String::as_str))?);
+            }
+            other if other.starts_with("--requirement=") => {
+                result
+                    .requirements
+                    .push(requirement(Some(&other["--requirement=".len()..]))?);
+            }
             "--output" | "--output=json" => {
                 let format = if arg == "--output" {
                     iter.next().map(String::as_str)
@@ -61,7 +74,31 @@ fn options(args: &[String]) -> Result<Options, (&'static str, String)> {
             _ => result.args.push(arg.clone()),
         }
     }
+    if !result.requirements.is_empty() && !result.background {
+        return Err((
+            "SAIL3160",
+            "--requirement attributes a durable job and requires --background".to_owned(),
+        ));
+    }
     Ok(result)
+}
+
+/// One `ID=FUNCTION` submitter attribution; the function is the exact
+/// crate-qualified name the verifier reports.
+fn requirement(
+    value: Option<&str>,
+) -> Result<sail_api::attribution::RequirementAttribution, (&'static str, String)> {
+    let (requirement_id, function) = value
+        .and_then(|value| value.rsplit_once('='))
+        .filter(|(id, function)| !id.is_empty() && !function.is_empty())
+        .ok_or((
+            "SAIL3160",
+            "--requirement requires ID=FUNCTION, for example REQ-1=demo::checksum".to_owned(),
+        ))?;
+    Ok(sail_api::attribution::RequirementAttribution {
+        requirement_id: requirement_id.to_owned(),
+        function: function.to_owned(),
+    })
 }
 
 /// The Cargo managed verification runs in `workspace`, and the toolchain it
@@ -273,7 +310,7 @@ pub(crate) fn verify(
         if options.json {
             args.splice(0..0, ["--output".into(), "json".into()]);
         }
-        return crate::jobs::background(&args, out, err);
+        return crate::jobs::background(&args, options.requirements, out, err);
     }
     let worker = std::env::var_os("SAIL_JOB_GUARD_PARENT").is_some_and(|v| v == "1");
     if worker {
@@ -393,6 +430,39 @@ mod tests {
     fn only_json_output_is_known() {
         for bad in [&["--output", "yaml"][..], &["--output"], &["--output=yaml"]] {
             assert_eq!(options(&args(bad)).err().map(|e| e.0), Some("SAIL0106"));
+        }
+    }
+
+    #[test]
+    fn requirement_attributions_are_background_only_id_function_pairs() {
+        let o = options(&args(&[
+            "--background",
+            "--requirement",
+            "REQ=1=demo::f",
+            "--requirement=REQ-2=demo::g",
+            "-p",
+            "demo",
+        ]))
+        .unwrap_or_else(|e| unreachable!("fixture: {e:?}"));
+        let pairs: Vec<_> = o
+            .requirements
+            .iter()
+            .map(|r| (r.requirement_id.as_str(), r.function.as_str()))
+            .collect();
+        assert_eq!(pairs, [("REQ=1", "demo::f"), ("REQ-2", "demo::g")]);
+        assert_eq!(o.args, ["-p", "demo"]);
+        for bad in [
+            &["--requirement", "REQ-1=demo::f"][..],
+            &["--background", "--requirement"],
+            &["--background", "--requirement", "REQ-1"],
+            &["--background", "--requirement=REQ-1="],
+            &["--background", "--requirement==demo::f"],
+        ] {
+            assert_eq!(
+                options(&args(bad)).err().map(|e| e.0),
+                Some("SAIL3160"),
+                "{bad:?}"
+            );
         }
     }
 }

@@ -92,7 +92,11 @@ implementation correctness. See [ADR 0068](decisions/0068-runtime-daemon.md).
 requirement groups from a completed neutral source job. It reports exact source
 relationships, conservative proof outcomes, original solver identities and
 explicit missing assurance. This read negotiates its own capability and fails
-for older services; it never synthesizes evidence or runs a verifier. See
+for older services; it never synthesizes evidence or runs a verifier. With
+`"attributed": true` it reads an ordinary job submitted through
+`start_verification` with a `requirements` array of
+`{"requirement_id","function"}` objects. Those rows are submitter-attributed
+Verus evidence, never neutral-contract assurance. See
 [requirement assurance](requirement-assurance.md).
 
 Tool replies are agent-sized by default; see [reply size](#reply-size-and-detail).

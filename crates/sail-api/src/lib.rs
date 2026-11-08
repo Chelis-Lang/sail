@@ -22,6 +22,7 @@ pub mod acceptance;
 mod acceptance_sort;
 /// Requirement-aware evidence views with explicit scope, strength and establishment.
 pub mod assurance;
+pub mod attribution;
 pub mod evidence;
 pub mod jobs;
 pub mod literal_witness;

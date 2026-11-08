@@ -128,11 +128,11 @@ pub struct View {
     pub requirements: Vec<Requirement>,
 }
 
-fn digest(bytes: &[u8]) -> String {
+pub(crate) fn digest(bytes: &[u8]) -> String {
     sail_key::QueryKey(sail_key::sha256(bytes)).to_string()
 }
 
-fn valid_digest(value: &str) -> bool {
+pub(crate) fn valid_digest(value: &str) -> bool {
     value.len() == 64
         && value
             .bytes()
@@ -194,22 +194,7 @@ pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
         }
     }
     let backend_sha256 = digest(&serde_json::to_vec(&backend).map_err(|_| invalid())?);
-    let mut solvers = BTreeMap::new();
-    let mut complete_identity =
-        !backend.targets.is_empty() && valid_digest(&backend.context_sha256);
-    for target in &backend.targets {
-        if let Some(solver) = &target.report.solver {
-            complete_identity &= !solver.name.is_empty()
-                && solver.version.as_ref().is_some_and(|v| !v.is_empty())
-                && solver.sha256.as_deref().is_some_and(valid_digest);
-            solvers.insert(
-                serde_json::to_string(solver).map_err(|_| invalid())?,
-                solver.clone(),
-            );
-        } else {
-            complete_identity = false;
-        }
-    }
+    let (complete_identity, solvers) = solver_identities(&backend).map_err(|()| invalid())?;
     let confirmed = contracts.proof.state == ProofState::Proved && complete_identity;
     let mut grouped: BTreeMap<String, Vec<Evidence>> = BTreeMap::new();
     for binding in &manifest.bindings {
@@ -220,14 +205,10 @@ pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
                 manifest.version, manifest.arithmetic
             ),
             "neutral source translation and the pinned Verus/SMT toolchain are trusted".into(),
-            "contract-to-requirement entailment and required-input feasibility are not established"
-                .into(),
-            "mutation assurance and termination are not established by this result".into(),
         ];
+        qualifiers.extend(SHARED_QUALIFIERS.map(String::from));
         if !complete_identity {
-            qualifiers.push(
-                "complete original solver identity is unavailable; no tier is established".into(),
-            );
+            qualifiers.push(NO_IDENTITY_QUALIFIER.into());
         }
         qualifiers.sort();
         let identity = serde_json::to_vec(&(
@@ -252,7 +233,7 @@ pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
                 establishment: confirmed.then_some(EstablishmentName::Confirmed),
                 tier: confirmed.then_some(EvidenceTier::SmtVerified),
                 scope: Scope::SourceSnapshot,
-                solvers: solvers.values().cloned().collect(),
+                solvers: solvers.clone(),
                 qualifiers,
                 mutation: MutationStatus::NotEstablished,
             });
@@ -283,6 +264,34 @@ pub fn observed_contract_proof(
     manifest: &LoweringManifest,
     backend: &ProjectResult,
 ) -> ContractProof {
+    let (checks, reasons) = check_counts(backend);
+    let targets = requested_targets(backend);
+    let mut proved = BTreeSet::new();
+    for binding in &manifest.bindings {
+        if exactly_one_proved(&targets, &binding.lowered_function) {
+            proved.insert(binding.lowered_function.clone());
+        }
+    }
+    let complete = run_complete(backend, &checks)
+        && !manifest.bindings.is_empty()
+        && manifest
+            .bindings
+            .iter()
+            .all(|b| proved.contains(&b.lowered_function));
+    ContractProof {
+        state: if complete {
+            ProofState::Proved
+        } else {
+            ProofState::NotProved
+        },
+        checks,
+        unknown_reasons: reasons.into_iter().collect(),
+        proved_functions: proved.into_iter().collect(),
+    }
+}
+
+/// Every recorded check answer, including advisory obligations and dependency targets.
+pub(crate) fn check_counts(backend: &ProjectResult) -> (CheckCounts, BTreeSet<String>) {
     let mut checks = CheckCounts::default();
     let mut reasons = BTreeSet::new();
     for check in backend
@@ -307,24 +316,28 @@ pub fn observed_contract_proof(
         }
         checks.missing_source += usize::from(check.source.is_none());
     }
-    let targets = backend
-        .targets
+    (checks, reasons)
+}
+
+pub(crate) fn requested_targets(backend: &ProjectResult) -> Vec<&crate::project::TargetResult> {
+    backend.targets.iter().filter(|t| t.requested).collect()
+}
+
+/// Whether exactly one requested-target function has this exact name and it is proved.
+pub(crate) fn exactly_one_proved(targets: &[&crate::project::TargetResult], name: &str) -> bool {
+    let matches = targets
         .iter()
-        .filter(|t| t.requested)
+        .flat_map(|t| &t.report.crates)
+        .flat_map(|c| &c.functions)
+        .filter(|f| f.function == name)
         .collect::<Vec<_>>();
-    let mut proved = BTreeSet::new();
-    for binding in &manifest.bindings {
-        let matches = targets
-            .iter()
-            .flat_map(|t| &t.report.crates)
-            .flat_map(|c| &c.functions)
-            .filter(|f| f.function == binding.lowered_function)
-            .collect::<Vec<_>>();
-        if matches.len() == 1 && function_proved(matches[0]) {
-            proved.insert(binding.lowered_function.clone());
-        }
-    }
-    let complete = backend.currentness == Currentness::Current
+    matches.len() == 1 && function_proved(matches[0])
+}
+
+/// Whole-run completeness: one passing function cannot promote an incomplete run.
+pub(crate) fn run_complete(backend: &ProjectResult, checks: &CheckCounts) -> bool {
+    let targets = requested_targets(backend);
+    backend.currentness == Currentness::Current
         && backend.error.is_none()
         && backend.no_reuse.is_none()
         && backend.exit_code == Some(0)
@@ -346,29 +359,45 @@ pub fn observed_contract_proof(
                         && c.verus.errors == Some(0)
                 })
         })
-        && !manifest.bindings.is_empty()
-        && manifest
-            .bindings
-            .iter()
-            .all(|b| proved.contains(&b.lowered_function))
         && checks.unsat > 0
         && checks.sat == 0
         && checks.unknown == 0
         && checks.missing_answer == 0
-        && checks.missing_source == 0;
-    ContractProof {
-        state: if complete {
-            ProofState::Proved
-        } else {
-            ProofState::NotProved
-        },
-        checks,
-        unknown_reasons: reasons.into_iter().collect(),
-        proved_functions: proved.into_iter().collect(),
-    }
+        && checks.missing_source == 0
 }
 
-fn function_proved(function: &FunctionReport) -> bool {
+/// Complete actual solver identity across every target, with the sorted distinct identities.
+pub(crate) fn solver_identities(backend: &ProjectResult) -> Result<(bool, Vec<SolverInfo>), ()> {
+    let mut solvers = BTreeMap::new();
+    let mut complete_identity =
+        !backend.targets.is_empty() && valid_digest(&backend.context_sha256);
+    for target in &backend.targets {
+        if let Some(solver) = &target.report.solver {
+            complete_identity &= !solver.name.is_empty()
+                && solver.version.as_ref().is_some_and(|v| !v.is_empty())
+                && solver.sha256.as_deref().is_some_and(valid_digest);
+            solvers.insert(
+                serde_json::to_string(solver).map_err(|_| ())?,
+                solver.clone(),
+            );
+        } else {
+            complete_identity = false;
+        }
+    }
+    Ok((complete_identity, solvers.into_values().collect()))
+}
+
+/// Qualifiers shared by every requirement assurance row, sorted by the caller.
+pub(crate) const SHARED_QUALIFIERS: [&str; 2] = [
+    "contract-to-requirement entailment and required-input feasibility are not established",
+    "mutation assurance and termination are not established by this result",
+];
+
+/// Added when solver identity is incomplete.
+pub(crate) const NO_IDENTITY_QUALIFIER: &str =
+    "complete original solver identity is unavailable; no tier is established";
+
+pub(crate) fn function_proved(function: &FunctionReport) -> bool {
     if function.verdict != VerdictName::Verified
         || function.establishment != EstablishmentName::Confirmed
         || function.unstable

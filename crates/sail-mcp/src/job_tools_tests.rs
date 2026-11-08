@@ -956,3 +956,30 @@ fn blocking_verify_cli_fallback_reads_status_then_result_once() {
         [reads, reads].concat()
     );
 }
+
+#[test]
+fn start_requirements_become_canonical_cli_attributions_or_are_refused() {
+    assert_eq!(requirement_flags(None), Ok(Vec::new()));
+    let given = json!([
+        {"requirement_id": "REQ-2", "function": "demo::b"},
+        {"requirement_id": "REQ-1", "function": "demo::a"}
+    ]);
+    assert_eq!(
+        requirement_flags(Some(&given)),
+        Ok(vec![
+            "--requirement".to_owned(),
+            "REQ-1=demo::a".to_owned(),
+            "--requirement".to_owned(),
+            "REQ-2=demo::b".to_owned(),
+        ])
+    );
+    for refused in [
+        json!([]),
+        json!([{"requirement_id": "R"}]),
+        json!([{"requirement_id": "R", "function": "f", "extra": 1}]),
+        json!([{"requirement_id": "R", "function": "a=b"}]),
+        json!("R=f"),
+    ] {
+        assert!(requirement_flags(Some(&refused)).is_err(), "{refused}");
+    }
+}
