@@ -88,7 +88,8 @@ fn private(path: &Path) -> bool {
         metadata.is_dir()
             && !metadata.file_type().is_symlink()
             && metadata.uid() == rustix::process::getuid().as_raw()
-            && metadata.mode() & 0o077 == 0
+            // No group or other permission bits (mode & 0o077 == 0).
+            && metadata.mode().trailing_zeros() >= 6
     })
 }
 
