@@ -41,10 +41,15 @@ from every parent of the directory it runs in, plus `config` and
 Sail keeps shadows in its cache (`neutral-contracts-v1`) when no parent of the
 cache has a Cargo configuration file. When one does, as with a cache under a
 home directory that has `~/.cargo/config.toml`, Sail places the shadows in a
-private per-user directory instead: `$XDG_RUNTIME_DIR/sail-neutral-contracts-v1`,
-else `sail-UID-neutral-contracts-v1` in the system temporary directory. Sail
-uses a directory only if it is a real directory owned by the current user,
-writable by no other user, and has no configured parent. Verifier build
+private per-user directory instead:
+`$XDG_RUNTIME_DIR/sail-CACHE-neutral-contracts-v1`, else
+`sail-UID-CACHE-neutral-contracts-v1` in the system temporary directory, where
+`CACHE` is a short digest of the cache's resolved path, so separate caches
+never share shadows. Sail uses a directory only if it is a real directory owned
+by the current user, with no access for other users, and has no configured
+parent. These directories are outside the cache's size accounting; they hold
+only generated source, manifests and lockfiles, and a cleared runtime
+directory is recreated on the next job. Verifier build
 output stays in the cache. The same refusal check still runs on the chosen
 shadow before and after every backend run.
 
@@ -52,7 +57,10 @@ The refusal names its cause:
 
 - A configured Cargo home (`CARGO_HOME`, else `$HOME/.cargo`): run the service
   with `CARGO_HOME` naming a Cargo home that has no configuration files.
-  Placement cannot avoid this file.
+  Placement cannot avoid this file. A new Cargo home starts with an empty
+  registry cache, so the first neutral job downloads the pinned `vstd`
+  dependency from crates.io; on an offline host, prepare that Cargo home's
+  registry while online first.
 - A configured parent with no private placement available: set
   `SAIL_CACHE_DIR` to a directory with no configured parent.
 

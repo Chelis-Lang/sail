@@ -328,6 +328,18 @@ mod tests {
                 Err(HOME_REFUSAL.to_owned())
             );
             std::fs::remove_file(home.join("config"))?;
+            // A configured `$HOME/.cargo` is the Cargo home only while
+            // CARGO_HOME is unset; naming a clean Cargo home admits the job.
+            let user = root.join("user");
+            std::fs::create_dir_all(user.join(".cargo"))?;
+            std::fs::write(user.join(".cargo/config.toml"), "[build]\n")?;
+            let mut inherited = BTreeMap::from([("HOME".into(), user.clone().into_os_string())]);
+            assert_eq!(
+                absent_configurations(&workspace, &inherited).map_err(|e| e.message),
+                Err(HOME_REFUSAL.to_owned())
+            );
+            inherited.insert("CARGO_HOME".into(), home.clone().into_os_string());
+            absent_configurations(&workspace, &inherited)?;
             std::fs::create_dir(workspace.join(".cargo"))?;
             // Even a dangling link cannot be treated as absent configuration.
             std::os::unix::fs::symlink(root.join("missing"), workspace.join(".cargo/config.toml"))?;
