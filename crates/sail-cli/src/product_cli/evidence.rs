@@ -11,14 +11,16 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
         let (json, rest) = output(args)?;
         let request = request(&rest)?;
         let client = crate::jobs::connect_or_start()?;
-        let response = if let Request::Assurance { id } = &request {
-            Response::Assurance(Box::new(
+        let response = match &request {
+            Request::Assurance { id } => Response::Assurance(Box::new(
                 client
                     .requirement_assurance(id)
                     .map_err(|e| e.to_string())?,
-            ))
-        } else {
-            super::call(&client, &request)?
+            )),
+            Request::AttributedAssurance { id } => Response::AttributedAssurance(Box::new(
+                client.attributed_assurance(id).map_err(|e| e.to_string())?,
+            )),
+            _ => super::call(&client, &request)?,
         };
         let text = if json {
             serde_json::to_string_pretty(&response).map_err(|error| error.to_string())?
@@ -60,7 +62,10 @@ fn request(args: &[String]) -> Result<Request, String> {
             [_, id] if !id.is_empty() && !id.starts_with('-') => {
                 Ok(Request::Assurance { id: id.clone() })
             }
-            _ => Err("usage: assurance JOB [--output json]".into()),
+            [_, id, flag] if flag == "--attributed" && !id.is_empty() && !id.starts_with('-') => {
+                Ok(Request::AttributedAssurance { id: id.clone() })
+            }
+            _ => Err("usage: assurance JOB [--attributed] [--output json]".into()),
         },
         Some("explain") => explain(&args[1..]),
         Some("baseline") => match args.get(1).map(String::as_str) {
@@ -137,6 +142,29 @@ fn human(response: &Response) -> String {
             let mut text = format!(
                 "Requirement assurance for source job {} (snapshot evidence; live currentness unknown)",
                 view.job_id
+            );
+            for requirement in &view.requirements {
+                for evidence in &requirement.evidence {
+                    let _ = write!(
+                        text,
+                        "\n{} {}: {:?}, tier {:?}; mutation {:?}",
+                        requirement.requirement_id,
+                        evidence.function,
+                        evidence.outcome,
+                        evidence.tier,
+                        evidence.mutation
+                    );
+                    for qualifier in &evidence.qualifiers {
+                        let _ = write!(text, "\n  {qualifier}");
+                    }
+                }
+            }
+            text
+        }
+        Response::AttributedAssurance(view) => {
+            let mut text = format!(
+                "Submitter-attributed Verus evidence for job {} (not neutral-contract assurance; inputs {:?})",
+                view.job_id, view.currentness
             );
             for requirement in &view.requirements {
                 for evidence in &requirement.evidence {
@@ -254,10 +282,14 @@ mod tests {
         assert!(
             matches!(request(&arguments(&["assurance", "job-123"])), Ok(Request::Assurance { id }) if id == "job-123")
         );
+        assert!(
+            matches!(request(&arguments(&["assurance", "job-123", "--attributed"])), Ok(Request::AttributedAssurance { id }) if id == "job-123")
+        );
         for values in [
             vec!["assurance"],
             vec!["assurance", "--job"],
             vec!["assurance", "one", "two"],
+            vec!["assurance", "--attributed", "--attributed"],
         ] {
             assert!(request(&arguments(&values)).is_err());
         }

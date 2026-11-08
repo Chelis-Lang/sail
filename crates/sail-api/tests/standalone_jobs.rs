@@ -71,6 +71,7 @@ fn standalone_repair_refuses_a_service_without_the_exact_capability()
                 neutral_contracts_version: None,
                 neutral_contract_profiles: Vec::new(),
                 assurance_version: None,
+                attribution_version: None,
                 mutation_version: None,
             },
         )?;

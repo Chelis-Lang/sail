@@ -85,9 +85,38 @@ pub(crate) fn connect_or_start() -> Result<Client, String> {
 }
 
 pub(crate) fn submit(client: &Client, args: &[String]) -> Result<Status, String> {
+    attributed(client, args, Vec::new())
+}
+
+fn attributed(
+    client: &Client,
+    args: &[String],
+    requirements: Vec<sail_api::attribution::RequirementAttribution>,
+) -> Result<Status, String> {
     let args = strip_output(args)?;
     let (mode, args) = engine_options(&args)?;
-    submit_mode(client, args, mode)
+    if requirements.is_empty() {
+        return submit_mode(client, args, mode);
+    }
+    client
+        .submit_attributed(submission(args, mode)?, requirements)
+        .map_err(|error| error.to_string())
+}
+
+fn submission(args: Vec<String>, mode: Mode) -> Result<Submission, String> {
+    let project_dir = std::env::current_dir().map_err(|error| error.to_string())?;
+    // Submission must return a durable ID without Cargo metadata, dependency
+    // downloads or verifier setup. The worker establishes the complete revision.
+    // Unknown revisions cannot safely coalesce across intervening input edits.
+    let input_revision = None;
+    Ok(Submission {
+        mode,
+        project_dir,
+        args,
+        force: std::env::var("SAIL_MANAGED_FORCE").is_ok_and(|value| value == "1"),
+        environment: environment()?,
+        input_revision,
+    })
 }
 
 pub(crate) fn submit_mode(
@@ -95,19 +124,7 @@ pub(crate) fn submit_mode(
     args: Vec<String>,
     mode: Mode,
 ) -> Result<Status, String> {
-    let project_dir = std::env::current_dir().map_err(|error| error.to_string())?;
-    // Submission must return a durable ID without Cargo metadata, dependency
-    // downloads or verifier setup. The worker establishes the complete revision.
-    // Unknown revisions cannot safely coalesce across intervening input edits.
-    let input_revision = None;
-    let submission = Submission {
-        mode,
-        project_dir,
-        args,
-        force: std::env::var("SAIL_MANAGED_FORCE").is_ok_and(|value| value == "1"),
-        environment: environment()?,
-        input_revision,
-    };
+    let submission = submission(args, mode)?;
     match client
         .call(&Request::Submit { submission })
         .map_err(|error| error.to_string())?
@@ -157,12 +174,17 @@ pub(crate) fn strip_output(args: &[String]) -> Result<Vec<String>, String> {
 }
 
 /// Submits verification and immediately returns its durable job identity.
-pub(crate) fn background(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
+pub(crate) fn background(
+    args: &[String],
+    requirements: Vec<sail_api::attribution::RequirementAttribution>,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> ExitCode {
     let json = args
         .iter()
         .take_while(|arg| arg.as_str() != "--")
         .any(|arg| arg == "--output" || arg == "--output=json" || arg == "--json");
-    match connect_or_start().and_then(|client| submit(&client, args)) {
+    match connect_or_start().and_then(|client| attributed(&client, args, requirements)) {
         Ok(status) => {
             let text = if json {
                 serde_json::to_string(&status).unwrap_or_default()

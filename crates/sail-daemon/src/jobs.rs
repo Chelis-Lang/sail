@@ -368,6 +368,7 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
             neutral_contracts_version: Some(sail_api::contracts::VERSION),
             neutral_contract_profiles: vec![1, 2, 3],
             assurance_version: Some(sail_api::assurance::VERSION),
+            attribution_version: Some(sail_api::attribution::VERSION),
             mutation_version: Some(sail_api::mutation::VERSION),
         }),
         Request::SubmitMutation(submission) => {
@@ -401,6 +402,17 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
                 mutation::attach(state, &id, &mut view)?;
                 Ok(Response::Assurance(Box::new(view)))
             }),
+        Request::AttributedAssurance { id } => get(state, &id).and_then(|job| {
+            if job.contracts.is_some() || job.requirements.is_empty() {
+                return Err(io::Error::other(
+                    "SAIL3160: job was not submitted with requirement attributions",
+                ));
+            }
+            let document = store::result(state, &job)?;
+            sail_api::attribution::from_project_result(&document, &job.requirements)
+                .map(|view| Response::AttributedAssurance(Box::new(view)))
+                .map_err(io::Error::other)
+        }),
         Request::ProofEvents { id, cursor, limit } => get(state, &id)
             .and_then(|job| {
                 state.proofs.page(
@@ -431,7 +443,24 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
         Request::SubmitContracts(submission) => {
             contracts::submit(state, &submission).map(Response::Status)
         }
-        Request::Submit { submission } => submit(state, submission).map(Response::Status),
+        Request::Submit { submission } => {
+            submit(state, submission, Vec::new()).map(Response::Status)
+        }
+        Request::SubmitAttributed {
+            submission,
+            requirements,
+        } => sail_api::attribution::canonical(requirements)
+            .map_err(io::Error::other)
+            .and_then(|requirements| {
+                if sail_api::attribution::mode_supported(&submission.mode) {
+                    submit(state, submission, requirements)
+                } else {
+                    Err(io::Error::other(
+                        "SAIL3160: requirement attribution applies only to stock and standalone jobs",
+                    ))
+                }
+            })
+            .map(Response::Status),
         Request::List { project_dir } => list(state, project_dir.as_deref()).map(Response::List),
         Request::Status { id } => get(state, &id)
             .and_then(|job| store::status(state, &job))
@@ -491,7 +520,11 @@ fn get(state: &State, id: &str) -> io::Result<Stored> {
         .cloned()
         .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "SAIL0805: unknown job"))
 }
-fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
+fn submit(
+    state: &State,
+    mut submission: Submission,
+    requirements: Vec<sail_api::attribution::RequirementAttribution>,
+) -> io::Result<Status> {
     if state.stop.load(Ordering::SeqCst) {
         return Err(io::Error::other("SAIL0815: job service is stopping"));
     }
@@ -519,6 +552,7 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
             && job.contracts.is_none()
             && submission.input_revision.is_some()
             && job.submission == submission
+            && job.requirements == requirements
     }) {
         return Ok(job.status.clone());
     }
@@ -530,7 +564,8 @@ fn submit(state: &State, mut submission: Submission) -> io::Result<Status> {
     {
         return Err(io::Error::other("SAIL0815: job queue is full"));
     }
-    let job = Stored::new(submission);
+    let mut job = Stored::new(submission);
+    job.requirements = requirements;
     let id = job.status.id.clone();
     store::save(&state.root, &job)?;
     let status = job.status.clone();

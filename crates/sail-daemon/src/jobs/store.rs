@@ -27,6 +27,9 @@ pub(super) struct Stored {
     pub contracts: Option<sail_api::contracts::Submission>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub projection: Option<Projection>,
+    /// Canonical submitter attributions; absent from unattributed records.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub requirements: Vec<sail_api::attribution::RequirementAttribution>,
     #[serde(skip)]
     pub cancel: Arc<AtomicBool>,
 }
@@ -92,6 +95,7 @@ impl Stored {
             submission,
             contracts: None,
             projection: None,
+            requirements: Vec::new(),
             cancel: Arc::new(AtomicBool::new(false)),
         }
     }

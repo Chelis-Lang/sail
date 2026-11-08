@@ -37,6 +37,7 @@ RESOURCES = {
         "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.v1-manifest.json",
         "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs",
         "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.v1-manifest.json",
+        "crates/sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json",
     ),
     "sail-mcp": (
         "crates/sail-cli/tests/fixtures/attr/report.golden.json",

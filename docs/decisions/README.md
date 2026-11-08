@@ -119,3 +119,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0101: D.I.V.E. behind a default-off build flag](0101-dive-behind-a-default-off-flag.md) (accepted; extension workspace is the flag, main-gate lock and publish guards, flip queued)
 
 - [0103: Scoped lifting of the neutral-widening hold](0103-scoped-neutral-widening.md) (accepted by owner; named items only, under explicit profile three)
+
+- [0104: Submitter requirement attribution for ordinary Verus jobs](0104-ordinary-job-requirement-attribution.md) (accepted; separate negotiated view, never neutral assurance)

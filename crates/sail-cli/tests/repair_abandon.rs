@@ -56,6 +56,7 @@ fn fake_service(
                 neutral_contracts_version: None,
                 neutral_contract_profiles: vec![1, 2],
                 assurance_version: None,
+                attribution_version: None,
                 mutation_version: None,
                 proof_version: 1,
                 repair: true,

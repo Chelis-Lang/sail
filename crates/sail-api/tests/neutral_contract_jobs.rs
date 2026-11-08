@@ -121,6 +121,7 @@ fn absent_or_future_capability_refuses_before_any_submission() -> TestResult {
                     neutral_contracts_version: version,
                     neutral_contract_profiles: vec![1, 2],
                     assurance_version: None,
+                    attribution_version: None,
                     mutation_version: None,
                 },
             )?;
@@ -181,6 +182,7 @@ fn profile_two_refuses_endpoint_without_explicit_profile_support() -> TestResult
                 neutral_contracts_version: Some(1),
                 neutral_contract_profiles: vec![],
                 assurance_version: None,
+                attribution_version: None,
                 mutation_version: None,
                 repair: false,
                 standalone: false,

@@ -34,6 +34,48 @@ claim.
 The client negotiates `assurance_version = 2`. Older endpoints fail explicitly
 without a fallback or synthesized view. This read interface applies to admitted
 [neutral source jobs](neutral-contract-jobs.md). It does not reinterpret ordinary
-project jobs, generic baseline comparisons or historical temporal evidence.
+project jobs (see [ordinary Verus jobs](#ordinary-verus-jobs)), generic baseline comparisons or historical temporal evidence.
 
 The [decision](decisions/0072-requirement-assurance.md) records the trust boundary.
+
+## Ordinary Verus jobs
+
+An ordinary `sail verify` job proves the submitted Verus source against its own
+specifications. A submitter can attach requirement IDs to exact functions when
+it submits the job:
+
+```sh
+sail verify --background --output json \
+  --requirement REQ-1=demo::checksum --requirement REQ-2=demo::parse
+sail assurance JOB --attributed --output json
+```
+
+Each `--requirement` names a requirement ID and the exact crate-qualified
+function name the verifier reports; the last `=` separates them. Attribution
+applies to stock project and standalone-file jobs submitted with
+`--background`, not to engine or repair jobs. The API is
+`sail_api::jobs::Client::submit_attributed` and
+`Client::attributed_assurance`; MCP accepts a `requirements` array on
+`start_verification` and `attributed: true` on `requirement_assurance`. The
+service retains the canonical, sorted attributions with the durable job and
+across restarts. Identical submissions coalesce only when their attributions
+also match.
+
+The version-one attributed view groups rows by requirement ID. Each row has the
+`verus-specification-to-code` relationship and the `submitter` attribution
+source. It never reports `contract-to-code` and is never neutral-contract
+assurance. A row is `Proved` only when the whole job completed, the verifier
+reported exactly one requested-target function with that exact name, and that
+function proved. A `confirmed`, `smt-verified` tier additionally needs actual
+original solver identities and inputs the service classifies as current. Every
+row carries the neutral view's shared qualifiers plus qualifiers stating that
+the link is an unchecked submitter claim, that no neutral contract was admitted
+or checked, and that the Verus specifications and toolchain are trusted. An
+unreported function, missing solver identity or non-current input adds its own
+qualifier and establishes no tier. Mutation status is always `not-established`.
+
+The client negotiates `attribution_version = 1` and fails for older services.
+Reading attributed evidence for a neutral job, or for a job submitted without
+attributions, fails with `SAIL3160`. The
+[decision](decisions/0104-ordinary-job-requirement-attribution.md) records the
+trust boundary.
