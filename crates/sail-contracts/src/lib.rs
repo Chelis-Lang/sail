@@ -50,6 +50,30 @@ use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 pub use sail_contracts_macros::{ensures, requirement, requires, satisfies};
 
+/// Declare the invariants of a contracted `while` loop as the first statement of
+/// its body. Neutral lowering verifies them; they are type checked but never
+/// evaluated at runtime.
+#[macro_export]
+macro_rules! invariant {
+    ($($condition:expr),+ $(,)?) => {
+        if false {
+            $(let _: bool = $condition;)+
+        }
+    };
+}
+
+/// Declare the termination measure of a contracted `while` loop, after any
+/// invariants. Neutral lowering verifies that it decreases and stays
+/// nonnegative; it is type checked but never evaluated at runtime.
+#[macro_export]
+macro_rules! decreases {
+    ($measure:expr $(,)?) => {
+        if false {
+            let _ = $measure;
+        }
+    };
+}
+
 /// Runtime mathematical specification integer, represented by checked `i128`.
 ///
 /// Verification uses mathematical integers. Runtime overflow stops execution;

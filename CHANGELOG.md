@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Admit `while` loops in neutral profile three bodies (ADR 0103). A loop body
+  starts with an optional `sail_contracts::invariant!` and one
+  `sail_contracts::decreases!`; lowering emits them as Verus `invariant` and
+  `decreases` clauses and adds nothing. `loop`, `for`, `break`, `continue` and
+  labels stay refused.
 - Admit calls to admitted contracted functions, `self` method calls, integer
   casts, shared borrows and literal or unit-variant `match` in neutral profile
   three bodies (ADR 0103). Recursive call cycles, library and predicate calls,
