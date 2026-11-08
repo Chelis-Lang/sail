@@ -89,6 +89,15 @@ fn attributed_rows_earn_tiers_only_from_complete_current_evidence() -> TestResul
         );
         assert_eq!(row.function_reported, reported, "{label}");
         assert_eq!(row.mutation, MutationStatus::NotEstablished);
+        // Only the failed recorded proof decodes model inputs, by source name.
+        let names: Vec<_> = row
+            .counterexample
+            .iter()
+            .flat_map(|d| &d.inputs)
+            .map(|i| i.name.as_str())
+            .collect();
+        let failed: &[&str] = &["input", "result"];
+        assert_eq!(names, if positive { &[][..] } else { failed }, "{label}");
         let outcome = if established {
             ProofState::Proved
         } else {
