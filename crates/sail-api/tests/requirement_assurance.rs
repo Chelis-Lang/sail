@@ -68,7 +68,10 @@ fn complete_recorded_proof_establishes_only_snapshot_contract_to_code() -> TestR
     assert_eq!(evidence.scope, Scope::SourceSnapshot);
     assert_eq!(evidence.mutation, MutationStatus::NotEstablished);
     assert_ne!(evidence.solvers, [] as [sail_api::output::SolverInfo; 0]);
-    assert_eq!(evidence.counterexample, None);
+    assert_eq!(
+        assurance::decoded_inputs(&document, &sail_api::counterexample::FieldNames::new())?.rows,
+        []
+    );
     assert!(evidence.qualifiers.iter().any(|q| q.contains("entailment")));
     assert!(
         evidence
@@ -91,9 +94,20 @@ fn recorded_unknown_is_not_a_refutation_or_an_established_tier() -> TestResult {
     assert_eq!(evidence.outcome, ProofState::NotProved);
     assert_eq!(evidence.establishment, None);
     assert_eq!(evidence.tier, None);
+    // The version-two view carries no decoded inputs, so a not-proved view
+    // keeps the shape recorded before decoding existed.
+    assert!(!serde_json::to_string(&view)?.contains("counterexample"));
     // The failed check's model decodes to source names; fuel and other internal
     // constants are dropped from the decoded view and stay in the raw model.
-    let decoded = evidence.counterexample.as_ref().ok_or("decoded inputs")?;
+    let inputs_view =
+        assurance::decoded_inputs(&document, &sail_api::counterexample::FieldNames::new())?;
+    assert_eq!(inputs_view.job_id, view.job_id);
+    let [row] = inputs_view.rows.as_slice() else {
+        return Err("one decoded row".into());
+    };
+    assert_eq!(row.obligation_id, evidence.obligation_id);
+    assert_eq!(row.requirement_id, view.requirements[0].requirement_id);
+    let decoded = &row.decoded;
     let inputs: Vec<_> = decoded
         .inputs
         .iter()
@@ -120,6 +134,48 @@ fn recorded_unknown_is_not_a_refutation_or_an_established_tier() -> TestResult {
     assert!(raw.contains("fuel%vstd") && raw.contains(&decoded.obligation));
     document.contracts.as_mut().ok_or("contracts")?.proof.state = ProofState::Proved;
     assert!(assurance::from_contract_result(&document).is_err());
+    assert!(
+        assurance::decoded_inputs(&document, &sail_api::counterexample::FieldNames::new()).is_err()
+    );
+    Ok(())
+}
+
+/// Field names change only the separate decoded view, never the assurance view
+/// that clients recompute from the result document.
+#[test]
+fn struct_field_names_never_change_the_recomputed_assurance_view() -> TestResult {
+    use sail_api::counterexample::{FieldNames, Value};
+    let mut document = recorded(false)?;
+    let model = &mut document.result.as_mut().ok_or("backend")?["targets"][0]["report"]["crates"]
+        [0]["functions"][0]["obligations"][0]["counterexample"]["assignments"];
+    let input = model
+        .as_array_mut()
+        .ok_or("assignments")?
+        .iter_mut()
+        .find(|a| a["name"] == "input!")
+        .ok_or("input!")?;
+    input["sort"] = "neutral!Row.".into();
+    input["value"] = "(neutral!Row./Row false 3)".into();
+    input["itf"] = serde_json::json!({"#unserializable": "(neutral!Row./Row false 3)"});
+    let view = assurance::from_contract_result(&document)?;
+    let named = FieldNames::from([("Row".into(), vec!["flag".into(), "count".into()])]);
+    let field_names = |names: &FieldNames| -> TestResult<Vec<String>> {
+        let decoded = assurance::decoded_inputs(&document, names)?;
+        let input = decoded.rows[0]
+            .decoded
+            .inputs
+            .iter()
+            .find(|i| i.name == "input")
+            .ok_or("decoded input")?;
+        match &input.value {
+            Value::Record { fields, .. } => Ok(fields.iter().map(|f| f.name.clone()).collect()),
+            Value::Scalar { .. } => Err("record".into()),
+        }
+    };
+    assert_eq!(field_names(&named)?, ["flag", "count"]);
+    assert_eq!(field_names(&FieldNames::new())?, ["0", "1"]);
+    let stored: assurance::View = serde_json::from_slice(&serde_json::to_vec(&view)?)?;
+    assert_eq!(stored, assurance::from_contract_result(&document)?);
     Ok(())
 }
 

@@ -109,7 +109,7 @@ fn validate_assurance(
     let digest = sha(source.as_bytes());
     let assurance = client.requirement_assurance(&document.job.id)?;
     let fields = sail_verus::contracts::struct_field_names(source);
-    if assurance != sail_api::assurance::from_contract_result_named(document, &fields)?
+    if assurance != sail_api::assurance::from_contract_result(document)?
         || assurance.currentness != sail_api::project::Currentness::Unknown
         || assurance.requirements.is_empty()
         || assurance.requirements.iter().any(|requirement| {
@@ -125,7 +125,11 @@ fn validate_assurance(
     {
         return Err("assurance changed proof, snapshot scope or missing mutation evidence".into());
     }
-    validate_counterexample(label, &assurance)?;
+    let inputs = client.assurance_inputs(&document.job.id)?;
+    if inputs != sail_api::assurance::decoded_inputs(document, &fields)? {
+        return Err(format!("{label}: served decoded inputs differ from the recompute").into());
+    }
+    validate_counterexample(label, &assurance, &inputs)?;
     std::fs::write(
         output.join(format!("{label}.assurance.json")),
         serde_json::to_vec_pretty(&assurance)?,
@@ -235,10 +239,18 @@ fn one(
     Ok(job.id)
 }
 /// Failed rows decode source-named model inputs; proved rows carry none.
-fn validate_counterexample(label: &str, assurance: &sail_api::assurance::View) -> TestResult {
+fn validate_counterexample(
+    label: &str,
+    assurance: &sail_api::assurance::View,
+    inputs: &sail_api::counterexample::View,
+) -> TestResult {
     use sail_api::counterexample::Value;
     for row in assurance.requirements.iter().flat_map(|r| &r.evidence) {
-        let decoded = row.counterexample.as_ref();
+        let decoded = inputs
+            .rows
+            .iter()
+            .find(|r| r.obligation_id == row.obligation_id)
+            .map(|r| &r.decoded);
         let names: Vec<&str> = decoded
             .iter()
             .flat_map(|d| &d.inputs)

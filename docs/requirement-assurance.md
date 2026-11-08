@@ -21,17 +21,26 @@ identity receive no established tier. `NotProved` includes verifier unknowns and
 does not assert a concrete counterexample. One passing function cannot promote
 an incomplete whole-job result.
 
-A row that is not `Proved` can carry `counterexample`: the source-named inputs
-from the solver model of that function's first failed or unknown check. Sail
-keeps parameters and the return binder (Verus's `x!` constants), renders
-scalars in ITF, decodes struct values into records with fields named from the
-retained source, and reports how many internal constants (fuel, type
-identities, labels) it omitted. The raw model stays in the obligation's
-`counterexample` in the job result. The decoded values are not evaluated
-against the source, so they are not a validated concrete counterexample, and an
-unknown answer may give a partial or spurious model. Library consumers can
-decode any project report with `sail_api::counterexample::decode`. The
-[decision](decisions/0106-decoded-counterexample-inputs.md) records the limits.
+Decoded model inputs for the rows that are not `Proved` are a separate
+version-one view, so the version-two assurance view stays exactly reproducible
+from the job result with `sail_api::assurance::from_contract_result`, including
+views recorded before decoding existed. Read it with
+`sail assurance JOB --inputs --output json` or `Client::assurance_inputs`, after
+`counterexample_version = 1` negotiation. Each row names the requirement ID,
+obligation identity and function, and decodes the solver model of that
+function's first failed or unknown check. Sail keeps parameters and the return
+binder (constants Verus names `IDENT!`), renders scalars in ITF, decodes struct
+values into records with fields named from the retained source, and reports how
+many internal constants (fuel, type identities, labels) it omitted. Library
+consumers compute the same view with `sail_api::assurance::decoded_inputs`,
+supplying struct field names or accepting positional ones. The raw model stays
+in the obligation's `counterexample` in the job result. The decoded values are
+not evaluated against the source, so they are not a validated concrete
+counterexample, and an unknown answer may give a partial or spurious model.
+Decoded inputs never change an outcome, establishment or tier. Library
+consumers can decode any project report with `sail_api::counterexample::decode`.
+The [decision](decisions/0106-decoded-counterexample-inputs.md) records the
+limits.
 
 Source currentness is `unknown`: the service cannot establish that the caller's
 working files still match its immutable snapshot. Consumers must check the

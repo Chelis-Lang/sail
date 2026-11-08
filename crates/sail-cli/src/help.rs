@@ -54,7 +54,7 @@ USAGE:
 const HELP: &[(&str, &str)] = &[
     (
         "assurance",
-        "Read requirement-aware contract-to-code evidence for an exact neutral source job.\n\nUSAGE:\n    sail assurance JOB [--output json]\n\nThe view preserves source-snapshot scope, actual evidence tier and provenance.\nLive-source currentness, requirement entailment and mutation remain separate.\n",
+        "Read requirement-aware contract-to-code evidence for an exact neutral source job.\n\nUSAGE:\n    sail assurance JOB [--attributed | --inputs] [--output json]\n\nThe view preserves source-snapshot scope, actual evidence tier and provenance.\nLive-source currentness, requirement entailment and mutation remain separate.\n--attributed reads submitter-attributed evidence for an ordinary job.\n--inputs reads decoded solver-model inputs for rows that are not proved.\n",
     ),
     (
         "runtime",

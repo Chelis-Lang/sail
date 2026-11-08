@@ -15,11 +15,13 @@ semantic versioning once the API is published.
   three bodies (ADR 0103). Recursive call cycles, library and predicate calls,
   binding patterns, loops and macros stay refused. The runtime attributes
   accept the profile-three body syntax.
-- Decode source-named counterexample inputs (ADR 0106): neutral and attributed
+- Decode source-named counterexample inputs (ADR 0106): a separate view
+  (`sail assurance JOB --inputs`, `Client::assurance_inputs`) and attributed
   assurance rows that are not proved carry the parameters, return binder and
   named struct fields from the failed check's solver model, without fuel and
-  other internal constants. The raw model is retained, and decoded values are
-  never presented as a validated counterexample.
+  other internal constants. The version-two assurance view is unchanged and
+  stays reproducible from the job result. The raw model is retained, and decoded
+  values are never presented as a validated counterexample.
 - Attribute ordinary Verus jobs to requirements (ADR 0104):
   `sail verify --background --requirement ID=FUNCTION` retains submitter
   attributions, and `sail assurance JOB --attributed` reports conservative,
