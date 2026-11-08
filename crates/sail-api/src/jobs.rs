@@ -195,6 +195,11 @@ pub enum Request {
         /// Exact durable source-job identity.
         id: String,
     },
+    /// Read decoded model inputs for the not-proved rows of a neutral job's assurance.
+    AssuranceInputs {
+        /// Exact durable source-job identity.
+        id: String,
+    },
     /// Submit exact neutral source with Sail-owned execution controls.
     SubmitContracts(crate::contracts::Submission),
     /// Submit an ordinary job that retains submitter requirement attributions.
@@ -315,6 +320,9 @@ pub enum Response {
         /// Ordinary-job requirement attribution view version; absent on older services.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         attribution_version: Option<u32>,
+        /// Decoded assurance input view version; absent on older services.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        counterexample_version: Option<u32>,
         /// Bounded mutation protocol, absent on older services.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         mutation_version: Option<u32>,
@@ -343,6 +351,8 @@ pub enum Response {
     Assurance(Box<crate::assurance::View>),
     /// Submitter-attributed ordinary Verus evidence; never neutral-contract assurance.
     AttributedAssurance(Box<crate::attribution::View>),
+    /// Decoded solver-model inputs for not-proved neutral assurance rows.
+    AssuranceInputs(Box<crate::counterexample::View>),
     /// Independently retained immutable evidence.
     Baseline(Box<crate::evidence::Baseline>),
     /// Immutable baseline names.
@@ -708,6 +718,40 @@ impl Client {
             Response::Error(message) => Err(io::Error::other(message)),
             _ => Err(io::Error::other(
                 "SAIL3143: invalid assurance response attribution",
+            )),
+        }
+    }
+
+    /// Read decoded solver-model inputs for the not-proved rows of a neutral
+    /// job's requirement assurance, after version negotiation. The service names
+    /// struct fields from the retained source.
+    ///
+    /// # Errors
+    /// Refuses unsupported services, unknown jobs and invalid stored evidence.
+    pub fn assurance_inputs(&self, id: &str) -> io::Result<crate::counterexample::View> {
+        if id.is_empty() || id.len() > 256 || id.contains('\0') {
+            return Err(io::Error::other("SAIL3143: invalid assurance job identity"));
+        }
+        if !matches!(
+            self.call(&Request::Capabilities)?,
+            Response::Capabilities {
+                counterexample_version: Some(crate::counterexample::VERSION),
+                ..
+            }
+        ) {
+            return Err(io::Error::other(
+                "SAIL3143: endpoint does not support decoded assurance inputs",
+            ));
+        }
+        match self.call(&Request::AssuranceInputs { id: id.into() })? {
+            Response::AssuranceInputs(view)
+                if view.version == crate::counterexample::VERSION && view.job_id == id =>
+            {
+                Ok(*view)
+            }
+            Response::Error(message) => Err(io::Error::other(message)),
+            _ => Err(io::Error::other(
+                "SAIL3143: invalid decoded assurance input response",
             )),
         }
     }

@@ -369,6 +369,7 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
             neutral_contract_profiles: vec![1, 2, 3],
             assurance_version: Some(sail_api::assurance::VERSION),
             attribution_version: Some(sail_api::attribution::VERSION),
+            counterexample_version: Some(sail_api::counterexample::VERSION),
             mutation_version: Some(sail_api::mutation::VERSION),
         }),
         Request::SubmitMutation(submission) => {
@@ -394,19 +395,24 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
             mutation::cancel(state, &id).map(|view| Response::Mutation(Box::new(view)))
         }
         Request::Assurance { id } => get(state, &id)
-            .and_then(|job| {
-                let document = store::result(state, &job)?;
-                // Decoded struct fields take their names from the retained source.
-                let fields = contracts::source(state, &job)
-                    .map(|source| sail_verus::contracts::struct_field_names(&source.source))
-                    .unwrap_or_default();
-                sail_api::assurance::from_contract_result_named(&document, &fields)
-                    .map_err(io::Error::other)
+            .and_then(|job| store::result(state, &job))
+            .and_then(|document| {
+                sail_api::assurance::from_contract_result(&document).map_err(io::Error::other)
             })
             .and_then(|mut view| {
                 mutation::attach(state, &id, &mut view)?;
                 Ok(Response::Assurance(Box::new(view)))
             }),
+        Request::AssuranceInputs { id } => get(state, &id).and_then(|job| {
+            let document = store::result(state, &job)?;
+            // Decoded struct fields take their names from the retained source.
+            let fields = contracts::source(state, &job)
+                .map(|source| sail_verus::contracts::struct_field_names(&source.source))
+                .unwrap_or_default();
+            sail_api::assurance::decoded_inputs(&document, &fields)
+                .map(|view| Response::AssuranceInputs(Box::new(view)))
+                .map_err(io::Error::other)
+        }),
         Request::AttributedAssurance { id } => get(state, &id).and_then(|job| {
             if job.contracts.is_some() || job.requirements.is_empty() {
                 return Err(io::Error::other(

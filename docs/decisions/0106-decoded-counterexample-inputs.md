@@ -18,16 +18,20 @@ this decoding themselves.
 
 - Add `sail_api::counterexample` (version 1). `decode` takes a function report
   and the struct field names in declaration order. From the first failed or
-  unknown non-advisory obligation with a model, it keeps only constants named
-  `IDENT!`: parameters and the return binder. It renders scalars in ITF and
-  constructor terms as records whose fields follow the constructor's argument
-  order. It counts the omitted internal constants and never alters the raw
+  unknown non-advisory obligation with a model, it keeps only constants Verus
+  names `IDENT!`, which include parameters and the return binder. It renders
+  scalars in ITF and constructor terms as records whose fields follow the
+  constructor's argument order. It counts the omitted internal constants and never alters the raw
   model.
-- Neutral assurance rows that are not `Proved` carry the decoded inputs as an
-  optional `counterexample`. The service names struct fields from the
-  retained original source. `from_contract_result` names them by position and
-  `from_contract_result_named` accepts the names. Attributed ordinary-job rows
-  carry the same field, with positional field names.
+- Decoded inputs for neutral assurance rows that are not `Proved` are a
+  separate version-one view (`counterexample::View`), not a field of the
+  version-two assurance view. `assurance::decoded_inputs` computes it from the
+  result document and caller-supplied field names. The service reads it through
+  `Request::AssuranceInputs`, negotiated as `counterexample_version = 1`, and
+  names struct fields from the retained original source; the CLI reads it with
+  `sail assurance JOB --inputs`. Attributed ordinary-job rows carry the decoded
+  inputs in their own view, with positional field names, because that view
+  had no earlier records.
 - Every decoded value is labelled as the solver's model for one check. Sail does
   not evaluate it against the source, so it is not a validated concrete
   counterexample. An unknown answer adds a qualifier that the model may be
@@ -37,6 +41,10 @@ this decoding themselves.
 
 Requirement-level failures show the source values the solver chose without
 noise. Concrete refutation still needs the separate literal-witness validation.
-Proved rows and existing views serialize unchanged because the field is absent
-when empty. The decoded view and value types are likely to grow;
+The version-two assurance view is unchanged: a client that checks a served
+view against `from_contract_result` on the same result document still finds
+them equal, for proved and not-proved jobs and for views recorded before this
+decision. An earlier revision of this decision placed decoded inputs inside
+assurance rows, which broke that equality for not-proved jobs with a model; it
+was corrected before any release. The decoded view and value types are likely to grow;
 `#[non_exhaustive]` is a release-scope decision for the next minor release.

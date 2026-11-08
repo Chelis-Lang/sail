@@ -104,10 +104,6 @@ pub struct Evidence {
     pub qualifiers: Vec<String>,
     /// Mutation establishment is never inferred from a passing proof.
     pub mutation: MutationStatus,
-    /// Source-named inputs from the solver model of the function's first failed
-    /// or unknown check; absent when proved, without a model, or from older services.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub counterexample: Option<crate::counterexample::Decoded>,
 }
 
 /// Evidence grouped by stable requirement identity.
@@ -151,22 +147,66 @@ pub(crate) fn valid_digest(value: &str) -> bool {
 /// Refuses unfinished jobs, missing evidence, mismatched attribution and invalid
 /// content identities. Unknown and incomplete proofs retain no established tier.
 pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
-    from_contract_result_named(document, &crate::counterexample::FieldNames::new())
+    project(document).map(|(view, _)| view)
 }
 
-/// [`from_contract_result`], naming decoded struct fields from the retained
-/// source's declaration order instead of by position.
+/// Decoded model inputs for the rows of [`from_contract_result`] that are not
+/// `Proved`, naming struct fields from `fields` (declaration order by struct
+/// name) and by position otherwise.
+///
+/// The inputs are a separate view so the version 2 assurance view stays exactly
+/// reproducible from the result document, including for views recorded before
+/// decoding existed. Diagnostic only: decoded values never change an outcome,
+/// establishment or tier.
 ///
 /// # Errors
 /// As [`from_contract_result`].
+pub fn decoded_inputs(
+    document: &ResultDocument,
+    fields: &crate::counterexample::FieldNames,
+) -> Result<crate::counterexample::View, String> {
+    let (view, lowered) = project(document)?;
+    let backend: ProjectResult = serde_json::from_value(
+        document
+            .result
+            .clone()
+            .ok_or("SAIL3143: invalid or incomplete neutral assurance evidence")?,
+    )
+    .map_err(|_| "SAIL3143: invalid or incomplete neutral assurance evidence".to_owned())?;
+    let mut rows = Vec::new();
+    for requirement in &view.requirements {
+        for evidence in &requirement.evidence {
+            if evidence.outcome == ProofState::Proved {
+                continue;
+            }
+            let Some(function) = lowered
+                .get(&evidence.obligation_id)
+                .and_then(|lowered| unique_function(&backend, lowered))
+            else {
+                continue;
+            };
+            if let Some(decoded) = crate::counterexample::decode(function, fields) {
+                rows.push(crate::counterexample::Row {
+                    requirement_id: requirement.requirement_id.clone(),
+                    obligation_id: evidence.obligation_id.clone(),
+                    function: evidence.function.clone(),
+                    decoded,
+                });
+            }
+        }
+    }
+    Ok(crate::counterexample::View {
+        version: crate::counterexample::VERSION,
+        job_id: view.job_id,
+        rows,
+    })
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "One projection checks all attribution before constructing any assurance row."
 )]
-pub fn from_contract_result_named(
-    document: &ResultDocument,
-    fields: &crate::counterexample::FieldNames,
-) -> Result<View, String> {
+fn project(document: &ResultDocument) -> Result<(View, BTreeMap<String, String>), String> {
     let invalid = || "SAIL3143: invalid or incomplete neutral assurance evidence".to_owned();
     let contracts = document.contracts.as_deref().ok_or_else(invalid)?;
     let backend: ProjectResult =
@@ -213,6 +253,7 @@ pub fn from_contract_result_named(
     let (complete_identity, solvers) = solver_identities(&backend).map_err(|()| invalid())?;
     let confirmed = contracts.proof.state == ProofState::Proved && complete_identity;
     let mut grouped: BTreeMap<String, Vec<Evidence>> = BTreeMap::new();
+    let mut lowered = BTreeMap::new();
     for binding in &manifest.bindings {
         let mut qualifiers = vec![
             "applies to the exact submitted source snapshot under its stated preconditions".into(),
@@ -234,11 +275,13 @@ pub fn from_contract_result_named(
             &backend.context_sha256,
         ))
         .map_err(|_| invalid())?;
+        let obligation_id = format!("neutral:{}", digest(&identity));
+        lowered.insert(obligation_id.clone(), binding.lowered_function.clone());
         grouped
             .entry(binding.requirement_id.clone())
             .or_default()
             .push(Evidence {
-                obligation_id: format!("neutral:{}", digest(&identity)),
+                obligation_id,
                 relationship: Relationship::ContractToCode,
                 function: binding.function.clone(),
                 source_sha256: manifest.original_sha256.clone(),
@@ -252,10 +295,6 @@ pub fn from_contract_result_named(
                 solvers: solvers.clone(),
                 qualifiers,
                 mutation: MutationStatus::NotEstablished,
-                counterexample: (contracts.proof.state != ProofState::Proved)
-                    .then(|| unique_function(&backend, &binding.lowered_function))
-                    .flatten()
-                    .and_then(|function| crate::counterexample::decode(function, fields)),
             });
     }
     let requirements = grouped
@@ -268,12 +307,15 @@ pub fn from_contract_result_named(
             }
         })
         .collect();
-    Ok(View {
-        version: VERSION,
-        job_id: document.job.id.clone(),
-        currentness: Currentness::Unknown,
-        requirements,
-    })
+    Ok((
+        View {
+            version: VERSION,
+            job_id: document.job.id.clone(),
+            currentness: Currentness::Unknown,
+            requirements,
+        },
+        lowered,
+    ))
 }
 
 /// The single requested-target report for `function`, if exactly one exists.

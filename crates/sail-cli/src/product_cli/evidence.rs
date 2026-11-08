@@ -20,6 +20,9 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
             Request::AttributedAssurance { id } => Response::AttributedAssurance(Box::new(
                 client.attributed_assurance(id).map_err(|e| e.to_string())?,
             )),
+            Request::AssuranceInputs { id } => Response::AssuranceInputs(Box::new(
+                client.assurance_inputs(id).map_err(|e| e.to_string())?,
+            )),
             _ => super::call(&client, &request)?,
         };
         let text = if json {
@@ -65,7 +68,10 @@ fn request(args: &[String]) -> Result<Request, String> {
             [_, id, flag] if flag == "--attributed" && !id.is_empty() && !id.starts_with('-') => {
                 Ok(Request::AttributedAssurance { id: id.clone() })
             }
-            _ => Err("usage: assurance JOB [--attributed] [--output json]".into()),
+            [_, id, flag] if flag == "--inputs" && !id.is_empty() && !id.starts_with('-') => {
+                Ok(Request::AssuranceInputs { id: id.clone() })
+            }
+            _ => Err("usage: assurance JOB [--attributed | --inputs] [--output json]".into()),
         },
         Some("explain") => explain(&args[1..]),
         Some("baseline") => match args.get(1).map(String::as_str) {
@@ -184,6 +190,24 @@ fn human(response: &Response) -> String {
             }
             text
         }
+        Response::AssuranceInputs(view) => {
+            let mut text = format!(
+                "Decoded solver-model inputs for source job {} (not validated counterexamples)",
+                view.job_id
+            );
+            for row in &view.rows {
+                let _ = write!(
+                    text,
+                    "\n{} {}: check {} of {}",
+                    row.requirement_id, row.function, row.decoded.check, row.decoded.obligation
+                );
+                for input in &row.decoded.inputs {
+                    let value = serde_json::to_string(&input.value).unwrap_or_default();
+                    let _ = write!(text, "\n  {} = {value}", input.name);
+                }
+            }
+            text
+        }
         Response::Explanation(explanation) => format!(
             "{} {} {:?}: {:?}; established by {} ({:?})\n{}",
             explanation.target.name,
@@ -284,6 +308,9 @@ mod tests {
         );
         assert!(
             matches!(request(&arguments(&["assurance", "job-123", "--attributed"])), Ok(Request::AttributedAssurance { id }) if id == "job-123")
+        );
+        assert!(
+            matches!(request(&arguments(&["assurance", "job-123", "--inputs"])), Ok(Request::AssuranceInputs { id }) if id == "job-123")
         );
         for values in [
             vec!["assurance"],
