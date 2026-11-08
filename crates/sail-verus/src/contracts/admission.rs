@@ -5,7 +5,7 @@ use sail_contracts_ir::{SourceFunction, SourceModel};
 use syn::ext::IdentExt;
 use syn::visit::Visit;
 
-use super::types::{Struct, Type, qualify};
+use super::types::{Imports, Struct, Type, qualify};
 use super::{syntax, unsupported};
 use crate::Result;
 
@@ -21,7 +21,17 @@ pub(super) struct Predicate {
 }
 
 pub(super) fn admit(text: &str, profile: u32) -> Result<Admitted> {
-    let model = sail_contracts_ir::parse_source_with_profile(text, profile).map_err(syntax)?;
+    admit_closure(text, &[], profile)
+}
+
+/// Admit a crate root and its out-of-line module files as one closure.
+pub(super) fn admit_closure(
+    text: &str,
+    modules: &[(&str, &str)],
+    profile: u32,
+) -> Result<Admitted> {
+    let model =
+        sail_contracts_ir::parse_closure_with_profile(text, modules, profile).map_err(syntax)?;
     file_passive(&model.file.attrs, profile)?;
     items(&model.file.items, profile)?;
     let mut structs = model
@@ -44,7 +54,7 @@ pub(super) fn admit(text: &str, profile: u32) -> Result<Admitted> {
         let module = &module[..module.len().saturating_sub(1)];
         let mut fields = BTreeMap::new();
         for field in &value.fields {
-            let ty = Type::parse(&field.ty, module, &structs)?;
+            let ty = Type::parse(&field.ty, module, &structs, &model.imports)?;
             if !ty.scalar() {
                 return Err(unsupported(
                     "only direct scalar struct fields are supported; references and user-defined autoderef are not admitted",
@@ -64,6 +74,7 @@ pub(super) fn admit(text: &str, profile: u32) -> Result<Admitted> {
             },
         );
     }
+    import_targets(&model)?;
     let mut predicates = BTreeMap::new();
     for value in &model.functions {
         passive(&value.function.item.attrs)?;
@@ -81,7 +92,7 @@ pub(super) fn admit(text: &str, profile: u32) -> Result<Admitted> {
                 "old and __sail_ names are reserved by neutral lowering",
             ));
         }
-        let (_, inputs, _) = signature(value, &structs, profile)?;
+        let (_, inputs, _) = signature(value, &structs, &model.imports, profile)?;
         let mut body = BodyAdmission { error: None };
         body.visit_block(&value.function.item.block);
         if let Some(error) = body.error {
@@ -137,12 +148,13 @@ pub(super) type Signature = (Option<String>, Vec<(String, Type)>, Type);
 pub(super) fn signature(
     value: &SourceFunction,
     structs: &BTreeMap<String, Struct>,
+    imports: &Imports,
     profile: u32,
 ) -> Result<Signature> {
     let owner = value
         .owner
         .as_ref()
-        .map(|path| qualify(&value.module, path))
+        .map(|path| qualify(&value.module, path, imports))
         .transpose()?;
     if owner
         .as_ref()
@@ -176,7 +188,7 @@ pub(super) fn signature(
                         "mutable by-value inputs need explicit prestate lowering and are unsupported",
                     ));
                 }
-                let ty = resolve_type(&input.ty, value, owner.as_deref(), structs)?;
+                let ty = resolve_type(&input.ty, value, owner.as_deref(), structs, imports)?;
                 if profile >= 2 && matches!(ty, Type::Named(_) | Type::Enum(_)) {
                     return Err(unsupported(
                         "profile two nominal inputs require shared references; owning non-Copy inputs need separate postcondition ownership analysis",
@@ -188,7 +200,9 @@ pub(super) fn signature(
     }
     let output = match &value.function.item.sig.output {
         syn::ReturnType::Default => Type::Unit,
-        syn::ReturnType::Type(_, output) => resolve_type(output, value, owner.as_deref(), structs)?,
+        syn::ReturnType::Type(_, output) => {
+            resolve_type(output, value, owner.as_deref(), structs, imports)?
+        }
     };
     if matches!(output, Type::Reference(..)) {
         return Err(unsupported("neutral results must be owned values"));
@@ -201,6 +215,7 @@ fn resolve_type(
     value: &SourceFunction,
     owner: Option<&str>,
     structs: &BTreeMap<String, Struct>,
+    imports: &Imports,
 ) -> Result<Type> {
     if matches!(ty, syn::Type::Path(path) if path.path.is_ident("Self")) {
         return owner
@@ -208,7 +223,7 @@ fn resolve_type(
             .map(Type::Named)
             .ok_or_else(|| unsupported("Self outside an admitted inherent implementation"));
     }
-    Type::parse(ty, &value.module, structs)
+    Type::parse(ty, &value.module, structs, imports)
 }
 
 fn scalar_struct(value: &syn::ItemStruct, profile: u32) -> Result<()> {
@@ -359,13 +374,20 @@ fn items(values: &[syn::Item], profile: u32) -> Result<()> {
             syn::Item::Fn(function) if annotated(&function.attrs) => {}
             syn::Item::Struct(_) => {}
             syn::Item::Enum(_) if profile >= 2 => {}
-            syn::Item::Use(import) if import.leading_colon.is_none() => imports(&import.tree)?,
+            syn::Item::Use(import) if import.leading_colon.is_none() => {
+                passive(&import.attrs)?;
+                if !(profile >= 3 && internal(&import.tree)) {
+                    imports(&import.tree)?;
+                }
+            }
             syn::Item::Mod(module) => {
                 passive(&module.attrs)?;
                 let Some((_, nested)) = &module.content else {
-                    return Err(unsupported(
-                        "out-of-line modules require a source closure and are unsupported in the single-file slice",
-                    ));
+                    return Err(unsupported(if profile >= 3 {
+                        "out-of-line module is outside the submitted source closure"
+                    } else {
+                        "out-of-line modules require a source closure and are unsupported in the single-file slice"
+                    }));
                 };
                 items(nested, profile)?;
             }
@@ -416,16 +438,92 @@ fn imports(tree: &syn::UseTree) -> Result<()> {
     }
 }
 
+/// Whether an import starts at this crate, rather than an external crate.
+fn internal(tree: &syn::UseTree) -> bool {
+    matches!(tree, syn::UseTree::Path(path) if ["crate", "self", "super"].contains(&path.ident.to_string().as_str()))
+}
+
+/// Every crate-internal import names an admitted module, nominal type or free
+/// function, and never shadows a scalar type or an item of its own module.
+fn import_targets(model: &SourceModel) -> Result<()> {
+    let functions = model
+        .functions
+        .iter()
+        .filter(|f| f.owner.is_none())
+        .map(identity)
+        .collect::<BTreeSet<_>>();
+    let predicates = model
+        .functions
+        .iter()
+        .filter(|f| f.function.predicate)
+        .map(identity)
+        .collect::<BTreeSet<_>>();
+    let mut local = BTreeSet::new();
+    for value in &model.functions {
+        local.insert(
+            value
+                .module
+                .iter()
+                .cloned()
+                .chain(std::iter::once(value.function.item.sig.ident.to_string()))
+                .collect::<Vec<_>>(),
+        );
+    }
+    for name in model.structs.keys().chain(model.enums.keys()) {
+        local.insert(name.split("::").map(str::to_owned).collect());
+    }
+    local.extend(model.modules.iter().cloned());
+    for (module, aliases) in &model.imports {
+        for (alias, target) in aliases {
+            let joined = target.join("::");
+            if !(model.modules.contains(target)
+                || model.structs.contains_key(&joined)
+                || model.enums.contains_key(&joined)
+                || functions.contains(&joined))
+            {
+                return Err(unsupported(format!(
+                    "import target crate::{joined} is not an admitted module, type or function in the source closure"
+                )));
+            }
+            if predicates.contains(&joined) {
+                return Err(unsupported(format!(
+                    "requirement predicate crate::{joined} cannot be imported by name, because its runtime check resolves beside it; import its module and call it by module path"
+                )));
+            }
+            let mut shadowed = module.clone();
+            shadowed.push(alias.clone());
+            if local.contains(&shadowed)
+                || alias == "old"
+                || alias.starts_with("__sail_")
+                || [
+                    "bool", "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128",
+                    "Int", "Self",
+                ]
+                .contains(&alias.as_str())
+            {
+                return Err(unsupported(format!(
+                    "import alias {alias} shadows a reserved name, scalar type or local item"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn registered(name: &str) -> bool {
     ["requires", "ensures", "requirement", "satisfies"].contains(&name)
 }
 
 /// The callable identity of a function: its owner, if any, and qualified name.
-fn callable(value: &SourceFunction, structs: &BTreeMap<String, Struct>) -> Result<String> {
+fn callable(
+    value: &SourceFunction,
+    structs: &BTreeMap<String, Struct>,
+    imports: &Imports,
+) -> Result<String> {
     let owner = value
         .owner
         .as_ref()
-        .map(|path| qualify(&value.module, path))
+        .map(|path| qualify(&value.module, path, imports))
         .transpose()?;
     Ok(match owner {
         Some(owner) if structs.contains_key(&owner) => {
@@ -446,15 +544,18 @@ fn callable(value: &SourceFunction, structs: &BTreeMap<String, Struct>) -> Resul
 fn calls(model: &SourceModel, structs: &BTreeMap<String, Struct>) -> Result<()> {
     let mut callables = BTreeMap::new();
     for value in &model.functions {
-        callables.insert(callable(value, structs)?, value.function.predicate);
+        callables.insert(
+            callable(value, structs, &model.imports)?,
+            value.function.predicate,
+        );
     }
     let mut graph = BTreeMap::<String, BTreeSet<String>>::new();
     for value in model.functions.iter().filter(|f| !f.function.predicate) {
-        let caller = callable(value, structs)?;
+        let caller = callable(value, structs, &model.imports)?;
         let owner = value
             .owner
             .as_ref()
-            .map(|path| qualify(&value.module, path))
+            .map(|path| qualify(&value.module, path, &model.imports))
             .transpose()?;
         let mut visitor = Callees::default();
         visitor.visit_block(&value.function.item.block);
@@ -473,7 +574,7 @@ fn calls(model: &SourceModel, structs: &BTreeMap<String, Struct>) -> Result<()> 
                         unsupported("Self calls outside an admitted inherent implementation")
                     })?
             } else {
-                qualify(&value.module, &path)?
+                qualify(&value.module, &path, &model.imports)?
             };
             edges.insert(target);
         }
@@ -575,6 +676,13 @@ impl<'ast> Visit<'ast> for BodyAdmission {
 fn admit_enums(model: &SourceModel, structs: &mut BTreeMap<String, Struct>) -> Result<()> {
     for (name, value) in &model.enums {
         unit_enum(value)?;
+        if model.profile >= 3 && name.contains("::") {
+            // VI-0042: the pinned Verus aborts on a structural-equality derive
+            // inside a module, so no verdict could be reported.
+            return Err(unsupported(
+                "unit enums are admitted only at the crate root; the pinned Verus cannot verify a structural-equality derive inside a module",
+            ));
+        }
         if structs.contains_key(name) {
             return Err(unsupported("duplicate nominal type"));
         }

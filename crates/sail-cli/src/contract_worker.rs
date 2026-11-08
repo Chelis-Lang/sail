@@ -32,10 +32,10 @@ fn execute(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<
     let mut bytes = Vec::new();
     std::fs::File::open(path)
         .map_err(|e| e.to_string())?
-        .take((sail_api::contracts::MAX_SOURCE_BYTES * 8 + 1) as u64)
+        .take((sail_api::contracts::MAX_CLOSURE_BYTES * 8 + 1) as u64)
         .read_to_end(&mut bytes)
         .map_err(|e| e.to_string())?;
-    if bytes.len() > sail_api::contracts::MAX_SOURCE_BYTES * 8 {
+    if bytes.len() > sail_api::contracts::MAX_CLOSURE_BYTES * 8 {
         return Err("request exceeds bound".into());
     }
     let submission: Submission = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
@@ -44,8 +44,9 @@ fn execute(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<
     let pins = sail_verus::toolchain::Pins::embedded().map_err(|e| e.to_string())?;
     config.cargo_toolchain = sail_verus::managed::CargoToolchain::Pinned(pins.verus.rust_toolchain);
     config.force = true;
-    let run = sail_verus::contracts::verify_profile(
+    let run = sail_verus::contracts::verify_closure(
         &submission.source,
+        &submission.modules,
         &submission.crate_name,
         submission.profile,
         &config,

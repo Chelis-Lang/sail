@@ -19,6 +19,16 @@ shadow, executable, arguments, environment, dependency selection or verifier
 controls are accepted from the caller. Source admission and supported semantics
 are those of [neutral Verus lowering](neutral-verus-lowering.md).
 
+Profile three may add `modules`, a list of out-of-line module files sorted by
+crate-relative module path (`codec`, `codec::bits`). Each entry carries
+`module`, `source` and `source_sha256`; `source` is then the crate root. At most
+64 module files are accepted, each at most 64 KiB, and the closure is at most
+256 KiB in total. An empty list is omitted, so single-file submissions keep
+their exact bytes. Other profiles refuse `modules`. The job's input revision is
+`Submission::closure_sha256()`: the source digest for one file, otherwise the
+SHA-256 of a versioned listing of the root and module digests. Mutation
+campaigns and literal witnesses refuse module-file closures explicitly.
+
 ## Owned execution
 
 The existing durable job scheduler and owned worker-process supervision execute
@@ -42,7 +52,8 @@ for ordinary jobs. It contains the manifest, conservative proof and translation
 trust, not a fabricated per-requirement verdict.
 
 New profile-one jobs require lowering semantics version two. Profile-two jobs
-require lowering version three and contract version two. Source-job protocol
+require lowering version three and contract version two. Profile-three jobs
+require lowering version four and contract version three. Source-job protocol
 version one remains unchanged. Reads bind the manifest profile to the exact
 original selected submission. A worker cannot supply a historical lowering for
 a new job.

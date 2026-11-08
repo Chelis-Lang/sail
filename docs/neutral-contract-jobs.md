@@ -9,11 +9,17 @@ and generated proof code are not submission fields.
 ```rust,ignore
 let jobs = sail_api::jobs::Client::new(job_socket);
 let status = jobs.submit_contracts(sail_api::contracts::Submission {
+    profile: 1,
     source,
     source_sha256,
     crate_name: "order_service".into(),
+    modules: Vec::new(),
 })?;
 ```
+
+Profile three can submit a crate root with its out-of-line module files in
+`modules`, each named by its crate-relative module path; see
+[profile three](neutral-contracts.md#select-widened-profile-three).
 
 `submit_contracts` negotiates `neutral_contracts_version = 1` before dispatch.
 An older endpoint is refused without falling back to ordinary verification.

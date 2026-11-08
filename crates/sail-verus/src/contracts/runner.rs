@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use super::{LoweredSource, digest, lower_profile, unsupported};
+use super::{LoweredSource, digest, lower_closure, unsupported};
 use crate::{Error, Result};
 
 /// Actual managed backend evidence for an exact original neutral source snapshot.
@@ -43,10 +43,6 @@ pub fn verify(
 /// Verify one source snapshot under an explicitly selected neutral source profile.
 /// # Errors
 /// Reports source admission, runtime, translation-trust and backend failures.
-#[allow(
-    clippy::too_many_lines,
-    reason = "Keep source, translation trust and actual managed execution in one locked boundary."
-)]
 pub fn verify_profile(
     original: &str,
     crate_name: &str,
@@ -54,7 +50,25 @@ pub fn verify_profile(
     config: &crate::managed::Config,
     err: &mut dyn Write,
 ) -> Result<ContractRun> {
-    let lowering = lower_profile(original, crate_name, profile)?;
+    verify_closure(original, &[], crate_name, profile, config, err)
+}
+
+/// Verify a crate root and its out-of-line module files as one closure.
+/// # Errors
+/// Reports source admission, runtime, translation-trust and backend failures.
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep source, translation trust and actual managed execution in one locked boundary."
+)]
+pub fn verify_closure(
+    original: &str,
+    modules: &[sail_api::contracts::ModuleSource],
+    crate_name: &str,
+    profile: u32,
+    config: &crate::managed::Config,
+    err: &mut dyn Write,
+) -> Result<ContractRun> {
+    let lowering = lower_closure(original, modules, crate_name, profile)?;
     if !config.args.is_empty() {
         return Err(unsupported(
             "neutral contract verification currently requires whole-target default backend controls",

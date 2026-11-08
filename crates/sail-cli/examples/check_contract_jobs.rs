@@ -151,6 +151,7 @@ fn one(
         source: source.into(),
         source_sha256: digest.clone(),
         crate_name: "neutral".into(),
+        modules: Vec::new(),
     })?;
     completed(client, &job.id)?;
     let Response::Result(document) = client.call(&Request::Result { id: job.id.clone() })? else {

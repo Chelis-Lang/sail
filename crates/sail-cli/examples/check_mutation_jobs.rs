@@ -68,6 +68,7 @@ fn baseline(client: &Client, source: &str) -> TestResult<String> {
         source: source.into(),
         source_sha256: mutation::digest(source.as_bytes()),
         crate_name: "neutral".into(),
+        modules: Vec::new(),
     })?;
     let deadline = Instant::now() + Duration::from_secs(320);
     loop {

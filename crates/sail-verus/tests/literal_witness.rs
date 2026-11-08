@@ -9,6 +9,7 @@ fn input(source: &str) -> Submission {
         source: source.into(),
         source_sha256: digest(source.as_bytes()),
         crate_name: "neutral".into(),
+        modules: Vec::new(),
     }
 }
 const BOOL: &str = "#[sail_contracts::satisfies(\"FLAG\")] #[sail_contracts::ensures(|ret| ret == value)] pub fn candidate(value:bool)->bool { if value {true} else {false} }";

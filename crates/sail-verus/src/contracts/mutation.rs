@@ -14,6 +14,11 @@ use syn::spanned::Spanned as _;
 )]
 pub fn plan(input: &sail_api::contracts::Submission, budget: usize) -> crate::Result<Plan> {
     input.validate().map_err(super::unsupported)?;
+    if !input.modules.is_empty() {
+        return Err(super::unsupported(
+            "mutation campaigns cover single-file sources; module-file closures are unsupported",
+        ));
+    }
     if !(1..=MAX_MUTANTS).contains(&budget) {
         return Err(super::unsupported(
             "mutation budget must be between one and eight",
@@ -95,6 +100,7 @@ pub fn plan(input: &sail_api::contracts::Submission, budget: usize) -> crate::Re
                 source_sha256: digest(source.as_bytes()),
                 source,
                 crate_name: input.crate_name.clone(),
+                modules: Vec::new(),
             };
             let lowered =
                 super::lower_profile(&candidate.source, &candidate.crate_name, candidate.profile)?;

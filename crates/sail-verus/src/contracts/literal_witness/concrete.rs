@@ -92,6 +92,11 @@ pub fn validate(plan: &Plan, candidate_id: &str, result: &QueryResult) -> crate:
         return Err(unsupported("literal witness assignment is incomplete"));
     }
     let input = &prepared.candidate.source;
+    if !input.modules.is_empty() {
+        return Err(unsupported(
+            "literal witnesses cover single-file sources; module-file closures are unsupported",
+        ));
+    }
     let admitted = admit(&input.source, input.profile)?;
     let source = admitted
         .model
@@ -99,7 +104,12 @@ pub fn validate(plan: &Plan, candidate_id: &str, result: &QueryResult) -> crate:
         .iter()
         .find(|f| format!("{}::{}", input.crate_name, identity(f)) == prepared.candidate.function)
         .ok_or_else(|| unsupported("literal witness target is missing"))?;
-    let (_, signature_inputs, output) = signature(source, &admitted.structs, input.profile)?;
+    let (_, signature_inputs, output) = signature(
+        source,
+        &admitted.structs,
+        &admitted.model.imports,
+        input.profile,
+    )?;
     let types = signature_inputs.iter().cloned().collect::<BTreeMap<_, _>>();
     let mut values = BTreeMap::new();
     let mut recorded = Vec::new();
@@ -165,6 +175,7 @@ pub fn validate(plan: &Plan, candidate_id: &str, result: &QueryResult) -> crate:
         values: types,
         structs: &admitted.structs,
         predicates: &admitted.predicates,
+        imports: &admitted.model.imports,
         mutable_receiver: false,
     };
     environment

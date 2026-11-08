@@ -9,6 +9,7 @@ fn input(source: &str) -> Submission {
         source: source.into(),
         source_sha256: digest(source.as_bytes()),
         crate_name: "neutral".into(),
+        modules: Vec::new(),
     }
 }
 const SOURCE: &str = "#[sail_contracts::satisfies(\"BOOL\")]\n#[sail_contracts::ensures(|ret| ret)]\npub fn enabled() -> bool { /* π */ true || false }\n";

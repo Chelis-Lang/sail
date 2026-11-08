@@ -31,10 +31,11 @@ fn submit_inner(state: &State, source: &Submission, deduplicate: bool) -> io::Re
     if state.stop.load(Ordering::SeqCst) {
         return Err(error("job service is stopping"));
     }
-    let directory = state
-        .root
-        .join("contract-inputs")
-        .join(format!("{}-{}", source.source_sha256, source.crate_name));
+    let directory = state.root.join("contract-inputs").join(format!(
+        "{}-{}",
+        source.closure_sha256(),
+        source.crate_name
+    ));
     store::private_dir(&directory)?;
     let submission = sail_api::jobs::Submission {
         mode: sail_api::jobs::Mode::Stock,
@@ -42,7 +43,7 @@ fn submit_inner(state: &State, source: &Submission, deduplicate: bool) -> io::Re
         args: Vec::new(),
         force: true,
         environment: environment()?,
-        input_revision: Some(source.source_sha256.clone()),
+        input_revision: Some(source.closure_sha256()),
     };
     let key = schedule::workspace_key(&submission.project_dir, &[]);
     let mut jobs = state.jobs.lock().map_err(lock_error)?;
@@ -126,12 +127,16 @@ pub(super) fn source(state: &State, job: &store::Stored) -> io::Result<Submissio
 fn decode(bytes: &[u8], input: &Submission) -> io::Result<WorkerResult> {
     input.validate().map_err(error)?;
     let result: WorkerResult = serde_json::from_slice(bytes).map_err(error)?;
-    sail_verus::contracts::validate_manifest(&input.source, &result.contracts.manifest)
-        .map_err(error)?;
+    sail_verus::contracts::validate_closure_manifest(
+        &input.source,
+        &input.modules,
+        &result.contracts.manifest,
+    )
+    .map_err(error)?;
     if result.version != VERSION
         || result.contracts.version != VERSION
         || result.contracts.manifest.contract_version != input.profile
-        || result.contracts.manifest.original_sha256 != input.source_sha256
+        || result.contracts.manifest.original_sha256 != input.closure_sha256()
         || result.contracts.manifest.crate_name != input.crate_name
         || result.backend.kind != "sail-project-result"
         || result.backend.schema_version != sail_api::project::SCHEMA_VERSION
