@@ -418,6 +418,118 @@ fn inherited_configuration(sail: &Path, output: &Path, original: &str) -> TestRe
     drop(service);
     Ok(())
 }
+/// Attributed ordinary jobs through the installed CLI and service: an honest
+/// function earns the tier only under `--no-cheating`, `assume(false)` never
+/// earns one, and a failed function decodes its model inputs.
+fn attributed_jobs(sail: &Path, client: &Client, output: &Path) -> TestResult {
+    use sail_api::assurance::EvidenceTier;
+    let dir = output.join("attributed");
+    std::fs::create_dir(&dir)?;
+    let honest = "    fn honest(x: u8) -> (r: u8)\n        requires x < 100\n        ensures r == x + 1\n    {\n        x + 1\n    }\n";
+    let cheat = "    fn cheat(x: u8) -> (r: u8)\n        ensures r == x + 1\n    {\n        assume(false);\n        x\n    }\n";
+    let bad = "    fn bad(x: u8) -> (r: u8)\n        requires x < 100\n        ensures r == x + 1\n    {\n        x\n    }\n";
+    let file = |name: &str, body: &str| -> TestResult<()> {
+        std::fs::write(
+            dir.join(format!("{name}.rs")),
+            format!("use vstd::prelude::*;\nverus! {{\n{body}}}\nfn main() {{}}\n"),
+        )?;
+        Ok(())
+    };
+    file("honest", honest)?;
+    file("cheat", &format!("{honest}{cheat}"))?;
+    file("bad", bad)?;
+    // (file, Verus arguments, (function, proved, tier established))
+    let cases: [(&str, &[&str], &[(&str, bool, bool)]); 3] = [
+        ("honest", &["--no-cheating"], &[("honest", true, true)]),
+        (
+            "cheat",
+            &[],
+            &[("cheat", true, false), ("honest", true, false)],
+        ),
+        ("bad", &["--no-cheating"], &[("bad", false, false)]),
+    ];
+    for (name, verus, rows) in cases {
+        let mut command = Command::new(sail);
+        command
+            .current_dir(&dir)
+            .env("SAIL_CACHE_DIR", output.join("cache"))
+            .env("SAIL_DAEMON_SOCKET", output.join("d.sock"))
+            .args([
+                "verify",
+                &format!("{name}.rs"),
+                "--background",
+                "--output",
+                "json",
+            ]);
+        for (function, _, _) in rows {
+            command.args(["--requirement", &format!("R-{function}={name}::{function}")]);
+        }
+        if !verus.is_empty() {
+            command.arg("--").args(verus);
+        }
+        let submitted = command.output()?;
+        if !submitted.status.success() {
+            return Err(format!(
+                "attributed {name}: submission failed: {}",
+                String::from_utf8_lossy(&submitted.stderr)
+            )
+            .into());
+        }
+        let status: sail_api::jobs::Status = serde_json::from_slice(&submitted.stdout)?;
+        let deadline = Instant::now() + Duration::from_secs(300);
+        loop {
+            let Response::Status(status) = client.call(&Request::Status {
+                id: status.id.clone(),
+            })?
+            else {
+                return Err("wrong status response".into());
+            };
+            if status.state.terminal() {
+                break;
+            }
+            if Instant::now() > deadline {
+                return Err(format!("attributed {name}: deadline").into());
+            }
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        let view = client.attributed_assurance(&status.id)?;
+        std::fs::write(
+            output.join(format!("attributed-{name}.json")),
+            serde_json::to_vec_pretty(&view)?,
+        )?;
+        if view.currentness != Currentness::Current || view.requirements.len() != rows.len() {
+            return Err(format!("attributed {name}: unexpected view {view:?}").into());
+        }
+        for (function, proved, tier) in rows {
+            let row = view
+                .requirements
+                .iter()
+                .find(|r| r.requirement_id == format!("R-{function}"))
+                .and_then(|r| r.evidence.first())
+                .ok_or("attributed row")?;
+            let cheating = row
+                .qualifiers
+                .iter()
+                .any(|q| q.contains("did not pass Verus --no-cheating"));
+            let decoded = row.counterexample.as_ref().is_some_and(|d| {
+                d.inputs.iter().any(|i| i.name == "x") && d.inputs.iter().any(|i| i.name == "r")
+            });
+            if !row.function_reported
+                || (row.outcome == ProofState::Proved) != *proved
+                || row.tier != tier.then_some(EvidenceTier::SmtVerified)
+                || cheating != verus.is_empty()
+                || decoded == *proved
+            {
+                return Err(format!("attributed {name} {function}: unexpected row {row:?}").into());
+            }
+            println!(
+                "attributed {name}::{function}: {:?}, tier {:?}, decoded inputs {decoded}",
+                row.outcome, row.tier
+            );
+        }
+    }
+    Ok(())
+}
 fn main() -> TestResult {
     let mut args = std::env::args_os().skip(1);
     let sail = PathBuf::from(
@@ -470,6 +582,7 @@ fn main() -> TestResult {
         ProofState::Proved,
     )?;
     let jobs = [positive, negative, unsafe_field, guarded_field];
+    attributed_jobs(&sail, &client, &output)?;
     drop(service);
     let (service, client) = start(&sail, &output)?;
     for (label, id) in [

@@ -144,6 +144,8 @@ pub struct View {
     pub version: u32,
     /// Exact retained job identity.
     pub job_id: String,
+    /// The job's verification arguments, verbatim; Verus arguments follow `--`.
+    pub arguments: Vec<String>,
     /// Live currentness of the job's inputs, as the job service classifies it.
     pub currentness: Currentness,
     /// Requirement groups sorted by identity.
@@ -155,7 +157,59 @@ const QUALIFIER_NOT_NEUTRAL: &str =
     "ordinary Verus evidence: no neutral contract was admitted, lowered or checked";
 const QUALIFIER_SCOPE: &str =
     "applies to the job's recorded input revision under the function's stated preconditions";
-const QUALIFIER_TRUST: &str = "the submitted Verus specifications and the pinned Verus/SMT toolchain are trusted; trusted, assumed and external specifications are not reviewed";
+const QUALIFIER_TRUST: &str = "the submitted Verus specifications and the pinned Verus/SMT toolchain are trusted; Sail does not review assume or admit statements, external_body or assume_specification items, or other trusted code";
+const QUALIFIER_CHEATING: &str = "the job did not pass Verus --no-cheating, so assume, admit, external_body and assume_specification were allowed in the verified crate; no tier is established";
+const QUALIFIER_NO_CHEATING: &str = "the job passed Verus --no-cheating, which refuses assume, admit, external_body and assume_specification in the verified crate";
+const QUALIFIER_UNREVIEWED: &str =
+    "the job passed Verus arguments outside the reviewed set; no tier is established:";
+
+/// Verus arguments that cannot weaken a reported proof: selection, resource
+/// limits, threading, report detail and standalone crate naming. Each pairs its name with whether it
+/// takes a separate value. Anything else after `--` withholds the tier.
+const REVIEWED_VERUS_ARGUMENTS: [(&str, bool); 14] = [
+    ("--crate-name", true),
+    ("--crate-type", true),
+    ("--edition", true),
+    ("--expand-errors", false),
+    ("--multiple-errors", true),
+    ("--no-cheating", false),
+    ("--num-threads", true),
+    ("--rlimit", true),
+    ("--time", false),
+    ("--time-expanded", false),
+    ("--verify-function", true),
+    ("--verify-module", true),
+    ("--verify-only-module", true),
+    ("--verify-root", false),
+];
+
+/// How the job's forwarded Verus arguments bear on attributed trust.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct VerusArguments {
+    no_cheating: bool,
+    unreviewed: Vec<String>,
+}
+
+/// Classify the Verus arguments, those after the first `--`.
+fn verus_arguments(arguments: &[String]) -> VerusArguments {
+    let mut result = VerusArguments::default();
+    let mut forwarded = arguments.iter().skip_while(|a| a.as_str() != "--").skip(1);
+    while let Some(argument) = forwarded.next() {
+        let (name, inline) = argument
+            .split_once('=')
+            .map_or((argument.as_str(), false), |(name, _)| (name, true));
+        match REVIEWED_VERUS_ARGUMENTS.iter().find(|(n, _)| *n == name) {
+            Some((_, takes_value)) if !inline || *takes_value => {
+                if *takes_value && !inline && forwarded.next().is_none() {
+                    result.unreviewed.push(argument.clone());
+                }
+                result.no_cheating |= name == "--no-cheating";
+            }
+            _ => result.unreviewed.push(argument.clone()),
+        }
+    }
+    result
+}
 const QUALIFIER_UNREPORTED: &str =
     "the verifier reported no unique requested-target function with this exact name";
 const QUALIFIER_NOT_CURRENT: &str =
@@ -203,6 +257,8 @@ pub fn from_project_result(
     let (complete_identity, solvers) =
         crate::assurance::solver_identities(&backend).map_err(|()| invalid())?;
     let current = document.job.currentness == Currentness::Current;
+    let verus = verus_arguments(&document.job.args);
+    let reviewed = verus.no_cheating && verus.unreviewed.is_empty();
     let targets = crate::assurance::requested_targets(&backend);
     let reported = targets
         .iter()
@@ -218,8 +274,8 @@ pub fn from_project_result(
         let proved = complete_run
             && unique
             && crate::assurance::exactly_one_proved(&targets, &item.function);
-        let confirmed = proved && complete_identity && current;
-        let qualifiers = qualifiers(unique, complete_identity, current);
+        let confirmed = proved && complete_identity && current && reviewed;
+        let qualifiers = qualifiers(unique, complete_identity, current, &verus);
         let identity = serde_json::to_vec(&(
             &backend.input_revision,
             &item.function,
@@ -257,6 +313,7 @@ pub fn from_project_result(
     Ok(View {
         version: VERSION,
         job_id: document.job.id.clone(),
+        arguments: document.job.args.clone(),
         currentness: document.job.currentness,
         requirements: grouped
             .into_iter()
@@ -282,7 +339,12 @@ fn decoded(
         .and_then(|f| crate::counterexample::decode(f, &crate::counterexample::FieldNames::new()))
 }
 
-fn qualifiers(unique: bool, complete_identity: bool, current: bool) -> Vec<String> {
+fn qualifiers(
+    unique: bool,
+    complete_identity: bool,
+    current: bool,
+    verus: &VerusArguments,
+) -> Vec<String> {
     let mut qualifiers: Vec<String> = [
         QUALIFIER_ATTRIBUTION,
         QUALIFIER_NOT_NEUTRAL,
@@ -301,6 +363,20 @@ fn qualifiers(unique: bool, complete_identity: bool, current: bool) -> Vec<Strin
     }
     if !current {
         qualifiers.push(QUALIFIER_NOT_CURRENT.into());
+    }
+    qualifiers.push(
+        if verus.no_cheating {
+            QUALIFIER_NO_CHEATING
+        } else {
+            QUALIFIER_CHEATING
+        }
+        .into(),
+    );
+    if !verus.unreviewed.is_empty() {
+        qualifiers.push(format!(
+            "{QUALIFIER_UNREVIEWED} {}",
+            verus.unreviewed.join(" ")
+        ));
     }
     qualifiers.sort();
     qualifiers

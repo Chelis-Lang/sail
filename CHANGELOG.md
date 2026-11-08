@@ -26,6 +26,8 @@ semantic versioning once the API is published.
   `sail verify --background --requirement ID=FUNCTION` retains submitter
   attributions, and `sail assurance JOB --attributed` reports conservative,
   qualified per-requirement evidence that is never neutral-contract assurance.
+  A tier needs Verus `--no-cheating` and only reviewed Verus arguments, so a
+  function that proves through `assume(false)` earns none.
   MCP `start_verification` takes `requirements`; `requirement_assurance` takes
   `attributed`.
 - Add explicit neutral source profile three (ADR 0103). Its specifications

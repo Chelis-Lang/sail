@@ -30,7 +30,7 @@ fn recorded(positive: bool, currentness: Currentness) -> TestResult<ResultDocume
             version: 1,
             id: "ordinary-job".into(),
             project_dir: "/recorded/project".into(),
-            args: Vec::new(),
+            args: vec!["--".into(), "--no-cheating".into()],
             state: Lifecycle::Completed,
             submitted_at_ms: 0,
             started_at_ms: Some(0),
@@ -51,6 +51,88 @@ fn claim(requirement_id: &str, function: &str) -> RequirementAttribution {
         requirement_id: requirement_id.into(),
         function: function.into(),
     }
+}
+
+/// Verus reports a function proved through `assume(false)` as verified, so the
+/// tier needs `--no-cheating` and only reviewed Verus arguments.
+#[test]
+fn attributed_tiers_need_no_cheating_and_reviewed_verus_arguments() -> TestResult {
+    // (job arguments, tier established, unreviewed arguments named)
+    let cases: [(&[&str], bool, &str); 9] = [
+        (&[], false, ""),
+        (&["-p", "demo"], false, ""),
+        (&["--no-cheating"], false, ""),
+        (&["--", "--no-cheating"], true, ""),
+        (
+            &["-p", "demo", "--", "--rlimit", "10", "--no-cheating"],
+            true,
+            "",
+        ),
+        (
+            &[
+                "--",
+                "--verify-module=m",
+                "--no-cheating",
+                "--expand-errors",
+            ],
+            true,
+            "",
+        ),
+        (
+            &["--", "--no-cheating", "--no-lifetime"],
+            false,
+            "--no-lifetime",
+        ),
+        (&["--", "--no-cheating", "--rlimit"], false, "--rlimit"),
+        (&["--", "--no-cheating=false"], false, "--no-cheating=false"),
+    ];
+    for (arguments, established, unreviewed) in cases {
+        let label = format!("{arguments:?}");
+        let mut document = recorded(true, Currentness::Current)?;
+        document.job.args = arguments.iter().map(|a| (*a).to_owned()).collect();
+        let view =
+            attribution::from_project_result(&document, &[claim("REQ-1", "neutral::candidate")])?;
+        assert_eq!(view.arguments, document.job.args, "{label}");
+        let row = &view.requirements[0].evidence[0];
+        assert_eq!(row.outcome, ProofState::Proved, "{label}");
+        assert_eq!(
+            row.tier,
+            established.then_some(EvidenceTier::SmtVerified),
+            "{label}"
+        );
+        assert_eq!(
+            row.establishment,
+            established.then_some(EstablishmentName::Confirmed),
+            "{label}"
+        );
+        let cheating = arguments
+            .iter()
+            .skip_while(|a| **a != "--")
+            .all(|a| *a != "--no-cheating");
+        assert_eq!(
+            row.qualifiers
+                .iter()
+                .any(|q| q.contains("did not pass Verus --no-cheating")),
+            cheating,
+            "{label}"
+        );
+        assert!(
+            row.qualifiers
+                .iter()
+                .any(|q| q.contains("assume or admit statements")),
+            "{label}"
+        );
+        let named = row
+            .qualifiers
+            .iter()
+            .find(|q| q.contains("outside the reviewed set"));
+        assert_eq!(
+            named.map(|q| q.ends_with(unreviewed)),
+            (!unreviewed.is_empty()).then_some(true),
+            "{label}"
+        );
+    }
+    Ok(())
 }
 
 #[test]

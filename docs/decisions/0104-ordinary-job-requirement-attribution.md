@@ -32,16 +32,30 @@ Add an additive, separately negotiated interface (`attribution_version = 1`):
   source `submitter`. It is `Proved` only for a completed whole job whose
   requested targets report exactly one function with that exact name, proved.
   `confirmed`/`smt-verified` additionally needs complete original solver
-  identity and current inputs. Mutation status is `not-established`.
+  identity, current inputs, Verus's `--no-cheating` among the job's Verus
+  arguments, and no Verus argument outside a reviewed set of selection,
+  resource-limit, threading and report-detail options. The service applies
+  live currentness before projecting, so a non-current job reads `NotProved`.
+  The view records the job's arguments verbatim. Mutation status is
+  `not-established`.
 - Every row carries the neutral view's shared qualifiers and states that the
   link is an unchecked submitter claim, that no neutral contract was checked,
-  and that the Verus specifications and toolchain are trusted.
+  that the Verus specifications and toolchain are trusted, and whether the job
+  passed `--no-cheating`.
 - The CLI exposes `sail verify --background --requirement ID=FUNCTION` and
   `sail assurance JOB --attributed`; MCP exposes `requirements` on
   `start_verification` and `attributed` on `requirement_assurance`. Errors use
   `SAIL3160`.
 
 ## Consequences
+
+Verus reports a function that proves only through `assume(false)`, `admit`
+or an `external_body` item as verified, which is correct for its default
+mode, and Sail's verdict equality preserves that. The view cannot see such
+assumptions, so without `--no-cheating` a `Proved` row establishes no tier and
+says why. A neutral job avoids the question because Sail writes the verified
+source itself. Weakening Verus options such as `--no-lifetime` also withhold
+the tier.
 
 Ordinary-route callers get per-requirement evidence with the same qualifiers
 and conservative outcomes as neutral jobs, and the view can never be mistaken
