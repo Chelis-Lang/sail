@@ -352,6 +352,26 @@ fn validate_pruned_baseline(client: &Client, output: &Path, label: &str) -> Test
     Ok(())
 }
 
+/// A Cargo configuration in a parent of the cache places the owned shadow
+/// privately elsewhere; the unchanged admission check runs there.
+fn inherited_configuration(sail: &Path, output: &Path, original: &str) -> TestResult {
+    std::fs::create_dir(output.join(".cargo"))?;
+    std::fs::write(output.join(".cargo/config.toml"), "[build]\n")?;
+    let (service, client) = start(sail, output)?;
+    let narrowed = original.replace("input < 100", "input < 99");
+    if narrowed == original {
+        return Err("inherited-configuration fixture did not change".into());
+    }
+    one(
+        &client,
+        output,
+        "inherited-config",
+        &narrowed,
+        ProofState::Proved,
+    )?;
+    drop(service);
+    Ok(())
+}
 fn main() -> TestResult {
     let mut args = std::env::args_os().skip(1);
     let sail = PathBuf::from(
@@ -446,5 +466,5 @@ fn main() -> TestResult {
     println!(
         "restart and pruning: source-bound baseline evidence preserved independently of original jobs"
     );
-    Ok(())
+    inherited_configuration(&sail, &output, original)
 }
