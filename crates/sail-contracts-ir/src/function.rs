@@ -187,7 +187,7 @@ pub fn parse_function_with_profile(
                 "a contracted function needs one ensures",
             ));
         }
-        super::source::validate_body(&item)?;
+        super::source::validate_body(&item, profile)?;
     }
     if profile == 1 {
         validate_legacy(&item, &requires, ensures.as_ref())?;

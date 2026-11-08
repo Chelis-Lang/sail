@@ -17,8 +17,9 @@ with direct scalar fields. Inherent constructors and shared or mutable receiver
 methods are supported. Passive attributes accept only literal documentation/must-use strings, `doc(hidden)`,
 and plain `inline`, `inline(always)` or `inline(never)`. Macro expressions in
 attribute payloads and all parameter attributes are unsupported.
-Bodies are loop-free and call-free in profiles one and two. Each executable
-function has one requirement identity and one guarantee.
+Bodies are loop-free and call-free in profiles one and two; profile three
+admits the body forms listed below. Each executable function has one
+requirement identity and one guarantee.
 
 Admission covers the entire file, including unannotated items. It rejects
 globals, aliases, traits and trait implementations, arbitrary imports, macros,
@@ -230,3 +231,27 @@ fixture and a failing control that states a floor-division guarantee
 (`2 * (value / 2) <= value`) against truncating executable division; fork and
 stock agree on both.
 
+### Executable body forms
+
+Profile three emits each executable body exactly as written, as in earlier
+profiles, and admits these additional forms:
+
+| Form | Admitted | Refused |
+|---|---|---|
+| Call | a plain path that resolves to an admitted contracted function: free, `crate::`, `self::`, `Self::` or `Type::` | requirement predicates, unresolved, library, closure, generic and qualified-self calls |
+| Method call | on `self`, resolving to an admitted inherent method of the receiver type | any other receiver, turbofish |
+| Cast | `expr as T` for a fixed-width integer `T` | `usize`, `isize`, `bool` and nominal targets |
+| Borrow | shared `&expr` | `&mut expr` |
+| `match` | integer and Boolean literals, literal ranges, qualified unit enum variants, `\|` alternatives, `_`, guards | binding, tuple, struct and slice patterns |
+
+Admission resolves every call against the admitted closure and refuses any
+cycle in the call graph, including a function calling itself: the neutral
+syntax carries no termination measure for functions. Verus checks each call
+against the callee's lowered `requires` and assumes its lowered `ensures`, so a
+call never adds an assumption that the callee does not prove. A cast keeps
+Rust's truncating semantics, which Verus models exactly; lowering adds no range
+fact about the result. The native oracle runs a passing fixture with calls,
+`self` methods, casts and both `match` kinds, plus two failing controls: a
+narrowing cast whose guarantee claims the value is preserved, and a call that
+does not establish its callee's precondition. Fork and stock agree on all
+three.

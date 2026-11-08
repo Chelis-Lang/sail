@@ -146,8 +146,23 @@ do not. Profile three admits everything in profile two, plus:
   refuse them. An undefined operation never makes a guarantee true. Both
   operands share one fixed-width integer type.
 
+- **Calls, casts and `match` in executable bodies.** A body can call an
+  admitted contracted function by a plain path (`clamp(x, 9)`, `crate::a::f(x)`,
+  `Self::g(self)` or `Meter::g(m)`) and call a method on `self`. Each call is
+  checked against the callee's own `requires` and uses its `ensures`, exactly
+  as Verus checks a call. A body can cast to a fixed-width integer type; the
+  cast keeps Rust's truncating semantics, and Verus proves nothing about the
+  result beyond them. `match` admits integer and Boolean literals, literal
+  ranges, qualified unit enum variants, `|` alternatives, wildcards and guards.
+  Shared borrows such as `&value` are admitted. Calls to requirement predicates,
+  library functions, closures and generic functions are refused, and so is any
+  recursive call cycle, because the neutral syntax carries no termination
+  measure for functions. Method calls on values other than `self`, casts to
+  `usize`, `isize` or `bool`, mutable borrows, binding and destructuring
+  patterns, loops and macros stay refused.
+
 Profile three lowers with version four and contract version three. Its manifest
 names the truncating rule in its arithmetic qualifier. Profiles one and two still
-refuse specification division and remainder, and their emitted bytes are
-unchanged. Executable-body division was already admitted in every profile, and
+refuse specification division and remainder and the widened body forms, and
+their emitted bytes are unchanged. Executable-body division was already admitted in every profile, and
 Verus proves its divisor and overflow obligations.

@@ -5,6 +5,11 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Admit calls to admitted contracted functions, `self` method calls, integer
+  casts, shared borrows and literal or unit-variant `match` in neutral profile
+  three bodies (ADR 0103). Recursive call cycles, library and predicate calls,
+  binding patterns, loops and macros stay refused. The runtime attributes
+  accept the profile-three body syntax.
 - Decode source-named counterexample inputs (ADR 0106): neutral and attributed
   assurance rows that are not proved carry the parameters, return binder and
   named struct fields from the failed check's solver model, without fuel and
