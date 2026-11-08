@@ -1,10 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use sail_contracts_ir::SourceFunction;
 use syn::ext::IdentExt;
-use syn::{spanned::Spanned, visit::Visit};
+use syn::{fold::Fold, spanned::Spanned, visit::Visit};
 
 use super::admission::{Admitted, admit, identity, signature};
 use super::expression::{Environment, Phase};
@@ -252,6 +252,7 @@ fn function_source(
     if source.function.predicate {
         return predicate_source(source, &environment);
     }
+    let body = loops(&environment, source)?;
     let guarantee = source
         .function
         .ensures
@@ -296,7 +297,6 @@ fn function_source(
     let output_type = output.rust()?;
     let defined = post.defined;
     let guarantee_value = post.expression;
-    let body = &source.function.item.block;
     let requires = if preconditions.is_empty() {
         TokenStream::new()
     } else {
@@ -320,6 +320,161 @@ fn function_source(
         bindings.push(mapped);
     }
     Ok(lowered)
+}
+
+/// Lower each profile-three `while` loop's neutral head to Verus loop clauses.
+///
+/// Invariants use the specification semantics of `requires`, with the same
+/// definedness conjunct. The measure is its mathematical value; Verus proves it
+/// nonnegative and decreasing. Locals are visible to the head only through an
+/// explicit scalar type annotation, and a function with loops needs unique local
+/// names, so each name has one type.
+fn loops(environment: &Environment<'_>, source: &SourceFunction) -> Result<syn::Block> {
+    let block = source.function.item.block.as_ref().clone();
+    let mut probe = Locals::default();
+    probe.visit_block(&block);
+    if environment.profile < 3 || !probe.loops {
+        return Ok(block);
+    }
+    if let Some(error) = probe.error {
+        return Err(error);
+    }
+    let mut values = environment.values.clone();
+    let mut names = BTreeSet::new();
+    for (name, ty) in probe.names {
+        if values.contains_key(&name) || !names.insert(name.clone()) {
+            return Err(unsupported(format!(
+                "functions with loops need unique local names; {name} is declared twice or shadows an input"
+            )));
+        }
+        if let Some(ty) = ty {
+            let ty = Type::parse(&ty, environment.module, environment.structs)?;
+            if matches!(ty, Type::Bool | Type::Integer { .. }) {
+                values.insert(name, ty);
+            }
+        }
+    }
+    let scope = Environment {
+        profile: environment.profile,
+        module: environment.module,
+        values,
+        structs: environment.structs,
+        predicates: environment.predicates,
+        mutable_receiver: environment.mutable_receiver,
+    };
+    let mut lowering = Loops {
+        environment: &scope,
+        error: None,
+    };
+    let block = lowering.fold_block(block);
+    lowering.error.map_or(Ok(block), Err)
+}
+
+#[derive(Default)]
+struct Locals {
+    loops: bool,
+    names: Vec<(String, Option<syn::Type>)>,
+    error: Option<crate::Error>,
+}
+
+impl<'ast> Visit<'ast> for Locals {
+    fn visit_expr_while(&mut self, value: &'ast syn::ExprWhile) {
+        self.loops = true;
+        syn::visit::visit_expr_while(self, value);
+    }
+
+    fn visit_local(&mut self, value: &'ast syn::Local) {
+        match &value.pat {
+            syn::Pat::Ident(pattern) if pattern.subpat.is_none() && pattern.by_ref.is_none() => {
+                self.names.push((pattern.ident.unraw().to_string(), None));
+            }
+            syn::Pat::Type(typed) => match typed.pat.as_ref() {
+                syn::Pat::Ident(pattern)
+                    if pattern.subpat.is_none() && pattern.by_ref.is_none() =>
+                {
+                    self.names
+                        .push((pattern.ident.unraw().to_string(), Some((*typed.ty).clone())));
+                }
+                _ => {
+                    self.error.get_or_insert_with(|| {
+                        unsupported("functions with loops need plain identifier locals")
+                    });
+                }
+            },
+            _ => {
+                self.error.get_or_insert_with(|| {
+                    unsupported("functions with loops need plain identifier locals")
+                });
+            }
+        }
+        syn::visit::visit_local(self, value);
+    }
+}
+
+struct Loops<'a> {
+    environment: &'a Environment<'a>,
+    error: Option<crate::Error>,
+}
+
+impl Loops<'_> {
+    fn lower(&self, value: &syn::ExprWhile) -> Result<TokenStream> {
+        let head = sail_contracts_ir::loop_head(&value.body)
+            .ok_or_else(|| unsupported("unadmitted loop head"))?;
+        let mut captures = Captures::default();
+        for invariant in &head.invariants {
+            captures.visit_expr(invariant);
+        }
+        captures.visit_expr(&head.measure);
+        if !captures.expressions.is_empty() {
+            return Err(unsupported(
+                "old is unsupported in loop invariants and measures",
+            ));
+        }
+        let mut invariants = Vec::new();
+        for invariant in &head.invariants {
+            let value = self
+                .environment
+                .translate(invariant, Some(&Type::Bool), Phase::Current)?;
+            if value.ty != Type::Bool {
+                return Err(unsupported("loop invariant is not Boolean"));
+            }
+            let (defined, expression) = (value.defined, value.expression);
+            invariants.push(quote!((#defined) && (#expression)));
+        }
+        let measure = self
+            .environment
+            .translate(&head.measure, None, Phase::Current)?;
+        if !matches!(measure.ty, Type::Integer { .. }) {
+            return Err(unsupported(
+                "a loop measure must be a fixed-width integer expression",
+            ));
+        }
+        let measure = measure.expression;
+        let invariant = if invariants.is_empty() {
+            TokenStream::new()
+        } else {
+            quote!(invariant #(#invariants),*,)
+        };
+        let condition = &value.cond;
+        let statements = &value.body.stmts[head.statements..];
+        Ok(quote!(while #condition #invariant decreases #measure, { #(#statements)* }))
+    }
+}
+
+impl Fold for Loops<'_> {
+    fn fold_expr(&mut self, value: syn::Expr) -> syn::Expr {
+        let value = syn::fold::fold_expr(self, value);
+        let syn::Expr::While(loop_value) = value else {
+            return value;
+        };
+        match self.lower(&loop_value) {
+            Ok(tokens) => syn::Expr::Verbatim(tokens),
+            Err(error) => {
+                self.error.get_or_insert(error);
+                syn::Expr::While(loop_value)
+            }
+        }
+    }
 }
 
 fn predicate_source(source: &SourceFunction, environment: &Environment<'_>) -> Result<TokenStream> {

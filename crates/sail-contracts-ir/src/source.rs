@@ -323,6 +323,8 @@ impl Body {
                 }
                 true
             }
+            // `visit_expr_while` checks the loop head and skips its declarations.
+            Expr::While(_) => true,
             _ => false,
         }
     }
@@ -369,7 +371,96 @@ fn literal_bound(value: &Expr) -> bool {
     }
 }
 
+/// The neutral loop head: an optional `sail_contracts::invariant!` with one or
+/// more conditions, then exactly one `sail_contracts::decreases!` measure.
+/// Returns the number of head statements, or `None` when the head is invalid.
+#[must_use]
+pub fn loop_head(body: &syn::Block) -> Option<LoopHead> {
+    let mut statements = body.stmts.iter();
+    let mut invariants = Vec::new();
+    let mut next = statements.next();
+    match next.map_or(Head::Absent, |s| head_macro(s, "invariant")) {
+        Head::Present(values) if !values.is_empty() => {
+            invariants = values;
+            next = statements.next();
+        }
+        Head::Absent => {}
+        Head::Present(_) | Head::Invalid => return None,
+    }
+    let Head::Present(measure) = next.map_or(Head::Absent, |s| head_macro(s, "decreases")) else {
+        return None;
+    };
+    let [measure] = <[Expr; 1]>::try_from(measure).ok()?;
+    Some(LoopHead {
+        statements: usize::from(!invariants.is_empty()) + 1,
+        invariants,
+        measure,
+    })
+}
+
+enum Head {
+    Absent,
+    Invalid,
+    Present(Vec<Expr>),
+}
+
+/// A validated neutral loop head.
+#[derive(Clone, Debug)]
+pub struct LoopHead {
+    /// Number of leading body statements that declare the head.
+    pub statements: usize,
+    /// Loop invariants in source order.
+    pub invariants: Vec<Expr>,
+    /// The termination measure.
+    pub measure: Expr,
+}
+
+fn head_macro(statement: &Stmt, name: &str) -> Head {
+    let Stmt::Macro(value) = statement else {
+        return Head::Absent;
+    };
+    let path = &value.mac.path;
+    if path.leading_colon.is_some()
+        || path.segments.len() != 2
+        || path.segments[0].ident != "sail_contracts"
+        || path.segments[1].ident != name
+        || !plain(path)
+    {
+        return Head::Absent;
+    }
+    if !matches!(value.mac.delimiter, syn::MacroDelimiter::Paren(_)) {
+        return Head::Invalid;
+    }
+    value
+        .mac
+        .parse_body_with(syn::punctuated::Punctuated::<Expr, syn::Token![,]>::parse_terminated)
+        .map_or(Head::Invalid, |values| {
+            Head::Present(values.into_iter().collect())
+        })
+}
+
 impl<'ast> Visit<'ast> for Body {
+    fn visit_expr_while(&mut self, value: &'ast syn::ExprWhile) {
+        if self.profile < 3 {
+            // `visit_expr` has already refused the loop.
+            return;
+        }
+        if value.label.is_some() || !value.attrs.is_empty() {
+            self.refuse(value, "loop labels and attributes are unsupported");
+        }
+        let Some(head) = loop_head(&value.body) else {
+            self.refuse(
+                value,
+                "a while loop body must start with an optional sail_contracts::invariant!(...) and exactly one sail_contracts::decreases!(...)",
+            );
+            return;
+        };
+        self.visit_expr(&value.cond);
+        for statement in &value.body.stmts[head.statements..] {
+            self.visit_stmt(statement);
+        }
+    }
+
     fn visit_stmt(&mut self, value: &'ast Stmt) {
         if !matches!(value, Stmt::Local(_) | Stmt::Expr(_, _)) {
             self.refuse(

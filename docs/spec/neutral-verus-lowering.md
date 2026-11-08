@@ -18,7 +18,7 @@ methods are supported. Passive attributes accept only literal documentation/must
 and plain `inline`, `inline(always)` or `inline(never)`. Macro expressions in
 attribute payloads and all parameter attributes are unsupported.
 Bodies are loop-free and call-free in profiles one and two; profile three
-admits the body forms listed below. Each executable function has one
+admits the body forms and loops listed below. Each executable function has one
 requirement identity and one guarantee.
 
 Admission covers the entire file, including unannotated items. It rejects
@@ -255,3 +255,32 @@ fact about the result. The native oracle runs a passing fixture with calls,
 narrowing cast whose guarantee claims the value is preserved, and a call that
 does not establish its callee's precondition. Fork and stock agree on all
 three.
+
+### Loops
+
+A profile-three `while` body starts with its head: an optional
+`sail_contracts::invariant!(c1, c2, ...)` with at least one condition, then
+exactly one `sail_contracts::decreases!(m)`. Any other placement or count, a
+loop label or attribute, `loop`, `for`, `break` and `continue` is refused.
+Lowering replaces the head with Verus loop clauses:
+
+```text
+while COND invariant (D1) && (C1), (D2) && (C2), decreases M, { REST }
+```
+
+Each `Ci` and its definedness `Di` are translated exactly as a `requires`
+condition. `M` is the mathematical value of an integer measure; Verus proves
+it nonnegative at each iteration and strictly decreasing. `old` is refused in a
+head. The head's environment is the function's inputs plus locals declared
+with an explicit Boolean or fixed-width integer type. A function with loops
+must use plain identifier locals with unique names that do not shadow inputs,
+so each name has one type. Verus's loop isolation applies: facts from the
+function's `requires` hold inside the loop only when an invariant restates
+them.
+
+Lowering adds no invariant, assertion or lemma. The runtime
+`sail_contracts::invariant!` and `sail_contracts::decreases!` macros type check
+their arguments inside an `if false` block and never evaluate them. The native
+oracle runs a passing fixture with a counted loop, a measure-only loop and a
+nested loop, plus two failing controls: an invariant too weak for the
+guarantee, and a measure that grows. Fork and stock agree on all three.

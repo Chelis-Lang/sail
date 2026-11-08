@@ -40,7 +40,10 @@ Profile three bodies additionally admit calls by plain path to admitted
 contracted functions, method calls on `self`, casts to fixed-width integer
 types, shared borrows, and `match` whose patterns are integer or Boolean
 literals, literal ranges, qualified unit enum variants, alternatives and
-wildcards. The runtime attributes accept the profile-three body syntax.
+wildcards, and `while` loops whose bodies start with an optional
+`sail_contracts::invariant!` and one `sail_contracts::decreases!`. The runtime
+attributes accept the profile-three body syntax; the loop macros type check
+their arguments without evaluating them.
 This is an explicit subset, not a claim that arbitrary Rust can be lowered.
 Whole-source admission additionally resolves supported calls, rejects recursion
 and checks types and source ownership; attribute expansion does not claim to

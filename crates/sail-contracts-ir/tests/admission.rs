@@ -142,3 +142,15 @@ fn profile_three_alone_admits_calls_casts_borrows_and_literal_match() {
         );
     }
 }
+
+#[test]
+fn profile_three_alone_admits_while_loops_with_a_head() {
+    let head = "sail_contracts::invariant!(i <= x); sail_contracts::decreases!(x - i);";
+    let source = format!(
+        "#[satisfies(\"R\")] #[ensures(|ret| ret == ret)] fn f(x: u8) -> u8 {{ let mut i: u8 = 0; while i < x {{ {head} i += 1; }} i }}"
+    );
+    assert!(sail_contracts_ir::parse_source_with_profile(&source, 2).is_err());
+    assert!(sail_contracts_ir::parse_source_with_profile(&source, 3).is_ok());
+    let misplaced = source.replace("i += 1; }", "i += 1; sail_contracts::decreases!(x); }");
+    assert!(sail_contracts_ir::parse_source_with_profile(&misplaced, 3).is_err());
+}

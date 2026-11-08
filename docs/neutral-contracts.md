@@ -161,6 +161,19 @@ do not. Profile three admits everything in profile two, plus:
   `usize`, `isize` or `bool`, mutable borrows, binding and destructuring
   patterns, loops and macros stay refused.
 
+- **`while` loops with invariants and a termination measure.** The first
+  statements of a loop body declare its head: an optional
+  `sail_contracts::invariant!(cond, ...)` and exactly one
+  `sail_contracts::decreases!(measure)`. Invariants use the specification
+  semantics of `requires`, including definedness. The measure is an integer
+  expression whose mathematical value Verus proves nonnegative and decreasing.
+  The head can read inputs and locals declared with an explicit scalar type,
+  such as `let mut i: u32 = 0;`, and a function with loops needs unique local
+  names. The runtime macros type check the head but never evaluate it.
+  Sail adds nothing to the head: an insufficient invariant fails verification.
+  `loop`, `for`, labels, `break`, `continue`, `old` in a loop head and a
+  missing measure stay refused.
+
 Profile three lowers with version four and contract version three. Its manifest
 names the truncating rule in its arithmetic qualifier. Profiles one and two still
 refuse specification division and remainder and the widened body forms, and
