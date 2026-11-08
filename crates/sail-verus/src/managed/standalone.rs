@@ -322,13 +322,10 @@ fn reusable(args: &[String]) -> bool {
                     return false;
                 }
             }
-            // `--no-cheating` only refuses trusted items; the context binds
-            // the arguments, so its receipts never serve a run without it.
             "--output-json"
             | "--time"
             | "--time-expanded"
             | "--no-report-long-running"
-            | "--no-cheating"
             | "--no-vstd" => {}
             _ if [
                 "--rlimit=",
@@ -989,8 +986,7 @@ mod tests {
         assert!(reusable(&[
             "--rlimit".into(),
             "30".into(),
-            "--crate-type=lib".into(),
-            "--no-cheating".into()
+            "--crate-type=lib".into()
         ]));
     }
     #[test]

@@ -55,7 +55,11 @@ mode, and Sail's verdict equality preserves that. The view cannot see such
 assumptions, so without `--no-cheating` a `Proved` row establishes no tier and
 says why. A neutral job avoids the question because Sail writes the verified
 source itself. Weakening Verus options such as `--no-lifetime` also withhold
-the tier.
+the tier. `cargo verus verify` forwards Verus arguments to every verified
+package, including `vstd`, which itself relies on trusted items, so a Cargo job
+with `--no-cheating` fails in `vstd`, and standalone-file jobs record no
+per-check solver provenance. Until Sail can apply that check to the requested
+package alone, attributed rows report `Proved` at most, without a tier.
 
 Ordinary-route callers get per-requirement evidence with the same qualifiers
 and conservative outcomes as neutral jobs, and the view can never be mistaken

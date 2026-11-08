@@ -106,12 +106,13 @@ and the view cannot see assumptions in the source. A `confirmed`,
   `--expand-errors`, `--time`, `--time-expanded`, `--crate-name`,
   `--crate-type`, `--edition`).
 
-For example:
-
-```sh
-sail verify --background --output json --requirement REQ-1=demo::checksum \
-  -- --no-cheating
-```
+In a Cargo project, `cargo verus verify` forwards the Verus arguments after
+`--` to every verified package, including the `vstd` dependency, which uses
+`assume`, `admit` and `external_body` itself. A Cargo job with `--no-cheating`
+therefore fails in `vstd`, and its rows read `NotProved`. Standalone-file jobs
+record no per-check solver provenance, so their rows also read `NotProved`.
+Attributed rows therefore report `Proved` without a tier until Sail can apply
+the check to the requested package alone.
 
 The view records the job's arguments verbatim. Every row carries the neutral
 view's shared qualifiers plus qualifiers stating that the link is an unchecked
