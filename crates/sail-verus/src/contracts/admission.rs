@@ -105,6 +105,9 @@ pub(super) fn admit(text: &str, profile: u32) -> Result<Admitted> {
             );
         }
     }
+    if profile >= 3 {
+        calls(&model, &structs)?;
+    }
     if model.functions.iter().all(|f| f.function.predicate) {
         return Err(unsupported(
             "neutral source contains no contracted executable function",
@@ -415,6 +418,137 @@ fn imports(tree: &syn::UseTree) -> Result<()> {
 
 fn registered(name: &str) -> bool {
     ["requires", "ensures", "requirement", "satisfies"].contains(&name)
+}
+
+/// The callable identity of a function: its owner, if any, and qualified name.
+fn callable(value: &SourceFunction, structs: &BTreeMap<String, Struct>) -> Result<String> {
+    let owner = value
+        .owner
+        .as_ref()
+        .map(|path| qualify(&value.module, path))
+        .transpose()?;
+    Ok(match owner {
+        Some(owner) if structs.contains_key(&owner) => {
+            format!("{owner}::{}", value.function.item.sig.ident.unraw())
+        }
+        Some(_) => {
+            return Err(unsupported(
+                "inherent implementation receiver is not admitted",
+            ));
+        }
+        None => identity(value),
+    })
+}
+
+/// Every executable call names an admitted contracted function, and the call
+/// graph has no cycle. Recursion needs a termination measure, which the
+/// neutral syntax does not carry.
+fn calls(model: &SourceModel, structs: &BTreeMap<String, Struct>) -> Result<()> {
+    let mut callables = BTreeMap::new();
+    for value in &model.functions {
+        callables.insert(callable(value, structs)?, value.function.predicate);
+    }
+    let mut graph = BTreeMap::<String, BTreeSet<String>>::new();
+    for value in model.functions.iter().filter(|f| !f.function.predicate) {
+        let caller = callable(value, structs)?;
+        let owner = value
+            .owner
+            .as_ref()
+            .map(|path| qualify(&value.module, path))
+            .transpose()?;
+        let mut visitor = Callees::default();
+        visitor.visit_block(&value.function.item.block);
+        let mut edges = BTreeSet::new();
+        for path in visitor.paths {
+            let names = path
+                .segments
+                .iter()
+                .map(|s| s.ident.to_string())
+                .collect::<Vec<_>>();
+            let target = if names.len() == 2 && names[0] == "Self" {
+                owner
+                    .as_ref()
+                    .map(|owner| format!("{owner}::{}", names[1]))
+                    .ok_or_else(|| {
+                        unsupported("Self calls outside an admitted inherent implementation")
+                    })?
+            } else {
+                qualify(&value.module, &path)?
+            };
+            edges.insert(target);
+        }
+        for method in visitor.methods {
+            let owner = owner.as_ref().ok_or_else(|| {
+                unsupported("self method calls outside an admitted inherent implementation")
+            })?;
+            edges.insert(format!("{owner}::{method}"));
+        }
+        for target in &edges {
+            match callables.get(target) {
+                Some(false) => {}
+                Some(true) => {
+                    return Err(unsupported(
+                        "requirement predicates are specification functions and cannot be called from executable bodies",
+                    ));
+                }
+                None => {
+                    return Err(unsupported(format!(
+                        "call to {target} does not name an admitted contracted function; library, closure and external calls are unsupported"
+                    )));
+                }
+            }
+        }
+        graph.entry(caller).or_default().extend(edges);
+    }
+    let mut finished = BTreeSet::new();
+    for start in graph.keys() {
+        let mut path = Vec::new();
+        cycle(start, &graph, &mut path, &mut finished)?;
+    }
+    Ok(())
+}
+
+fn cycle(
+    node: &str,
+    graph: &BTreeMap<String, BTreeSet<String>>,
+    path: &mut Vec<String>,
+    finished: &mut BTreeSet<String>,
+) -> Result<()> {
+    if finished.contains(node) {
+        return Ok(());
+    }
+    if path.iter().any(|n| n == node) {
+        return Err(unsupported(format!(
+            "recursive call through {node} needs a termination measure and is unsupported"
+        )));
+    }
+    path.push(node.to_owned());
+    for next in graph.get(node).into_iter().flatten() {
+        cycle(next, graph, path, finished)?;
+    }
+    path.pop();
+    finished.insert(node.to_owned());
+    Ok(())
+}
+
+#[derive(Default)]
+struct Callees {
+    paths: Vec<syn::Path>,
+    methods: Vec<String>,
+}
+
+impl<'ast> Visit<'ast> for Callees {
+    fn visit_expr_call(&mut self, value: &'ast syn::ExprCall) {
+        if let syn::Expr::Path(path) = value.func.as_ref() {
+            self.paths.push(path.path.clone());
+        }
+        syn::visit::visit_expr_call(self, value);
+    }
+
+    fn visit_expr_method_call(&mut self, value: &'ast syn::ExprMethodCall) {
+        self.methods.push(value.method.unraw().to_string());
+        syn::visit::visit_expr_method_call(self, value);
+    }
 }
 
 struct BodyAdmission {

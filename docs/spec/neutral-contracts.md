@@ -36,6 +36,11 @@ scalars or `Copy` scalar structs. Ordinary executable function calls are not
 admitted in this first slice; specification calls target checked predicates.
 Trait methods,
 generics, reference returns, opaque macros, unsafe, async and loops are rejected.
+Profile three bodies additionally admit calls by plain path to admitted
+contracted functions, method calls on `self`, casts to fixed-width integer
+types, shared borrows, and `match` whose patterns are integer or Boolean
+literals, literal ranges, qualified unit enum variants, alternatives and
+wildcards. The runtime attributes accept the profile-three body syntax.
 This is an explicit subset, not a claim that arbitrary Rust can be lowered.
 Whole-source admission additionally resolves supported calls, rejects recursion
 and checks types and source ownership; attribute expansion does not claim to

@@ -17,7 +17,7 @@ mod runtime_guarded_compound {
     include!("fixtures/neutral-contracts/compound_field_guarded.rs");
 }
 
-const NATIVE_CASES: [(&str, &str, bool); 12] = [
+const NATIVE_CASES: [(&str, &str, bool); 15] = [
     ("add-one", ADD_ONE, true),
     ("short-circuit", SHORT_CIRCUIT, true),
     ("signed-min", SIGNED, true),
@@ -44,6 +44,21 @@ const NATIVE_CASES: [(&str, &str, bool); 12] = [
     (
         "floor-intuition-profile-three",
         include_str!("fixtures/neutral-contracts/floor_intuition_profile3.rs"),
+        false,
+    ),
+    (
+        "body-calls-profile-three",
+        include_str!("fixtures/neutral-contracts/body_calls_profile3.rs"),
+        true,
+    ),
+    (
+        "narrowing-cast-profile-three",
+        include_str!("fixtures/neutral-contracts/body_calls_controls_profile3.rs"),
+        false,
+    ),
+    (
+        "callee-precondition-profile-three",
+        include_str!("fixtures/neutral-contracts/body_call_precondition_profile3.rs"),
         false,
     ),
 ];

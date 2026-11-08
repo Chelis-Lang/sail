@@ -253,25 +253,129 @@ impl<'ast> Visit<'ast> for Calls {
     }
 }
 
-pub(crate) fn validate_body(item: &ItemFn) -> syn::Result<()> {
-    let mut validator = Body { error: None };
+pub(crate) fn validate_body(item: &ItemFn, profile: u32) -> syn::Result<()> {
+    let mut validator = Body {
+        error: None,
+        profile,
+    };
     validator.visit_block(&item.block);
     validator.error.map_or(Ok(()), Err)
 }
 
 struct Body {
     error: Option<syn::Error>,
+    profile: u32,
+}
+
+impl Body {
+    fn refuse(&mut self, node: impl quote::ToTokens, message: &str) {
+        self.error.get_or_insert_with(|| unsupported(node, message));
+    }
+
+    /// Profile three admits calls, `self` method calls, integer casts, shared
+    /// borrows and `match` over literal and path patterns. Resolution of each
+    /// callee to an admitted contracted function is checked by the backend.
+    fn widened(&mut self, value: &Expr) -> bool {
+        if self.profile < 3 {
+            return false;
+        }
+        match value {
+            Expr::Call(call) => {
+                if !matches!(call.func.as_ref(), Expr::Path(path) if path.qself.is_none() && plain(&path.path))
+                {
+                    self.refuse(
+                        call,
+                        "calls must name an admitted function by a plain path; closures, generic and qualified-self calls are unsupported",
+                    );
+                }
+                true
+            }
+            Expr::MethodCall(call) => {
+                if call.turbofish.is_some()
+                    || !matches!(call.receiver.as_ref(), Expr::Path(path) if path.path.is_ident("self"))
+                {
+                    self.refuse(
+                        call,
+                        "method calls are admitted only on self, without turbofish",
+                    );
+                }
+                true
+            }
+            Expr::Cast(cast) => {
+                if !matches!(cast.ty.as_ref(), syn::Type::Path(path) if path.qself.is_none() && INTEGERS.iter().any(|name| path.path.is_ident(name)))
+                {
+                    self.refuse(cast, "casts are admitted only to fixed-width integer types");
+                }
+                true
+            }
+            Expr::Reference(reference) => {
+                if reference.mutability.is_some() {
+                    self.refuse(
+                        reference,
+                        "mutable borrows in executable bodies are unsupported",
+                    );
+                }
+                true
+            }
+            Expr::Match(value) => {
+                for arm in &value.arms {
+                    self.pattern(&arm.pat);
+                }
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn pattern(&mut self, value: &syn::Pat) {
+        match value {
+            syn::Pat::Wild(_) => {}
+            syn::Pat::Lit(literal) if matches!(literal.lit, syn::Lit::Int(_) | syn::Lit::Bool(_)) => {}
+            syn::Pat::Path(path) if path.qself.is_none() && path.path.segments.len() >= 2 && plain(&path.path) => {}
+            syn::Pat::Range(range)
+                if range.start.as_deref().is_none_or(literal_bound)
+                    && range.end.as_deref().is_none_or(literal_bound) => {}
+            syn::Pat::Or(alternatives) if alternatives.leading_vert.is_none() => {
+                for case in &alternatives.cases {
+                    self.pattern(case);
+                }
+            }
+            _ => self.refuse(
+                value,
+                "match patterns are admitted only as integer or Boolean literals, literal ranges, qualified unit enum variants, alternatives and wildcards",
+            ),
+        }
+    }
+}
+
+const INTEGERS: [&str; 10] = [
+    "u8", "u16", "u32", "u64", "u128", "i8", "i16", "i32", "i64", "i128",
+];
+
+fn plain(path: &syn::Path) -> bool {
+    path.segments
+        .iter()
+        .all(|s| matches!(s.arguments, syn::PathArguments::None))
+}
+
+fn literal_bound(value: &Expr) -> bool {
+    match value {
+        Expr::Lit(literal) => matches!(literal.lit, syn::Lit::Int(_)),
+        Expr::Unary(unary) => {
+            matches!(unary.op, syn::UnOp::Neg(_))
+                && matches!(unary.expr.as_ref(), Expr::Lit(literal) if matches!(literal.lit, syn::Lit::Int(_)))
+        }
+        _ => false,
+    }
 }
 
 impl<'ast> Visit<'ast> for Body {
     fn visit_stmt(&mut self, value: &'ast Stmt) {
         if !matches!(value, Stmt::Local(_) | Stmt::Expr(_, _)) {
-            self.error.get_or_insert_with(|| {
-                unsupported(
-                    value,
-                    "items and macros in neutral function bodies are unsupported",
-                )
-            });
+            self.refuse(
+                value,
+                "items and macros in neutral function bodies are unsupported",
+            );
         }
         syn::visit::visit_stmt(self, value);
     }
@@ -292,8 +396,9 @@ impl<'ast> Visit<'ast> for Body {
                 | Expr::Return(_)
                 | Expr::Struct(_)
                 | Expr::Tuple(_)
-        ) {
-            self.error.get_or_insert_with(|| unsupported(value, "unsupported neutral executable body; calls, effects, loops and macros are not admitted"));
+        ) && !self.widened(value)
+        {
+            self.refuse(value, "unsupported neutral executable body; calls, effects, loops and macros are not admitted");
         }
         if let Expr::Unary(value) = value
             && !matches!(
@@ -301,12 +406,10 @@ impl<'ast> Visit<'ast> for Body {
                 syn::UnOp::Not(_) | syn::UnOp::Neg(_) | syn::UnOp::Deref(_)
             )
         {
-            self.error.get_or_insert_with(|| {
-                unsupported(
-                    value,
-                    "dereferencing and arbitrary borrowing are unsupported",
-                )
-            });
+            self.refuse(
+                value,
+                "dereferencing and arbitrary borrowing are unsupported",
+            );
         }
         syn::visit::visit_expr(self, value);
     }

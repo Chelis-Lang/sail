@@ -32,7 +32,7 @@ pub fn satisfies(arguments: TokenStream, input: TokenStream) -> TokenStream {
 
 fn expand(kind: AttributeKind, arguments: TokenStream, input: TokenStream) -> TokenStream {
     let result = syn::parse::<syn::ItemFn>(input)
-        .and_then(|item| parse_function_with_profile(item, Some((kind, arguments.into())), 2))
+        .and_then(|item| parse_function_with_profile(item, Some((kind, arguments.into())), 3))
         .and_then(runtime);
     result.unwrap_or_else(syn::Error::into_compile_error).into()
 }

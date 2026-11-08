@@ -104,3 +104,41 @@ fn explicit_profile_preserves_legacy_reference_and_nominal_rejections() -> TestR
     assert!(sail_contracts_ir::parse_source_with_profile(source, 0).is_err());
     Ok(())
 }
+
+#[test]
+fn profile_three_alone_admits_calls_casts_borrows_and_literal_match() {
+    for body in [
+        "helper(x)",
+        "self::helper(x) as u8",
+        "match x { 0 => 1, 1..=3 | 9 => 2, _ => x }",
+        "{ let y = &x; *y }",
+    ] {
+        let source = format!(
+            "#[satisfies(\"R\")] #[ensures(|ret| ret == ret)] fn f(x: u8) -> u8 {{ {body} }}"
+        );
+        assert!(
+            sail_contracts_ir::parse_source_with_profile(&source, 2).is_err(),
+            "{body}"
+        );
+        assert!(
+            sail_contracts_ir::parse_source_with_profile(&source, 3).is_ok(),
+            "{body}"
+        );
+    }
+    for body in [
+        "(|v: u8| v)(x)",
+        "x.min(1)",
+        "x as usize as u8",
+        "match x { y => y }",
+        "{ let mut y = x; let r = &mut y; *r }",
+        "{ while x > 0 {} x }",
+    ] {
+        let source = format!(
+            "#[satisfies(\"R\")] #[ensures(|ret| ret == ret)] fn f(x: u8) -> u8 {{ {body} }}"
+        );
+        assert!(
+            sail_contracts_ir::parse_source_with_profile(&source, 3).is_err(),
+            "{body}"
+        );
+    }
+}
