@@ -54,6 +54,51 @@ fn digest(bytes: &[u8]) -> String {
     crate::managed::digest(bytes)
 }
 
+/// Named-field declaration order of every struct in `source`, including inline
+/// modules, for naming decoded counterexample fields. Unparseable source, tuple
+/// structs and names declared more than once yield no entry; this admits nothing.
+#[must_use]
+pub fn struct_field_names(source: &str) -> sail_api::counterexample::FieldNames {
+    fn collect(
+        items: &[syn::Item],
+        names: &mut sail_api::counterexample::FieldNames,
+        repeated: &mut std::collections::BTreeSet<String>,
+    ) {
+        for item in items {
+            match item {
+                syn::Item::Struct(value) => {
+                    let name = value.ident.to_string();
+                    let syn::Fields::Named(fields) = &value.fields else {
+                        repeated.insert(name);
+                        continue;
+                    };
+                    let fields = fields
+                        .named
+                        .iter()
+                        .filter_map(|field| field.ident.as_ref().map(ToString::to_string))
+                        .collect();
+                    if names.insert(name.clone(), fields).is_some() {
+                        repeated.insert(name);
+                    }
+                }
+                syn::Item::Mod(module) => {
+                    if let Some((_, items)) = &module.content {
+                        collect(items, names, repeated);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut names = sail_api::counterexample::FieldNames::new();
+    let mut repeated = std::collections::BTreeSet::new();
+    if let Ok(file) = syn::parse_file(source) {
+        collect(&file.items, &mut names, &mut repeated);
+    }
+    names.retain(|name, _| !repeated.contains(name));
+    names
+}
+
 /// Reproduce conservative component observations from an actual backend record.
 /// This admits no source or toolchain and establishes no standalone requirement tier.
 #[must_use]
