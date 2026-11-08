@@ -418,6 +418,67 @@ fn inherited_configuration(sail: &Path, output: &Path, original: &str) -> TestRe
     drop(service);
     Ok(())
 }
+/// One attributed job: file, Verus arguments, and per function whether it
+/// proves and whether it earns the tier.
+type AttributedCase = (
+    &'static str,
+    &'static [&'static str],
+    &'static [(&'static str, bool, bool)],
+);
+
+/// Submit one attributed standalone job through the installed CLI and wait for it.
+fn submit_attributed(
+    sail: &Path,
+    client: &Client,
+    output: &Path,
+    dir: &Path,
+    (name, verus, rows): AttributedCase,
+) -> TestResult<String> {
+    let mut command = Command::new(sail);
+    command
+        .current_dir(dir)
+        .env("SAIL_CACHE_DIR", output.join("cache"))
+        .env("SAIL_DAEMON_SOCKET", output.join("d.sock"))
+        .args([
+            "verify",
+            &format!("{name}.rs"),
+            "--background",
+            "--output",
+            "json",
+        ]);
+    for (function, _, _) in rows {
+        command.args(["--requirement", &format!("R-{function}={name}::{function}")]);
+    }
+    if !verus.is_empty() {
+        command.arg("--").args(verus);
+    }
+    let submitted = command.output()?;
+    if !submitted.status.success() {
+        return Err(format!(
+            "attributed {name}: submission failed: {}",
+            String::from_utf8_lossy(&submitted.stderr)
+        )
+        .into());
+    }
+    let status: sail_api::jobs::Status = serde_json::from_slice(&submitted.stdout)?;
+    let deadline = Instant::now() + Duration::from_secs(300);
+    loop {
+        let Response::Status(current) = client.call(&Request::Status {
+            id: status.id.clone(),
+        })?
+        else {
+            return Err("wrong status response".into());
+        };
+        if current.state.terminal() {
+            return Ok(status.id);
+        }
+        if Instant::now() > deadline {
+            return Err(format!("attributed {name}: deadline").into());
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
 /// Attributed ordinary jobs through the installed CLI and service: an honest
 /// function earns the tier only under `--no-cheating`, `assume(false)` never
 /// earns one, and a failed function decodes its model inputs.
@@ -439,7 +500,7 @@ fn attributed_jobs(sail: &Path, client: &Client, output: &Path) -> TestResult {
     file("cheat", &format!("{honest}{cheat}"))?;
     file("bad", bad)?;
     // (file, Verus arguments, (function, proved, tier established))
-    let cases: [(&str, &[&str], &[(&str, bool, bool)]); 3] = [
+    let cases: [AttributedCase; 3] = [
         ("honest", &["--no-cheating"], &[("honest", true, true)]),
         (
             "cheat",
@@ -448,51 +509,10 @@ fn attributed_jobs(sail: &Path, client: &Client, output: &Path) -> TestResult {
         ),
         ("bad", &["--no-cheating"], &[("bad", false, false)]),
     ];
-    for (name, verus, rows) in cases {
-        let mut command = Command::new(sail);
-        command
-            .current_dir(&dir)
-            .env("SAIL_CACHE_DIR", output.join("cache"))
-            .env("SAIL_DAEMON_SOCKET", output.join("d.sock"))
-            .args([
-                "verify",
-                &format!("{name}.rs"),
-                "--background",
-                "--output",
-                "json",
-            ]);
-        for (function, _, _) in rows {
-            command.args(["--requirement", &format!("R-{function}={name}::{function}")]);
-        }
-        if !verus.is_empty() {
-            command.arg("--").args(verus);
-        }
-        let submitted = command.output()?;
-        if !submitted.status.success() {
-            return Err(format!(
-                "attributed {name}: submission failed: {}",
-                String::from_utf8_lossy(&submitted.stderr)
-            )
-            .into());
-        }
-        let status: sail_api::jobs::Status = serde_json::from_slice(&submitted.stdout)?;
-        let deadline = Instant::now() + Duration::from_secs(300);
-        loop {
-            let Response::Status(status) = client.call(&Request::Status {
-                id: status.id.clone(),
-            })?
-            else {
-                return Err("wrong status response".into());
-            };
-            if status.state.terminal() {
-                break;
-            }
-            if Instant::now() > deadline {
-                return Err(format!("attributed {name}: deadline").into());
-            }
-            std::thread::sleep(Duration::from_millis(200));
-        }
-        let view = client.attributed_assurance(&status.id)?;
+    for case in cases {
+        let (name, verus, rows) = case;
+        let id = submit_attributed(sail, client, output, &dir, case)?;
+        let view = client.attributed_assurance(&id)?;
         std::fs::write(
             output.join(format!("attributed-{name}.json")),
             serde_json::to_vec_pretty(&view)?,
