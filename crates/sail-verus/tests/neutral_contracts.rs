@@ -17,7 +17,7 @@ mod runtime_guarded_compound {
     include!("fixtures/neutral-contracts/compound_field_guarded.rs");
 }
 
-const NATIVE_CASES: [(&str, &str, bool); 10] = [
+const NATIVE_CASES: [(&str, &str, bool); 12] = [
     ("add-one", ADD_ONE, true),
     ("short-circuit", SHORT_CIRCUIT, true),
     ("signed-min", SIGNED, true),
@@ -35,6 +35,16 @@ const NATIVE_CASES: [(&str, &str, bool); 10] = [
         "consumer-order-profile-two",
         include_str!("fixtures/neutral-contracts/order_service_profile2_consumer.rs"),
         true,
+    ),
+    (
+        "truncating-division-profile-three",
+        include_str!("fixtures/neutral-contracts/truncating_division_profile3.rs"),
+        true,
+    ),
+    (
+        "floor-intuition-profile-three",
+        include_str!("fixtures/neutral-contracts/floor_intuition_profile3.rs"),
+        false,
     ),
 ];
 
@@ -320,11 +330,7 @@ fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
     let stock = sail_verus::toolchain::Installed::locate_release(pins)?;
     let root = oracle_directory()?;
     for (label, source, expected) in NATIVE_CASES {
-        let lowered = sail_verus::contracts::lower_profile(
-            source,
-            "neutral",
-            if label.ends_with("profile-two") { 2 } else { 1 },
-        )?;
+        let lowered = sail_verus::contracts::lower_profile(source, "neutral", profile_of(label))?;
         let path = root.join(format!("{label}.rs"));
         std::fs::write(&path, &lowered.source)?;
         std::fs::write(
@@ -406,6 +412,16 @@ fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
         );
     }
     Ok(())
+}
+
+fn profile_of(label: &str) -> u32 {
+    if label.ends_with("profile-three") {
+        3
+    } else if label.ends_with("profile-two") {
+        2
+    } else {
+        1
+    }
 }
 
 fn oracle_directory() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {

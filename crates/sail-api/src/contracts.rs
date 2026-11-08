@@ -43,7 +43,7 @@ impl Submission {
     /// Returns a source admission diagnostic without starting any process.
     pub fn validate(&self) -> Result<(), String> {
         let expected = sail_key::QueryKey(sail_key::sha256(self.source.as_bytes())).to_string();
-        if !matches!(self.profile, 1 | 2)
+        if !matches!(self.profile, 1..=3)
             || self.source.is_empty()
             || self.source.len() > MAX_SOURCE_BYTES
             || self.source_sha256 != expected

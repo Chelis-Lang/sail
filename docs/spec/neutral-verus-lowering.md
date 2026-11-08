@@ -17,7 +17,7 @@ with direct scalar fields. Inherent constructors and shared or mutable receiver
 methods are supported. Passive attributes accept only literal documentation/must-use strings, `doc(hidden)`,
 and plain `inline`, `inline(always)` or `inline(never)`. Macro expressions in
 attribute payloads and all parameter attributes are unsupported.
-Bodies are loop-free and call-free. Each executable
+Bodies are loop-free and call-free in profiles one and two. Each executable
 function has one requirement identity and one guarantee.
 
 Admission covers the entire file, including unannotated items. It rejects
@@ -30,7 +30,7 @@ and generated `__sail_` names are reserved. Structs cannot shadow scalar type
 names. Mutable by-value parameters need separate prestate lowering and are
 currently unsupported.
 
-Specification division and remainder, executable runtime `Int`, quantifiers
+Specification division and remainder outside profile three, executable runtime `Int`, quantifiers
 and unsupported Rust forms fail explicitly. No signed division is silently
 converted to mathematical Euclidean division. No runtime `Int` is silently
 converted to a bounded proof integer.
@@ -196,3 +196,37 @@ Profile two requires nominal inputs through shared references; it rejects owning
 nominal inputs and specification conditional/block results of nominal types.
 Those forms require separate runtime ownership handling. Direct flat fields,
 Boolean/integer conditionals and owned return values remain admitted.
+
+## Explicit profile three
+
+`lower_profile(source, crate_name, 3)` and `verify_profile` select the widened
+profile authorized by [ADR 0103](../decisions/0103-scoped-neutral-widening.md).
+It admits everything in profile two. Profile three emits lowering version four
+(`PROFILE_THREE_LOWERING_VERSION`) with contract version three. Retained
+version-one to version-three manifests keep their original projections and bytes.
+
+### Truncating division and remainder
+
+Specification `/` and `%` take two operands of one fixed-width integer type.
+Their value and definedness follow Rust's checked operations:
+
+| Operands | Value | Defined when |
+|---|---|---|
+| unsigned | `l / r`, `l % r` over `int` | both operands are defined and `r != 0` |
+| signed `/` | `__sail_truncating_div(l, r)` | both operands are defined, `r != 0` and the quotient is in range, which excludes `MIN / -1` |
+| signed `%` | `__sail_truncating_rem(l, r)` | both operands are defined, `r != 0` and not `l == MIN && r == -1` |
+
+Verus's `int` division is Euclidean. Unsigned operands are nonnegative and the
+divisor is positive wherever the operation is defined, so Euclidean and
+truncating division agree. For signed operands the generated crate-root
+specification helpers divide magnitudes and restore Rust's sign: the quotient
+truncates toward zero and the remainder takes the dividend's sign. The helpers
+are emitted only in version-four shadows, and their names use the reserved
+`__sail_` prefix. Lowering adds no assertion or lemma about them.
+
+The manifest's arithmetic qualifier names the truncating rule. Boolean and
+mixed-width operands remain refused. The ignored native oracle runs a passing
+fixture and a failing control that states a floor-division guarantee
+(`2 * (value / 2) <= value`) against truncating executable division; fork and
+stock agree on both.
+

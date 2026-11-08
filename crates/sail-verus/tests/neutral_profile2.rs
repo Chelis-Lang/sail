@@ -61,7 +61,7 @@ fn profile_two_refuses_payloads_discriminants_traits_derived_copy_and_unknown_no
     ] {
         assert!(lower_profile(&source, "order", 2).is_err(), "{source}");
     }
-    assert!(lower_profile(SOURCE, "order", 3).is_err());
+    assert!(lower_profile(SOURCE, "order", 4).is_err());
 }
 
 #[allow(

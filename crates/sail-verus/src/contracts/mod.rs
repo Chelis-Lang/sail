@@ -25,6 +25,9 @@ pub use sail_api::contracts::{
 /// The exact neutral source lowering semantics version.
 pub const LOWERING_VERSION: u32 = 2;
 
+/// The lowering version emitted for explicitly selected source profile three.
+pub const PROFILE_THREE_LOWERING_VERSION: u32 = 4;
+
 /// Deterministic Verus source and its original-source binding.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LoweredSource {

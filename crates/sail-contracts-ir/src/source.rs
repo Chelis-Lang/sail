@@ -41,11 +41,11 @@ pub fn parse_source(text: &str) -> syn::Result<SourceModel> {
     parse_source_with_profile(text, 1)
 }
 
-/// Parse a complete source file under explicitly selected profile one or two.
+/// Parse a complete source file under explicitly selected profile one, two or three.
 /// # Errors
 /// Rejects unknown profiles and invalid contracts or predicate resolution.
 pub fn parse_source_with_profile(text: &str, profile: u32) -> syn::Result<SourceModel> {
-    if !matches!(profile, 1 | 2) {
+    if !matches!(profile, 1..=3) {
         return Err(unsupported(
             proc_macro2::TokenStream::new(),
             "unsupported source profile",
@@ -175,7 +175,7 @@ fn collect(
                     collect(items, &nested, functions, structs, enums, profile)?;
                 }
             }
-            Item::Enum(value) if profile == 2 => {
+            Item::Enum(value) if profile >= 2 => {
                 let key = qualified(module, &value.ident.to_string());
                 if enums.insert(key, value.clone()).is_some() {
                     return Err(unsupported(value, "duplicate nominal enum"));
