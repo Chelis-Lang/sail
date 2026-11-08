@@ -21,6 +21,7 @@ impl Type {
         value: &syn::Type,
         module: &[String],
         structs: &BTreeMap<String, Struct>,
+        imports: &Imports,
     ) -> Result<Self> {
         if matches!(value, syn::Type::Tuple(tuple) if tuple.elems.is_empty()) {
             return Ok(Self::Unit);
@@ -29,7 +30,7 @@ impl Type {
             if reference.lifetime.is_some() {
                 return Err(unsupported("explicit reference lifetimes are unsupported"));
             }
-            let inner = Self::parse(&reference.elem, module, structs)?;
+            let inner = Self::parse(&reference.elem, module, structs, imports)?;
             if matches!(inner, Self::Reference(..) | Self::Unit)
                 || (reference.mutability.is_some()
                     && !matches!(inner, Self::Bool | Self::Integer { .. }))
@@ -68,7 +69,7 @@ impl Type {
                 return Ok(Self::Integer { signed: true, bits });
             }
         }
-        let name = qualify(module, &path.path)?;
+        let name = qualify(module, &path.path, imports)?;
         if let Some(record) = structs.get(&name) {
             return Ok(if record.variants.is_some() {
                 Self::Enum(name)
@@ -138,12 +139,23 @@ pub(super) struct Struct {
     pub(super) variants: Option<Vec<String>>,
 }
 
-pub(super) fn qualify(module: &[String], path: &syn::Path) -> Result<String> {
+/// Profile-three crate-internal imports: module path to alias to target path.
+pub(super) type Imports = BTreeMap<Vec<String>, BTreeMap<String, Vec<String>>>;
+
+pub(super) fn qualify(module: &[String], path: &syn::Path, imports: &Imports) -> Result<String> {
     let mut names = path
         .segments
         .iter()
         .map(|s| s.ident.to_string())
         .collect::<Vec<_>>();
+    if path.leading_colon.is_none()
+        && let Some(target) = names
+            .first()
+            .and_then(|first| imports.get(module).and_then(|aliases| aliases.get(first)))
+    {
+        names.splice(0..1, target.iter().cloned());
+        return Ok(names.join("::"));
+    }
     if names.first().is_some_and(|s| s == "crate") {
         names.remove(0);
     } else {

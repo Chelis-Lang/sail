@@ -6,14 +6,15 @@ use sail_contracts_ir::SourceFunction;
 use syn::ext::IdentExt;
 use syn::{fold::Fold, spanned::Spanned, visit::Visit};
 
-use super::admission::{Admitted, admit, identity, signature};
+use super::admission::{Admitted, admit_closure, identity, signature};
 use super::expression::{Environment, Phase};
 use super::types::Type;
 use super::{
-    ContractBinding, LOWERING_VERSION, LoweredSource, LoweringManifest,
+    ContractBinding, LOWERING_VERSION, LoweredSource, LoweringManifest, ModuleDigest, ModuleSource,
     PROFILE_THREE_LOWERING_VERSION, SourceRange, digest, unsupported,
 };
 use crate::Result;
+use sail_api::contracts::{MAX_CLOSURE_BYTES, MAX_SOURCE_BYTES, closure_sha256};
 
 /// Admit the complete source file and lower supported neutral contracts to Verus.
 ///
@@ -28,13 +29,29 @@ pub fn lower(source: &str, crate_name: &str) -> Result<LoweredSource> {
 /// # Errors
 /// Rejects unsupported profiles, source or type admission.
 pub fn lower_profile(source: &str, crate_name: &str, profile: u32) -> Result<LoweredSource> {
+    lower_closure(source, &[], crate_name, profile)
+}
+
+/// Lower a crate root and its out-of-line module files as one source closure.
+///
+/// The closure lowers to one Verus file in which each `mod name;` becomes an
+/// inline module holding its submitted file. Module files need profile three.
+/// # Errors
+/// Rejects unsupported profiles, files outside the declared closure, digest
+/// mismatches and source or type admission failures.
+pub fn lower_closure(
+    source: &str,
+    modules: &[ModuleSource],
+    crate_name: &str,
+    profile: u32,
+) -> Result<LoweredSource> {
     let version = match profile {
         1 => LOWERING_VERSION,
         2 => 3,
         3 => PROFILE_THREE_LOWERING_VERSION,
         _ => return Err(unsupported("unsupported source profile")),
     };
-    lower_version(source, crate_name, version)
+    lower_version(source, modules, crate_name, version)
 }
 
 /// Recheck retained source-to-shadow identity using corrected expression semantics.
@@ -45,13 +62,24 @@ pub fn lower_profile(source: &str, crate_name: &str, profile: u32) -> Result<Low
 /// # Errors
 /// `SAIL3140` for unsupported versions, source or any manifest mismatch.
 pub fn validate_manifest(source: &str, manifest: &LoweringManifest) -> Result<()> {
+    validate_closure_manifest(source, &[], manifest)
+}
+
+/// Recheck a retained closure lowering against its exact root and module files.
+/// # Errors
+/// `SAIL3140` for unsupported versions, source or any manifest mismatch.
+pub fn validate_closure_manifest(
+    source: &str,
+    modules: &[ModuleSource],
+    manifest: &LoweringManifest,
+) -> Result<()> {
     if !matches!(
         manifest.version,
         1 | LOWERING_VERSION | 3 | PROFILE_THREE_LOWERING_VERSION
     ) {
         return Err(unsupported("unsupported retained neutral lowering version"));
     }
-    let expected = lower_version(source, &manifest.crate_name, manifest.version)?;
+    let expected = lower_version(source, modules, &manifest.crate_name, manifest.version)?;
     if expected.manifest != *manifest {
         return Err(unsupported(
             "retained neutral lowering differs from the corrected exact source projection",
@@ -60,10 +88,25 @@ pub fn validate_manifest(source: &str, manifest: &LoweringManifest) -> Result<()
     Ok(())
 }
 
-fn lower_version(source: &str, crate_name: &str, version: u32) -> Result<LoweredSource> {
-    if source.len() > 64 * 1024 {
+fn lower_version(
+    source: &str,
+    modules: &[ModuleSource],
+    crate_name: &str,
+    version: u32,
+) -> Result<LoweredSource> {
+    if source.len() > MAX_SOURCE_BYTES {
         return Err(unsupported(
             "single-file neutral proof input exceeds 64 KiB",
+        ));
+    }
+    if modules.iter().any(|m| {
+        m.source.len() > MAX_SOURCE_BYTES || m.source_sha256 != digest(m.source.as_bytes())
+    }) || modules.iter().map(|m| m.source.len()).sum::<usize>() + source.len()
+        > MAX_CLOSURE_BYTES
+        || !modules.windows(2).all(|w| w[0].module < w[1].module)
+    {
+        return Err(unsupported(
+            "module files need exact digests, sorted unique module paths and bounded size",
         ));
     }
     let identifier = syn::parse_str::<syn::Ident>(crate_name).map_err(super::syntax)?;
@@ -76,7 +119,11 @@ fn lower_version(source: &str, crate_name: &str, version: u32) -> Result<Lowered
         PROFILE_THREE_LOWERING_VERSION => 3,
         _ => 1,
     };
-    let admitted = admit(source, profile)?;
+    let files = modules
+        .iter()
+        .map(|m| (m.module.as_str(), m.source.as_str()))
+        .collect::<Vec<_>>();
+    let admitted = admit_closure(source, &files, profile)?;
     let mut bindings = Vec::new();
     let items = module(
         &admitted,
@@ -85,6 +132,9 @@ fn lower_version(source: &str, crate_name: &str, version: u32) -> Result<Lowered
         crate_name,
         &mut bindings,
     )?;
+    for binding in &mut bindings {
+        binding.module_file = module_file(&admitted, &binding.function, crate_name);
+    }
     let helpers = if profile >= 3 {
         truncating_helpers()
     } else {
@@ -93,6 +143,13 @@ fn lower_version(source: &str, crate_name: &str, version: u32) -> Result<Lowered
     let source_code = format!(
         "// Generated by Sail neutral-contract lowering version {version}.\nuse vstd::prelude::*;\nverus! {{\n{helpers}{items}\n}}\n"
     );
+    let module_digests = modules
+        .iter()
+        .map(|m| ModuleDigest {
+            module: m.module.clone(),
+            sha256: m.source_sha256.clone(),
+        })
+        .collect::<Vec<_>>();
     if source_code.len() > 16 * 1024 * 1024 {
         return Err(unsupported("neutral shadow expansion exceeds 16 MiB"));
     }
@@ -103,15 +160,31 @@ fn lower_version(source: &str, crate_name: &str, version: u32) -> Result<Lowered
         version,
         contract_version: profile,
         crate_name: crate_name.to_owned(),
-        original_sha256: digest(source.as_bytes()),
+        original_sha256: closure_sha256(&digest(source.as_bytes()), &module_digests),
         lowered_sha256: digest(source_code.as_bytes()),
         arithmetic: arithmetic(profile).into(),
         bindings,
+        modules: module_digests,
     };
     Ok(LoweredSource {
         source: source_code,
         manifest,
     })
+}
+
+/// The deepest out-of-line module file that contains a bound function.
+fn module_file(admitted: &Admitted, function: &str, crate_name: &str) -> Option<String> {
+    let path = function
+        .strip_prefix(crate_name)
+        .and_then(|rest| rest.strip_prefix("::"))?
+        .split("::")
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    (1..path.len())
+        .rev()
+        .map(|end| &path[..end])
+        .find(|prefix| admitted.model.module_files.contains(*prefix))
+        .map(|prefix| prefix.join("::"))
 }
 
 const ARITHMETIC: &str = "fixed-width checked specification arithmetic; executable overflow is a proof obligation; mathematical intermediate values with explicit bounds";
@@ -169,6 +242,14 @@ fn module(
             }
             syn::Item::Struct(value) => output.push(quote!(#value)),
             syn::Item::Enum(value) => output.push(enum_source(value)?),
+            // Profile three keeps crate-internal imports, which admission
+            // resolved to admitted items; contract imports are dropped.
+            syn::Item::Use(value)
+                if admitted.model.profile >= 3
+                    && matches!(&value.tree, syn::UseTree::Path(p) if p.ident != "sail_contracts") =>
+            {
+                output.push(quote!(#value));
+            }
             syn::Item::Use(_) => {}
             syn::Item::Mod(value) => {
                 let (_, items) = value
@@ -180,7 +261,16 @@ fn module(
                 let body = module(admitted, items, &nested, crate_name, bindings)?;
                 let visibility = &value.vis;
                 let name = &value.ident;
-                output.push(quote!(#visibility mod #name { #body }));
+                // Profile three brings the Verus prelude into each module, so
+                // nested enums resolve their structural-equality derive.
+                let prelude = if admitted.model.profile >= 3 {
+                    quote!(
+                        use vstd::prelude::*;
+                    )
+                } else {
+                    TokenStream::new()
+                };
+                output.push(quote!(#visibility mod #name { #prelude #body }));
             }
             syn::Item::Impl(value) => {
                 let syn::Type::Path(owner) = value.self_ty.as_ref() else {
@@ -231,7 +321,12 @@ fn function_source(
     crate_name: &str,
     bindings: &mut Vec<ContractBinding>,
 ) -> Result<TokenStream> {
-    let (owner, inputs, output) = signature(source, &admitted.structs, admitted.model.profile)?;
+    let (owner, inputs, output) = signature(
+        source,
+        &admitted.structs,
+        &admitted.model.imports,
+        admitted.model.profile,
+    )?;
     let mut values = inputs.into_iter().collect::<BTreeMap<_, _>>();
     if let Some(owner) = owner.as_ref() {
         values.insert("self".into(), Type::Named(owner.clone()));
@@ -242,6 +337,7 @@ fn function_source(
         values,
         structs: &admitted.structs,
         predicates: &admitted.predicates,
+        imports: &admitted.model.imports,
         mutable_receiver: source
             .function
             .item
@@ -348,7 +444,12 @@ fn loops(environment: &Environment<'_>, source: &SourceFunction) -> Result<syn::
             )));
         }
         if let Some(ty) = ty {
-            let ty = Type::parse(&ty, environment.module, environment.structs)?;
+            let ty = Type::parse(
+                &ty,
+                environment.module,
+                environment.structs,
+                environment.imports,
+            )?;
             if matches!(ty, Type::Bool | Type::Integer { .. }) {
                 values.insert(name, ty);
             }
@@ -360,6 +461,7 @@ fn loops(environment: &Environment<'_>, source: &SourceFunction) -> Result<syn::
         values,
         structs: environment.structs,
         predicates: environment.predicates,
+        imports: environment.imports,
         mutable_receiver: environment.mutable_receiver,
     };
     let mut lowering = Loops {
@@ -527,6 +629,7 @@ fn binding(
             end_line: end.line,
             end_column: end.column,
         },
+        module_file: None,
     }
 }
 

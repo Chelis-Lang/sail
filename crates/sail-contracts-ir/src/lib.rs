@@ -10,7 +10,8 @@ pub use function::{
     AttributeKind, ContractFunction, RequirementId, parse_function, parse_function_with_profile,
 };
 pub use source::{
-    LoopHead, SourceFunction, SourceModel, loop_head, parse_source, parse_source_with_profile,
+    LoopHead, MAX_MODULE_FILES, SourceFunction, SourceModel, loop_head, parse_closure_with_profile,
+    parse_source, parse_source_with_profile,
 };
 
 /// The version of the supported neutral source semantics.

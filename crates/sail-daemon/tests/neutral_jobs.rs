@@ -18,6 +18,7 @@ fn scalar_witness_preparation_uses_source_owner_without_starting_jobs() -> TestR
         source: source.into(),
         source_sha256: sail_api::mutation::digest(source.as_bytes()),
         crate_name: "neutral".into(),
+        modules: Vec::new(),
     };
     let client = fixture.client();
     let plan = client.literal_witnesses(&input, 8)?;
@@ -85,6 +86,7 @@ impl Fixture {
             source_sha256: sail_key::QueryKey(sail_key::sha256(source.as_bytes())).to_string(),
             source,
             crate_name: "neutral".into(),
+            modules: Vec::new(),
         };
         let manifest = sail_verus::contracts::lower(&input.source, &input.crate_name)?.manifest;
         let backend = serde_json::from_value(
@@ -345,6 +347,7 @@ fn retain_version_one(fixture: &Fixture, source: &str, manifest: &str) -> TestRe
         source: source.into(),
         source_sha256: sail_key::QueryKey(sail_key::sha256(source.as_bytes())).to_string(),
         crate_name: "neutral".into(),
+        modules: Vec::new(),
     };
     let mut worker: WorkerResult =
         serde_json::from_slice(&std::fs::read(fixture.root.join("fixture.json"))?)?;

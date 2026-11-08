@@ -29,7 +29,16 @@ pub struct SourceModel {
     pub functions: Vec<SourceFunction>,
     /// Original struct definitions by qualified source identity.
     pub structs: BTreeMap<String, syn::ItemStruct>,
+    /// Every module path in the closure, including the crate root.
+    pub modules: BTreeSet<Vec<String>>,
+    /// Out-of-line module paths whose items came from a submitted module file.
+    pub module_files: BTreeSet<Vec<String>>,
+    /// Profile-three crate-internal imports: module path to alias to target path.
+    pub imports: BTreeMap<Vec<String>, BTreeMap<String, Vec<String>>>,
 }
+
+/// Maximum number of out-of-line module files in one source closure.
+pub const MAX_MODULE_FILES: usize = 64;
 
 /// Parse source and revalidate every referenced predicate's actual body.
 ///
@@ -45,6 +54,23 @@ pub fn parse_source(text: &str) -> syn::Result<SourceModel> {
 /// # Errors
 /// Rejects unknown profiles and invalid contracts or predicate resolution.
 pub fn parse_source_with_profile(text: &str, profile: u32) -> syn::Result<SourceModel> {
+    parse_closure_with_profile(text, &[], profile)
+}
+
+/// Parse a crate root and its out-of-line module files as one source closure.
+///
+/// Each module file is named by its crate-relative module path, such as
+/// `codec` or `codec::bits`, never by a filesystem path. Every `mod name;`
+/// declaration must resolve to exactly one submitted file, and every submitted
+/// file must be declared. Module files need profile three.
+/// # Errors
+/// Rejects unknown profiles, files outside the declared closure, `#[path]`
+/// redirection, invalid contracts and unresolved predicate calls.
+pub fn parse_closure_with_profile(
+    text: &str,
+    modules: &[(&str, &str)],
+    profile: u32,
+) -> syn::Result<SourceModel> {
     if !matches!(profile, 1..=3) {
         return Err(unsupported(
             proc_macro2::TokenStream::new(),
@@ -57,16 +83,22 @@ pub fn parse_source_with_profile(text: &str, profile: u32) -> syn::Result<Source
             "SAIL0701: neutral source exceeds one MiB",
         ));
     }
-    let file = syn::parse_file(text)?;
+    let mut file = syn::parse_file(text)?;
+    let module_files = compose(&mut file, modules, profile)?;
     let mut functions = Vec::new();
     let mut structs = BTreeMap::new();
     let mut enums = BTreeMap::new();
+    let mut scope = Scope {
+        modules: BTreeSet::from([Vec::new()]),
+        imports: BTreeMap::new(),
+    };
     collect(
         &file.items,
         &[],
         &mut functions,
         &mut structs,
         &mut enums,
+        &mut scope,
         profile,
     )?;
     let mut predicates = BTreeMap::new();
@@ -97,7 +129,7 @@ pub fn parse_source_with_profile(text: &str, profile: u32) -> syn::Result<Source
             calls.visit_expr(&guarantee.body);
         }
         for path in calls.paths {
-            let name = resolve(&value.module, &path)?;
+            let name = resolve(&value.module, &path, &scope.imports)?;
             let predicate = predicates.get(&name).ok_or_else(|| {
                 unsupported(
                     &path,
@@ -118,7 +150,116 @@ pub fn parse_source_with_profile(text: &str, profile: u32) -> syn::Result<Source
         enums,
         functions,
         structs,
+        modules: scope.modules,
+        module_files,
+        imports: scope.imports,
     })
+}
+
+struct Scope {
+    modules: BTreeSet<Vec<String>>,
+    imports: BTreeMap<Vec<String>, BTreeMap<String, Vec<String>>>,
+}
+
+/// Replace each `mod name;` with its submitted file, recursively.
+fn compose(
+    file: &mut syn::File,
+    modules: &[(&str, &str)],
+    profile: u32,
+) -> syn::Result<BTreeSet<Vec<String>>> {
+    let empty = proc_macro2::TokenStream::new();
+    if !modules.is_empty() && profile < 3 {
+        return Err(unsupported(
+            empty,
+            "out-of-line module files require explicit profile three",
+        ));
+    }
+    if modules.len() > MAX_MODULE_FILES {
+        return Err(unsupported(
+            empty,
+            "a source closure has too many module files",
+        ));
+    }
+    let mut pending = BTreeMap::new();
+    for (name, text) in modules {
+        let path = name.split("::").map(str::to_owned).collect::<Vec<_>>();
+        if path
+            .iter()
+            .any(|part| syn::parse_str::<syn::Ident>(part).is_err() || part.starts_with("__sail_"))
+        {
+            return Err(unsupported(
+                proc_macro2::TokenStream::new(),
+                "module file names must be crate-relative module paths of plain identifiers",
+            ));
+        }
+        if text.len() > 1024 * 1024 {
+            return Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                "SAIL0701: neutral source exceeds one MiB",
+            ));
+        }
+        if pending.insert(path, *text).is_some() {
+            return Err(unsupported(
+                proc_macro2::TokenStream::new(),
+                "a module file is submitted twice",
+            ));
+        }
+    }
+    let mut used = BTreeSet::new();
+    inline(&mut file.items, &[], &pending, &mut used)?;
+    if let Some(unused) = pending.keys().find(|name| !used.contains(*name)) {
+        return Err(unsupported(
+            proc_macro2::TokenStream::new(),
+            &format!(
+                "submitted module file {} is not declared by an out-of-line module in the closure",
+                unused.join("::")
+            ),
+        ));
+    }
+    Ok(used)
+}
+
+fn inline(
+    items: &mut [Item],
+    module: &[String],
+    files: &BTreeMap<Vec<String>, &str>,
+    used: &mut BTreeSet<Vec<String>>,
+) -> syn::Result<()> {
+    for item in items {
+        let Item::Mod(value) = item else { continue };
+        let mut nested = module.to_vec();
+        nested.push(value.ident.to_string());
+        if value.content.is_none() {
+            if value.attrs.iter().any(|a| a.path().is_ident("path")) {
+                return Err(unsupported(
+                    &*value,
+                    "#[path] module redirection is outside the admitted source closure",
+                ));
+            }
+            let Some(text) = files.get(&nested) else {
+                return Err(unsupported(
+                    &*value,
+                    &format!(
+                        "out-of-line module {} is outside the submitted source closure",
+                        nested.join("::")
+                    ),
+                ));
+            };
+            let parsed = syn::parse_file(text)?;
+            if parsed.shebang.is_some() {
+                return Err(unsupported(&*value, "module files cannot carry a shebang"));
+            }
+            used.insert(nested.clone());
+            // A module file's inner attributes apply to its module declaration.
+            value.attrs.extend(parsed.attrs);
+            value.content = Some((syn::token::Brace::default(), parsed.items));
+            value.semi = None;
+        }
+        if let Some((_, nested_items)) = &mut value.content {
+            inline(nested_items, &nested, files, used)?;
+        }
+    }
+    Ok(())
 }
 
 fn qualified(module: &[String], name: &str) -> String {
@@ -130,12 +271,24 @@ fn qualified(module: &[String], name: &str) -> String {
         .join("::")
 }
 
-fn resolve(module: &[String], path: &syn::Path) -> syn::Result<String> {
+fn resolve(
+    module: &[String],
+    path: &syn::Path,
+    imports: &BTreeMap<Vec<String>, BTreeMap<String, Vec<String>>>,
+) -> syn::Result<String> {
     let mut parts = path
         .segments
         .iter()
         .map(|s| s.ident.to_string())
         .collect::<Vec<_>>();
+    if path.leading_colon.is_none()
+        && let Some(target) = parts
+            .first()
+            .and_then(|first| imports.get(module).and_then(|aliases| aliases.get(first)))
+    {
+        parts.splice(0..1, target.iter().cloned());
+        return Ok(parts.join("::"));
+    }
     if parts.first().is_some_and(|s| s == "crate") {
         parts.remove(0);
     } else {
@@ -159,10 +312,21 @@ fn collect(
     functions: &mut Vec<SourceFunction>,
     structs: &mut BTreeMap<String, syn::ItemStruct>,
     enums: &mut BTreeMap<String, syn::ItemEnum>,
+    scope: &mut Scope,
     profile: u32,
 ) -> syn::Result<()> {
     for item in items {
         match item {
+            Item::Use(value) if profile >= 3 && value.leading_colon.is_none() => {
+                let mut aliases = Vec::new();
+                flatten(&value.tree, module, None, &mut aliases)?;
+                let table = scope.imports.entry(module.to_vec()).or_default();
+                for (alias, target) in aliases {
+                    if table.insert(alias, target).is_some() {
+                        return Err(unsupported(value, "an import name is declared twice"));
+                    }
+                }
+            }
             Item::Fn(value) if annotated(&value.attrs) => functions.push(SourceFunction {
                 module: module.to_vec(),
                 owner: None,
@@ -172,7 +336,8 @@ fn collect(
                 if let Some((_, items)) = &value.content {
                     let mut nested = module.to_vec();
                     nested.push(value.ident.to_string());
-                    collect(items, &nested, functions, structs, enums, profile)?;
+                    scope.modules.insert(nested.clone());
+                    collect(items, &nested, functions, structs, enums, scope, profile)?;
                 }
             }
             Item::Enum(value) if profile >= 2 => {
@@ -229,6 +394,67 @@ fn collect(
         }
     }
     Ok(())
+}
+
+/// Flatten a crate-internal import into alias and absolute target pairs.
+///
+/// External roots, including `sail_contracts`, are left to backend admission.
+fn flatten(
+    tree: &syn::UseTree,
+    module: &[String],
+    prefix: Option<Vec<String>>,
+    aliases: &mut Vec<(String, Vec<String>)>,
+) -> syn::Result<()> {
+    let refuse = |message: &str| Err(unsupported(tree, message));
+    match (tree, prefix) {
+        (syn::UseTree::Path(path), None) => {
+            let root = match path.ident.to_string().as_str() {
+                "crate" => Vec::new(),
+                "self" => module.to_vec(),
+                "super" => match module.split_last() {
+                    Some((_, parent)) => parent.to_vec(),
+                    None => return refuse("super imports at the crate root leave the crate"),
+                },
+                _ => return Ok(()),
+            };
+            flatten(&path.tree, module, Some(root), aliases)
+        }
+        (syn::UseTree::Path(path), Some(mut prefix)) => {
+            if ["crate", "self", "super"].contains(&path.ident.to_string().as_str()) {
+                return refuse("crate, self and super must lead an import path");
+            }
+            prefix.push(path.ident.to_string());
+            flatten(&path.tree, module, Some(prefix), aliases)
+        }
+        (syn::UseTree::Name(name), Some(mut prefix)) => {
+            if ["crate", "self", "super"].contains(&name.ident.to_string().as_str()) {
+                return refuse("self, crate and super imports are unsupported");
+            }
+            prefix.push(name.ident.to_string());
+            aliases.push((name.ident.to_string(), prefix));
+            Ok(())
+        }
+        (syn::UseTree::Rename(rename), Some(mut prefix)) => {
+            if ["crate", "self", "super", "_"].contains(&rename.ident.to_string().as_str())
+                || rename.rename == "_"
+            {
+                return refuse("self, crate, super and underscore imports are unsupported");
+            }
+            prefix.push(rename.ident.to_string());
+            aliases.push((rename.rename.to_string(), prefix));
+            Ok(())
+        }
+        (syn::UseTree::Group(group), Some(prefix)) => {
+            for item in &group.items {
+                flatten(item, module, Some(prefix.clone()), aliases)?;
+            }
+            Ok(())
+        }
+        (syn::UseTree::Glob(_), Some(_)) => {
+            refuse("glob imports hide source resolution and are unsupported")
+        }
+        _ => refuse("crate-internal imports must start with crate, self or super"),
+    }
 }
 
 fn annotated(attributes: &[syn::Attribute]) -> bool {

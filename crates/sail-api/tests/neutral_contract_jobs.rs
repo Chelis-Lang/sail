@@ -10,6 +10,7 @@ fn input() -> Submission {
         source_sha256: sail_key::QueryKey(sail_key::sha256(source.as_bytes())).to_string(),
         source,
         crate_name: "neutral".into(),
+        modules: Vec::new(),
     }
 }
 #[test]

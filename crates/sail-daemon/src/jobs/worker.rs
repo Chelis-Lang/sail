@@ -64,11 +64,10 @@ pub(super) fn run(state: &State) {
                         job.projection = Some(projection);
                         job.status.exit_code = code;
                         job.status.state = Lifecycle::Completed;
-                        job.status.input_revision = Some(
-                            job.contracts
-                                .as_ref()
-                                .map_or(document.input_revision, |s| s.source_sha256.clone()),
-                        );
+                        job.status.input_revision = Some(job.contracts.as_ref().map_or(
+                            document.input_revision,
+                            sail_api::contracts::Submission::closure_sha256,
+                        ));
                         job.status.currentness = if job.contracts.is_some() {
                             Currentness::Unknown
                         } else {

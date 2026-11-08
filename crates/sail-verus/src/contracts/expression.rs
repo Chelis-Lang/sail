@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use syn::ext::IdentExt;
 
 use super::admission::Predicate;
-use super::types::{Struct, Type, qualify};
+use super::types::{Imports, Struct, Type, qualify};
 use super::unsupported;
 use crate::Result;
 
@@ -22,6 +22,7 @@ pub(super) struct Environment<'a> {
     pub(super) values: BTreeMap<String, Type>,
     pub(super) structs: &'a BTreeMap<String, Struct>,
     pub(super) predicates: &'a BTreeMap<String, Predicate>,
+    pub(super) imports: &'a Imports,
     pub(super) mutable_receiver: bool,
 }
 
@@ -96,7 +97,7 @@ impl Environment<'_> {
                     .ident
                     .to_string();
                 parts.segments.pop_punct();
-                let name = qualify(self.module, &parts)?;
+                let name = qualify(self.module, &parts, self.imports)?;
                 if !self
                     .structs
                     .get(&name)
@@ -159,7 +160,7 @@ impl Environment<'_> {
                     .ident
                     .to_string();
                 parts.segments.pop_punct();
-                let name = qualify(self.module, &parts)?;
+                let name = qualify(self.module, &parts, self.imports)?;
                 if !self
                     .structs
                     .get(&name)
@@ -378,7 +379,7 @@ impl Environment<'_> {
                 ..value
             });
         }
-        let name = qualify(self.module, &path.path)?;
+        let name = qualify(self.module, &path.path, self.imports)?;
         let predicate = self
             .predicates
             .get(&name)
@@ -402,13 +403,20 @@ impl Environment<'_> {
                 quote!((#expression) as #rust)
             });
         }
-        let mut helper = path.path.clone();
+        // Profile three emits the resolved crate path, so an imported predicate's
+        // generated definedness helper resolves without its own import.
+        let original = if self.profile >= 3 {
+            syn::parse_str::<syn::Path>(&format!("crate::{name}")).map_err(super::syntax)?
+        } else {
+            path.path.clone()
+        };
+        let mut helper = original.clone();
         let last = helper
             .segments
             .last_mut()
             .ok_or_else(|| unsupported("empty predicate path"))?;
         last.ident = format_ident!("__sail_defined_{}", last.ident.unraw());
-        let function = &path.path;
+        let function = &original;
         Ok(Value {
             ty: Type::Bool,
             expression: quote!(#function(#(#arguments),*)),

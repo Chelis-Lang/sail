@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Admit multi-file source closures in neutral profile three (ADR 0103).
+  `Submission.modules` carries out-of-line module files by crate-relative module
+  path; `lower_closure`, `validate_closure_manifest` and `verify_closure` admit
+  the root and its files as one closure, and crate-internal `crate`, `self` and
+  `super` imports resolve to admitted items. Undeclared or missing files,
+  `#[path]`, glob and external imports are refused. Manifests bind every file
+  digest and each binding's module file; single-file bytes are unchanged.
+  Mutation campaigns and literal witnesses refuse closures.
 - Admit `while` loops in neutral profile three bodies (ADR 0103). A loop body
   starts with an optional `sail_contracts::invariant!` and one
   `sail_contracts::decreases!`; lowering emits them as Verus `invariant` and

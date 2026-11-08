@@ -167,7 +167,7 @@ pub(in crate::jobs) fn original_baseline(
         || baseline
             .contracts
             .as_ref()
-            .is_none_or(|c| c.manifest.original_sha256 != seal.source.source_sha256)
+            .is_none_or(|c| c.manifest.original_sha256 != seal.source.closure_sha256())
     {
         return Err(error(
             "original mutation evidence differs from its source or output seals",

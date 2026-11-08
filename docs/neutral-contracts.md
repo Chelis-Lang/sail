@@ -174,6 +174,21 @@ do not. Profile three admits everything in profile two, plus:
   `loop`, `for`, labels, `break`, `continue`, `old` in a loop head and a
   missing measure stay refused.
 
+- **Multi-file source closures.** Set `Submission.modules` to the crate's
+  out-of-line module files, each named by its crate-relative module path rather
+  than a filesystem path. Every `mod name;` declaration must resolve to exactly
+  one submitted file, and every submitted file must be declared; `#[path]`
+  redirection is refused. Module files can hold annotated functions, requirement
+  predicates, structs and enums. Imports that start with `crate`, `self` or
+  `super` are admitted when they name an admitted module, type or free
+  function, including renamed imports. Glob imports, external imports and
+  aliases that shadow a scalar type or a local item stay refused. The manifest
+  lists each module file's digest, its `original_sha256` is the closure
+  identity, and each binding names its module file. Unit enums must stay at
+  the crate root, because the pinned Verus aborts on their structural-equality
+  derive inside a module
+  ([VI-0042](verus-issues/VI-0042-structural-derive-in-module.md)).
+
 Profile three lowers with version four and contract version three. Its manifest
 names the truncating rule in its arithmetic qualifier. Profiles one and two still
 refuse specification division and remainder and the widened body forms, and

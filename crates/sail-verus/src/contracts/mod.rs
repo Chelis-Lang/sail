@@ -16,11 +16,13 @@ mod types;
 
 use serde::{Deserialize, Serialize};
 
-pub use lower::{lower, lower_profile, validate_manifest};
-pub use runner::{ContractRun, verify, verify_profile};
+pub use lower::{
+    lower, lower_closure, lower_profile, validate_closure_manifest, validate_manifest,
+};
+pub use runner::{ContractRun, verify, verify_closure, verify_profile};
 pub use sail_api::contracts::{
-    CheckCounts, ContractBinding, ContractProof, LoweringManifest, ProofState, SourceRange,
-    TranslationTrust,
+    CheckCounts, ContractBinding, ContractProof, LoweringManifest, ModuleDigest, ModuleSource,
+    ProofState, SourceRange, TranslationTrust,
 };
 
 /// The exact neutral source lowering semantics version.

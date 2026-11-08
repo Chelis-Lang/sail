@@ -82,7 +82,7 @@ pub struct Evidence {
     pub relationship: Relationship,
     /// Exact original qualified function name.
     pub function: String,
-    /// Exact source snapshot digest.
+    /// Exact source snapshot digest, or the closure identity for module files.
     pub source_sha256: String,
     /// Exact guarantee syntax digest from the authenticated lowering manifest.
     pub guarantee_sha256: String,

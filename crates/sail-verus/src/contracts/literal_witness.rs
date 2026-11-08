@@ -49,6 +49,11 @@ pub fn prepare(input: &sail_api::contracts::Submission, budget: usize) -> crate:
 )]
 fn candidate_query(candidate: &Candidate) -> crate::Result<Prepared> {
     let input = &candidate.source;
+    if !input.modules.is_empty() {
+        return Err(unsupported(
+            "literal witnesses cover single-file sources; module-file closures are unsupported",
+        ));
+    }
     let admitted = admit(&input.source, input.profile)?;
     let source = admitted
         .model
@@ -56,7 +61,12 @@ fn candidate_query(candidate: &Candidate) -> crate::Result<Prepared> {
         .iter()
         .find(|f| format!("{}::{}", input.crate_name, identity(f)) == candidate.function)
         .ok_or_else(|| unsupported("literal witness target identity is missing"))?;
-    let (owner, inputs, output) = signature(source, &admitted.structs, input.profile)?;
+    let (owner, inputs, output) = signature(
+        source,
+        &admitted.structs,
+        &admitted.model.imports,
+        input.profile,
+    )?;
     if owner.is_some() || inputs.iter().any(|(_, ty)| !primitive(ty)) || !primitive(&output) {
         return Err(unsupported(
             "literal witnesses require a free function with owned Boolean or fixed-width integer inputs and result",
@@ -93,6 +103,7 @@ fn candidate_query(candidate: &Candidate) -> crate::Result<Prepared> {
         values: inputs.iter().cloned().collect(),
         structs: &admitted.structs,
         predicates: &admitted.predicates,
+        imports: &admitted.model.imports,
         mutable_receiver: false,
     };
     environment

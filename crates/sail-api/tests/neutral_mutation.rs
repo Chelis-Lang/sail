@@ -48,6 +48,7 @@ fn candidate(result: &WorkerResult) -> Candidate {
             source: "recorded source identity only; execution not claimed".into(),
             source_sha256: result.contracts.manifest.original_sha256.clone(),
             crate_name: "neutral".into(),
+            modules: Vec::new(),
         },
     }
 }
@@ -101,6 +102,7 @@ fn recorded_receipt() -> TestResult<(mutation::View, WorkerResult)> {
         source: original.into(),
         source_sha256: mutation::digest(original.as_bytes()),
         crate_name: "neutral".into(),
+        modules: Vec::new(),
     };
     let start = original.find("{\n").ok_or("body start")?;
     let end = original.rfind('}').ok_or("body end")? + 1;
@@ -115,6 +117,7 @@ fn recorded_receipt() -> TestResult<(mutation::View, WorkerResult)> {
         source_sha256: mutation::digest(changed.as_bytes()),
         source: changed,
         crate_name: "neutral".into(),
+        modules: Vec::new(),
     };
     candidate.id = mutation::digest(
         format!(

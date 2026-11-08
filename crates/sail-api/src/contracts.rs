@@ -5,6 +5,10 @@ use serde::{Deserialize, Serialize};
 pub const VERSION: u32 = 1;
 /// Maximum complete source file size.
 pub const MAX_SOURCE_BYTES: usize = 64 * 1024;
+/// Maximum number of out-of-line module files in one profile-three closure.
+pub const MAX_MODULE_FILES: usize = 64;
+/// Maximum total source bytes of a closure, including its crate root.
+pub const MAX_CLOSURE_BYTES: usize = 4 * MAX_SOURCE_BYTES;
 /// Fixed whole-process safety deadline for a neutral worker.
 pub const WALL_TIME_SECS: u64 = 300;
 /// Maximum retained exact worker stdout.
@@ -25,6 +29,54 @@ pub struct Submission {
     pub source_sha256: String,
     /// Rust compiler crate identity, not a filesystem path.
     pub crate_name: String,
+    /// Profile three only: out-of-line module files, sorted by module path.
+    /// `source` is then the crate root. Omitted when empty, so single-file
+    /// submissions keep their exact bytes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub modules: Vec<ModuleSource>,
+}
+
+/// One out-of-line module file of a profile-three source closure.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleSource {
+    /// Crate-relative module path such as `codec::bits`, never a filesystem path.
+    pub module: String,
+    /// Exact UTF-8 module file snapshot.
+    pub source: String,
+    /// Required SHA-256 of the exact module file bytes.
+    pub source_sha256: String,
+}
+
+/// One module file digest bound by a closure lowering manifest.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModuleDigest {
+    /// Crate-relative module path.
+    pub module: String,
+    /// SHA-256 of the exact module file bytes.
+    pub sha256: String,
+}
+
+fn digest(bytes: &[u8]) -> String {
+    sail_key::QueryKey(sail_key::sha256(bytes)).to_string()
+}
+
+/// The identity of a crate root and its module files.
+///
+/// A single file's closure identity is its own digest. A closure with module
+/// files hashes a versioned canonical listing of every file digest.
+#[must_use]
+pub fn closure_sha256(root_sha256: &str, modules: &[ModuleDigest]) -> String {
+    if modules.is_empty() {
+        return root_sha256.to_owned();
+    }
+    let mut listing = format!("sail-neutral-closure-v1\nroot {root_sha256}\n");
+    for module in modules {
+        for part in ["module ", &module.module, " ", &module.sha256, "\n"] {
+            listing.push_str(part);
+        }
+    }
+    digest(listing.as_bytes())
 }
 const fn legacy_profile() -> u32 {
     1
@@ -42,7 +94,23 @@ impl Submission {
     /// # Errors
     /// Returns a source admission diagnostic without starting any process.
     pub fn validate(&self) -> Result<(), String> {
-        let expected = sail_key::QueryKey(sail_key::sha256(self.source.as_bytes())).to_string();
+        let expected = digest(self.source.as_bytes());
+        let total = self.modules.iter().map(|m| m.source.len()).sum::<usize>() + self.source.len();
+        if !self.modules.is_empty()
+            && (self.profile < 3
+                || self.modules.len() > MAX_MODULE_FILES
+                || total > MAX_CLOSURE_BYTES
+                || !self.modules.windows(2).all(|w| w[0].module < w[1].module)
+                || self.modules.iter().any(|m| {
+                    m.source.len() > MAX_SOURCE_BYTES
+                        || m.source_sha256 != digest(m.source.as_bytes())
+                        || !module_path(&m.module)
+                }))
+        {
+            return Err(
+                "SAIL3142: invalid neutral source closure: module files need profile three, sorted unique crate-relative module paths, exact digests and bounded size".into(),
+            );
+        }
         if !matches!(self.profile, 1..=3)
             || self.source.is_empty()
             || self.source.len() > MAX_SOURCE_BYTES
@@ -59,6 +127,37 @@ impl Submission {
         }
         Ok(())
     }
+
+    /// Module file digests in canonical order.
+    #[must_use]
+    pub fn module_digests(&self) -> Vec<ModuleDigest> {
+        self.modules
+            .iter()
+            .map(|m| ModuleDigest {
+                module: m.module.clone(),
+                sha256: m.source_sha256.clone(),
+            })
+            .collect()
+    }
+
+    /// The submitted closure identity; the source digest for a single file.
+    #[must_use]
+    pub fn closure_sha256(&self) -> String {
+        closure_sha256(&self.source_sha256, &self.module_digests())
+    }
+}
+
+fn module_path(value: &str) -> bool {
+    value.len() <= 256
+        && value.split("::").all(|part| {
+            !part.is_empty()
+                && !part.starts_with("__sail_")
+                && part.bytes().enumerate().all(|(i, b)| {
+                    b == b'_' || b.is_ascii_alphabetic() || (i > 0 && b.is_ascii_digit())
+                })
+                && part != "_"
+                && !["crate", "self", "super", "Self", "mod", "fn", "use", "pub"].contains(&part)
+        })
 }
 
 /// An original source range. Columns are zero-based, lines are one-based.
@@ -87,6 +186,9 @@ pub struct ContractBinding {
     pub guarantee_sha256: String,
     /// Original complete function range.
     pub source: SourceRange,
+    /// The out-of-line module file holding the function; absent for the crate root.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module_file: Option<String>,
 }
 
 /// Content-bound, deterministic original-to-shadow mapping.
@@ -98,7 +200,8 @@ pub struct LoweringManifest {
     pub contract_version: u32,
     /// Validated compiler crate name.
     pub crate_name: String,
-    /// Exact original UTF-8 source digest.
+    /// Exact original UTF-8 source digest; the closure identity when module
+    /// files are present.
     pub original_sha256: String,
     /// Exact emitted Verus source digest.
     pub lowered_sha256: String,
@@ -106,6 +209,9 @@ pub struct LoweringManifest {
     pub arithmetic: String,
     /// Sorted one-guarantee function bindings; no invented solver obligation IDs.
     pub bindings: Vec<ContractBinding>,
+    /// Module file digests of a closure, sorted by module path; absent for one file.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub modules: Vec<ModuleDigest>,
 }
 
 /// Whether the submitted contracts were proved under their stated preconditions.

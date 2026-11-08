@@ -284,3 +284,38 @@ their arguments inside an `if false` block and never evaluate them. The native
 oracle runs a passing fixture with a counted loop, a measure-only loop and a
 nested loop, plus two failing controls: an invariant too weak for the
 guarantee, and a measure that grows. Fork and stock agree on all three.
+
+### Source closures
+
+`lower_closure(root, modules, crate_name, 3)`, `validate_closure_manifest` and
+`verify_closure` take a crate root and its out-of-line module files. Admission
+replaces each `mod name;` with its submitted file, recursively, and then admits
+the composed crate exactly as a single file. A module file's inner attributes
+become attributes of its module declaration and pass the same passive-attribute
+check. Admission refuses a declaration without a submitted file, a submitted
+file that no declaration names, `#[path]`, unsorted or duplicate module paths,
+wrong digests, more than 64 files, a file over 64 KiB, and a closure over
+256 KiB.
+
+Crate-internal imports resolve through a per-module alias table. Type, struct,
+enum-variant and predicate paths whose first segment is an alias resolve to the
+alias's target before the usual module-relative rules. Every target must be an
+admitted module, struct, enum or free function, and an alias cannot shadow a
+scalar type name, `Self`, `old`, a `__sail_` name or an item of its own module.
+The shadow keeps these imports verbatim, and profile-three predicate calls emit
+their resolved `crate::` paths, so a predicate's definedness helper resolves
+without an import of its own.
+
+The closure lowers to one Verus file with inline modules. Each profile-three
+module starts with `use vstd::prelude::*;`, so a nested enum's generated
+`Structural` derive resolves. Profile three still refuses unit enums outside
+the crate root, because the pinned Verus aborts on that derive inside a module
+([VI-0042](../verus-issues/VI-0042-structural-derive-in-module.md)). The manifest's
+`modules` lists each file's digest, `original_sha256` is
+`sail_api::contracts::closure_sha256` of the root digest and that list, and each
+binding's `module_file` names the deepest out-of-line module that contains the
+function. A single file keeps its own digest and omits both fields, so earlier
+manifests and their bytes are unchanged. The native oracle runs a passing
+closure with nested module files and imported predicates and types, plus a
+failing control whose module-file helper overclaims; fork and stock agree on
+both.

@@ -111,6 +111,7 @@ fn main() -> TestResult {
             source: source.into(),
             source_sha256: sail_api::mutation::digest(source.as_bytes()),
             crate_name: "neutral".into(),
+            modules: Vec::new(),
         };
         let plan = if let Some(jobs) = &jobs {
             jobs.literal_witnesses(&input, 8)?

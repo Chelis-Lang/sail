@@ -359,8 +359,7 @@ fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
     };
     let stock = sail_verus::toolchain::Installed::locate_release(pins)?;
     let root = oracle_directory()?;
-    for (label, source, expected) in NATIVE_CASES {
-        let lowered = sail_verus::contracts::lower_profile(source, "neutral", profile_of(label))?;
+    for (label, lowered, expected) in native_cases()? {
         let path = root.join(format!("{label}.rs"));
         std::fs::write(&path, &lowered.source)?;
         std::fs::write(
@@ -442,6 +441,68 @@ fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
         );
     }
     Ok(())
+}
+
+type NativeCase = (&'static str, sail_verus::contracts::LoweredSource, bool);
+
+fn native_cases() -> Result<Vec<NativeCase>, Box<dyn std::error::Error>> {
+    let mut cases = Vec::new();
+    for (label, source, expected) in NATIVE_CASES {
+        let lowered = sail_verus::contracts::lower_profile(source, "neutral", profile_of(label))?;
+        cases.push((label, lowered, expected));
+    }
+    for (label, (root, modules), expected) in closure_cases() {
+        let lowered = sail_verus::contracts::lower_closure(root, &modules, "neutral", 3)?;
+        cases.push((label, lowered, expected));
+    }
+    Ok(cases)
+}
+
+type Closure = (&'static str, Vec<sail_verus::contracts::ModuleSource>);
+
+fn closure_cases() -> [(&'static str, Closure, bool); 2] {
+    fn module(module: &str, source: &str) -> sail_verus::contracts::ModuleSource {
+        use sha2::Digest as _;
+        sail_verus::contracts::ModuleSource {
+            module: module.into(),
+            source: source.into(),
+            source_sha256: format!("{:x}", sha2::Sha256::digest(source.as_bytes())),
+        }
+    }
+    [
+        (
+            "closure-profile-three",
+            (
+                include_str!("fixtures/neutral-contracts/closure/mod.rs"),
+                vec![
+                    module(
+                        "rules",
+                        include_str!("fixtures/neutral-contracts/closure/rules.rs"),
+                    ),
+                    module(
+                        "shapes",
+                        include_str!("fixtures/neutral-contracts/closure/shapes.rs"),
+                    ),
+                    module(
+                        "shapes::measure",
+                        include_str!("fixtures/neutral-contracts/closure/shapes/measure.rs"),
+                    ),
+                ],
+            ),
+            true,
+        ),
+        (
+            "closure-overclaim-profile-three",
+            (
+                include_str!("fixtures/neutral-contracts/closure_overclaim/mod.rs"),
+                vec![module(
+                    "limits",
+                    include_str!("fixtures/neutral-contracts/closure_overclaim/limits.rs"),
+                )],
+            ),
+            false,
+        ),
+    ]
 }
 
 fn profile_of(label: &str) -> u32 {
