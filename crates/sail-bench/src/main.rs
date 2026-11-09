@@ -833,7 +833,7 @@ fn rename_one_cmd(args: &[String]) -> Result<(), String> {
                 .split(|b| *b == b'\n')
                 .filter(|l| !l.is_empty())
                 .map(<[u8]>::to_vec)
-                .collect::<std::collections::HashSet<Vec<u8>>>(),
+                .collect::<std::collections::BTreeSet<Vec<u8>>>(),
         ),
         None => None,
     };

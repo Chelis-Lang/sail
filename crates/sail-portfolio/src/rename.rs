@@ -515,7 +515,7 @@ pub fn plan_filtered(
     commands: &[Cmd],
     naming: Naming,
     scope: Scope,
-    only: Option<&HashSet<Vec<u8>>>,
+    only: Option<&BTreeSet<Vec<u8>>>,
 ) -> Result<Plan, RenameError> {
     let g = gather(commands)?;
     let mut stats = Stats::default();
