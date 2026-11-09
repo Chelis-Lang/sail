@@ -13,7 +13,7 @@ quickstart takes one proof through a successful check, a failing edit, and an un
 For an existing Cargo project, the [workspace guide](workspace-verification.md)
 covers Cargo verification, JSON reports, background jobs, and watch mode.
 
-For Z3 work outside Rust, the experimental [SMT runtime](runtime.md) accepts versioned requests
+For Z3 work outside Rust, the [SMT runtime](runtime.md) accepts versioned requests
 containing complete SMT-LIB transcripts and reuses matching decided results across
 runs. The [MCP reference](mcp.md) shows how to give an agent access to both
 verification and solver tools.

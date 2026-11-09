@@ -34,12 +34,13 @@ fn help_lists_every_user_command() {
         "watch",
         "jobs",
         "mcp",
+        "runtime",
         "status",
         "cache",
     ] {
         assert!(listed.contains(&cmd), "help is missing `{cmd}`:\n{text}");
     }
-    for cmd in ["bench", "serve", "fragility", "assurance", "runtime"] {
+    for cmd in ["bench", "serve", "fragility", "assurance"] {
         assert!(!listed.contains(&cmd), "help lists `{cmd}`:\n{text}");
     }
     assert!(!text.contains("experimental"), "{text}");
@@ -417,6 +418,7 @@ fn every_command_has_help() {
         &["explain", "--help"],
         &["baseline", "--help"],
         &["compare", "--help"],
+        &["runtime", "--help"],
     ] {
         let output = sail(args);
         assert_eq!(output.status.code(), Some(0), "{args:?}");
@@ -430,7 +432,6 @@ fn every_command_has_help() {
         &["serve", "--help"][..],
         &["assurance", "--help"],
         &["fragility", "--help"],
-        &["runtime", "--help"],
         &["cache", "keygen", "--help"],
         &["cache", "trust", "list", "--help"],
         &["cache", "publish", "--help"],
