@@ -671,7 +671,7 @@ fn actual_pinned_cvc5_is_deterministic_cached_exactly_and_bounded() -> TestResul
 /// A pigeonhole instance cvc5 cannot finish in a small resource budget.
 fn pigeonhole(pigeons: usize, holes: usize) -> String {
     use std::fmt::Write as _;
-    let mut script = String::from("(set-logic QF_UF)\n(declare-fun p (Int Int) Bool)\n");
+    let mut script = String::from("(set-logic QF_UFLIA)\n(declare-fun p (Int Int) Bool)\n");
     for i in 0..pigeons {
         script.push_str("(assert (or");
         for h in 0..holes {
