@@ -64,7 +64,7 @@ const CLAUSE_KWS: &[&str] = &[
 ];
 
 /// Keywords that end a loop's `invariant` clause.
-const LOOP_CLAUSE_KWS: &[&str] = &[
+pub(super) const LOOP_CLAUSE_KWS: &[&str] = &[
     "invariant",
     "invariant_except_break",
     "invariant_ensures",
@@ -112,7 +112,7 @@ const KEYWORDS: &[&str] = &[
 ];
 
 /// Function modifiers that may precede `fn`.
-const MODIFIERS: &[&str] = &[
+pub(super) const MODIFIERS: &[&str] = &[
     "pub",
     "open",
     "closed",
@@ -133,58 +133,65 @@ const MODIFIERS: &[&str] = &[
 type Clause = (String, usize, Vec<(usize, usize)>);
 
 /// A parsed function.
-struct Func {
-    name: String,
-    mode: &'static str,
-    external: bool,
+pub(super) struct Func {
+    pub(super) name: String,
+    pub(super) mode: &'static str,
+    pub(super) external: bool,
     params: Vec<(String, String)>,
     ret: Option<String>,
     clauses: Vec<Clause>,
     /// Token indices of the body's braces.
-    body: Option<(usize, usize)>,
+    pub(super) body: Option<(usize, usize)>,
 }
 
-struct File<'a> {
-    src: &'a str,
-    toks: Vec<Tok>,
-    pair: Vec<Option<usize>>,
+pub(super) struct File<'a> {
+    pub(super) src: &'a str,
+    pub(super) toks: Vec<Tok>,
+    pub(super) pair: Vec<Option<usize>>,
 }
 
-impl File<'_> {
-    fn text(&self, i: usize) -> &str {
+impl<'a> File<'a> {
+    /// Lexes `src` and matches its brackets.
+    pub(super) fn new(src: &'a str) -> Self {
+        let toks = lex(src);
+        let pair = match_brackets(src, &toks);
+        File { src, toks, pair }
+    }
+
+    pub(super) fn text(&self, i: usize) -> &str {
         self.toks
             .get(i)
             .and_then(|t| self.src.get(t.start..t.end))
             .unwrap_or_default()
     }
 
-    fn is(&self, i: usize, s: &str) -> bool {
+    pub(super) fn is(&self, i: usize, s: &str) -> bool {
         self.text(i) == s
     }
 
-    fn kind(&self, i: usize) -> Option<Kind> {
+    pub(super) fn kind(&self, i: usize) -> Option<Kind> {
         self.toks.get(i).map(|t| t.kind)
     }
 
-    fn start(&self, i: usize) -> usize {
+    pub(super) fn start(&self, i: usize) -> usize {
         self.toks.get(i).map_or(self.src.len(), |t| t.start)
     }
 
-    fn end(&self, i: usize) -> usize {
+    pub(super) fn end(&self, i: usize) -> usize {
         self.toks.get(i).map_or(self.src.len(), |t| t.end)
     }
 
-    fn partner(&self, i: usize) -> Option<usize> {
+    pub(super) fn partner(&self, i: usize) -> Option<usize> {
         self.pair.get(i).copied().flatten()
     }
 
-    fn is_open(&self, i: usize) -> bool {
+    pub(super) fn is_open(&self, i: usize) -> bool {
         self.kind(i) == Some(Kind::Punct) && matches!(self.text(i), "(" | "[" | "{")
     }
 
     /// Whether token `i` ends an operand, so that an operator after it is
     /// binary.
-    fn operand_end(&self, i: usize) -> bool {
+    pub(super) fn operand_end(&self, i: usize) -> bool {
         match self.kind(i) {
             Some(Kind::Ident) => !KEYWORDS.contains(&self.text(i)),
             Some(Kind::Int | Kind::Float | Kind::Str | Kind::Char) => true,
@@ -194,7 +201,7 @@ impl File<'_> {
     }
 
     /// The token ranges of `verus! { ... }` bodies.
-    fn verus_regions(&self) -> Vec<(usize, usize)> {
+    pub(super) fn verus_regions(&self) -> Vec<(usize, usize)> {
         let mut out = Vec::new();
         let mut i = 0;
         while i + 2 < self.toks.len() {
@@ -214,7 +221,7 @@ impl File<'_> {
 
     /// Skips a generic parameter list starting at `i` (`<`); returns the
     /// index after it.
-    fn skip_angles(&self, mut i: usize, limit: usize) -> usize {
+    pub(super) fn skip_angles(&self, mut i: usize, limit: usize) -> usize {
         let mut depth = 0i32;
         while i < limit {
             match self.text(i) {
@@ -278,7 +285,7 @@ impl File<'_> {
         clippy::many_single_char_names,
         reason = "one walk over the signature; f/i/j/p are token cursors"
     )]
-    fn function(&self, f: usize, region_end: usize) -> Option<Func> {
+    pub(super) fn function(&self, f: usize, region_end: usize) -> Option<Func> {
         if self.kind(f + 1) != Some(Kind::Ident) {
             return None;
         }
@@ -451,7 +458,7 @@ impl File<'_> {
 
     /// Byte range `[s, e)` grown to whole lines when only whitespace
     /// surrounds it on its first and last lines.
-    fn whole_lines(&self, s: usize, e: usize) -> (usize, usize) {
+    pub(super) fn whole_lines(&self, s: usize, e: usize) -> (usize, usize) {
         let ls = self
             .src
             .get(..s)
@@ -488,7 +495,7 @@ impl File<'_> {
 
     /// Statements ending in `;` in the block whose braces are tokens
     /// `open`/`close`, and in nested blocks: `(first token, the `;`)`.
-    fn statements(&self, open: usize, close: usize, out: &mut Vec<(usize, usize)>) {
+    pub(super) fn statements(&self, open: usize, close: usize, out: &mut Vec<(usize, usize)>) {
         let mut i = open + 1;
         while i < close {
             let first = i;
@@ -579,7 +586,12 @@ pub fn find(src: &str, key: &dyn Fn(&str, usize) -> u64) -> Vec<Site> {
     clippy::too_many_lines,
     reason = "every class's sites for one function, in class order"
 )]
-fn sites_of(file: &File, func: &Func, key: &dyn Fn(&str, usize) -> u64, out: &mut Vec<Site>) {
+pub(super) fn sites_of(
+    file: &File,
+    func: &Func,
+    key: &dyn Fn(&str, usize) -> u64,
+    out: &mut Vec<Site>,
+) {
     let site =
         |class: &'static str, kind: &'static str, s: usize, e: usize, r: String, what: String| {
             Site {

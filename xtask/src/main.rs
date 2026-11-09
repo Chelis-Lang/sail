@@ -28,6 +28,8 @@ commands:
     gen-mutants --project NAME --seed N --per-class N [--unit UNIT] [--source DIR]
                 [--name SHORT] [--out DIR]
                     write a seeded mutation catalogue for a corpus unit (ADR 0063)
+    exec-mutants --project NAME [--unit UNIT] [--source DIR] [--sample N --audit FILE]
+                    spike: report a unit's exec-only mutation sites (exec mask)
 ";
 
 type Result<T> = std::result::Result<T, String>;
@@ -48,6 +50,10 @@ fn main() -> ExitCode {
         Some("gen-mutants") => {
             let rest: Vec<String> = std::env::args().skip(2).collect();
             mutants::run(&rest)
+        }
+        Some("exec-mutants") => {
+            let rest: Vec<String> = std::env::args().skip(2).collect();
+            mutants::run_exec(&rest)
         }
         Some("build-verus-source") => {
             let rest: Vec<String> = std::env::args().skip(2).collect();
