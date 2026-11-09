@@ -207,7 +207,10 @@ Boolean/integer conditionals and owned return values remain admitted.
 
 `lower_profile(source, crate_name, 3)` and `verify_profile` select the widened
 profile authorized by [ADR 0103](../decisions/0103-scoped-neutral-widening.md).
-It admits everything in profile two. Profile three emits lowering version four
+It admits everything in profile two except unit enums outside the crate root,
+which it refuses (see [VI-0042](../verus-issues/VI-0042-structural-derive-in-module.md)
+and [issue 689](https://github.com/Chelis-Lang/sail/issues/689)). Profile two
+admits that form, but its shadow cannot verify on the pinned Verus. Profile three emits lowering version four
 (`PROFILE_THREE_LOWERING_VERSION`) with contract version three. Retained
 version-one to version-three manifests keep their original projections and bytes.
 
@@ -225,16 +228,30 @@ Their value and definedness follow Rust's checked operations:
 Verus's `int` division is Euclidean. Unsigned operands are nonnegative and the
 divisor is positive wherever the operation is defined, so Euclidean and
 truncating division agree. For signed operands the generated crate-root
-specification helpers divide magnitudes and restore Rust's sign: the quotient
-truncates toward zero and the remainder takes the dividend's sign. The helpers
-are emitted only in version-four shadows, and their names use the reserved
-`__sail_` prefix. Lowering adds no assertion or lemma about them.
+specification helpers restore Rust's sign: the quotient divides magnitudes and
+truncates toward zero, and the remainder takes the dividend's sign. The
+remainder helper has the shape Verus itself gives executable `%`
+(`if l == 0 { 0 } else if l > 0 { l % r } else { -((-l) % r) }`); a Euclidean
+remainder ignores the divisor's sign, so this equals the magnitude form. The
+helpers are emitted only in version-four shadows, and their names use the
+reserved `__sail_` prefix. Lowering adds no assertion or lemma about them.
+
+**Known limit: signed division by a symbolic divisor.** A guarantee
+`ret == value / divisor` whose body is exactly `value / divisor` does not verify
+on the pinned Verus when the operands are signed and the divisor is not a
+literal and may be negative. Verus wraps its executable quotient in a
+result-type bound, and proving that the bound holds needs nonlinear reasoning
+about the quotient's magnitude. The same guarantee verifies for a literal
+divisor or a divisor known to be positive. Sail adds no lemma, so the job
+reports the function as not proved. That result is not evidence against the
+code. Signed remainder by a symbolic divisor of either sign verifies.
 
 The manifest's arithmetic qualifier names the truncating rule. Boolean and
 mixed-width operands remain refused. The ignored native oracle runs a passing
-fixture and a failing control that states a floor-division guarantee
-(`2 * (value / 2) <= value`) against truncating executable division; fork and
-stock agree on both.
+fixture, a passing signed remainder by symbolic divisors, a failing control
+that states a floor-division guarantee (`2 * (value / 2) <= value`) against
+truncating executable division, and a failing case that records the symbolic
+signed-division limit. Fork and stock agree on all of them.
 
 ### Executable body forms
 
@@ -253,13 +270,26 @@ Admission resolves every call against the admitted closure and refuses any
 cycle in the call graph, including a function calling itself: the neutral
 syntax carries no termination measure for functions. Verus checks each call
 against the callee's lowered `requires` and assumes its lowered `ensures`, so a
-call never adds an assumption that the callee does not prove. A cast keeps
-Rust's truncating semantics, which Verus models exactly; lowering adds no range
-fact about the result. The native oracle runs a passing fixture with calls,
-`self` methods, casts and both `match` kinds, plus two failing controls: a
-narrowing cast whose guarantee claims the value is preserved, and a call that
-does not establish its callee's precondition. Fork and stock agree on all
-three.
+call never adds an assumption that the callee does not prove. At run time a
+cast keeps Rust's semantics, including truncation and wrap-around. Verus models
+only in-range casts: an out-of-range cast gets no value, and Verus notes that the
+value may be out of range of the target type. That is sound but incomplete.
+Neutral source cannot carry `#[verifier::truncate]`, so a guarantee that depends
+on wrap-around or narrowing is unprovable. Lowering adds no range fact about the
+result. The native oracle runs a passing fixture with calls, `self` methods,
+in-range casts and both `match` kinds, plus two failing controls: a narrowing
+cast whose guarantee claims the value is preserved, which fails because the cast
+result is unknown, and a call that does not establish its callee's
+precondition. Fork and stock agree on all three.
+
+Call paths must start at the crate (`crate::`), the current module (`self::`),
+`Self` or a type, or be a plain name. A body or contract cannot name a parent
+module directly with `super::f()`. Import the item instead, for example
+`use super::f;`, and call it by its imported name. Recursion stays refused
+until functions can carry a termination measure
+([issue 688](https://github.com/Chelis-Lang/sail/issues/688)). Fixed arrays and
+indexing are not admitted yet; they wait on a decision about `usize`
+([issue 687](https://github.com/Chelis-Lang/sail/issues/687)).
 
 ### Loops
 
@@ -323,6 +353,7 @@ the function. That is the file whose lines the binding's source range counts,
 even when an inherent `impl` sits in a different file from its receiver type,
 whose module the function identity names. A single file keeps its own digest and omits both fields, so earlier
 manifests and their bytes are unchanged. The native oracle runs a passing
-closure with nested module files and imported predicates and types, plus a
+closure with nested module files, imported types and a predicate called by its
+module path, plus a
 failing control whose module-file helper overclaims; fork and stock agree on
 both.
