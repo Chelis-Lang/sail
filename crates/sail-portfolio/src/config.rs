@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use sail_smtlib::command::{CommandKind, classify};
 use sail_smtlib::lex::{Lexer, TokenKind};
 
+use crate::rename::{RenameError, rename};
 use crate::transcript::{Class, Cmd, split_commands};
 
 /// One configuration of the pinned solver.
@@ -35,6 +36,10 @@ pub struct Config {
     pub seed: u64,
     /// `Some(k)` shuffles assertion runs with permutation seed `k`.
     pub shuffle: Option<u64>,
+    /// `Some(k)` renames the session's declared symbols with fresh names
+    /// drawn from `k` ([`crate::rename`]; experimental).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rename: Option<u64>,
 }
 
 impl Config {
@@ -42,6 +47,7 @@ impl Config {
     pub const BASELINE: Self = Self {
         seed: 0,
         shuffle: None,
+        rename: None,
     };
 
     /// Whether this is the unmodified session.
@@ -50,27 +56,53 @@ impl Config {
         *self == Self::BASELINE
     }
 
-    /// A short label: `baseline`, `seed=3`, `shuffle=2` or `seed=3,shuffle=2`.
+    /// A short label: `baseline`, `seed=3`, `shuffle=2`, `rename=1` or a
+    /// comma-separated combination such as `seed=3,shuffle=2`.
     #[must_use]
     pub fn label(&self) -> String {
-        match (self.seed, self.shuffle) {
-            (0, None) => "baseline".to_owned(),
-            (s, None) => format!("seed={s}"),
-            (0, Some(k)) => format!("shuffle={k}"),
-            (s, Some(k)) => format!("seed={s},shuffle={k}"),
+        if self.is_baseline() {
+            return "baseline".to_owned();
         }
+        let mut parts = Vec::new();
+        if self.seed != 0 {
+            parts.push(format!("seed={}", self.seed));
+        }
+        if let Some(k) = self.shuffle {
+            parts.push(format!("shuffle={k}"));
+        }
+        if let Some(k) = self.rename {
+            parts.push(format!("rename={k}"));
+        }
+        parts.join(",")
     }
 
     /// Applies this configuration to a session's exact input (`commands`
     /// split from `input`). Returns the input to run and its commands.
-    #[must_use]
-    pub fn apply(&self, input: &[u8], commands: Vec<Cmd>) -> (Vec<u8>, Vec<Cmd>) {
+    /// Renaming is applied first, then shuffling, then the seed options.
+    ///
+    /// # Errors
+    ///
+    /// [`RenameError`] if `rename` is set and the session cannot be renamed
+    /// safely. The caller must report the run as not measured.
+    pub fn apply(
+        &self,
+        input: &[u8],
+        commands: Vec<Cmd>,
+    ) -> Result<(Vec<u8>, Vec<Cmd>), RenameError> {
         if self.is_baseline() {
-            return (input.to_vec(), commands);
+            return Ok((input.to_vec(), commands));
         }
+        let (renamed, commands) = match self.rename {
+            Some(k) => {
+                let renamed = rename(input, &commands, k)?;
+                let commands = split_commands(&renamed);
+                (renamed, commands)
+            }
+            None => (input.to_vec(), commands),
+        };
         let shuffled = match self.shuffle {
-            Some(k) => shuffle_asserts(input, &commands, k),
-            None => input.to_vec(),
+            Some(k) => shuffle_asserts(&renamed, &commands, k),
+            None => renamed,
         };
         let commands = if self.shuffle.is_some() {
             split_commands(&shuffled)
@@ -83,23 +115,28 @@ impl Config {
         } else {
             split_commands(&out)
         };
-        (out, commands)
+        Ok((out, commands))
     }
 }
 
-/// The configurations for `seeds` reseeds (seed 0, the baseline, first) and
-/// `shuffles` assertion shuffles under the default seed.
+/// The configurations for `seeds` reseeds (seed 0, the baseline, first),
+/// `shuffles` assertion shuffles and `renames` symbol renamings, the last
+/// two under the default seed.
 #[must_use]
-pub fn configs(seeds: u64, shuffles: u64) -> Vec<Config> {
+pub fn configs(seeds: u64, shuffles: u64, renames: u64) -> Vec<Config> {
     let mut out: Vec<Config> = (0..seeds.max(1))
         .map(|seed| Config {
             seed,
-            shuffle: None,
+            ..Config::BASELINE
         })
         .collect();
     out.extend((1..=shuffles).map(|k| Config {
-        seed: 0,
         shuffle: Some(k),
+        ..Config::BASELINE
+    }));
+    out.extend((1..=renames).map(|k| Config {
+        rename: Some(k),
+        ..Config::BASELINE
     }));
     out
 }
@@ -300,24 +337,52 @@ mod tests {
 
     #[test]
     fn configurations_and_labels() {
-        let c = configs(3, 2);
+        let c = configs(3, 2, 1);
         let labels: Vec<String> = c.iter().map(Config::label).collect();
         assert_eq!(
             labels,
-            ["baseline", "seed=1", "seed=2", "shuffle=1", "shuffle=2"]
+            [
+                "baseline",
+                "seed=1",
+                "seed=2",
+                "shuffle=1",
+                "shuffle=2",
+                "rename=1"
+            ]
         );
         assert!(c[0].is_baseline());
-        assert_eq!(configs(0, 0), [Config::BASELINE]);
+        assert_eq!(configs(0, 0, 0), [Config::BASELINE]);
         let both = Config {
             seed: 3,
             shuffle: Some(2),
+            rename: None,
         };
         assert_eq!(both.label(), "seed=3,shuffle=2");
         let input = b"(set-option :a 1)\n(assert p)\n(assert q)\n(check-sat)\n";
-        let (out, cmds) = both.apply(input, split_commands(input));
+        let (out, cmds) = both.apply(input, split_commands(input)).unwrap_or_default();
         assert!(out.starts_with(b"(set-option :a 1)\n(set-option :smt.random_seed 3)\n"));
         assert_eq!(cmds.len(), 6);
-        let (same, _) = Config::BASELINE.apply(input, split_commands(input));
+        let (same, _) = Config::BASELINE
+            .apply(input, split_commands(input))
+            .unwrap_or_default();
         assert_eq!(same, input);
+        let renamed = Config {
+            rename: Some(4),
+            ..Config::BASELINE
+        };
+        assert_eq!(renamed.label(), "rename=4");
+        let input = b"(declare-const p Bool)\n(assert p)\n(check-sat)\n";
+        let (out, cmds) = renamed
+            .apply(input, split_commands(input))
+            .unwrap_or_default();
+        assert_eq!(cmds.len(), 3);
+        assert!(out.starts_with(b"(declare-const r"));
+        assert!(!out.windows(3).any(|w| w == b" p)"));
+        let unmodelled = b"(declare-var x Int)";
+        assert!(
+            renamed
+                .apply(unmodelled, split_commands(unmodelled))
+                .is_err()
+        );
     }
 }

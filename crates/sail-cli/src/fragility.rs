@@ -77,6 +77,8 @@ fn parse(args: &[String]) -> Result<Args, String> {
         match arg.as_str() {
             "--seeds" => a.options.seeds = number(value()?)?,
             "--shuffles" => a.options.shuffles = number(value()?)?,
+            // Spike (v0.3.0 Track B): experimental, undocumented.
+            "--renames" => a.options.renames = number(value()?)?,
             "--jobs" => a.options.jobs = usize::try_from(number(value()?)?).unwrap_or(1),
             "--top" => a.top = usize::try_from(number(value()?)?).unwrap_or(0),
             "--timeout-secs" => a.timeout_secs = number(value()?)?,

@@ -638,6 +638,7 @@ struct FragilityArgs {
     selection: Options,
     seeds: u64,
     shuffles: u64,
+    renames: u64,
     jobs: usize,
     near_limit: f64,
     top: usize,
@@ -650,6 +651,7 @@ fn parse_fragility(args: &[String]) -> Result<FragilityArgs, String> {
         selection: parse_options(&[])?,
         seeds: 8,
         shuffles: 0,
+        renames: 0,
         jobs: 4,
         near_limit: 0.5,
         top: 50,
@@ -669,6 +671,7 @@ fn parse_fragility(args: &[String]) -> Result<FragilityArgs, String> {
         match arg.as_str() {
             "--seeds" => f.seeds = number(value()?)?,
             "--shuffles" => f.shuffles = number(value()?)?,
+            "--renames" => f.renames = number(value()?)?,
             "--jobs" => f.jobs = usize::try_from(number(value()?)?).unwrap_or(1),
             "--top" => f.top = usize::try_from(number(value()?)?).unwrap_or(0),
             "--near-limit" => {
@@ -726,6 +729,7 @@ fn fragility_cmd(args: &[String]) -> Result<(), String> {
         portfolio: sail_portfolio::fragility::Options {
             seeds: f.seeds,
             shuffles: f.shuffles,
+            renames: f.renames,
             jobs: f.jobs,
             near_limit: f.near_limit,
         },
@@ -767,6 +771,87 @@ fn fragility_cmd(args: &[String]) -> Result<(), String> {
     json.push(b'\n');
     std::fs::write(&path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
     println!("wrote {}", path.display());
+    Ok(())
+}
+
+/// `rename-check --traces DIR... --out FILE [--z3 PATH] [--seeds N]
+/// [--shuffles K] [--renames K] [--jobs J] [--label TEXT]` (spike tooling).
+fn rename_check_cmd(args: &[String]) -> Result<(), String> {
+    let mut a = sail_bench::rename_check::Args {
+        traces: Vec::new(),
+        z3: PathBuf::new(),
+        seeds: 4,
+        shuffles: 0,
+        renames: 3,
+        jobs: 4,
+        out: PathBuf::new(),
+        label: String::new(),
+    };
+    let mut z3 = None;
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        let mut value = || it.next().cloned().ok_or(format!("{arg} needs a value"));
+        let number = |v: String| {
+            v.parse::<u64>()
+                .map_err(|_| format!("{arg} needs a number"))
+        };
+        match arg.as_str() {
+            "--traces" => a.traces.push(value()?.into()),
+            "--z3" => z3 = Some(PathBuf::from(value()?)),
+            "--out" => a.out = value()?.into(),
+            "--label" => a.label = value()?,
+            "--seeds" => a.seeds = number(value()?)?,
+            "--shuffles" => a.shuffles = number(value()?)?,
+            "--renames" => a.renames = number(value()?)?,
+            "--jobs" => a.jobs = usize::try_from(number(value()?)?).unwrap_or(1).max(1),
+            other => return Err(format!("rename-check: unknown argument {other}")),
+        }
+    }
+    if a.traces.is_empty() || a.out.as_os_str().is_empty() {
+        return Err("rename-check needs --traces DIR and --out FILE".to_owned());
+    }
+    a.z3 = if let Some(z3) = z3 {
+        z3
+    } else {
+        let pins = Pins::load(Path::new("corpus/toolchain.toml")).map_err(|e| e.to_string())?;
+        Installed::locate(pins).map_err(|e| e.to_string())?.z3
+    };
+    sail_bench::rename_check::run(&a)
+}
+
+/// `rename-one IN OUT SEED [all|declared|qids|skolemids]`: writes one
+/// renamed session, for diagnosis (spike tooling).
+fn rename_one_cmd(args: &[String]) -> Result<(), String> {
+    use sail_portfolio::rename::{Naming, Scope, plan_filtered};
+    let [input, output, seed, rest @ ..] = args else {
+        return Err("rename-one IN OUT SEED [all|declared|qids|skolemids [ONLY-FILE]]".to_owned());
+    };
+    let only = match rest.get(1) {
+        Some(path) => Some(
+            std::fs::read(path)
+                .map_err(|e| format!("{path}: {e}"))?
+                .split(|b| *b == b'\n')
+                .filter(|l| !l.is_empty())
+                .map(<[u8]>::to_vec)
+                .collect::<std::collections::HashSet<Vec<u8>>>(),
+        ),
+        None => None,
+    };
+    let seed: u64 = seed.parse().map_err(|_| "SEED must be a number")?;
+    let scope = match rest.first().map(String::as_str) {
+        None | Some("all") => Scope::All,
+        Some("declared") => Scope::Declared,
+        Some("qids") => Scope::Qids,
+        Some("skolemids") => Scope::Skolemids,
+        Some(other) => return Err(format!("unknown scope {other}")),
+    };
+    let bytes = std::fs::read(input).map_err(|e| format!("{input}: {e}"))?;
+    let commands = sail_portfolio::transcript::split_commands(&bytes);
+    let plan = plan_filtered(&commands, Naming::Seeded(seed), scope, only.as_ref())
+        .map_err(|e| e.to_string())?;
+    let (renamed, tokens) = plan.rewrite(&bytes, &commands).map_err(|e| e.to_string())?;
+    std::fs::write(output, renamed).map_err(|e| format!("{output}: {e}"))?;
+    println!("{} names, {tokens} tokens: {:?}", plan.len(), plan.stats);
     Ok(())
 }
 
@@ -1024,6 +1109,8 @@ fn main() -> ExitCode {
         Some("agent-loop") => agent_loop_cmd(args.get(1..).unwrap_or_default()),
         Some("history-replay") => history_replay_cmd(args.get(1..).unwrap_or_default()),
         Some("fragility") => fragility_cmd(args.get(1..).unwrap_or_default()),
+        Some("rename-check") => rename_check_cmd(args.get(1..).unwrap_or_default()),
+        Some("rename-one") => rename_one_cmd(args.get(1..).unwrap_or_default()),
         Some("report") => report_cmd(args.get(1..).unwrap_or_default()),
         Some("repair") => repair_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),

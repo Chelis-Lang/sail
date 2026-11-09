@@ -10,6 +10,8 @@
 //!   and replies, and pairing them;
 //! - [`config`]: the configurations a session is re-run under (reseeds,
 //!   and semantics-preserving assertion shuffles), applied to exact bytes;
+//! - [`rename`]: parser-backed renaming of a session's declared symbols
+//!   (experimental);
 //! - [`fragility`]: per-check answer and effort distributions across
 //!   configurations, stability classes, scores and summaries;
 //! - [`stats`] and [`parallel`]: shared helpers.
@@ -24,6 +26,7 @@ pub mod config;
 pub mod error;
 pub mod fragility;
 pub mod parallel;
+pub mod rename;
 pub mod sessions;
 pub mod stats;
 pub mod transcript;

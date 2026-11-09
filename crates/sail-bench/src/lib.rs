@@ -29,6 +29,7 @@ pub mod fragility;
 pub mod hits;
 pub mod mutants;
 pub mod profile;
+pub mod rename_check;
 pub mod repair;
 pub mod replay;
 pub mod report;

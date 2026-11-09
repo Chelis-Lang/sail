@@ -48,6 +48,9 @@ pub struct Options {
     /// Assertion-shuffle configurations (Mariposa's shuffling), under the
     /// default seed. 0 for reseeding only.
     pub shuffles: u64,
+    /// Symbol-renaming configurations (Mariposa's renaming; experimental),
+    /// under the default seed. 0 for none.
+    pub renames: u64,
     /// Solver processes run at the same time.
     pub jobs: usize,
     /// The used/limit fraction from which a check is reported as near its
@@ -60,6 +63,7 @@ impl Default for Options {
         Self {
             seeds: 8,
             shuffles: 0,
+            renames: 0,
             jobs: 4,
             near_limit: 0.5,
         }
@@ -95,7 +99,14 @@ pub fn replay(solver: &Solver, input: &[u8], config: Config) -> ConfigRun {
         infra: None,
         elapsed_ms: 0,
     };
-    let (input, commands) = config.apply(input, split_commands(input));
+    let (input, commands) = match config.apply(input, split_commands(input)) {
+        Ok(applied) => applied,
+        Err(e) => {
+            // Never measured as something else: the run is incomplete.
+            run.infra = Some(format!("rename-refused: {e}"));
+            return run;
+        }
+    };
     match sail_solver::run(solver, &input) {
         Ok(r) => {
             run.elapsed_ms = u64::try_from(r.elapsed.as_millis()).unwrap_or(u64::MAX);
@@ -655,7 +666,7 @@ pub fn measure(
             "seeds and jobs must be at least 1".to_owned(),
         ));
     }
-    let configs = configs(options.seeds, options.shuffles);
+    let configs = configs(options.seeds, options.shuffles, options.renames);
     let inputs: Vec<Option<Vec<u8>>> = sessions
         .iter()
         .map(|s| std::fs::read(&s.input).ok())

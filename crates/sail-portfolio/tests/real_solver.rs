@@ -50,6 +50,7 @@ fn toy_session_under_three_seeds() {
     let options = Options {
         seeds: 3,
         shuffles: 0,
+        renames: 0,
         jobs: 3,
         near_limit: 0.5,
     };
@@ -96,6 +97,7 @@ fn assertion_shuffles_are_accepted_by_the_solver() {
     let options = Options {
         seeds: 1,
         shuffles: 2,
+        renames: 0,
         jobs: 3,
         near_limit: 0.5,
     };
@@ -114,5 +116,43 @@ fn assertion_shuffles_are_accepted_by_the_solver() {
     assert_eq!(report.summary.checks, 11);
     for c in &report.checks {
         assert!(c.answers.iter().all(Option::is_some), "check {}", c.seq);
+    }
+}
+
+#[test]
+#[ignore = "needs SAIL_TEST_Z3"]
+fn renamings_are_accepted_by_the_solver_and_keep_the_toy_answers() {
+    let options = Options {
+        seeds: 1,
+        shuffles: 0,
+        renames: 3,
+        jobs: 4,
+        near_limit: 0.5,
+    };
+    let report = measure(&solver(), &[toy()], &options, |_, _| {});
+    let Ok(report) = report else {
+        unreachable!("{report:?}")
+    };
+    assert_eq!(
+        report.config_labels,
+        ["baseline", "rename=1", "rename=2", "rename=3"]
+    );
+    // A renaming must never make Z3 reject the input or lose pairing.
+    assert!(report.infra.is_empty(), "{:?}", report.infra);
+    assert!(
+        report.unpaired_runs.is_empty(),
+        "{:?}",
+        report.unpaired_runs
+    );
+    assert_eq!(report.summary.checks, 11);
+    for c in &report.checks {
+        assert!(c.answers.iter().all(Option::is_some), "check {}", c.seq);
+        // The toy is far from every limit: names must not change answers.
+        assert!(
+            c.answers.iter().all(|a| *a == c.recorded),
+            "check {}: {:?}",
+            c.seq,
+            c.answers
+        );
     }
 }
