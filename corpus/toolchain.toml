@@ -38,6 +38,17 @@ dir = "verus-x86-linux"
 # Recorded from the first CI install (conformance workflow, 2026-10-08).
 z3_sha256 = "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
 
+# SPIKE (v0.3.0 Track E, not qualified): upstream publishes no Linux aarch64
+# Verus archive, so there is no url or archive digest. The install under
+# `dir` is unmodified upstream source at [verus].commit built on the host
+# with upstream Z3's own z3-4.16.0-arm64-glibc-2.38.zip (archive SHA-256
+# 87fcd963d3eecb0f12cf1c3ef0ad74e84a3a7bd3caed5d94445645ef94ae6274).
+[assets.aarch64-unknown-linux-gnu]
+url = ""
+sha256 = ""
+dir = "verus-arm64-linux"
+z3_sha256 = "06be7345658204eea8ce892a2fbe7741bd5bbde30d25842b8e395430ec88b94a"
+
 # Secondary compatibility targets (ADR 0010 item 4): the corpus is run against
 # each as is, locally (ADR 0013), with `SAIL_VERUS_RELEASE=<release>`.
 # Results go to docs/compatibility.md. vest's recent history was written

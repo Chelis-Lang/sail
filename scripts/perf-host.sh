@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Native x86-64 Linux EC2 hosts for builds, gates and benchmarks (ADR 0038).
+# Native Linux EC2 hosts for builds, gates and benchmarks (ADR 0038): x86-64 by
+# default, arm64 when INSTANCE_TYPE is a Graviton type.
 #
 #   scripts/perf-host.sh up LANE [INSTANCE_TYPE]   launch (default c7i.4xlarge)
 #   scripts/perf-host.sh sync LANE                 rsync this checkout to ~/sail
@@ -22,7 +23,7 @@ state_dir="${SAIL_PERF_STATE_DIR:-${HOME}/.sail-perf}"
 ttl="${SAIL_PERF_TTL_MIN:-480}"
 aws_ec2() { aws ec2 --region "$region" "$@"; }
 
-usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
 require_lane() {
   [ -n "${1:-}" ] || usage
@@ -48,9 +49,18 @@ cmd_up() {
   mkdir -p "$state_dir" && chmod 700 "$state_dir"
   if [ -f "$state_dir/$lane.env" ]; then echo "lane $lane already up" >&2; exit 1; fi
 
-  local ami vpc ip sg id
+  local ami vpc ip sg id arch
+  # The AMI follows the instance type's architecture (Graviton families such
+  # as c7g/c8g/m7g report arm64). Anything else is refused, never guessed.
+  arch=$(aws_ec2 describe-instance-types --instance-types "$type" \
+    --query 'InstanceTypes[0].ProcessorInfo.SupportedArchitectures' --output text)
+  case " $(printf '%s' "$arch" | tr '\t\n' '  ') " in
+    *" x86_64 "*) arch=amd64 ;;
+    *" arm64 "*) arch=arm64 ;;
+    *) echo "unsupported architecture for $type: $arch" >&2; exit 1 ;;
+  esac
   ami=$(aws_ec2 describe-images --owners 099720109477 \
-    --filters 'Name=name,Values=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*' \
+    --filters "Name=name,Values=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-$arch-server-*" \
     --query 'sort_by(Images,&CreationDate)[-1].ImageId' --output text)
   vpc=$(aws_ec2 describe-vpcs --filters Name=isDefault,Values=true --query 'Vpcs[0].VpcId' --output text)
   ip=$(curl -fsS https://checkip.amazonaws.com)
@@ -80,7 +90,7 @@ EOF
     --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=200,VolumeType=gp3,Iops=6000,Throughput=500,DeleteOnTermination=true}' \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$name},{Key=Project,Value=sail},{Key=Lane,Value=$lane}]" \
     --user-data "$user_data" --query 'Instances[0].InstanceId' --output text)
-  printf 'id=%s\nsg=%s\nkey=%s\ntype=%s\nregion=%s\n' "$id" "$sg" "$name" "$type" "$region" >"$state_dir/$lane.env"
+  printf 'id=%s\nsg=%s\nkey=%s\ntype=%s\nregion=%s\narch=%s\n' "$id" "$sg" "$name" "$type" "$region" "$arch" >"$state_dir/$lane.env"
   aws_ec2 wait instance-running --instance-ids "$id"
   local addr
   addr=$(aws_ec2 describe-instances --instance-ids "$id" \
