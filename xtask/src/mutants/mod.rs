@@ -11,6 +11,8 @@
 //! give byte-identical files. `sail-bench mutants oracle` then runs stock
 //! Verus three times per mutant and settles `expected`.
 
+mod exec_mask;
+mod exec_sites;
 mod lexer;
 mod sites;
 
@@ -22,6 +24,8 @@ use sha2::{Digest as _, Sha256};
 
 use crate::Result;
 use sites::{CLASSES, Site};
+
+pub use exec_sites::run as run_exec;
 
 /// The generator's version, recorded in every sidecar. Bump it whenever
 /// the same seed could produce different mutants.
