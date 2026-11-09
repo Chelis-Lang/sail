@@ -581,6 +581,101 @@ def cmd_camp(a):
     out.write(phase="total", meter=total.done(), mutants=len(plan), workers=k)
 
 
+def cmd_pipe(a):
+    """Pipelined campaign: copy 0 runs the unscoped baseline and then every
+    confirmation; copies 1.. warm the focused layout during the baseline and
+    then run the scoped mutants cheapest-first."""
+    lst = json.load(open(a.list))
+    out = Out(a.out)
+    cache = os.path.join(a.root, "cache")
+    k = a.workers
+    total = Meter()
+    m0 = Meter()
+    copies = [prepare(lst["catalogue"], os.path.join(a.root, f"w{i}")) for i in range(k)]
+    out.write(phase="setup-copies", meter=m0.done(), workers=k)
+
+    state = {}
+
+    def baseline():
+        argv, env = sail_cmd(copies[0], cache)
+        run = execute(argv, env, copies[0]["package"], os.path.join(a.out, "logs", "baseline-w0"))
+        state["base"] = run
+        out.write(phase="setup-baseline", **run, **classify_verus(run))
+
+    def warm(i):
+        argv, env = sail_cmd(copies[i], cache, scope_of(copies[i], lst["mutants"][0]))
+        run = execute(argv, env, copies[i]["package"], os.path.join(a.out, "logs", f"warm-w{i}"))
+        out.write(phase="setup-warm", worker=i, **run, **classify_sail_json(run))
+
+    m0 = Meter()
+    threads = [threading.Thread(target=baseline)] + [threading.Thread(target=warm, args=(i,)) for i in range(1, k)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    out.write(phase="setup-baseline-and-warm", meter=m0.done(), cache=sail_stats(copies[0], cache))
+    if classify_verus(state["base"])["outcome"] != "verified":
+        raise SystemExit("the baseline does not verify")
+    costs = baseline_costs(state["base"])
+
+    def cost(m):
+        return costs.get((module_of(copies[0], m["file"]), m["function"]), 0)
+
+    todo = queue.Queue()
+    for m in sorted(lst["mutants"], key=lambda m: (cost(m), m["id"])):
+        todo.put(m)
+    confirm = queue.Queue()
+    scoped_done = threading.Event()
+
+    def scoped_worker(i):
+        ws = copies[i]
+        files = Files(ws)
+        while True:
+            try:
+                m = todo.get_nowait()
+            except queue.Empty:
+                return
+            files.apply(m)
+            scope = scope_of(ws, m)
+            argv, env = sail_cmd(ws, cache, scope)
+            run = execute(argv, env, ws["package"], os.path.join(a.out, "logs", m["id"] + "-scoped"))
+            info = classify_sail_json(run)
+            files.restore(m)
+            out.write(phase="scoped", worker=i, id=m["id"], cost_micros=cost(m), scope=scope, **run, **info)
+            if info["outcome"] in ("verified", "nothing-selected"):
+                confirm.put(m)
+
+    def confirm_worker():
+        ws = copies[0]
+        files = Files(ws)
+        while True:
+            try:
+                m = confirm.get(timeout=0.2)
+            except queue.Empty:
+                if scoped_done.is_set():
+                    return
+                continue
+            files.apply(m)
+            argv, env = sail_cmd(ws, cache)
+            run = execute(argv, env, ws["package"], os.path.join(a.out, "logs", m["id"] + "-confirm"))
+            info = classify_verus(run)
+            files.restore(m)
+            out.write(phase="confirm", worker=0, id=m["id"], **run, **info)
+
+    m0 = Meter()
+    before = sail_stats(copies[0], cache)
+    workers = [threading.Thread(target=scoped_worker, args=(i,)) for i in range(1, k)]
+    confirmer = threading.Thread(target=confirm_worker)
+    [t.start() for t in workers]
+    confirmer.start()
+    [t.join() for t in workers]
+    scoped_wall = round(time.monotonic() - m0.t0, 3)
+    scoped_done.set()
+    confirmer.join()
+    out.write(phase="mutants-and-confirm", meter=m0.done(), scoped_wall_s=scoped_wall,
+              cache=delta(before, sail_stats(copies[0], cache)))
+    sail_stop(copies[0], cache)
+    out.write(phase="total", meter=total.done(), mutants=len(lst["mutants"]), workers=k)
+
+
 def main():
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -589,7 +684,7 @@ def main():
     s.add_argument("--want")
     s.add_argument("--per-class", type=int, default=0)
     s.add_argument("catalogues", nargs="+")
-    for name in ("naive", "sscoped", "a3", "camp"):
+    for name in ("naive", "sscoped", "a3", "camp", "pipe"):
         s = sub.add_parser(name)
         s.add_argument("--list", required=True)
         s.add_argument("--root", required=True)
@@ -597,7 +692,7 @@ def main():
         s.add_argument("--workers", type=int, default=4)
         s.add_argument("--strategy", choices=("scoped", "unscoped"), default="scoped")
     a = p.parse_args()
-    {"select": cmd_select, "naive": cmd_naive, "sscoped": cmd_sscoped, "a3": cmd_a3, "camp": cmd_camp}[a.cmd](a)
+    {"select": cmd_select, "naive": cmd_naive, "sscoped": cmd_sscoped, "a3": cmd_a3, "camp": cmd_camp, "pipe": cmd_pipe}[a.cmd](a)
 
 
 if __name__ == "__main__":

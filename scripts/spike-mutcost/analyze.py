@@ -91,7 +91,7 @@ def main():
     print("| arm | wall s | CPU s | peak RSS MB (max phase) | vs naive wall |")
     print("|---|---|---|---|---|")
     base = (phase(naive, "total") or {}).get("meter", {}).get("wall_s")
-    for name in ("naive", "sscoped", "camp-asshipped", "camp-fix", "camp-unscoped-fix"):
+    for name in ("naive", "sscoped", "camp-asshipped", "camp-fix", "camp-unscoped-fix", "pipe-fix"):
         rs_ = rows(out, f"{project}-{name}")
         t = phase(rs_, "total")
         if not t:

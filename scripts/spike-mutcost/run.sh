@@ -2,7 +2,7 @@
 # Inside the CI image on a native host (see campaign.py), one arm per container:
 #   run.sh PROJECT ARM [TAG]
 # PROJECT: ironkv | capybarakv | vest
-# ARM: select | naive | sscoped | a3 | camp | camp-unscoped
+# ARM: select | naive | sscoped | a3 | camp | camp-unscoped | pipe
 # TAG: `fix` uses the spike build in /mut/target-fix (one compiler family for
 #      every focus selector); anything else is only a label.
 set -euo pipefail
@@ -28,7 +28,7 @@ case "$arm" in
         ./target/release/xtask gen-mutants --project vest --name vestx --seed 20261109 --per-class 40 --out /mut/gen
         python3 $py select --per-class 5 --out "$list" /mut/gen/vestx.toml ;;
     esac ;;
-  naive|sscoped|a3|camp)
+  naive|sscoped|a3|camp|pipe)
     rm -rf "/mut/$name" "/mut/out/$name"
     python3 $py "$arm" --list "$list" --root "/mut/$name" --out "/mut/out/$name" ;;
   camp-unscoped)
