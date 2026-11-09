@@ -537,6 +537,83 @@ fn attributed_jobs(sail: &Path, client: &Client, output: &Path) -> TestResult {
     }
     Ok(())
 }
+const CLOSURE_ROOT: &str = "pub mod limits;\n\n#[sail_contracts::requirement(\"CLOSURE-SMALL\")]\npub fn small(value: u8) -> bool {\n    value <= 200\n}\n\n#[sail_contracts::satisfies(\"CLOSURE-SMALL\")]\n#[sail_contracts::ensures(|ret| small(ret) && ret <= value)]\npub fn clamp(value: u8) -> u8 {\n    limits::cap(value)\n}\n";
+const CLOSURE_LIMITS: &str = "#[sail_contracts::satisfies(\"CLOSURE-CAP\")]\n#[sail_contracts::ensures(|ret| ret <= 200 && ret <= value)]\npub fn cap(value: u8) -> u8 {\n    if value > 200 { 200 } else { value }\n}\n";
+
+/// One explicit profile-three job over a two-file closure: the closure
+/// identity is the input revision, the manifest binds the module file, and
+/// the assurance view and a restart keep the proof.
+fn closure_job(sail: &Path, output: &Path) -> TestResult {
+    let (service, client) = start(sail, output)?;
+    let module = sail_api::contracts::ModuleSource {
+        module: "limits".into(),
+        source: CLOSURE_LIMITS.into(),
+        source_sha256: sha(CLOSURE_LIMITS.as_bytes()),
+    };
+    let submission = Submission {
+        profile: 3,
+        source: CLOSURE_ROOT.into(),
+        source_sha256: sha(CLOSURE_ROOT.as_bytes()),
+        crate_name: "neutral".into(),
+        modules: vec![module],
+    };
+    let closure = submission.closure_sha256();
+    std::fs::write(output.join("closure.original.rs"), CLOSURE_ROOT)?;
+    std::fs::write(output.join("closure.limits.rs"), CLOSURE_LIMITS)?;
+    let job = client.submit_contracts(submission)?;
+    completed(&client, &job.id)?;
+    let Response::Result(document) = client.call(&Request::Result { id: job.id.clone() })? else {
+        return Err("missing closure result".into());
+    };
+    std::fs::write(
+        output.join("closure.result.json"),
+        serde_json::to_vec_pretty(&document)?,
+    )?;
+    let evidence = document
+        .contracts
+        .as_deref()
+        .ok_or("missing closure contract evidence")?;
+    let files = evidence
+        .manifest
+        .bindings
+        .iter()
+        .map(|b| (b.function.as_str(), b.module_file.as_deref()))
+        .collect::<Vec<_>>();
+    if evidence.proof.state != ProofState::Proved
+        || evidence.manifest.version != sail_verus::contracts::PROFILE_THREE_LOWERING_VERSION
+        || evidence.manifest.original_sha256 != closure
+        || evidence.manifest.modules.len() != 1
+        || document.job.input_revision.as_deref() != Some(closure.as_str())
+        || files
+            != [
+                ("neutral::clamp", None),
+                ("neutral::limits::cap", Some("limits")),
+            ]
+    {
+        return Err(format!("closure identity or proof mismatch: {files:?}").into());
+    }
+    let assurance = client.requirement_assurance(&job.id)?;
+    if assurance != sail_api::assurance::from_contract_result(&document)?
+        || assurance.requirements.len() != 2
+        || assurance.requirements.iter().any(|requirement| {
+            requirement.evidence.iter().any(|row| {
+                row.source_sha256 != closure
+                    || row.outcome != ProofState::Proved
+                    || row.tier != Some(sail_api::assurance::EvidenceTier::SmtVerified)
+            })
+        })
+    {
+        return Err(format!("closure assurance mismatch: {assurance:?}").into());
+    }
+    drop(service);
+    let (service, client) = start(sail, output)?;
+    if client.requirement_assurance(&job.id)? != assurance {
+        return Err("restart changed closure assurance".into());
+    }
+    drop(service);
+    println!("closure: profile three across two files, closure identity {closure}, Proved");
+    Ok(())
+}
 fn main() -> TestResult {
     let mut args = std::env::args_os().skip(1);
     let sail = PathBuf::from(
@@ -591,6 +668,7 @@ fn main() -> TestResult {
     let jobs = [positive, negative, unsafe_field, guarded_field];
     attributed_jobs(&sail, &client, &output)?;
     drop(service);
+    closure_job(&sail, &output)?;
     let (service, client) = start(&sail, &output)?;
     for (label, id) in [
         "positive",

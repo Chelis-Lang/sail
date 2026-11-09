@@ -247,7 +247,8 @@ phases and succeeds only when all complete successfully:
   at unchanged `PATH`, rejected by both stock and Sail;
 - `scripts`: managed reuse across build scripts and generated includes;
 - `contracts`: negotiated neutral source verification, original worker evidence,
-  conservative proof state, restart and independently retained baselines;
+  conservative proof state, restart and independently retained baselines, and
+  one two-file profile-three closure;
 - `repair`: the repair CLI/MCP against the prebuilt engine.
 
 CI builds the release binaries once per run (`End to end (build)`,
