@@ -652,6 +652,23 @@ fn run_with_engine(
         && namespace_match
         && closing_match
         && runner::runtime_current(&config.cache, &context);
+    // SPIKE #696: name the standalone predicate.
+    crate::spike_trace::trace(
+        "standalone.currentness",
+        &serde_json::json!({
+            "source": source,
+            "unknown": !current,
+            "not-eligible": !eligible,
+            "inputs-mismatch": !inputs_match,
+            "observed-none": observed.is_none(),
+            "after-none": after.is_none(),
+            "namespace-mismatch": !namespace_match,
+            "before-none": before.is_none(),
+            "closing-mismatch": !closing_match,
+            "runtime-changed": !runner::runtime_current(&config.cache, &context),
+            "socket": config.socket.is_some(),
+        }),
+    );
     let complete = output.status.success()
         && receipts::complete(&report)
         && !super::partial(&config.args)

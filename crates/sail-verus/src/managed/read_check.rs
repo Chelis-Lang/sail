@@ -228,7 +228,18 @@ fn check_with(
     let mut bytes = Vec::new();
     std::fs::File::open(&path)
         .and_then(|file| file.take(MAX_BYTES + 1).read_to_end(&mut bytes))
-        .map_err(|_| missing())?;
+        .map_err(|error| {
+            crate::spike_trace::trace(
+                "read_check",
+                &serde_json::json!({
+                    "workspace": workspace,
+                    "context": context,
+                    "record-missing": error.to_string(),
+                    "record": path,
+                }),
+            );
+            missing()
+        })?;
     if bytes.len() as u64 > MAX_BYTES {
         return Err(missing());
     }
@@ -268,6 +279,9 @@ fn check_with(
     let after = stamp_all(&guarded);
     let observed: Vec<_> = reads.into_iter().chain(alias_reads).collect();
     let (changed, mut unreadable) = compare_observed(&record, &observed);
+    let spike_read_unreadable = unreadable;
+    let spike_bracket = before.is_none() || before != after;
+    let mut spike_runtime = false;
     if before.is_none() || before != after {
         unreadable = true;
     }
@@ -275,6 +289,34 @@ fn check_with(
         // A changed toolchain is not an input change the record can name,
         // but the stored result no longer describes this installation.
         unreadable = true;
+        spike_runtime = true;
+    }
+    if changed || unreadable {
+        // SPIKE #696: which readback path withheld Current.
+        let moved: Vec<&Path> = match (&before, &after) {
+            (Some(b), Some(a)) => guarded
+                .iter()
+                .zip(b.iter().zip(a))
+                .filter(|(_, (b, a))| b != a)
+                .map(|(path, _)| *path)
+                .take(8)
+                .collect(),
+            _ => Vec::new(),
+        };
+        crate::spike_trace::trace(
+            "read_check",
+            &serde_json::json!({
+                "workspace": workspace,
+                "context": context,
+                "changed": changed,
+                "file-unreadable": spike_read_unreadable,
+                "stamp-bracket-moved": spike_bracket,
+                "stamp-before-none": before.is_none(),
+                "stamp-after-none": after.is_none(),
+                "moved_paths": moved,
+                "runtime-changed": spike_runtime,
+            }),
+        );
     }
     Ok(InputSnapshot {
         workspace: workspace.to_owned(),

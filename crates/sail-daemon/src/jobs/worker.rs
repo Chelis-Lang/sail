@@ -61,6 +61,16 @@ pub(super) fn run(state: &State) {
                 job.status.finished_at_ms = Some(store::now());
                 match result {
                     Ok((code, document, projection)) => {
+                        // SPIKE #696: what the runner itself reported.
+                        sail_verus::spike_trace::trace(
+                            "daemon.worker",
+                            &serde_json::json!({
+                                "job": id,
+                                "contracts": job.contracts.is_some(),
+                                "runner_currentness": format!("{:?}", document.currentness),
+                                "exit": code,
+                            }),
+                        );
                         job.projection = Some(projection);
                         job.status.exit_code = code;
                         job.status.state = Lifecycle::Completed;

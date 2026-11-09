@@ -983,7 +983,19 @@ impl<'a> ReplayCheck<'a> {
     reason = "one input loop; splitting it would scatter the session state"
 )]
 pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> Option<ExitCode> {
-    let (client, mut prefix) = connect(socket, solver)?;
+    spike("open", "");
+    // SPIKE #683: every third process falls back as if the daemon handshake
+    // had failed or timed out.
+    let injected =
+        Path::new("/tmp/sail-spike/connect-fail").exists() && std::process::id() % 3 == 0;
+    let Some((client, mut prefix)) = (if injected {
+        None
+    } else {
+        connect(socket, solver)
+    }) else {
+        spike("no-record:connect-failed-pass-through", "");
+        return None;
+    };
     let mut session = Session::new();
     let mut splitter = CommandSplitter::new();
     let mut served = Served::default();
@@ -1051,6 +1063,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             if let Some(reply) = hit {
                 if !write_out(&reply) {
                     // As when forwarding the solver's output fails.
+                    spike("no-record:write-out-failed", "");
                     return Some(ExitCode::from(1));
                 }
                 served.push(&item.bytes, reply);
@@ -1060,6 +1073,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
             let replies = served.take();
             let Some(s) = start_solver(solver, args, &prefix, replies, expect, client.take())
             else {
+                spike("no-record:start-solver-failed", "");
                 return Some(ExitCode::from(1));
             };
             solving = Some(s);
@@ -1072,6 +1086,7 @@ pub(crate) fn run(socket: &Path, solver: &Path, args: &[std::ffi::OsString]) -> 
         }
         // Served replies are retained for the replay check, so they count.
         if prefix.bytes().len().saturating_add(served.bytes) > limit {
+            spike("no-record:overflow", "");
             let terminal = prefix.silence_key();
             return Some(overflow(
                 solving,
@@ -1160,7 +1175,24 @@ fn finish_run(
         complete: complete && prefix.valid(),
     };
     let (code, started) = finish_input(solving, client, solver, args, &mut end);
+    // SPIKE #683: an injected delay before the session record is written.
+    if let Some(ms) = std::fs::read_to_string("/tmp/sail-spike/provenance-delay-ms")
+        .ok()
+        .and_then(|text| text.trim().parse::<u64>().ok())
+    {
+        std::thread::sleep(Duration::from_millis(ms));
+    }
+    // SPIKE #683: every third process dies after forwarding every reply and
+    // before writing its session record, as a killed shim would.
+    if Path::new("/tmp/sail-spike/die-before-record").exists() && std::process::id() % 3 == 0 {
+        spike("no-record:killed-before-record", "");
+        std::process::abort();
+    }
     record_provenance(prefix.bytes(), end.served.count, started);
+    spike(
+        "recorded",
+        &format!("served={} started={started}", end.served.count),
+    );
     code
 }
 
@@ -1201,6 +1233,35 @@ fn finish_input(
             true,
         ),
         None => (Some(ExitCode::SUCCESS), false),
+    }
+}
+
+/// SPIKE #683: one line per shim session event when `/tmp/sail-spike` exists.
+fn spike(event: &str, detail: &str) {
+    use std::io::Write as _;
+    if !Path::new("/tmp/sail-spike").is_dir() {
+        return;
+    }
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let line = format!(
+        "{}\n",
+        serde_json::json!({
+            "t_ns": nanos.to_string(),
+            "pid": std::process::id(),
+            "site": "shim",
+            "event": event,
+            "detail": detail,
+            "provenance_dir": std::env::var(crate::ENV_PROVENANCE_DIR).ok(),
+        })
+    );
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/sail-spike/shim.jsonl")
+    {
+        let _ = file.write_all(line.as_bytes());
     }
 }
 

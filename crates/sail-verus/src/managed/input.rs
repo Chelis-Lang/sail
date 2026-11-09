@@ -958,9 +958,16 @@ fn stamped_snapshot(
     let original = OriginalCapture::begin(stamp_before.as_deref().map(str::as_bytes));
     let (revision, readable, digests) =
         contents_with_memo(&files, &bindings.paths, source.as_deref());
+    let spike_collect = complete;
+    let spike_markers = exclusions.markers_match(&digests);
     complete &= readable;
     complete &= exclusions.markers_match(&digests);
     let stamp_after = stamp_paths(&observation_paths);
+    let spike_stamps = (
+        stamp_before.is_some(),
+        stamp_after.is_some(),
+        stamp_before == stamp_after,
+    );
     let capture = SnapshotGuard::finish(
         original,
         stamp_after.as_deref(),
@@ -970,6 +977,23 @@ fn stamped_snapshot(
     );
     complete &= capture.is_some();
     complete &= bindings_current(&bindings.paths);
+    if !complete {
+        // SPIKE #696: which snapshot conjunct failed.
+        crate::spike_trace::trace(
+            "input.snapshot",
+            &serde_json::json!({
+                "workspace": workspace,
+                "collect_or_workspace": spike_collect,
+                "readable": readable,
+                "markers_match": spike_markers,
+                "stamp_before_present": spike_stamps.0,
+                "stamp_after_present": spike_stamps.1,
+                "stamps_equal": spike_stamps.2,
+                "capture_present": capture.is_some(),
+                "bindings_current": bindings_current(&bindings.paths),
+            }),
+        );
+    }
     roots.sort();
     roots.dedup();
     (
@@ -1828,7 +1852,13 @@ fn stamp_readback(
                 stamp.update(b"missing");
                 continue;
             }
-            Err(_) => return None,
+            Err(error) => {
+                crate::spike_trace::trace(
+                    "input.stamp",
+                    &serde_json::json!({"path": path, "error": error.to_string()}),
+                );
+                return None;
+            }
         };
         for number in [
             metadata.dev(),

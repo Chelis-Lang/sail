@@ -77,6 +77,10 @@ mod platform {
     impl Observer {
         pub(in crate::managed) fn begin(snapshot: &InputSnapshot, _: &Path) -> Self {
             let Some(mut tracked) = missing(snapshot) else {
+                crate::spike_trace::trace(
+                    "absent.begin",
+                    &serde_json::json!({"why": "existence-readback-mismatch"}),
+                );
                 return Self {
                     native: None,
                     directories: HashMap::new(),
@@ -109,6 +113,16 @@ mod platform {
                 }
                 Some(native)
             });
+            if native.is_none() {
+                crate::spike_trace::trace(
+                    "absent.begin",
+                    &serde_json::json!({
+                        "why": "inotify-init-or-watch-failed",
+                        "tracked": tracked,
+                        "os_error": std::io::Error::last_os_error().to_string(),
+                    }),
+                );
+            }
             Self {
                 native,
                 directories,
@@ -119,12 +133,20 @@ mod platform {
             self.native.is_some()
         }
         pub(in crate::managed) fn finish(mut self) -> Outcome {
+            let spike = |why: &str, detail: serde_json::Value| {
+                crate::spike_trace::trace(
+                    "absent.finish",
+                    &serde_json::json!({"why": why, "detail": detail}),
+                );
+            };
             let Some(mut native) = self.native.take() else {
+                spike("observer-not-ready", serde_json::Value::Null);
                 return Outcome {
                     changed: false,
                     complete: false,
                 };
             };
+            let mut total_events = 0u64;
             let mut outcome = Outcome {
                 changed: false,
                 complete: true,
@@ -133,6 +155,10 @@ mod platform {
             let deadline = Instant::now() + Duration::from_secs(4);
             loop {
                 if Instant::now() >= deadline {
+                    spike(
+                        "drain-deadline-4s",
+                        serde_json::json!({"events": total_events}),
+                    );
                     return Outcome {
                         changed: outcome.changed,
                         complete: false,
@@ -143,6 +169,24 @@ mod platform {
                         let mut count = 0;
                         for event in events {
                             count += 1;
+                            total_events += 1;
+                            if event.mask.intersects(
+                                EventMask::Q_OVERFLOW
+                                    | EventMask::IGNORED
+                                    | EventMask::UNMOUNT
+                                    | EventMask::DELETE_SELF
+                                    | EventMask::MOVE_SELF,
+                            ) {
+                                spike(
+                                    "event-mask",
+                                    serde_json::json!({
+                                        "mask": format!("{:?}", event.mask),
+                                        "directory": self.directories.get(&event.wd),
+                                        "watched": self.directories.values().collect::<Vec<_>>(),
+                                        "events_so_far": total_events,
+                                    }),
+                                );
+                            }
                             if event.mask.intersects(
                                 EventMask::Q_OVERFLOW
                                     | EventMask::IGNORED
@@ -156,6 +200,15 @@ mod platform {
                                 let path = event
                                     .name
                                     .map_or_else(|| parent.clone(), |name| parent.join(name));
+                                if relevant(&path, &self.tracked) {
+                                    spike(
+                                        "changed",
+                                        serde_json::json!({
+                                            "path": path,
+                                            "mask": format!("{:?}", event.mask),
+                                        }),
+                                    );
+                                }
                                 outcome.changed |= relevant(&path, &self.tracked);
                             }
                         }
@@ -165,7 +218,8 @@ mod platform {
                     }
                     Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => return outcome,
                     Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                    Err(_) => {
+                    Err(e) => {
+                        spike("read-error", serde_json::json!(e.to_string()));
                         return Outcome {
                             changed: outcome.changed,
                             complete: false,

@@ -3343,6 +3343,29 @@ pub(super) fn runtime_current(cache: &Path, context: &str) -> bool {
             .all(|matches| matches)
     });
     tools.save();
+    if !current {
+        // SPIKE #696: which runtime identity row failed.
+        let failing: Vec<String> = identities
+            .as_ref()
+            .map(|rows| {
+                rows.iter()
+                    .filter(|(path, expected)| {
+                        !super::files::identity_matches(Path::new(path), expected, &tools)
+                    })
+                    .map(|(path, _)| path.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+        crate::spike_trace::trace(
+            "runner.runtime_current",
+            &serde_json::json!({
+                "context": context,
+                "link_present": identity_sha.is_some(),
+                "identities_present": identities.is_some(),
+                "failing_paths": failing,
+            }),
+        );
+    }
     current
 }
 
@@ -3901,6 +3924,17 @@ fn run_recorded(
         Some((_, snapshot, stamp)) => (snapshot, stamp),
         None => super::input::snapshot_metadata_stamped(&data, &extras),
     };
+    if !before.complete || !source_coverage {
+        crate::spike_trace::trace(
+            "runner.before",
+            &serde_json::json!({
+                "snapshot_complete": before.complete,
+                "source_coverage": source_coverage,
+                "source_state_exists": source_state.exists(),
+                "input_state_exists": paths.input_state.exists(),
+            }),
+        );
+    }
     before.complete &= source_coverage;
     before.roots.extend(native_includes.iter().cloned());
     before.roots.extend(super::input::configuration_paths(
@@ -4510,6 +4544,43 @@ fn run_recorded(
         (super::input::mutation_stamp(&after_run), None)
     };
     let absent = absent.finish();
+    // SPIKE #696: name every predicate that withholds Current.
+    {
+        let runtime = runtime_current(&config.cache, &hash);
+        let predicates: [(&str, bool); 11] = [
+            ("reuse-disabled", !paths.reuse),
+            ("before-incomplete", !before.complete),
+            ("after-incomplete", !after.complete),
+            ("script-coverage", !after_coverage),
+            ("source-coverage", !source_coverage),
+            ("absent-incomplete", !absent.complete),
+            ("outside-scope", outside_scope),
+            ("scheduling-unconfirmed", !scheduling_confirmed),
+            ("runtime-changed", !runtime),
+            ("stamp-before-missing", stamp_before.is_none()),
+            ("stamp-after-missing", stamp_after.is_none()),
+        ];
+        let reasons: Vec<&str> = predicates
+            .iter()
+            .filter(|(_, failed)| *failed)
+            .map(|(name, _)| *name)
+            .collect();
+        crate::spike_trace::trace(
+            "runner.currentness",
+            &serde_json::json!({
+                "workspace": data["workspace_root"].as_str().unwrap_or_default(),
+                "context": hash,
+                "unknown": !reasons.is_empty(),
+                "reasons": reasons,
+                "digests_equal": before_run.digests == after_run.digests,
+                "bindings_equal": before_run.bindings == after_run.bindings,
+                "stamps_equal": stamp_before == stamp_after,
+                "absent_changed": absent.changed,
+                "retried": retried,
+                "exit": exit,
+            }),
+        );
+    }
     let currentness = if !paths.reuse
         || !before.complete
         || !after.complete

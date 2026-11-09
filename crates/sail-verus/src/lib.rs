@@ -22,6 +22,7 @@ mod report_scope;
 pub mod run;
 pub mod rvt;
 pub mod source_build;
+pub mod spike_trace;
 pub mod toolchain;
 mod verus_stdout;
 

@@ -307,7 +307,42 @@ fn projected_currentness(state: &State, job: &Stored, projection: &Projection) -
             &job.submission.environment,
         )
     });
-    classify(projection.currentness, &projection.input_revision, snapshot)
+    // SPIKE #696: name the daemon readback path.
+    let path = match &snapshot {
+        None => "readback-snapshot-missing",
+        Some(s) if s.revision != projection.input_revision => "readback-revision-changed",
+        Some(s) if !s.complete => "readback-snapshot-incomplete",
+        Some(_) => "readback-ok",
+    };
+    let detail = cache(job).map(|cache| {
+        state
+            .freshness
+            .establish(
+                &cache,
+                Path::new(&projection.workspace),
+                &projection.context_sha256,
+                &job.submission.environment,
+            )
+            .err()
+            .map(|e| e.to_string())
+    });
+    let classified = classify(projection.currentness, &projection.input_revision, snapshot);
+    // Status polls repeat; only a withheld Current is recorded.
+    if path != "readback-ok" {
+        sail_verus::spike_trace::trace(
+            "daemon.classify",
+            &serde_json::json!({
+                "job": job.status.id,
+                "workspace": projection.workspace,
+                "runner_currentness": format!("{:?}", projection.currentness),
+                "path": path,
+                "cache_known": detail.is_some(),
+                "establish_error": detail.flatten(),
+                "classified": format!("{classified:?}"),
+            }),
+        );
+    }
+    classified
 }
 
 pub(super) fn status(state: &State, job: &Stored) -> io::Result<Status> {
