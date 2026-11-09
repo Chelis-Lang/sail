@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Freeze neutral profile three (lowering version four, contract version three)
+  before its first release (ADR 0107). Retained version-four manifests replay
+  byte for byte, and later widening takes a new lowering identity. Manifests
+  recorded from earlier `main` revisions are refused as drift.
 - Lower profile-three signed remainder in the shape Verus gives executable
   `%`, so a remainder by a symbolic divisor of either sign verifies. The value
   is unchanged. Document two profile-three limits: signed division by a

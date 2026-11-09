@@ -213,6 +213,10 @@ and [issue 689](https://github.com/Chelis-Lang/sail/issues/689)). Profile two
 admits that form, but its shadow cannot verify on the pinned Verus. Profile three emits lowering version four
 (`PROFILE_THREE_LOWERING_VERSION`) with contract version three. Retained
 version-one to version-three manifests keep their original projections and bytes.
+Profile three is frozen ([ADR 0107](../decisions/0107-freeze-neutral-profile-three.md)):
+retained version-four manifests for the division, remainder, body-call, loop
+and closure fixtures must replay byte for byte, and a later change to profile
+three's admission or emitted bytes takes a new lowering version.
 
 ### Truncating division and remainder
 

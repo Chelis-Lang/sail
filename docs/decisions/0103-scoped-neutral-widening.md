@@ -48,7 +48,9 @@ Rules for every item:
   with lowering version four and contract version three. Profiles one and two,
   lowering versions one to three, and their retained manifests and emitted
   bytes stay unchanged. Profile three is assembled across the pull requests
-  for items 1 to 3 and is frozen when it is first released.
+  for items 1 to 3 and is frozen when it is first released. [ADR 0107](0107-freeze-neutral-profile-three.md)
+  amends this: profile three is frozen from 2026-11-09, and forms not yet
+  admitted take a new lowering identity.
 - **Explicit refusals remain.** Each widening admits a stated form and keeps a
   `SAIL3140` or `SAIL0701` refusal for everything else.
 - **The correctness contract is unchanged.** Default-mode verdicts and
