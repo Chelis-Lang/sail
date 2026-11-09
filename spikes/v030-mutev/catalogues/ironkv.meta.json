@@ -1,0 +1,496 @@
+{
+  "base_commit": "7e35ed097c4089b9fbda483ea2629a0033f4d874",
+  "candidate_sites": {
+    "arith": 470,
+    "compare": 1276,
+    "constant": 681,
+    "invariant": 125,
+    "logic": 409,
+    "rare-region": 5,
+    "spec-strengthen": 302,
+    "spec-weaken": 200,
+    "statement": 1015
+  },
+  "candidates_sha256": "b64ec7e3b21baa6f42c20c38d4e00caba50e13279e9d0b62b5db18b4e636bbe8",
+  "files": 33,
+  "generated": {
+    "arith": 60,
+    "compare": 60,
+    "constant": 60,
+    "invariant": 31,
+    "logic": 60,
+    "rare-region": 5,
+    "spec-strengthen": 60,
+    "spec-weaken": 60,
+    "statement": 60
+  },
+  "generator": "gen-mutants 2",
+  "mutants": {
+    "ironkv-arith-002": {
+      "class": "arith",
+      "column": 120,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialize",
+      "kind": "body",
+      "line": 170,
+      "mode": "exec"
+    },
+    "ironkv-arith-003": {
+      "class": "arith",
+      "column": 28,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "greatest_lower_bound_index",
+      "kind": "body",
+      "line": 785,
+      "mode": "exec"
+    },
+    "ironkv-arith-006": {
+      "class": "arith",
+      "column": 17,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialized_size",
+      "kind": "body",
+      "line": 761,
+      "mode": "exec"
+    },
+    "ironkv-arith-013": {
+      "class": "arith",
+      "column": 36,
+      "file": "ironsht/src/single_delivery_model_v.rs",
+      "function": "new_impl",
+      "kind": "body",
+      "line": 196,
+      "mode": "exec"
+    },
+    "ironkv-arith-014": {
+      "class": "arith",
+      "column": 19,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "clone_up_to_view",
+      "kind": "body",
+      "line": 72,
+      "mode": "exec"
+    },
+    "ironkv-arith-019": {
+      "class": "arith",
+      "column": 27,
+      "file": "ironsht/src/single_delivery_model_v.rs",
+      "function": "retransmit_un_acked_packets",
+      "kind": "body",
+      "line": 593,
+      "mode": "exec"
+    },
+    "ironkv-arith-029": {
+      "class": "arith",
+      "column": 73,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "host_model_next_delegate",
+      "kind": "body",
+      "line": 1419,
+      "mode": "exec"
+    },
+    "ironkv-compare-001": {
+      "class": "compare",
+      "column": 78,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "is_marshalable",
+      "kind": "body",
+      "line": 652,
+      "mode": "spec"
+    },
+    "ironkv-compare-003": {
+      "class": "compare",
+      "column": 59,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "lemma_same_views_serialize_the_same",
+      "kind": "body",
+      "line": 1003,
+      "mode": "proof"
+    },
+    "ironkv-compare-004": {
+      "class": "compare",
+      "column": 31,
+      "file": "ironsht/src/verus_extra/set_lib_ext_v.rs",
+      "function": "lemma_flatten_set_seq_spec",
+      "kind": "body",
+      "line": 104,
+      "mode": "proof"
+    },
+    "ironkv-compare-005": {
+      "class": "compare",
+      "column": 45,
+      "file": "ironsht/src/verus_extra/seq_lib_v.rs",
+      "function": "some_differing_index_for_unequal_seqs",
+      "kind": "body",
+      "line": 264,
+      "mode": "proof"
+    },
+    "ironkv-compare-006": {
+      "class": "compare",
+      "column": 27,
+      "file": "ironsht/src/net_sht_v.rs",
+      "function": "outbound_packet_seq_has_correct_srcs",
+      "kind": "body",
+      "line": 325,
+      "mode": "spec"
+    },
+    "ironkv-compare-033": {
+      "class": "compare",
+      "column": 26,
+      "file": "ironsht/src/single_delivery_model_v.rs",
+      "function": "maybe_ack_packet_impl",
+      "kind": "body",
+      "line": 319,
+      "mode": "exec"
+    },
+    "ironkv-compare-043": {
+      "class": "compare",
+      "column": 13,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialize",
+      "kind": "body",
+      "line": 149,
+      "mode": "exec"
+    },
+    "ironkv-constant-002": {
+      "class": "constant",
+      "column": 22,
+      "file": "ironsht/src/host_protocol_t.rs",
+      "function": "receive_packet_next",
+      "kind": "body",
+      "line": 190,
+      "mode": "exec"
+    },
+    "ironkv-constant-003": {
+      "class": "constant",
+      "column": 28,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "truncate",
+      "kind": "body",
+      "line": 162,
+      "mode": "exec"
+    },
+    "ironkv-constant-004": {
+      "class": "constant",
+      "column": 30,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "greatest_lower_bound_index",
+      "kind": "body",
+      "line": 785,
+      "mode": "exec"
+    },
+    "ironkv-constant-005": {
+      "class": "constant",
+      "column": 121,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialize",
+      "kind": "body",
+      "line": 358,
+      "mode": "exec"
+    },
+    "ironkv-constant-006": {
+      "class": "constant",
+      "column": 16,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "lemma_seqno_in_un_acked_list",
+      "kind": "body",
+      "line": 135,
+      "mode": "proof"
+    },
+    "ironkv-constant-012": {
+      "class": "constant",
+      "column": 77,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "_is_marshalable",
+      "kind": "body",
+      "line": 477,
+      "mode": "exec"
+    },
+    "ironkv-constant-024": {
+      "class": "constant",
+      "column": 56,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "should_process_received_message_impl",
+      "kind": "body",
+      "line": 850,
+      "mode": "exec"
+    },
+    "ironkv-constant-038": {
+      "class": "constant",
+      "column": 83,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "host_model_next_shard",
+      "kind": "body",
+      "line": 1500,
+      "mode": "exec"
+    },
+    "ironkv-constant-053": {
+      "class": "constant",
+      "column": 68,
+      "file": "ironsht/src/single_delivery_model_v.rs",
+      "function": "receive_real_packet_impl",
+      "kind": "body",
+      "line": 270,
+      "mode": "exec"
+    },
+    "ironkv-logic-004": {
+      "class": "logic",
+      "column": 47,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "deliver_packet_seq",
+      "kind": "body",
+      "line": 512,
+      "mode": "exec"
+    },
+    "ironkv-logic-011": {
+      "class": "logic",
+      "column": 56,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "range_consistent_impl",
+      "kind": "body",
+      "line": 1452,
+      "mode": "exec"
+    },
+    "ironkv-logic-012": {
+      "class": "logic",
+      "column": 33,
+      "file": "ironsht/src/marshal_ironsht_specific_v.rs",
+      "function": "_is_marshalable",
+      "kind": "body",
+      "line": 157,
+      "mode": "exec"
+    },
+    "ironkv-logic-013": {
+      "class": "logic",
+      "column": 31,
+      "file": "ironsht/src/cmessage_v.rs",
+      "function": "is_message_marshallable",
+      "kind": "body",
+      "line": 166,
+      "mode": "exec"
+    },
+    "ironkv-logic-021": {
+      "class": "logic",
+      "column": 27,
+      "file": "ironsht/src/seq_is_unique_v.rs",
+      "function": "test_unique",
+      "kind": "body",
+      "line": 86,
+      "mode": "exec"
+    },
+    "ironkv-logic-024": {
+      "class": "logic",
+      "column": 23,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "above",
+      "kind": "body",
+      "line": 410,
+      "mode": "exec"
+    },
+    "ironkv-logic-025": {
+      "class": "logic",
+      "column": 12,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "process_received_packet_next_impl",
+      "kind": "body",
+      "line": 1658,
+      "mode": "exec"
+    },
+    "ironkv-statement-001": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "deliver_packet_seq",
+      "kind": "body",
+      "line": 485,
+      "mode": "exec"
+    },
+    "ironkv-statement-002": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "range_consistent_impl",
+      "kind": "body",
+      "line": 1597,
+      "mode": "exec"
+    },
+    "ironkv-statement-003": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/delegation_map_v.rs",
+      "function": "set",
+      "kind": "body",
+      "line": 1248,
+      "mode": "exec"
+    },
+    "ironkv-statement-004": {
+      "class": "statement",
+      "column": 20,
+      "file": "ironsht/src/host_impl_v.rs",
+      "function": "host_model_next_set_request",
+      "kind": "body",
+      "line": 1332,
+      "mode": "exec"
+    },
+    "ironkv-statement-005": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "serialize",
+      "kind": "body",
+      "line": 1258,
+      "mode": "exec"
+    },
+    "ironkv-statement-006": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/marshal_v.rs",
+      "function": "deserialize",
+      "kind": "body",
+      "line": 903,
+      "mode": "exec"
+    },
+    "ironkv-statement-021": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/seq_is_unique_v.rs",
+      "function": "do_vec_u8s_match",
+      "kind": "body",
+      "line": 43,
+      "mode": "exec"
+    },
+    "ironkv-statement-043": {
+      "class": "statement",
+      "column": 1,
+      "file": "ironsht/src/single_delivery_state_v.rs",
+      "function": "truncate",
+      "kind": "body",
+      "line": 188,
+      "mode": "exec"
+    }
+  },
+  "oracle": null,
+  "per_class": 60,
+  "project": "verified-ironkv",
+  "schema_version": 1,
+  "seed": 20261020,
+  "spike_group": {
+    "ironkv-arith-002": [
+      "catalogue"
+    ],
+    "ironkv-arith-003": [
+      "catalogue"
+    ],
+    "ironkv-arith-006": [
+      "catalogue",
+      "exec-token"
+    ],
+    "ironkv-arith-013": [
+      "exec-token"
+    ],
+    "ironkv-arith-014": [
+      "exec-token"
+    ],
+    "ironkv-arith-019": [
+      "exec-token"
+    ],
+    "ironkv-arith-029": [
+      "exec-token"
+    ],
+    "ironkv-compare-001": [
+      "catalogue"
+    ],
+    "ironkv-compare-003": [
+      "catalogue"
+    ],
+    "ironkv-compare-004": [
+      "catalogue"
+    ],
+    "ironkv-compare-005": [
+      "catalogue"
+    ],
+    "ironkv-compare-006": [
+      "catalogue"
+    ],
+    "ironkv-compare-033": [
+      "exec-token"
+    ],
+    "ironkv-compare-043": [
+      "exec-token"
+    ],
+    "ironkv-constant-002": [
+      "catalogue"
+    ],
+    "ironkv-constant-003": [
+      "catalogue",
+      "exec-token"
+    ],
+    "ironkv-constant-004": [
+      "catalogue"
+    ],
+    "ironkv-constant-005": [
+      "catalogue"
+    ],
+    "ironkv-constant-006": [
+      "catalogue"
+    ],
+    "ironkv-constant-012": [
+      "exec-token"
+    ],
+    "ironkv-constant-024": [
+      "exec-token"
+    ],
+    "ironkv-constant-038": [
+      "exec-token"
+    ],
+    "ironkv-constant-053": [
+      "exec-token"
+    ],
+    "ironkv-logic-004": [
+      "catalogue"
+    ],
+    "ironkv-logic-011": [
+      "exec-token"
+    ],
+    "ironkv-logic-012": [
+      "exec-token"
+    ],
+    "ironkv-logic-013": [
+      "exec-token"
+    ],
+    "ironkv-logic-021": [
+      "exec-token"
+    ],
+    "ironkv-logic-024": [
+      "exec-token"
+    ],
+    "ironkv-logic-025": [
+      "exec-token"
+    ],
+    "ironkv-statement-001": [
+      "catalogue"
+    ],
+    "ironkv-statement-002": [
+      "catalogue"
+    ],
+    "ironkv-statement-003": [
+      "catalogue"
+    ],
+    "ironkv-statement-004": [
+      "catalogue"
+    ],
+    "ironkv-statement-005": [
+      "catalogue"
+    ],
+    "ironkv-statement-006": [
+      "catalogue"
+    ],
+    "ironkv-statement-021": [
+      "exec-token"
+    ],
+    "ironkv-statement-043": [
+      "exec-token"
+    ]
+  },
+  "unit": "verified-ironkv/ironsht"
+}

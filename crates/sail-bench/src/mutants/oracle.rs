@@ -37,6 +37,10 @@ struct Options {
     timeout: Duration,
     scratch: Option<PathBuf>,
     vstd_lock: Option<PathBuf>,
+    /// Spike (v0.3.0 A1): the pass-through `sail-z3` shim. When set, every
+    /// stock run's solver is this shim in front of the pinned Z3 with the
+    /// observation tap on, so each run keeps the solver's raw replies.
+    trace_shim: Option<PathBuf>,
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
@@ -47,6 +51,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
         timeout: Duration::from_mins(30),
         scratch: None,
         vstd_lock: None,
+        trace_shim: None,
     };
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -61,6 +66,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--timeout-secs" => o.timeout = Duration::from_secs(number(value(&mut it, arg)?)?),
             "--scratch" => o.scratch = Some(value(&mut it, arg)?.into()),
             "--vstd-lock" => o.vstd_lock = Some(value(&mut it, arg)?.into()),
+            "--trace-shim" => o.trace_shim = Some(value(&mut it, arg)?.into()),
             _ => return Err(format!("unknown argument `{arg}`\n{}", super::USAGE)),
         }
     }
@@ -99,7 +105,33 @@ impl Runs {
     }
 }
 
-fn run_mutant(setup: &Setup, ws: &Workspace, edit: &Edit, runs: usize, timeout: Duration) -> Runs {
+/// The stock command, with the solver behind the tracing shim when asked.
+/// The shim forwards the pinned Z3's bytes unchanged in both directions and
+/// records them under `trace`.
+fn stock_command(
+    setup: &Setup,
+    ws: &Workspace,
+    trace_shim: Option<&std::path::Path>,
+    trace: &std::path::Path,
+) -> std::process::Command {
+    let mut cmd = ws.stock(&setup.installed);
+    if let Some(shim) = trace_shim {
+        let _ = std::fs::create_dir_all(trace);
+        cmd.env("VERUS_Z3_PATH", shim)
+            .env("SAIL_Z3_PATH", &setup.installed.z3)
+            .env("SAIL_TRACE_DIR", trace);
+    }
+    cmd
+}
+
+fn run_mutant(
+    setup: &Setup,
+    ws: &Workspace,
+    edit: &Edit,
+    runs: usize,
+    timeout: Duration,
+    trace_shim: Option<&std::path::Path>,
+) -> Runs {
     let mut r = Runs::default();
     let file = ws.src.join(&edit.file);
     let original = match std::fs::read_to_string(&file) {
@@ -127,10 +159,11 @@ fn run_mutant(setup: &Setup, ws: &Workspace, edit: &Edit, runs: usize, timeout: 
             r.dropped = Some(format!("infrastructure: {e}"));
             break;
         }
+        let run_log = logs.join(format!("run{k}"));
         match execute(
-            &mut ws.stock(&setup.installed),
+            &mut stock_command(setup, ws, trace_shim, &run_log.join("trace")),
             timeout,
-            &logs.join(format!("run{k}")),
+            &run_log,
         ) {
             Ok(rec) => {
                 let p = plain_outcome(&rec);
@@ -200,6 +233,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
                 (&setup, &edits, &results, &original, &errors);
             let (runs, timeout) = (o.runs, o.timeout);
             let vstd_lock = o.vstd_lock.as_deref();
+            let trace_shim = o.trace_shim.as_deref();
             s.spawn(move || {
                 let mine: Vec<&Edit> = edits.iter().skip(w).step_by(jobs).collect();
                 let ws = Workspace::prepare(
@@ -218,10 +252,26 @@ pub fn main(args: &[String]) -> Result<(), String> {
                         return;
                     }
                 };
+                let original_log = setup.scratch.join(format!("oracle-logs/original-{w}"));
+                // Spike: the exact stock command, for scripts that rerun it.
+                {
+                    let cmd = ws.stock(&setup.installed);
+                    let text = |s: &std::ffi::OsStr| s.to_string_lossy().into_owned();
+                    let record = json!({
+                        "program": text(cmd.get_program()),
+                        "args": cmd.get_args().map(text).collect::<Vec<_>>(),
+                        "cwd": cmd.get_current_dir().map(|d| d.display().to_string()),
+                        "env": cmd.get_envs().map(|(k, v)| (text(k), v.map(text))).collect::<BTreeMap<_, _>>(),
+                        "z3": setup.installed.z3.display().to_string(),
+                        "root": ws.root.display().to_string(),
+                        "src": ws.src.display().to_string(),
+                    });
+                    let _ = std::fs::write(ws.root.join("stock-command.json"), record.to_string());
+                }
                 let cold = execute(
-                    &mut ws.stock(&setup.installed),
+                    &mut stock_command(setup, &ws, trace_shim, &original_log.join("trace")),
                     timeout,
-                    &setup.scratch.join(format!("oracle-logs/original-{w}")),
+                    &original_log,
                 );
                 match cold {
                     Ok(rec) => {
@@ -248,7 +298,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
                     }
                 }
                 for edit in mine {
-                    let r = run_mutant(setup, &ws, edit, runs, timeout);
+                    let r = run_mutant(setup, &ws, edit, runs, timeout, trace_shim);
                     eprintln!(
                         "{:<32} {:<26} {}",
                         edit.id,

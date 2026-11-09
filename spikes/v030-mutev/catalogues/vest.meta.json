@@ -1,0 +1,408 @@
+{
+  "base_commit": "11af01ddaef76cceded03517cd48764adb9d35b1",
+  "candidate_sites": {
+    "arith": 904,
+    "compare": 3064,
+    "constant": 2713,
+    "invariant": 109,
+    "logic": 639,
+    "rare-region": 17,
+    "spec-strengthen": 974,
+    "spec-weaken": 682,
+    "statement": 3999
+  },
+  "candidates_sha256": "b473253fef908eab5587adf1488e7362d78fab8023cc640430829f176a6d76ed",
+  "files": 138,
+  "generated": {
+    "arith": 60,
+    "compare": 60,
+    "constant": 60,
+    "invariant": 36,
+    "logic": 60,
+    "rare-region": 17,
+    "spec-strengthen": 60,
+    "spec-weaken": 60,
+    "statement": 60
+  },
+  "generator": "gen-mutants 2",
+  "mutants": {
+    "vest-arith-003": {
+      "class": "arith",
+      "column": 34,
+      "file": "vest_lib/src/asn1/datetime.rs",
+      "function": "decimal4_bytes",
+      "kind": "body",
+      "line": 259,
+      "mode": "exec"
+    },
+    "vest-arith-004": {
+      "class": "arith",
+      "column": 22,
+      "file": "vest_lib/src/asn1/datetime.rs",
+      "function": "decimal2_bytes",
+      "kind": "body",
+      "line": 242,
+      "mode": "exec"
+    },
+    "vest-arith-006": {
+      "class": "arith",
+      "column": 67,
+      "file": "vest_lib/src/combinators/star/proof.rs",
+      "function": "lemma_parse_non_malleable_rec",
+      "kind": "body",
+      "line": 392,
+      "mode": "proof"
+    },
+    "vest-arith-010": {
+      "class": "arith",
+      "column": 12,
+      "file": "vest_lib/src/asn1/oid.rs",
+      "function": "oid_first_subidentifier_exec",
+      "kind": "body",
+      "line": 287,
+      "mode": "exec"
+    },
+    "vest-arith-020": {
+      "class": "arith",
+      "column": 43,
+      "file": "vest_lib/src/asn1/real.rs",
+      "function": "ber_real_binary_wf_exec",
+      "kind": "body",
+      "line": 838,
+      "mode": "exec"
+    },
+    "vest-arith-021": {
+      "class": "arith",
+      "column": 9,
+      "file": "vest_lib/src/asn1/real.rs",
+      "function": "der_real_binary_wf_exec",
+      "kind": "body",
+      "line": 721,
+      "mode": "exec"
+    },
+    "vest-compare-001": {
+      "class": "compare",
+      "column": 23,
+      "file": "vest_lib/src/combinators/mapped/proof.rs",
+      "function": "lemma_parse_non_malleable",
+      "kind": "body",
+      "line": 39,
+      "mode": "proof"
+    },
+    "vest-compare-002": {
+      "class": "compare",
+      "column": 23,
+      "file": "vest_lib/src/combinators/uints/exec.rs",
+      "function": "parse",
+      "kind": "body",
+      "line": 290,
+      "mode": "exec"
+    },
+    "vest-compare-003": {
+      "class": "compare",
+      "column": 14,
+      "file": "vest_lib/src/asn1/integer.rs",
+      "function": "i64_to_be_bytes_in_place",
+      "kind": "body",
+      "line": 1161,
+      "mode": "exec"
+    },
+    "vest-compare-005": {
+      "class": "compare",
+      "column": 20,
+      "file": "vest_lib/src/asn1/real.rs",
+      "function": "der_real_decimal_wf_exec",
+      "kind": "body",
+      "line": 656,
+      "mode": "exec"
+    },
+    "vest-compare-006": {
+      "class": "compare",
+      "column": 38,
+      "file": "vest_lib/src/asn1/der_ord.rs",
+      "function": "der_next",
+      "kind": "body",
+      "line": 801,
+      "mode": "exec"
+    },
+    "vest-compare-009": {
+      "class": "compare",
+      "column": 39,
+      "file": "vest_lib/src/asn1/length.rs",
+      "function": "parse",
+      "kind": "body",
+      "line": 557,
+      "mode": "exec"
+    },
+    "vest-constant-002": {
+      "class": "constant",
+      "column": 13,
+      "file": "vest_lib/src/asn1/tag.rs",
+      "function": "parse",
+      "kind": "body",
+      "line": 684,
+      "mode": "exec"
+    },
+    "vest-constant-003": {
+      "class": "constant",
+      "column": 26,
+      "file": "vest_lib/src/asn1/real.rs",
+      "function": "ber_real_binary_wf",
+      "kind": "body",
+      "line": 290,
+      "mode": "spec"
+    },
+    "vest-constant-004": {
+      "class": "constant",
+      "column": 13,
+      "file": "vest_lib/src/cbor/head.rs",
+      "function": "parse",
+      "kind": "body",
+      "line": 591,
+      "mode": "exec"
+    },
+    "vest-constant-005": {
+      "class": "constant",
+      "column": 25,
+      "file": "vest_lib/src/primitives/btcvarint.rs",
+      "function": "parse",
+      "kind": "body",
+      "line": 224,
+      "mode": "exec"
+    },
+    "vest-constant-006": {
+      "class": "constant",
+      "column": 30,
+      "file": "vest_lib/src/combinators/uints/spec.rs",
+      "function": "lemma_u64_le_bytes_roundtrip",
+      "kind": "body",
+      "line": 441,
+      "mode": "proof"
+    },
+    "vest-constant-011": {
+      "class": "constant",
+      "column": 42,
+      "file": "vest_lib/src/asn1/der_ord.rs",
+      "function": "der_start",
+      "kind": "body",
+      "line": 1000,
+      "mode": "exec"
+    },
+    "vest-logic-001": {
+      "class": "logic",
+      "column": 50,
+      "file": "vest_lib/src/core/proof.rs",
+      "function": "sp_roundtrip_inv",
+      "kind": "body",
+      "line": 80,
+      "mode": "spec"
+    },
+    "vest-logic-002": {
+      "class": "logic",
+      "column": 12,
+      "file": "vest_lib/src/asn1/ber/char_string.rs",
+      "function": "decode_owned",
+      "kind": "body",
+      "line": 410,
+      "mode": "exec"
+    },
+    "vest-logic-003": {
+      "class": "logic",
+      "column": 58,
+      "file": "vest_lib/src/combinators/uints/spec.rs",
+      "function": "lemma_u24_be_bytes_roundtrip",
+      "kind": "body",
+      "line": 212,
+      "mode": "proof"
+    },
+    "vest-logic-004": {
+      "class": "logic",
+      "column": 34,
+      "file": "vest_lib/src/cbor/head.rs",
+      "function": "parse",
+      "kind": "body",
+      "line": 595,
+      "mode": "exec"
+    },
+    "vest-logic-005": {
+      "class": "logic",
+      "column": 38,
+      "file": "vest_lib/src/asn1/tag.rs",
+      "function": "lemma_first_byte_from_parts_roundtrip",
+      "kind": "body",
+      "line": 403,
+      "mode": "proof"
+    },
+    "vest-logic-024": {
+      "class": "logic",
+      "column": 28,
+      "file": "vest_lib/src/primitives/btcvarint.rs",
+      "function": "parse",
+      "kind": "body",
+      "line": 237,
+      "mode": "exec"
+    },
+    "vest-logic-029": {
+      "class": "logic",
+      "column": 45,
+      "file": "vest_lib/src/asn1/integer.rs",
+      "function": "in_i64_range",
+      "kind": "body",
+      "line": 407,
+      "mode": "exec"
+    },
+    "vest-statement-003": {
+      "class": "statement",
+      "column": 1,
+      "file": "vest_lib/src/asn1/der_ord.rs",
+      "function": "der_next",
+      "kind": "body",
+      "line": 2417,
+      "mode": "exec"
+    },
+    "vest-statement-006": {
+      "class": "statement",
+      "column": 1,
+      "file": "vest_lib/src/combinators/star/exec.rs",
+      "function": "serialize_slice",
+      "kind": "body",
+      "line": 292,
+      "mode": "exec"
+    },
+    "vest-statement-013": {
+      "class": "statement",
+      "column": 1,
+      "file": "vest_lib/src/combinators/uints/exec.rs",
+      "function": "serialize_into",
+      "kind": "body",
+      "line": 263,
+      "mode": "exec"
+    },
+    "vest-statement-026": {
+      "class": "statement",
+      "column": 1,
+      "file": "vest_lib/src/combinators/bytes/exec.rs",
+      "function": "serialize_into",
+      "kind": "body",
+      "line": 67,
+      "mode": "exec"
+    },
+    "vest-statement-053": {
+      "class": "statement",
+      "column": 1,
+      "file": "vest_lib/src/asn1/utctime.rs",
+      "function": "utc_time_to_bytes",
+      "kind": "body",
+      "line": 338,
+      "mode": "exec"
+    }
+  },
+  "oracle": null,
+  "per_class": 60,
+  "project": "vest",
+  "schema_version": 1,
+  "seed": 20261020,
+  "spike_group": {
+    "vest-arith-003": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-arith-004": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-arith-006": [
+      "catalogue"
+    ],
+    "vest-arith-010": [
+      "exec-token"
+    ],
+    "vest-arith-020": [
+      "exec-token"
+    ],
+    "vest-arith-021": [
+      "exec-token"
+    ],
+    "vest-compare-001": [
+      "catalogue"
+    ],
+    "vest-compare-002": [
+      "catalogue"
+    ],
+    "vest-compare-003": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-compare-005": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-compare-006": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-compare-009": [
+      "exec-token"
+    ],
+    "vest-constant-002": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-constant-003": [
+      "catalogue"
+    ],
+    "vest-constant-004": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-constant-005": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-constant-006": [
+      "catalogue"
+    ],
+    "vest-constant-011": [
+      "exec-token"
+    ],
+    "vest-logic-001": [
+      "catalogue"
+    ],
+    "vest-logic-002": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-logic-003": [
+      "catalogue"
+    ],
+    "vest-logic-004": [
+      "catalogue",
+      "exec-token"
+    ],
+    "vest-logic-005": [
+      "catalogue"
+    ],
+    "vest-logic-024": [
+      "exec-token"
+    ],
+    "vest-logic-029": [
+      "exec-token"
+    ],
+    "vest-statement-003": [
+      "catalogue"
+    ],
+    "vest-statement-006": [
+      "catalogue"
+    ],
+    "vest-statement-013": [
+      "exec-token"
+    ],
+    "vest-statement-026": [
+      "exec-token"
+    ],
+    "vest-statement-053": [
+      "exec-token"
+    ]
+  },
+  "unit": "vest/vest_lib"
+}
