@@ -302,7 +302,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "tempfile",
- "walkdir",
 ]
 
 [[package]]
@@ -2337,7 +2336,6 @@ dependencies = [
  "num-format",
  "regex",
  "rust_verify_test_macros",
- "rustc_hir_analysis",
  "rustc_mir_build",
  "serde",
  "serde_json",
@@ -2376,14 +2374,6 @@ name = "rustc-hash"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
-
-[[package]]
-name = "rustc_hir_analysis"
-version = "0.0.0"
-dependencies = [
- "itertools",
- "tracing",
-]
 
 [[package]]
 name = "rustc_mir_build"
@@ -3254,11 +3244,11 @@ dependencies = [
 
 [[package]]
 name = "verus_builtin"
-version = "0.0.0-2026-10-11-0230"
+version = "0.0.0-2026-09-06-0133"
 
 [[package]]
 name = "verus_builtin_macros"
-version = "0.0.0-2026-10-18-0147"
+version = "0.0.0-2026-09-06-0133"
 dependencies = [
  "convert_case",
  "proc-macro2",
@@ -3279,7 +3269,7 @@ dependencies = [
 
 [[package]]
 name = "verus_state_machines_macros"
-version = "0.0.0-2026-10-18-0147"
+version = "0.0.0-2026-09-06-0133"
 dependencies = [
  "indexmap 2.14.0",
  "proc-macro2",

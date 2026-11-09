@@ -4,13 +4,13 @@
 # metadata only: conformance always compares sail with plain Verus on the
 # same run.
 schema_version = 1
-verus_release = "0.2026.10.18.7d82994"
-verus_commit = "7d829946231d6413a398f6e4160cdfe951261dad"
+verus_release = "0.2026.09.06.8dea4a2"
+verus_commit = "8dea4a2196ebf99449fe2f141a2fb30acae3f17c"
 
 [[project]]
 name = "verus-examples"
 url = "https://github.com/verus-lang/verus"
-commit = "7d829946231d6413a398f6e4160cdfe951261dad"
+commit = "8dea4a2196ebf99449fe2f141a2fb30acae3f17c"
 license = "MIT"
 tier = "fast"
 verus_version_compat = "compatible"
@@ -26,7 +26,7 @@ expected_from = "examples-first-line-tag"
 [[project]]
 name = "vstd"
 url = "https://github.com/verus-lang/verus"
-commit = "7d829946231d6413a398f6e4160cdfe951261dad"
+commit = "8dea4a2196ebf99449fe2f141a2fb30acae3f17c"
 license = "MIT"
 tier = "fast"
 verus_version_compat = "compatible"

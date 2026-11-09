@@ -1,11 +1,7 @@
-# Sail's Verus fork, the source of the optional interactive engine
-# (engine/verus/README.md). `cargo xtask build-verus-source --interactive-engine`
-# builds exactly `commit`. Changing it is an engine upgrade: rebuild, run the
-# qualification steps, then pack and re-pin artifact-linux.json.
+# SPIKE (v0.3.0 Track E, #237): the sail series (7d82994..a0e11cff) squashed
+# and applied to upstream 8dea4a2 in a lane-local clone. Never pushed.
 [fork]
-repo = "https://github.com/Chelis-Lang/verus"
-branch = "sail"
-commit = "a0e11cffbdf768eac874996f35149385152f736e"
-# The upstream Verus commit the `sail` branch is rebased on. It must equal
-# corpus/toolchain.toml's [verus] commit.
-upstream = "7d829946231d6413a398f6e4160cdfe951261dad"
+repo = "/home/ubuntu/verus-fork"
+branch = "spike/8dea4a2"
+commit = "403411dc7c60a99d69131fd3cf05fb4b1652d0e7"
+upstream = "8dea4a2196ebf99449fe2f141a2fb30acae3f17c"
