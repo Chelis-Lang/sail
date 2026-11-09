@@ -393,7 +393,29 @@ fn without_selection(args: &[String]) -> Vec<&str> {
     while let Some(arg) = it.next() {
         if arg == "--" {
             out.push(arg);
-            out.extend(it.by_ref());
+            // Spike (v0.3.0 A3/A4): the driver-local focus selector does not
+            // change the compiler family either. Every focused selection
+            // shares one family (kept apart from the unfocused one), so a
+            // new `--verify-function` does not recompile the dependencies.
+            // `SAIL_SPIKE_SELECTOR_FAMILY=0` restores the shipped behaviour.
+            let share = std::env::var_os("SAIL_SPIKE_SELECTOR_FAMILY").is_none_or(|v| v != "0");
+            let mut focused = false;
+            while let Some(arg) = it.next() {
+                let flag = arg.split('=').next().unwrap_or(arg);
+                match flag {
+                    "--verify-module" | "--verify-only-module" | "--verify-function" if share => {
+                        focused = true;
+                        if !arg.contains('=') {
+                            it.next();
+                        }
+                    }
+                    "--verify-root" if share => focused = true,
+                    _ => out.push(arg),
+                }
+            }
+            if focused {
+                out.push("<focus-selection>");
+            }
             break;
         }
         match arg {

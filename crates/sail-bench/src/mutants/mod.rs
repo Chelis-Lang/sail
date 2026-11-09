@@ -393,6 +393,7 @@ pub fn main(args: &[String]) -> Result<(), String> {
     match args.first().map(String::as_str) {
         Some("oracle") => oracle::main(args.get(1..).unwrap_or_default()),
         Some("run") => runner::main(args.get(1..).unwrap_or_default()),
+        Some("workspace") => workspace_main(args.get(1..).unwrap_or_default()),
         Some("recheck") => {
             for d in args.iter().skip(1) {
                 print!("{}", recheck(Path::new(d))?);
@@ -413,6 +414,49 @@ pub fn main(args: &[String]) -> Result<(), String> {
         }
         _ => Err(USAGE.to_owned()),
     }
+}
+
+/// Spike helper (v0.3.0 A3/A4): prepares one working copy exactly as
+/// `mutants run` does and prints what a hand-scripted campaign needs to
+/// drive stock and Sail in it. Not a product surface.
+fn workspace_main(args: &[String]) -> Result<(), String> {
+    let mut catalogue = PathBuf::new();
+    let mut root = PathBuf::new();
+    let mut lock: Option<PathBuf> = None;
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--catalogue" => catalogue = value(&mut it, arg)?.into(),
+            "--root" => root = value(&mut it, arg)?.into(),
+            "--vstd-lock" => lock = Some(value(&mut it, arg)?.into()),
+            _ => return Err(format!("unknown argument `{arg}`")),
+        }
+    }
+    let text = std::fs::read_to_string(&catalogue)
+        .map_err(|e| format!("cannot read {}: {e}", catalogue.display()))?;
+    let parsed: Catalogue = toml::from_str(&text).map_err(|e| e.to_string())?;
+    let setup = Setup::new(&parsed, Some(root.clone()))?;
+    let ws = workspace::Workspace::prepare(
+        &setup.installed,
+        &setup.unit,
+        &setup.verus_source,
+        &root,
+        lock.as_deref(),
+    )?;
+    let sail = crate::daemon::locate_sail(None)?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "root": ws.root, "src": ws.src, "package": ws.package,
+            "cargo_args": ws.cargo_args, "verus_args": ws.verus_args, "env": ws.env,
+            "cargo_verus": setup.installed.cargo_verus, "z3": setup.installed.z3,
+            "z3_bundled": setup.installed.z3_bundled,
+            "rust_toolchain": setup.installed.pins.verus.rust_toolchain,
+            "sail": sail, "verus_build": workspace::verus_build_from_env(),
+            "flags": workspace::FLAGS,
+        })
+    );
+    Ok(())
 }
 
 /// A value after a flag, or a usage error.

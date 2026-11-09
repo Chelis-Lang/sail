@@ -1,0 +1,30 @@
+# Hand-written spike mutants (v0.3.0 A3): exec functions carrying `when_used_as_spec`.
+schema_version = 1
+
+[[edit]]
+id = "hand-wuas-001"
+unit = "verified-ironkv/ironsht"
+kind = "body"
+file = "ironsht/src/delegation_map_v.rs"
+description = "logic: `||` to `&&` in `above` (when_used_as_spec(above_spec))"
+expected = "pending"
+find = '''
+        self.is_end() || k.cmp(&self.k.as_ref().unwrap().clone()).is_lt()
+'''
+replace = '''
+        self.is_end() && k.cmp(&self.k.as_ref().unwrap().clone()).is_lt()
+'''
+
+[[edit]]
+id = "hand-wuas-002"
+unit = "verified-ironkv/ironsht"
+kind = "body"
+file = "ironsht/src/delegation_map_v.rs"
+description = "logic: negate the result of `is_end` (when_used_as_spec(is_end_spec))"
+expected = "pending"
+find = '''
+        matches!(self.k, None)
+'''
+replace = '''
+        !matches!(self.k, None)
+'''

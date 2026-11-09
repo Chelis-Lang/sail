@@ -1,0 +1,4 @@
+{"mutants": {
+ "hand-wuas-001": {"class": "hand-when-used-as-spec", "kind": "body", "mode": "exec", "function": "above", "file": "ironsht/src/delegation_map_v.rs", "line": 410},
+ "hand-wuas-002": {"class": "hand-when-used-as-spec", "kind": "body", "mode": "exec", "function": "is_end", "file": "ironsht/src/delegation_map_v.rs", "line": 356}
+}}
