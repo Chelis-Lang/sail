@@ -82,6 +82,8 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
         ],
     ),
     ("sail-mcp", &["sail-api"]),
+    // Spike: the editor bridge mirrors `sail-mcp`. Shipping it needs an ADR.
+    ("sail-lsp", &["sail-api"]),
     (
         "sail-conformance",
         &[
@@ -118,6 +120,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
             "sail-verus",
             "sail-daemon",
             "sail-mcp",
+            "sail-lsp",
             "sail-portfolio",
             "sail-conformance",
             "sail-bench",

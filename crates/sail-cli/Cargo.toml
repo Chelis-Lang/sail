@@ -31,6 +31,7 @@ sail-runtime.workspace = true
 sail-cache.workspace = true
 sail-daemon.workspace = true
 sail-mcp.workspace = true
+sail-lsp.workspace = true
 sail-portfolio.workspace = true
 sail-verus.workspace = true
 serde.workspace = true

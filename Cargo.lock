@@ -1395,6 +1395,14 @@ name = "sail-ledger"
 version = "0.2.0"
 
 [[package]]
+name = "sail-lsp"
+version = "0.2.0"
+dependencies = [
+ "sail-api",
+ "serde_json",
+]
+
+[[package]]
 name = "sail-mcp"
 version = "0.2.0"
 dependencies = [
@@ -1470,6 +1478,7 @@ dependencies = [
  "sail-contracts",
  "sail-daemon",
  "sail-key",
+ "sail-lsp",
  "sail-mcp",
  "sail-portfolio",
  "sail-runtime",

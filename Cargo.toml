@@ -41,6 +41,7 @@ sail-daemon = { path = "crates/sail-daemon", version = "=0.2.0" }
 sail-api = { path = "crates/sail-api", version = "=0.2.0" }
 sail-runtime = { path = "crates/sail-runtime", version = "=0.2.0" }
 sail-mcp = { path = "crates/sail-mcp", version = "=0.2.0" }
+sail-lsp = { path = "crates/sail-lsp", version = "=0.2.0" }
 sail-cli = { package = "sail-solve", path = "crates/sail-cli", version = "=0.2.0" }
 sail-conformance = { path = "crates/sail-conformance", version = "=0.2.0" }
 sail-bench = { path = "crates/sail-bench", version = "=0.2.0" }

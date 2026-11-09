@@ -187,6 +187,15 @@ impl Monitoring {
             Err(_) => true,
         }
     }
+    /// The caller has reason to believe the inputs just changed (an editor
+    /// reported a save): make the next [`Monitoring::changed`] compare the
+    /// inputs at once instead of waiting out the backstop or scan interval.
+    /// It never reports a change by itself.
+    pub(super) fn hint(&mut self) {
+        let now = Instant::now();
+        self.polled = now.checked_sub(BACKSTOP_INTERVAL).unwrap_or(now);
+        self.scanned = now.checked_sub(SCAN_INTERVAL).unwrap_or(now);
+    }
     pub(super) fn changed(&mut self, err: &mut dyn Write) -> bool {
         let mut edited = std::mem::take(&mut self.missed);
         let mut native = false;

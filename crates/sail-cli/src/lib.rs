@@ -13,6 +13,7 @@ mod fragility;
 mod fragility_join;
 mod help;
 mod jobs;
+mod lsp;
 mod managed_cli;
 mod measurement;
 mod new;
@@ -182,6 +183,8 @@ fn run(
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),
         Some("cache") => ops::cache(args.get(1..).unwrap_or_default(), out, err),
         Some("mcp") => mcp(args.get(1..).unwrap_or_default(), err),
+        // Spike: not yet listed in help (needs its ADR and user guide).
+        Some("lsp") => lsp::lsp(args.get(1..).unwrap_or_default(), err),
         Some("fragility") => fragility::fragility(args.get(1..).unwrap_or_default(), out, err),
         Some("bench") => bench(args.get(1..).unwrap_or_default(), err),
         Some(other) => {

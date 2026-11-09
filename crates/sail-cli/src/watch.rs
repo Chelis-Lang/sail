@@ -28,6 +28,101 @@ struct Inputs {
     excluded: Vec<PathBuf>,
 }
 
+/// What the driver does after asking its sink.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Control {
+    /// Keep going.
+    Continue,
+    /// The client reports a save: check the inputs now and skip the debounce.
+    Verify,
+    /// Cancel the run in flight and return.
+    Stop,
+}
+
+/// Where a live run reports. `sail watch` writes lines ([`Stream`]); `sail
+/// lsp` publishes diagnostics. The driver decides what runs and when; a sink
+/// only presents it.
+pub(crate) trait Sink {
+    /// The job changed lifecycle: `queued`, `started`, `superseded`,
+    /// `cancelled` or `finished`.
+    fn job(&mut self, status: &Status, event: &str);
+    /// A piece of the job's stderr, verbatim.
+    fn log(&mut self, text: &str);
+    /// Whether [`Sink::event`] wants the job's structured events.
+    fn wants_events(&self) -> bool {
+        false
+    }
+    /// One structured job event.
+    fn event(&mut self, _job: &str, _event: serde_json::Map<String, serde_json::Value>) {}
+    /// A completed job's project result.
+    fn result(&mut self, _status: &Status, _result: &sail_api::project::ProjectResult) {}
+    /// A completed run without proof reuse (`SAIL3112`).
+    fn no_reuse(&mut self, _status: &Status, _result: &sail_api::project::ProjectResult) {}
+    /// Where input-monitoring warnings go.
+    fn warnings(&mut self) -> &mut dyn Write;
+    /// Asked once per tick.
+    fn control(&mut self) -> Control {
+        Control::Continue
+    }
+    /// A job-service call failed. `true` makes the driver reconnect and
+    /// verify again; `false` ends the run with that error.
+    fn recover(&mut self, _error: &str) -> bool {
+        false
+    }
+}
+
+/// `sail watch`'s output: status lines and the job's stderr for people, or
+/// JSON lines on `out`.
+pub(crate) struct Stream<'a> {
+    pub(crate) jsonl: bool,
+    pub(crate) out: &'a mut dyn Write,
+    pub(crate) err: &'a mut dyn Write,
+}
+
+impl Sink for Stream<'_> {
+    fn job(&mut self, status: &Status, event: &str) {
+        if self.jsonl {
+            let _ = writeln!(
+                self.out,
+                "{}",
+                json!({"kind":"sail-watch-event","schema_version":1,"event":event,"job":status})
+            );
+            let _ = self.out.flush();
+        } else {
+            let _ = writeln!(
+                self.err,
+                "sail watch: job {} {:?} (exit {:?})",
+                status.id, status.state, status.exit_code
+            );
+        }
+    }
+    fn log(&mut self, text: &str) {
+        let _ = write!(self.err, "{text}");
+    }
+    fn wants_events(&self) -> bool {
+        self.jsonl
+    }
+    fn event(&mut self, job: &str, mut event: serde_json::Map<String, serde_json::Value>) {
+        event.insert("job_id".to_owned(), json!(job));
+        let _ = writeln!(self.out, "{}", serde_json::Value::Object(event));
+    }
+    /// The human stream already carries the job's `note[SAIL3112]` line; the
+    /// JSON-lines stream gets a `no-reuse` event.
+    fn no_reuse(&mut self, status: &Status, result: &sail_api::project::ProjectResult) {
+        if self.jsonl {
+            let _ = writeln!(
+                self.out,
+                "{}",
+                json!({"kind":"sail-watch-event","schema_version":1,"event":"no-reuse","job_id":status.id,"no_reuse":result.no_reuse,"currentness":result.currentness,"exit_code":result.exit_code})
+            );
+            let _ = self.out.flush();
+        }
+    }
+    fn warnings(&mut self) -> &mut dyn Write {
+        self.err
+    }
+}
+
 struct Live {
     client: Client,
     status: Option<Status>,
@@ -35,7 +130,7 @@ struct Live {
     diagnostic_offset: u64,
     event_offset: u64,
     event_tail: String,
-    jsonl: bool,
+    events: bool,
     observed_inputs: Option<Vec<PathBuf>>,
     observed_job: Option<String>,
     diagnostics_drained: bool,
@@ -53,12 +148,35 @@ pub fn watch(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitC
     }
 }
 fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), String> {
-    let root = std::env::current_dir().map_err(|error| error.to_string())?;
     let (jsonl, args) = arguments(args)?;
-    if let Some(file) = sail_verus::managed::standalone::source(&args) {
+    let stop = Arc::new(AtomicBool::new(false));
+    let stopping = Arc::clone(&stop);
+    ctrlc::set_handler(move || stopping.store(true, Ordering::SeqCst))
+        .map_err(|error| error.to_string())?;
+    drive(&args, &stop, &mut Stream { jsonl, out, err })
+}
+
+/// The loop state of one live run.
+struct Driver<'a> {
+    root: PathBuf,
+    args: &'a [String],
+    live: Live,
+    inputs: Inputs,
+    subscriptions: BTreeMap<PathBuf, bool>,
+    extra: Vec<PathBuf>,
+    monitoring: monitor::Monitoring,
+    /// A save was reported: the next detected edit skips the debounce.
+    urgent: bool,
+}
+
+/// Verifies `args` now and after every input change until `stop` is set or
+/// the sink asks to stop, reporting to `sink`.
+pub(crate) fn drive(args: &[String], stop: &AtomicBool, sink: &mut dyn Sink) -> Result<(), String> {
+    let root = std::env::current_dir().map_err(|error| error.to_string())?;
+    if let Some(file) = sail_verus::managed::standalone::source(args) {
         standalone_watch_roots(&root, &[root.join(file)])?;
     }
-    if sail_verus::managed::standalone::source(&args).is_some()
+    if sail_verus::managed::standalone::source(args).is_some()
         && args.iter().skip(1).any(|arg| {
             [
                 "--compile",
@@ -75,18 +193,14 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
         return Err("standalone watch is verify-only; use sail verify for compilation and explicit output files".into());
     }
 
-    let stop = Arc::new(AtomicBool::new(false));
-    let stopping = Arc::clone(&stop);
-    ctrlc::set_handler(move || stopping.store(true, Ordering::SeqCst))
-        .map_err(|error| error.to_string())?;
-    let mut live = Live {
+    let live = Live {
         client: crate::jobs::connect_or_start()?,
         status: None,
         pending: None,
         diagnostic_offset: 0,
         event_offset: 0,
         event_tail: String::new(),
-        jsonl,
+        events: sink.wants_events(),
         observed_inputs: None,
         observed_job: None,
         diagnostics_drained: false,
@@ -94,63 +208,138 @@ fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> Result<(), 
     };
     let mut inputs = Inputs::default();
     let mut subscriptions = BTreeMap::new();
-    let mut extra = Vec::new();
+    let extra = Vec::new();
     // Cargo metadata may create Cargo.lock. Finish that discovery before
     // starting native notifications, so startup's own writes cannot arrive
     // as delayed edits and cancel the first verification on macOS.
-    refresh_inputs(&mut inputs, &root, &args, &extra);
-    let mut monitoring = monitor::Monitoring::new(err);
-    monitoring.subscribe(&inputs.roots, &inputs.excluded, &mut subscriptions, err);
+    refresh_inputs(&mut inputs, &root, args, &extra);
+    let mut monitoring = monitor::Monitoring::new(sink.warnings());
+    monitoring.subscribe(
+        &inputs.roots,
+        &inputs.excluded,
+        &mut subscriptions,
+        sink.warnings(),
+    );
+    let mut driver = Driver {
+        root,
+        args,
+        live,
+        inputs,
+        subscriptions,
+        extra,
+        monitoring,
+        urgent: false,
+    };
     // Initial metadata and subscriptions can outlast SETTLE. Start the first
     // debounce window only once they are ready, just as for later edits.
-    live.pending = Some(Instant::now());
+    driver.live.pending = Some(Instant::now());
     while !stop.load(Ordering::SeqCst) {
-        if monitoring.changed(err) {
-            live.cancel(true)?;
-            live.pending = Some(Instant::now());
-        }
-        if live.pending.is_some_and(|time| time.elapsed() >= SETTLE) {
-            refresh_roots(
-                &mut monitoring,
-                &mut inputs,
-                &mut subscriptions,
-                &root,
-                &args,
-                &extra,
-                err,
-            );
-            // The run reads its inputs after this point. Notifications that
-            // arrive later for changes already present here are not edits.
-            monitoring.observe();
-            let status = crate::jobs::submit(&live.client, &args)?;
-            announce(&status, "queued", live.jsonl, out, err);
-            live.status = Some(status);
-            live.pending = None;
-            live.diagnostic_offset = 0;
-            live.event_offset = 0;
-            live.event_tail.clear();
-            live.diagnostics_drained = false;
-            live.events_drained = false;
-        }
-        live.poll(out, err)?;
-        if let Some(observed) = live.observed_inputs.take() {
-            if sail_verus::managed::standalone::source(&args).is_some() {
-                standalone_watch_roots(&root, &observed)?;
+        match sink.control() {
+            Control::Stop => break,
+            Control::Verify => {
+                driver.monitoring.hint();
+                driver.urgent = true;
             }
-            extra = observed;
-            refresh_roots(
-                &mut monitoring,
-                &mut inputs,
-                &mut subscriptions,
-                &root,
-                &args,
-                &extra,
-                err,
-            );
+            Control::Continue => {}
+        }
+        if let Err(error) = driver.step(sink) {
+            if !sink.recover(&error) {
+                return Err(error);
+            }
+            if !driver.reconnect(stop, sink) {
+                break;
+            }
         }
         std::thread::sleep(Duration::from_millis(100));
     }
-    live.cancel(false)
+    driver.live.cancel(false)
+}
+
+impl Driver<'_> {
+    fn step(&mut self, sink: &mut dyn Sink) -> Result<(), String> {
+        if self.monitoring.changed(sink.warnings()) {
+            self.live.cancel(true)?;
+            self.live.pending = Some(Instant::now());
+        }
+        let due = self
+            .live
+            .pending
+            .is_some_and(|time| self.urgent || time.elapsed() >= SETTLE);
+        // A save hint applies to the edit it accompanies, not to a later one.
+        self.urgent = false;
+        if due {
+            self.refresh_roots(sink);
+            // The run reads its inputs after this point. Notifications that
+            // arrive later for changes already present here are not edits.
+            self.monitoring.observe();
+            let status = crate::jobs::submit(&self.live.client, self.args)?;
+            sink.job(&status, "queued");
+            self.live.status = Some(status);
+            self.live.pending = None;
+            self.live.rewind();
+        }
+        self.live.poll(sink)?;
+        if let Some(observed) = self.live.observed_inputs.take() {
+            if sail_verus::managed::standalone::source(self.args).is_some() {
+                standalone_watch_roots(&self.root, &observed)?;
+            }
+            self.extra = observed;
+            self.refresh_roots(sink);
+        }
+        Ok(())
+    }
+
+    fn refresh_roots(&mut self, sink: &mut dyn Sink) {
+        refresh_roots(
+            &mut self.monitoring,
+            &mut self.inputs,
+            &mut self.subscriptions,
+            &self.root,
+            self.args,
+            &self.extra,
+            sink.warnings(),
+        );
+    }
+
+    /// Replaces the job client after a failed call and schedules a fresh
+    /// run, retrying until the service answers. A long-lived editor session
+    /// must outlive a daemon restart or a transient RPC failure (the
+    /// unexplained failure of issue 306 ended `sail watch`). Returns `false`
+    /// when asked to stop meanwhile.
+    fn reconnect(&mut self, stop: &AtomicBool, sink: &mut dyn Sink) -> bool {
+        let previous = self.live.status.take();
+        loop {
+            match crate::jobs::connect_or_start() {
+                Ok(client) => {
+                    self.live.client = client;
+                    break;
+                }
+                Err(error) => {
+                    let _ = writeln!(sink.warnings(), "sail: job service unavailable: {error}");
+                }
+            }
+            for _ in 0..10 {
+                if stop.load(Ordering::SeqCst) || sink.control() == Control::Stop {
+                    return false;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        }
+        // The run the failed call belonged to may still be alive in a
+        // service that kept running. It is no longer followed, so it must
+        // not keep the worker busy; a service that lost it refuses, harmlessly.
+        if let Some(status) = previous.filter(|status| !status.state.terminal()) {
+            let _ = self.live.client.call(&Request::Cancel {
+                id: status.id,
+                superseded: true,
+            });
+        }
+        self.live.rewind();
+        self.live.observed_job = None;
+        self.live.pending = Some(Instant::now());
+        self.urgent = true;
+        true
+    }
 }
 fn arguments(args: &[String]) -> Result<(bool, Vec<String>), String> {
     let mut jsonl = false;
@@ -351,22 +540,6 @@ fn changed(
     }
     edited
 }
-fn announce(status: &Status, event: &str, jsonl: bool, out: &mut dyn Write, err: &mut dyn Write) {
-    if jsonl {
-        let _ = writeln!(
-            out,
-            "{}",
-            json!({"kind":"sail-watch-event","schema_version":1,"event":event,"job":status})
-        );
-        let _ = out.flush();
-    } else {
-        let _ = writeln!(
-            err,
-            "sail watch: job {} {:?} (exit {:?})",
-            status.id, status.state, status.exit_code
-        );
-    }
-}
 impl Live {
     fn cancel(&mut self, superseded: bool) -> Result<(), String> {
         if let Some(status) = &self.status
@@ -381,7 +554,15 @@ impl Live {
         }
         Ok(())
     }
-    fn poll(&mut self, out: &mut dyn Write, err: &mut dyn Write) -> Result<(), String> {
+    /// Forgets the read positions of the previous job's streams.
+    fn rewind(&mut self) {
+        self.diagnostic_offset = 0;
+        self.event_offset = 0;
+        self.event_tail.clear();
+        self.diagnostics_drained = false;
+        self.events_drained = false;
+    }
+    fn poll(&mut self, sink: &mut dyn Sink) -> Result<(), String> {
         let Some(previous) = self.status.as_ref() else {
             return Ok(());
         };
@@ -408,7 +589,7 @@ impl Live {
                 Lifecycle::Cancelled => "cancelled",
                 _ => "finished",
             };
-            announce(&status, event, self.jsonl, out, err);
+            sink.job(&status, event);
         }
         if let Response::Chunk(chunk) = self
             .client
@@ -420,9 +601,9 @@ impl Live {
         {
             self.diagnostics_drained = chunk.complete && chunk.next == self.diagnostic_offset;
             self.diagnostic_offset = chunk.next;
-            let _ = write!(err, "{}", chunk.text);
+            sink.log(&chunk.text);
         }
-        if self.jsonl
+        if self.events
             && let Response::Chunk(chunk) = self
                 .client
                 .call(&Request::Events {
@@ -436,13 +617,12 @@ impl Live {
             self.event_tail.push_str(&chunk.text);
             while let Some(end) = self.event_tail.find('\n') {
                 let line: String = self.event_tail.drain(..=end).collect();
-                if let Ok(serde_json::Value::Object(mut event)) = serde_json::from_str(&line) {
-                    event.insert("job_id".to_owned(), json!(status.id));
-                    let _ = writeln!(out, "{}", serde_json::Value::Object(event));
+                if let Ok(serde_json::Value::Object(event)) = serde_json::from_str(&line) {
+                    sink.event(&status.id, event);
                 }
             }
         }
-        if !self.jsonl {
+        if !self.events {
             self.events_drained = true;
         }
         if status.state == Lifecycle::Completed && self.observed_job.as_deref() != Some(&status.id)
@@ -457,41 +637,23 @@ impl Live {
                 && let Some(result) = document.result
                 && let Ok(result) =
                     serde_json::from_value::<sail_api::project::ProjectResult>(result)
-                && !self.no_reuse(&status, &result, out)
-                && let Ok(environment) = crate::jobs::environment()
-                && let Ok(cache) = sail_verus::cache_dir()
-                && let Ok(snapshot) =
-                    sail_verus::managed::refresh_result(&cache, &result, &environment)
             {
-                self.observed_inputs = Some(snapshot.roots);
+                sink.result(&status, &result);
+                if result.no_reuse.is_some() {
+                    // Verified as plain Cargo-Verus verifies it: such a run
+                    // has no input record to refresh the watched roots from.
+                    sink.no_reuse(&status, &result);
+                } else if let Ok(environment) = crate::jobs::environment()
+                    && let Ok(cache) = sail_verus::cache_dir()
+                    && let Ok(snapshot) =
+                        sail_verus::managed::refresh_result(&cache, &result, &environment)
+                {
+                    self.observed_inputs = Some(snapshot.roots);
+                }
             }
         }
         self.status = Some(status);
         Ok(())
-    }
-    /// Announces a completed run without proof reuse (`SAIL3112`, verified as
-    /// plain Cargo-Verus verifies it) and returns whether it was one. The
-    /// human stream already carries the job's `note[SAIL3112]` line; the
-    /// JSON-lines stream gets a `no-reuse` event. Such a run has no input
-    /// record to refresh the watched roots from.
-    fn no_reuse(
-        &self,
-        status: &Status,
-        result: &sail_api::project::ProjectResult,
-        out: &mut dyn Write,
-    ) -> bool {
-        let Some(no_reuse) = &result.no_reuse else {
-            return false;
-        };
-        if self.jsonl {
-            let _ = writeln!(
-                out,
-                "{}",
-                json!({"kind":"sail-watch-event","schema_version":1,"event":"no-reuse","job_id":status.id,"no_reuse":no_reuse,"currentness":result.currentness,"exit_code":result.exit_code})
-            );
-            let _ = out.flush();
-        }
-        true
     }
 }
 
@@ -560,7 +722,7 @@ mod tests {
             diagnostic_offset: 0,
             event_offset: 0,
             event_tail: String::new(),
-            jsonl: true,
+            events: true,
             observed_inputs: None,
             observed_job: Some("finished".to_owned()),
             diagnostics_drained: true,
@@ -568,7 +730,12 @@ mod tests {
         };
         let started = Instant::now();
         for _ in 0..1000 {
-            assert!(live.poll(&mut Vec::new(), &mut Vec::new()).is_ok());
+            let mut sink = Stream {
+                jsonl: true,
+                out: &mut Vec::new(),
+                err: &mut Vec::new(),
+            };
+            assert!(live.poll(&mut sink).is_ok());
         }
         assert!(started.elapsed() < Duration::from_secs(1));
     }

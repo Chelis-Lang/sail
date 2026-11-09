@@ -1,0 +1,171 @@
+{
+ "kind": "sail-project-result",
+ "schema_version": 2,
+ "run_id": "437993-1794262720090106361",
+ "workspace": "@WORKSPACE@",
+ "context_sha256": "fdccbae5d1722c4a2b94d9e359f574fe9565109bc499dab3f97f4b941b4169b5",
+ "input_revision": "337fabed7675990f08db24a8bd865609a74a671f8c95711fda2a7cd93ab0c1e4",
+ "currentness": "current",
+ "exit_code": 101,
+ "targets": [
+  {
+   "package_id": "path+file://@WORKSPACE@#0.1.0",
+   "target": "proj",
+   "kind": [
+    "lib"
+   ],
+   "establishing_run": "437993-1794262720090106361",
+   "reused": false,
+   "requested": true,
+   "complete": false,
+   "report": {
+    "schema_version": 2,
+    "sail_version": "0.2.0",
+    "mode": "default",
+    "command": [],
+    "exit_code": 1,
+    "solver": {
+     "name": "z3",
+     "version": null,
+     "path": "@VERUS_BUILD@/verus/source/target-verus/release/z3",
+     "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "cache": {
+     "daemon": true
+    },
+    "attribution": {
+     "status": "complete",
+     "notes": [],
+     "unmatched_sessions": 0
+    },
+    "crates": [
+     {
+      "name": null,
+      "verus": {
+       "verified": 0,
+       "errors": 0,
+       "success": false,
+       "encountered_vir_error": false
+      },
+      "functions": []
+     }
+    ],
+    "diagnostics": [
+     {
+      "level": "error",
+      "code": "E0277",
+      "message": "cannot add `bool` to `u8`",
+      "spans": [
+       {
+        "file": "src/lib.rs",
+        "line": 15,
+        "column": 7,
+        "primary": true
+       }
+      ],
+      "rendered": "error[E0277]: cannot add `bool` to `u8`\n   --> src/lib.rs:15:7\n    |\n 15 |     x + y\n    |       ^ no implementation for `u8 + bool`\n    |\n    = help: the trait `std::ops::Add<bool>` is not implemented for `u8`"
+     },
+     {
+      "level": "help",
+      "code": null,
+      "message": "the following other types implement trait `std::ops::Add<Rhs>`",
+      "spans": [
+       {
+        "file": "@RUSTUP@/toolchains/1.99.1-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ops/arith.rs",
+        "line": 98,
+        "column": 9,
+        "primary": true
+       },
+       {
+        "file": "@RUSTUP@/toolchains/1.99.1-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/internal_macros.rs",
+        "line": 22,
+        "column": 9,
+        "primary": false
+       }
+      ],
+      "rendered": "help: the following other types implement trait `std::ops::Add<Rhs>`\n   --> @RUSTUP@/toolchains/1.99.1-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ops/arith.rs:98:9\n    |\n 98 |         const impl Add for $t {\n    |         ^^^^^^^^^^^^^^^^^^^^^ `u8` implements `std::ops::Add`\n...\n113 | add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }\n    | ---------------------------------------------------------------------------------- in this macro invocation\n    |\n   ::: @RUSTUP@/toolchains/1.99.1-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/internal_macros.rs:22:9\n    |\n 22 |         const impl $imp<$u> for &$t {\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&u8` implements `std::ops::Add<u8>`\n...\n 33 |         const impl $imp<&$u> for $t {\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u8` implements `std::ops::Add<&u8>`\n...\n 44 |         const impl $imp<&$u> for &$t {\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&u8` implements `std::ops::Add`\n    = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)"
+     },
+     {
+      "level": "error",
+      "code": null,
+      "message": "aborting due to 1 previous error",
+      "spans": [],
+      "rendered": "error: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0277`."
+     }
+    ],
+    "summary": {
+     "functions": 0,
+     "verified": 0,
+     "failed": 0,
+     "unknown": 0,
+     "provisional": 0,
+     "unstable": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "package_id": "registry+https://github.com/rust-lang/crates.io-index#vstd@0.0.0-2026-10-18-0147",
+   "target": "vstd",
+   "kind": [
+    "lib"
+   ],
+   "establishing_run": "224071-1794262437102318570",
+   "reused": true,
+   "requested": false,
+   "complete": true,
+   "report": {
+    "schema_version": 2,
+    "sail_version": "0.2.0",
+    "mode": "default",
+    "command": [],
+    "exit_code": 0,
+    "solver": {
+     "name": "z3",
+     "version": "4.16.0",
+     "path": "@VERUS_BUILD@/verus/source/target-verus/release/z3",
+     "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "cache": {
+     "daemon": true
+    },
+    "attribution": {
+     "status": "complete",
+     "notes": [],
+     "unmatched_sessions": 0
+    },
+    "crates": [
+     {
+      "name": "vstd",
+      "verus": {
+       "verified": 2060,
+       "errors": 0,
+       "success": true,
+       "encountered_vir_error": false
+      },
+      "functions": []
+     }
+    ],
+    "diagnostics": [],
+    "summary": {
+     "functions": 1871,
+     "verified": 1871,
+     "failed": 0,
+     "unknown": 0,
+     "provisional": 0,
+     "unstable": 0
+    },
+    "error": null
+   }
+  }
+ ],
+ "execution": {
+  "verifier_invocations": 1,
+  "reused_targets": 1,
+  "wall_ms": 6804.584869
+ },
+ "notes": [
+  "SAIL3146: instant revert did not apply because proj last compiled in 931 ms, less than 16 times its measured retention (7460 ms), so retention would cost more than it saves; verification is unaffected"
+ ],
+ "error": null
+}

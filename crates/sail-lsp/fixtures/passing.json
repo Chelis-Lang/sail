@@ -1,0 +1,230 @@
+{
+ "kind": "sail-project-result",
+ "schema_version": 2,
+ "run_id": "427479-1794262701657165768",
+ "workspace": "@WORKSPACE@",
+ "context_sha256": "fdccbae5d1722c4a2b94d9e359f574fe9565109bc499dab3f97f4b941b4169b5",
+ "input_revision": "552be02313e5b722a15a34a6224d8bc517be06a7bd47add05e2c17086464ba8e",
+ "currentness": "current",
+ "exit_code": 0,
+ "targets": [
+  {
+   "package_id": "path+file://@WORKSPACE@#0.1.0",
+   "target": "proj",
+   "kind": [
+    "lib"
+   ],
+   "establishing_run": "427479-1794262701657165768",
+   "reused": false,
+   "requested": true,
+   "complete": true,
+   "report": {
+    "schema_version": 2,
+    "sail_version": "0.2.0",
+    "mode": "default",
+    "command": [],
+    "exit_code": 0,
+    "solver": {
+     "name": "z3",
+     "version": "4.16.0",
+     "path": "@VERUS_BUILD@/verus/source/target-verus/release/z3",
+     "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "cache": {
+     "daemon": true
+    },
+    "attribution": {
+     "status": "complete",
+     "notes": [],
+     "unmatched_sessions": 0
+    },
+    "crates": [
+     {
+      "name": "proj",
+      "verus": {
+       "verified": 2,
+       "errors": 0,
+       "success": true,
+       "encountered_vir_error": false
+      },
+      "functions": [
+       {
+        "function": "proj::double",
+        "module": "",
+        "fn_mode": "exec",
+        "verdict": "verified",
+        "establishment": "confirmed",
+        "evidence_tier": "smt_verified",
+        "unstable": false,
+        "verus_success": true,
+        "provenance": {
+         "mode": "default",
+         "source": "fresh",
+         "checks_solved": 1,
+         "checks_served": 0,
+         "checks_unrecorded": 0
+        },
+        "timing": {
+         "smt_micros": 1195,
+         "rlimit": 1164
+        },
+        "fragility": null,
+        "obligations": [
+         {
+          "id": "proj::double#Function-Def/0",
+          "kind": "Function-Def",
+          "ordinal": 0,
+          "spinoff": null,
+          "advisory": false,
+          "span": {
+           "text": "src/lib.rs:5:1: 5:31 (#0)",
+           "file": "src/lib.rs",
+           "line": 5,
+           "column": 1,
+           "end_line": 5,
+           "end_column": 31
+          },
+          "outcome": "proved",
+          "unstable": false,
+          "checks": [
+           {
+            "answer": "unsat",
+            "rlimit_limit": 30000000,
+            "rlimit_used": 1164,
+            "reason_unknown": null,
+            "source": "solved"
+           }
+          ],
+          "counterexample": null
+         }
+        ]
+       },
+       {
+        "function": "proj::ok",
+        "module": "",
+        "fn_mode": "exec",
+        "verdict": "verified",
+        "establishment": "confirmed",
+        "evidence_tier": "smt_verified",
+        "unstable": false,
+        "verus_success": true,
+        "provenance": {
+         "mode": "default",
+         "source": "fresh",
+         "checks_solved": 1,
+         "checks_served": 0,
+         "checks_unrecorded": 0
+        },
+        "timing": {
+         "smt_micros": 1002,
+         "rlimit": 2
+        },
+        "fragility": null,
+        "obligations": [
+         {
+          "id": "proj::ok#Function-Def/0",
+          "kind": "Function-Def",
+          "ordinal": 0,
+          "spinoff": null,
+          "advisory": false,
+          "span": {
+           "text": "src/lib.rs:12:1: 12:27 (#0)",
+           "file": "src/lib.rs",
+           "line": 12,
+           "column": 1,
+           "end_line": 12,
+           "end_column": 27
+          },
+          "outcome": "proved",
+          "unstable": false,
+          "checks": [
+           {
+            "answer": "unsat",
+            "rlimit_limit": 30000000,
+            "rlimit_used": 2,
+            "reason_unknown": null,
+            "source": "solved"
+           }
+          ],
+          "counterexample": null
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "diagnostics": [],
+    "summary": {
+     "functions": 2,
+     "verified": 2,
+     "failed": 0,
+     "unknown": 0,
+     "provisional": 0,
+     "unstable": 0
+    },
+    "error": null
+   }
+  },
+  {
+   "package_id": "registry+https://github.com/rust-lang/crates.io-index#vstd@0.0.0-2026-10-18-0147",
+   "target": "vstd",
+   "kind": [
+    "lib"
+   ],
+   "establishing_run": "224071-1794262437102318570",
+   "reused": true,
+   "requested": false,
+   "complete": true,
+   "report": {
+    "schema_version": 2,
+    "sail_version": "0.2.0",
+    "mode": "default",
+    "command": [],
+    "exit_code": 0,
+    "solver": {
+     "name": "z3",
+     "version": "4.16.0",
+     "path": "@VERUS_BUILD@/verus/source/target-verus/release/z3",
+     "sha256": "e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765"
+    },
+    "cache": {
+     "daemon": true
+    },
+    "attribution": {
+     "status": "complete",
+     "notes": [],
+     "unmatched_sessions": 0
+    },
+    "crates": [
+     {
+      "name": "vstd",
+      "verus": {
+       "verified": 2060,
+       "errors": 0,
+       "success": true,
+       "encountered_vir_error": false
+      },
+      "functions": []
+     }
+    ],
+    "diagnostics": [],
+    "summary": {
+     "functions": 1871,
+     "verified": 1871,
+     "failed": 0,
+     "unknown": 0,
+     "provisional": 0,
+     "unstable": 0
+    },
+    "error": null
+   }
+  }
+ ],
+ "execution": {
+  "verifier_invocations": 1,
+  "reused_targets": 1,
+  "wall_ms": 15376.288362000001
+ },
+ "notes": [],
+ "error": null
+}
