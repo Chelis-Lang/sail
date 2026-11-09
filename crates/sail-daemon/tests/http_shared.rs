@@ -231,8 +231,9 @@ fn endpoint_policy_and_private_settings_do_not_expose_credentials() {
 fn fake_response(
     text: impl AsRef<[u8]> + Send + 'static,
     delay: Duration,
-) -> (RemoteConfig, std::thread::JoinHandle<()>, PathBuf) {
+) -> (RemoteConfig, FakeServer, PathBuf) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
     let root = std::env::temp_dir().join(format!(
         "sail-http-fake-{}-{}",
         std::process::id(),
@@ -258,7 +259,125 @@ fn fake_response(
         std::thread::sleep(delay);
         let _ = stream.write_all(text.as_ref());
     });
-    (config, thread, root)
+    (config, FakeServer { address, thread }, root)
+}
+
+/// The thread of a fake server that answers one request.
+struct FakeServer {
+    address: std::net::SocketAddr,
+    thread: std::thread::JoinHandle<()>,
+}
+impl FakeServer {
+    /// Waits for the server to finish, once the client has returned.
+    ///
+    /// A client that failed before it connected would otherwise leave the
+    /// server waiting to accept, and this join waiting with it, for ever.
+    /// [`end_accept`] ends that wait, so the test reaches its assertion on the
+    /// client's result.
+    fn join(self) -> std::thread::Result<()> {
+        end_accept(self.address);
+        self.thread.join()
+    }
+}
+
+/// Ends a fake server's wait for a client that never connected.
+///
+/// The connection made here is closed at once, so a server that accepts it
+/// reads an empty request. It queues behind any connection the client did
+/// make, and a server accepts only one, so it never displaces a real request.
+fn end_accept(address: std::net::SocketAddr) {
+    drop(TcpStream::connect(address));
+}
+
+/// How long a held fake server waits before it gives up and completes its
+/// response unreleased. No passing run waits for it. It is the bound on how
+/// long a client may take to give up: one that takes longer, or never times
+/// out at all, is answered by the watchdog, which the test then observes as a
+/// response that was no longer withheld, and fails. The bound is set far above
+/// any scheduling delay, so host load cannot reach it; only a client whose
+/// timeout does not work can.
+const HELD_SERVER_WATCHDOG: Duration = Duration::from_secs(120);
+
+/// A fake server whose response stalls until the test releases it.
+///
+/// It accepts one request, writes `before`, and writes `after` only once
+/// [`HeldResponse::release`] is called. The test therefore fixes the order of
+/// events: whatever the client did before the release, it did without the
+/// withheld bytes, however slowly the host scheduled either side.
+///
+/// The server stops withholding only after its receive returns, and that
+/// happens on exactly three events: the send in `release`, the sender's drop
+/// (which `release` owns, so no earlier), or [`HELD_SERVER_WATCHDOG`]. A test
+/// that reads [`HeldResponse::resumed`] as false after the client returned and
+/// before it calls `release` has therefore shown both that the client returned
+/// without the withheld bytes and that it did so within the watchdog's bound.
+struct HeldResponse {
+    config: RemoteConfig,
+    root: PathBuf,
+    address: std::net::SocketAddr,
+    release: std::sync::mpsc::Sender<()>,
+    resumed: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    thread: std::thread::JoinHandle<Vec<u8>>,
+}
+impl HeldResponse {
+    fn new(before: &'static [u8], after: &'static [u8]) -> Self {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let root = std::env::temp_dir().join(format!(
+            "sail-http-held-{}-{}",
+            std::process::id(),
+            COUNTER.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir(&root).unwrap();
+        let token_file = root.join("token");
+        std::fs::write(&token_file, "0123456789abcdef0123456789abcdef").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            std::fs::set_permissions(&token_file, std::fs::Permissions::from_mode(0o600)).unwrap();
+        }
+        let address = listener.local_addr().unwrap();
+        let config = RemoteConfig {
+            endpoint: format!("http://{address}/"),
+            token_file,
+            ca_file: None,
+        };
+        let (release, held) = std::sync::mpsc::channel::<()>();
+        let resumed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let thread = std::thread::spawn({
+            let resumed = std::sync::Arc::clone(&resumed);
+            move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut request = [0u8; 4096];
+                let length = stream.read(&mut request).unwrap_or(0);
+                let _ = stream.write_all(before);
+                // Ends on a send, a dropped sender (a failed test) or the watchdog.
+                let _ = held.recv_timeout(HELD_SERVER_WATCHDOG);
+                resumed.store(true, Ordering::SeqCst);
+                let _ = stream.write_all(after);
+                request[..length].to_vec()
+            }
+        });
+        Self {
+            config,
+            root,
+            address,
+            release,
+            resumed,
+            thread,
+        }
+    }
+    /// Whether the server has stopped withholding the rest of its response.
+    fn resumed(&self) -> bool {
+        self.resumed.load(Ordering::SeqCst)
+    }
+    /// Lets the server finish, and returns the request bytes it had read.
+    fn release(self) -> Vec<u8> {
+        let _ = self.release.send(());
+        end_accept(self.address);
+        let request = self.thread.join().unwrap();
+        let _ = std::fs::remove_dir_all(self.root);
+        request
+    }
 }
 
 #[test]
@@ -315,30 +434,32 @@ fn small_known_length_truncation_keeps_interrupted_response_classification() {
 
 #[test]
 fn known_length_missing_final_byte_still_obeys_original_request_timeout() {
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    let (mut config, unused, root) = fake_response(
+    let (config, unused, root) = fake_response(
         b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n",
         Duration::ZERO,
     );
-    // Finish the existing helper's owned listener before using this deliberate
-    // body stall; no test thread is left waiting for a request.
     let setup = Fixture::client(&config).get(&solver(), &KEY);
     unused.join().unwrap();
-    config.endpoint = format!("http://{}/", listener.local_addr().unwrap());
-    let thread = std::thread::spawn(move || {
-        let (mut stream, _) = listener.accept().unwrap();
-        let mut request = [0; 4096];
-        let _ = stream.read(&mut request);
-        let _ = stream
-            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nabc");
-        std::thread::sleep(Duration::from_millis(200));
-        let _ = stream.write_all(b"d");
-    });
-    let client = HttpClient::new(&config, Duration::from_millis(50)).unwrap();
-    let result = client.get(&solver(), &KEY);
-    thread.join().unwrap();
     std::fs::remove_dir_all(root).unwrap();
     assert_eq!(setup.unwrap(), None);
+    // The final body byte is withheld until the client has returned, so the
+    // client can only have stopped on its own request timeout. That timeout
+    // is the fixture's ordinary one: it must outlast the response headers'
+    // arrival, as every other exchange in this file assumes, and a shorter
+    // one would let a loaded host turn this case into a plain request timeout.
+    let server = HeldResponse::new(
+        b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nabc",
+        b"d",
+    );
+    let client = Fixture::client(&server.config);
+    let result = client.get(&solver(), &KEY);
+    let withheld = !server.resumed();
+    let request = server.release();
+    assert!(
+        withheld,
+        "the client returned only after the final byte was released: {result:?}"
+    );
+    assert!(request.starts_with(b"GET /v2/"), "request: {request:?}");
     assert_eq!(result.unwrap_err(), "SAIL0650: shared response interrupted");
     assert_eq!(
         client.info().last_status.as_deref(),
@@ -389,29 +510,35 @@ fn client_refuses_redirects_encodings_oversize_and_stalled_responses() {
         thread.join().unwrap();
         let _ = std::fs::remove_dir_all(root);
     }
-    let (config, thread, root) = fake_response(
-        b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n",
-        Duration::from_millis(300),
-    );
-    let started = std::time::Instant::now();
-    let client = HttpClient::new(&config, Duration::from_millis(50)).unwrap();
-    let constructed = started.elapsed();
+    // The whole response is withheld until the client has returned and been
+    // dropped, so neither the request nor the client's shutdown can have
+    // waited for the server. The earlier form of this case bounded their
+    // elapsed time at 250 ms against a 300 ms server, which a loaded host
+    // exceeds in the constructor alone. The bound kept here is causal: the
+    // client must return and shut down before the server resumes, and until
+    // the release below only the server's watchdog can resume it. A client
+    // whose timeout fires late beyond that bound, or not at all, fails the
+    // `withheld` assertion; the exact timeout status rules out any other
+    // reason for returning early.
+    let server = HeldResponse::new(b"", b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
+    let client = HttpClient::new(&server.config, Duration::from_millis(50)).unwrap();
     let result = client.get(&solver(), &KEY);
-    let fetched = started.elapsed();
-    assert!(result.is_err());
-    // The original temporary client drops before the following elapsed check.
-    // Keep that runtime join inside the measured scope when naming the client.
+    let info = client.info();
     drop(client);
-    let elapsed = started.elapsed();
-    eprintln!(
-        "cold stalled response: constructor={constructed:?}, request={:?}, drop={:?}, total={elapsed:?}, error={:?}; original request=50ms server=300ms total-bound=250ms",
-        fetched.saturating_sub(constructed),
-        elapsed.saturating_sub(fetched),
-        result.as_ref().err()
+    let withheld = !server.resumed();
+    let request = server.release();
+    assert!(
+        withheld,
+        "the client returned only after the response was released: {result:?}"
     );
-    assert!(elapsed < Duration::from_millis(250));
-    thread.join().unwrap();
-    let _ = std::fs::remove_dir_all(root);
+    // A request abandoned before it was sent leaves nothing to read.
+    assert!(
+        request.is_empty() || request.starts_with(b"GET /v2/"),
+        "request: {request:?}"
+    );
+    assert_eq!(result.unwrap_err(), "SAIL0650: shared store unavailable");
+    assert_eq!(info.last_status.as_deref(), Some("timeout"));
+    assert_eq!(info.unavailable, 1);
 }
 
 /// A fresh test CA and a server certificate for 127.0.0.1 that it signs:
