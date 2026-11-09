@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """Small regressions for included-source links and the book's failure checks."""
+import hashlib
 import importlib.util
+import json
 from pathlib import Path
+import re
+import shutil
+import subprocess
 from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
+# sha256 of the highlight.js that `mdbook init --theme` writes for mdBook 0.5.2.
+MDBOOK_HIGHLIGHT_SHA256 = 'abc7f01d0ce8c64e4ba9e131d651e48ae1a567b2a1254fea8aab03502288de58'
 
 def load(name, filename):
     spec = importlib.util.spec_from_file_location(name, ROOT / 'scripts' / filename)
@@ -40,4 +47,66 @@ with TemporaryDirectory() as temp:
     for broken in ['<a href="missing.html">Missing</a>', '<a href="#absent">Missing</a>', '<img src="missing.png">']:
         page.write_text(broken)
         assert checker.check(root), broken
-print('book: source-link and negative link-check controls passed')
+
+# Every fenced block in the book's sources names its language, so none is
+# left to the highlighter's guess or rendered as uncolored text by accident.
+bare = []
+for source in sorted(chapters):
+    fence = None
+    for number, line in enumerate(source.read_text().splitlines(), 1):
+        marker = re.match(r'^\s*(`{3,}|~{3,})(.*)$', line)
+        if not marker:
+            continue
+        if fence is None:
+            fence = marker[1]
+            if not marker[2].strip():
+                bare.append(f'{source.relative_to(ROOT)}:{number}')
+        elif marker[1].startswith(fence) and not marker[2].strip():
+            fence = None
+assert not bare, 'code fences without a language: ' + ', '.join(bare)
+
+# book/theme/highlight.js is mdBook 0.5.2's bundled highlight.js, unchanged,
+# followed by Sail's grammars. A different mdBook bundle must be re-vendored.
+theme = (ROOT / 'book/theme/highlight.js').read_text()
+bundle, marker, extensions = theme.partition('\n/* ---- Sail extensions')
+assert marker, 'book/theme/highlight.js lacks the Sail extensions section'
+assert hashlib.sha256(bundle.encode()).hexdigest() == MDBOOK_HIGHLIGHT_SHA256, \
+    'book/theme/highlight.js no longer starts with the mdBook 0.5.2 bundle'
+for language in ('rust', 'bash'):
+    assert f"hljs.registerLanguage('{language}'" in extensions, language
+
+node = shutil.which('node')
+if node:
+    probe = r"""
+const fs = require('fs'), vm = require('vm');
+const context = {}; vm.createContext(context);
+vm.runInContext(fs.readFileSync(process.argv[1], 'utf8') + ';this.hljs = hljs;', context);
+const h = (lang, code) => context.hljs.highlight(lang, code).value;
+process.stdout.write(JSON.stringify({
+  sh: h('sh', 'SAIL_CACHE_DIR=x sail verify proof.rs --output json   # report\nfor f in a; do echo $f; done'),
+  rust: h('rust', 'verus! {\n    proof fn p(x: nat) requires x > 0 ensures x >= 1 { assert(x == x); }\n}'),
+}));
+"""
+    result = json.loads(subprocess.run([node, '-e', probe, str(ROOT / 'book/theme/highlight.js')],
+                                       check=True, capture_output=True, text=True).stdout)
+    for fragment in ('<span class="hljs-variable">SAIL_CACHE_DIR</span>',
+                     '<span class="hljs-built_in">sail</span>',
+                     '<span class="hljs-title">verify</span>',
+                     '<span class="hljs-attr">--output</span>',
+                     '<span class="hljs-comment"># report</span>',
+                     '<span class="hljs-keyword">for</span>',
+                     '<span class="hljs-built_in">echo</span>'):
+        assert fragment in result['sh'], (fragment, result['sh'])
+    for fragment in ('<span class="hljs-built_in">verus!</span>',
+                     '<span class="hljs-keyword">proof</span>',
+                     '<span class="hljs-keyword">requires</span>',
+                     '<span class="hljs-keyword">ensures</span>',
+                     '<span class="hljs-keyword">assert</span>',
+                     '<span class="hljs-built_in">nat</span>'):
+        assert fragment in result['rust'], (fragment, result['rust'])
+    assert 'hljs-built_in">proof' not in result['sh']
+    assert '<span class="hljs-built_in">for</span>' not in result['sh']
+else:
+    print('book: node not found; skipped the highlighting probe')
+
+print('book: source-link, fence, highlighting and negative link-check controls passed')

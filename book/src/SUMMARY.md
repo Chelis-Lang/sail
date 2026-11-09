@@ -37,4 +37,8 @@
 
 - [Performance](performance.md)
 - [Known issues](known-issues.md)
-- [Release 0.2.0](release-0.2.0.md)
+
+# Release notes
+
+- [Sail 0.2.0](release-0.2.0.md)
+- [Sail 0.1.0](release-0.1.0.md)
