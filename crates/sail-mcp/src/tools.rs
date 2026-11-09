@@ -1008,6 +1008,14 @@ mod tests {
                     description.starts_with("Experimental"),
                     "{name}: {description}"
                 );
+            } else if name.starts_with("runtime_") {
+                // Supported SMT tools whose temporal backend stays experimental.
+                assert!(
+                    !description.starts_with("Experimental")
+                        && description.contains("Native temporal")
+                        && description.contains("are experimental."),
+                    "{name}: {description}"
+                );
             } else {
                 assert!(
                     !description.contains("xperimental"),

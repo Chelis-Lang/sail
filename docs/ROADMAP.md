@@ -73,8 +73,9 @@ direction supersedes the SDK-migration hold in the next paragraph. The rest
 of the guidance below still applies to Sail's own surfaces. This section was
 first titled "Oyster: design first, engineering on hold."
 
-Maintain and test the experimental raw SMT, neutral contracts, source jobs and
-assurance reads already consumed by Oyster. Do not expand those surfaces or
+Maintain and test the raw SMT runtime (supported, ADR 0108) and the
+experimental neutral contracts, source jobs and assurance reads already
+consumed by Oyster. Do not expand those surfaces or
 widen the neutral subset while the design is unsettled. (Superseded on
 2026-11-06: the original text also said not to migrate Oyster's SDK.)
 On 2026-11-08 the owner lifted the widening hold for a named set of

@@ -2,8 +2,10 @@
 
 - **Status:** accepted
 - **Date:** 2026-11-09
-- **Amends:** the experimental listing of `runtime` in `crates/sail-cli/src/help.rs`
-  and of the MCP runtime tools in [ADR 0068](0068-runtime-daemon.md)
+- **Amends:** the experimental status given to `sail runtime` and the MCP
+  runtime tools in 0.1.0 (#556, recorded in `CHANGELOG.md`). No earlier ADR
+  recorded that status; [ADR 0068](0068-runtime-daemon.md)'s transport design
+  is unchanged.
 
 ## Context
 
@@ -21,8 +23,8 @@ said so. The owner decided that this framing misstates the feature.
 note. The two MCP runtime tools are listed with the supported tools and their
 descriptions do not start with "Experimental:". The guides describe the
 runtime without a status label. Fragility, portfolios, team caching,
-`serve`, `assurance` and the neutral-contract integration APIs keep their
-experimental status.
+`serve`, `assurance`, native temporal jobs and the neutral-contract
+integration APIs keep their experimental status.
 
 ## Consequences
 

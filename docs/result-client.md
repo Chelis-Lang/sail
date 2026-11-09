@@ -20,7 +20,7 @@ example `sail verify --background --output json` from the project directory.
 Within a function returning `std::io::Result<()>`, where `job_id` is the
 durable ID returned by submission:
 
-```rust
+```rust,ignore
 use sail_api::jobs::{Client, Request, Response};
 
 let project_dir = std::env::current_dir()?;

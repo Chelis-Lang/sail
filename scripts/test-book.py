@@ -84,18 +84,23 @@ vm.runInContext(fs.readFileSync(process.argv[1], 'utf8') + ';this.hljs = hljs;',
 const h = (lang, code) => context.hljs.highlight(lang, code).value;
 process.stdout.write(JSON.stringify({
   sh: h('sh', 'SAIL_CACHE_DIR=x sail verify proof.rs --output json   # report\nfor f in a; do echo $f; done'),
+  heredoc: h('sh', 'cat <<EOF\nfoo\nbar\nEOF\nls'),
+  continued: h('sh', 'python3 run.py \\\n  bench/example \\\n  --rounds 6'),
   rust: h('rust', 'verus! {\n    proof fn p(x: nat) requires x > 0 ensures x >= 1 { assert(x == x); }\n}'),
+  types: h('rust', 'fn f() -> Result<Self, Client> { Some(1) }'),
 }));
 """
     result = json.loads(subprocess.run([node, '-e', probe, str(ROOT / 'book/theme/highlight.js')],
                                        check=True, capture_output=True, text=True).stdout)
+    # Commands take the keyword scope, which every mdBook theme colors apart
+    # from flags (attr).
     for fragment in ('<span class="hljs-variable">SAIL_CACHE_DIR</span>',
-                     '<span class="hljs-built_in">sail</span>',
+                     '<span class="hljs-keyword">sail</span>',
                      '<span class="hljs-title">verify</span>',
                      '<span class="hljs-attr">--output</span>',
                      '<span class="hljs-comment"># report</span>',
                      '<span class="hljs-keyword">for</span>',
-                     '<span class="hljs-built_in">echo</span>'):
+                     '<span class="hljs-keyword">echo</span>'):
         assert fragment in result['sh'], (fragment, result['sh'])
     for fragment in ('<span class="hljs-built_in">verus!</span>',
                      '<span class="hljs-keyword">proof</span>',
@@ -104,8 +109,15 @@ process.stdout.write(JSON.stringify({
                      '<span class="hljs-keyword">assert</span>',
                      '<span class="hljs-built_in">nat</span>'):
         assert fragment in result['rust'], (fragment, result['rust'])
-    assert 'hljs-built_in">proof' not in result['sh']
-    assert '<span class="hljs-built_in">for</span>' not in result['sh']
+    # A here-document ends at its own delimiter, not at a one-word body line.
+    assert '<span class="hljs-string">&lt;&lt;EOF\nfoo\nbar\nEOF</span>' in result['heredoc'], result['heredoc']
+    assert '<span class="hljs-keyword">ls</span>' in result['heredoc'], result['heredoc']
+    # A backslash-continued argument is not a command.
+    assert 'hljs-keyword">bench' not in result['continued'], result['continued']
+    assert '<span class="hljs-attr">--rounds</span>' in result['continued'], result['continued']
+    for fragment in ('<span class="hljs-built_in">Result</span>', '<span class="hljs-keyword">Self</span>',
+                     '<span class="hljs-title">Client</span>', '<span class="hljs-literal">Some</span>'):
+        assert fragment in result['types'], (fragment, result['types'])
 else:
     print('book: node not found; skipped the highlighting probe')
 

@@ -121,6 +121,7 @@ integration slices. None is implied by raw SMT completion. See [ADR 0068](decisi
 
 ## Native temporal jobs
 
+Native temporal jobs are experimental and are not in public release builds.
 The same runtime endpoint accepts `input: {kind: "temporal", job: ...}`.
 `sail-api::temporal::Job` contains caller `obligation_id`, sorted unique
 `requirement_ids`, an immutable native `request` and positive `wall_time_ms`

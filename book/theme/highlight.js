@@ -112,7 +112,10 @@ hljs.registerLanguage("x86asm",function(){"use strict";return function(s){return
           contains: [{ className: 'meta-string', begin: /"/, end: /"/ }] },
         // Any other macro call, such as a crate's own `name!(...)`.
         { className: 'built_in', begin: /\b[a-z_][a-z0-9_]*!(?=\s*[({\[])/, relevance: 0 },
-        { className: 'title', begin: /\b[A-Z][A-Za-z0-9_]*\b/, relevance: 0 },
+        // Other capitalized names are types or variants; the listed ones keep
+        // their keyword, literal or built_in scope.
+        { className: 'title', relevance: 0,
+          begin: /\b(?!(?:Self|Some|None|Ok|Err|Box|Option|Result|String|Vec|Seq|Set|Map|Ghost|Tracked)\b)[A-Z][A-Za-z0-9_]*\b/ },
         { begin: e.IDENT_RE + '::', keywords: { built_in: builtIns } },
         { begin: '->' }
       ]
@@ -126,9 +129,9 @@ hljs.registerLanguage("x86asm",function(){"use strict";return function(s){return
   hljs.registerLanguage('bash', function (e) {
     var ASSIGN = '[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|\'[^\']*\'|[^\\s"\'])*[ \\t]+';
     var KEYWORDS = 'if then else elif fi for while until in do done case esac function';
-    // A command starts a line, follows `| ; & && || ( {` and a space, opens
+    // A command starts a line (not one continued by a backslash), follows `| ; & && || ( {` and a space, opens
     // `$(`, or follows `then`, `else` or `do`; assignments may precede it.
-    var START = '(?:^[ \\t]*|[|;&({][ \\t]+|\\$\\([ \\t]*|\\b(?:then|else|do)[ \\t]+)(?:' + ASSIGN + ')*';
+    var START = '(?:(?<!\\\\\n)^[ \\t]*|[|;&({][ \\t]+|\\$\\([ \\t]*|\\b(?:then|else|do)[ \\t]+)(?:' + ASSIGN + ')*';
     var NOT_KEYWORD = '(?!(?:' + KEYWORDS.split(' ').join('|') + ')\\b)';
     var WORD = '[\\w.~/+][\\w.~/+:@-]*';
     var SUBCOMMAND_TOOLS = '(?:sail|cargo|git|gh|rustup|claude|mdbook|npm|pnpm|docker|brew)';
@@ -139,13 +142,19 @@ hljs.registerLanguage("x86asm",function(){"use strict";return function(s){return
     var subst = { className: 'subst', begin: /\$\(/, end: /\)/, contains: [e.BACKSLASH_ESCAPE] };
     var dquote = { className: 'string', begin: /"/, end: /"/, contains: [e.BACKSLASH_ESCAPE, variable, subst] };
     var squote = { className: 'string', begin: /'/, end: /'/ };
-    var heredoc = { className: 'string', begin: /<<-?[ \t]*(['"]?)[A-Za-z_][A-Za-z0-9_]*\1/,
-      end: /^[ \t]*[A-Za-z_][A-Za-z0-9_]*$/ };
+    // A here-document ends only at the delimiter it opened with.
+    var heredoc = { className: 'string', begin: /<<-?[ \t]*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1/,
+      end: /^[ \t]*([A-Za-z_][A-Za-z0-9_]*)$/,
+      'on:begin': function (match, response) { response.data._delimiter = match[2]; },
+      'on:end': function (match, response) {
+        if (match[1] !== response.data._delimiter) response.ignoreMatch();
+      } };
     var comment = e.COMMENT(/(?<=^|\s)#/, /$/);
     var fn = { className: 'function', begin: /^[ \t]*[A-Za-z_][\w-]*\s*\(\s*\)/, returnBegin: true,
       contains: [e.inherit(e.TITLE_MODE, { begin: /[A-Za-z_][\w-]*/ })] };
     var assignment = { className: 'variable', begin: /(?<=^|[\s;&|(])[A-Za-z_][A-Za-z0-9_]*(?==)/ };
-    var command = { className: 'built_in',
+    // The keyword scope: every mdBook theme colors it apart from flags (attr).
+    var command = { className: 'keyword',
       begin: new RegExp('(?<=' + START + ')' + NOT_KEYWORD + '(?![-#$"\'=]|[A-Za-z_][A-Za-z0-9_]*=)' + WORD + '(?![\\w=])') };
     var subcommand = { className: 'title',
       begin: new RegExp('(?<=' + START + SUBCOMMAND_TOOLS + '[ \\t]+(?:\\+\\S+[ \\t]+)?)[a-z][a-z0-9-]*(?![\\w./=])') };
@@ -154,7 +163,8 @@ hljs.registerLanguage("x86asm",function(){"use strict";return function(s){return
     subst.contains = subst.contains.concat(self);
     return {
       name: 'Bash',
-      aliases: ['sh', 'zsh', 'shell'],
+      // `shell` stays the bundled Shell Session grammar; the book fences `sh`.
+      aliases: ['sh', 'zsh'],
       keywords: {
         $pattern: /\b[a-z]+\b/,
         keyword: KEYWORDS,
