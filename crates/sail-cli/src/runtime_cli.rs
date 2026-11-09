@@ -102,6 +102,8 @@ pub(crate) fn configuration(
         temporal_worker,
         temporal_unavailable,
         z3: Some(z3),
+        // SPIKE: internal and unadvertised; no installer provides cvc5.
+        cvc5: std::env::var_os("SAIL_RUNTIME_CVC5").map(std::path::PathBuf::from),
         cache_directory: Some(cache),
         workers: 2,
     })

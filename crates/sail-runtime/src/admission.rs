@@ -6,7 +6,10 @@ use sail_smtlib::{
     sexpr::{SExpr, SExprKind, parse_all},
 };
 
-use crate::invalid;
+use crate::{
+    backend::{self, Backend},
+    invalid,
+};
 
 #[derive(Clone, Debug)]
 pub(crate) enum ExpectedKind {
@@ -20,7 +23,19 @@ pub(crate) struct Expected {
     pub(crate) kind: ExpectedKind,
 }
 
-pub(crate) type Plan = Vec<Expected>;
+/// The admitted response plan and the backend dialect its responses use.
+#[derive(Clone, Debug)]
+pub(crate) struct Plan {
+    backend: &'static dyn Backend,
+    expected: Vec<Expected>,
+}
+
+impl std::ops::Deref for Plan {
+    type Target = [Expected];
+    fn deref(&self) -> &[Expected] {
+        &self.expected
+    }
+}
 
 fn fail(kind: &str, message: impl Into<String>) -> Error {
     invalid(kind, message)
@@ -48,23 +63,9 @@ fn arity(items: &[SExpr], expected: usize) -> Result<(), Error> {
     Ok(())
 }
 
-fn option(items: &[SExpr], src: &[u8], limit: u64) -> Result<(), Error> {
+fn option(items: &[SExpr], src: &[u8], limit: u64, backend: &dyn Backend) -> Result<(), Error> {
     arity(items, 3)?;
-    let key = items[1].text(src);
-    let value = items[2].text(src);
-    let admitted = match key {
-        b":print-success" => value == b"false",
-        b":produce-models" | b":produce-unsat-cores" => matches!(value, b"true" | b"false"),
-        b":smt.random_seed" | b":sat.random_seed" => value == b"0",
-        b":rlimit" => {
-            std::str::from_utf8(value)
-                .ok()
-                .and_then(|s| s.parse::<u64>().ok())
-                == Some(limit)
-        }
-        _ => false,
-    };
-    if !admitted {
+    if !backend.option_admitted(items[1].text(src), items[2].text(src), limit) {
         return Err(fail(
             "unsupported_option",
             "option is unsupported or conflicts with effective limits or zero seeds",
@@ -80,6 +81,9 @@ fn option(items: &[SExpr], src: &[u8], limit: u64) -> Result<(), Error> {
 )]
 pub(crate) fn plan(query: &Query) -> Result<Plan, Error> {
     let src = query.script.as_bytes();
+    // An unimplemented backend is refused at dispatch as unavailable; its
+    // script is still admitted against the original (Z3) grammar first.
+    let backend = backend::named(&query.backend).unwrap_or(&backend::Z3);
     let commands = parse_all(src).map_err(|e| fail("invalid_script", e.to_string()))?;
     let mut expected = Vec::new();
     let mut depth = 0_u64;
@@ -173,7 +177,7 @@ pub(crate) fn plan(query: &Query) -> Result<Plan, Error> {
                 None
             }
             b"set-option" => {
-                option(items, src, query.limits.resource_limit)?;
+                option(items, src, query.limits.resource_limit, backend)?;
                 current = false;
                 None
             }
@@ -235,10 +239,16 @@ pub(crate) fn plan(query: &Query) -> Result<Plan, Error> {
             "transcript requires an actual satisfiability check",
         ));
     }
-    Ok(expected)
+    Ok(Plan { backend, expected })
 }
 
-fn product_ok(kind: ProductKind, count: usize, expr: &SExpr, src: &[u8]) -> bool {
+fn product_ok(
+    kind: ProductKind,
+    count: usize,
+    expr: &SExpr,
+    src: &[u8],
+    backend: &dyn Backend,
+) -> bool {
     let Some(items) = expr.as_list() else {
         return false;
     };
@@ -261,7 +271,7 @@ fn product_ok(kind: ProductKind, count: usize, expr: &SExpr, src: &[u8]) -> bool
         ProductKind::ReasonUnknown => {
             items.len() == 2
                 && items[0].text(src) == b":reason-unknown"
-                && matches!(items[1].kind, SExprKind::Atom(TokenKind::String))
+                && backend.reason_unknown_value(&items[1])
         }
     }
 }
@@ -306,7 +316,7 @@ pub(crate) fn responses(plan: &Plan, src: &[u8]) -> Result<Vec<Check>, Error> {
                     ProductKind::UnsatCore => check.answer == Answer::Unsat,
                     ProductKind::ReasonUnknown => check.answer == Answer::Unknown,
                 };
-                if !answer_ok || !product_ok(kind, count, expr, src) {
+                if !answer_ok || !product_ok(kind, count, expr, src, plan.backend) {
                     return Err(fail(
                         "invalid_response",
                         "product shape or preceding satisfiability answer is invalid",
