@@ -1,0 +1,181 @@
+name: Sail Verus verification
+description: >-
+  Verify a Verus project with Sail: cached, with inline annotations, a job
+  summary, SARIF and a comparison with the base commit.
+author: Chelis-Lang
+
+# A composite action in a subdirectory of the Sail repository:
+#
+#     - uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0          # file times for proof-receipt reuse
+#     - uses: Chelis-Lang/sail/action@vX.Y.Z
+#       with:
+#         args: -p mycrate
+#
+# The job needs `permissions: { contents: read, attestations: read }` and a
+# rustup on PATH (GitHub's runners have one). See docs/github-action.md.
+
+inputs:
+  args:
+    description: Arguments for `sail verify`, as on a command line (for example `-p mycrate -- --rlimit 20`).
+    default: ""
+  working-directory:
+    description: Directory to run `sail verify` in.
+    default: "."
+  version:
+    description: Sail release to install. Defaults to the release this action was taken from.
+    default: ""
+  require-attestation:
+    description: "Refuse to install unless the archive's build-provenance attestation verifies (needs the `attestations: read` permission)."
+    default: "true"
+  github-token:
+    description: Token used to download and attest the release archive. Never passed to verification.
+    default: ${{ github.token }}
+  cache:
+    description: Restore and save Sail's solver replies and proof receipts with actions/cache.
+    default: "true"
+  cache-max-bytes:
+    description: Bound on the solver-reply cache before it is saved (`sail cache gc --max-bytes`); empty for no bound.
+    default: 1G
+  restore-mtime:
+    description: "Set file times to their last commit time so unchanged targets reuse their proof receipts. Needs a full clone (`fetch-depth: 0`); skipped with a notice on a shallow one."
+    default: "true"
+  baseline:
+    description: Save each push's result and compare a pull request with its base commit's result in the job summary.
+    default: "true"
+  annotations:
+    description: Annotate failing lines (at most 10 errors and 10 warnings, GitHub's per-step limit; the summary and SARIF hold all).
+    default: "true"
+
+outputs:
+  exit-code:
+    description: The exit code of `sail verify` (Cargo-Verus's own).
+    value: ${{ steps.verify.outputs.exit-code }}
+  result:
+    description: Path of the `sail-project-result` JSON document.
+    value: ${{ steps.verify.outputs.result }}
+  sarif:
+    description: Path of the SARIF 2.1.0 file, for github/codeql-action/upload-sarif.
+    value: ${{ steps.verify.outputs.sarif }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install Sail and its pinned Rust toolchain
+      id: install
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        SAIL_ACTION_VERSION: ${{ inputs.version }}
+        SAIL_ACTION_REQUIRE_ATTESTATION: ${{ inputs.require-attestation }}
+        SAIL_ACTION_ARGS: ${{ inputs.args }}
+        SAIL_ACTION_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        version="$SAIL_ACTION_VERSION"
+        if [ -z "$version" ]; then
+          # The action is a checkout of the Sail repository at the used ref.
+          version=$(python3 "$GITHUB_ACTION_PATH/run.py" --workspace-version "$GITHUB_ACTION_PATH/../Cargo.toml")
+        fi
+        prefix="$RUNNER_TEMP/sail-install"
+        options=(--version "$version" --prefix "$prefix" --install-toolchain)
+        if [ "$SAIL_ACTION_REQUIRE_ATTESTATION" = true ]; then
+          options+=(--require-attestation)
+        fi
+        python3 "$GITHUB_ACTION_PATH/../scripts/install.py" "${options[@]}"
+        bin=$(echo "$prefix"/sail-"$version"-*/bin)
+        test -x "$bin/sail"
+        echo "$bin" >> "$GITHUB_PATH"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        # Results are comparable only for the same arguments and directory.
+        scope=$(python3 "$GITHUB_ACTION_PATH/run.py" --scope)
+        echo "scope=$scope" >> "$GITHUB_OUTPUT"
+
+    - name: Restore file times from Git history
+      if: inputs.restore-mtime == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+          echo "::notice title=Sail action::Shallow clone: file times were not restored, so unchanged targets may be verified again from the solver cache. Use actions/checkout with fetch-depth: 0."
+          exit 0
+        fi
+        if ! git restore-mtime --version >/dev/null 2>&1; then
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get install -y --no-install-recommends git-restore-mtime >/dev/null
+          elif [ "$RUNNER_OS" = macOS ]; then
+            brew install git-restore-mtime >/dev/null
+          fi
+        fi
+        git restore-mtime --quiet
+
+    - name: Restore Sail's caches
+      if: inputs.cache == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.cache/sail/results
+          ~/.cache/sail/projects
+          !~/.cache/sail/projects/jobs
+        # runner.os is `Linux` on x86-64 and arm64 alike: runner.arch keeps
+        # one architecture from restoring another's managed targets.
+        key: sail-${{ runner.os }}-${{ runner.arch }}-${{ steps.install.outputs.version }}-${{ steps.install.outputs.scope }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain*') }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: |
+          sail-${{ runner.os }}-${{ runner.arch }}-${{ steps.install.outputs.version }}-${{ steps.install.outputs.scope }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain*') }}-
+          sail-${{ runner.os }}-${{ runner.arch }}-${{ steps.install.outputs.version }}-${{ steps.install.outputs.scope }}-
+          sail-${{ runner.os }}-${{ runner.arch }}-${{ steps.install.outputs.version }}-
+
+    - name: Restore the base commit's result
+      id: baseline
+      if: inputs.baseline == 'true' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || github.event_name == 'push')
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/sail-action/baseline/result.json
+        # The merge base is not in a shallow clone; the base commit is in the event.
+        key: sail-result-${{ runner.os }}-${{ runner.arch }}-${{ steps.install.outputs.version }}-${{ steps.install.outputs.scope }}-${{ github.event.pull_request.base.sha || github.event.before }}
+        restore-keys: |
+          sail-result-${{ runner.os }}-${{ runner.arch }}-${{ steps.install.outputs.version }}-${{ steps.install.outputs.scope }}-
+
+    - name: Verify and report
+      id: verify
+      shell: bash
+      env:
+        SAIL_ACTION_ARGS: ${{ inputs.args }}
+        SAIL_ACTION_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        SAIL_ACTION_ANNOTATIONS: ${{ inputs.annotations }}
+        SAIL_ACTION_CACHE_MAX_BYTES: ${{ inputs.cache == 'true' && inputs.cache-max-bytes || '' }}
+        SAIL_ACTION_OUT: ${{ runner.temp }}/sail-action
+        SAIL_ACTION_BASELINE: ${{ inputs.baseline == 'true' && format('{0}/sail-action/baseline/result.json', runner.temp) || '' }}
+        SAIL_ACTION_BASELINE_KEY: ${{ steps.baseline.outputs.cache-matched-key }}
+        SAIL_ACTION_BASELINE_COMMIT: ${{ github.event.pull_request.base.sha || github.event.before }}
+        SAIL_ACTION_SAVE_BASELINE: ${{ inputs.baseline == 'true' && github.event_name == 'push' && format('{0}/sail-action/baseline/result.json', runner.temp) || '' }}
+      run: python3 "$GITHUB_ACTION_PATH/run.py"
+
+    - name: Save Sail's caches
+      if: always() && inputs.cache == 'true' && steps.verify.outcome == 'success'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.cache/sail/results
+          ~/.cache/sail/projects
+          !~/.cache/sail/projects/jobs
+        key: sail-${{ runner.os }}-${{ runner.arch }}-${{ steps.install.outputs.version }}-${{ steps.install.outputs.scope }}-${{ hashFiles('**/Cargo.lock', '**/rust-toolchain*') }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+    - name: Save this commit's result as a baseline
+      if: always() && inputs.baseline == 'true' && github.event_name == 'push' && steps.verify.outputs.result != ''
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/sail-action/baseline/result.json
+        key: sail-result-${{ runner.os }}-${{ runner.arch }}-${{ steps.install.outputs.version }}-${{ steps.install.outputs.scope }}-${{ github.sha }}
+
+    - name: Exit with the verification result
+      if: always() && steps.verify.outcome == 'success'
+      shell: bash
+      env:
+        SAIL_ACTION_EXIT_CODE: ${{ steps.verify.outputs.exit-code }}
+      run: exit "${SAIL_ACTION_EXIT_CODE:-1}"
+
+branding:
+  icon: check-circle
+  color: blue

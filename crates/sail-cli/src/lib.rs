@@ -6,6 +6,7 @@
 //! contributors run but are not listed by `sail --help`.
 #![forbid(unsafe_code)]
 
+mod ci_report;
 mod contract_worker;
 mod engine_cli;
 mod engine_download;
@@ -62,6 +63,10 @@ const COMMANDS: &[(&str, &str)] = &[
     (
         "compare",
         "compare two completed jobs, or a job against a saved baseline",
+    ),
+    (
+        "report",
+        "render a result document for CI: job summary, annotations or SARIF",
     ),
     (
         "engine",
@@ -177,6 +182,7 @@ fn run(
         Some("explain" | "baseline" | "compare" | "assurance") => {
             product_cli::evidence(args, out, err)
         }
+        Some("report") => ci_report::run(args.get(1..).unwrap_or_default(), out, err),
         Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), out, err),
         Some("jobs") => jobs::run(args.get(1..).unwrap_or_default(), out, err),
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),

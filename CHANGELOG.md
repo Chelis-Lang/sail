@@ -5,6 +5,23 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add `sail report --format github-summary|github-annotations|sarif
+  [--baseline FILE]`, which renders a `sail verify --output json` document
+  for CI without running anything: a Markdown job summary within a byte
+  limit, ranked GitHub annotations within GitHub's per-step limit with a
+  notice stating what was left out, and SARIF 2.1.0 holding every located
+  diagnostic. `--baseline` adds what changed against an earlier document, or
+  why the two are not comparable. New error `SAIL0908`. See
+  `docs/github-action.md`.
+- Add a composite GitHub Action at `action/` that installs an attested
+  release, restores and saves Sail's caches per runner OS and architecture,
+  verifies, reports, and exits with `sail verify`'s exit code after the
+  caches are saved. It has not yet run on a hosted runner.
+- `sail jobs result` leads a failing target's line with its failures (`1
+  failed, 3126 passed by Verus's totals (not attributed one by one), 0
+  unknown`, not `0 verified, 1 failed, …`), and reads `compilation failed
+  before verification` for a target whose crate did not compile, where it
+  read `0 verified, 0 failed, 0 unknown`. Passing lines are unchanged.
 - `sail runtime` and the MCP tools `runtime_capabilities` and
   `runtime_execute` are part of the supported command set (ADR 0108).
   `sail --help` lists `runtime`, its help no longer starts with the

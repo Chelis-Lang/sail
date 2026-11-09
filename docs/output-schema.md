@@ -344,8 +344,12 @@ Their verdicts stay `unknown` in this document, since no per-function evidence
 confirms them. The human summaries (`sail jobs result` and MCP) report them separately as "passed by Verus's
 totals", and MCP counts them in `counts.unknown_passed_by_verus_totals`.
 A Vest edit with one failing lemma, for example, reads
-`0 verified, 1 failed, 3126 passed by Verus's totals (not attributed one by
-one), 0 unknown` rather than `3126 unknown`.
+`1 failed, 3126 passed by Verus's totals (not attributed one by one), 0
+unknown` rather than `3126 unknown`. A failing target's line leads with its
+failures. A target whose crate did not compile reads `compilation failed
+before verification`: Verus reports such a crate unsuccessful with no
+verification error and no function. `sail report` uses the same wording
+([GitHub Action and CI reports](github-action.md)).
 
 ## Related documents
 

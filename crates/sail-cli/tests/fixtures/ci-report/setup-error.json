@@ -1,0 +1,1 @@
+{"kind":"sail-project-result","schema_version":2,"run_id":"","workspace":"/work/repo/proofs","context_sha256":"","input_revision":"","currentness":"unknown","exit_code":null,"targets":[],"execution":{"verifier_invocations":0,"reused_targets":0,"wall_ms":0.0},"notes":[],"error":{"code":"SAIL3100","message":"error[SAIL0102]: sail-z3 must be installed next to sail"}}
