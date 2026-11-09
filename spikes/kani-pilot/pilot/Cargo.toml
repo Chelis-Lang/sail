@@ -1,0 +1,25 @@
+[package]
+name = "kani-pilot"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Kani pilot harnesses over the pinned arrayvec 0.7.8 (spike for issue 135)"
+
+# Standalone: never part of the sail workspace.
+[workspace]
+
+[dependencies]
+# Pinned exactly; Cargo.lock binds the registry checksum
+# d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56
+# (upstream commit 0cb664cf505844348538230479b0040b44f3faf1).
+arrayvec = { version = "=0.7.8", default-features = false }
+
+[features]
+# Each feature enables one function-contract experiment that may not compile,
+# so a refusal in one cannot hide the others.
+contracts = []
+contract-stub-foreign = []
+contract-in-crate = []
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

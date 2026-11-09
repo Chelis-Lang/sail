@@ -1,0 +1,12 @@
+--- a/src/arrayvec.rs	2026-11-09 22:40:34.877428036 +0000
++++ c/src/arrayvec.rs	2026-11-09 22:40:34.906434398 +0000
+@@ -227,6 +227,9 @@
+     ///
+     /// assert_eq!(&array[..], &[1, 2]);
+     /// ```
++    #[cfg_attr(kani, kani::requires(self.len() < CAP))]
++    #[cfg_attr(kani, kani::modifies(self))]
++    #[cfg_attr(kani, kani::ensures(|_| self.len() == old(self.len()) + 1))]
+     pub unsafe fn push_unchecked(&mut self, element: T) {
+         ArrayVecImpl::push_unchecked(self, element)
+     }

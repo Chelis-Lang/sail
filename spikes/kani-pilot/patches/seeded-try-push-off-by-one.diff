@@ -1,0 +1,11 @@
+--- a/src/arrayvec_impl.rs	2026-11-09 22:40:34.877428036 +0000
++++ b/src/arrayvec_impl.rs	2026-11-09 22:40:34.887082937 +0000
+@@ -41,7 +41,7 @@
+     }
+ 
+     fn try_push(&mut self, element: Self::Item) -> Result<(), CapacityError<Self::Item>> {
+-        if self.len() < Self::CAPACITY {
++        if self.len() <= Self::CAPACITY {
+             unsafe {
+                 self.push_unchecked(element);
+             }
