@@ -158,19 +158,24 @@ The ignored native oracle runs the same emitted source on the validated pinned
 fork and stock verifier. Passing controls cover arithmetic, short-circuit
 behavior, signed minima and mutable wallet state. Failing controls cover a
 negated overflowing predicate and an overflowing eager old capture. Both actual
-JSON verdicts and counts must agree with expectations. A compiler error is not
+JSON verdicts and counts must agree with expectations, and each failing control
+must report the diagnostic it targets, such as `postcondition not satisfied`,
+so it cannot pass by failing for an unrelated reason. A compiler error is not
 a property refutation. Raw outputs, generated sources and mapping manifests
-are retained. CI's solver lane runs this fixture with its installed runtimes.
-For explicit persistent native acceptance:
+are retained. Each case is its own ignored test, named
+`native_fork_and_stock_agree_on_<case>`, so the cases run in parallel. CI's
+solver lane runs them with its installed runtimes. For explicit persistent
+native acceptance:
 
 ```sh
-SAIL_NEUTRAL_ORACLE_OUT=/fresh/evidence/directory \
-  cargo test -p sail-verus --test neutral_contracts \
-  native_fork_and_stock_agree_on_exact_lowered_source -- --ignored --nocapture
+SAIL_NEUTRAL_ORACLE_OUT=/evidence/directory \
+  cargo nextest run -p sail-verus --test neutral_contracts --run-ignored only \
+  -E 'test(native_fork_and_stock_agree_on_)'
 ```
 
-Without the optional output variable the fixture allocates a fresh temporary
-directory. Missing runtimes or malformed evidence fail. Local ordinary fixture
+Under the optional output variable each case writes a subdirectory named after
+the case, which must not exist yet. Without it each case allocates a fresh
+temporary directory. Missing runtimes or malformed evidence fail. Local ordinary fixture
 success does not establish actual backend compatibility.
 
 The [native qualification record](../validation/neutral-verus-lowering.md)
