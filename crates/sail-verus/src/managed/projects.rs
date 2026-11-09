@@ -89,6 +89,9 @@ pub enum Pruned {
     /// The workspace's directory was removed, freeing about this many bytes.
     Removed(u64),
     /// A managed run or job holds the workspace; nothing was removed.
+    ///
+    /// A process spawned while a lock was held shares it until its `exec`, so
+    /// this can also be the answer for a moment after the holder released it.
     Busy,
 }
 
@@ -553,6 +556,27 @@ mod tests {
         Ok(())
     }
 
+    /// Prunes a workspace whose last holder has just released its lock.
+    ///
+    /// A file lock belongs to the open file description, and a child process
+    /// shares every description open in this process from its fork until its
+    /// `exec` closes them. When another test thread spawns a process while a
+    /// lock is held here, the lock stays held for a moment after the drop, and
+    /// a prune in that moment rightly answers `Busy`. Only that answer is
+    /// retried, until the child has gone. The wait is bounded, so a workspace
+    /// that stays busy still fails the test.
+    fn prune_once_released(cache: &Path, key: &str) -> std::io::Result<Pruned> {
+        let deadline = std::time::Instant::now() + Duration::from_secs(120);
+        loop {
+            match prune(cache, key)? {
+                Pruned::Busy if std::time::Instant::now() < deadline => {
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+                pruned => return Ok(pruned),
+            }
+        }
+    }
+
     #[test]
     fn prune_skips_busy_workspaces_and_removes_idle_ones() -> Result<(), Box<dyn std::error::Error>>
     {
@@ -572,7 +596,7 @@ mod tests {
         assert_eq!(prune(&cache, &key)?, Pruned::Busy);
         assert!(directory.join("context/receipts/r.json").is_file());
         drop(family);
-        let Pruned::Removed(bytes) = prune(&cache, &key)? else {
+        let Pruned::Removed(bytes) = prune_once_released(&cache, &key)? else {
             return Err("idle workspace not pruned".into());
         };
         assert!(bytes >= 1000);
