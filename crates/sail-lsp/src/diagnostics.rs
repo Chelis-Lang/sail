@@ -341,6 +341,28 @@ mod tests {
     }
 
     #[test]
+    fn a_compile_error_is_published_with_its_code_and_helps_are_not() {
+        let projection = project(&load(include_str!("../fixtures/compile-error.json"), "/w"));
+        // `    x + y` at 15:7, one caret; the `help` block in core is left out.
+        assert_eq!(
+            projection.by_uri,
+            ByUri::from([(
+                "file:///w/src/lib.rs".to_owned(),
+                vec![json!({
+                    "range": {
+                        "start": {"line": 14, "character": 6},
+                        "end": {"line": 14, "character": 7},
+                    },
+                    "severity": 1,
+                    "source": "sail",
+                    "message": "cannot add `bool` to `u8`\nno implementation for `u8 + bool`",
+                    "code": "E0277",
+                })]
+            )])
+        );
+    }
+
+    #[test]
     fn two_targets_reporting_one_diagnostic_publish_it_once() {
         let mut result = load(FAILING, "/w");
         let again = result.targets.clone();
