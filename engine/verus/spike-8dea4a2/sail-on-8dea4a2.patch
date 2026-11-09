@@ -1689,10 +1689,18 @@ index 5b4d93a8..45d8c867 100644
 +    }
 +}
 diff --git a/source/rust_verify/src/erase.rs b/source/rust_verify/src/erase.rs
-index 4ad6f365..c0b70b46 100644
+index 4ad6f365..61ddee3d 100644
 --- a/source/rust_verify/src/erase.rs
 +++ b/source/rust_verify/src/erase.rs
-@@ -18,6 +18,7 @@ use std::collections::HashMap;
+@@ -5,7 +5,6 @@ use rustc_span::SpanData;
+ 
+ use vir::ast::{Datatype, Dt, Fun, Function, Krate, Mode, Path, Pattern};
+ use vir::modes::ErasureModes;
+-
+ use crate::verus_items::{DummyCaptureItem, VerusItem, VerusItems};
+ use rustc_hir::def_id::LocalDefId;
+ use rustc_mir_build_verus::verus::{
+@@ -18,6 +17,7 @@ use std::collections::HashMap;
  use std::collections::HashSet;
  use std::sync::Arc;
  use vir::ast::VirErr;
@@ -1700,7 +1708,7 @@ index 4ad6f365..c0b70b46 100644
  
  #[derive(Clone, Copy, PartialEq, Eq, Debug)]
  pub enum MiscCall {
-@@ -276,7 +277,7 @@ pub(crate) fn setup_verus_ctxt_for_thir_erasure<'tcx>(
+@@ -276,7 +276,7 @@ pub(crate) fn setup_verus_ctxt_for_thir_erasure<'tcx>(
          }
          id_to_hir.get_mut(vir_id).unwrap().push(*hir_id);
      }
@@ -1709,7 +1717,7 @@ index 4ad6f365..c0b70b46 100644
      let mut vars = HashMap::<HirId, VarErasure>::new();
      for (span, (var_mode, mode)) in erasure_hints.erasure_modes.var_modes.iter() {
          if crate::spans::from_raw_span(&span.raw_span).is_none() {
-@@ -293,7 +294,7 @@ pub(crate) fn setup_verus_ctxt_for_thir_erasure<'tcx>(
+@@ -293,7 +293,7 @@ pub(crate) fn setup_verus_ctxt_for_thir_erasure<'tcx>(
          for hir_id in &id_to_hir[&span.id] {
              vars.insert(
                  *hir_id,
@@ -4312,10 +4320,24 @@ index 9d7e7273..1d527e7a 100644
 +pub(crate) fn sail_engine_compiler_started(role:&str) { sail_engine::emit!("compiler-started", {"role":role}); }
 +pub(crate) fn sail_engine_sealed(success:bool) { sail_engine::emit!("phase-finished", {"success":success}); sail_engine::emit!("compiler-sealed", {"success":success,"normal_termination":true}); }
 diff --git a/source/rust_verify_test/tests/common/mod.rs b/source/rust_verify_test/tests/common/mod.rs
-index 8e240e0f..0f32ace3 100644
+index 8e240e0f..b8aea6a7 100644
 --- a/source/rust_verify_test/tests/common/mod.rs
 +++ b/source/rust_verify_test/tests/common/mod.rs
-@@ -335,6 +335,11 @@ pub fn run_verus(
+@@ -291,9 +291,12 @@ pub fn run_verus(
+     let mut no_external_by_default = false;
+     let mut is_core = false;
+     let mut use_internal_test_mode = true;
++    let mut crate_name = "test_crate";
+ 
+     for option in options.iter() {
+-        if *option == "--expand-errors" {
++        if let Some(name) = option.strip_prefix("--crate-name=") {
++            crate_name = name;
++        } else if *option == "--expand-errors" {
+             verus_args.push("--expand-errors".to_string());
+             verus_args.push("--multiple-errors".to_string());
+             verus_args.push("2".to_string());
+@@ -335,6 +338,11 @@ pub fn run_verus(
          } else if *option == "--edition 2024" {
              verus_args.push("--edition".to_string());
              verus_args.push("2024".to_string());
@@ -4327,6 +4349,15 @@ index 8e240e0f..0f32ace3 100644
          } else {
              panic!("option '{}' not recognized by test harness", option);
          }
+@@ -349,7 +357,7 @@ pub fn run_verus(
+     verus_args.extend(
+         vec![
+             "--crate-name".to_string(),
+-            "test_crate".to_string(),
++            crate_name.to_string(),
+             "--crate-type".to_string(),
+             "lib".to_string(),
+         ]
 diff --git a/source/rust_verify_test/tests/output_json.rs b/source/rust_verify_test/tests/output_json.rs
 index 3596f442..fdad8f9c 100644
 --- a/source/rust_verify_test/tests/output_json.rs
@@ -7728,7 +7759,7 @@ index 00000000..05ea47cb
 +pub type HashSet<T> = std::collections::HashSet<T, rustc_hash::FxBuildHasher>;
 diff --git a/source/vir/src/sail_smt_names.rs b/source/vir/src/sail_smt_names.rs
 new file mode 100644
-index 00000000..47e40fb0
+index 00000000..7bdcddb0
 --- /dev/null
 +++ b/source/vir/src/sail_smt_names.rs
 @@ -0,0 +1,436 @@
@@ -7976,8 +8007,9 @@ index 00000000..47e40fb0
 +                typ_params: Arc::new(vec![]),
 +                typ_bounds: Arc::new(vec![]),
 +                params: Arc::new(vec![]),
-+                outer_ret: result.clone(),
-+                inner_ret: result,
++                ret: result,
++                ens_has_return: false,
++                async_ret: None,
 +                require: Arc::new(vec![]),
 +                ensure: (Arc::new(vec![]), Arc::new(vec![])),
 +                returns: None,
@@ -7992,7 +8024,6 @@ index 00000000..47e40fb0
 +                attrs: Arc::new(FunctionAttrsX::default()),
 +                body: None,
 +                extra_dependencies: vec![],
-+                hidden: Arc::new(vec![]),
 +            },
 +        )
 +    }

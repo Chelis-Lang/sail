@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
-"""Resolve the diff3 conflicts of the squashed sail series on upstream 8dea4a2."""
+"""Resolve the diff3 conflicts of the squashed sail series on upstream 8dea4a2.
+
+Spike only (v0.3.0 Track E, #237). Input: `git cherry-pick` of the squash of
+upstream/7d82994..a0e11cff onto upstream/8dea4a2 with merge.conflictstyle=diff3
+(8 files, 14 hunks). Three follow-up commits were then needed and are included
+in sail-on-8dea4a2.patch (the complete result, 8dea4a2..7786de98):
+  1. verifier.rs: 8dea4a2 has no `SmtEncoding` / `args.smt_encoding` and no
+     `cargo_verus_toolchains::external_deps`; use `consts::EXPECTED_Z3_VERSION`.
+  2. tests only: back-port the harness `--crate-name=` option and adapt a
+     `FunctionX` literal in vir's sail_smt_names tests.
+  3. erase.rs: drop one blank line so every `dbg!` stays at upstream's line
+     (.github/sail/check-dbg-locations.py; this script's erase.rs result is
+     one line long).
+Still failing on the result: two of three sail_vi0031 tests, whose fixture
+does not reach the stored-span fallback at 8dea4a2.
+"""
 import pathlib
 import re
 import sys
