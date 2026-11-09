@@ -74,6 +74,8 @@ pub struct Counter {
     counts: Vec<QuantCount>,
     /// Fingerprint to index in `counts`, until instantiated.
     pending: HashMap<u64, u32>,
+    /// Count only between the n-th `[begin-check]` (from 1) and the next.
+    only_check: Option<u64>,
     out: Profile,
 }
 
@@ -90,6 +92,22 @@ impl Counter {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// A counter for the `check`-th check of the trace only (from 1): a
+    /// session replayed whole, so that the solver reaches the check with
+    /// its real history, but profiled for that one check. Definitions and
+    /// pending matches are still followed throughout.
+    #[must_use]
+    pub fn for_check(check: u64) -> Self {
+        Self {
+            only_check: Some(check),
+            ..Self::default()
+        }
+    }
+
+    fn counting(&self) -> bool {
+        self.only_check.is_none_or(|n| n == self.out.checks)
     }
 
     /// Feeds the next bytes of the trace.
@@ -113,7 +131,7 @@ impl Counter {
         // Every line of interest starts with `[`; most lines are `[mk-app]`
         // and `[attach-enode]`, rejected on the third byte.
         let mut words = line
-            .split(|b| b.is_ascii_whitespace())
+            .split(u8::is_ascii_whitespace)
             .filter(|w| !w.is_empty());
         match words.next() {
             Some(b"[mk-quant]" | b"[mk-lambda]") => {
@@ -138,28 +156,32 @@ impl Counter {
                 else {
                     return;
                 };
+                let counting = self.counting();
                 let Some(&index) = self.ids.get(id) else {
-                    self.out.unattributed_matches += 1;
+                    self.out.unattributed_matches += u64::from(counting);
                     return;
                 };
-                if let Some(c) = self.counts.get_mut(index as usize) {
+                if counting && let Some(c) = self.counts.get_mut(index as usize) {
                     c.matches += 1;
                 }
                 self.pending.insert(fp, index);
                 self.out.peak_pending = self.out.peak_pending.max(self.pending.len());
             }
-            Some(b"[instance]") => match words.next().and_then(fingerprint) {
-                Some(0) => self.out.theory_instances += 1,
-                Some(fp) => match self.pending.remove(&fp) {
-                    Some(index) => {
-                        if let Some(c) = self.counts.get_mut(index as usize) {
-                            c.instances += 1;
+            Some(b"[instance]") => {
+                let counting = u64::from(self.counting());
+                match words.next().and_then(fingerprint) {
+                    Some(0) => self.out.theory_instances += counting,
+                    Some(fp) => match self.pending.remove(&fp) {
+                        Some(index) => {
+                            if let Some(c) = self.counts.get_mut(index as usize) {
+                                c.instances += counting;
+                            }
                         }
-                    }
-                    None => self.out.unattributed_instances += 1,
-                },
-                None => self.out.unattributed_instances += 1,
-            },
+                        None => self.out.unattributed_instances += counting,
+                    },
+                    None => self.out.unattributed_instances += counting,
+                }
+            }
             Some(b"[begin-check]") => self.out.checks += 1,
             Some(b"[eof]") => self.out.complete = true,
             _ => {}
@@ -286,13 +308,20 @@ pub fn origin(qid: &str) -> Origin {
     .into_iter()
     .rev()
     {
+        // A function's AIR name always carries its crate (`crate!path.`);
+        // datatype and trait axioms also come with `__`-joined paths.
         if let Some(name) = rest.strip_suffix(suffix)
-            && name.contains('!')
+            && (name.contains('!') || matches!(kind, "datatype" | "trait"))
         {
             let name = name.rsplit_once("./").map_or(name, |(head, _)| head);
+            let item = if name.contains('!') {
+                air_path(name)
+            } else {
+                name.replace("__", "::")
+            };
             return Origin {
                 kind,
-                item: Some(air_path(name)),
+                item: Some(item),
                 ordinal: None,
             };
         }
@@ -347,6 +376,26 @@ mod tests {
         assert_eq!(p.quantifiers.first().map(|q| q.qid.as_str()), Some("q_fg"));
     }
 
+    /// The hand count per check: one match and instance of each quantifier
+    /// in the first check, three in the second.
+    #[test]
+    fn one_check_of_a_whole_session() {
+        for (check, each) in [(1, 1), (2, 3)] {
+            let mut c = Counter::for_check(check);
+            c.push(TRACE);
+            let p = c.finish();
+            let row = |qid: &str| {
+                p.quantifiers
+                    .iter()
+                    .find(|q| q.qid == qid)
+                    .map(|q| (q.matches, q.instances))
+            };
+            assert_eq!(row("q_fg"), Some((each, each)), "check {check}");
+            assert_eq!(row("q_g"), Some((each, each)), "check {check}");
+            assert_eq!(p.instances(), 2 * each);
+        }
+    }
+
     #[test]
     fn chunking_does_not_change_the_counts() {
         let whole = count(TRACE);
@@ -386,6 +435,16 @@ mod tests {
         );
         let o = origin("internal_req__lib!m.f._definition");
         assert_eq!((o.kind, o.item.as_deref()), ("contract", Some("lib::m::f")));
+        let o = origin("internal_core!option.Option./Some/0_invariant_definition");
+        assert_eq!(
+            (o.kind, o.item.as_deref()),
+            ("datatype", Some("core::option::Option"))
+        );
+        let o = origin("internal_core__option__Option_box_axiom_definition");
+        assert_eq!(
+            (o.kind, o.item.as_deref()),
+            ("datatype", Some("core::option::Option"))
+        );
         assert_eq!(origin("k!12").kind, "other");
     }
 }

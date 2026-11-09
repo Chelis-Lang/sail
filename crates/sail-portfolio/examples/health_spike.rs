@@ -7,6 +7,7 @@
 //! health_spike perturb Z3 LIST JOBS            sliced replay, untraced vs traced
 //! health_spike perturb-full Z3 LIST JOBS       whole sessions, untraced vs traced
 //! health_spike profile Z3 INPUT SEQ TOP [KEEP] traced sliced replay through a FIFO
+//! health_spike profile-prefix Z3 INPUT SEQ TOP [KEEP]  the same on the session prefix
 //! health_spike count TRACE TOP                 count a trace file
 //! health_spike health REPORT.json HISTORY N    per-function health cost
 //! ```
@@ -16,6 +17,8 @@
     clippy::print_stderr,
     clippy::too_many_lines,
     clippy::cast_precision_loss,
+    clippy::unnecessary_sort_by,
+    clippy::format_push_string,
     missing_docs
 )]
 
@@ -59,6 +62,20 @@ struct Ran {
     unpaired: usize,
     infra: Option<String>,
     ms: u128,
+    /// Z3's own `:quant-instantiations` in its last statistics reply.
+    quant: Option<u64>,
+}
+
+fn last_stat(stdout: &[u8], name: &[u8]) -> Option<u64> {
+    let at = stdout.windows(name.len()).rposition(|w| w == name)?;
+    let digits: Vec<u8> = stdout
+        .get(at + name.len()..)?
+        .iter()
+        .copied()
+        .skip_while(u8::is_ascii_whitespace)
+        .take_while(u8::is_ascii_digit)
+        .collect();
+    std::str::from_utf8(&digits).ok()?.parse().ok()
 }
 
 fn run(solver: &Solver, input: &[u8], extra: &[OsString]) -> Ran {
@@ -72,6 +89,7 @@ fn run(solver: &Solver, input: &[u8], extra: &[OsString]) -> Ran {
                 infra: (r.outcome == sail_solver::Outcome::InfraTimeout)
                     .then(|| "infra-timeout".to_owned()),
                 ms: r.elapsed.as_millis(),
+                quant: last_stat(&r.stdout, b":quant-instantiations "),
             }
         }
         Err(e) => Ran {
@@ -80,6 +98,7 @@ fn run(solver: &Solver, input: &[u8], extra: &[OsString]) -> Ran {
             unpaired: 0,
             infra: Some(e.to_string()),
             ms: 0,
+            quant: None,
         },
     }
 }
@@ -303,22 +322,73 @@ fn print_profile(p: &Profile, top: usize) {
             q.qid
         );
     }
+    // The same counts grouped by the Verus item the qid names.
+    let mut items: BTreeMap<(String, String), (u64, u64)> = BTreeMap::new();
+    for q in &p.quantifiers {
+        let o = origin(&q.qid);
+        let key = (o.kind.to_owned(), o.item.unwrap_or_else(|| "-".to_owned()));
+        let e = items.entry(key).or_default();
+        e.0 += q.instances;
+        e.1 += 1;
+    }
+    let mut items: Vec<_> = items.into_iter().collect();
+    items.sort_by(|a, b| b.1.0.cmp(&a.1.0));
+    println!("by item:\nrank\tinstances\tshare\tqids\tkind\titem");
+    for (i, ((kind, item), (instances, qids))) in items.iter().take(top).enumerate() {
+        println!(
+            "{}\t{instances}\t{:.1}%\t{qids}\t{kind}\t{item}",
+            i + 1,
+            100.0 * *instances as f64 / total as f64
+        );
+    }
 }
 
 /// Runs the sliced check with tracing into a FIFO and counts the stream.
-fn profile(solver: &Solver, input: &Path, seq: usize, top: usize, keep: Option<&Path>) {
+///
+/// `prefix` replays the session up to and including the check instead of a
+/// slice, and counts only that check: the solver then has its real history.
+fn profile(
+    solver: &Solver,
+    input: &Path,
+    seq: usize,
+    top: usize,
+    keep: Option<&Path>,
+    prefix: bool,
+) {
     let Ok(session) = std::fs::read(input) else {
         eprintln!("cannot read {}", input.display());
         return;
     };
     let commands = split_commands(&session);
-    let Some(slice) = check_indices(&commands)
-        .get(seq)
-        .and_then(|&i| slice_check(&commands, i))
-    else {
+    let indices = check_indices(&commands);
+    let slice = if prefix {
+        // Through the first statistics request after the check.
+        indices.get(seq).map(|&i| {
+            let end = commands
+                .iter()
+                .enumerate()
+                .skip(i + 1)
+                .find(|(_, c)| matches!(c.class, Class::Statistics | Class::Check))
+                .map_or(commands.len(), |(j, _)| j + 1);
+            let mut input = Vec::new();
+            for c in commands.iter().take(end) {
+                input.extend_from_slice(&c.bytes);
+                input.push(b'\n');
+            }
+            sail_portfolio::slice::Slice {
+                input,
+                kept: end,
+                dropped: 0,
+            }
+        })
+    } else {
+        indices.get(seq).and_then(|&i| slice_check(&commands, i))
+    };
+    let Some(slice) = slice else {
         eprintln!("cannot slice check {seq}");
         return;
     };
+    let at = if prefix { seq } else { 0 };
     let plain = run(solver, &slice.input, &[]);
     let fifo = std::env::temp_dir().join(format!("sail-profile-{}.fifo", std::process::id()));
     let _ = std::fs::remove_file(&fifo);
@@ -331,7 +401,11 @@ fn profile(solver: &Solver, input: &Path, seq: usize, top: usize, keep: Option<&
         let fifo = fifo.clone();
         let keep = keep.map(Path::to_path_buf);
         std::thread::spawn(move || {
-            let mut counter = Counter::new();
+            let mut counter = if prefix {
+                Counter::for_check(seq as u64 + 1)
+            } else {
+                Counter::new()
+            };
             let mut bytes = 0u64;
             let mut copy = keep.and_then(|k| std::fs::File::create(k).ok());
             if let Ok(mut f) = std::fs::File::open(&fifo) {
@@ -362,7 +436,7 @@ fn profile(solver: &Solver, input: &Path, seq: usize, top: usize, keep: Option<&
     let (p, bytes) = reader.join().unwrap_or_default();
     let _ = std::fs::remove_file(&fifo);
     let show = |name: &str, r: &Ran| {
-        let c = r.checks.first();
+        let c = r.checks.get(at);
         println!(
             "{name}: answer={} rlimit={} reason={} ms={} errors={} infra={:?}",
             text(c.and_then(|c| c.answer.as_deref())),
@@ -379,11 +453,17 @@ fn profile(solver: &Solver, input: &Path, seq: usize, top: usize, keep: Option<&
         slice.kept,
         slice.dropped
     );
-    show("sliced untraced", &plain);
-    show("sliced traced  ", &traced);
+    println!("mode: {}", if prefix { "session prefix" } else { "slice" });
+    show("untraced", &plain);
+    show("traced  ", &traced);
     println!(
         "trace: bytes={bytes} wall_ms={} (streamed through a FIFO, not stored)",
         traced_wall.as_millis()
+    );
+    println!(
+        "cross-check: Z3 :quant-instantiations (whole process) untraced={} traced={}",
+        num(plain.quant),
+        num(traced.quant)
     );
     print_profile(&p, top);
 }
@@ -578,6 +658,15 @@ fn main() {
             n(3, 0),
             n(4, 10),
             args.get(5).map(Path::new),
+            false,
+        ),
+        "profile-prefix" => profile(
+            &solver(1),
+            Path::new(&arg(2)),
+            n(3, 0),
+            n(4, 10),
+            args.get(5).map(Path::new),
+            true,
         ),
         "count" => count_file(Path::new(&arg(1)), n(2, 10)),
         "health" => health(Path::new(&arg(1)), Path::new(&arg(2)), n(3, 20)),
