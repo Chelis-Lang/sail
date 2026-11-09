@@ -179,7 +179,7 @@ A repair is accepted only when the whole target verifies. See the
   [caching Sail in CI](docs/ci-cache.md),
   [background preparation](docs/background-preparation.md)
 - Experimental features: fragility measurement, seed portfolios, team caching
-  and integration APIs. They aren't listed in `sail --help`; see the
+  and the neutral-contract integration APIs. They aren't listed in `sail --help`; see the
   [documentation index](docs/README.md#experimental-features).
 - Working on Sail: [AGENTS.md](AGENTS.md), the [charter](docs/CHARTER.md) and
   the [decision records](docs/decisions/README.md).

@@ -24,8 +24,9 @@ conflict, the charter wins; the conflicts found so far are listed under
 
 ## Current state
 
-Raw Z3 execution, neutral source jobs and source-bound assurance are implemented
-experimental APIs. Native temporal execution exists in the internal extension,
+Raw Z3 execution is a supported command
+([ADR 0108](../decisions/0108-supported-smt-runtime.md)); neutral source jobs
+and source-bound assurance are implemented experimental APIs. Native temporal execution exists in the internal extension,
 absent from public archives. Maintain these surfaces and tests; do not widen the
 neutral subset or migrate Oyster's SDK while design is held. The backend list
 below is long-term scope, not simultaneous implementation work. The next

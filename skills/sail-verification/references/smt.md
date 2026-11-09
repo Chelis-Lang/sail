@@ -26,8 +26,7 @@ sail runtime capabilities
 sail runtime execute --file query.json
 ```
 
-Use `sail runtime --help` to inspect the runtime commands; they are not listed
-by top-level `sail --help`. Check capabilities once during setup, or when a
+Use `sail runtime --help` to inspect the runtime commands. Check capabilities once during setup, or when a
 request reports that its backend is unavailable.
 
 Read the execution outcome and ordered satisfiability checks in the JSON

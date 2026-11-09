@@ -5,6 +5,15 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail runtime` and the MCP tools `runtime_capabilities` and
+  `runtime_execute` are part of the supported command set (ADR 0108).
+  `sail --help` lists `runtime`, its help no longer starts with the
+  EXPERIMENTAL note, and the MCP descriptions no longer start with
+  "Experimental:". The commands and the request schema are unchanged.
+- The book highlights Verus syntax in Rust examples and shell commands, flags
+  and subcommands in shell examples, and lists every release under one
+  "Release notes" part, now including 0.1.0.
+
 - Freeze neutral profile three (lowering version four, contract version three)
   before its first release (ADR 0107). Retained version-four manifests replay
   byte for byte, and later widening takes a new lowering identity. Manifests

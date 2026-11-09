@@ -28,7 +28,7 @@ cd sail-proof-demo
 
 Save this as `proof.rs`:
 
-```rust
+```rust,ignore
 use vstd::prelude::*;
 
 verus! {

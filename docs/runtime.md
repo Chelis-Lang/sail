@@ -4,9 +4,6 @@ Use `sail runtime` to submit complete SMT-LIB transcripts through Sail's bundled
 pinned Z3. This command is independent of `sail verify`: a satisfiability answer
 is evidence about the submitted formula, not proof that Rust code implements it.
 
-`sail runtime` is an experimental integration API: `sail --help` does not
-list it, and `sail runtime --help` starts with an EXPERIMENTAL note.
-
 Inspect actual installation and implemented capabilities:
 
 ```sh
@@ -124,6 +121,7 @@ integration slices. None is implied by raw SMT completion. See [ADR 0068](decisi
 
 ## Native temporal jobs
 
+Native temporal jobs are experimental and are not in public release builds.
 The same runtime endpoint accepts `input: {kind: "temporal", job: ...}`.
 `sail-api::temporal::Job` contains caller `obligation_id`, sorted unique
 `requirement_ids`, an immutable native `request` and positive `wall_time_ms`

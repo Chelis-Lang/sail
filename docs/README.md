@@ -14,6 +14,7 @@ proof receipts, and replay.
 | Restore an earlier proof after undoing an edit | [Instant revert](instant-revert.md) |
 | Check a proof repair, explain failures, compare saved baselines | [Repair walkthrough](proof-repair-walkthrough.md), [repair reference](proof-repair.md) |
 | Connect an agent over MCP | [MCP](mcp.md) |
+| Run SMT-LIB transcripts through the pinned Z3 (`sail runtime`) | [SMT runtime](runtime.md), [protocol](spec/runtime.md) |
 | Install the agent skill and follow verification/SMT workflows | [Sail skill](../skills/sail-verification/SKILL.md) |
 | Read the JSON report | [Output schema](output-schema.md) |
 | Read job status and results from Rust | [Result client](result-client.md) |
@@ -40,7 +41,6 @@ them.
 |---|---|
 | Seed portfolios and fragility measurement | [Divergences](divergences.md) |
 | Team caching of signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
-| Raw SMT transcripts through the pinned solver (`sail runtime`) | [Runtime](runtime.md), [protocol](spec/runtime.md) |
 | Contracts with requirement IDs on ordinary Rust functions | [Neutral contracts](neutral-contracts.md), [specification](spec/neutral-contracts.md) |
 | Verifying neutral Rust source through Sail jobs | [Neutral source jobs](neutral-contract-jobs.md), [specification](spec/neutral-contract-jobs.md) |
 | Requirement assurance from retained jobs | [Requirement assurance](requirement-assurance.md) |

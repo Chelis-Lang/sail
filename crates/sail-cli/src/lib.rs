@@ -76,6 +76,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "mcp",
         "serve verification to agents over MCP (stdio; see docs/mcp.md)",
     ),
+    (
+        "runtime",
+        "run SMT-LIB transcripts through the pinned Z3 (see docs/runtime.md)",
+    ),
     ("status", "show daemon and cache state"),
     ("cache", "inspect and manage the result cache"),
 ];

@@ -169,7 +169,7 @@ verbatim. The cache stores and replays the solver's exact bytes.
 
 ## Obligation identity
 
-```
+```text
 <function>#<kind>/<ordinal>          an op run in the function's module process
 <function>#<kind>/spinoff-<index>    an op spun off into its own process
 ```

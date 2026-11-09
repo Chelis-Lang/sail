@@ -5,18 +5,18 @@
 stdout. It is built for agents that verify after every edit. The design
 decisions are in ADRs 0016 and 0024.
 
-## Supported and experimental tools
+## Tools
 
-Supported: `verify`, `counterexample`, `cached_result`, the job tools
+Verification: `verify`, `counterexample`, `cached_result`, the job tools
 (`start_verification`, `verification_status`, `verification_result`,
 `cancel_verification`, `verification_events`), the evidence tools
 (`explain_failure`, `compare_verification`, `save_baseline`, `list_baselines`,
-`get_baseline`) and repair (`start_repair_validation`).
+`get_baseline`) and repair (`start_repair_validation`). SMT:
+`runtime_capabilities` and `runtime_execute`.
 
 Experimental, and may change in any release: the `fragility` tool, `verify`'s
 and `start_verification`'s `portfolio` and `measure_fragility` options, and
-the integration tools `requirement_assurance`, `runtime_capabilities` and
-`runtime_execute`. Their descriptions in `tools/list` start with
+`requirement_assurance`. Their descriptions in `tools/list` start with
 "Experimental:", so an agent can tell them apart.
 
 ## Registering it
@@ -70,7 +70,7 @@ inside the project can correctly invalidate the proof's input freshness.
 
 ## Raw SMT runtime
 
-These integration tools are experimental. `runtime_capabilities` accepts `{}` and reports actual backend installation
+`runtime_capabilities` accepts `{}` and reports actual backend installation
 readiness. `runtime_execute` accepts `{"request": ...}`, where the request is
 the versioned document in [Runtime](runtime.md). Both tools connect directly
 to the daemon's separate runtime endpoint and autostart `sail serve` when no

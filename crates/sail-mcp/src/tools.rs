@@ -995,12 +995,7 @@ mod tests {
     /// ones never mention it.
     #[test]
     fn descriptions_mark_exactly_the_experimental_tools_and_options() {
-        let experimental_tools = [
-            "fragility",
-            "requirement_assurance",
-            "runtime_capabilities",
-            "runtime_execute",
-        ];
+        let experimental_tools = ["fragility", "requirement_assurance"];
         let experimental_options = ["measure_fragility", "portfolio"];
         let definitions = definitions();
         let tools = definitions.as_array().cloned().unwrap_or_default();
@@ -1011,6 +1006,14 @@ mod tests {
             if experimental_tools.contains(&name) {
                 assert!(
                     description.starts_with("Experimental"),
+                    "{name}: {description}"
+                );
+            } else if name.starts_with("runtime_") {
+                // Supported SMT tools whose temporal backend stays experimental.
+                assert!(
+                    !description.starts_with("Experimental")
+                        && description.contains("Native temporal")
+                        && description.contains("are experimental."),
                     "{name}: {description}"
                 );
             } else {

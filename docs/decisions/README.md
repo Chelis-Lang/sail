@@ -127,3 +127,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0106: Decode source-named inputs from failed-proof models](0106-decoded-counterexample-inputs.md) (accepted; parameters and named struct fields, raw model retained, never a validated refutation)
 
 - [0107: Freeze neutral profile three before its first release](0107-freeze-neutral-profile-three.md) (accepted; retained version-four manifests replay byte for byte, later widening takes a new identity)
+- [0108: The SMT runtime is a supported command](0108-supported-smt-runtime.md) (accepted; `sail runtime` and the MCP runtime tools are listed as supported)
