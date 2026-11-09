@@ -313,8 +313,10 @@ the crate root, because the pinned Verus aborts on that derive inside a module
 ([VI-0042](../verus-issues/VI-0042-structural-derive-in-module.md)). The manifest's
 `modules` lists each file's digest, `original_sha256` is
 `sail_api::contracts::closure_sha256` of the root digest and that list, and each
-binding's `module_file` names the deepest out-of-line module that contains the
-function. A single file keeps its own digest and omits both fields, so earlier
+binding's `module_file` names the deepest out-of-line module file that declares
+the function. That is the file whose lines the binding's source range counts,
+even when an inherent `impl` sits in a different file from its receiver type,
+whose module the function identity names. A single file keeps its own digest and omits both fields, so earlier
 manifests and their bytes are unchanged. The native oracle runs a passing
 closure with nested module files and imported predicates and types, plus a
 failing control whose module-file helper overclaims; fork and stock agree on
