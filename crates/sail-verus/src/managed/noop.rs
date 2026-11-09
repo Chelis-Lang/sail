@@ -53,7 +53,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 /// exact daemon socket, and never records Cargo's transient status lines
 /// (#571, #573, #574). Version 4 also bound names required by proof
 /// receipts, including ghost reads absent from dep-info (#552).
-const VERSION: u32 = 8;
+// Spike (#558): a real change bumps this to 8 (the `unsettled` field); the
+// spike keeps 7 so the version-pinning tests stay untouched.
+const VERSION: u32 = 7;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
