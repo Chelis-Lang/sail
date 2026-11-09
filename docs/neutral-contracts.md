@@ -5,12 +5,10 @@ code runs. The checks also run in release builds. A runtime check establishes
 the behavior exercised by that execution; it does not establish an SMT proof.
 The ordinary `sail verify` Verus input route is unchanged.
 
-The [Verus lowering library](spec/neutral-verus-lowering.md) admits a complete
-supported scalar source file, emits a content-bound shadow and can run the
-actual managed backend. Its native oracle acceptance is separate from runtime
-checks. Matching requirement IDs do not establish contract faithfulness.
-[Neutral source jobs](neutral-contract-jobs.md) expose that actual helper through
-the existing local Sail job service without caller-created shadows or tools.
+Sail 0.2 could also lower this source to Verus and verify it through neutral
+source jobs. Sail 0.3.0 removed that path: these attributes are runtime checks
+only, and nothing in Sail proves them. Matching requirement IDs do not
+establish contract faithfulness.
 
 Use `sail-contracts = "=0.2.0"` for the published stable crate,
 or use the Sail workspace or a pinned Git revision. The [version-one specification](spec/neutral-contracts.md)

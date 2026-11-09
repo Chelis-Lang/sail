@@ -5,6 +5,59 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+### Removed
+
+This release removes the experimental neutral-contract verification path that
+0.2.0 published. The 0.2.0 crates stay on crates.io. Nothing in default
+`sail verify` changes.
+
+- Neutral source jobs: `Request::SubmitContracts`, `Client::submit_contracts`,
+  the `sail_api::contracts` module (`Submission`, `SourceRange`,
+  `ContractBinding`, `LoweringManifest`, `ContractProof`, `TranslationTrust`,
+  `Evidence`, `WorkerResult`, `VERSION` and its size and time limits), the
+  hidden `sail _contracts-worker` command, and the `contracts` member of
+  `jobs::ResultDocument` and `evidence::Baseline`.
+- Neutral-to-Verus lowering: the `sail_verus::contracts` module (`lower`,
+  `lower_profile`, `validate_manifest`, `verify`, `verify_profile`,
+  `ContractRun`, `LoweredSource`, `observed_proof`, `LOWERING_VERSION`, and its
+  `mutation` and `literal_witness` modules). `sail-verus` no longer depends on
+  `sail-contracts-ir`, `syn`, `quote`, `proc-macro2` or `num-bigint`.
+- Bounded neutral mutation: `Request::SubmitMutation`, `Request::Mutation`,
+  `Request::CancelMutation`, `Response::Mutation`, `Client::submit_mutation`,
+  `Client::mutation`, `Client::cancel_mutation` and the `sail_api::mutation`
+  module (`Submission`, `Candidate`, `Plan`, `Outcome`, `State`,
+  `OriginalEvidence`, `Observation`, `View`, `POLICY`, `classify`,
+  `decode_original`, `validate_view`, `attach_assurance`, `qualifiers`,
+  `digest`).
+- Scalar literal witnesses: `Request::PrepareLiteralWitness`,
+  `Request::ValidateLiteralWitness`, `Response::LiteralWitness`,
+  `Response::LiteralWitnessValidated`, `Client::literal_witnesses`,
+  `Client::validate_literal_witness` and the `sail_api::literal_witness` module.
+- The neutral requirement assurance view: `Request::Assurance`,
+  `Response::Assurance`, `Client::requirement_assurance`, and from
+  `sail_api::assurance` the items `View`, `Requirement`, `Evidence`,
+  `Relationship`, `Scope`, `VERSION`, `from_contract_result` and
+  `observed_contract_proof`. `EvidenceTier` and `MutationStatus` stay.
+  `ProofState` and `CheckCounts` move from `sail_api::contracts` to
+  `sail_api::assurance`.
+- The capability fields `neutral_contracts_version`,
+  `neutral_contract_profiles`, `assurance_version` and `mutation_version` of
+  `Response::Capabilities`. A 0.2.0 client reads their absence as "not
+  supported" and refuses with its existing codes; a removed operation sent
+  without negotiation is answered with `SAIL0802`. The job protocol version is
+  unchanged.
+- Error codes `SAIL3140` to `SAIL3145`.
+- The `contracts` end-to-end phase.
+
+### Changed
+
+- `sail assurance JOB` and the MCP tool `requirement_assurance` now read
+  submitter-attributed evidence for an ordinary job (ADR 0104). `--attributed`
+  and the `attributed` argument are accepted and change nothing.
+- A retained job record or baseline written by a 0.2 neutral source job stays
+  listed and reads as the new `SAIL3161`; it is never read as an ordinary
+  result.
+
 - `sail runtime` and the MCP tools `runtime_capabilities` and
   `runtime_execute` are part of the supported command set (ADR 0108).
   `sail --help` lists `runtime`, its help no longer starts with the

@@ -12,16 +12,8 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
         let request = request(&rest)?;
         let client = crate::jobs::connect_or_start()?;
         let response = match &request {
-            Request::Assurance { id } => Response::Assurance(Box::new(
-                client
-                    .requirement_assurance(id)
-                    .map_err(|e| e.to_string())?,
-            )),
             Request::AttributedAssurance { id } => Response::AttributedAssurance(Box::new(
                 client.attributed_assurance(id).map_err(|e| e.to_string())?,
-            )),
-            Request::AssuranceInputs { id } => Response::AssuranceInputs(Box::new(
-                client.assurance_inputs(id).map_err(|e| e.to_string())?,
             )),
             _ => super::call(&client, &request)?,
         };
@@ -62,16 +54,15 @@ fn output(args: &[String]) -> Result<(bool, Vec<String>), String> {
 fn request(args: &[String]) -> Result<Request, String> {
     match args.first().map(String::as_str) {
         Some("assurance") => match args {
+            // `--attributed` selected this view beside the removed neutral one;
+            // it stays accepted and changes nothing.
             [_, id] if !id.is_empty() && !id.starts_with('-') => {
-                Ok(Request::Assurance { id: id.clone() })
+                Ok(Request::AttributedAssurance { id: id.clone() })
             }
             [_, id, flag] if flag == "--attributed" && !id.is_empty() && !id.starts_with('-') => {
                 Ok(Request::AttributedAssurance { id: id.clone() })
             }
-            [_, id, flag] if flag == "--inputs" && !id.is_empty() && !id.starts_with('-') => {
-                Ok(Request::AssuranceInputs { id: id.clone() })
-            }
-            _ => Err("usage: assurance JOB [--attributed | --inputs] [--output json]".into()),
+            _ => Err("usage: assurance JOB [--attributed] [--output json]".into()),
         },
         Some("explain") => explain(&args[1..]),
         Some("baseline") => match args.get(1).map(String::as_str) {
@@ -144,32 +135,9 @@ fn explain(args: &[String]) -> Result<Request, String> {
 }
 fn human(response: &Response) -> String {
     match response {
-        Response::Assurance(view) => {
-            let mut text = format!(
-                "Requirement assurance for source job {} (snapshot evidence; live currentness unknown)",
-                view.job_id
-            );
-            for requirement in &view.requirements {
-                for evidence in &requirement.evidence {
-                    let _ = write!(
-                        text,
-                        "\n{} {}: {:?}, tier {:?}; mutation {:?}",
-                        requirement.requirement_id,
-                        evidence.function,
-                        evidence.outcome,
-                        evidence.tier,
-                        evidence.mutation
-                    );
-                    for qualifier in &evidence.qualifiers {
-                        let _ = write!(text, "\n  {qualifier}");
-                    }
-                }
-            }
-            text
-        }
         Response::AttributedAssurance(view) => {
             let mut text = format!(
-                "Submitter-attributed Verus evidence for job {} (not neutral-contract assurance; inputs {:?})",
+                "Submitter-attributed Verus evidence for job {} (an unchecked submitter claim; inputs {:?})",
                 view.job_id, view.currentness
             );
             for requirement in &view.requirements {
@@ -186,24 +154,6 @@ fn human(response: &Response) -> String {
                     for qualifier in &evidence.qualifiers {
                         let _ = write!(text, "\n  {qualifier}");
                     }
-                }
-            }
-            text
-        }
-        Response::AssuranceInputs(view) => {
-            let mut text = format!(
-                "Decoded solver-model inputs for source job {} (not validated counterexamples)",
-                view.job_id
-            );
-            for row in &view.rows {
-                let _ = write!(
-                    text,
-                    "\n{} {}: check {} of {}",
-                    row.requirement_id, row.function, row.decoded.check, row.decoded.obligation
-                );
-                for input in &row.decoded.inputs {
-                    let value = serde_json::to_string(&input.value).unwrap_or_default();
-                    let _ = write!(text, "\n  {} = {value}", input.name);
                 }
             }
             text
@@ -304,16 +254,14 @@ mod tests {
         let arguments =
             |values: &[&str]| values.iter().map(|v| (*v).to_owned()).collect::<Vec<_>>();
         assert!(
-            matches!(request(&arguments(&["assurance", "job-123"])), Ok(Request::Assurance { id }) if id == "job-123")
+            matches!(request(&arguments(&["assurance", "job-123"])), Ok(Request::AttributedAssurance { id }) if id == "job-123")
         );
         assert!(
             matches!(request(&arguments(&["assurance", "job-123", "--attributed"])), Ok(Request::AttributedAssurance { id }) if id == "job-123")
         );
-        assert!(
-            matches!(request(&arguments(&["assurance", "job-123", "--inputs"])), Ok(Request::AssuranceInputs { id }) if id == "job-123")
-        );
         for values in [
             vec!["assurance"],
+            vec!["assurance", "job-123", "--inputs"],
             vec!["assurance", "--job"],
             vec!["assurance", "one", "two"],
             vec!["assurance", "--attributed", "--attributed"],

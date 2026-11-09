@@ -41,11 +41,8 @@ them.
 |---|---|
 | Seed portfolios and fragility measurement | [Divergences](divergences.md) |
 | Team caching of signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
-| Contracts with requirement IDs on ordinary Rust functions | [Neutral contracts](neutral-contracts.md), [specification](spec/neutral-contracts.md) |
-| Verifying neutral Rust source through Sail jobs | [Neutral source jobs](neutral-contract-jobs.md), [specification](spec/neutral-contract-jobs.md) |
+| Runtime-checked contracts with requirement IDs on ordinary Rust functions | [Runtime contracts](neutral-contracts.md) |
 | Requirement assurance from retained jobs | [Requirement assurance](requirement-assurance.md) |
-| Bounded source mutation | [Neutral mutation](neutral-mutation.md) |
-| Scalar contract counterexamples | [Literal witnesses](literal-witnesses.md) |
 | Temporal jobs (not in release builds; needs a private dependency) | [Temporal jobs](temporal-jobs.md), [private dependencies](private-dependencies.md) |
 
 ## Working on Sail

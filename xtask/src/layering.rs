@@ -61,7 +61,6 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
             "sail-session",
             "sail-ledger",
             "sail-api",
-            "sail-contracts-ir",
             "sail-acceptance",
         ],
     ),
@@ -110,7 +109,6 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
         "sail-solve",
         &[
             "sail-shim",
-            "sail-contracts",
             "sail-api",
             "sail-cache",
             "sail-runtime",

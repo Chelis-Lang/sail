@@ -41,7 +41,6 @@ sha2.workspace = true
 signal-hook.workspace = true
 
 [dev-dependencies]
-sail-contracts.workspace = true
 sail-key.workspace = true
 
 [lints]

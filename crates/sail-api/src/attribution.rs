@@ -11,8 +11,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use crate::assurance::{EvidenceTier, MutationStatus};
-use crate::contracts::ProofState;
+use crate::assurance::{EvidenceTier, MutationStatus, ProofState};
 use crate::jobs::{Currentness, Lifecycle, Mode, ResultDocument};
 use crate::output::{EstablishmentName, SolverInfo};
 use crate::project::ProjectResult;
@@ -227,11 +226,6 @@ pub fn from_project_result(
     attributions: &[RequirementAttribution],
 ) -> Result<View, String> {
     let invalid = || "SAIL3160: invalid or incomplete attributed job evidence".to_owned();
-    if document.contracts.is_some() {
-        return Err(
-            "SAIL3160: neutral source jobs report requirement assurance through `assurance`".into(),
-        );
-    }
     let attributions = canonical(attributions.to_vec())?;
     let backend: ProjectResult =
         serde_json::from_value(document.result.clone().ok_or_else(invalid)?)

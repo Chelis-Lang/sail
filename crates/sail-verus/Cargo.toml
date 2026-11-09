@@ -12,11 +12,6 @@ homepage = "https://github.com/Chelis-Lang/sail"
 
 [dependencies]
 sail-acceptance.workspace = true
-sail-contracts-ir.workspace = true
-syn.workspace = true
-num-bigint.workspace = true
-quote.workspace = true
-proc-macro2.workspace = true
 sail-api.workspace = true
 sail-ledger.workspace = true
 sail-smtlib.workspace = true
@@ -35,5 +30,3 @@ inotify.workspace = true
 [lints]
 workspace = true
 
-[dev-dependencies]
-sail-contracts.workspace = true

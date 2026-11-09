@@ -15,29 +15,17 @@ ROOT = Path(__file__).resolve().parent.parent
 RESOURCES = {
     "sail-api": (
         "crates/sail-cli/tests/fixtures/attr/report.golden.json",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/body-edit-requested-target.json",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json",
+        "crates/sail-verus/tests/fixtures/requirement-attribution/body-edit-requested-target.json",
+        "crates/sail-verus/tests/fixtures/requirement-attribution/positive-requested-target.json",
     ),
     "sail-cli": (
         "ci/engine-artifact.py",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/body_edit.rs",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.rs",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs",
         "engine/verus/artifact-linux.json",
         "engine/verus/artifact-macos.json",
     ),
     "sail-daemon": (
         "crates/sail-cli/tests/fixtures/attr/report.golden.json",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.rs",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.rs",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field.v1-manifest.json",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.rs",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/compound_field_guarded.v1-manifest.json",
-        "crates/sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json",
+        "crates/sail-verus/tests/fixtures/requirement-attribution/positive-requested-target.json",
     ),
     "sail-mcp": (
         "crates/sail-cli/tests/fixtures/attr/report.golden.json",
