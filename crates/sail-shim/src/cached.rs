@@ -1161,7 +1161,41 @@ fn finish_run(
     };
     let (code, started) = finish_input(solving, client, solver, args, &mut end);
     record_provenance(prefix.bytes(), end.served.count, started);
+    retain_session(prefix.bytes());
     code
+}
+
+/// Spike prototype (v0.3.0 Track B, not a supported surface): when
+/// `SAIL_SESSION_RETAIN_DIR` is set, writes the session's exact input there
+/// as `<input sha256>.smt2`, raw and atomically (temporary file, then
+/// rename), skipping content already present.
+///
+/// It retains every session, which bounds from above the cost of a policy
+/// that retains only some. Best effort, and only after every reply has
+/// been forwarded and the solver has exited: nothing here can affect what
+/// the client receives.
+fn retain_session(input: &[u8]) {
+    let Some(dir) = std::env::var_os("SAIL_SESSION_RETAIN_DIR").filter(|v| !v.is_empty()) else {
+        return;
+    };
+    let hex = sail_key::sha256(input)
+        .iter()
+        .fold(String::new(), |mut s, b| {
+            use std::fmt::Write as _;
+            let _ = write!(s, "{b:02x}");
+            s
+        });
+    let dir = Path::new(&dir);
+    let dest = dir.join(format!("{hex}.smt2"));
+    if dest.exists() {
+        return;
+    }
+    let tmp = dir.join(format!("{hex}.{}.tmp", std::process::id()));
+    if std::fs::write(&tmp, input).is_ok() {
+        let _ = std::fs::rename(&tmp, dest);
+    } else {
+        let _ = std::fs::remove_file(&tmp);
+    }
 }
 
 struct SessionEnd<'a> {

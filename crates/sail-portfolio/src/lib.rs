@@ -24,7 +24,9 @@ pub mod config;
 pub mod error;
 pub mod fragility;
 pub mod parallel;
+pub mod profile;
 pub mod sessions;
+pub mod slice;
 pub mod stats;
 pub mod transcript;
 

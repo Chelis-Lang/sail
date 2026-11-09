@@ -9,4 +9,4 @@
 
 pub mod process;
 
-pub use process::{Identity, Outcome, Run, Solver, SolverError, hex, run};
+pub use process::{Identity, Outcome, Run, Solver, SolverError, hex, run, run_with_args};

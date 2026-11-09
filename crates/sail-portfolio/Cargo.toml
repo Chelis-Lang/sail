@@ -15,5 +15,9 @@ sail-smtlib.workspace = true
 sail-solver.workspace = true
 serde.workspace = true
 
+[dev-dependencies]
+# Spike only (examples/health_spike.rs reads `--output json` reports).
+serde_json.workspace = true
+
 [lints]
 workspace = true

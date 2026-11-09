@@ -131,13 +131,37 @@ fn drain(mut source: impl Read + Send + 'static) -> thread::JoinHandle<Vec<u8>> 
 ///
 /// [`SolverError`] if the process cannot be started or waited for.
 pub fn run(solver: &Solver, input: &[u8]) -> Result<Run, SolverError> {
-    run_path(&solver.path, solver.timeout, input)
+    run_path(&solver.path, solver.timeout, input, &[])
 }
 
-fn run_path(path: &Path, timeout: Duration, input: &[u8]) -> Result<Run, SolverError> {
+/// Runs the solver on `input` in a fresh process with `extra` command-line
+/// arguments after `-smt2 -in` (for example Z3's global `trace=true
+/// trace_file_name=PATH`, which cannot be set from inside a session).
+///
+/// Extra arguments can change what the solver does, so a result obtained
+/// with them is a measurement, never a verdict.
+///
+/// # Errors
+///
+/// [`SolverError`] if the process cannot be started or waited for.
+pub fn run_with_args(
+    solver: &Solver,
+    extra: &[std::ffi::OsString],
+    input: &[u8],
+) -> Result<Run, SolverError> {
+    run_path(&solver.path, solver.timeout, input, extra)
+}
+
+fn run_path(
+    path: &Path,
+    timeout: Duration,
+    input: &[u8],
+    extra: &[std::ffi::OsString],
+) -> Result<Run, SolverError> {
     let started = Instant::now();
     let mut child = Command::new(path)
         .args(["-smt2", "-in"])
+        .args(extra)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -202,7 +226,7 @@ mod tests {
                 .status()
                 .is_ok_and(|s| s.success());
         assert!(ok);
-        let r = run_path(&script, Duration::from_secs(30), b"hello\n");
+        let r = run_path(&script, Duration::from_secs(30), b"hello\n", &[]);
         let Ok(r) = r else { unreachable!("{r:?}") };
         assert_eq!(r.stdout, b"hello\n");
         assert_eq!(r.outcome, Outcome::Exited { code: Some(0) });
@@ -215,7 +239,7 @@ mod tests {
                 .status()
                 .is_ok_and(|s| s.success());
         assert!(ok);
-        let r = run_path(&slow, Duration::from_millis(100), b"");
+        let r = run_path(&slow, Duration::from_millis(100), b"", &[]);
         let Ok(r) = r else { unreachable!("{r:?}") };
         assert_eq!(r.outcome, Outcome::InfraTimeout);
         let _ = std::fs::remove_dir_all(&dir);
