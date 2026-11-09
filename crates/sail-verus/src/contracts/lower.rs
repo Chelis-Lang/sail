@@ -196,8 +196,11 @@ fn arithmetic(profile: u32) -> &'static str {
 /// Rust's truncating signed division and remainder over mathematical integers.
 ///
 /// Verus's `int` division is Euclidean. For a nonnegative dividend and a
-/// positive divisor the two agree, so each helper reduces to magnitudes and
-/// restores the truncating sign. Callers add the definedness conditions.
+/// positive divisor the two agree, so division reduces to magnitudes and
+/// restores the truncating sign. The remainder has the shape Verus itself
+/// gives executable `%`; a Euclidean remainder ignores the divisor's sign, so
+/// it equals the magnitude form, and the solver can match it to the body's
+/// remainder for a symbolic divisor. Callers add the definedness conditions.
 fn truncating_helpers() -> TokenStream {
     quote! {
         #[doc(hidden)]
@@ -212,10 +215,12 @@ fn truncating_helpers() -> TokenStream {
         }
         #[doc(hidden)]
         pub open spec fn __sail_truncating_rem(dividend: int, divisor: int) -> int {
-            if dividend >= 0 {
-                dividend % (if divisor > 0 { divisor } else { -divisor })
+            if dividend == 0 {
+                0
+            } else if dividend > 0 {
+                dividend % divisor
             } else {
-                -((-dividend) % (if divisor > 0 { divisor } else { -divisor }))
+                -((-dividend) % divisor)
             }
         }
     }

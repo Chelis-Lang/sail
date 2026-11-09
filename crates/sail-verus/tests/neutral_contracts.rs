@@ -27,7 +27,7 @@ enum Expect {
     Fails(&'static [&'static str]),
 }
 
-const NATIVE_CASES: [(&str, &str, Expect); 18] = [
+const NATIVE_CASES: [(&str, &str, Expect); 20] = [
     ("add-one", ADD_ONE, Expect::Verifies),
     ("short-circuit", SHORT_CIRCUIT, Expect::Verifies),
     ("signed-min", SIGNED, Expect::Verifies),
@@ -62,6 +62,16 @@ const NATIVE_CASES: [(&str, &str, Expect); 18] = [
     (
         "floor-intuition-profile-three",
         include_str!("fixtures/neutral-contracts/floor_intuition_profile3.rs"),
+        Expect::Fails(&["postcondition not satisfied"]),
+    ),
+    (
+        "signed-remainder-symbolic-profile-three",
+        include_str!("fixtures/neutral-contracts/signed_remainder_symbolic_profile3.rs"),
+        Expect::Verifies,
+    ),
+    (
+        "signed-division-symbolic-profile-three",
+        include_str!("fixtures/neutral-contracts/signed_division_symbolic_profile3.rs"),
         Expect::Fails(&["postcondition not satisfied"]),
     ),
     (
@@ -395,6 +405,8 @@ native_oracle_tests! {
     native_fork_and_stock_agree_on_consumer_order_profile_two => "consumer-order-profile-two",
     native_fork_and_stock_agree_on_truncating_division => "truncating-division-profile-three",
     native_fork_and_stock_agree_on_floor_intuition => "floor-intuition-profile-three",
+    native_fork_and_stock_agree_on_signed_remainder_symbolic => "signed-remainder-symbolic-profile-three",
+    native_fork_and_stock_agree_on_signed_division_symbolic => "signed-division-symbolic-profile-three",
     native_fork_and_stock_agree_on_body_calls => "body-calls-profile-three",
     native_fork_and_stock_agree_on_narrowing_cast => "narrowing-cast-profile-three",
     native_fork_and_stock_agree_on_callee_precondition => "callee-precondition-profile-three",

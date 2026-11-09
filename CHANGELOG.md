@@ -5,6 +5,12 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Lower profile-three signed remainder in the shape Verus gives executable
+  `%`, so a remainder by a symbolic divisor of either sign verifies. The value
+  is unchanged. Document two profile-three limits: signed division by a
+  symbolic divisor that may be negative is unprovable on the pinned Verus, and
+  Verus gives an out-of-range cast no value. Also correct the claim that profile
+  three admits everything in profile two.
 - Name the declaring module file in `ContractBinding.module_file` for an
   inherent `impl` that sits in a different module file from its receiver type.
   It named the type's file, while the source range counted the `impl` file's
