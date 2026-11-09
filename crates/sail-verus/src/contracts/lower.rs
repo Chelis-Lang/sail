@@ -132,9 +132,6 @@ fn lower_version(
         crate_name,
         &mut bindings,
     )?;
-    for binding in &mut bindings {
-        binding.module_file = module_file(&admitted, &binding.function, crate_name);
-    }
     let helpers = if profile >= 3 {
         truncating_helpers()
     } else {
@@ -172,17 +169,15 @@ fn lower_version(
     })
 }
 
-/// The deepest out-of-line module file that contains a bound function.
-fn module_file(admitted: &Admitted, function: &str, crate_name: &str) -> Option<String> {
-    let path = function
-        .strip_prefix(crate_name)
-        .and_then(|rest| rest.strip_prefix("::"))?
-        .split("::")
-        .map(str::to_owned)
-        .collect::<Vec<_>>();
-    (1..path.len())
+/// The deepest out-of-line module file that declares a bound function.
+///
+/// The declaration site decides, not the function identity: an inherent
+/// `impl` may sit in a different module file from its receiver type, and its
+/// source range belongs to the file that holds the `impl`.
+fn module_file(admitted: &Admitted, module: &[String]) -> Option<String> {
+    (1..=module.len())
         .rev()
-        .map(|end| &path[..end])
+        .map(|end| &module[..end])
         .find(|prefix| admitted.model.module_files.contains(*prefix))
         .map(|prefix| prefix.join("::"))
 }
@@ -413,6 +408,7 @@ fn function_source(
             &guarantee.to_token_stream(),
         );
         requirement.as_str().clone_into(&mut mapped.requirement_id);
+        mapped.module_file = module_file(admitted, &source.module);
         bindings.push(mapped);
     }
     Ok(lowered)

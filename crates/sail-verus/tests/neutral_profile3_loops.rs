@@ -31,77 +31,88 @@ fn profile_three_lowers_loop_heads_to_verus_clauses() -> TestResult {
 
 #[test]
 fn profile_three_refuses_loops_outside_the_admitted_head() {
-    for (body, admitted) in [
+    for (body, expected) in [
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::invariant!(i <= x); sail_contracts::decreases!(x - i); i += 1; } i",
-            true,
+            None,
         ),
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::decreases!(x - i); i += 1; } i",
-            true,
+            None,
         ),
-        ("let mut i: u8 = 0; while i < x { i += 1; } i", false),
+        (
+            "let mut i: u8 = 0; while i < x { i += 1; } i",
+            Some("a while loop body must start with an optional"),
+        ),
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::invariant!(i <= x); i += 1; } i",
-            false,
+            Some("a while loop body must start with an optional"),
         ),
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::decreases!(x - i); sail_contracts::invariant!(i <= x); i += 1; } i",
-            false,
+            Some("items and macros in neutral function bodies"),
         ),
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::decreases!(x - i, i); i += 1; } i",
-            false,
+            Some("a while loop body must start with an optional"),
         ),
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::invariant!(); sail_contracts::decreases!(x - i); i += 1; } i",
-            false,
+            Some("a while loop body must start with an optional"),
         ),
         (
             "let mut i: u8 = 0; 'outer: while i < x { sail_contracts::decreases!(x - i); i += 1; } i",
-            false,
+            Some("loop labels and attributes are unsupported"),
         ),
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::decreases!(x - i); i += 1; break; } i",
-            false,
+            Some("unsupported neutral executable body"),
         ),
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::decreases!(x - i); i += 1; continue; } i",
-            false,
+            Some("unsupported neutral executable body"),
         ),
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::invariant!(old(x) == x); sail_contracts::decreases!(x - i); i += 1; } i",
-            false,
+            Some("old is unsupported in loop invariants"),
         ),
         (
             "let mut i: u8 = 0; while i < x { sail_contracts::invariant!(i <= x); sail_contracts::decreases!(x > i); i += 1; } i",
-            false,
+            Some("a loop measure must be a fixed-width integer expression"),
         ),
         // The head sees locals only through explicit scalar annotations.
         (
             "let mut i = 0u8; while i < x { sail_contracts::invariant!(i <= x); sail_contracts::decreases!(x - i); i += 1; } i",
-            false,
+            Some("unresolved specification binding"),
         ),
         (
             "let mut i: u8 = 0; let i: u8 = 1; while i < x { sail_contracts::decreases!(x - i); } i",
-            false,
+            Some("i is declared twice or shadows an input"),
         ),
         (
             "let x: u8 = 1; while x < 9 { sail_contracts::decreases!(9 - x); } x",
-            false,
+            Some("x is declared twice or shadows an input"),
         ),
         (
             "let mut i: u8 = 0; loop { i += 1; if i > x { return i; } }",
-            false,
+            Some("unsupported neutral executable body"),
         ),
-        ("let mut i: u8 = 0; for _ in 0..x { i += 1; } i", false),
-        ("let mut i: u8 = 0; sail_contracts::decreases!(x); i", false),
+        (
+            "let mut i: u8 = 0; for _ in 0..x { i += 1; } i",
+            Some("unsupported neutral executable body"),
+        ),
+        (
+            "let mut i: u8 = 0; sail_contracts::decreases!(x); i",
+            Some("items and macros in neutral function bodies"),
+        ),
     ] {
         let source = format!(
             "#[sail_contracts::satisfies(\"R\")] #[sail_contracts::ensures(|ret| ret == ret)] pub fn f(x: u8) -> u8 {{ {body} }}"
         );
-        let lowered = lower_profile(&source, "neutral", 3);
-        assert_eq!(lowered.is_ok(), admitted, "{body}: {lowered:?}");
+        let reason = lower_profile(&source, "neutral", 3)
+            .err()
+            .map(|error| error.to_string());
+        refused_for(body, reason.as_deref(), expected);
     }
 }
 
@@ -113,4 +124,15 @@ fn runtime_loops_run_as_ordinary_rust() {
     assert_eq!(runtime_loops::cells(0), 0);
     // Invariants are type checked but not evaluated at runtime.
     assert_eq!(runtime_weak::double(3), 6);
+}
+
+/// Admitted rows expect no error; refused rows name the refusal they expect.
+fn refused_for(body: &str, reason: Option<&str>, expected: Option<&str>) {
+    match expected {
+        None => assert_eq!(reason, None, "{body}"),
+        Some(want) => assert!(
+            reason.is_some_and(|reason| reason.contains(want)),
+            "{body}: expected {want:?}, got {reason:?}"
+        ),
+    }
 }

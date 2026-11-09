@@ -186,7 +186,9 @@ pub struct ContractBinding {
     pub guarantee_sha256: String,
     /// Original complete function range.
     pub source: SourceRange,
-    /// The out-of-line module file holding the function; absent for the crate root.
+    /// The out-of-line module file that declares the function, whose lines
+    /// `source` counts; absent for the crate root. An inherent `impl` may sit
+    /// in a different file from its receiver type, which `function` names.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub module_file: Option<String>,
 }

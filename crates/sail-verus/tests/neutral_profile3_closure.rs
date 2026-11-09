@@ -98,6 +98,15 @@ fn profile_three_lowers_a_closure_to_one_bound_shadow() -> TestResult {
 
 type Case = (&'static str, String, Vec<ModuleSource>, u32);
 
+/// The full closure with one more import at the crate root.
+fn import_case(label: &'static str, import: &str) -> Case {
+    let root = ROOT.replace(
+        "use self::shapes::Grid;",
+        &format!("use self::shapes::Grid; {import}"),
+    );
+    (label, root, files(), 3)
+}
+
 fn refusal_cases() -> Vec<Case> {
     let all = files();
     let mut unsorted = files();
@@ -127,42 +136,10 @@ fn refusal_cases() -> Vec<Case> {
             all.clone(),
             3,
         ),
-        (
-            "external import",
-            ROOT.replace(
-                "use self::shapes::Grid;",
-                "use self::shapes::Grid; use std::cmp::max;",
-            ),
-            all.clone(),
-            3,
-        ),
-        (
-            "unresolved import",
-            ROOT.replace(
-                "use self::shapes::Grid;",
-                "use self::shapes::Grid; use self::shapes::Absent;",
-            ),
-            all.clone(),
-            3,
-        ),
-        (
-            "predicate imported by name",
-            ROOT.replace(
-                "use self::shapes::Grid;",
-                "use self::shapes::Grid; use self::rules::fits;",
-            ),
-            all.clone(),
-            3,
-        ),
-        (
-            "scalar-shadowing alias",
-            ROOT.replace(
-                "use self::shapes::Grid;",
-                "use self::shapes::Grid; use self::shapes::Grid as u8;",
-            ),
-            all.clone(),
-            3,
-        ),
+        import_case("external import", "use std::cmp::max;"),
+        import_case("unresolved import", "use self::shapes::Absent;"),
+        import_case("predicate imported by name", "use self::rules::fits;"),
+        import_case("scalar-shadowing alias", "use self::shapes::Grid as u8;"),
         (
             "enum inside a module file",
             ROOT.to_owned(),
@@ -180,33 +157,83 @@ fn refusal_cases() -> Vec<Case> {
             .concat(),
             3,
         ),
+        import_case(
+            "alias shadowing a local function",
+            "use self::shapes::Grid as span;",
+        ),
         (
             "alias shadowing a local module",
             ROOT.replace(
-                "use self::shapes::Grid;",
-                "use self::shapes::Grid; use self::shapes as rules;",
+                "use self::shapes::measure;",
+                "use self::shapes::measure; use self::shapes::measure as rules;",
             ),
             all.clone(),
             3,
         ),
-        (
-            "super at the crate root",
-            ROOT.replace(
-                "use self::shapes::Grid;",
-                "use self::shapes::Grid; use super::Other;",
-            ),
-            all.clone(),
-            3,
-        ),
+        import_case("super at the crate root", "use super::Other;"),
     ]
 }
 
+/// The refusal each case must produce, so no row passes for an unrelated reason.
+const REASONS: [(&str, &str); 15] = [
+    (
+        "missing module file",
+        "is outside the submitted source closure",
+    ),
+    (
+        "profile two",
+        "out-of-line module files require explicit profile three",
+    ),
+    ("unsorted", "sorted unique module paths"),
+    ("wrong digest", "module files need exact digests"),
+    ("undeclared extra file", "sorted unique module paths"),
+    ("path redirection", "#[path] module redirection"),
+    ("glob import", "glob imports hide source resolution"),
+    (
+        "external import",
+        "external imports can alter source resolution",
+    ),
+    (
+        "unresolved import",
+        "import target crate::shapes::Absent is not an admitted",
+    ),
+    ("predicate imported by name", "cannot be imported by name"),
+    ("scalar-shadowing alias", "import alias u8 shadows"),
+    (
+        "enum inside a module file",
+        "unit enums are admitted only at the crate root",
+    ),
+    (
+        "alias shadowing a local function",
+        "import alias span shadows",
+    ),
+    // Contract resolution reads the alias first, so the predicate call
+    // through the shadowed module is refused before the alias check runs.
+    (
+        "alias shadowing a local module",
+        "contract call does not resolve to a validated requirement predicate",
+    ),
+    (
+        "super at the crate root",
+        "super imports at the crate root leave the crate",
+    ),
+];
+
 #[test]
 fn closures_refuse_files_and_imports_outside_the_declared_closure() {
-    for (label, root, modules, profile) in refusal_cases() {
+    let cases = refusal_cases();
+    assert_eq!(cases.len(), REASONS.len());
+    for ((label, root, modules, profile), (expected_label, want)) in cases.into_iter().zip(REASONS)
+    {
+        assert_eq!(label, expected_label);
+        let reason = lower_closure(&root, &modules, "neutral", profile)
+            .err()
+            .map(|error| error.to_string());
         assert!(
-            lower_closure(&root, &modules, "neutral", profile).is_err(),
-            "{label}"
+            reason
+                .as_deref()
+                .is_some_and(|reason| reason.contains(want)),
+            "{label}: expected {want:?}, got {reason:?}"
         );
     }
 }
@@ -279,4 +306,35 @@ fn the_runtime_closure_compiles_as_ordinary_rust_modules() {
         height: 0,
     };
     assert!(std::panic::catch_unwind(|| runtime_closure::span(&too_wide)).is_err());
+}
+
+#[test]
+fn module_file_names_the_file_that_declares_each_function() -> TestResult {
+    const STRUCT: &str = "#[derive(Debug)] pub struct S { pub v: u8 }\n";
+    const METHOD: &str = "#[sail_contracts::satisfies(\"R\")] #[sail_contracts::ensures(|ret| ret == self.v)] pub fn get(&self) -> u8 { self.v } }\n";
+    let cases = [
+        (
+            "qualified receiver",
+            format!("impl crate::a::S {{\n{METHOD}"),
+            2,
+        ),
+        (
+            "imported receiver",
+            format!("use super::a::S;\nimpl S {{\n{METHOD}"),
+            3,
+        ),
+    ];
+    for (label, method_file, line) in cases {
+        let modules = [module("a", STRUCT), module("b", &method_file)];
+        let lowered = lower_closure("pub mod a;\npub mod b;\n", &modules, "neutral", 3)?;
+        let [binding] = lowered.manifest.bindings.as_slice() else {
+            return Err(format!("{label}: expected one binding").into());
+        };
+        // The identity names the receiver type's module; the declaration
+        // site, whose lines the source range counts, is file `b`.
+        assert_eq!(binding.function, "neutral::a::S::get", "{label}");
+        assert_eq!(binding.module_file.as_deref(), Some("b"), "{label}");
+        assert_eq!(binding.source.line, line, "{label}");
+    }
+    Ok(())
 }

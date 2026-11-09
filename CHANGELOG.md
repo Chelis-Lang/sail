@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Name the declaring module file in `ContractBinding.module_file` for an
+  inherent `impl` that sits in a different module file from its receiver type.
+  It named the type's file, while the source range counted the `impl` file's
+  lines. Profile-three refusal tests now assert the refusal reason.
 - Admit multi-file source closures in neutral profile three (ADR 0103).
   `Submission.modules` carries out-of-line module files by crate-relative module
   path; `lower_closure`, `validate_closure_manifest` and `verify_closure` admit
