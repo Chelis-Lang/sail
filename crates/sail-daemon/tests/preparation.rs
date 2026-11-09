@@ -71,6 +71,7 @@ impl Fixture {
                 version: VERSION,
                 project_dir: self.root.join("project"),
                 args: Vec::new(),
+                adopt: None,
             },
         )?;
         let response: Response = sail_api::jobs::read_frame(&mut stream)?;

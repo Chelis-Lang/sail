@@ -346,7 +346,10 @@ pub(crate) fn verify(
         // partial report, which says so in its notes.
         return crate::verify::plain_verify(&config.args, err);
     }
-    let _foreground = crate::preparation::foreground(&config);
+    let adopt = (!standalone && !interactive)
+        .then(|| sail_verus::managed::noop::key(&config, options.json))
+        .flatten();
+    let _foreground = crate::preparation::foreground(&config, adopt);
     let result = if standalone {
         sail_verus::managed::standalone::run(&config, out, err, !options.json)
     } else if interactive && options.json {

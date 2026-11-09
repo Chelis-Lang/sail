@@ -49,6 +49,12 @@ impl Stamp {
         Self([0, 0, 0, 0, 0, 0, -1, -1])
     }
 
+    /// The file's size in bytes.
+    #[must_use]
+    pub fn size(self) -> i64 {
+        self.0[2]
+    }
+
     /// Whether the last status change happened at least [`SETTLED`] before
     /// `start`. A ctime before the epoch or after `start` is never settled.
     #[must_use]

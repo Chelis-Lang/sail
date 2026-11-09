@@ -25,7 +25,11 @@ struct Task {
 struct Active {
     key: PathBuf,
     cancel: Arc<AtomicBool>,
+    /// The origin's unchanged-call key, which an identical foreground call adopts.
+    origin: Option<String>,
 }
+/// Spike (#558): the longest a foreground call waits for an adopted preparation.
+const ADOPT_LIMIT: Duration = Duration::from_secs(30);
 #[derive(Default)]
 struct Inner {
     pending: VecDeque<Task>,
@@ -112,7 +116,9 @@ impl Coordinator {
             active.cancel.store(true, Ordering::SeqCst);
         }
         let delay = if request.origin.is_some() {
-            Duration::from_secs(2)
+            // Spike (#558): the worker binds unsettled files by content, so
+            // it no longer waits for the origin's outputs to settle.
+            Duration::ZERO
         } else {
             Duration::from_millis(500)
         };
@@ -134,6 +140,7 @@ pub(super) fn foreground(
     version: u32,
     project: &Path,
     args: &[String],
+    adopt: Option<&str>,
 ) -> io::Result<()> {
     if version != VERSION {
         return Err(io::Error::other(
@@ -141,6 +148,10 @@ pub(super) fn foreground(
         ));
     }
     let key = super::schedule::workspace_key(project, args);
+    if let Some(adopt) = adopt {
+        let outcome = await_adopted(state, &key, adopt);
+        adopt_trace(state, outcome);
+    }
     {
         let mut inner = state.preparation.0.lock().map_err(super::lock_error)?;
         // Cancellation and admission must share the lock with `take`: no
@@ -167,6 +178,55 @@ pub(super) fn foreground(
         }
     }
     Ok(())
+}
+/// Wait while a preparation of this workspace with the caller's exact key is
+/// queued or running. Returns immediately when there is none; whatever
+/// happened to it, the caller then takes the ordinary path (replay or run).
+fn await_adopted(state: &State, key: &Path, adopt: &str) -> (&'static str, Duration) {
+    let started = Instant::now();
+    let mut seen = false;
+    loop {
+        let matched = {
+            let Ok(mut inner) = state.preparation.0.lock() else {
+                return ("lock", started.elapsed());
+            };
+            let running = inner.active.as_ref().is_some_and(|active| {
+                active.key == key
+                    && active.origin.as_deref() == Some(adopt)
+                    && !active.cancel.load(Ordering::SeqCst)
+            });
+            let mut queued = false;
+            for task in &mut inner.pending {
+                if task.key == key && task.request.origin.as_ref().is_some_and(|o| o.key == adopt) {
+                    task.after = Instant::now();
+                    queued = true;
+                }
+            }
+            running || queued
+        };
+        if !matched {
+            return (if seen { "finished" } else { "none" }, started.elapsed());
+        }
+        seen = true;
+        if state.stop.load(Ordering::SeqCst) || started.elapsed() >= ADOPT_LIMIT {
+            return ("limit", started.elapsed());
+        }
+        state.ready.notify_all();
+        std::thread::sleep(Duration::from_millis(2));
+    }
+}
+/// Spike diagnostics only: one line per adoption decision.
+fn adopt_trace(state: &State, (outcome, waited): (&'static str, Duration)) {
+    use std::io::Write as _;
+    let directory = state.root.join("preparation");
+    if super::store::private_dir(&directory).is_ok()
+        && let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(directory.join("adopt.log"))
+    {
+        let _ = writeln!(file, "{outcome} {:.1}", waited.as_secs_f64() * 1000.0);
+    }
 }
 struct Foreground<'a>(&'a State);
 impl Drop for Foreground<'_> {
@@ -231,7 +291,7 @@ pub(super) fn run(state: &State, project_cache: Option<&Path>) {
             }
         }
         let Ok(queue) = state.queue.lock() else { break };
-        let _ = state.ready.wait_timeout(queue, Duration::from_millis(100));
+        let _ = state.ready.wait_timeout(queue, Duration::from_millis(20));
     }
 }
 
@@ -249,6 +309,11 @@ fn take(coordinator: &Coordinator) -> Option<(Task, Arc<AtomicBool>)> {
     inner.active = Some(Active {
         key: task.key.clone(),
         cancel: Arc::clone(&cancel),
+        origin: task
+            .request
+            .origin
+            .as_ref()
+            .map(|origin| origin.key.clone()),
     });
     Some((task, cancel))
 }
@@ -314,7 +379,7 @@ fn execute(state: &State, task: &Submission, cancel: &AtomicBool) -> io::Result<
             }
             break;
         }
-        std::thread::sleep(Duration::from_millis(20));
+        std::thread::sleep(Duration::from_millis(2));
     }
     let mut bytes = Vec::new();
     std::fs::File::open(result)?

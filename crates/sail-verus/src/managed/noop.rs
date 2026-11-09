@@ -53,7 +53,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 /// exact daemon socket, and never records Cargo's transient status lines
 /// (#571, #573, #574). Version 4 also bound names required by proof
 /// receipts, including ghost reads absent from dep-info (#552).
-const VERSION: u32 = 7;
+const VERSION: u32 = 8;
 /// Cache records up to this size are compared by content; larger files
 /// (the private executable aliases) by stamp.
 const CONTENT_LIMIT: u64 = 16 << 20;
@@ -94,6 +94,66 @@ struct Record {
     /// The recorded run's consumer-visible job events, in order
     /// (`context-ready`, `target-reused`).
     events: Vec<serde_json::Value>,
+    /// Spike (#558): entries whose stamps were too recent when the daemon's
+    /// worker recorded them, additionally bound by content. Their stamps stay
+    /// in `lstat`; a replay that finds a binding's stamp settled drops it.
+    #[serde(default)]
+    unsettled: Vec<Unsettled>,
+}
+
+/// One too-recent entry and what it held when it was recorded.
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct Unsettled {
+    path: PathBuf,
+    stamp: Stamp,
+    binding: Binding,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+enum Binding {
+    /// SHA-256 of a regular file.
+    File(String),
+    /// Complete sorted entry names of a directory.
+    Directory(Vec<String>),
+    /// A symbolic link's target.
+    Link(PathBuf),
+}
+
+static BIND_UNSETTLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Spike (#558): let this process's recording bind too-recent entries by
+/// content instead of refusing. Only the daemon's preparation worker calls it.
+pub fn bind_unsettled() {
+    BIND_UNSETTLED.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
+/// What `path` holds now, when its `lstat` stamp is `stamp` before and after
+/// the read.
+fn binding(path: &Path, stamp: Stamp) -> Option<Binding> {
+    let metadata = std::fs::symlink_metadata(path).ok()?;
+    if Stamp::of(&metadata) != stamp {
+        return None;
+    }
+    let binding = if metadata.is_file() {
+        Binding::File(super::files::file_digest(path).ok()?)
+    } else if metadata.is_dir() {
+        Binding::Directory(entry_names(path)?)
+    } else if metadata.is_symlink() {
+        Binding::Link(std::fs::read_link(path).ok()?)
+    } else {
+        return None;
+    };
+    (lstat(path).ok()? == Some(stamp)).then_some(binding)
+}
+
+/// The first content binding that no longer holds.
+fn unsettled_mismatch(unsettled: &[Unsettled]) -> Option<String> {
+    let now = crate::parallel::in_order(unsettled, |entry| binding(&entry.path, entry.stamp));
+    unsettled
+        .iter()
+        .zip(now)
+        .find(|(entry, now)| now.as_ref() != Some(&entry.binding))
+        .map(|(entry, _)| format!("changed: {}", entry.path.display()))
 }
 
 /// Cargo's uplifted copy of a build-script executable (#437). Cargo
@@ -639,12 +699,51 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
         .filter_map(|(path, stamp)| stamp.map(|stamp| (path, stamp)))
         .chain(stat_entries.iter().map(|(path, stamp)| (path, *stamp)))
         .find(|(_, stamp)| !stamp.settled(facts.start));
+    let mut unsettled = Vec::new();
     if let Some((path, _)) = recent {
+        if !BIND_UNSETTLED.load(std::sync::atomic::Ordering::SeqCst)
+            || stat_entries
+                .iter()
+                .any(|(_, stamp)| !stamp.settled(facts.start))
+        {
+            trace(&format!(
+                "not recorded: {} changed too recently",
+                path.display()
+            ));
+            return None;
+        }
+        let recent: Vec<(PathBuf, Stamp)> = lstat_entries
+            .iter()
+            .filter_map(|(path, stamp)| stamp.map(|stamp| (path.clone(), stamp)))
+            .filter(|(_, stamp)| !stamp.settled(facts.start))
+            .collect();
+        let bindings = crate::parallel::in_order(&recent, |(path, stamp)| binding(path, *stamp));
+        let mut bytes = 0u64;
+        for ((path, stamp), binding) in recent.into_iter().zip(bindings) {
+            let Some(binding) = binding else {
+                trace(&format!(
+                    "not recorded: {} changed while bound by content",
+                    path.display()
+                ));
+                return None;
+            };
+            if matches!(binding, Binding::File(_)) {
+                bytes += u64::try_from(stamp.size()).unwrap_or(0);
+            }
+            if std::env::var_os("SAIL_MANAGED_NOOP_TRACE").is_some() {
+                trace(&format!("bound by content: {}", path.display()));
+            }
+            unsettled.push(Unsettled {
+                path,
+                stamp,
+                binding,
+            });
+        }
         trace(&format!(
-            "not recorded: {} changed too recently",
-            path.display()
+            "bound by content: {} entries, {bytes} file bytes",
+            unsettled.len()
         ));
-        return None;
+        trace_phase(&mut timing, "unsettled");
     }
     let mut names = super::environment::declared_names(facts.target)?;
     names.extend(required_environment);
@@ -669,6 +768,7 @@ pub(super) fn prepare(facts: Facts<'_>) -> Option<Pending> {
             stdout: Vec::new(),
             stderr: Vec::new(),
             events: facts.events,
+            unsettled,
         },
     })
 }
@@ -836,6 +936,8 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
     // while it is compared.
     let _workspace = lock(&record.locks.0, true)?;
     let _family = lock(&record.locks.1, false)?;
+    let mut record = record;
+    let observed = SystemTime::now();
     if let Some(reason) = mismatch(&record) {
         trace(&format!("miss: {reason}"));
         if std::env::var_os("SAIL_MANAGED_NOOP_TRACE").is_some() {
@@ -868,6 +970,29 @@ pub fn replay(config: &Config, key: &str, started: std::time::Instant) -> Option
             .collect::<Option<Vec<_>>>()?;
         super::invocation_slots::touch(slot)?;
         super::invocation_slots::publish(context, &views).ok()?;
+    }
+    // Spike (#558): a binding whose stamp and content both still hold and
+    // whose stamp is now settled is an ordinary settled stamp from here on.
+    if !record.unsettled.is_empty() {
+        let before = record.unsettled.len();
+        record
+            .unsettled
+            .retain(|entry| !entry.stamp.settled(observed));
+        if record.unsettled.len() != before {
+            let path = record_path(&cache, key);
+            let temporary = path.with_extension(format!("settle.{}", std::process::id()));
+            let written = serde_json::to_vec(&record)
+                .ok()
+                .is_some_and(|bytes| std::fs::write(&temporary, bytes).is_ok())
+                && std::fs::rename(&temporary, &path).is_ok();
+            if !written {
+                let _ = std::fs::remove_file(&temporary);
+            }
+            trace(&format!(
+                "settled: {} of {before} content bindings dropped (rewritten: {written})",
+                before - record.unsettled.len()
+            ));
+        }
     }
     let run_id = format!(
         "{}-{}",
@@ -978,6 +1103,9 @@ fn mismatch(record: &Record) -> Option<String> {
         }
     }
     if let Some(reason) = copies_mismatch(&record.copies, &record.directories) {
+        return Some(reason);
+    }
+    if let Some(reason) = unsettled_mismatch(&record.unsettled) {
         return Some(reason);
     }
     for (root, skip, entries) in &record.trees {
@@ -1893,6 +2021,7 @@ mod tests {
                 stdout: Vec::new(),
                 stderr: Vec::new(),
                 events: Vec::new(),
+                unsettled: Vec::new(),
             },
         };
         let finished = b"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s\n";

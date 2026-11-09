@@ -12,6 +12,7 @@ use sail_api::project::{Currentness, ProjectResult};
 use sail_verus::managed::{Config, noop};
 
 const HANDOFF_WAIT: Duration = Duration::from_millis(25);
+const ADOPT_WAIT: Duration = Duration::from_secs(35);
 const CAPTURE_LIMIT: usize = 16 * 1024 * 1024;
 
 #[derive(Default)]
@@ -46,14 +47,22 @@ fn connection(socket: &Path) -> Option<UnixStream> {
 }
 
 /// Retaining this connection keeps maintenance below the foreground call.
-pub(crate) fn foreground(config: &Config) -> Option<UnixStream> {
+pub(crate) fn foreground(config: &Config, adopt: Option<String>) -> Option<UnixStream> {
     let mut stream = connect(config)?;
+    let adopt = adopt.filter(|_| enabled());
+    if adopt.is_some() {
+        // Spike (#558): the daemon answers once an adopted preparation ends,
+        // within its own limit. A lost daemon ends the read and the call
+        // takes the ordinary path.
+        stream.set_read_timeout(Some(ADOPT_WAIT)).ok()?;
+    }
     sail_api::jobs::write_frame(
         &mut stream,
         &Request::Foreground {
             version: VERSION,
             project_dir: config.workspace.clone(),
             args: config.args.clone(),
+            adopt,
         },
     )
     .ok()?;
@@ -265,6 +274,11 @@ fn worker_result(args: &[String]) -> Result<Outcome, String> {
         if !snapshot.complete || snapshot.revision != origin.readback_revision {
             return Err("origin inputs changed before preparation".into());
         }
+    }
+    // Spike (#558): only the daemon's private worker binds unsettled files by
+    // content; a foreground call keeps the ordinary settle guard.
+    if task.origin.is_some() {
+        noop::bind_unsettled();
     }
     let (mut stdout, mut stderr) = (Capture::default(), Capture::default());
     let shown: Option<&mut dyn io::Write> = if task.json { None } else { Some(&mut stdout) };

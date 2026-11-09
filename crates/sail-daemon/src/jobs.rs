@@ -285,6 +285,7 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                             version,
                             project_dir,
                             args,
+                            adopt,
                         }) => {
                             let _ = preparation::foreground(
                                 &state,
@@ -292,6 +293,7 @@ fn endpoint(listener: &UnixListener, state: &Arc<State>) {
                                 version,
                                 &project_dir,
                                 &args,
+                                adopt.as_deref(),
                             );
                             clients.fetch_sub(1, Ordering::SeqCst);
                             return;

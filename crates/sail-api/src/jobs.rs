@@ -159,6 +159,11 @@ pub enum Request {
         project_dir: PathBuf,
         /// Arguments used to resolve the workspace scheduling key.
         args: Vec<String>,
+        /// Spike (#558): the caller's exact unchanged-call key. A queued or
+        /// running preparation with this origin key is adopted (awaited)
+        /// instead of preempted; the lease response is sent when it ends.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        adopt: Option<String>,
     },
     /// Fail-closed negotiation before any non-stock submission.
     Capabilities,
