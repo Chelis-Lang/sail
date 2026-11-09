@@ -135,7 +135,8 @@ correctness. Backend UNKNOWN remains explicit.
 Set `Submission.profile` to `3` for the forms the owner authorized in
 [ADR 0103](decisions/0103-scoped-neutral-widening.md). The service advertises
 profile three in `neutral_contract_profiles`; clients refuse it on endpoints that
-do not. Profile three admits everything in profile two, plus:
+do not. Profile three admits everything in profile two except unit enums outside
+the crate root (see the closure item below), plus:
 
 - **Division and remainder in specifications.** `/` and `%` follow Rust's
   checked integer semantics. Division truncates toward zero, and the remainder
@@ -144,15 +145,21 @@ do not. Profile three admits everything in profile two, plus:
   The signed minimum divided by negative one is undefined, and so is the signed
   minimum's remainder by negative one, exactly as Rust's checked operations
   refuse them. An undefined operation never makes a guarantee true. Both
-  operands share one fixed-width integer type.
+  operands share one fixed-width integer type. One limit is known: for signed
+  operands, the pinned Verus cannot prove a quotient by a divisor that is not a
+  literal and may be negative, even when the guarantee is exactly the body. The
+  function is then reported as not proved, which is not evidence against the
+  code. A literal or provably positive divisor, and signed remainder by any
+  divisor, verify.
 
 - **Calls, casts and `match` in executable bodies.** A body can call an
   admitted contracted function by a plain path (`clamp(x, 9)`, `crate::a::f(x)`,
   `Self::g(self)` or `Meter::g(m)`) and call a method on `self`. Each call is
   checked against the callee's own `requires` and uses its `ensures`, exactly
-  as Verus checks a call. A body can cast to a fixed-width integer type; the
-  cast keeps Rust's truncating semantics, and Verus proves nothing about the
-  result beyond them. `match` admits integer and Boolean literals, literal
+  as Verus checks a call. A body can cast to a fixed-width integer type. At run
+  time the cast keeps Rust's semantics. Verus models only in-range casts and
+  gives an out-of-range cast no value, so a guarantee that depends on narrowing
+  or wrap-around cannot be proved. `match` admits integer and Boolean literals, literal
   ranges, qualified unit enum variants, `|` alternatives, wildcards and guards.
   Shared borrows such as `&value` are admitted. Calls to requirement predicates,
   library functions, closures and generic functions are refused, and so is any
@@ -181,8 +188,11 @@ do not. Profile three admits everything in profile two, plus:
   redirection is refused. Module files can hold annotated functions, requirement
   predicates, structs and enums. Imports that start with `crate`, `self` or
   `super` are admitted when they name an admitted module, type or free
-  function, including renamed imports. Glob imports, external imports and
-  aliases that shadow a scalar type or a local item stay refused. The manifest
+  function, including renamed imports. A requirement predicate is called by its
+  module path, such as `rules::fits(x)`, not imported by name. A parent-module
+  item is reached through an import such as `use super::f;`, not a direct
+  `super::f()` path. Glob imports, external imports and aliases that shadow a
+  scalar type or a local item stay refused. The manifest
   lists each module file's digest, its `original_sha256` is the closure
   identity, and each binding names its module file. Unit enums must stay at
   the crate root, because the pinned Verus aborts on their structural-equality
