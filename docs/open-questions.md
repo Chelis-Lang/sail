@@ -546,3 +546,24 @@ planned for releases after 0.1.0. The owner answered all twelve on
     pull request that enables it once D.I.V.E. is distributed. Public temporal
     packaging still waits for that distribution. See
     [ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md).
+    **Superseded in part 2026-11-09:** the owner abandoned Oyster, and cvc5
+    follows the Kani pilot inside v0.3.0. The D.I.V.E. part of the 2026-11-06
+    amendment stands. See question 49.
+
+49. **Oyster's standing and the scope of v0.3.0.**
+    **Answered 2026-11-09 (owner):** Oyster is abandoned. Sail does no further
+    Oyster work, and agents have no Oyster repository to file in (this narrows
+    the answer to question 21). D.I.V.E. stays private;
+    [ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md), the temporal
+    extension and its queued pull request are unchanged. The next release is
+    v0.3.0: Verus mutation testing as the headline, proof health and
+    profiling, never slower than stock with cheaper changed proofs, reach (a
+    GitHub Action, installation, an editor bridge), and a Kani pilot followed
+    by cvc5 in the SMT runtime inside the same release. Neutral-contract
+    surfaces are removed in v0.3.0 once their stated preconditions hold; the
+    SMT runtime, tiers and ledger, counterexample decoding and general
+    attribution are kept. Requirement attribution and the `sail-contracts`
+    front-end crates are decided at the checkpoint after the spikes. Work
+    starts with short spikes that each carry a drop rule. Final publication
+    still needs the owner's explicit approval of the exact candidate. See
+    [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).

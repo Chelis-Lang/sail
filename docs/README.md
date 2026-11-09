@@ -52,10 +52,11 @@ them.
 
 Current ordering: [roadmap](ROADMAP.md),
 [next-release mutation feature](design/verus-mutation-release.md),
-[ADR 0100](decisions/0100-mutation-first-roadmap.md) and
+[ADR 0100](decisions/0100-mutation-first-roadmap.md),
+[ADR 0109](decisions/0109-oyster-retired-v030-scope.md) and
 [0.2.0 backlog reconciliation](reports/2026-11-04-roadmap-review.md).
-Oyster integration expansion and temporal packaging are held; existing
-experimental surfaces remain maintained.
+Oyster is abandoned and temporal packaging is held; existing experimental
+surfaces remain maintained until their scheduled removal.
 
 - [AGENTS.md](../AGENTS.md): workflow, Rust conventions, gates and
   documentation rules.

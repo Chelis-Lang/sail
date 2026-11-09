@@ -1,7 +1,6 @@
 # Releasing Sail
 
-Development and performance work follow current main, including the Oyster
-integration. Release composition and final publication require the owner's
+Development and performance work follow current main. Release composition and final publication require the owner's
 explicit approval of the exact candidate. Agents complete the builds, checks,
 staging and review package before requesting that approval. Stable 0.2.0 was
 explicitly approved and published on 2026-11-04; see its

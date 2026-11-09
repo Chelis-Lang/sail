@@ -1,8 +1,10 @@
 # Next release: specification feedback through Verus mutation
 
-Status: owner-selected feature scope, 2026-11-04; not implemented as a general
-CLI/MCP product. [ADR 0100](../decisions/0100-mutation-first-roadmap.md) records
-the ordering. Existing benchmark catalogues and neutral literal campaigns retain
+Status: owner-selected feature scope, 2026-11-04; headline of v0.3.0 since
+2026-11-09; not implemented as a general CLI/MCP product.
+[ADR 0100](../decisions/0100-mutation-first-roadmap.md) records the ordering
+and [ADR 0109](../decisions/0109-oyster-retired-v030-scope.md) the release
+scope. Existing benchmark catalogues and neutral literal campaigns retain
 their separate scope.
 
 ## User and session
@@ -49,5 +51,6 @@ feedback; it does not silently edit or weaken specifications.
    a single fixture do not establish general savings.
 
 Changed-proof scheduling and cold-run improvements proceed in the performance
-lane. Frontend feasibility, Kani and Oyster are not release dependencies. Version,
-final composition and publication remain owner decisions.
+lane. Frontend feasibility and the Kani pilot are not dependencies of this
+feature. The release is v0.3.0; final composition and publication remain owner
+decisions.

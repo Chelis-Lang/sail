@@ -1,10 +1,12 @@
 # Scope: Sail as a general verification runtime
 
-- **Status:** delivered surfaces maintained. Owner direction, 2026-11-04
-  ([ADR 0100](../decisions/0100-mutation-first-roadmap.md)), puts mutation first,
-  then a Kani pilot before cvc5. Oyster expansion and SDK migration are held for
-  design; temporal packaging is held for distribution. The 2026-10-21 active
-  integration ordering is historical.
+- **Status:** delivered surfaces maintained. Owner decision, 2026-11-09
+  ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)): Oyster is
+  abandoned, mutation testing leads v0.3.0, and a Kani pilot is followed by
+  cvc5 in the SMT runtime inside that release. Neutral-contract surfaces are
+  frozen and scheduled for removal in v0.3.0. Temporal packaging is held for
+  distribution. The 2026-10-21 active integration ordering and the Oyster
+  descriptions below are historical.
 - **Owner answers:** questions 16–29 in [open questions](../open-questions.md),
   answered 2026-10-15.
 - **Source:** owner direction, 2026-10-15.
@@ -16,7 +18,7 @@ Sail today serves Verus. It runs Sail's Verus (built from the fork,
 [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)) with the pinned
 Z3 behind a caching shim, and returns the same verdicts and diagnostics as
 plain stock Verus. This document preserves the longer-term ambition of
-one verification server for a family of tools; ADR 0100 controls current order. The
+one verification server for a family of tools; ADR 0109 controls current order. The
 [charter](../CHARTER.md) and its correctness contract govern all of it
 unchanged (charter appendix entry 5). Where this scope and the charter
 conflict, the charter wins; the conflicts found so far are listed under
@@ -27,10 +29,11 @@ conflict, the charter wins; the conflicts found so far are listed under
 Raw Z3 execution is a supported command
 ([ADR 0108](../decisions/0108-supported-smt-runtime.md)); neutral source jobs
 and source-bound assurance are implemented experimental APIs. Native temporal execution exists in the internal extension,
-absent from public archives. Maintain these surfaces and tests; do not widen the
-neutral subset or migrate Oyster's SDK while design is held. The backend list
+absent from public archives. Maintain these surfaces and tests. The neutral
+surfaces are frozen and are removed in v0.3.0 once ADR 0109's preconditions
+hold; they are present until then. The backend list
 below is long-term scope, not simultaneous implementation work. The next
-release's Verus-aware mutation feature has no Oyster dependency.
+release's Verus-aware mutation feature does not depend on neutral contracts.
 The existing Verus path supplies these reusable components:
 
 - one verifier (Verus) and one solver (Z3), with solver identity already
@@ -334,16 +337,17 @@ different audience from this mission.
 
 ## Dependency graph
 
-**Current order (owner, 2026-11-04).**
+**Current order (owner, 2026-11-09, ADR 0109).**
 
-1. Verus-aware mutation (#140, #141), independent of neutral/Oyster integration.
-2. Alongside: changed-proof costs (#158, #244), Mac Anvil cold (#232), bounded
-   frontend go/no-go (#162), correctness-test gaps and acceptance proof (#368).
-3. Then a real-crate Kani pilot (#135), before cvc5 and certificates. Production
-   adoption follows the pilot's explicit go/no-go decision.
-4. Maintain delivered SMT, contracts and assurance. Oyster engineering resumes
-   only after a settled user/problem/session/requirements design; no neutral
-   expansion or SDK migration meanwhile.
+1. Verus-aware mutation (#140, #141), independent of neutral contracts.
+2. Alongside: proof health and profiling, changed-proof costs (#158, #244),
+   Mac Anvil cold (#232), bounded frontend go/no-go (#162), reach,
+   correctness-test gaps and acceptance proof (#368).
+3. A real-crate Kani pilot (#135) with an explicit go/no-go decision. cvc5
+   follows that decision inside v0.3.0, in the supported SMT runtime only.
+   Certificates get one measurement spike and no product work.
+4. Maintain the supported SMT runtime. Neutral contracts, source jobs and
+   assurance are frozen until their removal in v0.3.0; Oyster is abandoned.
 5. Temporal packaging waits for D.I.V.E.'s distribution decision.
 
 The old interface-first/SMT-first fan-out is historical. Delivered interfaces
@@ -442,18 +446,18 @@ Each was resolved in the charter's favour until the owner answered on
    20, historical):** publication waited for the owner's rollout. The owner
    subsequently approved eighteen packages at 0.2.0 (ADR 0098); root
    `publish = false` remains a default with explicit selected-crate opt-ins.
-   Private temporal extensions stay unpublished. Oyster's existing Git SDK
-   pin remains frozen during the design hold.
+   Private temporal extensions stay unpublished.
 8. **Filing outside this repository.** The scope asks for interface needs to be
    raised as issues or proposals for Oyster and D.I.V.E. **Resolved (question
    21):** agents may open issues and PRs in this line of work's repositories
-   (Sail, the Verus fork, D.I.V.E., Oyster), never in upstream Verus or wider
-   repositories. `AGENTS.md` lists them.
+   (Sail, the Verus fork, D.I.V.E.), never in upstream Verus or wider
+   repositories. `AGENTS.md` lists them. Oyster left the list when the owner
+   abandoned it (question 49).
 9. **Roadmap review deferral.** The 2026-10-13 review deferred more SMT
    backends, certificates and other verifiers for lack of user pull. This
    earlier owner direction scheduled them after 0.1.0 (question 27).
-   ADR 0100 now prioritizes mutation, then a Kani pilot before cvc5, with
-   explicit Oyster design and temporal distribution holds.
+   ADR 0109 now prioritizes mutation, then a Kani pilot followed by cvc5 in
+   the SMT runtime inside v0.3.0, with the temporal distribution hold kept.
 10. **Rule 1 and trigger choice in the oracle.** Stock Verus, the
     conformance oracle for lowered crates, picks triggers differently run to
     run (VI-0015), which would make oracle comparisons flaky. **Resolved

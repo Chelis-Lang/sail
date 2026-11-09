@@ -1,6 +1,8 @@
 # 0100: Mutation-first roadmap and design-first Oyster hold
 
-- **Status:** accepted by owner, 2026-11-04
+- **Status:** accepted by owner, 2026-11-04; Oyster parts superseded and
+  backend ordering amended by
+  [ADR 0109](0109-oyster-retired-v030-scope.md) on 2026-11-09
 - **Date:** 2026-11-04
 - **Amends:** work ordering in ADR 0065 and charter appendix entry 8;
   existing implementations and correctness contracts remain in force
@@ -30,6 +32,9 @@ remains useful backlog. Measure total campaign cost before claiming cache gains.
 Then evaluate Kani on a real ordinary Rust crate before choosing a production
 backend, including the experimental contracts interface in the go/no-go. Kani
 precedes cvc5. Do not widen the neutral subset for that pilot.
+(Amended on 2026-11-09: cvc5 follows the Kani decision inside v0.3.0, in the
+supported SMT runtime only. See
+[ADR 0109](0109-oyster-retired-v030-scope.md).)
 
 Hold Oyster integration expansion and SDK migration. Maintain delivered
 experimental interfaces and tests. A short Oyster design must identify user,
@@ -37,7 +42,8 @@ current problem, one successful session and the value of requirements over
 direct specs/contracts/mutation feedback. Product direction remains unsettled.
 (Amended in part on 2026-11-08: the owner lifted the neutral-widening hold
 for a named set of items only. See
-[ADR 0103](0103-scoped-neutral-widening.md).)
+[ADR 0103](0103-scoped-neutral-widening.md). Superseded on 2026-11-09: the
+owner abandoned Oyster. See [ADR 0109](0109-oyster-retired-v030-scope.md).)
 
 Hold temporal packaging until D.I.V.E.'s distribution decision.
 (Superseded in part on 2026-11-06: the Oyster owner resumed Oyster for shelf
