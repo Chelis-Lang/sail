@@ -17,64 +17,85 @@ mod runtime_guarded_compound {
     include!("fixtures/neutral-contracts/compound_field_guarded.rs");
 }
 
-const NATIVE_CASES: [(&str, &str, bool); 18] = [
-    ("add-one", ADD_ONE, true),
-    ("short-circuit", SHORT_CIRCUIT, true),
-    ("signed-min", SIGNED, true),
-    ("wallet", WALLET, true),
-    ("negated-overflow", NEGATED, false),
-    ("old-overflow", OLD, false),
-    ("compound-field-overflow", COMPOUND, false),
-    ("compound-field-guarded", GUARDED_COMPOUND, true),
+/// What both native backends must report for one oracle case.
+#[derive(Clone, Copy, Debug)]
+enum Expect {
+    /// The whole crate verifies.
+    Verifies,
+    /// Verification fails, and stderr names each of these diagnostics, so a
+    /// control cannot pass by failing for an unrelated reason.
+    Fails(&'static [&'static str]),
+}
+
+const NATIVE_CASES: [(&str, &str, Expect); 18] = [
+    ("add-one", ADD_ONE, Expect::Verifies),
+    ("short-circuit", SHORT_CIRCUIT, Expect::Verifies),
+    ("signed-min", SIGNED, Expect::Verifies),
+    ("wallet", WALLET, Expect::Verifies),
+    (
+        "negated-overflow",
+        NEGATED,
+        Expect::Fails(&["postcondition not satisfied"]),
+    ),
+    ("old-overflow", OLD, Expect::Fails(&["assertion failed"])),
+    (
+        "compound-field-overflow",
+        COMPOUND,
+        Expect::Fails(&["postcondition not satisfied"]),
+    ),
+    ("compound-field-guarded", GUARDED_COMPOUND, Expect::Verifies),
     (
         "order-profile-two",
         include_str!("fixtures/neutral-contracts/order_service_profile2.rs"),
-        true,
+        Expect::Verifies,
     ),
     (
         "consumer-order-profile-two",
         include_str!("fixtures/neutral-contracts/order_service_profile2_consumer.rs"),
-        true,
+        Expect::Verifies,
     ),
     (
         "truncating-division-profile-three",
         include_str!("fixtures/neutral-contracts/truncating_division_profile3.rs"),
-        true,
+        Expect::Verifies,
     ),
     (
         "floor-intuition-profile-three",
         include_str!("fixtures/neutral-contracts/floor_intuition_profile3.rs"),
-        false,
+        Expect::Fails(&["postcondition not satisfied"]),
     ),
     (
         "body-calls-profile-three",
         include_str!("fixtures/neutral-contracts/body_calls_profile3.rs"),
-        true,
+        Expect::Verifies,
     ),
     (
         "narrowing-cast-profile-three",
         include_str!("fixtures/neutral-contracts/body_calls_controls_profile3.rs"),
-        false,
+        Expect::Fails(&[
+            "postcondition not satisfied",
+            "value may be out of range of the target type",
+        ]),
     ),
     (
         "callee-precondition-profile-three",
         include_str!("fixtures/neutral-contracts/body_call_precondition_profile3.rs"),
-        false,
+        Expect::Fails(&["precondition not satisfied"]),
     ),
     (
         "loops-profile-three",
         include_str!("fixtures/neutral-contracts/loops_profile3.rs"),
-        true,
+        Expect::Verifies,
     ),
     (
         "loop-weak-invariant-profile-three",
         include_str!("fixtures/neutral-contracts/loop_weak_invariant_profile3.rs"),
-        false,
+        Expect::Fails(&["postcondition not satisfied"]),
     ),
     (
         "loop-bad-measure-profile-three",
         include_str!("fixtures/neutral-contracts/loop_bad_measure_profile3.rs"),
-        false,
+        Expect::Fails(&["decreases not satisfied at end of loop"]),
     ),
 ];
 
@@ -345,10 +366,65 @@ fn invalid_rust_literals_cannot_turn_into_vacuous_verified_preconditions() {
     assert!(lower(SIGNED, "neutral").is_ok());
 }
 
+/// One ignored native test per oracle case, so each stays short and nextest
+/// runs them in parallel. `native_oracle_tests_cover_every_case` keeps this
+/// list equal to the case table.
+macro_rules! native_oracle_tests {
+    ($($name:ident => $label:literal),* $(,)?) => {
+        $(
+            #[test]
+            #[ignore = "requires actual pinned fork and stock runtimes; run explicitly in native acceptance"]
+            fn $name() -> TestResult {
+                native_fork_and_stock_agree($label)
+            }
+        )*
+        const NATIVE_ORACLE_LABELS: &[&str] = &[$($label),*];
+    };
+}
+
+native_oracle_tests! {
+    native_fork_and_stock_agree_on_add_one => "add-one",
+    native_fork_and_stock_agree_on_short_circuit => "short-circuit",
+    native_fork_and_stock_agree_on_signed_min => "signed-min",
+    native_fork_and_stock_agree_on_wallet => "wallet",
+    native_fork_and_stock_agree_on_negated_overflow => "negated-overflow",
+    native_fork_and_stock_agree_on_old_overflow => "old-overflow",
+    native_fork_and_stock_agree_on_compound_field_overflow => "compound-field-overflow",
+    native_fork_and_stock_agree_on_compound_field_guarded => "compound-field-guarded",
+    native_fork_and_stock_agree_on_order_profile_two => "order-profile-two",
+    native_fork_and_stock_agree_on_consumer_order_profile_two => "consumer-order-profile-two",
+    native_fork_and_stock_agree_on_truncating_division => "truncating-division-profile-three",
+    native_fork_and_stock_agree_on_floor_intuition => "floor-intuition-profile-three",
+    native_fork_and_stock_agree_on_body_calls => "body-calls-profile-three",
+    native_fork_and_stock_agree_on_narrowing_cast => "narrowing-cast-profile-three",
+    native_fork_and_stock_agree_on_callee_precondition => "callee-precondition-profile-three",
+    native_fork_and_stock_agree_on_loops => "loops-profile-three",
+    native_fork_and_stock_agree_on_loop_weak_invariant => "loop-weak-invariant-profile-three",
+    native_fork_and_stock_agree_on_loop_bad_measure => "loop-bad-measure-profile-three",
+    native_fork_and_stock_agree_on_closure => "closure-profile-three",
+    native_fork_and_stock_agree_on_closure_overclaim => "closure-overclaim-profile-three",
+}
+
 #[test]
-#[ignore = "requires actual pinned fork and stock runtimes; run explicitly in native acceptance"]
-fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
+fn native_oracle_tests_cover_every_case() -> TestResult {
+    let mut labels = native_cases()?
+        .into_iter()
+        .map(|(label, _, _)| label)
+        .collect::<Vec<_>>();
+    let mut tests = NATIVE_ORACLE_LABELS.to_vec();
+    labels.sort_unstable();
+    tests.sort_unstable();
+    assert_eq!(labels, tests);
+    Ok(())
+}
+
+/// Runs one exact lowered case on the pinned fork and on stock Verus.
+fn native_fork_and_stock_agree(label: &str) -> TestResult {
     use std::process::Command;
+    let (_, lowered, expected) = native_cases()?
+        .into_iter()
+        .find(|(case, _, _)| *case == label)
+        .ok_or("unknown native oracle case")?;
     let pins = sail_verus::toolchain::Pins::embedded()?;
     // The CI image installs the qualified engine outside the mutable Sail cache.
     let fork = match std::env::var_os("SAIL_VERUS_BUILD")
@@ -358,92 +434,114 @@ fn native_fork_and_stock_agree_on_exact_lowered_source() -> TestResult {
         None => sail_verus::engine::Installed::locate_verified(&sail_verus::cache_dir()?, &pins)?,
     };
     let stock = sail_verus::toolchain::Installed::locate_release(pins)?;
-    let root = oracle_directory()?;
-    for (label, lowered, expected) in native_cases()? {
-        let path = root.join(format!("{label}.rs"));
-        std::fs::write(&path, &lowered.source)?;
+    let root = oracle_directory(label)?;
+    let verifies = matches!(expected, Expect::Verifies);
+    let path = root.join(format!("{label}.rs"));
+    std::fs::write(&path, &lowered.source)?;
+    std::fs::write(
+        root.join(format!("{label}.mapping.json")),
+        serde_json::to_vec_pretty(&lowered.manifest)?,
+    )?;
+    let mut observed = Vec::new();
+    for (backend, executable) in [("fork", &fork.verus), ("stock", &stock.verus)] {
+        let output = Command::new(executable)
+            .env(
+                "VERUS_Z3_PATH",
+                std::env::var_os("SAIL_TEST_Z3")
+                    .map_or_else(|| stock.z3.clone(), std::path::PathBuf::from),
+            )
+            .arg(&path)
+            .args([
+                "--crate-type",
+                "lib",
+                "--crate-name",
+                "neutral",
+                "--output-json",
+                "--time",
+                "--no-report-long-running",
+            ])
+            .output()?;
         std::fs::write(
-            root.join(format!("{label}.mapping.json")),
-            serde_json::to_vec_pretty(&lowered.manifest)?,
+            root.join(format!("{label}.{backend}.stdout")),
+            &output.stdout,
         )?;
-        let mut observed = Vec::new();
-        for (backend, executable) in [("fork", &fork.verus), ("stock", &stock.verus)] {
-            let output = Command::new(executable)
-                .env(
-                    "VERUS_Z3_PATH",
-                    std::env::var_os("SAIL_TEST_Z3")
-                        .map_or_else(|| stock.z3.clone(), std::path::PathBuf::from),
-                )
-                .arg(&path)
-                .args([
-                    "--crate-type",
-                    "lib",
-                    "--crate-name",
-                    "neutral",
-                    "--output-json",
-                    "--time",
-                    "--no-report-long-running",
-                ])
-                .output()?;
-            std::fs::write(
-                root.join(format!("{label}.{backend}.stdout")),
-                &output.stdout,
-            )?;
-            std::fs::write(
-                root.join(format!("{label}.{backend}.stderr")),
-                &output.stderr,
-            )?;
-            assert_eq!(
-                output.status.success(),
-                expected,
-                "{label}/{backend}: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-            let document = serde_json::Deserializer::from_slice(&output.stdout)
-                .into_iter::<serde_json::Value>()
-                .next()
-                .ok_or("no actual verifier JSON document")??;
-            let result = document
-                .get("verification-results")
-                .ok_or("missing actual verification result")?
-                .clone();
-            assert_eq!(
-                result
-                    .get("encountered-vir-error")
-                    .and_then(serde_json::Value::as_bool),
-                Some(false),
-                "{label}/{backend}: source/compiler error is not a property refutation"
-            );
-            assert_eq!(
-                result.get("success").and_then(serde_json::Value::as_bool),
-                Some(expected)
-            );
-            assert_eq!(
-                result
-                    .get("is-verifying-entire-crate")
-                    .and_then(serde_json::Value::as_bool),
-                Some(true),
-                "{label}/{backend}: partial verification does not qualify a control"
-            );
-            let completed = result
-                .get(if expected { "verified" } else { "errors" })
-                .and_then(serde_json::Value::as_u64)
-                .ok_or("missing actual verification count")?;
-            assert!(
-                completed > 0,
-                "{label}/{backend}: empty verification is not evidence"
-            );
-            observed.push(result);
-        }
+        std::fs::write(
+            root.join(format!("{label}.{backend}.stderr")),
+            &output.stderr,
+        )?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
         assert_eq!(
-            observed[0], observed[1],
-            "{label}: fork and stock verdict/count mismatch"
+            output.status.success(),
+            verifies,
+            "{label}/{backend}: {stderr}"
         );
+        if let Expect::Fails(diagnostics) = expected {
+            for diagnostic in diagnostics {
+                assert!(
+                    stderr.contains(diagnostic),
+                    "{label}/{backend}: the control must fail with {diagnostic:?}: {stderr}"
+                );
+            }
+        }
+        observed.push(verification_result(
+            label,
+            backend,
+            verifies,
+            &output.stdout,
+        )?);
     }
+    assert_eq!(
+        observed[0], observed[1],
+        "{label}: fork and stock verdict/count mismatch"
+    );
     Ok(())
 }
 
-type NativeCase = (&'static str, sail_verus::contracts::LoweredSource, bool);
+/// The actual verifier JSON result, checked as whole-crate evidence.
+fn verification_result(
+    label: &str,
+    backend: &str,
+    verifies: bool,
+    stdout: &[u8],
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let document = serde_json::Deserializer::from_slice(stdout)
+        .into_iter::<serde_json::Value>()
+        .next()
+        .ok_or("no actual verifier JSON document")??;
+    let result = document
+        .get("verification-results")
+        .ok_or("missing actual verification result")?
+        .clone();
+    assert_eq!(
+        result
+            .get("encountered-vir-error")
+            .and_then(serde_json::Value::as_bool),
+        Some(false),
+        "{label}/{backend}: source/compiler error is not a property refutation"
+    );
+    assert_eq!(
+        result.get("success").and_then(serde_json::Value::as_bool),
+        Some(verifies)
+    );
+    assert_eq!(
+        result
+            .get("is-verifying-entire-crate")
+            .and_then(serde_json::Value::as_bool),
+        Some(true),
+        "{label}/{backend}: partial verification does not qualify a control"
+    );
+    let completed = result
+        .get(if verifies { "verified" } else { "errors" })
+        .and_then(serde_json::Value::as_u64)
+        .ok_or("missing actual verification count")?;
+    assert!(
+        completed > 0,
+        "{label}/{backend}: empty verification is not evidence"
+    );
+    Ok(result)
+}
+
+type NativeCase = (&'static str, sail_verus::contracts::LoweredSource, Expect);
 
 fn native_cases() -> Result<Vec<NativeCase>, Box<dyn std::error::Error>> {
     let mut cases = Vec::new();
@@ -460,7 +558,7 @@ fn native_cases() -> Result<Vec<NativeCase>, Box<dyn std::error::Error>> {
 
 type Closure = (&'static str, Vec<sail_verus::contracts::ModuleSource>);
 
-fn closure_cases() -> [(&'static str, Closure, bool); 2] {
+fn closure_cases() -> [(&'static str, Closure, Expect); 2] {
     fn module(module: &str, source: &str) -> sail_verus::contracts::ModuleSource {
         use sha2::Digest as _;
         sail_verus::contracts::ModuleSource {
@@ -489,7 +587,7 @@ fn closure_cases() -> [(&'static str, Closure, bool); 2] {
                     ),
                 ],
             ),
-            true,
+            Expect::Verifies,
         ),
         (
             "closure-overclaim-profile-three",
@@ -500,7 +598,7 @@ fn closure_cases() -> [(&'static str, Closure, bool); 2] {
                     include_str!("fixtures/neutral-contracts/closure_overclaim/limits.rs"),
                 )],
             ),
-            false,
+            Expect::Fails(&["postcondition not satisfied"]),
         ),
     ]
 }
@@ -515,15 +613,19 @@ fn profile_of(label: &str) -> u32 {
     }
 }
 
-fn oracle_directory() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+/// A fresh evidence directory for one case. Under `SAIL_NEUTRAL_ORACLE_OUT`
+/// each case writes its own subdirectory, which must not exist yet.
+fn oracle_directory(label: &str) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     if let Some(path) = std::env::var_os("SAIL_NEUTRAL_ORACLE_OUT") {
-        let path = std::path::PathBuf::from(path);
+        let parent = std::path::PathBuf::from(path);
+        std::fs::create_dir_all(&parent)?;
+        let path = parent.join(label);
         std::fs::create_dir(&path)?;
         return Ok(path);
     }
     for suffix in 0..1000 {
         let path = std::env::temp_dir().join(format!(
-            "sail-neutral-oracle-{}-{suffix}",
+            "sail-neutral-oracle-{}-{label}-{suffix}",
             std::process::id()
         ));
         match std::fs::create_dir(&path) {
