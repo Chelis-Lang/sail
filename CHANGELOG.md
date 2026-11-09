@@ -5,6 +5,15 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The next release is v0.3.0, and it is planned as a breaking release (ADR
+  0109). The experimental neutral-contract surfaces published in 0.2.0 are
+  scheduled for removal in it: the `sail-contracts`, `sail-contracts-macros`
+  and `sail-contracts-ir` crates, neutral lowering, neutral source jobs,
+  neutral mutation and literal witnesses. Nothing is removed yet, and these
+  surfaces stay maintained until then. `sail runtime`, evidence tiers,
+  counterexample decoding and function attribution are kept. Requirement
+  attribution and `sail assurance` await an owner decision. Their guides carry
+  a notice.
 - `sail runtime` and the MCP tools `runtime_capabilities` and
   `runtime_execute` are part of the supported command set (ADR 0108).
   `sail --help` lists `runtime`, its help no longer starts with the

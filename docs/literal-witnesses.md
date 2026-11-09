@@ -1,5 +1,9 @@
 # Find scalar literal-contract counterexamples
 
+> **Scheduled for removal in v0.3.0.** This experimental surface is present
+> and maintained, and is not being extended. See
+> [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).
+
 Use the separate opt-in witness family when a bounded literal-body mutant
 violates a contract but its native Verus check remains UNKNOWN. Native mutation
 classification and proof tiers stay unchanged. This path constructs a different,

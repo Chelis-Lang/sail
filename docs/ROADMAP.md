@@ -1,39 +1,45 @@
 # Roadmap
 
-Current ordering follows the owner's 2026-11-04 direction, recorded in
+Current ordering follows the owner's 2026-11-09 decision, recorded in
+[ADR 0109](decisions/0109-oyster-retired-v030-scope.md), which amends
 [ADR 0100](decisions/0100-mutation-first-roadmap.md). The latest stable release
-is **0.2.0**. The next release has no selected version or publication date;
+is **0.2.0**. The next release is **v0.3.0**; it has no publication date, and
 final publication requires the owner's approval of its exact candidate.
 
 ## Goal
 
-Make Verus verification faster and help developers and agents discover whether
-their specifications catch plausible implementation bugs. Preserve default-mode
-correctness, explicit scope, provenance and conservative handling of uncertainty.
-Most verification scenarios should be faster than stock Verus; existing losses
+Tell Verus developers and agents what their proofs are worth, and never cost
+them time for it: whether their specifications catch plausible implementation
+bugs, which proofs are fragile or slow and why, and verification that is never
+slower than stock Verus. Preserve default-mode correctness, explicit scope,
+provenance and conservative handling of uncertainty. Existing losses to stock
 remain engineering work, including cold runs. No baseline is relaxed.
 
-## Next release: Verus-aware mutation testing
+## Next release: v0.3.0
 
-The headline feature answers: **my program verifies, but would my specifications
-catch plausible bugs?** It serves existing Verus projects independently of
-Oyster, neutral contracts and additional backends.
+Each item starts with a short spike that has a pass/fail rule and a drop rule.
+Work that fails its spike is closed with a short record and not carried.
+v0.3.0 will remove API published in 0.2.0, so it is a breaking release.
 
-| Work | Required outcome | Tracker |
-|---|---|---|
-| Native outcome diagnosis first | Reproduce existing literal-mutant Unknown cases, distinguish verifier rejection from independently confirmed counterexamples, and qualify useful killed/survived/inconclusive observations without relabeling Unknown | #140, [#664](https://github.com/Chelis-Lang/sail/issues/664); [existing evidence](validation/neutral-mutation.md) |
-| Verus-aware mutation | Bounded executable-code changes in copies; preserve specifications, proof/ghost code and original user files | #140 |
-| Campaigns and reports | Per-function inventory, budgets and killed/survived/inconclusive outcomes through CLI, JSON and MCP together; omitted/unsupported work stays visible | #141 |
-| Native qualification | Passing baselines, plausible bugs, survivors, Unknown, cancellation and limits; real projects on Linux/macOS; unchanged-contract evidence and actual campaign costs | #140, #141 |
+| Pillar | Gate | Tracker | State |
+|---|---|---|---|
+| Verus mutation testing (headline) | Bounded executable-code mutants in copies through CLI, JSON and MCP together; rejected, survived and inconclusive kept apart without relabeling Unknown; qualified on real projects on Linux and macOS with actual campaign costs | #140, #141, [#664](https://github.com/Chelis-Lang/sail/issues/664); [brief](design/verus-mutation-release.md), [existing evidence](validation/neutral-mutation.md) | Designed, not built |
+| Proof health and profiling | Rank functions by resource margin and stability, and name costly quantifiers, from recorded sessions; no change to verdicts or plain `sail verify` bytes | Experimental fragility engine exists | Not built |
+| Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #244, #232, #558, #560 | Named rows still slower; see the lanes below |
+| Reach | GitHub Action, simpler installation, editor bridge | [CI-cache recipe](ci-cache.md) shipped in 0.2.0 | Not built |
+| Backends | Kani as an experimental backend for hand-written harnesses, with `arrayvec` 0.7.8 as the pilot fixture and direct-Kani comparison; then cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | [#135](https://github.com/Chelis-Lang/sail/issues/135), #137 | Kani selected as experimental, not built; cvc5 follows it |
+| Neutral-contract removal | Archive tag, #664 cases ported to plain Verus, #683 and #696 reproduced on ordinary jobs; then removal, including all three contract crates, with every 0.2.0 item listed in the changelog | [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) | Surfaces present and maintained; preconditions open |
+| Publication | Owner approves the exact final candidate | [Releasing](releasing.md) | No candidate |
 
-Survivors are actionable observations about specification strength, not proof of
-adequacy or vacuity. Existing benchmark mutation catalogues and neutral literal
-campaigns are groundwork, not the general product. Expected cache savings must
-be measured across complete campaigns, including setup and unsuccessful work.
-See the [feature brief](design/verus-mutation-release.md) and
-[next-release milestone](https://github.com/Chelis-Lang/sail/milestone/13).
+The headline answers: **my program verifies, but would my specifications catch
+plausible bugs?** Survivors are actionable observations about specification
+strength, not proof of adequacy or vacuity. Existing benchmark mutation
+catalogues and neutral literal campaigns are groundwork, not the general
+product. Expected cache savings must be measured across complete campaigns,
+including setup and unsuccessful work. See the
+[next-release milestone](https://github.com/Chelis-Lang/sail/milestone/14).
 
-## Alongside: performance and acceptance
+## Performance and acceptance lanes
 
 | Lane | Current basis | Next outcome |
 |---|---|---|
@@ -50,44 +56,37 @@ resource costs and regressions. A component gain or moving work after return doe
 not alone establish a campaign or product speedup. Every useful edit improvement
 also benefits mutation campaigns.
 
-## Then: Kani pilot before cvc5
+## Backends: Kani, then cvc5
 
-[#135](https://github.com/Chelis-Lang/sail/issues/135) starts with an executable
-pilot on a real pinned ordinary Rust crate. Compare direct Kani with the proposed
-Sail path, exercise concrete failures and retain exact tool identities, bounds,
-unsupported cases and costs. Assess the experimental function-contract interface
-in the go/no-go decision before committing to a production backend. The pilot
-must not depend on widening Oyster's neutral-contract subset.
+Kani ([#135](https://github.com/Chelis-Lang/sail/issues/135)) ships in v0.3.0
+as an experimental backend, by the owner's choice. It runs harnesses the user
+writes by hand; `arrayvec` 0.7.8, a pinned ordinary Rust crate, is the pilot
+fixture. Qualification compares direct Kani with the Sail path, exercises
+concrete failures and retains exact tool identities, bounds, unsupported cases
+and costs. Results are bounded evidence, never reported as verified. Kani
+function contracts are not adopted as a front end.
 
-cvc5, certificates, Creusot, Prusti, kernel provers, sampled-tier integration,
-cross-backend portfolios and Dafny remain future options under #146. They are
-not parallel commitments for the next release.
+cvc5 follows Kani inside v0.3.0. It lands only in the supported
+SMT runtime ([ADR 0108](decisions/0108-supported-smt-runtime.md)), with solver
+identity in every key. Certificates get one measurement spike recorded on
+#138 and no product work. Creusot, Prusti, kernel provers, sampled-tier
+integration, cross-backend portfolios and Dafny remain future options under
+#146.
 
-## Oyster: shelf completion; Sail surfaces held
+## Oyster: retired
 
-On 2026-11-06 the Oyster owner resumed Oyster for shelf completion: Oyster
-migrates its SDK to the published 0.2.0 crates and requalifies native
-temporal work against the flagged build
-([ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md)). That
-direction supersedes the SDK-migration hold in the next paragraph. The rest
-of the guidance below still applies to Sail's own surfaces. This section was
-first titled "Oyster: design first, engineering on hold."
+The owner abandoned Oyster on 2026-11-09
+([ADR 0109](decisions/0109-oyster-retired-v030-scope.md)). Sail plans no Oyster
+work. This section was earlier titled "Oyster: shelf completion; Sail surfaces
+held".
 
-Maintain and test the raw SMT runtime (supported, ADR 0108) and the
-experimental neutral contracts, source jobs and assurance reads already
-consumed by Oyster. Do not expand those surfaces or
-widen the neutral subset while the design is unsettled. (Superseded on
-2026-11-06: the original text also said not to migrate Oyster's SDK.)
-On 2026-11-08 the owner lifted the widening hold for a named set of
-neutral and attribution items only, under explicit neutral source profile
-three ([ADR 0103](decisions/0103-scoped-neutral-widening.md)). Everything
-else in this paragraph still holds.
-
-The next Oyster deliverable is a short design document answering who the user
-is, their present problem, one successful end-to-end session, and why a
-requirements layer adds value beyond direct specifications, contracts and
-mutation feedback. The owner's supplied colleague feedback is the deciding
-input. Design resolution precedes renewed integration engineering.
+| Surface | Disposition in v0.3.0 | State |
+|---|---|---|
+| SMT runtime (`sail runtime`, MCP runtime tools) | Kept, supported (ADR 0108); cvc5 lands here | Supported |
+| Evidence tiers and ledger, counterexample decoding, general function attribution | Kept | Shipped |
+| Neutral lowering and shadow crates, neutral source jobs, neutral mutation and literal witness, the `contracts` end-to-end phase, neutral specifications | Removed after the preconditions in the gate table | Present, tested, not expanded |
+| `sail-contracts`, `sail-contracts-macros` and `sail-contracts-ir` | Removed with the neutral path after the archive tag; Kani function contracts are not adopted as a front end | Experimental, present |
+| Requirement attribution and `sail assurance` (ADR 0104) | Owner decision open | Experimental, present |
 
 ## Temporal: behind a default-off flag
 
@@ -140,14 +139,14 @@ work, not a prerequisite chain for mutation testing.
 
 | Work | Tracker or condition |
 |---|---|
-| More exact vstd profiles and versions | #563, #237; preserve every admission check |
+| More exact vstd profiles and versions | #563; preserve every admission check. A second Verus pin is not adopted (#237: pin cadence only) |
 | Remaining incidental edits and restore misses | #118, #595 |
 | Prebuilt macro tools | #239; owner question 35 and actual measured gain |
 | Broader first-sight preparation and team prefetch | #241, #243; bounded worker already ships |
 | Cargo bypass / compiler-boundary fallback | #245, #222; separate authority and cost qualification |
 | CI image startup | #195; retain required checks and job budgets |
 | Fragility / portfolio polish | Existing experimental modes; demand-led |
-| Broader verification runtime | #146; design/distribution holds above |
+| Broader verification runtime | #146; beyond Kani and cvc5 above |
 
 ## Measured and unselected
 
@@ -167,6 +166,5 @@ work, not a prerequisite chain for mutation testing.
 
 M0–M6 are delivered. M7 was accepted 2026-10-26. M11 remains the continuous
 Verus performance lane; M10 records the broader runtime ambition with explicit
-holds. The next-release mutation milestone is feature-based until the owner
-selects a version. Genuine 0.2.0 residual work moves to its current lane rather
-than remaining an apparent publication blocker.
+holds. The next-release milestone is v0.3.0. Genuine 0.2.0 residual work moves
+to its current lane rather than remaining an apparent publication blocker.
