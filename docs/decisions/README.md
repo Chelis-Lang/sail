@@ -125,3 +125,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0105: Place neutral shadows away from inherited Cargo configuration](0105-neutral-shadow-placement.md) (accepted; private per-user placement, unchanged refusal with named cause)
 
 - [0106: Decode source-named inputs from failed-proof models](0106-decoded-counterexample-inputs.md) (accepted; parameters and named struct fields, raw model retained, never a validated refutation)
+
+- [0107: Freeze neutral profile three before its first release](0107-freeze-neutral-profile-three.md) (accepted; retained version-four manifests replay byte for byte, later widening takes a new identity)
