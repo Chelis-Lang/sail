@@ -89,6 +89,9 @@ pub enum Pruned {
     /// The workspace's directory was removed, freeing about this many bytes.
     Removed(u64),
     /// A managed run or job holds the workspace; nothing was removed.
+    ///
+    /// A process spawned while a lock was held shares it until its `exec`, so
+    /// this can also be the answer for a moment after the holder released it.
     Busy,
 }
 
@@ -553,9 +556,49 @@ mod tests {
         Ok(())
     }
 
+    /// Set in the child process that runs the prune case on its own.
+    const PRUNE_ISOLATED: &str = "SAIL_TEST_PRUNE_ISOLATED";
+
+    /// Runs the prune case in a process of its own, where its first prune
+    /// after each release must already succeed.
+    ///
+    /// A file lock belongs to the open file description, and a child process
+    /// shares every description open in this process from its fork until its
+    /// `exec` closes them. When the test harness runs tests as threads of one
+    /// process and another test spawns a process while a lock is held here,
+    /// that lock stays held for a moment after the drop, and a prune in that
+    /// moment rightly answers `Busy`. The child process runs this one test and
+    /// spawns nothing, so no such holder exists there and the case asserts
+    /// each answer on its first attempt, with no retry.
     #[test]
     fn prune_skips_busy_workspaces_and_removes_idle_ones() -> Result<(), Box<dyn std::error::Error>>
     {
+        if std::env::var_os(PRUNE_ISOLATED).is_some() {
+            return prune_case();
+        }
+        let name = format!(
+            "{}::prune_skips_busy_workspaces_and_removes_idle_ones",
+            module_path!()
+                .split_once("::")
+                .map_or(module_path!(), |(_, module)| module)
+        );
+        let output = std::process::Command::new(std::env::current_exe()?)
+            .args([name.as_str(), "--exact", "--test-threads=1"])
+            .env(PRUNE_ISOLATED, "1")
+            .output()?;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // The child must have run this very test: a filter that matched
+        // nothing also exits successfully.
+        assert!(
+            output.status.success() && stdout.contains(&format!("test {name} ... ok")),
+            "isolated prune case: {}\n{stdout}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Ok(())
+    }
+
+    fn prune_case() -> Result<(), Box<dyn std::error::Error>> {
         let (cache, _, key) = fixture("prune")?;
         let directory = root(&cache).join(&key);
         // A run of this version holds the workspace lock shared.
