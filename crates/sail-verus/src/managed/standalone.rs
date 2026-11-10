@@ -539,6 +539,15 @@ fn run_with_engine(
     let trace = run.join("trace");
     std::fs::create_dir_all(&trace).map_err(|e| fail(e.to_string()))?;
     command.env("SAIL_TRACE_DIR", &trace);
+    // The shim writes its session records, which join cached answers to the
+    // obligation logs, only under `SAIL_PROVENANCE_DIR` (ADR 0014, #684).
+    let provenance_dir = run.join("provenance");
+    if config.socket.is_some() {
+        std::fs::create_dir_all(&provenance_dir).map_err(|e| fail(e.to_string()))?;
+        command.env("SAIL_PROVENANCE_DIR", &provenance_dir);
+    } else {
+        command.env_remove("SAIL_PROVENANCE_DIR");
+    }
     let logs = run.join("logs");
     let log_request = config.attribution_logs && !args.iter().any(|arg| arg.starts_with("--log"));
     if log_request {
@@ -585,7 +594,7 @@ fn run_with_engine(
         })
         .flatten();
     let provenance = if config.socket.is_some() {
-        attribution::Provenance::Records(attribution::read_session_records(&trace))
+        attribution::Provenance::Records(attribution::read_session_records(&provenance_dir))
     } else {
         attribution::Provenance::NoCache
     };
@@ -652,6 +661,9 @@ fn run_with_engine(
         && namespace_match
         && closing_match
         && runner::runtime_current(&config.cache, &context);
+    // A report with a check the cache never recorded is the run's genuine
+    // result but never a reusable proof (#683).
+    let sourced = receipts::sourced(&report);
     let complete = output.status.success()
         && receipts::complete(&report)
         && !super::partial(&config.args)
@@ -717,7 +729,7 @@ fn run_with_engine(
             stderr: output.stderr,
         };
         let saved = write_record(&context_path(&config.cache, &context), &record).and_then(|()| {
-            if current && complete && eligible && !config.force {
+            if current && complete && sourced && eligible && !config.force {
                 save_proof(&base, &revision, &record)
             } else {
                 Ok(())

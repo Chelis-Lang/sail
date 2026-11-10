@@ -15,6 +15,19 @@ use std::time::{Duration, Instant};
 pub(super) struct Outcome {
     pub changed: bool,
     pub complete: bool,
+    /// Why the observation is incomplete, as a currentness reason (#696).
+    pub reason: Option<&'static str>,
+}
+
+impl Outcome {
+    #[cfg(target_os = "linux")]
+    fn incomplete(changed: bool, reason: &'static str) -> Self {
+        Self {
+            changed,
+            complete: false,
+            reason: Some(reason),
+        }
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -68,112 +81,210 @@ mod platform {
     use super::{Duration, InputSnapshot, Instant, Outcome, Path, PathBuf, missing, relevant};
     use inotify::{EventMask, Inotify, WatchDescriptor, WatchMask};
     use std::collections::HashMap;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
 
-    pub(in crate::managed) struct Observer {
-        native: Option<Inotify>,
+    /// How long the drainer waits between passes over the kernel queue.
+    ///
+    /// The queue holds `fs.inotify.max_queued_events` entries (16,384 by
+    /// default). Draining only when the run ended let unrelated churn in a
+    /// watched ancestor such as `/tmp` overflow it during a long proof
+    /// (#696); a pass every few milliseconds needs millions of events per
+    /// second in the watched directories to overflow.
+    const PASS: Duration = Duration::from_millis(5);
+
+    /// The queue and what its events mean, owned by whoever drains it.
+    struct Queue {
+        native: Inotify,
         directories: HashMap<WatchDescriptor, PathBuf>,
         tracked: Vec<PathBuf>,
+        changed: bool,
+        /// Why the observation is already incomplete, if it is.
+        failed: Option<&'static str>,
     }
-    impl Observer {
-        pub(in crate::managed) fn begin(snapshot: &InputSnapshot, _: &Path) -> Self {
-            let Some(mut tracked) = missing(snapshot) else {
-                return Self {
-                    native: None,
-                    directories: HashMap::new(),
-                    tracked: Vec::new(),
-                };
-            };
-            tracked.extend(tracked.clone().into_iter().filter_map(|path| {
-                let ancestor = path.ancestors().find(|p| p.exists())?;
-                let canonical = ancestor.canonicalize().ok()?;
-                Some(canonical.join(path.strip_prefix(ancestor).ok()?))
-            }));
-            let mut directories = HashMap::new();
-            let native = Inotify::init().ok().and_then(|native| {
-                for root in &tracked {
-                    let parent = root.ancestors().skip(1).find(|p| p.is_dir())?;
-                    let canonical = parent.canonicalize().ok()?;
-                    let descriptor = native
-                        .watches()
-                        .add(
-                            &canonical,
-                            WatchMask::CREATE
-                                | WatchMask::DELETE
-                                | WatchMask::MOVED_FROM
-                                | WatchMask::MOVED_TO
-                                | WatchMask::DELETE_SELF
-                                | WatchMask::MOVE_SELF,
-                        )
-                        .ok()?;
-                    directories.insert(descriptor, canonical);
-                }
-                Some(native)
-            });
-            Self {
-                native,
-                directories,
-                tracked,
-            }
-        }
-        pub(in crate::managed) fn ready(&self) -> bool {
-            self.native.is_some()
-        }
-        pub(in crate::managed) fn finish(mut self) -> Outcome {
-            let Some(mut native) = self.native.take() else {
-                return Outcome {
-                    changed: false,
-                    complete: false,
-                };
-            };
-            let mut outcome = Outcome {
-                changed: false,
-                complete: true,
-            };
-            let mut buffer = vec![0; 65536];
-            let deadline = Instant::now() + Duration::from_secs(4);
+
+    impl Queue {
+        /// Reads queued events until the queue is empty, it fails or
+        /// `deadline` passes. Returns whether the queue was emptied.
+        fn drain(&mut self, buffer: &mut [u8], deadline: Instant) -> bool {
             loop {
-                if Instant::now() >= deadline {
-                    return Outcome {
-                        changed: outcome.changed,
-                        complete: false,
-                    };
+                if self.failed.is_some() || Instant::now() >= deadline {
+                    return false;
                 }
-                match native.read_events(&mut buffer) {
+                match self.native.read_events(buffer) {
                     Ok(events) => {
                         let mut count = 0;
                         for event in events {
                             count += 1;
-                            if event.mask.intersects(
-                                EventMask::Q_OVERFLOW
-                                    | EventMask::IGNORED
+                            if event.mask.contains(EventMask::Q_OVERFLOW) {
+                                // Events were lost: a configuration created
+                                // and removed meanwhile cannot be ruled out.
+                                self.failed.get_or_insert("absent-queue-overflow");
+                            } else if event.mask.intersects(
+                                EventMask::IGNORED
                                     | EventMask::UNMOUNT
                                     | EventMask::DELETE_SELF
                                     | EventMask::MOVE_SELF,
                             ) {
-                                outcome.complete = false;
+                                self.failed.get_or_insert("absent-watch-removed");
                             }
                             if let Some(parent) = self.directories.get(&event.wd) {
                                 let path = event
                                     .name
                                     .map_or_else(|| parent.clone(), |name| parent.join(name));
-                                outcome.changed |= relevant(&path, &self.tracked);
+                                self.changed |= relevant(&path, &self.tracked);
                             }
                         }
                         if count == 0 {
-                            return outcome;
+                            return true;
                         }
                     }
-                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => return outcome,
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => return true,
                     Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
                     Err(_) => {
-                        return Outcome {
-                            changed: outcome.changed,
-                            complete: false,
-                        };
+                        self.failed.get_or_insert("absent-queue-unreadable");
+                        return false;
                     }
                 }
             }
         }
+
+        /// The final pass, after the run: everything queued until now.
+        fn finish(mut self, buffer: &mut [u8]) -> Outcome {
+            let emptied = self.drain(buffer, Instant::now() + Duration::from_secs(4));
+            match self.failed {
+                Some(reason) => Outcome::incomplete(self.changed, reason),
+                None if !emptied => Outcome::incomplete(self.changed, "absent-drain-deadline"),
+                None => Outcome {
+                    changed: self.changed,
+                    complete: true,
+                    reason: None,
+                },
+            }
+        }
+    }
+
+    enum State {
+        /// No complete observation was possible.
+        Unavailable,
+        /// Drained only when the run ends (tests of the kernel overflow).
+        #[cfg(test)]
+        Deferred(Box<Queue>),
+        /// Drained continuously by its own thread until the run ends.
+        Draining {
+            stop: Arc<AtomicBool>,
+            thread: std::thread::JoinHandle<Outcome>,
+        },
+    }
+
+    pub(in crate::managed) struct Observer {
+        state: State,
+    }
+
+    impl Drop for Observer {
+        fn drop(&mut self) {
+            if let State::Draining { stop, .. } = &self.state {
+                stop.store(true, Ordering::SeqCst);
+            }
+        }
+    }
+
+    impl Observer {
+        pub(in crate::managed) fn begin(snapshot: &InputSnapshot, _: &Path) -> Self {
+            let state = match watch(snapshot) {
+                Some(queue) => drain_continuously(queue),
+                None => State::Unavailable,
+            };
+            Self { state }
+        }
+
+        /// An observer drained only when the run ends, as before #696.
+        #[cfg(test)]
+        pub(in crate::managed) fn begin_deferred(snapshot: &InputSnapshot) -> Self {
+            Self {
+                state: watch(snapshot)
+                    .map_or(State::Unavailable, |queue| State::Deferred(Box::new(queue))),
+            }
+        }
+
+        pub(in crate::managed) fn ready(&self) -> bool {
+            !matches!(self.state, State::Unavailable)
+        }
+
+        pub(in crate::managed) fn finish(mut self) -> Outcome {
+            match std::mem::replace(&mut self.state, State::Unavailable) {
+                State::Unavailable => Outcome::incomplete(false, "absent-watch-unavailable"),
+                #[cfg(test)]
+                State::Deferred(queue) => queue.finish(&mut vec![0; 65536]),
+                State::Draining { stop, thread } => {
+                    stop.store(true, Ordering::SeqCst);
+                    thread
+                        .join()
+                        .unwrap_or_else(|_| Outcome::incomplete(false, "absent-queue-unreadable"))
+                }
+            }
+        }
+    }
+
+    fn drain_continuously(queue: Queue) -> State {
+        let stop = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&stop);
+        let spawned = std::thread::Builder::new()
+            .name("sail-absent-watch".to_owned())
+            .spawn(move || {
+                let mut queue = queue;
+                let mut buffer = vec![0; 65536];
+                // The flag is read before each pass, so the pass after it is
+                // set, which reads every event queued before the run ended,
+                // is the final one.
+                while !flag.load(Ordering::SeqCst) {
+                    queue.drain(&mut buffer, Instant::now() + 10 * PASS);
+                    if queue.failed.is_some() {
+                        break;
+                    }
+                    std::thread::sleep(PASS);
+                }
+                queue.finish(&mut buffer)
+            });
+        match spawned {
+            Ok(thread) => State::Draining { stop, thread },
+            Err(_) => State::Unavailable,
+        }
+    }
+
+    fn watch(snapshot: &InputSnapshot) -> Option<Queue> {
+        let mut tracked = missing(snapshot)?;
+        tracked.extend(tracked.clone().into_iter().filter_map(|path| {
+            let ancestor = path.ancestors().find(|p| p.exists())?;
+            let canonical = ancestor.canonicalize().ok()?;
+            Some(canonical.join(path.strip_prefix(ancestor).ok()?))
+        }));
+        let mut directories = HashMap::new();
+        let native = Inotify::init().ok()?;
+        for root in &tracked {
+            let parent = root.ancestors().skip(1).find(|p| p.is_dir())?;
+            let canonical = parent.canonicalize().ok()?;
+            let descriptor = native
+                .watches()
+                .add(
+                    &canonical,
+                    WatchMask::CREATE
+                        | WatchMask::DELETE
+                        | WatchMask::MOVED_FROM
+                        | WatchMask::MOVED_TO
+                        | WatchMask::DELETE_SELF
+                        | WatchMask::MOVE_SELF,
+                )
+                .ok()?;
+            directories.insert(descriptor, canonical);
+        }
+        Some(Queue {
+            native,
+            directories,
+            tracked,
+            changed: false,
+            failed: None,
+        })
     }
 }
 
@@ -199,6 +310,7 @@ mod platform {
             Outcome {
                 changed: false,
                 complete: self.ready,
+                reason: (!self.ready).then_some("absent-watch-unavailable"),
             }
         }
     }
@@ -254,15 +366,20 @@ mod tests {
         assert!(!result.changed);
         assert!(std::fs::remove_dir_all(dir).is_ok());
     }
+    fn queue_capacity() -> usize {
+        std::fs::read_to_string("/proc/sys/fs/inotify/max_queued_events")
+            .ok()
+            .and_then(|s| s.trim().parse::<usize>().ok())
+            .unwrap_or(16384)
+    }
     #[test]
     fn kernel_queue_overflow_prevents_complete_observation() {
         let (dir, snapshot) = fixture("overflow");
-        let observer = Observer::begin(&snapshot, &dir.join("markers"));
+        // Drained only at the end, so the queue genuinely overflows; the
+        // continuous drainer shares this event handling.
+        let observer = Observer::begin_deferred(&snapshot);
         assert!(observer.ready());
-        let capacity = std::fs::read_to_string("/proc/sys/fs/inotify/max_queued_events")
-            .ok()
-            .and_then(|s| s.trim().parse::<usize>().ok())
-            .unwrap_or(16384);
+        let capacity = queue_capacity();
         // Each distinct creation occupies a queue entry; reading only afterwards
         // injects a genuine kernel overflow rather than mirroring a bitmask check.
         assert!(
@@ -272,7 +389,52 @@ mod tests {
         for n in 0..=capacity {
             assert!(std::fs::write(dir.join(format!("cargo-home/journal-{n}")), []).is_ok());
         }
-        assert!(!observer.finish().complete);
+        let outcome = observer.finish();
+        assert!(!outcome.complete);
+        assert_eq!(outcome.reason, Some("absent-queue-overflow"));
+        assert!(std::fs::remove_dir_all(dir).is_ok());
+    }
+    #[test]
+    fn continuous_drain_survives_unrelated_churn_beyond_the_queue_capacity() {
+        // #696: unrelated creations in a watched ancestor (such as `/tmp`)
+        // overflowed a queue that was read only when the run ended.
+        let (dir, snapshot) = fixture("churn");
+        let observer = Observer::begin(&snapshot, &dir.join("markers"));
+        assert!(observer.ready());
+        let capacity = queue_capacity();
+        assert!(
+            capacity <= 65536,
+            "test requires bounded default kernel queue"
+        );
+        let churn = dir.join("cargo-home/churn");
+        for n in 0..3 * capacity {
+            assert!(std::fs::write(&churn, []).is_ok());
+            assert!(std::fs::remove_file(&churn).is_ok());
+            if n % 500 == 0 {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+        }
+        let outcome = observer.finish();
+        assert!(outcome.complete, "{outcome:?}");
+        assert!(!outcome.changed);
+        assert!(std::fs::remove_dir_all(dir).is_ok());
+    }
+    #[test]
+    fn continuous_drain_still_sees_a_transient_config_among_churn() {
+        let (dir, snapshot) = fixture("churn-config");
+        let observer = Observer::begin(&snapshot, &dir.join("markers"));
+        assert!(observer.ready());
+        let churn = dir.join("cargo-home/churn");
+        for n in 0..4000 {
+            assert!(std::fs::write(&churn, []).is_ok());
+            assert!(std::fs::remove_file(&churn).is_ok());
+            if n == 2000 {
+                assert!(std::fs::write(&snapshot.roots[0], "[build]\njobs=1\n").is_ok());
+                assert!(std::fs::remove_file(&snapshot.roots[0]).is_ok());
+            }
+        }
+        let outcome = observer.finish();
+        assert!(outcome.complete && outcome.changed, "{outcome:?}");
         assert!(std::fs::remove_dir_all(dir).is_ok());
     }
     #[test]

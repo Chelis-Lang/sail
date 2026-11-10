@@ -25,6 +25,83 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 pub(crate) const INPUTS_UNCONFIRMED: &str =
     "SAIL3114: inputs could not be confirmed unchanged; re-run for a current result";
 
+/// The `SAIL3114` note naming the predicates that withheld Current (#696).
+fn inputs_unconfirmed(reasons: &[&str]) -> String {
+    if reasons.is_empty() {
+        return INPUTS_UNCONFIRMED.to_owned();
+    }
+    format!(
+        "SAIL3114: inputs could not be confirmed unchanged ({}); re-run for a current result",
+        reasons.join(", ")
+    )
+}
+
+/// Present in a proof context while its first observation runs: written
+/// before the context's first input state, removed once the run records the
+/// compiler-declared source inputs (ADR 0110).
+const OBSERVATION_STARTED: &str = "first-observation.started";
+
+/// Discards what an interrupted first observation of this context left
+/// behind, so the run is a genuine first observation (ADR 0110).
+///
+/// A run that ends after writing the context's first input state but before
+/// recording its compiler-declared inputs leaves a context that reads as
+/// observed but without declarations, and compiled outputs in the family
+/// target that no recorded declaration describes. This removes, in order:
+/// every proof receipt of every context of the compiler family (no receipt
+/// may outlive the target it describes, as for pruning), the family's Cargo
+/// target, and every record of this context except its run directories.
+/// Nothing is relaxed: what remains is exactly the state of a context that
+/// was never observed in a family whose target was never built. The marker
+/// is removed last, so an interrupted discard is repeated by the next run.
+fn discard_interrupted_observation(config: &Config, paths: &mut Paths) -> Result<bool> {
+    let Some(context) = paths.input_state.parent().map(Path::to_path_buf) else {
+        return Ok(false);
+    };
+    let marker = context.join(OBSERVATION_STARTED);
+    match std::fs::symlink_metadata(&marker) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(Error::new("SAIL3104", error.to_string())),
+        Ok(_) => {}
+    }
+    let remove = |path: &Path| -> Result<()> {
+        let removed = match std::fs::symlink_metadata(path) {
+            Ok(metadata) if metadata.is_dir() => std::fs::remove_dir_all(path),
+            Ok(_) => std::fs::remove_file(path),
+            Err(error) => Err(error),
+        };
+        match removed {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                Err(Error::new("SAIL3104", error.to_string()))
+            }
+            _ => Ok(()),
+        }
+    };
+    for entry in std::fs::read_dir(&paths.family_contexts)
+        .map_err(|e| Error::new("SAIL3104", e.to_string()))?
+    {
+        let entry = entry.map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+        remove(&paths.projects.join(entry.file_name()).join("receipts"))?;
+    }
+    if super::store::new_target(&paths.target) {
+        cargo_clean_layouts(config, &paths.target)?;
+    } else {
+        clean_compiler_family(config, &paths.target)?;
+    }
+    for entry in std::fs::read_dir(&context).map_err(|e| Error::new("SAIL3104", e.to_string()))? {
+        let entry = entry.map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+        let name = entry.file_name();
+        if name != "runs" && name != OBSERVATION_STARTED {
+            remove(&entry.path())?;
+        }
+    }
+    std::fs::create_dir_all(&paths.receipts).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
+    paths.invocation_slot =
+        super::invocation_slots::prepare(&context, &config.workspace, &config.args);
+    remove(&marker)?;
+    Ok(true)
+}
+
 /// Explicit managed verification environment; no caller Cargo artifacts are changed.
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -2635,6 +2712,7 @@ fn target_records_in(
                                 == observed
                             && digests.matches(&r.artifact_hashes)
                             && digests.matches(&r.invocation.dependencies)
+                            && super::receipts::sourced(&r.invocation.report)
                             && r.invocation.environment_observed()
                             && super::environment::unchanged(&r.declared_environment))
                         .then(|| (r.clone(), seed.placed.then(|| seed.key.clone())))
@@ -3679,6 +3757,11 @@ fn run_recorded(
     let inputs = diagnostics.phase(Phase::Inputs);
     let (mut paths, ownership) = prepare(config, &workspace_root, &hash, &compiler_hash, &run_id)?;
     paths.reuse = loader.is_none();
+    if discard_interrupted_observation(config, &mut paths)? {
+        event(&serde_json::json!({
+            "kind":"interrupted-observation-discarded", "run_id":run_id, "context_sha256":hash
+        }));
+    }
     data[super::digest_memo::FIELD] = if !config.force && paths.reuse {
         paths
             .invocation_slot
@@ -3864,8 +3947,11 @@ fn run_recorded(
         &data,
     )?;
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
+    let first_observation = !paths.input_state.exists() && !source_state.exists();
+    let observation_started = paths.build_inputs.with_file_name(OBSERVATION_STARTED);
     let (sources, source_coverage) =
         super::source_inputs::load(&source_state, paths.input_state.exists());
+    let before_source_coverage = source_coverage;
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
     data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
@@ -3901,6 +3987,7 @@ fn run_recorded(
         Some((_, snapshot, stamp)) => (snapshot, stamp),
         None => super::input::snapshot_metadata_stamped(&data, &extras),
     };
+    let before_snapshot_complete = before.complete;
     before.complete &= source_coverage;
     before.roots.extend(native_includes.iter().cloned());
     before.roots.extend(super::input::configuration_paths(
@@ -3998,6 +4085,10 @@ fn run_recorded(
             "SAIL3112",
             "the process environment changed during verification setup",
         ));
+    }
+    if first_observation {
+        std::fs::write(&observation_started, [])
+            .map_err(|e| Error::new("SAIL3104", e.to_string()))?;
     }
     paths.write_input_state(&data)?;
     event(&serde_json::json!({
@@ -4270,6 +4361,9 @@ fn run_recorded(
         )?;
         let (sources, source_coverage) =
             super::source_inputs::update(&source_state, &paths.run.join("artifacts.jsonl"), &data)?;
+        // The first observation is recorded; a later interruption no longer
+        // leaves a context without declarations (ADR 0110).
+        let _ = std::fs::remove_file(&observation_started);
         // Coverage after the run needs a contract for every script Cargo ran.
         let mut unscheduled = super::build_inputs::unscheduled(
             &paths.run.join("cargo.stdout"),
@@ -4510,18 +4604,32 @@ fn run_recorded(
         (super::input::mutation_stamp(&after_run), None)
     };
     let absent = absent.finish();
-    let currentness = if !paths.reuse
-        || !before.complete
-        || !after.complete
-        || !after_coverage
-        || !source_coverage
-        || !absent.complete
-        || outside_scope
-        || !scheduling_confirmed
-        || !runtime_current(&config.cache, &hash)
-        || stamp_before.is_none()
-        || stamp_after.is_none()
-    {
+    let runtime_unchanged = runtime_current(&config.cache, &hash);
+    // Every predicate that withholds Current, by name (#696).
+    let unknown_reasons: Vec<&str> = [
+        ("reuse-disabled", !paths.reuse),
+        ("inputs-before-incomplete", !before_snapshot_complete),
+        (
+            "source-declarations-before-missing",
+            !before_source_coverage,
+        ),
+        ("inputs-after-incomplete", !after.complete),
+        ("script-declarations-incomplete", !after_coverage),
+        ("source-declarations-incomplete", !source_coverage),
+        (
+            absent.reason.unwrap_or("absent-observation-incomplete"),
+            !absent.complete,
+        ),
+        ("units-outside-scope", outside_scope),
+        ("script-scheduling-unconfirmed", !scheduling_confirmed),
+        ("runtime-changed", !runtime_unchanged),
+        ("stamp-before-missing", stamp_before.is_none()),
+        ("stamp-after-missing", stamp_after.is_none()),
+    ]
+    .into_iter()
+    .filter_map(|(reason, failed)| failed.then_some(reason))
+    .collect();
+    let currentness = if !unknown_reasons.is_empty() {
         Currentness::Unknown
     } else if before_run.digests == after_run.digests
         && before_run.bindings == after_run.bindings
@@ -4594,8 +4702,12 @@ fn run_recorded(
         ));
     }
     if currentness == Currentness::Unknown {
-        notes.push(INPUTS_UNCONFIRMED.to_owned());
+        notes.push(inputs_unconfirmed(&unknown_reasons));
     }
+    event(&serde_json::json!({
+        "kind":"currentness-decision", "run_id":run_id, "currentness":currentness,
+        "reasons":unknown_reasons
+    }));
     // A script package Cargo did not schedule (#121) establishes nothing.
     if !script_coverage
         && stale_scripts.iter().any(|name| {
