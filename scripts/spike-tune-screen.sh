@@ -41,11 +41,12 @@ run() { # NAME
 
 : >"$out/walls.tsv"
 run base
-if [ -n "${TUNE_PROBE_LINE:-}" ]; then
-  sed -i "${TUNE_PROBE_LINE}a assert(true);" "$out/proj/$file"
-  run base.edit
+for probe in ${TUNE_PROBES:-}; do
   cp "$pristine/$file" "$out/proj/$file"
-fi
+  sed -i "${probe##*=}a assert(true);" "$out/proj/$file"
+  run "base.${probe%%=*}"
+done
+cp "$pristine/$file" "$out/proj/$file"
 for variant in "$@"; do
   name=${variant%%:*}
   cp "$pristine/$file" "$out/proj/$file"
@@ -61,12 +62,15 @@ for variant in "$@"; do
     sed -i "${line}s/^\(\s*\)/\1#[verifier::spinoff_prover] /" "$out/proj/$target"
   done
   run "$name"
-  # Optional sibling-edit probe: `assert(true);` after line TUNE_PROBE_LINE of
-  # FILE (the line holding the opening brace of a function kept in the shared
-  # bucket), verified against the variant's now-warm cache.
-  if [ -n "${TUNE_PROBE_LINE:-}" ]; then
-    sed -i "${TUNE_PROBE_LINE}a assert(true);" "$out/proj/$file"
-    run "$name.edit"
-  fi
+  # Optional edit probes: TUNE_PROBES="NAME=LINE ...". Each inserts
+  # `assert(true);` after LINE of FILE (a line inside a function body, after
+  # any `hide(...)` header) on the variant's source alone, and verifies
+  # against the variant's now-warm cache: the wall time of that one edit.
+  cp "$out/proj/$file" "$out/variant.src"
+  for probe in ${TUNE_PROBES:-}; do
+    cp "$out/variant.src" "$out/proj/$file"
+    sed -i "${probe##*=}a assert(true);" "$out/proj/$file"
+    run "$name.${probe%%=*}"
+  done
   for f in "${restore[@]}"; do cp "$pristine/$f" "$out/proj/$f"; done
 done
