@@ -1,23 +1,45 @@
 #!/usr/bin/env python3
-"""Hosted cache acceptance: retain all streams and refuse stale proof reuse."""
+"""Hosted cache acceptance: retain all streams and refuse stale proof reuse.
+
+The workflow (.github/workflows/ci-cache-walkthrough.yml) runs the GitHub
+Action (action/action.yml) for the cold and restored verifications, so their
+documents arrive through --result; this driver then checks them and runs the
+invalidation probes itself.
+
+  prepare   write the fixture (needs no Sail)
+  cold      check the action's cold document
+  restored  check the action's restored document, then refuse stale reuse
+"""
 import argparse
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import time
+
+FIXTURE = Path(__file__).resolve().parent / "github-action-fixture"
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("phase", choices=("cold", "restored"))
+    parser.add_argument("phase", choices=("prepare", "cold", "restored"))
     parser.add_argument("--mode", choices=("solver", "managed"), required=True)
     parser.add_argument("--root", type=Path, required=True)
-    parser.add_argument("--sail", type=Path, required=True)
+    parser.add_argument("--sail", type=Path)
+    parser.add_argument("--result", type=Path, help="the action's result document")
     args = parser.parse_args()
     root = args.root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     project = root / "project"
+    if args.phase == "prepare":
+        assert not project.exists(), "cold producer must start without the fixture"
+        shutil.copytree(FIXTURE, project)
+        source = project / "src/lib.rs"
+        source.write_text(source.read_text() + "\nverus! { proof fn cache_walkthrough() { assert(true); } }\n")
+        print("PASS: prepare", args.mode)
+        return
+    assert args.sail and args.result, "cold and restored need --sail and --result"
     evidence = root / (args.phase + "-" + args.mode)
     evidence.mkdir()
     env = dict(os.environ, SAIL_BACKGROUND_PREPARE="0", CARGO_TERM_COLOR="never")
@@ -45,6 +67,17 @@ def main():
         assert (document["exit_code"] == 0) == succeeds, (label, document)
         return document
 
+    def action_result(label):
+        """The action's document, retained with this phase's evidence."""
+        shutil.copyfile(args.result, evidence / (label + ".stdout"))
+        document = json.loads(args.result.read_bytes())
+        records.append({"label": label, "exit_code": document["exit_code"],
+                        "wall_seconds": document["execution"]["wall_ms"] / 1000, "via": "action"})
+        (evidence / "records.json").write_text(json.dumps(records, indent=2) + "\n")
+        assert document["exit_code"] == 0, (label, document)
+        assert document["currentness"] == "current", (label, document)
+        return document
+
     def walkthrough_provenance(document):
         functions = [function for target in document["targets"] if target["requested"]
                      for crate in target["report"]["crates"] for function in crate["functions"]
@@ -53,17 +86,12 @@ def main():
         return functions[0]["provenance"]
 
     if args.phase == "cold":
-        assert not project.exists(), "cold producer must start without the fixture"
-        result = call("new", [args.sail, "new", "--lib", "project"], cwd=root)
-        assert result.returncode == 0, result.stderr
-        source = project / "src/lib.rs"
-        source.write_text(source.read_text() + "\nverus! { proof fn cache_walkthrough() { assert(true); } }\n")
-        cold = verify("cold")
+        cold = action_result("cold")
         assert cold["execution"]["verifier_invocations"] > 0, cold
         assert walkthrough_provenance(cold)["checks_solved"] > 0, cold
         assert (project / "Cargo.lock").is_file()
     else:
-        restored = verify("restored")
+        restored = action_result("restored")
         if args.mode == "managed":
             assert restored["execution"]["verifier_invocations"] == 0, restored
         else:

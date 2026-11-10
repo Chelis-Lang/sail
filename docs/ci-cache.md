@@ -51,7 +51,15 @@ receipt reuse, and requires source edits, configuration changes and modified
 runtime bytes to refuse the previous proof. Every invocation retains its full
 output and timing in workflow artifacts. Credentials are confined to installation.
 
-The workflow and [acceptance driver](../ci/ci-cache-walkthrough.py) pass on four
+The walkthrough runs through the [GitHub Action](github-action.md): the
+action installs Sail, restores and saves the caches and runs the cold and
+restored verifications, and the [acceptance driver](../ci/ci-cache-walkthrough.py)
+checks their documents and runs the invalidation probes. The action needs a
+release with `sail report`, so this form of the walkthrough first runs once
+0.3.0 is published. The hosted test of the action itself, in pull-request CI,
+covers the same restore on a fresh runner with this commit's Sail.
+
+Before it drove the action, the workflow passed on four
 independent Ubuntu 24.04 runners using attested published Sail 0.1.0
 ([hosted run](https://github.com/Chelis-Lang/sail/actions/runs/41381191209)).
 The managed fixture takes 11.69 s cold and 0.69 s after restore, with Current
@@ -65,7 +73,17 @@ PR CI.
 
 ## GitHub Actions example
 
-This workflow persists the solver replies for every project, and the Cargo
+The [GitHub Action](github-action.md) does all of this in one step, for
+releases that include `sail report` (0.3.0 and later):
+
+```yaml
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: Chelis-Lang/sail/action@v0.3.0
+```
+
+Without the action, for example with Sail 0.2.0, this workflow persists the solver replies for every project, and the Cargo
 registry and `target/` as for any Rust project. Replace `SAIL_VERSION` with
 the release you use. Add the arguments you pass to `cargo verus verify`. The
 workflow illustrates the persistence policy. The separately linked walkthrough
@@ -172,6 +190,13 @@ against 12 s without it. In SAIL3112 mode the same step takes 0.5 s, because
 Cargo then considers the crate fresh and Verus does not run. That is the same
 trust you already place in a cached `target/` with stock `cargo verus`; see
 [caveats](#caveats).
+
+Do not combine commit times with a `target/` restored from another commit's
+entry. A file changed since that commit gets its (older) commit time, so
+Cargo trusts the restored build and replays the other commit's result without
+verifying the change. The [GitHub Action](github-action.md#restored-builds-and-file-times)
+keeps such files at the current time; with this manual step, cache `target/`
+only under an exact per-commit key, or skip the step.
 
 ## Measured results
 
