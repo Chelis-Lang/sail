@@ -1,0 +1,6 @@
+::error file=proofs/alpha/src/lib.rs,line=12,col=9,title=Verus error::postcondition not satisfied
+::error file=proofs/alpha/src/lib.rs,line=21,col=5,title=Verus error::possible arithmetic underflow/overflow
+::error file=proofs/alpha/src/lib.rs,line=34,col=13,title=Verus error::invariant not satisfied at end of loop body
+::error file=proofs/alpha/src/lib.rs,line=34,col=13,title=Verus error::invariant not satisfied before loop
+::error file=proofs/alpha/src/lib.rs,line=45,col=12,title=Verus error::assertion failed
+::error file=proofs/alpha/src/lib.rs,line=51,col=9,title=Verus error::postcondition not satisfied

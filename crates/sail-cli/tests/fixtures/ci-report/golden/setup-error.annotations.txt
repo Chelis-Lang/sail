@@ -1,0 +1,1 @@
+::error title=Sail SAIL3100::error[SAIL0102]: sail-z3 must be installed next to sail

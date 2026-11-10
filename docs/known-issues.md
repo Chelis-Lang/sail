@@ -213,9 +213,12 @@ Current numbers are in [performance](performance.md).
 - **Combined output order.** The managed relay guarantees final stdout
   completion, not one global order across stdout and stderr
   ([#215](https://github.com/Chelis-Lang/sail/issues/215)).
-- **Summary wording.** A failing managed job summary leads with `0 verified`
-  before `… passed by Verus's totals`, and after a Rust compile error reads
-  `0 verified, 0 failed, 0 unknown`.
+- **A failing build script leaves no diagnostic in the result.** When a
+  requested package's build script fails, the `sail verify --output json`
+  document has exit code 101 and neither a target nor a diagnostic; Cargo's
+  message is on stderr only. `sail report` then says that verification failed
+  and that the result holds no error diagnostic. Observed on Linux with the pinned Verus at `b059ce3f`;
+  other failures before compilation were not tried.
 
 ## Integration APIs (experimental)
 
