@@ -138,8 +138,26 @@ the owned `sail-sync.lock` on the host. Check that no sync is running before
 removing that lock and retrying. Full local Git merge-operation state is not
 exported; unmerged index stages and actual conflict files are preserved.
 
+`scripts/perf-host.sh up LANE [INSTANCE_TYPE]` asks EC2 for the instance type's
+architecture and launches the matching Ubuntu 24.04 image: amd64 by default,
+arm64 for a Graviton type such as `c7g.4xlarge`. Any other architecture is
+refused before anything is created. `up` launches in `AWS_REGION` (default
+`us-east-1`) and records the region in the lane's state before it creates the
+key pair. `sync`, `run`, `ssh`, `extend`, `allow` and `down` then use the
+recorded region, so a later shell need not export `AWS_REGION` again. `list`
+covers the default region and every region a recorded lane names, and prints
+each host's availability zone.
+
+An `up` that fails before an instance exists, for example on
+`VcpuLimitExceeded`, deletes the key pair, security group and local files that
+run created and leaves nothing behind. If that cleanup fails, or the instance
+was launched but never became ready, the lane's state is retained and
+`scripts/perf-host.sh down LANE` removes the rest.
+
 `python3 scripts/test-perf-host-sync.py` exercises real Git and rsync with local
-SSH transport. It is included in the workspace gate. See the
+SSH transport. `python3 scripts/test-perf-host-up.py` and
+`python3 scripts/test-perf-host-down.py` drive launch, regions and teardown
+against a fake AWS CLI. All three are included in the workspace gate. See the
 [source-sync record](validation/host-source-sync.md) for qualification scope.
 
 The e2e shell scripts need no GNU tools on macOS: fixture edits use portable
