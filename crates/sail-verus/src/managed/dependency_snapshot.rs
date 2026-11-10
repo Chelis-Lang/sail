@@ -302,9 +302,13 @@ pub(super) struct Membership<'a> {
 }
 
 impl Membership<'_> {
-    /// The regular files of `directories` to leave out, or `None` when an
-    /// artifact a lookup could consider was not produced in this run.
-    fn foreign(&self, directories: &BTreeSet<PathBuf>, unit: &Unit) -> Option<BTreeSet<PathBuf>> {
+    /// The lookup names now (with every produced artifact's crate stem), or
+    /// `None` when an artifact a lookup could consider was not produced.
+    fn lookup_names(
+        &self,
+        directories: &BTreeSet<PathBuf>,
+        unit: &Unit,
+    ) -> Option<BTreeSet<String>> {
         let mut files = Vec::new();
         let mut names = self.names.clone();
         for directory in directories {
@@ -329,15 +333,18 @@ impl Membership<'_> {
                 }
             }
         }
-        let mut foreign = BTreeSet::new();
-        for path in files {
-            if !candidate(&path, &names) {
-                foreign.insert(path);
-            } else if artifact(&path) {
-                return None;
-            }
-        }
-        Some(foreign)
+        files
+            .iter()
+            .all(|path| !artifact(path) || !candidate(path, &names))
+            .then_some(names)
+    }
+
+    /// Whether the capture leaves this regular file out. Decided per file
+    /// while copying, so a foreign crate that another compiler writes after
+    /// the names were read is still left out, and a later closure-named file
+    /// is copied and must then establish its provenance.
+    fn left_out(&self, path: &Path, names: &BTreeSet<String>) -> bool {
+        !candidate(path, names) && (!artifact(path) || !(self.produced)(path))
     }
 }
 
@@ -562,8 +569,10 @@ impl Snapshot {
         let target = owned_target.canonicalize().ok()?;
         let unit = Unit::parse(args)?;
         let (directories, _) = lookups(&target, &unit, args)?;
-        let foreign = membership.foreign(&directories, &unit)?;
-        Self::capture_excluding(owned_target, root, args, Scratch::Skip, &foreign)
+        let names = membership.lookup_names(&directories, &unit)?;
+        Self::capture_excluding(owned_target, root, args, Scratch::Skip, &|path| {
+            membership.left_out(path, &names)
+        })
     }
 
     /// A cheap refusal before compiler/source hashing, for
@@ -585,10 +594,10 @@ impl Snapshot {
         if directories.is_empty() || directories.len() > 8 {
             return Err(MemberRefusal::Lookup);
         }
-        let foreign = membership
-            .foreign(&directories, &unit)
+        let names = membership
+            .lookup_names(&directories, &unit)
             .ok_or(MemberRefusal::Unproduced)?;
-        if externs.iter().any(|path| foreign.contains(path)) {
+        if externs.iter().any(|path| membership.left_out(path, &names)) {
             return Err(MemberRefusal::ForeignExtern);
         }
         Ok(())
@@ -600,7 +609,7 @@ impl Snapshot {
         args: &[OsString],
         scratch: Scratch,
     ) -> Option<Self> {
-        Self::capture_excluding(owned_target, root, args, scratch, &BTreeSet::new())
+        Self::capture_excluding(owned_target, root, args, scratch, &|_| false)
     }
 
     fn capture_excluding(
@@ -608,7 +617,7 @@ impl Snapshot {
         root: &Path,
         args: &[OsString],
         scratch: Scratch,
-        foreign: &BTreeSet<PathBuf>,
+        left_out: &dyn Fn(&Path) -> bool,
     ) -> Option<Self> {
         let target = owned_target.canonicalize().ok()?;
         let unit = Unit::parse(args)?;
@@ -657,7 +666,7 @@ impl Snapshot {
                 if scratch == Scratch::Skip && kind.is_dir() && entries <= ENTRY_LIMIT {
                     continue;
                 }
-                if kind.is_file() && entries <= ENTRY_LIMIT && foreign.contains(&entry.path()) {
+                if kind.is_file() && entries <= ENTRY_LIMIT && left_out(&entry.path()) {
                     continue;
                 }
                 if !kind.is_file() || !names.insert(entry.file_name()) || entries > ENTRY_LIMIT {
@@ -1228,6 +1237,46 @@ mod tests {
         let full = Snapshot::capture_pipelined(&target, &root.0.join("full"), &root.args())
             .ok_or("full graph")?;
         assert_eq!(full.original_inputs().len(), 5);
+        Ok(())
+    }
+
+    /// A foreign crate another compiler writes after the lookup names were
+    /// read is still left out (the 2026-11-10 lane's one missed round).
+    #[test]
+    fn foreign_crate_written_during_capture_is_left_out() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let root = Root::new("members-late-foreign")?;
+        let deps = root.0.join("target/debug/deps");
+        let vstd = deps.join("libvstd-abcd.rmeta");
+        std::fs::write(&vstd, b"admitted metadata")?;
+        let target = root.0.join("target");
+        let lookup = names(&["vstd"]);
+        let late = deps.join("librand_core-1234.rmeta");
+        // The producer check runs per copied artifact, after the names were
+        // read: write the foreign crate from inside it.
+        let produced = |path: &Path| path == vstd;
+        let membership = Membership {
+            produced: &produced,
+            names: &lookup,
+        };
+        // As in capture_members, with the foreign crate written between the
+        // names pass and the copying pass.
+        let unit = Unit::parse(&root.args()).ok_or("unit")?;
+        let names = membership
+            .lookup_names(&BTreeSet::from([deps.clone()]), &unit)
+            .ok_or("names")?;
+        std::fs::write(&late, b"foreign bytes")?;
+        let graph = Snapshot::capture_excluding(
+            &target,
+            &root.0.join("late"),
+            &root.args(),
+            Scratch::Skip,
+            &|path| membership.left_out(path, &names),
+        )
+        .ok_or("graph")?;
+        assert!(late.is_file());
+        assert_eq!(graph.original_inputs().keys().collect::<Vec<_>>(), [&vstd]);
+        assert!(graph.intact());
         Ok(())
     }
 
