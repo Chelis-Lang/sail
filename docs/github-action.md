@@ -56,7 +56,11 @@ on Ubuntu only; macOS runners are untested.
 1. **Installs Sail** with [`scripts/install.py`](install.md) into
    `$RUNNER_TEMP/sail`: it downloads the release archive, checks its SHA-256
    and its build-provenance attestation, installs the verifier's pinned Rust
-   toolchain with `rust-src`, and adds Sail to `PATH` for later steps. A
+   toolchain with `rust-src`, and adds Sail to `PATH` for later steps. When
+   the project has a `rust-toolchain` file, it also installs that toolchain
+   first (`rustup toolchain install`), since installing it on first use
+   inside `sail verify` has failed on a fresh runner
+   ([known issues](known-issues.md#product-limits)). A
    second use of the action in one job reuses that installation.
 2. **Restores file times.** `actions/checkout` gives every file the current
    time, which makes Cargo rebuild and re-verify unchanged crates. The

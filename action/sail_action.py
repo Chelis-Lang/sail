@@ -232,6 +232,20 @@ def toolchain_files(project, top):
     return found
 
 
+def install_project_toolchain(project):
+    """Install the toolchain the project's rust-toolchain file names, once,
+    before verification. Otherwise rustup installs it on first use inside
+    `sail verify`, which failed on a fresh hosted runner (SAIL3104; see
+    docs/known-issues.md)."""
+    rustup = subprocess.run(["sh", "-c", "command -v rustup"], capture_output=True, text=True, check=False)
+    if rustup.returncode != 0:
+        return
+    print("+ rustup toolchain install  (the project's rust-toolchain file)", flush=True)
+    result = subprocess.run(["rustup", "toolchain", "install"], cwd=project, check=False)
+    if result.returncode != 0:
+        command("warning", "rustup could not install the project's toolchain; sail verify will try again")
+
+
 def git_top(project):
     result = subprocess.run(["git", "-C", str(project), "rev-parse", "--show-toplevel"],
                             capture_output=True, text=True, check=False)
@@ -268,9 +282,12 @@ def setup():
         print(f"{project} is not in a Git repository; file times are left as they are")
     elif flag("RESTORE_MTIME", "true"):
         restore_mtime(top)
+    selected = toolchain_files(project, top)
+    if selected and flag("INSTALL_TOOLCHAIN", "true"):
+        install_project_toolchain(project)
     prefix = env("CACHE_KEY_PREFIX", "sail") or "sail"
     runner = f"{os.environ.get('RUNNER_OS', sys.platform)}-{os.environ.get('RUNNER_ARCH', os.uname().machine)}"
-    tools = digest_files(toolchain_files(project, top), top)
+    tools = digest_files(selected, top)
     locks = digest_files(project_files(project, ("Cargo.lock",)), top)
     # One entry per project and argument list, so matrix jobs over
     # different arguments do not race for one key.

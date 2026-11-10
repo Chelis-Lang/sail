@@ -101,6 +101,7 @@ class ActionTests(unittest.TestCase):
             "FAKE_SAIL_LOG": str(self.log),
             "GH_TOKEN": "secret",
             "SAIL_ACTION_INSTALL": "false",
+            "SAIL_ACTION_INSTALL_TOOLCHAIN": "false",
             "SAIL_ACTION_WORKING_DIRECTORY": "crate",
         }
 
