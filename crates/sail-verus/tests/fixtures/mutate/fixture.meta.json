@@ -11,7 +11,7 @@
     "spec-weaken": 5,
     "statement": 5
   },
-  "candidates_sha256": "e4bbaa3a6cf9f67a3c9974262a3b992c1b0db00733f9842f4235a6f64656dd60",
+  "candidates_sha256": "6a0ecb99b34a0f61de1d040bc0f9b93d4b619801eb70b56f24d3a884dc045856",
   "files": 2,
   "generated": {
     "arith": 3,
