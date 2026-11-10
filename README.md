@@ -178,6 +178,7 @@ A repair is accepted only when the whole target verifies. See the
 - [Disk use and cleanup](docs/workspace-hygiene.md),
   [caching Sail in CI](docs/ci-cache.md),
   [CI reports](docs/ci-reports.md),
+  [GitHub Action](docs/github-action.md),
   [background preparation](docs/background-preparation.md)
 - Experimental features: fragility measurement, seed portfolios, team caching
   and requirement attribution. They aren't listed in `sail --help`; see the

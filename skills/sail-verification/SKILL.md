@@ -37,6 +37,27 @@ Read [Verus workflows](references/verus.md) for standalone files, MCP,
 background preparation, explicit jobs, proof-repair checks and cache management. Inspect the installed help before
 choosing the standalone workflow; the reference explains release availability.
 
+## Verify in CI
+
+In GitHub Actions, use the Sail action after a checkout with
+`fetch-depth: 0`:
+
+```yaml
+- uses: Chelis-Lang/sail/action@v0.3.0
+  with:
+    args: --lib
+```
+
+It installs Sail, caches solver replies and proof receipts, writes a job
+summary, annotations and SARIF, and ends with `sail verify`'s exit code. It
+needs a Sail release that includes `sail report` (0.3.0 or newer); check that
+the tag exists before using it. Read the
+[action guide](https://github.com/Chelis-Lang/sail/blob/main/docs/github-action.md)
+for inputs, baselines and caching. Elsewhere, run
+`sail verify --output json > result.json` and render it with
+`sail report --format github-summary|github-annotations|sarif result.json`,
+keeping `sail verify`'s exit code for the job.
+
 ## Run SMT queries
 
 For repeated Z3 work outside Rust, check the installed solver once with
@@ -53,7 +74,9 @@ is not a result about the formula.
 
 For Verus results, check scope and currentness before reporting success. Current
 evidence matches the present inputs; Historical evidence no longer matches
-them; Unknown does not establish a current proof. Current describes freshness,
+them; Unknown does not establish a current proof. An Unknown result's
+`SAIL3114` note names the checks that failed in parentheses; re-run once for a
+current result. Current describes freshness,
 not success: read the verdict too. Verify again after
 further edits. An SMT answer concerns its submitted formula; Verus checks
 whether the Rust implementation meets its contracts.

@@ -4,6 +4,17 @@
 of the frozen installed Linux/macOS candidate is running; no final release
 edit-loop claim is made yet.
 
+**Catalogues regenerated (generator version 3).** Version 3 corrected
+version 2's mode and body placement, so `corpus/mutants/` now holds
+regenerated catalogues, settled by a new Linux stock oracle (native
+c7i.8xlarge/us-west-2, three runs per mutant, registry vstd, protocol
+`roots-json-strict-2`): HumanEval 51 kept, IronKV 48, Vest 52, CapybaraKV 54.
+Every mutation present in both versions got the same stock outcome. `cargo
+xtask gen-mutants --check` reproduces all four byte for byte. The macOS
+oracle and the measured cohorts below were taken on the version 2
+catalogues (main at `d45e75eb` and earlier) and have not been repeated on
+version 3; they describe those catalogues only.
+
 Generator version 2 covers all nine classes. Each catalogue is qualified by
 three stock runs per mutant, with root-only logging, pinned Cargo 1.99.1 and
 registry vstd setup. Qualification is platform-specific:

@@ -126,6 +126,37 @@ impl Closure {
         })
     }
 
+    /// The library crate names of the admitted closure's packages, as Cargo
+    /// names their artifacts: the package name with `-` as `_`, and also a
+    /// manifest's own `[lib] name`. `None` when the policy or a manifest
+    /// cannot be read, so a caller never builds a narrower membership.
+    pub(super) fn crate_names(&self) -> Option<BTreeSet<String>> {
+        let policy = self.policy()?;
+        let mut names = BTreeSet::new();
+        for (identity, package) in &policy.packages {
+            names.insert(package.name.replace('-', "_"));
+            let manifest: toml::Value = toml::from_str(
+                &std::fs::read_to_string(self.registry.join(identity).join("Cargo.toml")).ok()?,
+            )
+            .ok()?;
+            if let Some(name) = manifest
+                .get("lib")
+                .and_then(|lib| lib.get("name"))
+                .and_then(toml::Value::as_str)
+            {
+                names.insert(name.replace('-', "_"));
+            }
+        }
+        Some(names)
+    }
+
+    /// A cheap test, from Cargo's package variables alone, of whether a
+    /// native unit belongs to one of the admitted closure's packages. It
+    /// admits nothing; [`Self::native_unit`] decides.
+    pub(super) fn names_package(&self, name: &str, version: &str) -> bool {
+        self.packages.contains(&format!("{name}-{version}"))
+    }
+
     pub(super) fn native_unit(
         &self,
         vars: &BTreeMap<String, String>,
@@ -723,6 +754,51 @@ fn check_package(root: &Path, expected: &Package) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The lookup membership's closure names cover every policy package by
+    /// its Cargo crate name and by a manifest's own `[lib] name`; any
+    /// unreadable manifest yields none, never a narrower set.
+    #[test]
+    fn closure_crate_names_cover_package_and_library_names() -> std::io::Result<()> {
+        let registry =
+            std::env::temp_dir().join(format!("sail-closure-names-{}", std::process::id()));
+        let closure = Closure {
+            policy_sha256: super::super::digest(POLICY.as_bytes()),
+            registry: registry.clone(),
+            packages: BTreeSet::new(),
+        };
+        assert_eq!(closure.crate_names(), None);
+        let policy: Policy = serde_json::from_str(POLICY).map_err(std::io::Error::other)?;
+        for (identity, package) in &policy.packages {
+            std::fs::create_dir_all(registry.join(identity))?;
+            let manifest = if package.name == "unicode-ident" {
+                "[package]\nname = \"unicode-ident\"\n[lib]\nname = \"renamed_ident\"\n"
+            } else {
+                "[package]\nname = \"fixture\"\n"
+            };
+            std::fs::write(registry.join(identity).join("Cargo.toml"), manifest)?;
+        }
+        let names = closure
+            .crate_names()
+            .ok_or_else(|| std::io::Error::other("names"))?;
+        for expected in [
+            "vstd",
+            "proc_macro2",
+            "unicode_ident",
+            "renamed_ident",
+            "verus_builtin",
+        ] {
+            assert!(names.contains(expected), "{expected}");
+        }
+        let admitted = Closure {
+            packages: BTreeSet::from(["syn-2.0.119".to_owned()]),
+            ..closure
+        };
+        assert!(admitted.names_package("syn", "2.0.119"));
+        assert!(!admitted.names_package("syn", "2.0.118"));
+        assert!(!admitted.names_package("rand_core", "2.0.119"));
+        std::fs::remove_dir_all(registry)
+    }
 
     #[test]
     fn direct_compiler_source_maps_require_exact_admitted_read_bytes()

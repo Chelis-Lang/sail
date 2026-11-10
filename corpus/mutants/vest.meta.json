@@ -1,17 +1,17 @@
 {
   "base_commit": "11af01ddaef76cceded03517cd48764adb9d35b1",
   "candidate_sites": {
-    "arith": 904,
-    "compare": 3064,
-    "constant": 2713,
-    "invariant": 109,
-    "logic": 639,
+    "arith": 950,
+    "compare": 3172,
+    "constant": 2802,
+    "invariant": 114,
+    "logic": 664,
     "rare-region": 17,
-    "spec-strengthen": 974,
-    "spec-weaken": 682,
-    "statement": 3999
+    "spec-strengthen": 998,
+    "spec-weaken": 688,
+    "statement": 4145
   },
-  "candidates_sha256": "d8e47b18ca4fdf4af018d9a4c54db42a06059ce504e4b707986730fc0124a9fc",
+  "candidates_sha256": "fadd8b195a0790b7d9f9b7eef9b77b7fd35a75805113dfe3a4d07103c57780fe",
   "files": 138,
   "generated": {
     "arith": 6,
@@ -24,7 +24,7 @@
     "spec-weaken": 6,
     "statement": 6
   },
-  "generator": "gen-mutants 2",
+  "generator": "gen-mutants 3",
   "mutants": {
     "vest-arith-001": {
       "class": "arith",
@@ -109,6 +109,15 @@
     },
     "vest-compare-004": {
       "class": "compare",
+      "column": 39,
+      "file": "vest_lib/src/primitives/base128.rs",
+      "function": "scan_base128_bytes",
+      "kind": "body",
+      "line": 434,
+      "mode": "exec"
+    },
+    "vest-compare-005": {
+      "class": "compare",
       "column": 26,
       "file": "vest_lib/src/primitives/base256.rs",
       "function": "usize_to_be_bytes_in_place",
@@ -116,22 +125,13 @@
       "line": 343,
       "mode": "exec"
     },
-    "vest-compare-005": {
+    "vest-compare-006": {
       "class": "compare",
       "column": 20,
       "file": "vest_lib/src/asn1/real.rs",
       "function": "der_real_decimal_wf_exec",
       "kind": "body",
       "line": 656,
-      "mode": "exec"
-    },
-    "vest-compare-006": {
-      "class": "compare",
-      "column": 38,
-      "file": "vest_lib/src/asn1/der_ord.rs",
-      "function": "der_next",
-      "kind": "body",
-      "line": 801,
       "mode": "exec"
     },
     "vest-constant-001": {
@@ -518,7 +518,7 @@
       "vest-arith-001": "does not compile",
       "vest-arith-002": "does not compile"
     },
-    "finished_unix": 1792595448,
+    "finished_unix": 1794310533,
     "kept": 52,
     "machine": {
       "cpus": "32",
@@ -530,7 +530,7 @@
         "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
       ],
       "outcome": "errors",
-      "wall_s": 102.2
+      "wall_s": 206.5
     },
     "platform": "x86_64-unknown-linux-gnu",
     "protocol": "roots-json-strict-2",
@@ -546,7 +546,7 @@
           "stillborn"
         ],
         "wall_s": [
-          6.0
+          12.1
         ]
       },
       "vest-arith-002": {
@@ -560,7 +560,7 @@
           "stillborn"
         ],
         "wall_s": [
-          6.0
+          15.3
         ]
       },
       "vest-arith-003": {
@@ -583,9 +583,9 @@
           "errors"
         ],
         "wall_s": [
-          56.3,
-          55.3,
-          55.7
+          115.8,
+          117.2,
+          111.7
         ]
       },
       "vest-arith-004": {
@@ -610,9 +610,9 @@
           "errors"
         ],
         "wall_s": [
-          55.7,
-          55.2,
-          56.3
+          114.8,
+          115.8,
+          111.9
         ]
       },
       "vest-arith-005": {
@@ -643,9 +643,9 @@
           "errors"
         ],
         "wall_s": [
-          55.1,
-          55.3,
-          55.4
+          104.9,
+          115.6,
+          114.0
         ]
       },
       "vest-arith-006": {
@@ -668,9 +668,9 @@
           "errors"
         ],
         "wall_s": [
-          54.5,
-          55.4,
-          54.8
+          108.3,
+          119.0,
+          111.7
         ]
       },
       "vest-compare-001": {
@@ -693,9 +693,9 @@
           "errors"
         ],
         "wall_s": [
-          55.9,
-          55.4,
-          56.0
+          111.7,
+          116.3,
+          116.7
         ]
       },
       "vest-compare-002": {
@@ -718,9 +718,9 @@
           "errors"
         ],
         "wall_s": [
-          54.4,
-          54.7,
-          54.4
+          121.7,
+          106.2,
+          115.2
         ]
       },
       "vest-compare-003": {
@@ -743,12 +743,37 @@
           "errors"
         ],
         "wall_s": [
-          55.3,
-          54.3,
-          55.8
+          115.4,
+          102.8,
+          115.6
         ]
       },
       "vest-compare-004": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
+          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child",
+          "0#primitives::base128::vest_lib::primitives::base128::scan_base128_bytes"
+        ],
+        "new_failures": [
+          "0#primitives::base128::vest_lib::primitives::base128::scan_base128_bytes"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          118.2,
+          108.4,
+          115.2
+        ]
+      },
+      "vest-compare-005": {
         "dropped": null,
         "exits": [
           101,
@@ -772,12 +797,12 @@
           "errors"
         ],
         "wall_s": [
-          56.0,
-          54.1,
-          55.6
+          111.2,
+          104.2,
+          88.1
         ]
       },
-      "vest-compare-005": {
+      "vest-compare-006": {
         "dropped": null,
         "exits": [
           101,
@@ -794,34 +819,9 @@
           "errors"
         ],
         "wall_s": [
-          55.0,
-          54.9,
-          55.8
-        ]
-      },
-      "vest-compare-006": {
-        "dropped": null,
-        "exits": [
-          101,
-          101,
-          101
-        ],
-        "failing": [
-          "0#asn1::der_ord::vest_lib::asn1::GeneralizedTimeFmt::der_next",
-          "0#cbor::format::vest_lib::cbor::format::parse_cbor_with_child"
-        ],
-        "new_failures": [
-          "0#asn1::der_ord::vest_lib::asn1::GeneralizedTimeFmt::der_next"
-        ],
-        "outcomes": [
-          "errors",
-          "errors",
-          "errors"
-        ],
-        "wall_s": [
-          54.6,
-          55.4,
-          55.5
+          110.5,
+          101.2,
+          92.4
         ]
       },
       "vest-constant-001": {
@@ -848,9 +848,9 @@
           "errors"
         ],
         "wall_s": [
-          54.0,
-          55.2,
-          55.0
+          114.2,
+          103.0,
+          90.5
         ]
       },
       "vest-constant-002": {
@@ -873,9 +873,9 @@
           "errors"
         ],
         "wall_s": [
-          54.5,
-          55.6,
-          54.8
+          112.5,
+          104.6,
+          87.8
         ]
       },
       "vest-constant-003": {
@@ -900,9 +900,9 @@
           "errors"
         ],
         "wall_s": [
-          56.7,
-          56.1,
-          56.4
+          93.8,
+          89.0,
+          102.7
         ]
       },
       "vest-constant-004": {
@@ -925,9 +925,9 @@
           "errors"
         ],
         "wall_s": [
-          56.3,
-          56.7,
-          54.6
+          97.7,
+          90.2,
+          99.0
         ]
       },
       "vest-constant-005": {
@@ -950,9 +950,9 @@
           "errors"
         ],
         "wall_s": [
-          55.7,
-          56.4,
-          56.6
+          95.1,
+          88.1,
+          100.2
         ]
       },
       "vest-constant-006": {
@@ -975,9 +975,9 @@
           "errors"
         ],
         "wall_s": [
-          55.8,
-          56.1,
-          56.4
+          95.3,
+          91.8,
+          98.5
         ]
       },
       "vest-invariant-001": {
@@ -1000,9 +1000,9 @@
           "errors"
         ],
         "wall_s": [
-          60.4,
-          60.3,
-          59.8
+          79.8,
+          81.0,
+          77.8
         ]
       },
       "vest-invariant-002": {
@@ -1025,9 +1025,9 @@
           "errors"
         ],
         "wall_s": [
-          60.3,
-          60.0,
-          60.5
+          85.0,
+          76.9,
+          78.9
         ]
       },
       "vest-invariant-003": {
@@ -1050,9 +1050,9 @@
           "errors"
         ],
         "wall_s": [
-          60.7,
-          60.0,
-          60.0
+          79.0,
+          78.1,
+          75.8
         ]
       },
       "vest-invariant-004": {
@@ -1075,9 +1075,9 @@
           "errors"
         ],
         "wall_s": [
-          60.1,
-          60.1,
-          60.6
+          80.3,
+          76.2,
+          79.5
         ]
       },
       "vest-invariant-005": {
@@ -1100,9 +1100,9 @@
           "errors"
         ],
         "wall_s": [
-          60.6,
-          60.9,
-          61.1
+          73.8,
+          81.7,
+          70.7
         ]
       },
       "vest-invariant-006": {
@@ -1125,9 +1125,9 @@
           "errors"
         ],
         "wall_s": [
-          60.2,
-          60.6,
-          60.4
+          77.7,
+          76.4,
+          77.6
         ]
       },
       "vest-logic-001": {
@@ -1152,9 +1152,9 @@
           "errors"
         ],
         "wall_s": [
-          56.1,
-          56.4,
-          56.6
+          88.3,
+          97.0,
+          87.1
         ]
       },
       "vest-logic-002": {
@@ -1177,9 +1177,9 @@
           "errors"
         ],
         "wall_s": [
-          57.0,
-          57.1,
-          57.2
+          87.5,
+          97.4,
+          86.9
         ]
       },
       "vest-logic-003": {
@@ -1199,9 +1199,9 @@
           "errors"
         ],
         "wall_s": [
-          55.6,
-          55.8,
-          56.9
+          88.6,
+          88.1,
+          98.5
         ]
       },
       "vest-logic-004": {
@@ -1224,9 +1224,9 @@
           "errors"
         ],
         "wall_s": [
-          56.0,
-          56.3,
-          57.0
+          86.4,
+          95.5,
+          88.3
         ]
       },
       "vest-logic-005": {
@@ -1249,9 +1249,9 @@
           "errors"
         ],
         "wall_s": [
-          56.9,
-          59.6,
-          61.1
+          88.9,
+          96.1,
+          88.7
         ]
       },
       "vest-logic-006": {
@@ -1274,9 +1274,9 @@
           "errors"
         ],
         "wall_s": [
-          59.1,
-          61.2,
-          62.7
+          89.0,
+          98.7,
+          95.1
         ]
       },
       "vest-rare-region-001": {
@@ -1299,9 +1299,9 @@
           "errors"
         ],
         "wall_s": [
-          55.1,
-          55.8,
-          55.7
+          48.5,
+          48.4,
+          48.9
         ]
       },
       "vest-rare-region-002": {
@@ -1324,9 +1324,9 @@
           "errors"
         ],
         "wall_s": [
-          55.1,
-          55.9,
-          55.8
+          48.8,
+          48.9,
+          48.1
         ]
       },
       "vest-rare-region-003": {
@@ -1349,9 +1349,9 @@
           "errors"
         ],
         "wall_s": [
-          56.9,
-          57.2,
-          57.3
+          49.7,
+          49.4,
+          49.3
         ]
       },
       "vest-rare-region-004": {
@@ -1374,9 +1374,9 @@
           "errors"
         ],
         "wall_s": [
-          56.0,
-          56.5,
-          57.3
+          48.4,
+          49.3,
+          48.8
         ]
       },
       "vest-rare-region-005": {
@@ -1399,9 +1399,9 @@
           "errors"
         ],
         "wall_s": [
-          56.1,
-          56.7,
-          57.0
+          49.3,
+          48.7,
+          49.5
         ]
       },
       "vest-rare-region-006": {
@@ -1421,9 +1421,9 @@
           "errors"
         ],
         "wall_s": [
-          56.2,
-          56.7,
-          57.1
+          48.6,
+          49.4,
+          48.6
         ]
       },
       "vest-spec-strengthen-001": {
@@ -1446,9 +1446,9 @@
           "errors"
         ],
         "wall_s": [
-          58.8,
-          56.4,
-          54.7
+          54.0,
+          50.7,
+          47.9
         ]
       },
       "vest-spec-strengthen-002": {
@@ -1471,9 +1471,9 @@
           "errors"
         ],
         "wall_s": [
-          61.4,
-          58.9,
-          56.4
+          54.9,
+          51.2,
+          48.7
         ]
       },
       "vest-spec-strengthen-003": {
@@ -1496,9 +1496,9 @@
           "errors"
         ],
         "wall_s": [
-          61.3,
-          58.7,
-          56.0
+          56.5,
+          52.6,
+          48.9
         ]
       },
       "vest-spec-strengthen-004": {
@@ -1521,9 +1521,9 @@
           "errors"
         ],
         "wall_s": [
-          61.0,
-          58.7,
-          55.2
+          55.7,
+          52.1,
+          49.4
         ]
       },
       "vest-spec-strengthen-005": {
@@ -1546,9 +1546,9 @@
           "errors"
         ],
         "wall_s": [
-          55.8,
-          56.3,
-          56.1
+          49.0,
+          49.1,
+          48.7
         ]
       },
       "vest-spec-strengthen-006": {
@@ -1571,9 +1571,9 @@
           "errors"
         ],
         "wall_s": [
-          54.6,
-          55.6,
-          56.0
+          48.9,
+          48.6,
+          48.6
         ]
       },
       "vest-spec-weaken-001": {
@@ -1596,9 +1596,9 @@
           "errors"
         ],
         "wall_s": [
-          60.2,
-          60.8,
-          61.0
+          73.8,
+          81.5,
+          71.7
         ]
       },
       "vest-spec-weaken-002": {
@@ -1621,9 +1621,9 @@
           "errors"
         ],
         "wall_s": [
-          60.3,
-          60.8,
-          61.1
+          74.3,
+          80.3,
+          71.8
         ]
       },
       "vest-spec-weaken-003": {
@@ -1643,9 +1643,9 @@
           "errors"
         ],
         "wall_s": [
-          60.9,
-          61.3,
-          61.5
+          71.1,
+          56.2,
+          55.8
         ]
       },
       "vest-spec-weaken-004": {
@@ -1668,9 +1668,9 @@
           "errors"
         ],
         "wall_s": [
-          61.2,
-          61.5,
-          61.3
+          64.7,
+          56.4,
+          55.9
         ]
       },
       "vest-spec-weaken-005": {
@@ -1693,9 +1693,9 @@
           "errors"
         ],
         "wall_s": [
-          61.3,
-          60.6,
-          62.1
+          73.4,
+          56.3,
+          55.7
         ]
       },
       "vest-spec-weaken-006": {
@@ -1722,9 +1722,9 @@
           "errors"
         ],
         "wall_s": [
-          61.1,
-          61.4,
-          61.4
+          71.2,
+          56.3,
+          55.3
         ]
       },
       "vest-statement-001": {
@@ -1747,9 +1747,9 @@
           "errors"
         ],
         "wall_s": [
-          57.0,
-          59.7,
-          61.2
+          86.9,
+          96.1,
+          89.0
         ]
       },
       "vest-statement-002": {
@@ -1769,9 +1769,9 @@
           "errors"
         ],
         "wall_s": [
-          56.9,
-          60.0,
-          61.4
+          89.7,
+          94.6,
+          87.3
         ]
       },
       "vest-statement-003": {
@@ -1791,9 +1791,9 @@
           "errors"
         ],
         "wall_s": [
-          60.6,
-          60.5,
-          60.6
+          88.6,
+          84.1,
+          83.3
         ]
       },
       "vest-statement-004": {
@@ -1813,9 +1813,9 @@
           "errors"
         ],
         "wall_s": [
-          60.4,
-          60.3,
-          59.9
+          89.9,
+          88.7,
+          77.6
         ]
       },
       "vest-statement-005": {
@@ -1838,9 +1838,9 @@
           "errors"
         ],
         "wall_s": [
-          60.2,
-          60.6,
-          60.9
+          91.7,
+          85.0,
+          85.8
         ]
       },
       "vest-statement-006": {
@@ -1863,9 +1863,9 @@
           "errors"
         ],
         "wall_s": [
-          60.0,
-          60.0,
-          60.5
+          93.2,
+          83.7,
+          85.1
         ]
       }
     },

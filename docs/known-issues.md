@@ -68,6 +68,19 @@ oracle completion (#611), and compound-field lowering/retained-read correction
   configuration or compiler flags. Re-enabling the store is still not
   qualified.
 
+- A shim session that falls back to the pinned Z3 after a failed or timed-out
+  daemon handshake records no session, so its checks have no `source` and a
+  neutral proof built on them reads `not-proved`
+  ([#683](https://github.com/Chelis-Lang/sail/issues/683)). Such a target is
+  no longer reused, so the state no longer persists; the next run verifies
+  it again. What makes the handshake fail organically is not established: no
+  fallback was seen at the default 10 s daemon timeout in about 80,000 shim
+  sessions under load.
+- On Linux, an inotify queue overflow in the absent-configuration watcher
+  still withholds Current (`absent-queue-overflow`). The queue is now drained
+  continuously, so this needs millions of events per second in the watched
+  directories, which include the workspace's ancestors such as `/tmp`.
+
 The service-wide acceptance theorem is not complete
 ([#368](https://github.com/Chelis-Lang/sail/issues/368), #371–#376); see the
 [refinement guide](design/acceptance-production-refinements.md).
@@ -121,15 +134,24 @@ Current numbers are in [performance](performance.md).
   The later complete 0.2.0 composition measures 98.94 s Sail / 96.87 s stock
   (+2.07 s), with disjoint ranges; the regression remains active
   ([record](validation/release-expansion.md)).
-- **macOS Vest reverts sometimes miss the restore fast path**
+- **Vest reverts sometimes miss the restore fast path in 0.2.0 and earlier**
   ([#595](https://github.com/Chelis-Lang/sail/issues/595)). In two of six
-  0.1.0 rounds the Vest revert and fix revert took about 12 s instead of
-  1.1 s, with every check served from the solver cache. That is still faster
-  than stock's 22 s and the verdicts matched; the cause is not diagnosed.
-  Current candidate normal cohorts restore all twelve times below 2 s on
-  each platform. A separate Linux baseline reproduces two slow restore misses,
-  so a Mac-only cause is not established
-  ([current evidence](validation/v020-performance.md)).
+  0.1.0 macOS rounds the Vest revert and fix revert took about 12 s instead of
+  1.1 s, with every check served from the solver cache; a Linux baseline
+  reproduced it. Cause: a call killed a background preparation that had
+  already taken the compiler target's build-script records, so that call
+  rebuilt every dependency, vstd included, without the producer certificates
+  instant revert needs. Verdicts were never affected. Fixed for that cause
+  on `main` after 0.2.0: a running preparation that re-runs a successful
+  verification of the same workspace now finishes, for at most 60 seconds,
+  before the call proceeds. In six loaded native rounds, Vest revert misses
+  fell from 6 of 12 to 0 of 12 ([record](validation/instant-revert.md)).
+  A residual remains: a preparation that ends without a Current result, for
+  example because an edit landed while it ran, still does not republish the
+  build-script records it took (14 of 120 reverts in a 60-round diagnostic
+  loop). Separately, with preparation off, a loaded cold build once left its
+  own dependency artifacts without producer certificates (2 of 40 reverts).
+  With 0.2.0, `SAIL_BACKGROUND_PREPARE=0` avoids most of these misses.
 - Release 0.1.0 can miss shipped vstd through a symlinked cache (#601).
   The candidate resolves managed paths physically and passes installed-release
   first-Serve checks on both platforms ([record](validation/cache-path-selection.md)).
@@ -153,6 +175,18 @@ Current numbers are in [performance](performance.md).
   Whether they can share a target is not measured.
 
 ## Product limits
+
+- **A project toolchain installed on first use can fail verification.** On
+  a fresh GitHub-hosted Ubuntu 24.04 runner, `sail verify` in a project whose
+  `rust-toolchain.toml` named an uninstalled toolchain (1.99.0 with
+  `clippy`) exited 2 with `SAIL3104`, quoting rustup's
+  `component download failed … could not rename 'downloaded' file`, while
+  rustup installed that toolchain on first use (Sail 0.2.0 archive with this
+  branch's `sail`, job log sha256
+  `cd70f95917cd44affa779d24a9f3ad46b81ba5d91b16fbca94c99a6b9c21b9f2`). The
+  cause is not established. Installing the toolchain first
+  (`rustup toolchain install` in the project) avoids it; the
+  [GitHub Action](github-action.md) does that.
 
 - **Setups verified without proof reuse** (`SAIL3112`). These verify exactly
   as plain `cargo verus verify` does, with solver caching, but record and

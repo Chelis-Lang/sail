@@ -3,7 +3,8 @@
 Automatic selection supports the exact qualified Linux x86-64 and macOS arm64
 runtime manifests and closed public dependency profiles below. Current release
 qualification is in the [validation record](validation/instant-revert.md).
-The intermittent Mac Vest miss remains under investigation (#595).
+The intermittent Vest miss (#595) came from a killed background preparation and
+is fixed after 0.2.0; see [known issues](known-issues.md).
 
 No extra workflow command is needed: `sail verify` can restore an
 already verified workspace revision after an A → B → A edit. `SAIL_MANAGED_FORCE=1 sail verify`

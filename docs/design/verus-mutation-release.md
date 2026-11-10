@@ -8,6 +8,51 @@ scope and [ADR 0111](../decisions/0111-mutation-evidence.md) the evidence
 rule. Existing benchmark catalogues and neutral literal campaigns retain
 their separate scope.
 
+## Current state
+
+Implemented (library only; no CLI, JSON or MCP surface yet):
+
+- The seeded generator lives in `crates/sail-verus/src/mutate/` (lexer, site
+  finder, `unique_window`, catalogue and sidecar writer). It is internal to
+  the workspace and carries no API stability promise. `cargo xtask
+  gen-mutants` is a thin command line over it, and `cargo xtask gen-mutants
+  --check` regenerates every committed catalogue from its sidecar, replays the
+  recorded stock oracle and requires the committed file byte for byte. The
+  check needs the fetched corpus sources, so it runs locally (the standard
+  and deep conformance tiers fetch them); CI covers the generator through a
+  checked-in fixture crate whose catalogue must regenerate byte for byte.
+- Generator version 3 reads `spec(checked)`, `proof(axiom)` and mode
+  attributes, and places a function body by the token after its brace group,
+  so a brace inside a `requires`/`ensures` clause (`match r { .. },`) is no
+  longer taken for the body. Version 2 labelled `spec(checked)` functions as
+  exec and stopped at such a clause brace, which mislabelled
+  `ironkv-constant-002` and `capybarakv-constant-002` and left the real body
+  of every such function unscanned. The four catalogues in `corpus/mutants/`
+  are regenerated with version 3 and settled again by the stock oracle.
+- `sail_verus::mutate::exec::plan` is the exec-only planner. Its fail-closed
+  mask admits only tokens of exec function bodies outside `proof { }`
+  blocks, `assert`/`assume` forms, loop `invariant`/`decreases`/`ensures`
+  clauses, `Ghost`/`Tracked` forms (construction and patterns, associated
+  calls with any turbofish such as `Ghost::<T>::new(e)`, after any leading
+  path, and types), `let ghost`/`let tracked`, attributes and macro
+  arguments; spec and proof functions and every signature clause are outside
+  it. A function the mask cannot classify (an unknown macro, a spec-only
+  token left over, a spec closure, a ghost field or ghost-parameter call, a
+  qualified or method-chained `Ghost`/`Tracked` form, a body attribute naming
+  a mode, a trigger or externality, an unplaced loop or body brace) is
+  reported `unsupported` with its
+  reason and yields no sites. Classes: the catalogue's body operators
+  restricted to the mask plus `loop-bound`, `off-by-one`, `swapped-args`,
+  `dropped-else` and `early-return`. Spec-mutating classes have no exec
+  class, so a plan cannot contain them. Every site is re-lexed after it is
+  applied and dropped if any token outside the replaced range changes.
+
+Not yet built: campaigns (owned copies, scheduling, scoped verification,
+confirmation of survivors), outcome evidence (#664), and the CLI, JSON and MCP
+surfaces. The mask has been surveyed on the four pinned corpora (supported
+share and site counts in the generator PR) but not qualified by stock runs of
+exec mutants.
+
 ## User and session
 
 A developer or agent has a Verus project that verifies. They request a bounded

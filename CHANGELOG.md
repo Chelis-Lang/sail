@@ -66,6 +66,26 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
 
 ### Changed
 
+- The shipped vstd proof now applies to projects whose target directory also
+  holds crates outside vstd's dependency closure, such as CapybaraKV (#563).
+  Each closure unit's private lookup copy keeps only the files a lookup of its
+  crate names could consider; every provenance check is unchanged (ADR 0090,
+  2026-11-10 amendment). When a closure unit still cannot establish its
+  compiler provenance, the `SAIL3138` note names the unit and a stable reason
+  code instead of the generic lookup mismatch, and the `SAIL_SHIPPED_TRACE`
+  events carry the same codes.
+- Keep instant revert after an edit that lands while background preparation
+  runs (#595). A call used to kill the running preparation, which left the
+  compiler target without its build-script records: the call then rebuilt
+  every dependency, vstd included, and instant revert could not apply to what
+  it compiled. A running preparation that re-runs a successful verification of
+  the same workspace now finishes, for at most 60 seconds from its start, and
+  the call waits for it. Preparation for any other workspace, and a new
+  project's initial preparation, are still killed at once (ADR 0096
+  amendment). A preparation that ends without a Current result can still
+  leave the target without those records.
+- `SAIL3146` now also says when a run rebuilt the build-script packages
+  (named) because the target's build-script records were missing.
 - Decided how `sail mutate`, planned for v0.3.0, will count mutants (ADR
   0111). A Verus rejection counts as a detection when it is attributed to the
   mutated function, is not only a resource limit, repeats on every run, and
@@ -75,6 +95,27 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
   inconclusive, unviable and unsupported mutants listed separately. Detected
   means the specification and its proof reject the change, not that the
   specification provably forbids it. Nothing changes in `sail verify`.
+- A result that is not Current names why. The `SAIL3114` note lists every
+  failing currentness predicate, for example `SAIL3114: inputs could not be
+  confirmed unchanged (absent-queue-overflow); re-run for a current result`,
+  and a `currentness-decision` job event carries the same reasons. A service
+  read-back that withholds Current is named `readback-unconfirmed`.
+- Fewer correct results read Unknown (#696). A run after an interrupted first
+  run of the same setup (a cancelled job, or a job that preempted the
+  service's preparation of a new project) no longer reads Unknown: it discards
+  everything the interrupted run left, including the compiler family's Cargo
+  target and its proof receipts, and verifies as a first run (ADR 0110). A
+  run of another setup in the same compiler family (for example a different
+  `-p` selection) performs the same discard before it reads the shared
+  target. On
+  Linux, the watcher of absent Cargo configuration files drains its kernel
+  queue continuously, so unrelated churn in `/tmp` or the home directory no
+  longer overflows it during a long proof; an overflow still withholds
+  Current.
+- A target whose report has a check with no `source` (an answer the cache
+  never recorded) is not reused or published as a reusable proof; its next run
+  verifies it again (#683). Standalone files verified by the service now
+  record per-check sources: they set `SAIL_PROVENANCE_DIR` (#684).
 - Add `sail report --format github-summary|github-annotations|sarif
   [--baseline FILE]`, which renders a `sail verify --output json` document
   for CI without running anything: a Markdown job summary within a byte
@@ -83,6 +124,17 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
   diagnostic. `--baseline` adds what changed against an earlier document, or
   why the two are not comparable. New error `SAIL0908`. See
   `docs/ci-reports.md`.
+- Add a GitHub Action, `uses: Chelis-Lang/sail/action@<tag>`. It installs
+  the selected Sail release with its attestation checked, restores file
+  commit times (except for files changed since the commit a restored Cargo
+  build came from, so Cargo cannot trust that build), restores and saves solver replies, proof receipts and Cargo
+  downloads under keys bound to the runner, Sail version, toolchains and
+  lockfiles, runs `sail verify --output json`, writes the `sail report` job
+  summary, annotations and SARIF (optionally uploaded to code scanning and
+  compared with a baseline result from another run), and ends with the exit
+  code of `sail verify`. It needs a release with `sail report`. The action is
+  in a subdirectory, so it cannot be listed on GitHub Marketplace. The CI
+  cache walkthrough now runs through it. See `docs/github-action.md`.
 - `sail jobs result` leads a failing target's line with its failures (`1
   failed, 3126 passed by Verus's totals (not attributed one by one), 0
   unknown`, not `0 verified, 1 failed, …`). A target whose crate stopped
@@ -108,6 +160,18 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
 - A retained job record or baseline written by a 0.2 neutral source job stays
   listed and reads as the new `SAIL3161`; it is never read as an ordinary
   result.
+- Internal: the mutation catalogue generator moved from xtask into
+  `sail-verus` (`sail_verus::mutate`, internal to the workspace) for the
+  planned `sail mutate`; `cargo xtask gen-mutants` is its command line, and
+  `cargo xtask gen-mutants --check` requires every committed catalogue to
+  regenerate byte for byte (run by the local standard and deep conformance
+  tiers). Generator version 3 reads `spec(checked)`/`proof(axiom)` and mode
+  attributes and no longer takes a brace in a `requires`/`ensures` clause for
+  the function body; the four catalogues in `corpus/mutants/` are regenerated
+  and settled again by the stock oracle. A fail-closed exec-only planner
+  (`sail_verus::mutate::exec`) adds `loop-bound`, `off-by-one`,
+  `swapped-args`, `dropped-else` and `early-return` mutations of executable
+  code only. No command or output changes.
 - `scripts/perf-host.sh up` launches the arm64 Ubuntu image for a Graviton
   instance type and the amd64 image otherwise, and installs `unzip` on the host
   for `cargo xtask fetch-verus`. An `up` that fails before an instance exists

@@ -549,3 +549,147 @@ jobs:
           name: conformance-reports
           path: ${{ runner.temp }}/conformance-out/**/report.json
           if-no-files-found: ignore
+
+  # Not required checks (absent from `completion`): the GitHub Action
+  # (action/action.yml, docs/github-action.md) on hosted runners, outside the
+  # CI image, and a lint of every workflow and of the action's use.
+  workflow-lint:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: bash scripts/check-workflows.sh
+
+  action-cold:
+    # Installs this commit's Sail through the action's `archive` input
+    # (ci/github-action-archive.sh) and verifies a fresh fixture, saving its
+    # caches under a key private to this run.
+    name: GitHub Action (cold)
+    needs: [e2e-build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: e2e-bin
+          path: ${{ runner.temp }}/e2e-bin
+      - name: Package this commit's Sail as a release archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        id: archive
+        run: echo "path=$(bash ci/github-action-archive.sh "$RUNNER_TEMP/e2e-bin/e2e-bin.tar" "$RUNNER_TEMP/archive")" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: action-archive
+          path: ${{ runner.temp }}/archive
+          if-no-files-found: error
+          retention-days: 1
+      - name: Run the action
+        id: sail
+        uses: ./action
+        with:
+          archive: ${{ steps.archive.outputs.path }}
+          # The archive's bin/sail is this commit's, not a published one.
+          require-attestation: "false"
+          github-token: ""
+          working-directory: ci/github-action-fixture
+          cache-key-prefix: sail-action-test-${{ github.run_id }}-${{ github.run_attempt }}
+          result-artifact: action-cold-result
+      - name: Check the cold run
+        env:
+          EXIT_CODE: ${{ steps.sail.outputs.exit-code }}
+          RESULT: ${{ steps.sail.outputs.result }}
+          SARIF: ${{ steps.sail.outputs.sarif }}
+        run: python3 ci/check-github-action.py cold
+
+  action-restored:
+    # A fresh runner: restored caches reuse the proof receipts; a broken
+    # proof then fails the action with `sail verify`'s exit code, compared
+    # with the cold run's result as baseline.
+    name: GitHub Action (restored)
+    needs: [action-cold]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: action-archive
+          path: ${{ runner.temp }}/archive
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: action-cold-result
+          path: ${{ runner.temp }}/baseline
+      - id: archive
+        run: echo "path=$(ls "$RUNNER_TEMP"/archive/sail-*.tar.gz)" >> "$GITHUB_OUTPUT"
+      - name: Run the action on the unchanged fixture
+        id: sail
+        uses: ./action
+        with:
+          archive: ${{ steps.archive.outputs.path }}
+          require-attestation: "false"
+          github-token: ""
+          working-directory: ci/github-action-fixture
+          cache-key-prefix: sail-action-test-${{ github.run_id }}-${{ github.run_attempt }}
+          result-artifact: action-restored-result
+      - name: Check reuse from the restored caches
+        env:
+          EXIT_CODE: ${{ steps.sail.outputs.exit-code }}
+          RESULT: ${{ steps.sail.outputs.result }}
+          CACHE_HIT: ${{ steps.sail.outputs.cache-hit }}
+        run: python3 ci/check-github-action.py restored
+      - name: Break the fixture's lemma
+        run: sed -i 's/ensures x + 1 > x,/ensures x + 1 < x,/' ci/github-action-fixture/src/lib.rs
+      - name: Run the action on the broken fixture
+        id: failing
+        continue-on-error: true
+        uses: ./action
+        with:
+          archive: ${{ steps.archive.outputs.path }}
+          require-attestation: "false"
+          github-token: ""
+          working-directory: ci/github-action-fixture
+          cache-key-prefix: sail-action-test-${{ github.run_id }}-${{ github.run_attempt }}
+          baseline: ${{ runner.temp }}/baseline/result.json
+          result-artifact: action-failing-result
+      - name: Check the failing run
+        env:
+          OUTCOME: ${{ steps.failing.outcome }}
+          EXIT_CODE: ${{ steps.failing.outputs.exit-code }}
+          RESULT: ${{ steps.failing.outputs.result }}
+          SARIF: ${{ steps.failing.outputs.sarif }}
+        run: python3 ci/check-github-action.py failing
+
+  action-caches:
+    # The action jobs' caches are private to one run attempt and never
+    # restored again, so delete them rather than let them fill the
+    # repository's cache quota. Best effort: a fork's pull request gets no
+    # write token, and GitHub's own eviction still applies.
+    name: GitHub Action (cache cleanup)
+    needs: [action-cold, action-restored]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Delete this run's action caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PREFIX: sail-action-test-${{ github.run_id }}-${{ github.run_attempt }}-
+        run: |
+          ids="$(gh cache list --key "$PREFIX" --limit 100 --json id,key --jq '.[] | select(.key | startswith(env.PREFIX)) | .id')" || {
+            echo "::warning::could not list this run's action caches"; exit 0; }
+          for id in $ids; do
+            gh cache delete "$id" || echo "::warning::could not delete cache $id"
+          done
+          echo "Deleted $(printf '%s\n' "$ids" | grep -c . || true) caches with prefix $PREFIX"

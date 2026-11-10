@@ -127,6 +127,14 @@ def main():
     result = result.get("value", result)
     assert result["result"]["targets"][0]["complete"], result
     assert result["result"]["currentness"] == "current", result
+    # #684: a service job's checks say how each answer was established.
+    checks = [check
+              for target in result["result"]["targets"]
+              for krate in target["report"]["crates"]
+              for function in krate["functions"]
+              for obligation in (function.get("obligations") or [])
+              for check in obligation["checks"]]
+    assert checks and all(check["source"] in ("solved", "cache") for check in checks), checks
     source.write_text(failing)
     historical = json.loads(call("job-after-edit", [args.sail, "jobs", "result", job_id, "--output", "json"]).stdout)
     historical = historical.get("value", historical)

@@ -289,14 +289,14 @@ plus a `<name>.meta.json` sidecar); results are in the
 |---|---|---|
 | `human-eval` | `human-eval-verus/tasks/lib.rs` (wrapped as a Cargo library) | `--project human-eval-verus --name human-eval --per-class 6` |
 | `ironkv` | `verified-ironkv/ironsht` | `--project verified-ironkv --name ironkv --per-class 6` |
-| `vest` | `vest/vest_lib` | `--project vest --name vest --per-class 5` |
-| `capybarakv` | `verified-storage/capybaraKV/capybarakv` | `--project verified-storage --unit verified-storage/capybaraKV/capybarakv --name capybarakv --per-class 5` |
+| `vest` | `vest/vest_lib` | `--project vest --name vest --per-class 6` |
+| `capybarakv` | `verified-storage/capybaraKV/capybarakv` | `--project verified-storage --unit verified-storage/capybaraKV/capybarakv --name capybarakv --per-class 6` |
 
 All use `--seed 20261020`. To make or extend a catalogue:
 
 ```sh
 sail-conformance fetch --tier standard --project vest       # the pinned source
-cargo xtask gen-mutants --project vest --name vest --seed 20261020 --per-class 5
+cargo xtask gen-mutants --project vest --name vest --seed 20261020 --per-class 6
 # On native Linux x86-64 (the reference platform), with stock Verus installed
 # (`cargo xtask fetch-verus`): three stock runs per mutant settle `expected`
 # and drop mutants that vary, never compile or do not finish.
@@ -307,7 +307,21 @@ cargo build --release -p sail-solve -p sail-shim -p sail-bench
 Generation reads only the source text and is byte-identical for the same
 seed, generator version and pin on macOS and Linux; the sidecar records the
 generated catalogue's sha256. The oracle rewrites the catalogue in place,
-keeping only settled mutants, and records every run in the sidecar.
+keeping only settled mutants, and records every run in the sidecar. The
+generator is `sail_verus::mutate`; xtask is its command line.
+
+`cargo xtask gen-mutants --check` regenerates every catalogue in
+`corpus/mutants/` from its sidecar (project, unit, seed, count), replays the
+recorded oracle and fails unless the result equals the committed catalogue
+byte for byte and the sidecar's generator fields match. It reads the fetched
+sources from the corpus cache (`sail-conformance fetch`), or `--source
+NAME=DIR` per catalogue; `ci/local.sh conformance standard` and `deep` run it
+after fetching. A catalogue whose generator changed must be regenerated and
+settled again before the check passes. In CI, the generator's output is
+pinned by a checked-in fixture crate,
+`crates/sail-verus/tests/fixtures/mutate/`, whose catalogue must regenerate
+byte for byte (`SAIL_BLESS=1 cargo test -p sail-verus the_fixture` rewrites
+it after an intended generator change).
 
 To run a catalogue (Sail's Verus from `SAIL_VERUS_BUILD`, or the CI image's
 `SAIL_ENGINE_BUILD`; otherwise Sail's own lookup):
