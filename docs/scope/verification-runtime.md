@@ -3,10 +3,10 @@
 - **Status:** delivered surfaces maintained. Owner decision, 2026-11-09
   ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)): Oyster is
   abandoned, mutation testing leads v0.3.0, and an experimental Kani backend
-  is followed by cvc5 in the SMT runtime inside that release. Neutral-contract surfaces are
-  frozen and scheduled for removal in v0.3.0. Temporal packaging is held for
-  distribution. The 2026-10-21 active integration ordering and the Oyster
-  descriptions below are historical.
+  is followed by cvc5 in the SMT runtime inside that release.
+  Neutral-contract surfaces are frozen and scheduled for removal in v0.3.0.
+  Temporal packaging is held for distribution. The 2026-10-21 active
+  integration ordering and the Oyster descriptions below are historical.
 - **Owner answers:** questions 16–29 in [open questions](../open-questions.md),
   answered 2026-10-15.
 - **Source:** owner direction, 2026-10-15.
@@ -18,7 +18,8 @@ Sail today serves Verus. It runs Sail's Verus (built from the fork,
 [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md)) with the pinned
 Z3 behind a caching shim, and returns the same verdicts and diagnostics as
 plain stock Verus. This document preserves the longer-term ambition of
-one verification server for a family of tools; ADR 0109 controls current order. The
+one verification server for a family of tools; ADR 0109 controls current
+order. The
 [charter](../CHARTER.md) and its correctness contract govern all of it
 unchanged (charter appendix entry 5). Where this scope and the charter
 conflict, the charter wins; the conflicts found so far are listed under
@@ -348,8 +349,9 @@ different audience from this mission.
    adopted as a front end. cvc5 follows inside v0.3.0, in the supported SMT
    runtime only. Certificates get one measurement spike and no product work.
 4. Maintain the supported SMT runtime. Neutral contracts, the three contract
-   crates and source jobs are frozen until their removal in v0.3.0;
-   requirement attribution awaits an owner decision; Oyster is abandoned.
+   crates and source jobs are frozen until their removal in v0.3.0.
+   Requirement attribution stays experimental for now, with keep-or-remove
+   decided when `sail mutate` exists. Oyster is abandoned.
 5. Temporal packaging waits for D.I.V.E.'s distribution decision.
 
 The old interface-first/SMT-first fan-out is historical. Delivered interfaces

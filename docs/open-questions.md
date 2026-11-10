@@ -263,6 +263,8 @@ planned for releases after 0.1.0. The owner answered all twelve on
     any kind." Agents may raise interface proposals directly in the D.I.V.E.
     and Oyster repositories; the filing ground rule in `AGENTS.md` lists the
     repositories.
+    **Narrowed 2026-11-09:** the owner abandoned Oyster, so there is no Oyster
+    repository to file in. See question 49.
 22. **Evidence tiers versus the current schema.** Schema v1 has a `tier`
     field (`confirmed` or `provisional`) and `provenance.source`. Proposal:
     keep those as the establishment axis, add `evidence_tier` as a separate
@@ -566,7 +568,16 @@ planned for releases after 0.1.0. The owner answered all twelve on
     surfaces, including the three contract crates, are removed in v0.3.0 once
     their stated preconditions hold; the SMT runtime, tiers and ledger,
     counterexample decoding and general attribution are kept. Requirement
-    attribution remains an owner decision. Work starts with short spikes that
-    each carry a drop rule. Final publication
-    still needs the owner's explicit approval of the exact candidate. See
+    attribution and `sail assurance` stay experimental for now; whether they
+    are kept or removed is decided when `sail mutate` exists. Work starts
+    with short spikes that each carry a drop rule. Final publication still
+    needs the owner's explicit approval of the exact candidate. See
+    [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).
+
+50. **Linux aarch64 support and its conformance oracle.** A spike on
+    2026-11-09 reported fast-tier conformance of 147 of 147 "Same" on a
+    Graviton host, with upstream Verus built from source as the oracle. Does
+    the owner accept that source-built oracle as the definition of correctness
+    for Linux aarch64? Support is not committed scope until the owner answers,
+    and it would then need its own validation record. See
     [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).

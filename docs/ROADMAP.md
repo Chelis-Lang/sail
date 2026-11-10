@@ -27,8 +27,8 @@ v0.3.0 will remove API published in 0.2.0, so it is a breaking release.
 | Proof health and profiling | Rank functions by resource margin and stability, and name costly quantifiers, from recorded sessions; no change to verdicts or plain `sail verify` bytes | Experimental fragility engine exists | Not built |
 | Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #244, #232, #558, #560 | Named rows still slower; see the lanes below |
 | Reach | GitHub Action, simpler installation, editor bridge | [CI-cache recipe](ci-cache.md) shipped in 0.2.0 | Not built |
-| Backends | Kani as an experimental backend for hand-written harnesses, with `arrayvec` 0.7.8 as the pilot fixture and direct-Kani comparison; then cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | [#135](https://github.com/Chelis-Lang/sail/issues/135), #137 | Kani selected as experimental, not built; cvc5 follows it |
-| Neutral-contract removal | Archive tag, #664 cases ported to plain Verus, #683 and #696 reproduced on ordinary jobs; then removal, including all three contract crates, with every 0.2.0 item listed in the changelog | [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) | Surfaces present and maintained; preconditions open |
+| Backends | Kani as an experimental backend for hand-written harnesses, with `arrayvec` 0.7.8 as the pilot fixture and direct-Kani comparison; then cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | [#135](https://github.com/Chelis-Lang/sail/issues/135), #137 | Kani pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)) and Kani is selected as experimental; backend not built. cvc5 follows it |
+| Neutral-contract removal | Archive tag, #664 cases ported to plain Verus, #683 and #696 reproduced on ordinary jobs; then removal, including all three contract crates, with every 0.2.0 item listed in the changelog | [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) | Surfaces present and maintained; preconditions open. #696: two causes identified on ordinary jobs (an interrupted earlier run leaves a half-written input record; the absent-configuration watcher's queue overflows), fixes planned ([comment](https://github.com/Chelis-Lang/sail/issues/696#issuecomment-6755314295)) |
 | Publication | Owner approves the exact final candidate | [Releasing](releasing.md) | No candidate |
 
 The headline answers: **my program verifies, but would my specifications catch
@@ -38,6 +38,12 @@ catalogues and neutral literal campaigns are groundwork, not the general
 product. Expected cache savings must be measured across complete campaigns,
 including setup and unsuccessful work. See the
 [next-release milestone](https://github.com/Chelis-Lang/sail/milestone/14).
+
+Owner decisions pending, not committed scope:
+
+| Decision | Basis | Record |
+|---|---|---|
+| Linux aarch64 support | Spike passed on 2026-11-09: fast conformance 147 of 147 "Same" on Graviton against upstream Verus built from source. Support waits on the owner accepting that source-built oracle | [Open question 50](open-questions.md); no validation record in this repository yet |
 
 ## Performance and acceptance lanes
 
@@ -86,7 +92,7 @@ held".
 | Evidence tiers and ledger, counterexample decoding, general function attribution | Kept | Shipped |
 | Neutral lowering and shadow crates, neutral source jobs, neutral mutation and literal witness, the `contracts` end-to-end phase, neutral specifications | Removed after the preconditions in the gate table | Present, tested, not expanded |
 | `sail-contracts`, `sail-contracts-macros` and `sail-contracts-ir` | Removed with the neutral path after the archive tag; Kani function contracts are not adopted as a front end | Experimental, present |
-| Requirement attribution and `sail assurance` (ADR 0104) | Owner decision open | Experimental, present |
+| Requirement attribution and `sail assurance` (ADR 0104) | Kept experimental for now; keep-or-remove is decided when `sail mutate` exists | Experimental, present |
 
 ## Temporal: behind a default-off flag
 

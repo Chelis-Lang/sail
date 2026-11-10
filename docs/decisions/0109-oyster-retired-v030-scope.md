@@ -31,11 +31,17 @@ A backlog review on 2026-11-09 found:
   Users have no way to ask why a proof is slow without rerunning Verus.
 - Adoption costs remain: no GitHub Action, two platforms, one Verus pin, no
   editor integration.
-- Most work merged since 0.2.0 served neutral contracts for Oyster. Oyster's
-  own assessment found that none of 53 real public functions taken from
-  existing crates fit the neutral contract subset.
+- Most work merged since 0.2.0 served neutral contracts for Oyster. The owner
+  supplied one figure from the Oyster project's own assessment: 0 of 53
+  functions fit the neutral contract subset. That assessment is private and
+  is not in this repository, so nothing more of it is quoted here.
 - Defects #696, #683 and #684 were found through neutral work but sit on the
-  general managed path. They matter to ordinary jobs and to mutation.
+  general managed path. They matter to ordinary jobs and to mutation. A spike
+  on #696 reproduced two causes, neither specific to neutral jobs: an
+  interrupted earlier run leaves a half-written input record, and the
+  absent-configuration watcher's event queue overflows. Fixes are planned
+  for v0.3.0; see the
+  [#696 comment of 2026-11-09](https://github.com/Chelis-Lang/sail/issues/696#issuecomment-6755314295).
 
 ## Decision
 
@@ -53,8 +59,8 @@ standing is a separate owner decision.
 
 ### Release
 
-The next release is **v0.3.0**. It will remove API published in 0.2.0, so it is a
-breaking release. Its pillars are:
+The next release is **v0.3.0**. It will remove API published in 0.2.0, so it
+is a breaking release. Its pillars are:
 
 1. **Verus mutation testing** (headline; #140, #141, #664). The feature brief
    is [`docs/design/verus-mutation-release.md`](../design/verus-mutation-release.md).
@@ -83,9 +89,10 @@ ADR 0100 says "Kani precedes cvc5" and its roadmap text says cvc5 and the
 other future backends "are not parallel commitments for the next release".
 This decision keeps the order and moves cvc5 into the release:
 
-- The Kani pilot ran first, on the pinned ordinary crate `arrayvec` 0.7.8.
-  It covered concrete failures, unsupported cases, costs and Kani's
-  experimental function-contract interface, as ADR 0100 requires.
+- The Kani pilot ran first, on the pinned ordinary crate `arrayvec` 0.7.8
+  (2026-11-09; Kani 0.68.0, CBMC 6.11.0; c7i.4xlarge, us-west-2). Its record,
+  including the unsupported cases, costs and what was not measured, is the
+  [results comment on #135](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619).
 - The owner chose to ship Kani in v0.3.0 as an **experimental** backend. It
   runs harnesses the user writes by hand (`#[kani::proof]`). `arrayvec` 0.7.8
   is its pilot fixture. Results are bounded evidence and are never reported
@@ -96,8 +103,10 @@ This decision keeps the order and moves cvc5 into the release:
   runtime ([ADR 0108](0108-supported-smt-runtime.md)), with solver identity in
   every key, per-solver conformance and fault injection, and unchanged Z3
   bytes.
-- ADR 0100's instruction not to expand the raw SMT runtime is lifted for cvc5
-  only. It was a hold on surfaces Oyster consumed, and that reason is gone.
+- The roadmap text this decision replaces (the "Oyster: shelf completion;
+  Sail surfaces held" section of `docs/ROADMAP.md`) said not to expand the raw
+  SMT runtime. That hold is lifted for cvc5 only. It was a hold on surfaces
+  Oyster consumed, and that reason is gone.
 - Certificates get one measurement spike with its result recorded on #138 and
   no product work. Creusot, Prusti, kernel provers, sampled-tier integration,
   cross-backend portfolios and Dafny stay future options under #146.
@@ -152,13 +161,21 @@ never deleted. The published 0.2.0 crates are not yanked.
   it currently rides on are removed;
 - general function attribution ([ADR 0014](0014-attribution-ledger-and-output-schema.md)).
 
-**Still to be decided by the owner:**
+**Kept experimental for now:**
 
 - Requirement attribution and `sail assurance`
-  ([ADR 0104](0104-ordinary-job-requirement-attribution.md)). They stay only
-  as a thin experimental grouping in the mutation report, and only if the
-  owner finds a hand-joined example on a real project useful once mutation
-  exists. Otherwise they are removed in v0.3.0, and #684 closes with them.
+  ([ADR 0104](0104-ordinary-job-requirement-attribution.md)). They are
+  neither extended nor scheduled for removal. Whether they are kept or removed
+  is decided when Verus mutation testing (`sail mutate`) exists. #684 stays
+  open with them until then.
+
+### Owner decisions pending
+
+- **Linux aarch64 support.** A spike on 2026-11-09 reported fast-tier
+  conformance of 147 of 147 "Same" on a Graviton host, against upstream Verus
+  built from source. Support waits on the owner accepting that source-built
+  oracle ([open question 50](../open-questions.md)). It is not committed
+  v0.3.0 scope, and no validation record for it is in this repository yet.
 
 ### Execution
 

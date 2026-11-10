@@ -347,8 +347,10 @@ Each entry names the charter text it qualifies and the ADR that records it.
     inside the same release, in the supported SMT runtime only. Kani function
     contracts are not adopted as a front end, and a second Verus pin is not
     adopted. Neutral-contract surfaces, including the three contract crates,
-    are removed in v0.3.0 after their stated preconditions; the SMT runtime, tiers and ledger, counterexample decoding
-    and general attribution are kept. Correctness obligations and the owner's
-    explicit approval of the exact final candidate are unchanged. This
-    supersedes the Oyster and "precedes cvc5" sentences of entry 16 and the
-    Oyster ordering of entry 8. See ADR 0109.
+    are removed in v0.3.0 after their stated preconditions; the SMT runtime,
+    tiers and ledger, counterexample decoding and general attribution are
+    kept. Correctness obligations and the owner's explicit approval of the
+    exact final candidate are unchanged. This supersedes the Oyster sentences
+    of entry 16 and the Oyster ordering of entry 8, and amends entry 16's
+    "precedes cvc5" sentence: the order is kept and cvc5 moves into the
+    release. See ADR 0109.
