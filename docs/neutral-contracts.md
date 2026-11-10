@@ -1,5 +1,9 @@
 # Neutral Rust contracts
 
+> **Scheduled for removal in v0.3.0.** This experimental surface is present
+> and maintained, and is not being extended. See
+> [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).
+
 The `sail-contracts` library checks scalar contracts when ordinary Rust
 code runs. The checks also run in release builds. A runtime check establishes
 the behavior exercised by that execution; it does not establish an SMT proof.

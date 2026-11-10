@@ -5,6 +5,16 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The next release is v0.3.0, and it is planned as a breaking release (ADR
+  0109). The experimental neutral-contract surfaces published in 0.2.0 are
+  scheduled for removal in it: the `sail-contracts`, `sail-contracts-macros`
+  and `sail-contracts-ir` crates, neutral lowering, neutral source jobs,
+  neutral mutation and literal witnesses. Nothing is removed yet, and these
+  surfaces stay maintained until then. `sail runtime`, evidence tiers,
+  counterexample decoding and function attribution are kept. Requirement
+  attribution and `sail assurance` stay experimental for now; whether they are
+  kept or removed is decided once Verus mutation testing (`sail mutate`)
+  exists. The guides for the surfaces scheduled for removal carry a notice.
 - Add `sail report --format github-summary|github-annotations|sarif
   [--baseline FILE]`, which renders a `sail verify --output json` document
   for CI without running anything: a Markdown job summary within a byte

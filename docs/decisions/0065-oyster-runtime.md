@@ -1,7 +1,9 @@
 # 0065: One verification runtime for Oyster
 
 - **Status:** delivered bounded slices maintained; expansion ordering superseded
-  by [ADR 0100](0100-mutation-first-roadmap.md) on 2026-11-04
+  by [ADR 0100](0100-mutation-first-roadmap.md) on 2026-11-04; Oyster
+  abandoned by the owner on 2026-11-09, with the removal of neutral-contract
+  surfaces scheduled in [ADR 0109](0109-oyster-retired-v030-scope.md)
 - **Date:** 2026-10-21
 
 ## Context

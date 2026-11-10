@@ -48,9 +48,8 @@ acting. The charter's appendix records corrections made since it was written.
   tracked in `docs/verus-issues/`.
 - **Where agents may file.** Agents may open issues, PRs and comments only in
   this line of work's repositories: `Chelis-Lang/sail`, the Verus fork
-  `Chelis-Lang/verus`, `Chelis-Lang/dive` (D.I.V.E.) and Oyster's repository
-  under `Chelis-Lang` once it exists. Never in upstream Verus, Z3, corpus
-  projects or any other repository.
+  `Chelis-Lang/verus` and `Chelis-Lang/dive` (D.I.V.E.). Never in upstream
+  Verus, Z3, corpus projects or any other repository.
   Record upstream problems locally (`docs/verus-issues/`). Whether to report
   upstream is a human decision.
 - **Publishing.** The Sail repository and the Verus fork are public (since

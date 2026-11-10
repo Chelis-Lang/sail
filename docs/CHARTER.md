@@ -335,3 +335,22 @@ Each entry names the charter text it qualifies and the ADR that records it.
     acceptance proof remain work. This supersedes appendix entry 8's active
     integration ordering, preserving its delivered behavior and correctness
     obligations. See ADR 0100.
+
+17. *Appendix entry 16, Oyster and backend ordering* (owner decision,
+    2026-11-09). Oyster is abandoned. Sail does no further Oyster work, and
+    the Oyster repository leaves the list of places agents may file. D.I.V.E.
+    stays private; ADR 0101 and the temporal extension are unchanged. The next
+    release is v0.3.0 with five pillars: Verus mutation testing (headline),
+    proof health and profiling, never slower than stock with cheaper changed
+    proofs, reach, and backends. Kani still precedes cvc5: it ships as an
+    experimental backend for hand-written harnesses, and cvc5 now follows it
+    inside the same release, in the supported SMT runtime only. Kani function
+    contracts are not adopted as a front end, and a second Verus pin is not
+    adopted. Neutral-contract surfaces, including the three contract crates,
+    are removed in v0.3.0 after their stated preconditions; the SMT runtime,
+    tiers and ledger, counterexample decoding and general attribution are
+    kept. Correctness obligations and the owner's explicit approval of the
+    exact final candidate are unchanged. This supersedes the Oyster sentences
+    of entry 16 and the Oyster ordering of entry 8, and amends entry 16's
+    "precedes cvc5" sentence: the order is kept and cvc5 moves into the
+    release. See ADR 0109.
