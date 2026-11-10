@@ -5557,6 +5557,82 @@ mod tests {
     }
 
     #[test]
+    fn unconfirmed_inputs_note_names_every_failing_predicate() {
+        assert_eq!(inputs_unconfirmed(&[]), INPUTS_UNCONFIRMED);
+        assert_eq!(
+            inputs_unconfirmed(&[
+                "source-declarations-before-missing",
+                "absent-queue-overflow"
+            ]),
+            "SAIL3114: inputs could not be confirmed unchanged (source-declarations-before-missing, absent-queue-overflow); re-run for a current result"
+        );
+    }
+
+    #[test]
+    fn interrupted_first_observation_is_discarded_with_its_family_outputs()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        // ADR 0110 (#696): a first observation that ended after writing the
+        // context's input state and before recording its declarations is
+        // discarded completely, never treated as a first observation while
+        // its compiled outputs or any family receipt remain.
+        let root = std::env::temp_dir().join(format!(
+            "sail-interrupted-observation-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let mut config = compiler_fixture(&root)?;
+        config.cargo = PathBuf::from("cargo");
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='interrupted'\nversion='0.1.0'\nedition='2024'\n[lib]\npath='lib.rs'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "")?;
+        let (mut paths, ownership) = prepare(&config, &root, "context", "family", "run-1")?;
+        let context = paths.input_state.parent().ok_or("context")?.to_owned();
+        // Nothing is discarded without the marker.
+        std::fs::write(&paths.input_state, "{}")?;
+        assert!(!discard_interrupted_observation(&config, &mut paths)?);
+        assert!(paths.input_state.is_file());
+        // The interrupted run's state: its marker and input state, but no
+        // source-input record; compiled outputs; a receipt of this context
+        // and one of a sibling context of the same compiler family.
+        std::fs::write(context.join(OBSERVATION_STARTED), [])?;
+        std::fs::write(&paths.build_inputs, "{}")?;
+        std::fs::write(paths.receipts.join("own.json"), "{}")?;
+        let sibling = paths.projects.join("sibling");
+        std::fs::create_dir_all(sibling.join("receipts"))?;
+        std::fs::write(sibling.join("receipts/dependency.json"), "{}")?;
+        std::fs::write(paths.family_contexts.join("sibling"), [])?;
+        let output = paths.target.join("debug/deps/libinterrupted.rmeta");
+        std::fs::create_dir_all(output.parent().ok_or("parent")?)?;
+        std::fs::write(&output, "compiled by the interrupted run")?;
+        std::fs::write(paths.target.join("CACHEDIR.TAG"), CACHEDIR_TAG)?;
+        let run = paths.run.clone();
+        assert!(discard_interrupted_observation(&config, &mut paths)?);
+        assert!(super::super::store::new_target(&paths.target));
+        assert!(!paths.input_state.exists());
+        assert!(!paths.build_inputs.exists());
+        assert!(!context.join(OBSERVATION_STARTED).exists());
+        assert!(
+            paths.receipts.is_dir() && std::fs::read_dir(&paths.receipts)?.next().is_none(),
+            "no receipt of this context survives"
+        );
+        assert!(
+            !sibling.join("receipts").exists(),
+            "no family receipt outlives the target it describes"
+        );
+        assert!(run.is_dir(), "the current run keeps its directory");
+        // The context now reads as a genuine first observation.
+        let source_state = paths.build_inputs.with_file_name("source-inputs.json");
+        assert!(super::super::source_inputs::load(&source_state, paths.input_state.exists()).1);
+        // A repeated discard finds nothing left to discard.
+        assert!(!discard_interrupted_observation(&config, &mut paths)?);
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
     fn fresh_target_is_canonical_and_tagged_before_admission()
     -> std::result::Result<(), Box<dyn std::error::Error>> {
         let root = std::env::temp_dir().join(format!(
