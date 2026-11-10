@@ -539,6 +539,16 @@ fn run_with_engine(
     let trace = run.join("trace");
     std::fs::create_dir_all(&trace).map_err(|e| fail(e.to_string()))?;
     command.env("SAIL_TRACE_DIR", &trace);
+    // SPIKE #684: the shim writes session records under SAIL_PROVENANCE_DIR,
+    // never under the trace directory. Enabled by a toggle so one binary can
+    // show both behaviours.
+    let spike_provenance = std::path::Path::new("/tmp/sail-spike/standalone-provenance")
+        .exists()
+        .then(|| run.join("provenance"));
+    if let Some(dir) = &spike_provenance {
+        std::fs::create_dir_all(dir).map_err(|e| fail(e.to_string()))?;
+        command.env("SAIL_PROVENANCE_DIR", dir);
+    }
     let logs = run.join("logs");
     let log_request = config.attribution_logs && !args.iter().any(|arg| arg.starts_with("--log"));
     if log_request {
@@ -585,7 +595,9 @@ fn run_with_engine(
         })
         .flatten();
     let provenance = if config.socket.is_some() {
-        attribution::Provenance::Records(attribution::read_session_records(&trace))
+        attribution::Provenance::Records(attribution::read_session_records(
+            spike_provenance.as_deref().unwrap_or(&trace),
+        ))
     } else {
         attribution::Provenance::NoCache
     };

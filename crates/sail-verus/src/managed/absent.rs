@@ -73,6 +73,70 @@ mod platform {
         native: Option<Inotify>,
         directories: HashMap<WatchDescriptor, PathBuf>,
         tracked: Vec<PathBuf>,
+        // SPIKE #696 candidate fix (toggle): a thread that empties the kernel
+        // queue throughout the run, so unrelated churn in a watched ancestor
+        // cannot overflow it between `begin` and `finish`.
+        drainer: Option<Drainer>,
+    }
+    type Drainer = (
+        std::sync::Arc<std::sync::atomic::AtomicBool>,
+        std::thread::JoinHandle<(Outcome, u64)>,
+    );
+    fn drain_until_stopped(
+        mut native: Inotify,
+        directories: &HashMap<WatchDescriptor, PathBuf>,
+        tracked: &[PathBuf],
+        stop: &std::sync::atomic::AtomicBool,
+    ) -> (Outcome, u64) {
+        let mut outcome = Outcome {
+            changed: false,
+            complete: true,
+        };
+        let mut total = 0u64;
+        let mut buffer = vec![0; 65536];
+        loop {
+            // Read the flag first: the pass after it is set is the final one.
+            let last = stop.load(std::sync::atomic::Ordering::SeqCst);
+            loop {
+                match native.read_events(&mut buffer) {
+                    Ok(events) => {
+                        let mut count = 0;
+                        for event in events {
+                            count += 1;
+                            total += 1;
+                            if event.mask.intersects(
+                                EventMask::Q_OVERFLOW
+                                    | EventMask::IGNORED
+                                    | EventMask::UNMOUNT
+                                    | EventMask::DELETE_SELF
+                                    | EventMask::MOVE_SELF,
+                            ) {
+                                outcome.complete = false;
+                            }
+                            if let Some(parent) = directories.get(&event.wd) {
+                                let path = event
+                                    .name
+                                    .map_or_else(|| parent.clone(), |name| parent.join(name));
+                                outcome.changed |= relevant(&path, tracked);
+                            }
+                        }
+                        if count == 0 {
+                            break;
+                        }
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
+                    Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                    Err(_) => {
+                        outcome.complete = false;
+                        return (outcome, total);
+                    }
+                }
+            }
+            if last {
+                return (outcome, total);
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
     }
     impl Observer {
         pub(in crate::managed) fn begin(snapshot: &InputSnapshot, _: &Path) -> Self {
@@ -85,6 +149,7 @@ mod platform {
                     native: None,
                     directories: HashMap::new(),
                     tracked: Vec::new(),
+                    drainer: None,
                 };
             };
             tracked.extend(tracked.clone().into_iter().filter_map(|path| {
@@ -123,14 +188,34 @@ mod platform {
                     }),
                 );
             }
+            if Path::new("/tmp/sail-spike/fix-absent-drain").exists()
+                && let Some(native) = native
+            {
+                let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+                let (flag, watched, names) = (
+                    std::sync::Arc::clone(&stop),
+                    directories.clone(),
+                    tracked.clone(),
+                );
+                let thread = std::thread::spawn(move || {
+                    drain_until_stopped(native, &watched, &names, &flag)
+                });
+                return Self {
+                    native: None,
+                    directories,
+                    tracked,
+                    drainer: Some((stop, thread)),
+                };
+            }
             Self {
                 native,
                 directories,
                 tracked,
+                drainer: None,
             }
         }
         pub(in crate::managed) fn ready(&self) -> bool {
-            self.native.is_some()
+            self.native.is_some() || self.drainer.is_some()
         }
         pub(in crate::managed) fn finish(mut self) -> Outcome {
             let spike = |why: &str, detail: serde_json::Value| {
@@ -139,6 +224,25 @@ mod platform {
                     &serde_json::json!({"why": why, "detail": detail}),
                 );
             };
+            if let Some((stop, thread)) = self.drainer.take() {
+                stop.store(true, std::sync::atomic::Ordering::SeqCst);
+                let (outcome, events) = thread.join().unwrap_or((
+                    Outcome {
+                        changed: false,
+                        complete: false,
+                    },
+                    0,
+                ));
+                spike(
+                    "drained-by-thread",
+                    serde_json::json!({
+                        "events": events,
+                        "complete": outcome.complete,
+                        "changed": outcome.changed,
+                    }),
+                );
+                return outcome;
+            }
             let Some(mut native) = self.native.take() else {
                 spike("observer-not-ready", serde_json::Value::Null);
                 return Outcome {
@@ -213,10 +317,28 @@ mod platform {
                             }
                         }
                         if count == 0 {
+                            spike(
+                                "drained",
+                                serde_json::json!({
+                                    "events": total_events,
+                                    "complete": outcome.complete,
+                                    "watched": self.directories.values().collect::<Vec<_>>(),
+                                }),
+                            );
                             return outcome;
                         }
                     }
-                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => return outcome,
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        spike(
+                            "drained",
+                            serde_json::json!({
+                                "events": total_events,
+                                "complete": outcome.complete,
+                                "watched": self.directories.values().collect::<Vec<_>>(),
+                            }),
+                        );
+                        return outcome;
+                    }
                     Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
                     Err(e) => {
                         spike("read-error", serde_json::json!(e.to_string()));

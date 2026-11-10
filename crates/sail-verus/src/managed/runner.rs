@@ -3887,8 +3887,18 @@ fn run_recorded(
         &data,
     )?;
     let source_state = paths.build_inputs.with_file_name("source-inputs.json");
-    let (sources, source_coverage) =
-        super::source_inputs::load(&source_state, paths.input_state.exists());
+    // SPIKE #696 candidate fix (toggle): a context whose only earlier runs
+    // were interrupted before recording compiler-declared inputs is still at
+    // its first observation. The marker is written with the first input
+    // state and removed once a run records its declarations.
+    let first_pending = source_state.with_file_name("source-inputs.first-pending");
+    let spike_fix = Path::new("/tmp/sail-spike/fix-696").exists();
+    let observed_before = paths.input_state.exists() && !(spike_fix && first_pending.exists());
+    if spike_fix && !paths.input_state.exists() && !source_state.exists() {
+        let _ = std::fs::create_dir_all(source_state.parent().unwrap_or(&config.cache));
+        let _ = std::fs::write(&first_pending, []);
+    }
+    let (sources, source_coverage) = super::source_inputs::load(&source_state, observed_before);
     data["sail_source_inputs"] = serde_json::to_value(&sources).unwrap_or_default();
     data["sail_source_inputs_by_package"] =
         serde_json::to_value(super::source_inputs::packages(&source_state)).unwrap_or_default();
@@ -3932,6 +3942,10 @@ fn run_recorded(
                 "source_coverage": source_coverage,
                 "source_state_exists": source_state.exists(),
                 "input_state_exists": paths.input_state.exists(),
+                "first_pending": first_pending.exists(),
+                "runs": std::fs::read_dir(paths.run.parent().unwrap_or(&config.cache))
+                    .map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect::<Vec<_>>())
+                    .unwrap_or_default(),
             }),
         );
     }
@@ -4304,6 +4318,8 @@ fn run_recorded(
         )?;
         let (sources, source_coverage) =
             super::source_inputs::update(&source_state, &paths.run.join("artifacts.jsonl"), &data)?;
+        // SPIKE #696: the first observation is now recorded.
+        let _ = std::fs::remove_file(source_state.with_file_name("source-inputs.first-pending"));
         // Coverage after the run needs a contract for every script Cargo ran.
         let mut unscheduled = super::build_inputs::unscheduled(
             &paths.run.join("cargo.stdout"),
