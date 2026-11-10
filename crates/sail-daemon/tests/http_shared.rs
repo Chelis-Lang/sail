@@ -289,14 +289,29 @@ fn end_accept(address: std::net::SocketAddr) {
     drop(TcpStream::connect(address));
 }
 
-/// How long a held fake server waits before it gives up and completes its
-/// response unreleased. No passing run waits for it. It is the bound on how
-/// long a client may take to give up: one that takes longer, or never times
-/// out at all, is answered by the watchdog, which the test then observes as a
-/// response that was no longer withheld, and fails. The bound is set far above
-/// any scheduling delay, so host load cannot reach it; only a client whose
-/// timeout does not work can.
-const HELD_SERVER_WATCHDOG: Duration = Duration::from_secs(120);
+/// How long a held fake server waits, at each of its three waits, before it
+/// gives up: for a client to connect, for the request, and for the test's
+/// release. No passing run waits for it.
+///
+/// It is the bound on how long a client may take to give up. The wait for the
+/// release starts only once the server has the request, so the time the
+/// client spends being constructed and connecting, which is what a loaded host
+/// stretched in #690 (956 ms in the captured failure), is not inside it. What
+/// is inside it is the client's own request timeout, 50 ms and 2 s in the two
+/// cases that use this server, plus the scheduling delay of noticing it, which
+/// the same capture put at 5 ms. Twenty seconds is ten times the longer
+/// timeout, so host load cannot reach it, and it is still short enough that a
+/// client which ignored its configured timeout for a default of half a minute
+/// or more, or for none, is answered by the watchdog instead. The test then
+/// observes a response that was no longer withheld, and fails.
+const HELD_SERVER_WATCHDOG: Duration = Duration::from_secs(20);
+
+/// How long a test waits for a client of a held fake server to return.
+///
+/// By then each of the server's three waits has ended on its own, so a client
+/// that has still not returned is not waiting for anything the server will
+/// do, and waiting longer could only hang the test.
+const HELD_CLIENT_LIMIT: Duration = HELD_SERVER_WATCHDOG.saturating_mul(3);
 
 /// A fake server whose response stalls until the test releases it.
 ///
@@ -305,12 +320,13 @@ const HELD_SERVER_WATCHDOG: Duration = Duration::from_secs(120);
 /// events: whatever the client did before the release, it did without the
 /// withheld bytes, however slowly the host scheduled either side.
 ///
-/// The server stops withholding only after its receive returns, and that
-/// happens on exactly three events: the send in `release`, the sender's drop
-/// (which `release` owns, so no earlier), or [`HELD_SERVER_WATCHDOG`]. A test
-/// that reads [`HeldResponse::resumed`] as false after the client returned and
-/// before it calls `release` has therefore shown both that the client returned
-/// without the withheld bytes and that it did so within the watchdog's bound.
+/// The server stops withholding on exactly three events: the send in
+/// `release`, the sender's drop (which `release` owns, so no earlier), or a
+/// [`HELD_SERVER_WATCHDOG`] expiring, whether while it waited for a client to
+/// connect, for the request, or for the release. A test that reads
+/// [`HeldResponse::resumed`] as false after the client returned and before it
+/// calls `release` has therefore shown both that the client returned without
+/// the withheld bytes and that it did so within the watchdog's bound.
 struct HeldResponse {
     config: RemoteConfig,
     root: PathBuf,
@@ -346,7 +362,12 @@ impl HeldResponse {
         let thread = std::thread::spawn({
             let resumed = std::sync::Arc::clone(&resumed);
             move || {
-                let (mut stream, _) = listener.accept().unwrap();
+                let Some(mut stream) = accept_within(&listener, HELD_SERVER_WATCHDOG) else {
+                    // No client connected within the bound.
+                    resumed.store(true, Ordering::SeqCst);
+                    return Vec::new();
+                };
+                stream.set_read_timeout(Some(HELD_SERVER_WATCHDOG)).unwrap();
                 let mut request = [0u8; 4096];
                 let length = stream.read(&mut request).unwrap_or(0);
                 let _ = stream.write_all(before);
@@ -366,6 +387,26 @@ impl HeldResponse {
             thread,
         }
     }
+    /// Runs `client` against this server on a thread of its own and returns
+    /// what it returned, or fails the test if it has not returned within
+    /// [`HELD_CLIENT_LIMIT`]. The client is given this server's configuration
+    /// and must drop everything it made before it returns.
+    fn returned<T: Send + 'static>(
+        &self,
+        client: impl FnOnce(RemoteConfig) -> T + Send + 'static,
+    ) -> T {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let config = self.config.clone();
+        std::thread::spawn(move || {
+            let _ = sender.send(client(config));
+        });
+        let returned = receiver.recv_timeout(HELD_CLIENT_LIMIT);
+        assert!(
+            returned.is_ok(),
+            "the client did not return within {HELD_CLIENT_LIMIT:?}"
+        );
+        returned.unwrap()
+    }
     /// Whether the server has stopped withholding the rest of its response.
     fn resumed(&self) -> bool {
         self.resumed.load(Ordering::SeqCst)
@@ -377,6 +418,28 @@ impl HeldResponse {
         let request = self.thread.join().unwrap();
         let _ = std::fs::remove_dir_all(self.root);
         request
+    }
+}
+
+/// Accepts one connection, or none if no client connects within `limit`.
+fn accept_within(listener: &TcpListener, limit: Duration) -> Option<TcpStream> {
+    listener.set_nonblocking(true).unwrap();
+    let deadline = std::time::Instant::now() + limit;
+    loop {
+        match listener.accept() {
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                if std::time::Instant::now() >= deadline {
+                    return None;
+                }
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            accepted => {
+                let (stream, _) = accepted.unwrap();
+                // Some platforms hand the listener's mode on to the stream.
+                stream.set_nonblocking(false).unwrap();
+                return Some(stream);
+            }
+        }
     }
 }
 
@@ -451,21 +514,21 @@ fn known_length_missing_final_byte_still_obeys_original_request_timeout() {
         b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\nConnection: close\r\n\r\nabc",
         b"d",
     );
-    let client = Fixture::client(&server.config);
-    let result = client.get(&solver(), &KEY);
+    let (result, info) = server.returned(|config| {
+        let client = Fixture::client(&config);
+        let result = client.get(&solver(), &KEY);
+        (result, client.info())
+    });
     let withheld = !server.resumed();
     let request = server.release();
     assert!(
         withheld,
-        "the client returned only after the final byte was released: {result:?}"
+        "the server's watchdog ended the wait before the client returned: {result:?}"
     );
     assert!(request.starts_with(b"GET /v2/"), "request: {request:?}");
     assert_eq!(result.unwrap_err(), "SAIL0650: shared response interrupted");
-    assert_eq!(
-        client.info().last_status.as_deref(),
-        Some("interrupted-response")
-    );
-    assert_eq!(client.info().unavailable, 1);
+    assert_eq!(info.last_status.as_deref(), Some("interrupted-response"));
+    assert_eq!(info.unavailable, 1);
 }
 
 #[test]
@@ -513,23 +576,27 @@ fn client_refuses_redirects_encodings_oversize_and_stalled_responses() {
     // The whole response is withheld until the client has returned and been
     // dropped, so neither the request nor the client's shutdown can have
     // waited for the server. The earlier form of this case bounded their
-    // elapsed time at 250 ms against a 300 ms server, which a loaded host
-    // exceeds in the constructor alone. The bound kept here is causal: the
-    // client must return and shut down before the server resumes, and until
-    // the release below only the server's watchdog can resume it. A client
-    // whose timeout fires late beyond that bound, or not at all, fails the
-    // `withheld` assertion; the exact timeout status rules out any other
-    // reason for returning early.
+    // elapsed time, with the constructor's, at 250 ms against a 300 ms server,
+    // which a loaded host exceeds in the constructor alone. The bound kept
+    // here is `HELD_SERVER_WATCHDOG`, measured by the server from the moment
+    // it has the request: the client must return and shut down before the
+    // server resumes, and until the release below only a watchdog can resume
+    // it. A client whose timeout fires later than that bound fails the
+    // `withheld` assertion, one that never returns fails in `returned`, and
+    // the exact timeout status rules out any other reason for returning early.
     let server = HeldResponse::new(b"", b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n");
-    let client = HttpClient::new(&server.config, Duration::from_millis(50)).unwrap();
-    let result = client.get(&solver(), &KEY);
-    let info = client.info();
-    drop(client);
+    let (result, info) = server.returned(|config| {
+        let client = HttpClient::new(&config, Duration::from_millis(50)).unwrap();
+        let result = client.get(&solver(), &KEY);
+        let info = client.info();
+        drop(client);
+        (result, info)
+    });
     let withheld = !server.resumed();
     let request = server.release();
     assert!(
         withheld,
-        "the client returned only after the response was released: {result:?}"
+        "the server's watchdog ended the wait before the client returned: {result:?}"
     );
     // A request abandoned before it was sent leaves nothing to read.
     assert!(
