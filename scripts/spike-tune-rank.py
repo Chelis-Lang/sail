@@ -142,7 +142,7 @@ def compare(args):
     after = {r["name"]: r for r in map(facts, functions(load(args.after)))}
     print(f"functions: before {len(before)}, after {len(after)}, "
           f"only-before {len(before.keys() - after.keys())}, only-after {len(after.keys() - before.keys())}")
-    changed = 0
+    changed = verdicts = 0
 
     def cell(r):
         worst = "n/a" if r["worst_fraction"] is None else f"{100 * r['worst_fraction']:.1f}%"
@@ -151,11 +151,14 @@ def compare(args):
 
     for name in sorted(before.keys() & after.keys()):
         b, a = before[name], after[name]
-        verdict = b["verdict"] != a["verdict"] or b["unstable"] != a["unstable"]
-        if verdict or b["used_sum"] != a["used_sum"] or b["spinoff"] != a["spinoff"]:
+        verdict = b["verdict"] != a["verdict"]
+        flag = b["unstable"] != a["unstable"]
+        if verdict or flag or b["used_sum"] != a["used_sum"] or b["spinoff"] != a["spinoff"]:
             changed += 1
-            print(f"  {'VERDICT ' if verdict else ''}{short(name)}: {cell(b)} -> {cell(a)}")
-    print(f"functions with any verdict/rlimit/isolation change: {changed}")
+            verdicts += verdict
+            label = "VERDICT " if verdict else "near-limit-flag " if flag else ""
+            print(f"  {label}{short(name)}: {cell(b)} {b['micros'] / 1e6:.1f}s -> {cell(a)} {a['micros'] / 1e6:.1f}s")
+    print(f"functions with any verdict/rlimit change: {changed}; verdict changes: {verdicts}")
 
 
 def main():

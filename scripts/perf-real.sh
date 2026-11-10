@@ -255,6 +255,8 @@ lemma-mid lemma src/controllers/vdeployment_controller/proof/liveness/resource_m
 spec-wide rename src/controllers/vdeployment_controller/trusted/liveness_theorem.rs 161 0
 fail fail src/controllers/vdeployment_controller/proof/liveness/resource_match.rs 1874 1
 fix fix src/controllers/vdeployment_controller/proof/liveness/resource_match.rs 1874 0
+body-711 body src/controllers/vdeployment_controller/proof/liveness/resource_match.rs 711 0
+body-1106 body src/controllers/vdeployment_controller/proof/liveness/resource_match.rs 1106 0
 EOF
     } ;;
   *) echo "unknown project \`$project\`; see docs/performance.md for supported projects" >&2; exit 2 ;;
