@@ -25,7 +25,7 @@ cold at most 3% slower than unpatched.
 | Sail source | branch `spike/v030-piso` on main `765a3866`; release `sail`, `sail-z3`, `sail-conformance` built there |
 | Verus | stock `0.2026.10.18.7d82994` (plain arm, conformance oracle); Sail's Verus is the pinned fork runtime |
 | Tools | `scripts/spike-tune-rank.py` (rank, compare), `scripts/spike-tune-screen.sh` (warm-cache screen), `scripts/perf-real.sh` with `SAIL_PERF_SOURCE_PATCH` (timed rows) |
-| Raw evidence | `screen-anvil.tgz` sha256 `944bd34d668bac2d4857607b6172a9a8b062e8832027c48bc39b1b42817645db`; `final-anvil-q3.tgz` sha256 `c262b4f10b7417232cbeabfc75b489dfa1bdc5eb54476355ec12d155c4bf27bb`; IRONKV_EVIDENCE (outside the repository) |
+| Raw evidence | `screen-anvil.tgz` sha256 `944bd34d668bac2d4857607b6172a9a8b062e8832027c48bc39b1b42817645db`; `final-anvil-q3.tgz` sha256 `c262b4f10b7417232cbeabfc75b489dfa1bdc5eb54476355ec12d155c4bf27bb`; FINALEVIDENCE (outside the repository) |
 
 ## Anvil (`--lib`, `--verify-module vdeployment_controller`)
 
@@ -95,7 +95,33 @@ because this host has spare threads.
 
 ## IronKV (`ironsht`, whole crate)
 
-IRONKV
+The perf-real edits live in `host_impl_v`. Its shared bucket costs only
+2.4 s over 23 functions, and the largest module bucket in the crate,
+`marshal_ironsht_specific_v`, costs 4.9 s. The screen used one-line probes
+at the `body-early` (L151) and `body-late` (L1780) functions:
+
+| Variant (spun-off lines in `host_impl_v.rs`) | Edit at L151 | Edit at L1780 |
+|---|---:|---:|
+| none | 7.7 s | 7.7 s |
+| `i4` 1173, 1439, 1070, 656 | 6.0 s | 5.9 s |
+| `i8` `i4` plus 1780, 765, 1722, 553 | 5.6 s | 5.2 s |
+
+No verdict changed, and no check came near its limit (largest: 9%).
+`i8` isolates the L1780 edit target itself, so only `i4` was timed. Timed
+rows, `i4` against unpatched source, use the same six-round rotated protocol
+(median [range], n = 6):
+
+| Row | Unpatched | `i4` | Change |
+|---|---|---|---:|
+| Stock cold | 44.6 s [44.2–45.5] | 44.4 s [44.2–45.2] | −0.5% |
+| Sail cold | 42.1 s [42.0–42.2] | 42.1 s [42.1–42.9] | +0.2% |
+| Sail comment-only edit (floor) | 4.8 s [4.7–5.1] | 4.9 s [4.8–5.0] | +0.8% |
+| Sail `body-early` | 7.2 s [7.2–7.3] | 5.6 s [5.5–5.7] | −22.5% |
+| Sail `body-late` | 7.2 s [7.2–7.3] | 5.6 s [5.6–5.6] | −22.7% |
+
+Every run exited 0. Every stock and Sail cold run reported 313 verified
+(and 2,059 for vstd), 0 errors. IRONKVCONF Isolation saves 1.6 s per edit
+here. The edit was already within 2.4 s of the 4.8 s floor.
 
 ## Decision for v0.3.0
 
