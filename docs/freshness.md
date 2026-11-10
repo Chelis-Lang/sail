@@ -173,7 +173,7 @@ not Unknown for want of the interrupted run's declarations. It discards what
 that run left, including the compiler family's Cargo target and every proof
 receipt of the family, and verifies as a first run (ADR 0110). On Linux, the
 absent-configuration watch drains its queue continuously; an overflow still
-makes the result Unknown.
+makes the result Unknown. See the [loaded qualification](validation/currentness-under-load.md).
 
 A newly discovered external include can introduce a source-path alias as well
 as new content, for example an absolute path through macOS's `/var` symlink.
