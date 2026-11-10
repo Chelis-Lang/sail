@@ -22,7 +22,7 @@ cold at most 3% slower than unpatched.
 | Field | Value |
 |---|---|
 | Environment | Native EC2 c7i.8xlarge (32 vCPU), us-west-2, Ubuntu 24.04, one idle lane (`v3-piso2`); pinned Z3 4.16.0 |
-| Sail source | branch `spike/v030-piso` on main `765a3866`; release `sail`, `sail-z3`, `sail-conformance` built there |
+| Sail source | branch `spike/v030-piso` at `7540fca8` (on main `d45e75eb`); release `sail`, `sail-z3`, `sail-conformance` built there |
 | Verus | stock `0.2026.10.18.7d82994` (plain arm, conformance oracle); Sail's Verus is the pinned fork runtime |
 | Tools | `scripts/spike-tune-rank.py` (rank, compare), `scripts/spike-tune-screen.sh` (warm-cache screen), `scripts/perf-real.sh` with `SAIL_PERF_SOURCE_PATCH` (timed rows) |
 | Raw evidence | `screen-anvil.tgz` sha256 `944bd34d668bac2d4857607b6172a9a8b062e8832027c48bc39b1b42817645db`; `final-anvil-q3.tgz` sha256 `c262b4f10b7417232cbeabfc75b489dfa1bdc5eb54476355ec12d155c4bf27bb`; IronKV, conformance and 7-thread rows `rest.tgz` sha256 `d29f318a1970cfc60f3dcaeb256ad17b53c268ba13b89f134bc13d9162d55577` (outside the repository) |
