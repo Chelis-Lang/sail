@@ -493,11 +493,34 @@ impl Snapshot {
         check().is_some()
     }
 
+    /// Spike (#563): [`Self::capture_pipelined`] whose private lookup
+    /// directories hold only the artifacts `member` names. The compiler sees
+    /// the private copies alone, so an artifact left out cannot be loaded;
+    /// the caller's checks over every copied input are unchanged.
+    pub(super) fn capture_pipelined_members(
+        owned_target: &Path,
+        root: &Path,
+        args: &[OsString],
+        member: &dyn Fn(&Path) -> bool,
+    ) -> Option<Self> {
+        Self::capture_members(owned_target, root, args, Scratch::Skip, Some(member))
+    }
+
     fn capture_with(
         owned_target: &Path,
         root: &Path,
         args: &[OsString],
         scratch: Scratch,
+    ) -> Option<Self> {
+        Self::capture_members(owned_target, root, args, scratch, None)
+    }
+
+    fn capture_members(
+        owned_target: &Path,
+        root: &Path,
+        args: &[OsString],
+        scratch: Scratch,
+        member: Option<&dyn Fn(&Path) -> bool>,
     ) -> Option<Self> {
         let target = owned_target.canonicalize().ok()?;
         let unit = Unit::parse(args)?;
@@ -544,6 +567,13 @@ impl Snapshot {
                 entries += 1;
                 let kind = entry.file_type().ok()?;
                 if scratch == Scratch::Skip && kind.is_dir() && entries <= ENTRY_LIMIT {
+                    continue;
+                }
+                if kind.is_file()
+                    && entries <= ENTRY_LIMIT
+                    && artifact(&entry.path())
+                    && member.is_some_and(|member| !member(&entry.path()))
+                {
                     continue;
                 }
                 if !kind.is_file() || !names.insert(entry.file_name()) || entries > ENTRY_LIMIT {

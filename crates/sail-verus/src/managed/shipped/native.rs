@@ -95,11 +95,16 @@ impl<'a> Observation<'a> {
     }
 
     fn try_begin(plan: &'a Plan, args: &'a [OsString]) -> Result<Self, &'static str> {
-        if !Snapshot::pipelined_inputs_admitted(&plan.target, args, |output| {
+        // Spike (#563), opt-in: copy only artifacts that have this run's
+        // producer record or running mark into the private lookup directory,
+        // instead of refusing because another crate's artifact shares `deps/`.
+        let members = std::env::var_os("SAIL_SPIKE_OWNED_LOOKUP").is_some_and(|v| v == "1");
+        let produced = |output: &Path| {
             let (record, running) = producer_paths(&plan.native_records, output);
             record.is_file()
                 || std::fs::read(running).is_ok_and(|bytes| bytes == plan.run_id.as_bytes())
-        }) {
+        };
+        if !members && !Snapshot::pipelined_inputs_admitted(&plan.target, args, produced) {
             return Err("native lookup inputs lack current producer records or marks");
         }
         let mut call =
@@ -167,11 +172,15 @@ impl<'a> Observation<'a> {
         // Let Cargo keep metadata pipelining (ADR 0061). The child sees only
         // private copies of inputs already present. Missing producer
         // certificates still refuse publication after the child finishes.
-        let graph = Snapshot::capture_pipelined(&plan.target, &base.join("graph"), args)
-            .ok_or_else(|| {
-                trace_inventory(&call, "pipelined");
-                "native graph capture refused"
-            })?;
+        let graph = if members {
+            Snapshot::capture_pipelined_members(&plan.target, &base.join("graph"), args, &produced)
+        } else {
+            Snapshot::capture_pipelined(&plan.target, &base.join("graph"), args)
+        }
+        .ok_or_else(|| {
+            trace_inventory(&call, "pipelined");
+            "native graph capture refused"
+        })?;
         let reads = native_reads::Observation::begin(&base.join("read"), &plan.run_id, &call.key)
             .ok_or("native read request unavailable")?;
         let mut arguments = graph.arguments().to_vec();
@@ -223,25 +232,39 @@ impl<'a> Observation<'a> {
 
     fn try_complete(&self) -> Option<()> {
         let plan = self.call.plan;
-        if !await_graph_records(&self.call, &self.graph)
-            || !self.graph.intact()
-            || !graph_established(&self.call, &self.graph)
-        {
-            return None;
+        // Spike (#563): name the completion check that declines. Evidence
+        // only, written under the existing opt-in trace; no check changes.
+        let declined = |reason: &str| -> Option<()> {
+            trace(
+                self.call.arguments,
+                &serde_json::json!({"event":"native-completion-declined","reason":reason}),
+            );
+            None
+        };
+        if !await_graph_records(&self.call, &self.graph) {
+            return declined("a native graph input has no producer record or running mark");
         }
-        let source_observation_sha256 = self.reads.finish(
+        if !self.graph.intact() {
+            return declined("a private native graph copy changed");
+        }
+        if !graph_established(&self.call, &self.graph) {
+            return declined("a native graph input's producer record is not established");
+        }
+        let Some(source_observation_sha256) = self.reads.finish(
             true,
             &self.cwd,
             plan.closure.as_ref()?,
             &self.graph.copied_inputs()?,
             &self.call.vars,
-        )?;
+        ) else {
+            return declined("the compiler's source-read observation was not admitted");
+        };
         if !plan
             .closure
             .as_ref()?
             .native_unit(&self.call.vars, self.call.arguments)
         {
-            return None;
+            return declined("the unit no longer matches the admitted source closure");
         }
         // As at the start: the full compiler read runs beside the remaining
         // read-only checks, and all of them must hold.
@@ -274,9 +297,11 @@ impl<'a> Observation<'a> {
             (compiler, rebound)
         });
         if !compiler {
-            return None;
+            return declined("the native compiler is no longer the admitted sysroot compiler");
         }
-        rebound?;
+        if rebound.is_none() {
+            return declined("generated inputs, extern provenance or the bound key changed");
+        }
         std::fs::create_dir_all(&plan.native_records).ok()?;
         for output in &self.outputs {
             if !output.is_file() {
