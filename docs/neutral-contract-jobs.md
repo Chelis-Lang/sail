@@ -1,5 +1,9 @@
 # Verify neutral Rust source through Sail
 
+> **Scheduled for removal in v0.3.0.** This experimental surface is present
+> and maintained, and is not being extended. See
+> [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).
+
 A client submits a complete supported Rust source snapshot to Sail's existing
 local job service. Sail admits the source, creates its own Verus shadow and
 executes its pinned verifier. The client provides source bytes, their SHA-256

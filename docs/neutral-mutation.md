@@ -1,5 +1,9 @@
 # Run bounded neutral-source mutation campaigns
 
+> **Scheduled for removal in v0.3.0.** This experimental surface is present
+> and maintained, and is not being extended. See
+> [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).
+
 The separate [scalar literal-contract witness family](literal-witnesses.md)
 can search for and independently evaluate concrete counterexamples in its
 admitted scalar slice. Its results never change the campaign classifications

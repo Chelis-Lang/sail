@@ -69,7 +69,7 @@ Use [the template](0000-template.md) for a new decision.
 - [0063: A seeded mutation suite as soundness probe and edit-loop benchmark (accepted)](0063-seeded-mutation-suite.md)
 
 - [0064: Accept verification-progress note ordering (accepted)](0064-verification-progress-note-order.md)
-- [0065: One verification runtime for Oyster](0065-oyster-runtime.md)
+- [0065: One verification runtime for Oyster (Oyster parts superseded by 0109)](0065-oyster-runtime.md)
 - [0066: Shared neutral contract syntax and checked runtime (runtime implemented; backend qualification separate)](0066-neutral-contract-runtime.md)
 - [0067: Isolated native D.I.V.E. runtime worker (proposed)](0067-dive-runtime-worker.md)
 - [0068: Shared runtime transport and agent tools](0068-runtime-daemon.md)
@@ -114,7 +114,7 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0099: Mutation explanation-note cardinality](0099-mutation-explanation-note-cardinality.md) (accepted; existing per-code uniqueness corrected, native Linux/Mac witness and negative controls qualified)
 
-- [0100: Mutation-first roadmap and design-first Oyster hold (accepted)](0100-mutation-first-roadmap.md)
+- [0100: Mutation-first roadmap and design-first Oyster hold (accepted; Oyster parts superseded and backend ordering amended by 0109)](0100-mutation-first-roadmap.md)
 
 - [0101: D.I.V.E. behind a default-off build flag](0101-dive-behind-a-default-off-flag.md) (accepted; extension workspace is the flag, main-gate lock and publish guards, flip queued)
 
@@ -128,3 +128,4 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0107: Freeze neutral profile three before its first release](0107-freeze-neutral-profile-three.md) (accepted; retained version-four manifests replay byte for byte, later widening takes a new identity)
 - [0108: The SMT runtime is a supported command](0108-supported-smt-runtime.md) (accepted; `sail runtime` and the MCP runtime tools are listed as supported)
+- [0109: Oyster retired; v0.3.0 scope](0109-oyster-retired-v030-scope.md) (accepted by owner; Oyster abandoned, v0.3.0 pillars, experimental Kani then cvc5 inside the release, neutral-contract and contract-crate removal after stated preconditions, no second Verus pin)
