@@ -150,8 +150,15 @@ Each setup also requires:
 
 Each proof binds its own exact dependency versions, features and original
 verification run. Sail does not change a project's manifest or lockfile to
-match a profile. Other Vest resolutions, CapybaraKV and Anvil are not covered
-by adding this exact profile.
+match a profile. Other Vest resolutions and Anvil are not covered by adding
+this exact profile.
+
+Crates outside vstd's dependency closure in the same target directory, such
+as CapybaraKV's `rand_core` or `bindgen`, do not prevent a match: Sail leaves
+them out of the private copy the native compiler reads, since no lookup of a
+closure crate can load them (ADR 0090's 2026-11-10 amendment). Before this
+change, a release refused such projects with a generic lookup-mismatch
+`SAIL3138` note.
 
 Otherwise Sail verifies `vstd` in the project, with the same results, and
 answers identical solver queries from signed replies shipped in the archive.

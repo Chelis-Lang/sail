@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The shipped vstd proof now applies to projects whose target directory also
+  holds crates outside vstd's dependency closure, such as CapybaraKV (#563).
+  Each closure unit's private lookup copy keeps only the files a lookup of its
+  crate names could consider; every provenance check is unchanged (ADR 0090,
+  2026-11-10 amendment). When a closure unit still cannot establish its
+  compiler provenance, the `SAIL3138` note names the unit and a stable reason
+  code instead of the generic lookup mismatch, and the `SAIL_SHIPPED_TRACE`
+  events carry the same codes.
 - Decided how `sail mutate`, planned for v0.3.0, will count mutants (ADR
   0111). A Verus rejection counts as a detection when it is attributed to the
   mutated function, is not only a resource limit, repeats on every run, and
