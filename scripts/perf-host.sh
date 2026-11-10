@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Native x86-64 Linux EC2 hosts for builds, gates and benchmarks (ADR 0038).
+# Native Linux EC2 hosts for builds, gates and benchmarks (ADR 0038): x86-64 by
+# default, arm64 when INSTANCE_TYPE is a Graviton type.
 #
 #   scripts/perf-host.sh up LANE [INSTANCE_TYPE]   launch (default c7i.4xlarge)
 #   scripts/perf-host.sh sync LANE                 rsync this checkout to ~/sail
@@ -9,20 +10,29 @@
 #   scripts/perf-host.sh allow [LANE]              allow SSH from this machine's current IP
 #                                                  (every lane by default; after a network change)
 #   scripts/perf-host.sh down LANE                 verify termination, then delete group/key/state
-#   scripts/perf-host.sh list                      every running Project=sail instance
+#   scripts/perf-host.sh list                      every running Project=sail instance in the
+#                                                  default region and each recorded lane's region
 #
 # Every host terminates itself after SAIL_PERF_TTL_MIN minutes (default 480)
 # unless extended, so a forgotten host cannot leak. Resources are tagged
 # Project=sail and Lane=LANE. State lives in ~/.sail-perf/LANE.*
 # (SAIL_PERF_STATE_DIR overrides that directory). Failed teardown retains it.
+#
+# `up` launches in AWS_REGION (default us-east-1) and records that region
+# before it creates anything. Every other subcommand uses the lane's recorded
+# region, whatever AWS_REGION says later. An `up` that fails before an instance
+# exists deletes the key pair, security group and local files it created; if
+# that cleanup fails, or the instance exists but never became ready, the state
+# is retained for `down LANE`.
 set -euo pipefail
 
-region="${AWS_REGION:-us-east-1}"
+default_region="${AWS_REGION:-us-east-1}"
+region="$default_region"
 state_dir="${SAIL_PERF_STATE_DIR:-${HOME}/.sail-perf}"
 ttl="${SAIL_PERF_TTL_MIN:-480}"
 aws_ec2() { aws ec2 --region "$region" "$@"; }
 
-usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
 require_lane() {
   [ -n "${1:-}" ] || usage
@@ -32,8 +42,16 @@ require_lane() {
 host_of() {
   local f="$state_dir/$1.env"
   [ -f "$f" ] || { echo "no host for lane $1 (run: $0 up $1)" >&2; exit 1; }
+  # An interrupted `up` records only what it had created, so start from empty.
+  id='' sg='' key='' addr=''
   # shellcheck disable=SC1090
   . "$f"
+}
+
+# A lane whose `up` did not finish has state for `down` but nothing to reach.
+reachable_host_of() {
+  host_of "$1"
+  [ -n "$addr" ] || { echo "lane $1 has no reachable host (run: $0 down $1)" >&2; exit 1; }
 }
 
 ssh_opts() {
@@ -42,26 +60,67 @@ ssh_opts() {
     -o ConnectTimeout=10
 }
 
+# Runs when `up` exits. Nothing is deleted once an instance ID is recorded:
+# that host may still be provisioning, and `down` verifies termination first.
+up_exit() {
+  local status=$? lane="$1"
+  trap - EXIT
+  [ "$status" -ne 0 ] || return 0
+  host_of "$lane"
+  if [ -n "$id" ]; then
+    echo "up $lane failed; $id is recorded, run: $0 down $lane" >&2
+  elif cmd_down "$lane" >/dev/null; then
+    echo "up $lane failed before an instance existed; removed what it created" >&2
+  else
+    echo "up $lane failed and cleanup did not finish; run: $0 down $lane" >&2
+  fi
+  exit "$status"
+}
+
 cmd_up() {
   require_lane "${1:-}"
   local lane="$1" type="${2:-c7i.4xlarge}" name="sail-$1"
   mkdir -p "$state_dir" && chmod 700 "$state_dir"
   if [ -f "$state_dir/$lane.env" ]; then echo "lane $lane already up" >&2; exit 1; fi
 
-  local ami vpc ip sg id
+  local ami vpc ip sg id arch
+  # The AMI follows the instance type's architecture (Graviton families such
+  # as c7g, c8g, m7g and t4g report arm64). Anything else is refused, never
+  # guessed.
+  arch=$(aws_ec2 describe-instance-types --instance-types "$type" \
+    --query 'InstanceTypes[0].ProcessorInfo.SupportedArchitectures' --output text)
+  case " $(printf '%s' "$arch" | tr '\t\n' '  ') " in
+    *" x86_64 "*) arch=amd64 ;;
+    *" arm64 "*) arch=arm64 ;;
+    *) echo "unsupported architecture for $type: $arch" >&2; exit 1 ;;
+  esac
   ami=$(aws_ec2 describe-images --owners 099720109477 \
-    --filters 'Name=name,Values=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*' \
+    --filters "Name=name,Values=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-$arch-server-*" \
     --query 'sort_by(Images,&CreationDate)[-1].ImageId' --output text)
+  case "$ami" in ami-*) ;; *) echo "no Ubuntu 24.04 $arch image in $region: $ami" >&2; exit 1 ;; esac
   vpc=$(aws_ec2 describe-vpcs --filters Name=isDefault,Values=true --query 'Vpcs[0].VpcId' --output text)
   ip=$(curl -fsS https://checkip.amazonaws.com)
+
+  # The state file claims the lane and names the region before anything
+  # exists there. Each resource is appended only once this run has created
+  # it, so cleanup can never delete a key pair or group it does not own.
+  local env="$state_dir/$lane.env"
+  if ! (set -o noclobber; printf 'region=%s\ntype=%s\narch=%s\n' "$region" "$type" "$arch" >"$env") 2>/dev/null; then
+    echo "lane $lane already up" >&2; exit 1
+  fi
+  # The lane is expanded now: the function's locals are gone when the trap runs.
+  # shellcheck disable=SC2064
+  trap "up_exit $lane" EXIT
 
   aws_ec2 create-key-pair --key-name "$name" --key-type ed25519 \
     --tag-specifications "ResourceType=key-pair,Tags=[{Key=Project,Value=sail},{Key=Lane,Value=$lane}]" \
     --query KeyMaterial --output text >"$state_dir/$lane.pem"
+  echo "key=$name" >>"$env"
   chmod 600 "$state_dir/$lane.pem"
   sg=$(aws_ec2 create-security-group --group-name "$name" --description "sail perf host $lane" \
     --vpc-id "$vpc" --tag-specifications "ResourceType=security-group,Tags=[{Key=Project,Value=sail},{Key=Lane,Value=$lane}]" \
     --query GroupId --output text)
+  echo "sg=$sg" >>"$env"
   aws_ec2 authorize-security-group-ingress --group-id "$sg" --protocol tcp --port 22 --cidr "$ip/32" >/dev/null
 
   local user_data
@@ -70,7 +129,7 @@ cmd_up() {
 shutdown -h +$ttl
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -yq docker.io docker-buildx git rsync jq build-essential pkg-config libssl-dev python3 curl
+apt-get install -yq docker.io docker-buildx git rsync jq build-essential pkg-config libssl-dev python3 curl unzip
 usermod -aG docker ubuntu
 touch /var/lib/sail-perf-ready
 EOF
@@ -80,26 +139,26 @@ EOF
     --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=200,VolumeType=gp3,Iops=6000,Throughput=500,DeleteOnTermination=true}' \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$name},{Key=Project,Value=sail},{Key=Lane,Value=$lane}]" \
     --user-data "$user_data" --query 'Instances[0].InstanceId' --output text)
-  printf 'id=%s\nsg=%s\nkey=%s\ntype=%s\nregion=%s\n' "$id" "$sg" "$name" "$type" "$region" >"$state_dir/$lane.env"
+  echo "id=$id" >>"$env"
   aws_ec2 wait instance-running --instance-ids "$id"
   local addr
   addr=$(aws_ec2 describe-instances --instance-ids "$id" \
     --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
-  echo "addr=$addr" >>"$state_dir/$lane.env"
+  echo "addr=$addr" >>"$env"
   echo "waiting for $lane ($id, $type, $addr) to finish provisioning..." >&2
-  local i
-  for i in $(seq 1 90); do
+  for _ in $(seq 1 90); do
     # shellcheck disable=SC2046
     if ssh $(ssh_opts "$lane") "ubuntu@$addr" test -f /var/lib/sail-perf-ready 2>/dev/null; then
+      trap - EXIT
       echo "$lane ready: $id $addr (self-terminates in ${ttl} min)"; return 0
     fi
     sleep 10
   done
-  echo "$lane did not become ready; run: $0 down $lane" >&2; exit 1
+  echo "$lane did not become ready" >&2; exit 1
 }
 
 cmd_sync() {
-  require_lane "${1:-}"; host_of "$1"
+  require_lane "${1:-}"; reachable_host_of "$1"
   # The helper freezes actual working bytes, preserves staged objects, and
   # builds standalone metadata instead of copying a linked .git pointer.
   python3 "$(dirname "${BASH_SOURCE[0]}")/sync-native-checkout.py" \
@@ -108,7 +167,7 @@ cmd_sync() {
 }
 
 cmd_run() {
-  require_lane "${1:-}"; local lane="$1"; shift; host_of "$lane"
+  require_lane "${1:-}"; local lane="$1"; shift; reachable_host_of "$lane"
   local remote
   remote="cd ~/sail && $(printf '%q ' "$@")"
   # shellcheck disable=SC2046
@@ -116,13 +175,13 @@ cmd_run() {
 }
 
 cmd_ssh() {
-  require_lane "${1:-}"; local lane="$1"; shift; host_of "$lane"
+  require_lane "${1:-}"; local lane="$1"; shift; reachable_host_of "$lane"
   # shellcheck disable=SC2046
   exec ssh $(ssh_opts "$lane") "ubuntu@$addr" "$@"
 }
 
 cmd_extend() {
-  require_lane "${1:-}"; host_of "$1"
+  require_lane "${1:-}"; reachable_host_of "$1"
   # shellcheck disable=SC2046
   ssh $(ssh_opts "$1") "ubuntu@$addr" "sudo shutdown -c; sudo shutdown -h +${2:?minutes}"
 }
@@ -134,6 +193,7 @@ cmd_allow() {
   else lanes=$(cd "$state_dir" 2>/dev/null && ls -- *.env 2>/dev/null | sed 's/\.env$//'); fi
   for lane in $lanes; do
     ( host_of "$lane"
+      [ -n "$sg" ] || { echo "$lane has no security group (run: $0 down $lane)" >&2; exit 0; }
       aws_ec2 authorize-security-group-ingress --group-id "$sg" --protocol tcp --port 22 \
         --cidr "$ip/32" >/dev/null 2>&1 || true
       echo "$lane allows $ip" )
@@ -204,41 +264,66 @@ cmd_down() {
     echo "no recorded host for lane $lane"; return 0
   fi
   host_of "$lane"
-  state=$(down_instance_state "$id") || return 1
-  case "$state" in
-    terminated | absent) ;;
-    *)
-      if ! result=$(aws_ec2 terminate-instances --instance-ids "$id" 2>&1); then
-        down_failed "cannot terminate $lane ($id)" "$result"; return 1
-      fi
-      if ! result=$(aws_ec2 wait instance-terminated --instance-ids "$id" 2>&1); then
-        down_failed "termination wait failed for $lane ($id)" "$result"; return 1
-      fi
-      state=$(down_instance_state "$id") || return 1
-      case "$state" in
-        terminated | absent) ;;
-        *) down_failed "termination is unconfirmed for $lane ($id): $state"; return 1 ;;
-      esac ;;
-  esac
-  if result=$(aws_ec2 delete-security-group --group-id "$sg" 2>&1); then :
+  # A failed `up` records only what it created. With no instance ID there is
+  # nothing to terminate; if an unrecorded instance does hold the group, its
+  # deletion is refused below and the state is retained.
+  if [ -n "$id" ]; then
+    state=$(down_instance_state "$id") || return 1
+    case "$state" in
+      terminated | absent) ;;
+      *)
+        if ! result=$(aws_ec2 terminate-instances --instance-ids "$id" 2>&1); then
+          down_failed "cannot terminate $lane ($id)" "$result"; return 1
+        fi
+        if ! result=$(aws_ec2 wait instance-terminated --instance-ids "$id" 2>&1); then
+          down_failed "termination wait failed for $lane ($id)" "$result"; return 1
+        fi
+        state=$(down_instance_state "$id") || return 1
+        case "$state" in
+          terminated | absent) ;;
+          *) down_failed "termination is unconfirmed for $lane ($id): $state"; return 1 ;;
+        esac ;;
+    esac
+  fi
+  if [ -z "$sg" ]; then :
+  elif result=$(aws_ec2 delete-security-group --group-id "$sg" 2>&1); then :
   elif ! ec2_absent "$result" InvalidGroup.NotFound DeleteSecurityGroup; then
     down_failed "cannot delete security group $sg" "$result"; return 1
   fi
-  if result=$(aws_ec2 delete-key-pair --key-name "$key" 2>&1); then :
+  if [ -z "$key" ]; then :
+  elif result=$(aws_ec2 delete-key-pair --key-name "$key" 2>&1); then :
   elif ! ec2_absent "$result" InvalidKeyPair.NotFound DeleteKeyPair; then
     down_failed "cannot delete key pair $key" "$result"; return 1
   fi
-  if ! rm -f "$state_dir/$lane".{env,pem,known_hosts}; then
+  if ! rm -f "${state_dir:?}/${lane:?}".{env,pem,known_hosts}; then
     down_failed "resources are gone but local state cleanup failed for $lane"; return 1
   fi
-  echo "$lane down ($id)"
+  echo "$lane down (${id:-no instance})"
+}
+
+# The default region plus every region a recorded lane names, each once.
+list_regions() {
+  local f
+  { printf '%s\n' "$default_region"
+    for f in "$state_dir"/*.env; do
+      [ -f "$f" ] || continue
+      ( region=''
+        # shellcheck disable=SC1090
+        . "$f"
+        [ -z "$region" ] || printf '%s\n' "$region" )
+    done
+  } | awk '!seen[$0]++'
 }
 
 cmd_list() {
-  aws_ec2 describe-instances \
-    --filters Name=tag:Project,Values=sail Name=instance-state-name,Values=pending,running,stopping,stopped \
-    --query 'Reservations[].Instances[].[Tags[?Key==`Lane`]|[0].Value,InstanceId,InstanceType,State.Name,PublicIpAddress,LaunchTime]' \
-    --output text
+  local regions
+  regions=$(list_regions)
+  for region in $regions; do
+    aws_ec2 describe-instances \
+      --filters Name=tag:Project,Values=sail Name=instance-state-name,Values=pending,running,stopping,stopped \
+      --query 'Reservations[].Instances[].[Tags[?Key==`Lane`]|[0].Value,InstanceId,InstanceType,State.Name,PublicIpAddress,LaunchTime,Placement.AvailabilityZone]' \
+      --output text
+  done
 }
 
 sub="${1:-}"; shift || true

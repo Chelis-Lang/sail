@@ -22,6 +22,14 @@ semantic versioning once the API is published.
   rejects a crate that compiles as Rust (a mode error, for example). Passing
   lines are unchanged, and so are `sail verify`'s output and the JSON
   documents.
+- `scripts/perf-host.sh up` launches the arm64 Ubuntu image for a Graviton
+  instance type and the amd64 image otherwise, and installs `unzip` on the host
+  for `cargo xtask fetch-verus`. An `up` that fails before an instance exists
+  removes the key pair, security group and local key it created; otherwise the
+  lane's state is retained for `down LANE`. The lane's region is recorded
+  before launch and used by every later subcommand, and `list` covers the
+  default region plus each recorded lane's region and prints the availability
+  zone.
 - `sail runtime` and the MCP tools `runtime_capabilities` and
   `runtime_execute` are part of the supported command set (ADR 0108).
   `sail --help` lists `runtime`, its help no longer starts with the
