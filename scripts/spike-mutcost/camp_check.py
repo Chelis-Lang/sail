@@ -7,7 +7,10 @@ Campaign class of a mutant (the baseline verifies everything):
   rejected   the scoped run failed with at least one error that is not a resource limit
   rlimit     the scoped run failed with resource-limit errors only
   survived   the scoped run verified and the unscoped confirmation verified
-  overturned the scoped run verified and the unscoped confirmation failed
+  overturned the scoped run verified and the unscoped confirmation failed with an error
+             that is not a resource limit
+  survived+rlimit-elsewhere  the scoped run verified and the confirmation failed with
+             resource-limit errors only
   stillborn  does not compile
 Naive class: the same from the stock full run alone (rejected / rlimit / survived / stillborn).
 """
@@ -42,7 +45,12 @@ def main():
         elif s["outcome"] == "errors":
             cc = failed_class(out, camp, s)
         elif i in confirm:
-            cc = "survived" if confirm[i]["outcome"] == "verified" else "overturned"
+            if confirm[i]["outcome"] == "verified":
+                cc = "survived"
+            elif failed_class(out, camp, confirm[i]) == "rlimit":
+                cc = "survived+rlimit-elsewhere"
+            else:
+                cc = "overturned"
         else:
             cc = "unconfirmed:" + s["outcome"]
         nc = None
@@ -55,7 +63,7 @@ def main():
             if not same:
                 differ.append((i, cc, nc, m["description"]))
         table[(cc, nc)] = table.get((cc, nc), 0) + 1
-        if cc == "survived":
+        if cc.startswith("survived"):
             survivors.append(m)
     print(f"## {camp} against {naive}: {len(scoped)} mutants, {both} with a naive result, {agree} agree\n")
     print("| campaign class | naive class | mutants |\n|---|---|---|")
