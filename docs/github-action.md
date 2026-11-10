@@ -10,7 +10,13 @@ the exit code of `sail verify`. The action does not change a verdict:
 **Status.** The action is implemented and tested on GitHub-hosted Ubuntu
 24.04 runners: on every pull request, the optional `GitHub Action (cold)`
 and `GitHub Action (restored)` jobs in [CI](../.github/workflows/ci.yml)
-run it on [a small fixture](../ci/github-action-fixture). That test installs
+run it on [a small fixture](../ci/github-action-fixture). In
+[run 42801635198](https://github.com/Chelis-Lang/sail/actions/runs/42801635198),
+the cold job verified the fixture in 47.4 s, vstd included. A fresh runner
+then restored the exact cache keys and verified in 0.9 s, reusing 2 targets
+from receipts with no verifier run. A broken lemma then failed the action
+step with exit code 101, the exit code of `sail verify`, and the SARIF file
+located the error. That test installs
 the current commit's Sail, not a published release, because `sail report`
 is not in a release yet. Sail 0.2.0 does not have `sail report`, and the
 action stops with an error when it finds a Sail without it. The first
