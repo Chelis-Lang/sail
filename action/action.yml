@@ -68,7 +68,14 @@ inputs:
     required: false
     default: "true"
   cache:
-    description: Restore and save Sail's solver replies, managed targets and proof receipts.
+    description: Restore and save Sail's solver replies (`~/.cache/sail/results`, a few MB).
+    required: false
+    default: "true"
+  cache-projects:
+    description: >-
+      Also restore and save managed targets and proof receipts
+      (`~/.cache/sail/projects`; tens to hundreds of MB). Never saved when
+      Sail reports `SAIL3112`, which uses no receipts.
     required: false
     default: "true"
   cache-cargo:
@@ -109,7 +116,7 @@ inputs:
     required: false
     default: ""
   upload-sarif:
-    description: Upload the SARIF file to code scanning. Needs `security-events: write`.
+    description: Upload the SARIF file to code scanning (needs the `security-events` write permission).
     required: false
     default: "false"
   sarif-category:
@@ -174,7 +181,7 @@ runs:
 
     - name: Restore managed targets and proof receipts
       id: restore-projects
-      if: inputs.cache == 'true'
+      if: inputs.cache == 'true' && inputs.cache-projects == 'true'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.setup.outputs.projects-paths }}
@@ -246,7 +253,7 @@ runs:
 
     - name: Save managed targets and proof receipts
       if: >-
-        always() && steps.verify.outcome == 'success' && inputs.cache == 'true'
+        always() && steps.verify.outcome == 'success' && inputs.cache == 'true' && inputs.cache-projects == 'true'
         && steps.verify.outputs.save-projects == 'true' && steps.restore-projects.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:

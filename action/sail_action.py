@@ -251,8 +251,11 @@ def setup():
     except (ValueError, KeyError, TypeError):
         verifier_toolchain = "unknown"
     project = project_dir()
-    top = git_top(project) or project
-    if flag("RESTORE_MTIME", "true"):
+    top = git_top(project)
+    if top is None:
+        top = project
+        print(f"{project} is not in a Git repository; file times are left as they are")
+    elif flag("RESTORE_MTIME", "true"):
         restore_mtime(top)
     prefix = env("CACHE_KEY_PREFIX", "sail") or "sail"
     runner = f"{os.environ.get('RUNNER_OS', sys.platform)}-{os.environ.get('RUNNER_ARCH', os.uname().machine)}"
