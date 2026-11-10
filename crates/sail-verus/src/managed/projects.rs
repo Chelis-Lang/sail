@@ -89,6 +89,9 @@ pub enum Pruned {
     /// The workspace's directory was removed, freeing about this many bytes.
     Removed(u64),
     /// A managed run or job holds the workspace; nothing was removed.
+    ///
+    /// A process spawned while a lock was held shares it until its `exec`, so
+    /// this can also be the answer for a moment after the holder released it.
     Busy,
 }
 
@@ -553,9 +556,17 @@ mod tests {
         Ok(())
     }
 
+    /// Runs in a process of its own (see `isolated_test`), where the first
+    /// prune after each release must already succeed, with no retry.
     #[test]
     fn prune_skips_busy_workspaces_and_removes_idle_ones() -> Result<(), Box<dyn std::error::Error>>
     {
+        if !crate::isolated_test::runs_here(
+            module_path!(),
+            "prune_skips_busy_workspaces_and_removes_idle_ones",
+        ) {
+            return Ok(());
+        }
         let (cache, _, key) = fixture("prune")?;
         let directory = root(&cache).join(&key);
         // A run of this version holds the workspace lock shared.

@@ -23,7 +23,7 @@ v0.3.0 will remove API published in 0.2.0, so it is a breaking release.
 
 | Pillar | Gate | Tracker | State |
 |---|---|---|---|
-| Verus mutation testing (headline) | Bounded executable-code mutants in copies through CLI, JSON and MCP together; rejected, survived and inconclusive kept apart without relabeling Unknown; qualified on real projects on Linux and macOS with actual campaign costs | #140, #141, [#664](https://github.com/Chelis-Lang/sail/issues/664); [brief](design/verus-mutation-release.md), [existing evidence](validation/neutral-mutation.md) | Designed, not built |
+| Verus mutation testing (headline) | Bounded executable-code mutants in copies through CLI, JSON and MCP together; outcomes and score per [ADR 0111](decisions/0111-mutation-evidence.md), with solver answers verbatim; qualified on real projects on Linux and macOS with actual campaign costs | #140, #141, [#664](https://github.com/Chelis-Lang/sail/issues/664); [brief](design/verus-mutation-release.md), [evidence spike](validation/mutation-evidence.md), [neutral evidence](validation/neutral-mutation.md) | Evidence rule decided (ADR 0111); not built |
 | Proof health and profiling | Rank functions by resource margin and stability, and name costly quantifiers, from recorded sessions; no change to verdicts or plain `sail verify` bytes | Experimental fragility engine exists | Not built |
 | Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #244, #232, #558, #560 | Named rows still slower; see the lanes below |
 | Reach | GitHub Action, simpler installation, editor bridge | [CI-cache recipe](ci-cache.md) shipped in 0.2.0 | Not built |
