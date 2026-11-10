@@ -1,12 +1,14 @@
 # Neutral contract service qualification
 
+> **Retired.** The surface this record qualified was removed in v0.3.0 ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)). The record is kept as history; the last implementation is tagged `archive/neutral-contracts-final`. Nothing below describes current Sail.
+
 ## Scope and result
 
 The installed-service acceptance on source `96af775e` passed on October 21,
 2026, native Linux x86-64 on the owned c7i.4xlarge qualification host in
 us-east-1. It used the pinned fork `f8589ed4345f147d8fb43d8cb7992921944b91f0`,
 Z3 4.16.0, Sail Rust 1.99.0 and backend Rust 1.99.1 in the existing CI image.
-The [service specification](../spec/neutral-contract-jobs.md) defines its bounds.
+The [service specification](https://github.com/Chelis-Lang/sail/blob/archive/neutral-contracts-final/docs/spec/neutral-contract-jobs.md) defines its bounds.
 Full native gate, solver, complete e2e and fast/standard conformance on the final
 qualifying source remain separate required gates; their exact source and log
 hashes are recorded in the qualifying pull request.

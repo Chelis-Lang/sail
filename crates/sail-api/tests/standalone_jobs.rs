@@ -64,16 +64,12 @@ fn standalone_repair_refuses_a_service_without_the_exact_capability()
         sail_api::jobs::write_frame(
             &mut stream,
             &Response::Capabilities {
+                capabilities_version: sail_api::jobs::CAPABILITIES_VERSION,
                 proof_version: sail_api::proof::VERSION,
                 repair: true,
                 standalone: true,
                 standalone_repair: false,
-                neutral_contracts_version: None,
-                neutral_contract_profiles: Vec::new(),
-                assurance_version: None,
                 attribution_version: None,
-                counterexample_version: None,
-                mutation_version: None,
             },
         )?;
         listener.set_nonblocking(true)?;
@@ -98,5 +94,24 @@ fn standalone_repair_refuses_a_service_without_the_exact_capability()
     assert!(result.is_err());
     service.join().map_err(|_| "service thread failed")??;
     std::fs::remove_dir_all(root)?;
+    Ok(())
+}
+
+/// A 0.2 service sends no capability-set version and reads as set 1, the set
+/// that still advertised the neutral operations; 0.3 advertises set 2.
+#[test]
+fn capability_set_version_defaults_to_the_0_2_set() -> serde_json::Result<()> {
+    use sail_api::jobs::{CAPABILITIES_VERSION, Response};
+    let old: Response = serde_json::from_str(
+        r#"{"response":"capabilities","value":{"proof_version":1,"repair":true,"neutral_contracts_version":1}}"#,
+    )?;
+    assert!(matches!(
+        old,
+        Response::Capabilities {
+            capabilities_version: 1,
+            ..
+        }
+    ));
+    assert_eq!(CAPABILITIES_VERSION, 2);
     Ok(())
 }

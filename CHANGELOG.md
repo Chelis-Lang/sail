@@ -5,6 +5,67 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+### Removed
+
+This release removes the experimental neutral-contract surfaces that 0.2.0
+published ([ADR 0109](docs/decisions/0109-oyster-retired-v030-scope.md)). The
+last commit that contains them is tagged `archive/neutral-contracts-final`. The
+published 0.2.0 crates stay on crates.io and are not yanked. Default
+`sail verify` output, verdicts and diagnostics are unchanged.
+
+- The crates `sail-contracts` (the `requires`, `ensures`, `requirement` and
+  `satisfies` attributes, `Int`, `Scalar` and the checked scalar runtime),
+  `sail-contracts-macros` and `sail-contracts-ir` (`validate_expression`, `ExpressionContext`, the source
+  and function admission items and `VERSION`). No 0.3.0 versions are published.
+- Neutral source jobs: `Request::SubmitContracts`, `Client::submit_contracts`,
+  the `sail_api::contracts` module (`Submission`, `SourceRange`,
+  `ContractBinding`, `LoweringManifest`, `ContractProof`, `TranslationTrust`,
+  `Evidence`, `WorkerResult`, `VERSION` and its size and time limits), the
+  hidden `sail _contracts-worker` command, and the `contracts` member of
+  `jobs::ResultDocument` and `evidence::Baseline`.
+- Neutral-to-Verus lowering: the `sail_verus::contracts` module (`lower`,
+  `lower_profile`, `lower_closure`, `validate_manifest`,
+  `validate_closure_manifest`, `verify`, `verify_profile`, `verify_closure`,
+  `struct_field_names`, `ContractRun`, `LoweredSource`, `observed_proof`,
+  `LOWERING_VERSION`, and its `mutation` and `literal_witness` modules), neutral
+  profiles one to three and the neutral shadow workspaces. `sail-verus` no
+  longer depends on `syn`, `quote`, `proc-macro2` or `num-bigint`.
+- Bounded neutral mutation: `Request::SubmitMutation`, `Request::Mutation`,
+  `Request::CancelMutation`, `Response::Mutation`, `Client::submit_mutation`,
+  `Client::mutation`, `Client::cancel_mutation` and the `sail_api::mutation`
+  module (`Submission`, `Candidate`, `Plan`, `Outcome`, `State`,
+  `OriginalEvidence`, `Observation`, `View`, `POLICY`, `classify`,
+  `decode_original`, `validate_view`, `attach_assurance`, `qualifiers`,
+  `digest`).
+- Scalar literal witnesses: `Request::PrepareLiteralWitness`,
+  `Request::ValidateLiteralWitness`, `Response::LiteralWitness`,
+  `Response::LiteralWitnessValidated`, `Client::literal_witnesses`,
+  `Client::validate_literal_witness` and the `sail_api::literal_witness` module.
+- The neutral requirement assurance view: `Request::Assurance`,
+  `Response::Assurance`, `Client::requirement_assurance`, and from
+  `sail_api::assurance` the items `View`, `Requirement`, `Evidence`,
+  `Relationship`, `Scope`, `VERSION`, `from_contract_result` and
+  `observed_contract_proof`. `EvidenceTier` and `MutationStatus` stay.
+  `ProofState` and `CheckCounts` move from `sail_api::contracts` to
+  `sail_api::assurance`.
+- The capability fields `neutral_contracts_version`,
+  `neutral_contract_profiles`, `assurance_version` and `mutation_version` of
+  `Response::Capabilities`. A 0.2.0 client reads
+  their absence as "not supported" and refuses with its existing codes; a
+  removed operation sent without negotiation is answered with `SAIL0802`.
+- Error codes `SAIL0701` to `SAIL0703` and `SAIL3140` to `SAIL3145`.
+- The guides for neutral contracts, neutral source jobs, neutral mutation and
+  literal witnesses, and the three neutral specifications.
+- Unreleased neutral work that was on `main` after 0.2.0 goes with it: profile
+  three (with its `invariant!` and `decreases!` macros), multi-file closures,
+  and the `sail assurance JOB --inputs` view
+  (`Request::AssuranceInputs`, `Client::assurance_inputs`). Counterexample
+  decoding itself is kept (see Changed).
+- The `contracts` end-to-end phase. The required `End to end` check keeps its
+  name and now aggregates nine phases.
+
+### Changed
+
 - The shipped vstd proof now applies to projects whose target directory also
   holds crates outside vstd's dependency closure, such as CapybaraKV (#563).
   Each closure unit's private lookup copy keeps only the files a lookup of its
@@ -55,16 +116,6 @@ semantic versioning once the API is published.
   never recorded) is not reused or published as a reusable proof; its next run
   verifies it again (#683). Standalone files verified by the service now
   record per-check sources: they set `SAIL_PROVENANCE_DIR` (#684).
-- The next release is v0.3.0, and it is planned as a breaking release (ADR
-  0109). The experimental neutral-contract surfaces published in 0.2.0 are
-  scheduled for removal in it: the `sail-contracts`, `sail-contracts-macros`
-  and `sail-contracts-ir` crates, neutral lowering, neutral source jobs,
-  neutral mutation and literal witnesses. Nothing is removed yet, and these
-  surfaces stay maintained until then. `sail runtime`, evidence tiers,
-  counterexample decoding and function attribution are kept. Requirement
-  attribution and `sail assurance` stay experimental for now; whether they are
-  kept or removed is decided once Verus mutation testing (`sail mutate`)
-  exists. The guides for the surfaces scheduled for removal carry a notice.
 - Add `sail report --format github-summary|github-annotations|sarif
   [--baseline FILE]`, which renders a `sail verify --output json` document
   for CI without running anything: a Markdown job summary within a byte
@@ -94,6 +145,21 @@ semantic versioning once the API is published.
   whose functions include provisional verdicts ends its counts with `, N
   provisional (not verified)`. Other passing lines are unchanged, and so are
   `sail verify`'s output and the JSON documents.
+- `Response::Capabilities` carries `capabilities_version`
+  (`sail_api::jobs::CAPABILITIES_VERSION`, now 2). A 0.2 service sends none,
+  which reads as 1, the set that still had the neutral operations. The job
+  frame version is unchanged, so 0.2 clients and retained records keep working
+  for ordinary jobs.
+- The MCP `counterexample` tool returns `decoded_inputs`: the parameters, return
+  binder and positionally named struct fields decoded from the first failed or
+  unknown check's model (ADR 0106), or `null` without a model. Decoded values
+  are the solver's model, never a validated counterexample.
+- `sail assurance JOB` and the MCP tool `requirement_assurance` now read
+  submitter-attributed evidence for an ordinary job (ADR 0104). `--attributed`
+  and the `attributed` argument are accepted and change nothing.
+- A retained job record or baseline written by a 0.2 neutral source job stays
+  listed and reads as the new `SAIL3161`; it is never read as an ordinary
+  result.
 - Internal: the mutation catalogue generator moved from xtask into
   `sail-verus` (`sail_verus::mutate`, internal to the workspace) for the
   planned `sail mutate`; `cargo xtask gen-mutants` is its command line, and
@@ -114,6 +180,12 @@ semantic versioning once the API is published.
   before launch and used by every later subcommand, and `list` covers the
   default region plus each recorded lane's region and prints the availability
   zone.
+- `sail assurance JOB` and the MCP tool `requirement_assurance` now read
+  submitter-attributed evidence for an ordinary job (ADR 0104). `--attributed`
+  and the `attributed` argument are accepted and change nothing.
+- A retained job record or baseline written by a 0.2 neutral source job stays
+  listed and reads as the new `SAIL3161`; it is never read as an ordinary
+  result.
 - `sail runtime` and the MCP tools `runtime_capabilities` and
   `runtime_execute` are part of the supported command set (ADR 0108).
   `sail --help` lists `runtime`, its help no longer starts with the
@@ -122,63 +194,17 @@ semantic versioning once the API is published.
 - The book highlights Verus syntax in Rust examples and shell commands, flags
   and subcommands in shell examples, and lists every release under one
   "Release notes" part, now including 0.1.0.
-
-- Freeze neutral profile three (lowering version four, contract version three)
-  before its first release (ADR 0107). Retained version-four manifests replay
-  byte for byte, and later widening takes a new lowering identity. Manifests
-  recorded from earlier `main` revisions are refused as drift.
-- Lower profile-three signed remainder in the shape Verus gives executable
-  `%`, so a remainder by a symbolic divisor of either sign verifies. The value
-  is unchanged. Document two profile-three limits: signed division by a
-  symbolic divisor that may be negative is unprovable on the pinned Verus, and
-  Verus gives an out-of-range cast no value. Also correct the claim that profile
-  three admits everything in profile two.
-- Name the declaring module file in `ContractBinding.module_file` for an
-  inherent `impl` that sits in a different module file from its receiver type.
-  It named the type's file, while the source range counted the `impl` file's
-  lines. Profile-three refusal tests now assert the refusal reason.
-- Admit multi-file source closures in neutral profile three (ADR 0103).
-  `Submission.modules` carries out-of-line module files by crate-relative module
-  path; `lower_closure`, `validate_closure_manifest` and `verify_closure` admit
-  the root and its files as one closure, and crate-internal `crate`, `self` and
-  `super` imports resolve to admitted items. Undeclared or missing files,
-  `#[path]`, glob and external imports are refused. Manifests bind every file
-  digest and each binding's module file; single-file bytes are unchanged.
-  Mutation campaigns and literal witnesses refuse closures.
-- Admit `while` loops in neutral profile three bodies (ADR 0103). A loop body
-  starts with an optional `sail_contracts::invariant!` and one
-  `sail_contracts::decreases!`; lowering emits them as Verus `invariant` and
-  `decreases` clauses and adds nothing. `loop`, `for`, `break`, `continue` and
-  labels stay refused.
-- Admit calls to admitted contracted functions, `self` method calls, integer
-  casts, shared borrows and literal or unit-variant `match` in neutral profile
-  three bodies (ADR 0103). Recursive call cycles, library and predicate calls,
-  binding patterns, loops and macros stay refused. The runtime attributes
-  accept the profile-three body syntax.
-- Decode source-named counterexample inputs (ADR 0106): a separate view
-  (`sail assurance JOB --inputs`, `Client::assurance_inputs`) and attributed
-  assurance rows that are not proved carry the parameters, return binder and
-  named struct fields from the failed check's solver model, without fuel and
-  other internal constants. The version-two assurance view is unchanged and
-  stays reproducible from the job result. The raw model is retained, and decoded
-  values are never presented as a validated counterexample.
+- Decode source-named counterexample inputs (ADR 0106): attributed assurance
+  rows that are not proved carry the parameters, return binder and named struct
+  fields from the failed check's solver model, without fuel and other internal
+  constants. The raw model is retained, and decoded values are never presented
+  as a validated counterexample.
 - Attribute ordinary Verus jobs to requirements (ADR 0104):
   `sail verify --background --requirement ID=FUNCTION` retains submitter
-  attributions, and `sail assurance JOB --attributed` reports conservative,
-  qualified per-requirement evidence that is never neutral-contract assurance.
-  A tier needs Verus `--no-cheating` and only reviewed Verus arguments, so a
-  function that proves through `assume(false)` earns none.
-  MCP `start_verification` takes `requirements`; `requirement_assurance` takes
-  `attributed`.
-- Add explicit neutral source profile three (ADR 0103). Its specifications
-  admit `/` and `%` with Rust's truncating semantics, defined only for a nonzero
-  divisor and a representable result. Profile three lowers with version four;
-  profiles one and two and their bytes are unchanged. The service advertises
-  profiles one to three.
-- Place neutral shadow workspaces in a private per-user, per-cache directory when
-  a parent of the Sail cache has a Cargo configuration file, instead of refusing every
-  neutral job (ADR 0103, item 6). The refusal for unreviewed configuration is
-  unchanged and now names its cause and the setting that avoids it.
+  attributions, and `sail assurance JOB` reports conservative, qualified
+  per-requirement evidence. A tier needs Verus `--no-cheating` and only
+  reviewed Verus arguments, so a function that proves through `assume(false)`
+  earns none. MCP `start_verification` takes `requirements`.
 - Keep D.I.V.E. behind a default-off build flag (ADR 0101): the required
   layering check now refuses a root lock that names D.I.V.E. or an extension
   crate, and a publishable extension crate. `ci/run.sh extension-install DIR`

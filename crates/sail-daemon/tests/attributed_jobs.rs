@@ -1,8 +1,8 @@
 //! Submitter requirement attributions are retained with ordinary jobs, survive
 //! restart and are reported apart from neutral-contract assurance.
 #![cfg(unix)]
+use sail_api::assurance::ProofState;
 use sail_api::attribution::{Relationship, RequirementAttribution};
-use sail_api::contracts::ProofState;
 use sail_api::jobs::{Client, Lifecycle, Mode, Request, Response, Submission};
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
@@ -39,7 +39,7 @@ fn attributed_job_round_trip_restart_and_refusals() -> TestResult {
         std::fs::write(
             root.join("result.json"),
             include_str!(
-                "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json"
+                "../resources/crates/sail-verus/tests/fixtures/requirement-attribution/positive-requested-target.json"
             ),
         )?;
         let submission = |revision: &str, mode: Mode| Submission {
@@ -67,6 +67,7 @@ fn attributed_job_round_trip_restart_and_refusals() -> TestResult {
         assert!(matches!(
             client.call(&Request::Capabilities)?,
             Response::Capabilities {
+                capabilities_version: sail_api::jobs::CAPABILITIES_VERSION,
                 attribution_version: Some(sail_api::attribution::VERSION),
                 ..
             }
@@ -104,7 +105,6 @@ fn attributed_job_round_trip_restart_and_refusals() -> TestResult {
         );
         for refused in [
             client.attributed_assurance(&plain.id).map(|_| ()),
-            client.requirement_assurance(&attributed.id).map(|_| ()),
             client
                 .submit_attributed(submission("second", Mode::Interactive), vec![claim("R")])
                 .map(|_| ()),

@@ -239,7 +239,7 @@ pub fn definitions() -> Value {
         {
             "name": "counterexample",
             "title": "Counterexample models",
-            "description": "From the latest recorded `verify` result for a function or obligation, return the counterexample models Z3 gave for its failed obligations (source-level variables; `detail: \"full\"` adds every assignment and the raw `get-model` reply) and the Verus diagnostics located in the function, without re-running anything. Says whether the sources changed since. Verus names parameter `x` as `x!` and versions of local `i` as `i@0`, `i@1`.",
+            "description": "From the latest recorded `verify` result for a function or obligation, return the counterexample models Z3 gave for its failed obligations (source-level variables; `detail: \"full\"` adds every assignment and the raw `get-model` reply) and the Verus diagnostics located in the function, without re-running anything. Says whether the sources changed since. Verus names parameter `x` as `x!` and versions of local `i` as `i@0`, `i@1`. `decoded_inputs` names the parameters, the return binder and struct fields (by declaration position) from the first failed or unknown check's model; it is the solver's model, not a validated concrete counterexample.",
             "inputSchema": lookup_schema("Give this or `obligation`."),
             "annotations": {"readOnlyHint": true, "openWorldHint": false}
         },
@@ -880,6 +880,7 @@ fn models(
             "mode": f.provenance.mode,
             "configuration": f.provenance.configuration,
             "obligations": selected,
+            "decoded_inputs": crate::job_tools::decoded_inputs(f),
             "diagnostics": diagnostics,
             "diagnostics_matched_by": if f.obligations.is_some() { "source location: from the function's first line to the next function's" } else { "none: every diagnostic of the run" },
             "attribution": report.attribution,

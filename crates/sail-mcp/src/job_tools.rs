@@ -166,14 +166,10 @@ fn response_value(response: sail_api::jobs::Response) -> serde_json::Result<Valu
     };
     let sail_api::jobs::ResultDocument {
         repair,
-        contracts,
         job,
         result,
     } = document;
     let mut body = Map::new();
-    if let Some(contracts) = contracts {
-        body.insert("contracts".to_owned(), serde_json::to_value(contracts)?);
-    }
     if let Some(repair) = repair {
         body.insert("repair".to_owned(), serde_json::to_value(repair)?);
     }
@@ -523,7 +519,7 @@ pub(super) fn lookup(
         }
         let entries: Vec<_> = functions.iter().map(|(target, function)| {
             let obligations: Vec<_> = function.obligations.iter().flatten().filter(|obligation| args.obligation.as_ref().is_none_or(|id| id.split_once('#').is_some_and(|pair| obligation.id == format!("{}#{}", function.function, pair.1)))).collect();
-            json!({"package_id":target.package_id,"target":target.target,"establishing_run":target.establishing_run,"reused":target.reused,"function":function.function,"verdict":crate::summary::verdict_name(crate::summary::effective_verdict(function)),"establishment":function.establishment,"evidence_tier":crate::summary::effective_evidence_tier(function),"mode":function.provenance.mode,"configuration":function.provenance.configuration,"function_report":function,"obligations":if models {serde_json::to_value(&obligations).unwrap_or(Value::Null)}else{Value::Null},"counterexamples":if models {serde_json::to_value(obligations.iter().filter_map(|obligation| obligation.counterexample.as_ref()).collect::<Vec<_>>()).unwrap_or(Value::Null)}else{Value::Null}})
+            json!({"package_id":target.package_id,"target":target.target,"establishing_run":target.establishing_run,"reused":target.reused,"function":function.function,"verdict":crate::summary::verdict_name(crate::summary::effective_verdict(function)),"establishment":function.establishment,"evidence_tier":crate::summary::effective_evidence_tier(function),"mode":function.provenance.mode,"configuration":function.provenance.configuration,"function_report":function,"obligations":if models {serde_json::to_value(&obligations).unwrap_or(Value::Null)}else{Value::Null},"counterexamples":if models {serde_json::to_value(obligations.iter().filter_map(|obligation| obligation.counterexample.as_ref()).collect::<Vec<_>>()).unwrap_or(Value::Null)}else{Value::Null},"decoded_inputs":if models {decoded_inputs(function)}else{Value::Null}})
         }).collect();
         return Some(ToolResult::ok(
             format!(
@@ -628,4 +624,13 @@ fn no_reuse_line(no_reuse: &sail_api::project::NoReuse) -> String {
         "No proof reuse ({}): {}; {how}. No proof receipt was reused or recorded, so this result is never current.",
         no_reuse.code, no_reuse.reason
     )
+}
+
+/// Source-named inputs decoded from the function's first failed or unknown
+/// check's model (ADR 0106); `null` when no such check has a model. The raw
+/// model stays in `obligations`.
+pub(crate) fn decoded_inputs(function: &sail_api::output::FunctionReport) -> Value {
+    sail_api::counterexample::decode(function, &sail_api::counterexample::FieldNames::new())
+        .and_then(|decoded| serde_json::to_value(decoded).ok())
+        .unwrap_or(Value::Null)
 }

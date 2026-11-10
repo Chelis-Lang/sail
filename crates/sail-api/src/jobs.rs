@@ -10,6 +10,13 @@ use serde_json::Value;
 
 /// Project job protocol version.
 pub const VERSION: u32 = 1;
+/// Capability-set version a service advertises in [`Response::Capabilities`].
+///
+/// Absent (read as 1) on 0.2 services, whose set included the neutral source
+/// jobs, mutation, literal witness and assurance operations. Version 2 is the
+/// Sail 0.3 set without them (ADR 0109). The frame [`VERSION`] is unchanged, so
+/// 0.2 clients and retained records keep working for ordinary jobs.
+pub const CAPABILITIES_VERSION: u32 = 2;
 /// Maximum request or response frame (32 MiB).
 pub const MAX_FRAME: usize = 32 * 1024 * 1024;
 
@@ -117,12 +124,41 @@ pub struct Status {
     pub error: Option<String>,
 }
 
+/// Stable refusal for a record written by the neutral source jobs that Sail
+/// 0.2 offered and 0.3.0 removed. Such a record is never read as an ordinary
+/// job result.
+pub const RETIRED_NEUTRAL_RECORD: &str = "SAIL3161: this record was written by a neutral source job, which Sail 0.3.0 removed; it cannot be read as verification evidence";
+
+/// The wire form of [`ResultDocument`]. It also recognises the retired
+/// `contracts` member, so a neutral record is refused instead of having that
+/// member silently ignored.
+#[derive(Deserialize)]
+struct ResultDocumentWire {
+    #[serde(default)]
+    contracts: Option<serde::de::IgnoredAny>,
+    #[serde(default)]
+    repair: Option<Box<crate::repair::ResultDocument>>,
+    job: Status,
+    result: Option<Value>,
+}
+impl TryFrom<ResultDocumentWire> for ResultDocument {
+    type Error = &'static str;
+    fn try_from(wire: ResultDocumentWire) -> Result<Self, Self::Error> {
+        if wire.contracts.is_some() {
+            return Err(RETIRED_NEUTRAL_RECORD);
+        }
+        Ok(Self {
+            repair: wire.repair,
+            job: wire.job,
+            result: wire.result,
+        })
+    }
+}
+
 /// A job result preserving the managed runner's versioned document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(try_from = "ResultDocumentWire")]
 pub struct ResultDocument {
-    /// Qualified contract snapshot metadata; absent for ordinary project jobs.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub contracts: Option<Box<crate::contracts::Evidence>>,
     /// Independent focus/full repair evidence, when this was an engine batch.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repair: Option<Box<crate::repair::ResultDocument>>,
@@ -162,46 +198,6 @@ pub enum Request {
     },
     /// Fail-closed negotiation before any non-stock submission.
     Capabilities,
-    /// Start a bounded owned mutation campaign over an authenticated source job.
-    SubmitMutation(crate::mutation::Submission),
-    /// Prepare separate exact scalar literal-contract witness queries; starts no verifier.
-    PrepareLiteralWitness {
-        /// Complete original source with its exact content identity.
-        source: crate::contracts::Submission,
-        /// Maximum selected literal candidates, between one and eight.
-        max_mutants: usize,
-    },
-    /// Rebuild an original-source witness plan and validate one concrete model.
-    ValidateLiteralWitness {
-        /// Full exact original source-bound plan.
-        plan: Box<crate::literal_witness::Plan>,
-        /// Exact deterministic original candidate identity.
-        candidate_id: String,
-        /// Complete original SAT model response from the pinned runtime.
-        result: Box<crate::runtime::QueryResult>,
-    },
-    /// Reauthenticate and read a retained mutation campaign.
-    Mutation {
-        /// Exact retained campaign identity.
-        id: String,
-    },
-    /// Cancel actual source jobs in one campaign.
-    CancelMutation {
-        /// Exact retained campaign identity.
-        id: String,
-    },
-    /// Read requirement-aware assurance for an authenticated neutral source job.
-    Assurance {
-        /// Exact durable source-job identity.
-        id: String,
-    },
-    /// Read decoded model inputs for the not-proved rows of a neutral job's assurance.
-    AssuranceInputs {
-        /// Exact durable source-job identity.
-        id: String,
-    },
-    /// Submit exact neutral source with Sail-owned execution controls.
-    SubmitContracts(crate::contracts::Submission),
     /// Submit an ordinary job that retains submitter requirement attributions.
     SubmitAttributed {
         /// Requested stock or standalone verification.
@@ -306,26 +302,14 @@ pub enum Response {
     Preparation(crate::preparation::Status),
     /// Supported product contracts; does not claim an optional engine is installed.
     Capabilities {
+        /// [`CAPABILITIES_VERSION`]; absent from 0.2 services, which decode as 1.
+        #[serde(default = "legacy_capabilities")]
+        capabilities_version: u32,
         /// Independent proof stream version.
         proof_version: u32,
-        /// Neutral source submission version; absent on older services.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        neutral_contracts_version: Option<u32>,
-        /// Explicit supported source profiles; older endpoints advertise none.
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
-        neutral_contract_profiles: Vec<u32>,
-        /// Requirement assurance view version; absent on older services.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        assurance_version: Option<u32>,
         /// Ordinary-job requirement attribution view version; absent on older services.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         attribution_version: Option<u32>,
-        /// Decoded assurance input view version; absent on older services.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        counterexample_version: Option<u32>,
-        /// Bounded mutation protocol, absent on older services.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        mutation_version: Option<u32>,
         /// Non-stock submission modes are understood and never ignored.
         /// Absent from services without the engine, which decode as false.
         #[serde(default)]
@@ -337,22 +321,12 @@ pub enum Response {
         #[serde(default, skip_serializing_if = "std::ops::Not::not")]
         standalone_repair: bool,
     },
-    /// Authenticated bounded mutation evidence, independent of proof tiers.
-    Mutation(Box<crate::mutation::View>),
-    /// Deterministic source-admitted witness queries, separate from native mutation.
-    LiteralWitness(Box<crate::literal_witness::Plan>),
-    /// Concrete original-source counterexample; never a native Verus kill.
-    LiteralWitnessValidated(Box<crate::literal_witness::Validated>),
     /// Ordered, resumable proof observations.
     ProofEvents(crate::proof::Page),
     /// Exact establishing evidence for a failure or proof.
     Explanation(Box<crate::evidence::Explanation>),
-    /// Snapshot-scoped contract-to-code evidence grouped by requirement identity.
-    Assurance(Box<crate::assurance::View>),
-    /// Submitter-attributed ordinary Verus evidence; never neutral-contract assurance.
+    /// Submitter-attributed ordinary Verus evidence.
     AttributedAssurance(Box<crate::attribution::View>),
-    /// Decoded solver-model inputs for not-proved neutral assurance rows.
-    AssuranceInputs(Box<crate::counterexample::View>),
     /// Independently retained immutable evidence.
     Baseline(Box<crate::evidence::Baseline>),
     /// Immutable baseline names.
@@ -375,6 +349,10 @@ pub enum Response {
 struct Envelope<T> {
     version: u32,
     body: T,
+}
+
+const fn legacy_capabilities() -> u32 {
+    1
 }
 
 /// Writes a bounded versioned frame.
@@ -572,190 +550,6 @@ pub struct Client {
 }
 #[cfg(unix)]
 impl Client {
-    /// Independently evaluate a complete scalar model through the source owner.
-    /// # Errors
-    /// Refuses older services, changed plans, models and invalid counterexamples.
-    pub fn validate_literal_witness(
-        &self,
-        plan: crate::literal_witness::Plan,
-        candidate_id: String,
-        result: &crate::runtime::QueryResult,
-    ) -> io::Result<crate::literal_witness::Validated> {
-        let prepared = plan
-            .prepared
-            .iter()
-            .find(|p| p.candidate.id == candidate_id)
-            .cloned()
-            .ok_or_else(|| io::Error::other("SAIL3145: missing literal witness candidate"))?;
-        match self.call(&Request::ValidateLiteralWitness {
-            plan: Box::new(plan),
-            candidate_id,
-            result: Box::new(result.clone()),
-        })? {
-            Response::LiteralWitnessValidated(value)
-                if value.prepared == prepared && value.model_result == *result =>
-            {
-                Ok(*value)
-            }
-            Response::Error(message) => Err(io::Error::other(message)),
-            _ => Err(io::Error::other(
-                "SAIL3145: incompatible concrete witness response",
-            )),
-        }
-    }
-    /// Prepare separate source-admitted scalar literal witness queries.
-    /// This starts no verification or mutation campaign and has no local fallback.
-    /// # Errors
-    /// Refuses unavailable or older services, changed input and invalid query links.
-    pub fn literal_witnesses(
-        &self,
-        source: &crate::contracts::Submission,
-        max_mutants: usize,
-    ) -> io::Result<crate::literal_witness::Plan> {
-        source.validate().map_err(io::Error::other)?;
-        match self.call(&Request::PrepareLiteralWitness {
-            source: source.clone(),
-            max_mutants,
-        })? {
-            Response::LiteralWitness(plan)
-                if plan.baseline == *source && plan.max_mutants == max_mutants =>
-            {
-                plan.validate().map_err(io::Error::other)?;
-                Ok(*plan)
-            }
-            Response::Error(message) => Err(io::Error::other(message)),
-            _ => Err(io::Error::other(
-                "SAIL3145: incompatible literal witness response",
-            )),
-        }
-    }
-    /// Submit a bounded owned mutation campaign through the existing job service.
-    /// # Errors
-    /// Refuses incompatible services, invalid baselines or invalid budgets.
-    pub fn submit_mutation(
-        &self,
-        submission: crate::mutation::Submission,
-    ) -> io::Result<crate::mutation::View> {
-        if !matches!(
-            self.call(&Request::Capabilities)?,
-            Response::Capabilities {
-                mutation_version: Some(crate::mutation::VERSION),
-                ..
-            }
-        ) {
-            return Err(io::Error::other(
-                "SAIL3144: running service has no compatible mutation API",
-            ));
-        }
-        let expected = submission.clone();
-        let result = self.mutation_call(&Request::SubmitMutation(submission))?;
-        if result.submission != expected {
-            return Err(io::Error::other(
-                "SAIL3144: mutation submission attribution differs",
-            ));
-        }
-        Ok(result)
-    }
-    /// Reauthenticate an exact durable campaign and all original result links.
-    /// # Errors
-    /// Missing, changed or incompatible evidence is an explicit error.
-    pub fn mutation(&self, id: &str) -> io::Result<crate::mutation::View> {
-        let result = self.mutation_call(&Request::Mutation { id: id.into() })?;
-        if result.id != id {
-            return Err(io::Error::other(
-                "SAIL3144: mutation campaign attribution differs",
-            ));
-        }
-        Ok(result)
-    }
-    /// Request cancellation of actual campaign jobs; inspect the returned lifecycle.
-    /// # Errors
-    /// Missing campaigns and service failures remain explicit.
-    pub fn cancel_mutation(&self, id: &str) -> io::Result<crate::mutation::View> {
-        let result = self.mutation_call(&Request::CancelMutation { id: id.into() })?;
-        if result.id != id {
-            return Err(io::Error::other(
-                "SAIL3144: mutation cancellation attribution differs",
-            ));
-        }
-        Ok(result)
-    }
-    fn mutation_call(&self, request: &Request) -> io::Result<crate::mutation::View> {
-        match self.call(request)? {
-            Response::Mutation(view) if view.version == crate::mutation::VERSION => {
-                crate::mutation::validate_view(&view).map_err(io::Error::other)?;
-                Ok(*view)
-            }
-            Response::Error(message) => Err(io::Error::other(message)),
-            _ => Err(io::Error::other("SAIL3144: incompatible mutation response")),
-        }
-    }
-    /// Read source-snapshot requirement assurance after version negotiation.
-    ///
-    /// # Errors
-    /// Refuses unsupported services, unknown jobs and invalid stored evidence.
-    pub fn requirement_assurance(&self, id: &str) -> io::Result<crate::assurance::View> {
-        if id.is_empty() || id.len() > 256 || id.contains('\0') {
-            return Err(io::Error::other("SAIL3143: invalid assurance job identity"));
-        }
-        if !matches!(
-            self.call(&Request::Capabilities)?,
-            Response::Capabilities {
-                assurance_version: Some(crate::assurance::VERSION),
-                ..
-            }
-        ) {
-            return Err(io::Error::other(
-                "SAIL3143: endpoint does not support requirement assurance",
-            ));
-        }
-        match self.call(&Request::Assurance { id: id.into() })? {
-            Response::Assurance(view)
-                if view.version == crate::assurance::VERSION && view.job_id == id =>
-            {
-                Ok(*view)
-            }
-            Response::Error(message) => Err(io::Error::other(message)),
-            _ => Err(io::Error::other(
-                "SAIL3143: invalid assurance response attribution",
-            )),
-        }
-    }
-
-    /// Read decoded solver-model inputs for the not-proved rows of a neutral
-    /// job's requirement assurance, after version negotiation. The service names
-    /// struct fields from the retained source.
-    ///
-    /// # Errors
-    /// Refuses unsupported services, unknown jobs and invalid stored evidence.
-    pub fn assurance_inputs(&self, id: &str) -> io::Result<crate::counterexample::View> {
-        if id.is_empty() || id.len() > 256 || id.contains('\0') {
-            return Err(io::Error::other("SAIL3143: invalid assurance job identity"));
-        }
-        if !matches!(
-            self.call(&Request::Capabilities)?,
-            Response::Capabilities {
-                counterexample_version: Some(crate::counterexample::VERSION),
-                ..
-            }
-        ) {
-            return Err(io::Error::other(
-                "SAIL3143: endpoint does not support decoded assurance inputs",
-            ));
-        }
-        match self.call(&Request::AssuranceInputs { id: id.into() })? {
-            Response::AssuranceInputs(view)
-                if view.version == crate::counterexample::VERSION && view.job_id == id =>
-            {
-                Ok(*view)
-            }
-            Response::Error(message) => Err(io::Error::other(message)),
-            _ => Err(io::Error::other(
-                "SAIL3143: invalid decoded assurance input response",
-            )),
-        }
-    }
-
     /// Submit an ordinary stock or standalone job with submitter requirement
     /// attributions, only after explicit capability negotiation.
     ///
@@ -821,33 +615,6 @@ impl Client {
             Err(io::Error::other(
                 "SAIL3160: endpoint does not support requirement attribution; restart Sail's daemon",
             ))
-        }
-    }
-
-    /// Submit neutral source only after explicit capability negotiation.
-    /// # Errors
-    /// Refuses older services, invalid source or transport failures without fallback.
-    pub fn submit_contracts(&self, submission: crate::contracts::Submission) -> io::Result<Status> {
-        submission.validate().map_err(io::Error::other)?;
-        let supported = match self.call(&Request::Capabilities)? {
-            Response::Capabilities {
-                neutral_contracts_version: Some(crate::contracts::VERSION),
-                neutral_contract_profiles,
-                ..
-            } => submission.profile == 1 || neutral_contract_profiles.contains(&submission.profile),
-            _ => false,
-        };
-        if !supported {
-            return Err(io::Error::other(
-                "SAIL3142: endpoint does not support the selected neutral source profile",
-            ));
-        }
-        match self.call(&Request::SubmitContracts(submission))? {
-            Response::Status(status) => Ok(status),
-            Response::Error(message) => Err(io::Error::other(message)),
-            _ => Err(io::Error::other(
-                "SAIL3142: unexpected neutral submission response",
-            )),
         }
     }
 

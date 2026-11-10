@@ -292,6 +292,15 @@ exit 1
                 && o["counterexample"].get("model").is_none()),
         "{ce}"
     );
+    // Source-named inputs decoded from the failed check's model (ADR 0106).
+    assert!(
+        ce["decoded_inputs"]["inputs"]
+            .as_array()
+            .is_some_and(|inputs| inputs
+                .iter()
+                .any(|i| i["name"] == "x" && i["smt_name"] == "x!")),
+        "{ce}"
+    );
     // The raw model is available on request.
     let raw = c.tool(
         "counterexample",

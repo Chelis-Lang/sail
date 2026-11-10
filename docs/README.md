@@ -43,11 +43,7 @@ them.
 |---|---|
 | Seed portfolios and fragility measurement | [Divergences](divergences.md) |
 | Team caching of signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
-| Contracts with requirement IDs on ordinary Rust functions | [Neutral contracts](neutral-contracts.md), [specification](spec/neutral-contracts.md) |
-| Verifying neutral Rust source through Sail jobs | [Neutral source jobs](neutral-contract-jobs.md), [specification](spec/neutral-contract-jobs.md) |
 | Requirement assurance from retained jobs | [Requirement assurance](requirement-assurance.md) |
-| Bounded source mutation | [Neutral mutation](neutral-mutation.md) |
-| Scalar contract counterexamples | [Literal witnesses](literal-witnesses.md) |
 | Temporal jobs (not in release builds; needs a private dependency) | [Temporal jobs](temporal-jobs.md), [private dependencies](private-dependencies.md) |
 
 ## Working on Sail
@@ -58,8 +54,8 @@ Current ordering: [roadmap](ROADMAP.md),
 [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) and
 [0.2.0 backlog reconciliation](reports/2026-11-04-roadmap-review.md).
 Oyster is abandoned and temporal packaging is held. The neutral-contract
-surfaces remain maintained until their scheduled removal in v0.3.0; other
-experimental surfaces remain maintained.
+surfaces were removed for v0.3.0 ([requirements after Oyster](design/requirements-after-oyster.md)
+records what Sail kept and why); other experimental surfaces remain maintained.
 
 - [AGENTS.md](../AGENTS.md): workflow, Rust conventions, gates and
   documentation rules.

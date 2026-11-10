@@ -1,8 +1,6 @@
 //! Durable project verification jobs on a separate local endpoint. Jobs run
 //! concurrently on a small worker pool, one at a time per Cargo workspace.
 
-mod contracts;
-mod mutation;
 mod preparation;
 mod product;
 mod result_cache;
@@ -30,7 +28,6 @@ struct State {
     root: PathBuf,
     executable: PathBuf,
     jobs: Mutex<BTreeMap<String, Stored>>,
-    mutations: Mutex<mutation::Controllers>,
     queue: Mutex<schedule::Queue>,
     ready: Condvar,
     stop: AtomicBool,
@@ -94,7 +91,6 @@ pub fn bind(socket: &Path, root: &Path, executable: &Path) -> io::Result<JobServ
             root,
             executable,
             jobs: Mutex::new(jobs),
-            mutations: Mutex::new(BTreeMap::new()),
             queue: Mutex::new(schedule::Queue::default()),
             ready: Condvar::new(),
             stop: AtomicBool::new(false),
@@ -236,11 +232,6 @@ impl JobHandle {
         for thread in self.workers.drain(..) {
             let _ = thread.join();
         }
-        if let Ok(mut controllers) = self.state.mutations.lock() {
-            for (_, (_, handle)) in std::mem::take(&mut *controllers) {
-                let _ = handle.join();
-            }
-        }
         let _ = std::fs::remove_file(&self.socket);
     }
 }
@@ -369,60 +360,16 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
             "SAIL0802: foreground requires a lease connection",
         )),
         Request::Capabilities => Ok(Response::Capabilities {
+            capabilities_version: sail_api::jobs::CAPABILITIES_VERSION,
             proof_version: sail_api::proof::VERSION,
             repair: true,
             standalone: true,
             standalone_repair: true,
-            neutral_contracts_version: Some(sail_api::contracts::VERSION),
-            neutral_contract_profiles: vec![1, 2, 3],
-            assurance_version: Some(sail_api::assurance::VERSION),
             attribution_version: Some(sail_api::attribution::VERSION),
-            counterexample_version: Some(sail_api::counterexample::VERSION),
-            mutation_version: Some(sail_api::mutation::VERSION),
-        }),
-        Request::SubmitMutation(submission) => {
-            mutation::submit(state, &submission).map(|view| Response::Mutation(Box::new(view)))
-        }
-        Request::PrepareLiteralWitness {
-            source,
-            max_mutants,
-        } => sail_verus::contracts::literal_witness::prepare(&source, max_mutants)
-            .map(|plan| Response::LiteralWitness(Box::new(plan)))
-            .map_err(io::Error::other),
-        Request::ValidateLiteralWitness {
-            plan,
-            candidate_id,
-            result,
-        } => sail_verus::contracts::literal_witness::validate(&plan, &candidate_id, &result)
-            .map(|value| Response::LiteralWitnessValidated(Box::new(value)))
-            .map_err(io::Error::other),
-        Request::Mutation { id } => {
-            mutation::read(state, &id).map(|view| Response::Mutation(Box::new(view)))
-        }
-        Request::CancelMutation { id } => {
-            mutation::cancel(state, &id).map(|view| Response::Mutation(Box::new(view)))
-        }
-        Request::Assurance { id } => get(state, &id)
-            .and_then(|job| store::result(state, &job))
-            .and_then(|document| {
-                sail_api::assurance::from_contract_result(&document).map_err(io::Error::other)
-            })
-            .and_then(|mut view| {
-                mutation::attach(state, &id, &mut view)?;
-                Ok(Response::Assurance(Box::new(view)))
-            }),
-        Request::AssuranceInputs { id } => get(state, &id).and_then(|job| {
-            let document = store::result(state, &job)?;
-            // Decoded struct fields take their names from the retained source.
-            let fields = contracts::source(state, &job)
-                .map(|source| sail_verus::contracts::struct_field_names(&source.source))
-                .unwrap_or_default();
-            sail_api::assurance::decoded_inputs(&document, &fields)
-                .map(|view| Response::AssuranceInputs(Box::new(view)))
-                .map_err(io::Error::other)
         }),
         Request::AttributedAssurance { id } => get(state, &id).and_then(|job| {
-            if job.contracts.is_some() || job.requirements.is_empty() {
+            store::refuse_retired(&job)?;
+            if job.requirements.is_empty() {
                 return Err(io::Error::other(
                     "SAIL3160: job was not submitted with requirement attributions",
                 ));
@@ -458,9 +405,6 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
         }
         Request::Compare { before, after } => {
             product::compare(state, &before, &after).map(Response::Comparison)
-        }
-        Request::SubmitContracts(submission) => {
-            contracts::submit(state, &submission).map(Response::Status)
         }
         Request::Submit { submission } => {
             submit(state, submission, Vec::new()).map(Response::Status)
@@ -568,7 +512,7 @@ fn submit(
     let mut jobs = state.jobs.lock().map_err(lock_error)?;
     if let Some(job) = jobs.values().find(|job| {
         !job.status.state.terminal()
-            && job.contracts.is_none()
+            && job.retired_neutral.is_none()
             && submission.input_revision.is_some()
             && job.submission == submission
             && job.requirements == requirements

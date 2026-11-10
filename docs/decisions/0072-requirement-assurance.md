@@ -1,5 +1,7 @@
 # 0072: Derive requirement assurance from authenticated neutral evidence
 
+- **Status:** superseded by [ADR 0109](0109-oyster-retired-v030-scope.md): the surface this decision describes was removed in v0.3.0. The last implementation is tagged `archive/neutral-contracts-final`.
+
 ## Decision
 
 Add a versioned read-only requirement assurance view to the existing durable job

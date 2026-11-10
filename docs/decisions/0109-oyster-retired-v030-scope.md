@@ -207,3 +207,22 @@ never deleted. The published 0.2.0 crates are not yanked.
   requests, native qualification and green required checks.
 - Requirements and contracts may return in another form. The Oyster findings
   and any later design belong in a design document, not in this record.
+
+## Implementation of the removal (2026-11-10)
+
+The removal pull request made these engineering choices within this decision:
+
+- The archive tag `archive/neutral-contracts-final` names `d45e75eb`.
+- A retained job record or baseline that carries the 0.2.0 `contracts` member
+  stays listed and reads as `SAIL3161`, never as an ordinary result.
+- The job frame version stays 1, so 0.2 clients and retained records keep
+  working for ordinary jobs. The capability set is versioned instead:
+  `Response::Capabilities` carries `capabilities_version = 2`, and a 0.2
+  service's absent field reads as 1. The neutral capability fields are gone,
+  which a 0.2 client already reads as "not supported".
+- Decoded counterexample inputs moved to the MCP `counterexample` tool
+  (`decoded_inputs`) before the neutral `sail assurance JOB --inputs` view was
+  removed. Struct fields are named by declaration position there, since no
+  retained neutral source supplies field names.
+- The neutral-contract ADRs carry a superseded status and stay in the index.
+  Validation records for removed gates are marked retired and kept as history.

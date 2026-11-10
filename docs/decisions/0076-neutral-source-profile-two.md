@@ -1,6 +1,6 @@
 # 0076: Explicit flat Rust source profile two
 
-Status: implemented candidate; native backend qualification remains separate.
+- **Status:** superseded by [ADR 0109](0109-oyster-retired-v030-scope.md): the surface this decision describes was removed in v0.3.0. The last implementation is tagged `archive/neutral-contracts-final`. Previously: implemented candidate; native backend qualification remains separate.
 
 ## Decision
 

@@ -116,8 +116,8 @@ invalid input or setup failure. Ctrl-C cancels active work and reaps its solver
 processes. Capabilities are descriptive and exit 0 even if a backend is missing.
 
 The SMT family implements Z3 only. Native temporal execution is described
-below. Neutral-contract verification and requirement assurance remain separate
-integration slices. None is implied by raw SMT completion. See [ADR 0068](decisions/0068-runtime-daemon.md).
+below. Requirement assurance remains a separate integration slice, and is not
+implied by raw SMT completion. See [ADR 0068](decisions/0068-runtime-daemon.md).
 
 ## Native temporal jobs
 

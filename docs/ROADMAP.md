@@ -28,7 +28,7 @@ v0.3.0 will remove API published in 0.2.0, so it is a breaking release.
 | Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #244, #232, #558, #560 | Named rows still slower; see the lanes below |
 | Reach | GitHub Action, simpler installation, editor bridge | [CI-cache recipe](ci-cache.md) shipped in 0.2.0 | Not built |
 | Backends | Kani as an experimental backend for hand-written harnesses, with `arrayvec` 0.7.8 as the pilot fixture and direct-Kani comparison; then cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | [#135](https://github.com/Chelis-Lang/sail/issues/135), #137 | Kani pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)) and Kani is selected as experimental; backend not built. cvc5 follows it |
-| Neutral-contract removal | Archive tag, #664 cases ported to plain Verus, #683 and #696 reproduced on ordinary jobs; then removal, including all three contract crates, with every 0.2.0 item listed in the changelog | [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) | Surfaces present and maintained; preconditions open. #696: two causes identified on ordinary jobs (an interrupted earlier run leaves a half-written input record; the absent-configuration watcher's queue overflows), fixes planned ([comment](https://github.com/Chelis-Lang/sail/issues/696#issuecomment-6755314295)) |
+| Neutral-contract removal | Archive tag, #664 cases ported to plain Verus, #683 and #696 reproduced on ordinary jobs; then removal, including all three contract crates, with every 0.2.0 item listed in the changelog | [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) | Removed, including all three contract crates; the last implementation is tagged `archive/neutral-contracts-final` and the published 0.2.0 crates are not yanked. #664's retained case is plain Verus in [`corpus/repros/neutral-contract-unknown`](../corpus/repros/neutral-contract-unknown/README.md). #683 and #696 were reproduced on ordinary jobs (2026-11-09 spike comments on each issue); their fixes are tracked there |
 | Publication | Owner approves the exact final candidate | [Releasing](releasing.md) | No candidate |
 
 The headline answers: **my program verifies, but would my specifications catch
@@ -89,9 +89,9 @@ held".
 | Surface | Disposition in v0.3.0 | State |
 |---|---|---|
 | SMT runtime (`sail runtime`, MCP runtime tools) | Kept, supported (ADR 0108); cvc5 lands here | Supported |
-| Evidence tiers and ledger, counterexample decoding, general function attribution | Kept | Shipped |
-| Neutral lowering and shadow crates, neutral source jobs, neutral mutation and literal witness, the `contracts` end-to-end phase, neutral specifications | Removed after the preconditions in the gate table | Present, tested, not expanded |
-| `sail-contracts`, `sail-contracts-macros` and `sail-contracts-ir` | Removed with the neutral path after the archive tag; Kani function contracts are not adopted as a front end | Experimental, present |
+| Evidence tiers and ledger, counterexample decoding, general function attribution | Kept; decoded inputs moved to the MCP `counterexample` tool | Shipped |
+| Neutral lowering and shadow crates, neutral source jobs, neutral mutation and literal witness, the `contracts` end-to-end phase, neutral specifications | Removed | Removed; retained 0.2 neutral job records read as `SAIL3161` |
+| `sail-contracts`, `sail-contracts-macros` and `sail-contracts-ir` | Removed with the neutral path; Kani function contracts are not adopted as a front end | Removed from the workspace; 0.2.0 stays on crates.io |
 | Requirement attribution and `sail assurance` (ADR 0104) | Kept experimental for now; keep-or-remove is decided when `sail mutate` exists | Experimental, present |
 
 ## Temporal: behind a default-off flag

@@ -1,6 +1,6 @@
 # 0106: Decode source-named inputs from failed-proof models
 
-- **Status:** accepted
+- **Status:** accepted; amended by [ADR 0109](0109-oyster-retired-v030-scope.md): with the neutral assurance inputs view removed in v0.3.0, decoded inputs are reported by the MCP `counterexample` tool and in attributed assurance rows
 - **Date:** 2026-11-08
 - **Implements:** item 5 of [ADR 0103](0103-scoped-neutral-widening.md)
 

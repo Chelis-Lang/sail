@@ -256,12 +256,14 @@ Current numbers are in [performance](performance.md).
 
 ## Integration APIs (experimental)
 
-- Positive native mutation kills are not established: the strong
-  boolean-contract literal mutants return solver Unknown, so their outcome is
-  inconclusive ([record](validation/neutral-mutation.md)).
-- A failed Verus function can retain an unknown primary obligation; the
-  neutral contract projection returns `NotProved` and keeps the unknown count
-  and reason ([reproduction](../corpus/repros/neutral-contract-unknown/README.md)).
+- A failed Verus function can retain an unknown primary obligation, so a
+  rejected mutant is not by itself a conclusive solver refutation
+  ([reproduction](../corpus/repros/neutral-contract-unknown/README.md), recorded
+  on the neutral source path that Sail 0.3.0 removed;
+  [record](validation/neutral-mutation.md)).
+- Requirement attribution cannot reach a tier: `--no-cheating` fails in `vstd`
+  for Cargo jobs and standalone jobs record no per-check provenance
+  ([requirement assurance](requirement-assurance.md)).
 
 ## Tests and environment
 

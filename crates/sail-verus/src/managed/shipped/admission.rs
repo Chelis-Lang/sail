@@ -89,11 +89,6 @@ impl Closure {
         Self::resolve_from(metadata, registry, &POLICIES)
     }
 
-    /// Neutral source admission keeps its previously qualified default policy.
-    pub(super) fn resolve_default(metadata: &Value, registry: &Path) -> Option<Self> {
-        Self::resolve_from(metadata, registry, &[POLICY])
-    }
-
     fn resolve_from(metadata: &Value, registry: &Path, policies: &[&str]) -> Option<Self> {
         let (raw, _, packages) = matched_policy(metadata, registry, policies)?;
         let closure = Self {

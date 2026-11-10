@@ -1,5 +1,7 @@
 # 0074: Keep bounded neutral-source mutation evidence separate from proof
 
+- **Status:** superseded by [ADR 0109](0109-oyster-retired-v030-scope.md): the surface this decision describes was removed in v0.3.0. The last implementation is tagged `archive/neutral-contracts-final`.
+
 ## Decision
 
 Add an opt-in, versioned mutation campaign to the existing neutral source job

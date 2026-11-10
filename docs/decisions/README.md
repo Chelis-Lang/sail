@@ -70,21 +70,21 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0064: Accept verification-progress note ordering (accepted)](0064-verification-progress-note-order.md)
 - [0065: One verification runtime for Oyster (Oyster parts superseded by 0109)](0065-oyster-runtime.md)
-- [0066: Shared neutral contract syntax and checked runtime (runtime implemented; backend qualification separate)](0066-neutral-contract-runtime.md)
+- [0066: Shared neutral contract syntax and checked runtime (runtime implemented; backend qualification separate)](0066-neutral-contract-runtime.md) — superseded by 0109
 - [0067: Isolated native D.I.V.E. runtime worker (proposed)](0067-dive-runtime-worker.md)
 - [0068: Shared runtime transport and agent tools](0068-runtime-daemon.md)
 - [0069: Exact-scope report reuse](0069-exact-scope-report-reuse.md)
-- [0070: Owned neutral source verification jobs](0070-neutral-contract-jobs.md)
+- [0070: Owned neutral source verification jobs](0070-neutral-contract-jobs.md) — superseded by 0109
 - [0071: Native temporal jobs through the shared runtime](0071-shared-temporal-runtime.md)
-- [0072: Derive requirement assurance from authenticated neutral evidence](0072-requirement-assurance.md)
-- [0073: Preserve compound-field definedness and qualify retained lowering](0073-compound-field-definedness.md)
+- [0072: Derive requirement assurance from authenticated neutral evidence](0072-requirement-assurance.md) — superseded by 0109
+- [0073: Preserve compound-field definedness and qualify retained lowering](0073-compound-field-definedness.md) — superseded by 0109
 
-- [0074: Keep bounded neutral-source mutation evidence separate from proof](0074-bounded-neutral-mutation.md)
+- [0074: Keep bounded neutral-source mutation evidence separate from proof](0074-bounded-neutral-mutation.md) — superseded by 0109
 - [0075: Preserve floating-point identity in retained JSON evidence](0075-retained-json-roundtrip.md)
 
 
-- [0076: Explicit flat Rust source profile two](0076-neutral-source-profile-two.md)
-- [0077: Separate scalar literal-contract counterexamples from Verus mutation verdicts](0077-scalar-literal-contract-witnesses.md)
+- [0076: Explicit flat Rust source profile two](0076-neutral-source-profile-two.md) — superseded by 0109
+- [0077: Separate scalar literal-contract counterexamples from Verus mutation verdicts](0077-scalar-literal-contract-witnesses.md) — superseded by 0109
 - [0078: Captured acceptance models checked by stock Verus (accepted)](0078-stock-acceptance-models.md)
 - [0079: Source-shared executable acceptance refinements (accepted)](0079-source-shared-acceptance-refinements.md)
 - [0080: Optional native temporal runtime (superseded by 0083)](0080-optional-temporal-runtime.md)
@@ -118,15 +118,15 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0101: D.I.V.E. behind a default-off build flag](0101-dive-behind-a-default-off-flag.md) (accepted; extension workspace is the flag, main-gate lock and publish guards, flip queued)
 
-- [0103: Scoped lifting of the neutral-widening hold](0103-scoped-neutral-widening.md) (accepted by owner; named items only, under explicit profile three)
+- [0103: Scoped lifting of the neutral-widening hold](0103-scoped-neutral-widening.md) (accepted by owner; named items only, under explicit profile three) — superseded by 0109
 
 - [0104: Submitter requirement attribution for ordinary Verus jobs](0104-ordinary-job-requirement-attribution.md) (accepted; separate negotiated view, never neutral assurance)
 
-- [0105: Place neutral shadows away from inherited Cargo configuration](0105-neutral-shadow-placement.md) (accepted; private per-user placement, unchanged refusal with named cause)
+- [0105: Place neutral shadows away from inherited Cargo configuration](0105-neutral-shadow-placement.md) (accepted; private per-user placement, unchanged refusal with named cause) — superseded by 0109
 
 - [0106: Decode source-named inputs from failed-proof models](0106-decoded-counterexample-inputs.md) (accepted; parameters and named struct fields, raw model retained, never a validated refutation)
 
-- [0107: Freeze neutral profile three before its first release](0107-freeze-neutral-profile-three.md) (accepted; retained version-four manifests replay byte for byte, later widening takes a new identity)
+- [0107: Freeze neutral profile three before its first release](0107-freeze-neutral-profile-three.md) (accepted; retained version-four manifests replay byte for byte, later widening takes a new identity) — superseded by 0109
 - [0108: The SMT runtime is a supported command](0108-supported-smt-runtime.md) (accepted; `sail runtime` and the MCP runtime tools are listed as supported)
 - [0109: Oyster retired; v0.3.0 scope](0109-oyster-retired-v030-scope.md) (accepted by owner; Oyster abandoned, v0.3.0 pillars, experimental Kani then cvc5 inside the release, neutral-contract and contract-crate removal after stated preconditions, no second Verus pin)
 - [0110: Interrupted first observations are discarded, not trusted](0110-interrupted-first-observation.md) (accepted, conservative rule only; per-predicate `SAIL3114` reasons, continuous absent-configuration drain, unsourced checks never reused)

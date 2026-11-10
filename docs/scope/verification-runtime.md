@@ -4,7 +4,8 @@
   ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)): Oyster is
   abandoned, mutation testing leads v0.3.0, and an experimental Kani backend
   is followed by cvc5 in the SMT runtime inside that release.
-  Neutral-contract surfaces are frozen and scheduled for removal in v0.3.0.
+  Neutral-contract surfaces, including the three contract crates, were
+  removed for v0.3.0.
   Temporal packaging is held for distribution. The 2026-10-21 active
   integration ordering and the Oyster descriptions below are historical.
 - **Owner answers:** questions 16–29 in [open questions](../open-questions.md),
@@ -28,11 +29,12 @@ conflict, the charter wins; the conflicts found so far are listed under
 ## Current state
 
 Raw Z3 execution is a supported command
-([ADR 0108](../decisions/0108-supported-smt-runtime.md)); neutral source jobs
-and source-bound assurance are implemented experimental APIs. Native temporal execution exists in the internal extension,
-absent from public archives. Maintain these surfaces and tests. The neutral
-surfaces are frozen and are removed in v0.3.0 once ADR 0109's preconditions
-hold; they are present until then. The backend list
+([ADR 0108](../decisions/0108-supported-smt-runtime.md)). Native temporal
+execution exists in the internal extension, absent from public archives.
+Maintain these surfaces and tests. Neutral source jobs, source-bound
+assurance, neutral lowering and the contract crates were removed for v0.3.0;
+the last implementation is tagged `archive/neutral-contracts-final`. The
+neutral sections below are historical. The backend list
 below is long-term scope, not simultaneous implementation work. The next
 release's Verus-aware mutation feature does not depend on neutral contracts.
 The existing Verus path supplies these reusable components:
@@ -349,7 +351,7 @@ different audience from this mission.
    adopted as a front end. cvc5 follows inside v0.3.0, in the supported SMT
    runtime only. Certificates get one measurement spike and no product work.
 4. Maintain the supported SMT runtime. Neutral contracts, the three contract
-   crates and source jobs are frozen until their removal in v0.3.0.
+   crates and source jobs are removed.
    Requirement attribution stays experimental for now, with keep-or-remove
    decided when `sail mutate` exists. Oyster is abandoned.
 5. Temporal packaging waits for D.I.V.E.'s distribution decision.
@@ -373,10 +375,10 @@ implemented scope or future/deferred capabilities, as their issues record.
 | Next-release headline | Per-function campaigns through CLI/JSON/MCP | [#141](https://github.com/Chelis-Lang/sail/issues/141) |
 | First executable task | Native Unknown diagnosis | [#664](https://github.com/Chelis-Lang/sail/issues/664) |
 | Later pilot | Kani on a real ordinary Rust crate | [#135](https://github.com/Chelis-Lang/sail/issues/135) |
-| Maintain bounded implementation | Neutral runtime syntax and IR | [#127](https://github.com/Chelis-Lang/sail/issues/127) |
+| Removed in v0.3.0 | Neutral runtime syntax and IR | [#127](https://github.com/Chelis-Lang/sail/issues/127) |
 | Maintain bounded implementation | Versioned request/results, tiers and ITF | [#128](https://github.com/Chelis-Lang/sail/issues/128) |
-| Maintain bounded implementation | Verus profile-one/two lowering | [#130](https://github.com/Chelis-Lang/sail/issues/130) |
-| Maintain bounded implementation | Source-job requirement assurance | [#143](https://github.com/Chelis-Lang/sail/issues/143) |
+| Removed in v0.3.0 | Verus profile-one/two lowering | [#130](https://github.com/Chelis-Lang/sail/issues/130) |
+| Removed in v0.3.0 | Source-job requirement assurance | [#143](https://github.com/Chelis-Lang/sail/issues/143) |
 | Maintain bounded implementation | Embedded runtime and SDK; wider configuration deferred | [#144](https://github.com/Chelis-Lang/sail/issues/144) |
 | Maintain Z3; cvc5/handles deferred | SMT-LIB service | [#137](https://github.com/Chelis-Lang/sail/issues/137) |
 | Maintain internal extension; packaging held | Native temporal interface / execution | [#129](https://github.com/Chelis-Lang/sail/issues/129), [#139](https://github.com/Chelis-Lang/sail/issues/139) |

@@ -89,31 +89,6 @@ pub struct Decoded {
     pub qualifiers: Vec<String>,
 }
 
-/// Decoded inputs for one not-proved neutral assurance row.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Row {
-    /// Requirement identity of the assurance row.
-    pub requirement_id: String,
-    /// Obligation identity of the assurance row.
-    pub obligation_id: String,
-    /// Exact original qualified function name.
-    pub function: String,
-    /// Decoded model inputs of the lowered function's first failed or unknown check.
-    pub decoded: Decoded,
-}
-
-/// Versioned decoded inputs for one authenticated neutral source job, kept apart
-/// from the assurance view so that view stays reproducible from the result document.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct View {
-    /// Equals [`VERSION`].
-    pub version: u32,
-    /// Exact retained job identity.
-    pub job_id: String,
-    /// Rows with a model, in assurance-view order; proved rows never appear.
-    pub rows: Vec<Row>,
-}
-
 /// Struct field names in declaration order, keyed by struct name.
 pub type FieldNames = BTreeMap<String, Vec<String>>;
 

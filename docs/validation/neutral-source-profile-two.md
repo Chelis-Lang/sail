@@ -1,5 +1,7 @@
 # Neutral source profile two qualification
 
+> **Retired.** The surface this record qualified was removed in v0.3.0 ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)). The record is kept as history; the last implementation is tagged `archive/neutral-contracts-final`. Nothing below describes current Sail.
+
 ## Frozen implementation and scope
 
 The frozen implementation candidate is `1a7dfb88b7791bb2839701084a6b035014228fa4`, based on `fc7cd0c7c8150de4322986b7f782d4164cb9350c`. The native source bundle SHA-256 is `0572cd377c59fa536b327c364b1c15d4cb49f5a1e18c06d77fc72d0ef2c86023`. Native execution uses the clean detached source on Linux x86-64 EC2 and core image `sha256:acbd792f3e0ff0befe6182ae32d1112a96abd6a53736f534a3c139fa8d11947e`. Native qualification and actual installed consumer acceptance are recorded below. Protected delivery and final immutable consumer selection remain separate.

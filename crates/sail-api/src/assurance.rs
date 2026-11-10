@@ -1,22 +1,17 @@
-//! Requirement-aware views derived from authenticated neutral source-job evidence.
+//! Evidence-strength vocabulary and the conservative whole-run proof rules
+//! shared by requirement attribution ([`crate::attribution`], ADR 0104).
 //!
-//! This interface describes the submitted immutable source snapshot. A client must
-//! separately establish that its live source still matches, and establish any
-//! contract-to-requirement entailment. Reading a view never runs a verifier.
+//! Nothing here runs a verifier. Unknown and incomplete proofs never establish
+//! a tier.
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::contracts::{CheckCounts, ContractProof, LoweringManifest, ProofState};
-use crate::jobs::{Lifecycle, ResultDocument};
 use crate::output::{
     AnswerName, AttributionStatus, EstablishmentName, FunctionReport, OutcomeName, SolverInfo,
     VerdictName,
 };
 use crate::project::{Currentness, ProjectResult};
-
-/// Requirement assurance view contract version.
-pub const VERSION: u32 = 2;
 
 /// Evidence strength, independent of establishment and source currentness.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -32,22 +27,6 @@ pub enum EvidenceTier {
     CertificateChecked,
     /// A proof checked by a trusted proof-assistant kernel.
     KernelChecked,
-}
-
-/// Established relationship; matching requirement identities cannot add one.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Relationship {
-    /// Exact submitted implementation satisfies its stated neutral contract.
-    ContractToCode,
-}
-
-/// Evidence applies to a sealed source snapshot, not implicitly to live files.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Scope {
-    /// The source whose exact bytes were submitted and authenticated by Sail.
-    SourceSnapshot,
 }
 
 /// Mutation observations remain distinct from the underlying proof verdict.
@@ -73,59 +52,32 @@ pub enum MutationStatus {
     },
 }
 
-/// One exact guarantee, its implementation proof and retained provenance.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Evidence {
-    /// Content-derived identity, independent of source line numbering.
-    pub obligation_id: String,
-    /// The relationship this evidence actually checks.
-    pub relationship: Relationship,
-    /// Exact original qualified function name.
-    pub function: String,
-    /// Exact source snapshot digest, or the closure identity for module files.
-    pub source_sha256: String,
-    /// Exact guarantee syntax digest from the authenticated lowering manifest.
-    pub guarantee_sha256: String,
-    /// Exact generated shadow digest.
-    pub lowered_sha256: String,
-    /// Original backend report digest, not an invented verifier receipt.
-    pub backend_sha256: String,
-    /// The conservative whole-job proof outcome, never a source refutation.
-    pub outcome: ProofState,
-    /// Present only for complete confirmed evidence with actual tool identity.
-    pub establishment: Option<EstablishmentName>,
-    /// Present only when that strength has actually been established.
-    pub tier: Option<EvidenceTier>,
-    /// Scope of the proof; live source matching is a client responsibility.
-    pub scope: Scope,
-    /// All actual distinct solver identities, sorted canonically.
-    pub solvers: Vec<SolverInfo>,
-    /// Explicit assumptions, trust and missing relationships.
-    pub qualifiers: Vec<String>,
-    /// Mutation establishment is never inferred from a passing proof.
-    pub mutation: MutationStatus,
+/// Whether the attributed function was proved under its stated preconditions.
+///
+/// `NotProved` covers failed, unknown, incomplete and unattributed evidence; it
+/// is never a refutation of the source.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ProofState {
+    /// Every required record is complete and attributed, with no failure or unknown.
+    Proved,
+    /// Anything else.
+    NotProved,
 }
 
-/// Evidence grouped by stable requirement identity.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Requirement {
-    /// Original owner-selected identity carried by a neutral contract.
-    pub requirement_id: String,
-    /// Sorted exact function/guarantee relationships for this identity.
-    pub evidence: Vec<Evidence>,
-}
-
-/// Versioned read-only view over one authenticated neutral source job.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct View {
-    /// Equals [`VERSION`].
-    pub version: u32,
-    /// Exact retained job identity.
-    pub job_id: String,
-    /// Currentness of caller files is unknown to a source-snapshot service.
-    pub currentness: Currentness,
-    /// Requirement groups sorted by stable identity.
-    pub requirements: Vec<Requirement>,
+/// Counts of every recorded solver check answer in one backend result.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CheckCounts {
+    /// Checks answered `unsat`.
+    pub unsat: usize,
+    /// Checks answered `sat`.
+    pub sat: usize,
+    /// Checks answered `unknown`.
+    pub unknown: usize,
+    /// Checks with no recorded answer.
+    pub missing_answer: usize,
+    /// Checks with no recorded source.
+    pub missing_source: usize,
 }
 
 pub(crate) fn digest(bytes: &[u8]) -> String {
@@ -137,232 +89,6 @@ pub(crate) fn valid_digest(value: &str) -> bool {
         && value
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-}
-
-/// Project an already authenticated source-job result, checking its raw proof
-/// projection again. The daemon authenticates source and stored output seals
-/// before calling this function; caller-created documents are not authentication.
-///
-/// # Errors
-/// Refuses unfinished jobs, missing evidence, mismatched attribution and invalid
-/// content identities. Unknown and incomplete proofs retain no established tier.
-pub fn from_contract_result(document: &ResultDocument) -> Result<View, String> {
-    project(document).map(|(view, _)| view)
-}
-
-/// Decoded model inputs for the rows of [`from_contract_result`] that are not
-/// `Proved`, naming struct fields from `fields` (declaration order by struct
-/// name) and by position otherwise.
-///
-/// The inputs are a separate view so the version 2 assurance view stays exactly
-/// reproducible from the result document, including for views recorded before
-/// decoding existed. Diagnostic only: decoded values never change an outcome,
-/// establishment or tier.
-///
-/// # Errors
-/// As [`from_contract_result`].
-pub fn decoded_inputs(
-    document: &ResultDocument,
-    fields: &crate::counterexample::FieldNames,
-) -> Result<crate::counterexample::View, String> {
-    let (view, lowered) = project(document)?;
-    let backend: ProjectResult = serde_json::from_value(
-        document
-            .result
-            .clone()
-            .ok_or("SAIL3143: invalid or incomplete neutral assurance evidence")?,
-    )
-    .map_err(|_| "SAIL3143: invalid or incomplete neutral assurance evidence".to_owned())?;
-    let mut rows = Vec::new();
-    for requirement in &view.requirements {
-        for evidence in &requirement.evidence {
-            if evidence.outcome == ProofState::Proved {
-                continue;
-            }
-            let Some(function) = lowered
-                .get(&evidence.obligation_id)
-                .and_then(|lowered| unique_function(&backend, lowered))
-            else {
-                continue;
-            };
-            if let Some(decoded) = crate::counterexample::decode(function, fields) {
-                rows.push(crate::counterexample::Row {
-                    requirement_id: requirement.requirement_id.clone(),
-                    obligation_id: evidence.obligation_id.clone(),
-                    function: evidence.function.clone(),
-                    decoded,
-                });
-            }
-        }
-    }
-    Ok(crate::counterexample::View {
-        version: crate::counterexample::VERSION,
-        job_id: view.job_id,
-        rows,
-    })
-}
-
-#[allow(
-    clippy::too_many_lines,
-    reason = "One projection checks all attribution before constructing any assurance row."
-)]
-fn project(document: &ResultDocument) -> Result<(View, BTreeMap<String, String>), String> {
-    let invalid = || "SAIL3143: invalid or incomplete neutral assurance evidence".to_owned();
-    let contracts = document.contracts.as_deref().ok_or_else(invalid)?;
-    let backend: ProjectResult =
-        serde_json::from_value(document.result.clone().ok_or_else(invalid)?)
-            .map_err(|_| invalid())?;
-    let manifest = &contracts.manifest;
-    if document.job.version != crate::jobs::VERSION
-        || document.job.state != Lifecycle::Completed
-        || document.job.id.is_empty()
-        || document.job.error.is_some()
-        || document.repair.is_some()
-        || contracts.version != crate::contracts::VERSION
-        || !matches!(
-            (manifest.version, manifest.contract_version),
-            (1 | 2, 1) | (3, 2) | (4, 3)
-        )
-        || manifest.bindings.is_empty()
-        || document.job.input_revision.as_deref() != Some(manifest.original_sha256.as_str())
-        || !valid_digest(&manifest.original_sha256)
-        || !valid_digest(&manifest.lowered_sha256)
-        || !valid_digest(&contracts.translation_trust.source_policy_sha256)
-        || !valid_digest(&contracts.translation_trust.metadata_sha256)
-        || !valid_digest(&contracts.translation_trust.cargo_lock_sha256)
-        || backend.kind != "sail-project-result"
-        || backend.schema_version != crate::project::SCHEMA_VERSION
-        || document.job.exit_code.is_none()
-        || document.job.exit_code != backend.exit_code
-        || contracts.proof != observed_contract_proof(manifest, &backend)
-    {
-        return Err(invalid());
-    }
-    let mut seen = BTreeSet::new();
-    for binding in &manifest.bindings {
-        if binding.requirement_id.is_empty()
-            || binding.function.is_empty()
-            || binding.lowered_function.is_empty()
-            || !valid_digest(&binding.guarantee_sha256)
-            || !seen.insert((&binding.requirement_id, &binding.function))
-        {
-            return Err(invalid());
-        }
-    }
-    let backend_sha256 = digest(&serde_json::to_vec(&backend).map_err(|_| invalid())?);
-    let (complete_identity, solvers) = solver_identities(&backend).map_err(|()| invalid())?;
-    let confirmed = contracts.proof.state == ProofState::Proved && complete_identity;
-    let mut grouped: BTreeMap<String, Vec<Evidence>> = BTreeMap::new();
-    let mut lowered = BTreeMap::new();
-    for binding in &manifest.bindings {
-        let mut qualifiers = vec![
-            "applies to the exact submitted source snapshot under its stated preconditions".into(),
-            format!(
-                "neutral lowering version {}: {}",
-                manifest.version, manifest.arithmetic
-            ),
-            "neutral source translation and the pinned Verus/SMT toolchain are trusted".into(),
-        ];
-        qualifiers.extend(SHARED_QUALIFIERS.map(String::from));
-        if !complete_identity {
-            qualifiers.push(NO_IDENTITY_QUALIFIER.into());
-        }
-        qualifiers.sort();
-        let identity = serde_json::to_vec(&(
-            &manifest.original_sha256,
-            &binding.function,
-            &binding.guarantee_sha256,
-            &backend.context_sha256,
-        ))
-        .map_err(|_| invalid())?;
-        let obligation_id = format!("neutral:{}", digest(&identity));
-        lowered.insert(obligation_id.clone(), binding.lowered_function.clone());
-        grouped
-            .entry(binding.requirement_id.clone())
-            .or_default()
-            .push(Evidence {
-                obligation_id,
-                relationship: Relationship::ContractToCode,
-                function: binding.function.clone(),
-                source_sha256: manifest.original_sha256.clone(),
-                guarantee_sha256: binding.guarantee_sha256.clone(),
-                lowered_sha256: manifest.lowered_sha256.clone(),
-                backend_sha256: backend_sha256.clone(),
-                outcome: contracts.proof.state,
-                establishment: confirmed.then_some(EstablishmentName::Confirmed),
-                tier: confirmed.then_some(EvidenceTier::SmtVerified),
-                scope: Scope::SourceSnapshot,
-                solvers: solvers.clone(),
-                qualifiers,
-                mutation: MutationStatus::NotEstablished,
-            });
-    }
-    let requirements = grouped
-        .into_iter()
-        .map(|(requirement_id, mut evidence)| {
-            evidence.sort_by(|a, b| a.obligation_id.cmp(&b.obligation_id));
-            Requirement {
-                requirement_id,
-                evidence,
-            }
-        })
-        .collect();
-    Ok((
-        View {
-            version: VERSION,
-            job_id: document.job.id.clone(),
-            currentness: Currentness::Unknown,
-            requirements,
-        },
-        lowered,
-    ))
-}
-
-/// The single requested-target report for `function`, if exactly one exists.
-fn unique_function<'a>(backend: &'a ProjectResult, function: &str) -> Option<&'a FunctionReport> {
-    let mut matches = backend
-        .targets
-        .iter()
-        .filter(|t| t.requested)
-        .flat_map(|t| &t.report.crates)
-        .flat_map(|c| &c.functions)
-        .filter(|f| f.function == function);
-    let first = matches.next()?;
-    matches.next().is_none().then_some(first)
-}
-
-/// Recompute the conservative neutral proof projection from original backend records.
-///
-/// This is shared by source-job validation and assurance views.
-#[must_use]
-pub fn observed_contract_proof(
-    manifest: &LoweringManifest,
-    backend: &ProjectResult,
-) -> ContractProof {
-    let (checks, reasons) = check_counts(backend);
-    let targets = requested_targets(backend);
-    let mut proved = BTreeSet::new();
-    for binding in &manifest.bindings {
-        if exactly_one_proved(&targets, &binding.lowered_function) {
-            proved.insert(binding.lowered_function.clone());
-        }
-    }
-    let complete = run_complete(backend, &checks)
-        && !manifest.bindings.is_empty()
-        && manifest
-            .bindings
-            .iter()
-            .all(|b| proved.contains(&b.lowered_function));
-    ContractProof {
-        state: if complete {
-            ProofState::Proved
-        } else {
-            ProofState::NotProved
-        },
-        checks,
-        unknown_reasons: reasons.into_iter().collect(),
-        proved_functions: proved.into_iter().collect(),
-    }
 }
 
 /// Every recorded check answer, including advisory obligations and dependency targets.

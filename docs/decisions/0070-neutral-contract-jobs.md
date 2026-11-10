@@ -1,6 +1,6 @@
 # 0070: Owned neutral source verification jobs
 
-- **Status:** accepted
+- **Status:** superseded by [ADR 0109](0109-oyster-retired-v030-scope.md): the surface this decision describes was removed in v0.3.0. The last implementation is tagged `archive/neutral-contracts-final`. Previously: accepted
 - **Date:** 2026-10-21
 
 ## Context
@@ -33,6 +33,6 @@ are contract-aware. Existing ordinary Verus jobs retain their behavior.
 
 Oyster can request actual contract verification through its existing Sail
 service dependency. Actual service acceptance establishes this route separately
-from helper qualification. The [version-one specification](../spec/neutral-contract-jobs.md)
+from helper qualification. The [version-one specification](https://github.com/Chelis-Lang/sail/blob/archive/neutral-contracts-final/docs/spec/neutral-contract-jobs.md)
 defines request bounds, retained evidence and acceptance. Requirement entailment,
 tier persistence and mutation establishment remain later independent slices.

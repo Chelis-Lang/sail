@@ -23,8 +23,11 @@ const LEGACY_AUTHORITY_NOTE: &str = "The producer did not record verification-en
 pub(super) struct Stored {
     pub status: Status,
     pub submission: Submission,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub contracts: Option<sail_api::contracts::Submission>,
+    /// Present only in records written by the neutral source jobs of Sail
+    /// 0.2, which 0.3.0 removed. It is preserved verbatim when the record is
+    /// rewritten, and every evidence read of such a record is refused.
+    #[serde(default, rename = "contracts", skip_serializing_if = "Option::is_none")]
+    pub retired_neutral: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub projection: Option<Projection>,
     /// Canonical submitter attributions; absent from unattributed records.
@@ -36,8 +39,6 @@ pub(super) struct Stored {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct Projection {
     stdout_sha256: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    stderr_sha256: Option<String>,
     workspace: String,
     context_sha256: String,
     input_revision: String,
@@ -50,20 +51,12 @@ impl Projection {
     pub(super) fn validated(bytes: &[u8], project: &sail_api::project::ProjectResult) -> Self {
         Self {
             stdout_sha256: stdout_digest(bytes),
-            stderr_sha256: None,
             workspace: project.workspace.clone(),
             context_sha256: project.context_sha256.clone(),
             input_revision: project.input_revision.clone(),
             currentness: project.currentness,
             proof_authority_revision: PROOF_AUTHORITY_REVISION,
         }
-    }
-    pub(super) fn with_stderr(mut self, bytes: &[u8]) -> Self {
-        self.stderr_sha256 = Some(stdout_digest(bytes));
-        self
-    }
-    pub(super) fn matches_stderr(&self, bytes: &[u8]) -> bool {
-        self.stderr_sha256.as_ref() == Some(&stdout_digest(bytes))
     }
 }
 fn stdout_digest(bytes: &[u8]) -> String {
@@ -93,7 +86,7 @@ impl Stored {
                 error: None,
             },
             submission,
-            contracts: None,
+            retired_neutral: None,
             projection: None,
             requirements: Vec::new(),
             cancel: Arc::new(AtomicBool::new(false)),
@@ -155,10 +148,15 @@ pub(super) fn load(root: &Path) -> io::Result<BTreeMap<String, Stored>> {
     }
     Ok(jobs)
 }
-pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> {
-    if job.contracts.is_some() {
-        return super::contracts::result(state, job);
+/// Refuses a record written by a removed neutral source job (`SAIL3161`).
+pub(super) fn refuse_retired(job: &Stored) -> io::Result<()> {
+    if job.retired_neutral.is_some() {
+        return Err(io::Error::other(sail_api::jobs::RETIRED_NEUTRAL_RECORD));
     }
+    Ok(())
+}
+pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> {
+    refuse_retired(job)?;
     let mut status = job.status.clone();
     let mut repair = None;
     let result = if status.state == Lifecycle::Completed {
@@ -180,7 +178,6 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
         None
     };
     Ok(ResultDocument {
-        contracts: None,
         repair,
         job: status,
         result,
@@ -191,9 +188,7 @@ pub(super) fn result(state: &State, job: &Stored) -> io::Result<ResultDocument> 
 /// stdout contents and live freshness are still checked on every RPC.
 pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8>>> {
     use super::result_cache::Frames;
-    if job.contracts.is_some() {
-        return encode_result(super::contracts::result(state, job)?);
-    }
+    refuse_retired(job)?;
     if job.status.state != Lifecycle::Completed || job.projection.is_none() {
         return encode_result(result(state, job)?);
     }
@@ -239,7 +234,6 @@ pub(super) fn result_frame(state: &State, job: &Stored) -> io::Result<Arc<Vec<u8
             envelope.accepted = envelope.batch.accepted_with(&project);
         }
         encode_result(ResultDocument {
-            contracts: None,
             job: status,
             result: Some(serde_json::to_value(project).map_err(io::Error::other)?),
             repair,
@@ -313,8 +307,14 @@ fn projected_currentness(state: &State, job: &Stored, projection: &Projection) -
 }
 
 pub(super) fn status(state: &State, job: &Stored) -> io::Result<Status> {
-    if job.contracts.is_some() {
-        return super::contracts::result(state, job).map(|r| r.job);
+    if job.retired_neutral.is_some() {
+        // Listing and status stay readable; no evidence is read or implied.
+        let mut status = job.status.clone();
+        status.currentness = Currentness::Unknown;
+        if status.error.is_none() {
+            status.error = Some(sail_api::jobs::RETIRED_NEUTRAL_RECORD.to_owned());
+        }
+        return Ok(status);
     }
     if job.status.state != Lifecycle::Completed {
         return Ok(job.status.clone());
@@ -839,7 +839,6 @@ mod legacy_authority_tests {
         let mut historical = original;
         historical.currentness = sail_api::project::Currentness::Historical;
         let old_baseline = sail_api::evidence::Baseline {
-            contracts: None,
             version: sail_api::evidence::VERSION,
             name: "old-baseline".into(),
             job_id: job.status.id.clone(),

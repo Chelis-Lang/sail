@@ -7,7 +7,6 @@
 #![forbid(unsafe_code)]
 
 mod ci_report;
-mod contract_worker;
 mod engine_cli;
 mod engine_download;
 mod fragility;
@@ -176,7 +175,6 @@ fn run(
         Some("repair-check") => product_cli::repair(&args[1..], out, err),
         Some("_prepare-worker") => preparation::worker(&args[1..], out, err),
         Some("_serve-prepare-new") => preparation::serve_new(&args[1..], err, extensions),
-        Some("_contracts-worker") => contract_worker::run(&args[1..], out, err),
         Some("_repair-worker") => product_cli::worker(&args[1..], out, err),
         Some("_repair-file-worker") => product_cli::standalone_worker(&args[1..], out, err),
         Some("explain" | "baseline" | "compare" | "assurance") => {

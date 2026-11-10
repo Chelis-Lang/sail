@@ -1,8 +1,8 @@
 //! Submitter attribution over recorded ordinary job results: tiers are earned only
 //! by complete, current, attributed evidence and never become neutral assurance.
+use sail_api::assurance::ProofState;
 use sail_api::assurance::{EvidenceTier, MutationStatus};
 use sail_api::attribution::{self, Relationship, RequirementAttribution, Scope};
-use sail_api::contracts::ProofState;
 use sail_api::jobs::{Currentness, Lifecycle, Mode, Request, ResultDocument, Status, Submission};
 use sail_api::output::EstablishmentName;
 use sail_api::project::ProjectResult;
@@ -13,11 +13,11 @@ type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 fn recorded(positive: bool, currentness: Currentness) -> TestResult<ResultDocument> {
     let mut backend: ProjectResult = serde_json::from_str(if positive {
         include_str!(
-            "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/positive-requested-target.json"
+            "../resources/crates/sail-verus/tests/fixtures/requirement-attribution/positive-requested-target.json"
         )
     } else {
         include_str!(
-            "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/body-edit-requested-target.json"
+            "../resources/crates/sail-verus/tests/fixtures/requirement-attribution/body-edit-requested-target.json"
         )
     })?;
     backend.currentness = match currentness {
@@ -42,7 +42,6 @@ fn recorded(positive: bool, currentness: Currentness) -> TestResult<ResultDocume
         },
         result: Some(serde_json::to_value(backend)?),
         repair: None,
-        contracts: None,
     })
 }
 
@@ -246,28 +245,22 @@ fn neutral_unfinished_and_invalid_attributions_are_refused() -> TestResult {
             "{label}"
         );
     }
-    // A neutral source job is reported only through neutral assurance.
-    let neutral: ResultDocument = serde_json::from_value({
-        let mut value = serde_json::to_value(&good)?;
-        value["contracts"] = serde_json::to_value(
-            serde_json::from_str::<serde_json::Value>(include_str!(
-                "../resources/crates/sail-verus/tests/fixtures/neutral-contracts/add_one.v1-manifest.json"
-            ))
-            .map(|manifest| {
-                serde_json::json!({
-                    "version": 1,
-                    "manifest": manifest,
-                    "proof": {"state": "proved", "checks": {"unsat": 1, "sat": 0, "unknown": 0, "missing_answer": 0, "missing_source": 0}, "unknown_reasons": [], "proved_functions": []},
-                    "translation_trust": {"source_policy_sha256": "a".repeat(64), "metadata_sha256": "b".repeat(64), "cargo_lock_sha256": "c".repeat(64)}
-                })
-            })?,
-        )?;
-        value
-    })?;
+    // A result document written by a removed neutral source job (Sail 0.2) is
+    // refused with a stable code when decoded; it never reaches attribution as
+    // an ordinary job. A null member, which no producer wrote, stays readable.
+    let mut retired = serde_json::to_value(&good)?;
+    retired["contracts"] = serde_json::json!({
+        "version": 1,
+        "manifest": {"version": 1, "contract_version": 1, "bindings": []},
+        "proof": {"state": "proved", "checks": {"unsat": 1, "sat": 0, "unknown": 0, "missing_answer": 0, "missing_source": 0}, "unknown_reasons": [], "proved_functions": []},
+        "translation_trust": {"source_policy_sha256": "a".repeat(64), "metadata_sha256": "b".repeat(64), "cargo_lock_sha256": "c".repeat(64)}
+    });
     assert!(
-        attribution::from_project_result(&neutral, &[claim("R", function)])
-            .is_err_and(|error| error.contains("neutral source jobs"))
+        serde_json::from_value::<ResultDocument>(retired.clone())
+            .is_err_and(|error| error.to_string().starts_with("SAIL3161:"))
     );
+    retired["contracts"] = serde_json::Value::Null;
+    assert!(serde_json::from_value::<ResultDocument>(retired).is_ok());
     Ok(())
 }
 

@@ -394,7 +394,7 @@ dependencies = [
  "dive-eval",
  "dive-ir",
  "dive-value",
- "num-bigint 0.5.1",
+ "num-bigint",
  "num-traits",
 ]
 
@@ -431,7 +431,7 @@ name = "dive-value"
 version = "0.0.0"
 source = "git+https://github.com/Chelis-Lang/dive?rev=1025cd6a0510183bc16abc1e6e3eea4f9305c5a9#1025cd6a0510183bc16abc1e6e3eea4f9305c5a9"
 dependencies = [
- "num-bigint 0.5.1",
+ "num-bigint",
  "num-integer",
  "num-traits",
 ]
@@ -1010,16 +1010,6 @@ dependencies = [
 
 [[package]]
 name = "num-bigint"
-version = "0.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c89e69e7e0f03bea5ef08013795c25018e101932225a656383bd384495ecc367"
-dependencies = [
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-bigint"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93e7820bc0a80a0238e650327316f929ba18d5be054b647490a3a6a339f3e7c0"
@@ -1331,15 +1321,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sail-contracts-ir"
-version = "0.2.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
-]
-
-[[package]]
 name = "sail-daemon"
 version = "0.2.0"
 dependencies = [
@@ -1501,19 +1482,14 @@ name = "sail-verus"
 version = "0.2.0"
 dependencies = [
  "inotify",
- "num-bigint 0.4.8",
- "proc-macro2",
- "quote",
  "rustix",
  "sail-acceptance",
  "sail-api",
- "sail-contracts-ir",
  "sail-ledger",
  "sail-smtlib",
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "syn 2.0.119",
  "toml",
  "toml_edit",
 ]

@@ -1,6 +1,6 @@
 # 0105: Place neutral shadows away from inherited Cargo configuration
 
-- **Status:** accepted
+- **Status:** superseded by [ADR 0109](0109-oyster-retired-v030-scope.md): the surface this decision describes was removed in v0.3.0. The last implementation is tagged `archive/neutral-contracts-final`. Previously: accepted
 - **Date:** 2026-11-08
 - **Implements:** item 6 of [ADR 0103](0103-scoped-neutral-widening.md)
 
