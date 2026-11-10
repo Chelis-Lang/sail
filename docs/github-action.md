@@ -68,17 +68,19 @@ on Ubuntu only; macOS runners are untested.
    inside `sail verify` has failed on a fresh runner
    ([known issues](known-issues.md#product-limits)). A
    second use of the action in one job reuses that installation.
-2. **Restores file times.** `actions/checkout` gives every file the current
-   time, which makes Cargo rebuild and re-verify unchanged crates. The
-   action sets each tracked file's time to the time of the last commit that
-   changed it, like `git restore-mtime`. Files that differ from the commit
-   (edited by an earlier step) and untracked files keep their own times. With
-   the default shallow checkout, every file gets the checked-out commit's
-   time; with `fetch-depth: 0`, each file gets its own.
-3. **Restores caches** with `actions/cache`: solver replies
+2. **Restores caches** with `actions/cache`: solver replies
    (`~/.cache/sail/results`), managed targets and proof receipts
    (`~/.cache/sail/projects`), and the Cargo registry plus any `cache-target`
    directories. See [keys](#cache-keys).
+3. **Restores file times.** `actions/checkout` gives every file the current
+   time, which makes Cargo rebuild and re-verify unchanged crates. The
+   action sets each tracked file's time to the time of the last commit that
+   changed it, like `git restore-mtime`, following the first-parent history
+   (a merge counts as changing what it brought in). Files that differ from
+   the commit (edited by an earlier step) and untracked files keep their own
+   times. With the default shallow checkout, every file gets the checked-out
+   commit's time; with `fetch-depth: 0`, each file gets its own. See
+   [restored builds](#restored-builds-and-file-times).
 4. **Verifies**: `sail verify --output json ARGS` in `working-directory`.
    Cargo's and Verus's messages go to the job log as usual. The run gets no
    GitHub token, and `SAIL_BACKGROUND_PREPARE` defaults to `0`, since a CI
@@ -164,10 +166,28 @@ answer. [Caching Sail in CI](ci-cache.md) has the measured gains, the sizes
 and the trust caveats. In particular, restore only caches written by workflows
 you trust; GitHub keeps a pull request's caches from reaching its base branch.
 
+### Restored builds and file times
+
+A Cargo target (`cache-target`) restored from another commit's entry is
+different: Cargo trusts it whenever every input file is older than the
+build, without reading their contents.
+Restored commit times are older than a build cached later, so a file changed
+since the cached commit could look unchanged, and Cargo would replay that
+commit's result instead of verifying the change. The action therefore restores
+file times after the caches. When a target came from another commit's entry,
+every file that differs between that commit and this one keeps its current
+time, so Cargo rebuilds it. As a precaution the action does the same for
+managed targets restored from another commit's `projects` entry, although
+proof receipts are bound to file contents. That commit must be in the clone
+(`fetch-depth: 0`); when it is not, no file time is restored and the job log
+has a warning. If you restore a `target/` with another cache step, restore
+it without commit times (`restore-mtime: false`).
+
 ## Comparing with a baseline
 
 `baseline-branch: main` makes the summary compare this run with the newest
-result uploaded by a run on `main`:
+result uploaded by a run on this repository's `main` (a pull request from a
+fork's `main` does not count):
 
 ```yaml
 permissions:

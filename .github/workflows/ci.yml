@@ -702,3 +702,29 @@ jobs:
           RESULT: ${{ steps.failing.outputs.result }}
           SARIF: ${{ steps.failing.outputs.sarif }}
         run: python3 ci/check-github-action.py failing
+
+  action-caches:
+    # The action jobs' caches are private to one run attempt and never
+    # restored again, so delete them rather than let them fill the
+    # repository's cache quota. Best effort: a fork's pull request gets no
+    # write token, and GitHub's own eviction still applies.
+    name: GitHub Action (cache cleanup)
+    needs: [action-cold, action-restored]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Delete this run's action caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PREFIX: sail-action-test-${{ github.run_id }}-${{ github.run_attempt }}-
+        run: |
+          ids="$(gh cache list --key "$PREFIX" --limit 100 --json id,key --jq '.[] | select(.key | startswith(env.PREFIX)) | .id')" || {
+            echo "::warning::could not list this run's action caches"; exit 0; }
+          for id in $ids; do
+            gh cache delete "$id" || echo "::warning::could not delete cache $id"
+          done
+          echo "Deleted $(printf '%s\n' "$ids" | grep -c . || true) caches with prefix $PREFIX"

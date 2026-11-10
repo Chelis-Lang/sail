@@ -191,6 +191,13 @@ Cargo then considers the crate fresh and Verus does not run. That is the same
 trust you already place in a cached `target/` with stock `cargo verus`; see
 [caveats](#caveats).
 
+Do not combine commit times with a `target/` restored from another commit's
+entry. A file changed since that commit gets its (older) commit time, so
+Cargo trusts the restored build and replays the other commit's result without
+verifying the change. The [GitHub Action](github-action.md#restored-builds-and-file-times)
+keeps such files at the current time; with this manual step, cache `target/`
+only under an exact per-commit key, or skip the step.
+
 ## Measured results
 
 The measurements ran on a native EC2 c7i.4xlarge (16 vCPU, Intel Xeon

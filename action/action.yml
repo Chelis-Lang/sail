@@ -64,7 +64,8 @@ inputs:
     description: >-
       Set each unmodified tracked file's time to its last commit's time, so
       Cargo and Sail see unchanged files as unchanged on a fresh checkout.
-      Check out with `fetch-depth: 0` for per-file times.
+      Files changed since the commit a restored build was cached for keep
+      their current time. Check out with `fetch-depth: 0` for per-file times.
     required: false
     default: "true"
   cache:
@@ -163,7 +164,6 @@ runs:
         SAIL_ACTION_INSTALL_TOOLCHAIN: ${{ inputs.install-toolchain }}
         SAIL_ACTION_REQUIRE_ATTESTATION: ${{ inputs.require-attestation }}
         SAIL_ACTION_WORKING_DIRECTORY: ${{ inputs.working-directory }}
-        SAIL_ACTION_RESTORE_MTIME: ${{ inputs.restore-mtime }}
         SAIL_ACTION_CACHE_KEY_PREFIX: ${{ inputs.cache-key-prefix }}
         SAIL_ACTION_CACHE_TARGET: ${{ inputs.cache-target }}
         SAIL_ACTION_SARIF: ${{ inputs.sarif }}
@@ -196,6 +196,20 @@ runs:
         path: ${{ steps.setup.outputs.cargo-paths }}
         key: ${{ steps.setup.outputs.cargo-key }}
         restore-keys: ${{ steps.setup.outputs.cargo-restore-keys }}
+
+    # After the restores: a build restored from another commit's cache must
+    # not look newer than the files that changed since that commit.
+    - name: Restore file times
+      shell: bash
+      env:
+        SAIL_ACTION_RESTORE_MTIME: ${{ inputs.restore-mtime }}
+        SAIL_ACTION_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        SAIL_ACTION_CACHE_TARGET: ${{ inputs.cache-target }}
+        SAIL_ACTION_CARGO_KEY: ${{ steps.setup.outputs.cargo-key }}
+        SAIL_ACTION_CARGO_MATCHED_KEY: ${{ steps.restore-cargo.outputs.cache-matched-key }}
+        SAIL_ACTION_PROJECTS_KEY: ${{ steps.setup.outputs.projects-key }}
+        SAIL_ACTION_PROJECTS_MATCHED_KEY: ${{ steps.restore-projects.outputs.cache-matched-key }}
+      run: python3 -I "$GITHUB_ACTION_PATH/sail_action.py" times
 
     - name: Verify
       id: verify

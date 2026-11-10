@@ -44,6 +44,18 @@ elif args[:1] == ["report"]:
     sys.exit(int(os.environ.get("FAKE_REPORT_EXIT", "0")))
 """
 
+FAKE_GH = r"""#!/usr/bin/env python3
+import os, sys
+args = sys.argv[1:]
+if args[:1] == ["api"]:
+    print(os.environ["FAKE_GH_ARTIFACTS"])
+elif args[:2] == ["run", "download"]:
+    directory = args[args.index("--dir") + 1]
+    os.makedirs(directory, exist_ok=True)
+    with open(os.path.join(directory, "result.json"), "w") as handle:
+        handle.write("{}")
+"""
+
 
 def outputs(path):
     """Parse $GITHUB_OUTPUT, including `name<<DELIMITER` values."""
@@ -151,11 +163,15 @@ class ActionTests(unittest.TestCase):
         (self.repo / "rust-toolchain.toml").write_text("[toolchain]\nchannel = \"1.99.0\"\n")
         result = self.run_step("setup")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        # Times are restored by their own step, after the cache restores.
+        self.assertNotEqual((self.repo / "crate" / "Cargo.lock").stat().st_mtime, 1_600_000_000)
+        values = outputs(self.github_output)
+        result = self.run_step("times")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((self.repo / "crate" / "Cargo.lock").stat().st_mtime, 1_600_000_000)
         self.assertEqual((self.repo / "crate" / "src" / "lib.rs").stat().st_mtime, 1_700_000_000)
         # Modified: its content is not the commit's, so it keeps its own time.
         self.assertNotEqual((self.repo / "rust-toolchain.toml").stat().st_mtime, 1_600_000_000)
-        values = outputs(self.github_output)
         self.assertEqual(values["sail-version"], "9.9.9")
         self.assertEqual(values["project"], str(self.repo / "crate"))
         self.assertTrue(values["results-key"].startswith("sail-results-Linux-X64-9.9.9-1.99.1-"))
@@ -249,6 +265,92 @@ class ActionTests(unittest.TestCase):
         # The renamed file and its source are both left alone.
         self.assertEqual(restored, 2)
         self.assertEqual((self.repo / "crate" / "Cargo.lock").stat().st_mtime, 1_600_000_000)
+
+    def head(self):
+        return self.git("rev-parse", "HEAD", text=True).stdout.strip()
+
+    def test_times_follow_merges_by_their_first_parent(self):
+        self.git("checkout", "-q", "-b", "side")
+        (self.repo / "crate" / "src" / "lib.rs").write_text("// side\n")
+        self.commit("side", 1_650_000_000)
+        self.git("checkout", "-q", "-")
+        stamp = "@1800000000 +0000"
+        environment = dict(os.environ, GIT_AUTHOR_DATE=stamp, GIT_COMMITTER_DATE=stamp,
+                           GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.invalid",
+                           GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.invalid")
+        self.git("merge", "-q", "--no-ff", "--no-verify", "-m", "merge", "side", env=environment)
+        action.restore_mtime(self.repo)
+        # The merge brought the side commit's content: the merge's time, not
+        # the older side commit's.
+        self.assertEqual((self.repo / "crate" / "src" / "lib.rs").stat().st_mtime, 1_800_000_000)
+        self.assertEqual((self.repo / "crate" / "Cargo.lock").stat().st_mtime, 1_600_000_000)
+
+    def test_files_changed_since_a_restored_build_keep_their_time(self):
+        # The cached target was built from the first commit, later than the
+        # second commit's time; lib.rs changed since, so a restored commit
+        # time would make Cargo trust that build of other content.
+        first = self.git("rev-parse", "HEAD~1", text=True).stdout.strip()
+        head = self.head()
+        lib = self.repo / "crate" / "src" / "lib.rs"
+        os.utime(lib, (1_900_000_000, 1_900_000_000))
+        common = {"SAIL_ACTION_CACHE_TARGET": "target",
+                  "SAIL_ACTION_CARGO_KEY": f"sail-cargo-x-{head}"}
+        result = self.run_step("times", SAIL_ACTION_CARGO_MATCHED_KEY=f"sail-cargo-x-{first}", **common)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(lib.stat().st_mtime, 1_900_000_000)
+        self.assertEqual((self.repo / "crate" / "Cargo.lock").stat().st_mtime, 1_600_000_000)
+        # The same for managed targets restored from another commit.
+        result = self.run_step("times", SAIL_ACTION_PROJECTS_KEY=f"sail-projects-x-{head}",
+                               SAIL_ACTION_PROJECTS_MATCHED_KEY=f"sail-projects-x-{first}")
+        self.assertEqual(lib.stat().st_mtime, 1_900_000_000)
+        # This commit's own build: every clean file gets its commit time.
+        self.run_step("times", SAIL_ACTION_CARGO_MATCHED_KEY=f"sail-cargo-x-{head}", **common)
+        self.assertEqual(lib.stat().st_mtime, 1_700_000_000)
+        # Without cache-target, the Cargo cache holds no build.
+        os.utime(lib, (1_900_000_000, 1_900_000_000))
+        self.run_step("times", SAIL_ACTION_CARGO_KEY=f"sail-cargo-x-{head}",
+                      SAIL_ACTION_CARGO_MATCHED_KEY=f"sail-cargo-x-{first}")
+        self.assertEqual(lib.stat().st_mtime, 1_700_000_000)
+
+    def test_a_build_from_an_unknown_commit_restores_no_times(self):
+        lock = self.repo / "crate" / "Cargo.lock"
+        os.utime(lock, (1_900_000_000, 1_900_000_000))
+        result = self.run_step("times", SAIL_ACTION_CACHE_TARGET="target",
+                               SAIL_ACTION_CARGO_KEY=f"sail-cargo-x-{self.head()}",
+                               SAIL_ACTION_CARGO_MATCHED_KEY="sail-cargo-x-" + "0" * 40)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("::warning::file times were not restored", result.stdout)
+        self.assertEqual(lock.stat().st_mtime, 1_900_000_000)
+        result = self.run_step("times", SAIL_ACTION_RESTORE_MTIME="false")
+        self.assertEqual(result.returncode, 0)
+
+    def test_baseline_ignores_fork_branches_of_the_same_name(self):
+        gh = self.bin / "gh"
+        gh.write_text(FAKE_GH)
+        gh.chmod(0o755)
+        artifacts = [
+            # Newest first: a fork's `main`, then this repository's.
+            {"expired": False, "workflow_run": {"id": 30, "head_branch": "main",
+                                                "repository_id": 7, "head_repository_id": 99}},
+            {"expired": False, "workflow_run": {"id": 20, "head_branch": "main",
+                                                "repository_id": 7, "head_repository_id": 7}},
+        ]
+        result_path = self.root / "result.json"
+        result_path.write_text("{}")
+        result = self.run_step("report", SAIL_ACTION_SAIL=str(self.bin / "sail"),
+                               SAIL_ACTION_RESULT=str(result_path),
+                               SAIL_ACTION_SARIF_PATH=str(self.root / "s.sarif"),
+                               SAIL_ACTION_BASELINE_BRANCH="main", SAIL_ACTION_RESULT_ARTIFACT="sail-result",
+                               GITHUB_REPOSITORY_ID="7", FAKE_GH_ARTIFACTS=json.dumps({"artifacts": artifacts}))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Baseline: `sail-result` from run 20 on main", result.stdout)
+        # Only the fork's: no baseline.
+        result = self.run_step("report", SAIL_ACTION_SAIL=str(self.bin / "sail"),
+                               SAIL_ACTION_RESULT=str(result_path),
+                               SAIL_ACTION_SARIF_PATH=str(self.root / "s.sarif"),
+                               SAIL_ACTION_BASELINE_BRANCH="main", SAIL_ACTION_RESULT_ARTIFACT="sail-result",
+                               FAKE_GH_ARTIFACTS=json.dumps({"artifacts": artifacts[:1]}))
+        self.assertIn("::notice::no baseline", result.stdout)
 
 
 if __name__ == "__main__":

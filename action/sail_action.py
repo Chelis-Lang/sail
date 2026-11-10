@@ -5,8 +5,9 @@ Each subcommand is one step. Inputs arrive as SAIL_ACTION_* environment
 variables, outputs go to $GITHUB_OUTPUT. Only the standard library is used,
 so the script runs on every GitHub-hosted Linux and macOS image.
 
-  setup     install Sail (or use the one on PATH), restore file times, and
-            compute cache paths and keys
+  setup     install Sail (or use the one on PATH) and compute cache paths
+            and keys
+  times     restore file times, knowing which caches were restored
   verify    run `sail verify --output json`, keep its exit code as an output
   report    write the job summary, annotations and SARIF; fetch a baseline
   gc        bound the solver-reply cache before it is saved
@@ -147,21 +148,47 @@ def install():
     return binary
 
 
-def restore_mtime(top):
+def restore_mtime(top, since=()):
     """Set each clean tracked file's time to its last commit's time.
 
     `actions/checkout` gives every file the current time, so Cargo would
     consider every crate changed. A modified or untracked file keeps its time:
     its content is not the commit's, and an old time could make Cargo trust
-    a restored build of different content."""
+    a restored build of different content.
+
+    SINCE names the commits restored builds were made from. Cargo trusts a
+    build whose fingerprints are newer than every input's time, whatever
+    commit it was made from, so each file that differs between one of those
+    commits and HEAD also keeps its current time. When such a commit is not
+    in the clone, no time is restored: the build is then never trusted on
+    time alone.
+
+    Merges count as changing what they change relative to their first
+    parent, and only the first-parent history is followed, so a file's
+    time is never older than the commit that brought its content to this
+    line of history."""
     def git(*arguments):
         return subprocess.run(["git", "-C", str(top), *arguments], capture_output=True, check=True).stdout
 
+    def names(data):
+        return {name for name in data.decode("utf-8", "surrogateescape").split("\0") if name}
+
+    changed = set()
+    for base in since:
+        try:
+            git("rev-parse", "--verify", "--quiet", f"{base}^{{commit}}")
+            changed |= names(git("-c", "core.quotepath=off", "diff", "--name-only", "--no-renames", "-z",
+                                 base, "HEAD", "--"))
+        except (OSError, subprocess.CalledProcessError):
+            command("warning", f"file times were not restored: a cached build was made from commit {base},"
+                    " which is not in this clone, so a changed file could look older than that build."
+                    " Check out with `fetch-depth: 0` to keep restored times")
+            return 0
     try:
-        tracked = {name for name in git("ls-files", "-z").decode("utf-8", "surrogateescape").split("\0") if name}
+        tracked = names(git("ls-files", "-z"))
         status = git("status", "--porcelain=v1", "-z", "--untracked-files=no").decode("utf-8", "surrogateescape")
         log = git("-c", "core.quotepath=off", "log", "--pretty=format:%x01%ct", "--name-only",
-                  "--no-renames", "-z", "HEAD").decode("utf-8", "surrogateescape")
+                  "--no-renames", "--first-parent", "-m", "-z", "HEAD").decode("utf-8", "surrogateescape")
     except (OSError, subprocess.CalledProcessError) as error:
         command("warning", f"file times were not restored: git failed in {top}: {error}")
         return 0
@@ -177,28 +204,53 @@ def restore_mtime(top):
                 if index < len(entries):
                     dirty.add(entries[index])
         index += 1
-    remaining = tracked - dirty
+    remaining = tracked - dirty - changed
     restored = 0
     for record in log.split("\x01"):
         if not remaining:
             break
         if not record.strip():
             continue
-        stamp, _, names = record.partition("\n")
+        stamp, _, files = record.partition("\n")
         try:
             seconds = int(stamp)
         except ValueError:
             continue
-        for name in names.split("\0"):
+        for name in files.split("\0"):
             if name in remaining:
                 remaining.discard(name)
                 path = top / name
                 if path.is_file() and not path.is_symlink():
                     os.utime(path, (seconds, seconds))
                     restored += 1
+    kept = len(dirty | (changed & tracked))
     print(f"Restored commit times of {restored} files in {top}"
-          + (f"; {len(dirty)} modified files kept their times" if dirty else ""))
+          + (f"; {kept} modified files, or files changed since a cached build, kept their times" if kept else ""))
     return restored
+
+
+def restored_build_commits():
+    """Commits of restored caches that hold Cargo builds, when the cache was
+    made for another commit than this one (a restore-keys match). The commit
+    is the last part of the key (see `setup`)."""
+    commits = []
+    for kind, holds_build in (("CARGO", bool(env("CACHE_TARGET"))), ("PROJECTS", True)):
+        matched, exact = env(kind + "_MATCHED_KEY"), env(kind + "_KEY")
+        if holds_build and matched and matched != exact:
+            commits.append(matched.rsplit("-", 1)[-1])
+    return commits
+
+
+def times():
+    """Restore file times, after the caches are restored (`restore_mtime`)."""
+    if not flag("RESTORE_MTIME", "true"):
+        return
+    project = project_dir()
+    top = git_top(project)
+    if top is None:
+        print(f"{project} is not in a Git repository; file times are left as they are")
+        return
+    restore_mtime(top, restored_build_commits())
 
 
 def digest_files(paths, base):
@@ -279,9 +331,6 @@ def setup():
     top = git_top(project)
     if top is None:
         top = project
-        print(f"{project} is not in a Git repository; file times are left as they are")
-    elif flag("RESTORE_MTIME", "true"):
-        restore_mtime(top)
     selected = toolchain_files(project, top)
     if selected and flag("INSTALL_TOOLCHAIN", "true"):
         install_project_toolchain(project)
@@ -362,7 +411,8 @@ def verify():
 
 
 def find_baseline(directory):
-    """The newest result artifact from another run on the baseline branch."""
+    """The newest result artifact from another run on the baseline branch of
+    this repository (not of a fork)."""
     branch, name = env("BASELINE_BRANCH"), env("RESULT_ARTIFACT")
     repository = os.environ.get("GITHUB_REPOSITORY", "")
     if not branch:
@@ -375,13 +425,19 @@ def find_baseline(directory):
          "-f", f"name={name}", "-f", "per_page=100"],
         capture_output=True, text=True, check=False)
     current = os.environ.get("GITHUB_RUN_ID", "")
+    repository_id = os.environ.get("GITHUB_REPOSITORY_ID", "")
     run = ""
     if query.returncode == 0:
         try:
             # Newest first, as the API lists them.
             for artifact in json.loads(query.stdout).get("artifacts", []):
                 origin = artifact.get("workflow_run") or {}
+                # A pull request from a fork can have a branch of the same
+                # name; only a run of this repository's own branch counts.
                 if (not artifact.get("expired") and origin.get("head_branch") == branch
+                        and origin.get("head_repository_id") is not None
+                        and origin.get("head_repository_id") == origin.get("repository_id")
+                        and (not repository_id or str(origin.get("repository_id")) == repository_id)
                         and str(origin.get("id")) != current):
                     run = str(origin["id"])
                     break
@@ -457,7 +513,7 @@ def finish():
 
 
 def main():
-    steps = {"setup": setup, "verify": verify, "report": report, "gc": gc, "finish": finish}
+    steps = {"setup": setup, "times": times, "verify": verify, "report": report, "gc": gc, "finish": finish}
     if len(sys.argv) != 2 or sys.argv[1] not in steps:
         print(__doc__, file=sys.stderr)
         sys.exit(2)

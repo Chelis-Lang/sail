@@ -25,7 +25,8 @@ semantic versioning once the API is published.
   `docs/ci-reports.md`.
 - Add a GitHub Action, `uses: Chelis-Lang/sail/action@<tag>`. It installs
   the selected Sail release with its attestation checked, restores file
-  commit times, restores and saves solver replies, proof receipts and Cargo
+  commit times (except for files changed since the commit a restored Cargo
+  build came from, so Cargo cannot trust that build), restores and saves solver replies, proof receipts and Cargo
   downloads under keys bound to the runner, Sail version, toolchains and
   lockfiles, runs `sail verify --output json`, writes the `sail report` job
   summary, annotations and SARIF (optionally uploaded to code scanning and
