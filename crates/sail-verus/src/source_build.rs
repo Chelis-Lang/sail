@@ -453,8 +453,16 @@ mod tests {
         Ok(())
     }
 
+    /// Runs in a process of its own (see `isolated_test`), where the build
+    /// must be lockable again immediately after its owner dropped it.
     #[test]
     fn source_build_ownership_is_exclusive_and_released_on_drop() {
+        if !crate::isolated_test::runs_here(
+            module_path!(),
+            "source_build_ownership_is_exclusive_and_released_on_drop",
+        ) {
+            return;
+        }
         let build = std::env::temp_dir().join(format!("sail-build-lock-{}", std::process::id()));
         let first = lock_build(&build).unwrap_or_else(|e| unreachable!("first lock: {e}"));
         assert!(lock_build(&build).is_err_and(|e| e.code == "SAIL3043"));
