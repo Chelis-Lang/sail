@@ -105,6 +105,23 @@ fn record_decline(
     }
 }
 
+/// Whether a refusal at the start is recorded for the SAIL3138 note. A
+/// closure package's build script, its compiler probes and its other
+/// expected refusals are not: only a library unit whose observation could
+/// otherwise have established its provenance.
+fn recorded_refusal(why: &Declined, crate_name: &str) -> bool {
+    const EXPECTED: [&str; 5] = [
+        "no-closure",
+        "lookup-refused",
+        "unkeyed-unit",
+        "foreign-unit",
+        "unsupported-invocation",
+    ];
+    !crate_name.is_empty()
+        && !crate_name.starts_with("build_script_")
+        && !EXPECTED.contains(&why.code)
+}
+
 /// The first recorded closure-unit decline of this run, in a stable order,
 /// as a SAIL3138 reason.
 pub(crate) fn declined_miss(plan: &Plan) -> Option<String> {
@@ -217,19 +234,20 @@ impl<'a> Observation<'a> {
             );
             let name = std::env::var("CARGO_PKG_NAME").unwrap_or_default();
             let version = std::env::var("CARGO_PKG_VERSION").unwrap_or_default();
-            if plan
-                .closure
-                .as_ref()
-                .is_some_and(|closure| closure.names_package(&name, &version))
+            let crate_name = super::argument_value(
+                &args
+                    .iter()
+                    .map(|arg| arg.to_string_lossy().into_owned())
+                    .collect::<Vec<_>>(),
+                "--crate-name",
+            )
+            .unwrap_or_default();
+            if recorded_refusal(why, &crate_name)
+                && plan
+                    .closure
+                    .as_ref()
+                    .is_some_and(|closure| closure.names_package(&name, &version))
             {
-                let crate_name = super::argument_value(
-                    &args
-                        .iter()
-                        .map(|arg| arg.to_string_lossy().into_owned())
-                        .collect::<Vec<_>>(),
-                    "--crate-name",
-                )
-                .unwrap_or_default();
                 record_decline(
                     plan,
                     args,
@@ -1623,6 +1641,17 @@ mod tests {
         );
         std::fs::remove_dir_all(root)?;
         Ok(())
+    }
+
+    #[test]
+    fn expected_start_refusals_are_not_recorded_for_the_note() {
+        let unproduced = declined("lookup-unproduced", "fixture");
+        assert!(recorded_refusal(&unproduced, "syn"));
+        assert!(!recorded_refusal(&unproduced, "build_script_build"));
+        assert!(!recorded_refusal(&unproduced, ""));
+        for code in ["lookup-refused", "foreign-unit", "unsupported-invocation"] {
+            assert!(!recorded_refusal(&declined(code, "fixture"), "syn"));
+        }
     }
 
     #[test]
