@@ -792,66 +792,69 @@ Raw archive `mac-revert.tgz`, retained outside Git, SHA-256:
 
 ### Linux load loops: cause found, preemption grace (#595)
 
-Status: **the dominant cause is identified and mostly fixed. The residual
-cause is identified but not fixed, and there is no macOS rerun.** On
-2026-11-10, native c7i.4xlarge hosts in us-west-2 (16 cores, Linux x86-64)
-ran the Vest cycle cold, body edit, revert, failing edit, fix, revert with
-`SAIL_PERF_DIAG=1`, Verus `0.2026.10.18.7d82994`, registry vstd and
-`--rlimit 100`.
-Load came from 16 CPU spinners and 4 direct-I/O `dd` loops. Load is
-diagnostic only, so these wall times are not performance results. Exit codes
-agreed with stock in every round and phase. A miss is a revert that started
-any verifier session.
+Status: **fixed for the measured cause; a residual cause remains; no macOS
+rerun.** Native c7i.4xlarge hosts in us-west-2 (16 cores, Ubuntu 24.04) ran
+the Vest cycle cold, body edit, revert, failing edit, fix, revert, with Verus
+`0.2026.10.18.7d82994`, registry vstd and `--rlimit 100`, on 2026-11-10.
+Each round ran stock `cargo verus verify`, `main` `fed27fb4` and this change
+(`4560d84a`) in turn on the same host, each Sail arm with an empty cache. Load
+came from 16 CPU spinners and 4 direct-I/O `dd` loops. A miss is a revert that
+started any verifier session. Exit codes agreed in every round and phase.
 
-| Loop | Build | Rounds | Reverts | Misses | Miss rounds that rebuilt the script graph | Killed preparations |
+Six rounds each, median wall in seconds (maximum):
+
+| Phase | Quiet stock | Quiet main | Quiet change | Loaded stock | Loaded main | Loaded change |
 |---|---|---|---|---|---|---|
-| Quiet | branch with decline notes, immediate kill | 60 | 120 | 0 | none | not counted |
-| Loaded | branch with decline notes, immediate kill | 34 + 26 | 120 | 81 | 45 of 45 | 65 |
-| Loaded | `8dff985`, 60 s grace | 60 | 120 | 14 | 7 of 7 | 0 |
-| Loaded, preparation off | `8dff985` | 20 | 40 | 2 | none (cold run) | none |
+| cold (first call) | 77.0 (78.2) | 69.7 (71.9) | 69.6 (70.3) | 124.3 (126.4) | 114.0 (115.7) | 112.8 (114.9) |
+| body edit | 43.6 (44.3) | 24.1 (25.2) | 24.0 (24.3) | 72.1 (74.2) | 64.2 (90.4) | 42.2 (43.4) |
+| body revert | 43.6 (44.2) | 1.1 (1.1) | 1.1 (1.1) | 71.8 (73.4) | 21.6 (87.6) | 3.8 (3.9) |
+| failing edit | 39.6 (40.3) | 20.9 (21.4) | 20.7 (21.5) | 65.3 (66.4) | 36.1 (38.0) | 36.0 (37.3) |
+| fix | 43.8 (44.5) | 23.9 (24.4) | 23.7 (24.6) | 71.5 (74.4) | 42.0 (42.7) | 42.0 (42.2) |
+| fix revert | 43.8 (44.2) | 1.1 (1.1) | 1.1 (1.1) | 72.2 (72.3) | 22.3 (41.4) | 3.8 (4.0) |
+| revert misses | | 0 of 12 | 0 of 12 | | 6 of 12 | 0 of 12 |
 
-`8dff985` is the pre-rebase build of the 60 s grace. Later branch commits
-bound the trace and drop one decline note. The two loaded baseline halves ran
-on separate hosts at the same time. Revert
-hits took a median of 1.11 s quiet, and about 3.9 to 4.5 s loaded in both
-builds. Misses took about 40 to 49 s when they re-verified `vest_lib` (274
-sessions), and about 100 s when they also rebuilt vstd (655 sessions).
+Quiet, preparation finished before each next call, and both builds match.
+Loaded, `main` killed a running preparation in three of six rounds. Each time
+the body edit rebuilt the whole dependency graph (655 sessions, 84 to 90 s,
+slower than stock), and one or both reverts missed. With the change, every
+edit verified only `vest_lib` (274 sessions, at most 43.4 s) after waiting
+for the preparation on the target lock. No change median is above `main`'s.
+In the rounds where `main` killed nothing, the change's body edit took 37.9 to
+42.9 s and `main`'s 41.8 to 43.9 s.
 
-Cause: a foreground call preempted a running background preparation, and the
-daemon killed it at once. The preparation had already consumed the compiler
-target's build-script export (`build_inputs::family::begin`), and it
-republishes the export only when it finishes. The next call found no records,
-cleaned proc-macro2, quote, verus_prettyplease and vstd (in the event
-`managed-cleanup-decision`, under `stale_scripts`), and rebuilt them without
-retention attempts. Its `vest_lib` revision was then not admitted, because
-the dependency artifacts had no producer certificate. Every baseline miss
-carries that `SAIL3146` reason. Every baseline miss round shows a killed run
-directory, with no journal end, about 3 s before the rebuilding call. With a
-10 s grace the misses continued, because a preparation that starts just
-before the edit verifies the edited source, which takes about 40 s under load.
-The 60 s grace let every such preparation finish.
+Gates on the same source: `ci/local.sh solver`, `conformance fast` (147 of 147
+units same, engine 146 focused units) and `conformance standard` (159 of 159
+same, engine 158) pass at `4560d84a`.
 
-Residual, not fixed: every remaining loaded miss also follows a
-script-graph rebuild. That rebuild comes after a preparation that ended on
-its own without a Current result. Examples are a Historical run when an edit
-landed during it, a run with Currentness unknown and a declined run (31
-non-Current runs in total). These runs consumed the export and did not
-republish it. Three of the 14 misses, the body revert in r8, r20 and r50,
-printed no `SAIL3146` note on the reverting call. The control with
-preparation off missed in one round (r2) by a separate cause: the loaded cold
-build left `verus_*` and vstd artifacts without producer certificates.
+Cause: a call preempted a running background preparation, and the daemon
+killed it at once. The preparation had already consumed the compiler target's
+build-script export (`build_inputs::family::begin`), which it republishes only
+when it finishes. The next call found no records, cleaned proc-macro2, quote,
+verus_prettyplease and vstd (the event `managed-cleanup-decision`, under
+`stale_scripts`), and rebuilt them without retention attempts, so its
+`vest_lib` revision was not admitted: the dependency artifacts had no producer
+certificate. Diagnostic loops on a spike build (60 loaded rounds per arm)
+found the same mechanism in every miss round. A 10 s grace was too short,
+because a preparation that starts just before the edit verifies the edited
+source, about 40 s under load.
+
+Residual, not fixed: in the 60-round diagnostic loop with the grace, 14 of 120
+reverts still missed. Each followed a preparation that ended on its own
+without a Current result (Historical after an edit landed during it, unknown
+currentness, or declined), consumed the export and did not republish it.
 
 Raw archives, retained outside Git, SHA-256:
 
 | Archive | SHA-256 |
 |---|---|
-| `vestquiet.tgz` | `23ac31835c0da7538ab99fda856dbcc1a8cb7b875f04766f5dca48c46efffb48` |
-| `vestload.tgz` (baseline, part A) | `79018c8184a1ba8b4e951a644876f868f0e2e7a956f847b087f3eeeb6beed74b` |
-| `vestloadb.tgz` (baseline, part B) | `f38700b869d07f4c1471a7f113e5f89e2e8f2369d8e40842b2b52c9c0261a630` |
-| `vestloadfix.tgz` | `e8fbf592157a49e06e6958b10a911f251b8054f76f26fa45895d62ba3246f007` |
-| `vestloadnoprep.tgz` | `8a407dc49e58d7675453f2f4595cec2804de4bda7319df67bda3817ff3d20338` |
+| `p708-vq.tgz` (quiet, six rounds) | `8dc0bfadaa49512df00952c5d2d6b4b157a765bca50c9698497c17425c8ac5bb` |
+| `p708-vl.tgz` (loaded, six rounds) | `80168218ef1efe44ebc800514ebc98ebdb7e17f472537cb8462915254f5e735f` |
+| `p708-suite.tgz` (solver and conformance logs) | `03c3f174a94769d9af76008d2c60f9a47a14a4ba67ce5ebf8487d0aac6277df7` |
+| `vestload.tgz`, `vestloadb.tgz` (diagnostic, immediate kill) | `79018c8184a1ba8b4e951a644876f868f0e2e7a956f847b087f3eeeb6beed74b`, `f38700b869d07f4c1471a7f113e5f89e2e8f2369d8e40842b2b52c9c0261a630` |
+| `vestloadfix.tgz` (diagnostic, 60 s grace) | `e8fbf592157a49e06e6958b10a911f251b8054f76f26fa45895d62ba3246f007` |
+| `vestloadnoprep.tgz` (diagnostic, preparation off) | `8a407dc49e58d7675453f2f4595cec2804de4bda7319df67bda3817ff3d20338` |
 
 Earlier attempts:
-- 2026-11-10, branch with a 10 s grace: aborted after its first rounds;
+- 2026-11-10, spike build with a 10 s grace: aborted after its first rounds;
   misses continued, because the grace was shorter than the edited source's
   verification.

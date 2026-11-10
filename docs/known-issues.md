@@ -128,16 +128,17 @@ Current numbers are in [performance](performance.md).
   reproduced it. Cause: a call killed a background preparation that had
   already taken the compiler target's build-script records, so that call
   rebuilt every dependency, vstd included, without the producer certificates
-  instant revert needs. Verdicts were never affected. Mostly fixed on `main`
-  after 0.2.0: running preparation now finishes, for at most 60 seconds,
-  before the call proceeds. On a loaded Linux host, Vest revert misses fell
-  from 81 of 120 to 14 of 120 ([record](validation/instant-revert.md)). The
-  remaining misses have the same effect from a different start: a preparation
-  that ends without a Current result, for example because an edit landed
-  while it ran, still does not republish the build-script records it took.
-  Separately, with preparation off, a loaded cold build once left its own
-  dependency artifacts without producer certificates (2 of 40 reverts). With
-  0.2.0, `SAIL_BACKGROUND_PREPARE=0` avoids most of these misses.
+  instant revert needs. Verdicts were never affected. Fixed for that cause
+  on `main` after 0.2.0: a running preparation that re-runs a successful
+  verification of the same workspace now finishes, for at most 60 seconds,
+  before the call proceeds. In six loaded native rounds, Vest revert misses
+  fell from 6 of 12 to 0 of 12 ([record](validation/instant-revert.md)).
+  A residual remains: a preparation that ends without a Current result, for
+  example because an edit landed while it ran, still does not republish the
+  build-script records it took (14 of 120 reverts in a 60-round diagnostic
+  loop). Separately, with preparation off, a loaded cold build once left its
+  own dependency artifacts without producer certificates (2 of 40 reverts).
+  With 0.2.0, `SAIL_BACKGROUND_PREPARE=0` avoids most of these misses.
 - Release 0.1.0 can miss shipped vstd through a symlinked cache (#601).
   The candidate resolves managed paths physically and passes installed-release
   first-Serve checks on both platforms ([record](validation/cache-path-selection.md)).
