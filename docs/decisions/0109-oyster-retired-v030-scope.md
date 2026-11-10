@@ -66,7 +66,8 @@ is a breaking release. Its pillars are:
    is [`docs/design/verus-mutation-release.md`](../design/verus-mutation-release.md).
    How verifier rejections that the solver did not confirm are counted is a
    separate evidence decision for the owner. Solver answers are never
-   relabelled.
+   relabelled. (Decided on 2026-11-10 in
+   [ADR 0111](0111-mutation-evidence.md).)
 2. **Proof health and profiling.** Rank functions by resource margin and
    stability, and name the quantifiers that cost a proof its time, from
    recorded sessions. Nothing here changes a verdict or the bytes of plain

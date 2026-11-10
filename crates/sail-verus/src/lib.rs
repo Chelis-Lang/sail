@@ -13,6 +13,8 @@ pub mod corpus;
 pub mod diagnostics;
 pub mod engine;
 mod engine_events;
+#[cfg(test)]
+mod isolated_test;
 pub mod managed;
 mod parallel;
 pub mod patch;

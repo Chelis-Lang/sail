@@ -66,6 +66,15 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
 
 ### Changed
 
+- Decided how `sail mutate`, planned for v0.3.0, will count mutants (ADR
+  0111). A Verus rejection counts as a detection when it is attributed to the
+  mutated function, is not only a resource limit, repeats on every run, and
+  the unmutated function proves with headroom. Each detection shows whether
+  the solver returned a counterexample or gave up, and solver answers stay
+  verbatim. The score is `rejected / (rejected + survived)`, with
+  inconclusive, unviable and unsupported mutants listed separately. Detected
+  means the specification and its proof reject the change, not that the
+  specification provably forbids it. Nothing changes in `sail verify`.
 - Add `sail report --format github-summary|github-annotations|sarif
   [--baseline FILE]`, which renders a `sail verify --output json` document
   for CI without running anything: a Markdown job summary within a byte
