@@ -41,28 +41,44 @@ fn inputs_unconfirmed(reasons: &[&str]) -> String {
 /// compiler-declared source inputs (ADR 0110).
 const OBSERVATION_STARTED: &str = "first-observation.started";
 
-/// Discards what an interrupted first observation of this context left
-/// behind, so the run is a genuine first observation (ADR 0110).
+/// Discards what an interrupted first observation of any proof context of
+/// this compiler family left behind, so no run of the family reads it
+/// (ADR 0110).
 ///
-/// A run that ends after writing the context's first input state but before
+/// A run that ends after writing its context's first input state but before
 /// recording its compiler-declared inputs leaves a context that reads as
 /// observed but without declarations, and compiled outputs in the family
-/// target that no recorded declaration describes. This removes, in order:
+/// target that no recorded declaration describes. Every context of the family
+/// shares that target, so the marker of any member is honoured by every run
+/// of the family, under the family's ownership lock. This removes, in order:
 /// every proof receipt of every context of the compiler family (no receipt
 /// may outlive the target it describes, as for pruning), the family's Cargo
-/// target, and every record of this context except its run directories.
-/// Nothing is relaxed: what remains is exactly the state of a context that
-/// was never observed in a family whose target was never built. The marker
-/// is removed last, so an interrupted discard is repeated by the next run.
+/// target, and every record of each marked context except its run
+/// directories. Nothing is relaxed: each marked context then reads as never
+/// observed, and the family target holds no compiled output. The markers are
+/// removed last, so an interrupted discard is repeated by the next run.
 fn discard_interrupted_observation(config: &Config, paths: &mut Paths) -> Result<bool> {
     let Some(context) = paths.input_state.parent().map(Path::to_path_buf) else {
         return Ok(false);
     };
-    let marker = context.join(OBSERVATION_STARTED);
-    match std::fs::symlink_metadata(&marker) {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
-        Err(error) => return Err(Error::new("SAIL3104", error.to_string())),
-        Ok(_) => {}
+    let io = |error: std::io::Error| Error::new("SAIL3104", error.to_string());
+    let mut members = Vec::new();
+    for entry in std::fs::read_dir(&paths.family_contexts).map_err(io)? {
+        let name = entry.map_err(io)?.file_name();
+        if !name.as_encoded_bytes().starts_with(b".") {
+            members.push(paths.projects.join(name));
+        }
+    }
+    let mut marked = Vec::new();
+    for member in &members {
+        match std::fs::symlink_metadata(member.join(OBSERVATION_STARTED)) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(io(error)),
+            Ok(_) => marked.push(member.clone()),
+        }
+    }
+    if marked.is_empty() {
+        return Ok(false);
     }
     let remove = |path: &Path| -> Result<()> {
         let removed = match std::fs::symlink_metadata(path) {
@@ -71,34 +87,41 @@ fn discard_interrupted_observation(config: &Config, paths: &mut Paths) -> Result
             Err(error) => Err(error),
         };
         match removed {
-            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
-                Err(Error::new("SAIL3104", error.to_string()))
-            }
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(io(error)),
             _ => Ok(()),
         }
     };
-    for entry in std::fs::read_dir(&paths.family_contexts)
-        .map_err(|e| Error::new("SAIL3104", e.to_string()))?
-    {
-        let entry = entry.map_err(|e| Error::new("SAIL3104", e.to_string()))?;
-        remove(&paths.projects.join(entry.file_name()).join("receipts"))?;
+    for member in &members {
+        remove(&member.join("receipts"))?;
     }
     if super::store::new_target(&paths.target) {
         cargo_clean_layouts(config, &paths.target)?;
     } else {
         clean_compiler_family(config, &paths.target)?;
     }
-    for entry in std::fs::read_dir(&context).map_err(|e| Error::new("SAIL3104", e.to_string()))? {
-        let entry = entry.map_err(|e| Error::new("SAIL3104", e.to_string()))?;
-        let name = entry.file_name();
-        if name != "runs" && name != OBSERVATION_STARTED {
-            remove(&entry.path())?;
+    for member in &marked {
+        match std::fs::read_dir(member) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(io(error)),
+            Ok(entries) => {
+                for entry in entries {
+                    let entry = entry.map_err(io)?;
+                    let name = entry.file_name();
+                    if name != "runs" && name != OBSERVATION_STARTED {
+                        remove(&entry.path())?;
+                    }
+                }
+            }
         }
     }
-    std::fs::create_dir_all(&paths.receipts).map_err(|e| Error::new("SAIL3104", e.to_string()))?;
-    paths.invocation_slot =
-        super::invocation_slots::prepare(&context, &config.workspace, &config.args);
-    remove(&marker)?;
+    std::fs::create_dir_all(&paths.receipts).map_err(io)?;
+    if marked.contains(&context) {
+        paths.invocation_slot =
+            super::invocation_slots::prepare(&context, &config.workspace, &config.args);
+    }
+    for member in &marked {
+        remove(&member.join(OBSERVATION_STARTED))?;
+    }
     Ok(true)
 }
 
@@ -5627,6 +5650,66 @@ mod tests {
         assert!(super::super::source_inputs::load(&source_state, paths.input_state.exists()).1);
         // A repeated discard finds nothing left to discard.
         assert!(!discard_interrupted_observation(&config, &mut paths)?);
+        drop(ownership);
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn interrupted_first_observation_is_discarded_by_every_context_of_the_family()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
+        // ADR 0110: contexts that differ only by package selection share one
+        // compiler family and its Cargo target, so a first observation of
+        // one context interrupted inside Cargo is discarded by the next run of
+        // any context of the family, not only by the context that was marked.
+        let all = context_hashes(&[], None, &[], &[])?;
+        let selected = context_hashes(&["-p".to_owned(), "alpha".to_owned()], None, &[], &[])?;
+        assert_ne!(all.0, selected.0, "distinct proof contexts");
+        assert_eq!(all.1, selected.1, "one compiler family");
+        let root = std::env::temp_dir().join(format!(
+            "sail-interrupted-family-observation-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let mut config = compiler_fixture(&root)?;
+        config.cargo = PathBuf::from("cargo");
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname='interrupted'\nversion='0.1.0'\nedition='2024'\n[lib]\npath='lib.rs'\n",
+        )?;
+        std::fs::write(root.join("lib.rs"), "")?;
+        // Context A's first observation is interrupted inside Cargo.
+        let (a, ownership) = prepare(&config, &root, &all.0, &all.1, "run-a")?;
+        let a_context = a.input_state.parent().ok_or("context")?.to_owned();
+        std::fs::write(a_context.join(OBSERVATION_STARTED), [])?;
+        std::fs::write(&a.input_state, "{}")?;
+        std::fs::write(a.receipts.join("a.json"), "{}")?;
+        let output = a.target.join("debug/deps/libinterrupted.rmeta");
+        std::fs::create_dir_all(output.parent().ok_or("parent")?)?;
+        std::fs::write(&output, "compiled by the interrupted run")?;
+        std::fs::write(a.target.join("CACHEDIR.TAG"), CACHEDIR_TAG)?;
+        drop(ownership);
+        // Context B (`-p alpha`) runs next; it holds no marker of its own.
+        let (mut b, ownership) = prepare(&config, &root, &selected.0, &selected.1, "run-b")?;
+        assert_eq!(a.target, b.target, "the contexts share the family target");
+        let b_context = b.input_state.parent().ok_or("context")?.to_owned();
+        assert!(!b_context.join(OBSERVATION_STARTED).exists());
+        std::fs::write(b.receipts.join("b.json"), "{}")?;
+        assert!(discard_interrupted_observation(&config, &mut b)?);
+        assert!(
+            super::super::store::new_target(&b.target),
+            "no output of the interrupted run can be read by B"
+        );
+        assert!(!a_context.join(OBSERVATION_STARTED).exists());
+        assert!(!a.input_state.exists(), "A reads as never observed");
+        assert!(a_context.join("runs/run-a").is_dir());
+        assert!(!a.receipts.exists(), "no family receipt survives");
+        assert!(
+            b.receipts.is_dir() && std::fs::read_dir(&b.receipts)?.next().is_none(),
+            "B's own receipts are discarded with the target"
+        );
+        assert!(b.run.is_dir(), "B's run keeps its directory");
+        assert!(!discard_interrupted_observation(&config, &mut b)?);
         drop(ownership);
         std::fs::remove_dir_all(root)?;
         Ok(())

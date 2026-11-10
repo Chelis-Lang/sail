@@ -23,7 +23,10 @@ semantic versioning once the API is published.
   run of the same setup (a cancelled job, or a job that preempted the
   service's preparation of a new project) no longer reads Unknown: it discards
   everything the interrupted run left, including the compiler family's Cargo
-  target and its proof receipts, and verifies as a first run (ADR 0110). On
+  target and its proof receipts, and verifies as a first run (ADR 0110). A
+  run of another setup in the same compiler family (for example a different
+  `-p` selection) performs the same discard before it reads the shared
+  target. On
   Linux, the watcher of absent Cargo configuration files drains its kernel
   queue continuously, so unrelated churn in `/tmp` or the home directory no
   longer overflows it during a long proof; an overflow still withholds

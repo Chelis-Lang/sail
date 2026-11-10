@@ -171,7 +171,9 @@ A run that follows an interrupted first run of the same setup (a cancelled
 job, or a job that preempted the service's preparation of a new project) is
 not Unknown for want of the interrupted run's declarations. It discards what
 that run left, including the compiler family's Cargo target and every proof
-receipt of the family, and verifies as a first run (ADR 0110). On Linux, the
+receipt of the family, and verifies as a first run (ADR 0110). Any setup that
+shares the compiler family, for example the same command with a different
+`-p` selection, performs the same discard before it reads the shared target. On Linux, the
 absent-configuration watch drains its queue continuously; an overflow still
 makes the result Unknown. See the [loaded qualification](validation/currentness-under-load.md).
 

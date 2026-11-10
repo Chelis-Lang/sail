@@ -56,20 +56,22 @@ covered.
    `first-observation.started` in the context before it writes the first input
    state, and removes it only after the run's compiler-declared inputs are
    recorded.
-2. **Discard.** A run that finds the marker discards everything the
-   interrupted run could have left, before it reads any context state, in this
-   order:
+2. **Discard.** Every context of a compiler family shares its Cargo target,
+   so every run checks the marker of every context of its family (the
+   family's `contexts` registry) under the family's ownership lock. A run that
+   finds any marker discards everything the interrupted run could have left,
+   before it reads any context state, in this order:
    1. every proof receipt of every context of the same compiler family, so no
       receipt outlives the target it describes (the rule pruning already
       keeps);
    2. the family's Cargo target, by the same whole-family clean as a compiler
       protocol migration (`clean_compiler_family`, which refuses an artifact
       layout Sail does not own);
-   3. every record of this context except its run directories.
+   3. every record of each marked context except its run directories.
 
-   Then it removes the marker and continues as a genuine first observation.
-   The marker is removed last, so a discard that is itself interrupted is
-   repeated in full by the next run. Any failure is an error of the run, never
+   Then it removes the markers and continues; a marked context's next run is
+   a genuine first observation. The markers are removed last, so a discard
+   that is itself interrupted is repeated in full by the next run. Any failure is an error of the run, never
    a relaxed result.
 3. **Reasons.** Every predicate that withholds Current is named: the
    `SAIL3114` note lists them (for example
@@ -97,14 +99,26 @@ covered.
 
 The marker exists from before the first input state is written until after
 the declarations are recorded, so every run that ended in that window leaves
-it. Runs of one family are serialized by its exclusive ownership lock, so no
-other run observes the window. After the discard the context has no records
-and the family target holds no compiled output (or is new), which is exactly
-the state of a context that was never observed in a family whose target was
-never built. A first observation from that state is the one ADR 0023 already
-accepts; nothing the interrupted run produced can be read by it, and no
-receipt of a sibling context can name an output that no longer exists. A
-context without the marker behaves exactly as before, including a missing
+it. Runs of one family are serialized by its exclusive ownership lock, and
+every run of the family checks every member's marker under that lock before
+it reads context state or the target. So no run of the family, of the
+interrupted context or of a sibling context (for example one that differs
+only by `-p`), observes the window or reads the interrupted run's outputs.
+After the discard each marked context has no records except its run
+directories, no context of the family has a receipt, and the family target
+holds no compiled output (or is new). This is not a never-built family: the
+family's build-input export, `compiler-read-origins` and
+`retained-content-v1`, and the non-receipt records of unmarked siblings,
+may remain. None of them is a proof receipt or authorizes a skipped target:
+a family export is consumed before any target mutation (and the interrupted
+first observation already consumed it), the read origins are reuse guards
+that can only cause further cleaning, retained content is restored only
+through its own closed source admission, and a sibling's input and source
+records describe that sibling's own earlier complete observations. A first
+observation from that state is therefore the one ADR 0023 already accepts:
+no compiled output, receipt or declaration of the interrupted run can be read
+by it, and no receipt can name an output that no longer exists. A context
+without the marker behaves exactly as before, including a missing
 record after an earlier complete observation (still Unknown). Reasons,
 continuous draining and the unsourced-check rule only add information or
 withhold reuse; none of them makes any result Current that was not Current

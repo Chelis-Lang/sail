@@ -141,5 +141,6 @@ available.
 
 A first observation that ends after writing the context's input state and
 before recording its compiler-declared inputs is discarded, with the
-family's receipts and Cargo target, before the next run; that run is then a
-genuine first observation. See [ADR 0110](0110-interrupted-first-observation.md).
+family's receipts and Cargo target, before the next run of any context of
+the family; the interrupted context's next run is then a genuine first
+observation. See [ADR 0110](0110-interrupted-first-observation.md).
