@@ -24,7 +24,7 @@ each proposal to state its rlimit headroom.
 | Environment | Native EC2 c7i.8xlarge (32 vCPU), us-west-2, Ubuntu 24.04, one idle lane; pinned Z3 4.16.0 |
 | Sail | release `sail`, `sail-z3`, `sail-conformance` built from main `d45e75eb` (the spike adds no Rust code) |
 | Verus | stock `0.2026.10.18.7d82994` (plain arm and oracle); Sail uses the pinned fork runtime |
-| Tools | `scripts/perf-real.sh` with `SAIL_PERF_SOURCE_PATCH` (timed rows). The ranking and warm-cache screen prototypes are not kept on `main`; they are in PR #709's history (`git fetch origin pull/709/head`, commit `ebd72643`): `scripts/spike-tune-rank.py` blob `35cbad32`, `scripts/spike-tune-screen.sh` blob `7fd95afc` |
+| Tools | `scripts/perf-real.sh` with `SAIL_PERF_SOURCE_PATCH` (timed rows). The ranking and warm-cache screen prototypes are not kept on `main`; they remain in PR #709's history as blobs (`git fetch origin pull/709/head`, then `git cat-file -p` the blob): `scripts/spike-tune-rank.py` `35cbad32f899e1af6437c01c18ecae9a7bfbe58c`, `scripts/spike-tune-screen.sh` `7fd95afc49c4e60fe1b764c1fc81fd9f475531ab` |
 | Raw evidence (outside the repository) | `screen-anvil.tgz` sha256 `944bd34d668bac2d4857607b6172a9a8b062e8832027c48bc39b1b42817645db`; `final-anvil-q3.tgz` sha256 `c262b4f10b7417232cbeabfc75b489dfa1bdc5eb54476355ec12d155c4bf27bb`; IronKV, conformance and 7-thread rows `rest.tgz` sha256 `d29f318a1970cfc60f3dcaeb256ad17b53c268ba13b89f134bc13d9162d55577` |
 
 ## Anvil (`--lib`, `--verify-module vdeployment_controller`)
