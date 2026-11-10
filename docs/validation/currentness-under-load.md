@@ -8,7 +8,7 @@ Current.
 
 | Field | Evidence |
 |---|---|
-| Source | Branch `fix/v030-currentness` at `e69467fe` (PR #704), measured from the synced tree |
+| Source | Branch `fix/v030-currentness` at `e69467fe` (PR #704), measured from the synced tree. The branch was then rebased onto `765a3866`; `git range-diff` shows its code and test commits (`c795bbd6`, `66399247`, `b482047b`) identical to the measured ones, and only the documentation commit changed, in context lines |
 | Runtime | The CI image's validated fork runtime (`SAIL_ENGINE_BUILD`) and pinned Z3, with release `sail` and `sail-z3` built in that image |
 | Environment | Native EC2 c7i.8xlarge, us-west-2, Ubuntu 24.04, inside the `core` CI image. `stress-ng --cpu 14 --vm 2 --vm-bytes 1G` ran on the host throughout, with a load average of 20 to 44. 1,000 create/delete pairs per second ran in the container's `/tmp`, which the absent-configuration watcher watches as a workspace ancestor |
 | Scope | Three `sail serve` services, each fed one job at a time. Service A: 70 `sail new --lib` Cargo projects, then 30 standalone files. Service B: 50 projects submitted 1, 2 or 3 s after `sail new`, preempting the service's preparation. Service C: 25 projects whose first job was cancelled after 5 or 8 s and then resubmitted, then 25 Cargo projects. In services B and C each counted job was followed by an unchanged resubmission; all 75 were Current. All 25 cancelled first jobs ended `cancelled` |
