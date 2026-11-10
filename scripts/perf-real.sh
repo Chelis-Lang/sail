@@ -82,6 +82,8 @@
 #   SAIL_PERF_CORPUS   fetched corpus (default ~/.cache/sail/corpus)
 #   SAIL_PERF_VERUS_ARGS  extra Verus arguments for every run (e.g. "-V spinoff-all")
 #   SAIL_PERF_MACHINE  free-text machine description for the header
+#   SAIL_PERF_SOURCE_PATCH  a `patch -p1` file applied to the pristine
+#                      project copy before any arm runs (kept as source.patch)
 #   SAIL_PERF_VSTD     where the copies' Verus dependencies come from:
 #                      `source` (default) patches them to the pinned Verus
 #                      source on disk; `registry` pins vstd and the verus_*
@@ -428,6 +430,12 @@ EOF
     pin_registry "$patcher/target/release/sail-perf-patcher" "$p"
   fi
   rm -rf "$out/metadata-target"
+  # An optional source patch applied to the pristine copy, so every arm
+  # (stock and Sail) verifies the same patched source.
+  if [ -n "${SAIL_PERF_SOURCE_PATCH:-}" ]; then
+    patch -p1 -d "$p" <"$SAIL_PERF_SOURCE_PATCH" >&2
+    cp "$SAIL_PERF_SOURCE_PATCH" "$out/source.patch"
+  fi
   touch "$p/.sail-perf-ready"
 }
 

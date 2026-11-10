@@ -232,6 +232,7 @@ case "$step" in
     python3 scripts/test-check-acceptance-proofs.py
     python3 scripts/test-check-acceptance-refinements.py
     python3 scripts/test-install.py
+    python3 scripts/test-github-action.py
     python3 scripts/test-stage-temporal-worker.py
     python3 scripts/test-bench-cargo-compare.py
     cargo fmt --all --check
