@@ -146,8 +146,24 @@ the first such unit and code instead of the generic lookup mismatch.
 
 **Evidence.** The spike's opt-in prototype (`7449105b`) served CapybaraKV
 the existing default unit, the same key IronKV uses, in 6 of 6 cold rounds
-(stock 62.16 s, 0.2.0 57.82 s, prototype 36.36 s mean). The implementation's
-rows and controls are in the PR that lands this amendment. A rebuilt `sail`
+(stock 62.16 s, 0.2.0 57.82 s, prototype 36.36 s mean). The implementation
+(`7b3b9746`) on c7i.8xlarge, us-west-2, Ubuntu 24.04, six rotated cold
+rounds per arm, all verdicts identical (CapybaraKV 2060 + 732 verified,
+IronKV 2060 + 313):
+
+| Project | Stock | 0.2.0 | `main` | This change | vstd |
+|---|---:|---:|---:|---:|---|
+| CapybaraKV | 54.10 s | 50.86 s | 50.26 s | 31.71 s | served 6/6 (main 0/6) |
+| IronKV | 37.84 s | 17.31 s | 15.90 s | 15.91 s | served 6/6 (unchanged) |
+
+An earlier build (`1a7bd036`) served 5 of 6 rounds: it chose the left-out
+files before copying, so a foreign crate written by a concurrent compiler in
+between was copied and then had no record. Each file is now decided while
+it is copied. Evidence archive SHA-256:
+`0aad9491704dddb83c978529b2b339adbae14e4987aee31c64b1c580336bc9b7`
+(earlier build:
+`3ba61b7b3770b5367e203546abeb90d581ca47397e21fb62536095e3336b6f27`).
+A rebuilt `sail`
 cannot use a release bundle, because the release index binds the published
 binary, so those rows use the alternate-bundle research mode; measuring
 the staged candidate is a release-qualification item, as is the macOS run.
