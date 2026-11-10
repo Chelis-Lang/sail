@@ -56,6 +56,10 @@ def main():
     tot = next(r for r in c if r.get("phase") == "total")["meter"]
     basis = "measured" if measured else f"extrapolated from {len(samples)} of {len(mutants)} (stratified)"
     nw, nu = fixed_wall + w, fixed_cpu + u
+    ntot = next((r for r in n if r.get("phase") == "total"), None)
+    if measured and ntot:
+        # Every mutant ran: the arm's own total (driver overhead included).
+        nw, nu = ntot["meter"]["wall_s"], ntot["meter"]["cpu_s"]
     print(f"## A4 {camp} against {naive} ({len(mutants)} mutants)\n")
     print(f"naive per-mutant wall: median {statistics.median(s['wall'] for s in samples):.2f} s, "
           f"mean {statistics.mean(s['wall'] for s in samples):.2f} s (n={len(samples)}); "
