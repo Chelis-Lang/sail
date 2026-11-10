@@ -252,6 +252,17 @@ runtime, output controls, hashes and remaining gates.
   compiler and verifier, using cached solver answers where the exact query
   bytes match. The result depends on module layout and the change: a common
   specification can invalidate much more work than a local proof edit.
+- **Edits in a large module.** Verus checks a module's functions in one solver
+  process, and Sail's cached answers depend on everything earlier in that
+  process. A miss therefore re-solves the rest of the module, so editing one
+  function costs about as much as the whole module's shared process. On
+  Anvil that is 88 s against a 35 s floor. Adding
+  `#[verifier::spinoff_prover]` to the expensive functions moves each into its
+  own process, which a sibling edit no longer invalidates. Isolating Anvil's
+  three largest functions cut that edit to 54 s. Measure any such change
+  first. It can make other proofs in the module slower and change how close
+  they come to their rlimit. In the Anvil case, one proof went from 10% to
+  89% of its limit. See the [spike record](validation/tune-isolation.md).
 - **Undo.** Expensive targets can restore a previously verified revision.
   Cheaper targets use ordinary solver caching instead, avoiding the cost of
   retaining every compiled revision. See [instant revert](instant-revert.md).

@@ -99,7 +99,37 @@ IRONKV
 
 ## Decision for v0.3.0
 
-DECISION
+**`sail tune` (rank, propose spinoff, validate in an owned copy, emit a
+patch) is not built for v0.3.0.**
+
+- Ranking cannot pick the set. The top-ranked function (L818) made the edit
+  40% slower on its own. The second (L711) cannot be isolated at all, because
+  its own process exceeds its rlimit. The passing set came from screening
+  sets. Each candidate costs one module re-verification plus edit probes,
+  and the remaining functions' costs change with every set. A tool would be a
+  search over sets with full validation per candidate, not a ranking.
+- The plan requires each proposal to state its rlimit headroom. The only
+  passing Anvil set moves L1106 from 10% to 89% of its limit. Any sensible
+  headroom gate (no new near-limit flag, or a 50% to 80% ceiling) rejects it.
+  Accepting it trades proof robustness for edit latency. That is the
+  project author's call, made with the numbers in hand, not a patch a tool
+  should propose.
+- The gain is concentrated. In the evaluated corpus, only Anvil's
+  `resource_match` shows a large gap. IronKV's heaviest module leaves at most
+  about 2 s per edit.
+
+**`--isolation auto` has no case.** Isolation changes the solver input. Its
+effects run in both directions: L711 fails when isolated, and isolating L818
+made an edit slower. Neither the verdict nor the speed of an automatic
+isolation can be known without running it. As an opt-in mode it would need
+separate cache keys and a row in `docs/divergences.md`, all for one project's
+benefit.
+
+What remains: the [performance guide](../performance.md) describes the
+manual technique and its headroom risk. The spike scripts stay available
+for anyone measuring it. Making a shared-process miss cheaper (#158) still
+requires reusing a solver state without replaying the prefix. Isolation does
+not address that.
 
 ## Reproduction
 
