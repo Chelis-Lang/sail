@@ -124,12 +124,7 @@ pub fn render(header: &str, edits: &[Edit]) -> String {
 /// The comment lines at the top of a catalogue.
 #[must_use]
 pub fn header_of(text: &str) -> String {
-    let mut out = String::new();
-    for l in text.lines().take_while(|l| l.starts_with('#')) {
-        out.push_str(l);
-        out.push('\n');
-    }
-    out
+    sail_verus::mutate::header_of(text)
 }
 
 /// How stock Verus ended on one run.
