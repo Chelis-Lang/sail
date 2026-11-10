@@ -281,6 +281,93 @@ fn lookups(
     Some((directories, externs))
 }
 
+/// Which regular files in a lookup directory a native capture may leave out
+/// of its private copy (ADR 0090's 2026-11-10 amendment, #563).
+///
+/// rustc finds a crate it looks up by name among the files of its search
+/// directories whose names start with `lib` and that name, then reads each
+/// candidate's metadata. A file is copied when `produced` holds for it, or
+/// when it is such a candidate for any of `names` or for the crate stem of a
+/// produced artifact; a candidate that is not produced refuses the capture.
+/// Only the other files, which no lookup of these names can consider, are
+/// left out. The compiler sees the private directory alone, so a left-out
+/// file cannot be loaded, and every check over the copied inputs is
+/// unchanged.
+pub(super) struct Membership<'a> {
+    /// This run's successful producer record or running mark exists.
+    pub produced: &'a dyn Fn(&Path) -> bool,
+    /// Crate names the unit's compiler may look up: the admitted closure's
+    /// crates and the sysroot crates rustc resolves by bare name.
+    pub names: &'a BTreeSet<String>,
+}
+
+impl Membership<'_> {
+    /// The lookup names now (with every produced artifact's crate stem), or
+    /// `None` when an artifact a lookup could consider was not produced.
+    fn lookup_names(
+        &self,
+        directories: &BTreeSet<PathBuf>,
+        unit: &Unit,
+    ) -> Option<BTreeSet<String>> {
+        let mut files = Vec::new();
+        let mut names = self.names.clone();
+        for directory in directories {
+            let mut entries = 0usize;
+            for entry in std::fs::read_dir(directory).ok()? {
+                let entry = entry.ok()?;
+                let path = entry.path();
+                if unit.owns(&path) {
+                    continue;
+                }
+                entries += 1;
+                if entries > ENTRY_LIMIT {
+                    return None;
+                }
+                if !entry.file_type().ok()?.is_file() {
+                    continue;
+                }
+                if artifact(&path) && (self.produced)(&path) {
+                    names.insert(crate_stem(&path)?);
+                } else {
+                    files.push(path);
+                }
+            }
+        }
+        files
+            .iter()
+            .all(|path| !artifact(path) || !candidate(path, &names))
+            .then_some(names)
+    }
+
+    /// Whether the capture leaves this regular file out. Decided per file
+    /// while copying, so a foreign crate that another compiler writes after
+    /// the names were read is still left out, and a later closure-named file
+    /// is copied and must then establish its provenance.
+    fn left_out(&self, path: &Path, names: &BTreeSet<String>) -> bool {
+        !candidate(path, names) && (!artifact(path) || !(self.produced)(path))
+    }
+}
+
+/// The crate name in a Cargo output file name, `lib<crate>-<hash>.<ext>`.
+fn crate_stem(path: &Path) -> Option<String> {
+    let name = path.file_name()?.to_str()?;
+    let name = name.strip_prefix("lib").unwrap_or(name);
+    let stem = name.split(['-', '.']).next()?;
+    (!stem.is_empty()).then(|| stem.to_owned())
+}
+
+/// Whether a lookup of any of `names` could consider this file. Anything
+/// that is not plain UTF-8 is treated as a candidate.
+fn candidate(path: &Path, names: &BTreeSet<String>) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return true;
+    };
+    let name = name.strip_prefix("lib").unwrap_or(name);
+    names
+        .iter()
+        .any(|crate_name| name.starts_with(crate_name.as_str()))
+}
+
 /// What a capture does with a directory inside a lookup directory.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Scratch {
@@ -288,6 +375,17 @@ enum Scratch {
     Refuse,
     /// Leave it out of the private copy.
     Skip,
+}
+
+/// Why [`Snapshot::member_inputs_admitted`] refused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MemberRefusal {
+    /// The lookup directories or unit arguments are not admitted at all.
+    Lookup,
+    /// An artifact a crate lookup could consider has no producer provenance.
+    Unproduced,
+    /// An explicit `--extern` names a file outside the membership.
+    ForeignExtern,
 }
 
 /// Own every copied directory through compiler completion/publication.
@@ -458,39 +556,51 @@ impl Snapshot {
         Self::capture_with(owned_target, root, args, Scratch::Skip)
     }
 
-    /// A cheap refusal before compiler/source hashing. This never supplies a
-    /// graph or admission: the ordinary capture and complete final checks still
-    /// decide which exact bytes the compiler sees and which may be certified.
-    pub(super) fn pipelined_inputs_admitted(
+    /// [`Self::capture_pipelined`] over only the lookup [`Membership`]: files
+    /// no lookup of the unit's crate names can consider are neither copied
+    /// nor named in the inventory. Every remaining check is unchanged, and an
+    /// explicit `--extern` that is left out refuses the capture.
+    pub(super) fn capture_members(
+        owned_target: &Path,
+        root: &Path,
+        args: &[OsString],
+        membership: &Membership<'_>,
+    ) -> Option<Self> {
+        let target = owned_target.canonicalize().ok()?;
+        let unit = Unit::parse(args)?;
+        let (directories, _) = lookups(&target, &unit, args)?;
+        let names = membership.lookup_names(&directories, &unit)?;
+        Self::capture_excluding(owned_target, root, args, Scratch::Skip, &|path| {
+            membership.left_out(path, &names)
+        })
+    }
+
+    /// A cheap refusal before compiler/source hashing, for
+    /// [`Self::capture_members`]: a lookup candidate lacks this run's
+    /// producer provenance, or an explicit `--extern` is outside the
+    /// membership. This never supplies a graph or admission: the capture and
+    /// complete final checks still decide which exact bytes the compiler
+    /// sees and which may be certified.
+    pub(super) fn member_inputs_admitted(
         owned_target: &Path,
         args: &[OsString],
-        admitted: impl Fn(&Path) -> bool,
-    ) -> bool {
-        let check = || -> Option<()> {
-            let target = owned_target.canonicalize().ok()?;
-            let unit = Unit::parse(args)?;
-            let (directories, _) = lookups(&target, &unit, args)?;
-            (!directories.is_empty() && directories.len() <= 8).then_some(())?;
-            for directory in directories {
-                let mut entries = 0;
-                for entry in std::fs::read_dir(directory).ok()? {
-                    let entry = entry.ok()?;
-                    if unit.owns(&entry.path()) {
-                        continue;
-                    }
-                    entries += 1;
-                    (entries <= ENTRY_LIMIT).then_some(())?;
-                    let kind = entry.file_type().ok()?;
-                    if kind.is_dir() {
-                        continue;
-                    }
-                    (kind.is_file() && (!artifact(&entry.path()) || admitted(&entry.path())))
-                        .then_some(())?;
-                }
-            }
-            Some(())
-        };
-        check().is_some()
+        membership: &Membership<'_>,
+    ) -> Result<(), MemberRefusal> {
+        let target = owned_target
+            .canonicalize()
+            .map_err(|_| MemberRefusal::Lookup)?;
+        let unit = Unit::parse(args).ok_or(MemberRefusal::Lookup)?;
+        let (directories, externs) = lookups(&target, &unit, args).ok_or(MemberRefusal::Lookup)?;
+        if directories.is_empty() || directories.len() > 8 {
+            return Err(MemberRefusal::Lookup);
+        }
+        let names = membership
+            .lookup_names(&directories, &unit)
+            .ok_or(MemberRefusal::Unproduced)?;
+        if externs.iter().any(|path| membership.left_out(path, &names)) {
+            return Err(MemberRefusal::ForeignExtern);
+        }
+        Ok(())
     }
 
     fn capture_with(
@@ -498,6 +608,16 @@ impl Snapshot {
         root: &Path,
         args: &[OsString],
         scratch: Scratch,
+    ) -> Option<Self> {
+        Self::capture_excluding(owned_target, root, args, scratch, &|_| false)
+    }
+
+    fn capture_excluding(
+        owned_target: &Path,
+        root: &Path,
+        args: &[OsString],
+        scratch: Scratch,
+        left_out: &dyn Fn(&Path) -> bool,
     ) -> Option<Self> {
         let target = owned_target.canonicalize().ok()?;
         let unit = Unit::parse(args)?;
@@ -544,6 +664,9 @@ impl Snapshot {
                 entries += 1;
                 let kind = entry.file_type().ok()?;
                 if scratch == Scratch::Skip && kind.is_dir() && entries <= ENTRY_LIMIT {
+                    continue;
+                }
+                if kind.is_file() && entries <= ENTRY_LIMIT && left_out(&entry.path()) {
                     continue;
                 }
                 if !kind.is_file() || !names.insert(entry.file_name()) || entries > ENTRY_LIMIT {
@@ -1016,6 +1139,10 @@ mod tests {
         Ok(())
     }
 
+    fn names(names: &[&str]) -> BTreeSet<String> {
+        names.iter().map(|name| (*name).to_owned()).collect()
+    }
+
     #[test]
     fn unadmitted_lookup_refuses_before_any_capture_without_changing_the_graph()
     -> Result<(), Box<dyn std::error::Error>> {
@@ -1023,22 +1150,193 @@ mod tests {
         let deps = root.0.join("target/debug/deps");
         let admitted = deps.join("libvstd-abcd.rmeta");
         std::fs::write(&admitted, b"admitted metadata")?;
-        std::fs::write(deps.join("libforeign-abcd.rlib"), b"foreign bytes")?;
+        // A closure-named library without this run's provenance refuses.
+        std::fs::write(deps.join("libbuiltin-abcd.rlib"), b"closure bytes")?;
         let target = root.0.join("target");
-        assert!(!Snapshot::pipelined_inputs_admitted(
-            &target,
-            &root.args(),
-            |path| path == admitted
-        ));
-        assert!(Snapshot::pipelined_inputs_admitted(
-            &target,
-            &root.args(),
-            |_| true
-        ));
-        let graph = Snapshot::capture_pipelined(&target, &root.0.join("all"), &root.args())
+        let lookup = names(&["vstd", "builtin"]);
+        let only_vstd = |path: &Path| path == admitted;
+        let membership = Membership {
+            produced: &only_vstd,
+            names: &lookup,
+        };
+        assert_eq!(
+            Snapshot::member_inputs_admitted(&target, &root.args(), &membership),
+            Err(MemberRefusal::Unproduced)
+        );
+        assert!(
+            Snapshot::capture_members(&target, &root.0.join("refused"), &root.args(), &membership)
+                .is_none()
+        );
+        assert!(!root.0.join("refused").exists());
+        let every = |_: &Path| true;
+        let all = Membership {
+            produced: &every,
+            names: &lookup,
+        };
+        assert_eq!(
+            Snapshot::member_inputs_admitted(&target, &root.args(), &all),
+            Ok(())
+        );
+        let graph = Snapshot::capture_members(&target, &root.0.join("all"), &root.args(), &all)
             .ok_or("complete graph")?;
         assert_eq!(graph.original_inputs().len(), 2);
         assert!(graph.intact());
+        Ok(())
+    }
+
+    /// #563: a crate outside every lookup name is neither copied nor named;
+    /// the graph equals the one without it.
+    #[test]
+    fn foreign_crates_are_never_copied_and_leave_the_graph_unchanged()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("members-foreign")?;
+        let deps = root.0.join("target/debug/deps");
+        let vstd = deps.join("libvstd-abcd.rmeta");
+        std::fs::write(&vstd, b"admitted metadata")?;
+        std::fs::write(deps.join("vstd-abcd.d"), b"dep-info")?;
+        let target = root.0.join("target");
+        let lookup = names(&["vstd", "std", "core"]);
+        let produced = |path: &Path| path == vstd;
+        let membership = Membership {
+            produced: &produced,
+            names: &lookup,
+        };
+        let before =
+            Snapshot::capture_members(&target, &root.0.join("before"), &root.args(), &membership)
+                .ok_or("graph without foreign crates")?;
+        for name in [
+            "librand_core-1234.rlib",
+            "librand_core-1234.rmeta",
+            "libbindgen-1234.so",
+            "rand_core-1234.d",
+            "libregex-1234.rlib",
+        ] {
+            std::fs::write(deps.join(name), b"foreign bytes")?;
+        }
+        assert_eq!(
+            Snapshot::member_inputs_admitted(&target, &root.args(), &membership),
+            Ok(())
+        );
+        let after =
+            Snapshot::capture_members(&target, &root.0.join("after"), &root.args(), &membership)
+                .ok_or("graph with foreign crates")?;
+        assert_eq!(after.key(), before.key());
+        assert!(after.intact());
+        let copied = std::fs::read_dir(root.0.join("after/0"))?
+            .map(|entry| entry.map(|entry| entry.file_name()))
+            .collect::<std::io::Result<Vec<_>>>()?;
+        assert_eq!(copied, [OsString::from("libvstd-abcd.rmeta")]);
+        assert_eq!(
+            after.inventory.directories[&deps],
+            BTreeSet::from([
+                OsString::from("libvstd-abcd.rmeta"),
+                OsString::from("vstd-abcd.d")
+            ])
+        );
+        // The unnarrowed capture still copies every artifact.
+        let full = Snapshot::capture_pipelined(&target, &root.0.join("full"), &root.args())
+            .ok_or("full graph")?;
+        assert_eq!(full.original_inputs().len(), 5);
+        Ok(())
+    }
+
+    /// A foreign crate another compiler writes after the lookup names were
+    /// read is still left out (the 2026-11-10 lane's one missed round).
+    #[test]
+    fn foreign_crate_written_during_capture_is_left_out() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let root = Root::new("members-late-foreign")?;
+        let deps = root.0.join("target/debug/deps");
+        let vstd = deps.join("libvstd-abcd.rmeta");
+        std::fs::write(&vstd, b"admitted metadata")?;
+        let target = root.0.join("target");
+        let lookup = names(&["vstd"]);
+        let late = deps.join("librand_core-1234.rmeta");
+        // The producer check runs per copied artifact, after the names were
+        // read: write the foreign crate from inside it.
+        let produced = |path: &Path| path == vstd;
+        let membership = Membership {
+            produced: &produced,
+            names: &lookup,
+        };
+        // As in capture_members, with the foreign crate written between the
+        // names pass and the copying pass.
+        let unit = Unit::parse(&root.args()).ok_or("unit")?;
+        let names = membership
+            .lookup_names(&BTreeSet::from([deps.clone()]), &unit)
+            .ok_or("names")?;
+        std::fs::write(&late, b"foreign bytes")?;
+        let graph = Snapshot::capture_excluding(
+            &target,
+            &root.0.join("late"),
+            &root.args(),
+            Scratch::Skip,
+            &|path| membership.left_out(path, &names),
+        )
+        .ok_or("graph")?;
+        assert!(late.is_file());
+        assert_eq!(graph.original_inputs().keys().collect::<Vec<_>>(), [&vstd]);
+        assert!(graph.intact());
+        Ok(())
+    }
+
+    /// A file a lookup of any member name could consider stays a candidate:
+    /// copied with provenance, refusing without it, never left out.
+    #[test]
+    fn lookup_candidates_by_prefix_are_kept_or_refuse() -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("members-prefix")?;
+        let deps = root.0.join("target/debug/deps");
+        let vstd = deps.join("libvstd-abcd.rmeta");
+        std::fs::write(&vstd, b"admitted metadata")?;
+        let target = root.0.join("target");
+        let lookup = names(&["std", "core"]);
+        let produced = |path: &Path| path == vstd;
+        let membership = Membership {
+            produced: &produced,
+            names: &lookup,
+        };
+        // A produced artifact's own crate stem joins the names.
+        for (name, refused) in [
+            ("libvstd_extra-1234.rlib", true),
+            ("libcore_foundation-1234.rlib", true),
+            ("libstd-1234.rlib", true),
+            ("libvst-1234.rlib", false),
+        ] {
+            let path = deps.join(name);
+            std::fs::write(&path, b"unproduced")?;
+            assert_eq!(
+                Snapshot::member_inputs_admitted(&target, &root.args(), &membership).is_err(),
+                refused,
+                "{name}"
+            );
+            std::fs::remove_file(path)?;
+        }
+        Ok(())
+    }
+
+    /// An explicit `--extern` outside the membership refuses, never served
+    /// from a narrower directory.
+    #[test]
+    fn extern_outside_the_membership_refuses() -> Result<(), Box<dyn std::error::Error>> {
+        let root = Root::new("members-extern")?;
+        let deps = root.0.join("target/debug/deps");
+        std::fs::write(deps.join("libvstd-abcd.rmeta"), b"unproduced metadata")?;
+        let target = root.0.join("target");
+        let lookup = names(&["builtin"]);
+        let nothing = |_: &Path| false;
+        let membership = Membership {
+            produced: &nothing,
+            names: &lookup,
+        };
+        assert_eq!(
+            Snapshot::member_inputs_admitted(&target, &root.args(), &membership),
+            Err(MemberRefusal::ForeignExtern)
+        );
+        assert!(
+            Snapshot::capture_members(&target, &root.0.join("extern"), &root.args(), &membership)
+                .is_none()
+        );
+        assert!(!root.0.join("extern").exists());
         Ok(())
     }
 

@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The shipped vstd proof now applies to projects whose target directory also
+  holds crates outside vstd's dependency closure, such as CapybaraKV (#563).
+  Each closure unit's private lookup copy keeps only the files a lookup of its
+  crate names could consider; every provenance check is unchanged (ADR 0090,
+  2026-11-10 amendment). When a closure unit still cannot establish its
+  compiler provenance, the `SAIL3138` note names the unit and a stable reason
+  code instead of the generic lookup mismatch, and the `SAIL_SHIPPED_TRACE`
+  events carry the same codes.
 - Decided how `sail mutate`, planned for v0.3.0, will count mutants (ADR
   0111). A Verus rejection counts as a detection when it is attributed to the
   mutated function, is not only a resource limit, repeats on every run, and
@@ -53,6 +61,17 @@ semantic versioning once the API is published.
   diagnostic. `--baseline` adds what changed against an earlier document, or
   why the two are not comparable. New error `SAIL0908`. See
   `docs/ci-reports.md`.
+- Add a GitHub Action, `uses: Chelis-Lang/sail/action@<tag>`. It installs
+  the selected Sail release with its attestation checked, restores file
+  commit times (except for files changed since the commit a restored Cargo
+  build came from, so Cargo cannot trust that build), restores and saves solver replies, proof receipts and Cargo
+  downloads under keys bound to the runner, Sail version, toolchains and
+  lockfiles, runs `sail verify --output json`, writes the `sail report` job
+  summary, annotations and SARIF (optionally uploaded to code scanning and
+  compared with a baseline result from another run), and ends with the exit
+  code of `sail verify`. It needs a release with `sail report`. The action is
+  in a subdirectory, so it cannot be listed on GitHub Marketplace. The CI
+  cache walkthrough now runs through it. See `docs/github-action.md`.
 - `sail jobs result` leads a failing target's line with its failures (`1
   failed, 3126 passed by Verus's totals (not attributed one by one), 0
   unknown`, not `0 verified, 1 failed, …`). A target whose crate stopped
@@ -63,6 +82,18 @@ semantic versioning once the API is published.
   whose functions include provisional verdicts ends its counts with `, N
   provisional (not verified)`. Other passing lines are unchanged, and so are
   `sail verify`'s output and the JSON documents.
+- Internal: the mutation catalogue generator moved from xtask into
+  `sail-verus` (`sail_verus::mutate`, internal to the workspace) for the
+  planned `sail mutate`; `cargo xtask gen-mutants` is its command line, and
+  `cargo xtask gen-mutants --check` requires every committed catalogue to
+  regenerate byte for byte (run by the local standard and deep conformance
+  tiers). Generator version 3 reads `spec(checked)`/`proof(axiom)` and mode
+  attributes and no longer takes a brace in a `requires`/`ensures` clause for
+  the function body; the four catalogues in `corpus/mutants/` are regenerated
+  and settled again by the stock oracle. A fail-closed exec-only planner
+  (`sail_verus::mutate::exec`) adds `loop-bound`, `off-by-one`,
+  `swapped-args`, `dropped-else` and `early-return` mutations of executable
+  code only. No command or output changes.
 - `scripts/perf-host.sh up` launches the arm64 Ubuntu image for a Graviton
   instance type and the amd64 image otherwise, and installs `unzip` on the host
   for `cargo xtask fetch-verus`. An `up` that fails before an instance exists

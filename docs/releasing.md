@@ -44,8 +44,10 @@ the `sail` executable and
 installs `sail-solve-z3` beside it. Contributor tools and the private temporal
 extension remain unpublished.
 
-Before each release, set the workspace version and all exact internal
-dependency requirements together, update both workspace locks, and synchronize
+Before each release, set the workspace version, the GitHub Action's
+`sail-version` default in `action/action.yml` (`scripts/test-github-action.py`
+requires the two to agree) and all exact internal dependency requirements
+together, update both workspace locks, and synchronize
 package-local resources after changing their authoritative pins or policies:
 
 ```sh

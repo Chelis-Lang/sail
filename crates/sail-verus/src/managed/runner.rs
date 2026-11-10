@@ -4761,9 +4761,16 @@ fn run_recorded(
     {
         // Verus flags forwarded to vstd are keyed, apart from one raised
         // `--rlimit` (ADR 0060), so they explain the miss before the closure.
+        // A closure unit's recorded decline names the provenance refusal
+        // that otherwise reads only as a lookup mismatch (#563).
         shipped_miss.get_or_insert_with(|| {
             super::shipped::forwarded_miss(&config.args)
                 .or_else(|| super::shipped::closure_miss(&data))
+                .or_else(|| {
+                    shipped_plan
+                        .as_ref()
+                        .and_then(super::shipped::native::declined_miss)
+                })
                 .unwrap_or_else(|| super::shipped::LOOKUP_MISS.to_owned())
         });
     }

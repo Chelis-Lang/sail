@@ -52,7 +52,9 @@ The pilot itself had flaws that this decision fixes:
   candidate site inside `verus! { ... }`, orders the candidates of each class
   by SHA-256 of the seed, project, file, class, offset and replacement, and
   takes up to `K` per class, at most one per function first. It adds no
-  dependency (the lexer is in `xtask/src/mutants/`) and no crate-graph edge.
+  third-party dependency and no crate-graph edge: the generator is
+  `sail_verus::mutate` (moved from `xtask/src/mutants/` for `sail mutate`;
+  xtask already depended on `sail-verus`), and xtask is its command line.
 - A mutant is one exact replacement in the `corpus/edits.toml` format
   (`find` is the smallest window of whole lines around the change that occurs
   exactly once in the file), so `sail-bench edit --edits` and the mutation
@@ -60,8 +62,14 @@ The pilot itself had flaws that this decision fixes:
   with a sidecar `<name>.meta.json` recording the generator version, seed,
   base commit, the sha256 of the generated catalogue, the candidate-site
   counts and, per mutant, its class, function, mode and location.
-- The same seed, generator version (`gen-mutants 2`) and base commit give a
+- The same seed, generator version (`gen-mutants 3`) and base commit give a
   byte-identical generated catalogue; its digest is in the sidecar.
+  `cargo xtask gen-mutants --check` regenerates every committed catalogue
+  from its sidecar, replays the recorded oracle and requires the committed
+  bytes. Version 3 corrected version 2's mode and body placement
+  (`spec(checked)` read as exec; a brace in a `requires`/`ensures` clause
+  taken for the body), and the catalogues were regenerated and settled
+  again.
 - Generated mutants carry `expected = "pending"`. The workloads refuse
   pending mutants.
 

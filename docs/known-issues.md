@@ -167,6 +167,18 @@ Current numbers are in [performance](performance.md).
 
 ## Product limits
 
+- **A project toolchain installed on first use can fail verification.** On
+  a fresh GitHub-hosted Ubuntu 24.04 runner, `sail verify` in a project whose
+  `rust-toolchain.toml` named an uninstalled toolchain (1.99.0 with
+  `clippy`) exited 2 with `SAIL3104`, quoting rustup's
+  `component download failed … could not rename 'downloaded' file`, while
+  rustup installed that toolchain on first use (Sail 0.2.0 archive with this
+  branch's `sail`, job log sha256
+  `cd70f95917cd44affa779d24a9f3ad46b81ba5d91b16fbca94c99a6b9c21b9f2`). The
+  cause is not established. Installing the toolchain first
+  (`rustup toolchain install` in the project) avoids it; the
+  [GitHub Action](github-action.md) does that.
+
 - **Setups verified without proof reuse** (`SAIL3112`). These verify exactly
   as plain `cargo verus verify` does, with solver caching, but record and
   reuse no proof receipts
