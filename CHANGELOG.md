@@ -22,6 +22,27 @@ semantic versioning once the API is published.
   inconclusive, unviable and unsupported mutants listed separately. Detected
   means the specification and its proof reject the change, not that the
   specification provably forbids it. Nothing changes in `sail verify`.
+- A result that is not Current names why. The `SAIL3114` note lists every
+  failing currentness predicate, for example `SAIL3114: inputs could not be
+  confirmed unchanged (absent-queue-overflow); re-run for a current result`,
+  and a `currentness-decision` job event carries the same reasons. A service
+  read-back that withholds Current is named `readback-unconfirmed`.
+- Fewer correct results read Unknown (#696). A run after an interrupted first
+  run of the same setup (a cancelled job, or a job that preempted the
+  service's preparation of a new project) no longer reads Unknown: it discards
+  everything the interrupted run left, including the compiler family's Cargo
+  target and its proof receipts, and verifies as a first run (ADR 0110). A
+  run of another setup in the same compiler family (for example a different
+  `-p` selection) performs the same discard before it reads the shared
+  target. On
+  Linux, the watcher of absent Cargo configuration files drains its kernel
+  queue continuously, so unrelated churn in `/tmp` or the home directory no
+  longer overflows it during a long proof; an overflow still withholds
+  Current.
+- A target whose report has a check with no `source` (an answer the cache
+  never recorded) is not reused or published as a reusable proof; its next run
+  verifies it again (#683). Standalone files verified by the service now
+  record per-check sources: they set `SAIL_PROVENANCE_DIR` (#684).
 - The next release is v0.3.0, and it is planned as a breaking release (ADR
   0109). The experimental neutral-contract surfaces published in 0.2.0 are
   scheduled for removal in it: the `sail-contracts`, `sail-contracts-macros`

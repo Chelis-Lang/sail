@@ -539,6 +539,7 @@ fn run_with_engine(
     let trace = run.join("trace");
     std::fs::create_dir_all(&trace).map_err(|e| fail(e.to_string()))?;
     command.env("SAIL_TRACE_DIR", &trace);
+    let provenance_dir = session_records(&mut command, &run, config.socket.is_some())?;
     let logs = run.join("logs");
     let log_request = config.attribution_logs && !args.iter().any(|arg| arg.starts_with("--log"));
     if log_request {
@@ -585,7 +586,7 @@ fn run_with_engine(
         })
         .flatten();
     let provenance = if config.socket.is_some() {
-        attribution::Provenance::Records(attribution::read_session_records(&trace))
+        attribution::Provenance::Records(attribution::read_session_records(&provenance_dir))
     } else {
         attribution::Provenance::NoCache
     };
@@ -652,6 +653,9 @@ fn run_with_engine(
         && namespace_match
         && closing_match
         && runner::runtime_current(&config.cache, &context);
+    // A report with a check the cache never recorded is the run's genuine
+    // result but never a reusable proof (#683).
+    let sourced = receipts::sourced(&report);
     let complete = output.status.success()
         && receipts::complete(&report)
         && !super::partial(&config.args)
@@ -717,7 +721,7 @@ fn run_with_engine(
             stderr: output.stderr,
         };
         let saved = write_record(&context_path(&config.cache, &context), &record).and_then(|()| {
-            if current && complete && eligible && !config.force {
+            if current && complete && sourced && eligible && !config.force {
                 save_proof(&base, &revision, &record)
             } else {
                 Ok(())
@@ -728,6 +732,20 @@ fn run_with_engine(
         }
     }
     Ok(result)
+}
+
+/// Where the shim writes this run's session records, which join cached
+/// answers to the obligation logs (ADR 0014). The shim writes them only under
+/// `SAIL_PROVENANCE_DIR`; without a cache there are none (#684).
+fn session_records(command: &mut Command, run: &Path, cached: bool) -> Result<PathBuf> {
+    let dir = run.join("provenance");
+    if cached {
+        std::fs::create_dir_all(&dir).map_err(|e| fail(e.to_string()))?;
+        command.env("SAIL_PROVENANCE_DIR", &dir);
+    } else {
+        command.env_remove("SAIL_PROVENANCE_DIR");
+    }
+    Ok(dir)
 }
 
 fn write_record(path: &Path, record: &Record) -> Result<()> {
@@ -955,6 +973,44 @@ mod tests {
         ));
         std::fs::create_dir_all(&path).map_err(|e| fail(e.to_string()))?;
         Ok(path)
+    }
+    #[test]
+    fn cached_runs_direct_session_records_to_the_records_they_read() -> TestResult {
+        // #684: the shim writes session records only under
+        // `SAIL_PROVENANCE_DIR`; standalone runs never set it and read the
+        // trace directory, so every check of a cached run had no source.
+        let run = temp("provenance")?;
+        let configured = |command: &Command| {
+            command
+                .get_envs()
+                .find(|(key, _)| *key == "SAIL_PROVENANCE_DIR")
+                .map(|(_, value)| value.map(PathBuf::from))
+        };
+        let mut cached = Command::new("verus");
+        let dir = session_records(&mut cached, &run, true)?;
+        assert_eq!(configured(&cached), Some(Some(dir.clone())));
+        assert!(dir.is_dir());
+        let record = attribution::SessionRecord {
+            version: 1,
+            input_sha256: "session".into(),
+            replies_served: 2,
+            solver_started: false,
+        };
+        std::fs::write(
+            dir.join("1-1.json"),
+            format!(
+                "{{\"version\":{},\"input_sha256\":\"{}\",\"replies_served\":{},\"solver_started\":{}}}",
+                record.version, record.input_sha256, record.replies_served, record.solver_started
+            ),
+        )?;
+        assert_eq!(attribution::read_session_records(&dir).len(), 1);
+        // Without a cache an inherited value is removed, not forwarded.
+        let mut uncached = Command::new("verus");
+        uncached.env("SAIL_PROVENANCE_DIR", "/elsewhere");
+        session_records(&mut uncached, &run, false)?;
+        assert_eq!(configured(&uncached), Some(None));
+        std::fs::remove_dir_all(run)?;
+        Ok(())
     }
     #[test]
     fn file_selection_does_not_reinterpret_cargo_or_verus_option_values() {

@@ -74,7 +74,9 @@ is not a result about the formula.
 
 For Verus results, check scope and currentness before reporting success. Current
 evidence matches the present inputs; Historical evidence no longer matches
-them; Unknown does not establish a current proof. Current describes freshness,
+them; Unknown does not establish a current proof. An Unknown result's
+`SAIL3114` note names the checks that failed in parentheses; re-run once for a
+current result. Current describes freshness,
 not success: read the verdict too. Verify again after
 further edits. An SMT answer concerns its submitted formula; Verus checks
 whether the Rust implementation meets its contracts.

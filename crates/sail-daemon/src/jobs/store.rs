@@ -292,8 +292,10 @@ fn apply_currentness(project: &mut sail_api::project::ProjectResult, currentness
         Currentness::Unknown => sail_api::project::Currentness::Unknown,
     };
     if currentness == Currentness::Unknown && originally_current {
+        // The run itself was Current; the service's read of its inputs
+        // afterwards could not confirm them unchanged (#696).
         project.notes.push(
-            "SAIL3114: inputs could not be confirmed unchanged; re-run for a current result"
+            "SAIL3114: inputs could not be confirmed unchanged (readback-unconfirmed); re-run for a current result"
                 .to_owned(),
         );
     }
@@ -610,6 +612,12 @@ mod currentness_note_tests {
                 .notes
                 .last()
                 .is_some_and(|note| note.starts_with("SAIL3114: inputs could not be confirmed"))
+        );
+        assert!(
+            report
+                .notes
+                .last()
+                .is_some_and(|note| note.contains("(readback-unconfirmed)"))
         );
         report.currentness = original.currentness;
         report.notes = original.notes.clone();

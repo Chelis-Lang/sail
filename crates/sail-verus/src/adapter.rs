@@ -1169,12 +1169,16 @@ fn complete_origin_observation(
 
 /// Whether a completed report may publish a whole-target proof receipt. A
 /// stock fallback after an engine fault reports the stock verdicts but never
-/// manufactures a successful engine receipt (ADR 0027).
+/// manufactures a successful engine receipt (ADR 0027). A report with a check
+/// whose answer the cache never recorded is not reusable either (#683).
 fn receipt_success(report: &sail_api::output::Report, report_args: &[String]) -> bool {
     let fallback = report.engine.as_ref().is_some_and(|engine| {
         engine.established_by == sail_api::output::EngineEstablishment::StockFallback
     });
-    crate::managed::receipt_complete(report) && !crate::managed::focused(report_args) && !fallback
+    crate::managed::receipt_complete(report)
+        && crate::managed::receipt_sourced(report)
+        && !crate::managed::focused(report_args)
+        && !fallback
 }
 
 /// The command describes this package's effective proof mode. Cargo can send

@@ -127,12 +127,13 @@ impl Invocation {
     /// and no source-engine fallback. It never turns `success` into true.
     pub(super) fn successful_for(&self, partial_args: Option<&[String]>) -> bool {
         match partial_args {
-            None => self.success && complete(&self.report),
+            None => self.success && complete(&self.report) && sourced(&self.report),
             Some(args) => {
                 super::runner::focused(args)
                     && self.report.command == args
                     && self.report.engine.is_none()
                     && complete(&self.report)
+                    && sourced(&self.report)
             }
         }
     }
@@ -334,6 +335,24 @@ pub(crate) fn retire(runtime: &Runtime, identity: &TargetIdentity) -> Result<()>
         }
     }
     Ok(())
+}
+
+/// Whether every recorded check of `report` says how its answer was
+/// established (#683). A check without a source belongs to a solver session
+/// the cache never recorded, for example a shim that fell back to the pinned
+/// solver after a failed handshake: its answers were never stored. Such a
+/// report is still the verifier's genuine result for this run, but it never
+/// authorizes reuse, so an unchanged later run verifies the target again
+/// instead of carrying the unsourced checks forward.
+pub(crate) fn sourced(report: &Report) -> bool {
+    report
+        .crates
+        .iter()
+        .flat_map(|krate| &krate.functions)
+        .filter_map(|function| function.obligations.as_ref())
+        .flatten()
+        .flat_map(|obligation| &obligation.checks)
+        .all(|check| check.source.is_some())
 }
 
 pub(crate) fn complete(report: &Report) -> bool {

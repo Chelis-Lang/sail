@@ -56,6 +56,7 @@ pub(crate) use runner::{run_engine, run_engine_held};
 pub use shipped::new_project_lockfile;
 
 pub(crate) use receipts::complete as receipt_complete;
+pub(crate) use receipts::sourced as receipt_sourced;
 
 pub(crate) use runner::focused;
 

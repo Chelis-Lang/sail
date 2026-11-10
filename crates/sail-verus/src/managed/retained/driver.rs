@@ -648,7 +648,10 @@ impl Attempt {
                 .join("invocations")
                 .join(format!("{}.json", self.basis.identity.key())),
         )?;
-        if !invocation.success || !receipts::complete(&invocation.report) {
+        if !invocation.success
+            || !receipts::complete(&invocation.report)
+            || !receipts::sourced(&invocation.report)
+        {
             return None;
         }
         let paths = output_paths(&self.original_arguments, &self.plan.target)?;
