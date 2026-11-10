@@ -312,9 +312,20 @@ fn targets(view: &View<'_>) -> String {
     if result.targets.is_empty() {
         return String::new();
     }
-    let mut text = String::from(
-        "| Target | Result | Functions | Verified | Failed | Unknown | Evidence |\n|---|---|--:|--:|--:|--:|---|\n",
-    );
+    // Provisional functions are not verified; they get their own column
+    // whenever a requested target has one.
+    let provisional = view
+        .requested()
+        .any(|target| target.report.summary.provisional > 0);
+    let mut text = if provisional {
+        String::from(
+            "| Target | Result | Functions | Verified | Failed | Unknown | Provisional (not verified) | Evidence |\n|---|---|--:|--:|--:|--:|--:|---|\n",
+        )
+    } else {
+        String::from(
+            "| Target | Result | Functions | Verified | Failed | Unknown | Evidence |\n|---|---|--:|--:|--:|--:|---|\n",
+        )
+    };
     for target in view.requested() {
         let counts = Counts::of(&target.report);
         let outcome = if let Some(stopped) = counts.nothing_checked() {
@@ -330,6 +341,11 @@ fn targets(view: &View<'_>) -> String {
         };
         let cleared = counts.passed_by_verus_totals;
         let unknown = counts.unknown.saturating_sub(cleared);
+        let unknown = if provisional {
+            format!("{unknown} | {}", counts.provisional)
+        } else {
+            unknown.to_string()
+        };
         let _ = writeln!(
             text,
             "| {} | {outcome} | {} | {}{} | {} | {unknown} | {} |",
@@ -568,11 +584,19 @@ fn transition(difference: &Difference) -> String {
 
 fn comparison(before: &ProjectResult, after: &ProjectResult) -> String {
     let compared: Comparison = sail_api::evidence::compare(before, after);
+    // A run without proof reuse records no input revision.
+    let revision = |digest: &str| {
+        if digest.is_empty() {
+            "not recorded".to_owned()
+        } else {
+            code(short(digest))
+        }
+    };
     let mut text = format!(
         "### Compared with the baseline\n\nBaseline revision {} (run {}); this run's revision {}.\n\n",
-        code(short(&compared.before_revision)),
+        revision(&compared.before_revision),
         code(&before.run_id),
-        code(short(&compared.after_revision)),
+        revision(&compared.after_revision),
     );
     let rows: Vec<&Difference> = if compared.compatible {
         let mut counts = std::collections::BTreeMap::<u8, usize>::new();
@@ -712,6 +736,13 @@ fn diagnostics(view: &View<'_>, page: &mut Page) {
             heading,
             "Not listed: {} closing compiler line(s) that restate the errors, and {} top-level note or help block(s).\n",
             view.trailers, view.remarks
+        );
+    }
+    if view.duplicates > 0 {
+        let _ = writeln!(
+            heading,
+            "Listed once: {} more diagnostic(s) repeat one of these word for word (Cargo prints a diagnostic again for another target of the same package).\n",
+            view.duplicates
         );
     }
     if !page.push(&heading) {

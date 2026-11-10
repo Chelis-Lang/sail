@@ -19,9 +19,10 @@ semantic versioning once the API is published.
   before any function was checked no longer reads `0 verified, 0 failed, 0
   unknown`: it reads `compilation failed before verification` after a Rust
   compile error and `rejected by Verus before verification` when Verus
-  rejects a crate that compiles as Rust (a mode error, for example). Passing
-  lines are unchanged, and so are `sail verify`'s output and the JSON
-  documents.
+  rejects a crate that compiles as Rust (a mode error, for example). A line
+  whose functions include provisional verdicts ends its counts with `, N
+  provisional (not verified)`. Other passing lines are unchanged, and so are
+  `sail verify`'s output and the JSON documents.
 - `scripts/perf-host.sh up` launches the arm64 Ubuntu image for a Graviton
   instance type and the amd64 image otherwise, and installs `unzip` on the host
   for `cargo xtask fetch-verus`. An `up` that fails before an instance exists

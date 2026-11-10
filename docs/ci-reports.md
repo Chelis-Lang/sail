@@ -12,12 +12,23 @@ and no published release contains it yet: build Sail from source to use it.
 ## Usage
 
 ```sh
-sail verify --output json > result.json; code=$?
+code=0
+sail verify --output json > result.json || code=$?
 sail report --format github-summary result.json >> "$GITHUB_STEP_SUMMARY"
 sail report --format github-annotations result.json
 sail report --format sarif result.json > results.sarif
 exit "$code"
 ```
+
+GitHub Actions runs a `run:` step with `bash -e` (`bash -eo pipefail` under
+`shell: bash`), which stops the step at the first command that fails. The
+`|| code=$?` keeps a failing `sail verify` from ending the step before the
+reports are written; `code=$?` on a line of its own would never run. The
+step then ends with `sail verify`'s exit code. If a `sail report` call itself
+fails (exit 2, for example because `sail verify` printed no document), the
+step stops there and fails with that code, so a failed verification never
+passes either way. `scripts/test-ci-report-snippet.sh` runs this snippet in
+both shells.
 
 | Option | Meaning |
 |---|---|
@@ -25,15 +36,21 @@ exit "$code"
 | `--format github-annotations` | One `::error file=…,line=…,col=…::` or `::warning` workflow command per diagnostic, ranked |
 | `--format sarif` | SARIF 2.1.0 with one result per located error or warning |
 | `--baseline FILE` | An earlier result document to compare with (summary only) |
-| `--repo-root DIR` | The repository checkout, `$GITHUB_WORKSPACE` in Actions. Paths are reported relative to it. Defaults to the document's workspace |
+| `--repo-root DIR` | The repository checkout, `$GITHUB_WORKSPACE` in Actions. Paths are reported relative to it. A relative `DIR` is taken from the current directory; the path is then compared as text and no file is opened, so name the checkout as the document's `workspace` names it (not through a symbolic link). Defaults to the document's workspace |
 | `--link-base URL` | Link summary locations to `URL/PATH#LLINE` |
 | `--max-annotations N` | Annotations per level, default 10 |
-| `--max-bytes N` | Summary size limit, default 65536 |
+| `--max-bytes N` | Summary size limit, default 65536, at least 1024 |
 
 The document is the positional argument or standard input. The exit code is
 0 when the report was written, whatever the verification result, and 2 for a
-usage error (`SAIL0002`) or an unreadable document (`SAIL0908`). Keep
-`sail verify`'s own exit code for the job, as above.
+usage error (`SAIL0002`), for an unreadable or unsupported document and for a
+report that could not be written (both `SAIL0908`). Keep `sail verify`'s own
+exit code for the job, as above.
+
+A function with a `provisional` verdict is not verified. When a requested
+target has one, the headline counts them (`… 0 unknown, 2 provisional (not
+verified)`) and the target table gains a `Provisional (not verified)`
+column; each is also listed among the functions that did not verify.
 
 ### A crate that stopped before verification
 
@@ -42,11 +59,22 @@ which of two things happened, from the record Verus wrote for the crate:
 
 | Summary | Meaning | Verus's record |
 |---|---|---|
-| `compilation failed before verification` | A Rust compile error, such as a type error | `errors: 0`, `encountered_vir_error: false`, no function |
-| `rejected by Verus before verification` | The crate compiles as Rust and Verus rejects it: a mode error, an unsupported call, a recursive `spec fn` without `decreases` | `encountered_vir_error: true`, no function |
+| `compilation failed before verification` | A Rust compile error: a type error, an unresolved name, a syntax error inside or outside `verus!`, an unknown macro | `verified: 0`, `errors: 0`, `success: false`, `encountered_vir_error: false`, no function |
+| `rejected by Verus before verification` | The crate compiles as Rust and Verus rejects it: a mode error, an unsupported call, a recursive `spec fn` without `decreases`, a crate that does not import `vstd` | `verified` and `errors` absent, `success: false`, `encountered_vir_error: true`, no function |
 
 Either way the diagnostics section holds the error itself. `sail jobs result`
-uses the same wording.
+uses the same wording. The match is exact: a crate with no function whose
+record is neither of these keeps the plain counts (`0 verified, 0 failed, 0
+unknown`). The listed cases were each run with the pinned Verus, and the
+compile errors also without proof reuse (`SAIL3112`); the
+[fixture notes](../crates/sail-cli/tests/fixtures/ci-report/README.md) list
+them.
+
+A failure Cargo reports before any compiler runs on the package, such as a
+failing build script, leaves no target and no diagnostic in the document.
+The summary then says `failed` with the exit code, the annotations hold one
+error saying that the result has no error diagnostic, and Cargo's message is
+only in the job log ([known issues](known-issues.md)).
 
 ### What is reported, and what is left out
 
@@ -72,7 +100,11 @@ uses the same wording.
 ### Limits
 
 GitHub's limits are the reason for the truncation rules. Sail states what it
-left out; it never drops something silently.
+left out; it never drops something silently. Cargo can print one diagnostic
+again for another target of the same package: a diagnostic identical to an
+earlier one in level and full text is reported once, and the summary says how
+many repeats there were (SARIF records the number as `repeatedDiagnostics`
+on the invocation, and the annotation notice names it when it is written).
 
 | Limit | Source | What `sail report` does |
 |---|---|---|

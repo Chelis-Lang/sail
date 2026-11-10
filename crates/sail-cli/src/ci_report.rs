@@ -40,13 +40,15 @@ OPTIONS:
                          what changed, or why the two are not comparable
     --repo-root DIR      the repository checkout (in GitHub Actions,
                          $GITHUB_WORKSPACE); paths are reported relative to it.
+                         A relative DIR is taken from the current directory.
                          Defaults to the document's workspace
     --link-base URL      link summary locations to URL/PATH#LLINE
     --max-annotations N  annotations per level (default 10)
-    --max-bytes N        summary size limit (default 65536)
+    --max-bytes N        summary size limit (default 65536, at least 1024)
 
 RESULT.json defaults to standard input. Exits 0 when the report was written,
-whatever the verification result, and 2 on a usage or input error.
+whatever the verification result, and 2 on a usage error, an unreadable or
+unsupported document, or a report that could not be written.
 ";
 
 /// GitHub shows at most this many annotations of one level per step.
@@ -54,6 +56,9 @@ const DEFAULT_ANNOTATIONS: usize = 10;
 /// Default summary limit. GitHub rejects a step summary over 1 MiB; 64 KiB
 /// also fits a check run's text field.
 const DEFAULT_SUMMARY_BYTES: usize = 64 * 1024;
+/// The smallest summary limit accepted. Below it the closing line that states
+/// what was left out might not fit, and the summary could be silently empty.
+const MIN_SUMMARY_BYTES: usize = 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Format {
@@ -127,6 +132,12 @@ fn options(args: &[String]) -> Result<Options, String> {
         }
     }
     options.format = format.ok_or("--format is required")?;
+    if options.max_bytes < MIN_SUMMARY_BYTES {
+        return Err(format!(
+            "--max-bytes must be at least {MIN_SUMMARY_BYTES}, not {}",
+            options.max_bytes
+        ));
+    }
     match positional.as_slice() {
         [] => {}
         [one] if one == "-" => {}
@@ -134,6 +145,24 @@ fn options(args: &[String]) -> Result<Options, String> {
         _ => return Err("expected at most one RESULT.json".to_owned()),
     }
     Ok(options)
+}
+
+/// `--repo-root` as an absolute path. Paths are compared lexically, so a
+/// relative root would match nothing, or (for `.`) everything: it is joined
+/// to `current`, the current directory. No file is opened.
+fn absolute_root(root: &str, current: Option<&str>) -> Result<String, String> {
+    if root.is_empty() {
+        return Err("--repo-root needs a directory, not an empty value".to_owned());
+    }
+    if root.starts_with('/') {
+        return Ok(root.to_owned());
+    }
+    match current {
+        Some(current) if current.starts_with('/') => Ok(format!("{current}/{root}")),
+        _ => Err(format!(
+            "--repo-root `{root}` is relative and the current directory is not available as an absolute UTF-8 path; pass an absolute path"
+        )),
+    }
 }
 
 /// Reads and checks one `sail-project-result` document.
@@ -172,7 +201,15 @@ fn parse(text: &str) -> Result<ProjectResult, String> {
 
 /// `sail report`.
 pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
-    let options = match options(args) {
+    let options = options(args).and_then(|mut options| {
+        if let Some(root) = options.repo_root.take() {
+            let current = std::env::current_dir().ok();
+            let current = current.as_deref().and_then(std::path::Path::to_str);
+            options.repo_root = Some(absolute_root(&root, current)?);
+        }
+        Ok(options)
+    });
+    let options = match options {
         Ok(options) => options,
         Err(message) => {
             let _ = writeln!(err, "error[SAIL0002]: sail report: {message}\n\n{USAGE}");
@@ -225,7 +262,9 @@ fn render(result: &ProjectResult, baseline: Option<&ProjectResult>, options: &Op
 /// Maps the paths Verus printed to repository-relative paths, lexically.
 ///
 /// Cargo runs the compiler in the workspace root, so a relative path is
-/// relative to the document's `workspace`. No file is opened.
+/// relative to the document's `workspace`. No file is opened. Both roots
+/// are absolute: the document's workspace is, and [`absolute_root`] makes
+/// `--repo-root` so.
 #[derive(Debug)]
 struct Paths {
     workspace: Vec<String>,
@@ -368,6 +407,9 @@ struct View<'a> {
     trailers: usize,
     /// Top-level `note` and `help` diagnostics left out of `findings`.
     remarks: usize,
+    /// Errors and warnings left out of `findings` because an identical one
+    /// (same level, same rendered text) is already there.
+    duplicates: usize,
 }
 
 impl<'a> View<'a> {
@@ -378,6 +420,7 @@ impl<'a> View<'a> {
             findings: Vec::new(),
             trailers: 0,
             remarks: 0,
+            duplicates: 0,
         };
         let mut seen = std::collections::BTreeSet::new();
         for target in &result.targets {
@@ -396,6 +439,7 @@ impl<'a> View<'a> {
                 }
                 // Cargo can print one diagnostic for several targets of a package.
                 if !seen.insert((level, &diagnostic.rendered)) {
+                    view.duplicates += 1;
                     continue;
                 }
                 let place = match primary(diagnostic) {
@@ -510,6 +554,45 @@ mod tests {
     }
 
     #[test]
+    fn a_relative_repository_root_is_taken_from_the_current_directory() {
+        let current = Some("/work/repo/proofs");
+        for (root, file) in [
+            ("/work/repo", Some("proofs/alpha/src/lib.rs")),
+            (".", Some("alpha/src/lib.rs")),
+            ("./", Some("alpha/src/lib.rs")),
+            ("..", Some("proofs/alpha/src/lib.rs")),
+            ("../", Some("proofs/alpha/src/lib.rs")),
+            ("alpha", Some("src/lib.rs")),
+            ("alpha/..", Some("alpha/src/lib.rs")),
+            // Not where the file is: outside, never a wrong path.
+            ("beta", None),
+            ("../../elsewhere", None),
+        ] {
+            let root = absolute_root(root, current).unwrap_or_else(|e| unreachable!("{e}"));
+            assert!(root.starts_with('/'), "{root}");
+            let paths = Paths::new("/work/repo/proofs", Some(&root));
+            assert_eq!(
+                paths.repository("alpha/src/lib.rs").as_deref(),
+                file,
+                "{root}"
+            );
+            // A registry dependency is outside whatever the root is.
+            assert_eq!(paths.repository("/home/u/.cargo/registry/x/lib.rs"), None);
+        }
+        // An absolute root does not need the current directory.
+        assert_eq!(
+            absolute_root("/work/repo", None).as_deref(),
+            Ok("/work/repo")
+        );
+        for (root, current) in [("", current), (".", None), ("repo", Some("relative"))] {
+            assert!(
+                absolute_root(root, current).is_err(),
+                "{root:?} {current:?}"
+            );
+        }
+    }
+
+    #[test]
     fn options_need_a_format_and_at_most_one_document() {
         let parsed = options(&args(&[
             "result.json",
@@ -525,6 +608,12 @@ mod tests {
         assert_eq!(parsed.baseline.as_deref(), Some("main.json"));
         assert_eq!(parsed.max_annotations, 3);
         assert_eq!(
+            options(&args(&["--format", "github-summary", "--max-bytes=1024"]))
+                .map(|o| o.max_bytes)
+                .ok(),
+            Some(1024)
+        );
+        assert_eq!(
             options(&args(&["--format", "github-summary", "-"]))
                 .map(|o| o.input)
                 .ok(),
@@ -536,6 +625,7 @@ mod tests {
             &["--format"],
             &["--format", "sarif", "a.json", "b.json"],
             &["--format", "sarif", "--max-bytes", "many"],
+            &["--format", "github-summary", "--max-bytes", "1023"],
             &["--format", "sarif", "--colour"],
         ] {
             assert!(options(&args(bad)).is_err(), "{bad:?}");

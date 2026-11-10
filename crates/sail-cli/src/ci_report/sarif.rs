@@ -141,6 +141,7 @@ pub(super) fn render(view: &View<'_>) -> String {
             "currentness": result.currentness,
             "closingCompilerLines": view.trailers,
             "noteAndHelpBlocks": view.remarks,
+            "repeatedDiagnostics": view.duplicates,
         },
     });
     if let Some(code) = result.exit_code {

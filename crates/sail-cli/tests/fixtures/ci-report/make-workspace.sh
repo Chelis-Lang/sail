@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Writes the two-member Verus workspace used to produce real result documents.
-# Usage: make-workspace.sh DIR VARIANT   (VARIANT: pass | fail | compile | vir)
+# Usage: make-workspace.sh DIR VARIANT
+# VARIANT: pass | fail | compile | resolve | parse | parse-outside | macro | vir
 set -euo pipefail
 root=$1
 variant=$2
@@ -109,7 +110,9 @@ pub proof fn lemma_double_monotone(a: int, b: int)
 E
 ;;
 fail)
-# Same functions; five distinct Verus failures and one rustc warning.
+# Same functions; six Verus errors in five functions (`count_to` fails its
+# loop invariant twice: before the loop and at the end of the body) and no
+# warning: the result document holds none for the unused `let`.
 cat > "$root/alpha/src/lib.rs" <<'E'
 use vstd::prelude::*;
 
@@ -180,6 +183,81 @@ pub fn max(a: u64, b: u64) -> (r: u64)
         r >= b,
 {
     if a > b { a } else { "b" }
+}
+
+} // verus!
+E
+;;
+resolve)
+# A Rust name-resolution error (E0425).
+cat > "$root/alpha/src/lib.rs" <<'E'
+use vstd::prelude::*;
+
+verus! {
+
+pub fn max(a: u64, b: u64) -> (r: u64)
+    ensures
+        r >= a,
+        r >= b,
+{
+    if a > b { a } else { c }
+}
+
+} // verus!
+E
+;;
+parse)
+# A syntax error inside `verus!`.
+cat > "$root/alpha/src/lib.rs" <<'E'
+use vstd::prelude::*;
+
+verus! {
+
+pub fn max(a: u64, b: u64 -> (r: u64)
+    ensures
+        r >= a,
+        r >= b,
+{
+    if a > b { a } else { b }
+}
+
+} // verus!
+E
+;;
+parse-outside)
+# A syntax error outside `verus!`.
+cat > "$root/alpha/src/lib.rs" <<'E'
+use vstd::prelude::*;
+
+pub fn broken( -> u64 { 3 }
+
+verus! {
+
+pub fn max(a: u64, b: u64) -> (r: u64)
+    ensures
+        r >= a,
+        r >= b,
+{
+    if a > b { a } else { b }
+}
+
+} // verus!
+E
+;;
+macro)
+# A macro-expansion error: an unknown macro.
+cat > "$root/alpha/src/lib.rs" <<'E'
+use vstd::prelude::*;
+
+verus! {
+
+pub fn max(a: u64, b: u64) -> (r: u64)
+    ensures
+        r >= a,
+        r >= b,
+{
+    no_such_macro!(a);
+    if a > b { a } else { b }
 }
 
 } // verus!

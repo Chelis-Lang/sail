@@ -14,6 +14,8 @@ verified at `repo/proofs`, so the workspace is a subdirectory of the
 repository `repo`. `vir-error.json` comes from a later build of the same
 commit with `sail report` added, in a fresh copy of the workspace, so its
 `context_sha256` differs from the other documents'.
+`no-reuse-compile-error.json` comes from the same later build at `b059ce3f`
+on 2026-11-10, in another fresh copy with its own Sail cache.
 
 | Document | Variant | What ran |
 |---|---|---|
@@ -21,6 +23,7 @@ commit with `sail report` added, in a fresh copy of the workspace, so its
 | `failing.json` | `fail` | Next run: six verification errors in five functions of `alpha`, `beta` reused, exit 101 |
 | `compile-error.json` | `compile` | Next run: a Rust type error (`E0308`) in `alpha`, exit 101 |
 | `vir-error.json` | `vir` | First run in a fresh copy: `alpha` compiles as Rust and Verus rejects it (a proof function calls an exec one), exit 101 |
+| `no-reuse-compile-error.json` | `compile` | The same type error with `LD_LIBRARY_PATH` set, so Sail ran plain `cargo verus verify` without proof reuse (`SAIL3112`): one target named `cargo verus verify`, exit 101 |
 | `setup-error.json` | none | `sail verify` without `sail-z3` beside it: `SAIL3100`, Verus never ran |
 
 `compile-error.json` and `vir-error.json` hold the two records Verus writes
@@ -34,7 +37,33 @@ and `sail jobs result` tell apart:
 
 Two other programs Verus rejects produced the same record as `vir-error.json`
 on the same build and are not kept: a call to `std::process::abort` (not
-supported) and a recursive `spec fn` without a `decreases` clause.
+supported) and a recursive `spec fn` without a `decreases` clause. So did an
+empty `alpha/src/lib.rs` (Verus: "The verus_builtin crate was not imported").
+
+Other Rust compile errors were run on that build on 2026-11-10 to see whether
+they leave the same record as `compile-error.json`. Every one did, exactly
+(`verified: 0`, `errors: 0`, `success: false`, `encountered_vir_error:
+false`, one crate entry with no function); the documents are not kept:
+
+| Variant | Error | Run |
+|---|---|---|
+| `resolve` | `E0425`, an unresolved name | managed |
+| `parse` | a syntax error inside `verus!` (`mismatched closing delimiter`) | managed, and without proof reuse |
+| `parse-outside` | a syntax error outside `verus!` (`this file contains an unclosed delimiter`) | managed |
+| `macro` | an unknown macro (`cannot find macro`) | managed |
+| `compile` | `E0308` | without proof reuse (kept as `no-reuse-compile-error.json`) |
+
+A record of any other shape keeps the plain counts; none was observed. One
+failure leaves no crate record at all: with a build script in `alpha` that
+exits 3, the document has exit code 101, no target and no diagnostic, so
+there is no crate to describe (see `docs/known-issues.md`).
+
+No document here holds a warning: Verus reported none for these programs,
+the unused `let` in the `fail` variant included. The `::warning` annotation
+and the SARIF warning path are covered only by a diagnostic that
+`tests/report.rs` edits into a document
+(`dependencies_are_summarized_and_ranked_last`), and so are repeated
+diagnostics and provisional verdicts.
 
 Each document is what `sail verify --output json` printed, after these
 mechanical changes and nothing else:
@@ -61,4 +90,6 @@ The baseline used by the golden summaries is `passing.json`: the same
 workspace path, context and requested targets, so the comparison is
 `compatible` and reports five regressions for `failing.json`. For
 `vir-error.json` the context differs, so its golden summary shows a real
-incomparable baseline.
+incomparable baseline. `no-reuse-compile-error.json` binds no context, so
+its golden summary shows the comparison refused for a run without proof
+reuse.

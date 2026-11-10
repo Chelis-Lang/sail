@@ -12,6 +12,7 @@
             "currentness": "unknown",
             "inputRevision": "",
             "noteAndHelpBlocks": 0,
+            "repeatedDiagnostics": 0,
             "runId": ""
           },
           "toolExecutionNotifications": [

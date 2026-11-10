@@ -110,8 +110,19 @@ pub(super) fn render(view: &View<'_>, limit: usize) -> String {
             "notice",
             &[("title", "Sail report".to_owned())],
             &format!(
-                "Annotated {} of {} error(s) and {} of {} warning(s), ranked: requested targets before dependencies, repository files first, then Verus's order. GitHub keeps at most 10 annotations of a level per step. The job summary and `sail report --format sarif` list every diagnostic.",
-                written[0], total[0], written[1], total[1]
+                "Annotated {} of {} error(s) and {} of {} warning(s), ranked: requested targets before dependencies, repository files first, then Verus's order. GitHub keeps at most 10 annotations of a level per step. The job summary and `sail report --format sarif` list every diagnostic.{}",
+                written[0],
+                total[0],
+                written[1],
+                total[1],
+                if view.duplicates > 0 {
+                    format!(
+                        " {} more diagnostic(s) repeat one of these word for word and are counted once.",
+                        view.duplicates
+                    )
+                } else {
+                    String::new()
+                }
             ),
         );
     }
