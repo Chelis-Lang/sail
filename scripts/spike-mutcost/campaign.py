@@ -613,8 +613,13 @@ def cmd_pipe(a):
     [t.start() for t in threads]
     [t.join() for t in threads]
     out.write(phase="setup-baseline-and-warm", meter=m0.done(), cache=sail_stats(copies[0], cache))
-    if classify_verus(state["base"])["outcome"] != "verified":
-        raise SystemExit("the baseline does not verify")
+    base_info = classify_verus(state["base"])
+    if base_info["outcome"] != "verified":
+        # A project with a known baseline failure (Vest: VI-0032) runs only when
+        # the failure set is named; mutants are then judged on new failures.
+        known = sorted(filter(None, os.environ.get("SPIKE_KNOWN_FAILS", "").split(",")))
+        if base_info["outcome"] != "errors" or base_info["failed"] != known:
+            raise SystemExit(f"the baseline does not verify: {base_info['failed']}")
     costs = baseline_costs(state["base"])
 
     def cost(m):

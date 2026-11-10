@@ -23,9 +23,18 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from a3_functions import RLIMIT, by_id, errors, relog, rows  # noqa: E402
 
 
-def failed_class(out, arm, r):
-    errs = errors(relog(out, arm, r))
-    return "rlimit" if errs and all(RLIMIT.search(e[0]) for e in errs) else "rejected"
+def failed_class(out, arm, r, base=()):
+    """`rlimit`/`rejected` from the errors a run adds to its baseline's, or
+    `survived` when it adds none (a project whose baseline fails, VI-0032)."""
+    errs = [e for e in errors(relog(out, arm, r)) if e not in base]
+    if not errs:
+        return "survived"
+    return "rlimit" if all(RLIMIT.search(e[0]) for e in errs) else "rejected"
+
+
+def baseline_errors(out, arm, rs, phase):
+    r = next((x for x in rs if x.get("phase") == phase), None)
+    return set(errors(relog(out, arm, r))) if r else set()
 
 
 def main():
@@ -33,6 +42,9 @@ def main():
     mutants = json.load(open(listing))["mutants"]
     c, n = rows(out, camp), rows(out, naive)
     scoped, confirm, stock = by_id(c, "scoped"), by_id(c, "confirm"), by_id(n, "mutant")
+    cbase, nbase = baseline_errors(out, camp, c, "setup-baseline"), baseline_errors(out, naive, n, "cold")
+    if cbase or nbase:
+        print(f"baseline errors subtracted: campaign {sorted(cbase)}, naive {sorted(nbase)}\n")
     table, agree, both = {}, 0, 0
     survivors, differ = [], []
     for m in mutants:
@@ -43,11 +55,12 @@ def main():
         if s["outcome"] == "stillborn":
             cc = "stillborn"
         elif s["outcome"] == "errors":
-            cc = failed_class(out, camp, s)
+            cc = failed_class(out, camp, s, cbase)
         elif i in confirm:
-            if confirm[i]["outcome"] == "verified":
+            fc = failed_class(out, camp, confirm[i], cbase) if confirm[i]["outcome"] == "errors" else None
+            if confirm[i]["outcome"] == "verified" or fc == "survived":
                 cc = "survived"
-            elif failed_class(out, camp, confirm[i]) == "rlimit":
+            elif fc == "rlimit":
                 cc = "survived+rlimit-elsewhere"
             else:
                 cc = "overturned"
@@ -56,7 +69,7 @@ def main():
         nc = None
         if i in stock:
             k = stock[i]
-            nc = {"stillborn": "stillborn", "verified": "survived"}.get(k["outcome"]) or failed_class(out, naive, k)
+            nc = {"stillborn": "stillborn", "verified": "survived"}.get(k["outcome"]) or failed_class(out, naive, k, nbase)
             both += 1
             same = cc == nc
             agree += same
