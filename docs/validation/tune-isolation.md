@@ -84,9 +84,9 @@ L1070 and L656 (`i4`), six rotated rounds, median, n = 6:
 | Sail `body-late` | 7.2 s | 5.6 s | −22.7% |
 
 Every run exited 0 and every cold run reported 313 verified, 0 errors; no
-check exceeded 9% of its limit. Conformance (`--project verified-ironkv`, three arms): **Same**, 328
-functions, 0 different; the 23 rlimit-drift entries match an unpatched
-control exactly.
+check exceeded 9% of its limit. Conformance (`--project verified-ironkv`,
+three arms): **Same**, 328 functions, 0 different; the 23 rlimit-drift
+entries match an unpatched control exactly.
 
 ## Decision
 
