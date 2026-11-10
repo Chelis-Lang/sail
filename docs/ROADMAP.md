@@ -145,7 +145,7 @@ work, not a prerequisite chain for mutation testing.
 
 | Work | Tracker or condition |
 |---|---|
-| More exact vstd profiles and versions | #563; preserve every admission check. A second Verus pin is not adopted (#237: pin cadence only) |
+| More exact vstd profiles and versions | #563 is implemented: Vest's profile and members-only native lookup (CapybaraKV), ADR 0090; staged-candidate and macOS qualification open. Preserve every admission check. A second Verus pin is not adopted (#237: pin cadence only) |
 | Remaining incidental edits and restore misses | #118, #595 |
 | Prebuilt macro tools | #239; owner question 35 and actual measured gain |
 | Broader first-sight preparation and team prefetch | #241, #243; bounded worker already ships |

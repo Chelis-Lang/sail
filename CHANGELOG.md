@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The shipped vstd proof now applies to projects whose target directory also
+  holds crates outside vstd's dependency closure, such as CapybaraKV (#563).
+  Each closure unit's private lookup copy keeps only the files a lookup of its
+  crate names could consider; every provenance check is unchanged (ADR 0090,
+  2026-11-10 amendment). When a closure unit still cannot establish its
+  compiler provenance, the `SAIL3138` note names the unit and a stable reason
+  code instead of the generic lookup mismatch, and the `SAIL_SHIPPED_TRACE`
+  events carry the same codes.
 - The next release is v0.3.0, and it is planned as a breaking release (ADR
   0109). The experimental neutral-contract surfaces published in 0.2.0 are
   scheduled for removal in it: the `sail-contracts`, `sail-contracts-macros`
