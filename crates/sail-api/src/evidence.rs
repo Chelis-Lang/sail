@@ -35,12 +35,36 @@ pub struct Explanation {
     pub notes: Vec<String>,
 }
 
+/// The wire form of [`Baseline`]. It also recognises the retired `contracts`
+/// member, so a neutral baseline is refused instead of read as an ordinary one.
+#[derive(Deserialize)]
+struct BaselineWire {
+    #[serde(default)]
+    contracts: Option<serde::de::IgnoredAny>,
+    version: u32,
+    name: String,
+    job_id: String,
+    result: ProjectResult,
+}
+impl TryFrom<BaselineWire> for Baseline {
+    type Error = &'static str;
+    fn try_from(wire: BaselineWire) -> Result<Self, Self::Error> {
+        if wire.contracts.is_some() {
+            return Err(crate::jobs::RETIRED_NEUTRAL_RECORD);
+        }
+        Ok(Self {
+            version: wire.version,
+            name: wire.name,
+            job_id: wire.job_id,
+            result: wire.result,
+        })
+    }
+}
+
 /// An immutable independently retained baseline snapshot.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "BaselineWire")]
 pub struct Baseline {
-    /// Independently retained neutral contract snapshot evidence, when present.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub contracts: Option<Box<crate::contracts::Evidence>>,
     /// Baseline contract version.
     pub version: u32,
     /// Owner-selected immutable name.

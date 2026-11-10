@@ -20,13 +20,11 @@ pub const VERSION: &str = match option_env!("SAIL_VERSION") {
 /// Checked positive Verus report and requested-scope authority.
 pub mod acceptance;
 mod acceptance_sort;
-/// Requirement-aware evidence views with explicit scope, strength and establishment.
+/// Evidence-strength vocabulary and whole-run proof rules shared by requirement attribution.
 pub mod assurance;
 pub mod attribution;
 pub mod evidence;
 pub mod jobs;
-pub mod literal_witness;
-pub mod mutation;
 pub mod output;
 pub mod policy;
 pub mod preparation;
@@ -45,6 +43,4 @@ pub mod temporal;
 #[cfg(unix)]
 pub mod client;
 
-/// Neutral source job requests and source-bound contract evidence.
-pub mod contracts;
 pub mod counterexample;

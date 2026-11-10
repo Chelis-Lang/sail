@@ -490,7 +490,6 @@ mod result_presentation_tests {
         Ok(response_text(&Response::Result(
             sail_api::jobs::ResultDocument {
                 job: status,
-                contracts: None,
                 repair: None,
                 result: Some(serde_json::to_value(project)?),
             },

@@ -1330,32 +1330,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sail-contracts"
-version = "0.2.0"
-dependencies = [
- "sail-contracts-macros",
-]
-
-[[package]]
-name = "sail-contracts-ir"
-version = "0.2.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
-]
-
-[[package]]
-name = "sail-contracts-macros"
-version = "0.2.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "sail-contracts-ir",
- "syn 2.0.119",
-]
-
-[[package]]
 name = "sail-daemon"
 version = "0.2.0"
 dependencies = [
@@ -1467,7 +1441,6 @@ dependencies = [
  "notify",
  "sail-api",
  "sail-cache",
- "sail-contracts",
  "sail-daemon",
  "sail-key",
  "sail-mcp",
@@ -1494,20 +1467,14 @@ name = "sail-verus"
 version = "0.2.0"
 dependencies = [
  "inotify",
- "num-bigint",
- "proc-macro2",
- "quote",
  "rustix",
  "sail-acceptance",
  "sail-api",
- "sail-contracts",
- "sail-contracts-ir",
  "sail-ledger",
  "sail-smtlib",
  "serde",
  "serde_json",
  "sha2",
- "syn 2.0.119",
  "toml",
  "toml_edit",
 ]

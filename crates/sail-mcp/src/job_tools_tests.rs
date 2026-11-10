@@ -28,7 +28,6 @@ fn owned_result_projection_matches_typed_schema_and_moves_the_full_graph() {
                 .and_then(|value| value["model"].as_str())
                 .map(str::as_ptr);
             let response = Response::Result(ResultDocument {
-                contracts: None,
                 repair: repair.clone(),
                 job: status(root, Lifecycle::Completed, "id"),
                 result,
@@ -242,7 +241,6 @@ fn populate_job_fixture(fixture: &Fixture) {
     fixture.write(
         "running.json",
         &Response::Result(ResultDocument {
-            contracts: None,
             job: running.clone(),
             repair: None,
             result: None,
@@ -255,7 +253,6 @@ fn populate_job_fixture(fixture: &Fixture) {
     fixture.write(
         "empty.json",
         &Response::Result(ResultDocument {
-            contracts: None,
             repair: None,
             job: latest.clone(),
             result: None,
@@ -266,7 +263,6 @@ fn populate_job_fixture(fixture: &Fixture) {
         &Response::List(vec![completed.clone(), running.clone(), latest]),
     );
     let document = ResultDocument {
-        contracts: None,
         repair: None,
         job: completed,
         result: serde_json::to_value(project(&fixture.root)).ok(),
@@ -343,12 +339,7 @@ fn async_tools_and_lookups_preserve_historical_evidence_while_another_job_runs()
             evidence.structured["functions"][0]["establishing_run"],
             "establishing-run"
         );
-        if models {
-            assert_eq!(
-                evidence.structured["functions"][0]["counterexamples"][0]["model"],
-                "(model)"
-            );
-        }
+        assert_models(&evidence.structured, models);
     }
     let missing = crate::args::LookupArgs::parse(
         &json!({"obligation":"failed#missing/0"})
@@ -433,7 +424,6 @@ fn persistent_service_reads_preserve_fresh_models_and_do_not_spawn_cli() {
     let changed = changed_model(&fixture.root);
     let make = |value| {
         Response::Result(ResultDocument {
-            contracts: None,
             job: completed.clone(),
             repair: None,
             result: serde_json::to_value(value).ok(),
@@ -549,7 +539,6 @@ fn cli_read_responses_require_exact_job_identity_version_and_variant() {
     fixture.write(
         "result.json",
         &Response::Result(ResultDocument {
-            contracts: None,
             job: status(&fixture.root, Lifecycle::Completed, "other"),
             result: Some(json!({"complete":"foreign"})),
             repair: None,
@@ -841,7 +830,6 @@ fn blocking_verify_polls_status_and_reads_the_result_once_over_the_service() {
     let completed = status(&fixture.root, Lifecycle::Completed, "running");
     let expected = project(&fixture.root);
     let document = ResultDocument {
-        contracts: None,
         repair: None,
         job: completed.clone(),
         result: serde_json::to_value(&expected).ok(),
@@ -907,7 +895,6 @@ fn blocking_verify_cli_fallback_reads_status_then_result_once() {
     fixture.write(
         "final.json",
         &Response::Result(ResultDocument {
-            contracts: None,
             repair: None,
             job: completed,
             result: serde_json::to_value(&expected).ok(),
@@ -926,7 +913,6 @@ fn blocking_verify_cli_fallback_reads_status_then_result_once() {
     fixture.write(
         "final.json",
         &Response::Result(ResultDocument {
-            contracts: None,
             repair: None,
             job: cancelled,
             result: None,
@@ -981,5 +967,20 @@ fn start_requirements_become_canonical_cli_attributions_or_are_refused() {
         json!("R=f"),
     ] {
         assert!(requirement_flags(Some(&refused)).is_err(), "{refused}");
+    }
+}
+
+/// The counterexample tool carries the raw model and the decoded inputs (ADR
+/// 0106); `cached_result` carries neither.
+fn assert_models(structured: &Value, models: bool) {
+    let function = &structured["functions"][0];
+    if models {
+        assert_eq!(function["counterexamples"][0]["model"], "(model)");
+        assert_eq!(
+            function["decoded_inputs"]["obligation"],
+            "demo::failed#Function-Def/0"
+        );
+    } else {
+        assert!(function["decoded_inputs"].is_null());
     }
 }

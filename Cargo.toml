@@ -16,13 +16,6 @@ license = "MIT"
 
 [workspace.dependencies]
 sail-acceptance = { path = "crates/sail-acceptance", version = "=0.2.0" }
-proc-macro2 = { version = "=1.0.107", features = ["span-locations"] }
-quote = "=1.0.47"
-syn = { version = "=2.0.119", features = ["full", "fold", "visit", "extra-traits"] }
-num-bigint = "=0.4.8"
-sail-contracts-ir = { path = "crates/sail-contracts-ir", version = "=0.2.0" }
-sail-contracts-macros = { path = "crates/sail-contracts-macros", version = "=0.2.0" }
-sail-contracts = { path = "crates/sail-contracts", version = "=0.2.0" }
 # Safe bounded Unix RPC connection setup, including listener backlog pressure.
 socket2 = "=0.6.5"
 inotify = { version = "=0.11.5", default-features = false }
