@@ -88,15 +88,13 @@ implementation correctness. See [ADR 0068](decisions/0068-runtime-daemon.md).
 ## Reading completed evidence
 
 `requirement_assurance` (experimental integration tool) takes
-`{"job_id":"JOB"}` and reads the authenticated
-requirement groups from a completed neutral source job. It reports exact source
-relationships, conservative proof outcomes, original solver identities and
-explicit missing assurance. This read negotiates its own capability and fails
-for older services; it never synthesizes evidence or runs a verifier. With
-`"attributed": true` it reads an ordinary job submitted through
+`{"job_id":"JOB"}` and reads an ordinary job submitted through
 `start_verification` with a `requirements` array of
-`{"requirement_id","function"}` objects. Those rows are submitter-attributed
-Verus evidence, never neutral-contract assurance. See
+`{"requirement_id","function"}` objects. Its rows are submitter-attributed
+Verus evidence: conservative proof outcomes, original solver identities and
+explicit missing assurance. This read negotiates its own capability and fails
+for older services; it never synthesizes evidence or runs a verifier. The
+`"attributed"` argument is accepted and changes nothing. See
 [requirement assurance](requirement-assurance.md).
 
 Tool replies are agent-sized by default; see [reply size](#reply-size-and-detail).
@@ -178,6 +176,13 @@ By default a reply carries what an agent acts on, failures first:
 - Counterexamples as source-level `variables`: Verus's parameter `x!` becomes
   `x`, a local's versions stay `i@0`, `i@1`. Solver internals (`fuel%…`, sort
   constants, `$…`) are dropped and counted in `internal_assignments_omitted`.
+- `counterexample` also returns `decoded_inputs` for each function: the
+  parameters, the return binder and struct fields (named by declaration
+  position) decoded from the first failed or unknown check's model
+  ([ADR 0106](decisions/0106-decoded-counterexample-inputs.md)), with its
+  qualifiers, or `null` when no such check has a model. These are the solver's
+  model values, not a validated concrete counterexample. Sail 0.2 offered the
+  same decoding only for neutral source jobs (`sail assurance JOB --inputs`).
 
 `verify`, `verification_result`, `save_baseline` and `get_baseline` take an
 optional `detail`:

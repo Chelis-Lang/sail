@@ -1,5 +1,7 @@
 # Neutral Verus lowering qualification
 
+> **Retired.** The surface this record qualified was removed in v0.3.0 ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)). The record is kept as history; the last implementation is tagged `archive/neutral-contracts-final`. Nothing below describes current Sail.
+
 The explicit source lowerer was checked against both the pinned Sail fork and
 stock Verus on native Linux on 2026-10-21. Both verifiers received the exact same
 generated source for each control, with the pinned Z3. No neutral contract is
@@ -37,7 +39,7 @@ The actual oracle log SHA-256 is
 `bdafc1d26b0830f3a9eb4eb7737c9bd87178c0ba42bfdf4d8280e87159c10edc`.
 Generated sources, source mappings and original verifier stdout/stderr are
 retained with both failed attempts. See the
-[lowering specification](../spec/neutral-verus-lowering.md) for the supported
+[lowering specification](https://github.com/Chelis-Lang/sail/blob/archive/neutral-contracts-final/docs/spec/neutral-verus-lowering.md) for the supported
 subset, source-policy admission and the explicit native command.
 
 The corrected lowering source passed native `ci/local.sh gate`, the complete

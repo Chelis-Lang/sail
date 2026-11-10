@@ -1,6 +1,6 @@
 # 0073: Preserve compound-field definedness and qualify retained lowering
 
-- **Status:** accepted
+- **Status:** superseded by [ADR 0109](0109-oyster-retired-v030-scope.md): the surface this decision describes was removed in v0.3.0. The last implementation is tagged `archive/neutral-contracts-final`. Previously: accepted
 - **Date:** 2026-10-23
 
 ## Context

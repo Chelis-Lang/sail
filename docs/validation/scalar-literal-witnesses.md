@@ -1,5 +1,7 @@
 # Scalar literal-contract witness qualification
 
+> **Retired.** The surface this record qualified was removed in v0.3.0 ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)). The record is kept as history; the last implementation is tagged `archive/neutral-contracts-final`. Nothing below describes current Sail.
+
 Status: native Linux code gates pass on `4a2ebca23c0435456505e30aa3841d52cdb434f5`. Release,
 native oracle and actual installed source-owner witness acceptance pass on the
 notice-corrected frozen source `cef3125c7ec3ebc39f9dcf25eb4bb11781f72011`. Exact source comparison

@@ -14,20 +14,22 @@ obligation contains an unknown answer with reason
 retained for the unknown check. A model after unknown is not evidence of SAT.
 This record makes no claim about why the pinned solver could not decide it.
 
-The opt-in [scalar literal witness family](../../../docs/literal-witnesses.md)
+The opt-in [scalar literal witness family](https://github.com/Chelis-Lang/sail/blob/archive/neutral-contracts-final/docs/literal-witnesses.md)
 uses a separately attributed quantifier-free query and independent scalar
 evaluation. It does not change this original Verus query or classify its UNKNOWN
 as a SAT rejection. Predicate-based originals such as this helper fixture remain
 outside the initial witness translation's admitted slice.
 
 The exact requested-target report is retained in
-`crates/sail-verus/tests/fixtures/neutral-contracts/body-edit-requested-target.json`.
+`crates/sail-verus/tests/fixtures/requirement-attribution/body-edit-requested-target.json`.
 Its full original run and diagnostic hashes are in the
 [native qualification](../../../docs/validation/neutral-verus-lowering.md).
-Reproduce through the documented `neutral_contracts_acceptance` library example,
-which invokes the actual pinned managed runner and records the raw result.
+Sail 0.3.0 removed the neutral helper and its `neutral_contracts_acceptance`
+example ([ADR 0109](../../../docs/decisions/0109-oyster-retired-v030-scope.md)).
+`body_edit_verus.rs` is plain Verus source: reproduce by verifying it directly
+with the pinned Verus, or with `sail verify` as a standalone file.
 
-The neutral projection returns `NotProved`, retaining unknown counts and reasons.
+The removed neutral projection returned `NotProved`, retaining unknown counts and reasons.
 It does not change ordinary legacy ledger/report semantics. The separate compiled
 runtime fixture violates its postcondition at input 1 with a satisfied precondition.
 That concrete runtime sample is independent of the unknown SMT check, and neither

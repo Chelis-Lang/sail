@@ -1,5 +1,7 @@
 # Neutral contract runtime qualification
 
+> **Retired.** The surface this record qualified was removed in v0.3.0 ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)). The record is kept as history; the last implementation is tagged `archive/neutral-contracts-final`. Nothing below describes current Sail.
+
 The runtime and shared syntax implementation at `315d9251` passed the native
 Linux CI image on 2026-10-21, using the dedicated `oyster-m10-contracts` host.
 The qualification covers the real attribute macros, release-enabled checks,
@@ -33,7 +35,7 @@ Raw native log SHA-256:
 
 The source also passed local macOS formatting, strict all-target linting,
 runtime/shared-IR tests and doctests in debug and release builds. The
-[specification](../spec/neutral-contracts.md) and
+[specification](https://github.com/Chelis-Lang/sail/blob/archive/neutral-contracts-final/docs/spec/neutral-contracts.md) and
 [ADR 0066](../decisions/0066-neutral-contract-runtime.md) describe the admitted
 subset and the intentional contract-failure checks. Source-level purity alone
 does not establish typed proof admission for arbitrary Rust field access.

@@ -1,5 +1,7 @@
 # Bounded neutral mutation qualification
 
+> **Retired.** The surface this record qualified was removed in v0.3.0 ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)). The record is kept as history; the last implementation is tagged `archive/neutral-contracts-final`. Nothing below describes current Sail.
+
 ## Current result
 
 Positive native kill acceptance is unestablished. The original strict
@@ -62,7 +64,7 @@ missing evidence, generic NotProved and observed unknowns never pass the gate.
 | `1b8f4148` | 2026-10-23 | Local gate passed | Structural and regression checks only; no native kill acceptance |
 | `62b8a184` | 2026-10-23 | Strict native kill gate failed | Both strong mutants retained original incomplete-quantifiers UNKNOWN; original receipt and source-service log indexed below |
 
-The [policy guide](../neutral-mutation.md) defines the public gate and receipt
+The [policy guide](https://github.com/Chelis-Lang/sail/blob/archive/neutral-contracts-final/docs/neutral-mutation.md) defines the public gate and receipt
 limits. Raw native logs and receipts remain outside the repository:
 
 | Original artifact | SHA-256 |

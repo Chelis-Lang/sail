@@ -45,6 +45,9 @@ job/status/result tools use the server's service and reject that argument.
 On builds with standalone support, `source_file` selects an existing `.rs` file.
 For proof failures, `explain_failure` and `counterexample` provide more focused
 feedback than the initial summary; use their installed schemas.
+When present, `counterexample`'s `decoded_inputs` names parameter values from the solver's
+model for one failed check; treat them as a lead, not a validated
+counterexample.
 
 If the user wants to connect Claude Code, run from the project directory:
 

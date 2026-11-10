@@ -1,5 +1,7 @@
 # 0077: Separate scalar literal-contract counterexamples from Verus mutation verdicts
 
+- **Status:** superseded by [ADR 0109](0109-oyster-retired-v030-scope.md): the surface this decision describes was removed in v0.3.0. The last implementation is tagged `archive/neutral-contracts-final`.
+
 ## Decision
 
 Add the explicitly requested `neutral-scalar-literal-contract-witness-v1`
@@ -70,4 +72,4 @@ an unchanged scalar contract even while Verus's quantified query remains
 UNKNOWN. It does not establish a native mutation kill, promote proof assurance,
 demonstrate exhaustive mutation coverage or validate the intended requirements.
 General program bodies and wider contract shapes need separate qualified
-translations. Product guidance is in [the witness guide](../literal-witnesses.md).
+translations. Product guidance is in [the witness guide](https://github.com/Chelis-Lang/sail/blob/archive/neutral-contracts-final/docs/literal-witnesses.md).
