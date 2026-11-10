@@ -210,3 +210,24 @@ fn every_site_is_one_well_formed_replacement() {
         }
     }
 }
+
+#[test]
+fn no_site_inside_a_ghost_wrapper_call() {
+    // Each line's only arithmetic, comparison and constant are ghost
+    // arguments of a `Ghost`/`Tracked` call; only `b + 1` is exec.
+    let src = "verus! {
+fn f(a: u64, b: u64) -> u64 {
+    let g = Ghost::<u64>::new(a + 1);
+    let t = Tracked::<u64>::method(a - 2);
+    let h = vstd::prelude::Ghost::new(a * 3);
+    let u = Tracked::<Vec<u64>>::method::<u64>(a < 4);
+    b + 1
+}
+}";
+    let p = sites_of(src);
+    assert_eq!(p.fns.len(), 1);
+    for (_, s) in &p.sites {
+        assert_eq!(line_of(src, s.start), 7, "site in a ghost argument: {s:?}");
+    }
+    assert!(p.sites.iter().any(|(_, s)| s.class == ExecClass::Arith));
+}

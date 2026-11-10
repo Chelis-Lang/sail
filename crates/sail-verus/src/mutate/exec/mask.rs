@@ -10,8 +10,11 @@
 //!   `reveal`, `reveal_with_fuel`, `hide`, `broadcast use`;
 //! - loop `invariant`/`invariant_except_break`/`ensures`/`decreases`
 //!   clauses;
-//! - `Ghost(...)`/`Tracked(...)` arguments (and `Ghost::new(...)`,
-//!   `Ghost<T>` type arguments);
+//! - `Ghost`/`Tracked` forms: the tuple-struct construction or pattern
+//!   `Ghost(...)`, associated calls with any turbofish
+//!   (`Ghost::new(...)`, `Ghost::<T>::new(...)`,
+//!   `Tracked::<T>::method::<U>(...)`), after any leading path
+//!   (`vstd::prelude::Ghost::new(...)`), and `Ghost<T>` types;
 //! - `let ghost`/`let tracked` statements;
 //! - attributes and macro invocations (never mutated).
 //!
@@ -24,8 +27,12 @@
 //! brace the loop-header scan cannot place, a spec-only token left outside
 //! the mask (`@`, `==>`, `forall`, `int`, ...), a closure with its own
 //! `requires`/`ensures` (a spec closure), a struct literal or call that
-//! names a ghost field or a function with ghost parameters, a nested `fn`,
-//! or an enclosing item that is not an `impl`/`trait`/`mod`.
+//! names a ghost field or a function with ghost parameters, a `Ghost` or
+//! `Tracked` form the mask cannot bound (a qualified path such as
+//! `<Ghost<T>>::new(e)`, or one followed by a method call, field, index,
+//! `?` or brace group), an attribute in the body that names a mode,
+//! `trigger`, `auto` or `external`, a nested `fn`, or an enclosing item
+//! that is not an `impl`/`trait`/`mod`.
 //!
 //! The mask relies on Verus's own mode checker: in a project that verifies,
 //! ghost code in an exec function can only appear inside the constructs
@@ -517,6 +524,53 @@ fn ghost_statement_end(file: &File, i: usize, c: usize) -> Result<usize, String>
     Ok(c)
 }
 
+/// The token after the `Ghost`/`Tracked` form starting at token `i`, before
+/// the body's closing brace `c`: the whole path, with every generic argument
+/// list and every turbofish (`Ghost<T>`, `Ghost::<T>::new`,
+/// `Tracked::method::<U>`), and its argument group when one follows
+/// (`Ghost(e)`, `Ghost::<T>::new(e)`, `Tracked::<T>::method(e)`). A leading
+/// path (`vstd::prelude::Ghost::new(e)`) does not matter: everything from
+/// the `Ghost`/`Tracked` token on is ghost.
+///
+/// Forms the mask cannot bound refuse the function: a qualified path
+/// (`<Ghost<T>>::new(e)`, `<Tracked<T> as Tr>::f(e)`), whose arguments come
+/// after the type's closing `>`, and a wrapper followed by a method call,
+/// field, index, `?` or brace group (`Tracked(t).borrow()`), whose operands
+/// are ghost too.
+fn ghost_wrapper_end(file: &File, i: usize, c: usize) -> Result<usize, String> {
+    let word = file.text(i);
+    if i > 0
+        && file.is(i - 1, "<")
+        && !(i > 1 && (file.kind(i - 2) == Some(Kind::Ident) || file.is(i - 2, "::")))
+    {
+        return Err(format!("qualified `{word}` path"));
+    }
+    let mut j = i + 1;
+    if file.is(j, "<") {
+        j = file.skip_angles(j, c);
+    }
+    while file.is(j, "::") {
+        if file.is(j + 1, "<") {
+            j = file.skip_angles(j + 1, c);
+        } else if file.kind(j + 1) == Some(Kind::Ident) {
+            j += 2;
+        } else {
+            return Err(format!("unplaced `{word}` path"));
+        }
+    }
+    if file.is(j, "(") {
+        j = file
+            .partner(j)
+            .filter(|&x| x < c)
+            .ok_or_else(|| "unbalanced bracket".to_owned())?
+            + 1;
+    }
+    if j < c && matches!(file.text(j), "." | "[" | "{" | "?") {
+        return Err(format!("`{word}` form followed by `{}`", file.text(j)));
+    }
+    Ok(j)
+}
+
 /// Places the header of the loop whose keyword is token `i`: masks its
 /// clauses and records its condition.
 fn loop_header(
@@ -661,23 +715,9 @@ fn mask_body(
                     continue;
                 }
                 "Ghost" | "Tracked" => {
-                    let mut j = i + 1;
-                    if file.is(j, "::") && file.kind(j + 1) == Some(Kind::Ident) {
-                        j += 2;
-                    }
-                    if file.is(j, "::") && file.is(j + 1, "<") {
-                        j = file.skip_angles(j + 1, c);
-                    } else if file.is(j, "<") {
-                        j = file.skip_angles(j, c);
-                    }
-                    if file.is(j, "(") {
-                        let close = group_end(j)?;
-                        mask.set(i, close);
-                        i = close + 1;
-                    } else {
-                        mask.set(i, j - 1);
-                        i = j;
-                    }
+                    let end = ghost_wrapper_end(file, i, c)?;
+                    mask.set(i, end - 1);
+                    i = end;
                     continue;
                 }
                 "while" | "for" | "loop" if !after_dot && (t != "for" || next != "<") => {
@@ -694,11 +734,13 @@ fn mask_body(
                 .get(file.start(i)..file.end(close))
                 .unwrap_or_default();
             mask.set(i, close);
-            if ["proof", "spec", "ghost", "tracked", "trigger", "auto"]
-                .iter()
-                .any(|w| attr.contains(w))
+            if [
+                "proof", "spec", "ghost", "tracked", "trigger", "auto", "external",
+            ]
+            .iter()
+            .any(|w| attr.contains(w))
             {
-                return Err("ghost attribute in the body".to_owned());
+                return Err("mode, trigger or external attribute in the body".to_owned());
             }
             i = close + 1;
             continue;
@@ -965,6 +1007,112 @@ fn f(a: u64, g: Ghost<int>) -> (r: u64)
         assert!(refuse("let s = T(a + 1, a); a", &facts));
         assert!(refuse("takes(p, a + 1); a", &facts));
         assert!(!refuse("let s = U { v: a }; a", &facts));
+    }
+
+    /// The eligible text of `body` in a one-function exec body, or `None`
+    /// when the function is refused.
+    fn eligible_body(body: &str) -> Option<String> {
+        let src = format!("verus! {{ fn f(a: u64) -> u64 {{ {body} }} }}");
+        let (status, text) = eligible_text(&src, &UnitFacts::default());
+        (status == [Status::Supported]).then_some(text)
+    }
+
+    #[test]
+    fn masks_every_ghost_wrapper_form() {
+        let masked = |body: &str, want: &str| {
+            assert_eq!(eligible_body(body).as_deref(), Some(want), "{body}");
+        };
+        // Tuple-struct construction, in calls and as patterns.
+        masked("foo(a, Ghost(a + 1), Tracked(t)); a", "foo ( a , , ) ; a");
+        masked("let Tracked(p) = t; a", "let = t ; a");
+        masked("let Ghost(g) = h; a", "let = h ; a");
+        masked("match t { Tracked(p) => a + 1 }", "match t { => a + 1 }");
+        // Associated calls, with and without turbofish on the type or the
+        // function.
+        masked("let g = Ghost::new(a + 1); a", "let g = ; a");
+        masked("let g = Ghost::<u64>::new(a + 1); a", "let g = ; a");
+        masked("let g = Ghost::new::<u64>(a + 1); a", "let g = ; a");
+        masked("let t = Tracked::<P>::method(a + 1); a", "let t = ; a");
+        masked(
+            "let t = Tracked::<Vec<P>>::method::<u64>(a + 1, a); a",
+            "let t = ; a",
+        );
+        masked("let t = Tracked::assume_new(); a", "let t = ; a");
+        // A leading path does not hide the wrapper.
+        masked(
+            "let g = vstd::prelude::Ghost::new(a + 1); a",
+            "let g = vstd :: prelude :: ; a",
+        );
+        masked(
+            "let g = vstd::prelude::Ghost::<u64>::new(a + 1); a",
+            "let g = vstd :: prelude :: ; a",
+        );
+        masked(
+            "let t = vstd::prelude::Tracked(a + 1); a",
+            "let t = vstd :: prelude :: ; a",
+        );
+        // Types, including nested in other generics.
+        masked("let g: Ghost<Seq<u64>> = h; a", "let g : = h ; a");
+        masked("let v: Vec<Tracked<P>> = w; a", "let v : Vec < = w ; a");
+        // `>>` closes both lists at once, so the rest of the path is masked
+        // too: more than needed, never less.
+        masked(
+            "let v = Vec::<Ghost<u64>>::new(); a",
+            "let v = Vec :: < ; a",
+        );
+        // Forms the mask cannot bound refuse the function.
+        for refused in [
+            "let g = <Ghost<u64>>::new(a + 1); a",
+            "let g = <Ghost<u64> as From<u64>>::from(a + 1); a",
+            "let p = Tracked(t).borrow(a + 1); a",
+            "let p = Tracked::<P>::new(t).get(a + 1); a",
+            "let p = Ghost(g).0; a",
+            "let p = Tracked(t)[a + 1]; a",
+            "let p = Tracked(t)?; a",
+            "let p = Ghost:: (a + 1); a",
+        ] {
+            assert_eq!(eligible_body(refused), None, "{refused}");
+        }
+    }
+
+    #[test]
+    fn ghost_patterns_and_attributes() {
+        // `let ghost`/`let tracked` statements, whatever their pattern.
+        assert_eq!(
+            eligible_body("let ghost (x, y) = (a, a + 1); let tracked Q { p } = q; a").as_deref(),
+            Some("a")
+        );
+        // `ghost`/`tracked` in any other pattern position trips the mask.
+        for refused in [
+            "match o { Some(tracked p) => a, None => a + 1 }",
+            "let f = |tracked p: P| a + 1; f(q)",
+            "let (ghost x, y) = (a, a + 1); y",
+            "let tracked_ok = 1; ghost_fn(ghost a)",
+        ] {
+            assert_eq!(eligible_body(refused), None, "{refused}");
+        }
+        // Attributes are masked; ones that name a mode, a trigger or
+        // externality refuse the function.
+        assert_eq!(
+            eligible_body("#[verifier::truncate] let x = (a + 1) as u8; a").as_deref(),
+            Some("let x = ( a + 1 ) as u8 ; a")
+        );
+        assert_eq!(
+            eligible_body("#[verifier::loop_isolation(false)] while a < 3 { } a").as_deref(),
+            Some("while a < 3 { } a")
+        );
+        for refused in [
+            "#[verifier::proof_block] { lemma(a); } a",
+            "#[verifier::proof] let x = a + 1; a",
+            "#[verifier::spec] let x = a + 1; a",
+            "#[verifier(ghost)] let x = a + 1; a",
+            "#[verifier::tracked] let x = a + 1; a",
+            "#[verus::internal(proof)] let x = a + 1; a",
+            "#[verifier::external] let x = a + 1; a",
+            "#[verifier::external_body] let x = a + 1; a",
+        ] {
+            assert_eq!(eligible_body(refused), None, "{refused}");
+        }
     }
 
     #[test]

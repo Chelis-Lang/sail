@@ -32,11 +32,15 @@ Implemented (library only; no CLI, JSON or MCP surface yet):
 - `sail_verus::mutate::exec::plan` is the exec-only planner. Its fail-closed
   mask admits only tokens of exec function bodies outside `proof { }`
   blocks, `assert`/`assume` forms, loop `invariant`/`decreases`/`ensures`
-  clauses, `Ghost(..)`/`Tracked(..)`, `let ghost`/`let tracked`, attributes
-  and macro arguments; spec and proof functions and every signature clause
-  are outside it. A function the mask cannot classify (an unknown macro, a
-  spec-only token left over, a spec closure, a ghost field or ghost-parameter
-  call, an unplaced loop or body brace) is reported `unsupported` with its
+  clauses, `Ghost`/`Tracked` forms (construction and patterns, associated
+  calls with any turbofish such as `Ghost::<T>::new(e)`, after any leading
+  path, and types), `let ghost`/`let tracked`, attributes and macro
+  arguments; spec and proof functions and every signature clause are outside
+  it. A function the mask cannot classify (an unknown macro, a spec-only
+  token left over, a spec closure, a ghost field or ghost-parameter call, a
+  qualified or method-chained `Ghost`/`Tracked` form, a body attribute naming
+  a mode, a trigger or externality, an unplaced loop or body brace) is
+  reported `unsupported` with its
   reason and yields no sites. Classes: the catalogue's body operators
   restricted to the mask plus `loop-bound`, `off-by-one`, `swapped-args`,
   `dropped-else` and `early-return`. Spec-mutating classes have no exec
