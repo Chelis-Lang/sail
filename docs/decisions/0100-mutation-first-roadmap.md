@@ -2,7 +2,9 @@
 
 - **Status:** accepted by owner, 2026-11-04; Oyster parts superseded and
   backend ordering amended by
-  [ADR 0109](0109-oyster-retired-v030-scope.md) on 2026-11-09
+  [ADR 0109](0109-oyster-retired-v030-scope.md) on 2026-11-09; evidence rule for
+  `sail mutate` amended by [ADR 0111](0111-mutation-evidence.md) on
+  2026-11-10
 - **Date:** 2026-11-04
 - **Amends:** work ordering in ADR 0065 and charter appendix entry 8;
   existing implementations and correctness contracts remain in force
@@ -23,6 +25,10 @@ explicit budgets, omissions and unsupported scope. Start with the native Unknown
 cases. Never convert Unknown into a kill or infer adequacy or vacuity from
 sampled survivors/zero kills. Existing native-campaign classification is
 unchanged; scalar witnesses remain a separately qualified evidence family.
+(Amended on 2026-11-10 for `sail mutate`: an attributed, stable Verus
+rejection whose baseline twin proves with headroom counts as a detection,
+with the solver's `unknown` kept verbatim. See
+[ADR 0111](0111-mutation-evidence.md).)
 
 Run changed-proof performance, the named Mac Anvil cold regression and the
 service-wide acceptance proof alongside it. Give frontend reuse a bounded
