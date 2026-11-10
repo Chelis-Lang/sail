@@ -217,7 +217,8 @@ functions can still establish a whole-target proof.
 
 When Sail cannot confirm that a result's inputs are unchanged, the result is
 Unknown and carries the note `SAIL3114: inputs could not be confirmed
-unchanged; re-run for a current result` ([freshness](freshness.md)).
+unchanged (REASONS); re-run for a current result`, where REASONS names each
+check that failed ([freshness](freshness.md#why-a-result-is-unknown)).
 Job reads preserve the original proof notes. A
 separate current-input-validation warning appears when a previously Current
 report becomes Unknown during projection. See

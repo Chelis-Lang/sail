@@ -68,6 +68,19 @@ oracle completion (#611), and compound-field lowering/retained-read correction
   configuration or compiler flags. Re-enabling the store is still not
   qualified.
 
+- A shim session that falls back to the pinned Z3 after a failed or timed-out
+  daemon handshake records no session, so its checks have no `source` and a
+  neutral proof built on them reads `not-proved`
+  ([#683](https://github.com/Chelis-Lang/sail/issues/683)). Such a target is
+  no longer reused, so the state no longer persists; the next run verifies
+  it again. What makes the handshake fail organically is not established: no
+  fallback was seen at the default 10 s daemon timeout in about 80,000 shim
+  sessions under load.
+- On Linux, an inotify queue overflow in the absent-configuration watcher
+  still withholds Current (`absent-queue-overflow`). The queue is now drained
+  continuously, so this needs millions of events per second in the watched
+  directories, which include the workspace's ancestors such as `/tmp`.
+
 The service-wide acceptance theorem is not complete
 ([#368](https://github.com/Chelis-Lang/sail/issues/368), #371–#376); see the
 [refinement guide](design/acceptance-production-refinements.md).

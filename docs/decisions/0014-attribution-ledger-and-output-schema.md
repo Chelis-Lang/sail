@@ -197,3 +197,9 @@ not establish the missing implementation identity. Unique names retain their
 existing obligation IDs. The duplicate-ID invariant remains unchanged;
 successful whole-target results retain their existing authority, while failing
 crates with partial attribution remain conservative.
+
+## Note (2026-11-10): unsourced checks authorize no reuse
+
+A report with a check whose `source` is `null` publishes and authorizes no
+reusable proof, and standalone service runs record session records under
+`SAIL_PROVENANCE_DIR`. See [ADR 0110](0110-interrupted-first-observation.md).

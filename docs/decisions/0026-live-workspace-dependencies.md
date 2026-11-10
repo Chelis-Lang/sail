@@ -56,3 +56,9 @@ Measure CLI size, daemon memory and idle CPU with networking disabled, and
 keep every required CI job below its existing ten-minute bound. Fast tests
 use bounded local fixtures; corpus acceptance and performance measurements
 stay local-only.
+
+## Note (2026-11-10): continuous queue drain
+
+The Linux absent-configuration observer now drains its kernel queue
+continuously during the run, not only after it, and still fails closed on
+overflow. See [ADR 0110](0110-interrupted-first-observation.md).
