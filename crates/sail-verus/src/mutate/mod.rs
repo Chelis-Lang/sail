@@ -19,11 +19,11 @@
 //! checked byte for byte against a fresh generation.
 //!
 //! [`exec::plan`] is the exec-only planner: the body classes restricted to
-//! tokens the fail-closed exec mask ([`exec::analyse`]) admits, plus the
+//! tokens the fail-closed exec mask admits, plus the
 //! exec operators. Spec-mutating classes cannot be expressed in its class
 //! type ([`exec::ExecClass`]).
 
-// pub mod exec;
+pub mod exec;
 mod lexer;
 mod sites;
 
@@ -42,7 +42,7 @@ pub use sites::{CLASSES, Site};
 /// places a function body by what follows its brace group, so a brace in a
 /// `requires`/`ensures` clause (`match r { .. },`) is no longer taken for
 /// the body.
-pub const GENERATOR: &str = "gen-mutants 2";
+pub const GENERATOR: &str = "gen-mutants 3";
 
 /// One selected mutant.
 #[derive(Debug, Clone)]
@@ -550,4 +550,4 @@ pub fn settle(g: &Generated, unit: &str, meta: &serde_json::Value) -> Result<Str
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests;

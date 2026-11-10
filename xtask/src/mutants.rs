@@ -220,7 +220,7 @@ pub fn run(args: &[String]) -> Result<()> {
         Some(file) => local_request(file, &name)?,
         None => corpus_request(&a.project, a.unit.as_deref(), true, a.source.as_deref())?,
     };
-    req.name = name.clone();
+    req.name.clone_from(&name);
     req.seed = a.seed;
     req.per_class = a.per_class;
     let g = mutate::render(&req)?;
@@ -346,7 +346,7 @@ fn check_one(dir: &Path, name: &str, source: Option<&Path>) -> Result<()> {
             req.commit
         ));
     }
-    req.name = name.to_owned();
+    name.clone_into(&mut req.name);
     req.seed = seed;
     req.per_class = per_class;
     let g = mutate::render(&req)?;
@@ -365,10 +365,7 @@ fn check_one(dir: &Path, name: &str, source: Option<&Path>) -> Result<()> {
             .lines()
             .zip(committed.lines())
             .position(|(a, b)| a != b)
-            .map_or_else(
-                || settled.lines().count().min(committed.lines().count()),
-                |n| n,
-            );
+            .unwrap_or_else(|| settled.lines().count().min(committed.lines().count()));
         return Err(format!(
             "{} differs from the regenerated, settled catalogue from line {}",
             cat.display(),

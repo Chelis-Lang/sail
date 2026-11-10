@@ -108,20 +108,25 @@ fn settling_replays_the_oracle_rewrite() {
     assert!(settle(&g, "fixture/src/lib.rs", &meta).is_err());
 }
 
-/// The checked-in fixture crate's catalogue regenerates byte for byte:
+/// The checked-in fixture crate's catalogue regenerates byte for byte
+/// (it is the output of `cargo xtask gen-mutants --file
+/// crates/sail-verus/tests/fixtures/mutate/fixture/src/lib.rs --name fixture
+/// --seed 20261020 --per-class 3 --out crates/sail-verus/tests/fixtures/mutate`):
 /// any change to the generator's output shows here, in CI, before it
 /// reaches the corpus catalogues (which `cargo xtask gen-mutants --check`
 /// verifies against the fetched corpus).
 #[test]
 fn the_fixture_catalogue_is_unchanged() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/mutate");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/mutate");
     let req = Request {
-        source: root.join("fixture"),
+        // As `cargo xtask gen-mutants --file` reads it: the crate root's
+        // directory is the source.
+        source: root.join("fixture/src"),
         crate_root: root.join("fixture/src/lib.rs"),
         project: "fixture".to_owned(),
         unit: "fixture".to_owned(),
         commit: "local source".to_owned(),
-        invocation: "--file fixture/src/lib.rs".to_owned(),
+        invocation: "--file crates/sail-verus/tests/fixtures/mutate/fixture/src/lib.rs".to_owned(),
         name: "fixture".to_owned(),
         seed: 20_261_020,
         per_class: 3,
