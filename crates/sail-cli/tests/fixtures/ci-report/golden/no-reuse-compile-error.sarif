@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "columnKind": "unicodeCodePoints",
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "exitCode": 101,
+          "properties": {
+            "closingCompilerLines": 1,
+            "contextSha256": "",
+            "currentness": "unknown",
+            "inputRevision": "",
+            "noteAndHelpBlocks": 0,
+            "repeatedDiagnostics": 0,
+            "runId": "3706478-1794273073544183253"
+          },
+          "toolExecutionNotifications": []
+        }
+      ],
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "proofs/alpha/src/lib.rs",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startColumn": 27,
+                  "startLine": 10
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "mismatched types"
+          },
+          "properties": {
+            "establishingRun": "3706478-1794273073544183253",
+            "packageId": "",
+            "rendered": "error[E0308]: mismatched types\n  --> alpha/src/lib.rs:10:27\n   |\n 5 | pub fn max(a: u64, b: u64) -> (r: u64)\n   |                                   --- expected `u64` because of return type\n...\n10 |     if a > b { a } else { \"b\" }\n   |                           ^^^ expected `u64`, found `&str`\n\nFor more information about this error, try `rustc --explain E0308`.",
+            "requested": true,
+            "target": "cargo verus verify"
+          },
+          "ruleId": "rustc/E0308",
+          "ruleIndex": 0
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/Chelis-Lang/sail",
+          "name": "sail",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "id": "rustc/E0308",
+              "shortDescription": {
+                "text": "mismatched types"
+              }
+            }
+          ],
+          "version": "0.2.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

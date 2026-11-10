@@ -30,6 +30,7 @@ fn help_lists_every_user_command() {
         "explain",
         "baseline",
         "compare",
+        "report",
         "engine",
         "watch",
         "jobs",
@@ -389,6 +390,7 @@ fn every_command_has_help() {
         "explain",
         "baseline",
         "compare",
+        "report",
         "watch",
         "jobs",
         "mcp",
@@ -418,6 +420,7 @@ fn every_command_has_help() {
         &["explain", "--help"],
         &["baseline", "--help"],
         &["compare", "--help"],
+        &["report", "--help"],
         &["runtime", "--help"],
     ] {
         let output = sail(args);

@@ -13,6 +13,15 @@ semantic versioning once the API is published.
   compiler provenance, the `SAIL3138` note names the unit and a stable reason
   code instead of the generic lookup mismatch, and the `SAIL_SHIPPED_TRACE`
   events carry the same codes.
+- Decided how `sail mutate`, planned for v0.3.0, will count mutants (ADR
+  0111). A Verus rejection counts as a detection when it is attributed to the
+  mutated function, is not only a resource limit, repeats on every run, and
+  the unmutated function proves with headroom. Each detection shows whether
+  the solver returned a counterexample or gave up, and solver answers stay
+  verbatim. The score is `rejected / (rejected + survived)`, with
+  inconclusive, unviable and unsupported mutants listed separately. Detected
+  means the specification and its proof reject the change, not that the
+  specification provably forbids it. Nothing changes in `sail verify`.
 - The next release is v0.3.0, and it is planned as a breaking release (ADR
   0109). The experimental neutral-contract surfaces published in 0.2.0 are
   scheduled for removal in it: the `sail-contracts`, `sail-contracts-macros`
@@ -23,6 +32,24 @@ semantic versioning once the API is published.
   attribution and `sail assurance` stay experimental for now; whether they are
   kept or removed is decided once Verus mutation testing (`sail mutate`)
   exists. The guides for the surfaces scheduled for removal carry a notice.
+- Add `sail report --format github-summary|github-annotations|sarif
+  [--baseline FILE]`, which renders a `sail verify --output json` document
+  for CI without running anything: a Markdown job summary within a byte
+  limit, ranked GitHub annotations within GitHub's per-step limit with a
+  notice stating what was left out, and SARIF 2.1.0 holding every located
+  diagnostic. `--baseline` adds what changed against an earlier document, or
+  why the two are not comparable. New error `SAIL0908`. See
+  `docs/ci-reports.md`.
+- `sail jobs result` leads a failing target's line with its failures (`1
+  failed, 3126 passed by Verus's totals (not attributed one by one), 0
+  unknown`, not `0 verified, 1 failed, …`). A target whose crate stopped
+  before any function was checked no longer reads `0 verified, 0 failed, 0
+  unknown`: it reads `compilation failed before verification` after a Rust
+  compile error and `rejected by Verus before verification` when Verus
+  rejects a crate that compiles as Rust (a mode error, for example). A line
+  whose functions include provisional verdicts ends its counts with `, N
+  provisional (not verified)`. Other passing lines are unchanged, and so are
+  `sail verify`'s output and the JSON documents.
 - `scripts/perf-host.sh up` launches the arm64 Ubuntu image for a Graviton
   instance type and the amd64 image otherwise, and installs `unzip` on the host
   for `cargo xtask fetch-verus`. An `up` that fails before an instance exists
