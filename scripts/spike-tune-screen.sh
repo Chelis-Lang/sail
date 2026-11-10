@@ -43,7 +43,7 @@ run() { # NAME
 run base
 for probe in ${TUNE_PROBES:-}; do
   cp "$pristine/$file" "$out/proj/$file"
-  sed -i "${probe##*=}a assert(true);" "$out/proj/$file"
+  sed -i "${probe##*=}s/\$/ assert(true);/" "$out/proj/$file"
   run "base.${probe%%=*}"
 done
 cp "$pristine/$file" "$out/proj/$file"
@@ -62,14 +62,16 @@ for variant in "$@"; do
     sed -i "${line}s/^\(\s*\)/\1#[verifier::spinoff_prover] /" "$out/proj/$target"
   done
   run "$name"
-  # Optional edit probes: TUNE_PROBES="NAME=LINE ...". Each inserts
-  # `assert(true);` after LINE of FILE (a line inside a function body, after
-  # any `hide(...)` header) on the variant's source alone, and verifies
-  # against the variant's now-warm cache: the wall time of that one edit.
+  # Optional edit probes: TUNE_PROBES="NAME=LINE ...". Each appends
+  # `assert(true);` to LINE of FILE (the line holding a function body's
+  # opening brace, in a body that does not start with `hide(...)`) on the
+  # variant's source alone, so no later line moves and isolated functions
+  # keep their bytes, and verifies against the variant's now-warm cache: the
+  # wall time of that one edit.
   cp "$out/proj/$file" "$out/variant.src"
   for probe in ${TUNE_PROBES:-}; do
     cp "$out/variant.src" "$out/proj/$file"
-    sed -i "${probe##*=}a assert(true);" "$out/proj/$file"
+    sed -i "${probe##*=}s/\$/ assert(true);/" "$out/proj/$file"
     run "$name.${probe%%=*}"
   done
   for f in "${restore[@]}"; do cp "$pristine/$f" "$out/proj/$f"; done
