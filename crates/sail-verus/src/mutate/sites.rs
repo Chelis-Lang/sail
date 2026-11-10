@@ -64,7 +64,7 @@ const CLAUSE_KWS: &[&str] = &[
 ];
 
 /// Keywords that end a loop's `invariant` clause.
-const LOOP_CLAUSE_KWS: &[&str] = &[
+pub(super) const LOOP_CLAUSE_KWS: &[&str] = &[
     "invariant",
     "invariant_except_break",
     "invariant_ensures",
@@ -112,7 +112,7 @@ const KEYWORDS: &[&str] = &[
 ];
 
 /// Function modifiers that may precede `fn`.
-const MODIFIERS: &[&str] = &[
+pub(super) const MODIFIERS: &[&str] = &[
     "pub",
     "open",
     "closed",
@@ -129,62 +129,160 @@ const MODIFIERS: &[&str] = &[
     "default",
 ];
 
+/// Tokens that start an item (or end the enclosing one), so that a brace
+/// group before them is a function body.
+const ITEM_STARTS: &[&str] = &[
+    "fn",
+    "pub",
+    "impl",
+    "spec",
+    "proof",
+    "exec",
+    "open",
+    "closed",
+    "const",
+    "static",
+    "struct",
+    "enum",
+    "union",
+    "trait",
+    "mod",
+    "use",
+    "type",
+    "broadcast",
+    "unsafe",
+    "global",
+    "extern",
+    "uninterp",
+    "axiom",
+    "default",
+    "async",
+    "tracked",
+    "ghost",
+    "macro_rules",
+];
+
+/// Tokens after a brace group in a signature that mean the group belongs to
+/// a clause expression (`match x { .. },`), not the body.
+const CLAUSE_CONTINUES: &[&str] = &[
+    ";",
+    ",",
+    "{",
+    "else",
+    ".",
+    "?",
+    "==>",
+    "<==",
+    "<==>",
+    "&&",
+    "||",
+    "==",
+    "!=",
+    "<=",
+    ">=",
+    "<",
+    ">",
+    "&&&",
+    "|||",
+    "=~=",
+    "=~~=",
+    "===",
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "implies",
+    "as",
+    "is",
+    "matches",
+    "requires",
+    "ensures",
+    "recommends",
+    "decreases",
+    "returns",
+    "opens_invariants",
+    "no_unwind",
+    "default_ensures",
+    "when",
+    "via",
+];
+
+/// What a brace group in a function signature is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Brace {
+    /// The body; its closing brace's token index.
+    Body(usize),
+    /// Part of a clause expression.
+    Continues,
+    /// Neither, by what follows it.
+    Unplaced,
+}
+
 /// A signature clause: `(keyword, keyword token, items as token ranges)`.
 type Clause = (String, usize, Vec<(usize, usize)>);
 
 /// A parsed function.
-struct Func {
-    name: String,
-    mode: &'static str,
-    external: bool,
+pub(super) struct Func {
+    pub(super) name: String,
+    pub(super) mode: &'static str,
+    pub(super) external: bool,
     params: Vec<(String, String)>,
-    ret: Option<String>,
+    pub(super) ret: Option<String>,
     clauses: Vec<Clause>,
     /// Token indices of the body's braces.
-    body: Option<(usize, usize)>,
+    pub(super) body: Option<(usize, usize)>,
 }
 
-struct File<'a> {
-    src: &'a str,
-    toks: Vec<Tok>,
-    pair: Vec<Option<usize>>,
+/// A lexed file with its bracket pairs.
+pub(super) struct File<'a> {
+    pub(super) src: &'a str,
+    pub(super) toks: Vec<Tok>,
+    pub(super) pair: Vec<Option<usize>>,
 }
 
-impl File<'_> {
-    fn text(&self, i: usize) -> &str {
+impl<'a> File<'a> {
+    /// Lexes `src` and matches its brackets.
+    pub(super) fn new(src: &'a str) -> Self {
+        let toks = lex(src);
+        let pair = match_brackets(src, &toks);
+        File { src, toks, pair }
+    }
+
+    pub(super) fn text(&self, i: usize) -> &str {
         self.toks
             .get(i)
             .and_then(|t| self.src.get(t.start..t.end))
             .unwrap_or_default()
     }
 
-    fn is(&self, i: usize, s: &str) -> bool {
+    pub(super) fn is(&self, i: usize, s: &str) -> bool {
         self.text(i) == s
     }
 
-    fn kind(&self, i: usize) -> Option<Kind> {
+    pub(super) fn kind(&self, i: usize) -> Option<Kind> {
         self.toks.get(i).map(|t| t.kind)
     }
 
-    fn start(&self, i: usize) -> usize {
+    pub(super) fn start(&self, i: usize) -> usize {
         self.toks.get(i).map_or(self.src.len(), |t| t.start)
     }
 
-    fn end(&self, i: usize) -> usize {
+    pub(super) fn end(&self, i: usize) -> usize {
         self.toks.get(i).map_or(self.src.len(), |t| t.end)
     }
 
-    fn partner(&self, i: usize) -> Option<usize> {
+    pub(super) fn partner(&self, i: usize) -> Option<usize> {
         self.pair.get(i).copied().flatten()
     }
 
-    fn is_open(&self, i: usize) -> bool {
+    pub(super) fn is_open(&self, i: usize) -> bool {
         self.kind(i) == Some(Kind::Punct) && matches!(self.text(i), "(" | "[" | "{")
     }
 
     /// Whether token `i` ends an operand, so that an operator after it is
     /// binary.
-    fn operand_end(&self, i: usize) -> bool {
+    pub(super) fn operand_end(&self, i: usize) -> bool {
         match self.kind(i) {
             Some(Kind::Ident) => !KEYWORDS.contains(&self.text(i)),
             Some(Kind::Int | Kind::Float | Kind::Str | Kind::Char) => true,
@@ -194,7 +292,7 @@ impl File<'_> {
     }
 
     /// The token ranges of `verus! { ... }` bodies.
-    fn verus_regions(&self) -> Vec<(usize, usize)> {
+    pub(super) fn verus_regions(&self) -> Vec<(usize, usize)> {
         let mut out = Vec::new();
         let mut i = 0;
         while i + 2 < self.toks.len() {
@@ -214,7 +312,7 @@ impl File<'_> {
 
     /// Skips a generic parameter list starting at `i` (`<`); returns the
     /// index after it.
-    fn skip_angles(&self, mut i: usize, limit: usize) -> usize {
+    pub(super) fn skip_angles(&self, mut i: usize, limit: usize) -> usize {
         let mut depth = 0i32;
         while i < limit {
             match self.text(i) {
@@ -238,7 +336,7 @@ impl File<'_> {
 
     /// Splits tokens `[from, to)` at top-level commas (skipping bracket
     /// groups and, when `angles`, `<...>` generics).
-    fn split_commas(&self, from: usize, to: usize, angles: bool) -> Vec<(usize, usize)> {
+    pub(super) fn split_commas(&self, from: usize, to: usize, angles: bool) -> Vec<(usize, usize)> {
         let mut items = Vec::new();
         let mut start = from;
         let mut i = from;
@@ -272,18 +370,12 @@ impl File<'_> {
         items
     }
 
-    /// The function whose `fn` keyword is token `f`, if it parses.
-    #[allow(
-        clippy::too_many_lines,
-        clippy::many_single_char_names,
-        reason = "one walk over the signature; f/i/j/p are token cursors"
-    )]
-    fn function(&self, f: usize, region_end: usize) -> Option<Func> {
-        if self.kind(f + 1) != Some(Kind::Ident) {
-            return None;
-        }
-        let name = self.text(f + 1).to_owned();
-        // Modifiers and attributes, walking backwards.
+    /// The mode (`exec`, `spec`, `proof`) and externality of the function
+    /// whose `fn` keyword is token `f`, from its modifiers and attributes,
+    /// walking backwards: `pub(crate)`, `spec(checked)`, `proof(axiom)`,
+    /// `extern "C"`, `#[verifier::external_body]` and the mode attributes
+    /// (`#[verifier::spec]`, `#[spec]`, ...).
+    pub(super) fn mode_of(&self, f: usize) -> (&'static str, bool) {
         let mut mode = "exec";
         let mut external = false;
         let mut j = f;
@@ -292,25 +384,25 @@ impl File<'_> {
             if self.kind(p) == Some(Kind::Ident) && MODIFIERS.contains(&self.text(p)) {
                 match self.text(p) {
                     "spec" => mode = "spec",
-                    "proof" => mode = "proof",
+                    "proof" | "axiom" => mode = "proof",
                     _ => {}
                 }
                 j = p;
             } else if self.is(p, ")") {
-                // `pub(crate)`
-                let open = self.partner(p)?;
-                if open > 0 && self.is(open - 1, "pub") {
-                    j = open - 1;
+                // `pub(crate)`, `spec(checked)`, `proof(axiom)`.
+                let Some(open) = self.partner(p) else { break };
+                if open > 0 && matches!(self.text(open - 1), "pub" | "spec" | "proof") {
+                    j = open;
                 } else {
                     break;
                 }
+            } else if self.kind(p) == Some(Kind::Str) && p > 0 && self.is(p - 1, "extern") {
+                j = p;
             } else if self.is(p, "]") {
-                let open = self.partner(p)?;
-                let hash = if open > 0 && self.is(open - 1, "#") {
-                    open - 1
-                } else {
+                let Some(open) = self.partner(p) else { break };
+                if !(open > 0 && self.is(open - 1, "#")) {
                     break;
-                };
+                }
                 let attr = self
                     .src
                     .get(self.start(open)..self.end(p))
@@ -318,11 +410,63 @@ impl File<'_> {
                 if attr.contains("external") {
                     external = true;
                 }
-                j = hash;
+                if attr.contains("verifier::spec")
+                    || attr.contains("verifier(spec")
+                    || attr == "[spec]"
+                {
+                    mode = "spec";
+                }
+                if attr.contains("verifier::proof")
+                    || attr.contains("verifier(proof")
+                    || attr == "[proof]"
+                {
+                    mode = "proof";
+                }
+                j = open - 1;
             } else {
                 break;
             }
         }
+        (mode, external)
+    }
+
+    /// What the top-level brace group opening at token `i` of a function
+    /// signature is: the body when the token after it starts another item
+    /// or ends the enclosing one; part of a clause expression when the
+    /// token after it continues an expression or a clause (`match r { .. },`,
+    /// `if c { .. } else { .. }`); otherwise unplaced.
+    pub(super) fn brace_role(&self, i: usize, region_end: usize) -> Brace {
+        let Some(close) = self.partner(i).filter(|&c| c < region_end) else {
+            return Brace::Unplaced;
+        };
+        let n = close + 1;
+        let next = self.text(n);
+        let item = n >= region_end
+            || next == "}"
+            || next == "#"
+            || (self.kind(n) == Some(Kind::Ident)
+                && (ITEM_STARTS.contains(&next) || self.is(n + 1, "!")));
+        if item {
+            Brace::Body(close)
+        } else if CLAUSE_CONTINUES.contains(&next) {
+            Brace::Continues
+        } else {
+            Brace::Unplaced
+        }
+    }
+
+    /// The function whose `fn` keyword is token `f`, if it parses.
+    #[allow(
+        clippy::too_many_lines,
+        clippy::many_single_char_names,
+        reason = "one walk over the signature; f/i/j/p are token cursors"
+    )]
+    pub(super) fn function(&self, f: usize, region_end: usize) -> Option<Func> {
+        if self.kind(f + 1) != Some(Kind::Ident) {
+            return None;
+        }
+        let name = self.text(f + 1).to_owned();
+        let (mode, external) = self.mode_of(f);
         let mut i = f + 2;
         if self.is(i, "<") {
             i = self.skip_angles(i, region_end);
@@ -381,7 +525,12 @@ impl File<'_> {
                 break;
             }
             if t == "{" {
-                body = self.partner(i).map(|c| (i, c));
+                match self.brace_role(i, region_end) {
+                    Brace::Body(c) => body = Some((i, c)),
+                    // A clause expression's group outside any clause, or a
+                    // brace nothing places: no body is read (fail closed).
+                    Brace::Continues | Brace::Unplaced => return None,
+                }
                 break;
             }
             if self.kind(i) == Some(Kind::Ident) && CLAUSE_KWS.contains(&t) {
@@ -390,11 +539,15 @@ impl File<'_> {
                 let from = i;
                 while i < region_end {
                     let u = self.text(i);
-                    if u == "{"
-                        || u == ";"
-                        || (CLAUSE_KWS.contains(&u) && self.kind(i) == Some(Kind::Ident))
-                    {
+                    if u == ";" || (CLAUSE_KWS.contains(&u) && self.kind(i) == Some(Kind::Ident)) {
                         break;
+                    }
+                    if u == "{" {
+                        match self.brace_role(i, region_end) {
+                            Brace::Body(_) => break,
+                            Brace::Unplaced => return None,
+                            Brace::Continues => {}
+                        }
                     }
                     if self.is_open(i) {
                         i = self.partner(i).unwrap_or(i);
@@ -451,7 +604,7 @@ impl File<'_> {
 
     /// Byte range `[s, e)` grown to whole lines when only whitespace
     /// surrounds it on its first and last lines.
-    fn whole_lines(&self, s: usize, e: usize) -> (usize, usize) {
+    pub(super) fn whole_lines(&self, s: usize, e: usize) -> (usize, usize) {
         let ls = self
             .src
             .get(..s)
@@ -472,7 +625,7 @@ impl File<'_> {
     }
 
     /// The indentation of the line holding byte `p`.
-    fn indent_at(&self, p: usize) -> String {
+    pub(super) fn indent_at(&self, p: usize) -> String {
         let ls = self
             .src
             .get(..p)
@@ -488,7 +641,7 @@ impl File<'_> {
 
     /// Statements ending in `;` in the block whose braces are tokens
     /// `open`/`close`, and in nested blocks: `(first token, the `;`)`.
-    fn statements(&self, open: usize, close: usize, out: &mut Vec<(usize, usize)>) {
+    pub(super) fn statements(&self, open: usize, close: usize, out: &mut Vec<(usize, usize)>) {
         let mut i = open + 1;
         while i < close {
             let first = i;
@@ -539,6 +692,11 @@ impl File<'_> {
     }
 }
 
+/// Whether `t` is a keyword rather than an operand.
+pub(super) fn is_keyword(t: &str) -> bool {
+    KEYWORDS.contains(&t)
+}
+
 /// A small deterministic choice from `n` options, keyed by `key`.
 fn pick(key: u64, n: usize) -> usize {
     usize::try_from(key % u64::try_from(n.max(1)).unwrap_or(1)).unwrap_or(0)
@@ -552,9 +710,7 @@ fn pick(key: u64, n: usize) -> usize {
     reason = "one pass over each function, class by class, reads best in one place"
 )]
 pub fn find(src: &str, key: &dyn Fn(&str, usize) -> u64) -> Vec<Site> {
-    let toks = lex(src);
-    let pair = match_brackets(src, &toks);
-    let file = File { src, toks, pair };
+    let file = File::new(src);
     let mut out = Vec::new();
     for (ra, rb) in file.verus_regions() {
         let mut i = ra;
@@ -579,7 +735,12 @@ pub fn find(src: &str, key: &dyn Fn(&str, usize) -> u64) -> Vec<Site> {
     clippy::too_many_lines,
     reason = "every class's sites for one function, in class order"
 )]
-fn sites_of(file: &File, func: &Func, key: &dyn Fn(&str, usize) -> u64, out: &mut Vec<Site>) {
+pub(super) fn sites_of(
+    file: &File,
+    func: &Func,
+    key: &dyn Fn(&str, usize) -> u64,
+    out: &mut Vec<Site>,
+) {
     let site =
         |class: &'static str, kind: &'static str, s: usize, e: usize, r: String, what: String| {
             Site {
@@ -1040,6 +1201,45 @@ fn not_verus(x: u8) -> u8 { x + 1 }
         assert_eq!(strengthened.len(), 1);
         assert_eq!(strengthened[0].replacement, "(r == x) && false");
         assert!(!strengthened[0].what.starts_with("delete"));
+    }
+
+    #[test]
+    fn reads_checked_modes_and_clause_braces() {
+        let src = "verus! {
+pub open spec(checked) fn s(a: u64) -> bool { a >= 1 }
+fn f(a: u64) -> (r: u64)
+    ensures
+        match a { 0 => r == 1, _ => r == a },
+{
+    let x = a + 2;
+    x
+}
+}";
+        let all = find(src, &|_, _| 0);
+        let at = |needle: &str| src.find(needle).unwrap_or(usize::MAX);
+        // `spec(checked)` is a spec function, not exec.
+        assert!(
+            all.iter()
+                .filter(|x| x.function == "s")
+                .all(|x| x.mode == "spec")
+        );
+        assert!(all.iter().any(|x| x.function == "s"));
+        // The `match` group in `ensures` is part of the clause; the body is
+        // the brace group after it.
+        let one = at("r == 1") + 5;
+        let two = at("+ 2") + 2;
+        let kind_at = |p: usize| {
+            all.iter()
+                .find(|x| x.class == "constant" && x.start == p)
+                .map(|x| x.kind)
+        };
+        assert_eq!(kind_at(one), Some("spec"));
+        assert_eq!(kind_at(two), Some("body"));
+        assert!(
+            all.iter()
+                .filter(|x| x.function == "f")
+                .all(|x| x.mode == "exec")
+        );
     }
 
     #[test]

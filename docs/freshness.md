@@ -142,8 +142,40 @@ A run is Current only when all of the following hold:
 
 Otherwise the run is Historical (an input changed) or Unknown (one of the
 checks could not be made), with the note "inputs could not be confirmed
-unchanged; re-run for a current result". Verification itself still runs and
-its report is kept as the record of that run.
+unchanged (REASONS); re-run for a current result". Verification itself still
+runs and its report is kept as the record of that run.
+
+### Why a result is Unknown
+
+The `SAIL3114` note lists, in parentheses, every check that could not be
+made, and the run's `currentness-decision` job event carries the same list as
+`reasons`:
+
+| Reason | The check that could not be made |
+| --- | --- |
+| `reuse-disabled` | A loader variable is set, so the run reuses and records nothing (`SAIL3112`) |
+| `inputs-before-incomplete` | The input snapshot before the run |
+| `source-declarations-before-missing` | The compiler-declared inputs recorded by earlier runs of this setup |
+| `inputs-after-incomplete` | The input snapshot after the run |
+| `script-declarations-incomplete` | The declarations of every build script Cargo ran |
+| `source-declarations-incomplete` | The compiler-declared inputs of this run's units |
+| `absent-queue-overflow` | Linux: the absent-configuration watch lost events (kernel queue overflow) |
+| `absent-watch-removed`, `absent-queue-unreadable`, `absent-drain-deadline`, `absent-watch-unavailable` | Linux: the absent-configuration watch was removed, could not be read, did not finish draining within 4 s, or could not be set up |
+| `units-outside-scope` | Cargo compiled a unit outside the selected targets' closure |
+| `script-scheduling-unconfirmed` | Which build scripts Cargo scheduled |
+| `runtime-changed` | An installed toolchain file no longer has its recorded identity |
+| `stamp-before-missing`, `stamp-after-missing` | The metadata stamps of the inputs |
+| `readback-unconfirmed` | The service could not confirm a Current run's inputs when the job was read |
+
+A run that follows an interrupted first run of the same setup (a cancelled
+job, or a job that preempted the service's preparation of a new project) is
+not Unknown for want of the interrupted run's declarations. It discards what
+that run left, including the compiler family's Cargo target and every proof
+receipt of the family, and verifies as a first run (ADR 0110). Any setup that
+shares the compiler family, for example the same command with a different
+`-p` selection, performs the same discard before it reads the shared target. On Linux, the
+absent-configuration watch drains its queue continuously; an overflow still
+makes the result Unknown. See the [loaded qualification](validation/currentness-under-load.md).
 
 A newly discovered external include can introduce a source-path alias as well
 as new content, for example an absolute path through macOS's `/var` symlink.

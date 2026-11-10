@@ -10,6 +10,18 @@ the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
+## Unsourced-receipt native-binding review (#683, #704)
+
+The unsourced-check gate changes only `receipt_success` in `adapter.rs`: a
+report with a check whose answer the cache never recorded publishes no
+reusable receipt. The three bound callers `report_verification_arguments`,
+`cargo_driver_options_with` and `effective_verus_arguments` are
+byte-identical to main; the first remains the delegate to the unchanged
+`request_mode.rs` import. The reviewed adapter SHA-256 is
+`1534b71a2af923a661194d155224601cf3d24d9b1591342f18c5c62e56e88337`,
+superseding the #607 pin below. As there, the caller and delegation review,
+not the hash, justifies the native-source pin update.
+
 ## Metadata memo native-binding review (#607)
 
 The recovered metadata memo changes only `cargo()` in `adapter.rs`.

@@ -16,7 +16,6 @@
 //! exit code, the outcome or the set of failing functions.
 
 use std::collections::BTreeMap;
-use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -321,25 +320,15 @@ pub fn main(args: &[String]) -> Result<(), String> {
     if let Some(m) = meta.as_object_mut() {
         m.insert("oracle".to_owned(), oracle);
     }
-    let mut header = header_of(&text);
-    let _ = write!(
-        header,
-        "# Oracle: {} stock runs per mutant on {} (Verus {}); {} kept, {} dropped\n# (reasons in the sidecar).\n",
+    // The same rewrite `cargo xtask gen-mutants --check` replays.
+    let header = sail_verus::mutate::oracle_header(
+        &header_of(&text),
         o.runs,
         sail_verus::toolchain::host(),
-        setup.installed.pins.verus.release,
+        &setup.installed.pins.verus.release,
         kept.len(),
-        dropped.len()
+        dropped.len(),
     );
-    let mut kept_header = String::new();
-    for l in header.lines().filter(|l| {
-        !l.contains("is \"pending\" until")
-            && !l.contains("three stock Verus runs per mutant on the reference")
-    }) {
-        kept_header.push_str(l);
-        kept_header.push('\n');
-    }
-    let header = kept_header;
     std::fs::write(&o.catalogue, render(&header, &kept))
         .map_err(|e| format!("cannot write {}: {e}", o.catalogue.display()))?;
     save_meta(&meta_path, &meta)?;

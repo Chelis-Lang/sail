@@ -136,3 +136,11 @@ identity v1 cannot establish. Ordinary configuration such as relative OpenSSL
 paths, flags, job counts and network settings retains its Cargo semantics. These
 checks apply only to managed incremental execution; ordinary verification remains
 available.
+
+## Note (2026-11-10): interrupted first observations
+
+A first observation that ends after writing the context's input state and
+before recording its compiler-declared inputs is discarded, with the
+family's receipts and Cargo target, before the next run of any context of
+the family; the interrupted context's next run is then a genuine first
+observation. See [ADR 0110](0110-interrupted-first-observation.md).

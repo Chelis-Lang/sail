@@ -34,6 +34,27 @@ semantic versioning once the API is published.
   inconclusive, unviable and unsupported mutants listed separately. Detected
   means the specification and its proof reject the change, not that the
   specification provably forbids it. Nothing changes in `sail verify`.
+- A result that is not Current names why. The `SAIL3114` note lists every
+  failing currentness predicate, for example `SAIL3114: inputs could not be
+  confirmed unchanged (absent-queue-overflow); re-run for a current result`,
+  and a `currentness-decision` job event carries the same reasons. A service
+  read-back that withholds Current is named `readback-unconfirmed`.
+- Fewer correct results read Unknown (#696). A run after an interrupted first
+  run of the same setup (a cancelled job, or a job that preempted the
+  service's preparation of a new project) no longer reads Unknown: it discards
+  everything the interrupted run left, including the compiler family's Cargo
+  target and its proof receipts, and verifies as a first run (ADR 0110). A
+  run of another setup in the same compiler family (for example a different
+  `-p` selection) performs the same discard before it reads the shared
+  target. On
+  Linux, the watcher of absent Cargo configuration files drains its kernel
+  queue continuously, so unrelated churn in `/tmp` or the home directory no
+  longer overflows it during a long proof; an overflow still withholds
+  Current.
+- A target whose report has a check with no `source` (an answer the cache
+  never recorded) is not reused or published as a reusable proof; its next run
+  verifies it again (#683). Standalone files verified by the service now
+  record per-check sources: they set `SAIL_PROVENANCE_DIR` (#684).
 - The next release is v0.3.0, and it is planned as a breaking release (ADR
   0109). The experimental neutral-contract surfaces published in 0.2.0 are
   scheduled for removal in it: the `sail-contracts`, `sail-contracts-macros`
@@ -73,6 +94,18 @@ semantic versioning once the API is published.
   whose functions include provisional verdicts ends its counts with `, N
   provisional (not verified)`. Other passing lines are unchanged, and so are
   `sail verify`'s output and the JSON documents.
+- Internal: the mutation catalogue generator moved from xtask into
+  `sail-verus` (`sail_verus::mutate`, internal to the workspace) for the
+  planned `sail mutate`; `cargo xtask gen-mutants` is its command line, and
+  `cargo xtask gen-mutants --check` requires every committed catalogue to
+  regenerate byte for byte (run by the local standard and deep conformance
+  tiers). Generator version 3 reads `spec(checked)`/`proof(axiom)` and mode
+  attributes and no longer takes a brace in a `requires`/`ensures` clause for
+  the function body; the four catalogues in `corpus/mutants/` are regenerated
+  and settled again by the stock oracle. A fail-closed exec-only planner
+  (`sail_verus::mutate::exec`) adds `loop-bound`, `off-by-one`,
+  `swapped-args`, `dropped-else` and `early-return` mutations of executable
+  code only. No command or output changes.
 - `scripts/perf-host.sh up` launches the arm64 Ubuntu image for a Graviton
   instance type and the amd64 image otherwise, and installs `unzip` on the host
   for `cargo xtask fetch-verus`. An `up` that fails before an instance exists

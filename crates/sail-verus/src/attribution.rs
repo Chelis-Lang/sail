@@ -1192,6 +1192,77 @@ unsat
     }
 
     #[test]
+    fn a_check_the_cache_never_recorded_is_complete_but_never_reusable() {
+        // #683: a shim that passes a session through to the pinned solver
+        // after a failed handshake writes no session record, so its checks
+        // have no source. The report stays the run's genuine result, but no
+        // receipt may carry those checks into a later run.
+        let function = "demo::proved";
+        let doc = serde_json::json!({
+            "verification-results": {"verified": 1, "errors": 0, "success": true},
+            "times-ms": {"smt": {"smt-run-module-times": [
+                {"module": "demo", "function-breakdown": [
+                    {"function": function, "success": true, "time-micros": 7}
+                ]}
+            ]}}
+        });
+        let logs = [LogFile {
+            stem: "demo".to_owned(),
+            air: vec![AirQuery {
+                function: function.to_owned(),
+                kind: "Function-Def".to_owned(),
+                span: Some("src/lib.rs:1:1: 1:9 (#0)".to_owned()),
+            }],
+            ops: vec![SmtOp {
+                checks: vec![SmtCheck {
+                    reply_index: 0,
+                    answer: Some(Answer::Unsat),
+                    effort: Effort::default(),
+                    model: None,
+                }],
+            }],
+            spinoff_reason: None,
+            input_sha256: "session".to_owned(),
+            solver_version: None,
+        }];
+        let report = |provenance: &Provenance| {
+            let attribution = attribute(std::slice::from_ref(&doc), Some(&logs), provenance, None);
+            crate::report::build(&crate::report::Inputs {
+                args: &[],
+                exit_code: Some(0),
+                solver_path: None,
+                solver_sha256: None,
+                daemon: true,
+                attribution: &attribution,
+                diagnostics: &[],
+            })
+        };
+        let recorded = report(&Provenance::Records(vec![SessionRecord {
+            version: 1,
+            input_sha256: "session".to_owned(),
+            replies_served: 0,
+            solver_started: true,
+        }]));
+        assert!(crate::managed::receipt_complete(&recorded));
+        assert!(crate::managed::receipt_sourced(&recorded));
+        let unrecorded = report(&Provenance::Records(Vec::new()));
+        assert!(
+            unrecorded.crates[0]
+                .functions
+                .iter()
+                .flat_map(|f| f.obligations.iter().flatten())
+                .flat_map(|o| &o.checks)
+                .all(|check| check.source.is_none())
+        );
+        assert!(crate::managed::receipt_complete(&unrecorded));
+        assert!(!crate::managed::receipt_sourced(&unrecorded));
+        // Without a cache every answer is a fresh pinned-solver run.
+        assert!(crate::managed::receipt_sourced(&report(
+            &Provenance::NoCache
+        )));
+    }
+
+    #[test]
     fn models_become_assignments() {
         let m = parse_model(
             "(\n  (define-fun a () Int\n    5)\n  (define-fun f ((x Int)) Int x)\n  (define-fun %%location_label%%0 () Bool false)\n)",
