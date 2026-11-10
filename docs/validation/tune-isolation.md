@@ -25,7 +25,7 @@ cold at most 3% slower than unpatched.
 | Sail source | branch `spike/v030-piso` on main `765a3866`; release `sail`, `sail-z3`, `sail-conformance` built there |
 | Verus | stock `0.2026.10.18.7d82994` (plain arm, conformance oracle); Sail's Verus is the pinned fork runtime |
 | Tools | `scripts/spike-tune-rank.py` (rank, compare), `scripts/spike-tune-screen.sh` (warm-cache screen), `scripts/perf-real.sh` with `SAIL_PERF_SOURCE_PATCH` (timed rows) |
-| Raw evidence | `screen-anvil.tgz` sha256 `944bd34d668bac2d4857607b6172a9a8b062e8832027c48bc39b1b42817645db`; `final-anvil-q3.tgz` sha256 `c262b4f10b7417232cbeabfc75b489dfa1bdc5eb54476355ec12d155c4bf27bb`; FINALEVIDENCE (outside the repository) |
+| Raw evidence | `screen-anvil.tgz` sha256 `944bd34d668bac2d4857607b6172a9a8b062e8832027c48bc39b1b42817645db`; `final-anvil-q3.tgz` sha256 `c262b4f10b7417232cbeabfc75b489dfa1bdc5eb54476355ec12d155c4bf27bb`; IronKV, conformance and 7-thread rows `rest.tgz` sha256 `d29f318a1970cfc60f3dcaeb256ad17b53c268ba13b89f134bc13d9162d55577` (outside the repository) |
 
 ## Anvil (`--lib`, `--verify-module vdeployment_controller`)
 
@@ -73,7 +73,10 @@ Every run exited 0. All 12 stock runs reported 144 verified, 0 errors.
 Comparing Sail's cold results, unpatched against patched, shows 0 verdict
 changes in every round.
 
-STOCK7
+To see whether spare threads hide the extra solver work, stock cold was
+also run with `--num-threads 7`, unpatched and `q3` alternating, 3 rounds:
+174.9 s [172.8–182.0] unpatched against 178.6 s [173.8–179.4] for `q3`
+(+2.1%, ranges overlap, n = 3). All six runs reported 144 verified.
 
 **Conformance on the patched source.** `sail-conformance run --tier standard
 --project anvil` ran on the corpus source with the `q3` patch, in three arms:
@@ -90,8 +93,8 @@ edit 54 s (bar 60 s), and cold within 1% for both stock and Sail. Its cost
 is proof headroom. L1106 goes from 10% to 89% of its own rlimit, and Sail now
 flags it as near its limit. Its process alone takes 96–107 s. That is close
 to the 101–108 s composition query that already bounds cold on 32 threads.
-The extra solver work (about 118M more rlimit for L1106) is hidden only
-because this host has spare threads.
+L1106 alone uses about 118M more rlimit than before. With 7 threads, stock
+cold rises 2.1%, inside the bar but close to it.
 
 ## IronKV (`ironsht`, whole crate)
 
@@ -120,7 +123,12 @@ rows, `i4` against unpatched source, use the same six-round rotated protocol
 | Sail `body-late` | 7.2 s [7.2–7.3] | 5.6 s [5.6–5.6] | −22.7% |
 
 Every run exited 0. Every stock and Sail cold run reported 313 verified
-(and 2,059 for vstd), 0 errors. IRONKVCONF Isolation saves 1.6 s per edit
+(and 2,059 for vstd), 0 errors. Conformance on the `i4` source
+(`--project verified-ironkv`, pass-through, cache fill, cache warm): each arm
+1 unit **Same**, 328 functions compared, 0 different. Each arm reports rlimit
+drift for 23 functions in `host_protocol_t`, `SingleDelivery` and
+`single_delivery_t`. An unpatched pass-through control gives the identical
+23 entries. Isolation saves 1.6 s per edit
 here. The edit was already within 2.4 s of the 4.8 s floor.
 
 ## Decision for v0.3.0
