@@ -1,0 +1,39 @@
+{
+  "spike": "v0.3.0 A1: mutation kill evidence (#664)",
+  "date_utc": "2026-11-09/10",
+  "host": {
+    "instance_type": "c7i.4xlarge",
+    "region": "us-east-2",
+    "note": "us-east-1 refused the launch (VcpuLimitExceeded, 512 of 512 vCPUs in use), so the lane ran in us-east-2",
+    "cpu": "Intel Xeon Platinum 8488C, 16 vCPU",
+    "kernel": "Linux 7.0.0-1014-aws x86_64",
+    "container": "sail-ci:f57ed8a3e26baaff-core (ci/Dockerfile, target core)"
+  },
+  "sail_source": "b0c6b3a5ef30d5775b37557b60ca1a136db3ad0e plus this branch's oracle patch",
+  "sail_sha256": "1c44e73b76a64715fc5177306390429ae60221efa58031f9632e7f58eee595f9",
+  "sail_z3_shim_sha256": "5cda4be0c42a8757b3d236827113ac539830b83502f8347e04f35f19e19169aa",
+  "stock_verus": "0.2026.10.18.7d82994",
+  "engine": "Verus source 7d829946231d6413a398f6e4160cdfe951261dad, sail-fork a0e11cffbdf768eac874996f35149385152f736e",
+  "z3": "4.16.0, sha256 e583c4186a45e72411fa2cb2048401eed03f0f8e5f24694676a8f6271a50b765",
+  "rust_toolchain_for_verus": "1.99.1",
+  "projects": {
+    "ironkv": "verified-ironkv 7e35ed097c4089b9fbda483ea2629a0033f4d874, unit ironsht",
+    "vest": "vest 11af01ddaef76cceded03517cd48764adb9d35b1, unit vest_lib"
+  },
+  "dependency_preparation": "registry (scripts/shipped-deps/Cargo.lock), as the checked-in catalogues' oracle",
+  "stock_runs": {
+    "traced": "5 per mutant: stock cargo-verus and Verus, the pinned Z3 behind the byte-forwarding sail-z3 shim with its tap on",
+    "plain": "1 per mutant: no Sail binary in the process tree",
+    "ironkv": {"mutants": 38, "traced_runs": 190, "solver_sessions": 4750, "checks": 69015},
+    "vest": {"mutants": 30, "traced_runs": 150, "solver_sessions": 39900, "checks": 485905},
+    "concurrency": "3 oracle workers per project, both projects and other steps at once; no timing here is a measurement"
+  },
+  "analysis_records_sha256": {
+    "ironkv-traced.json": "035f6c2b1376fcaf826b44a665bdd66d7f0cbfdaf35f01e1c25e05c4db42ada7",
+    "vest-traced.json": "2d54038e2e453c3b2dd63f6144efc1a1888c574eda81f5631188da87d12e4bad",
+    "ironkv-plain.json": "fbe0c35083765e80bb7751c4a8121cf32afb6abe531ad545f4ed74c590eff3e6",
+    "vest-plain.json": "c0482f3261b727f072fb8ad600caea24567ec25419e17a1e7fd44c427ad12f4f",
+    "minimal.json": "ad04eccd13533518f73595fcb79a3d6f09216c974b6ac691dfd5831b133af5d9"
+  },
+  "raw_logs": "not kept: the host was terminated; the records above are what analyze.py read from them"
+}

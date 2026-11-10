@@ -1,0 +1,63 @@
+original: failing [] non-unsat answers {'["unknown", "(incomplete quantifiers)"]': 3}
+ironkv-arith-002 catalogue errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-arith-003 catalogue errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['loop invariant not satisfied', 'invariant not satisfied at end of loop body', 'invariant not satisfied before loop', 'loop invariant not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 4} 
+ironkv-arith-006 catalogue,exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['invariant not satisfied at end of loop body', 'possible arithmetic underflow/overflow'] {'["unknown", "(incomplete quantifiers)"]': 4} 
+ironkv-arith-013 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['postcondition not satisfied', 'possible arithmetic underflow/overflow'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-arith-014 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['invariant not satisfied at end of loop body', 'possible arithmetic underflow/overflow'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-arith-019 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['invariant not satisfied at end of loop body', 'possible arithmetic underflow/overflow'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-arith-029 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['possible arithmetic underflow/overflow', 'assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-compare-001 catalogue errors [101, 101, 101, 101, 101] stable input-varies  elsewhere ['postcondition not satisfied', 'invariant not satisfied at end of loop body'] {'["unknown", "(incomplete quantifiers)"]': 4} ['alloc::vec::Vec::_is_marshalable', 'alloc::vec::Vec::deserialize']
+ironkv-compare-003 catalogue errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 3} 
+ironkv-compare-004 catalogue errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 1} 
+ironkv-compare-005 catalogue errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['postcondition not satisfied', 'postcondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 4} 
+ironkv-compare-006 catalogue errors [101, 101, 101, 101, 101] stable input-varies  elsewhere ['precondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 1} ['ironsht::net_sht_v::send_packet_seq']
+ironkv-compare-033 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['postcondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-compare-043 exec-token errors [101, 101, 101, 101, 101] stable input-varies stderr-order-varies mutated-function ['precondition not satisfied', 'assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 4} 
+ironkv-constant-002 catalogue errors [101, 101, 101, 101, 101] stable input-varies stderr-order-varies elsewhere ['postcondition not satisfied', 'assertion failed', 'assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 3} ['ironsht::host_impl_v::HostState::host_next_receive_packet', 'ironsht::host_impl_v::HostState::receive_packet_next']
+ironkv-constant-003 catalogue,exec-token errors [101, 101, 101, 101, 101] stable input-varies stderr-order-varies mutated-function ['invariant not satisfied before loop', 'invariant not satisfied before loop'] {'["unknown", "(incomplete quantifiers)"]': 3} 
+ironkv-constant-004 catalogue errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['loop invariant not satisfied', 'invariant not satisfied at end of loop body', 'invariant not satisfied before loop', 'loop invariant not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 4} 
+ironkv-constant-005 catalogue errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 1} 
+ironkv-constant-006 catalogue verified [0, 0, 0, 0, 0] stable input-varies  - [] {} 
+ironkv-constant-012 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['postcondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 1} 
+ironkv-constant-024 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['postcondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 1} 
+ironkv-constant-038 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 1} 
+ironkv-constant-053 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['postcondition not satisfied', 'possible arithmetic underflow/overflow'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-logic-004 catalogue errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 3} 
+ironkv-logic-011 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['precondition not satisfied', 'assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 4} 
+ironkv-logic-012 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['precondition not satisfied', 'postcondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-logic-013 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['postcondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 1} 
+ironkv-logic-021 exec-token errors [101, 101, 101, 101, 101] stable input-varies stderr-order-varies mutated-function ['assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 1} 
+ironkv-logic-024 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['postcondition not satisfied', 'precondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-logic-025 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['assertion failed', 'precondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 2} 
+ironkv-statement-001 catalogue errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 3} 
+ironkv-statement-002 catalogue errors [101, 101, 101, 101, 101] stable input-varies stderr-order-varies mutated-function ['assertion failed'] {'["unknown", "(incomplete quantifiers)"]': 3} 
+ironkv-statement-003 catalogue verified [0, 0, 0, 0, 0] stable input-varies  - [] {} 
+ironkv-statement-004 catalogue verified [0, 0, 0, 0, 0] stable input-varies  - [] {} 
+ironkv-statement-005 catalogue verified [0, 0, 0, 0, 0] stable input-varies  - [] {} 
+ironkv-statement-006 catalogue verified [0, 0, 0, 0, 0] stable input-varies  - [] {} 
+ironkv-statement-021 exec-token errors [101, 101, 101, 101, 101] stable input-varies stderr-order-varies mutated-function ['decreases not satisfied at end of loop'] {'["unknown", "(incomplete quantifiers)"]': 1} 
+ironkv-statement-043 exec-token errors [101, 101, 101, 101, 101] stable input-varies  mutated-function ['decreases not satisfied at end of loop', 'precondition not satisfied'] {'["unknown", "(incomplete quantifiers)"]': 3} 
+
+== catalogue: 20 mutants
+ outcome: {'errors': 15, 'verified': 5}
+ attribution of rejected: {'mutated-function': 12, 'elsewhere': 3}
+ stable across 5 runs: 20 of 20 | solver input byte-stable: 0 | stderr byte order stable: 17
+ non-unsat answers beyond the original's (run 0): {'["unknown", "(incomplete quantifiers)"]': 43}
+ rejected mutants by set of non-unsat answers: {'["[\\"unknown\\", \\"(incomplete quantifiers)\\"]"]': 15}
+ diagnostic messages: {'assertion failed': 9, 'loop invariant not satisfied': 4, 'invariant not satisfied at end of loop body': 4, 'invariant not satisfied before loop': 4, 'possible arithmetic underflow/overflow': 1, 'postcondition not satisfied': 4, 'precondition not satisfied': 1}
+
+== exec-token: 20 mutants
+ outcome: {'errors': 20}
+ attribution of rejected: {'mutated-function': 20}
+ stable across 5 runs: 20 of 20 | solver input byte-stable: 0 | stderr byte order stable: 16
+ non-unsat answers beyond the original's (run 0): {'["unknown", "(incomplete quantifiers)"]': 42}
+ rejected mutants by set of non-unsat answers: {'["[\\"unknown\\", \\"(incomplete quantifiers)\\"]"]': 20}
+ diagnostic messages: {'invariant not satisfied at end of loop body': 3, 'possible arithmetic underflow/overflow': 6, 'postcondition not satisfied': 8, 'assertion failed': 6, 'precondition not satisfied': 6, 'invariant not satisfied before loop': 2, 'decreases not satisfied at end of loop': 2}
+
+== all: 38 mutants
+ outcome: {'errors': 33, 'verified': 5}
+ attribution of rejected: {'mutated-function': 30, 'elsewhere': 3}
+ stable across 5 runs: 38 of 38 | solver input byte-stable: 0 | stderr byte order stable: 32
+ non-unsat answers beyond the original's (run 0): {'["unknown", "(incomplete quantifiers)"]': 78}
+ rejected mutants by set of non-unsat answers: {'["[\\"unknown\\", \\"(incomplete quantifiers)\\"]"]': 33}
+ diagnostic messages: {'assertion failed': 15, 'loop invariant not satisfied': 4, 'invariant not satisfied at end of loop body': 6, 'invariant not satisfied before loop': 4, 'possible arithmetic underflow/overflow': 6, 'postcondition not satisfied': 12, 'precondition not satisfied': 7, 'decreases not satisfied at end of loop': 2}

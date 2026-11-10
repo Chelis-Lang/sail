@@ -1,0 +1,1123 @@
+{
+ "vest-arith-003": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::datetime::decimal4_bytes",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "datetime::vest_lib::asn1::datetime::decimal4_bytes",
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 50.8
+ },
+ "vest-arith-004": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 3
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::datetime::decimal2_bytes",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "datetime::vest_lib::asn1::datetime::decimal2_bytes",
+   "datetime::vest_lib::asn1::datetime::lemma_decimal4_canonical",
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 70.1
+ },
+ "vest-arith-006": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "vest_lib::combinators::star::RepeatN::lemma_parse_non_malleable_rec",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "star::proof::vest_lib::combinators::star::RepeatN::lemma_parse_non_malleable_rec"
+  ],
+  "wall_s": 51.2
+ },
+ "vest-arith-010": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::oid::oid_first_subidentifier_exec",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "oid::vest_lib::asn1::oid::oid_first_subidentifier_exec"
+  ],
+  "wall_s": 57.7
+ },
+ "vest-arith-020": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::real::ber_real_binary_wf_exec",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "real::vest_lib::asn1::real::ber_real_binary_wf_exec"
+  ],
+  "wall_s": 65.4
+ },
+ "vest-arith-021": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::real::der_real_binary_wf_exec",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "real::vest_lib::asn1::real::der_real_binary_wf_exec"
+  ],
+  "wall_s": 47.2
+ },
+ "vest-compare-001": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {},
+    "checks": {},
+    "counterexamples": 0,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "vest_lib::combinators::mapped::Mapped::lemma_parse_non_malleable",
+    "obligations": 0,
+    "provenance_source": "unrecorded",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "mapped::proof::vest_lib::combinators::mapped::Mapped::lemma_parse_non_malleable"
+  ],
+  "wall_s": 66.1
+ },
+ "vest-compare-002": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::combinators::uints::U24Le::parse",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "uints::exec::vest_lib::combinators::uints::U24Le::parse"
+  ],
+  "wall_s": 50.9
+ },
+ "vest-compare-003": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::integer::i64_to_be_bytes_in_place",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "integer::vest_lib::asn1::integer::i64_to_be_bytes_in_place"
+  ],
+  "wall_s": 55.3
+ },
+ "vest-compare-005": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [],
+  "other_functions_labelled_unknown": 3127,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 60.3
+ },
+ "vest-compare-006": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::GeneralizedTimeFmt::der_next",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "der_ord::vest_lib::asn1::GeneralizedTimeFmt::der_next",
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 56.4
+ },
+ "vest-compare-009": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::LengthFmt::parse",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "length::vest_lib::asn1::LengthFmt::parse"
+  ],
+  "wall_s": 54.5
+ },
+ "vest-constant-002": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::TagFmt::parse",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "tag::vest_lib::asn1::TagFmt::parse"
+  ],
+  "wall_s": 57.4
+ },
+ "vest-constant-003": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::real::ber_real_binary_wf_exec",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   },
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "vest_lib::asn1::real::lemma_ber_real_bytes_cases",
+    "obligations": 3,
+    "provenance_source": "mixed",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3125,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "real::vest_lib::asn1::real::ber_real_binary_wf_exec",
+   "real::vest_lib::asn1::real::lemma_ber_real_bytes_cases"
+  ],
+  "wall_s": 62.6
+ },
+ "vest-constant-004": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::cbor::head::CborHeadFmt::parse",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "head::vest_lib::cbor::head::CborHeadFmt::parse"
+  ],
+  "wall_s": 48.1
+ },
+ "vest-constant-005": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::primitives::btcvarint::VarInt::parse",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "btcvarint::vest_lib::primitives::btcvarint::VarInt::parse",
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 59.4
+ },
+ "vest-constant-006": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "sat": 1,
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "vest_lib::combinators::uints::spec::lemma_u64_le_bytes_roundtrip",
+    "obligations": 3,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "uints::spec::vest_lib::combinators::uints::spec::lemma_u64_le_bytes_roundtrip"
+  ],
+  "wall_s": 68.7
+ },
+ "vest-constant-011": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {},
+    "checks": {},
+    "counterexamples": 0,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::combinators::tail::Tail::der_start",
+    "obligations": 0,
+    "provenance_source": "unrecorded",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "der_ord::vest_lib::combinators::tail::Tail::der_start",
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 50.6
+ },
+ "vest-logic-001": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "vest_lib::asn1::ber::sequence_of::BerSequenceOfFmt::theorem_serialize_dps_parse_roundtrip",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   },
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 3
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "vest_lib::core::proof::impl&%0::C::theorem_serialize_parse_roundtrip",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3125,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ber::sequence_of::derived_proofs::vest_lib::asn1::ber::sequence_of::BerSequenceOfFmt::theorem_serialize_dps_parse_roundtrip",
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "proof::vest_lib::core::proof::impl&%0::C::theorem_serialize_parse_roundtrip"
+  ],
+  "wall_s": 59.2
+ },
+ "vest-logic-002": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::Ia5StringFmt::decode_owned",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ber::char_string::vest_lib::asn1::Ia5StringFmt::decode_owned",
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 67.3
+ },
+ "vest-logic-003": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "sat": 1,
+     "unsat": 1
+    },
+    "counterexamples": 0,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "vest_lib::combinators::uints::spec::lemma_u24_be_bytes_roundtrip",
+    "obligations": 3,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 44.3
+ },
+ "vest-logic-004": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::cbor::head::CborHeadFmt::parse",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "head::vest_lib::cbor::head::CborHeadFmt::parse"
+  ],
+  "wall_s": 42.4
+ },
+ "vest-logic-005": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 3,
+     "unsat": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "vest_lib::asn1::tag::lemma_first_byte_from_parts_roundtrip",
+    "obligations": 3,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "tag::vest_lib::asn1::tag::lemma_first_byte_from_parts_roundtrip"
+  ],
+  "wall_s": 45.5
+ },
+ "vest-logic-024": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::primitives::btcvarint::VarInt::parse",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "btcvarint::vest_lib::primitives::btcvarint::VarInt::parse",
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 47.0
+ },
+ "vest-logic-029": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::integer::Integer::in_i64_range",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "integer::vest_lib::asn1::integer::Integer::in_i64_range",
+   "integer::vest_lib::asn1::integer::i64_from_be_bytes"
+  ],
+  "wall_s": 72.3
+ },
+ "vest-statement-003": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [],
+  "other_functions_labelled_unknown": 3127,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 40.8
+ },
+ "vest-statement-006": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::combinators::star::exec::serialize_slice",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "star::exec::vest_lib::combinators::star::exec::serialize_slice"
+  ],
+  "wall_s": 41.4
+ },
+ "vest-statement-013": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::combinators::uints::U16Be::serialize_into",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "uints::exec::vest_lib::combinators::uints::U16Be::serialize_into"
+  ],
+  "wall_s": 40.4
+ },
+ "vest-statement-026": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {},
+    "checks": {},
+    "counterexamples": 0,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::combinators::bytes::Fixed::serialize_into",
+    "obligations": 0,
+    "provenance_source": "unrecorded",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "bytes::exec::vest_lib::combinators::bytes::Fixed::serialize_into",
+   "format::vest_lib::cbor::format::parse_cbor_with_child"
+  ],
+  "wall_s": 40.3
+ },
+ "vest-statement-053": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "vest_lib::asn1::utctime::utc_time_to_bytes",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 3126,
+  "same_functions_as_stock": false,
+  "stock_exit": 101,
+  "stock_failing": [
+   "format::vest_lib::cbor::format::parse_cbor_with_child",
+   "utctime::vest_lib::asn1::utctime::utc_time_to_bytes"
+  ],
+  "wall_s": 41.3
+ }
+}

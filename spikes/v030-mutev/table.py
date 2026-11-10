@@ -21,32 +21,50 @@ STABLE = ("exit", "stderr_blocks_sha256", "verification_results", "failing", "fu
           "function_rlimits", "answers_digest", "not_unsat")
 
 
-def row(mid, m):
+def row(mid, m, base_answers):
     runs = m["runs"]
     oracle = m.get("oracle") or {}
     r0 = runs[0] if runs else {}
     name = m["meta"]["function"]
     new = r0.get("new_failing", [])
     same_fn = [f.rsplit("::", 1)[-1] == name for f in new]
-    errors = r0.get("errors", [])
+    # Errors and solver answers the unmutated project already has (Vest's
+    # pinned rlimit failure, recommends warnings) are not the mutant's.
+    errors = [e for e in r0.get("errors", []) if not e.get("in_original")]
     outcome = (oracle.get("outcomes") or ["?"])[0]
     if m.get("dropped"):
         outcome = "dropped: " + m["dropped"]
+    if outcome == "errors" and not new and not errors:
+        # Stock still exits non-zero, but only with what the unmutated
+        # project already fails (Vest's pinned rlimit failure): nothing new.
+        outcome = "no-new-failure"
     stable = all(m["identical"].get(k) for k in STABLE) and len(runs) == 5
-    if outcome == "errors":
-        if errors and all(e["in_mutated_function"] for e in errors) and new and all(same_fn):
-            attribution = "mutated-function"
-        elif errors and any(e["in_mutated_function"] for e in errors):
-            attribution = "mixed"
-        elif errors:
-            attribution = "elsewhere"
-        else:
-            attribution = "no-error-printed"
-    else:
+    inside = [e for e in errors if e["in_mutated_function"]]
+    outside = [e for e in errors if not e["in_mutated_function"]]
+    if outcome != "errors":
         attribution = "-"
+    elif not errors:
+        attribution = "no-error-printed"
+    elif not inside:
+        attribution = "elsewhere"
+    elif any("rlimit" in e[0] if isinstance(e, list) else "rlimit" in e["message"] for e in inside):
+        attribution = "mutated-function-rlimit"
+    elif not outside and new and all(same_fn):
+        attribution = "mutated-function"
+    elif not outside and not new:
+        # Stock prints the error in the mutated function but its per-function
+        # entry says successful (bit-vector queries, VI-0003).
+        attribution = "mutated-function-span-only"
+    elif any(same_fn) and all("rlimit" in e["message"] for e in outside):
+        # The mutated function is rejected, and another, unchanged function
+        # now exceeds its resource limit in the same run.
+        attribution = "mutated-function+other-rlimit"
+    else:
+        attribution = "mixed"
     answers = Counter()
     for k, n in r0.get("not_unsat", []):
-        answers[k] += n
+        if n - base_answers.get(k, 0) > 0:
+            answers[k] = n - base_answers.get(k, 0)
     return {
         "id": mid, "groups": ",".join(m.get("groups") or []), "class": m["meta"]["class"],
         "generator_mode": m["meta"]["mode"], "function": name, "outcome": outcome,
@@ -64,7 +82,9 @@ def row(mid, m):
 
 def main():
     data = json.load(open(sys.argv[1]))
-    rows = [row(k, v) for k, v in sorted(data["mutants"].items())]
+    base_answers = dict(next(iter(data["originals"].values()))["not_unsat"])
+    print("original: failing", data["original_failing"], "non-unsat answers", base_answers)
+    rows = [row(k, v, base_answers) for k, v in sorted(data["mutants"].items())]
     if "--tsv" in sys.argv:
         with open(sys.argv[sys.argv.index("--tsv") + 1], "w") as f:
             cols = list(rows[0])
@@ -97,10 +117,9 @@ def main():
                 answers[k] += n
             kinds[json.dumps(sorted({k for k in r["not_unsat"]}))] += 1
             pass
-        print(" non-unsat answers (run 0, all sessions):", dict(answers))
+        print(" non-unsat answers beyond the original's (run 0):", dict(answers))
         print(" rejected mutants by set of non-unsat answers:", dict(kinds))
         print(" diagnostic messages:", dict(Counter(e[0] for r in sel for e in r["errors"])))
-    print("\noriginal failing:", {k: v["failing"] for k, v in data["originals"].items()})
 
 
 main()

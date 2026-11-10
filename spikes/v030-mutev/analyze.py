@@ -27,17 +27,25 @@ SPAN = re.compile(r"^\s*(-->|:::) (.+?):(\d+):(\d+)\s*$")
 
 
 def documents(text):
+    """The JSON documents on stdout. Lines that are not JSON (a dependency's
+    plain `verification results::` line) are skipped."""
     out, dec, i = [], json.JSONDecoder(), 0
     while True:
         while i < len(text) and text[i].isspace():
             i += 1
-        if i >= len(text) or text[i] != "{":
+        if i >= len(text):
             return out
-        try:
-            doc, i = dec.raw_decode(text, i)
-        except ValueError:
+        if text[i] == "{":
+            try:
+                doc, i = dec.raw_decode(text, i)
+                out.append(doc)
+                continue
+            except ValueError:
+                pass
+        nl = text.find("\n", i)
+        if nl < 0:
             return out
-        out.append(doc)
+        i = nl + 1
 
 
 def functions(docs):
@@ -174,9 +182,17 @@ def main():
     edits = {e["id"]: e for e in tomllib.loads(a.generated.read_text())["edit"]}
     logs = a.scratch / "oracle-logs"
     originals = {}
+    base_errors = set()
     for d in sorted(logs.glob("original-*")):
         r = read_run(d)
         r.pop("stderr")
+        r["not_unsat"] = sorted(
+            Counter(json.dumps(x[:2]) for s in (r["sessions"] or []) for x in s["answers"]
+                    if x[0] != "unsat").items())
+        for e in r["diagnostics"]:
+            if e["level"].startswith("error"):
+                base_errors.add((e["message"], json.dumps(e["spans"][:1])))
+                base_errors.add((e["message"], (e["spans"][:1] or [[None, None]])[0][1]))
         originals[d.name] = r
     base_failing = set()
     for r in originals.values():
@@ -185,8 +201,11 @@ def main():
     for r in list(originals.values())[:1]:
         for s in r["sessions"] or []:
             base_sessions[s["input_sha256"]] += 1
+    for r in originals.values():
+        r.pop("sessions", None)
     src = next(iter(sorted(a.scratch.glob("oracle-*/src"))), None)
     out = {"oracle": {k: v for k, v in oracle.items() if k != "results"}, "originals": originals,
+           "original_failing": sorted(base_failing),
            "spike_group": meta.get("spike_group"), "mutants": {}}
     for mid, info in sorted(meta["mutants"].items()):
         edit = edits[mid]
@@ -228,6 +247,13 @@ def main():
                       if d["level"].startswith("error") and not d["message"].startswith(
                           ("could not compile", "aborting due to"))]
             for d in errors:
+                # An error the unmutated project already prints: the same
+                # message at the same span, or (when the mutant edits another
+                # file, so no line can have moved) the same message and file.
+                first = d["spans"][:1]
+                d["in_original"] = (d["message"], json.dumps(first)) in base_errors or (
+                    bool(first) and not first[0][1].endswith(info["file"].split("/", 1)[-1])
+                    and (d["message"], first[0][1]) in base_errors)
                 d["in_mutated_function"] = bool(rng) and any(
                     f.endswith(info["file"].split("/", 1)[-1]) and rng[0] <= ln <= rng[1]
                     for f, ln in d["lines"] + [x[1:3] for x in d["spans"]])

@@ -1,0 +1,6743 @@
+{
+ "cases": {
+  "bool_id_base": {
+   "sail": [
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "bool_id_base",
+       "verus": [
+        [
+         "bool_id_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "bool_id_base",
+       "verus": [
+        [
+         "bool_id_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "bool_id_base",
+       "verus": [
+        [
+         "bool_id_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "bool_id_base",
+       "verus": [
+        [
+         "bool_id_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "bool_id_base",
+       "verus": [
+        [
+         "bool_id_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "sail_identical": true,
+   "stock_identical": {
+    "exit": true,
+    "functions": true,
+    "solver_answers": true,
+    "solver_input": true,
+    "stderr": true
+   },
+   "stock_plain": {
+    "errors": [],
+    "exit": 0,
+    "functions": [
+     [
+      "bool_id_base::identity",
+      true,
+      2
+     ]
+    ],
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verification_results": {
+     "encountered-error": false,
+     "encountered-vir-error": false,
+     "errors": 0,
+     "is-verifying-entire-crate": true,
+     "success": true,
+     "verified": 1
+    }
+   },
+   "stock_stderr": "",
+   "stock_traced": [
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "bool_id_base::identity",
+       true,
+       2
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "229ec647afd0f06f94e5e3a78ae4c7364e6f7f6f483307e6c1b632d0182b8080",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "bool_id_base::identity",
+       true,
+       2
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "229ec647afd0f06f94e5e3a78ae4c7364e6f7f6f483307e6c1b632d0182b8080",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "bool_id_base::identity",
+       true,
+       2
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "229ec647afd0f06f94e5e3a78ae4c7364e6f7f6f483307e6c1b632d0182b8080",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "bool_id_base::identity",
+       true,
+       2
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "229ec647afd0f06f94e5e3a78ae4c7364e6f7f6f483307e6c1b632d0182b8080",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "bool_id_base::identity",
+       true,
+       2
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "229ec647afd0f06f94e5e3a78ae4c7364e6f7f6f483307e6c1b632d0182b8080",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    }
+   ]
+  },
+  "bool_id_false": {
+   "sail": [
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_false::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 498,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_false::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_false::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 500,
+          "smt_micros": 9556
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_false",
+       "verus": [
+        [
+         "bool_id_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_false::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 498,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_false::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_false::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 500,
+          "smt_micros": 868
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_false",
+       "verus": [
+        [
+         "bool_id_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_false::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 498,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_false::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_false::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 500,
+          "smt_micros": 9202
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_false",
+       "verus": [
+        [
+         "bool_id_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_false::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 498,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_false::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_false::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 500,
+          "smt_micros": 10252
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_false",
+       "verus": [
+        [
+         "bool_id_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_false::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 498,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_false::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_false::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 500,
+          "smt_micros": 7953
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_false",
+       "verus": [
+        [
+         "bool_id_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "sail_identical": true,
+   "stock_identical": {
+    "exit": true,
+    "functions": true,
+    "solver_answers": true,
+    "solver_input": true,
+    "stderr": true
+   },
+   "stock_plain": {
+    "errors": [
+     [
+      "postcondition not satisfied",
+      [
+       [
+        "-->",
+        "src/lib.rs",
+        6,
+        13
+       ]
+      ]
+     ],
+     [
+      "could not compile `bool_id_false` (lib) due to 1 previous error",
+      []
+     ]
+    ],
+    "exit": 101,
+    "functions": [
+     [
+      "bool_id_false::identity",
+      false,
+      500
+     ]
+    ],
+    "stderr_sha256": "e260c941152e0ed3bd0774f7dd941cb8a6163eebc51ab07315e1010f188e3018",
+    "verification_results": {
+     "encountered-error": true,
+     "encountered-vir-error": false,
+     "errors": 1,
+     "is-verifying-entire-crate": true,
+     "success": false,
+     "verified": 0
+    }
+   },
+   "stock_stderr": "error: postcondition not satisfied\n --> src/lib.rs:6:13\n  |\n6 |     ensures r == b,\n  |             ^^^^^^ failed this postcondition\n7 | { false }\n  |   ----- at the end of the function body\n\nerror: could not compile `bool_id_false` (lib) due to 1 previous error\n",
+   "stock_traced": [
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_false::identity",
+       false,
+       500
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "c0339451f0c1122e1029c290b1a75ca2732840efb7e2e153b0e3a533a7f5e417",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "e260c941152e0ed3bd0774f7dd941cb8a6163eebc51ab07315e1010f188e3018",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_false::identity",
+       false,
+       500
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "c0339451f0c1122e1029c290b1a75ca2732840efb7e2e153b0e3a533a7f5e417",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "e260c941152e0ed3bd0774f7dd941cb8a6163eebc51ab07315e1010f188e3018",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_false::identity",
+       false,
+       500
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "c0339451f0c1122e1029c290b1a75ca2732840efb7e2e153b0e3a533a7f5e417",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "e260c941152e0ed3bd0774f7dd941cb8a6163eebc51ab07315e1010f188e3018",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_false::identity",
+       false,
+       500
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "c0339451f0c1122e1029c290b1a75ca2732840efb7e2e153b0e3a533a7f5e417",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "e260c941152e0ed3bd0774f7dd941cb8a6163eebc51ab07315e1010f188e3018",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_false::identity",
+       false,
+       500
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "c0339451f0c1122e1029c290b1a75ca2732840efb7e2e153b0e3a533a7f5e417",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "e260c941152e0ed3bd0774f7dd941cb8a6163eebc51ab07315e1010f188e3018",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    }
+   ]
+  },
+  "bool_id_true": {
+   "sail": [
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_true::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 497,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_true::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_true::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 499,
+          "smt_micros": 6631
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_true",
+       "verus": [
+        [
+         "bool_id_true",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_true::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 497,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_true::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_true::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 499,
+          "smt_micros": 12985
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_true",
+       "verus": [
+        [
+         "bool_id_true",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_true::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 497,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_true::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_true::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 499,
+          "smt_micros": 5545
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_true",
+       "verus": [
+        [
+         "bool_id_true",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_true::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 497,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_true::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_true::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 499,
+          "smt_micros": 833
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_true",
+       "verus": [
+        [
+         "bool_id_true",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "bool_id_true::identity",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 497,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 9,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "bool_id_true::identity#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "bool_id_true::identity#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:37 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 499,
+          "smt_micros": 17713
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "bool_id_true",
+       "verus": [
+        [
+         "bool_id_true",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "sail_identical": true,
+   "stock_identical": {
+    "exit": true,
+    "functions": true,
+    "solver_answers": true,
+    "solver_input": true,
+    "stderr": true
+   },
+   "stock_plain": {
+    "errors": [
+     [
+      "postcondition not satisfied",
+      [
+       [
+        "-->",
+        "src/lib.rs",
+        6,
+        13
+       ]
+      ]
+     ],
+     [
+      "could not compile `bool_id_true` (lib) due to 1 previous error",
+      []
+     ]
+    ],
+    "exit": 101,
+    "functions": [
+     [
+      "bool_id_true::identity",
+      false,
+      499
+     ]
+    ],
+    "stderr_sha256": "ec990eeaeae5895c956c504b11d8cfa5b7a591220cec792f28bf81cff711096b",
+    "verification_results": {
+     "encountered-error": true,
+     "encountered-vir-error": false,
+     "errors": 1,
+     "is-verifying-entire-crate": true,
+     "success": false,
+     "verified": 0
+    }
+   },
+   "stock_stderr": "error: postcondition not satisfied\n --> src/lib.rs:6:13\n  |\n6 |     ensures r == b,\n  |             ^^^^^^ failed this postcondition\n7 | { true }\n  |   ---- at the end of the function body\n\nerror: could not compile `bool_id_true` (lib) due to 1 previous error\n",
+   "stock_traced": [
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_true` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_true::identity",
+       false,
+       499
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "37e22fe65c1dbe53092fc95c9cc696fe6b0033a7b67483caa833cbbb85d95367",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "ec990eeaeae5895c956c504b11d8cfa5b7a591220cec792f28bf81cff711096b",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_true` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_true::identity",
+       false,
+       499
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "37e22fe65c1dbe53092fc95c9cc696fe6b0033a7b67483caa833cbbb85d95367",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "ec990eeaeae5895c956c504b11d8cfa5b7a591220cec792f28bf81cff711096b",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_true` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_true::identity",
+       false,
+       499
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "37e22fe65c1dbe53092fc95c9cc696fe6b0033a7b67483caa833cbbb85d95367",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "ec990eeaeae5895c956c504b11d8cfa5b7a591220cec792f28bf81cff711096b",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_true` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_true::identity",
+       false,
+       499
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "37e22fe65c1dbe53092fc95c9cc696fe6b0033a7b67483caa833cbbb85d95367",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "ec990eeaeae5895c956c504b11d8cfa5b7a591220cec792f28bf81cff711096b",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         6,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `bool_id_true` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "bool_id_true::identity",
+       false,
+       499
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "37e22fe65c1dbe53092fc95c9cc696fe6b0033a7b67483caa833cbbb85d95367",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "ec990eeaeae5895c956c504b11d8cfa5b7a591220cec792f28bf81cff711096b",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    }
+   ]
+  },
+  "inc_base": {
+   "sail": [
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "inc_base",
+       "verus": [
+        [
+         "inc_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "inc_base",
+       "verus": [
+        [
+         "inc_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "inc_base",
+       "verus": [
+        [
+         "inc_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "inc_base",
+       "verus": [
+        [
+         "inc_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "inc_base",
+       "verus": [
+        [
+         "inc_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "sail_identical": true,
+   "stock_identical": {
+    "exit": true,
+    "functions": true,
+    "solver_answers": true,
+    "solver_input": true,
+    "stderr": true
+   },
+   "stock_plain": {
+    "errors": [],
+    "exit": 0,
+    "functions": [
+     [
+      "inc_base::increment",
+      true,
+      705
+     ]
+    ],
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verification_results": {
+     "encountered-error": false,
+     "encountered-vir-error": false,
+     "errors": 0,
+     "is-verifying-entire-crate": true,
+     "success": true,
+     "verified": 1
+    }
+   },
+   "stock_stderr": "",
+   "stock_traced": [
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "inc_base::increment",
+       true,
+       705
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "950a4da4d2271b978843cf6f8d60cc0710a3b942de4b58fb6e074f090599bd22",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "inc_base::increment",
+       true,
+       705
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "950a4da4d2271b978843cf6f8d60cc0710a3b942de4b58fb6e074f090599bd22",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "inc_base::increment",
+       true,
+       705
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "950a4da4d2271b978843cf6f8d60cc0710a3b942de4b58fb6e074f090599bd22",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "inc_base::increment",
+       true,
+       705
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "950a4da4d2271b978843cf6f8d60cc0710a3b942de4b58fb6e074f090599bd22",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "inc_base::increment",
+       true,
+       705
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "950a4da4d2271b978843cf6f8d60cc0710a3b942de4b58fb6e074f090599bd22",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    }
+   ]
+  },
+  "inc_one": {
+   "sail": [
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_one::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 755,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 24,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_one::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_one::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 757,
+          "smt_micros": 17583
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_one",
+       "verus": [
+        [
+         "inc_one",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_one::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 755,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 24,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_one::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_one::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 757,
+          "smt_micros": 1715
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_one",
+       "verus": [
+        [
+         "inc_one",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_one::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 755,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 24,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_one::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_one::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 757,
+          "smt_micros": 3067
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_one",
+       "verus": [
+        [
+         "inc_one",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_one::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 755,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 24,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_one::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_one::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 757,
+          "smt_micros": 13720
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_one",
+       "verus": [
+        [
+         "inc_one",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_one::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 755,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 24,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_one::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_one::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 757,
+          "smt_micros": 5462
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_one",
+       "verus": [
+        [
+         "inc_one",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "sail_identical": true,
+   "stock_identical": {
+    "exit": true,
+    "functions": true,
+    "solver_answers": true,
+    "solver_input": true,
+    "stderr": true
+   },
+   "stock_plain": {
+    "errors": [
+     [
+      "postcondition not satisfied",
+      [
+       [
+        "-->",
+        "src/lib.rs",
+        7,
+        13
+       ]
+      ]
+     ],
+     [
+      "could not compile `inc_one` (lib) due to 1 previous error",
+      []
+     ]
+    ],
+    "exit": 101,
+    "functions": [
+     [
+      "inc_one::increment",
+      false,
+      757
+     ]
+    ],
+    "stderr_sha256": "b47b6e372fd5aed43a522aba0ed4cea95445b260a7393a8040bf5c12d3059a01",
+    "verification_results": {
+     "encountered-error": true,
+     "encountered-vir-error": false,
+     "errors": 1,
+     "is-verifying-entire-crate": true,
+     "success": false,
+     "verified": 0
+    }
+   },
+   "stock_stderr": "error: postcondition not satisfied\n --> src/lib.rs:7:13\n  |\n7 |     ensures r == x + 1,\n  |             ^^^^^^^^^^ failed this postcondition\n8 | { 1 }\n  |   - at the end of the function body\n\nerror: could not compile `inc_one` (lib) due to 1 previous error\n",
+   "stock_traced": [
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_one` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_one::increment",
+       false,
+       757
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "2d2ecebdc3e1e26aacbd493a68121b259f32b9d465efe25fe0d09092ddcefd8d",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "b47b6e372fd5aed43a522aba0ed4cea95445b260a7393a8040bf5c12d3059a01",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_one` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_one::increment",
+       false,
+       757
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "2d2ecebdc3e1e26aacbd493a68121b259f32b9d465efe25fe0d09092ddcefd8d",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "b47b6e372fd5aed43a522aba0ed4cea95445b260a7393a8040bf5c12d3059a01",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_one` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_one::increment",
+       false,
+       757
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "2d2ecebdc3e1e26aacbd493a68121b259f32b9d465efe25fe0d09092ddcefd8d",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "b47b6e372fd5aed43a522aba0ed4cea95445b260a7393a8040bf5c12d3059a01",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_one` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_one::increment",
+       false,
+       757
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "2d2ecebdc3e1e26aacbd493a68121b259f32b9d465efe25fe0d09092ddcefd8d",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "b47b6e372fd5aed43a522aba0ed4cea95445b260a7393a8040bf5c12d3059a01",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_one` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_one::increment",
+       false,
+       757
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "2d2ecebdc3e1e26aacbd493a68121b259f32b9d465efe25fe0d09092ddcefd8d",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "b47b6e372fd5aed43a522aba0ed4cea95445b260a7393a8040bf5c12d3059a01",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    }
+   ]
+  },
+  "inc_zero": {
+   "sail": [
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_zero::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 728,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 12,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_zero::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_zero::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 730,
+          "smt_micros": 1353
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_zero",
+       "verus": [
+        [
+         "inc_zero",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_zero::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 728,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 12,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_zero::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_zero::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 730,
+          "smt_micros": 1606
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_zero",
+       "verus": [
+        [
+         "inc_zero",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_zero::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 728,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 12,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_zero::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_zero::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 730,
+          "smt_micros": 2681
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_zero",
+       "verus": [
+        [
+         "inc_zero",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_zero::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 728,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 12,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_zero::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_zero::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 730,
+          "smt_micros": 6577
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_zero",
+       "verus": [
+        [
+         "inc_zero",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "inc_zero::increment",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 728,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 12,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "inc_zero::increment#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "inc_zero::increment#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:34 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 730,
+          "smt_micros": 2522
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "inc_zero",
+       "verus": [
+        [
+         "inc_zero",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "sail_identical": true,
+   "stock_identical": {
+    "exit": true,
+    "functions": true,
+    "solver_answers": true,
+    "solver_input": true,
+    "stderr": true
+   },
+   "stock_plain": {
+    "errors": [
+     [
+      "postcondition not satisfied",
+      [
+       [
+        "-->",
+        "src/lib.rs",
+        7,
+        13
+       ]
+      ]
+     ],
+     [
+      "could not compile `inc_zero` (lib) due to 1 previous error",
+      []
+     ]
+    ],
+    "exit": 101,
+    "functions": [
+     [
+      "inc_zero::increment",
+      false,
+      730
+     ]
+    ],
+    "stderr_sha256": "388300fb0e21ff956e48025c7dc08c712b60dfbdc9ba587656da510891a6c30e",
+    "verification_results": {
+     "encountered-error": true,
+     "encountered-vir-error": false,
+     "errors": 1,
+     "is-verifying-entire-crate": true,
+     "success": false,
+     "verified": 0
+    }
+   },
+   "stock_stderr": "error: postcondition not satisfied\n --> src/lib.rs:7:13\n  |\n7 |     ensures r == x + 1,\n  |             ^^^^^^^^^^ failed this postcondition\n8 | { 0 }\n  |   - at the end of the function body\n\nerror: could not compile `inc_zero` (lib) due to 1 previous error\n",
+   "stock_traced": [
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_zero` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_zero::increment",
+       false,
+       730
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "ccd14d0bc97d16347ccb42a21adfdf9c08a3cd18d87bd447f9d595c068ec27a4",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "388300fb0e21ff956e48025c7dc08c712b60dfbdc9ba587656da510891a6c30e",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_zero` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_zero::increment",
+       false,
+       730
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "ccd14d0bc97d16347ccb42a21adfdf9c08a3cd18d87bd447f9d595c068ec27a4",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "388300fb0e21ff956e48025c7dc08c712b60dfbdc9ba587656da510891a6c30e",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_zero` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_zero::increment",
+       false,
+       730
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "ccd14d0bc97d16347ccb42a21adfdf9c08a3cd18d87bd447f9d595c068ec27a4",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "388300fb0e21ff956e48025c7dc08c712b60dfbdc9ba587656da510891a6c30e",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_zero` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_zero::increment",
+       false,
+       730
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "ccd14d0bc97d16347ccb42a21adfdf9c08a3cd18d87bd447f9d595c068ec27a4",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "388300fb0e21ff956e48025c7dc08c712b60dfbdc9ba587656da510891a6c30e",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         13
+        ]
+       ]
+      ],
+      [
+       "could not compile `inc_zero` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "inc_zero::increment",
+       false,
+       730
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "ccd14d0bc97d16347ccb42a21adfdf9c08a3cd18d87bd447f9d595c068ec27a4",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "388300fb0e21ff956e48025c7dc08c712b60dfbdc9ba587656da510891a6c30e",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    }
+   ]
+  },
+  "repro_base": {
+   "sail": [
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "repro_base",
+       "verus": [
+        [
+         "repro_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "repro_base",
+       "verus": [
+        [
+         "repro_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "repro_base",
+       "verus": [
+        [
+         "repro_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "repro_base",
+       "verus": [
+        [
+         "repro_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 0,
+     "exit_code": 0,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": true,
+       "diagnostics": [],
+       "not_verified": [],
+       "report_exit_code": 0,
+       "reused": false,
+       "summary": {
+        "failed": 0,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 1
+       },
+       "target": "repro_base",
+       "verus": [
+        [
+         "repro_base",
+         {
+          "encountered_vir_error": false,
+          "errors": 0,
+          "success": true,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "sail_identical": true,
+   "stock_identical": {
+    "exit": true,
+    "functions": true,
+    "solver_answers": true,
+    "solver_input": true,
+    "stderr": true
+   },
+   "stock_plain": {
+    "errors": [],
+    "exit": 0,
+    "functions": [
+     [
+      "repro_base::candidate",
+      true,
+      2227
+     ]
+    ],
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "verification_results": {
+     "encountered-error": false,
+     "encountered-vir-error": false,
+     "errors": 0,
+     "is-verifying-entire-crate": true,
+     "success": true,
+     "verified": 1
+    }
+   },
+   "stock_stderr": "",
+   "stock_traced": [
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "repro_base::candidate",
+       true,
+       2227
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "8ec5a1f58e124fe30ef53b32b3e66b701085876795308d6d8b4ca6057bfd06a6",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "repro_base::candidate",
+       true,
+       2227
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "8ec5a1f58e124fe30ef53b32b3e66b701085876795308d6d8b4ca6057bfd06a6",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "repro_base::candidate",
+       true,
+       2227
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "8ec5a1f58e124fe30ef53b32b3e66b701085876795308d6d8b4ca6057bfd06a6",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "repro_base::candidate",
+       true,
+       2227
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "8ec5a1f58e124fe30ef53b32b3e66b701085876795308d6d8b4ca6057bfd06a6",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [],
+     "exit": 0,
+     "functions": [
+      [
+       "repro_base::candidate",
+       true,
+       2227
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "8ec5a1f58e124fe30ef53b32b3e66b701085876795308d6d8b4ca6057bfd06a6",
+       "reason_unknown_replies": []
+      }
+     ],
+     "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "verification_results": {
+      "encountered-error": false,
+      "encountered-vir-error": false,
+      "errors": 0,
+      "is-verifying-entire-crate": true,
+      "success": true,
+      "verified": 1
+     }
+    }
+   ]
+  },
+  "repro_body_edit": {
+   "sail": [
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "repro_body_edit::candidate",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1855,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 596,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "repro_body_edit::candidate#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1690,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "repro_body_edit::candidate#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 3545,
+          "smt_micros": 3266
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "repro_body_edit",
+       "verus": [
+        [
+         "repro_body_edit",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "repro_body_edit::candidate",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1855,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 596,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "repro_body_edit::candidate#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1690,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "repro_body_edit::candidate#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 3545,
+          "smt_micros": 14817
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "repro_body_edit",
+       "verus": [
+        [
+         "repro_body_edit",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "repro_body_edit::candidate",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1855,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 596,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "repro_body_edit::candidate#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1690,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "repro_body_edit::candidate#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 3545,
+          "smt_micros": 2935
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "repro_body_edit",
+       "verus": [
+        [
+         "repro_body_edit",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "repro_body_edit::candidate",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1855,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 596,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "repro_body_edit::candidate#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1690,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "repro_body_edit::candidate#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 3545,
+          "smt_micros": 7279
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "repro_body_edit",
+       "verus": [
+        [
+         "repro_body_edit",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "postcondition not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "repro_body_edit::candidate",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unknown",
+             "reason_unknown": "(:reason-unknown \"(incomplete quantifiers)\")",
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1855,
+             "source": "solved"
+            },
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 596,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": true,
+           "id": "repro_body_edit::candidate#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 1690,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "repro_body_edit::candidate#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:4:428: 4:473 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 3545,
+          "smt_micros": 3789
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "repro_body_edit",
+       "verus": [
+        [
+         "repro_body_edit",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 0
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "sail_identical": true,
+   "stock_identical": {
+    "exit": true,
+    "functions": true,
+    "solver_answers": true,
+    "solver_input": true,
+    "stderr": true
+   },
+   "stock_plain": {
+    "errors": [
+     [
+      "postcondition not satisfied",
+      [
+       [
+        "-->",
+        "src/lib.rs",
+        4,
+        626
+       ]
+      ]
+     ],
+     [
+      "could not compile `repro_body_edit` (lib) due to 1 previous error",
+      []
+     ]
+    ],
+    "exit": 101,
+    "functions": [
+     [
+      "repro_body_edit::candidate",
+      false,
+      3545
+     ]
+    ],
+    "stderr_sha256": "299ee9078cec1358fecc509eb62fa5eb58bdc346c52c20ff821acb4dd3033cdb",
+    "verification_results": {
+     "encountered-error": true,
+     "encountered-vir-error": false,
+     "errors": 1,
+     "is-verifying-entire-crate": true,
+     "success": false,
+     "verified": 0
+    }
+   },
+   "stock_stderr": "error: postcondition not satisfied\n --> src/lib.rs:4:626\n  |\n4 | ...es (true && (true) && (true) && __sail_defined_next_value (((input as int)) as u8 , ((result as int)) as u8)) && (next_value (((input as int)) as u8 , ((result as int)) as u8)) , { if input == 0 { return 1 ; } input }\n  |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ failed this postcondition        ----- at the end of the function body\n\nerror: could not compile `repro_body_edit` (lib) due to 1 previous error\n",
+   "stock_traced": [
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         4,
+         626
+        ]
+       ]
+      ],
+      [
+       "could not compile `repro_body_edit` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "repro_body_edit::candidate",
+       false,
+       3545
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "3d18c50b04e220467080f4923a99055e84cf09aaaccb0461c974560db08dbac5",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "299ee9078cec1358fecc509eb62fa5eb58bdc346c52c20ff821acb4dd3033cdb",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         4,
+         626
+        ]
+       ]
+      ],
+      [
+       "could not compile `repro_body_edit` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "repro_body_edit::candidate",
+       false,
+       3545
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "3d18c50b04e220467080f4923a99055e84cf09aaaccb0461c974560db08dbac5",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "299ee9078cec1358fecc509eb62fa5eb58bdc346c52c20ff821acb4dd3033cdb",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         4,
+         626
+        ]
+       ]
+      ],
+      [
+       "could not compile `repro_body_edit` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "repro_body_edit::candidate",
+       false,
+       3545
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "3d18c50b04e220467080f4923a99055e84cf09aaaccb0461c974560db08dbac5",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "299ee9078cec1358fecc509eb62fa5eb58bdc346c52c20ff821acb4dd3033cdb",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         4,
+         626
+        ]
+       ]
+      ],
+      [
+       "could not compile `repro_body_edit` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "repro_body_edit::candidate",
+       false,
+       3545
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "3d18c50b04e220467080f4923a99055e84cf09aaaccb0461c974560db08dbac5",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "299ee9078cec1358fecc509eb62fa5eb58bdc346c52c20ff821acb4dd3033cdb",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    },
+    {
+     "errors": [
+      [
+       "postcondition not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         4,
+         626
+        ]
+       ]
+      ],
+      [
+       "could not compile `repro_body_edit` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "repro_body_edit::candidate",
+       false,
+       3545
+      ]
+     ],
+     "root_sessions": [
+      {
+       "checks": [
+        [
+         "unknown",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ],
+        [
+         "unsat",
+         "30000000"
+        ]
+       ],
+       "input_sha256": "3d18c50b04e220467080f4923a99055e84cf09aaaccb0461c974560db08dbac5",
+       "reason_unknown_replies": [
+        "(incomplete quantifiers)"
+       ]
+      }
+     ],
+     "stderr_sha256": "299ee9078cec1358fecc509eb62fa5eb58bdc346c52c20ff821acb4dd3033cdb",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 0
+     }
+    }
+   ]
+  },
+  "zz_bitvector_false": {
+   "sail": [
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "bitvector assertion not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "zz_bitvector_false::low_bit",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "sat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 150,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/spinoff-1",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:7:5: 7:11 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 154,
+          "smt_micros": 1162
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "zz_bitvector_false",
+       "verus": [
+        [
+         "zz_bitvector_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "bitvector assertion not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "zz_bitvector_false::low_bit",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "sat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 150,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/spinoff-1",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:7:5: 7:11 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 154,
+          "smt_micros": 21857
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "zz_bitvector_false",
+       "verus": [
+        [
+         "zz_bitvector_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "bitvector assertion not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "zz_bitvector_false::low_bit",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "sat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 150,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/spinoff-1",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:7:5: 7:11 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 154,
+          "smt_micros": 1576
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "zz_bitvector_false",
+       "verus": [
+        [
+         "zz_bitvector_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "bitvector assertion not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "zz_bitvector_false::low_bit",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "sat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 150,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/spinoff-1",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:7:5: 7:11 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 154,
+          "smt_micros": 6444
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "zz_bitvector_false",
+       "verus": [
+        [
+         "zz_bitvector_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    },
+    {
+     "currentness": "current",
+     "error": null,
+     "exit": 101,
+     "exit_code": 101,
+     "stderr_equals_stock_plain": true,
+     "targets": [
+      {
+       "attribution": {
+        "notes": [],
+        "status": "complete",
+        "unmatched_sessions": 0
+       },
+       "complete": false,
+       "diagnostics": [
+        [
+         "error",
+         "bitvector assertion not satisfied",
+         null
+        ],
+        [
+         "error",
+         "aborting due to 1 previous error",
+         null
+        ]
+       ],
+       "not_verified": [
+        {
+         "establishment": "confirmed",
+         "evidence_tier": "smt_verified",
+         "fn_mode": "exec",
+         "function": "zz_bitvector_false::low_bit",
+         "obligations": [
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/0",
+           "kind": "Function-Def",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": true,
+           "checks": [
+            {
+             "answer": "unsat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 2,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Recommends/0",
+           "kind": "Function-Recommends",
+           "outcome": "proved",
+           "span": "src/lib.rs:5:1: 5:22 (#0)",
+           "unstable": false
+          },
+          {
+           "advisory": false,
+           "checks": [
+            {
+             "answer": "sat",
+             "reason_unknown": null,
+             "rlimit_limit": 30000000,
+             "rlimit_used": 150,
+             "source": "solved"
+            }
+           ],
+           "has_counterexample": false,
+           "id": "zz_bitvector_false::low_bit#Function-Def/spinoff-1",
+           "kind": "Function-Def",
+           "outcome": "failed",
+           "span": "src/lib.rs:7:5: 7:11 (#0)",
+           "unstable": false
+          }
+         ],
+         "provenance": {
+          "checks_served": 0,
+          "checks_solved": 3,
+          "checks_unrecorded": 0,
+          "mode": "default",
+          "source": "fresh"
+         },
+         "timing": {
+          "rlimit": 154,
+          "smt_micros": 13586
+         },
+         "unstable": false,
+         "verdict": "failed",
+         "verus_success": false
+        }
+       ],
+       "report_exit_code": 1,
+       "reused": false,
+       "summary": {
+        "failed": 1,
+        "functions": 1,
+        "provisional": 0,
+        "unknown": 0,
+        "unstable": 0,
+        "verified": 0
+       },
+       "target": "zz_bitvector_false",
+       "verus": [
+        [
+         "zz_bitvector_false",
+         {
+          "encountered_vir_error": false,
+          "errors": 1,
+          "success": false,
+          "verified": 1
+         }
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "sail_identical": true,
+   "stock_identical": {
+    "exit": true,
+    "functions": true,
+    "solver_answers": true,
+    "solver_input": true,
+    "stderr": true
+   },
+   "stock_plain": {
+    "errors": [
+     [
+      "bitvector assertion not satisfied",
+      [
+       [
+        "-->",
+        "src/lib.rs",
+        7,
+        5
+       ]
+      ]
+     ],
+     [
+      "could not compile `zz_bitvector_false` (lib) due to 1 previous error",
+      []
+     ]
+    ],
+    "exit": 101,
+    "functions": [
+     [
+      "zz_bitvector_false::low_bit",
+      true,
+      154
+     ]
+    ],
+    "stderr_sha256": "b9e1b57a503707d20ad47a531c948045fdd8c6297035e724d1d7a3fe65d43b57",
+    "verification_results": {
+     "encountered-error": true,
+     "encountered-vir-error": false,
+     "errors": 1,
+     "is-verifying-entire-crate": true,
+     "success": false,
+     "verified": 1
+    }
+   },
+   "stock_stderr": "error: bitvector assertion not satisfied\n --> src/lib.rs:7:5\n  |\n7 |     assert(x & 1 == 1) by (bit_vector);\n  |     ^^^^^^\n\nerror: could not compile `zz_bitvector_false` (lib) due to 1 previous error\n",
+   "stock_traced": [
+    {
+     "errors": [
+      [
+       "bitvector assertion not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         5
+        ]
+       ]
+      ],
+      [
+       "could not compile `zz_bitvector_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "zz_bitvector_false::low_bit",
+       true,
+       154
+      ]
+     ],
+     "root_sessions": [],
+     "stderr_sha256": "b9e1b57a503707d20ad47a531c948045fdd8c6297035e724d1d7a3fe65d43b57",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [
+      [
+       "bitvector assertion not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         5
+        ]
+       ]
+      ],
+      [
+       "could not compile `zz_bitvector_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "zz_bitvector_false::low_bit",
+       true,
+       154
+      ]
+     ],
+     "root_sessions": [],
+     "stderr_sha256": "b9e1b57a503707d20ad47a531c948045fdd8c6297035e724d1d7a3fe65d43b57",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [
+      [
+       "bitvector assertion not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         5
+        ]
+       ]
+      ],
+      [
+       "could not compile `zz_bitvector_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "zz_bitvector_false::low_bit",
+       true,
+       154
+      ]
+     ],
+     "root_sessions": [],
+     "stderr_sha256": "b9e1b57a503707d20ad47a531c948045fdd8c6297035e724d1d7a3fe65d43b57",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [
+      [
+       "bitvector assertion not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         5
+        ]
+       ]
+      ],
+      [
+       "could not compile `zz_bitvector_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "zz_bitvector_false::low_bit",
+       true,
+       154
+      ]
+     ],
+     "root_sessions": [],
+     "stderr_sha256": "b9e1b57a503707d20ad47a531c948045fdd8c6297035e724d1d7a3fe65d43b57",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 1
+     }
+    },
+    {
+     "errors": [
+      [
+       "bitvector assertion not satisfied",
+       [
+        [
+         "-->",
+         "src/lib.rs",
+         7,
+         5
+        ]
+       ]
+      ],
+      [
+       "could not compile `zz_bitvector_false` (lib) due to 1 previous error",
+       []
+      ]
+     ],
+     "exit": 101,
+     "functions": [
+      [
+       "zz_bitvector_false::low_bit",
+       true,
+       154
+      ]
+     ],
+     "root_sessions": [],
+     "stderr_sha256": "b9e1b57a503707d20ad47a531c948045fdd8c6297035e724d1d7a3fe65d43b57",
+     "verification_results": {
+      "encountered-error": true,
+      "encountered-vir-error": false,
+      "errors": 1,
+      "is-verifying-entire-crate": true,
+      "success": false,
+      "verified": 1
+     }
+    }
+   ]
+  }
+ },
+ "identity": {
+  "stock_toolchain": "1.99.1"
+ }
+}

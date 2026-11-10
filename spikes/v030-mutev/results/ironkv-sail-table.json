@@ -1,0 +1,1320 @@
+{
+ "ironkv-arith-002": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 2
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::marshal_v::impl&%0::serialize",
+    "obligations": 4,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::marshal_v::impl&%0::serialize"
+  ],
+  "wall_s": 14.8
+ },
+ "ironkv-arith-003": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 4,
+     "unsat": 2
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index",
+    "obligations": 4,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index"
+  ],
+  "wall_s": 12.9
+ },
+ "ironkv-arith-006": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {},
+    "checks": {},
+    "counterexamples": 0,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "alloc::vec::Vec::serialized_size",
+    "obligations": 0,
+    "provenance_source": "unrecorded",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "alloc::vec::Vec::serialized_size"
+  ],
+  "wall_s": 8.7
+ },
+ "ironkv-arith-013": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::single_delivery_state_v::CSingleDelivery::new_impl",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::single_delivery_state_v::CSingleDelivery::new_impl"
+  ],
+  "wall_s": 8.7
+ },
+ "ironkv-arith-014": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::single_delivery_state_v::CAckState::clone_up_to_view",
+    "obligations": 4,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::single_delivery_state_v::CAckState::clone_up_to_view"
+  ],
+  "wall_s": 7.2
+ },
+ "ironkv-arith-019": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::single_delivery_state_v::CSingleDelivery::retransmit_un_acked_packets",
+    "obligations": 4,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::single_delivery_state_v::CSingleDelivery::retransmit_un_acked_packets"
+  ],
+  "wall_s": 9.8
+ },
+ "ironkv-arith-029": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::host_impl_v::HostState::host_model_next_delegate",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::host_impl_v::HostState::host_model_next_delegate"
+  ],
+  "wall_s": 16.1
+ },
+ "ironkv-compare-001": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {},
+    "checks": {},
+    "counterexamples": 0,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "alloc::vec::Vec::_is_marshalable",
+    "obligations": 0,
+    "provenance_source": "unrecorded",
+    "unstable": false,
+    "verdict": "failed"
+   },
+   {
+    "advisory_checks": {},
+    "checks": {},
+    "counterexamples": 0,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "alloc::vec::Vec::deserialize",
+    "obligations": 0,
+    "provenance_source": "unrecorded",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 326,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "alloc::vec::Vec::_is_marshalable",
+   "alloc::vec::Vec::deserialize"
+  ],
+  "wall_s": 18.0
+ },
+ "ironkv-compare-003": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {},
+    "checks": {},
+    "counterexamples": 0,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "alloc::vec::Vec::lemma_same_views_serialize_the_same",
+    "obligations": 0,
+    "provenance_source": "unrecorded",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "alloc::vec::Vec::lemma_same_views_serialize_the_same"
+  ],
+  "wall_s": 9.2
+ },
+ "ironkv-compare-004": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "ironsht::verus_extra::set_lib_ext_v::lemma_flatten_set_seq_spec",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "set_lib_ext_v::ironsht::verus_extra::set_lib_ext_v::lemma_flatten_set_seq_spec"
+  ],
+  "wall_s": 10.4
+ },
+ "ironkv-compare-005": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "proof",
+    "function": "ironsht::verus_extra::seq_lib_v::some_differing_index_for_unequal_seqs",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "seq_lib_v::ironsht::verus_extra::seq_lib_v::some_differing_index_for_unequal_seqs"
+  ],
+  "wall_s": 8.4
+ },
+ "ironkv-compare-006": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::net_sht_v::send_packet_seq",
+    "obligations": 4,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::net_sht_v::send_packet_seq"
+  ],
+  "wall_s": 14.5
+ },
+ "ironkv-compare-033": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::single_delivery_state_v::CSingleDelivery::maybe_ack_packet_impl",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::single_delivery_state_v::CSingleDelivery::maybe_ack_packet_impl"
+  ],
+  "wall_s": 14.3
+ },
+ "ironkv-compare-043": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 2
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::marshal_v::impl&%0::serialize",
+    "obligations": 4,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::marshal_v::impl&%0::serialize"
+  ],
+  "wall_s": 11.7
+ },
+ "ironkv-constant-002": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::host_impl_v::HostState::host_next_receive_packet",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   },
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::host_impl_v::HostState::receive_packet_next",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 326,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::host_impl_v::HostState::host_next_receive_packet",
+   "ironsht::host_impl_v::HostState::receive_packet_next"
+  ],
+  "wall_s": 10.0
+ },
+ "ironkv-constant-003": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 2
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::single_delivery_state_v::CAckState::truncate",
+    "obligations": 4,
+    "provenance_source": "mixed",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::single_delivery_state_v::CAckState::truncate"
+  ],
+  "wall_s": 4.9
+ },
+ "ironkv-constant-004": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 4,
+     "unsat": 2
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index",
+    "obligations": 4,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::delegation_map_v::StrictlyOrderedMap::greatest_lower_bound_index"
+  ],
+  "wall_s": 7.2
+ },
+ "ironkv-constant-005": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {},
+    "checks": {},
+    "counterexamples": 0,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "alloc::vec::Vec::serialize",
+    "obligations": 0,
+    "provenance_source": "unrecorded",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "alloc::vec::Vec::serialize"
+  ],
+  "wall_s": 5.9
+ },
+ "ironkv-constant-006": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   true
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 0,
+  "functions": [],
+  "other_functions_labelled_unknown": 0,
+  "same_functions_as_stock": true,
+  "stock_exit": 0,
+  "stock_failing": [],
+  "wall_s": 9.8
+ },
+ "ironkv-constant-012": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "core::option::Option::_is_marshalable",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "core::option::Option::_is_marshalable"
+  ],
+  "wall_s": 10.1
+ },
+ "ironkv-constant-024": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::host_impl_v::HostState::should_process_received_message_impl",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::host_impl_v::HostState::should_process_received_message_impl"
+  ],
+  "wall_s": 14.9
+ },
+ "ironkv-constant-038": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::host_impl_v::HostState::host_model_next_shard",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::host_impl_v::HostState::host_model_next_shard"
+  ],
+  "wall_s": 15.4
+ },
+ "ironkv-constant-053": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::single_delivery_state_v::CSingleDelivery::receive_real_packet_impl",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::single_delivery_state_v::CSingleDelivery::receive_real_packet_impl"
+  ],
+  "wall_s": 11.8
+ },
+ "ironkv-logic-004": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::host_impl_v::HostState::deliver_packet_seq",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::host_impl_v::HostState::deliver_packet_seq"
+  ],
+  "wall_s": 18.4
+ },
+ "ironkv-logic-011": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::delegation_map_v::DelegationMap::range_consistent_impl",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::delegation_map_v::DelegationMap::range_consistent_impl"
+  ],
+  "wall_s": 7.6
+ },
+ "ironkv-logic-012": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::hashmap_t::CKeyHashMap::_is_marshalable",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::hashmap_t::CKeyHashMap::_is_marshalable"
+  ],
+  "wall_s": 16.4
+ },
+ "ironkv-logic-013": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::cmessage_v::CMessage::is_message_marshallable",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::cmessage_v::CMessage::is_message_marshallable"
+  ],
+  "wall_s": 8.1
+ },
+ "ironkv-logic-021": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 3
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 3
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::seq_is_unique_v::test_unique",
+    "obligations": 6,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::seq_is_unique_v::test_unique"
+  ],
+  "wall_s": 4.7
+ },
+ "ironkv-logic-024": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::keys_t::KeyIterator::above",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::keys_t::KeyIterator::above"
+  ],
+  "wall_s": 10.9
+ },
+ "ironkv-logic-025": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::host_impl_v::HostState::process_received_packet_next_impl",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::host_impl_v::HostState::process_received_packet_next_impl"
+  ],
+  "wall_s": 14.0
+ },
+ "ironkv-statement-001": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::host_impl_v::HostState::deliver_packet_seq",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::host_impl_v::HostState::deliver_packet_seq"
+  ],
+  "wall_s": 17.9
+ },
+ "ironkv-statement-002": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 1
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 1
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::delegation_map_v::DelegationMap::range_consistent_impl",
+    "obligations": 2,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::delegation_map_v::DelegationMap::range_consistent_impl"
+  ],
+  "wall_s": 19.7
+ },
+ "ironkv-statement-003": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   true
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 0,
+  "functions": [],
+  "other_functions_labelled_unknown": 0,
+  "same_functions_as_stock": true,
+  "stock_exit": 0,
+  "stock_failing": [],
+  "wall_s": 18.4
+ },
+ "ironkv-statement-004": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   true
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 0,
+  "functions": [],
+  "other_functions_labelled_unknown": 0,
+  "same_functions_as_stock": true,
+  "stock_exit": 0,
+  "stock_failing": [],
+  "wall_s": 22.6
+ },
+ "ironkv-statement-005": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   true
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 0,
+  "functions": [],
+  "other_functions_labelled_unknown": 0,
+  "same_functions_as_stock": true,
+  "stock_exit": 0,
+  "stock_failing": [],
+  "wall_s": 19.8
+ },
+ "ironkv-statement-006": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   true
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 0,
+  "functions": [],
+  "other_functions_labelled_unknown": 0,
+  "same_functions_as_stock": true,
+  "stock_exit": 0,
+  "stock_failing": [],
+  "wall_s": 7.3
+ },
+ "ironkv-statement-021": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 2
+    },
+    "counterexamples": 1,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::seq_is_unique_v::do_vec_u8s_match",
+    "obligations": 4,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::seq_is_unique_v::do_vec_u8s_match"
+  ],
+  "wall_s": 4.5
+ },
+ "ironkv-statement-043": {
+  "attribution": [
+   "partial"
+  ],
+  "complete": [
+   false
+  ],
+  "diagnostics_equal_stock": true,
+  "exit": 101,
+  "functions": [
+   {
+    "advisory_checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 1,
+     "unsat": 2
+    },
+    "checks": {
+     "unknown (:reason-unknown \"(incomplete quantifiers)\")": 2,
+     "unsat": 2
+    },
+    "counterexamples": 2,
+    "establishment": "confirmed",
+    "evidence_tier": "smt_verified",
+    "fn_mode": "exec",
+    "function": "ironsht::single_delivery_state_v::CAckState::truncate",
+    "obligations": 4,
+    "provenance_source": "fresh",
+    "unstable": false,
+    "verdict": "failed"
+   }
+  ],
+  "other_functions_labelled_unknown": 327,
+  "same_functions_as_stock": true,
+  "stock_exit": 101,
+  "stock_failing": [
+   "ironsht::single_delivery_state_v::CAckState::truncate"
+  ],
+  "wall_s": 4.6
+ }
+}
