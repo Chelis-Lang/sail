@@ -593,6 +593,9 @@ RS
     # difference, false verified or failed revert check fails the step.
     # Skipped with a project selection, which names corpus projects only.
     if [ "$tier" != fast ] && [ "$#" -eq 0 ]; then
+      # Every committed catalogue regenerates byte for byte from the fetched
+      # sources and its recorded oracle (`cargo xtask gen-mutants --check`).
+      cargo xtask gen-mutants --check
       cargo build --release --locked -p sail-bench
       if [ "$tier" = standard ]; then
         ./target/release/sail-bench mutants run --catalogue corpus/mutants/human-eval.toml \

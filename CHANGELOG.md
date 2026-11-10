@@ -61,6 +61,18 @@ semantic versioning once the API is published.
   whose functions include provisional verdicts ends its counts with `, N
   provisional (not verified)`. Other passing lines are unchanged, and so are
   `sail verify`'s output and the JSON documents.
+- Internal: the mutation catalogue generator moved from xtask into
+  `sail-verus` (`sail_verus::mutate`, internal to the workspace) for the
+  planned `sail mutate`; `cargo xtask gen-mutants` is its command line, and
+  `cargo xtask gen-mutants --check` requires every committed catalogue to
+  regenerate byte for byte (run by the local standard and deep conformance
+  tiers). Generator version 3 reads `spec(checked)`/`proof(axiom)` and mode
+  attributes and no longer takes a brace in a `requires`/`ensures` clause for
+  the function body; the four catalogues in `corpus/mutants/` are regenerated
+  and settled again by the stock oracle. A fail-closed exec-only planner
+  (`sail_verus::mutate::exec`) adds `loop-bound`, `off-by-one`,
+  `swapped-args`, `dropped-else` and `early-return` mutations of executable
+  code only. No command or output changes.
 - `scripts/perf-host.sh up` launches the arm64 Ubuntu image for a Graviton
   instance type and the amd64 image otherwise, and installs `unzip` on the host
   for `cargo xtask fetch-verus`. An `up` that fails before an instance exists

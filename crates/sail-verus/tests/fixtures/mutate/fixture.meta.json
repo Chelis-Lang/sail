@@ -1,0 +1,243 @@
+{
+  "base_commit": "local source",
+  "candidate_sites": {
+    "arith": 9,
+    "compare": 34,
+    "constant": 23,
+    "invariant": 5,
+    "logic": 2,
+    "rare-region": 4,
+    "spec-strengthen": 7,
+    "spec-weaken": 5,
+    "statement": 5
+  },
+  "candidates_sha256": "6a0ecb99b34a0f61de1d040bc0f9b93d4b619801eb70b56f24d3a884dc045856",
+  "files": 2,
+  "generated": {
+    "arith": 3,
+    "compare": 3,
+    "constant": 3,
+    "invariant": 1,
+    "logic": 2,
+    "rare-region": 3,
+    "spec-strengthen": 3,
+    "spec-weaken": 3,
+    "statement": 2
+  },
+  "generator": "gen-mutants 3",
+  "mutants": {
+    "fixture-arith-001": {
+      "class": "arith",
+      "column": 15,
+      "file": "lib.rs",
+      "function": "sum_first",
+      "kind": "body",
+      "line": 64,
+      "mode": "exec"
+    },
+    "fixture-arith-002": {
+      "class": "arith",
+      "column": 22,
+      "file": "lib.rs",
+      "function": "count_up",
+      "kind": "body",
+      "line": 39,
+      "mode": "exec"
+    },
+    "fixture-arith-003": {
+      "class": "arith",
+      "column": 19,
+      "file": "spec_fns.rs",
+      "function": "bounded_empty_prefix",
+      "kind": "spec",
+      "line": 15,
+      "mode": "proof"
+    },
+    "fixture-compare-001": {
+      "class": "compare",
+      "column": 31,
+      "file": "lib.rs",
+      "function": "sum_first",
+      "kind": "spec",
+      "line": 49,
+      "mode": "exec"
+    },
+    "fixture-compare-002": {
+      "class": "compare",
+      "column": 26,
+      "file": "spec_fns.rs",
+      "function": "bounded",
+      "kind": "body",
+      "line": 7,
+      "mode": "spec"
+    },
+    "fixture-compare-003": {
+      "class": "compare",
+      "column": 24,
+      "file": "lib.rs",
+      "function": "clamp",
+      "kind": "spec",
+      "line": 16,
+      "mode": "exec"
+    },
+    "fixture-constant-001": {
+      "class": "constant",
+      "column": 17,
+      "file": "lib.rs",
+      "function": "count_up",
+      "kind": "body",
+      "line": 41,
+      "mode": "exec"
+    },
+    "fixture-constant-002": {
+      "class": "constant",
+      "column": 19,
+      "file": "lib.rs",
+      "function": "is_small",
+      "kind": "spec",
+      "line": 71,
+      "mode": "exec"
+    },
+    "fixture-constant-003": {
+      "class": "constant",
+      "column": 24,
+      "file": "spec_fns.rs",
+      "function": "bounded",
+      "kind": "body",
+      "line": 7,
+      "mode": "spec"
+    },
+    "fixture-invariant-001": {
+      "class": "invariant",
+      "column": 1,
+      "file": "lib.rs",
+      "function": "sum_first",
+      "kind": "body",
+      "line": 59,
+      "mode": "exec"
+    },
+    "fixture-logic-001": {
+      "class": "logic",
+      "column": 15,
+      "file": "lib.rs",
+      "function": "is_small",
+      "kind": "body",
+      "line": 73,
+      "mode": "exec"
+    },
+    "fixture-logic-002": {
+      "class": "logic",
+      "column": 12,
+      "file": "lib.rs",
+      "function": "is_small",
+      "kind": "body",
+      "line": 73,
+      "mode": "exec"
+    },
+    "fixture-rare-region-001": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "lib.rs",
+      "function": "clamp",
+      "kind": "body",
+      "line": 18,
+      "mode": "exec"
+    },
+    "fixture-rare-region-002": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "lib.rs",
+      "function": "sum_first",
+      "kind": "body",
+      "line": 52,
+      "mode": "exec"
+    },
+    "fixture-rare-region-003": {
+      "class": "rare-region",
+      "column": 2,
+      "file": "lib.rs",
+      "function": "count_up",
+      "kind": "body",
+      "line": 31,
+      "mode": "exec"
+    },
+    "fixture-spec-strengthen-001": {
+      "class": "spec-strengthen",
+      "column": 9,
+      "file": "spec_fns.rs",
+      "function": "bounded_empty_prefix",
+      "kind": "spec",
+      "line": 14,
+      "mode": "proof"
+    },
+    "fixture-spec-strengthen-002": {
+      "class": "spec-strengthen",
+      "column": 9,
+      "file": "lib.rs",
+      "function": "count_up",
+      "kind": "spec",
+      "line": 30,
+      "mode": "exec"
+    },
+    "fixture-spec-strengthen-003": {
+      "class": "spec-strengthen",
+      "column": 9,
+      "file": "lib.rs",
+      "function": "clamp",
+      "kind": "spec",
+      "line": 13,
+      "mode": "exec"
+    },
+    "fixture-spec-weaken-001": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "spec_fns.rs",
+      "function": "bounded_empty_prefix",
+      "kind": "spec",
+      "line": 11,
+      "mode": "proof"
+    },
+    "fixture-spec-weaken-002": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "lib.rs",
+      "function": "sum_first",
+      "kind": "spec",
+      "line": 49,
+      "mode": "exec"
+    },
+    "fixture-spec-weaken-003": {
+      "class": "spec-weaken",
+      "column": 1,
+      "file": "lib.rs",
+      "function": "sum_first",
+      "kind": "spec",
+      "line": 48,
+      "mode": "exec"
+    },
+    "fixture-statement-001": {
+      "class": "statement",
+      "column": 1,
+      "file": "lib.rs",
+      "function": "count_up",
+      "kind": "body",
+      "line": 39,
+      "mode": "exec"
+    },
+    "fixture-statement-002": {
+      "class": "statement",
+      "column": 1,
+      "file": "spec_fns.rs",
+      "function": "bounded_empty_prefix",
+      "kind": "body",
+      "line": 17,
+      "mode": "proof"
+    }
+  },
+  "oracle": null,
+  "per_class": 3,
+  "project": "fixture",
+  "schema_version": 1,
+  "seed": 20261020,
+  "unit": "fixture"
+}
