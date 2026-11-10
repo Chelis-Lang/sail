@@ -7,13 +7,34 @@ pub(crate) use sail_verus::report::{Inputs, build, setup_failure};
 /// `unknown` functions that Verus's totals clear (see
 /// [`sail_api::output::CrateReport::unknown_passed_by_verus_totals`]) are
 /// shown as their own category; their verdicts stay `unknown`.
+///
+/// A crate that stopped before any function was checked has nothing verified
+/// or refuted, so it is described as such, never as `0 verified, 0 failed, 0
+/// unknown`. Verus's own result record tells the two causes apart (both
+/// shapes are captured from the pinned Verus in `tests/fixtures/ci-report`):
+/// a Rust compile error (a type, name-resolution, parse or macro-expansion
+/// error, with or without proof reuse) leaves `verified: 0`, `errors: 0`,
+/// `success: false` and `encountered_vir_error: false`, and a program Verus
+/// itself rejects (a mode error, an unsupported call, a missing `decreases`)
+/// leaves `verified` and `errors` absent, `success: false` and
+/// `encountered_vir_error: true`. A crate whose record is not exactly one of
+/// the two keeps the plain counts.
+///
+/// `provisional` functions are not verified (charter rule 7); the line names
+/// their number whenever there is one.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Counts {
-    functions: u64,
-    verified: u64,
-    failed: u64,
-    unknown: u64,
-    passed_by_verus_totals: u64,
+    pub(crate) functions: u64,
+    pub(crate) verified: u64,
+    pub(crate) failed: u64,
+    pub(crate) unknown: u64,
+    /// Functions with a provisional verdict: never counted as verified.
+    pub(crate) provisional: u64,
+    pub(crate) passed_by_verus_totals: u64,
+    /// Crates the Rust compiler rejected before any function was checked.
+    pub(crate) not_compiled: u64,
+    /// Crates Verus rejected before any function was checked.
+    pub(crate) rejected: u64,
     verus_verified: u64,
     verus_errors: u64,
     verus_totals: bool,
@@ -26,12 +47,37 @@ impl Counts {
         counts
     }
 
+    /// The counts of several reports together.
+    pub(crate) fn sum<'a>(reports: impl Iterator<Item = &'a sail_api::output::Report>) -> Self {
+        let mut counts = Self::default();
+        for report in reports {
+            counts.add(report);
+        }
+        counts
+    }
+
+    /// Why crates stopped before verification, when any did.
+    pub(crate) fn stopped(&self) -> Option<Stopped> {
+        match (self.not_compiled, self.rejected) {
+            (0, 0) => None,
+            (_, 0) => Some(Stopped::Compilation),
+            (0, _) => Some(Stopped::Rejected),
+            _ => Some(Stopped::Both),
+        }
+    }
+
+    /// As [`Self::stopped`], when no function at all was checked.
+    pub(crate) fn nothing_checked(&self) -> Option<Stopped> {
+        self.stopped().filter(|_| self.functions == 0)
+    }
+
     fn add(&mut self, report: &sail_api::output::Report) {
         let s = &report.summary;
         self.functions = self.functions.saturating_add(s.functions);
         self.verified = self.verified.saturating_add(s.verified);
         self.failed = self.failed.saturating_add(s.failed);
         self.unknown = self.unknown.saturating_add(s.unknown);
+        self.provisional = self.provisional.saturating_add(s.provisional);
         for c in &report.crates {
             self.passed_by_verus_totals = self
                 .passed_by_verus_totals
@@ -43,25 +89,51 @@ impl Counts {
             self.verus_errors = self
                 .verus_errors
                 .saturating_add(c.verus.errors.unwrap_or(0));
+            if c.functions.is_empty() && c.verus.success == Some(false) {
+                // Exactly the two records captured from the pinned Verus.
+                match (
+                    c.verus.encountered_vir_error,
+                    c.verus.verified,
+                    c.verus.errors,
+                ) {
+                    (Some(true), None, None) => self.rejected = self.rejected.saturating_add(1),
+                    (Some(false), Some(0), Some(0)) => {
+                        self.not_compiled = self.not_compiled.saturating_add(1);
+                    }
+                    _ => {}
+                }
+            }
         }
     }
 }
 
 impl std::fmt::Display for Counts {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} verified, {} failed, ", self.verified, self.failed)?;
-        if self.passed_by_verus_totals > 0 {
-            write!(
-                f,
-                "{} passed by Verus's totals (not attributed one by one), ",
-                self.passed_by_verus_totals
-            )?;
+        if let Some(stopped) = self.nothing_checked() {
+            return f.write_str(stopped.describe());
         }
-        write!(
-            f,
-            "{} unknown",
-            self.unknown.saturating_sub(self.passed_by_verus_totals)
-        )?;
+        let cleared = self.passed_by_verus_totals;
+        let unknown = self.unknown.saturating_sub(cleared);
+        if self.failed > 0 {
+            // A failing result leads with what failed, and does not open
+            // with `0 verified` when Verus's totals cleared the rest.
+            write!(f, "{} failed, ", self.failed)?;
+            if cleared > 0 {
+                write!(
+                    f,
+                    "{cleared} passed by Verus's totals (not attributed one by one), "
+                )?;
+            }
+            if self.verified > 0 || cleared == 0 {
+                write!(f, "{} verified, ", self.verified)?;
+            }
+            write!(f, "{unknown} unknown")?;
+        } else {
+            write!(f, "{} verified, 0 failed, {unknown} unknown", self.verified)?;
+        }
+        if self.provisional > 0 {
+            write!(f, ", {} provisional (not verified)", self.provisional)?;
+        }
         if self.verus_totals
             && self.verus_verified.saturating_add(self.verus_errors) != self.functions
         {
@@ -71,7 +143,46 @@ impl std::fmt::Display for Counts {
                 self.verus_verified, self.verus_errors
             )?;
         }
+        let crates = |count: u64| if count == 1 { "crate" } else { "crates" };
+        if self.not_compiled > 0 {
+            write!(
+                f,
+                "; compilation failed before verification in {} {}",
+                self.not_compiled,
+                crates(self.not_compiled)
+            )?;
+        }
+        if self.rejected > 0 {
+            write!(
+                f,
+                "; Verus rejected {} {} before verification",
+                self.rejected,
+                crates(self.rejected)
+            )?;
+        }
         Ok(())
+    }
+}
+
+/// Why a crate stopped before any of its functions was checked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Stopped {
+    /// A Rust compile error.
+    Compilation,
+    /// Verus rejected the program (`encountered_vir_error`).
+    Rejected,
+    /// Some crates one way, some the other.
+    Both,
+}
+
+impl Stopped {
+    /// The wording used where counts would otherwise read all zero.
+    pub(crate) fn describe(self) -> &'static str {
+        match self {
+            Self::Compilation => "compilation failed before verification",
+            Self::Rejected => "rejected by Verus before verification",
+            Self::Both => "stopped before verification: compiler and Verus errors",
+        }
     }
 }
 
@@ -104,7 +215,7 @@ mod tests {
                 .unwrap_or_else(|e| unreachable!("fixture: {e}"));
         assert_eq!(
             super::Counts::of(&r).to_string(),
-            "6 verified, 2 failed, 0 unknown (functions; Verus counts verification units: 9 verified, 2 errors)"
+            "2 failed, 6 verified, 0 unknown (functions; Verus counts verification units: 9 verified, 2 errors)"
         );
         for f in r.crates.iter_mut().flat_map(|c| &mut c.functions) {
             if f.verdict == sail_api::output::VerdictName::Verified {
@@ -114,7 +225,158 @@ mod tests {
         r.summary = sail_api::output::Summary::of(&r.crates);
         assert_eq!(
             super::Counts::of(&r).to_string(),
-            "0 verified, 2 failed, 6 passed by Verus's totals (not attributed one by one), 0 unknown (functions; Verus counts verification units: 9 verified, 2 errors)"
+            "2 failed, 6 passed by Verus's totals (not attributed one by one), 0 unknown (functions; Verus counts verification units: 9 verified, 2 errors)"
+        );
+        // A passing report keeps its wording.
+        for c in &mut r.crates {
+            c.functions
+                .retain(|f| f.verdict != sail_api::output::VerdictName::Failed);
+            for f in &mut c.functions {
+                f.verdict = sail_api::output::VerdictName::Verified;
+            }
+            c.verus.errors = Some(0);
+            c.verus.verified = Some(6);
+        }
+        r.summary = sail_api::output::Summary::of(&r.crates);
+        assert_eq!(
+            super::Counts::of(&r).to_string(),
+            "6 verified, 0 failed, 0 unknown"
+        );
+    }
+
+    /// The crate entries are the ones a real Rust type error and a real
+    /// Verus mode error produced (pinned Verus, `sail verify --output
+    /// json`; `tests/fixtures/ci-report/compile-error.json` and
+    /// `vir-error.json`).
+    #[test]
+    fn summary_counts_say_when_compilation_failed_before_verification() {
+        let mut r: Report =
+            serde_json::from_str(include_str!("../tests/fixtures/attr/report.golden.json"))
+                .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let verified = r.clone();
+        let krate = &mut r.crates[0];
+        krate.functions.clear();
+        krate.verus = sail_api::output::VerusResults {
+            verified: Some(0),
+            errors: Some(0),
+            success: Some(false),
+            encountered_vir_error: Some(false),
+        };
+        r.summary = sail_api::output::Summary::of(&r.crates);
+        let counts = super::Counts::of(&r);
+        assert_eq!(counts.nothing_checked(), Some(super::Stopped::Compilation));
+        assert_eq!(counts.to_string(), "compilation failed before verification");
+        // Verus rejecting the program is not a compilation failure.
+        let mut rejected = r.clone();
+        rejected.crates[0].verus = sail_api::output::VerusResults {
+            verified: None,
+            errors: None,
+            success: Some(false),
+            encountered_vir_error: Some(true),
+        };
+        let counts = super::Counts::of(&rejected);
+        assert_eq!(counts.nothing_checked(), Some(super::Stopped::Rejected));
+        assert_eq!(counts.to_string(), "rejected by Verus before verification");
+        assert_eq!(
+            super::Counts::sum([&r, &rejected].into_iter()).to_string(),
+            "stopped before verification: compiler and Verus errors"
+        );
+        assert_eq!(
+            super::Counts::sum([&rejected, &verified].into_iter()).to_string(),
+            "2 failed, 6 verified, 0 unknown (functions; Verus counts verification units: 9 verified, 2 errors); Verus rejected 1 crate before verification"
+        );
+        // A record that matches neither captured shape keeps the counts.
+        let mut unrecorded = r.clone();
+        unrecorded.crates[0].verus.errors = None;
+        unrecorded.crates[0].verus.encountered_vir_error = None;
+        assert_eq!(
+            super::Counts::of(&unrecorded).to_string(),
+            "0 verified, 0 failed, 0 unknown"
+        );
+        // The match is exact in every field of the record. None of these
+        // shapes was observed; each differs from a captured one in one field.
+        let record = |verified, errors, vir| sail_api::output::VerusResults {
+            verified,
+            errors,
+            success: Some(false),
+            encountered_vir_error: Some(vir),
+        };
+        for (verus, line) in [
+            (
+                record(Some(5), Some(0), false),
+                "0 verified, 0 failed, 0 unknown (functions; Verus counts verification units: 5 verified, 0 errors)",
+            ),
+            (
+                record(Some(0), Some(1), false),
+                "0 verified, 0 failed, 0 unknown (functions; Verus counts verification units: 0 verified, 1 errors)",
+            ),
+            (
+                record(None, Some(0), false),
+                "0 verified, 0 failed, 0 unknown",
+            ),
+            (
+                record(Some(0), None, false),
+                "0 verified, 0 failed, 0 unknown",
+            ),
+            (
+                record(Some(0), Some(0), true),
+                "0 verified, 0 failed, 0 unknown",
+            ),
+            (
+                record(None, Some(2), true),
+                "0 verified, 0 failed, 0 unknown",
+            ),
+        ] {
+            let mut inexact = r.clone();
+            inexact.crates[0].verus = verus;
+            let counts = super::Counts::of(&inexact);
+            assert_eq!(counts.nothing_checked(), None, "{verus:?}");
+            assert_eq!(counts.to_string(), line, "{verus:?}");
+        }
+        // Beside a crate that was verified, the counts stay and say so.
+        let both = super::Counts::sum([&r, &verified].into_iter());
+        assert_eq!(both.nothing_checked(), None);
+        assert_eq!(
+            both.to_string(),
+            "2 failed, 6 verified, 0 unknown (functions; Verus counts verification units: 9 verified, 2 errors); compilation failed before verification in 1 crate"
+        );
+        // A crate with no function that Verus reports successful compiled.
+        r.crates[0].verus.success = Some(true);
+        assert_eq!(
+            super::Counts::of(&r).to_string(),
+            "0 verified, 0 failed, 0 unknown"
+        );
+    }
+
+    /// A provisional function is not verified, and the line says how many
+    /// there are; without one the line is unchanged.
+    #[test]
+    fn summary_counts_name_provisional_functions() {
+        let mut r: Report =
+            serde_json::from_str(include_str!("../tests/fixtures/attr/report.golden.json"))
+                .unwrap_or_else(|e| unreachable!("fixture: {e}"));
+        let mut changed = 0;
+        for f in r.crates.iter_mut().flat_map(|c| &mut c.functions) {
+            if f.verdict == sail_api::output::VerdictName::Verified && changed < 2 {
+                f.verdict = sail_api::output::VerdictName::Provisional;
+                changed += 1;
+            }
+        }
+        r.summary = sail_api::output::Summary::of(&r.crates);
+        assert_eq!(
+            super::Counts::of(&r).to_string(),
+            "2 failed, 4 verified, 0 unknown, 2 provisional (not verified) (functions; Verus counts verification units: 9 verified, 2 errors)"
+        );
+        for c in &mut r.crates {
+            c.functions
+                .retain(|f| f.verdict != sail_api::output::VerdictName::Failed);
+            c.verus.errors = Some(0);
+            c.verus.verified = Some(6);
+        }
+        r.summary = sail_api::output::Summary::of(&r.crates);
+        assert_eq!(
+            super::Counts::of(&r).to_string(),
+            "4 verified, 0 failed, 0 unknown, 2 provisional (not verified)"
         );
     }
 

@@ -123,6 +123,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | `SAIL0905` | Invalid, duplicate or unreadable baseline | Use a new name of 1–80 letters, digits, `.`, `_` or `-` |
 | `SAIL0906` | Usage error in `explain`, `compare`, `baseline` or `--engine` | Fix the command line |
 | `SAIL0907` | An MCP proof tool failed | Read the message |
+| `SAIL0908` | `sail report` cannot read its input, the input is not a version-2 `sail-project-result` document, or the report cannot be written | Pass the document `sail verify --output json` printed (or `sail jobs result JOB --output json`'s `result`), from the same Sail release |
 | `SAIL0930` | The `actual_work` research observer cannot validate its arguments or complete current-run evidence | Pass a successful Current result and its matching retained run directory; missing or damaged evidence cannot count as zero solver work |
 | `SAIL0944` | `ci/engine-artifact.py` rejected the engine pin or artifact | Fix `engine/verus/fork.toml` or the runtime artifact it names |
 | `SAIL0999` | Internal error in the proof stream | Report it with the message |

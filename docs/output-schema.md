@@ -344,8 +344,19 @@ Their verdicts stay `unknown` in this document, since no per-function evidence
 confirms them. The human summaries (`sail jobs result` and MCP) report them separately as "passed by Verus's
 totals", and MCP counts them in `counts.unknown_passed_by_verus_totals`.
 A Vest edit with one failing lemma, for example, reads
-`0 verified, 1 failed, 3126 passed by Verus's totals (not attributed one by
-one), 0 unknown` rather than `3126 unknown`.
+`1 failed, 3126 passed by Verus's totals (not attributed one by one), 0
+unknown` rather than `3126 unknown`. A failing target's line leads with its
+failures. A target whose crate stopped before any function was checked does
+not read `0 verified, 0 failed, 0 unknown`. It reads `compilation failed
+before verification` after a Rust compile error (Verus records `verified: 0`,
+`errors: 0`, `success: false` and `encountered_vir_error: false`, with no
+function), and `rejected by Verus before verification` when the crate compiles
+as Rust and Verus rejects it, for example for a mode error (`verified` and
+`errors` absent, `success: false`, `encountered_vir_error: true`). A record
+that is not exactly one of the two keeps the counts. A line whose functions
+include `provisional` verdicts ends its counts with `, N provisional (not
+verified)`. `sail report` uses the same wording
+([CI reports](ci-reports.md)).
 
 ## Related documents
 

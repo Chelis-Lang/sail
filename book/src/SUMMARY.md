@@ -13,6 +13,7 @@
 - [Undo in Cargo projects](instant-revert.md)
 - [Proof repair](proof-repair-walkthrough.md)
 - [CI caching](ci-cache.md)
+- [CI reports](ci-reports.md)
 - [Background preparation](background-preparation.md)
 - [Disk use](workspace-hygiene.md)
 

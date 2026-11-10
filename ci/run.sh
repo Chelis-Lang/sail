@@ -209,6 +209,7 @@ case "$step" in
     bash ci/test-completion.sh
     bash scripts/test-ai-markers.sh
     bash scripts/test-runtime-scan.sh
+    bash scripts/test-ci-report-snippet.sh
     # The image's engine installer: corrupt or stale runtimes never install.
     python3 ci/test-engine-artifact.py
     python3 engine/verus/test-engine-oracle.py
