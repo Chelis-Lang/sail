@@ -50,6 +50,6 @@ if index["proof"]["runtime_manifest_sha256"] != pin["manifest_sha256"]:
 PY
 
 install -m 755 "$work/bin/sail" "$work/bin/sail-z3" "$work/$name/bin/"
-tar -C "$work" --uid 0 --gid 0 --uname root --gname root -czf "$out/$name.tar.gz" "$name"
+tar -C "$work" --owner=0 --group=0 --numeric-owner -czf "$out/$name.tar.gz" "$name"
 (cd "$out" && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
 echo "$out/$name.tar.gz"
