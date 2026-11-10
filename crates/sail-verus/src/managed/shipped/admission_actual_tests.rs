@@ -202,7 +202,7 @@ fn actual_native_admission_child() -> Result<(), Failure> {
     }
     let status = child.wait()?;
     let established = if let Some(observed) = &observation {
-        status.success() && observed.try_complete().is_some()
+        status.success() && observed.try_complete().is_ok()
     } else {
         false
     };

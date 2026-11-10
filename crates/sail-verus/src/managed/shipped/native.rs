@@ -3,7 +3,7 @@
 //! Observation never replaces, buffers or changes the native compiler's output.
 //! Missing provenance only disables the experimental vstd lookup.
 
-use super::super::dependency_snapshot::Snapshot;
+use super::super::dependency_snapshot::{MemberRefusal, Membership, Snapshot};
 use super::{Call, Plan, native_reads, sha256_file};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -32,6 +32,148 @@ struct Record {
     source_observation: PathBuf,
     source_observation_sha256: String,
     native_graph_sha256: String,
+}
+
+/// Sysroot crates rustc may resolve by bare name, with no recorded hash,
+/// while compiling a closure unit: injected or `extern crate` standard
+/// crates, the panic runtime and builtins it injects for linked outputs, and
+/// `--extern proc_macro`. Every other crate it loads is a closure dependency
+/// named with its hash. A lookup directory file that a lookup of these names
+/// could consider stays in the private copy (ADR 0090, 2026-11-10 amendment).
+const SYSROOT_LOOKUPS: [&str; 9] = [
+    "std",
+    "core",
+    "alloc",
+    "proc_macro",
+    "test",
+    "compiler_builtins",
+    "panic_unwind",
+    "panic_abort",
+    "profiler_builtins",
+];
+
+/// A coded reason a native unit's observation or provenance was declined.
+/// The code is stable; the reason is for people.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub(super) struct Declined {
+    pub code: &'static str,
+    pub reason: &'static str,
+}
+
+const fn declined(code: &'static str, reason: &'static str) -> Declined {
+    Declined { code, reason }
+}
+
+/// Where declined closure units are recorded for this run's SAIL3138 note.
+const DECLINED: &str = "declined";
+
+#[derive(Serialize, Deserialize)]
+struct DeclineRecord {
+    package: String,
+    crate_name: String,
+    phase: String,
+    code: String,
+    reason: String,
+}
+
+/// Record that a unit of the admitted closure declined, so a shipped-proof
+/// miss can name it. Units outside the closure are never recorded; their
+/// observation is expected to refuse. Best effort: a failed write changes
+/// nothing but the note.
+fn record_decline(
+    plan: &Plan,
+    args: &[OsString],
+    package: &str,
+    crate_name: &str,
+    phase: &str,
+    why: Declined,
+) {
+    let directory = plan.native_records.join(DECLINED);
+    if std::fs::create_dir_all(&directory).is_err() {
+        return;
+    }
+    let record = DeclineRecord {
+        package: package.to_owned(),
+        crate_name: crate_name.to_owned(),
+        phase: phase.to_owned(),
+        code: why.code.to_owned(),
+        reason: why.reason.to_owned(),
+    };
+    if let Ok(bytes) = serde_json::to_vec(&record) {
+        let name = super::digest(format!("{args:?}").as_bytes());
+        let _ = std::fs::write(directory.join(format!("{name}.json")), bytes);
+    }
+}
+
+/// Whether a refusal at the start is recorded for the SAIL3138 note. A
+/// closure package's build script, its compiler probes and its other
+/// expected refusals are not: only a library unit whose observation could
+/// otherwise have established its provenance.
+fn recorded_refusal(why: &Declined, crate_name: &str) -> bool {
+    const EXPECTED: [&str; 5] = [
+        "no-closure",
+        "lookup-refused",
+        "unkeyed-unit",
+        "foreign-unit",
+        "unsupported-invocation",
+    ];
+    !crate_name.is_empty()
+        && !crate_name.starts_with("build_script_")
+        && !EXPECTED.contains(&why.code)
+}
+
+/// The first recorded closure-unit decline of this run, in a stable order,
+/// as a SAIL3138 reason.
+pub(crate) fn declined_miss(plan: &Plan) -> Option<String> {
+    let mut records: Vec<DeclineRecord> = std::fs::read_dir(plan.native_records.join(DECLINED))
+        .ok()?
+        .filter_map(|entry| {
+            let bytes = std::fs::read(entry.ok()?.path()).ok()?;
+            serde_json::from_slice(&bytes).ok()
+        })
+        .collect();
+    records.sort_by(|a, b| (&a.package, &a.code).cmp(&(&b.package, &b.code)));
+    let first = records.first()?;
+    Some(format!(
+        "vstd's dependency {} did not establish this run's compiler provenance ({}: {})",
+        first.package, first.code, first.reason
+    ))
+}
+
+/// The crate names a closure unit's compiler may look up (see
+/// [`SYSROOT_LOOKUPS`] and [`Membership`]).
+fn lookup_names(
+    closure: &super::admission::Closure,
+) -> Result<std::collections::BTreeSet<String>, Declined> {
+    let mut names = closure.crate_names().ok_or(declined(
+        "closure-names",
+        "the admitted closure's crate names could not be read",
+    ))?;
+    names.extend(SYSROOT_LOOKUPS.map(str::to_owned));
+    Ok(names)
+}
+
+/// This run's successful producer record or running mark exists for `output`.
+fn has_provenance(plan: &Plan, output: &Path) -> bool {
+    let (record, running) = producer_paths(&plan.native_records, output);
+    record.is_file() || std::fs::read(running).is_ok_and(|bytes| bytes == plan.run_id.as_bytes())
+}
+
+fn member_refusal(refusal: MemberRefusal) -> Declined {
+    match refusal {
+        MemberRefusal::Lookup => declined(
+            "lookup-refused",
+            "native lookup directories are not admitted",
+        ),
+        MemberRefusal::Unproduced => declined(
+            "lookup-unproduced",
+            "a library a crate lookup could load lacks this run's producer record or mark",
+        ),
+        MemberRefusal::ForeignExtern => declined(
+            "lookup-foreign-extern",
+            "an explicit --extern library is outside the admitted closure's lookup",
+        ),
+    }
 }
 
 /// Optional observation around one actual native compiler subprocess.
@@ -85,31 +227,70 @@ impl Drop for Producer {
 impl<'a> Observation<'a> {
     pub(crate) fn begin(plan: &'a Plan, args: &'a [OsString]) -> Option<Self> {
         let observed = Self::try_begin(plan, args);
-        if let Err(reason) = &observed {
+        if let Err(why) = &observed {
             trace(
                 args,
-                &serde_json::json!({"event":"native-observation-refused","reason":reason}),
+                &serde_json::json!({"event":"native-observation-refused","code":why.code,"reason":why.reason}),
             );
+            let name = std::env::var("CARGO_PKG_NAME").unwrap_or_default();
+            let version = std::env::var("CARGO_PKG_VERSION").unwrap_or_default();
+            let crate_name = super::argument_value(
+                &args
+                    .iter()
+                    .map(|arg| arg.to_string_lossy().into_owned())
+                    .collect::<Vec<_>>(),
+                "--crate-name",
+            )
+            .unwrap_or_default();
+            if recorded_refusal(why, &crate_name)
+                && plan
+                    .closure
+                    .as_ref()
+                    .is_some_and(|closure| closure.names_package(&name, &version))
+            {
+                record_decline(
+                    plan,
+                    args,
+                    &format!("{name}-{version}"),
+                    &crate_name,
+                    "begin",
+                    *why,
+                );
+            }
         }
         observed.ok()
     }
 
-    fn try_begin(plan: &'a Plan, args: &'a [OsString]) -> Result<Self, &'static str> {
-        if !Snapshot::pipelined_inputs_admitted(&plan.target, args, |output| {
-            let (record, running) = producer_paths(&plan.native_records, output);
-            record.is_file()
-                || std::fs::read(running).is_ok_and(|bytes| bytes == plan.run_id.as_bytes())
-        }) {
-            return Err("native lookup inputs lack current producer records or marks");
-        }
-        let mut call =
-            Call::new(plan, args, false, std::env::vars_os()).ok_or("unkeyed native unit")?;
+    #[allow(
+        clippy::too_many_lines,
+        reason = "Each admission check and its coded refusal stay in their original order."
+    )]
+    fn try_begin(plan: &'a Plan, args: &'a [OsString]) -> Result<Self, Declined> {
+        let closure = plan
+            .closure
+            .as_ref()
+            .ok_or(declined("no-closure", "no admitted source closure"))?;
+        let names = lookup_names(closure)?;
+        let provenance = |output: &Path| has_provenance(plan, output);
+        let membership = Membership {
+            produced: &provenance,
+            names: &names,
+        };
+        Snapshot::member_inputs_admitted(&plan.target, args, &membership)
+            .map_err(member_refusal)?;
+        let mut call = Call::new(plan, args, false, std::env::vars_os())
+            .ok_or(declined("unkeyed-unit", "unkeyed native unit"))?;
         if !call.out_dir.starts_with(&plan.target) {
-            return Err("foreign native output directory");
+            return Err(declined(
+                "foreign-output",
+                "foreign native output directory",
+            ));
         }
-        let closure = plan.closure.as_ref().ok_or("no admitted source closure")?;
         if !closure.native_unit(&call.vars, args) {
-            return Err("foreign native source, version or compiler feature");
+            return Err(declined(
+                "foreign-unit",
+                "foreign native source, version or compiler feature",
+            ));
         }
         // The compiler check reads the launcher and compiler in full. It runs
         // beside the read-only checks that follow; its refusal still comes
@@ -124,19 +305,30 @@ impl<'a> Observation<'a> {
                 // Cargo pipelines dependents after metadata emission, before the
                 // producer exits. Native units always compile; require successful
                 // dependency provenance when completing their observation instead.
-                let generated = generated(&call)?;
-                let outputs =
-                    emitted_outputs(&call).ok_or("unsupported native Cargo library invocation")?;
+                let generated =
+                    generated(&call).map_err(|reason| declined("generated-inputs", reason))?;
+                let outputs = emitted_outputs(&call).ok_or(declined(
+                    "unsupported-invocation",
+                    "unsupported native Cargo library invocation",
+                ))?;
                 if !matches!(plan.mode, super::Mode::MachineLocal { .. })
                     && !native_shape::admitted(&call)
                 {
-                    return Err("unsupported portable native compiler tuple");
+                    return Err(declined(
+                        "unsupported-shape",
+                        "unsupported portable native compiler tuple",
+                    ));
                 }
                 if outputs.iter().any(|path| path.try_exists().unwrap_or(true)) {
-                    return Err("native output already exists before this compiler invocation");
+                    return Err(declined(
+                        "output-exists",
+                        "native output already exists before this compiler invocation",
+                    ));
                 }
-                let compiler_options = bind_compiler_options(&mut call)
-                    .ok_or("native compiler options could not be bound")?;
+                let compiler_options = bind_compiler_options(&mut call).ok_or(declined(
+                    "compiler-options",
+                    "native compiler options could not be bound",
+                ))?;
                 Ok((generated, outputs, compiler_options))
             })();
             let compiler = match compiler {
@@ -146,7 +338,10 @@ impl<'a> Observation<'a> {
             (compiler, checked)
         });
         if !compiler {
-            return Err("native compiler is not the admitted sysroot compiler");
+            return Err(declined(
+                "compiler",
+                "native compiler is not the admitted sysroot compiler",
+            ));
         }
         let (generated, outputs, compiler_options) = checked?;
         let base = plan
@@ -160,20 +355,23 @@ impl<'a> Observation<'a> {
             use std::os::unix::fs::DirBuilderExt as _;
             builder.mode(0o700);
         }
-        builder
-            .recursive(true)
-            .create(&base)
-            .map_err(|_| "native observation directory unavailable")?;
+        builder.recursive(true).create(&base).map_err(|_| {
+            declined(
+                "observation-directory",
+                "native observation directory unavailable",
+            )
+        })?;
         // Let Cargo keep metadata pipelining (ADR 0061). The child sees only
-        // private copies of inputs already present. Missing producer
-        // certificates still refuse publication after the child finishes.
-        let graph = Snapshot::capture_pipelined(&plan.target, &base.join("graph"), args)
+        // private copies of the lookup membership already present (ADR 0090,
+        // 2026-11-10 amendment). Missing producer certificates still refuse
+        // publication after the child finishes.
+        let graph = Snapshot::capture_members(&plan.target, &base.join("graph"), args, &membership)
             .ok_or_else(|| {
                 trace_inventory(&call, "pipelined");
-                "native graph capture refused"
+                declined("graph-capture", "native graph capture refused")
             })?;
         let reads = native_reads::Observation::begin(&base.join("read"), &plan.run_id, &call.key)
-            .ok_or("native read request unavailable")?;
+            .ok_or(declined("read-request", "native read request unavailable"))?;
         let mut arguments = graph.arguments().to_vec();
         arguments.extend(compiler_options.iter().map(OsString::from));
         let producer = Producer::begin(plan, &outputs);
@@ -183,7 +381,7 @@ impl<'a> Observation<'a> {
             outputs,
             graph,
             reads,
-            cwd: std::env::current_dir().map_err(|_| "native cwd unavailable")?,
+            cwd: std::env::current_dir().map_err(|_| declined("cwd", "native cwd unavailable"))?,
             arguments,
             compiler_options,
             _producer: producer,
@@ -204,7 +402,22 @@ impl<'a> Observation<'a> {
 
     /// Called only after the real compiler returns successfully.
     pub(crate) fn complete(self, runtime: Option<&super::super::receipts::Runtime>) {
-        if self.try_complete().is_some()
+        let completed = self.try_complete();
+        if let Err(why) = completed {
+            trace(
+                self.call.arguments,
+                &serde_json::json!({"event":"native-completion-declined","code":why.code,"reason":why.reason}),
+            );
+            record_decline(
+                self.call.plan,
+                self.call.arguments,
+                &self.call.package,
+                &self.call.crate_name,
+                "completion",
+                why,
+            );
+        }
+        if completed.is_ok()
             && let Some(runtime) = runtime
             && let Some(pid) = self.reads.pid()
         {
@@ -221,27 +434,58 @@ impl<'a> Observation<'a> {
         }
     }
 
-    fn try_complete(&self) -> Option<()> {
+    /// Every check that must hold before this unit's outputs are recorded,
+    /// in order; the first that does not names the decline.
+    fn try_complete(&self) -> Result<(), Declined> {
+        const UNRECORDED: Declined = declined(
+            "graph-unrecorded",
+            "a private native lookup input has no producer record or running mark",
+        );
+        const CHANGED: Declined = declined("graph-changed", "a private native lookup copy changed");
+        const UNESTABLISHED: Declined = declined(
+            "graph-unestablished",
+            "a private native lookup input's producer record is not established",
+        );
+        const READS: Declined = declined(
+            "source-reads",
+            "the compiler's source-read observation was not admitted",
+        );
+        const UNIT: Declined = declined(
+            "closure-unit",
+            "the unit no longer matches the admitted source closure",
+        );
+        const COMPILER: Declined = declined(
+            "compiler",
+            "the native compiler is no longer the admitted sysroot compiler",
+        );
+        const REBOUND: Declined = declined(
+            "rebound",
+            "generated inputs, extern provenance or the bound key changed",
+        );
+        const RECORD: Declined = declined("record-write", "a producer record could not be written");
         let plan = self.call.plan;
-        if !await_graph_records(&self.call, &self.graph)
-            || !self.graph.intact()
-            || !graph_established(&self.call, &self.graph)
-        {
-            return None;
+        let closure = plan.closure.as_ref().ok_or(UNIT)?;
+        if !await_graph_records(&self.call, &self.graph) {
+            return Err(UNRECORDED);
         }
-        let source_observation_sha256 = self.reads.finish(
-            true,
-            &self.cwd,
-            plan.closure.as_ref()?,
-            &self.graph.copied_inputs()?,
-            &self.call.vars,
-        )?;
-        if !plan
-            .closure
-            .as_ref()?
-            .native_unit(&self.call.vars, self.call.arguments)
-        {
-            return None;
+        if !self.graph.intact() {
+            return Err(CHANGED);
+        }
+        if !graph_established(&self.call, &self.graph) {
+            return Err(UNESTABLISHED);
+        }
+        let source_observation_sha256 = self
+            .reads
+            .finish(
+                true,
+                &self.cwd,
+                closure,
+                &self.graph.copied_inputs().ok_or(CHANGED)?,
+                &self.call.vars,
+            )
+            .ok_or(READS)?;
+        if !closure.native_unit(&self.call.vars, self.call.arguments) {
+            return Err(UNIT);
         }
         // As at the start: the full compiler read runs beside the remaining
         // read-only checks, and all of them must hold.
@@ -274,9 +518,19 @@ impl<'a> Observation<'a> {
             (compiler, rebound)
         });
         if !compiler {
-            return None;
+            return Err(COMPILER);
         }
-        rebound?;
+        rebound.ok_or(REBOUND)?;
+        self.write_records(closure, &source_observation_sha256)
+            .ok_or(RECORD)
+    }
+
+    fn write_records(
+        &self,
+        closure: &super::admission::Closure,
+        source_observation_sha256: &str,
+    ) -> Option<()> {
+        let plan = self.call.plan;
         std::fs::create_dir_all(&plan.native_records).ok()?;
         for output in &self.outputs {
             if !output.is_file() {
@@ -284,7 +538,7 @@ impl<'a> Observation<'a> {
             }
             let record = Record {
                 runtime: plan.identity.clone(),
-                policy: plan.closure.as_ref()?.policy_sha256().to_owned(),
+                policy: closure.policy_sha256().to_owned(),
                 run_id: plan.run_id.clone(),
                 package: self.call.package.clone(),
                 crate_name: self.call.crate_name.clone(),
@@ -294,7 +548,7 @@ impl<'a> Observation<'a> {
                 output: output.clone(),
                 compiler_pid: self.reads.pid()?,
                 source_observation: self.reads.path().to_owned(),
-                source_observation_sha256: source_observation_sha256.clone(),
+                source_observation_sha256: source_observation_sha256.to_owned(),
                 native_graph_sha256: self.graph.key()?,
             };
             let path = record_path(plan, output);
@@ -1308,6 +1562,129 @@ mod tests {
             args.extend(malformed);
             assert!(native_source(&args, Path::new("/target")).is_none());
         }
+    }
+
+    fn fixture_plan(root: &Path) -> Plan {
+        Plan {
+            mode: super::super::Mode::MachineLocal {
+                out: root.to_owned(),
+            },
+            identity: "runtime".into(),
+            registry: root.to_owned(),
+            target: root.to_owned(),
+            virtual_base: String::new(),
+            solver_sha256: "solver".into(),
+            solver_adapter: None,
+            run_id: "current-run".into(),
+            closure: None,
+            native_records: root.join("records"),
+            native_compiler_sha256: "compiler".into(),
+            native_launcher: root.join("verus"),
+            native_launcher_sha256: "launcher".into(),
+            compiler_source: None,
+            release: None,
+        }
+    }
+
+    /// A closure unit whose compiler fails leaves no provenance: its mark is
+    /// removed and no record is written, so a dependent's members-only lookup
+    /// refuses and that dependent, and vstd, take the ordinary unserved path
+    /// with the original arguments (#563).
+    #[test]
+    fn failed_closure_compile_leaves_dependents_unserved() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let root = std::env::temp_dir().join(format!("sail-native-failed-{}", std::process::id()));
+        let deps = root.join("target/debug/deps");
+        std::fs::create_dir_all(&deps)?;
+        let root = root.canonicalize()?;
+        let deps = deps.canonicalize()?;
+        let mut plan = fixture_plan(&root);
+        plan.target = root.join("target");
+        let output = deps.join("libverus_builtin-abcd.rmeta");
+        let producer = Producer::begin(&plan, std::slice::from_ref(&output));
+        // Cargo may start the dependent on the failing unit's metadata.
+        std::fs::write(&output, b"metadata before the compiler failed")?;
+        assert!(has_provenance(&plan, &output));
+        drop(producer);
+        assert!(!has_provenance(&plan, &output));
+        let args: Vec<OsString> = vec![
+            "rustc".into(),
+            "--crate-name".into(),
+            "vstd".into(),
+            "-C".into(),
+            "extra-filename=-ef01".into(),
+            "--out-dir".into(),
+            deps.clone().into(),
+            "-L".into(),
+            format!("dependency={}", deps.display()).into(),
+            "--extern".into(),
+            format!("verus_builtin={}", output.display()).into(),
+        ];
+        let names = SYSROOT_LOOKUPS
+            .iter()
+            .chain(["verus_builtin"].iter())
+            .map(|name| (*name).to_owned())
+            .collect();
+        let provenance = |path: &Path| has_provenance(&plan, path);
+        let membership = Membership {
+            produced: &provenance,
+            names: &names,
+        };
+        assert_eq!(
+            member_refusal(
+                Snapshot::member_inputs_admitted(&plan.target, &args, &membership)
+                    .err()
+                    .ok_or("refusal")?
+            )
+            .code,
+            "lookup-unproduced"
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+
+    #[test]
+    fn expected_start_refusals_are_not_recorded_for_the_note() {
+        let unproduced = declined("lookup-unproduced", "fixture");
+        assert!(recorded_refusal(&unproduced, "syn"));
+        assert!(!recorded_refusal(&unproduced, "build_script_build"));
+        assert!(!recorded_refusal(&unproduced, ""));
+        for code in ["lookup-refused", "foreign-unit", "unsupported-invocation"] {
+            assert!(!recorded_refusal(&declined(code, "fixture"), "syn"));
+        }
+    }
+
+    #[test]
+    fn closure_declines_name_the_first_unit_and_code_in_a_stable_order() -> std::io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sail-native-declined-{}", std::process::id()));
+        std::fs::create_dir_all(&root)?;
+        let plan = fixture_plan(&root);
+        assert_eq!(declined_miss(&plan), None);
+        let args = |name: &str| vec![OsString::from("rustc"), OsString::from(name)];
+        record_decline(
+            &plan,
+            &args("syn"),
+            "syn-2.0.119",
+            "syn",
+            "completion",
+            declined("graph-unestablished", "fixture"),
+        );
+        record_decline(
+            &plan,
+            &args("quote"),
+            "quote-1.0.47",
+            "quote",
+            "begin",
+            declined("lookup-unproduced", "fixture"),
+        );
+        assert_eq!(
+            declined_miss(&plan).as_deref(),
+            Some(
+                "vstd's dependency quote-1.0.47 did not establish this run's compiler provenance (lookup-unproduced: fixture)"
+            )
+        );
+        std::fs::remove_dir_all(root)
     }
 
     #[test]
