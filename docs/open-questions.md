@@ -263,6 +263,8 @@ planned for releases after 0.1.0. The owner answered all twelve on
     any kind." Agents may raise interface proposals directly in the D.I.V.E.
     and Oyster repositories; the filing ground rule in `AGENTS.md` lists the
     repositories.
+    **Narrowed 2026-11-09:** the owner abandoned Oyster, so there is no Oyster
+    repository to file in. See question 49.
 22. **Evidence tiers versus the current schema.** Schema v1 has a `tier`
     field (`confirmed` or `provisional`) and `provenance.source`. Proposal:
     keep those as the establishment axis, add `evidence_tier` as a separate
@@ -546,3 +548,36 @@ planned for releases after 0.1.0. The owner answered all twelve on
     pull request that enables it once D.I.V.E. is distributed. Public temporal
     packaging still waits for that distribution. See
     [ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md).
+    **Superseded in part 2026-11-09:** the owner abandoned Oyster, and cvc5
+    follows Kani inside v0.3.0. The D.I.V.E. part of the 2026-11-06
+    amendment stands. See question 49.
+
+49. **Oyster's standing and the scope of v0.3.0.**
+    **Answered 2026-11-09 (owner):** Oyster is abandoned. Sail does no further
+    Oyster work, and agents have no Oyster repository to file in (this narrows
+    the answer to question 21). D.I.V.E. stays private;
+    [ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md), the temporal
+    extension and its queued pull request are unchanged. The next release is
+    v0.3.0: Verus mutation testing as the headline, proof health and
+    profiling, never slower than stock with cheaper changed proofs, reach (a
+    GitHub Action, installation, an editor bridge), and Kani followed by cvc5
+    in the SMT runtime inside the same release. Kani ships as an experimental
+    backend for hand-written harnesses, with `arrayvec` 0.7.8 as its pilot
+    fixture; Kani function contracts are not adopted as a front end. A second
+    Verus pin is not adopted (#237: pin cadence only). Neutral-contract
+    surfaces, including the three contract crates, are removed in v0.3.0 once
+    their stated preconditions hold; the SMT runtime, tiers and ledger,
+    counterexample decoding and general attribution are kept. Requirement
+    attribution and `sail assurance` stay experimental for now; whether they
+    are kept or removed is decided when `sail mutate` exists. Work starts
+    with short spikes that each carry a drop rule. Final publication still
+    needs the owner's explicit approval of the exact candidate. See
+    [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).
+
+50. **Linux aarch64 support and its conformance oracle.** A spike on
+    2026-11-09 reported fast-tier conformance of 147 of 147 "Same" on a
+    Graviton host, with upstream Verus built from source as the oracle. Does
+    the owner accept that source-built oracle as the definition of correctness
+    for Linux aarch64? Support is not committed scope until the owner answers,
+    and it would then need its own validation record. See
+    [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).
