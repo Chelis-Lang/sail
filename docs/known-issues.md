@@ -213,9 +213,6 @@ Current numbers are in [performance](performance.md).
 - **Combined output order.** The managed relay guarantees final stdout
   completion, not one global order across stdout and stderr
   ([#215](https://github.com/Chelis-Lang/sail/issues/215)).
-- **Summary wording.** A failing managed job summary leads with `0 verified`
-  before `… passed by Verus's totals`, and after a Rust compile error reads
-  `0 verified, 0 failed, 0 unknown`.
 
 ## Integration APIs (experimental)
 

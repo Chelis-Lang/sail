@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "columnKind": "unicodeCodePoints",
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "exitCode": 101,
+          "properties": {
+            "closingCompilerLines": 1,
+            "contextSha256": "3afb29760429b046d03be4af1aa42c4f6523843cfd2b1cbcda2c9d3b8cd1f691",
+            "currentness": "current",
+            "inputRevision": "b70d3a4f7c5319dc5c7e6cbd674c9d5a05430c3307c8e341b082ec18b876ef4e",
+            "noteAndHelpBlocks": 0,
+            "runId": "1775777-1794268075488013849"
+          },
+          "toolExecutionNotifications": []
+        }
+      ],
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "proofs/alpha/src/lib.rs",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startColumn": 13,
+                  "startLine": 18
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "cannot call function `alpha::add_one` with mode exec"
+          },
+          "properties": {
+            "establishingRun": "1775777-1794268075488013849",
+            "packageId": "path+file:///work/repo/proofs/alpha#0.1.0",
+            "rendered": "error: cannot call function `alpha::add_one` with mode exec\n  --> alpha/src/lib.rs:18:13\n   |\n18 |     let y = add_one(x);\n   |             ^^^^^^^^^^",
+            "requested": true,
+            "target": "alpha"
+          },
+          "ruleId": "verus/other-error",
+          "ruleIndex": 0
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/Chelis-Lang/sail",
+          "name": "sail",
+          "rules": [
+            {
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "id": "verus/other-error",
+              "shortDescription": {
+                "text": "A Verus or compiler error with no code"
+              }
+            }
+          ],
+          "version": "0.2.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

@@ -107,6 +107,21 @@ For CI, persist solver replies and, in managed mode, project targets and receipt
 from trusted workflows. Read the [CI cache guide](https://github.com/Chelis-Lang/sail/blob/main/docs/ci-cache.md)
 for paths, tool/path requirements and the limits of restored caches.
 
+On builds with `sail report` (after 0.2.0; check `sail report --help`), render
+the saved JSON document for CI without verifying again, and keep `sail verify`'s
+exit code as the job's result:
+
+```sh
+sail verify --output json > result.json; code=$?
+sail report --format github-summary result.json >> "$GITHUB_STEP_SUMMARY"
+sail report --format github-annotations result.json
+exit "$code"
+```
+
+`--format sarif` writes SARIF 2.1.0 and `--baseline FILE` compares with an
+earlier document. Read the [CI reports guide](https://github.com/Chelis-Lang/sail/blob/main/docs/ci-reports.md)
+for the truncation rules and when two results are comparable.
+
 On builds with `sail cache projects budget`, an optional soft byte cap can prune
 old idle workspaces. Inspect help and use a dry run before manual pruning:
 

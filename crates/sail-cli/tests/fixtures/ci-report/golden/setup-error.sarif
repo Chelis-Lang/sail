@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "columnKind": "unicodeCodePoints",
+      "invocations": [
+        {
+          "executionSuccessful": false,
+          "properties": {
+            "closingCompilerLines": 0,
+            "contextSha256": "",
+            "currentness": "unknown",
+            "inputRevision": "",
+            "noteAndHelpBlocks": 0,
+            "runId": ""
+          },
+          "toolExecutionNotifications": [
+            {
+              "descriptor": {
+                "id": "SAIL3100"
+              },
+              "level": "error",
+              "message": {
+                "text": "error[SAIL0102]: sail-z3 must be installed next to sail"
+              }
+            }
+          ]
+        }
+      ],
+      "results": [],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/Chelis-Lang/sail",
+          "name": "sail",
+          "rules": []
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}
