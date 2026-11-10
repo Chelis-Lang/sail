@@ -49,7 +49,7 @@ Owner decisions pending, not committed scope:
 
 | Lane | Current basis | Next outcome |
 |---|---|---|
-| Changed-proof cost (#158, #244) | Static longest-first dispatch shipped; measured Vest gain, no Anvil gain. Hand-applied prover isolation cut the Anvil sibling edit from 88 s to 54 s with 0 conformance differences, but cost proof headroom; IronKV has no gap worth isolating ([spike](validation/tune-isolation.md)) | `sail tune` and `--isolation auto` not built for v0.3.0; the guide documents the manual technique |
+| Changed-proof cost (#158, #244) | Static longest-first dispatch shipped; measured Vest gain, no Anvil gain. Hand-applied prover isolation cut the Anvil sibling edit from 88 s to 54 s with 0 conformance differences, but cost proof headroom; IronKV has no gap worth isolating ([spike](validation/tune-isolation.md)) | `sail tune` dropped for v0.3.0 and `--isolation auto` not built ([spike record](validation/tune-isolation.md)); the performance guide documents the manual technique |
 | Mac Anvil cold (#232) | Latest composed cohort: 98.94 s Sail / 96.87 s stock; retained 2.07 s regression | Attribute and fix with native paired measurements; retain original rows |
 | Frontend feasibility (#162) | Persistent reuse unqualified; incomplete inputs and diagnostic mappings identified | Bounded go/no-go for complete inputs, current diagnostics and net whole-call benefit; never a release dependency |
 | First use and full-path overhead (#234, #558, #560) | Shipped vstd, replay and daemon preparation delivered; misses still cost more | Bounded improvements alongside the feature; no selection of experiments without general gains |
