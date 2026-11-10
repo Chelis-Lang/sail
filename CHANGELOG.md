@@ -13,6 +13,18 @@ semantic versioning once the API is published.
   compiler provenance, the `SAIL3138` note names the unit and a stable reason
   code instead of the generic lookup mismatch, and the `SAIL_SHIPPED_TRACE`
   events carry the same codes.
+- Keep instant revert after an edit that lands while background preparation
+  runs (#595). A call used to kill the running preparation, which left the
+  compiler target without its build-script records: the call then rebuilt
+  every dependency, vstd included, and instant revert could not apply to what
+  it compiled. A running preparation that re-runs a successful verification of
+  the same workspace now finishes, for at most 60 seconds from its start, and
+  the call waits for it. Preparation for any other workspace, and a new
+  project's initial preparation, are still killed at once (ADR 0096
+  amendment). A preparation that ends without a Current result can still
+  leave the target without those records.
+- `SAIL3146` now also says when a run rebuilt the build-script packages
+  (named) because the target's build-script records were missing.
 - Decided how `sail mutate`, planned for v0.3.0, will count mutants (ADR
   0111). A Verus rejection counts as a detection when it is attributed to the
   mutated function, is not only a resource limit, repeats on every run, and

@@ -3856,7 +3856,7 @@ fn run_recorded(
         json(&file, plan)?;
         paths.shipped_plan = Some(file);
     }
-    super::build_inputs::family::begin(
+    let family_export = super::build_inputs::family::begin(
         &paths.compiler_inputs,
         &compiler_hash,
         &paths.target,
@@ -4140,6 +4140,16 @@ fn run_recorded(
         && origin_dirty.is_empty()
         && receipt_covered_targets(&paths, &expected, &hash, &receipt_revisions);
     let mut retained_notes = Vec::new();
+    // #595: an existing target without its build-script export cleans every
+    // script package, so the whole dependency graph is rebuilt without the
+    // producer certificates that retention of its dependents needs.
+    if paths.reuse && !new_target && !family_export && !stale_scripts.is_empty() {
+        retained_notes.push(format!(
+            "{}: instant revert will not apply to dependents of {}, rebuilt in this run because this compiler target's build-script observations were missing or no longer matched (for example, an earlier run of this target, such as a stopped background preparation, ended before republishing them); verification is unaffected",
+            super::retained::SKIPPED,
+            stale_scripts.join(", ")
+        ));
+    }
     let runtime = Runtime {
         run_id: run_id.clone(),
         args: config.args.clone(),

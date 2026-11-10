@@ -2,7 +2,7 @@
 #![cfg(unix)]
 
 use sail_api::jobs::{Client, Mode, Request, Response};
-use sail_api::preparation::{Status, Submission, VERSION};
+use sail_api::preparation::{Origin, Status, Submission, VERSION};
 use std::collections::BTreeMap;
 use std::io;
 use std::os::unix::fs::PermissionsExt as _;
@@ -17,6 +17,9 @@ struct Fixture {
 }
 impl Fixture {
     fn new(script: &str) -> io::Result<Self> {
+        Self::with_grace(script, Duration::from_secs(60))
+    }
+    fn with_grace(script: &str, grace: Duration) -> io::Result<Self> {
         static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let root = std::env::temp_dir().join(format!(
             "sail-prep-{}-{}",
@@ -29,6 +32,7 @@ impl Fixture {
         std::fs::set_permissions(&worker, std::fs::Permissions::from_mode(0o755))?;
         let socket = root.join("jobs.sock");
         let handle = sail_daemon::jobs::bind(&socket, &root.join("cache/projects/jobs"), &worker)?
+            .with_preemption_grace(grace)
             .spawn()?;
         Ok(Self {
             root,
@@ -52,6 +56,19 @@ impl Fixture {
             json: false,
             colour: false,
         })
+    }
+    /// A preparation that re-runs a verification of `project` that just
+    /// succeeded. The fixture worker ignores the origin's contents.
+    fn origin_request(&self, project: &str) -> io::Result<Submission> {
+        let mut request = self.request(project)?;
+        request.origin = Some(Origin {
+            key: "key".into(),
+            context: "context".into(),
+            revision: "a".repeat(64),
+            workspace: self.root.join(project),
+            readback_revision: "a".repeat(64),
+        });
+        Ok(request)
     }
     fn call(&self, request: &Request) -> io::Result<Status> {
         match Client::new(&self.socket).call(request)? {
@@ -127,6 +144,70 @@ fn foreground_preempts_real_running_process_and_shutdown_reaps_it() -> io::Resul
     assert_eq!(status.superseded, 1);
     assert_eq!(status.ready, 0);
     drop(lease);
+    Ok(())
+}
+
+/// #595: a preempted origin preparation of the caller's workspace may finish
+/// within the grace, so it does not leave the compiler target without its
+/// build-script export. The lease itself is granted at once.
+#[test]
+fn foreground_lets_its_workspaces_origin_preparation_finish() -> io::Result<()> {
+    let fixture = Fixture::with_grace(
+        "sleep 1; printf '%s' '{\"ready\":true,\"origin\":null}'",
+        Duration::from_secs(4),
+    )?;
+    fixture.call(&Request::Prepare(fixture.origin_request("project")?))?;
+    fixture.wait(|status| status.running.is_some())?;
+    let started = Instant::now();
+    let lease = fixture.foreground()?;
+    assert!(started.elapsed() < Duration::from_secs(1));
+    let status = fixture.wait(|status| status.running.is_none())?;
+    assert_eq!(status.ready, 1);
+    assert_eq!(status.superseded, 0);
+    drop(lease);
+    Ok(())
+}
+
+/// The grace is a bound: a preempted origin preparation still running when it
+/// ends is killed.
+#[test]
+fn foreground_kills_its_workspaces_origin_preparation_after_the_grace() -> io::Result<()> {
+    let grace = Duration::from_millis(500);
+    let fixture = Fixture::with_grace("sleep 300", grace)?;
+    fixture.call(&Request::Prepare(fixture.origin_request("project")?))?;
+    fixture.wait(|status| status.running.is_some())?;
+    let preempted = Instant::now();
+    let lease = fixture.foreground()?;
+    let status = fixture.wait(|status| status.running.is_none())?;
+    assert!(preempted.elapsed() >= grace);
+    assert_eq!(status.superseded, 1);
+    assert_eq!(status.ready, 0);
+    drop(lease);
+    Ok(())
+}
+
+/// Only the caller's own workspace waits: another workspace's origin
+/// preparation is killed at once, by a lease or by job admission.
+#[test]
+fn foreground_kills_another_workspaces_origin_preparation_at_once() -> io::Result<()> {
+    let fixture = Fixture::with_grace("sleep 300", Duration::from_secs(600))?;
+    fixture.call(&Request::Prepare(fixture.origin_request("other")?))?;
+    fixture.wait(|status| status.running.is_some())?;
+    let lease = fixture.foreground()?;
+    let status = fixture.wait(|status| status.running.is_none())?;
+    assert_eq!(status.superseded, 1);
+    drop(lease);
+    fixture.call(&Request::Prepare(fixture.origin_request("other")?))?;
+    fixture.wait(|status| status.running.is_some())?;
+    let mut submission = fixture.request("project")?.verification;
+    submission.input_revision = Some("a".repeat(64));
+    assert!(matches!(
+        Client::new(&fixture.socket).call(&Request::Submit { submission })?,
+        Response::Status(_)
+    ));
+    let status = fixture.wait(|status| status.running.is_none())?;
+    assert_eq!(status.superseded, 2);
+    assert_eq!(status.ready, 0);
     Ok(())
 }
 

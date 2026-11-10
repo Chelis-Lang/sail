@@ -789,3 +789,69 @@ diagnostic cohort. #595 remains open.
 
 Raw archive `mac-revert.tgz`, retained outside Git, SHA-256:
 `1c8778192aeb0c419ff33dcddca3c05bf8a7d0c9121e17ae70f165d90c93f722`.
+
+### Linux load loops: cause found, preemption grace (#595)
+
+Status: **the dominant cause is identified and mostly fixed. The residual
+cause is identified but not fixed, and there is no macOS rerun.** On
+2026-11-10, native c7i.4xlarge hosts in us-west-2 (16 cores, Linux x86-64)
+ran the Vest cycle cold, body edit, revert, failing edit, fix, revert with
+`SAIL_PERF_DIAG=1`, Verus `0.2026.10.18.7d82994`, registry vstd and
+`--rlimit 100`.
+Load came from 16 CPU spinners and 4 direct-I/O `dd` loops. Load is
+diagnostic only, so these wall times are not performance results. Exit codes
+agreed with stock in every round and phase. A miss is a revert that started
+any verifier session.
+
+| Loop | Build | Rounds | Reverts | Misses | Miss rounds that rebuilt the script graph | Killed preparations |
+|---|---|---|---|---|---|---|
+| Quiet | branch with decline notes, immediate kill | 60 | 120 | 0 | none | not counted |
+| Loaded | branch with decline notes, immediate kill | 34 + 26 | 120 | 81 | 45 of 45 | 65 |
+| Loaded | `8dff985`, 60 s grace | 60 | 120 | 14 | 7 of 7 | 0 |
+| Loaded, preparation off | `8dff985` | 20 | 40 | 2 | none (cold run) | none |
+
+`8dff985` is the pre-rebase build of the 60 s grace. Later branch commits
+bound the trace and drop one decline note. The two loaded baseline halves ran
+on separate hosts at the same time. Revert
+hits took a median of 1.11 s quiet, and about 3.9 to 4.5 s loaded in both
+builds. Misses took about 40 to 49 s when they re-verified `vest_lib` (274
+sessions), and about 100 s when they also rebuilt vstd (655 sessions).
+
+Cause: a foreground call preempted a running background preparation, and the
+daemon killed it at once. The preparation had already consumed the compiler
+target's build-script export (`build_inputs::family::begin`), and it
+republishes the export only when it finishes. The next call found no records,
+cleaned proc-macro2, quote, verus_prettyplease and vstd (in the event
+`managed-cleanup-decision`, under `stale_scripts`), and rebuilt them without
+retention attempts. Its `vest_lib` revision was then not admitted, because
+the dependency artifacts had no producer certificate. Every baseline miss
+carries that `SAIL3146` reason. Every baseline miss round shows a killed run
+directory, with no journal end, about 3 s before the rebuilding call. With a
+10 s grace the misses continued, because a preparation that starts just
+before the edit verifies the edited source, which takes about 40 s under load.
+The 60 s grace let every such preparation finish.
+
+Residual, not fixed: every remaining loaded miss also follows a
+script-graph rebuild. That rebuild comes after a preparation that ended on
+its own without a Current result. Examples are a Historical run when an edit
+landed during it, a run with Currentness unknown and a declined run (31
+non-Current runs in total). These runs consumed the export and did not
+republish it. Three of the 14 misses, the body revert in r8, r20 and r50,
+printed no `SAIL3146` note on the reverting call. The control with
+preparation off missed in one round (r2) by a separate cause: the loaded cold
+build left `verus_*` and vstd artifacts without producer certificates.
+
+Raw archives, retained outside Git, SHA-256:
+
+| Archive | SHA-256 |
+|---|---|
+| `vestquiet.tgz` | `23ac31835c0da7538ab99fda856dbcc1a8cb7b875f04766f5dca48c46efffb48` |
+| `vestload.tgz` (baseline, part A) | `79018c8184a1ba8b4e951a644876f868f0e2e7a956f847b087f3eeeb6beed74b` |
+| `vestloadb.tgz` (baseline, part B) | `f38700b869d07f4c1471a7f113e5f89e2e8f2369d8e40842b2b52c9c0261a630` |
+| `vestloadfix.tgz` | `e8fbf592157a49e06e6958b10a911f251b8054f76f26fa45895d62ba3246f007` |
+| `vestloadnoprep.tgz` | `8a407dc49e58d7675453f2f4595cec2804de4bda7319df67bda3817ff3d20338` |
+
+Earlier attempts:
+- 2026-11-10, branch with a 10 s grace: aborted after its first rounds;
+  misses continued, because the grace was shorter than the edited source's
+  verification.
