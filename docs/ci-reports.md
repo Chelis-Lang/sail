@@ -11,6 +11,9 @@ and no published release contains it yet: build Sail from source to use it.
 
 ## Usage
 
+In GitHub Actions, the [Sail action](github-action.md) runs `sail verify`
+and all three reports in one step. In a `run:` step of your own:
+
 ```sh
 code=0
 sail verify --output json > result.json || code=$?

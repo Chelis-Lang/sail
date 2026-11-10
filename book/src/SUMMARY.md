@@ -14,6 +14,7 @@
 - [Proof repair](proof-repair-walkthrough.md)
 - [CI caching](ci-cache.md)
 - [CI reports](ci-reports.md)
+- [GitHub Action](github-action.md)
 - [Background preparation](background-preparation.md)
 - [Disk use](workspace-hygiene.md)
 
