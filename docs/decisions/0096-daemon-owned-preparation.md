@@ -66,3 +66,42 @@ Only optional acceleration is prepared later. The worker's counters establish
 no proof. Native qualification must account for preparation CPU, memory and
 interference as well as caller latency, including immediate and delayed calls.
 This decision selects no new digest-memo default or focused-vstd reuse boundary.
+
+## Amendment (2026-11-10): an origin preparation of the caller's workspace may finish
+
+- **Status:** proposed; needs owner approval before it merges (#595, PR #708)
+
+A preparation is an ordinary managed run. It consumes its compiler target's
+build-script export when it begins (ADR 0046/0047) and republishes it only
+when it finishes. Killing it partway leaves the export missing, so the next run
+of that target, which is the preempting call itself, cleans every build-script
+package (vstd included), rebuilds the dependency graph and cannot retain what
+it compiles. Loaded native Vest loops traced every instant-revert miss to
+this (#595).
+
+Preemption therefore distinguishes one case. When an ordinary job or a
+foreground CLI lease arrives for the same workspace key as a running
+preparation that has an origin (it re-runs a verification that just
+succeeded), the preparation is preempted rather than killed. It may finish
+until its own deadline, 60 seconds from its start, or a fixed grace of 60
+seconds from preemption, whichever is earlier, and is then killed and reaped
+as before. The caller is admitted at once and waits for the preparation only on
+the target lock. Its result is still independent: it verifies normally and
+uses no prepared result. A preempted preparation counts as superseded unless it
+finishes ready.
+
+Every other case keeps the original rule: queued work is dropped; a running
+preparation for another workspace key, and a new project's initial preparation
+(no origin, 600 second deadline), are killed at once; cancellation, a newer
+request for the same workspace and shutdown kill and reap the worker group.
+
+The wait is bounded by what killing would cost the same caller: an origin
+preparation re-runs a verification that just succeeded on the same target,
+while killing it makes the caller rebuild every script package and its
+dependents. A target with no build-script packages loses nothing when its
+preparation is killed, so for such a target the wait is pure cost; this is a
+known limitation. A preparation that ends without a Current result can still
+leave the export unpublished; that residual is unchanged by this amendment
+and is tracked in `docs/known-issues.md`. Native measurements of revert
+misses and edit, fix and first-call latency against main and stock, quiet and
+loaded, are in `docs/validation/instant-revert.md`.
