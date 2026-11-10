@@ -1,17 +1,17 @@
 {
   "base_commit": "bbe93f73b0a5802c438501f9a2106f9126bd2eea",
   "candidate_sites": {
-    "arith": 1718,
-    "compare": 3336,
-    "constant": 2837,
-    "invariant": 383,
-    "logic": 553,
+    "arith": 1861,
+    "compare": 3499,
+    "constant": 3058,
+    "invariant": 422,
+    "logic": 575,
     "rare-region": 45,
-    "spec-strengthen": 373,
+    "spec-strengthen": 374,
     "spec-weaken": 261,
-    "statement": 1193
+    "statement": 1291
   },
-  "candidates_sha256": "b570666dba7ea624f178d2c8c6eac4db9a96e29658b467ebdbc23286ed69edf4",
+  "candidates_sha256": "9f1fb8b48165e34fd03aadd6adfca7e415c0435ab38478bed82f4916946ba172",
   "files": 168,
   "generated": {
     "arith": 6,
@@ -24,7 +24,7 @@
     "spec-weaken": 6,
     "statement": 6
   },
-  "generator": "gen-mutants 2",
+  "generator": "gen-mutants 3",
   "mutants": {
     "human-eval-arith-001": {
       "class": "arith",
@@ -136,6 +136,24 @@
     },
     "human-eval-constant-001": {
       "class": "constant",
+      "column": 33,
+      "file": "tasks/human_eval_055a.rs",
+      "function": "fib",
+      "kind": "body",
+      "line": 64,
+      "mode": "exec"
+    },
+    "human-eval-constant-002": {
+      "class": "constant",
+      "column": 50,
+      "file": "tasks/human_eval_033.rs",
+      "function": "lemma_update_effect_on_count",
+      "kind": "body",
+      "line": 60,
+      "mode": "proof"
+    },
+    "human-eval-constant-003": {
+      "class": "constant",
       "column": 88,
       "file": "tasks/human_eval_160.rs",
       "function": "eval_by_stack_a",
@@ -143,7 +161,16 @@
       "line": 612,
       "mode": "exec"
     },
-    "human-eval-constant-002": {
+    "human-eval-constant-004": {
+      "class": "constant",
+      "column": 21,
+      "file": "tasks/human_eval_068.rs",
+      "function": "pluck_smallest_even",
+      "kind": "body",
+      "line": 39,
+      "mode": "exec"
+    },
+    "human-eval-constant-005": {
       "class": "constant",
       "column": 34,
       "file": "tasks/human_eval_092.rs",
@@ -152,41 +179,14 @@
       "line": 38,
       "mode": "exec"
     },
-    "human-eval-constant-003": {
-      "class": "constant",
-      "column": 21,
-      "file": "tasks/human_eval_025.rs",
-      "function": "lemma_fold_right_pull_out_hybrid",
-      "kind": "body",
-      "line": 84,
-      "mode": "proof"
-    },
-    "human-eval-constant-004": {
-      "class": "constant",
-      "column": 21,
-      "file": "tasks/human_eval_110.rs",
-      "function": "exists_even_index",
-      "kind": "body",
-      "line": 236,
-      "mode": "proof"
-    },
-    "human-eval-constant-005": {
-      "class": "constant",
-      "column": 79,
-      "file": "tasks/human_eval_003b.rs",
-      "function": "below_zero",
-      "kind": "body",
-      "line": 31,
-      "mode": "exec"
-    },
     "human-eval-constant-006": {
       "class": "constant",
-      "column": 14,
-      "file": "tasks/human_eval_020.rs",
-      "function": "closest_pair",
-      "kind": "spec",
-      "line": 21,
-      "mode": "exec"
+      "column": 24,
+      "file": "tasks/human_eval_130.rs",
+      "function": "spec_tri",
+      "kind": "body",
+      "line": 22,
+      "mode": "spec"
     },
     "human-eval-invariant-001": {
       "class": "invariant",
@@ -209,13 +209,22 @@
     "human-eval-invariant-003": {
       "class": "invariant",
       "column": 1,
+      "file": "tasks/human_eval_130.rs",
+      "function": "tri",
+      "kind": "body",
+      "line": 62,
+      "mode": "exec"
+    },
+    "human-eval-invariant-004": {
+      "class": "invariant",
+      "column": 1,
       "file": "tasks/human_eval_025.rs",
       "function": "factorize",
       "kind": "body",
       "line": 332,
       "mode": "exec"
     },
-    "human-eval-invariant-004": {
+    "human-eval-invariant-005": {
       "class": "invariant",
       "column": 1,
       "file": "tasks/human_eval_075.rs",
@@ -224,22 +233,13 @@
       "line": 92,
       "mode": "exec"
     },
-    "human-eval-invariant-005": {
+    "human-eval-invariant-006": {
       "class": "invariant",
       "column": 1,
       "file": "tasks/human_eval_087.rs",
       "function": "get_row",
       "kind": "body",
       "line": 139,
-      "mode": "exec"
-    },
-    "human-eval-invariant-006": {
-      "class": "invariant",
-      "column": 1,
-      "file": "tasks/human_eval_005.rs",
-      "function": "intersperse",
-      "kind": "body",
-      "line": 105,
       "mode": "exec"
     },
     "human-eval-logic-001": {
@@ -352,6 +352,15 @@
     },
     "human-eval-spec-strengthen-001": {
       "class": "spec-strengthen",
+      "column": 66,
+      "file": "tasks/human_eval_102.rs",
+      "function": "choose_num",
+      "kind": "spec",
+      "line": 21,
+      "mode": "exec"
+    },
+    "human-eval-spec-strengthen-002": {
+      "class": "spec-strengthen",
       "column": 9,
       "file": "tasks/human_eval_013.rs",
       "function": "gcd_is_gcd",
@@ -359,22 +368,13 @@
       "line": 210,
       "mode": "proof"
     },
-    "human-eval-spec-strengthen-002": {
+    "human-eval-spec-strengthen-003": {
       "class": "spec-strengthen",
       "column": 9,
       "file": "tasks/human_eval_075.rs",
       "function": "is_multiply_prime",
       "kind": "spec",
       "line": 72,
-      "mode": "exec"
-    },
-    "human-eval-spec-strengthen-003": {
-      "class": "spec-strengthen",
-      "column": 9,
-      "file": "tasks/human_eval_127.rs",
-      "function": "intersection",
-      "kind": "spec",
-      "line": 79,
       "mode": "exec"
     },
     "human-eval-spec-strengthen-004": {
@@ -516,10 +516,11 @@
   "oracle": {
     "dropped": {
       "human-eval-arith-004": "does not compile",
-      "human-eval-arith-005": "does not compile"
+      "human-eval-arith-005": "does not compile",
+      "human-eval-constant-001": "Verus rejects it before verification"
     },
-    "finished_unix": 1792592649,
-    "kept": 52,
+    "finished_unix": 1794310170,
+    "kept": 51,
     "machine": {
       "cpus": "32",
       "host": "x86_64-unknown-linux-gnu",
@@ -528,7 +529,7 @@
     "original": {
       "failing": [],
       "outcome": "verified",
-      "wall_s": 66.9
+      "wall_s": 168.6
     },
     "platform": "x86_64-unknown-linux-gnu",
     "protocol": "roots-json-strict-2",
@@ -552,9 +553,9 @@
           "errors"
         ],
         "wall_s": [
-          24.7,
-          24.8,
-          24.5
+          52.9,
+          61.7,
+          51.9
         ]
       },
       "human-eval-arith-002": {
@@ -576,9 +577,9 @@
           "errors"
         ],
         "wall_s": [
-          24.6,
-          24.3,
-          24.1
+          51.7,
+          64.6,
+          51.1
         ]
       },
       "human-eval-arith-003": {
@@ -600,9 +601,9 @@
           "errors"
         ],
         "wall_s": [
-          24.9,
-          24.6,
-          24.1
+          50.9,
+          63.5,
+          51.3
         ]
       },
       "human-eval-arith-004": {
@@ -616,7 +617,7 @@
           "stillborn"
         ],
         "wall_s": [
-          2.1
+          3.8
         ]
       },
       "human-eval-arith-005": {
@@ -630,7 +631,7 @@
           "stillborn"
         ],
         "wall_s": [
-          2.1
+          6.6
         ]
       },
       "human-eval-arith-006": {
@@ -652,9 +653,9 @@
           "errors"
         ],
         "wall_s": [
-          23.9,
-          23.8,
-          24.2
+          69.7,
+          50.1,
+          74.1
         ]
       },
       "human-eval-compare-001": {
@@ -672,9 +673,9 @@
           "verified"
         ],
         "wall_s": [
-          24.5,
-          24.3,
-          24.8
+          73.7,
+          52.4,
+          76.7
         ]
       },
       "human-eval-compare-002": {
@@ -692,9 +693,9 @@
           "verified"
         ],
         "wall_s": [
-          25.4,
-          26.1,
-          25.0
+          52.3,
+          75.8,
+          50.1
         ]
       },
       "human-eval-compare-003": {
@@ -712,9 +713,9 @@
           "verified"
         ],
         "wall_s": [
-          24.5,
-          24.9,
-          24.6
+          73.6,
+          47.2,
+          80.7
         ]
       },
       "human-eval-compare-004": {
@@ -732,9 +733,9 @@
           "verified"
         ],
         "wall_s": [
-          24.7,
-          24.9,
-          25.3
+          46.0,
+          75.4,
+          49.1
         ]
       },
       "human-eval-compare-005": {
@@ -758,9 +759,9 @@
           "errors"
         ],
         "wall_s": [
-          23.5,
-          23.9,
-          24.6
+          45.3,
+          73.2,
+          47.0
         ]
       },
       "human-eval-compare-006": {
@@ -782,33 +783,23 @@
           "errors"
         ],
         "wall_s": [
-          23.0,
-          23.5,
-          23.7
+          77.0,
+          41.3,
+          76.3
         ]
       },
       "human-eval-constant-001": {
-        "dropped": null,
+        "dropped": "Verus rejects it before verification",
         "exits": [
-          101,
-          101,
           101
         ],
-        "failing": [
-          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::eval_by_stack_a"
-        ],
-        "new_failures": [
-          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::eval_by_stack_a"
-        ],
+        "failing": [],
+        "new_failures": [],
         "outcomes": [
-          "errors",
-          "errors",
-          "errors"
+          "stillborn"
         ],
         "wall_s": [
-          23.0,
-          23.7,
-          24.4
+          49.8
         ]
       },
       "human-eval-constant-002": {
@@ -819,10 +810,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_092::human_eval_verus_mutants::human_eval_092::any_int"
+          "0#human_eval_033::human_eval_verus_mutants::human_eval_033::lemma_update_effect_on_count"
         ],
         "new_failures": [
-          "0#human_eval_092::human_eval_verus_mutants::human_eval_092::any_int"
+          "0#human_eval_033::human_eval_verus_mutants::human_eval_033::lemma_update_effect_on_count"
         ],
         "outcomes": [
           "errors",
@@ -830,9 +821,9 @@
           "errors"
         ],
         "wall_s": [
-          24.5,
-          22.9,
-          23.1
+          74.6,
+          54.4,
+          64.3
         ]
       },
       "human-eval-constant-003": {
@@ -843,10 +834,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::lemma_fold_right_pull_out_hybrid"
+          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::eval_by_stack_a"
         ],
         "new_failures": [
-          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::lemma_fold_right_pull_out_hybrid"
+          "0#human_eval_160::human_eval_verus_mutants::human_eval_160::eval_by_stack_a"
         ],
         "outcomes": [
           "errors",
@@ -854,9 +845,9 @@
           "errors"
         ],
         "wall_s": [
-          24.3,
-          23.1,
-          23.2
+          75.5,
+          60.5,
+          58.3
         ]
       },
       "human-eval-constant-004": {
@@ -867,10 +858,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_110::human_eval_verus_mutants::human_eval_110::exists_even_index"
+          "0#human_eval_068::human_eval_verus_mutants::human_eval_068::pluck_smallest_even"
         ],
         "new_failures": [
-          "0#human_eval_110::human_eval_verus_mutants::human_eval_110::exists_even_index"
+          "0#human_eval_068::human_eval_verus_mutants::human_eval_068::pluck_smallest_even"
         ],
         "outcomes": [
           "errors",
@@ -878,9 +869,9 @@
           "errors"
         ],
         "wall_s": [
-          23.4,
-          23.9,
-          24.6
+          46.7,
+          67.7,
+          54.3
         ]
       },
       "human-eval-constant-005": {
@@ -891,10 +882,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_003b::human_eval_verus_mutants::human_eval_003b::below_zero"
+          "0#human_eval_092::human_eval_verus_mutants::human_eval_092::any_int"
         ],
         "new_failures": [
-          "0#human_eval_003b::human_eval_verus_mutants::human_eval_003b::below_zero"
+          "0#human_eval_092::human_eval_verus_mutants::human_eval_092::any_int"
         ],
         "outcomes": [
           "errors",
@@ -902,9 +893,9 @@
           "errors"
         ],
         "wall_s": [
-          24.3,
-          22.9,
-          22.6
+          66.4,
+          56.8,
+          65.3
         ]
       },
       "human-eval-constant-006": {
@@ -915,10 +906,12 @@
           101
         ],
         "failing": [
-          "0#human_eval_020::human_eval_verus_mutants::human_eval_020::closest_pair"
+          "0#human_eval_130::human_eval_verus_mutants::human_eval_130::spec_tri",
+          "0#human_eval_130::human_eval_verus_mutants::human_eval_130::tri"
         ],
         "new_failures": [
-          "0#human_eval_020::human_eval_verus_mutants::human_eval_020::closest_pair"
+          "0#human_eval_130::human_eval_verus_mutants::human_eval_130::spec_tri",
+          "0#human_eval_130::human_eval_verus_mutants::human_eval_130::tri"
         ],
         "outcomes": [
           "errors",
@@ -926,9 +919,9 @@
           "errors"
         ],
         "wall_s": [
-          23.6,
-          23.6,
-          23.1
+          51.0,
+          66.9,
+          66.4
         ]
       },
       "human-eval-invariant-001": {
@@ -950,9 +943,9 @@
           "errors"
         ],
         "wall_s": [
-          24.7,
-          24.8,
-          25.2
+          40.5,
+          59.2,
+          41.5
         ]
       },
       "human-eval-invariant-002": {
@@ -974,9 +967,9 @@
           "errors"
         ],
         "wall_s": [
-          25.0,
-          24.4,
-          23.0
+          48.9,
+          51.0,
+          65.1
         ]
       },
       "human-eval-invariant-003": {
@@ -987,10 +980,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::factorize"
+          "0#human_eval_130::human_eval_verus_mutants::human_eval_130::tri"
         ],
         "new_failures": [
-          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::factorize"
+          "0#human_eval_130::human_eval_verus_mutants::human_eval_130::tri"
         ],
         "outcomes": [
           "errors",
@@ -998,9 +991,9 @@
           "errors"
         ],
         "wall_s": [
-          24.7,
-          25.0,
-          25.0
+          31.1,
+          66.9,
+          38.4
         ]
       },
       "human-eval-invariant-004": {
@@ -1011,10 +1004,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_075::human_eval_verus_mutants::human_eval_075::is_multiply_prime"
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::factorize"
         ],
         "new_failures": [
-          "0#human_eval_075::human_eval_verus_mutants::human_eval_075::is_multiply_prime"
+          "0#human_eval_025::human_eval_verus_mutants::human_eval_025::factorize"
         ],
         "outcomes": [
           "errors",
@@ -1022,9 +1015,9 @@
           "errors"
         ],
         "wall_s": [
-          25.3,
-          24.7,
-          24.6
+          61.1,
+          60.3,
+          41.7
         ]
       },
       "human-eval-invariant-005": {
@@ -1035,10 +1028,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_087::human_eval_verus_mutants::human_eval_087::get_row"
+          "0#human_eval_075::human_eval_verus_mutants::human_eval_075::is_multiply_prime"
         ],
         "new_failures": [
-          "0#human_eval_087::human_eval_verus_mutants::human_eval_087::get_row"
+          "0#human_eval_075::human_eval_verus_mutants::human_eval_075::is_multiply_prime"
         ],
         "outcomes": [
           "errors",
@@ -1046,9 +1039,9 @@
           "errors"
         ],
         "wall_s": [
-          25.1,
-          25.0,
-          25.1
+          58.1,
+          63.8,
+          34.8
         ]
       },
       "human-eval-invariant-006": {
@@ -1059,10 +1052,10 @@
           101
         ],
         "failing": [
-          "0#human_eval_005::human_eval_verus_mutants::human_eval_005::intersperse"
+          "0#human_eval_087::human_eval_verus_mutants::human_eval_087::get_row"
         ],
         "new_failures": [
-          "0#human_eval_005::human_eval_verus_mutants::human_eval_005::intersperse"
+          "0#human_eval_087::human_eval_verus_mutants::human_eval_087::get_row"
         ],
         "outcomes": [
           "errors",
@@ -1070,9 +1063,9 @@
           "errors"
         ],
         "wall_s": [
-          23.1,
-          23.0,
-          22.5
+          27.9,
+          59.0,
+          36.6
         ]
       },
       "human-eval-logic-001": {
@@ -1094,9 +1087,9 @@
           "errors"
         ],
         "wall_s": [
-          23.6,
-          23.4,
-          23.8
+          67.1,
+          49.5,
+          66.9
         ]
       },
       "human-eval-logic-002": {
@@ -1118,9 +1111,9 @@
           "errors"
         ],
         "wall_s": [
-          86.8,
-          87.5,
-          85.4
+          238.5,
+          228.5,
+          189.7
         ]
       },
       "human-eval-logic-003": {
@@ -1144,9 +1137,9 @@
           "errors"
         ],
         "wall_s": [
-          23.5,
-          23.3,
-          23.2
+          74.7,
+          44.3,
+          67.9
         ]
       },
       "human-eval-logic-004": {
@@ -1168,9 +1161,9 @@
           "errors"
         ],
         "wall_s": [
-          24.2,
-          24.1,
-          23.8
+          40.2,
+          58.1,
+          34.2
         ]
       },
       "human-eval-logic-005": {
@@ -1192,9 +1185,9 @@
           "errors"
         ],
         "wall_s": [
-          23.5,
-          24.1,
-          23.6
+          40.9,
+          61.7,
+          32.9
         ]
       },
       "human-eval-logic-006": {
@@ -1216,9 +1209,9 @@
           "errors"
         ],
         "wall_s": [
-          25.2,
-          24.8,
-          25.2
+          34.6,
+          59.5,
+          37.8
         ]
       },
       "human-eval-rare-region-001": {
@@ -1240,9 +1233,9 @@
           "errors"
         ],
         "wall_s": [
-          22.5,
-          22.5,
-          22.5
+          61.4,
+          37.4,
+          56.4
         ]
       },
       "human-eval-rare-region-002": {
@@ -1264,9 +1257,9 @@
           "errors"
         ],
         "wall_s": [
-          18.1,
-          18.3,
-          18.3
+          38.7,
+          28.8,
+          28.7
         ]
       },
       "human-eval-rare-region-003": {
@@ -1288,9 +1281,9 @@
           "errors"
         ],
         "wall_s": [
-          21.5,
-          21.2,
-          21.1
+          37.4,
+          51.0,
+          48.5
         ]
       },
       "human-eval-rare-region-004": {
@@ -1312,9 +1305,9 @@
           "errors"
         ],
         "wall_s": [
-          19.3,
-          19.2,
-          19.3
+          39.7,
+          45.4,
+          48.9
         ]
       },
       "human-eval-rare-region-005": {
@@ -1336,9 +1329,9 @@
           "errors"
         ],
         "wall_s": [
-          23.4,
-          22.6,
-          22.6
+          54.0,
+          41.4,
+          55.7
         ]
       },
       "human-eval-rare-region-006": {
@@ -1356,9 +1349,9 @@
           "verified"
         ],
         "wall_s": [
-          18.9,
-          19.2,
-          19.1
+          36.5,
+          24.3,
+          34.9
         ]
       },
       "human-eval-spec-strengthen-001": {
@@ -1369,6 +1362,30 @@
           101
         ],
         "failing": [
+          "0#human_eval_102::human_eval_verus_mutants::human_eval_102::choose_num"
+        ],
+        "new_failures": [
+          "0#human_eval_102::human_eval_verus_mutants::human_eval_102::choose_num"
+        ],
+        "outcomes": [
+          "errors",
+          "errors",
+          "errors"
+        ],
+        "wall_s": [
+          36.3,
+          54.0,
+          34.4
+        ]
+      },
+      "human-eval-spec-strengthen-002": {
+        "dropped": null,
+        "exits": [
+          101,
+          101,
+          101
+        ],
+        "failing": [
           "0#human_eval_013::human_eval_verus_mutants::human_eval_013::gcd_is_gcd"
         ],
         "new_failures": [
@@ -1380,12 +1397,12 @@
           "errors"
         ],
         "wall_s": [
-          22.5,
-          22.5,
-          22.9
+          34.1,
+          62.7,
+          33.9
         ]
       },
-      "human-eval-spec-strengthen-002": {
+      "human-eval-spec-strengthen-003": {
         "dropped": null,
         "exits": [
           101,
@@ -1404,29 +1421,9 @@
           "errors"
         ],
         "wall_s": [
-          22.6,
-          21.8,
-          21.2
-        ]
-      },
-      "human-eval-spec-strengthen-003": {
-        "dropped": null,
-        "exits": [
-          101,
-          101,
-          101
-        ],
-        "failing": [],
-        "new_failures": [],
-        "outcomes": [
-          "errors",
-          "errors",
-          "errors"
-        ],
-        "wall_s": [
-          1.5,
-          2.1,
-          1.3
+          33.1,
+          66.5,
+          37.6
         ]
       },
       "human-eval-spec-strengthen-004": {
@@ -1448,9 +1445,9 @@
           "errors"
         ],
         "wall_s": [
-          18.1,
-          18.2,
-          18.2
+          27.5,
+          48.5,
+          20.8
         ]
       },
       "human-eval-spec-strengthen-005": {
@@ -1472,9 +1469,9 @@
           "errors"
         ],
         "wall_s": [
-          23.4,
-          23.1,
-          22.7
+          64.5,
+          38.4,
+          56.7
         ]
       },
       "human-eval-spec-strengthen-006": {
@@ -1496,9 +1493,9 @@
           "errors"
         ],
         "wall_s": [
-          21.1,
-          19.1,
-          20.3
+          53.4,
+          28.9,
+          51.2
         ]
       },
       "human-eval-spec-weaken-001": {
@@ -1520,9 +1517,9 @@
           "errors"
         ],
         "wall_s": [
-          25.5,
-          24.9,
-          25.3
+          56.7,
+          50.7,
+          52.0
         ]
       },
       "human-eval-spec-weaken-002": {
@@ -1546,9 +1543,9 @@
           "errors"
         ],
         "wall_s": [
-          150.3,
-          140.0,
-          119.2
+          344.4,
+          310.5,
+          284.0
         ]
       },
       "human-eval-spec-weaken-003": {
@@ -1570,9 +1567,9 @@
           "errors"
         ],
         "wall_s": [
-          24.6,
-          22.9,
-          22.7
+          54.0,
+          37.2,
+          67.1
         ]
       },
       "human-eval-spec-weaken-004": {
@@ -1594,9 +1591,9 @@
           "errors"
         ],
         "wall_s": [
-          22.4,
-          23.5,
-          23.1
+          62.6,
+          35.0,
+          55.7
         ]
       },
       "human-eval-spec-weaken-005": {
@@ -1614,9 +1611,9 @@
           "verified"
         ],
         "wall_s": [
-          25.2,
-          23.3,
-          23.5
+          65.5,
+          37.6,
+          58.3
         ]
       },
       "human-eval-spec-weaken-006": {
@@ -1638,9 +1635,9 @@
           "errors"
         ],
         "wall_s": [
-          18.2,
-          18.3,
-          18.2
+          46.0,
+          35.1,
+          51.7
         ]
       },
       "human-eval-statement-001": {
@@ -1662,9 +1659,9 @@
           "errors"
         ],
         "wall_s": [
-          23.4,
-          24.0,
-          23.7
+          47.1,
+          63.7,
+          39.3
         ]
       },
       "human-eval-statement-002": {
@@ -1682,9 +1679,9 @@
           "verified"
         ],
         "wall_s": [
-          24.1,
-          24.2,
-          25.7
+          58.6,
+          40.3,
+          66.6
         ]
       },
       "human-eval-statement-003": {
@@ -1702,9 +1699,9 @@
           "verified"
         ],
         "wall_s": [
-          24.2,
-          24.4,
-          25.9
+          56.8,
+          38.5,
+          69.1
         ]
       },
       "human-eval-statement-004": {
@@ -1726,9 +1723,9 @@
           "errors"
         ],
         "wall_s": [
-          25.3,
-          25.1,
-          25.2
+          68.1,
+          36.7,
+          53.4
         ]
       },
       "human-eval-statement-005": {
@@ -1746,9 +1743,9 @@
           "verified"
         ],
         "wall_s": [
-          24.3,
-          24.4,
-          26.0
+          63.7,
+          38.8,
+          58.8
         ]
       },
       "human-eval-statement-006": {
@@ -1770,9 +1767,9 @@
           "errors"
         ],
         "wall_s": [
-          25.0,
-          24.7,
-          24.9
+          35.6,
+          58.0,
+          43.9
         ]
       }
     },
