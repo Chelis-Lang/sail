@@ -30,7 +30,7 @@ case "$arm" in
     esac ;;
   naive|sscoped|a3|camp|pipe)
     rm -rf "/mut/$name" "/mut/out/$name"
-    python3 $py "$arm" --list "$list" --root "/mut/$name" --out "/mut/out/$name" ;;
+    python3 $py "$arm" --list "$list" --root "/mut/$name" --out "/mut/out/$name" ${SPIKE_LIMIT:+--limit "$SPIKE_LIMIT"} ;;
   camp-unscoped)
     rm -rf "/mut/$name" "/mut/out/$name"
     python3 $py camp --strategy unscoped --list "$list" --root "/mut/$name" --out "/mut/out/$name" ;;

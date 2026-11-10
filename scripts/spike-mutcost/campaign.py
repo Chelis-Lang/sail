@@ -372,13 +372,14 @@ def cmd_naive(a):
     run = execute(argv, env, ws["package"], os.path.join(a.out, "logs", "cold"))
     out.write(phase="cold", **run, **classify_verus(run), meter=m0.done())
     files = Files(ws)
-    for m in lst["mutants"]:
+    mutants = lst["mutants"][:a.limit] if a.limit else lst["mutants"]
+    for m in mutants:
         files.apply(m)
         m0 = Meter()
         run = execute(argv, env, ws["package"], os.path.join(a.out, "logs", m["id"]))
         out.write(phase="mutant", id=m["id"], **run, **classify_verus(run), meter=m0.done())
         files.restore(m)
-    out.write(phase="total", meter=total.done(), mutants=len(lst["mutants"]))
+    out.write(phase="total", meter=total.done(), mutants=len(mutants))
 
 
 def cmd_sscoped(a):
@@ -690,6 +691,7 @@ def main():
         s.add_argument("--root", required=True)
         s.add_argument("--out", required=True)
         s.add_argument("--workers", type=int, default=4)
+        s.add_argument("--limit", type=int, default=0, help="naive: only the first N mutants")
         s.add_argument("--strategy", choices=("scoped", "unscoped"), default="scoped")
     a = p.parse_args()
     {"select": cmd_select, "naive": cmd_naive, "sscoped": cmd_sscoped, "a3": cmd_a3, "camp": cmd_camp, "pipe": cmd_pipe}[a.cmd](a)
