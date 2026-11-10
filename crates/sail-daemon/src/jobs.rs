@@ -132,6 +132,14 @@ impl JobServer {
     ) -> io::Result<()> {
         self.state.preparation.enqueue(submission).map(|_| ())
     }
+    /// Overrides how long a preempted background preparation of the caller's
+    /// own workspace may still finish before it is killed (60 seconds by
+    /// default; its own deadline also applies). Zero kills it at once.
+    #[must_use]
+    pub fn with_preemption_grace(self, grace: Duration) -> Self {
+        self.state.preparation.set_grace(grace);
+        self
+    }
     /// Overrides the number of concurrent verifier workers (at least one).
     #[must_use]
     pub fn with_workers(mut self, workers: usize) -> Self {
@@ -588,8 +596,10 @@ fn submit(
 
 fn queue_job(state: &State, id: String, key: PathBuf) -> io::Result<()> {
     // Preparation takes work under this same queue owner. Once admitted, an
-    // ordinary job prevents another preparation from starting and cancels one
-    // that started before admission, including work for another workspace.
+    // ordinary job prevents another preparation from starting and stops one
+    // that started before admission: work for another workspace is killed at
+    // once, and an origin preparation of this workspace is preempted and may
+    // finish within its grace (ADR 0096 amendment, #595).
     let mut queue = state.queue.lock().map_err(lock_error)?;
     state.preparation.preempt(&key);
     queue.push(id, key);

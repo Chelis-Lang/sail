@@ -12,9 +12,21 @@ can prepare only that same argument-bound scope; their target remains incomplete
 and a later whole-target call still requires independent full verification.
 Interactive-engine focus is not prepared.
 
-Ordinary verification, watch, repair and jobs take priority across workspaces. An immediate call
-cancels unfinished preparation and verifies normally; it does not wait for a
-prepared result. Later reuse still checks current inputs and keeps the original
+Ordinary verification, watch, repair and jobs take priority across workspaces.
+A call never uses a prepared result it did not wait for, and it verifies
+normally. It drops queued preparation and kills running preparation for any
+other workspace, and a new project's initial preparation, at once. One case
+waits: a running preparation that re-runs a successful verification of the same
+workspace and arguments may finish, for at most 60 seconds from its own start,
+while the call waits for it on the target lock. Killing it partway would leave
+the compiler target without its build-script records, so the call itself would
+rebuild every dependency, vstd included, and instant revert could not apply to
+what that call compiled
+([#595](https://github.com/Chelis-Lang/sail/issues/595)). A preparation that
+started just before your edit verifies the edited source, and the call then
+reuses that work. A preparation that ends without a Current result can still
+leave the target without those records, so the next call rebuilds the same way
+(see [known issues](known-issues.md)). Later reuse still checks current inputs and keeps the original
 proof's establishing run. The handoff binds the successful run's complete closing input revision,
 including generated inputs first discovered by a cold build. Before entering managed
 verification, the worker freshly checks the origin's Current input record and declines
