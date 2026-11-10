@@ -40,6 +40,17 @@ semantic versioning once the API is published.
   diagnostic. `--baseline` adds what changed against an earlier document, or
   why the two are not comparable. New error `SAIL0908`. See
   `docs/ci-reports.md`.
+- Add a GitHub Action, `uses: Chelis-Lang/sail/action@<tag>`. It installs
+  the selected Sail release with its attestation checked, restores file
+  commit times (except for files changed since the commit a restored Cargo
+  build came from, so Cargo cannot trust that build), restores and saves solver replies, proof receipts and Cargo
+  downloads under keys bound to the runner, Sail version, toolchains and
+  lockfiles, runs `sail verify --output json`, writes the `sail report` job
+  summary, annotations and SARIF (optionally uploaded to code scanning and
+  compared with a baseline result from another run), and ends with the exit
+  code of `sail verify`. It needs a release with `sail report`. The action is
+  in a subdirectory, so it cannot be listed on GitHub Marketplace. The CI
+  cache walkthrough now runs through it. See `docs/github-action.md`.
 - `sail jobs result` leads a failing target's line with its failures (`1
   failed, 3126 passed by Verus's totals (not attributed one by one), 0
   unknown`, not `0 verified, 1 failed, …`). A target whose crate stopped

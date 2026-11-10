@@ -3,6 +3,11 @@ name: CI cache walkthrough
 # Optional adoption acceptance, separate from the six required fast checks.
 on:
   workflow_dispatch:
+    inputs:
+      sail-version:
+        description: Published Sail release (0.3.0 or newer); empty for the action's default
+        required: false
+        default: ""
   push:
     branches: [validation/ci-cache-walkthrough]
 
@@ -14,9 +19,10 @@ concurrency:
   group: ci-cache-walkthrough-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  SAIL_VERSION: 0.1.0
-  SAIL_BACKGROUND_PREPARE: "0"
+# Drives the GitHub Action (action/action.yml): install, caches and the cold
+# and restored verifications; ci/ci-cache-walkthrough.py checks the documents
+# and runs the invalidation probes. The action needs a release with
+# `sail report`, so the default is the release the action ships with.
 
 jobs:
   cold:
@@ -26,27 +32,29 @@ jobs:
         mode: [solver, managed]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      SAIL_BACKGROUND_PREPARE: "0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install attested published Sail and pinned toolchain
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          python3 scripts/install.py --version "$SAIL_VERSION" --prefix "$RUNNER_TEMP/sail-install" --require-attestation --install-toolchain
-          echo "$RUNNER_TEMP/sail-install/sail-$SAIL_VERSION-x86_64-unknown-linux-gnu/bin" >> "$GITHUB_PATH"
-      - name: Cold complete verification
-        run: python3 ci/ci-cache-walkthrough.py cold --mode '${{ matrix.mode }}' --root "$RUNNER_TEMP/sail-walkthrough" --sail "$(command -v sail)"
+      - name: Write the fixture
+        run: python3 ci/ci-cache-walkthrough.py prepare --mode '${{ matrix.mode }}' --root "$RUNNER_TEMP/sail-walkthrough"
+      - name: Install the attested release and verify cold
+        id: sail
+        uses: ./action
+        with:
+          sail-version: ${{ inputs.sail-version }}
+          working-directory: ${{ runner.temp }}/sail-walkthrough/project
+          cache-key-prefix: sail-walkthrough-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.mode }}
+          # The solver-only arm persists solver replies alone.
+          cache-projects: ${{ matrix.mode == 'managed' }}
+          cache-cargo: "false"
+          result-artifact: ""
+      - name: Check the cold verification
+        run: python3 ci/ci-cache-walkthrough.py cold --mode '${{ matrix.mode }}' --root "$RUNNER_TEMP/sail-walkthrough" --sail "$(command -v sail)" --result '${{ steps.sail.outputs.result }}'
       - name: Preserve exact fixture paths and source times
         run: tar -czf "$RUNNER_TEMP/source.tar.gz" -C "$RUNNER_TEMP/sail-walkthrough" project
-      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cache/sail/results
-            ~/.cache/sail/projects
-            !~/.cache/sail/projects/jobs
-          key: sail-walkthrough-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.mode }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -63,35 +71,37 @@ jobs:
         mode: [solver, managed]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      SAIL_BACKGROUND_PREPARE: "0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install independently on a fresh runner
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          python3 scripts/install.py --version "$SAIL_VERSION" --prefix "$RUNNER_TEMP/sail-install" --require-attestation --install-toolchain
-          echo "$RUNNER_TEMP/sail-install/sail-$SAIL_VERSION-x86_64-unknown-linux-gnu/bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: cold-${{ matrix.mode }}
           path: ${{ runner.temp }}/restored-source
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cache/sail/results
-            ~/.cache/sail/projects
-            !~/.cache/sail/projects/jobs
-          key: sail-walkthrough-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.mode }}
-          fail-on-cache-miss: true
-      - name: Restore fixture; solver-only arm discards managed receipts
+      - name: Restore the fixture with its paths and times
         run: |
           mkdir -p "$RUNNER_TEMP/sail-walkthrough"
           tar -xzf "$RUNNER_TEMP/restored-source/source.tar.gz" -C "$RUNNER_TEMP/sail-walkthrough"
-          if [ '${{ matrix.mode }}' = solver ]; then rm -rf "$HOME/.cache/sail/projects"; fi
+      - name: Install independently on a fresh runner and verify from the restored caches
+        id: sail
+        uses: ./action
+        with:
+          sail-version: ${{ inputs.sail-version }}
+          working-directory: ${{ runner.temp }}/sail-walkthrough/project
+          cache-key-prefix: sail-walkthrough-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.mode }}
+          cache-projects: ${{ matrix.mode == 'managed' }}
+          cache-cargo: "false"
+          result-artifact: ""
+      - name: Require the cold run's exact cache entry
+        if: steps.sail.outputs.cache-hit != 'true'
+        run: |
+          echo "::error::the restored job did not restore the cold job's solver replies"
+          exit 1
       - name: Check restored reuse and source, configuration and runtime invalidation
-        run: python3 ci/ci-cache-walkthrough.py restored --mode '${{ matrix.mode }}' --root "$RUNNER_TEMP/sail-walkthrough" --sail "$(command -v sail)"
+        run: python3 ci/ci-cache-walkthrough.py restored --mode '${{ matrix.mode }}' --root "$RUNNER_TEMP/sail-walkthrough" --sail "$(command -v sail)" --result '${{ steps.sail.outputs.result }}'
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

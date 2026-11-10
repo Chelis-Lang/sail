@@ -1,0 +1,289 @@
+name: Sail verify
+description: >-
+  Verify a Verus project with Sail, cache its solver replies and proof
+  receipts between runs, and report the result as a job summary, annotations
+  and SARIF.
+author: Chelis-Lang
+branding:
+  icon: check-circle
+  color: blue
+
+# Usage: uses: Chelis-Lang/sail/action@<tag>. The guide is docs/github-action.md.
+# The steps live in sail_action.py so they can be tested off GitHub
+# (scripts/test-github-action.py).
+
+inputs:
+  sail-version:
+    description: >-
+      Sail release to install. The default is the release this action ships
+      with. The action needs a release that has `sail report` (0.3.0 or newer).
+    required: false
+    # Kept equal to the workspace version by scripts/test-github-action.py.
+    default: "0.2.0"
+  archive:
+    description: >-
+      A local release archive to install instead of a published release, with
+      its `.sha256` file beside it (scripts/install.py --archive).
+    required: false
+    default: ""
+  install:
+    description: Install Sail. With `false`, the `sail` already on PATH is used.
+    required: false
+    default: "true"
+  install-prefix:
+    description: Directory to install Sail into. Defaults to `$RUNNER_TEMP/sail`.
+    required: false
+    default: ""
+  install-toolchain:
+    description: Install the verifier's pinned Rust toolchain and rust-src with rustup.
+    required: false
+    default: "true"
+  require-attestation:
+    description: >-
+      Refuse to install unless the archive's build-provenance attestation
+      verifies (`gh attestation verify`, with `github-token`).
+    required: false
+    default: "true"
+  github-token:
+    description: >-
+      Token for downloading the release, checking its attestation and finding
+      a baseline artifact. It is never passed to `sail verify`.
+    required: false
+    default: ${{ github.token }}
+  working-directory:
+    description: The Cargo project or workspace to verify, relative to the repository.
+    required: false
+    default: "."
+  args:
+    description: >-
+      Arguments for `sail verify`, as you would pass them to
+      `cargo verus verify` (split as a POSIX shell does, without expansion).
+    required: false
+    default: ""
+  restore-mtime:
+    description: >-
+      Set each unmodified tracked file's time to its last commit's time, so
+      Cargo and Sail see unchanged files as unchanged on a fresh checkout.
+      Files changed since the commit a restored build was cached for keep
+      their current time. Check out with `fetch-depth: 0` for per-file times.
+    required: false
+    default: "true"
+  cache:
+    description: Restore and save Sail's solver replies (`~/.cache/sail/results`, a few MB).
+    required: false
+    default: "true"
+  cache-projects:
+    description: >-
+      Also restore and save managed targets and proof receipts
+      (`~/.cache/sail/projects`; tens to hundreds of MB). Never saved when
+      Sail reports `SAIL3112`, which uses no receipts.
+    required: false
+    default: "true"
+  cache-cargo:
+    description: Also restore and save the Cargo registry, git checkouts and `cache-target`.
+    required: false
+    default: "true"
+  cache-target:
+    description: >-
+      Cargo target directories to cache, one per line, relative to
+      `working-directory`. Useful when Sail reports `SAIL3112` and verifies in
+      your own `target/`.
+    required: false
+    default: ""
+  cache-key-prefix:
+    description: Prefix for every cache key.
+    required: false
+    default: sail
+  cache-max-bytes:
+    description: Bound the solver-reply cache before saving it (`sail cache gc --max-bytes`). Empty to skip.
+    required: false
+    default: 1G
+  baseline:
+    description: An earlier `sail verify --output json` document to compare with.
+    required: false
+    default: ""
+  baseline-branch:
+    description: >-
+      Compare with the newest `result-artifact` uploaded by another run on
+      this branch, for example `main`. Needs `actions: read`.
+    required: false
+    default: ""
+  result-artifact:
+    description: Name of the artifact the result document is uploaded as. Empty to skip the upload.
+    required: false
+    default: sail-result
+  sarif:
+    description: Where to write the SARIF file. Defaults to a file under `$RUNNER_TEMP`.
+    required: false
+    default: ""
+  upload-sarif:
+    description: Upload the SARIF file to code scanning (needs the `security-events` write permission).
+    required: false
+    default: "false"
+  sarif-category:
+    description: Code scanning category for the uploaded SARIF.
+    required: false
+    default: sail
+  max-annotations:
+    description: Annotations per level (`sail report --max-annotations`). Empty for Sail's default, 10.
+    required: false
+    default: ""
+
+outputs:
+  exit-code:
+    description: The exit code of `sail verify`. The action ends with it.
+    value: ${{ steps.verify.outputs.exit-code }}
+  result:
+    description: Path of the `sail verify --output json` document.
+    value: ${{ steps.setup.outputs.result }}
+  sarif:
+    description: Path of the SARIF file.
+    value: ${{ steps.setup.outputs.sarif }}
+  sail-version:
+    description: The version of the Sail that ran.
+    value: ${{ steps.setup.outputs.sail-version }}
+  cache-hit:
+    description: Whether the solver-reply cache was restored from this commit's exact key.
+    value: ${{ steps.restore-results.outputs.cache-hit }}
+  cache-matched-key:
+    description: The solver-reply cache key that was restored, if any.
+    value: ${{ steps.restore-results.outputs.cache-matched-key }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Sail
+      id: setup
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        SAIL_ACTION_SAIL_VERSION: ${{ inputs.sail-version }}
+        SAIL_ACTION_ARCHIVE: ${{ inputs.archive }}
+        SAIL_ACTION_INSTALL: ${{ inputs.install }}
+        SAIL_ACTION_INSTALL_PREFIX: ${{ inputs.install-prefix }}
+        SAIL_ACTION_INSTALL_TOOLCHAIN: ${{ inputs.install-toolchain }}
+        SAIL_ACTION_REQUIRE_ATTESTATION: ${{ inputs.require-attestation }}
+        SAIL_ACTION_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        SAIL_ACTION_CACHE_KEY_PREFIX: ${{ inputs.cache-key-prefix }}
+        SAIL_ACTION_CACHE_TARGET: ${{ inputs.cache-target }}
+        SAIL_ACTION_SARIF: ${{ inputs.sarif }}
+        SAIL_ACTION_ARGS: ${{ inputs.args }}
+      run: python3 -I "$GITHUB_ACTION_PATH/sail_action.py" setup
+
+    - name: Restore solver replies
+      id: restore-results
+      if: inputs.cache == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.setup.outputs.results-path }}
+        key: ${{ steps.setup.outputs.results-key }}
+        restore-keys: ${{ steps.setup.outputs.results-restore-keys }}
+
+    - name: Restore managed targets and proof receipts
+      id: restore-projects
+      if: inputs.cache == 'true' && inputs.cache-projects == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.setup.outputs.projects-paths }}
+        key: ${{ steps.setup.outputs.projects-key }}
+        restore-keys: ${{ steps.setup.outputs.projects-restore-keys }}
+
+    - name: Restore Cargo downloads and targets
+      id: restore-cargo
+      if: inputs.cache-cargo == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.setup.outputs.cargo-paths }}
+        key: ${{ steps.setup.outputs.cargo-key }}
+        restore-keys: ${{ steps.setup.outputs.cargo-restore-keys }}
+
+    # After the restores: a build restored from another commit's cache must
+    # not look newer than the files that changed since that commit.
+    - name: Restore file times
+      shell: bash
+      env:
+        SAIL_ACTION_RESTORE_MTIME: ${{ inputs.restore-mtime }}
+        SAIL_ACTION_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        SAIL_ACTION_CACHE_TARGET: ${{ inputs.cache-target }}
+        SAIL_ACTION_CARGO_KEY: ${{ steps.setup.outputs.cargo-key }}
+        SAIL_ACTION_CARGO_MATCHED_KEY: ${{ steps.restore-cargo.outputs.cache-matched-key }}
+        SAIL_ACTION_PROJECTS_KEY: ${{ steps.setup.outputs.projects-key }}
+        SAIL_ACTION_PROJECTS_MATCHED_KEY: ${{ steps.restore-projects.outputs.cache-matched-key }}
+      run: python3 -I "$GITHUB_ACTION_PATH/sail_action.py" times
+
+    - name: Verify
+      id: verify
+      shell: bash
+      env:
+        SAIL_ACTION_SAIL: ${{ steps.setup.outputs.sail }}
+        SAIL_ACTION_PROJECT: ${{ steps.setup.outputs.project }}
+        SAIL_ACTION_RESULT: ${{ steps.setup.outputs.result }}
+        SAIL_ACTION_ARGS: ${{ inputs.args }}
+      run: python3 -I "$GITHUB_ACTION_PATH/sail_action.py" verify
+
+    - name: Report
+      if: always() && steps.verify.outcome == 'success'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        SAIL_ACTION_SAIL: ${{ steps.setup.outputs.sail }}
+        SAIL_ACTION_RESULT: ${{ steps.setup.outputs.result }}
+        SAIL_ACTION_SARIF_PATH: ${{ steps.setup.outputs.sarif }}
+        SAIL_ACTION_BASELINE: ${{ inputs.baseline }}
+        SAIL_ACTION_BASELINE_BRANCH: ${{ inputs.baseline-branch }}
+        SAIL_ACTION_RESULT_ARTIFACT: ${{ inputs.result-artifact }}
+        SAIL_ACTION_MAX_ANNOTATIONS: ${{ inputs.max-annotations }}
+      run: python3 -I "$GITHUB_ACTION_PATH/sail_action.py" report
+
+    - name: Upload the result document
+      if: always() && steps.verify.outcome == 'success' && inputs.result-artifact != ''
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.result-artifact }}
+        path: ${{ steps.setup.outputs.result }}
+        if-no-files-found: warn
+
+    - name: Upload SARIF
+      if: always() && steps.verify.outcome == 'success' && inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+      with:
+        sarif_file: ${{ steps.setup.outputs.sarif }}
+        category: ${{ inputs.sarif-category }}
+
+    - name: Bound the solver-reply cache
+      if: always() && steps.verify.outcome == 'success' && inputs.cache == 'true'
+      shell: bash
+      env:
+        SAIL_ACTION_SAIL: ${{ steps.setup.outputs.sail }}
+        SAIL_ACTION_CACHE_MAX_BYTES: ${{ inputs.cache-max-bytes }}
+      run: python3 -I "$GITHUB_ACTION_PATH/sail_action.py" gc
+
+    - name: Save solver replies
+      if: always() && steps.verify.outcome == 'success' && inputs.cache == 'true' && steps.restore-results.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.setup.outputs.results-path }}
+        key: ${{ steps.setup.outputs.results-key }}
+
+    - name: Save managed targets and proof receipts
+      if: >-
+        always() && steps.verify.outcome == 'success' && inputs.cache == 'true' && inputs.cache-projects == 'true'
+        && steps.verify.outputs.save-projects == 'true' && steps.restore-projects.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.setup.outputs.projects-paths }}
+        key: ${{ steps.setup.outputs.projects-key }}
+
+    - name: Save Cargo downloads and targets
+      if: always() && steps.verify.outcome == 'success' && inputs.cache-cargo == 'true' && steps.restore-cargo.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.setup.outputs.cargo-paths }}
+        key: ${{ steps.setup.outputs.cargo-key }}
+
+    - name: End with the exit code of sail verify
+      if: always() && steps.verify.outcome == 'success'
+      shell: bash
+      env:
+        SAIL_ACTION_EXIT_CODE: ${{ steps.verify.outputs.exit-code }}
+      run: python3 -I "$GITHUB_ACTION_PATH/sail_action.py" finish
