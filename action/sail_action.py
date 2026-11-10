@@ -15,6 +15,7 @@ so the script runs on every GitHub-hosted Linux and macOS image.
 import hashlib
 import importlib.util
 import json
+import re
 import os
 from pathlib import Path
 import shlex
@@ -91,6 +92,16 @@ def load_installer():
     return module
 
 
+def default_version():
+    """The `sail-version` default in action.yml: the release this action ships with.
+
+    A workflow that passes an empty `sail-version` (for example an unset
+    `workflow_dispatch` input) gets this default too."""
+    text = (ACTION / "action.yml").read_text(encoding="utf-8")
+    match = re.search(r'^  sail-version:\n(?:    .*\n)*?    default: "([^"]+)"', text, re.M)
+    return match[1] if match else ""
+
+
 def installed_version(sail):
     try:
         result = subprocess.run([str(sail), "--version"], capture_output=True, text=True, check=False)
@@ -108,7 +119,7 @@ def install():
     except ValueError as error:
         raise Failure(str(error)) from error
     archive = env("ARCHIVE")
-    version = env("SAIL_VERSION")
+    version = env("SAIL_VERSION") or default_version()
     if archive:
         archive_path = (workspace() / archive).resolve()
         name = archive_path.name.removesuffix(".tar.gz")
@@ -117,7 +128,7 @@ def install():
         name = f"sail-{version}-{host}"
         selection = ["--version", version]
     else:
-        raise Failure("set sail-version or archive, or install: false")
+        raise Failure("no sail-version default found in action.yml; set sail-version")
     prefix = Path(env("INSTALL_PREFIX") or (Path(os.environ.get("RUNNER_TEMP") or Path.home()) / "sail"))
     binary = prefix / name / "bin" / "sail"
     if binary.is_file():

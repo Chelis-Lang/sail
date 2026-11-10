@@ -134,6 +134,7 @@ class ActionTests(unittest.TestCase):
         self.assertIsNotNone(default)
         self.assertEqual(default[1], workspace,
                          "action/action.yml's sail-version default must be the release it ships with")
+        self.assertEqual(action.default_version(), workspace)
 
     def test_every_input_reaches_a_step(self):
         text = (ROOT / "action" / "action.yml").read_text()
