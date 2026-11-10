@@ -69,7 +69,7 @@ This decision selects no new digest-memo default or focused-vstd reuse boundary.
 
 ## Amendment (2026-11-10): an origin preparation of the caller's workspace may finish
 
-- **Status:** proposed; needs owner approval before it merges (#595, PR #708)
+- **Status:** accepted 2026-11-10 by the lead on the measured Vest evidence in `docs/validation/instant-revert.md` (#595, PR #708); no verdict, diagnostic or cache key changes
 
 A preparation is an ordinary managed run. It consumes its compiler target's
 build-script export when it begins (ADR 0046/0047) and republishes it only
