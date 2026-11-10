@@ -5,6 +5,15 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Decided how `sail mutate`, planned for v0.3.0, will count mutants (ADR
+  0111). A Verus rejection counts as a detection when it is attributed to the
+  mutated function, is not only a resource limit, repeats on every run, and
+  the unmutated function proves with headroom. Each detection shows whether
+  the solver returned a counterexample or gave up, and solver answers stay
+  verbatim. The score is `rejected / (rejected + survived)`, with
+  inconclusive, unviable and unsupported mutants listed separately. Detected
+  means the specification and its proof reject the change, not that the
+  specification provably forbids it. Nothing changes in `sail verify`.
 - The next release is v0.3.0, and it is planned as a breaking release (ADR
   0109). The experimental neutral-contract surfaces published in 0.2.0 are
   scheduled for removal in it: the `sail-contracts`, `sail-contracts-macros`
