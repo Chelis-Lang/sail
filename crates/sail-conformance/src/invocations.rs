@@ -225,6 +225,11 @@ impl Invocation {
         }
         let number = ordinal.parse::<u64>().ok()?;
         if number.to_string() != ordinal
+            || m.argv
+                .iter()
+                .filter(|arg| arg.as_str() == "--crate-name" || arg.starts_with("--crate-name="))
+                .count()
+                != 1
             || !m
                 .argv
                 .windows(2)
@@ -276,6 +281,7 @@ impl Invocation {
                     if let Some((name, _)) = &generated
                         && i > 0
                         && m.argv.get(i - 1).is_some_and(|a| a == "--crate-name")
+                        && m.crate_name.as_ref() == Some(arg)
                     {
                         name.clone()
                     } else {
@@ -1075,6 +1081,28 @@ mod tests {
         ] {
             assert_ne!(
                 compare_arms(std::slice::from_ref(&a), &[changed]).differences,
+                [] as [String; 0]
+            );
+        }
+        // Only the one recognized generator label may be paired across runs.
+        // Duplicate options are rejected by rustc with identical generic stderr;
+        // that does not permit arbitrary extra input values to disappear.
+        for inline in [false, true] {
+            let mut left = a.clone();
+            let mut right = a.clone();
+            for (invocation, name) in [(&mut left, "other_one"), (&mut right, "other_two")] {
+                let end = invocation.meta.argv.len() - 1;
+                let extra = if inline {
+                    vec![format!("--crate-name={name}")]
+                } else {
+                    vec!["--crate-name".to_owned(), name.to_owned()]
+                };
+                invocation.meta.argv.splice(end..end, extra);
+            }
+            assert_eq!(left.identity().generated_probe_ordinal, None);
+            assert_ne!(left.identity(), right.identity());
+            assert_ne!(
+                compare_arms(&[left], &[right]).differences,
                 [] as [String; 0]
             );
         }

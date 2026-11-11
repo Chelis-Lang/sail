@@ -43,6 +43,8 @@ reference, testing guide, changelog and this qualification record.
 
 | 2026-11-11 | `928e1725` | Independent staged control: an earlier valid job followed by an inaccessible health record can hide a failed probe (tee exit 125) and classify Same after health restoration. Preflight now reserves its incomplete marker before checking either driver or health; replacement qualification pending. | `e7440f3dde034e80c44f9600db630cad9d9f59160096037783dd768ba3d8c66d` |
 
+| 2026-11-11 | `97f162b9` | Health-preflight controls pass; independent actual-rustc staged control rejects generated-probe handling with duplicate crate-name flags: arbitrary second names can disappear from identity despite distinct arguments. Recognition now requires exactly one separate flag and preserves all other input bytes. Replacement qualification pending. | `dda699ea7ab1069b536a1d19de73cd20d9678fa6c2707750edc6e3d8ed6dbed9` |
+
 The log collision is a harness setup defect: `run_unit` formerly added one
 unit-wide `--log-dir` to Cargo-Verus. The actual product driver in `adapter.rs`
 binds `runtime.sidecars.join(identity.key())` and each target's own `logs`
