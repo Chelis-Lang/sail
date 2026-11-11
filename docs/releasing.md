@@ -558,6 +558,15 @@ the unpacked archive with `scripts/scan-host-paths.sh DIR [TOKEN...]` before
 publishing it. The scan searches the complete bytes of every file for
 `/Users/`, `/home/` and each token, exits 1 on a hit and 2 when any file
 cannot be enumerated or read; only exit 0 clears the archive.
+[ADR 0112](decisions/0112-stock-builtin-source-paths.md) permits the explicit
+`--stock-builtin-namespace macos` (or `linux`) mode. It exempts only the pinned
+stock builtin source namespace in the three exact regular runtime metadata
+files `libverus_builtin.rlib`, `libvstd.rlib` and `vstd.vir` under
+`verus/source/target-verus/release/`. All other home paths, namespace lookalikes,
+symlink targets, caller-supplied tokens and read failures remain strict. The
+original files and released archive are never rewritten. The default mode
+retains its blanket checks. This scanner decision does not select a runtime
+or authorize publication.
 `scripts/build-macos-runtime.sh build` does all of this, plus the fork's
 library and regression tests and the determinism check, and packs the
 archive; after publishing, `scripts/build-macos-runtime.sh published` fetches

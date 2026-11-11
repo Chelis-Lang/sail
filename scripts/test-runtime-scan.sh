@@ -81,4 +81,95 @@ else
   echo "runtime scan: running as root, permission cases skipped"
 fi
 
+
+
+# ADR 0112: explicit platform-scoped public namespace, at exact runtime positions.
+runtime=verus/source/target-verus/release
+mac=/Users/runner/work/verus/verus/source/builtin
+linux=/home/runner/work/verus/verus/source/builtin
+for platform in macos linux; do
+  namespace="$mac"
+  [ "$platform" != linux ] || namespace="$linux"
+  for name in libverus_builtin.rlib libvstd.rlib vstd.vir; do
+    t="$(tree "scoped-$platform-$name")"
+    mkdir -p "$t/$runtime"
+    printf 'prefix\0%s/src/lib.rs\0suffix' "$namespace" >"$t/$runtime/$name"
+    expect 1 "canonical metadata remains strict by default" "$t"
+    expect 0 "scoped canonical $platform $name" --stock-builtin-namespace "$platform" "$t"
+    expect 1 "explicit public token stays strict" --stock-builtin-namespace "$platform" "$t" "$namespace"
+    printf '\0/home/another-person/private\0' >>"$t/$runtime/$name"
+    expect 1 "mixed personal path in allowed metadata" --stock-builtin-namespace "$platform" "$t"
+  done
+done
+
+for suffix in _lookalike /../private /src/../../private /./src/lib.rs //src/lib.rs '\other'; do
+  t="$(tree scoped-lookalike)"
+  mkdir -p "$t/$runtime"
+  printf '%s%s\0' "$mac" "$suffix" >"$t/$runtime/vstd.vir"
+  expect 1 "namespace lookalike or noncanonical path" --stock-builtin-namespace macos "$t"
+done
+
+# Real rustc metadata uses a length-prefixed UTF-8 string followed by 0xc1.
+# Punctuation is part of a path component, not evidence of a delimiter.
+for platform in macos linux; do
+  namespace="$mac"
+  [ "$platform" != linux ] || namespace="$linux"
+  for suffix in '+private/src/lib.rs' '@private/src/lib.rs' ' private/src/lib.rs' '=private/src/lib.rs' '%private/src/lib.rs' '!private/src/lib.rs' '#private/src/lib.rs' '$private/src/lib.rs' '&private/src/lib.rs' '/plus+directory/../../private' '/space directory/../../private'; do
+    t="$(tree scoped-punctuation)"
+    mkdir -p "$t/$runtime"
+    printf '%s%s\0' "$namespace" "$suffix" >"$t/$runtime/vstd.vir"
+    expect 1 "punctuation does not end namespace $platform" --stock-builtin-namespace "$platform" "$t"
+  done
+  t="$(tree scoped-rustc-metadata)"
+  mkdir -p "$t/$runtime"
+  python3 - "$t/$runtime/libverus_builtin.rlib" "$namespace" <<'PYFIXTURE'
+from pathlib import Path
+import sys
+root=sys.argv[2].encode()
+source=root+b'/src/lib.rs'
+Path(sys.argv[1]).write_bytes(bytes([len(source)])+source+b'\xc1'+bytes([len(root)])+root+b'\xc1')
+PYFIXTURE
+  expect 0 "actual Rust string delimiters $platform" --stock-builtin-namespace "$platform" "$t"
+  expect 1 "explicit Rust string token remains strict" --stock-builtin-namespace "$platform" "$t" "$namespace"
+done
+
+t="$(tree scoped-foreign-platform)"
+mkdir -p "$t/$runtime"
+printf '%s/src/lib.rs\0' "$linux" >"$t/$runtime/vstd.vir"
+expect 1 "other platform namespace" --stock-builtin-namespace macos "$t"
+for wrong in bin/libvstd.rlib libvstd.rlib "$runtime/rust_verify" verus/source/target-verus/release-other/vstd.vir; do
+  t="$(tree scoped-wrong-position)"
+  mkdir -p "$(dirname "$t/$wrong")"
+  printf '%s/src/lib.rs\0' "$mac" >"$t/$wrong"
+  expect 1 "canonical path in wrong runtime position" --stock-builtin-namespace macos "$t"
+done
+
+t="$(tree scoped-link)"
+mkdir -p "$t/$runtime"
+ln -s "$mac/src/lib.rs" "$t/$runtime/vstd.vir"
+expect 1 "allowed filename symlink remains strict" --stock-builtin-namespace macos "$t"
+
+t="$(tree scoped-large)"
+mkdir -p "$t/$runtime"
+python3 - "$t/$runtime/vstd.vir" "$mac" <<'PYFIXTURE'
+from pathlib import Path
+import sys
+namespace=sys.argv[2].encode()
+Path(sys.argv[1]).write_bytes(b'x'*(1024*1024-10)+namespace+b'/src/lib.rs\0'+b'y'*(2*1024*1024))
+PYFIXTURE
+expect 0 "canonical namespace crosses streaming chunk" --stock-builtin-namespace macos "$t"
+printf '\0/Users/not-runner/private\0' >>"$t/$runtime/vstd.vir"
+expect 1 "late personal path after canonical match" --stock-builtin-namespace macos "$t"
+expect 2 "unknown platform is not an exemption" --stock-builtin-namespace windows "$t"
+expect 2 "empty scoped explicit token" --stock-builtin-namespace macos "$t" ''
+
+t="$(tree scoped-reader-error)"
+mkdir -p "$t/$runtime"
+printf '%s/src/lib.rs\0' "$mac" >"$t/$runtime/vstd.vir"
+mkdir -p "$scratch/fakepython"
+printf '#!/bin/sh\nexit 2\n' >"$scratch/fakepython/python3"
+chmod +x "$scratch/fakepython/python3"
+PATH="$scratch/fakepython:$PATH" expect 2 "scoped reader failure is fatal" --stock-builtin-namespace macos "$t"
+PATH="$scratch/fakebin:$PATH" expect 2 "scoped grep read error is fatal" --stock-builtin-namespace macos "$t"
+
 printf 'runtime scan regressions: %s passed\n' "$passed"

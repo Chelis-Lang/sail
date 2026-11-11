@@ -137,7 +137,7 @@ cmd_build() {
   read -r -a tokens <<<"${SAIL_SCAN_TOKENS:-}"
   rm -rf "$scan" && mkdir -p "$scan"
   tar -xzf "$q/engine-runtime.tar.gz" -C "$scan" || die "cannot unpack the archive for the scan"
-  scripts/scan-host-paths.sh "$scan" ${tokens[@]+"${tokens[@]}"} || status=$?
+  scripts/scan-host-paths.sh --stock-builtin-namespace macos "$scan" ${tokens[@]+"${tokens[@]}"} || status=$?
   case "$status" in
     0) ;;
     1) die "the archive names host paths or tokens; do not publish it" ;;
