@@ -275,8 +275,8 @@ fn baseline_runs<'a>(
     function: &Function,
     required: usize,
 ) -> Result<Vec<&'a Observation>, Reason> {
-    let baseline = group(&observations, Scope::Full);
-    let baseline_scoped = group(&observations, Scope::Scoped);
+    let baseline = group(observations, Scope::Full);
+    let baseline_scoped = group(observations, Scope::Scoped);
     if baseline.len() < required {
         return Err(Reason::BaselineMissing);
     }
@@ -305,8 +305,8 @@ fn attempt_runs<'a>(
     function: &Function,
     required: usize,
 ) -> Result<(Vec<&'a Observation>, Scope), Reason> {
-    let full = group(&observations, Scope::Full);
-    let scoped = group(&observations, Scope::Scoped);
+    let full = group(observations, Scope::Full);
+    let scoped = group(observations, Scope::Scoped);
     for runs in [&full, &scoped] {
         if runs.is_empty() {
             continue;
