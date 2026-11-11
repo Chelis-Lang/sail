@@ -52,6 +52,8 @@ reference, testing guide, changelog and this qualification record.
 
 | 2026-11-11 | `178455a9` | Independent detached hidden-probe witness rejects current-group signaling: the probe clears capture environment, exits 125, and paired invalid runs classify Same. Parent-owned TCP completion replaces group signaling; replacement qualification pending. | `2b9309901519d2c4c6e8bfb5573396670d5bd85d1b8976292af813ba850803c5` |
 
+| 2026-11-11 | `0a9ab14d` | TCP completion: 73 native Linux focused checks pass (two control, 58 library, five CLI, eight process). Clippy rejects three style issues; no full gate credited. | Raw `632-control-focused.log`, replacement lint run pending. |
+
 The log collision is a harness setup defect: `run_unit` formerly added one
 unit-wide `--log-dir` to Cargo-Verus. The actual product driver in `adapter.rs`
 binds `runtime.sidecars.join(identity.key())` and each target's own `logs`

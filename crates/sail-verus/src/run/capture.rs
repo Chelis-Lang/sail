@@ -44,7 +44,7 @@ impl Server {
         let stopping = Arc::clone(&stop);
         let thread = std::thread::Builder::new()
             .name("sail-capture-control".to_owned())
-            .spawn(move || serve(listener, &nonce, &stopping))
+            .spawn(move || serve(&listener, &nonce, &stopping))
             .map_err(capture_error)?;
         Ok(Self {
             directory,
@@ -75,7 +75,7 @@ impl Drop for Server {
 }
 
 fn serve(
-    listener: TcpListener,
+    listener: &TcpListener,
     nonce: &str,
     stop: &Arc<AtomicBool>,
 ) -> std::result::Result<Vec<String>, String> {
@@ -305,7 +305,7 @@ mod tests {
         for pid in 1..=8 {
             let client = client(&server);
             threads.push(std::thread::spawn(move || {
-                client.complete(&format!("{:032}-{pid}", 123)).unwrap()
+                client.complete(&format!("{:032}-{pid}", 123)).unwrap();
             }));
         }
         for thread in threads {
@@ -333,7 +333,7 @@ mod tests {
                 .unwrap();
             let mut received = Vec::new();
             stream.read_to_end(&mut received).unwrap();
-            assert!(received.is_empty());
+            assert_eq!(received, [] as [u8; 0]);
         });
         let path = format!("/tmp/{CONTROL_PREFIX}{port}-00000000000000000000000000000000/verus");
         assert!(CaptureControl::at(std::path::Path::new(&path)).is_err());
