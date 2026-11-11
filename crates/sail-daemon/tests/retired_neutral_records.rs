@@ -49,6 +49,8 @@ fn retired_neutral_records_list_and_refuse_with_a_stable_code() -> TestResult {
     use std::os::unix::fs::PermissionsExt as _;
     let root = std::env::temp_dir().join(format!("sail-retired-neutral-{}", std::process::id()));
     std::fs::create_dir_all(root.join("project"))?;
+    // List filters use canonical project identities, as submission does.
+    let root = root.canonicalize()?;
     let outcome = (|| -> TestResult {
         let worker = root.join("worker");
         std::fs::write(&worker, "#!/bin/sh\ncat \"$RESULT\"\nexit 0\n")?;
