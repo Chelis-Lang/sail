@@ -66,6 +66,9 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
 
 ### Changed
 
+- Background preparation waits briefly for a worker lock inherited by another
+  daemon child instead of discarding the task (#711). The wait is bounded to
+  one second and stops on foreground preemption or daemon shutdown.
 - Daemon shutdown and partial-startup cleanup cannot miss an idle job worker's
   wakeup while joining it (#715).
 - Update the main and temporal workspaces' `rustix` pin to 1.1.6, fixing

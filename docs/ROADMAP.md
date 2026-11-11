@@ -6,6 +6,14 @@ Current ordering follows the owner's 2026-11-09 decision, recorded in
 is **0.2.0**. The next release is **v0.3.0**; it has no publication date, and
 final publication requires the owner's approval of its exact candidate.
 
+The active execution tracker is
+[#712](https://github.com/Chelis-Lang/sail/issues/712), superseding the
+historical 0.2.0 handover #609. The owner confirmed on 2026-11-11 that the
+whole v0.3.0 program, including flagged defects and qualification gaps, is to
+be completed through candidate staging. The continuous #368 proof lane keeps
+its existing boundary: affected proofs gate changes, but the complete
+service-wide theorem is not a v0.3.0 release gate.
+
 ## Goal
 
 Tell Verus developers and agents what their proofs are worth, and never cost
@@ -23,10 +31,10 @@ v0.3.0 will remove API published in 0.2.0, so it is a breaking release.
 
 | Pillar | Gate | Tracker | State |
 |---|---|---|---|
-| Verus mutation testing (headline) | Bounded executable-code mutants in copies through CLI, JSON and MCP together; outcomes and score per [ADR 0111](decisions/0111-mutation-evidence.md), with solver answers verbatim; qualified on real projects on Linux and macOS with actual campaign costs | #140, #141, [#664](https://github.com/Chelis-Lang/sail/issues/664); [brief](design/verus-mutation-release.md), [evidence spike](validation/mutation-evidence.md), [neutral evidence](validation/neutral-mutation.md) | Evidence rule decided (ADR 0111); not built |
+| Verus mutation testing (headline) | Bounded executable-code mutants in copies through CLI, JSON and MCP together; outcomes and score per [ADR 0111](decisions/0111-mutation-evidence.md), with solver answers verbatim; qualified on real projects on Linux and macOS with actual campaign costs | #140, #141, [#664](https://github.com/Chelis-Lang/sail/issues/664); [brief](design/verus-mutation-release.md), [evidence spike](validation/mutation-evidence.md), [neutral evidence](validation/neutral-mutation.md) | Evidence rule decided (ADR 0111); exec-only generator delivered in #705; campaign engine and user interfaces not built |
 | Proof health and profiling | Rank functions by resource margin and stability, and name costly quantifiers, from recorded sessions; no change to verdicts or plain `sail verify` bytes | Experimental fragility engine exists | Not built |
 | Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #244, #232, #558, #560 | Named rows still slower; see the lanes below |
-| Reach | GitHub Action, simpler installation, editor bridge | [CI-cache recipe](ci-cache.md) shipped in 0.2.0 | Not built |
+| Reach | GitHub Action, simpler installation, editor bridge | [CI-cache recipe](ci-cache.md) shipped in 0.2.0; [GitHub Action](github-action.md) delivered in #702 | Installer distribution and editor bridge not built; installed Mac Action qualification remains |
 | Backends | Kani as an experimental backend for hand-written harnesses, with `arrayvec` 0.7.8 as the pilot fixture and direct-Kani comparison; then cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | [#135](https://github.com/Chelis-Lang/sail/issues/135), #137 | Kani pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)) and Kani is selected as experimental; backend not built. cvc5 follows it |
 | Neutral-contract removal | Archive tag, #664 cases ported to plain Verus, #683 and #696 reproduced on ordinary jobs; then removal, including all three contract crates, with every 0.2.0 item listed in the changelog | [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) | Removed, including all three contract crates; the last implementation is tagged `archive/neutral-contracts-final` and the published 0.2.0 crates are not yanked. #664's retained case is plain Verus in [`corpus/repros/neutral-contract-unknown`](../corpus/repros/neutral-contract-unknown/README.md). #683 and #696 were reproduced on ordinary jobs (2026-11-09 spike comments on each issue); their fixes are tracked there |
 | Publication | Owner approves the exact final candidate | [Releasing](releasing.md) | No candidate |
@@ -39,11 +47,10 @@ product. Expected cache savings must be measured across complete campaigns,
 including setup and unsuccessful work. See the
 [next-release milestone](https://github.com/Chelis-Lang/sail/milestone/14).
 
-Owner decisions pending, not committed scope:
-
-| Decision | Basis | Record |
-|---|---|---|
-| Linux aarch64 support | Spike passed on 2026-11-09: fast conformance 147 of 147 "Same" on Graviton against upstream Verus built from source. Support waits on the owner accepting that source-built oracle | [Open question 50](open-questions.md); no validation record in this repository yet |
+Linux aarch64 is outside this program. The owner clarified on 2026-11-11
+that it was not requested; no support work is scheduled, and the source-built
+oracle proposal in [question 50](open-questions.md) is inactive. The
+supported platforms remain Linux x86-64 and macOS on Apple silicon.
 
 ## Performance and acceptance lanes
 
