@@ -23,6 +23,7 @@ impl Scratch {
             NEXT_SCRATCH.fetch_add(1, Ordering::Relaxed)
         ));
         std::fs::create_dir(&path)?;
+        std::fs::write(path.with_extension("errors"), b"")?;
         Ok(Self(path))
     }
     fn command(&self, script: &str) -> Command {
@@ -30,6 +31,10 @@ impl Scratch {
         cmd.env("SAIL_CONFORMANCE_TEE_DRIVER", "/bin/sh")
             .env("SAIL_CONFORMANCE_TEE_SOURCE", &self.0)
             .env("SAIL_CONFORMANCE_TEE_DIR", &self.0)
+            .env(
+                "SAIL_CONFORMANCE_TEE_ERRORS",
+                self.0.with_extension("errors"),
+            )
             .args(["-c", script]);
         cmd
     }
@@ -37,6 +42,7 @@ impl Scratch {
 impl Drop for Scratch {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.0);
+        let _ = std::fs::remove_file(self.0.with_extension("errors"));
     }
 }
 
@@ -96,5 +102,46 @@ fn forwarding_failure_cannot_become_a_complete_accepted_capture() -> TestResult 
     drop(child.stdout.take());
     child.wait()?;
     assert!(load(&scratch.0).is_err());
+    Ok(())
+}
+
+#[test]
+fn reservation_failure_reaches_an_independent_health_record() -> TestResult {
+    let scratch = Scratch::new()?;
+    let blocked = scratch.0.join("not-a-directory");
+    std::fs::write(&blocked, b"blocked")?;
+    let output = scratch
+        .command("exit 0")
+        .env("SAIL_CONFORMANCE_TEE_DIR", blocked)
+        .output()?;
+    assert_eq!(output.status.code(), Some(125));
+    let health = std::fs::read_to_string(scratch.0.with_extension("errors"))?;
+    assert!(health.contains("cannot reserve capture"), "{health}");
+    Ok(())
+}
+
+#[test]
+fn physical_packed_options_are_recorded_with_their_exact_spelling() -> TestResult {
+    let scratch = Scratch::new()?;
+    let packed = "__VERUS_DRIVER_ARGS_SEP__--verify-function__VERUS_DRIVER_ARGS_SEP__p::one";
+    let output = scratch
+        .command("exit 0")
+        .env(" __VERUS_DRIVER_ARGS__", packed)
+        .output()?;
+    assert!(output.status.success());
+    let records = load(&scratch.0)?;
+    assert_eq!(records.len(), 1);
+    assert_eq!(
+        records[0]
+            .meta
+            .driver_env
+            .get(" __VERUS_DRIVER_ARGS__")
+            .map(String::as_str),
+        Some(packed)
+    );
+    assert_eq!(
+        records[0].meta.requested_driver_env,
+        records[0].meta.driver_env
+    );
     Ok(())
 }

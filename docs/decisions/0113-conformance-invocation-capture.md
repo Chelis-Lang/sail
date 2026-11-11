@@ -18,7 +18,10 @@ frontend beside a recording `verus` delegate. The delegate runs the original
 driver, forwards both streams, and retains their exact bytes, arguments,
 package/target identity, status and SHA-256 digests. It reserves an incomplete
 record before spawning and completes it only after both streams and status
-are recorded. Capture errors and unexplained aggregate stdout fail the run.
+are recorded. A separate run-owned error file records failures even when a
+reservation cannot be created and a build script consumes the delegate's
+stderr. The loader checks this health record and requires an actual Cargo
+compiler job; an earlier discovery probe cannot qualify a failed build. Capture errors and unexplained aggregate stdout fail the run.
 This is a harness facility, not a product driver or shim change.
 
 The aggregate stdout must be proved a complete order-preserving interleaving
@@ -33,13 +36,23 @@ that explains the aggregate. Hidden calls that mimic Cargo jobs can cause a
 strict refusal; they cannot authorize dropping output.
 
 Pair invocations by package/version, relative manifest, crate/target kind,
-binary name, test mode, compilation target and complete arguments. Named
+binary name, test mode, compilation target, complete arguments and requested
+Verus driver channels. This includes the physical leading-space packed-option
+variables, their exact separator encoding and all per-package selectors. Named
 build-script probes also retain their source/flags/status association. Only
-declared source, target and runtime path roots become relative in argument
+declared source, target, runtime and arm-output path roots become relative in argument
 identity; exact original metadata remains recorded.
 Repeated identities retain multiplicity and compare as multisets, consuming
 each occurrence once. Completion time, process ID and aggregate document
 position are never pairing keys.
+
+Managed-arm attribution logs use separate compiler-owned directories, matching
+the product driver's target-owned log isolation. The harness adds those options
+through the same product packed-channel helper; it never shares one directory
+between concurrent compilers. Capture format 2 records and hashes both Cargo's
+original requested channels and the child's effective channels. Pairing binds
+the original requests; the only controlled supplement is the recorded harness
+logging configuration. Exact stdout, stderr and solver inputs are not rewritten.
 
 Every ordinary invocation uses the existing structured stdout and per-function
 oracle, with byte-equal stderr and exact non-JSON stdout. Probes compare both

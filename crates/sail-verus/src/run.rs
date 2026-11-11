@@ -524,6 +524,7 @@ fn capture_frontend(original: &Path, tee: Option<&Path>, work: &Path) -> Result<
     let fail = |e| Error::new("SAIL3020", format!("cannot stage compiler capture: {e}"));
     std::fs::create_dir_all(&stage).map_err(fail)?;
     std::fs::create_dir(work.join("invocations")).map_err(fail)?;
+    std::fs::write(work.join("capture-errors"), b"").map_err(fail)?;
     std::fs::copy(original, stage.join("cargo-verus")).map_err(fail)?;
     std::fs::copy(tee, stage.join("verus")).map_err(fail)?;
     Ok(stage.join("cargo-verus"))
@@ -541,7 +542,9 @@ fn configure_capture(
     cmd.env_remove("SAIL_CONFORMANCE_TEE_DRIVER")
         .env_remove("SAIL_CONFORMANCE_TEE_DIR")
         .env_remove("SAIL_CONFORMANCE_TEE_SOURCE")
-        .env_remove("SAIL_CONFORMANCE_TEE_TARGET");
+        .env_remove("SAIL_CONFORMANCE_TEE_TARGET")
+        .env_remove("SAIL_CONFORMANCE_TEE_LOGS")
+        .env_remove("SAIL_CONFORMANCE_TEE_ERRORS");
     if enabled {
         let driver = match solver {
             Solver::Engine(engine) => &engine.verus,
@@ -550,7 +553,8 @@ fn configure_capture(
         cmd.env("SAIL_CONFORMANCE_TEE_DRIVER", driver)
             .env("SAIL_CONFORMANCE_TEE_DIR", work.join("invocations"))
             .env("SAIL_CONFORMANCE_TEE_SOURCE", &unit.source_dir)
-            .env("SAIL_CONFORMANCE_TEE_TARGET", target_dir.unwrap_or(work));
+            .env("SAIL_CONFORMANCE_TEE_TARGET", target_dir.unwrap_or(work))
+            .env("SAIL_CONFORMANCE_TEE_ERRORS", work.join("capture-errors"));
     }
 }
 
@@ -621,7 +625,9 @@ fn run_unit_impl(
         }
     )
     .then(|| work.join("sail-logs"));
-    if let Some(logs) = &observation_logs {
+    if let Some(logs) = &observation_logs
+        && !(cargo && tee.is_some())
+    {
         cmd.args(crate::adapter::OBSERVATION_LOG_FLAGS).arg(logs);
     }
     cmd.stdin(Stdio::null())
@@ -637,6 +643,12 @@ fn run_unit_impl(
         target_dir,
         cargo && tee.is_some(),
     );
+    if cargo
+        && tee.is_some()
+        && let Some(logs) = &observation_logs
+    {
+        cmd.env("SAIL_CONFORMANCE_TEE_LOGS", logs);
+    }
     if let Solver::Engine(engine) = solver {
         engine_env(&mut cmd, installed, engine, work);
     }
@@ -668,9 +680,17 @@ fn run_unit_impl(
     // Kept next to the run for inspecting differences; best effort.
     let _ = std::fs::write(work.join("stdout.txt"), &output.stdout);
     let _ = std::fs::write(work.join("stderr.txt"), &output.stderr);
-    let (user_s, sys_s, max_rss_bytes) = parse_time(&timing.unwrap_or_default());
+    Ok(completed_record(
+        &output,
+        wall_ms,
+        &timing.unwrap_or_default(),
+    ))
+}
+
+fn completed_record(output: &std::process::Output, wall_ms: f64, timing: &str) -> RunRecord {
+    let (user_s, sys_s, max_rss_bytes) = parse_time(timing);
     let (outputs, stdout_rest) = parse_outputs(&output.stdout);
-    Ok(RunRecord {
+    RunRecord {
         exit_code: output.status.code(),
         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         outputs,
@@ -679,7 +699,27 @@ fn run_unit_impl(
         user_s,
         sys_s,
         max_rss_bytes,
-    })
+    }
+}
+
+/// Adds harness observation options through the product driver's same packed
+/// Verus-option channel, with an isolated compiler-owned log directory.
+///
+/// # Errors
+///
+/// Invalid UTF-8 or a Cargo-Verus separator in an option (`SAIL3111`).
+pub fn capture_observation_options(
+    command: &mut Command,
+    base: Option<String>,
+    logs: &Path,
+) -> Result<()> {
+    let mut options: Vec<std::ffi::OsString> = crate::adapter::OBSERVATION_LOG_FLAGS
+        .iter()
+        .map(std::ffi::OsString::from)
+        .collect();
+    options.push(logs.as_os_str().to_owned());
+    crate::adapter::verus_channel::Channel::new(base, &options)?.apply(command);
+    Ok(())
 }
 
 /// The per-unit time limit: `SAIL_UNIT_TIMEOUT` seconds, default 3600. A

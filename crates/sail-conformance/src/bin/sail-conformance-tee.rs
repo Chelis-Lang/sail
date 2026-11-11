@@ -85,12 +85,12 @@ fn meta(raw: &[OsString], started_ns: u128) -> Meta {
     let driver_env: BTreeMap<String, String> = std::env::vars_os()
         .filter_map(|(k, v)| {
             let k = k.to_string_lossy().into_owned();
-            k.starts_with("__VERUS_DRIVER_")
+            (k.starts_with("__VERUS_DRIVER_") || k.starts_with(" __VERUS_DRIVER_"))
                 .then(|| (k, v.to_string_lossy().into_owned()))
         })
         .collect();
     Meta {
-        version: 1,
+        version: 2,
         package_name: env_string("CARGO_PKG_NAME"),
         package_version: env_string("CARGO_PKG_VERSION"),
         manifest_dir: env_string("CARGO_MANIFEST_DIR"),
@@ -100,8 +100,17 @@ fn meta(raw: &[OsString], started_ns: u128) -> Meta {
         bin_name: env_string("CARGO_BIN_NAME"),
         compile_target: value_after("--target"),
         arg_sha256: argument_digest(&argv, &driver_env),
+        requested_arg_sha256: argument_digest(&argv, &driver_env),
         argv,
+        requested_driver_env: driver_env.clone(),
         driver_env,
+        work_root: std::env::var_os(DIR)
+            .and_then(|p| {
+                PathBuf::from(p)
+                    .parent()
+                    .map(|p| p.to_string_lossy().into_owned())
+            })
+            .unwrap_or_default(),
         source_root: env_string("SAIL_CONFORMANCE_TEE_SOURCE").unwrap_or_default(),
         target_root: env_string("SAIL_CONFORMANCE_TEE_TARGET").unwrap_or_default(),
         runtime_root: std::env::var_os(DRIVER)
@@ -133,39 +142,50 @@ fn record(dir: &Path, meta: &Meta, stdout: &[u8], stderr: &[u8]) -> std::io::Res
     std::fs::rename(&tmp, dir.join(name))
 }
 
-fn main() -> ExitCode {
-    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
-    let Some(driver) = std::env::var_os(DRIVER).map(PathBuf::from) else {
-        eprintln!("error[SAIL3018]: {DRIVER} is not set");
-        return ExitCode::from(125);
-    };
-    let Some(dir) = std::env::var_os(DIR).map(PathBuf::from) else {
-        eprintln!("error[SAIL3018]: {DIR} is not set");
-        return ExitCode::from(125);
-    };
-    let started_ns = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos());
-    // Reserve before spawning: a killed tee or a failed write must leave an
-    // incomplete record rather than disappearing from the capture inventory.
-    let marker = dir.join(format!("{started_ns:032}-{}.tmp", std::process::id()));
-    if let Err(e) = std::fs::create_dir(&marker) {
-        eprintln!("error[SAIL3018]: cannot reserve capture: {e}");
-        return ExitCode::from(125);
-    }
-    let mut child = match Command::new(&driver)
-        .args(&args)
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
+fn failure(message: impl std::fmt::Display) -> ExitCode {
+    let message = format!("error[SAIL3018]: {message}\n");
+    if let Some(path) = std::env::var_os("SAIL_CONFORMANCE_TEE_ERRORS")
+        && let Ok(mut file) = std::fs::OpenOptions::new().append(true).open(path)
     {
-        Ok(child) => child,
-        Err(e) => {
-            eprintln!("error[SAIL3018]: cannot start {}: {e}", driver.display());
-            return ExitCode::from(125);
+        let _ = file.write_all(message.as_bytes());
+    }
+    eprint!("{message}");
+    ExitCode::from(125)
+}
+
+fn configure_observation(
+    command: &mut Command,
+    metadata: &mut Meta,
+    name: &str,
+) -> Result<(), String> {
+    if metadata.package_name.is_some()
+        && metadata.argv.iter().any(|a| a == "--error-format=json")
+        && metadata.argv.iter().any(|a| {
+            a.strip_prefix("--json=")
+                .is_some_and(|v| v.split(',').any(|v| v == "artifacts"))
+        })
+        && let Some(root) = std::env::var_os("SAIL_CONFORMANCE_TEE_LOGS")
+    {
+        let logs = PathBuf::from(root).join(name);
+        sail_verus::run::capture_observation_options(
+            command,
+            metadata.driver_env.get(" __VERUS_DRIVER_ARGS__").cloned(),
+            &logs,
+        )
+        .map_err(|e| e.to_string())?;
+        for (key, value) in command.get_envs() {
+            if let (Some(key), Some(value)) = (key.to_str(), value.and_then(|v| v.to_str()))
+                && (key.starts_with("__VERUS_DRIVER_") || key.starts_with(" __VERUS_DRIVER_"))
+            {
+                metadata.driver_env.insert(key.to_owned(), value.to_owned());
+            }
         }
-    };
+        metadata.arg_sha256 = argument_digest(&metadata.argv, &metadata.driver_env);
+    }
+    Ok(())
+}
+
+fn complete(mut child: std::process::Child, mut metadata: Meta, dir: &Path) -> ExitCode {
     let out = child.stdout.take();
     let err = child.stderr.take();
     let out_thread = std::thread::spawn(move || match out {
@@ -187,26 +207,66 @@ fn main() -> ExitCode {
         .as_ref()
         .ok()
         .and_then(std::process::ExitStatus::code);
-    {
-        let mut meta = meta(&args, started_ns);
-        meta.exit_code = code;
-        meta.stdout_len = stdout.len();
-        meta.stderr_len = stderr.len();
-        meta.stdout_sha256 = hex_sha256(&stdout);
-        meta.stderr_sha256 = hex_sha256(&stderr);
-        meta.forward_error = out_error.or(err_error).or_else(|| {
-            (args.iter().any(|a| a.to_str().is_none())
-                || std::env::vars_os().any(|(k, v)| k.to_str().is_none() || v.to_str().is_none()))
+    metadata.exit_code = code;
+    metadata.stdout_len = stdout.len();
+    metadata.stderr_len = stderr.len();
+    metadata.stdout_sha256 = hex_sha256(&stdout);
+    metadata.stderr_sha256 = hex_sha256(&stderr);
+    metadata.forward_error = out_error.or(err_error).or_else(|| {
+        std::env::vars_os()
+            .any(|(k, v)| k.to_str().is_none() || v.to_str().is_none())
             .then(|| "non-UTF-8 invocation metadata cannot be paired".to_owned())
-        });
-        // A failed record leaves no completed directory; the forwarded bytes
-        // and exit status are already final.
-        let _ = record(&dir, &meta, &stdout, &stderr);
+    });
+    if let Some(error) = &metadata.forward_error {
+        return failure(error);
+    }
+    if let Err(error) = record(dir, &metadata, &stdout, &stderr) {
+        return failure(format!("cannot complete capture: {error}"));
     }
     match code {
         Some(code) => ExitCode::from(u8::try_from(code & 0xff).unwrap_or(1)),
-        // Killed by a signal (or wait failed): report failure, as Cargo
-        // would see for the driver itself.
         None => ExitCode::from(101),
+    }
+}
+
+fn main() -> ExitCode {
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let Some(driver) = std::env::var_os(DRIVER).map(PathBuf::from) else {
+        return failure(format!("{DRIVER} is not set"));
+    };
+    let Some(dir) = std::env::var_os(DIR).map(PathBuf::from) else {
+        return failure(format!("{DIR} is not set"));
+    };
+    let Some(health) = std::env::var_os("SAIL_CONFORMANCE_TEE_ERRORS") else {
+        return failure("capture health record is not set");
+    };
+    if let Err(error) = std::fs::OpenOptions::new().append(true).open(health) {
+        return failure(format!("capture health record is inaccessible: {error}"));
+    }
+    let started_ns = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let name = format!("{started_ns:032}-{}", std::process::id());
+    // Reserve before spawning; failure is also reported outside this directory,
+    // so a prior successful probe cannot conceal a failed reservation.
+    if let Err(e) = std::fs::create_dir(dir.join(format!("{name}.tmp"))) {
+        return failure(format!("cannot reserve capture: {e}"));
+    }
+    if args.iter().any(|a| a.to_str().is_none()) {
+        return failure("non-UTF-8 compiler arguments cannot be captured");
+    }
+    let mut metadata = meta(&args, started_ns);
+    let mut command = Command::new(&driver);
+    command
+        .args(&args)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    if let Err(e) = configure_observation(&mut command, &mut metadata, &name) {
+        return failure(e);
+    }
+    match command.spawn() {
+        Ok(child) => complete(child, metadata, &dir),
+        Err(e) => failure(format!("cannot start {}: {e}", driver.display())),
     }
 }

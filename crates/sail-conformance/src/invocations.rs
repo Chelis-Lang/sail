@@ -43,10 +43,16 @@ pub struct Meta {
     pub compile_target: Option<String>,
     /// SHA-256 over the arguments and the `__VERUS_DRIVER_*` environment.
     pub arg_sha256: String,
+    /// Digest of the exact requested argv/packed channels before owned logging.
+    pub requested_arg_sha256: String,
     /// Original arguments (non-UTF-8 metadata makes the capture invalid).
     pub argv: Vec<String>,
     /// The `__VERUS_DRIVER_*` environment.
     pub driver_env: BTreeMap<String, String>,
+    /// Exact packed channels requested by Cargo, before owned harness logging.
+    pub requested_driver_env: BTreeMap<String, String>,
+    /// This arm's output root (identity only).
+    pub work_root: String,
     /// Source checkout root (identity only; never changes recorded output).
     pub source_root: String,
     /// Fresh target directory (identity only).
@@ -138,6 +144,10 @@ pub struct Identity {
     /// Every argument, with declared path roots made relative. Build-script
     /// probes can have a crate name too; arguments preserve their association.
     pub arguments: Vec<String>,
+    /// Complete requested Verus driver channels, including physical leading
+    /// spaces and every packed option; harness-only logging is recorded in
+    /// `Meta::driver_env` separately from this original input identity.
+    pub driver_env: BTreeMap<String, Vec<String>>,
 }
 
 impl Invocation {
@@ -190,30 +200,56 @@ impl Invocation {
             crate_name: m.crate_name.clone().unwrap_or_default(),
             crate_types: m.crate_types.join(","),
             test: m.test,
-            compile_target: m.compile_target.clone().unwrap_or_default(),
+            compile_target: m
+                .compile_target
+                .as_ref()
+                .map(|a| relative_argument(a, m))
+                .unwrap_or_default(),
             bin_name: m.bin_name.clone(),
             arguments: m.argv.iter().map(|arg| relative_argument(arg, m)).collect(),
+            driver_env: m
+                .requested_driver_env
+                .iter()
+                .map(|(key, value)| {
+                    (
+                        key.clone(),
+                        value
+                            .split("__VERUS_DRIVER_ARGS_SEP__")
+                            .map(|a| relative_argument(a, m))
+                            .collect(),
+                    )
+                })
+                .collect(),
         }
     }
 }
 
 fn relative_argument(arg: &str, meta: &Meta) -> String {
-    for (label, root) in [
-        ("source", &meta.source_root),
-        ("target", &meta.target_root),
-        ("runtime", &meta.runtime_root),
-    ] {
-        if !root.is_empty()
-            && let Ok(relative) = Path::new(arg).strip_prefix(root)
-        {
-            return format!("<{label}>/{}", relative.display());
+    let mut value = arg;
+    let mut offset = 0;
+    loop {
+        for (label, root) in [
+            ("source", &meta.source_root),
+            ("target", &meta.target_root),
+            ("runtime", &meta.runtime_root),
+            ("work", &meta.work_root),
+        ] {
+            if !root.is_empty()
+                && let Ok(relative) = Path::new(value).strip_prefix(root)
+            {
+                return format!(
+                    "{}<{label}>/{}",
+                    arg.get(..offset).unwrap_or_default(),
+                    relative.display()
+                );
+            }
         }
+        let Some((prefix, rest)) = value.split_once('=') else {
+            return arg.to_owned();
+        };
+        offset += prefix.len() + 1;
+        value = rest;
     }
-    if let Some((key, value)) = arg.split_once('=') {
-        let relative = relative_argument(value, meta);
-        return format!("{key}={relative}");
-    }
-    arg.to_owned()
 }
 
 /// Loads every record under `dir`, in start order.
@@ -243,7 +279,7 @@ pub fn load(dir: &Path) -> Result<Vec<Invocation>, String> {
         };
         let meta: Meta = serde_json::from_slice(&read("meta.json")?)
             .map_err(|e| format!("{}/meta.json: {e}", path.display()))?;
-        if meta.version != 1 || meta.source_root.is_empty() {
+        if meta.version != 2 || meta.source_root.is_empty() {
             return Err(format!("unsupported or unbound capture {}", path.display()));
         }
         let stdout = read("stdout")?;
@@ -254,6 +290,7 @@ pub fn load(dir: &Path) -> Result<Vec<Invocation>, String> {
             || hex_sha256(&stdout) != meta.stdout_sha256
             || hex_sha256(&stderr) != meta.stderr_sha256
             || argument_digest(&meta.argv, &meta.driver_env) != meta.arg_sha256
+            || argument_digest(&meta.argv, &meta.requested_driver_env) != meta.requested_arg_sha256
         {
             return Err(format!(
                 "capture {} does not match its digests",
@@ -449,9 +486,21 @@ pub fn run(
     let record = sail_verus::run::run_unit_captured(installed, unit, solver, work, tee)
         .map_err(|e| e.to_string())?;
     let invocations = if unit.build == sail_verus::corpus::Build::CargoVerus {
+        let failures = std::fs::read(work.join("capture-errors"))
+            .map_err(|e| format!("error[SAIL3018]: missing capture health record: {e}"))?;
+        if !failures.is_empty()
+            || record
+                .stderr
+                .lines()
+                .any(|line| line.starts_with("error[SAIL3018]:"))
+        {
+            return Err(
+                "error[SAIL3018]: a compiler delegate reported a capture failure".to_owned(),
+            );
+        }
         let invocations = load(&work.join("invocations"))?;
-        if invocations.is_empty() {
-            return Err("error[SAIL3018]: no compiler invocations captured".to_owned());
+        if !invocations.iter().any(Invocation::forwarded) {
+            return Err("error[SAIL3018]: no Cargo compiler jobs captured".to_owned());
         }
         if invocations
             .iter()
@@ -680,7 +729,7 @@ mod tests {
         let driver_env = BTreeMap::new();
         Invocation {
             meta: Meta {
-                version: 1,
+                version: 2,
                 package_name: name.map(str::to_owned),
                 package_version: name.map(|_| "1.0".to_owned()),
                 manifest_dir: name.map(|_| format!("{root}/member")),
@@ -690,8 +739,11 @@ mod tests {
                 bin_name: None,
                 compile_target: None,
                 arg_sha256: argument_digest(&argv, &driver_env),
+                requested_arg_sha256: argument_digest(&argv, &driver_env),
                 argv,
+                requested_driver_env: driver_env.clone(),
                 driver_env,
+                work_root: "/work".to_owned(),
                 source_root: root.to_owned(),
                 target_root: format!("{root}/target"),
                 runtime_root: "/runtime".to_owned(),
@@ -785,6 +837,30 @@ mod tests {
         let mut changed_a = a.clone();
         let mut changed_b = b.clone();
         changed_a.meta.exit_code = Some(101);
+        changed_b.meta.exit_code = Some(0);
+        assert_ne!(
+            compare_arms(&[a, b], &[changed_a, changed_b]).differences,
+            [] as [String; 0]
+        );
+    }
+
+    #[test]
+    fn physical_packed_verus_channels_keep_selector_status_associations() {
+        let mut a = invocation("/root", Some("probe"), b"");
+        a.meta.requested_driver_env.insert(
+            " __VERUS_DRIVER_ARGS__".to_owned(),
+            "__VERUS_DRIVER_ARGS_SEP__--verify-function__VERUS_DRIVER_ARGS_SEP__p::one".to_owned(),
+        );
+        let mut b = a.clone();
+        b.meta.requested_driver_env.insert(
+            " __VERUS_DRIVER_ARGS__".to_owned(),
+            "__VERUS_DRIVER_ARGS_SEP__--verify-function__VERUS_DRIVER_ARGS_SEP__p::two".to_owned(),
+        );
+        b.meta.exit_code = Some(7);
+        assert_ne!(a.identity(), b.identity());
+        let mut changed_a = a.clone();
+        let mut changed_b = b.clone();
+        changed_a.meta.exit_code = Some(7);
         changed_b.meta.exit_code = Some(0);
         assert_ne!(
             compare_arms(&[a, b], &[changed_a, changed_b]).differences,
