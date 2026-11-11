@@ -207,29 +207,7 @@ fn executable(path: &std::path::Path, text: &str) -> TestResult {
     Ok(())
 }
 
-#[test]
-fn parent_observes_detached_and_consumed_capture_failures() -> TestResult {
-    use sail_verus::corpus::{Build, Unit};
-    use sail_verus::toolchain::{Installed, Pins};
-    use std::collections::BTreeMap;
-    for mode in [
-        "positive",
-        "detached",
-        "files",
-        "erased",
-        "record-removed",
-        "record-renamed",
-    ] {
-        let scratch = Scratch::new()?;
-        let driver = scratch.0.join("driver");
-        let cargo = scratch.0.join("cargo-verus");
-        executable(
-            &driver,
-            "#!/bin/sh\nprintf '{\"verification-results\":{\"verified\":0,\"errors\":0},\"func-details\":{}}\\n'\n",
-        )?;
-        executable(
-            &cargo,
-            r#"#!/bin/sh
+const CAPTURE_FRONTEND: &str = r#"#!/bin/sh
 tee="$(dirname "$0")/verus"
 CARGO_PKG_NAME=p CARGO_PKG_VERSION=1 CARGO_MANIFEST_DIR="$PWD" "$tee" --crate-name=p --error-format=json --json=artifacts lib.rs || exit 1
 python3 - "$tee" "$SAIL_CAPTURE_MODE" <<'CONTROL'
@@ -267,8 +245,29 @@ if mode == 'erased':
     health.write_bytes(b'')
 CONTROL
 exit 0
-"#,
+"#;
+
+#[test]
+fn parent_observes_detached_and_consumed_capture_failures() -> TestResult {
+    use sail_verus::corpus::{Build, Unit};
+    use sail_verus::toolchain::{Installed, Pins};
+    use std::collections::BTreeMap;
+    for mode in [
+        "positive",
+        "detached",
+        "files",
+        "erased",
+        "record-removed",
+        "record-renamed",
+    ] {
+        let scratch = Scratch::new()?;
+        let driver = scratch.0.join("driver");
+        let cargo = scratch.0.join("cargo-verus");
+        executable(
+            &driver,
+            "#!/bin/sh\nprintf '{\"verification-results\":{\"verified\":0,\"errors\":0},\"func-details\":{}}\\n'\n",
         )?;
+        executable(&cargo, CAPTURE_FRONTEND)?;
         let installed = Installed {
             pins: Pins::load(
                 &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../corpus/toolchain.toml"),
