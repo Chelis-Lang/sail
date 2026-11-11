@@ -6,16 +6,34 @@
 | Design | [ADR 0113](../decisions/0113-conformance-invocation-capture.md) |
 | Runtime | Existing primary stock and fork pins; no runtime/solver changes |
 | Implementation | Per-invocation capture in plain, shim/cache and engine arms; explicit project and nonempty selection guards |
-| Status | Implemented, qualification pending; no parallel conformance or scaling acceptance claim |
+| Status | Qualified at `1be7ba0a`; current-main rebase gate passed, protected PR checks remain |
+| Linux | Native c7i.4xlarge/us-east-2: workspace 1,351 pass/53 skip, solver 50 pass, full E2E including extra |
+| Conformance | All four arms: PR 33 Same/311 functions; full fast 147 Same/3,451 functions; standard pass-through/fill/engine 159 Same, warm 158 Same/one unstable Anvil; 13,166 functions, 32 drift units retained; no different/infra results |
+| Mutation controls | 18 HumanEval mutants plus cold/revert/forced-revert: 21 Same; generator outputs identical in four runs |
+| Acceptance | 35 stock-Verus model cases and 316 production-refinement cases pass; these qualify existing components, not the whole capture service |
+| Mac | Exact `1be7ba0a`: host clippy and 1,338 tests pass/53 skip; book source/build/links pass; focused capture/process controls and actual EMFILE refusal pass |
+| Rebased gate | `20925d364e0fd32e343c811542d69946615716b4`: full native workspace gate passes, 1,374 tests/53 skip; log SHA-256 `71ccae82ae56080ea388f6120497a01aa37d48fcd6bd5f04cd8903d07c96a885` |
+| Reports | Archive SHA-256 `0f18ab127347da5d6cad9f428b3866edbe65194be7b497efe3d05230b9307657` |
 
-Focused native Mac development checks pass 50 library tests, five harness
-command tests and three actual delegate-process controls, plus clippy for
-`sail-conformance` and `sail-verus` with all targets. The process controls
-check original stdout/stderr/status, a killed delegate's incomplete marker,
-corrupt recorded lengths and a closed forwarding pipe. The exact candidate
-identity, complete Linux/Mac gates, raw evidence hashes and real-project /
-parallel-workspace results will be recorded before merge. Earlier real-project runs are indexed below with their exact source and limits;
-none substitutes for replacement qualification.
+All current Linux runners above exited zero on 2026-11-12. The standard
+warm arm retains one unstable Anvil result: repeated plain runs reorder
+verification-progress JSON notes. The original outcome remains unstable. A strict focused rerun of the same
+Anvil unit at the same code source passes all four arms (each one Same,
+143 functions, one drift unit) with zero unstable/different/infra results. No
+comparison rule changes. Rerun archive SHA-256:
+`c9c08b6ed9758f27e88d1c71b44a4cbf59b7d55a4997ceb221f6b1b3d2926e24`. Raw logs,
+reports and captures remain outside the repository. The original failed
+attempts below retain their own source identity and result. Earlier parallel
+workspace evidence has the explicit scope described below and does not replace
+current broad-corpus qualification.
+
+The rebase onto main `d706abfc` preserves every checked model and production
+source from the actual `1be7ba0a` refinement run. Four of its 338 bound source
+paths change: the API root's reviewed campaign module addition, the separately
+qualified ledger correction, the unselected mutation module assembly, and the
+checker's separately reviewed API-root binding constant. The actual acceptance
+runs remain attributed to `1be7ba0a`; this source audit does not relabel them as
+new executions on the rebase.
 
 The original strict VI-0039 failures remain in the
 [reproduction](../../corpus/repros/verus-parallel-json/README.md). This
@@ -52,7 +70,7 @@ reference, testing guide, changelog and this qualification record.
 
 | 2026-11-11 | `178455a9` | Independent detached hidden-probe witness rejects current-group signaling: the probe clears capture environment, exits 125, and paired invalid runs classify Same. Parent-owned TCP completion replaces group signaling; replacement qualification pending. | `2b9309901519d2c4c6e8bfb5573396670d5bd85d1b8976292af813ba850803c5` |
 
-| 2026-11-11 | `0a9ab14d` | TCP completion: 73 native Linux focused checks pass (two control, 58 library, five CLI, eight process). Clippy rejects three style issues; no full gate credited. | Raw `632-control-focused.log`, replacement lint run pending. |
+| 2026-11-11 | `0a9ab14d` | TCP completion: 73 native Linux focused checks pass (two control, 58 library, five CLI, eight process). Clippy rejects three style issues; no full gate credited. | Raw SHA-256 `0c7c93580daf2ec4c35db40042493d125560678e4f3b08552c701df49478844c`; replacement lint run pending. |
 
 | 2026-11-11 | `4eb575e8` | Native Linux 73 focused/clippy and Mac 1,338 host tests pass (53 skipped); independent paired production control rejects missing fatal-entry witness under EMFILE: hidden entered tee125 can disappear and classify Same against a healthy plain arm. Safe stdin-release witness retry replaces that fatal entry path; qualification and new lock-edge binding review pending. | `65517d3ee10d09d1bc5be0c03ebb40493820ef6a860680ec75e148c58869af44` |
 
@@ -79,3 +97,21 @@ The actual rustix metadata probe retained from the failed Linux arm has argv
 `3e7c95b09300d42c1fe9aa722143f764dc009acbcef1b4bb388fdc0c9fcdf5a0`.
 Raw record archive SHA-256 is
 `1172bfd28c27c549eaf87b95cb67703d540e27923cf5d73a2b8f7f11c5be868a`.
+
+The independent fatal-entry review approves exact `33645a50` in its bounded
+scope. Actual entered hidden tee EMFILE failures retain exit 125 and SAIL3018,
+but now refuse production pairing. The old delegate still demonstrates false
+Same as a negative control. The review also reruns prior identity, stdin,
+probe, metadata and lifecycle controls; 53 source-capture tests plus eight
+exact-byte acceptance/drift controls and an additional lock mutation pass.
+Review SHA-256: `091e325dcc0a6f54825651e681abba9766de669a1dfd1f79cbce7fa066d8658b`;
+native delivery: `29febde6dd8585db2ddcf4ecb8b854eb6a211f08e8a376ae490723b639746877`.
+
+The new lock adds only the contributor's Unix dependency on already locked
+nix 0.31.3; no external version or feature changes. The independent reviewer
+explicitly approves only the parser-lock binding advance from 8cf710f0 to
+`9d3b3c962dab6b5523db7409697758b8c1df8d322fc73bdb94c7e81ecc1c7685`.
+All parser/proof/checker bodies remain unchanged. Current full native Linux,
+Mac, real-project conformance and affected proof/refinement qualification are
+separate remaining gates. The bounded review claims no system-wide ENFILE or
+exhaustive process-entry-failure theorem.
