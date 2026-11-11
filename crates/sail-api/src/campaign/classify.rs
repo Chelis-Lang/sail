@@ -267,11 +267,11 @@ fn group(observations: &[Observation], scope: Scope) -> Vec<&Observation> {
         .collect()
 }
 
-fn baseline_runs<'a>(
-    observations: &'a [Observation],
+fn baseline_runs(
+    observations: &[Observation],
     function: &Function,
     required: usize,
-) -> Result<Vec<&'a Observation>, Reason> {
+) -> Result<(), Reason> {
     let baseline = group(observations, Scope::Full);
     let baseline_scoped = group(observations, Scope::Scoped);
     if baseline.len() < required {
@@ -294,7 +294,15 @@ fn baseline_runs<'a>(
             headroom(target(run, function)?)?;
         }
     }
-    Ok(baseline)
+    Ok(())
+}
+
+fn baseline_for(observations: &[Observation], scope: Scope) -> Result<&Observation, Reason> {
+    observations
+        .iter()
+        .find(|run| run.scope == scope)
+        .or_else(|| observations.iter().find(|run| run.scope == Scope::Full))
+        .ok_or(Reason::BaselineMissing)
 }
 
 fn attempt_runs<'a>(
@@ -383,15 +391,10 @@ fn checked(input: &Classification) -> Result<Outcome, Reason> {
         valid_observation(run, &input.context, &input.mutation.source_sha256)?;
     }
     let required = usize::try_from(input.repeats).map_err(|_| Reason::IdentityMismatch)?;
-    let baseline = baseline_runs(&input.baseline, function, required)?;
+    baseline_runs(&input.baseline, function, required)?;
     let (attempts, scope) = attempt_runs(&input.attempts, function, required)?;
     for mode in [Scope::Scoped, Scope::Full] {
-        let base = input
-            .baseline
-            .iter()
-            .find(|run| run.scope == mode)
-            .or_else(|| baseline.first().copied())
-            .ok_or(Reason::BaselineMissing)?;
+        let base = baseline_for(&input.baseline, mode)?;
         let mut expected = None;
         for run in input.attempts.iter().filter(|run| run.scope == mode) {
             let result = outcome(run, base, function, mode)?;
@@ -402,7 +405,7 @@ fn checked(input: &Classification) -> Result<Outcome, Reason> {
         }
     }
     let first = attempts.first().ok_or(Reason::Incomplete)?;
-    let base = baseline.first().ok_or(Reason::BaselineMissing)?;
+    let base = baseline_for(&input.baseline, scope)?;
     let expected = outcome(first, base, function, scope)?;
     if scope == Scope::Scoped && matches!(expected, Outcome::Rejected(_)) {
         return Err(Reason::FullConfirmationMissing);

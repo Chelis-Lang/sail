@@ -65,3 +65,12 @@ unsat rejection or new collateral failure). The replacement applies each
 scope's full outcome checks to every retained attempt before selecting a
 confirmed result. Scoped rejection alone still cannot become a final detection.
 New controls and replacement qualification remain pending.
+
+Review of `97fe61ef` closes the four earlier scoped-precondition failures but
+finds a conservative scoring defect: a valid scoped survivor was re-evaluated
+against the full baseline after its own scoped baseline had already passed.
+The replacement uses the same mode-bound baseline for validation and final
+classification, falling back to the full baseline only when no scoped twin
+was provided. The regression preserves existing scoped collateral failures,
+checks the explicit zero score and rejects a new failure without that baseline.
+This replacement still needs focused and independent qualification.

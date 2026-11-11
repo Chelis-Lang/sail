@@ -485,3 +485,53 @@ fn full_confirmations_do_not_erase_scoped_outcome_preconditions() {
         Outcome::Inconclusive(Reason::CollateralFailure)
     );
 }
+
+#[test]
+fn scoped_survivors_use_their_own_stable_baseline() {
+    let mut input = input();
+    for run in &mut input.baseline {
+        run.functions.push(FunctionObservation {
+            identity: function("g"),
+            verified: true,
+            unstable: false,
+            checks_complete: true,
+            checks: vec![check(AnswerName::Unsat, Failure::None)],
+        });
+    }
+    let mut scoped_baseline = input.baseline.clone();
+    for run in &mut scoped_baseline {
+        run.scope = Scope::Scoped;
+        run.functions[1].verified = false;
+        run.functions[1].checks = vec![check(AnswerName::Unknown, Failure::Verifier)];
+        run.diagnostics = vec![diagnostic(Some(function("g")), "existing focused failure")];
+    }
+    input.attempts = scoped_baseline.clone();
+    for run in &mut input.attempts {
+        run.source_sha256.clone_from(&input.mutation.source_sha256);
+    }
+    let without_scoped_baseline = input.clone();
+    input.baseline.extend(scoped_baseline);
+    for _ in 0..2 {
+        let result = classify(&input);
+        assert_eq!(result, Outcome::SurvivedScoped);
+        let summary = summarize([&result], 0, 0);
+        assert_eq!(summary.survived_scoped, 1);
+        assert_eq!(summary.score, Some(0.0));
+        input.baseline.reverse();
+    }
+    assert_eq!(
+        classify(&without_scoped_baseline),
+        Outcome::Inconclusive(Reason::CollateralFailure)
+    );
+    let mut full = input
+        .baseline
+        .iter()
+        .filter(|run| run.scope == Scope::Full)
+        .cloned()
+        .collect::<Vec<_>>();
+    for run in &mut full {
+        run.source_sha256.clone_from(&input.mutation.source_sha256);
+    }
+    input.attempts.extend(full);
+    assert_eq!(classify(&input), Outcome::Survived);
+}
