@@ -28,3 +28,10 @@ separate from broad-corpus and scaling performance qualification.
 The consumer verification skill has no command or default-verification change;
 this is contributor tooling. Documentation changes are ADR 0113, the error
 reference, testing guide, changelog and this qualification record.
+
+## Failed implementation attempts
+
+| Date | Source | Result | Raw log SHA-256 |
+|---|---|---|---|
+| 2026-11-11 | `72aa59ac` | Parallel process tests: two pass, one refuses scratch creation with `AlreadyExists`; fixture now adds a process-local atomic sequence. No host gate credited. | `1110b6c06f4007a4a13612514efab722136c0257c4ff60286c795816ecf16fee` |
+| 2026-11-11 | `72aa59ac` | Independent native review rejects named build-script probe identity: two adversarial controls demonstrate source-specific statuses can swap. Complete arguments now bind every invocation; replacement qualification pending. | `da5ad53f887d132225e847c10ca998338bbfaa36c053f79a5df5b761cc3888c4` |

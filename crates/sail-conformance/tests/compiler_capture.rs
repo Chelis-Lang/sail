@@ -5,19 +5,22 @@
 use std::error::Error;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sail_conformance::invocations::load;
 
 type TestResult = Result<(), Box<dyn Error>>;
+static NEXT_SCRATCH: AtomicU64 = AtomicU64::new(0);
 
 struct Scratch(PathBuf);
 impl Scratch {
     fn new() -> Result<Self, Box<dyn Error>> {
         let path = std::env::temp_dir().join(format!(
-            "sail-capture-{}-{}",
+            "sail-capture-{}-{}-{}",
             std::process::id(),
-            SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos()
+            SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos(),
+            NEXT_SCRATCH.fetch_add(1, Ordering::Relaxed)
         ));
         std::fs::create_dir(&path)?;
         Ok(Self(path))

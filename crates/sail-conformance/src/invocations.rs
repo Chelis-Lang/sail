@@ -135,28 +135,41 @@ pub struct Identity {
     pub compile_target: String,
     /// Binary target name, if Cargo supplied it.
     pub bin_name: Option<String>,
-    /// Compiler-discovery arguments, with declared path roots made relative.
-    /// Ordinary compiler jobs are identified by their package and target.
-    pub probe: Option<Vec<String>>,
+    /// Every argument, with declared path roots made relative. Build-script
+    /// probes can have a crate name too; arguments preserve their association.
+    pub arguments: Vec<String>,
 }
 
 impl Invocation {
-    /// Whether Cargo forwards this invocation's stdout: a compiler job for
-    /// a package, as opposed to Cargo's own probes (`rustc -vV`, `--print`),
-    /// which run without `CARGO_PKG_NAME`.
+    /// Whether this is a pinned Cargo compiler job. Cargo requests JSON
+    /// diagnostic/artifact messages for these jobs, including build-script
+    /// compilation. A build script's own probes inherit package variables,
+    /// so package or crate names alone cannot establish this distinction.
     #[must_use]
     pub fn forwarded(&self) -> bool {
-        self.meta.package_name.is_some() && !self.is_probe()
-    }
-
-    fn is_probe(&self) -> bool {
-        self.meta.crate_name.is_none()
-            || self.meta.argv.iter().any(|a| {
-                a == "--print" || a.starts_with("--print=") || a == "-vV" || a == "--version"
+        self.meta.package_name.is_some()
+            && self.meta.argv.iter().any(|a| a == "--error-format=json")
+            && self.meta.argv.iter().any(|a| {
+                a.strip_prefix("--json=")
+                    .is_some_and(|v| v.split(',').any(|v| v == "artifacts"))
             })
     }
 
-    /// Package/target identity, including discovery arguments for probes.
+    fn is_probe(&self) -> bool {
+        !self.forwarded()
+    }
+
+    fn known_probe_output(&self) -> bool {
+        self.meta.argv.iter().any(|a| {
+            a == "--print"
+                || a.starts_with("--print=")
+                || a == "-vV"
+                || a == "--version"
+                || a.starts_with("-Zunpretty=")
+        })
+    }
+
+    /// Package/target identity and complete argument association.
     #[must_use]
     pub fn identity(&self) -> Identity {
         let m = &self.meta;
@@ -179,9 +192,7 @@ impl Invocation {
             test: m.test,
             compile_target: m.compile_target.clone().unwrap_or_default(),
             bin_name: m.bin_name.clone(),
-            probe: self
-                .is_probe()
-                .then(|| m.argv.iter().map(|arg| relative_argument(arg, m)).collect()),
+            arguments: m.argv.iter().map(|arg| relative_argument(arg, m)).collect(),
         }
     }
 }
@@ -442,6 +453,12 @@ pub fn run(
         if invocations.is_empty() {
             return Err("error[SAIL3018]: no compiler invocations captured".to_owned());
         }
+        if invocations
+            .iter()
+            .any(|i| !i.forwarded() && !i.stdout.is_empty() && !i.known_probe_output())
+        {
+            return Err("error[SAIL3018]: stdout from an unrecognized compiler invocation; capture cannot establish Cargo forwarding".to_owned());
+        }
         let stdout = std::fs::read(work.join("stdout.txt")).map_err(|e| e.to_string())?;
         let parts: Vec<&[u8]> = invocations
             .iter()
@@ -651,7 +668,14 @@ mod tests {
     fn invocation(root: &str, name: Option<&str>, stdout: &[u8]) -> Invocation {
         let argv = name.map_or_else(
             || vec!["-vV".to_owned()],
-            |name| vec!["--crate-name".to_owned(), name.to_owned()],
+            |name| {
+                vec![
+                    "--crate-name".to_owned(),
+                    name.to_owned(),
+                    "--error-format=json".to_owned(),
+                    "--json=artifacts".to_owned(),
+                ]
+            },
         );
         let driver_env = BTreeMap::new();
         Invocation {
@@ -741,6 +765,29 @@ mod tests {
         );
         assert_ne!(
             compare_arms(&[a.clone(), a.clone()], &[a]).differences,
+            [] as [String; 0]
+        );
+    }
+
+    #[test]
+    fn named_build_script_probes_cannot_swap_source_status_associations() {
+        let mut a = invocation("/root", Some("proc_macro2"), b"");
+        a.meta.argv = vec![
+            "--crate-name=proc_macro2".to_owned(),
+            "src/probe/one.rs".to_owned(),
+        ];
+        let mut b = a.clone();
+        b.meta.argv[1] = "src/probe/two.rs".to_owned();
+        b.meta.exit_code = Some(101);
+        assert_ne!(a.identity(), b.identity());
+        assert!(!a.forwarded());
+        assert!(!b.forwarded());
+        let mut changed_a = a.clone();
+        let mut changed_b = b.clone();
+        changed_a.meta.exit_code = Some(101);
+        changed_b.meta.exit_code = Some(0);
+        assert_ne!(
+            compare_arms(&[a, b], &[changed_a, changed_b]).differences,
             [] as [String; 0]
         );
     }

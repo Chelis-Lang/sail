@@ -26,11 +26,17 @@ of the captures' lines, including newline bytes. Torn lines, missing bytes,
 extra bytes, unreadable records and a bounded search that cannot decide are
 never passes. Compiler-discovery probes are recorded and paired too; their
 streams go to Cargo or the invoking build script rather than aggregate stdout.
+The pinned Cargo job shape carries JSON diagnostic/artifact flags. Known
+version/print/unpretty discovery output is retained separately. Nonempty
+stdout with neither supported shape is refused, rather than guessing a subset
+that explains the aggregate. Hidden calls that mimic Cargo jobs can cause a
+strict refusal; they cannot authorize dropping output.
 
 Pair invocations by package/version, relative manifest, crate/target kind,
-binary name, test mode and compilation target. Discovery probes additionally
-bind their arguments. Only declared source, target and runtime path roots
-become relative in probe identity; exact original metadata remains recorded.
+binary name, test mode, compilation target and complete arguments. Named
+build-script probes also retain their source/flags/status association. Only
+declared source, target and runtime path roots become relative in argument
+identity; exact original metadata remains recorded.
 Repeated identities retain multiplicity and compare as multisets, consuming
 each occurrence once. Completion time, process ID and aggregate document
 position are never pairing keys.

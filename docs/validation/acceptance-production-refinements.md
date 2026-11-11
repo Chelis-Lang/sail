@@ -49,6 +49,19 @@ negative controls pass. Seven roots and all 338 captured paths retain their
 inventory/source guards. This is a bounded source/binding decision, not a
 passed local gate or acceptance of the campaign classifier. Full implementation
 and affected checker execution remain pending.
+## Conformance capture dependency binding, 2026-11-11
+
+ADR 0113 adds the existing `sha2` dependency to `sail-conformance`. Independent
+review parses both locks: each contains 255 packages, and the sole textual
+and semantic change is that one dependency edge. Every package version,
+checksum and other edge is unchanged. The parser production/development
+closure (25 packages including `proptest`), acceptance closure, source bodies,
+workspace manifest and layering table are unchanged. Only the exact root-lock
+binding advances from `0ce8fdba02d1a8b234fe173366585afecc465ad829f44fac0a13de6cdf8b0905`
+to `8cf710f08156bac9f28e959decafb0c7074543d089c6ab8d2dc0e3adbacc6fbe`.
+This source-review approval permits binding maintenance; it adds no Stock
+proof claim and does not qualify the capture implementation. Actual checker
+execution remains pending in the [capture record](conformance-compiler-capture.md).
 
 ## Unsourced-receipt native-binding review (#683, #704)
 
