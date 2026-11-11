@@ -57,3 +57,11 @@ could score. The replacement validates those contradictions in every original
 observation and retains each mode's repetitions. Scope-specific diagnostic
 messages remain separate. Added negative controls and current qualification
 are pending; the rejected candidate is not accepted campaign evidence.
+
+A subsequent independent native review rejects `d2378835`: its 15 classifier
+controls, three copy controls and clippy pass, but stable full confirmations
+could still hide invalid scoped outcome preconditions (missing attribution,
+unsat rejection or new collateral failure). The replacement applies each
+scope's full outcome checks to every retained attempt before selecting a
+confirmed result. Scoped rejection alone still cannot become a final detection.
+New controls and replacement qualification remain pending.

@@ -257,9 +257,6 @@ fn outcome(
             Reason::FailureUnattributed
         }
     })?;
-    if scope != Scope::Full {
-        return Err(Reason::FullConfirmationMissing);
-    }
     Ok(Outcome::Rejected(evidence))
 }
 
@@ -388,9 +385,28 @@ fn checked(input: &Classification) -> Result<Outcome, Reason> {
     let required = usize::try_from(input.repeats).map_err(|_| Reason::IdentityMismatch)?;
     let baseline = baseline_runs(&input.baseline, function, required)?;
     let (attempts, scope) = attempt_runs(&input.attempts, function, required)?;
+    for mode in [Scope::Scoped, Scope::Full] {
+        let base = input
+            .baseline
+            .iter()
+            .find(|run| run.scope == mode)
+            .or_else(|| baseline.first().copied())
+            .ok_or(Reason::BaselineMissing)?;
+        let mut expected = None;
+        for run in input.attempts.iter().filter(|run| run.scope == mode) {
+            let result = outcome(run, base, function, mode)?;
+            if expected.as_ref().is_some_and(|prior| prior != &result) {
+                return Err(Reason::Unstable);
+            }
+            expected = Some(result);
+        }
+    }
     let first = attempts.first().ok_or(Reason::Incomplete)?;
     let base = baseline.first().ok_or(Reason::BaselineMissing)?;
     let expected = outcome(first, base, function, scope)?;
+    if scope == Scope::Scoped && matches!(expected, Outcome::Rejected(_)) {
+        return Err(Reason::FullConfirmationMissing);
+    }
     for run in attempts.iter().skip(1) {
         if outcome(run, base, function, scope)? != expected {
             return Err(Reason::Unstable);

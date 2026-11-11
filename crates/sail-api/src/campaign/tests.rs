@@ -437,3 +437,51 @@ fn scope_specific_diagnostics_can_differ_without_changing_target_outcomes() {
         Outcome::Rejected(Detection::VerifierRejected)
     );
 }
+
+#[test]
+fn full_confirmations_do_not_erase_scoped_outcome_preconditions() {
+    for (kind, reason) in [
+        ("missing diagnostic", Reason::DiagnosticUnattributed),
+        ("unattributed diagnostic", Reason::DiagnosticUnattributed),
+        ("unsat rejection", Reason::InconsistentEvidence),
+    ] {
+        let mut input = input();
+        let mut scoped = input.attempts.clone();
+        for run in &mut scoped {
+            run.scope = Scope::Scoped;
+            match kind {
+                "missing diagnostic" => run.diagnostics.clear(),
+                "unattributed diagnostic" => run.diagnostics[0].function = None,
+                _ => run.functions[0].checks[0].answer = Some(AnswerName::Unsat),
+            }
+        }
+        input.attempts.extend(scoped);
+        assert_eq!(classify(&input), Outcome::Inconclusive(reason), "{kind}");
+    }
+    let mut input = input();
+    for run in &mut input.attempts {
+        run.functions[0].verified = true;
+        run.functions[0].checks = vec![check(AnswerName::Unsat, Failure::None)];
+        run.diagnostics.clear();
+    }
+    let mut scoped = input.attempts.clone();
+    for run in &mut scoped {
+        run.scope = Scope::Scoped;
+        run.functions.push(FunctionObservation {
+            identity: function("new_failure"),
+            verified: false,
+            unstable: false,
+            checks_complete: true,
+            checks: vec![check(AnswerName::Unknown, Failure::Verifier)],
+        });
+        run.diagnostics.push(diagnostic(
+            Some(function("new_failure")),
+            "new collateral failure",
+        ));
+    }
+    input.attempts.extend(scoped);
+    assert_eq!(
+        classify(&input),
+        Outcome::Inconclusive(Reason::CollateralFailure)
+    );
+}
