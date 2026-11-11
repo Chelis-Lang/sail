@@ -555,8 +555,56 @@ fn invocation_record(invocation: &Invocation) -> sail_verus::run::RunRecord {
     }
 }
 
+// A selected package's `-vV` probe can print Rust's verbose text followed by
+// Verus's ordinary JSON document. Keep both text boundaries byte-exact and
+// apply the SAME existing JSON oracle as for ordinary compiler invocations.
+// In particular, a fork's recorded version metadata is not a proof verdict.
+fn version_probe(invocation: &Invocation) -> Option<(sail_verus::run::RunRecord, &[u8], &[u8])> {
+    if !invocation.is_probe() || !invocation.meta.argv.iter().any(|a| a == "-vV") {
+        return None;
+    }
+    let bytes = &invocation.stdout;
+    let start = bytes.iter().enumerate().find_map(|(i, byte)| {
+        (*byte == b'{' && (i == 0 || bytes.get(i - 1) == Some(&b'\n'))).then_some(i)
+    })?;
+    let mut stream =
+        serde_json::Deserializer::from_slice(bytes.get(start..)?).into_iter::<serde_json::Value>();
+    let mut outputs = Vec::new();
+    let mut end = 0;
+    while let Some(Ok(doc)) = stream.next() {
+        if !doc.is_object()
+            || doc.get("verification-results").is_none()
+            || doc.get("func-details").is_none()
+        {
+            return None;
+        }
+        outputs.push(doc);
+        end = stream.byte_offset();
+    }
+    if outputs.is_empty() {
+        return None;
+    }
+    let mut record = invocation_record(invocation);
+    record.outputs = outputs;
+    record.stdout_rest.clear();
+    Some((record, bytes.get(..start)?, bytes.get(start + end..)?))
+}
+
 fn compare_invocations(a: &Invocation, b: &Invocation) -> crate::Comparison {
     if a.is_probe() || b.is_probe() {
+        if let (Some((plain, before_plain, after_plain)), Some((sail, before_sail, after_sail))) =
+            (version_probe(a), version_probe(b))
+        {
+            let mut c = crate::compare(&plain, &sail);
+            if before_plain != before_sail || after_plain != after_sail {
+                c.differences
+                    .push("probe non-JSON stdout bytes differ".to_owned());
+            }
+            if a.stderr != b.stderr {
+                c.differences.push("probe stderr bytes differ".to_owned());
+            }
+            return c;
+        }
         let mut c = crate::Comparison::default();
         if a.meta.exit_code != b.meta.exit_code {
             c.differences.push("probe exit code differs".to_owned());
@@ -842,6 +890,30 @@ mod tests {
             compare_arms(&[a, b], &[changed_a, changed_b]).differences,
             [] as [String; 0]
         );
+    }
+
+    #[test]
+    fn version_probe_uses_existing_json_oracle_and_keeps_all_adjacent_text() {
+        let left = b"rustc version\n{\"func-details\":{},\"verification-results\":{\"verified\":0,\"errors\":0},\"verus\":{\"version\":\"stock\"}}\n";
+        let right = b"rustc version\n{\"func-details\":{},\"verification-results\":{\"verified\":0,\"errors\":0},\"verus\":{\"version\":\"fork\"}}\n";
+        let a = invocation("/first", None, left);
+        let b = invocation("/second", None, right);
+        assert_eq!(
+            compare_arms(std::slice::from_ref(&a), std::slice::from_ref(&b)).differences,
+            [] as [String; 0]
+        );
+        for changed in [
+            String::from_utf8_lossy(right).replace("rustc version", "changed rustc"),
+            String::from_utf8_lossy(right).replace("\"errors\":0", "\"errors\":1"),
+            format!("{}extra", String::from_utf8_lossy(right)),
+            String::from_utf8_lossy(right).trim_end().to_owned(),
+        ] {
+            let changed = invocation("/second", None, changed.as_bytes());
+            assert_ne!(
+                compare_arms(std::slice::from_ref(&a), &[changed]).differences,
+                [] as [String; 0]
+            );
+        }
     }
 
     #[test]

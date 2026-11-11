@@ -1,5 +1,6 @@
 [package]
 name = "sail-conformance"
+default-run = "sail-conformance"
 description = "Differential harness against plain Verus on the pinned corpus"
 version.workspace = true
 edition.workspace = true

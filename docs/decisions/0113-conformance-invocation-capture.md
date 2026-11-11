@@ -55,8 +55,15 @@ the original requests; the only controlled supplement is the recorded harness
 logging configuration. Exact stdout, stderr and solver inputs are not rewritten.
 
 Every ordinary invocation uses the existing structured stdout and per-function
-oracle, with byte-equal stderr and exact non-JSON stdout. Probes compare both
-streams byte for byte and retain their exit statuses. The aggregate exit and
+oracle, with byte-equal stderr and exact non-JSON stdout. Probes retain their exit statuses and byte-exact stderr. Their plain stdout
+stays byte-exact. A selected-package `-vV` call can print Rust verbose text
+followed by ordinary Verus JSON: its adjacent text boundaries remain byte-exact
+and that JSON uses the same existing structured oracle, including every
+verification-result and function field. Recorded fork/version/timing metadata
+is treated exactly as it is for ordinary compiler JSON, not as a verdict.
+This corrects the initial implementation's overstrict probe-byte rule to the
+handover's requested structured-stdout comparison; no existing oracle field or
+accepted-divergence predicate is removed. The aggregate exit and
 complete diagnostic oracle remain checked. Plain confirmation repetitions use
 the same oracle under ADR 0009; invalid captures cannot become instability.
 Engine seal checks and displayed totals use all captured documents.
