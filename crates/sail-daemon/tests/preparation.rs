@@ -150,9 +150,9 @@ fn foreground_lease_blocks_preparation_and_release_allows_it() -> io::Result<()>
 
 #[test]
 fn foreground_preempts_real_running_process_and_shutdown_reaps_it() -> io::Result<()> {
-    let fixture = Fixture::new("sleep 30")?;
+    let fixture = Fixture::new("touch ../started; sleep 30")?;
     fixture.call(&Request::Prepare(fixture.request("project")?))?;
-    fixture.wait(|status| status.running.is_some())?;
+    fixture.wait(|status| status.running.is_some() && fixture.root.join("started").exists())?;
     let lease = fixture.foreground()?;
     let status = fixture.wait(|status| status.running.is_none())?;
     assert_eq!(status.superseded, 1);
@@ -167,11 +167,11 @@ fn foreground_preempts_real_running_process_and_shutdown_reaps_it() -> io::Resul
 #[test]
 fn foreground_lets_its_workspaces_origin_preparation_finish() -> io::Result<()> {
     let fixture = Fixture::with_grace(
-        "sleep 1; printf '%s' '{\"ready\":true,\"origin\":null}'",
+        "touch ../started; sleep 1; printf '%s' '{\"ready\":true,\"origin\":null}'",
         Duration::from_secs(4),
     )?;
     fixture.call(&Request::Prepare(fixture.origin_request("project")?))?;
-    fixture.wait(|status| status.running.is_some())?;
+    fixture.wait(|status| status.running.is_some() && fixture.root.join("started").exists())?;
     let started = Instant::now();
     let lease = fixture.foreground()?;
     assert!(started.elapsed() < Duration::from_secs(1));
@@ -187,9 +187,9 @@ fn foreground_lets_its_workspaces_origin_preparation_finish() -> io::Result<()> 
 #[test]
 fn foreground_kills_its_workspaces_origin_preparation_after_the_grace() -> io::Result<()> {
     let grace = Duration::from_millis(500);
-    let fixture = Fixture::with_grace("sleep 300", grace)?;
+    let fixture = Fixture::with_grace("touch ../started; sleep 300", grace)?;
     fixture.call(&Request::Prepare(fixture.origin_request("project")?))?;
-    fixture.wait(|status| status.running.is_some())?;
+    fixture.wait(|status| status.running.is_some() && fixture.root.join("started").exists())?;
     let preempted = Instant::now();
     let lease = fixture.foreground()?;
     let status = fixture.wait(|status| status.running.is_none())?;
