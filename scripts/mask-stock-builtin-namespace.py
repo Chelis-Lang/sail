@@ -14,7 +14,10 @@ NAMESPACES = {
     "macos": b"/Users/runner/work/verus/verus/source/builtin",
     "linux": b"/home/runner/work/verus/verus/source/builtin",
 }
-PATH_BYTES = frozenset(b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_./-\\") | frozenset(range(128, 256))
+# Paths in these binary records end at NUL or rustc_serialize's non-UTF-8
+# STR_SENTINEL (0xc1). Every printable byte, including punctuation and spaces,
+# belongs to the candidate path; never infer a boundary from text punctuation.
+TERMINATORS = frozenset((0, 0xC1))
 CHUNK = 1024 * 1024
 LOOKAHEAD = 8192
 MAX_PATH = 4096
@@ -30,9 +33,13 @@ def masked(data, stop, namespace):
             break
         cursor = at + len(namespace)
         end = cursor
-        while end < len(data) and data[end] in PATH_BYTES and end - cursor < MAX_PATH:
+        while end < len(data) and data[end] not in TERMINATORS and end - cursor < MAX_PATH:
             end += 1
         tail = data[cursor:end]
+        try:
+            tail.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
         # A following identifier is a prefix lookalike. Only the exact directory
         # or canonical descendants qualify; traversal/dot/duplicate separators do not.
         if tail and not tail.startswith(b"/"):

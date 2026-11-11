@@ -1,6 +1,6 @@
 # 0112: Preserve stock's builtin source paths in the runtime
 
-- **Status:** accepted by owner, 2026-11-11; implementation and runtime qualification pending
+- **Status:** accepted by owner, 2026-11-11; scoped scanner qualified, runtime implementation/qualification pending
 - **Date:** 2026-11-11
 - **Tracking:** #710, open question 51
 

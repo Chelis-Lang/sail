@@ -109,6 +109,30 @@ for suffix in _lookalike /../private /src/../../private /./src/lib.rs //src/lib.
   expect 1 "namespace lookalike or noncanonical path" --stock-builtin-namespace macos "$t"
 done
 
+# Real rustc metadata uses a length-prefixed UTF-8 string followed by 0xc1.
+# Punctuation is part of a path component, not evidence of a delimiter.
+for platform in macos linux; do
+  namespace="$mac"
+  [ "$platform" != linux ] || namespace="$linux"
+  for suffix in '+private/src/lib.rs' '@private/src/lib.rs' ' private/src/lib.rs' '=private/src/lib.rs' '%private/src/lib.rs' '!private/src/lib.rs' '#private/src/lib.rs' '$private/src/lib.rs' '&private/src/lib.rs' '/plus+directory/../../private' '/space directory/../../private'; do
+    t="$(tree scoped-punctuation)"
+    mkdir -p "$t/$runtime"
+    printf '%s%s\0' "$namespace" "$suffix" >"$t/$runtime/vstd.vir"
+    expect 1 "punctuation does not end namespace $platform" --stock-builtin-namespace "$platform" "$t"
+  done
+  t="$(tree scoped-rustc-metadata)"
+  mkdir -p "$t/$runtime"
+  python3 - "$t/$runtime/libverus_builtin.rlib" "$namespace" <<'PYFIXTURE'
+from pathlib import Path
+import sys
+root=sys.argv[2].encode()
+source=root+b'/src/lib.rs'
+Path(sys.argv[1]).write_bytes(bytes([len(source)])+source+b'\xc1'+bytes([len(root)])+root+b'\xc1')
+PYFIXTURE
+  expect 0 "actual Rust string delimiters $platform" --stock-builtin-namespace "$platform" "$t"
+  expect 1 "explicit Rust string token remains strict" --stock-builtin-namespace "$platform" "$t" "$namespace"
+done
+
 t="$(tree scoped-foreign-platform)"
 mkdir -p "$t/$runtime"
 printf '%s/src/lib.rs\0' "$linux" >"$t/$runtime/vstd.vir"
