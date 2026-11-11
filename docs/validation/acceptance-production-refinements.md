@@ -10,6 +10,28 @@ the combined revision-only input projection is recorded below.
 This record owns the scope of the
 [production refinements](../design/acceptance-production-refinements.md).
 
+## Dependency-lock source review, 2026-11-11
+
+The #714 candidate updates `rustix` from 1.1.5 to 1.1.6 in the main and
+temporal workspaces for RUSTSEC-2026-0486. Independent source review confirms
+that each lock changes only that package's version and archive checksum;
+every package count, dependency edge and selected feature is unchanged.
+The parser production graph and its source-shared bodies are unchanged, and
+neither its production nor development dependency closure contains `rustix`.
+Only the reviewed root-lock binding in `PARSER_NATIVE_SHA256` advances, from
+`14fb80934b5a6cdf3165d9c3b090efadbeb1ee1a8319df688e4fead45a2b0845` to
+`0ce8fdba02d1a8b234fe173366585afecc465ad829f44fac0a13de6cdf8b0905`.
+No proof claim, control, source inventory or comparison is relaxed.
+
+The upstream fix separates extended-attribute size queries from initialized
+buffer results. Sail calls none of those APIs. Its used file-open, polling,
+identity and process-control wrappers were reviewed; the patch's additional
+filesystem changes still require native runtime qualification. The separately
+pinned Verus source lock and existing runtime archives are unchanged.
+Workspace, solver, extension, conformance and affected proof/checker
+qualification are pending for this candidate; this source review is not a
+passed acceptance gate.
+
 ## Unsourced-receipt native-binding review (#683, #704)
 
 The unsourced-check gate changes only `receipt_success` in `adapter.rs`: a
