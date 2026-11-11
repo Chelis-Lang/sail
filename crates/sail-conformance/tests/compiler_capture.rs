@@ -176,3 +176,26 @@ fn compiler_stdin_is_forwarded_retained_and_bound_to_probe_outcomes() -> TestRes
     );
     Ok(())
 }
+
+#[test]
+fn failed_health_preflight_cannot_hide_after_an_earlier_complete_job() -> TestResult {
+    let scratch = Scratch::new()?;
+    assert!(scratch.command("exit 0").output()?.status.success());
+    assert_eq!(load(&scratch.0)?.len(), 1);
+    let health = scratch.0.with_extension("errors");
+    let saved = scratch.0.with_extension("saved-health");
+    std::fs::rename(&health, &saved)?;
+    // A directory is unopenable for append even when Linux CI runs as root.
+    std::fs::create_dir(&health)?;
+    let output = scratch.command("exit 0").output()?;
+    std::fs::remove_dir(&health)?;
+    std::fs::rename(&saved, &health)?;
+    assert_eq!(output.status.code(), Some(125));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("health record is inaccessible"));
+    assert_eq!(std::fs::read(&health)?, [] as [u8; 0]);
+    assert!(
+        load(&scratch.0).is_err(),
+        "failed preflight left no incomplete reservation"
+    );
+    Ok(())
+}

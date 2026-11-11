@@ -274,26 +274,27 @@ fn complete(mut child: std::process::Child, mut metadata: Meta, dir: &Path) -> E
 
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
-    let Some(driver) = std::env::var_os(DRIVER).map(PathBuf::from) else {
-        return failure(format!("{DRIVER} is not set"));
-    };
     let Some(dir) = std::env::var_os(DIR).map(PathBuf::from) else {
         return failure(format!("{DIR} is not set"));
+    };
+    let started_ns = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let name = format!("{started_ns:032}-{}", std::process::id());
+    // Reserve before every fallible preflight, not just before spawning. If
+    // the independent health channel is inaccessible, this incomplete marker
+    // still prevents an earlier complete job from concealing this invocation.
+    if let Err(e) = std::fs::create_dir(dir.join(format!("{name}.tmp"))) {
+        return failure(format!("cannot reserve capture: {e}"));
+    }
+    let Some(driver) = std::env::var_os(DRIVER).map(PathBuf::from) else {
+        return failure(format!("{DRIVER} is not set"));
     };
     let Some(health) = std::env::var_os("SAIL_CONFORMANCE_TEE_ERRORS") else {
         return failure("capture health record is not set");
     };
     if let Err(error) = std::fs::OpenOptions::new().append(true).open(health) {
         return failure(format!("capture health record is inaccessible: {error}"));
-    }
-    let started_ns = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos());
-    let name = format!("{started_ns:032}-{}", std::process::id());
-    // Reserve before spawning; failure is also reported outside this directory,
-    // so a prior successful probe cannot conceal a failed reservation.
-    if let Err(e) = std::fs::create_dir(dir.join(format!("{name}.tmp"))) {
-        return failure(format!("cannot reserve capture: {e}"));
     }
     if args.iter().any(|a| a.to_str().is_none()) {
         return failure("non-UTF-8 compiler arguments cannot be captured");
