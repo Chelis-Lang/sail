@@ -21,6 +21,16 @@ Resolved defects are retained in the [changelog](../CHANGELOG.md) and
 oracle completion (#611), and compound-field lowering/retained-read correction
 (#323). Original failures and source-specific qualification stay unchanged.
 
+## Builtin diagnostic source paths
+
+The selected Mac fork can print a different builtin definition source path than
+stock in a Rust type-error note (#710). Both reproduced runs exit 1, but their
+diagnostic bytes differ; this is a default-mode conformance defect. A component
+rebuild matches the pinned stock bytes. Its scanner exception is owner-approved
+under [ADR 0112](decisions/0112-stock-builtin-source-paths.md); production runtime
+binding, full qualification and selection remain open. See the
+[builtin source-path record](validation/builtin-source-paths.md).
+
 ## Accepted integration limit
 
 - A hosted cached-session statistics control intermittently took the genuine

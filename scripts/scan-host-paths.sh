@@ -2,7 +2,7 @@
 # Scans every file of an unpacked runtime archive for host paths before it is
 # published (scripts/build-macos-runtime.sh, docs/releasing.md).
 #
-#   scripts/scan-host-paths.sh DIR [TOKEN...]
+#   scripts/scan-host-paths.sh [--stock-builtin-namespace macos|linux] DIR [TOKEN...]
 #
 # Searches the complete bytes of each regular file, and the target of each
 # symbolic link, for `/Users/`, `/home/` and every TOKEN (fixed strings). It
@@ -16,7 +16,14 @@ export LC_ALL=C
 
 fail() { echo "scan: $*; the archive is not checked" >&2; exit 2; }
 
-[ $# -ge 1 ] || { echo "usage: $0 DIR [TOKEN...]" >&2; exit 2; }
+scope=""
+if [ "${1:-}" = --stock-builtin-namespace ]; then
+  [ $# -ge 3 ] || fail "expected macos|linux and an archive directory"
+  scope="$2"
+  case "$scope" in macos|linux) ;; *) fail "unknown builtin namespace platform: $scope" ;; esac
+  shift 2
+fi
+[ $# -ge 1 ] || { echo "usage: $0 [--stock-builtin-namespace macos|linux] DIR [TOKEN...]" >&2; exit 2; }
 dir="$1"
 shift
 [ -d "$dir" ] || fail "$dir is not a directory"
@@ -24,7 +31,9 @@ tokens=(/Users/ /home/ "$@")
 for t in "${tokens[@]}"; do [ -n "$t" ] || fail "empty token"; done
 
 list="$(mktemp)"
-trap 'rm -f "$list"' EXIT
+filtered="$(mktemp)" || fail "cannot create private scanner output"
+trap 'rm -f "$list" "$filtered"' EXIT
+here="$(cd "$(dirname "$0")" && pwd)"
 # Enumerate first, into a file, so a find failure is seen (a process
 # substitution's status would be lost).
 find "$dir" -mindepth 1 ! -type d -print0 >"$list" || fail "cannot enumerate $dir"
@@ -50,9 +59,23 @@ while IFS= read -r -d '' f; do
     done
   elif [ -f "$f" ]; then
     [ -r "$f" ] || fail "cannot read $rel"
-    for t in "${tokens[@]}"; do
-      if has "$t" "$f"; then echo "scan: $t in $rel"; hits=1; fi
-    done
+    case "$scope:$rel" in
+      macos:verus/source/target-verus/release/libverus_builtin.rlib|macos:verus/source/target-verus/release/libvstd.rlib|macos:verus/source/target-verus/release/vstd.vir|linux:verus/source/target-verus/release/libverus_builtin.rlib|linux:verus/source/target-verus/release/libvstd.rlib|linux:verus/source/target-verus/release/vstd.vir)
+        python3 "$here/mask-stock-builtin-namespace.py" "$scope" "$f" "$filtered" || fail "cannot complete scoped metadata scan: $rel"
+        for t in /Users/ /home/; do
+          if has "$t" "$filtered"; then echo "scan: $t in $rel"; hits=1; fi
+        done
+        # Explicit tokens are always strict, even if they match the public namespace.
+        for t in "$@"; do
+          if has "$t" "$f"; then echo "scan: $t in $rel"; hits=1; fi
+        done
+        ;;
+      *)
+        for t in "${tokens[@]}"; do
+          if has "$t" "$f"; then echo "scan: $t in $rel"; hits=1; fi
+        done
+        ;;
+    esac
   else
     fail "unexpected file type: $rel"
   fi
@@ -60,4 +83,8 @@ done <"$list"
 
 [ "$count" -gt 0 ] || fail "$dir has no files"
 [ "$hits" = 0 ] || exit 1
-echo "scan: clean ($count files)"
+if [ -n "$scope" ]; then
+  echo "scan: clean ($count files; stock builtin namespace $scope)"
+else
+  echo "scan: clean ($count files)"
+fi

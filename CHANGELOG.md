@@ -69,6 +69,11 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
 - Background preparation waits briefly for a worker lock inherited by another
   daemon child instead of discarding the task (#711). The wait is bounded to
   one second and stops on foreground preemption or daemon shutdown.
+- Runtime archive scanning has an explicit platform-scoped stock builtin
+  namespace mode (ADR 0112). Only three expected compiler-metadata positions
+  qualify; explicit tokens, other home paths, symlinks and failures stay strict.
+  Runtime rebuilding, qualification and selection for #710 remain separate.
+
 - Daemon shutdown and partial-startup cleanup cannot miss an idle job worker's
   wakeup while joining it (#715).
 - Update the main and temporal workspaces' `rustix` pin to 1.1.6, fixing

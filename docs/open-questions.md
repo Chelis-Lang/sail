@@ -586,3 +586,18 @@ planned for releases after 0.1.0. The owner answered all twelve on
     requested and is outside the v0.3.0 program. Do not schedule support work
     or treat acceptance of this oracle as a pending release decision. The
     spike remains historical evidence, not an adopted platform commitment.
+
+51. **Canonical stock builtin paths in runtime metadata.** May the archive
+    scanner permit the pinned stock release's canonical builtin source
+    namespace only in `libverus_builtin.rlib`, `libvstd.rlib` and `vstd.vir`
+    at their expected runtime locations? A native rebuilt Mac component
+    matches #710's stock diagnostic bytes exactly, but the unchanged scanner
+    rejects those same public source labels. All other paths, symlinks,
+    explicit scan tokens and failures remain strict. The original scan stays
+    failed; the prototype stays unselected.
+
+    **Answered 2026-11-11 (owner):** Approve the scoped exception. Other home
+    paths, symlinks, explicit tokens and read failures remain strict; runtime
+    selection still requires full qualification. See
+    [ADR 0112](decisions/0112-stock-builtin-source-paths.md) for the exact
+    proposal, evidence, limits and remaining gates.
