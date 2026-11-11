@@ -323,6 +323,39 @@ fn load(corpus_path: &Path) -> Result<(Corpus, Installed, PathBuf), String> {
     Ok((corpus, installed, cache))
 }
 
+/// Reject unmatched explicit selectors before any project is fetched.
+fn validate_projects(o: &Options, corpus: &Corpus) -> Result<(), String> {
+    for name in &o.projects {
+        let Some(project) = corpus.projects.iter().find(|project| project.name == *name) else {
+            return Err(format!(
+                "error[SAIL3017]: unknown corpus project `{name}`; select an exact name from {}",
+                o.corpus.display()
+            ));
+        };
+        if project.tier > o.tier || project.tier == Tier::Tier2 {
+            return Err(format!(
+                "error[SAIL3017]: corpus project `{name}` is outside the selected {:?} tier",
+                o.tier
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn require_runnable_units(
+    units: &[Unit],
+    engine_lacks: &BTreeMap<String, Vec<String>>,
+) -> Result<(), String> {
+    if units
+        .iter()
+        .any(|unit| !engine_lacks.contains_key(&unit.project))
+    {
+        Ok(())
+    } else {
+        Err("error[SAIL3017]: no runnable corpus units after tier, project, filter and requirement selection; no conformance was established".to_owned())
+    }
+}
+
 /// `engine_features` is the engine arm's recorded Verus Cargo features, and
 /// `None` for the other arms.
 fn select(
@@ -332,6 +365,7 @@ fn select(
     verus: &sail_verus::toolchain::VerusPin,
     engine_features: Option<&[String]>,
 ) -> Result<Selection, String> {
+    validate_projects(o, corpus)?;
     let toolchain = verus.rust_toolchain.as_str();
     let mut all = Vec::new();
     let mut skipped = Vec::new();
@@ -368,6 +402,7 @@ fn select(
     if let Some(f) = &o.filter {
         all.retain(|u| u.id.contains(f.as_str()));
     }
+    require_runnable_units(&all, &engine_lacks)?;
     let verus_source = if all.iter().any(|u| u.patch_verus_deps) {
         eprintln!("fetching verus @ {}", verus.commit);
         Some(
@@ -920,6 +955,55 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn explicit_projects_must_exist_and_belong_to_the_selected_tier() -> Result<(), String> {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/corpus.toml");
+        let corpus = Corpus::load(&path).map_err(|error| error.to_string())?;
+        let options = |names: &[&str]| {
+            let mut args = vec!["fetch".to_owned(), "--tier".to_owned(), "fast".to_owned()];
+            for name in names {
+                args.extend(["--project".to_owned(), (*name).to_owned()]);
+            }
+            parse(&args)
+        };
+        assert!(validate_projects(&options(&["human-eval-verus"])?, &corpus).is_ok());
+        let unknown = validate_projects(&options(&["human-eval-verus", "human-eval"])?, &corpus);
+        assert!(unknown.is_err_and(|error| {
+            error.contains("SAIL3017") && error.contains("unknown corpus project `human-eval`")
+        }));
+        let excluded = validate_projects(&options(&["anvil"])?, &corpus);
+        assert!(excluded.is_err_and(|error| {
+            error.contains("SAIL3017") && error.contains("outside the selected Fast tier")
+        }));
+        Ok(())
+    }
+
+    #[test]
+    fn empty_and_wholly_unavailable_selections_cannot_establish_conformance() {
+        let unit = |project: &str| Unit {
+            id: format!("{project}/lib.rs"),
+            project: project.to_owned(),
+            source_dir: PathBuf::new(),
+            root: "lib.rs".to_owned(),
+            build: sail_verus::corpus::Build::Verus,
+            args: Vec::new(),
+            cargo_args: Vec::new(),
+            patch_verus_deps: false,
+            target_dir: None,
+            env: BTreeMap::new(),
+            expected: None,
+        };
+        assert!(require_runnable_units(&[], &BTreeMap::new()).is_err());
+        let unavailable =
+            BTreeMap::from([("needs-singular".to_owned(), vec!["singular".to_owned()])]);
+        assert!(require_runnable_units(&[unit("needs-singular")], &unavailable).is_err());
+        assert!(
+            require_runnable_units(&[unit("needs-singular"), unit("ordinary")], &unavailable)
+                .is_ok()
+        );
+        assert!(require_runnable_units(&[unit("ordinary")], &BTreeMap::new()).is_ok());
+    }
 
     #[test]
     fn units_the_engine_cannot_run_are_a_visible_count_not_same_or_different() {

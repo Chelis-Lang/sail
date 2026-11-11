@@ -80,6 +80,9 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
   classifier as implementation groundwork; campaign execution/CLI/MCP are not
   available yet. Ordinary verification output and proof tiers are unchanged.
 
+- `sail-conformance` refuses unknown project names, explicit projects outside
+  the chosen tier and selections with no runnable units (`SAIL3017`), instead
+  of succeeding with zero comparisons (#716).
 - Daemon shutdown and partial-startup cleanup cannot miss an idle job worker's
   wakeup while joining it (#715).
 - Update the main and temporal workspaces' `rustix` pin to 1.1.6, fixing

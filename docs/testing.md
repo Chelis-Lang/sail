@@ -292,6 +292,14 @@ plus a `<name>.meta.json` sidecar); results are in the
 | `vest` | `vest/vest_lib` | `--project vest --name vest --per-class 6` |
 | `capybarakv` | `verified-storage/capybaraKV/capybarakv` | `--project verified-storage --unit verified-storage/capybaraKV/capybarakv --name capybarakv --per-class 6` |
 
+Project selectors use the corpus project name, which can differ from the
+catalogue name: fetch HumanEval with
+`sail-conformance fetch --tier fast --project human-eval-verus`.
+The `fetch`, `run` and `engine` commands refuse unknown projects, explicit
+projects outside the chosen tier and selections without runnable units with
+`SAIL3017`. An empty selection establishes no conformance; unavailable coverage
+is never counted as Same.
+
 All use `--seed 20261020`. To make or extend a catalogue:
 
 ```sh
