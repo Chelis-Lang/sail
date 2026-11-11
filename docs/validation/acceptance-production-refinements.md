@@ -26,11 +26,11 @@ No proof claim, control, source inventory or comparison is relaxed.
 The upstream fix separates extended-attribute size queries from initialized
 buffer results. Sail calls none of those APIs. Its used file-open, polling,
 identity and process-control wrappers were reviewed; the patch's additional
-filesystem changes still require native runtime qualification. The separately
+filesystem changes have completed the native runtime qualification recorded below. The separately
 pinned Verus source lock and existing runtime archives are unchanged.
-Workspace, solver, extension, conformance and affected proof/checker
-qualification are pending for this candidate; this source review is not a
-passed acceptance gate.
+The [native gate record](native-job-lifecycle.md) identifies executed checks
+including the complete conformance, model and production-refinement results.
+Source review alone is not a passed acceptance gate.
 
 ## Unsourced-receipt native-binding review (#683, #704)
 
