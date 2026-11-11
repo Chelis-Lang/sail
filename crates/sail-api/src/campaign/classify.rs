@@ -218,7 +218,20 @@ fn outcome(
     {
         return Err(Reason::InconsistentEvidence);
     }
-    let evidence = detection(observed).ok_or(Reason::ResourceOnly)?;
+    let evidence = detection(observed).ok_or_else(|| {
+        if !observed.checks.is_empty()
+            && observed.checks.iter().all(|check| {
+                matches!(
+                    check.failure,
+                    Failure::ResourceLimit | Failure::Timeout | Failure::Cancelled
+                ) || effort(check).exhausted()
+            })
+        {
+            Reason::ResourceOnly
+        } else {
+            Reason::FailureUnattributed
+        }
+    })?;
     if scope != Scope::Full {
         return Err(Reason::FullConfirmationMissing);
     }

@@ -251,3 +251,10 @@ or reuse a receipt. A fresh owned target is required before retrying.
 | `SAIL3151` | Fresh standalone verification could not establish complete input coverage for a reusable Current proof | Read the verifier verdict and diagnostics; unsupported observations run fresh without receipt reuse |
 | `SAIL3160` | Requirement attribution for an ordinary job is invalid, unsupported or unavailable: an empty, duplicate or malformed `ID=FUNCTION` pair, an engine or repair job, a job submitted without attributions, or an older service | Pass `--requirement ID=FUNCTION` with `--background` on a stock or standalone `sail verify`; restart an older daemon. See [requirement assurance](requirement-assurance.md#ordinary-verus-jobs) |
 | `SAIL3161` | A retained job record or baseline was written by a neutral source job, which Sail 0.2 offered and 0.3.0 removed. It stays listed, but it is never read as verification evidence | Verify the source again as ordinary Verus input. Sail 0.2.0 can still read the record |
+
+## Verus mutation campaigns
+
+| Code | Meaning | Action |
+|---|---|---|
+| `SAIL3170` | Campaign bounds exceed the supported inventory, copies, repetitions or wall-time limits | Use 1–10000 mutants, 1–8 copies, 2–20 repetitions and 1–86400 seconds |
+| `SAIL3171` | An owned campaign source copy cannot be captured, created or patched coherently | Inspect the retained source/error; use a readable workspace without source symlinks and retry from a new plan |

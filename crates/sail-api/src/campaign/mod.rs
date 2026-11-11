@@ -6,6 +6,7 @@
 //! solver answers, ledger verdicts or evidence tiers.
 
 mod classify;
+mod service;
 
 #[cfg(test)]
 mod tests;
@@ -16,6 +17,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 pub use classify::{classify, summarize};
+pub use service::{Candidate, Detail, Exclusion, Item, Plan, State, Submission, View};
 
 /// Campaign protocol and report version, separate from verification output.
 pub const VERSION: u32 = 1;
@@ -55,7 +57,7 @@ impl Bounds {
     /// Validates hard limits without silently changing a requested budget.
     ///
     /// # Errors
-    /// `SAIL0930` for zero, excessive or insufficient-repeat bounds.
+    /// `SAIL3170` for zero, excessive or insufficient-repeat bounds.
     pub fn validate(&self) -> Result<(), String> {
         if self.mutants == 0
             || self.mutants > MAX_MUTANTS
@@ -65,7 +67,7 @@ impl Bounds {
             || self.seconds == 0
             || self.seconds > MAX_SECONDS
         {
-            return Err("SAIL0930: invalid campaign bounds; require 1..10000 mutants, 1..8 copies, 2..20 repetitions and 1..86400 seconds".to_owned());
+            return Err("SAIL3170: invalid campaign bounds; require 1..10000 mutants, 1..8 copies, 2..20 repetitions and 1..86400 seconds".to_owned());
         }
         Ok(())
     }
@@ -290,6 +292,8 @@ pub enum Reason {
     Unstable,
     /// Rejection had no diagnostic attributed to the mutated function.
     DiagnosticUnattributed,
+    /// The producer could not attribute a non-resource failure category.
+    FailureUnattributed,
     /// The function's only failures were resource, timeout or cancellation.
     ResourceOnly,
     /// A function other than the target acquired a failure beyond baseline.

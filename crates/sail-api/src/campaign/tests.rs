@@ -323,3 +323,21 @@ fn bounds_and_empty_scores_remain_explicit() {
     );
     assert_eq!(summarize([], 1, 1).score, None);
 }
+
+#[test]
+fn absent_or_unattributed_failures_do_not_claim_resource_exhaustion() {
+    for missing in [true, false] {
+        let mut input = input();
+        for run in &mut input.attempts {
+            if missing {
+                run.functions[0].checks.clear();
+            } else {
+                run.functions[0].checks[0].failure = Failure::Unattributed;
+            }
+        }
+        assert_eq!(
+            classify(&input),
+            Outcome::Inconclusive(Reason::FailureUnattributed)
+        );
+    }
+}
