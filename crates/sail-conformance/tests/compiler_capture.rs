@@ -3,7 +3,6 @@
 #![forbid(unsafe_code)]
 
 use std::error::Error;
-use std::os::unix::process::CommandExt as _;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -201,123 +200,117 @@ fn failed_health_preflight_cannot_hide_after_an_earlier_complete_job() -> TestRe
     Ok(())
 }
 
-#[test]
-fn supervisor_observes_failure_when_both_file_channels_or_environment_are_lost() -> TestResult {
-    struct Companion(std::process::Child);
-    impl Drop for Companion {
-        fn drop(&mut self) {
-            let _ = self.0.kill();
-            let _ = self.0.wait();
-        }
-    }
-    for cleared in [false, true] {
-        let scratch = Scratch::new()?;
-        let mut owner = Companion(
-            Command::new(env!("CARGO_BIN_EXE_sail-conformance-tee"))
-                .arg(sail_verus::run::SUPERVISOR_ARG)
-                .env(sail_verus::run::SUPERVISOR_ENV, "1")
-                .process_group(0)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn()?,
-        );
-        let stage = scratch.0.join(format!("capture-frontend-{}", owner.0.id()));
-        std::fs::create_dir(&stage)?;
-        let executable = stage.join("verus");
-        std::fs::copy(env!("CARGO_BIN_EXE_sail-conformance-tee"), &executable)?;
-        let mut command = Command::new(&executable);
-        command.process_group(i32::try_from(owner.0.id())?);
-        command
-            .env("SAIL_CONFORMANCE_TEE_DRIVER", "/bin/sh")
-            .args(["-c", "exit 0"]);
-        if cleared {
-            command
-                .env_remove("SAIL_CONFORMANCE_TEE_DIR")
-                .env_remove("SAIL_CONFORMANCE_TEE_ERRORS");
-        } else {
-            let blocked = scratch.0.join("not-a-directory");
-            std::fs::write(&blocked, "blocked")?;
-            command
-                .env("SAIL_CONFORMANCE_TEE_DIR", blocked)
-                .env("SAIL_CONFORMANCE_TEE_ERRORS", &scratch.0);
-        }
-        let failed = command.output()?;
-        assert!(!failed.status.success());
-        assert!(
-            failed.status.code().is_none(),
-            "capture group was not terminated"
-        );
-        let deadline = Instant::now() + Duration::from_secs(2);
-        let status = loop {
-            if let Some(status) = owner.0.try_wait()? {
-                break status;
-            }
-            assert!(
-                Instant::now() < deadline,
-                "capture error was lost by the companion"
-            );
-            std::thread::sleep(Duration::from_millis(5));
-        };
-        assert!(!status.success());
-    }
-    // Merely using the staged alias does not fail a healthy capture.
-    let scratch = Scratch::new()?;
-    let mut owner = Companion(
-        Command::new(env!("CARGO_BIN_EXE_sail-conformance-tee"))
-            .arg(sail_verus::run::SUPERVISOR_ARG)
-            .env(sail_verus::run::SUPERVISOR_ENV, "1")
-            .process_group(0)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?,
-    );
-    let stage = scratch.0.join(format!("capture-frontend-{}", owner.0.id()));
-    std::fs::create_dir(&stage)?;
-    let executable = stage.join("verus");
-    std::fs::copy(env!("CARGO_BIN_EXE_sail-conformance-tee"), &executable)?;
-    let base = scratch.command("exit 0");
-    let output = Command::new(executable)
-        .process_group(i32::try_from(owner.0.id())?)
-        .args(base.get_args())
-        .envs(base.get_envs().filter_map(|(k, v)| v.map(|v| (k, v))))
-        .output()?;
-    assert!(output.status.success());
-    assert!(owner.0.try_wait()?.is_none());
-    drop(owner.0.stdin.take());
-    assert!(owner.0.wait()?.success());
+fn executable(path: &std::path::Path, text: &str) -> TestResult {
+    use std::os::unix::fs::PermissionsExt as _;
+    std::fs::write(path, text)?;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755))?;
     Ok(())
 }
 
 #[test]
-fn retained_alias_cannot_signal_a_process_outside_its_current_group() -> TestResult {
-    let scratch = Scratch::new()?;
-    let mut victim = Command::new("/bin/sh")
-        .args(["-c", "cat >/dev/null"])
-        .process_group(0)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?;
-    let run = (|| -> TestResult {
-        let stage = scratch.0.join(format!("capture-frontend-{}", victim.id()));
-        std::fs::create_dir(&stage)?;
-        let executable = stage.join("verus");
-        std::fs::copy(env!("CARGO_BIN_EXE_sail-conformance-tee"), &executable)?;
-        let failed = Command::new(executable)
-            .env_remove("SAIL_CONFORMANCE_TEE_DIR")
-            .env_remove("SAIL_CONFORMANCE_TEE_ERRORS")
-            .args(["-c", "exit 0"])
-            .output()?;
-        assert_eq!(failed.status.code(), Some(125));
-        assert!(
-            victim.try_wait()?.is_none(),
-            "retained alias signaled an unrelated process"
+fn parent_observes_detached_and_consumed_capture_failures() -> TestResult {
+    use sail_verus::corpus::{Build, Unit};
+    use sail_verus::toolchain::{Installed, Pins};
+    use std::collections::BTreeMap;
+    for mode in [
+        "positive",
+        "detached",
+        "files",
+        "erased",
+        "record-removed",
+        "record-renamed",
+    ] {
+        let scratch = Scratch::new()?;
+        let driver = scratch.0.join("driver");
+        let cargo = scratch.0.join("cargo-verus");
+        executable(
+            &driver,
+            "#!/bin/sh\nprintf '{\"verification-results\":{\"verified\":0,\"errors\":0},\"func-details\":{}}\\n'\n",
+        )?;
+        executable(
+            &cargo,
+            r#"#!/bin/sh
+tee="$(dirname "$0")/verus"
+CARGO_PKG_NAME=p CARGO_PKG_VERSION=1 CARGO_MANIFEST_DIR="$PWD" "$tee" --crate-name=p --error-format=json --json=artifacts lib.rs || exit 1
+python3 - "$tee" "$SAIL_CAPTURE_MODE" <<'CONTROL'
+import json, os, pathlib, shutil, subprocess, sys
+tee, mode = sys.argv[1:]
+records = pathlib.Path(os.environ['SAIL_CONFORMANCE_TEE_DIR'])
+health = pathlib.Path(os.environ['SAIL_CONFORMANCE_TEE_ERRORS'])
+if mode == 'positive':
+    sys.exit(0)
+if mode == 'record-removed':
+    shutil.rmtree(next(records.iterdir()))
+    sys.exit(0)
+if mode == 'record-renamed':
+    record = next(records.iterdir())
+    path = record / 'meta.json'
+    meta = json.loads(path.read_bytes())
+    meta['pid'] += 1
+    path.write_text(json.dumps(meta))
+    sys.exit(0)
+env = dict(os.environ)
+if mode == 'detached':
+    env = {k:v for k,v in env.items() if not k.startswith('SAIL_CONFORMANCE_')}
+else:
+    shutil.rmtree(records)
+    records.write_text('blocked')
+    health.unlink()
+    health.mkdir()
+result = subprocess.run([tee, '--print=file-names'], env=env, start_new_session=True, capture_output=True)
+assert result.returncode == 125, result
+assert b'SAIL3018' in result.stderr, result
+if mode == 'erased':
+    records.unlink()
+    records.mkdir()
+    health.rmdir()
+    health.write_bytes(b'')
+CONTROL
+exit 0
+"#,
+        )?;
+        let installed = Installed {
+            pins: Pins::load(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../corpus/toolchain.toml"),
+            )?,
+            verus: driver,
+            cargo_verus: cargo,
+            z3: PathBuf::from("/bin/true"),
+            z3_bundled: true,
+        };
+        let unit = Unit {
+            id: "capture-control".to_owned(),
+            project: "fixture".to_owned(),
+            source_dir: scratch.0.clone(),
+            root: ".".into(),
+            build: Build::CargoVerus,
+            args: Vec::new(),
+            cargo_args: Vec::new(),
+            patch_verus_deps: false,
+            target_dir: Some(scratch.0.join("target")),
+            env: BTreeMap::from([("SAIL_CAPTURE_MODE".to_owned(), mode.to_owned())]),
+            expected: None,
+        };
+        let result = sail_conformance::invocations::run(
+            &installed,
+            &unit,
+            &sail_verus::run::Solver::Plain,
+            &scratch.0.join("work"),
+            &PathBuf::from(env!("CARGO_BIN_EXE_sail-conformance-tee")),
         );
-        Ok(())
-    })();
-    let _ = victim.kill();
-    let _ = victim.wait();
-    run
+        if mode == "positive" {
+            assert_eq!(
+                result
+                    .map_err(std::io::Error::other)?
+                    .invocations
+                    .ok_or("no captures")?
+                    .len(),
+                1
+            );
+        } else {
+            let error = result.err().ok_or("invalid capture accepted")?;
+            assert!(error.contains("SAIL3018"), "{mode}: {error}");
+        }
+    }
+    Ok(())
 }

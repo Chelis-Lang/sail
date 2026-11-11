@@ -613,8 +613,9 @@ pub fn run(
     work: &Path,
     tee: &Path,
 ) -> Result<CapturedRun, String> {
-    let record = sail_verus::run::run_unit_captured(installed, unit, solver, work, tee)
+    let captured = sail_verus::run::run_unit_captured(installed, unit, solver, work, tee)
         .map_err(|e| e.to_string())?;
+    let record = captured.record;
     let invocations = if unit.build == sail_verus::corpus::Build::CargoVerus {
         let failures = std::fs::read(work.join("capture-errors"))
             .map_err(|e| format!("error[SAIL3018]: missing capture health record: {e}"))?;
@@ -629,6 +630,24 @@ pub fn run(
             );
         }
         let invocations = load(&work.join("invocations"))?;
+        let names: std::collections::BTreeSet<_> = invocations
+            .iter()
+            .map(|i| format!("{:032}-{}", i.meta.started_ns, i.meta.pid))
+            .collect();
+        let completions = captured
+            .completions
+            .ok_or("error[SAIL3018]: missing parent capture control")?;
+        if names.len() != invocations.len() || names.into_iter().collect::<Vec<_>>() != completions
+        {
+            return Err(
+                "error[SAIL3018]: compiler records do not match parent acknowledgments".to_owned(),
+            );
+        }
+        std::fs::write(
+            work.join("capture-control.json"),
+            serde_json::to_vec_pretty(&completions).map_err(capture_error)?,
+        )
+        .map_err(capture_error)?;
         if !invocations.iter().any(Invocation::forwarded) {
             return Err("error[SAIL3018]: no Cargo compiler jobs captured".to_owned());
         }

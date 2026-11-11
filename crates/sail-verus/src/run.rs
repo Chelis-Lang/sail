@@ -15,9 +15,7 @@
 
 mod capture;
 
-pub use capture::{
-    SUPERVISOR_ARG, SUPERVISOR_ENV, capture_supervisor_main, fail_capture_supervisor,
-};
+pub use capture::CaptureControl;
 
 use std::collections::BTreeMap;
 use std::io::Read as _;
@@ -500,7 +498,15 @@ pub fn run_unit(
     solver: &Solver,
     work: &Path,
 ) -> Result<RunRecord> {
-    run_unit_impl(installed, unit, solver, work, None)
+    run_unit_impl(installed, unit, solver, work, None).map(|run| run.record)
+}
+
+/// The aggregate result and independently acknowledged compiler records.
+pub struct CapturedUnit {
+    /// The unchanged aggregate verifier result.
+    pub record: RunRecord,
+    /// Completed capture identifiers, present only for staged Cargo units.
+    pub completions: Option<Vec<String>>,
 }
 
 /// Runs a differential-harness unit with per-invocation compiler capture.
@@ -518,7 +524,7 @@ pub fn run_unit_captured(
     solver: &Solver,
     work: &Path,
     tee: &Path,
-) -> Result<RunRecord> {
+) -> Result<CapturedUnit> {
     run_unit_impl(installed, unit, solver, work, Some(tee))
 }
 
@@ -528,7 +534,7 @@ fn capture_frontend(
     cargo: bool,
     tee: Option<&Path>,
     work: &Path,
-) -> Result<(PathBuf, Option<capture::Supervisor>)> {
+) -> Result<(PathBuf, Option<capture::Server>)> {
     let original = match (solver, cargo) {
         (Solver::Engine(engine), true) => &engine.cargo_verus,
         (Solver::Engine(engine), false) => &engine.verus,
@@ -538,15 +544,15 @@ fn capture_frontend(
     let Some(tee) = tee.filter(|_| cargo) else {
         return Ok((original.clone(), None));
     };
-    let mut supervisor = capture::Supervisor::start(tee)?;
-    let stage = supervisor.stage(work);
+    let control = capture::Server::start()?;
+    let stage = work.join(control.directory());
     let fail = |e| Error::new("SAIL3020", format!("cannot stage compiler capture: {e}"));
     std::fs::create_dir_all(&stage).map_err(fail)?;
     std::fs::create_dir(work.join("invocations")).map_err(fail)?;
     std::fs::write(work.join("capture-errors"), b"").map_err(fail)?;
     std::fs::copy(original, stage.join("cargo-verus")).map_err(fail)?;
     std::fs::copy(tee, stage.join("verus")).map_err(fail)?;
-    Ok((stage.join("cargo-verus"), Some(supervisor)))
+    Ok((stage.join("cargo-verus"), Some(control)))
 }
 
 fn configure_capture(
@@ -558,8 +564,7 @@ fn configure_capture(
     target_dir: Option<&Path>,
     enabled: bool,
 ) {
-    cmd.env_remove(SUPERVISOR_ENV)
-        .env_remove("SAIL_CONFORMANCE_TEE_DRIVER")
+    cmd.env_remove("SAIL_CONFORMANCE_TEE_DRIVER")
         .env_remove("SAIL_CONFORMANCE_TEE_DIR")
         .env_remove("SAIL_CONFORMANCE_TEE_SOURCE")
         .env_remove("SAIL_CONFORMANCE_TEE_TARGET")
@@ -598,7 +603,7 @@ fn run_unit_impl(
     solver: &Solver,
     work: &Path,
     tee: Option<&Path>,
-) -> Result<RunRecord> {
+) -> Result<CapturedUnit> {
     // Verus runs with `work` as its current directory, so every path handed
     // to it (and to `time -o`) must be absolute.
     let work = &std::path::absolute(work).map_err(|e| {
@@ -612,7 +617,7 @@ fn run_unit_impl(
         .map_err(|e| Error::new("SAIL3020", format!("cannot create {}: {e}", work.display())))?;
     let cargo = unit.build == Build::CargoVerus;
     let target_dir = reset_run_target(unit)?;
-    let (program, supervisor) = capture_frontend(installed, solver, cargo, tee, work)?;
+    let (program, control) = capture_frontend(installed, solver, cargo, tee, work)?;
     if !program.is_file() {
         return Err(Error::new(
             "SAIL3020",
@@ -667,15 +672,10 @@ fn run_unit_impl(
         engine_env(&mut cmd, installed, engine, work);
     }
     let started = Instant::now();
-    let output = run_with_timeout_in_group(
-        &mut cmd,
-        unit_timeout(),
-        Some(work),
-        supervisor.as_ref().map(capture::Supervisor::group),
-    )
-    .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
+    let output = run_with_timeout_retaining(&mut cmd, unit_timeout(), Some(work))
+        .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
     let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
-    supervisor.map_or(Ok(()), capture::Supervisor::finish)?;
+    let completions = control.map(capture::Server::finish).transpose()?;
     if let Some(dir) = target_dir {
         // Build products are large and never compared; keep the disk free.
         let _ = std::fs::remove_dir_all(dir);
@@ -700,11 +700,10 @@ fn run_unit_impl(
     // Kept next to the run for inspecting differences; best effort.
     let _ = std::fs::write(work.join("stdout.txt"), &output.stdout);
     let _ = std::fs::write(work.join("stderr.txt"), &output.stderr);
-    Ok(completed_record(
-        &output,
-        wall_ms,
-        &timing.unwrap_or_default(),
-    ))
+    Ok(CapturedUnit {
+        record: completed_record(&output, wall_ms, &timing.unwrap_or_default()),
+        completions,
+    })
 }
 
 fn completed_record(output: &std::process::Output, wall_ms: f64, timing: &str) -> RunRecord {
@@ -770,23 +769,10 @@ fn run_with_timeout_retaining(
     limit: Duration,
     work: Option<&Path>,
 ) -> std::result::Result<std::process::Output, (&'static str, String)> {
-    run_with_timeout_in_group(cmd, limit, work, None)
-}
-
-fn run_with_timeout_in_group(
-    cmd: &mut Command,
-    limit: Duration,
-    work: Option<&Path>,
-    capture_group: Option<u32>,
-) -> std::result::Result<std::process::Output, (&'static str, String)> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt as _;
-        cmd.process_group(
-            capture_group
-                .map_or(Ok(0), i32::try_from)
-                .map_err(|e| ("SAIL3018", format!("invalid capture group: {e}")))?,
-        );
+        cmd.process_group(0);
     }
     let mut child = cmd
         .stdout(Stdio::piped())
@@ -827,7 +813,7 @@ fn run_with_timeout_in_group(
             Ok(Some(status)) => break status,
             Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(50)),
             Ok(None) => {
-                let pgid = capture_group.unwrap_or_else(|| child.id());
+                let pgid = child.id();
                 let _ = Command::new("kill")
                     .args(["-s", "KILL", "--", &format!("-{pgid}")])
                     .status();
@@ -842,13 +828,12 @@ fn run_with_timeout_in_group(
                 ));
             }
             Err(e) => {
-                if let Some(pgid) = capture_group {
-                    let _ = Command::new("kill")
-                        .args(["-s", "KILL", "--", &format!("-{pgid}")])
-                        .status();
-                    let _ = child.kill();
-                    let _ = child.wait();
-                }
+                let pgid = child.id();
+                let _ = Command::new("kill")
+                    .args(["-s", "KILL", "--", &format!("-{pgid}")])
+                    .status();
+                let _ = child.kill();
+                let _ = child.wait();
                 return Err(("SAIL3020", format!("lost the child process: {e}")));
             }
         }

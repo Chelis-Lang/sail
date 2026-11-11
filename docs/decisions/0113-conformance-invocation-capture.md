@@ -96,24 +96,22 @@ reviewed for this dependency-only lock edge before it advances.
 
 ## Capture-failure witness
 
-A parent-owned companion leads a separate process group for each Cargo capture;
-the timing wrapper, Cargo and its compiler delegates join that group. The
-companion's stdin belongs only to the parent. Successful completion requires the
-parent to close it after Cargo ends and validate a successful companion exit.
-The staged delegate recognizes the expected group from its executable's owned
-directory, independently of capture environment and writable files. Every
-explicit delegate failure aborts **its current group**, after checking its
-actual group matches that namespace. It never signals a PID taken from a path.
-The parent stays outside that group and refuses before comparison if its
-companion ended prematurely or unsuccessfully. Losing both reservation and
-health-file writes, or consuming stderr and clearing capture variables, cannot
-hide such a failure in the owned group.
+A parent-owned loopback TCP listener records each compiler invocation in memory.
+The tee connects before reading capture environment or touching capture files,
+using the port and nonce in its executable's owned staging directory. This
+survives detached process sessions and cleared environment variables. The
+listener sends its nonce first; a retained alias verifies it before sending any
+bytes, so a reused endpoint receives no command from the alias.
 
-Cleanup retires the alias when possible and reaps the actual owned companion.
-If alias retirement fails the run refuses; a retained alias cannot signal an
-unrelated process or another group. Timeout/error cleanup targets the owned
-capture group while its captain's child identity is retained. No new dependency
-or edge is needed: the safe Unix process API is already pinned in `sail-verus`.
+The tee holds its connection until streams have been forwarded and the complete
+record has been renamed into place. It then sends the exact record identifier
+and requires acknowledgment. EOF without completion, malformed or duplicate
+completion, listener/worker failure, or a still-open connection when Cargo ends
+makes the parent refuse with SAIL3018. Accepted records must correspond exactly
+to the parent's acknowledged identifiers; removing or changing record identity
+cannot conceal a consumed failure. A bounded worker count and bounded frame
+size turn capacity exhaustion into refusal. No new dependency edge is needed.
+The ordinary run timeout retains its existing owned-process-group cleanup.
 
 ## Consequences
 

@@ -153,9 +153,6 @@ fn record(
 }
 
 fn failure(message: impl std::fmt::Display) -> ExitCode {
-    // This remains observable even when both file channels fail and a build
-    // script consumes stderr or clears all capture environment variables.
-    let _ = sail_verus::run::fail_capture_supervisor();
     let message = format!("error[SAIL3018]: {message}\n");
     if let Some(path) = std::env::var_os("SAIL_CONFORMANCE_TEE_ERRORS")
         && let Ok(mut file) = std::fs::OpenOptions::new().append(true).open(path)
@@ -221,7 +218,12 @@ fn finish_input(input: Option<std::thread::JoinHandle<Stream>>) -> Result<Vec<u8
     Ok(bytes)
 }
 
-fn complete(mut child: std::process::Child, mut metadata: Meta, dir: &Path) -> ExitCode {
+fn complete(
+    mut child: std::process::Child,
+    mut metadata: Meta,
+    dir: &Path,
+    control: Option<sail_verus::run::CaptureControl>,
+) -> ExitCode {
     let input = child
         .stdin
         .take()
@@ -269,6 +271,12 @@ fn complete(mut child: std::process::Child, mut metadata: Meta, dir: &Path) -> E
     if let Err(error) = record(dir, &metadata, &stdout, &stderr, &stdin) {
         return failure(format!("cannot complete capture: {error}"));
     }
+    if let Some(control) = control
+        && let Err(error) =
+            control.complete(&format!("{:032}-{}", metadata.started_ns, metadata.pid))
+    {
+        return failure(error);
+    }
     match code {
         Some(code) => ExitCode::from(u8::try_from(code & 0xff).unwrap_or(1)),
         None => ExitCode::from(101),
@@ -276,21 +284,17 @@ fn complete(mut child: std::process::Child, mut metadata: Meta, dir: &Path) -> E
 }
 
 fn main() -> ExitCode {
+    // Establish the parent-owned witness before reading any capture environment
+    // or touching capture files. Every early return closes it as incomplete.
+    let control = match sail_verus::run::CaptureControl::connect() {
+        Ok(control) => control,
+        Err(error) => return failure(error),
+    };
+    run(control)
+}
+
+fn run(control: Option<sail_verus::run::CaptureControl>) -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
-    if args == [OsString::from(sail_verus::run::SUPERVISOR_ARG)]
-        && std::env::var_os(sail_verus::run::SUPERVISOR_ENV).as_deref()
-            == Some(std::ffi::OsStr::new("1"))
-        && std::env::current_exe()
-            .ok()
-            .and_then(|p| p.file_name().map(std::ffi::OsStr::to_owned))
-            .as_deref()
-            == Some(std::ffi::OsStr::new("sail-conformance-tee"))
-    {
-        return match sail_verus::run::capture_supervisor_main() {
-            Ok(()) => ExitCode::SUCCESS,
-            Err(_) => ExitCode::from(125),
-        };
-    }
     let Some(dir) = std::env::var_os(DIR).map(PathBuf::from) else {
         return failure(format!("{DIR} is not set"));
     };
@@ -331,7 +335,7 @@ fn main() -> ExitCode {
         return failure(e);
     }
     match command.spawn() {
-        Ok(child) => complete(child, metadata, &dir),
+        Ok(child) => complete(child, metadata, &dir, control),
         Err(e) => failure(format!("cannot start {}: {e}", driver.display())),
     }
 }
