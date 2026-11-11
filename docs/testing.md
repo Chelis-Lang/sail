@@ -416,3 +416,16 @@ Inventory parsing therefore cannot hold the waiter's Python execution lock.
 The command and waiter keep their original priority; on Mac only the observer
 and its `ps` children receive lower priority. Sampling cadence and overhead
 acceptance thresholds remain unchanged.
+
+### Cargo compiler capture
+
+Build both harness binaries with `cargo build --release -p sail-conformance
+--bins`; `ci/run.sh conformance` does this automatically. Cargo units retain
+an `invocations/` directory beside their exact `stdout.txt` and `stderr.txt`,
+with a `capture-check.json` explaining the aggregate stdout interleaving.
+Keep the entire directory when diagnosing `SAIL3018`, including incomplete
+`.tmp` entries. Never remove an entry to retry comparison. The harness checks
+compiler identities, every probe, complete stream multiplicity, structured
+per-function stdout, exact per-invocation stderr, aggregate diagnostics and
+exit codes. Direct Verus units use their ordinary whole-run comparison.
+See [ADR 0113](decisions/0113-conformance-invocation-capture.md).

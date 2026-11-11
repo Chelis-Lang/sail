@@ -494,6 +494,87 @@ pub fn run_unit(
     solver: &Solver,
     work: &Path,
 ) -> Result<RunRecord> {
+    run_unit_impl(installed, unit, solver, work, None)
+}
+
+/// Runs a differential-harness unit with per-invocation compiler capture.
+///
+/// Cargo uses a private copy of its unchanged frontend beside `tee`, named
+/// `verus`. The tee delegates to the original driver. Direct Verus units do
+/// not need a tee. Capture records remain under `work/invocations`.
+///
+/// # Errors
+///
+/// The errors of [`run_unit`], including failure to stage the capture frontend.
+pub fn run_unit_captured(
+    installed: &Installed,
+    unit: &Unit,
+    solver: &Solver,
+    work: &Path,
+    tee: &Path,
+) -> Result<RunRecord> {
+    run_unit_impl(installed, unit, solver, work, Some(tee))
+}
+
+fn capture_frontend(original: &Path, tee: Option<&Path>, work: &Path) -> Result<PathBuf> {
+    let Some(tee) = tee else {
+        return Ok(original.to_path_buf());
+    };
+    let stage = work.join("capture-frontend");
+    let fail = |e| Error::new("SAIL3020", format!("cannot stage compiler capture: {e}"));
+    std::fs::create_dir_all(&stage).map_err(fail)?;
+    std::fs::create_dir(work.join("invocations")).map_err(fail)?;
+    std::fs::copy(original, stage.join("cargo-verus")).map_err(fail)?;
+    std::fs::copy(tee, stage.join("verus")).map_err(fail)?;
+    Ok(stage.join("cargo-verus"))
+}
+
+fn configure_capture(
+    cmd: &mut Command,
+    installed: &Installed,
+    unit: &Unit,
+    solver: &Solver,
+    work: &Path,
+    target_dir: Option<&Path>,
+    enabled: bool,
+) {
+    cmd.env_remove("SAIL_CONFORMANCE_TEE_DRIVER")
+        .env_remove("SAIL_CONFORMANCE_TEE_DIR")
+        .env_remove("SAIL_CONFORMANCE_TEE_SOURCE")
+        .env_remove("SAIL_CONFORMANCE_TEE_TARGET");
+    if enabled {
+        let driver = match solver {
+            Solver::Engine(engine) => &engine.verus,
+            _ => &installed.verus,
+        };
+        cmd.env("SAIL_CONFORMANCE_TEE_DRIVER", driver)
+            .env("SAIL_CONFORMANCE_TEE_DIR", work.join("invocations"))
+            .env("SAIL_CONFORMANCE_TEE_SOURCE", &unit.source_dir)
+            .env("SAIL_CONFORMANCE_TEE_TARGET", target_dir.unwrap_or(work));
+    }
+}
+
+fn reset_run_target(unit: &Unit) -> Result<Option<&Path>> {
+    if unit.build != Build::CargoVerus {
+        return Ok(None);
+    }
+    let dir = unit.target_dir.as_deref().ok_or_else(|| {
+        Error::new(
+            "SAIL3020",
+            format!("{}: cargo-verus unit was not prepared", unit.id),
+        )
+    })?;
+    let _ = std::fs::remove_dir_all(dir);
+    Ok(Some(dir))
+}
+
+fn run_unit_impl(
+    installed: &Installed,
+    unit: &Unit,
+    solver: &Solver,
+    work: &Path,
+    tee: Option<&Path>,
+) -> Result<RunRecord> {
     // Verus runs with `work` as its current directory, so every path handed
     // to it (and to `time -o`) must be absolute.
     let work = &std::path::absolute(work).map_err(|e| {
@@ -506,24 +587,14 @@ pub fn run_unit(
     std::fs::create_dir_all(work)
         .map_err(|e| Error::new("SAIL3020", format!("cannot create {}: {e}", work.display())))?;
     let cargo = unit.build == Build::CargoVerus;
-    let target_dir = if cargo {
-        let dir = unit.target_dir.as_deref().ok_or_else(|| {
-            Error::new(
-                "SAIL3020",
-                format!("{}: cargo-verus unit was not prepared", unit.id),
-            )
-        })?;
-        let _ = std::fs::remove_dir_all(dir);
-        Some(dir)
-    } else {
-        None
-    };
-    let program = match (solver, cargo) {
+    let target_dir = reset_run_target(unit)?;
+    let original_program = match (solver, cargo) {
         (Solver::Engine(engine), true) => &engine.cargo_verus,
         (Solver::Engine(engine), false) => &engine.verus,
         (_, true) => &installed.cargo_verus,
         (_, false) => &installed.verus,
     };
+    let program = capture_frontend(original_program, tee.filter(|_| cargo), work)?;
     if !program.is_file() {
         return Err(Error::new(
             "SAIL3020",
@@ -536,10 +607,10 @@ pub fn run_unit(
     let mut cmd = match time_mode {
         Some(flag) => {
             let mut c = Command::new(timer);
-            c.arg(flag).arg("-o").arg(&time_file).arg(program);
+            c.arg(flag).arg("-o").arg(&time_file).arg(&program);
             c
         }
-        None => Command::new(program),
+        None => Command::new(&program),
     };
     add_invocation(&mut cmd, installed, unit, work, target_dir);
     let observation_logs = matches!(
@@ -557,6 +628,15 @@ pub fn run_unit(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     solver_env(&mut cmd, installed, unit, solver);
+    configure_capture(
+        &mut cmd,
+        installed,
+        unit,
+        solver,
+        work,
+        target_dir,
+        cargo && tee.is_some(),
+    );
     if let Solver::Engine(engine) = solver {
         engine_env(&mut cmd, installed, engine, work);
     }

@@ -1327,6 +1327,7 @@ dependencies = [
  "sail-verus",
  "serde",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

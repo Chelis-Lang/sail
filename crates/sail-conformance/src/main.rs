@@ -35,9 +35,10 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use sail_conformance::engine::EngineStats;
-use sail_conformance::{Comparison, Verdict, classify};
+use sail_conformance::invocations::{CapturedRun, classify, run as run_unit};
+use sail_conformance::{Comparison, Verdict};
 use sail_verus::corpus::{Corpus, Tier, Unit};
-use sail_verus::run::{EngineRun, RunRecord, Solver, machine_info, prepare_unit, run_unit};
+use sail_verus::run::{EngineRun, RunRecord, Solver, machine_info, prepare_unit};
 use sail_verus::toolchain::{Installed, Pins};
 use serde::Serialize;
 
@@ -514,21 +515,35 @@ fn run_one(cx: &Context, unit: &Unit) -> UnitReport {
     report
 }
 
+fn capture_tee() -> Result<PathBuf, String> {
+    std::env::current_exe()
+        .map_err(|e| e.to_string())
+        .and_then(|exe| {
+            exe.parent()
+                .map(|dir| dir.join("sail-conformance-tee"))
+                .ok_or_else(|| "error[SAIL3018]: no executable directory".to_owned())
+        })
+}
+
 fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
     let (installed, dir) = (cx.installed, cx.dir);
+    let tee = match capture_tee() {
+        Ok(p) => p,
+        Err(e) => return infra_error(unit, e),
+    };
     let run_plain = |i: usize| {
         let dir = if i == 0 {
             base.join("plain")
         } else {
             base.join(format!("plain-{}", i + 1))
         };
-        run_unit(installed, unit, &Solver::Plain, &dir)
+        run_unit(installed, unit, &Solver::Plain, &dir, &tee)
     };
     let mut plains = Vec::new();
     for i in 0..cx.plain_runs {
         match run_plain(i) {
             Ok(p) => plains.push(p),
-            Err(e) => return infra_error(unit, e.to_string()),
+            Err(e) => return infra_error(unit, e),
         }
     }
     if let Some(engine) = &cx.engine {
@@ -544,9 +559,9 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
             .map(PathBuf::from),
         observation_logs: cx.managed_arm,
     };
-    let sail = match run_unit(cx.sail_verus, unit, &solver, &base.join("sail")) {
+    let sail = match run_unit(cx.sail_verus, unit, &solver, &base.join("sail"), &tee) {
         Ok(s) => s,
-        Err(e) => return infra_error(unit, e.to_string()),
+        Err(e) => return infra_error(unit, e),
     };
     let mut c = classify(&plains, &sail);
     // ADR 0009: before calling a difference a sail error, check whether
@@ -557,7 +572,7 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
         }
         match run_plain(plains.len()) {
             Ok(p) => plains.push(p),
-            Err(e) => return infra_error(unit, e.to_string()),
+            Err(e) => return infra_error(unit, e),
         }
         c = classify(&plains, &sail);
     }
@@ -569,8 +584,8 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
         plain_runs: c.plain_runs,
         unstable: c.unstable,
         infra_error: None,
-        plain: plains.first().map(Side::from),
-        sail: Some(Side::from(&sail)),
+        plain: plains.first().map(|p| Side::from(&p.summary())),
+        sail: Some(Side::from(&sail.summary())),
         engine: None,
     }
 }
@@ -582,24 +597,35 @@ fn compare_engine(
     engine: &EngineArm,
     unit: &Unit,
     base: &Path,
-    mut plains: Vec<RunRecord>,
+    mut plains: Vec<CapturedRun>,
 ) -> UnitReport {
     let function = if engine.focus {
         plains
             .first()
-            .and_then(sail_conformance::engine::focus_function)
+            .and_then(|p| sail_conformance::engine::focus_function(&p.summary()))
     } else {
         None
     };
     let single_crate = unit.build == sail_verus::corpus::Build::Verus;
     let work = base.join("engine");
-    let run = match run_unit(cx.installed, unit, &engine.run(function.as_ref()), &work) {
+    let tee = match capture_tee() {
+        Ok(p) => p,
+        Err(e) => return infra_error(unit, e),
+    };
+    let run = match run_unit(
+        cx.installed,
+        unit,
+        &engine.run(function.as_ref()),
+        &work,
+        &tee,
+    ) {
         Ok(run) => run,
-        Err(e) => return infra_error(unit, e.to_string()),
+        Err(e) => return infra_error(unit, e),
     };
     let events = std::fs::read_to_string(work.join(sail_verus::run::engine_files::EVENTS))
         .unwrap_or_default();
-    let (issues, mut stats) = sail_conformance::engine::check(&run, &events, single_crate);
+    let (issues, mut stats) =
+        sail_conformance::engine::check(&run.summary(), &events, single_crate);
     stats.focus_function.clone_from(&function);
     let compared = &run;
     let mut c = classify(&plains, compared);
@@ -612,9 +638,10 @@ fn compare_engine(
             unit,
             &Solver::Plain,
             &base.join(format!("plain-{}", plains.len() + 1)),
+            &tee,
         ) {
             Ok(p) => plains.push(p),
-            Err(e) => return infra_error(unit, e.to_string()),
+            Err(e) => return infra_error(unit, e),
         }
         c = classify(&plains, compared);
     }
@@ -631,8 +658,8 @@ fn compare_engine(
         plain_runs: c.plain_runs,
         unstable: c.unstable,
         infra_error: None,
-        plain: plains.first().map(Side::from),
-        sail: Some(Side::from(compared)),
+        plain: plains.first().map(|p| Side::from(&p.summary())),
+        sail: Some(Side::from(&compared.summary())),
         engine: Some(stats),
     }
 }

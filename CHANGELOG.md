@@ -80,6 +80,8 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
   classifier as implementation groundwork; campaign execution/CLI/MCP are not
   available yet. Ordinary verification output and proof tiers are unchanged.
 
+- Cargo conformance captures and pairs complete compiler invocations, including
+  discovery probes, and refuses incomplete or unexplained output (#632).
 - `sail-conformance` refuses unknown project names, explicit projects outside
   the chosen tier and selections with no runnable units (`SAIL3017`), instead
   of succeeding with zero comparisons (#716).

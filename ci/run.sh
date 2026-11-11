@@ -124,7 +124,7 @@ release_build() {
 extension_cargo=(--manifest-path extensions/temporal/Cargo.toml --target-dir target/temporal)
 
 # The binaries every e2e phase uses, relative to target/release.
-e2e_binaries=(sail sail-z3 sail-conformance examples/check_output examples/check_mcp)
+e2e_binaries=(sail sail-z3 sail-conformance sail-conformance-tee examples/check_output examples/check_mcp)
 
 e2e_build() {
   release_build -p sail-conformance --bins --example check_output --example check_mcp
@@ -552,7 +552,7 @@ RS
     tier="${1:-fast}"
     shift || true
     [ "$tier" = fast ] && [ "${1:-}" = pr ] || local_only conformance "$tier" "$@"
-    release_build -p sail-conformance
+    release_build -p sail-conformance --bins
     select=(--tier "$tier" "$@")
     if [ "${1:-}" = pr ]; then
       select=(--tier fast --project verus-examples --filter /guide/)
@@ -660,7 +660,7 @@ RS
     if [ "${1:-}" = cache ]; then with_cache=true; shift; fi
     cargo xtask build-verus-source --fork
     cargo xtask build-verus-source
-    release_build -p sail-conformance
+    release_build -p sail-conformance --bins
     out="${SAIL_CONFORMANCE_OUT:-conformance-out}/rust-verify-test"
     # Keep local parallelism modest: 4 tests at a time unless --jobs says so.
     ./target/release/sail-conformance rust-verify-test --jobs 4 --out "$out/pass-through" "$@" --baseline fork
