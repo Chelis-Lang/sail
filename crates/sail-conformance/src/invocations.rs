@@ -130,6 +130,32 @@ pub struct Invocation {
     pub stdin: Vec<u8>,
 }
 
+/// A lossless argument identity: path-root labels are typed, never raw text
+/// that a literal user argument could impersonate. Original bytes stay in Meta.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum Argument {
+    /// An argument with no declared root substitution.
+    Literal {
+        /// Complete original spelling.
+        value: String,
+    },
+    /// Exactly one declared root at the start of a path-valued suffix.
+    Rooted {
+        /// Every byte before the root, including any assignment prefixes.
+        prefix: String,
+        /// One of the explicit source, target, runtime or work namespaces.
+        root: String,
+        /// Every byte after the root, including separators and dot components.
+        suffix: String,
+    },
+    /// The sole admitted autocfg instance label; the raw label remains recorded.
+    GeneratedProbe {
+        /// Exact monotonic probe ordinal; stdin and all other arguments still bind.
+        ordinal: u64,
+    },
+}
+
 /// The identity two arms are paired on: package, then target.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct Identity {
@@ -138,24 +164,24 @@ pub struct Identity {
     /// Package version.
     pub package_version: String,
     /// The package's manifest directory.
-    pub manifest_dir: String,
+    pub manifest_dir: Option<Argument>,
     /// Crate name.
     pub crate_name: String,
     /// Crate types, joined by `,`.
     pub crate_types: String,
     /// Test harness build.
     pub test: bool,
-    /// Compile target (empty for the host).
-    pub compile_target: String,
+    /// Compile target (absent for the host).
+    pub compile_target: Option<Argument>,
     /// Binary target name, if Cargo supplied it.
     pub bin_name: Option<String>,
     /// Every argument, with declared path roots made relative. Build-script
     /// probes can have a crate name too; arguments preserve their association.
-    pub arguments: Vec<String>,
+    pub arguments: Vec<Argument>,
     /// Complete requested Verus driver channels, including physical leading
     /// spaces and every packed option; harness-only logging is recorded in
     /// `Meta::driver_env` separately from this original input identity.
-    pub driver_env: BTreeMap<String, Vec<String>>,
+    pub driver_env: BTreeMap<String, Vec<Argument>>,
     /// Exact stdin source identity, distinct from a non-stdin compiler call.
     pub stdin_sha256: Option<String>,
     /// Known native autocfg probe's monotonic ordinal. Its random instance
@@ -248,28 +274,14 @@ impl Invocation {
         Identity {
             package_name: m.package_name.clone().unwrap_or_default(),
             package_version: m.package_version.clone().unwrap_or_default(),
-            manifest_dir: m
-                .manifest_dir
-                .as_ref()
-                .map(|p| {
-                    Path::new(p)
-                        .strip_prefix(&m.source_root)
-                        .unwrap_or(Path::new(p))
-                        .to_string_lossy()
-                        .into_owned()
-                })
-                .unwrap_or_default(),
+            manifest_dir: m.manifest_dir.as_ref().map(|p| relative_argument(p, m)),
             crate_name: generated.as_ref().map_or_else(
                 || m.crate_name.clone().unwrap_or_default(),
                 |(name, _)| name.clone(),
             ),
             crate_types: m.crate_types.join(","),
             test: m.test,
-            compile_target: m
-                .compile_target
-                .as_ref()
-                .map(|a| relative_argument(a, m))
-                .unwrap_or_default(),
+            compile_target: m.compile_target.as_ref().map(|a| relative_argument(a, m)),
             bin_name: m.bin_name.clone(),
             stdin_sha256: m.stdin_captured.then(|| m.stdin_sha256.clone()),
             generated_probe_ordinal: generated.as_ref().map(|(_, ordinal)| *ordinal),
@@ -278,12 +290,12 @@ impl Invocation {
                 .iter()
                 .enumerate()
                 .map(|(i, arg)| {
-                    if let Some((name, _)) = &generated
+                    if let Some((_, ordinal)) = &generated
                         && i > 0
                         && m.argv.get(i - 1).is_some_and(|a| a == "--crate-name")
                         && m.crate_name.as_ref() == Some(arg)
                     {
-                        name.clone()
+                        Argument::GeneratedProbe { ordinal: *ordinal }
                     } else {
                         relative_argument(arg, m)
                     }
@@ -306,7 +318,7 @@ impl Invocation {
     }
 }
 
-fn relative_argument(arg: &str, meta: &Meta) -> String {
+fn relative_argument(arg: &str, meta: &Meta) -> Argument {
     let mut value = arg;
     let mut offset = 0;
     loop {
@@ -317,17 +329,20 @@ fn relative_argument(arg: &str, meta: &Meta) -> String {
             ("work", &meta.work_root),
         ] {
             if !root.is_empty()
-                && let Ok(relative) = Path::new(value).strip_prefix(root)
+                && let Some(suffix) = value.strip_prefix(root)
+                && (suffix.is_empty() || suffix.starts_with('/') || root.ends_with('/'))
             {
-                return format!(
-                    "{}<{label}>/{}",
-                    arg.get(..offset).unwrap_or_default(),
-                    relative.display()
-                );
+                return Argument::Rooted {
+                    prefix: arg.get(..offset).unwrap_or_default().to_owned(),
+                    root: label.to_owned(),
+                    suffix: suffix.to_owned(),
+                };
             }
         }
         let Some((prefix, rest)) = value.split_once('=') else {
-            return arg.to_owned();
+            return Argument::Literal {
+                value: arg.to_owned(),
+            };
         };
         offset += prefix.len() + 1;
         value = rest;
@@ -1110,6 +1125,61 @@ mod tests {
             compare_arms(&[a.clone(), b.clone()], &[a, b]).differences,
             [] as [String; 0]
         );
+    }
+
+    #[test]
+    fn typed_roots_cannot_collide_with_literal_markers_or_erase_path_spelling() {
+        let a = invocation("/root", None, b"");
+        for (root, marker) in [
+            ("/root", "source"),
+            ("/target", "target"),
+            ("/runtime", "runtime"),
+            ("/work", "work"),
+        ] {
+            let mut m = a.meta.clone();
+            m.target_root = "/target".to_owned();
+            m.runtime_root = "/runtime".to_owned();
+            m.work_root = "/work".to_owned();
+            for prefix in ["", "dependency=", "--option=foo="] {
+                assert_ne!(
+                    relative_argument(&format!("{prefix}{root}/empty"), &m),
+                    relative_argument(&format!("{prefix}<{marker}>/empty"), &m)
+                );
+            }
+        }
+        assert_ne!(
+            relative_argument("/root/a", &a.meta),
+            relative_argument("/root/./a", &a.meta)
+        );
+        assert_ne!(
+            relative_argument("/root/a", &a.meta),
+            relative_argument("/root//a", &a.meta)
+        );
+        assert_ne!(
+            relative_argument("/root/a", &a.meta),
+            relative_argument("/rooted/a", &a.meta)
+        );
+        for packed in [false, true] {
+            let mut left = a.clone();
+            let mut right = a.clone();
+            if packed {
+                left.meta.requested_driver_env.insert(
+                    " __VERUS_DRIVER_ARGS__".to_owned(),
+                    "dependency=/root/empty".to_owned(),
+                );
+                right.meta.requested_driver_env.insert(
+                    " __VERUS_DRIVER_ARGS__".to_owned(),
+                    "dependency=<source>/empty".to_owned(),
+                );
+            } else {
+                left.meta.argv.push("dependency=/root/empty".to_owned());
+                right.meta.argv.push("dependency=<source>/empty".to_owned());
+            }
+            assert_ne!(
+                compare_arms(&[left], &[right]).differences,
+                [] as [String; 0]
+            );
+        }
     }
 
     #[test]

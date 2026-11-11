@@ -41,7 +41,11 @@ Verus driver channels. This includes the physical leading-space packed-option
 variables, their exact separator encoding and all per-package selectors. Named
 build-script probes also retain their source/flags/status association. Only
 declared source, target, runtime and arm-output path roots become relative in argument
-identity; exact original metadata remains recorded.
+identity; exact original metadata remains recorded. Rooted values have typed
+namespace/prefix/suffix identities, distinct from every literal argument. The
+suffix retains exact separators and dot components; string placeholders or
+path-component normalization cannot collapse a literal into a rooted path.
+The same rule covers argv, manifest/target fields and each packed channel.
 Repeated identities retain multiplicity and compare as multisets, consuming
 each occurrence once. Completion time, process ID and aggregate document
 position are never pairing keys.
