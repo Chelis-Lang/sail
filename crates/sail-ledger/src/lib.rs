@@ -155,7 +155,7 @@ impl Effort {
     /// serving a cached `unknown` (ADR 0009, owner decision 2026-10-08).
     #[must_use]
     pub fn near_limit(&self) -> bool {
-        matches!((self.used, self.limit), (Some(used), Some(limit)) if limit > 0 && used.saturating_mul(2) > limit)
+        matches!((self.used, self.limit), (Some(used), Some(limit)) if limit > 0 && used > limit / 2)
     }
 }
 
@@ -594,6 +594,60 @@ mod tests {
         assert!(e(16_000_000, 30_000_000, "x").near_limit());
         assert!(!e(15_000_000, 30_000_000, "x").near_limit());
         assert!(!e(5, 0, "x").near_limit());
+    }
+
+    #[test]
+    fn near_limit_matches_wide_arithmetic_at_every_u64_boundary() {
+        for limit in [0, 1, 2, 3, 99, 100, u64::MAX / 2, u64::MAX - 1, u64::MAX] {
+            for used in [
+                0,
+                1,
+                limit / 2,
+                limit / 2 + 1,
+                limit,
+                u64::MAX / 2,
+                u64::MAX / 2 + 1,
+                u64::MAX,
+            ] {
+                let effort = Effort {
+                    limit: Some(limit),
+                    used: Some(used),
+                    reason: None,
+                };
+                let expected = limit > 0 && u128::from(used) * 2 > u128::from(limit);
+                assert_eq!(effort.near_limit(), expected, "used={used}, limit={limit}");
+            }
+        }
+        assert!(!Effort::default().near_limit());
+        assert!(
+            !Effort {
+                limit: Some(1),
+                ..Effort::default()
+            }
+            .near_limit()
+        );
+        assert!(
+            !Effort {
+                used: Some(u64::MAX),
+                ..Effort::default()
+            }
+            .near_limit()
+        );
+    }
+
+    #[test]
+    fn maximum_effort_retains_the_proof_and_reports_instability() {
+        for source in [Source::Solved, Source::Cache] {
+            let mut recorded = check(Answer::Unsat, u64::MAX, None);
+            recorded.source = Some(source);
+            recorded.effort.limit = Some(u64::MAX);
+            let report = function(
+                Some(true),
+                Some(vec![obligation("c::f", "Function-Def", vec![recorded])]),
+            );
+            assert_eq!(report.verdict(), Verdict::Verified);
+            assert!(report.unstable());
+        }
     }
 
     #[test]

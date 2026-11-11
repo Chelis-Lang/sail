@@ -73,6 +73,9 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
   namespace mode (ADR 0112). Only three expected compiler-metadata positions
   qualify; explicit tokens, other home paths, symlinks and failures stay strict.
   Runtime rebuilding, qualification and selection for #710 remain separate.
+- Near-limit ledger reporting correctly marks effort above half of `u64::MAX`
+  as unstable, including cached proofs, without changing their solver answers
+  or Verus verdicts (#719).
 
 - Daemon shutdown and partial-startup cleanup cannot miss an idle job worker's
   wakeup while joining it (#715).
