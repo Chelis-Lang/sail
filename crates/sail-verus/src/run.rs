@@ -667,12 +667,15 @@ fn run_unit_impl(
         engine_env(&mut cmd, installed, engine, work);
     }
     let started = Instant::now();
-    let output = run_with_timeout_retaining(&mut cmd, unit_timeout(), Some(work))
-        .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
+    let output = run_with_timeout_in_group(
+        &mut cmd,
+        unit_timeout(),
+        Some(work),
+        supervisor.as_ref().map(capture::Supervisor::group),
+    )
+    .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
     let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
-    if let Some(supervisor) = supervisor {
-        supervisor.finish()?;
-    }
+    supervisor.map_or(Ok(()), capture::Supervisor::finish)?;
     if let Some(dir) = target_dir {
         // Build products are large and never compared; keep the disk free.
         let _ = std::fs::remove_dir_all(dir);
@@ -767,10 +770,23 @@ fn run_with_timeout_retaining(
     limit: Duration,
     work: Option<&Path>,
 ) -> std::result::Result<std::process::Output, (&'static str, String)> {
+    run_with_timeout_in_group(cmd, limit, work, None)
+}
+
+fn run_with_timeout_in_group(
+    cmd: &mut Command,
+    limit: Duration,
+    work: Option<&Path>,
+    capture_group: Option<u32>,
+) -> std::result::Result<std::process::Output, (&'static str, String)> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt as _;
-        cmd.process_group(0);
+        cmd.process_group(
+            capture_group
+                .map_or(Ok(0), i32::try_from)
+                .map_err(|e| ("SAIL3018", format!("invalid capture group: {e}")))?,
+        );
     }
     let mut child = cmd
         .stdout(Stdio::piped())
@@ -811,7 +827,7 @@ fn run_with_timeout_retaining(
             Ok(Some(status)) => break status,
             Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(50)),
             Ok(None) => {
-                let pgid = child.id();
+                let pgid = capture_group.unwrap_or_else(|| child.id());
                 let _ = Command::new("kill")
                     .args(["-s", "KILL", "--", &format!("-{pgid}")])
                     .status();
@@ -825,7 +841,16 @@ fn run_with_timeout_retaining(
                     ),
                 ));
             }
-            Err(e) => return Err(("SAIL3020", format!("lost the child process: {e}"))),
+            Err(e) => {
+                if let Some(pgid) = capture_group {
+                    let _ = Command::new("kill")
+                        .args(["-s", "KILL", "--", &format!("-{pgid}")])
+                        .status();
+                    let _ = child.kill();
+                    let _ = child.wait();
+                }
+                return Err(("SAIL3020", format!("lost the child process: {e}")));
+            }
         }
     };
     Ok(std::process::Output {

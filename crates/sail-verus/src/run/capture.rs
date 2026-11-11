@@ -1,8 +1,8 @@
 //! A capture-failure witness independent of writable files and child environment.
 //!
 //! The parent owns this companion until Cargo has finished. A staged delegate
-//! knows its PID from its executable's owned directory, so loss of all capture
-//! environment or both file channels can still terminate the witness. Only the
+//! recognizes its owned process group from its executable's directory, so loss
+//! of all capture environment or both file channels can still abort that group. Only the
 //! parent closes its stdin to authorize successful completion.
 
 use std::io::Read as _;
@@ -23,15 +23,25 @@ pub(super) struct Supervisor {
 }
 impl Supervisor {
     pub(super) fn start(tee: &std::path::Path) -> Result<Self> {
-        let child = Command::new(tee)
+        let mut command = Command::new(tee);
+        command
             .arg(SUPERVISOR_ARG)
             .env(SUPERVISOR_ENV, "1")
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stderr(Stdio::null());
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt as _;
+            command.process_group(0);
+        }
+        let child = command
             .spawn()
             .map_err(|e| capture_error(format!("cannot start capture supervisor: {e}")))?;
         Ok(Self { child, alias: None })
+    }
+    pub(super) fn group(&self) -> u32 {
+        self.child.id()
     }
     pub(super) fn stage(&mut self, work: &std::path::Path) -> std::path::PathBuf {
         let stage = work.join(format!("{PREFIX}{}", self.child.id()));
@@ -49,12 +59,12 @@ impl Supervisor {
         Ok(())
     }
     pub(super) fn finish(mut self) -> Result<()> {
-        // Retire the callable alias before releasing the owned PID. Retained
-        // artifacts must not later signal a recycled process identifier.
+        // Retire the private alias when possible. A retirement error refuses
+        // this run; signal safety independently follows current-group scoping.
         self.retire_alias().map_err(capture_error)?;
         if self.child.try_wait().map_err(capture_error)?.is_some() {
             return Err(capture_error(
-                "compiler capture supervisor ended before Cargo completed",
+                "compiler capture supervisor ended before parent finalization",
             ));
         }
         // This is the only successful completion route. A delegate's fatal
@@ -104,10 +114,10 @@ pub fn capture_supervisor_main() -> std::io::Result<()> {
     Ok(())
 }
 
-/// Marks a staged compiler-capture attempt failed without writing any file or
-/// reading capture environment. The owned supervisor remains the parent's child
-/// until reaped, preventing PID reuse; killing it cannot become successful EOF.
-/// Unstaged direct delegate controls have no supervisor and return false.
+/// Aborts only the staged delegate's current owned capture group, independently
+/// of filesystem writes and capture environment. No PID read from a retained
+/// path is ever signaled: it must equal this process's actual group, and the
+/// signal targets the current group. Unstaged/out-of-group calls return false.
 ///
 /// # Errors
 /// Returns executable-identity, PID-conversion or signal-delivery errors.
@@ -132,7 +142,12 @@ pub fn fail_capture_supervisor() -> std::io::Result<bool> {
     {
         let pid = rustix::process::Pid::from_raw(number)
             .ok_or_else(|| std::io::Error::other("invalid capture supervisor PID"))?;
-        rustix::process::kill_process(pid, rustix::process::Signal::TERM)?;
+        if rustix::process::getpgrp() != pid {
+            return Ok(false);
+        }
+        // This process's membership keeps its group identity live. A retained
+        // alias cannot direct a signal at an unrelated process or group.
+        rustix::process::kill_current_process_group(rustix::process::Signal::KILL)?;
         Ok(true)
     }
     #[cfg(not(unix))]

@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 use std::error::Error;
+use std::os::unix::process::CommandExt as _;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -215,6 +216,7 @@ fn supervisor_observes_failure_when_both_file_channels_or_environment_are_lost()
             Command::new(env!("CARGO_BIN_EXE_sail-conformance-tee"))
                 .arg(sail_verus::run::SUPERVISOR_ARG)
                 .env(sail_verus::run::SUPERVISOR_ENV, "1")
+                .process_group(0)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -225,6 +227,7 @@ fn supervisor_observes_failure_when_both_file_channels_or_environment_are_lost()
         let executable = stage.join("verus");
         std::fs::copy(env!("CARGO_BIN_EXE_sail-conformance-tee"), &executable)?;
         let mut command = Command::new(&executable);
+        command.process_group(i32::try_from(owner.0.id())?);
         command
             .env("SAIL_CONFORMANCE_TEE_DRIVER", "/bin/sh")
             .args(["-c", "exit 0"]);
@@ -240,7 +243,11 @@ fn supervisor_observes_failure_when_both_file_channels_or_environment_are_lost()
                 .env("SAIL_CONFORMANCE_TEE_ERRORS", &scratch.0);
         }
         let failed = command.output()?;
-        assert_eq!(failed.status.code(), Some(125));
+        assert!(!failed.status.success());
+        assert!(
+            failed.status.code().is_none(),
+            "capture group was not terminated"
+        );
         let deadline = Instant::now() + Duration::from_secs(2);
         let status = loop {
             if let Some(status) = owner.0.try_wait()? {
@@ -260,6 +267,7 @@ fn supervisor_observes_failure_when_both_file_channels_or_environment_are_lost()
         Command::new(env!("CARGO_BIN_EXE_sail-conformance-tee"))
             .arg(sail_verus::run::SUPERVISOR_ARG)
             .env(sail_verus::run::SUPERVISOR_ENV, "1")
+            .process_group(0)
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -271,6 +279,7 @@ fn supervisor_observes_failure_when_both_file_channels_or_environment_are_lost()
     std::fs::copy(env!("CARGO_BIN_EXE_sail-conformance-tee"), &executable)?;
     let base = scratch.command("exit 0");
     let output = Command::new(executable)
+        .process_group(i32::try_from(owner.0.id())?)
         .args(base.get_args())
         .envs(base.get_envs().filter_map(|(k, v)| v.map(|v| (k, v))))
         .output()?;
@@ -279,4 +288,36 @@ fn supervisor_observes_failure_when_both_file_channels_or_environment_are_lost()
     drop(owner.0.stdin.take());
     assert!(owner.0.wait()?.success());
     Ok(())
+}
+
+#[test]
+fn retained_alias_cannot_signal_a_process_outside_its_current_group() -> TestResult {
+    let scratch = Scratch::new()?;
+    let mut victim = Command::new("/bin/sh")
+        .args(["-c", "cat >/dev/null"])
+        .process_group(0)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let run = (|| -> TestResult {
+        let stage = scratch.0.join(format!("capture-frontend-{}", victim.id()));
+        std::fs::create_dir(&stage)?;
+        let executable = stage.join("verus");
+        std::fs::copy(env!("CARGO_BIN_EXE_sail-conformance-tee"), &executable)?;
+        let failed = Command::new(executable)
+            .env_remove("SAIL_CONFORMANCE_TEE_DIR")
+            .env_remove("SAIL_CONFORMANCE_TEE_ERRORS")
+            .args(["-c", "exit 0"])
+            .output()?;
+        assert_eq!(failed.status.code(), Some(125));
+        assert!(
+            victim.try_wait()?.is_none(),
+            "retained alias signaled an unrelated process"
+        );
+        Ok(())
+    })();
+    let _ = victim.kill();
+    let _ = victim.wait();
+    run
 }

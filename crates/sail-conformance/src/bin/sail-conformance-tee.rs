@@ -162,7 +162,7 @@ fn failure(message: impl std::fmt::Display) -> ExitCode {
     {
         let _ = file.write_all(message.as_bytes());
     }
-    eprint!("{message}");
+    let _ = std::io::stderr().write_all(message.as_bytes());
     ExitCode::from(125)
 }
 

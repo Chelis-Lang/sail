@@ -96,17 +96,24 @@ reviewed for this dependency-only lock edge before it advances.
 
 ## Capture-failure witness
 
-A parent-owned companion lives for each Cargo capture. Its stdin belongs only to
-that parent; successful completion requires the parent to close it after Cargo
-ends. The staged delegate's directory identifies the companion PID independently
-of inherited capture environment. Every explicit delegate failure terminates
-that companion through the existing safe Unix process API. A prematurely ended
-or unsuccessful companion makes the whole run an infrastructure refusal before
-any comparison. This remains observable when both reservation and health-file
-writes fail and a build script consumes the delegate's stderr or clears capture
-variables. PID ownership is retained until reap; cleanup kills and reaps the
-companion on every setup, timeout and early-return path. No new dependency or
-edge is needed: `sail-verus` already uses the pinned safe process API.
+A parent-owned companion leads a separate process group for each Cargo capture;
+the timing wrapper, Cargo and its compiler delegates join that group. The
+companion's stdin belongs only to the parent. Successful completion requires the
+parent to close it after Cargo ends and validate a successful companion exit.
+The staged delegate recognizes the expected group from its executable's owned
+directory, independently of capture environment and writable files. Every
+explicit delegate failure aborts **its current group**, after checking its
+actual group matches that namespace. It never signals a PID taken from a path.
+The parent stays outside that group and refuses before comparison if its
+companion ended prematurely or unsuccessfully. Losing both reservation and
+health-file writes, or consuming stderr and clearing capture variables, cannot
+hide such a failure in the owned group.
+
+Cleanup retires the alias when possible and reaps the actual owned companion.
+If alias retirement fails the run refuses; a retained alias cannot signal an
+unrelated process or another group. Timeout/error cleanup targets the owned
+capture group while its captain's child identity is retained. No new dependency
+or edge is needed: the safe Unix process API is already pinned in `sail-verus`.
 
 ## Consequences
 
