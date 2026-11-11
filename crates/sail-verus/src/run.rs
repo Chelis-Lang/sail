@@ -13,6 +13,12 @@
 //! holds only diagnostics. Each verified crate prints its own
 //! `--output-json` document, so a run can produce several.
 
+mod capture;
+
+pub use capture::{
+    SUPERVISOR_ARG, SUPERVISOR_ENV, capture_supervisor_main, fail_capture_supervisor,
+};
+
 use std::collections::BTreeMap;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -516,18 +522,31 @@ pub fn run_unit_captured(
     run_unit_impl(installed, unit, solver, work, Some(tee))
 }
 
-fn capture_frontend(original: &Path, tee: Option<&Path>, work: &Path) -> Result<PathBuf> {
-    let Some(tee) = tee else {
-        return Ok(original.to_path_buf());
+fn capture_frontend(
+    installed: &Installed,
+    solver: &Solver,
+    cargo: bool,
+    tee: Option<&Path>,
+    work: &Path,
+) -> Result<(PathBuf, Option<capture::Supervisor>)> {
+    let original = match (solver, cargo) {
+        (Solver::Engine(engine), true) => &engine.cargo_verus,
+        (Solver::Engine(engine), false) => &engine.verus,
+        (_, true) => &installed.cargo_verus,
+        (_, false) => &installed.verus,
     };
-    let stage = work.join("capture-frontend");
+    let Some(tee) = tee.filter(|_| cargo) else {
+        return Ok((original.clone(), None));
+    };
+    let mut supervisor = capture::Supervisor::start(tee)?;
+    let stage = supervisor.stage(work);
     let fail = |e| Error::new("SAIL3020", format!("cannot stage compiler capture: {e}"));
     std::fs::create_dir_all(&stage).map_err(fail)?;
     std::fs::create_dir(work.join("invocations")).map_err(fail)?;
     std::fs::write(work.join("capture-errors"), b"").map_err(fail)?;
     std::fs::copy(original, stage.join("cargo-verus")).map_err(fail)?;
     std::fs::copy(tee, stage.join("verus")).map_err(fail)?;
-    Ok(stage.join("cargo-verus"))
+    Ok((stage.join("cargo-verus"), Some(supervisor)))
 }
 
 fn configure_capture(
@@ -539,7 +558,8 @@ fn configure_capture(
     target_dir: Option<&Path>,
     enabled: bool,
 ) {
-    cmd.env_remove("SAIL_CONFORMANCE_TEE_DRIVER")
+    cmd.env_remove(SUPERVISOR_ENV)
+        .env_remove("SAIL_CONFORMANCE_TEE_DRIVER")
         .env_remove("SAIL_CONFORMANCE_TEE_DIR")
         .env_remove("SAIL_CONFORMANCE_TEE_SOURCE")
         .env_remove("SAIL_CONFORMANCE_TEE_TARGET")
@@ -592,13 +612,7 @@ fn run_unit_impl(
         .map_err(|e| Error::new("SAIL3020", format!("cannot create {}: {e}", work.display())))?;
     let cargo = unit.build == Build::CargoVerus;
     let target_dir = reset_run_target(unit)?;
-    let original_program = match (solver, cargo) {
-        (Solver::Engine(engine), true) => &engine.cargo_verus,
-        (Solver::Engine(engine), false) => &engine.verus,
-        (_, true) => &installed.cargo_verus,
-        (_, false) => &installed.verus,
-    };
-    let program = capture_frontend(original_program, tee.filter(|_| cargo), work)?;
+    let (program, supervisor) = capture_frontend(installed, solver, cargo, tee, work)?;
     if !program.is_file() {
         return Err(Error::new(
             "SAIL3020",
@@ -656,6 +670,9 @@ fn run_unit_impl(
     let output = run_with_timeout_retaining(&mut cmd, unit_timeout(), Some(work))
         .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
     let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
+    if let Some(supervisor) = supervisor {
+        supervisor.finish()?;
+    }
     if let Some(dir) = target_dir {
         // Build products are large and never compared; keep the disk free.
         let _ = std::fs::remove_dir_all(dir);

@@ -199,3 +199,84 @@ fn failed_health_preflight_cannot_hide_after_an_earlier_complete_job() -> TestRe
     );
     Ok(())
 }
+
+#[test]
+fn supervisor_observes_failure_when_both_file_channels_or_environment_are_lost() -> TestResult {
+    struct Companion(std::process::Child);
+    impl Drop for Companion {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+    for cleared in [false, true] {
+        let scratch = Scratch::new()?;
+        let mut owner = Companion(
+            Command::new(env!("CARGO_BIN_EXE_sail-conformance-tee"))
+                .arg(sail_verus::run::SUPERVISOR_ARG)
+                .env(sail_verus::run::SUPERVISOR_ENV, "1")
+                .stdin(Stdio::piped())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()?,
+        );
+        let stage = scratch.0.join(format!("capture-frontend-{}", owner.0.id()));
+        std::fs::create_dir(&stage)?;
+        let executable = stage.join("verus");
+        std::fs::copy(env!("CARGO_BIN_EXE_sail-conformance-tee"), &executable)?;
+        let mut command = Command::new(&executable);
+        command
+            .env("SAIL_CONFORMANCE_TEE_DRIVER", "/bin/sh")
+            .args(["-c", "exit 0"]);
+        if cleared {
+            command
+                .env_remove("SAIL_CONFORMANCE_TEE_DIR")
+                .env_remove("SAIL_CONFORMANCE_TEE_ERRORS");
+        } else {
+            let blocked = scratch.0.join("not-a-directory");
+            std::fs::write(&blocked, "blocked")?;
+            command
+                .env("SAIL_CONFORMANCE_TEE_DIR", blocked)
+                .env("SAIL_CONFORMANCE_TEE_ERRORS", &scratch.0);
+        }
+        let failed = command.output()?;
+        assert_eq!(failed.status.code(), Some(125));
+        let deadline = Instant::now() + Duration::from_secs(2);
+        let status = loop {
+            if let Some(status) = owner.0.try_wait()? {
+                break status;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "capture error was lost by the companion"
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        };
+        assert!(!status.success());
+    }
+    // Merely using the staged alias does not fail a healthy capture.
+    let scratch = Scratch::new()?;
+    let mut owner = Companion(
+        Command::new(env!("CARGO_BIN_EXE_sail-conformance-tee"))
+            .arg(sail_verus::run::SUPERVISOR_ARG)
+            .env(sail_verus::run::SUPERVISOR_ENV, "1")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?,
+    );
+    let stage = scratch.0.join(format!("capture-frontend-{}", owner.0.id()));
+    std::fs::create_dir(&stage)?;
+    let executable = stage.join("verus");
+    std::fs::copy(env!("CARGO_BIN_EXE_sail-conformance-tee"), &executable)?;
+    let base = scratch.command("exit 0");
+    let output = Command::new(executable)
+        .args(base.get_args())
+        .envs(base.get_envs().filter_map(|(k, v)| v.map(|v| (k, v))))
+        .output()?;
+    assert!(output.status.success());
+    assert!(owner.0.try_wait()?.is_none());
+    drop(owner.0.stdin.take());
+    assert!(owner.0.wait()?.success());
+    Ok(())
+}

@@ -94,6 +94,20 @@ integrity. No new package, internal layering edge, runtime dependency or solver
 identity is introduced. The parser's exact lock binding must be independently
 reviewed for this dependency-only lock edge before it advances.
 
+## Capture-failure witness
+
+A parent-owned companion lives for each Cargo capture. Its stdin belongs only to
+that parent; successful completion requires the parent to close it after Cargo
+ends. The staged delegate's directory identifies the companion PID independently
+of inherited capture environment. Every explicit delegate failure terminates
+that companion through the existing safe Unix process API. A prematurely ended
+or unsuccessful companion makes the whole run an infrastructure refusal before
+any comparison. This remains observable when both reservation and health-file
+writes fail and a build script consumes the delegate's stderr or clears capture
+variables. PID ownership is retained until reap; cleanup kills and reaps the
+companion on every setup, timeout and early-return path. No new dependency or
+edge is needed: `sail-verus` already uses the pinned safe process API.
+
 ## Consequences
 
 Parallel conformance can qualify complete compiler results without changing

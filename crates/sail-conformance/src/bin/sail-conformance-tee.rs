@@ -153,6 +153,9 @@ fn record(
 }
 
 fn failure(message: impl std::fmt::Display) -> ExitCode {
+    // This remains observable even when both file channels fail and a build
+    // script consumes stderr or clears all capture environment variables.
+    let _ = sail_verus::run::fail_capture_supervisor();
     let message = format!("error[SAIL3018]: {message}\n");
     if let Some(path) = std::env::var_os("SAIL_CONFORMANCE_TEE_ERRORS")
         && let Ok(mut file) = std::fs::OpenOptions::new().append(true).open(path)
@@ -274,6 +277,20 @@ fn complete(mut child: std::process::Child, mut metadata: Meta, dir: &Path) -> E
 
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    if args == [OsString::from(sail_verus::run::SUPERVISOR_ARG)]
+        && std::env::var_os(sail_verus::run::SUPERVISOR_ENV).as_deref()
+            == Some(std::ffi::OsStr::new("1"))
+        && std::env::current_exe()
+            .ok()
+            .and_then(|p| p.file_name().map(std::ffi::OsStr::to_owned))
+            .as_deref()
+            == Some(std::ffi::OsStr::new("sail-conformance-tee"))
+    {
+        return match sail_verus::run::capture_supervisor_main() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(_) => ExitCode::from(125),
+        };
+    }
     let Some(dir) = std::env::var_os(DIR).map(PathBuf::from) else {
         return failure(format!("{DIR} is not set"));
     };
