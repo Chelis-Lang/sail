@@ -59,7 +59,11 @@ timeout. A full listener backlog declines preparation through the ordinary
 verification path.
 
 Preparation uses at most one additional worker. Requests are bounded and newer
-workspace requests replace older ones. Each captured output stream is limited to
+workspace requests replace older ones. If another daemon child briefly retains
+the previous worker's file lock before executing its program, preparation waits
+up to one second for ownership. Foreground preemption or daemon shutdown cancels
+that wait; a timeout declines preparation and ordinary verification still runs.
+Each captured output stream is limited to
 16 MiB; exceeding that limit drains the output and declines replay publication. Stopping the daemon cancels its work;
 unfinished work is not resumed on restart. An unavailable or older daemon simply
 leaves ordinary verification available. Explicitly selected unavailable services

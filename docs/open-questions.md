@@ -581,3 +581,8 @@ planned for releases after 0.1.0. The owner answered all twelve on
     for Linux aarch64? Support is not committed scope until the owner answers,
     and it would then need its own validation record. See
     [ADR 0109](decisions/0109-oyster-retired-v030-scope.md).
+
+    **Inactive, owner clarification 2026-11-11:** Linux aarch64 was not
+    requested and is outside the v0.3.0 program. Do not schedule support work
+    or treat acceptance of this oracle as a pending release decision. The
+    spike remains historical evidence, not an adopted platform commitment.

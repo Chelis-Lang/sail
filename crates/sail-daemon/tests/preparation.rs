@@ -79,6 +79,20 @@ impl Fixture {
     fn status(&self) -> io::Result<Status> {
         self.call(&Request::PreparationStatus)
     }
+    fn inherited_worker_lock(&self) -> io::Result<std::fs::File> {
+        let directory = self.root.join("cache/projects/jobs/preparation");
+        std::fs::create_dir_all(&directory)?;
+        let original = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(directory.join("worker.lock"))?;
+        original.lock()?;
+        // Like a child between fork and exec, this duplicate keeps the same
+        // open file description locked after the original owner closes it.
+        original.try_clone()
+    }
     fn foreground(&self) -> io::Result<UnixStream> {
         let mut stream = UnixStream::connect(&self.socket)?;
         stream.set_read_timeout(Some(Duration::from_secs(5)))?;
@@ -136,9 +150,9 @@ fn foreground_lease_blocks_preparation_and_release_allows_it() -> io::Result<()>
 
 #[test]
 fn foreground_preempts_real_running_process_and_shutdown_reaps_it() -> io::Result<()> {
-    let fixture = Fixture::new("sleep 30")?;
+    let fixture = Fixture::new("touch ../started; sleep 30")?;
     fixture.call(&Request::Prepare(fixture.request("project")?))?;
-    fixture.wait(|status| status.running.is_some())?;
+    fixture.wait(|status| status.running.is_some() && fixture.root.join("started").exists())?;
     let lease = fixture.foreground()?;
     let status = fixture.wait(|status| status.running.is_none())?;
     assert_eq!(status.superseded, 1);
@@ -153,11 +167,11 @@ fn foreground_preempts_real_running_process_and_shutdown_reaps_it() -> io::Resul
 #[test]
 fn foreground_lets_its_workspaces_origin_preparation_finish() -> io::Result<()> {
     let fixture = Fixture::with_grace(
-        "sleep 1; printf '%s' '{\"ready\":true,\"origin\":null}'",
+        "touch ../started; sleep 1; printf '%s' '{\"ready\":true,\"origin\":null}'",
         Duration::from_secs(4),
     )?;
     fixture.call(&Request::Prepare(fixture.origin_request("project")?))?;
-    fixture.wait(|status| status.running.is_some())?;
+    fixture.wait(|status| status.running.is_some() && fixture.root.join("started").exists())?;
     let started = Instant::now();
     let lease = fixture.foreground()?;
     assert!(started.elapsed() < Duration::from_secs(1));
@@ -173,9 +187,9 @@ fn foreground_lets_its_workspaces_origin_preparation_finish() -> io::Result<()> 
 #[test]
 fn foreground_kills_its_workspaces_origin_preparation_after_the_grace() -> io::Result<()> {
     let grace = Duration::from_millis(500);
-    let fixture = Fixture::with_grace("sleep 300", grace)?;
+    let fixture = Fixture::with_grace("touch ../started; sleep 300", grace)?;
     fixture.call(&Request::Prepare(fixture.origin_request("project")?))?;
-    fixture.wait(|status| status.running.is_some())?;
+    fixture.wait(|status| status.running.is_some() && fixture.root.join("started").exists())?;
     let preempted = Instant::now();
     let lease = fixture.foreground()?;
     let status = fixture.wait(|status| status.running.is_none())?;
@@ -240,6 +254,66 @@ fn malformed_worker_output_never_counts_as_ready() -> io::Result<()> {
     fixture.call(&Request::Prepare(fixture.request("project")?))?;
     let status = fixture.wait(|status| status.failed > 0)?;
     assert_eq!(status.ready, 0);
+    Ok(())
+}
+
+/// #711: transient ownership inherited from the preceding preparation must
+/// not discard the new-project preparation or its follow-on origin work.
+#[test]
+fn inherited_worker_lock_release_preserves_follow_on_preparation() -> io::Result<()> {
+    let fixture = Fixture::new(
+        "if [ -f ../initial ]; then\n\
+         printf '%s' '{\"ready\":true,\"origin\":null}'\n\
+         else\n\
+         touch ../initial\n\
+         printf '%s' '{\"ready\":false,\"origin\":{\"key\":\"key\",\"context\":\"context\",\"revision\":\"revision\",\"workspace\":\"/\",\"readback_revision\":\"revision\"}}'\n\
+         fi",
+    )?;
+    let inherited = fixture.inherited_worker_lock()?;
+    fixture.call(&Request::Prepare(fixture.request("project")?))?;
+    fixture.wait(|status| status.running.is_some() || status.failed > 0)?;
+    std::thread::sleep(Duration::from_millis(150));
+    let waiting = fixture.status()?;
+    assert_eq!(waiting.failed, 0);
+    assert!(waiting.running.is_some());
+    assert!(!fixture.root.join("initial").exists());
+    drop(inherited);
+    let status = fixture.wait(|status| status.ready == 1)?;
+    assert_eq!(status.failed, 1); // Initial discovery returns ready=false.
+    assert_eq!(status.superseded, 0);
+    Ok(())
+}
+
+#[test]
+fn worker_lock_timeout_declines_without_starting_and_next_request_recovers() -> io::Result<()> {
+    let fixture = Fixture::new("touch ../started; printf '%s' '{\"ready\":true,\"origin\":null}'")?;
+    let inherited = fixture.inherited_worker_lock()?;
+    fixture.call(&Request::Prepare(fixture.request("project")?))?;
+    let status = fixture.wait(|status| status.failed == 1)?;
+    assert!(status.running.is_none());
+    assert_eq!(status.ready, 0);
+    assert!(!fixture.root.join("started").exists());
+    drop(inherited);
+    fixture.call(&Request::Prepare(fixture.request("project")?))?;
+    let status = fixture.wait(|status| status.ready == 1)?;
+    assert_eq!(status.failed, 1);
+    assert!(fixture.root.join("started").exists());
+    Ok(())
+}
+
+#[test]
+fn foreground_cancels_worker_ownership_wait_without_starting() -> io::Result<()> {
+    let fixture = Fixture::new("touch ../started; printf '%s' '{\"ready\":true,\"origin\":null}'")?;
+    let _inherited = fixture.inherited_worker_lock()?;
+    fixture.call(&Request::Prepare(fixture.request("project")?))?;
+    fixture.wait(|status| status.running.is_some())?;
+    let lease = fixture.foreground()?;
+    let status = fixture.wait(|status| status.running.is_none())?;
+    assert_eq!(status.superseded, 1);
+    assert_eq!(status.failed, 0);
+    assert_eq!(status.ready, 0);
+    assert!(!fixture.root.join("started").exists());
+    drop(lease);
     Ok(())
 }
 

@@ -15,6 +15,10 @@ use super::State;
 
 const MAX_PENDING: usize = 64;
 const MAX_BYTES: usize = 32 * 1024 * 1024;
+/// Another daemon thread's child can retain the previous worker's lock until
+/// it execs. Preparation is optional, so bound the wait even if that child
+/// never reaches exec.
+const OWNERSHIP_WAIT: Duration = Duration::from_secs(1);
 
 struct Task {
     request: Submission,
@@ -330,9 +334,12 @@ fn execute(state: &State, task: &Submission, run: &Run, grace: Duration) -> io::
         .create(true)
         .truncate(false)
         .open(directory.join("worker.lock"))?;
-    ownership
-        .try_lock()
-        .map_err(|error| io::Error::other(error.to_string()))?;
+    lock_worker(
+        &ownership,
+        run,
+        &state.stop,
+        Instant::now() + OWNERSHIP_WAIT,
+    )?;
     let request_file = directory.join("request.json");
     sail_api::jobs::write_frame(&mut super::store::output(&request_file)?, task)?;
     let result = directory.join("outcome.json");
@@ -389,4 +396,38 @@ fn execute(state: &State, task: &Submission, run: &Run, grace: Duration) -> io::
         .take(65_537)
         .read_to_end(&mut bytes)?;
     serde_json::from_slice(&bytes).map_err(io::Error::other)
+}
+
+/// Keep the private request/result files owned across short inherited-lock
+/// windows without delaying foreground admission or daemon shutdown.
+fn lock_worker(
+    ownership: &std::fs::File,
+    run: &Run,
+    stop: &AtomicBool,
+    deadline: Instant,
+) -> io::Result<()> {
+    loop {
+        // No worker has started yet, so even same-workspace preemption can
+        // stop immediately without taking its build-script export.
+        if run.superseded() || stop.load(Ordering::SeqCst) {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "preparation cancelled while waiting for worker ownership",
+            ));
+        }
+        match ownership.try_lock() {
+            Ok(()) => return Ok(()),
+            Err(std::fs::TryLockError::WouldBlock) => {
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::WouldBlock,
+                        "preparation worker ownership remained busy",
+                    ));
+                }
+                std::thread::sleep(remaining.min(Duration::from_millis(20)));
+            }
+            Err(std::fs::TryLockError::Error(error)) => return Err(error),
+        }
+    }
 }
