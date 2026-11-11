@@ -132,3 +132,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0110: Interrupted first observations are discarded, not trusted](0110-interrupted-first-observation.md) (accepted, conservative rule only; per-predicate `SAIL3114` reasons, continuous absent-configuration drain, unsourced checks never reused)
 - [0111: A Verus rejection counts as a mutation detection](0111-mutation-evidence.md) (accepted by owner; attributed, stable rejections with a baseline twin that has headroom score as detected, with a `verifier-rejected`/`counterexample-confirmed` breakdown; campaign views only, solver answers verbatim)
 - [0112: Preserve stock builtin source paths in the runtime](0112-stock-builtin-source-paths.md) (owner-approved scoped exception; implementation and runtime qualification pending)
+
+- [0114: Owned Verus mutation campaigns and their evidence](0114-verus-campaign-execution.md) (accepted for implementation; independent evidence model, bounded owned copies and full-unit confirmation; qualification pending)
