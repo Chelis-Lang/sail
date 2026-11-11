@@ -228,14 +228,20 @@ if mode == 'record-renamed':
     path.write_text(json.dumps(meta))
     sys.exit(0)
 env = dict(os.environ)
-if mode == 'detached':
+if mode in ('detached', 'resource'):
     env = {k:v for k,v in env.items() if not k.startswith('SAIL_CONFORMANCE_')}
 else:
     shutil.rmtree(records)
     records.write_text('blocked')
     health.unlink()
     health.mkdir()
-result = subprocess.run([tee, '--print=file-names'], env=env, start_new_session=True, capture_output=True)
+def exhaust_descriptors():
+    import resource
+    os.close(0)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (3, 3))
+result = subprocess.run([tee, '--print=file-names'], env=env, start_new_session=True,
+                        preexec_fn=exhaust_descriptors if mode == 'resource' else None,
+                        capture_output=True)
 assert result.returncode == 125, result
 assert b'SAIL3018' in result.stderr, result
 if mode == 'erased':
@@ -255,6 +261,7 @@ fn parent_observes_detached_and_consumed_capture_failures() -> TestResult {
     for mode in [
         "positive",
         "detached",
+        "resource",
         "files",
         "erased",
         "record-removed",

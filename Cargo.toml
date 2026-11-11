@@ -18,6 +18,8 @@ license = "MIT"
 sail-acceptance = { path = "crates/sail-acceptance", version = "=0.2.0" }
 # Safe bounded Unix RPC connection setup, including listener backlog pressure.
 socket2 = "=0.6.5"
+# Contributor-only fatal-entry capture witness; safe raw stdin close (ADR 0113).
+nix = { version = "=0.31.3", default-features = false }
 inotify = { version = "=0.11.5", default-features = false }
 # Safe kernel mount-event and bounded optional Unix socket readiness polling.
 rustix = { version = "=1.1.6", default-features = false, features = ["std", "event", "fs", "process"] }

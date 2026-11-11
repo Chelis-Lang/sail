@@ -288,7 +288,18 @@ fn main() -> ExitCode {
     // or touching capture files. Every early return closes it as incomplete.
     let control = match sail_verus::run::CaptureControl::connect() {
         Ok(control) => control,
-        Err(error) => return failure(error),
+        Err(error) => {
+            // This is a fatal entry path before any threads, input pumps or
+            // driver execution. Releasing stdin reserves a descriptor for an
+            // incomplete parent witness even when the child inherited EMFILE.
+            // Never delegate verification after closing its input descriptor.
+            #[cfg(unix)]
+            let _witness = {
+                let _ = nix::unistd::close(0);
+                sail_verus::run::CaptureControl::connect().ok().flatten()
+            };
+            return failure(error);
+        }
     };
     run(control)
 }

@@ -54,6 +54,8 @@ reference, testing guide, changelog and this qualification record.
 
 | 2026-11-11 | `0a9ab14d` | TCP completion: 73 native Linux focused checks pass (two control, 58 library, five CLI, eight process). Clippy rejects three style issues; no full gate credited. | Raw `632-control-focused.log`, replacement lint run pending. |
 
+| 2026-11-11 | `4eb575e8` | Native Linux 73 focused/clippy and Mac 1,338 host tests pass (53 skipped); independent paired production control rejects missing fatal-entry witness under EMFILE: hidden entered tee125 can disappear and classify Same against a healthy plain arm. Safe stdin-release witness retry replaces that fatal entry path; qualification and new lock-edge binding review pending. | `65517d3ee10d09d1bc5be0c03ebb40493820ef6a860680ec75e148c58869af44` |
+
 The log collision is a harness setup defect: `run_unit` formerly added one
 unit-wide `--log-dir` to Cargo-Verus. The actual product driver in `adapter.rs`
 binds `runtime.sidecars.join(identity.key())` and each target's own `logs`

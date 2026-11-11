@@ -1324,6 +1324,7 @@ dependencies = [
 name = "sail-conformance"
 version = "0.2.0"
 dependencies = [
+ "nix",
  "sail-verus",
  "serde",
  "serde_json",

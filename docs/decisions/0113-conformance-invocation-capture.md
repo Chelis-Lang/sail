@@ -110,8 +110,19 @@ completion, listener/worker failure, or a still-open connection when Cargo ends
 makes the parent refuse with SAIL3018. Accepted records must correspond exactly
 to the parent's acknowledged identifiers; removing or changing record identity
 cannot conceal a consumed failure. A bounded worker count and bounded frame
-size turn capacity exhaustion into refusal. No new dependency edge is needed.
-The ordinary run timeout retains its existing owned-process-group cleanup.
+size turn capacity exhaustion into refusal.
+
+The contributor-only `sail-conformance` crate adds a Unix dependency on the
+already locked nix 0.31.3 with default features disabled. Its safe `close`
+operation releases stdin only on fatal initial control-connection failure,
+before any input pump, worker thread or driver execution. It then retries
+registration solely to retain an incomplete parent witness and returns the
+original capture failure. Verification is never delegated with the closed
+input. This covers an entered child with exhausted descriptors without adding
+unsafe code or a dependency to the shim or selected verification runtime.
+No external package version, feature selection or internal layering edge
+changes. The Cargo-lock parser binding requires independent exact source
+review before advancement. The ordinary run timeout retains its existing owned-process-group cleanup.
 
 ## Consequences
 
