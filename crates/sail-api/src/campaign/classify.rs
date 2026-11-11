@@ -270,40 +270,13 @@ fn group(observations: &[Observation], scope: Scope) -> Vec<&Observation> {
         .collect()
 }
 
-fn checked(input: &Classification) -> Result<Outcome, Reason> {
-    let function = input
-        .mutation
-        .function
-        .as_ref()
-        .ok_or(Reason::AmbiguousFunction)?;
-    if !function_valid(function)
-        || !context_valid(&input.context)
-        || !digest(&input.mutation.source_sha256)
-        || input.mutation.source_sha256 == input.context.baseline_sha256
-        || input.mutation.id.is_empty()
-        || input.mutation.before == input.mutation.after
-        || input.mutation.start > input.mutation.end
-        || input.mutation.end.saturating_sub(input.mutation.start)
-            != u64::try_from(input.mutation.before.len()).unwrap_or(u64::MAX)
-        || input.mutation.file.as_os_str().is_empty()
-        || input
-            .mutation
-            .file
-            .components()
-            .any(|p| !matches!(p, std::path::Component::Normal(_)))
-        || !(MIN_REPEATS..=20).contains(&input.repeats)
-    {
-        return Err(Reason::IdentityMismatch);
-    }
-    for run in &input.baseline {
-        valid_observation(run, &input.context, &input.context.baseline_sha256)?;
-    }
-    for run in &input.attempts {
-        valid_observation(run, &input.context, &input.mutation.source_sha256)?;
-    }
-    let required = usize::try_from(input.repeats).map_err(|_| Reason::IdentityMismatch)?;
-    let baseline = group(&input.baseline, Scope::Full);
-    let baseline_scoped = group(&input.baseline, Scope::Scoped);
+fn baseline_runs<'a>(
+    observations: &'a [Observation],
+    function: &Function,
+    required: usize,
+) -> Result<Vec<&'a Observation>, Reason> {
+    let baseline = group(&observations, Scope::Full);
+    let baseline_scoped = group(&observations, Scope::Scoped);
     if baseline.len() < required {
         return Err(Reason::BaselineMissing);
     }
@@ -324,8 +297,16 @@ fn checked(input: &Classification) -> Result<Outcome, Reason> {
             headroom(target(run, function)?)?;
         }
     }
-    let full = group(&input.attempts, Scope::Full);
-    let scoped = group(&input.attempts, Scope::Scoped);
+    Ok(baseline)
+}
+
+fn attempt_runs<'a>(
+    observations: &'a [Observation],
+    function: &Function,
+    required: usize,
+) -> Result<(Vec<&'a Observation>, Scope), Reason> {
+    let full = group(&observations, Scope::Full);
+    let scoped = group(&observations, Scope::Scoped);
     for runs in [&full, &scoped] {
         if runs.is_empty() {
             continue;
@@ -364,24 +345,49 @@ fn checked(input: &Classification) -> Result<Outcome, Reason> {
             return Err(Reason::Unstable);
         }
     }
-    let (attempts, scope) = if full.len() >= required {
-        (full, Scope::Full)
+    if full.len() >= required {
+        Ok((full, Scope::Full))
     } else if full.is_empty() && scoped.len() >= required {
-        (scoped, Scope::Scoped)
+        Ok((scoped, Scope::Scoped))
     } else {
-        return Err(Reason::FullConfirmationMissing);
-    };
-    if !complete(&attempts) {
-        return Err(Reason::Incomplete);
+        Err(Reason::FullConfirmationMissing)
     }
-    if !stable(&attempts, function) {
-        return Err(Reason::Unstable);
+}
+
+fn checked(input: &Classification) -> Result<Outcome, Reason> {
+    let function = input
+        .mutation
+        .function
+        .as_ref()
+        .ok_or(Reason::AmbiguousFunction)?;
+    if !function_valid(function)
+        || !context_valid(&input.context)
+        || !digest(&input.mutation.source_sha256)
+        || input.mutation.source_sha256 == input.context.baseline_sha256
+        || input.mutation.id.is_empty()
+        || input.mutation.before == input.mutation.after
+        || input.mutation.start > input.mutation.end
+        || input.mutation.end.saturating_sub(input.mutation.start)
+            != u64::try_from(input.mutation.before.len()).unwrap_or(u64::MAX)
+        || input.mutation.file.as_os_str().is_empty()
+        || input
+            .mutation
+            .file
+            .components()
+            .any(|p| !matches!(p, std::path::Component::Normal(_)))
+        || !(MIN_REPEATS..=20).contains(&input.repeats)
+    {
+        return Err(Reason::IdentityMismatch);
     }
-    for run in &attempts {
-        if !run.unviable && target(run, function).is_err() {
-            return Err(Reason::AmbiguousFunction);
-        }
+    for run in &input.baseline {
+        valid_observation(run, &input.context, &input.context.baseline_sha256)?;
     }
+    for run in &input.attempts {
+        valid_observation(run, &input.context, &input.mutation.source_sha256)?;
+    }
+    let required = usize::try_from(input.repeats).map_err(|_| Reason::IdentityMismatch)?;
+    let baseline = baseline_runs(&input.baseline, function, required)?;
+    let (attempts, scope) = attempt_runs(&input.attempts, function, required)?;
     let first = attempts.first().ok_or(Reason::Incomplete)?;
     let base = baseline.first().ok_or(Reason::BaselineMissing)?;
     let expected = outcome(first, base, function, scope)?;
