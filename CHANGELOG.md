@@ -66,6 +66,10 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
 
 ### Changed
 
+- Daemon shutdown and partial-startup cleanup cannot miss an idle job worker's
+  wakeup while joining it (#715).
+- Update the main and temporal workspaces' `rustix` pin to 1.1.6, fixing
+  RUSTSEC-2026-0486 without a dependency-policy exception (#714).
 - The shipped vstd proof now applies to projects whose target directory also
   holds crates outside vstd's dependency closure, such as CapybaraKV (#563).
   Each closure unit's private lookup copy keeps only the files a lookup of its

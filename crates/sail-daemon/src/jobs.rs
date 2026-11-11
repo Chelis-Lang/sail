@@ -38,6 +38,19 @@ struct State {
     preparation: preparation::Coordinator,
 }
 
+impl State {
+    /// Publish the worker wait predicate under its queue mutex. Otherwise a
+    /// worker can check `stop`, miss the notification, and then sleep forever
+    /// in `ready.wait` while shutdown is joining it (#715).
+    fn request_shutdown(&self) {
+        // Retain even a poisoned guard until after the notification; workers
+        // already leave their loop when queue locking reports poisoning.
+        let _queue = self.queue.lock();
+        self.stop.store(true, Ordering::SeqCst);
+        self.ready.notify_all();
+    }
+}
+
 /// A bound project endpoint; it owns a bounded pool of verification workers.
 pub struct JobServer {
     socket: PathBuf,
@@ -156,8 +169,7 @@ impl JobServer {
             {
                 Ok(worker) => workers.push(worker),
                 Err(error) => {
-                    self.state.stop.store(true, Ordering::SeqCst);
-                    self.state.ready.notify_all();
+                    self.state.request_shutdown();
                     for worker in workers {
                         let _ = worker.join();
                     }
@@ -173,8 +185,7 @@ impl JobServer {
         {
             Ok(worker) => workers.push(worker),
             Err(error) => {
-                self.state.stop.store(true, Ordering::SeqCst);
-                self.state.ready.notify_all();
+                self.state.request_shutdown();
                 for worker in workers {
                     let _ = worker.join();
                 }
@@ -194,8 +205,7 @@ impl JobServer {
                 workers,
             }),
             Err(error) => {
-                self.state.stop.store(true, Ordering::SeqCst);
-                self.state.ready.notify_all();
+                self.state.request_shutdown();
                 for worker in workers {
                     let _ = worker.join();
                 }
@@ -212,8 +222,7 @@ impl JobHandle {
     }
     /// Cancels active work, joins both service threads, and removes the endpoint.
     pub fn shutdown(&mut self) {
-        self.state.stop.store(true, Ordering::SeqCst);
-        self.state.ready.notify_all();
+        self.state.request_shutdown();
         if let Ok(mut jobs) = self.state.jobs.lock() {
             for job in jobs.values_mut() {
                 job.cancel.store(true, Ordering::SeqCst);
@@ -615,6 +624,60 @@ fn cancel(state: &State, id: &str, superseded: bool) -> io::Result<Status> {
 #[cfg(test)]
 mod endpoint_tests {
     use super::*;
+
+    /// Hold the exact queue-check/wait boundary: shutdown must not publish
+    /// or notify until the condvar has atomically registered its waiter.
+    #[test]
+    fn shutdown_serializes_with_the_worker_queue_check_and_wait() -> io::Result<()> {
+        let root = std::env::temp_dir().join(format!("sail-rpc-stop-{}", std::process::id()));
+        std::fs::create_dir(&root)?;
+        let server = bind(
+            &root.join("jobs.sock"),
+            &root.join("jobs"),
+            &std::env::current_exe()?,
+        )?;
+        let state = &server.state;
+        let queue = state.queue.lock().map_err(lock_error)?;
+        assert!(!state.stop.load(Ordering::SeqCst));
+        let (started, starting) = std::sync::mpsc::channel();
+        let (finished, finishing) = std::sync::mpsc::channel();
+        let stopping = Arc::clone(state);
+        let thread = std::thread::spawn(move || {
+            let _ = started.send(());
+            stopping.request_shutdown();
+            let _ = finished.send(());
+        });
+        starting
+            .recv_timeout(Duration::from_secs(5))
+            .map_err(io::Error::other)?;
+        let early = finishing.recv_timeout(Duration::from_millis(100));
+        let published_early = state.stop.load(Ordering::SeqCst);
+        let notified = if published_early {
+            drop(queue);
+            false
+        } else {
+            let (queue, timeout) = state
+                .ready
+                .wait_timeout(queue, Duration::from_secs(5))
+                .map_err(lock_error)?;
+            drop(queue);
+            !timeout.timed_out()
+        };
+        thread
+            .join()
+            .map_err(|_| io::Error::other("shutdown thread panicked"))?;
+        let stopped = state.stop.load(Ordering::SeqCst);
+        drop(server);
+        std::fs::remove_dir_all(root)?;
+        assert!(matches!(
+            early,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+        ));
+        assert!(!published_early);
+        assert!(notified);
+        assert!(stopped);
+        Ok(())
+    }
 
     /// The endpoint serves while blocked in `accept`, and shutdown wakes it
     /// rather than leaving the listener thread waiting for another client.
