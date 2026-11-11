@@ -167,7 +167,8 @@ impl Snapshot {
     ///
     /// # Errors
     /// `SAIL3171` for an absent/non-relative path, stale original bytes or invalid
-    /// UTF-8 boundary. The caller must bind the resulting digest to its mutation.
+    /// UTF-8 boundary or a patched tree exceeding 512 MiB. The caller must bind
+    /// the resulting digest to its mutation.
     pub fn patched(
         &self,
         file: &Path,
@@ -193,6 +194,17 @@ impl Snapshot {
         let Some(suffix) = text.get(end..) else {
             return Err(error("invalid mutation end"));
         };
+        let total = self.files.values().try_fold(0usize, |total, file| {
+            total
+                .checked_add(file.bytes.len())
+                .ok_or_else(|| error("source size overflow"))
+        })?;
+        let patched_total = total
+            .checked_sub(before.len())
+            .and_then(|total| total.checked_add(after.len()));
+        if patched_total.is_none_or(|total| total > MAX_BYTES) {
+            return Err(error("patched source tree exceeds 512 MiB"));
+        }
         let mut files = self.files.clone();
         files.insert(
             file.to_path_buf(),
@@ -337,6 +349,23 @@ mod tests {
         assert_ne!(second.digest(), executable.digest());
         std::fs::write(root.0.join("ab"), "d")?;
         assert_ne!(executable.digest(), Snapshot::capture(&root.0)?.digest());
+        Ok(())
+    }
+
+    #[test]
+    fn patched_trees_cannot_grow_past_the_source_budget() -> TestResult {
+        let root = Root::new()?;
+        std::fs::write(root.0.join("lib.rs"), "1")?;
+        std::fs::write(root.0.join("other"), "keep")?;
+        let baseline = Snapshot::capture(&root.0)?;
+        let oversized = "0".repeat(MAX_BYTES + 1);
+        let error = baseline
+            .patched(Path::new("lib.rs"), 0, 1, "1", &oversized)
+            .err()
+            .ok_or("oversized mutation was admitted")?;
+        assert_eq!(error.code, "SAIL3171");
+        assert_eq!(baseline.digest(), Snapshot::capture(&root.0)?.digest());
+        assert_eq!(std::fs::read(root.0.join("lib.rs"))?, b"1");
         Ok(())
     }
 }
