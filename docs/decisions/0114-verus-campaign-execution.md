@@ -28,7 +28,12 @@ complete stable observations and complete per-check headroom evidence; the
 half-limit comparison is overflow-safe. An authoritatively empty check
 inventory differs from an unrecorded inventory. Baseline failures in other
 functions stay visible and do not manufacture a new mutation failure. Every
-repetition must satisfy the final outcome's conditions. Solver answers,
+repetition must satisfy the final outcome's conditions. Compare diagnostic
+messages within the mode that produced them; focused/full messages may differ.
+Target verdicts and evidence subclasses must agree across modes. Full runs do
+not erase conflicting or incomplete scoped attempts. A verified function with
+a failed/unknown/sat obligation or an attributed error is inconsistent evidence,
+not a survivor or baseline proof. Solver answers,
 reason-unknown strings and native models remain original observations. Models
 are not independently validated merely because a detection has native `sat`.
 

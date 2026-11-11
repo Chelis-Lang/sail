@@ -52,6 +52,31 @@ fn valid_observation(
         if !function_valid(&function.identity) || !seen.insert(&function.identity) {
             return Err(Reason::InconsistentEvidence);
         }
+        if function.verified
+            && function.checks.iter().any(|check| {
+                check.failure != Failure::None
+                    || matches!(check.answer, Some(AnswerName::Sat | AnswerName::Unknown))
+            })
+        {
+            return Err(Reason::InconsistentEvidence);
+        }
+    }
+    for diagnostic in observation
+        .diagnostics
+        .iter()
+        .filter(|d| d.level == "error")
+    {
+        if let Some(identity) = &diagnostic.function {
+            let observed = observation
+                .functions
+                .iter()
+                .find(|f| &f.identity == identity);
+            if observed.is_some_and(|f| f.verified)
+                || (observed.is_none() && observation.functions_complete && !observation.unviable)
+            {
+                return Err(Reason::InconsistentEvidence);
+            }
+        }
     }
     if observation.unviable
         && observation.completed
@@ -238,6 +263,13 @@ fn outcome(
     Ok(Outcome::Rejected(evidence))
 }
 
+fn group(observations: &[Observation], scope: Scope) -> Vec<&Observation> {
+    observations
+        .iter()
+        .filter(|run| run.scope == scope)
+        .collect()
+}
+
 fn checked(input: &Classification) -> Result<Outcome, Reason> {
     let function = input
         .mutation
@@ -270,33 +302,68 @@ fn checked(input: &Classification) -> Result<Outcome, Reason> {
         valid_observation(run, &input.context, &input.mutation.source_sha256)?;
     }
     let required = usize::try_from(input.repeats).map_err(|_| Reason::IdentityMismatch)?;
-    let baseline: Vec<_> = input
-        .baseline
-        .iter()
-        .filter(|r| r.scope == Scope::Full)
-        .collect();
+    let baseline = group(&input.baseline, Scope::Full);
+    let baseline_scoped = group(&input.baseline, Scope::Scoped);
     if baseline.len() < required {
         return Err(Reason::BaselineMissing);
     }
-    if !complete(&baseline) || baseline.iter().any(|r| r.unviable) {
-        return Err(Reason::BaselineFailed);
+    for runs in [&baseline, &baseline_scoped] {
+        if runs.is_empty() {
+            continue;
+        }
+        if runs.len() < required {
+            return Err(Reason::BaselineMissing);
+        }
+        if !complete(runs) || runs.iter().any(|r| r.unviable) {
+            return Err(Reason::BaselineFailed);
+        }
+        if !stable(runs, function) {
+            return Err(Reason::BaselineUnstable);
+        }
+        for run in runs {
+            headroom(target(run, function)?)?;
+        }
     }
-    if !stable(&baseline, function) {
-        return Err(Reason::BaselineUnstable);
+    let full = group(&input.attempts, Scope::Full);
+    let scoped = group(&input.attempts, Scope::Scoped);
+    for runs in [&full, &scoped] {
+        if runs.is_empty() {
+            continue;
+        }
+        if !complete(runs) {
+            return Err(Reason::Incomplete);
+        }
+        if runs.len() < required {
+            return Err(Reason::FullConfirmationMissing);
+        }
+        if !stable(runs, function) {
+            return Err(Reason::Unstable);
+        }
+        for run in runs {
+            if !run.unviable && target(run, function)?.unstable {
+                return Err(Reason::Unstable);
+            }
+        }
     }
-    for run in &baseline {
-        headroom(target(run, function)?)?;
+    // Diagnostics are compared within their actual producing mode. A change
+    // of scope may change messages, but it cannot erase contrary target
+    // verdicts, detection subclasses or incomplete earlier attempts.
+    if let (Some(full), Some(scoped)) = (full.first(), scoped.first()) {
+        let signature = |run: &Observation| -> Result<_, Reason> {
+            Ok((
+                run.unviable,
+                if run.unviable {
+                    None
+                } else {
+                    let observed = target(run, function)?;
+                    Some((observed.verified, detection(observed)))
+                },
+            ))
+        };
+        if signature(full)? != signature(scoped)? {
+            return Err(Reason::Unstable);
+        }
     }
-    let full: Vec<_> = input
-        .attempts
-        .iter()
-        .filter(|r| r.scope == Scope::Full)
-        .collect();
-    let scoped: Vec<_> = input
-        .attempts
-        .iter()
-        .filter(|r| r.scope == Scope::Scoped)
-        .collect();
     let (attempts, scope) = if full.len() >= required {
         (full, Scope::Full)
     } else if full.is_empty() && scoped.len() >= required {

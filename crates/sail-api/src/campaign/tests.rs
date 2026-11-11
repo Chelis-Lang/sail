@@ -341,3 +341,99 @@ fn absent_or_unattributed_failures_do_not_claim_resource_exhaustion() {
         );
     }
 }
+
+#[test]
+fn contradictory_verified_observations_never_score() {
+    for baseline in [false, true] {
+        for kind in ["sat", "unknown", "error", "failure"] {
+            let mut input = input();
+            let runs = if baseline {
+                &mut input.baseline
+            } else {
+                &mut input.attempts
+            };
+            for run in runs {
+                let function = &mut run.functions[0];
+                function.verified = true;
+                function.checks = vec![check(AnswerName::Unsat, Failure::None)];
+                run.diagnostics.clear();
+                match kind {
+                    "sat" => function.checks[0].answer = Some(AnswerName::Sat),
+                    "unknown" => function.checks[0].answer = Some(AnswerName::Unknown),
+                    "error" => run
+                        .diagnostics
+                        .push(diagnostic(Some(function.identity.clone()), "failed")),
+                    _ => function.checks[0].failure = Failure::Verifier,
+                }
+            }
+            assert_eq!(
+                classify(&input),
+                Outcome::Inconclusive(Reason::InconsistentEvidence),
+                "baseline={baseline} kind={kind}"
+            );
+        }
+    }
+}
+
+#[test]
+fn full_confirmation_retains_scoped_conflicts_and_interruption() {
+    for full_survives in [false, true] {
+        let mut input = input();
+        let mut scoped = input.attempts.clone();
+        for run in &mut scoped {
+            run.scope = Scope::Scoped;
+        }
+        let survivors = if full_survives {
+            &mut input.attempts
+        } else {
+            &mut scoped
+        };
+        for run in survivors {
+            run.functions[0].verified = true;
+            run.functions[0].checks = vec![check(AnswerName::Unsat, Failure::None)];
+            run.diagnostics.clear();
+        }
+        input.attempts.extend(scoped);
+        assert_eq!(classify(&input), Outcome::Inconclusive(Reason::Unstable));
+    }
+    for incomplete in [true, false] {
+        let mut input = input();
+        let mut scoped = input.attempts.clone();
+        for run in &mut scoped {
+            run.scope = Scope::Scoped;
+        }
+        if incomplete {
+            scoped[0].completed = false;
+        } else {
+            scoped[0].diagnostics[0].message = "different".to_owned();
+            scoped[0].diagnostics[0].original.message = "different".to_owned();
+        }
+        input.attempts.extend(scoped);
+        assert_eq!(
+            classify(&input),
+            Outcome::Inconclusive(if incomplete {
+                Reason::Incomplete
+            } else {
+                Reason::Unstable
+            })
+        );
+    }
+}
+
+#[test]
+fn scope_specific_diagnostics_can_differ_without_changing_target_outcomes() {
+    let mut input = input();
+    let mut scoped = input.attempts.clone();
+    for run in &mut scoped {
+        run.scope = Scope::Scoped;
+        run.diagnostics = vec![diagnostic(
+            Some(function("f")),
+            "different focused diagnostic",
+        )];
+    }
+    input.attempts.extend(scoped);
+    assert_eq!(
+        classify(&input),
+        Outcome::Rejected(Detection::VerifierRejected)
+    );
+}

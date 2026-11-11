@@ -49,3 +49,11 @@ current unused campaign modules. This is historical component evidence, not a
 new run over the current source, and proves no campaign classifier or service
 theorem. Independent scope review and current native workspace/host gates are
 still required before merge.
+
+Independent native review rejects `87af828d` despite 12 classifier, three copy
+and 1,328 host tests passing (53 skipped): full runs ignored contradictory or
+incomplete scoped attempts, and verified rows with sat/unknown/error evidence
+could score. The replacement validates those contradictions in every original
+observation and retains each mode's repetitions. Scope-specific diagnostic
+messages remain separate. Added negative controls and current qualification
+are pending; the rejected candidate is not accepted campaign evidence.
