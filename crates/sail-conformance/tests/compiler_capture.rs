@@ -145,3 +145,34 @@ fn physical_packed_options_are_recorded_with_their_exact_spelling() -> TestResul
     );
     Ok(())
 }
+
+#[test]
+fn compiler_stdin_is_forwarded_retained_and_bound_to_probe_outcomes() -> TestResult {
+    fn invoke(scratch: &Scratch, bytes: &[u8], swap: bool) -> TestResult {
+        let mut child = scratch.command("read value; if [ \"$value\" = one ]; then code=0; else code=7; fi; if [ \"$SAIL_CAPTURE_SWAP\" = yes ]; then code=$((7-code)); fi; exit $code")
+            .arg("-").env("SAIL_CAPTURE_SWAP", if swap { "yes" } else { "no" })
+            .stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn()?;
+        let mut input = child.stdin.take().ok_or("missing input pipe")?;
+        std::io::Write::write_all(&mut input, bytes)?;
+        drop(input);
+        child.wait()?;
+        Ok(())
+    }
+    let plain = Scratch::new()?;
+    let changed = Scratch::new()?;
+    for (scratch, swap) in [(&plain, false), (&changed, true)] {
+        invoke(scratch, b"one\n", swap)?;
+        invoke(scratch, b"two\n", swap)?;
+    }
+    let p = load(&plain.0)?;
+    let s = load(&changed.0)?;
+    assert_eq!(p.len(), 2);
+    assert_eq!(s.len(), 2);
+    assert!(p.iter().any(|p| p.stdin == b"one\n"));
+    assert!(p.iter().any(|p| p.stdin == b"two\n"));
+    assert_ne!(
+        sail_conformance::invocations::compare_arms(&p, &s).differences,
+        [] as [String; 0]
+    );
+    Ok(())
+}

@@ -423,9 +423,12 @@ Build both harness binaries with `cargo build --release -p sail-conformance
 --bins`; `ci/run.sh conformance` does this automatically. Cargo units retain
 an `invocations/` directory beside their exact `stdout.txt` and `stderr.txt`,
 with a `capture-check.json` explaining the aggregate stdout interleaving and
-an independent `capture-errors` health record. Format 2 metadata retains both
+an independent `capture-errors` health record. Format 3 metadata retains both
 requested and effective packed Verus channels, including their leading spaces.
 Compiler logs use isolated owned directories through the product option helper.
+Commands using `-` retain exact stdin in each record. Known hidden binary metadata
+probes remain byte-exact; all generated probe ordinals, source bytes and outcomes
+stay bound, even when their temporary instance labels differ.
 Keep the entire directory when diagnosing `SAIL3018`, including incomplete
 `.tmp` entries. Never remove an entry to retry comparison. The harness checks
 compiler identities, every probe, complete stream multiplicity, structured

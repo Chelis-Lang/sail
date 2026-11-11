@@ -49,10 +49,25 @@ position are never pairing keys.
 Managed-arm attribution logs use separate compiler-owned directories, matching
 the product driver's target-owned log isolation. The harness adds those options
 through the same product packed-channel helper; it never shares one directory
-between concurrent compilers. Capture format 2 records and hashes both Cargo's
+between concurrent compilers. Capture format 3 records and hashes both Cargo's
 original requested channels and the child's effective channels. Pairing binds
 the original requests; the only controlled supplement is the recorded harness
 logging configuration. Exact stdout, stderr and solver inputs are not rewritten.
+
+Every compiler command carrying `-` captures and forwards raw stdin, records
+its bytes and digest, and binds that digest into pairing. Input failure or
+incomplete input is a capture failure, never a matched backend rejection.
+Known hidden `--emit=metadata -o -` probes retain binary stdout verbatim; only
+forwarded compiler JSON requires UTF-8.
+
+Native autocfg probes use a random 16-hex-digit instance name and a monotonic
+ordinal ([autocfg 1.5.1 source](https://github.com/cuviper/autocfg/blob/1.5.1/src/lib.rs)).
+For the exact non-verifying, stdin-fed, library/LLVM-IR shape, pairing binds
+package/target, ordinal, complete source bytes and every remaining argument/
+packed channel. It treats only that recorded instance label as opaque. The
+actual command, input, output and solver queries are never rewritten. Verified
+packages and arbitrary names have no such rule. Ambiguous instance labels
+within one arm fail rather than matching as an unordered multiset.
 
 Every ordinary invocation uses the existing structured stdout and per-function
 oracle, with byte-equal stderr and exact non-JSON stdout. Probes retain their exit statuses and byte-exact stderr. Their plain stdout
@@ -66,7 +81,9 @@ handover's requested structured-stdout comparison; no existing oracle field or
 accepted-divergence predicate is removed. The aggregate exit and
 complete diagnostic oracle remain checked. Plain confirmation repetitions use
 the same oracle under ADR 0009; invalid captures cannot become instability.
-Engine seal checks and displayed totals use all captured documents.
+Displayed totals include every captured Verus JSON document, including the
+structured suffix of version probes. Engine target-seal checks use actual
+Cargo compiler jobs; a hidden discovery probe cannot create a requested target.
 
 Add the existing workspace `sha2` dependency to `sail-conformance` for capture
 integrity. No new package, internal layering edge, runtime dependency or solver

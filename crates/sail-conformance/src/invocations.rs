@@ -45,6 +45,12 @@ pub struct Meta {
     pub arg_sha256: String,
     /// Digest of the exact requested argv/packed channels before owned logging.
     pub requested_arg_sha256: String,
+    /// A `-` argument requires complete raw compiler stdin capture.
+    pub stdin_captured: bool,
+    /// Retained stdin byte count, zero for a non-stdin call.
+    pub stdin_len: usize,
+    /// Exact stdin SHA-256 (including the empty input).
+    pub stdin_sha256: String,
     /// Original arguments (non-UTF-8 metadata makes the capture invalid).
     pub argv: Vec<String>,
     /// The `__VERUS_DRIVER_*` environment.
@@ -120,6 +126,8 @@ pub struct Invocation {
     pub stdout: Vec<u8>,
     /// Exact stderr bytes.
     pub stderr: Vec<u8>,
+    /// Exact input bytes, when the compiler receives source through stdin.
+    pub stdin: Vec<u8>,
 }
 
 /// The identity two arms are paired on: package, then target.
@@ -148,6 +156,12 @@ pub struct Identity {
     /// spaces and every packed option; harness-only logging is recorded in
     /// `Meta::driver_env` separately from this original input identity.
     pub driver_env: BTreeMap<String, Vec<String>>,
+    /// Exact stdin source identity, distinct from a non-stdin compiler call.
+    pub stdin_sha256: Option<String>,
+    /// Known native autocfg probe's monotonic ordinal. Its random instance
+    /// label is recorded verbatim, while this ordinal and exact stdin bind
+    /// the corresponding request. Never used for verified Cargo jobs.
+    pub generated_probe_ordinal: Option<u64>,
 }
 
 impl Invocation {
@@ -176,13 +190,56 @@ impl Invocation {
                 || a == "-vV"
                 || a == "--version"
                 || a.starts_with("-Zunpretty=")
-        })
+        }) || (self.meta.argv.iter().any(|a| a == "--emit=metadata")
+            && self.meta.argv.windows(2).any(|args| args == ["-o", "-"]))
+    }
+
+    fn generated_probe(&self) -> Option<(String, u64)> {
+        let m = &self.meta;
+        if self.forwarded()
+            || !m.stdin_captured
+            || m.argv.last().map(String::as_str) != Some("-")
+            || !m.argv.iter().any(|a| a == "--emit=llvm-ir")
+            || m.crate_types != ["lib"]
+        {
+            return None;
+        }
+        let package = m.package_name.as_ref()?;
+        let version = m.package_version.as_ref()?;
+        let selected = format!("__VERUS_DRIVER_VERIFY_{package}-{version}-");
+        if m.requested_driver_env
+            .iter()
+            .any(|(key, value)| key.starts_with(&selected) && value == "1")
+        {
+            return None;
+        }
+        let name = m.crate_name.as_ref()?;
+        let rest = name.strip_prefix("autocfg_")?;
+        let (instance, ordinal) = rest.split_once('_')?;
+        if instance.len() != 16
+            || !instance
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        {
+            return None;
+        }
+        let number = ordinal.parse::<u64>().ok()?;
+        if number.to_string() != ordinal
+            || !m
+                .argv
+                .windows(2)
+                .any(|a| a[0] == "--crate-name" && &a[1] == name)
+        {
+            return None;
+        }
+        Some((format!("autocfg_<instance>_{ordinal}"), number))
     }
 
     /// Package/target identity and complete argument association.
     #[must_use]
     pub fn identity(&self) -> Identity {
         let m = &self.meta;
+        let generated = self.generated_probe();
         Identity {
             package_name: m.package_name.clone().unwrap_or_default(),
             package_version: m.package_version.clone().unwrap_or_default(),
@@ -197,7 +254,10 @@ impl Invocation {
                         .into_owned()
                 })
                 .unwrap_or_default(),
-            crate_name: m.crate_name.clone().unwrap_or_default(),
+            crate_name: generated.as_ref().map_or_else(
+                || m.crate_name.clone().unwrap_or_default(),
+                |(name, _)| name.clone(),
+            ),
             crate_types: m.crate_types.join(","),
             test: m.test,
             compile_target: m
@@ -206,7 +266,23 @@ impl Invocation {
                 .map(|a| relative_argument(a, m))
                 .unwrap_or_default(),
             bin_name: m.bin_name.clone(),
-            arguments: m.argv.iter().map(|arg| relative_argument(arg, m)).collect(),
+            stdin_sha256: m.stdin_captured.then(|| m.stdin_sha256.clone()),
+            generated_probe_ordinal: generated.as_ref().map(|(_, ordinal)| *ordinal),
+            arguments: m
+                .argv
+                .iter()
+                .enumerate()
+                .map(|(i, arg)| {
+                    if let Some((name, _)) = &generated
+                        && i > 0
+                        && m.argv.get(i - 1).is_some_and(|a| a == "--crate-name")
+                    {
+                        name.clone()
+                    } else {
+                        relative_argument(arg, m)
+                    }
+                })
+                .collect(),
             driver_env: m
                 .requested_driver_env
                 .iter()
@@ -259,6 +335,12 @@ fn relative_argument(arg: &str, meta: &Meta) -> String {
 /// A record the tee did not complete (`*.tmp`), an unreadable file, or
 /// streams whose length or digest disagree with the record.
 pub fn load(dir: &Path) -> Result<Vec<Invocation>, String> {
+    load_records(dir).map_err(capture_error)
+}
+fn capture_error(error: impl std::fmt::Display) -> String {
+    format!("error[SAIL3018]: {error}")
+}
+fn load_records(dir: &Path) -> Result<Vec<Invocation>, String> {
     let mut names = Vec::new();
     for entry in std::fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
         let entry = entry.map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -279,18 +361,22 @@ pub fn load(dir: &Path) -> Result<Vec<Invocation>, String> {
         };
         let meta: Meta = serde_json::from_slice(&read("meta.json")?)
             .map_err(|e| format!("{}/meta.json: {e}", path.display()))?;
-        if meta.version != 2 || meta.source_root.is_empty() {
+        if meta.version != 3 || meta.source_root.is_empty() {
             return Err(format!("unsupported or unbound capture {}", path.display()));
         }
         let stdout = read("stdout")?;
-        std::str::from_utf8(&stdout).map_err(|e| format!("capture stdout is not UTF-8: {e}"))?;
         let stderr = read("stderr")?;
+        let stdin = read("stdin")?;
         if stdout.len() != meta.stdout_len
             || stderr.len() != meta.stderr_len
             || hex_sha256(&stdout) != meta.stdout_sha256
             || hex_sha256(&stderr) != meta.stderr_sha256
             || argument_digest(&meta.argv, &meta.driver_env) != meta.arg_sha256
             || argument_digest(&meta.argv, &meta.requested_driver_env) != meta.requested_arg_sha256
+            || stdin.len() != meta.stdin_len
+            || hex_sha256(&stdin) != meta.stdin_sha256
+            || meta.stdin_captured != meta.argv.iter().any(|arg| arg == "-")
+            || (!meta.stdin_captured && !stdin.is_empty())
         {
             return Err(format!(
                 "capture {} does not match its digests",
@@ -303,11 +389,17 @@ pub fn load(dir: &Path) -> Result<Vec<Invocation>, String> {
                 path.display()
             ));
         }
-        out.push(Invocation {
+        let invocation = Invocation {
             meta,
             stdout,
             stderr,
-        });
+            stdin,
+        };
+        if invocation.forwarded() {
+            std::str::from_utf8(&invocation.stdout)
+                .map_err(|e| format!("forwarded compiler stdout is not UTF-8: {e}"))?;
+        }
+        out.push(invocation);
     }
     Ok(out)
 }
@@ -464,7 +556,24 @@ impl CapturedRun {
             record.outputs = grouped(invocations)
                 .into_values()
                 .flatten()
-                .flat_map(|i| invocation_record(i).outputs)
+                .flat_map(|i| document_record(i).outputs)
+                .collect();
+        }
+        record
+    }
+
+    /// Only actual Cargo compiler jobs require target engine seals. Discovery
+    /// probes retain their JSON in the complete summary and comparison, but
+    /// do not constitute requested target verification invocations.
+    #[must_use]
+    pub fn verification_summary(&self) -> sail_verus::run::RunRecord {
+        let mut record = self.record.clone();
+        if let Some(invocations) = &self.invocations {
+            record.outputs = grouped(invocations)
+                .into_values()
+                .flatten()
+                .filter(|i| i.forwarded())
+                .flat_map(|i| document_record(i).outputs)
                 .collect();
         }
         record
@@ -508,15 +617,15 @@ pub fn run(
         {
             return Err("error[SAIL3018]: stdout from an unrecognized compiler invocation; capture cannot establish Cargo forwarding".to_owned());
         }
-        let stdout = std::fs::read(work.join("stdout.txt")).map_err(|e| e.to_string())?;
+        let stdout = std::fs::read(work.join("stdout.txt")).map_err(capture_error)?;
         let parts: Vec<&[u8]> = invocations
             .iter()
             .filter(|i| i.forwarded())
             .map(|i| i.stdout.as_slice())
             .collect();
         let explanation = explain(&stdout, &parts, 50_000);
-        let json = serde_json::to_vec_pretty(&explanation).map_err(|e| e.to_string())?;
-        std::fs::write(work.join("capture-check.json"), json).map_err(|e| e.to_string())?;
+        let json = serde_json::to_vec_pretty(&explanation).map_err(capture_error)?;
+        std::fs::write(work.join("capture-check.json"), json).map_err(capture_error)?;
         if !explanation.explained {
             return Err(format!(
                 "error[SAIL3018]: aggregate stdout is not explained: {:?}",
@@ -590,6 +699,10 @@ fn version_probe(invocation: &Invocation) -> Option<(sail_verus::run::RunRecord,
     Some((record, bytes.get(..start)?, bytes.get(start + end..)?))
 }
 
+fn document_record(invocation: &Invocation) -> sail_verus::run::RunRecord {
+    version_probe(invocation).map_or_else(|| invocation_record(invocation), |(record, _, _)| record)
+}
+
 fn compare_invocations(a: &Invocation, b: &Invocation) -> crate::Comparison {
     if a.is_probe() || b.is_probe() {
         if let (Some((plain, before_plain, after_plain)), Some((sail, before_sail, after_sail))) =
@@ -646,6 +759,18 @@ pub fn compare_arms(plain: &[Invocation], sail: &[Invocation]) -> crate::Compari
     let (p, mut s) = (grouped(plain), grouped(sail));
     for (identity, plain_list) in p {
         let mut sail_list = s.remove(&identity).unwrap_or_default();
+        if identity.generated_probe_ordinal.is_some()
+            && [&plain_list, &sail_list].into_iter().any(|list| {
+                list.iter()
+                    .map(|i| &i.meta.crate_name)
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .len()
+                    > 1
+            })
+        {
+            c.differences
+                .push(format!("ambiguous generated probe labels for {identity:?}"));
+        }
         if plain_list.len() != sail_list.len() {
             c.differences.push(format!(
                 "invocation count for {identity:?}: plain {} / sail {}",
@@ -777,7 +902,7 @@ mod tests {
         let driver_env = BTreeMap::new();
         Invocation {
             meta: Meta {
-                version: 2,
+                version: 3,
                 package_name: name.map(str::to_owned),
                 package_version: name.map(|_| "1.0".to_owned()),
                 manifest_dir: name.map(|_| format!("{root}/member")),
@@ -788,6 +913,9 @@ mod tests {
                 compile_target: None,
                 arg_sha256: argument_digest(&argv, &driver_env),
                 requested_arg_sha256: argument_digest(&argv, &driver_env),
+                stdin_captured: false,
+                stdin_len: 0,
+                stdin_sha256: hex_sha256(b""),
                 argv,
                 requested_driver_env: driver_env.clone(),
                 driver_env,
@@ -806,6 +934,7 @@ mod tests {
             },
             stdout: stdout.to_vec(),
             stderr: Vec::new(),
+            stdin: Vec::new(),
         }
     }
 
@@ -890,6 +1019,117 @@ mod tests {
             compare_arms(&[a, b], &[changed_a, changed_b]).differences,
             [] as [String; 0]
         );
+    }
+
+    #[test]
+    fn complete_summaries_include_probe_json_but_target_seals_require_cargo_jobs() {
+        let doc = br#"{"func-details":{},"verification-results":{"verified":1,"errors":0},"times-ms":{"smt":{"smt-run-module-times":[{"module":"m","function-breakdown":[{"function":"f","success":true,"rlimit":1}]}]}}}"#;
+        let mut bytes = b"rustc version\n".to_vec();
+        bytes.extend_from_slice(doc);
+        let probe = invocation("/root", None, &bytes);
+        let job = invocation("/root", Some("p"), doc);
+        let record = invocation_record(&job);
+        let run = CapturedRun {
+            record,
+            invocations: Some(vec![probe, job]),
+        };
+        assert_eq!(run.summary().outputs.len(), 2);
+        assert_eq!(run.summary().total("verified"), Some(2));
+        assert_eq!(run.summary().functions().len(), 2);
+        assert_eq!(run.verification_summary().outputs.len(), 1);
+        let event = r#"{"event":"compiler-sealed","phase":"full","payload":{"normal_termination":true,"success":true}}"#;
+        assert_eq!(
+            crate::engine::check(&run.verification_summary(), event, false).0,
+            [] as [String; 0]
+        );
+    }
+
+    #[test]
+    fn generated_native_probe_labels_keep_ordinal_source_and_outcome_association() {
+        fn probe(instance: &str, ordinal: u64, source: &[u8], status: i32) -> Invocation {
+            let mut i = invocation("/root", Some("num_traits"), b"");
+            let name = format!("autocfg_{instance}_{ordinal}");
+            i.meta.crate_name = Some(name.clone());
+            i.meta.argv = vec![
+                "--crate-name".to_owned(),
+                name,
+                "--emit=llvm-ir".to_owned(),
+                "-".to_owned(),
+            ];
+            i.meta.stdin_captured = true;
+            i.stdin = source.to_vec();
+            i.meta.stdin_sha256 = hex_sha256(source);
+            i.meta.exit_code = Some(status);
+            i
+        }
+        let a = probe("0123456789abcdef", 0, b"one", 0);
+        let b = probe("fedcba9876543210", 0, b"one", 0);
+        assert_eq!(
+            compare_arms(std::slice::from_ref(&a), std::slice::from_ref(&b)).differences,
+            [] as [String; 0]
+        );
+        for changed in [
+            probe("fedcba9876543210", 1, b"one", 0),
+            probe("fedcba9876543210", 0, b"two", 0),
+            probe("fedcba9876543210", 0, b"one", 7),
+        ] {
+            assert_ne!(
+                compare_arms(std::slice::from_ref(&a), &[changed]).differences,
+                [] as [String; 0]
+            );
+        }
+        assert_ne!(
+            compare_arms(&[a.clone(), b.clone()], &[a, b]).differences,
+            [] as [String; 0]
+        );
+    }
+
+    #[test]
+    fn stdin_sources_cannot_exchange_outcomes_under_identical_arguments() {
+        let mut a = invocation("/root", None, b"");
+        a.meta.argv = vec![
+            "--emit=metadata".to_owned(),
+            "-o".to_owned(),
+            "-".to_owned(),
+            "-".to_owned(),
+        ];
+        a.stdin = b"one\n".to_vec();
+        a.meta.stdin_captured = true;
+        a.meta.stdin_sha256 = hex_sha256(&a.stdin);
+        let mut b = a.clone();
+        b.stdin = b"two\n".to_vec();
+        b.meta.stdin_sha256 = hex_sha256(&b.stdin);
+        b.meta.exit_code = Some(7);
+        assert_ne!(a.identity(), b.identity());
+        let mut changed_a = a.clone();
+        let mut changed_b = b.clone();
+        changed_a.meta.exit_code = Some(7);
+        changed_b.meta.exit_code = Some(0);
+        assert_ne!(
+            compare_arms(&[a, b], &[changed_a, changed_b]).differences,
+            [] as [String; 0]
+        );
+    }
+
+    #[test]
+    fn known_binary_metadata_probes_keep_exact_bytes_and_input_identity() {
+        let mut a = invocation("/root", None, b"rust\0\xff");
+        a.meta.argv = vec![
+            "--emit=metadata".to_owned(),
+            "-o".to_owned(),
+            "-".to_owned(),
+            "-".to_owned(),
+        ];
+        a.meta.stdin_captured = true;
+        assert!(!a.forwarded());
+        assert!(a.known_probe_output());
+        assert_eq!(
+            compare_arms(std::slice::from_ref(&a), std::slice::from_ref(&a)).differences,
+            [] as [String; 0]
+        );
+        let mut b = a.clone();
+        b.stdout = b"rust\0\xfe".to_vec();
+        assert_ne!(compare_arms(&[a], &[b]).differences, [] as [String; 0]);
     }
 
     #[test]

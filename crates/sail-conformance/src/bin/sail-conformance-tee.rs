@@ -90,7 +90,7 @@ fn meta(raw: &[OsString], started_ns: u128) -> Meta {
         })
         .collect();
     Meta {
-        version: 2,
+        version: 3,
         package_name: env_string("CARGO_PKG_NAME"),
         package_version: env_string("CARGO_PKG_VERSION"),
         manifest_dir: env_string("CARGO_MANIFEST_DIR"),
@@ -101,6 +101,9 @@ fn meta(raw: &[OsString], started_ns: u128) -> Meta {
         compile_target: value_after("--target"),
         arg_sha256: argument_digest(&argv, &driver_env),
         requested_arg_sha256: argument_digest(&argv, &driver_env),
+        stdin_captured: argv.iter().any(|arg| arg == "-"),
+        stdin_len: 0,
+        stdin_sha256: hex_sha256(b""),
         argv,
         requested_driver_env: driver_env.clone(),
         driver_env,
@@ -131,11 +134,18 @@ fn meta(raw: &[OsString], started_ns: u128) -> Meta {
     }
 }
 
-fn record(dir: &Path, meta: &Meta, stdout: &[u8], stderr: &[u8]) -> std::io::Result<()> {
+fn record(
+    dir: &Path,
+    meta: &Meta,
+    stdout: &[u8],
+    stderr: &[u8],
+    stdin: &[u8],
+) -> std::io::Result<()> {
     let name = format!("{:032}-{}", meta.started_ns, meta.pid);
     let tmp = dir.join(format!("{name}.tmp"));
     std::fs::write(tmp.join("stdout"), stdout)?;
     std::fs::write(tmp.join("stderr"), stderr)?;
+    std::fs::write(tmp.join("stdin"), stdin)?;
     let json = serde_json::to_vec_pretty(meta).map_err(std::io::Error::other)?;
     std::fs::write(tmp.join("meta.json"), json)?;
     // The rename is the completion mark.
@@ -185,7 +195,34 @@ fn configure_observation(
     Ok(())
 }
 
+type Stream = (Vec<u8>, Option<String>);
+fn finish_input(input: Option<std::thread::JoinHandle<Stream>>) -> Result<Vec<u8>, String> {
+    let Some(thread) = input else {
+        return Ok(Vec::new());
+    };
+    for _ in 0..100 {
+        if thread.is_finished() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    if !thread.is_finished() {
+        return Err("compiler ended before complete stdin capture".to_owned());
+    }
+    let (bytes, error) = thread
+        .join()
+        .map_err(|_| "stdin thread panicked".to_owned())?;
+    if let Some(error) = error {
+        return Err(format!("stdin forwarding: {error}"));
+    }
+    Ok(bytes)
+}
+
 fn complete(mut child: std::process::Child, mut metadata: Meta, dir: &Path) -> ExitCode {
+    let input = child
+        .stdin
+        .take()
+        .map(|pipe| std::thread::spawn(move || pump(std::io::stdin().lock(), pipe)));
     let out = child.stdout.take();
     let err = child.stderr.take();
     let out_thread = std::thread::spawn(move || match out {
@@ -207,6 +244,12 @@ fn complete(mut child: std::process::Child, mut metadata: Meta, dir: &Path) -> E
         .as_ref()
         .ok()
         .and_then(std::process::ExitStatus::code);
+    let stdin = match finish_input(input) {
+        Ok(input) => input,
+        Err(error) => return failure(error),
+    };
+    metadata.stdin_len = stdin.len();
+    metadata.stdin_sha256 = hex_sha256(&stdin);
     metadata.exit_code = code;
     metadata.stdout_len = stdout.len();
     metadata.stderr_len = stderr.len();
@@ -220,7 +263,7 @@ fn complete(mut child: std::process::Child, mut metadata: Meta, dir: &Path) -> E
     if let Some(error) = &metadata.forward_error {
         return failure(error);
     }
-    if let Err(error) = record(dir, &metadata, &stdout, &stderr) {
+    if let Err(error) = record(dir, &metadata, &stdout, &stderr, &stdin) {
         return failure(format!("cannot complete capture: {error}"));
     }
     match code {
@@ -259,7 +302,11 @@ fn main() -> ExitCode {
     let mut command = Command::new(&driver);
     command
         .args(&args)
-        .stdin(Stdio::inherit())
+        .stdin(if metadata.stdin_captured {
+            Stdio::piped()
+        } else {
+            Stdio::inherit()
+        })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     if let Err(e) = configure_observation(&mut command, &mut metadata, &name) {

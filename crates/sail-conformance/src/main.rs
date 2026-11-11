@@ -625,7 +625,7 @@ fn compare_engine(
     let events = std::fs::read_to_string(work.join(sail_verus::run::engine_files::EVENTS))
         .unwrap_or_default();
     let (issues, mut stats) =
-        sail_conformance::engine::check(&run.summary(), &events, single_crate);
+        sail_conformance::engine::check(&run.verification_summary(), &events, single_crate);
     stats.focus_function.clone_from(&function);
     let compared = &run;
     let mut c = classify(&plains, compared);
