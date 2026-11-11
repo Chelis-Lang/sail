@@ -57,6 +57,34 @@ fn relative(path: &Path) -> bool {
             .all(|part| matches!(part, Component::Normal(_)))
 }
 
+fn read_file(path: &Path, expected: &std::fs::Metadata, size: usize) -> Result<Vec<u8>> {
+    let file = std::fs::File::from(
+        rustix::fs::open(
+            path,
+            rustix::fs::OFlags::RDONLY
+                | rustix::fs::OFlags::NOFOLLOW
+                | rustix::fs::OFlags::NONBLOCK,
+            rustix::fs::Mode::empty(),
+        )
+        .map_err(error)?,
+    );
+    let actual = file.metadata().map_err(error)?;
+    if !actual.is_file()
+        || actual.len() != expected.len()
+        || actual.permissions().mode() & 0o111 != expected.permissions().mode() & 0o111
+    {
+        return Err(error("source file changed before being opened"));
+    }
+    let mut content = Vec::new();
+    file.take((size as u64) + 1)
+        .read_to_end(&mut content)
+        .map_err(error)?;
+    if content.len() != size {
+        return Err(error("source changed while being captured"));
+    }
+    Ok(content)
+}
+
 fn collect(root: &Path) -> Result<BTreeMap<PathBuf, File>> {
     let mut files = BTreeMap::new();
     let mut todo = vec![PathBuf::new()];
@@ -89,23 +117,7 @@ fn collect(root: &Path) -> Result<BTreeMap<PathBuf, File>> {
             if files.len() >= MAX_FILES || bytes > MAX_BYTES {
                 return Err(error("source tree exceeds 50000 files or 512 MiB"));
             }
-            let mut content = Vec::new();
-            std::fs::File::from(
-                rustix::fs::open(
-                    entry.path(),
-                    rustix::fs::OFlags::RDONLY
-                        | rustix::fs::OFlags::NOFOLLOW
-                        | rustix::fs::OFlags::NONBLOCK,
-                    rustix::fs::Mode::empty(),
-                )
-                .map_err(error)?,
-            )
-            .take((size as u64) + 1)
-            .read_to_end(&mut content)
-            .map_err(error)?;
-            if content.len() != size {
-                return Err(error("source changed while being captured"));
-            }
+            let content = read_file(&entry.path(), &metadata, size)?;
             files.insert(
                 path,
                 File {
