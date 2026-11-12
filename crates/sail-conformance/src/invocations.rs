@@ -743,6 +743,26 @@ fn document_record(invocation: &Invocation) -> sail_verus::run::RunRecord {
     version_probe(invocation).map_or_else(|| invocation_record(invocation), |(record, _, _)| record)
 }
 
+// Keep the compiler's original message sequence and all opaque bytes exact.
+// Only the existing ADR 0064 complete progress-block ordering may differ.
+fn compiler_stderr_matches(plain: &[u8], sail: &[u8]) -> bool {
+    if plain == sail {
+        return true;
+    }
+    let (Ok(plain), Ok(sail)) = (std::str::from_utf8(plain), std::str::from_utf8(sail)) else {
+        return false;
+    };
+    let plain = crate::diagnostics::split(plain);
+    let sail = crate::diagnostics::split(sail);
+    plain.message_runs == sail.message_runs
+        && plain.gaps.len() == sail.gaps.len()
+        && plain
+            .gaps
+            .iter()
+            .zip(&sail.gaps)
+            .all(|(plain, sail)| crate::diagnostics::progress_gap_matches(plain, sail))
+}
+
 fn compare_invocations(a: &Invocation, b: &Invocation) -> crate::Comparison {
     if a.is_probe() || b.is_probe() {
         if let (Some((plain, before_plain, after_plain)), Some((sail, before_sail, after_sail))) =
@@ -771,9 +791,10 @@ fn compare_invocations(a: &Invocation, b: &Invocation) -> crate::Comparison {
         return c;
     }
     let mut c = crate::compare(&invocation_record(a), &invocation_record(b));
-    // Pairing isolates each compiler's diagnostics, so their exact bytes can
-    // be checked even when Cargo interleaves different compiler processes.
-    if a.stderr != b.stderr {
+    // Pairing isolates each compiler's original message order even when Cargo
+    // interleaves processes. Apply only the already-approved progress exception;
+    // probes above and opaque/non-UTF-8 compiler bytes remain exact.
+    if !compiler_stderr_matches(&a.stderr, &b.stderr) {
         c.differences
             .push("compiler stderr bytes differ".to_owned());
     }
@@ -976,6 +997,127 @@ mod tests {
             stderr: Vec::new(),
             stdin: Vec::new(),
         }
+    }
+
+    fn stderr(invocation: &mut Invocation, bytes: &[u8]) {
+        invocation.stderr = bytes.to_vec();
+        invocation.meta.stderr_len = bytes.len();
+        invocation.meta.stderr_sha256 = hex_sha256(bytes);
+    }
+
+    #[test]
+    fn compiler_pairing_propagates_only_the_exact_progress_exception() {
+        let plain = include_bytes!("../tests/fixtures/json-progress-order/plain.stderr");
+        let sail = include_bytes!("../tests/fixtures/json-progress-order/sail.stderr");
+        let mut a = invocation("/source", Some("a"), b"{}\n");
+        let mut b = a.clone();
+        stderr(&mut a, plain);
+        stderr(&mut b, sail);
+        let comparison = compare_arms(std::slice::from_ref(&a), std::slice::from_ref(&b));
+        assert_eq!(comparison.differences, Vec::<String>::new());
+        assert_ne!(comparison.accepted, Vec::<String>::new());
+        let changed = std::str::from_utf8(sail).unwrap_or_default().replacen(
+            "model::install",
+            "model::changed",
+            1,
+        );
+        stderr(&mut b, changed.as_bytes());
+        assert_ne!(
+            compare_arms(std::slice::from_ref(&a), std::slice::from_ref(&b)).differences,
+            Vec::<String>::new()
+        );
+        stderr(&mut a, &[255, 0, 10]);
+        stderr(&mut b, &[254, 0, 10]);
+        assert_ne!(
+            compare_arms(std::slice::from_ref(&a), std::slice::from_ref(&b)).differences,
+            Vec::<String>::new()
+        );
+        let mut probe_a = invocation("/source", None, b"version\n");
+        let mut probe_b = probe_a.clone();
+        stderr(&mut probe_a, plain);
+        stderr(&mut probe_b, sail);
+        assert_ne!(
+            compare_arms(&[probe_a], &[probe_b]).differences,
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn literal_bytes_cannot_impersonate_a_diagnostic_run_boundary() {
+        let message = "warning: fixed\n --> f.rs:1:1\n\n";
+        let marker = "\0<diagnostic messages>\0\n";
+        for (a, b) in [
+            (
+                "note: verifying module a\n\nnote: verifying module b\n\n",
+                "note: verifying module b\n\nnote: verifying module a\n\n",
+            ),
+            (
+                include_str!("../tests/fixtures/json-progress-order/plain.stderr"),
+                include_str!("../tests/fixtures/json-progress-order/sail.stderr"),
+            ),
+        ] {
+            let plain = format!("{message}{a}{marker}");
+            let moved = format!("{marker}{b}{message}");
+            let correct = format!("{message}{b}{marker}");
+            assert!(!compiler_stderr_matches(plain.as_bytes(), moved.as_bytes()));
+            assert!(!compiler_stderr_matches(moved.as_bytes(), plain.as_bytes()));
+            assert!(compiler_stderr_matches(
+                plain.as_bytes(),
+                correct.as_bytes()
+            ));
+            let mut left = invocation("/source", Some("a"), b"{}\n");
+            let mut right = left.clone();
+            stderr(&mut left, plain.as_bytes());
+            stderr(&mut right, moved.as_bytes());
+            assert_ne!(
+                compare_arms(&[left], &[right]).differences,
+                Vec::<String>::new()
+            );
+        }
+    }
+
+    #[test]
+    fn diagnostics_cannot_cross_an_approved_progress_run() {
+        let e1 = "error: first\n --> a.rs:1:1\n\n";
+        let e2 = "warning: second\n --> b.rs:1:1\n\n";
+        let e3 = "error: third\n --> c.rs:1:1\n\n";
+        for (plain_progress, sail_progress) in [
+            (
+                "note: verifying module a\n\nnote: verifying module b\n\n".to_owned(),
+                "note: verifying module b\n\nnote: verifying module a\n\n".to_owned(),
+            ),
+            (
+                include_str!("../tests/fixtures/json-progress-order/plain.stderr").to_owned(),
+                include_str!("../tests/fixtures/json-progress-order/sail.stderr").to_owned(),
+            ),
+        ] {
+            let plain = format!("{e1}{plain_progress}{e2}{e3}");
+            let moved = format!("{e1}{e2}{sail_progress}{e3}");
+            let same_positions = format!("{e1}{sail_progress}{e2}{e3}");
+            assert!(compiler_stderr_matches(
+                plain.as_bytes(),
+                same_positions.as_bytes()
+            ));
+            assert!(!compiler_stderr_matches(plain.as_bytes(), moved.as_bytes()));
+            let mut a = invocation("/source", Some("a"), b"{}\n");
+            let mut b = a.clone();
+            stderr(&mut a, plain.as_bytes());
+            stderr(&mut b, moved.as_bytes());
+            assert_ne!(compare_arms(&[a], &[b]).differences, Vec::<String>::new());
+        }
+    }
+
+    #[test]
+    fn progress_reordering_does_not_relax_within_compiler_message_order() {
+        let a = "error: first\n --> a.rs:1:1\n\n";
+        let b = "error: second\n --> b.rs:1:1\n\n";
+        let plain = format!("note: verifying module a\n\nnote: verifying module b\n\n{a}{b}");
+        let sail = format!("note: verifying module b\n\nnote: verifying module a\n\n{b}{a}");
+        assert_eq!(
+            crate::diagnostics::compare_stderr(&plain, &sail),
+            Vec::<String>::new()
+        );
+        assert!(!compiler_stderr_matches(plain.as_bytes(), sail.as_bytes()));
     }
 
     #[test]
