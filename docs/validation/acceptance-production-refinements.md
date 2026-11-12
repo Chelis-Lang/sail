@@ -459,3 +459,10 @@ The 78 Python checker controls pass with only that in-memory advance, while
 two additional native-production delegate mutations refuse. This maintains
 source binding without asserting a new Stock proof execution; the broader
 implementation gates remain in [the target-kind record](target-kind-binding.md).
+
+The second Runtime JSON fixture update is independently reviewed at
+`3b47a7bd`: final exact adapter binding
+`cb9e2f940f54aa87d6750279796571b27332187c878f37116a62176eb9298cdf`.
+Only the two test-fixture keys differ from main; production bytes, assertions,
+authority scope and checker controls remain identical. All 78 checker controls
+and seven native Rust tests pass under that exact bounded binding review.

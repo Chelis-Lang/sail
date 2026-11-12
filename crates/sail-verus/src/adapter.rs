@@ -1685,7 +1685,7 @@ mod tests {
             "compiler_read_origins":root.join("compiler-read-origins"),
             "invocations":root, "original_wrapper":"/pinned/verus", "receipts":root,
             "context_sha256":"context", "input_revision":"revision",
-            "packages":{}, "target_kinds":{}, "engine":null,
+            "packages":{}, "target_metadata":{}, "engine":null,
             "retained":{"root":root,"target":root,"metadata":null,"roots":[],
                 "closure":{"directories":{}},"launcher":"/pinned/verus",
                 "launcher_sha256":"launcher","compiler_sha256":"compiler",
