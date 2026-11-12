@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Fix observation target kinds when a Cargo library and binary share a name; ambiguous compiler mappings remain unavailable (#722).
+
 ### Removed
 
 This release removes the experimental neutral-contract surfaces that 0.2.0

@@ -26,7 +26,7 @@ pub(crate) struct Runtime {
     pub context_sha256: String,
     pub input_revision: String,
     pub packages: BTreeMap<PathBuf, String>,
-    pub target_kinds: BTreeMap<PathBuf, BTreeMap<String, Vec<String>>>,
+    pub target_metadata: BTreeMap<PathBuf, Vec<CargoTarget>>,
     pub engine: Option<crate::engine::Request>,
     /// Per-run content-restoration plan admitted by the managed caller.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -35,6 +35,66 @@ pub(crate) struct Runtime {
     /// `attribution_logs`; always for an interactive-engine run).
     #[serde(default)]
     pub attribution_logs: bool,
+}
+
+/// Cargo metadata kept per target; names alone do not distinguish lib/bin.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct CargoTarget {
+    name: String,
+    kind: Vec<String>,
+    crate_types: Vec<String>,
+}
+
+impl Runtime {
+    pub(crate) fn targets_from_metadata(
+        data: &serde_json::Value,
+    ) -> BTreeMap<PathBuf, Vec<CargoTarget>> {
+        data["packages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|package| {
+                Some((
+                    PathBuf::from(package["manifest_path"].as_str()?),
+                    package["targets"]
+                        .as_array()?
+                        .iter()
+                        .filter_map(|target| {
+                            serde_json::from_value::<CargoTarget>(target.clone()).ok()
+                        })
+                        .collect(),
+                ))
+            })
+            .collect()
+    }
+
+    pub(crate) fn target_kind(&self, identity: &TargetIdentity) -> Option<Vec<String>> {
+        select_target_kind(self.target_metadata.get(&identity.manifest)?, identity)
+    }
+}
+
+fn select_target_kind(targets: &[CargoTarget], identity: &TargetIdentity) -> Option<Vec<String>> {
+    if identity.crate_type.is_empty() {
+        return None;
+    }
+    let mut matches = targets.iter().filter(|target| {
+        identity
+            .cargo_name
+            .as_deref()
+            .is_none_or(|name| name == target.name)
+            && target.name.replace('-', "_") == identity.name
+            && !target.kind.is_empty()
+            && target.kind.iter().all(|kind| !kind.is_empty())
+            && identity.crate_type.split(',').all(|actual| {
+                target.crate_types.iter().any(|declared| {
+                    declared == actual
+                        || (matches!(declared.as_str(), "lib" | "rlib")
+                            && matches!(actual, "lib" | "rlib"))
+                })
+            })
+    });
+    let target = matches.next()?;
+    matches.next().is_none().then(|| target.kind.clone())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -499,6 +559,72 @@ pub(crate) fn read<T: serde::de::DeserializeOwned>(path: &Path) -> Option<T> {
 mod tests {
     use super::*;
     use sail_api::output::CrateReport;
+    #[test]
+    fn same_named_cargo_targets_keep_their_exact_compiler_kinds() {
+        let data = serde_json::json!({"packages":[{"manifest_path":"/workspace/Cargo.toml","targets":[
+            {"name":"same_target","kind":["lib"],"crate_types":["lib"],"src_path":"/workspace/src/lib.rs"},
+            {"name":"same_target","kind":["bin"],"crate_types":["bin"],"src_path":"/workspace/src/main.rs"}
+        ]}]});
+        let metadata = super::Runtime::targets_from_metadata(&data);
+        let targets = metadata
+            .get(std::path::Path::new("/workspace/Cargo.toml"))
+            .unwrap_or_else(|| unreachable!("missing targets"));
+        assert_eq!(targets.len(), 2);
+        let mut identity = super::TargetIdentity {
+            manifest: "/workspace/Cargo.toml".into(),
+            name: "same_target".into(),
+            crate_type: "lib".into(),
+            rustc_args_sha256: "args".into(),
+            cargo_name: None,
+        };
+        assert_eq!(
+            super::select_target_kind(targets, &identity),
+            Some(vec!["lib".into()])
+        );
+        identity.crate_type = "rlib".into();
+        assert_eq!(
+            super::select_target_kind(targets, &identity),
+            Some(vec!["lib".into()])
+        );
+        identity.crate_type = "bin".into();
+        identity.cargo_name = Some("same_target".into());
+        assert_eq!(
+            super::select_target_kind(targets, &identity),
+            Some(vec!["bin".into()])
+        );
+        let mut ambiguous = targets.clone();
+        ambiguous.push(super::CargoTarget {
+            name: "same_target".into(),
+            kind: vec!["example".into()],
+            crate_types: vec!["bin".into()],
+        });
+        assert_eq!(super::select_target_kind(&ambiguous, &identity), None);
+        identity.crate_type = "staticlib".into();
+        assert_eq!(super::select_target_kind(targets, &identity), None);
+        let aliases = vec![
+            super::CargoTarget {
+                name: "same-target".into(),
+                kind: vec!["bin".into()],
+                crate_types: vec!["bin".into()],
+            },
+            super::CargoTarget {
+                name: "same_target".into(),
+                kind: vec!["bin".into()],
+                crate_types: vec!["bin".into()],
+            },
+        ];
+        identity.crate_type = "bin".into();
+        identity.cargo_name = None;
+        assert_eq!(super::select_target_kind(&aliases, &identity), None);
+        identity.cargo_name = Some("same-target".into());
+        assert_eq!(
+            super::select_target_kind(&aliases, &identity),
+            Some(vec!["bin".into()])
+        );
+        identity.cargo_name = Some("missing".into());
+        assert_eq!(super::select_target_kind(&aliases, &identity), None);
+    }
+
     #[test]
     fn artifact_read_results_keep_actual_keys_when_reordered()
     -> std::result::Result<(), Box<dyn std::error::Error>> {

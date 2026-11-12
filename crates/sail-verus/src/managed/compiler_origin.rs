@@ -367,7 +367,7 @@ mod tests {
                 identity.manifest.clone(),
                 "package-id".into(),
             )]),
-            target_kinds: std::collections::BTreeMap::new(),
+            target_metadata: std::collections::BTreeMap::new(),
             engine: None,
             retained: None,
             attribution_logs: false,
