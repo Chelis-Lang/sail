@@ -76,6 +76,9 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
 - Near-limit ledger reporting correctly marks effort above half of `u64::MAX`
   as unstable, including cached proofs, without changing their solver answers
   or Verus verdicts (#719).
+- Add the separately versioned `sail_api::campaign` evidence model and ADR 0111
+  classifier as implementation groundwork; campaign execution/CLI/MCP are not
+  available yet. Ordinary verification output and proof tiers are unchanged.
 
 - Daemon shutdown and partial-startup cleanup cannot miss an idle job worker's
   wakeup while joining it (#715).

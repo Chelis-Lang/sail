@@ -32,6 +32,24 @@ The [native gate record](native-job-lifecycle.md) identifies executed checks
 including the complete conformance, model and production-refinement results.
 Source review alone is not a passed acceptance gate.
 
+## Campaign module assembly review, 2026-11-11
+
+The campaign API adds only `pub mod campaign` to the existing API crate root.
+Independent source review approves advancing only `API_LIB_SHA256` from
+`4d3bb159da951aa9f9b556f0896a2170e59dfc6799f57a4dded9e9ab3855f935`
+to `ba68119ed3101973f4dd531d52456cb86e1d150d6095608743b92f1320eef18e`.
+Protected factory bodies, visibility, assembly targets and dependency edges are
+unchanged. The new module has no path override, exported macro, unsafe override
+or protected-factory reexport. It receives no Stock-compiled proof claim.
+
+An owned native Python experiment first confirms the old binding refuses this
+new assembly, then changes only the candidate constant in that process: all
+53 source-capture tests and six additional module/path/unsafe/reexport/patch
+negative controls pass. Seven roots and all 338 captured paths retain their
+inventory/source guards. This is a bounded source/binding decision, not a
+passed local gate or acceptance of the campaign classifier. Full implementation
+and affected checker execution remain pending.
+
 ## Unsourced-receipt native-binding review (#683, #704)
 
 The unsourced-check gate changes only `receipt_success` in `adapter.rs`: a

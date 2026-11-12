@@ -47,6 +47,12 @@ Implemented (library only; no CLI, JSON or MCP surface yet):
   class, so a plan cannot contain them. Every site is re-lexed after it is
   applied and dropped if any token outside the replaced range changes.
 
+Working implementation: independent `sail_api::campaign` evidence types and
+pure ADR 0111 classifier, with native focused fixture controls. This is not a
+qualified runner or CLI/MCP product; [ADR 0114](../decisions/0114-verus-campaign-execution.md)
+sets the execution design and the [campaign record](../validation/verus-campaigns.md)
+keeps the remaining gates explicit.
+
 Not yet built: campaigns (owned copies, scheduling, scoped verification,
 confirmation of survivors), outcome evidence (#664), and the CLI, JSON and MCP
 surfaces. The mask has been surveyed on the four pinned corpora (supported

@@ -23,6 +23,7 @@ mod acceptance_sort;
 /// Evidence-strength vocabulary and whole-run proof rules shared by requirement attribution.
 pub mod assurance;
 pub mod attribution;
+pub mod campaign;
 pub mod evidence;
 pub mod jobs;
 pub mod output;
