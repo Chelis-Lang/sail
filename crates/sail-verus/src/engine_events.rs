@@ -137,12 +137,7 @@ fn identity(runtime: &Runtime, target: &TargetIdentity, ordinal: u64) -> InputEv
                 .cloned()
                 .unwrap_or_default(),
             name: target.target_name().to_owned(),
-            kind: runtime
-                .target_kinds
-                .get(&target.manifest)
-                .and_then(|targets| targets.get(target.target_name()))
-                .cloned()
-                .unwrap_or_default(),
+            kind: runtime.target_kind(target).unwrap_or_default(),
         },
         phase: Phase::Full,
         function: None,

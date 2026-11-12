@@ -40,7 +40,7 @@ impl Fixture {
             context_sha256: "context".into(),
             input_revision: "revision".into(),
             packages: BTreeMap::from([(identity.manifest.clone(), "package".into())]),
-            target_kinds: BTreeMap::new(),
+            target_metadata: BTreeMap::new(),
             engine: None,
             retained: None,
             attribution_logs: false,

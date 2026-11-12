@@ -4291,31 +4291,7 @@ fn run_recorded(
                 ))
             })
             .collect(),
-        target_kinds: data["packages"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|package| {
-                Some((
-                    PathBuf::from(package["manifest_path"].as_str()?),
-                    package["targets"]
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .filter_map(|target| {
-                            Some((
-                                target["name"].as_str()?.to_owned(),
-                                target["kind"]
-                                    .as_array()?
-                                    .iter()
-                                    .filter_map(|kind| kind.as_str().map(str::to_owned))
-                                    .collect(),
-                            ))
-                        })
-                        .collect(),
-                ))
-            })
-            .collect(),
+        target_metadata: Runtime::targets_from_metadata(&data),
         // Retention is optional restoration work: a target whose compile is
         // cheap next to retention compiles normally instead (#156).
         retained: if !forced && !source_engine && paths.reuse && !receipt_covered && {

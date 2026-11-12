@@ -1573,7 +1573,7 @@ mod tests {
             context_sha256: "context".into(),
             input_revision: "source".into(),
             packages: std::collections::BTreeMap::new(),
-            target_kinds: std::collections::BTreeMap::new(),
+            target_metadata: std::collections::BTreeMap::new(),
             engine: None,
             retained: None,
             attribution_logs: false,

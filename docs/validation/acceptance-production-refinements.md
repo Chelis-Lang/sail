@@ -447,3 +447,15 @@ Raw combined qualification: `experiments/2026-10-26/proof-362-integration-c6270f
 SHA-256: `28098974ddb3c9381ac7b7b12c39ced51d4a42a23955e87809f7a52930f23995`.
 The final documentation commit changes only the four status-owning guides
 and this record; required hosted checks rerun on that final head.
+
+## Target-kind fixture native binding (#722)
+
+Fresh review of `28f986e7` establishes that `adapter.rs` changes only the
+Runtime test fixture field `target_kinds` to `target_metadata`; every
+production report-mode delegate remains byte-identical. It explicitly approves
+only `MODE_NATIVE_SHA256` advancing from `1534b71a` to
+`f1a8fdd6e6cecdc6b1450f04664186d44360cf54b798100210dd61d04a478782`.
+The 78 Python checker controls pass with only that in-memory advance, while
+two additional native-production delegate mutations refuse. This maintains
+source binding without asserting a new Stock proof execution; the broader
+implementation gates remain in [the target-kind record](target-kind-binding.md).
