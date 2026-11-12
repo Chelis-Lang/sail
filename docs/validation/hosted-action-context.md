@@ -39,3 +39,19 @@ source SHA256:
 This is metadata/collector validation, not new compiler, corpus or performance
 acceptance. Final hosted diagnostic comparison remains pending. The consumer
 skill and CLI/MCP behavior are unchanged.
+
+The first hosted collector attempt records both contexts as unavailable: the
+ordinary vstd-inclusive result exceeds its initial 2 MiB metadata limit. Keep
+that failure visible. The corrected reader uses the explicit 64 MiB project
+result bound for the original result document and retains the 2 MiB cap for
+identity/link metadata. Regular-file, no-follow, nonblocking and stable-size
+checks remain. This changes diagnostic availability only; the original hosted
+zero-verifier failure remains a failure.
+
+The corrected collector reads an original 2,608,947-byte native result with
+333 runtime identities successfully, under a five-second external bound. Its
+source SHA256 is
+`3fbea8258cd28874f2c642f1fbf23c67cd8e1e91b874e5c92761173dbbde6253`.
+The Rust/product source is unchanged from the completed full local gate; this
+follow-up changes only the collector's result-file allowance and runs its
+affected native metadata check.

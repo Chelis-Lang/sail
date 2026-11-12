@@ -14,17 +14,18 @@ import re
 import stat
 
 MAX_BYTES = 2 * 1024 * 1024
+MAX_RESULT_BYTES = 64 * 1024 * 1024
 SELECTORS = ("PATH", "HOME", "CARGO_HOME", "RUSTUP_HOME", "RUSTUP_TOOLCHAIN",
              "RUSTC", "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER", "RUSTFLAGS",
              "CARGO_ENCODED_RUSTFLAGS", "CARGO_BUILD_TARGET", "CARGO_TARGET_DIR")
 
-def read_json(path):
+def read_json(path, bound=MAX_BYTES):
     fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC)
     with os.fdopen(fd, "rb") as source:
         metadata = os.fstat(source.fileno())
-        if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > MAX_BYTES:
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > bound:
             raise ValueError("context evidence is not an ordinary bounded JSON file")
-        raw = source.read(MAX_BYTES + 1)
+        raw = source.read(bound + 1)
         if len(raw) != metadata.st_size:
             raise ValueError("context evidence changed or exceeded its bound")
         return json.loads(raw), hashlib.sha256(raw).hexdigest()
@@ -43,7 +44,7 @@ def main():
     record = {"version": 1, "available": False,
               "scope": "diagnostic context identity; no proof or reuse authority"}
     try:
-        result, result_sha = read_json(args.result)
+        result, result_sha = read_json(args.result, MAX_RESULT_BYTES)
         context = result["context_sha256"]
         if not digest(context):
             raise ValueError("invalid result context identity")
