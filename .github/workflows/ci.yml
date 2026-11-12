@@ -607,6 +607,22 @@ jobs:
           RESULT: ${{ steps.sail.outputs.result }}
           SARIF: ${{ steps.sail.outputs.sarif }}
         run: python3 ci/check-github-action.py cold
+      - name: Retain the actual action proof context
+        if: always() && steps.sail.outputs.result != ''
+        env:
+          SAIL_ACTION_CONTEXT_RESULT: ${{ steps.sail.outputs.result }}
+          SAIL_ACTION_CONTEXT_OUT: ${{ runner.temp }}/action-cold-context.json
+        run: >-
+          python3 ci/capture-action-context.py
+          --result "$SAIL_ACTION_CONTEXT_RESULT"
+          --out "$SAIL_ACTION_CONTEXT_OUT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: action-cold-context
+          path: ${{ runner.temp }}/action-cold-context.json
+          if-no-files-found: warn
+          retention-days: 7
 
   action-restored:
     # A fresh runner: restored caches reuse the proof receipts; a broken
@@ -646,6 +662,22 @@ jobs:
           RESULT: ${{ steps.sail.outputs.result }}
           CACHE_HIT: ${{ steps.sail.outputs.cache-hit }}
         run: python3 ci/check-github-action.py restored
+      - name: Retain the actual action proof context
+        if: always() && steps.sail.outputs.result != ''
+        env:
+          SAIL_ACTION_CONTEXT_RESULT: ${{ steps.sail.outputs.result }}
+          SAIL_ACTION_CONTEXT_OUT: ${{ runner.temp }}/action-restored-context.json
+        run: >-
+          python3 ci/capture-action-context.py
+          --result "$SAIL_ACTION_CONTEXT_RESULT"
+          --out "$SAIL_ACTION_CONTEXT_OUT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: action-restored-context
+          path: ${{ runner.temp }}/action-restored-context.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Break the fixture's lemma
         run: sed -i 's/ensures x + 1 > x,/ensures x + 1 < x,/' ci/github-action-fixture/src/lib.rs
       - name: Run the action on the broken fixture
