@@ -303,6 +303,7 @@ fn dispatch(
         | "cancel_verification" => crate::job_tools::call(ctx, name, args, cancel),
         "verification_events"
         | "explain_failure"
+        | "proof_health"
         | "compare_verification"
         | "save_baseline"
         | "list_baselines"

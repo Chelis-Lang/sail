@@ -17,6 +17,7 @@ proof receipts, and replay.
 | Run SMT-LIB transcripts through the pinned Z3 (`sail runtime`) | [SMT runtime](runtime.md), [protocol](spec/runtime.md) |
 | Install the agent skill and follow verification/SMT workflows | [Sail skill](../skills/sail-verification/SKILL.md) |
 | Read the JSON report | [Output schema](output-schema.md) |
+| Read observed per-check effort and retained health comparisons | [Proof health](proof-health.md) (v0.3.0 development) |
 | Read job status and results from Rust | [Result client](result-client.md) |
 | Cache Sail in CI | [CI cache](ci-cache.md) |
 | Annotate pull requests and write a job summary or SARIF | [CI reports](ci-reports.md) |

@@ -136,3 +136,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0114: Owned Verus mutation campaigns and their evidence](0114-verus-campaign-execution.md) (accepted for implementation; independent evidence model, bounded owned copies and full-unit confirmation; qualification pending)
 
 - [0113: Compare complete compiler invocations in Cargo conformance](0113-conformance-invocation-capture.md) (accepted; complete exact streams, invocation identity, probes and interleaving checks)
+
+- [0116: Recorded proof health without inferred stability](0116-recorded-proof-health.md) (accepted for implementation; bounded retained measurements and shared interfaces; qualification pending)

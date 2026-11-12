@@ -7,6 +7,10 @@ semantic versioning once the API is published.
 
 - Fix compiler-capture conformance for complete JSON verification-progress
   notes under ADR 0064, retaining exact other bytes, counts and boundaries (#726).
+- Add `sail health`, optional schema-v2 per-check health measurements and MCP
+  `proof_health`, with bounded requested-target views and separate retained
+  job/baseline comparisons. Missing effort stays unavailable; no verdict or
+  unmeasured stability/fragility changes.
 - Fix mutation benchmark classification of the existing explained dependent
   retention notice, preserving strict Verus diagnostics and per-category
   duplicate-note refusals (#728).

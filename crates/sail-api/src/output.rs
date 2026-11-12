@@ -297,6 +297,9 @@ pub struct FunctionReport {
     pub timing: Timing,
     /// Explicit replay measurement; `null` without complete attribution and replay.
     pub fragility: Option<Fragility>,
+    /// Original per-check effort measurements; absent in older schema-v2 reports.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub health: Option<crate::health::FunctionHealth>,
     /// Its obligations; `null` when attribution was unavailable for it.
     pub obligations: Option<Vec<ObligationReport>>,
 }
@@ -746,6 +749,11 @@ impl From<&FunctionRecord> for FunctionReport {
         let sources = f.sources();
         let verdict = VerdictName::from(f.verdict());
         let establishment = EstablishmentName::from(f.establishment);
+        let obligations: Option<Vec<_>> = f
+            .obligations
+            .as_ref()
+            .map(|obligations| obligations.iter().map(ObligationReport::from).collect());
+        let health = crate::health::FunctionHealth::from_obligations(obligations.as_deref());
         Self {
             function: f.function.clone(),
             module: f.module.clone(),
@@ -769,10 +777,8 @@ impl From<&FunctionRecord> for FunctionReport {
                 rlimit: f.rlimit,
             },
             fragility: None,
-            obligations: f
-                .obligations
-                .as_ref()
-                .map(|os| os.iter().map(ObligationReport::from).collect()),
+            health: Some(health),
+            obligations,
         }
     }
 }

@@ -49,6 +49,20 @@
             "rlimit": 2
           },
           "fragility": null,
+          "health": {
+            "attributed": true,
+            "complete": true,
+            "checks": 1,
+            "measured_checks": 1,
+            "near_limit_checks": 0,
+            "exhausted_checks": 0,
+            "unlimited_checks": 0,
+            "unrecorded_checks": 0,
+            "peak": {
+              "used": 2,
+              "limit": 30000000
+            }
+          },
           "obligations": [
             {
               "id": "input::Counter::get#Function-Def/0",
@@ -100,6 +114,20 @@
             "rlimit": 1492
           },
           "fragility": null,
+          "health": {
+            "attributed": true,
+            "complete": true,
+            "checks": 1,
+            "measured_checks": 1,
+            "near_limit_checks": 0,
+            "exhausted_checks": 0,
+            "unlimited_checks": 0,
+            "unrecorded_checks": 0,
+            "peak": {
+              "used": 1492,
+              "limit": 30000000
+            }
+          },
           "obligations": [
             {
               "id": "input::Counter::incr#Function-Def/0",
@@ -151,6 +179,20 @@
             "rlimit": 6
           },
           "fragility": null,
+          "health": {
+            "attributed": true,
+            "complete": true,
+            "checks": 2,
+            "measured_checks": 2,
+            "near_limit_checks": 0,
+            "exhausted_checks": 0,
+            "unlimited_checks": 0,
+            "unrecorded_checks": 0,
+            "peak": {
+              "used": 4,
+              "limit": 30000000
+            }
+          },
           "obligations": [
             {
               "id": "input::arith::bv_and#Function-Def/0",
@@ -232,6 +274,20 @@
             "rlimit": 158
           },
           "fragility": null,
+          "health": {
+            "attributed": true,
+            "complete": true,
+            "checks": 3,
+            "measured_checks": 3,
+            "near_limit_checks": 0,
+            "exhausted_checks": 0,
+            "unlimited_checks": 0,
+            "unrecorded_checks": 0,
+            "peak": {
+              "used": 154,
+              "limit": 30000000
+            }
+          },
           "obligations": [
             {
               "id": "input::arith::bv_bad#Function-Def/0",
@@ -340,6 +396,20 @@
             "rlimit": 470
           },
           "fragility": null,
+          "health": {
+            "attributed": true,
+            "complete": true,
+            "checks": 2,
+            "measured_checks": 2,
+            "near_limit_checks": 0,
+            "exhausted_checks": 0,
+            "unlimited_checks": 0,
+            "unrecorded_checks": 0,
+            "peak": {
+              "used": 418,
+              "limit": 30000000
+            }
+          },
           "obligations": [
             {
               "id": "input::arith::mul_pos#Function-Def/0",
@@ -421,6 +491,20 @@
             "rlimit": 581
           },
           "fragility": null,
+          "health": {
+            "attributed": true,
+            "complete": true,
+            "checks": 3,
+            "measured_checks": 3,
+            "near_limit_checks": 0,
+            "exhausted_checks": 0,
+            "unlimited_checks": 0,
+            "unrecorded_checks": 0,
+            "peak": {
+              "used": 579,
+              "limit": 30000000
+            }
+          },
           "obligations": [
             {
               "id": "input::bad#Function-Def/0",
@@ -1137,6 +1221,20 @@
             "rlimit": 2
           },
           "fragility": null,
+          "health": {
+            "attributed": true,
+            "complete": true,
+            "checks": 1,
+            "measured_checks": 1,
+            "near_limit_checks": 0,
+            "exhausted_checks": 0,
+            "unlimited_checks": 0,
+            "unrecorded_checks": 0,
+            "peak": {
+              "used": 2,
+              "limit": 30000000
+            }
+          },
           "obligations": [
             {
               "id": "input::main#Function-Def/0",
@@ -1188,6 +1286,20 @@
             "rlimit": 774
           },
           "fragility": null,
+          "health": {
+            "attributed": true,
+            "complete": true,
+            "checks": 1,
+            "measured_checks": 1,
+            "near_limit_checks": 0,
+            "exhausted_checks": 0,
+            "unlimited_checks": 0,
+            "unrecorded_checks": 0,
+            "peak": {
+              "used": 774,
+              "limit": 30000000
+            }
+          },
           "obligations": [
             {
               "id": "input::max#Function-Def/0",

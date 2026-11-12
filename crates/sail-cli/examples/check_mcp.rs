@@ -7,9 +7,9 @@
 //! It starts `<sail> mcp`, sends `initialize`, `notifications/initialized`,
 //! `tools/list` and `tools/call verify {"project_dir": <project-dir>}`, then
 //! closes stdin. It checks that:
-//! - the handshake succeeds and `tools/list` is exactly this build's fifteen
+//! - the handshake succeeds and `tools/list` is exactly this build's
 //!   compatibility, job and proof tools, with their key input contracts;
-//! - the call succeeds and returns a schema-v1 report;
+//! - the call succeeds and returns a schema-v2 report;
 //! - every function's verdict and establishment equal those of the requested targets
 //!   in `<sail.json>` (the `sail-project-result` that
 //!   `sail verify --output json` printed on the same project), with the same
@@ -80,6 +80,7 @@ const TOOL_NAMES: &[&str] = &[
     "verification_status",
     "verification_result",
     "cancel_verification",
+    "proof_health",
     "requirement_assurance",
     "verification_events",
     "explain_failure",
@@ -118,6 +119,7 @@ fn check_tools(value: &Value) -> Result<(), String> {
             .ok_or_else(|| format!("missing tool {name}"))
     };
     let required = [
+        ("proof_health", json!(["job_id"])),
         ("requirement_assurance", json!(["job_id"])),
         (
             "explain_failure",
@@ -130,6 +132,16 @@ fn check_tools(value: &Value) -> Result<(), String> {
         if schema(name)?["required"] != fields {
             return Err(format!("{name} must require {fields}"));
         }
+    }
+    let health = schema("proof_health")?;
+    if health["additionalProperties"] != json!(false)
+        || health["properties"]["limit"]["minimum"] != json!(1)
+        || health["properties"]["limit"]["maximum"] != json!(1000)
+        || health["not"] != json!({"required":["before_job","baseline"]})
+    {
+        return Err(
+            "proof_health must declare bounded output and mutually exclusive references".into(),
+        );
     }
     let repair = schema("start_repair_validation")?;
     if repair["oneOf"] != json!([{"required":["source_file"]},{"required":["package","kind"]}])

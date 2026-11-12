@@ -11,6 +11,7 @@ mod engine_cli;
 mod engine_download;
 mod fragility;
 mod fragility_join;
+mod health;
 mod help;
 mod jobs;
 mod managed_cli;
@@ -66,6 +67,10 @@ const COMMANDS: &[(&str, &str)] = &[
     (
         "report",
         "render a result document for CI: job summary, annotations or SARIF",
+    ),
+    (
+        "health",
+        "read recorded proof effort and compare earlier evidence",
     ),
     (
         "engine",
@@ -181,6 +186,7 @@ fn run(
             product_cli::evidence(args, out, err)
         }
         Some("report") => ci_report::run(args.get(1..).unwrap_or_default(), out, err),
+        Some("health") => health::run(args.get(1..).unwrap_or_default(), out, err),
         Some("watch") => watch::watch(args.get(1..).unwrap_or_default(), out, err),
         Some("jobs") => jobs::run(args.get(1..).unwrap_or_default(), out, err),
         Some("status") => ops::status(args.get(1..).unwrap_or_default(), out, err),

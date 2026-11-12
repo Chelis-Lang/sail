@@ -261,6 +261,7 @@ that a proof did.
 |---|---|---|
 | `verification_events` | `job_id`, optional `stream_id` and unsigned `after` | One bounded page of the proof-event journal, with a reconnect cursor, `gap` and `terminal`. Stock jobs write no proof events today: a finished stock job returns an empty terminal page with a `SAIL0903` gap. |
 | `explain_failure` | `job_id`, `package_id`, `target`, `kind` (`lib` or `bin`), `function`, optional `obligation`, `detail` | The exact function report, run diagnostics and establishing provenance. Models are source-level variables unless `detail` is `full`. |
+| `proof_health` | `job_id`, optional `limit` (1–1000, default 20), and at most one of `baseline` or `before_job` | v0.3.0 development: read recorded requested-target effort with original verdicts/provenance/currentness; the reference remains separate. No solver or inferred stability. Same JSON as `sail health`; see [proof health](proof-health.md). |
 | `compare_verification` | `after_job` and exactly one of `before_job` or `baseline`, optional `detail` | A scoped comparison. Context or scope mismatches are `incomparable`, never regressions. By default `differences` lists only changed functions and `unchanged_total` counts the rest; `detail: "full"` lists every function. See [comparisons](#comparisons) for how functions that passed by Verus's totals and repeated names are classified. |
 | `save_baseline` | `job_id`, `name` | Saves a completed job under a new immutable name. An existing name is refused. |
 | `list_baselines` | none | Sorted saved names. |

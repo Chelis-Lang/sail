@@ -63,6 +63,22 @@ This source-review approval permits binding maintenance; it adds no Stock
 proof claim and does not qualify the capture implementation. Actual checker
 execution remains pending in the [capture record](conformance-compiler-capture.md).
 
+## Recorded-health API assembly, 2026-11-12
+
+Fresh review separately approves only API root SHA-256
+`59f7668d93becc3c7cdf8677832307ce65b5714b562b0a52546f3798cded8e07`
+and its health-only output declaration inventory update. The sole root change
+exports `health`; FunctionReport adds the optional health metadata member.
+The complete selected output/project proof stencils stay byte-identical
+(`a7e4a6475ac12f1e598778714017a70dd7f6d8ca7c802c1fcb0f1174b8f045ef`,
+`1b368edc81a33567cbb3fcb9bdd6747d8fa15ee338ed80c24f1ea4fae20b733f`).
+Checked authority/sorting/request-mode sources and all four forwarding
+bodies are unchanged. The in-memory candidate passes 78 checker controls;
+four changed actual forwarders refuse. The implementation's separate review
+rejection remains visible in [proof health](proof-health.md). This bounded
+assembly approval is not a health theorem or implementation qualification;
+current native gates and actual affected acceptance runners remain pending.
+
 ## Unsourced-receipt native-binding review (#683, #704)
 
 The unsourced-check gate changes only `receipt_success` in `adapter.rs`: a

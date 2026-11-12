@@ -431,6 +431,7 @@
             "rlimit": { "$ref": "#/$defs/u64_or_null" }
           }
         },
+        "health": { "$ref": "#/$defs/function_health" },
         "fragility": {
           "description": "Reserved: null until fragility is measured.",
           "oneOf": [
@@ -453,6 +454,29 @@
             { "type": "array", "items": { "$ref": "#/$defs/obligation" } }
           ]
         }
+      }
+    },
+    "function_health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attributed", "complete", "checks", "measured_checks", "near_limit_checks", "exhausted_checks", "unlimited_checks", "unrecorded_checks", "peak"],
+      "properties": {
+        "attributed": {"type": "boolean"},
+        "complete": {"type": "boolean"},
+        "checks": {"type": "integer", "minimum": 0},
+        "measured_checks": {"type": "integer", "minimum": 0},
+        "near_limit_checks": {"type": "integer", "minimum": 0},
+        "exhausted_checks": {"type": "integer", "minimum": 0},
+        "unlimited_checks": {"type": "integer", "minimum": 0},
+        "unrecorded_checks": {"type": "integer", "minimum": 0},
+        "peak": {"oneOf": [
+          {"type": "null"},
+          {"type": "object", "additionalProperties": false,
+           "required": ["used", "limit"], "properties": {
+             "used": {"type": "integer", "minimum": 0},
+             "limit": {"type": "integer", "minimum": 1}
+           }}
+        ]}
       }
     },
     "obligation": {

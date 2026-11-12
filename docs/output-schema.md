@@ -124,6 +124,7 @@ function. The two counts are expected to differ.
 | `provenance` | `mode`; optional portfolio `configuration.seed`; `source` (`fresh`, `cache`, `mixed` or `unrecorded`); `checks_solved`, `checks_served` and `checks_unrecorded`; optional `engine` for source-engine results ([Engine provenance](#engine-provenance)). |
 | `timing` | `smt_micros` and `rlimit`, as Verus reports them. |
 | `fragility` | `{score, runs, proved}` after an explicit complete replay measurement; otherwise `null`, with attribution notes when measurement is incomplete. |
+| `health` | Optional in schema v2: observed per-check effort, coverage, finite peak consumption, near-limit/resource-exhausted/unlimited/unrecorded counts. No verdict or repeated-run stability claim. See [proof health](proof-health.md). Older reports may omit it. |
 | `obligations` | Its obligations, or `null` if attribution was unavailable for it. |
 
 ### Obligations
