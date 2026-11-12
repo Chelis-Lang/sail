@@ -451,6 +451,7 @@ pub(crate) mod tests {
                 rlimit: None,
             },
             fragility: None,
+            health: None,
             obligations: None,
         }
     }

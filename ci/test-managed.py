@@ -513,6 +513,26 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
             assert complete["currentness"] == "current", complete
             assert next(t for t in complete["targets"] if t["requested"])["report"] == target["report"]
 
+            # Read-only health preserves the same retained evidence across file,
+            # job and MCP views. None of these operations verifies a target.
+            result_file = evidence / "health-result.json"
+            result_file.write_text(json.dumps(complete))
+            health_job = json.loads(recorded_cli("health-job", [sail, "health", job["id"], "--output", "json"]).stdout)
+            health_file = json.loads(recorded_cli("health-file", [sail, "health", "--file", str(result_file), "--output", "json"]).stdout)
+            assert health_job["kind"] == "sail-proof-health" and health_job["version"] == 1, health_job
+            assert health_job["job_id"] == job["id"] and health_file["job_id"] is None
+            assert {k:v for k,v in health_job.items() if k != "job_id"} == {k:v for k,v in health_file.items() if k != "job_id"}
+            assert health_job["entries"] and health_job["omitted"] == 0, health_job
+            expected_functions = [f for t in complete["targets"] if t["requested"] for c in t["report"]["crates"] for f in c["functions"]]
+            assert health_job["total_functions"] == len(expected_functions), health_job
+            for entry in health_job["entries"]:
+                original = next(f for f in expected_functions if f["function"] == entry["function"])
+                assert (entry["verdict"], entry["establishment"], entry["provenance"]) == (original["verdict"], original["establishment"], original["provenance"])
+                assert entry["health"] == original["health"] and entry["fragility"] == original["fragility"]
+            recorded_cli("health-baseline-save", [sail, "baseline", "save", "health-before", "--job", job["id"], "--output", "json"])
+            health_baseline = json.loads(recorded_cli("health-baseline", [sail, "health", job["id"], "--baseline", "health-before", "--output", "json"]).stdout)
+            assert health_baseline["baseline_name"] == "health-before" and health_baseline["baseline"]["currentness"] == "historical", health_baseline
+
             # An agent's session and terminal variables are not proof inputs: the
             # MCP server below runs with different ones and must reuse the CLI's proof.
             agent_env = dict(env, CLAUDE_CODE_SESSION_ID="managed-acceptance-agent",
@@ -532,6 +552,18 @@ with tempfile.TemporaryDirectory(prefix="sail-managed-acceptance-", dir="/tmp") 
                     "protocolVersion":"2025-11-25", "capabilities":{},
                     "clientInfo":{"name":"managed-acceptance", "version":"1"}}})
                 mcp.stdin.write(json.dumps({"jsonrpc":"2.0", "method":"notifications/initialized"}) + "\n")
+                health_mcp = exchange({"jsonrpc":"2.0", "id":1001, "method":"tools/call", "params":{
+                    "name":"proof_health", "arguments":{"job_id":job["id"]}}})
+                assert not health_mcp["isError"], health_mcp
+                health_mcp_view = dict(health_mcp["structuredContent"])
+                assert health_mcp_view.pop("summary") == "Recorded proof effort and coverage; verdicts, provenance and currentness are preserved. No new verification.", health_mcp
+                assert health_mcp_view == health_job, health_mcp
+                health_mcp_baseline = exchange({"jsonrpc":"2.0", "id":1002, "method":"tools/call", "params":{
+                    "name":"proof_health", "arguments":{"job_id":job["id"], "baseline":"health-before"}}})
+                assert not health_mcp_baseline["isError"], health_mcp_baseline
+                health_mcp_baseline_view = dict(health_mcp_baseline["structuredContent"])
+                assert health_mcp_baseline_view.pop("summary") == "Recorded proof effort and coverage; verdicts, provenance and currentness are preserved. No new verification.", health_mcp_baseline
+                assert health_mcp_baseline_view == health_baseline, health_mcp_baseline
                 started = exchange({"jsonrpc":"2.0", "id":2, "method":"tools/call", "params":{
                     "name":"start_verification", "arguments":{"project_dir":str(project)}}})
                 assert not started["isError"], started

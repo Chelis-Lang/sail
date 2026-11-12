@@ -85,6 +85,7 @@ fn full() -> Report {
             runs: 4,
             proved: 3,
         }),
+        health: None,
         obligations: Some(vec![obligation]),
     };
     let crates = vec![CrateReport {
@@ -223,6 +224,48 @@ fn every_field_is_required_by_the_schema() {
             "removing {path} still validates"
         );
     }
+}
+
+#[test]
+fn health_is_additive_but_each_recorded_measurement_field_is_required() {
+    let mut report = full();
+    let function = &mut report.crates[0].functions[0];
+    function.health = Some(sail_api::health::FunctionHealth::from_obligations(
+        function.obligations.as_deref(),
+    ));
+    round_trip(&report);
+    let value = serde_json::to_value(&report).unwrap_or_else(|error| unreachable!("{error}"));
+    let root = "/crates/0/functions/0/health";
+    let mut paths = Vec::new();
+    collect_fields(
+        value
+            .pointer(root)
+            .unwrap_or_else(|| unreachable!("health")),
+        root,
+        &mut paths,
+    );
+    assert_ne!(paths.len(), 0);
+    for path in paths {
+        let mut missing = value.clone();
+        remove_field(&mut missing, &path);
+        assert_ne!(
+            sail_api::schema::validate(&schema(), &missing),
+            Vec::<String>::new(),
+            "{path}"
+        );
+    }
+    let mut old = value.clone();
+    remove_field(&mut old, root);
+    assert_eq!(
+        sail_api::schema::validate(&schema(), &old),
+        Vec::<String>::new()
+    );
+    let mut unknown = value;
+    unknown["crates"][0]["functions"][0]["health"]["invented"] = Value::Bool(true);
+    assert_ne!(
+        sail_api::schema::validate(&schema(), &unknown),
+        Vec::<String>::new()
+    );
 }
 
 /// Every object field's path, as `/a/0/b` pointers.

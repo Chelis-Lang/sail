@@ -23,6 +23,10 @@ instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 Read the [Sail book](https://cproof.ai/docs/sail/) for the quickstart,
 workflows, and architecture. Its sources are maintained in this repository.
 
+v0.3.0 development builds add [proof health](docs/proof-health.md): recorded
+per-check effort and coverage from completed jobs, with matching CLI/JSON/MCP
+views. This command is absent from the published 0.2.0 release.
+
 ## Install
 
 Sail 0.2.0 is published as native archives and as the crates.io package

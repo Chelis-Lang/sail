@@ -12,6 +12,7 @@
 - [Standalone files](standalone-verification.md)
 - [Undo in Cargo projects](instant-revert.md)
 - [Proof repair](proof-repair-walkthrough.md)
+- [Proof health](proof-health.md)
 - [CI caching](ci-cache.md)
 - [CI reports](ci-reports.md)
 - [GitHub Action](github-action.md)

@@ -233,6 +233,7 @@ fn convert(
                 rlimit: raw["payload"]["rlimit"].as_u64(),
             },
             fragility: None,
+            health: Some(sail_api::health::FunctionHealth::from_obligations(None)),
             obligations: None,
         }),
         "phase-started" => Observation::PhaseStarted,

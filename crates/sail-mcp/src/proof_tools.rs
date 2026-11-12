@@ -7,6 +7,7 @@ pub(super) fn definitions() -> Vec<Value> {
     let string = || json!({"type":"string","minLength":1});
     let target = json!({"type":"object","additionalProperties":false,"required":["job_id","package_id","target","kind","function"],"properties":{"job_id":string(),"package_id":string(),"target":string(),"kind":{"type":"string","enum":["lib","bin"]},"function":string(),"obligation":string()}});
     vec![
+        json!({"name":"proof_health","title":"Read observed proof health","description":"Read original per-check resource effort and missing coverage from a completed verification job without running a solver. Preserves verdicts, provisional establishment, provenance and currentness. Shows an optional earlier job or immutable baseline separately. A single run does not establish stability or unmeasured fragility.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"before_job":string(),"baseline":baseline_schema(),"limit":{"type":"integer","minimum":1,"maximum":1000}},"not":{"required":["before_job","baseline"]}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"requirement_assurance","title":"Read requirement assurance","description":"Experimental: integration tool. Read versioned submitter-attributed Verus evidence grouped by requirement identity for an ordinary job started with requirements. The attribution is an unchecked submitter claim; currentness, actual tiers and mutation limitations remain explicit.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"attributed":{"type":"boolean","description":"Accepted for compatibility and ignored: this tool reads only submitter-attributed evidence."}}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"verification_events","title":"Read proof observations","description":"Read one bounded page from proof stream v1. Resume using next.stream_id/after. Gap is explicit; early observations remain provisional. Completed target reports independently seal final proof evidence.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"stream_id":string(),"after":{"type":"integer","minimum":0}}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"explain_failure","title":"Explain exact failure evidence","description":"Return a function/obligation report, raw models, diagnostics and establishing provenance for an exact package/target/kind identity. Unattributed diagnostics remain explicitly unattributed. No proof edits are generated.","inputSchema":target,"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
@@ -39,9 +40,13 @@ pub(super) fn call(
                 Ok(document)
                     if valid(name, &document)
                         && requested_assurance_matches(name, args, &document)
+                        && requested_health_matches(name, args, &document)
                         && requested_baseline_matches(name, args, &document) => ToolResult::ok(
-                    "Scoped proof evidence; provisional observations do not authorize a repair."
-                        .into(),
+                    if name == "proof_health" {
+                        "Recorded proof effort and coverage; verdicts, provenance and currentness are preserved. No new verification."
+                    } else {
+                        "Scoped proof evidence; provisional observations do not authorize a repair."
+                    }.into(),
                     document,
                 ),
                 _ => ToolResult::error(
@@ -108,11 +113,9 @@ fn assurance(args: &Map<String, Value>) -> Result<Vec<String>, String> {
         Some(_) => Err("attributed must be a boolean".into()),
     }
 }
-fn arguments(
-    name: &str,
-    args: &Map<String, Value>,
-) -> Result<(Vec<String>, Option<String>), String> {
-    let allowed: &[&str] = match name {
+fn allowed_arguments(name: &str) -> Result<&'static [&'static str], String> {
+    Ok(match name {
+        "proof_health" => &["job_id", "before_job", "baseline", "limit"],
         "requirement_assurance" => &["job_id", "attributed"],
         "verification_events" => &["job_id", "stream_id", "after"],
         "explain_failure" => &[
@@ -139,11 +142,19 @@ fn arguments(
             "verus_args",
         ],
         _ => return Err("unknown proof tool".into()),
-    };
+    })
+}
+
+fn arguments(
+    name: &str,
+    args: &Map<String, Value>,
+) -> Result<(Vec<String>, Option<String>), String> {
+    let allowed = allowed_arguments(name)?;
     if let Some(key) = args.keys().find(|key| !allowed.contains(&key.as_str())) {
         return Err(format!("unknown argument {key}"));
     }
     let out = match name {
+        "proof_health" => health_arguments(args)?,
         "requirement_assurance" => assurance(args)?,
         "save_baseline" => vec![
             "baseline".into(),
@@ -308,8 +319,80 @@ fn repair(args: &Map<String, Value>) -> Result<(Vec<String>, Option<String>), St
         },
     ))
 }
+fn health_arguments(args: &Map<String, Value>) -> Result<Vec<String>, String> {
+    if args.contains_key("before_job") && args.contains_key("baseline") {
+        return Err("choose before_job or baseline".into());
+    }
+    let mut out = vec!["health".into(), value(args, "job_id")?];
+    if args.contains_key("before_job") {
+        out.extend(["--before".into(), value(args, "before_job")?]);
+    }
+    if args.contains_key("baseline") {
+        out.extend(["--baseline".into(), baseline_name(args, "baseline")?]);
+    }
+    if let Some(limit) = args.get("limit") {
+        let limit = limit
+            .as_u64()
+            .filter(|limit| (1..=1000).contains(limit))
+            .ok_or("limit must be an integer from 1 to 1000")?;
+        out.extend(["--limit".into(), limit.to_string()]);
+    }
+    Ok(out)
+}
+
+fn requested_health_matches(name: &str, args: &Map<String, Value>, document: &Value) -> bool {
+    if name != "proof_health" {
+        return true;
+    }
+    let Ok(view) = serde_json::from_value::<sail_api::health::View>(document.clone()) else {
+        return false;
+    };
+    if view.job_id.as_deref() != args["job_id"].as_str()
+        || view.baseline_name.as_deref() != args.get("baseline").and_then(Value::as_str)
+        || view.baseline.is_some()
+            != (args.contains_key("before_job") || args.contains_key("baseline"))
+        || u64::try_from(view.entries.len())
+            .ok()
+            .and_then(|count| count.checked_add(view.omitted))
+            != Some(view.total_functions)
+    {
+        return false;
+    }
+    let limit = args.get("limit").and_then(Value::as_u64).unwrap_or(20);
+    if u64::try_from(view.entries.len())
+        .ok()
+        .is_none_or(|count| count > limit)
+    {
+        return false;
+    }
+    if let Some(baseline) = &view.baseline
+        && (baseline.kind != "sail-proof-health"
+            || baseline.version != 1
+            || baseline.baseline.is_some()
+            || baseline.baseline_name.is_some()
+            || (args.contains_key("baseline")
+                && (baseline.currentness != sail_api::project::Currentness::Historical
+                    || baseline.job_id.as_ref().is_none_or(String::is_empty)))
+            || u64::try_from(baseline.entries.len())
+                .ok()
+                .and_then(|count| count.checked_add(baseline.omitted))
+                != Some(baseline.total_functions)
+            || args
+                .get("before_job")
+                .is_some_and(|expected| baseline.job_id.as_deref() != expected.as_str())
+            || u64::try_from(baseline.entries.len())
+                .ok()
+                .is_none_or(|count| count > limit))
+    {
+        return false;
+    }
+    true
+}
+
 fn valid(name: &str, document: &Value) -> bool {
     match name {
+        "proof_health" => serde_json::from_value::<sail_api::health::View>(document.clone())
+            .is_ok_and(|view| view.kind == "sail-proof-health" && view.version == 1),
         "requirement_assurance" => {
             matches!(serde_json::from_value::<sail_api::jobs::Response>(document.clone()),
             Ok(sail_api::jobs::Response::AttributedAssurance(view))
@@ -363,6 +446,49 @@ mod baseline_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn health_tools_bind_job_baseline_bounds_and_refuse_forged_view_identity()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let args = json!({"job_id":"job", "before_job":"older", "limit":1});
+        let args = args.as_object().ok_or("arguments")?;
+        assert_eq!(
+            arguments("proof_health", args)?.0,
+            [
+                "health", "job", "--before", "older", "--limit", "1", "--output", "json"
+            ]
+        );
+        let empty = json!({"kind":"sail-proof-health","version":1,"job_id":"job","run_id":"run",
+            "workspace":"workspace","context_sha256":"context","input_revision":"revision",
+            "currentness":"historical","total_functions":0,"omitted":0,"entries":[],"error":null});
+        let mut view = empty.clone();
+        let mut earlier = empty.clone();
+        earlier["job_id"] = json!("older");
+        view["baseline"] = earlier;
+        assert!(valid("proof_health", &view));
+        assert!(requested_health_matches("proof_health", args, &view));
+        for (pointer, value) in [
+            ("/job_id", json!("foreign")),
+            ("/baseline/job_id", json!("foreign")),
+            ("/total_functions", json!(1)),
+            ("/baseline/total_functions", json!(1)),
+            ("/baseline/version", json!(2)),
+        ] {
+            let mut forged = view.clone();
+            *forged.pointer_mut(pointer).ok_or("field")? = value;
+            assert!(!requested_health_matches("proof_health", args, &forged));
+        }
+        for input in [
+            json!({"job_id":"job","limit":0}),
+            json!({"job_id":"job","limit":1001}),
+            json!({"job_id":"job","limit":1.5}),
+            json!({"job_id":"job","baseline":"base","before_job":"old"}),
+            json!({"job_id":"job","file":"foreign.json"}),
+        ] {
+            assert!(arguments("proof_health", input.as_object().ok_or("args")?).is_err());
+        }
+        Ok(())
+    }
 
     #[test]
     fn assurance_tool_binds_the_requested_job_and_reads_only_attributed_evidence()

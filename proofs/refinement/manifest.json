@@ -4343,7 +4343,7 @@
   ],
   "api_declarations": {
     "output": {
-      "source_sha256": "1ea9d4c512c5d913c17821071de5be8b2a1db4d841aefcc7fba3e524f2a57ea7",
+      "source_sha256": "e9286811e997761f09bc029da8454ae4b75b71b1862c753654438eb5711dda23",
       "bindings": [
         [
           "use",
@@ -4562,6 +4562,18 @@
               "Fragility",
               ">"
             ],
+            "health": [
+              "Option",
+              "<",
+              "crate",
+              ":",
+              ":",
+              "health",
+              ":",
+              ":",
+              "FunctionHealth",
+              ">"
+            ],
             "obligations": [
               "Option",
               "<",
@@ -4573,7 +4585,7 @@
             ]
           },
           "variants": [],
-          "declaration_sha256": "c48b3972d71130993cbadcc59c693e82e2f4c8f11e14677a3f5ef49648bd1230"
+          "declaration_sha256": "97ae04c8e3e4602e2ca4093712a507637d6fe084d96b61e2feaecc220b452736"
         },
         {
           "name": "ProvenanceReport",

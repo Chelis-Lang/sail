@@ -72,6 +72,15 @@ is not a result about the formula.
 
 ## Read the evidence
 
+In v0.3.0 development builds, `sail health JOB --output json` and MCP
+`proof_health` read recorded per-check effort for requested targets. They run
+no solver. Use `--baseline NAME` or MCP `baseline` to show immutable reference
+evidence separately. Check `attributed`, `complete`, `unrecorded_checks` and
+the original verdict/provenance/currentness before interpreting a finite
+`peak`. Missing effort is not zero, unlimited is not a finite margin, and one
+run does not measure stability or an absent fragility score. The command is
+absent from published 0.2.0; check `sail health --help` for availability.
+
 For Verus results, check scope and currentness before reporting success. Current
 evidence matches the present inputs; Historical evidence no longer matches
 them; Unknown does not establish a current proof. An Unknown result's

@@ -166,7 +166,7 @@ fn absolute_root(root: &str, current: Option<&str>) -> Result<String, String> {
 }
 
 /// Reads and checks one `sail-project-result` document.
-fn document(path: Option<&str>) -> Result<ProjectResult, String> {
+pub(crate) fn document(path: Option<&str>) -> Result<ProjectResult, String> {
     let name = path.unwrap_or("standard input");
     let text = if let Some(path) = path {
         std::fs::read_to_string(path)

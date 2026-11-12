@@ -25,6 +25,7 @@ pub mod assurance;
 pub mod attribution;
 pub mod campaign;
 pub mod evidence;
+pub mod health;
 pub mod jobs;
 pub mod output;
 pub mod policy;
