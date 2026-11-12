@@ -324,6 +324,40 @@ pub(super) fn parse_outputs(stdout: &[u8]) -> (Vec<Value>, String) {
 
 const BUNDLE_NOTICE: &str = "note[SAIL3138]: Sail's preverified vstd proof was not used because ";
 const RETENTION_NOTICE: &str = "note[SAIL3146]: instant revert did not apply because ";
+const DEPENDENT_NOTICE: &str = "note[SAIL3146]: instant revert will not apply to dependents of ";
+const DEPENDENT_SUFFIX: &str = ", rebuilt in this run because this compiler target's build-script observations were missing or no longer matched (for example, an earlier run of this target, such as a stopped background preparation, ended before republishing them); verification is unaffected";
+
+#[derive(Clone, Copy)]
+enum Notice {
+    Bundle,
+    Retention,
+    Dependent,
+}
+
+fn notice(text: &str) -> Option<Notice> {
+    if text.contains(['\r', '\n']) {
+        return None;
+    }
+    if text.starts_with(BUNDLE_NOTICE)
+        && text.ends_with(", so this run verified vstd itself; verification is unaffected")
+    {
+        return Some(Notice::Bundle);
+    }
+    if text.starts_with(RETENTION_NOTICE) && text.ends_with("; verification is unaffected") {
+        return Some(Notice::Retention);
+    }
+    let targets = text
+        .strip_prefix(DEPENDENT_NOTICE)?
+        .strip_suffix(DEPENDENT_SUFFIX)?;
+    (targets.len() <= 4096
+        && targets.split(", ").all(|target| {
+            !target.is_empty()
+                && target
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+        }))
+    .then_some(Notice::Dependent)
+}
 
 /// Separates the CLI's intentional explanation notices from Verus diagnostics.
 /// Raw stderr remains in the captured log; every other byte stays comparable.
@@ -332,10 +366,7 @@ pub(super) fn separate_sail_notes(run: &mut RunRecord) -> Vec<String> {
     let mut notices = Vec::new();
     for line in run.stderr.split_inclusive('\n') {
         let text = line.trim_end_matches(['\r', '\n']);
-        if text.starts_with(BUNDLE_NOTICE)
-            && text.ends_with(", so this run verified vstd itself; verification is unaffected")
-            || text.starts_with(RETENTION_NOTICE) && text.ends_with("; verification is unaffected")
-        {
+        if notice(text).is_some() {
             notices.push(text.to_owned());
         } else {
             diagnostics.push_str(line);
@@ -348,15 +379,20 @@ pub(super) fn separate_sail_notes(run: &mut RunRecord) -> Vec<String> {
 /// Each already recognized explanation may appear once in an invocation.
 /// Unknown entries remain a refusal even though the separator excludes them.
 pub(super) fn sail_notes_are_unique(notices: &[String]) -> bool {
-    let bundle = notices
-        .iter()
-        .filter(|n| n.starts_with(BUNDLE_NOTICE))
-        .count();
-    let retention = notices
-        .iter()
-        .filter(|n| n.starts_with(RETENTION_NOTICE))
-        .count();
-    bundle <= 1 && retention <= 1 && bundle + retention == notices.len()
+    let mut counts = [0_usize; 3];
+    for text in notices {
+        let index = match notice(text) {
+            Some(Notice::Bundle) => 0,
+            Some(Notice::Retention) => 1,
+            Some(Notice::Dependent) => 2,
+            None => return false,
+        };
+        if counts[index] != 0 {
+            return false;
+        }
+        counts[index] = 1;
+    }
+    true
 }
 
 /// Runs `cmd` to completion, retaining its streams in `log` and stopping
@@ -793,7 +829,83 @@ mod tests {
     }
 
     #[test]
-    fn explanation_notices_are_unique_per_known_code() {
+    fn dependent_declines_have_exact_shape_and_independent_multiplicity() {
+        let dependent = format!("{DEPENDENT_NOTICE}capybarakv, another_target{DEPENDENT_SUFFIX}");
+        let retention = format!(
+            "{RETENTION_NOTICE}the dependency profile is not qualified; verification is unaffected"
+        );
+        assert!(matches!(notice(&dependent), Some(Notice::Dependent)));
+        assert!(sail_notes_are_unique(&[
+            retention.clone(),
+            dependent.clone()
+        ]));
+        assert!(!sail_notes_are_unique(&[
+            dependent.clone(),
+            dependent.clone()
+        ]));
+        assert!(!sail_notes_are_unique(&[
+            retention.clone(),
+            dependent.clone(),
+            retention
+        ]));
+        for targets in [
+            "",
+            "capybarakv,",
+            "capybarakv,  other",
+            "../target",
+            "target/name",
+            "target\tname",
+            "target\nname",
+            "target name",
+            "a:b",
+            ", target",
+        ] {
+            let bad = format!("{DEPENDENT_NOTICE}{targets}{DEPENDENT_SUFFIX}");
+            assert!(notice(&bad).is_none(), "{targets:?}");
+            assert!(!sail_notes_are_unique(&[bad]));
+        }
+        assert!(
+            notice(&dependent.replace("verification is unaffected", "verification changed"))
+                .is_none()
+        );
+        assert!(notice(&dependent.replace("SAIL3146", "SAIL3138")).is_none());
+        assert!(
+            notice(&format!(
+                "{DEPENDENT_NOTICE}{}{DEPENDENT_SUFFIX}",
+                "a".repeat(4097)
+            ))
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn dependent_notice_separation_preserves_original_verifier_bytes() {
+        let dependent = format!("{DEPENDENT_NOTICE}capybarakv{DEPENDENT_SUFFIX}");
+        let mut run = RunRecord {
+            exit_code: Some(101),
+            outputs: vec![],
+            stdout_rest: String::new(),
+            wall_ms: 0.0,
+            user_s: None,
+            sys_s: None,
+            max_rss_bytes: None,
+            stderr: format!(
+                "{dependent}\nerror: postcondition not satisfied\n --> src/lib.rs:1:1\n\n"
+            ),
+        };
+        assert_eq!(separate_sail_notes(&mut run), vec![dependent]);
+        assert_eq!(
+            run.stderr,
+            "error: postcondition not satisfied\n --> src/lib.rs:1:1\n\n"
+        );
+        let bad = format!("{DEPENDENT_NOTICE}../foreign{DEPENDENT_SUFFIX}\n");
+        run.stderr.clone_from(&bad);
+        assert_eq!(separate_sail_notes(&mut run), Vec::<String>::new());
+        assert_eq!(run.stderr, bad);
+    }
+
+    #[test]
+    fn explanation_notices_are_unique_per_known_category() {
         let bundle = "note[SAIL3138]: Sail's preverified vstd proof was not used because features differ, so this run verified vstd itself; verification is unaffected".to_owned();
         let retention = "note[SAIL3146]: instant revert did not apply because the dependency profile is not qualified; verification is unaffected".to_owned();
         for notices in [

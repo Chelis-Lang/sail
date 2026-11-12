@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Fix mutation benchmark classification of the existing explained dependent
+  retention notice, preserving strict Verus diagnostics and per-category
+  duplicate-note refusals (#728).
+
 - Fix observation target kinds when a Cargo library and binary share a name; ambiguous compiler mappings remain unavailable (#722).
 
 ### Removed
