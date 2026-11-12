@@ -7,8 +7,13 @@ stable and agent-friendly, without ever changing a verdict in default mode.
 `CLAUDE.md` is a symlink to this file.
 
 `docs/CHARTER.md` is the project charter, and this file must stay consistent
-with it. When the charter and a later instruction conflict, ask the owner before
-acting. The charter's appendix records corrections made since it was written.
+with it. Owner direction on 2026-11-12 delegates narrow, evidence-backed
+engineering decisions, including diagnostic-only exceptions, to the lead.
+Record the decision and evidence in an ADR and the charter appendix when
+needed; do not escalate routine policy adjustments for approval. Preserve
+original strict failures and independently review correctness-sensitive changes.
+This delegation does not waive verdict correctness, qualification gates or the
+separate approval of the exact final release candidate. The charter's appendix records corrections made since it was written.
 
 ## Ground rules
 

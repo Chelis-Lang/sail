@@ -354,3 +354,15 @@ Each entry names the charter text it qualifies and the ADR that records it.
     of entry 16 and the Oyster ordering of entry 8, and amends entry 16's
     "precedes cvc5" sentence: the order is kept and cvc5 moves into the
     release. See ADR 0109.
+
+18. *Engineering decision delegation* (owner direction, 2026-11-12). The
+    owner directs agents to stop escalating sensible implementation changes
+    and delegates narrow, evidence-backed engineering decisions, including
+    diagnostic-only exceptions, to the lead. Record their exact scope, causal
+    evidence and limits in an ADR; update this appendix when the contract needs
+    clarification. Preserve original strict failures and independently review
+    correctness-sensitive changes. Routine policy adjustments need no separate
+    owner question. This delegation does not authorize changed proof verdicts,
+    false verification claims, unmeasured performance acceptance, blanket
+    conformance waivers or final release publication without the exact-candidate
+    approval required by entry 15.
