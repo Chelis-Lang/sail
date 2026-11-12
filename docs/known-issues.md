@@ -21,6 +21,7 @@ Resolved defects are retained in the [changelog](../CHANGELOG.md) and
 oracle completion (#611), and compound-field lowering/retained-read correction
 (#323). Original failures and source-specific qualification stay unchanged.
 
+
 ## Builtin diagnostic source paths
 
 The selected Mac fork can print a different builtin definition source path than
