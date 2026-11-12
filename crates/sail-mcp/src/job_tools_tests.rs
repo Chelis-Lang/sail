@@ -740,7 +740,7 @@ fn peer_interrupt_control_still_requires_eof_and_original_deadline() {
 
 #[test]
 fn missing_endpoint_uses_original_cli_read_without_caching_authority() {
-    let mut fixture = Fixture::new();
+    let mut fixture = Fixture::new().interpreted();
     fixture.context.jobs = Some(crate::job_clients::ReadClients::at(
         fixture.root.join("missing.sock"),
     ));
