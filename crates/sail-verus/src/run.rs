@@ -13,6 +13,10 @@
 //! holds only diagnostics. Each verified crate prints its own
 //! `--output-json` document, so a run can produce several.
 
+mod capture;
+
+pub use capture::CaptureControl;
+
 use std::collections::BTreeMap;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -494,6 +498,112 @@ pub fn run_unit(
     solver: &Solver,
     work: &Path,
 ) -> Result<RunRecord> {
+    run_unit_impl(installed, unit, solver, work, None).map(|run| run.record)
+}
+
+/// The aggregate result and independently acknowledged compiler records.
+pub struct CapturedUnit {
+    /// The unchanged aggregate verifier result.
+    pub record: RunRecord,
+    /// Completed capture identifiers, present only for staged Cargo units.
+    pub completions: Option<Vec<String>>,
+}
+
+/// Runs a differential-harness unit with per-invocation compiler capture.
+///
+/// Cargo uses a private copy of its unchanged frontend beside `tee`, named
+/// `verus`. The tee delegates to the original driver. Direct Verus units do
+/// not need a tee. Capture records remain under `work/invocations`.
+///
+/// # Errors
+///
+/// The errors of [`run_unit`], including failure to stage the capture frontend.
+pub fn run_unit_captured(
+    installed: &Installed,
+    unit: &Unit,
+    solver: &Solver,
+    work: &Path,
+    tee: &Path,
+) -> Result<CapturedUnit> {
+    run_unit_impl(installed, unit, solver, work, Some(tee))
+}
+
+fn capture_frontend(
+    installed: &Installed,
+    solver: &Solver,
+    cargo: bool,
+    tee: Option<&Path>,
+    work: &Path,
+) -> Result<(PathBuf, Option<capture::Server>)> {
+    let original = match (solver, cargo) {
+        (Solver::Engine(engine), true) => &engine.cargo_verus,
+        (Solver::Engine(engine), false) => &engine.verus,
+        (_, true) => &installed.cargo_verus,
+        (_, false) => &installed.verus,
+    };
+    let Some(tee) = tee.filter(|_| cargo) else {
+        return Ok((original.clone(), None));
+    };
+    let control = capture::Server::start()?;
+    let stage = work.join(control.directory());
+    let fail = |e| Error::new("SAIL3020", format!("cannot stage compiler capture: {e}"));
+    std::fs::create_dir_all(&stage).map_err(fail)?;
+    std::fs::create_dir(work.join("invocations")).map_err(fail)?;
+    std::fs::write(work.join("capture-errors"), b"").map_err(fail)?;
+    std::fs::copy(original, stage.join("cargo-verus")).map_err(fail)?;
+    std::fs::copy(tee, stage.join("verus")).map_err(fail)?;
+    Ok((stage.join("cargo-verus"), Some(control)))
+}
+
+fn configure_capture(
+    cmd: &mut Command,
+    installed: &Installed,
+    unit: &Unit,
+    solver: &Solver,
+    work: &Path,
+    target_dir: Option<&Path>,
+    enabled: bool,
+) {
+    cmd.env_remove("SAIL_CONFORMANCE_TEE_DRIVER")
+        .env_remove("SAIL_CONFORMANCE_TEE_DIR")
+        .env_remove("SAIL_CONFORMANCE_TEE_SOURCE")
+        .env_remove("SAIL_CONFORMANCE_TEE_TARGET")
+        .env_remove("SAIL_CONFORMANCE_TEE_LOGS")
+        .env_remove("SAIL_CONFORMANCE_TEE_ERRORS");
+    if enabled {
+        let driver = match solver {
+            Solver::Engine(engine) => &engine.verus,
+            _ => &installed.verus,
+        };
+        cmd.env("SAIL_CONFORMANCE_TEE_DRIVER", driver)
+            .env("SAIL_CONFORMANCE_TEE_DIR", work.join("invocations"))
+            .env("SAIL_CONFORMANCE_TEE_SOURCE", &unit.source_dir)
+            .env("SAIL_CONFORMANCE_TEE_TARGET", target_dir.unwrap_or(work))
+            .env("SAIL_CONFORMANCE_TEE_ERRORS", work.join("capture-errors"));
+    }
+}
+
+fn reset_run_target(unit: &Unit) -> Result<Option<&Path>> {
+    if unit.build != Build::CargoVerus {
+        return Ok(None);
+    }
+    let dir = unit.target_dir.as_deref().ok_or_else(|| {
+        Error::new(
+            "SAIL3020",
+            format!("{}: cargo-verus unit was not prepared", unit.id),
+        )
+    })?;
+    let _ = std::fs::remove_dir_all(dir);
+    Ok(Some(dir))
+}
+
+fn run_unit_impl(
+    installed: &Installed,
+    unit: &Unit,
+    solver: &Solver,
+    work: &Path,
+    tee: Option<&Path>,
+) -> Result<CapturedUnit> {
     // Verus runs with `work` as its current directory, so every path handed
     // to it (and to `time -o`) must be absolute.
     let work = &std::path::absolute(work).map_err(|e| {
@@ -506,24 +616,8 @@ pub fn run_unit(
     std::fs::create_dir_all(work)
         .map_err(|e| Error::new("SAIL3020", format!("cannot create {}: {e}", work.display())))?;
     let cargo = unit.build == Build::CargoVerus;
-    let target_dir = if cargo {
-        let dir = unit.target_dir.as_deref().ok_or_else(|| {
-            Error::new(
-                "SAIL3020",
-                format!("{}: cargo-verus unit was not prepared", unit.id),
-            )
-        })?;
-        let _ = std::fs::remove_dir_all(dir);
-        Some(dir)
-    } else {
-        None
-    };
-    let program = match (solver, cargo) {
-        (Solver::Engine(engine), true) => &engine.cargo_verus,
-        (Solver::Engine(engine), false) => &engine.verus,
-        (_, true) => &installed.cargo_verus,
-        (_, false) => &installed.verus,
-    };
+    let target_dir = reset_run_target(unit)?;
+    let (program, control) = capture_frontend(installed, solver, cargo, tee, work)?;
     if !program.is_file() {
         return Err(Error::new(
             "SAIL3020",
@@ -536,10 +630,10 @@ pub fn run_unit(
     let mut cmd = match time_mode {
         Some(flag) => {
             let mut c = Command::new(timer);
-            c.arg(flag).arg("-o").arg(&time_file).arg(program);
+            c.arg(flag).arg("-o").arg(&time_file).arg(&program);
             c
         }
-        None => Command::new(program),
+        None => Command::new(&program),
     };
     add_invocation(&mut cmd, installed, unit, work, target_dir);
     let observation_logs = matches!(
@@ -550,13 +644,30 @@ pub fn run_unit(
         }
     )
     .then(|| work.join("sail-logs"));
-    if let Some(logs) = &observation_logs {
+    if let Some(logs) = &observation_logs
+        && !(cargo && tee.is_some())
+    {
         cmd.args(crate::adapter::OBSERVATION_LOG_FLAGS).arg(logs);
     }
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     solver_env(&mut cmd, installed, unit, solver);
+    configure_capture(
+        &mut cmd,
+        installed,
+        unit,
+        solver,
+        work,
+        target_dir,
+        cargo && tee.is_some(),
+    );
+    if cargo
+        && tee.is_some()
+        && let Some(logs) = &observation_logs
+    {
+        cmd.env("SAIL_CONFORMANCE_TEE_LOGS", logs);
+    }
     if let Solver::Engine(engine) = solver {
         engine_env(&mut cmd, installed, engine, work);
     }
@@ -564,6 +675,7 @@ pub fn run_unit(
     let output = run_with_timeout_retaining(&mut cmd, unit_timeout(), Some(work))
         .map_err(|e| Error::new(e.0, format!("{}: {}", program.display(), e.1)))?;
     let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
+    let completions = control.map(capture::Server::finish).transpose()?;
     if let Some(dir) = target_dir {
         // Build products are large and never compared; keep the disk free.
         let _ = std::fs::remove_dir_all(dir);
@@ -588,9 +700,16 @@ pub fn run_unit(
     // Kept next to the run for inspecting differences; best effort.
     let _ = std::fs::write(work.join("stdout.txt"), &output.stdout);
     let _ = std::fs::write(work.join("stderr.txt"), &output.stderr);
-    let (user_s, sys_s, max_rss_bytes) = parse_time(&timing.unwrap_or_default());
+    Ok(CapturedUnit {
+        record: completed_record(&output, wall_ms, &timing.unwrap_or_default()),
+        completions,
+    })
+}
+
+fn completed_record(output: &std::process::Output, wall_ms: f64, timing: &str) -> RunRecord {
+    let (user_s, sys_s, max_rss_bytes) = parse_time(timing);
     let (outputs, stdout_rest) = parse_outputs(&output.stdout);
-    Ok(RunRecord {
+    RunRecord {
         exit_code: output.status.code(),
         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         outputs,
@@ -599,7 +718,27 @@ pub fn run_unit(
         user_s,
         sys_s,
         max_rss_bytes,
-    })
+    }
+}
+
+/// Adds harness observation options through the product driver's same packed
+/// Verus-option channel, with an isolated compiler-owned log directory.
+///
+/// # Errors
+///
+/// Invalid UTF-8 or a Cargo-Verus separator in an option (`SAIL3111`).
+pub fn capture_observation_options(
+    command: &mut Command,
+    base: Option<String>,
+    logs: &Path,
+) -> Result<()> {
+    let mut options: Vec<std::ffi::OsString> = crate::adapter::OBSERVATION_LOG_FLAGS
+        .iter()
+        .map(std::ffi::OsString::from)
+        .collect();
+    options.push(logs.as_os_str().to_owned());
+    crate::adapter::verus_channel::Channel::new(base, &options)?.apply(command);
+    Ok(())
 }
 
 /// The per-unit time limit: `SAIL_UNIT_TIMEOUT` seconds, default 3600. A
@@ -688,7 +827,15 @@ fn run_with_timeout_retaining(
                     ),
                 ));
             }
-            Err(e) => return Err(("SAIL3020", format!("lost the child process: {e}"))),
+            Err(e) => {
+                let pgid = child.id();
+                let _ = Command::new("kill")
+                    .args(["-s", "KILL", "--", &format!("-{pgid}")])
+                    .status();
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(("SAIL3020", format!("lost the child process: {e}")));
+            }
         }
     };
     Ok(std::process::Output {

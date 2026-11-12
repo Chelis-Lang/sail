@@ -35,9 +35,10 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use sail_conformance::engine::EngineStats;
-use sail_conformance::{Comparison, Verdict, classify};
+use sail_conformance::invocations::{CapturedRun, classify, run as run_unit};
+use sail_conformance::{Comparison, Verdict};
 use sail_verus::corpus::{Corpus, Tier, Unit};
-use sail_verus::run::{EngineRun, RunRecord, Solver, machine_info, prepare_unit, run_unit};
+use sail_verus::run::{EngineRun, RunRecord, Solver, machine_info, prepare_unit};
 use sail_verus::toolchain::{Installed, Pins};
 use serde::Serialize;
 
@@ -323,6 +324,39 @@ fn load(corpus_path: &Path) -> Result<(Corpus, Installed, PathBuf), String> {
     Ok((corpus, installed, cache))
 }
 
+/// Reject unmatched explicit selectors before any project is fetched.
+fn validate_projects(o: &Options, corpus: &Corpus) -> Result<(), String> {
+    for name in &o.projects {
+        let Some(project) = corpus.projects.iter().find(|project| project.name == *name) else {
+            return Err(format!(
+                "error[SAIL3017]: unknown corpus project `{name}`; select an exact name from {}",
+                o.corpus.display()
+            ));
+        };
+        if project.tier > o.tier || project.tier == Tier::Tier2 {
+            return Err(format!(
+                "error[SAIL3017]: corpus project `{name}` is outside the selected {:?} tier",
+                o.tier
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn require_runnable_units(
+    units: &[Unit],
+    engine_lacks: &BTreeMap<String, Vec<String>>,
+) -> Result<(), String> {
+    if units
+        .iter()
+        .any(|unit| !engine_lacks.contains_key(&unit.project))
+    {
+        Ok(())
+    } else {
+        Err("error[SAIL3017]: no runnable corpus units after tier, project, filter and requirement selection; no conformance was established".to_owned())
+    }
+}
+
 /// `engine_features` is the engine arm's recorded Verus Cargo features, and
 /// `None` for the other arms.
 fn select(
@@ -332,6 +366,7 @@ fn select(
     verus: &sail_verus::toolchain::VerusPin,
     engine_features: Option<&[String]>,
 ) -> Result<Selection, String> {
+    validate_projects(o, corpus)?;
     let toolchain = verus.rust_toolchain.as_str();
     let mut all = Vec::new();
     let mut skipped = Vec::new();
@@ -368,6 +403,7 @@ fn select(
     if let Some(f) = &o.filter {
         all.retain(|u| u.id.contains(f.as_str()));
     }
+    require_runnable_units(&all, &engine_lacks)?;
     let verus_source = if all.iter().any(|u| u.patch_verus_deps) {
         eprintln!("fetching verus @ {}", verus.commit);
         Some(
@@ -479,21 +515,35 @@ fn run_one(cx: &Context, unit: &Unit) -> UnitReport {
     report
 }
 
+fn capture_tee() -> Result<PathBuf, String> {
+    std::env::current_exe()
+        .map_err(|e| e.to_string())
+        .and_then(|exe| {
+            exe.parent()
+                .map(|dir| dir.join("sail-conformance-tee"))
+                .ok_or_else(|| "error[SAIL3018]: no executable directory".to_owned())
+        })
+}
+
 fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
     let (installed, dir) = (cx.installed, cx.dir);
+    let tee = match capture_tee() {
+        Ok(p) => p,
+        Err(e) => return infra_error(unit, e),
+    };
     let run_plain = |i: usize| {
         let dir = if i == 0 {
             base.join("plain")
         } else {
             base.join(format!("plain-{}", i + 1))
         };
-        run_unit(installed, unit, &Solver::Plain, &dir)
+        run_unit(installed, unit, &Solver::Plain, &dir, &tee)
     };
     let mut plains = Vec::new();
     for i in 0..cx.plain_runs {
         match run_plain(i) {
             Ok(p) => plains.push(p),
-            Err(e) => return infra_error(unit, e.to_string()),
+            Err(e) => return infra_error(unit, e),
         }
     }
     if let Some(engine) = &cx.engine {
@@ -509,9 +559,9 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
             .map(PathBuf::from),
         observation_logs: cx.managed_arm,
     };
-    let sail = match run_unit(cx.sail_verus, unit, &solver, &base.join("sail")) {
+    let sail = match run_unit(cx.sail_verus, unit, &solver, &base.join("sail"), &tee) {
         Ok(s) => s,
-        Err(e) => return infra_error(unit, e.to_string()),
+        Err(e) => return infra_error(unit, e),
     };
     let mut c = classify(&plains, &sail);
     // ADR 0009: before calling a difference a sail error, check whether
@@ -522,7 +572,7 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
         }
         match run_plain(plains.len()) {
             Ok(p) => plains.push(p),
-            Err(e) => return infra_error(unit, e.to_string()),
+            Err(e) => return infra_error(unit, e),
         }
         c = classify(&plains, &sail);
     }
@@ -534,8 +584,8 @@ fn compare_sides(cx: &Context, unit: &Unit, base: &Path) -> UnitReport {
         plain_runs: c.plain_runs,
         unstable: c.unstable,
         infra_error: None,
-        plain: plains.first().map(Side::from),
-        sail: Some(Side::from(&sail)),
+        plain: plains.first().map(|p| Side::from(&p.summary())),
+        sail: Some(Side::from(&sail.summary())),
         engine: None,
     }
 }
@@ -547,24 +597,35 @@ fn compare_engine(
     engine: &EngineArm,
     unit: &Unit,
     base: &Path,
-    mut plains: Vec<RunRecord>,
+    mut plains: Vec<CapturedRun>,
 ) -> UnitReport {
     let function = if engine.focus {
         plains
             .first()
-            .and_then(sail_conformance::engine::focus_function)
+            .and_then(|p| sail_conformance::engine::focus_function(&p.summary()))
     } else {
         None
     };
     let single_crate = unit.build == sail_verus::corpus::Build::Verus;
     let work = base.join("engine");
-    let run = match run_unit(cx.installed, unit, &engine.run(function.as_ref()), &work) {
+    let tee = match capture_tee() {
+        Ok(p) => p,
+        Err(e) => return infra_error(unit, e),
+    };
+    let run = match run_unit(
+        cx.installed,
+        unit,
+        &engine.run(function.as_ref()),
+        &work,
+        &tee,
+    ) {
         Ok(run) => run,
-        Err(e) => return infra_error(unit, e.to_string()),
+        Err(e) => return infra_error(unit, e),
     };
     let events = std::fs::read_to_string(work.join(sail_verus::run::engine_files::EVENTS))
         .unwrap_or_default();
-    let (issues, mut stats) = sail_conformance::engine::check(&run, &events, single_crate);
+    let (issues, mut stats) =
+        sail_conformance::engine::check(&run.verification_summary(), &events, single_crate);
     stats.focus_function.clone_from(&function);
     let compared = &run;
     let mut c = classify(&plains, compared);
@@ -577,9 +638,10 @@ fn compare_engine(
             unit,
             &Solver::Plain,
             &base.join(format!("plain-{}", plains.len() + 1)),
+            &tee,
         ) {
             Ok(p) => plains.push(p),
-            Err(e) => return infra_error(unit, e.to_string()),
+            Err(e) => return infra_error(unit, e),
         }
         c = classify(&plains, compared);
     }
@@ -596,8 +658,8 @@ fn compare_engine(
         plain_runs: c.plain_runs,
         unstable: c.unstable,
         infra_error: None,
-        plain: plains.first().map(Side::from),
-        sail: Some(Side::from(compared)),
+        plain: plains.first().map(|p| Side::from(&p.summary())),
+        sail: Some(Side::from(&compared.summary())),
         engine: Some(stats),
     }
 }
@@ -920,6 +982,55 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn explicit_projects_must_exist_and_belong_to_the_selected_tier() -> Result<(), String> {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/corpus.toml");
+        let corpus = Corpus::load(&path).map_err(|error| error.to_string())?;
+        let options = |names: &[&str]| {
+            let mut args = vec!["fetch".to_owned(), "--tier".to_owned(), "fast".to_owned()];
+            for name in names {
+                args.extend(["--project".to_owned(), (*name).to_owned()]);
+            }
+            parse(&args)
+        };
+        assert!(validate_projects(&options(&["human-eval-verus"])?, &corpus).is_ok());
+        let unknown = validate_projects(&options(&["human-eval-verus", "human-eval"])?, &corpus);
+        assert!(unknown.is_err_and(|error| {
+            error.contains("SAIL3017") && error.contains("unknown corpus project `human-eval`")
+        }));
+        let excluded = validate_projects(&options(&["anvil"])?, &corpus);
+        assert!(excluded.is_err_and(|error| {
+            error.contains("SAIL3017") && error.contains("outside the selected Fast tier")
+        }));
+        Ok(())
+    }
+
+    #[test]
+    fn empty_and_wholly_unavailable_selections_cannot_establish_conformance() {
+        let unit = |project: &str| Unit {
+            id: format!("{project}/lib.rs"),
+            project: project.to_owned(),
+            source_dir: PathBuf::new(),
+            root: "lib.rs".to_owned(),
+            build: sail_verus::corpus::Build::Verus,
+            args: Vec::new(),
+            cargo_args: Vec::new(),
+            patch_verus_deps: false,
+            target_dir: None,
+            env: BTreeMap::new(),
+            expected: None,
+        };
+        assert!(require_runnable_units(&[], &BTreeMap::new()).is_err());
+        let unavailable =
+            BTreeMap::from([("needs-singular".to_owned(), vec!["singular".to_owned()])]);
+        assert!(require_runnable_units(&[unit("needs-singular")], &unavailable).is_err());
+        assert!(
+            require_runnable_units(&[unit("needs-singular"), unit("ordinary")], &unavailable)
+                .is_ok()
+        );
+        assert!(require_runnable_units(&[unit("ordinary")], &BTreeMap::new()).is_ok());
+    }
 
     #[test]
     fn units_the_engine_cannot_run_are_a_visible_count_not_same_or_different() {

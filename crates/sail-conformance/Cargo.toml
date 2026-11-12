@@ -1,5 +1,6 @@
 [package]
 name = "sail-conformance"
+default-run = "sail-conformance"
 description = "Differential harness against plain Verus on the pinned corpus"
 version.workspace = true
 edition.workspace = true
@@ -16,6 +17,10 @@ path = "src/main.rs"
 sail-verus.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix.workspace = true
 
 [lints]
 workspace = true

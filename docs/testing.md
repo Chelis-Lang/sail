@@ -292,6 +292,14 @@ plus a `<name>.meta.json` sidecar); results are in the
 | `vest` | `vest/vest_lib` | `--project vest --name vest --per-class 6` |
 | `capybarakv` | `verified-storage/capybaraKV/capybarakv` | `--project verified-storage --unit verified-storage/capybaraKV/capybarakv --name capybarakv --per-class 6` |
 
+Project selectors use the corpus project name, which can differ from the
+catalogue name: fetch HumanEval with
+`sail-conformance fetch --tier fast --project human-eval-verus`.
+The `fetch`, `run` and `engine` commands refuse unknown projects, explicit
+projects outside the chosen tier and selections without runnable units with
+`SAIL3017`. An empty selection establishes no conformance; unavailable coverage
+is never counted as Same.
+
 All use `--seed 20261020`. To make or extend a catalogue:
 
 ```sh
@@ -408,3 +416,22 @@ Inventory parsing therefore cannot hold the waiter's Python execution lock.
 The command and waiter keep their original priority; on Mac only the observer
 and its `ps` children receive lower priority. Sampling cadence and overhead
 acceptance thresholds remain unchanged.
+
+### Cargo compiler capture
+
+Build both harness binaries with `cargo build --release -p sail-conformance
+--bins`; `ci/run.sh conformance` does this automatically. Cargo units retain
+an `invocations/` directory beside their exact `stdout.txt` and `stderr.txt`,
+with a `capture-check.json` explaining the aggregate stdout interleaving and
+an independent `capture-errors` health record. Format 3 metadata retains both
+requested and effective packed Verus channels, including their leading spaces.
+Compiler logs use isolated owned directories through the product option helper.
+Commands using `-` retain exact stdin in each record. Known hidden binary metadata
+probes remain byte-exact; all generated probe ordinals, source bytes and outcomes
+stay bound, even when their temporary instance labels differ.
+Keep the entire directory when diagnosing `SAIL3018`, including incomplete
+`.tmp` entries. Never remove an entry to retry comparison. The harness checks
+compiler identities, every probe, complete stream multiplicity, structured
+per-function stdout, exact per-invocation stderr, aggregate diagnostics and
+exit codes. Direct Verus units use their ordinary whole-run comparison.
+See [ADR 0113](decisions/0113-conformance-invocation-capture.md).

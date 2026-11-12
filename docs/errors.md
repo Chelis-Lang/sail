@@ -146,6 +146,8 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | `SAIL3014` | `git` failed while fetching a corpus project | Check network access and the pinned revision |
 | `SAIL3015` | Unsupported corpus build settings | Fix the project entry in the corpus file |
 | `SAIL3016` | Cannot patch a workspace manifest to the pinned Verus source | Check the project's `Cargo.toml` |
+| `SAIL3017` | Unknown project, project outside the selected tier, or no runnable corpus units | Use an exact name from `corpus/corpus.toml`, its required tier and a filter that selects runnable units |
+| `SAIL3018` | Compiler capture is missing, incomplete, corrupt or cannot explain aggregate stdout | Retain the complete output/capture directory and investigate; never treat this as a verification pass |
 | `SAIL3020` | Cannot prepare or start a Verus run | Check the scratch directory and the Verus install |
 | `SAIL3021` | The timing wrapper failed to run Verus | Check the Verus install |
 | `SAIL3022` | A Verus run exceeded its limit or its scratch copy failed | An infrastructure error, never a verdict; re-run or raise the limit |
