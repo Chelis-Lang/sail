@@ -94,3 +94,5 @@ records what Sail kept and why); other experimental surfaces remain maintained.
   evidence, archives and runtimes.
 - [Verus issues](verus-issues/README.md): local reproductions and workarounds
   for upstream behaviour.
+
+- [Mutation and rlimit reproduction preservation](validation/mutation-evidence-repros.md): historical inputs and bounded retained-output runs.
