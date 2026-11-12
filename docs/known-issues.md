@@ -24,11 +24,11 @@ oracle completion (#611), and compound-field lowering/retained-read correction
 - **Hosted Action restored proof context changed (#737).** Main `df49f95f`'s
   post-merge run 43286029482 verifies both fixture functions correctly, but
   the exact-key restored-cache arm invokes two verifiers instead of zero.
-  Input revision is identical to the cold run; the proof-context SHA256
-  differs. The source of that context difference is not established. The
-  original strict zero-invocation assertion remains; bounded context identity
-  evidence is being added to both hosted arms before another diagnosis
-  ([record](validation/hosted-action-context.md)).
+  Diagnostic run 43293225697 establishes that Ubuntu image revisions
+  20261101.360.1 and 20261111.370.1 carry different Rustup/proxy bytes; Sail
+  correctly binds them as different proof contexts. PR #738 pins the hosted
+  control's tools and retains the strict reuse assertion. Hosted correction
+  acceptance remains pending ([record](validation/hosted-action-context.md)).
 
 ## Builtin diagnostic source paths
 

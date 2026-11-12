@@ -590,6 +590,8 @@ jobs:
           path: ${{ runner.temp }}/archive
           if-no-files-found: error
           retention-days: 1
+      - name: Pin Rustup and its proxies for the cache control
+        run: bash ci/pin-action-rustup.sh
       - name: Run the action
         id: sail
         uses: ./action
@@ -646,6 +648,8 @@ jobs:
           path: ${{ runner.temp }}/baseline
       - id: archive
         run: echo "path=$(ls "$RUNNER_TEMP"/archive/sail-*.tar.gz)" >> "$GITHUB_OUTPUT"
+      - name: Pin Rustup and its proxies for the cache control
+        run: bash ci/pin-action-rustup.sh
       - name: Run the action on the unchanged fixture
         id: sail
         uses: ./action
