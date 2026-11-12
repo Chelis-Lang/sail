@@ -21,14 +21,6 @@ Resolved defects are retained in the [changelog](../CHANGELOG.md) and
 oracle completion (#611), and compound-field lowering/retained-read correction
 (#323). Original failures and source-specific qualification stay unchanged.
 
-- **Hosted Action restored proof context changed (#737).** Main `df49f95f`'s
-  post-merge run 43286029482 verifies both fixture functions correctly, but
-  the exact-key restored-cache arm invokes two verifiers instead of zero.
-  Diagnostic run 43293225697 establishes that Ubuntu image revisions
-  20261101.360.1 and 20261111.370.1 carry different Rustup/proxy bytes; Sail
-  correctly binds them as different proof contexts. PR #738 pins the hosted
-  control's tools and retains the strict reuse assertion. Hosted correction
-  acceptance remains pending ([record](validation/hosted-action-context.md)).
 
 ## Builtin diagnostic source paths
 

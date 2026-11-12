@@ -136,7 +136,7 @@ on Ubuntu only; macOS runners are untested.
 | `result` | Path of the result document |
 | `sarif` | Path of the SARIF file |
 | `sail-version` | Version of the Sail that ran |
-| `cache-hit` | `true` when the solver replies came from this commit's exact key |
+| `cache-hit` | `true` when the solver-reply archive was restored from this commit's exact key |
 | `cache-matched-key` | The solver-reply key that was restored, if any |
 
 To keep the job going after a failed verification, for example to run a
@@ -158,6 +158,13 @@ project's `Cargo.lock` files. The key ends with the commit, so every commit
 saves its own entry. When this commit has none, the restore falls back to
 the newest entry with the same lockfiles and toolchains, then the same
 toolchains, then anything from the same Sail on the same runner.
+
+`cache-hit` records archive retrieval. Sail checks the actual compiler,
+launcher and solver bytes and the tracked inputs before reusing proof receipts.
+A hosted runner image update can change Cargo or Rustup even with the same
+source and cache key; verification then runs again under the new proof context.
+The result document's `execution.verifier_invocations` and `reused_targets`
+state the work actually performed and the targets reused.
 
 A restored entry from another commit is safe to use. Solver replies are keyed
 by the exact query bytes and the solver's identity, and proof receipts by the

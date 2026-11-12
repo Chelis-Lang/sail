@@ -1,7 +1,7 @@
 # Hosted Action context evidence
 
-Status: the hosted control's runtime difference is established (#737); fixture
-correction is implemented, hosted acceptance pending. The original exact-cache,
+Status: the hosted control's runtime difference is established and the pinned
+fixture passes (#737; PR #738, code `81e1e3de`, run 43296085159). The original exact-cache,
 zero-verifier and verdict assertions remain.
 
 On main `df49f95f`, hosted run 43286029482 restores all three exact current
@@ -81,10 +81,18 @@ paths must match SHA256
 This configures the acceptance fixture only. Consumer installation, default
 proof-context hashing and all reuse guards are unchanged. An isolated native
 bootstrap with private Cargo/Rustup homes passes and confirms all three
-installed proxy identities. Hosted zero-invocation acceptance remains pending.
+installed proxy identities. Hosted run 43296085159 passes the original zero-invocation and broken-proof
+controls with this exact code.
 
 Native private-home controls also replace an existing proxy with actual
 `b1c8cb14...` bytes and confirm all three resulting identities equal the
 pinned installer. A fake downloader supplies corrupt bytes; the exact helper
 rejects the checksum before creating any installed Rustup file. The host's
 real Cargo/Rustup homes are not modified by these controls.
+
+The final code run 43296085159 passes every required and hosted check, including
+all nine end-to-end phases. The exact restored-cache arm performs zero verifier
+invocations, and the subsequent changed/broken fixture is rejected with its
+located SARIF diagnostic. This qualifies the hosted fixture correction, not a
+general performance claim. The user guide clarifies the archive-hit/reuse
+distinction; the fixed issue leaves the current known-issues list.
