@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Fix compiler-capture conformance for complete JSON verification-progress
+  notes under ADR 0064, retaining exact other bytes, counts and boundaries (#726).
 - Fix mutation benchmark classification of the existing explained dependent
   retention notice, preserving strict Verus diagnostics and per-category
   duplicate-note refusals (#728).

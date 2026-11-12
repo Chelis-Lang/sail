@@ -34,3 +34,14 @@ This changes only comparison of observed progress; it changes no runtime,
 SMT input, solver key or reported verdict. Changed, missing or repeated notes
 remain differences. The charter appendix and divergence registry record the
 owner-approved exception.
+
+## Compiler-capture representation
+
+The compiler-invocation oracle recognizes the same complete standalone notes
+inside the pinned rustc JSON diagnostic envelope. It compares each whole
+original envelope byte-for-byte with identical counts, allowing only order
+within one uninterrupted progress run. Typed original stderr gaps keep all
+other bytes and each complete diagnostic run in place; literal NUL bytes
+cannot impersonate an internal display marker. Probes remain byte-exact.
+This implements the existing decision and adds no new diagnostic exception.
+See [qualification](../validation/json-progress.md).

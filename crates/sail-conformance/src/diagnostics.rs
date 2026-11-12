@@ -49,6 +49,12 @@ const MESSAGES: &str = "\0<diagnostic messages>\0\n";
 pub struct Split<'a> {
     /// Complete messages, in the order printed.
     pub messages: Vec<&'a str>,
+    /// Exact diagnostic sequences grouped by their uninterrupted runs. This
+    /// preserves placement on either side of progress and other opaque output.
+    pub message_runs: Vec<Vec<&'a str>>,
+    /// Original opaque byte gaps before, between and after diagnostic runs.
+    /// These remain typed separately from synthetic display placeholders.
+    pub gaps: Vec<&'a str>,
     /// Everything else, in order, with one placeholder line per run of
     /// consecutive messages.
     pub rest: String,
@@ -89,6 +95,7 @@ pub fn split(stderr: &str) -> Split<'_> {
     let lines: Vec<&str> = stderr.split_inclusive('\n').collect();
     let mut out = Split::default();
     let mut offset = 0;
+    let mut gap_start = 0;
     let mut i = 0;
     let mut in_run = false;
     while i < lines.len() {
@@ -114,12 +121,20 @@ pub fn split(stderr: &str) -> Split<'_> {
                 break;
             }
         }
-        out.messages.push(&stderr[start..offset]);
+        let message = &stderr[start..offset];
+        out.messages.push(message);
         if !in_run {
             out.rest.push_str(MESSAGES);
+            out.message_runs.push(Vec::new());
+            out.gaps.push(&stderr[gap_start..start]);
             in_run = true;
         }
+        if let Some(run) = out.message_runs.last_mut() {
+            run.push(message);
+        }
+        gap_start = offset;
     }
+    out.gaps.push(&stderr[gap_start..]);
     out
 }
 
@@ -137,28 +152,80 @@ fn identity(message: &str) -> (Option<&str>, Option<&str>) {
     (lines.next(), lines.next())
 }
 
+// Cargo compiler captures preserve rustc's JSON envelope. Admit only the exact
+// standalone rendering of the already-approved progress block. Sorting keeps
+// the whole original JSON line, including all formatting and escape bytes.
+fn json_progress(line: &str) -> bool {
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Progress {
+        #[serde(rename = "$message_type")]
+        kind: String,
+        message: String,
+        code: serde_json::Value,
+        level: String,
+        spans: Vec<serde_json::Value>,
+        children: Vec<serde_json::Value>,
+        rendered: String,
+    }
+    if !line.starts_with('{') || !line.ends_with('\n') {
+        return false;
+    }
+    let Ok(progress) = serde_json::from_str::<Progress>(line) else {
+        return false;
+    };
+    progress.kind == "diagnostic"
+        && progress.level == "note"
+        && progress.code.is_null()
+        && progress.spans.is_empty()
+        && progress.children.is_empty()
+        && progress
+            .message
+            .strip_prefix("verifying module ")
+            .is_some_and(|module| !module.trim().is_empty() && !module.contains(['\n', '\r']))
+        && (progress.rendered == format!("note: {}\n\n", progress.message)
+            || progress.rendered
+                == format!(
+                    "\u{1b}[1m\u{1b}[92mnote\u{1b}[0m\u{1b}[1m: {}\u{1b}[0m\n\n",
+                    progress.message
+                ))
+}
+
+fn progress_width(lines: &[&str], index: usize) -> usize {
+    let Some(line) = lines.get(index) else {
+        return 0;
+    };
+    if line
+        .strip_prefix("note: verifying module ")
+        .is_some_and(|module| !module.trim().is_empty())
+        && lines.get(index + 1).is_some_and(|next| is_blank(next))
+    {
+        2
+    } else {
+        usize::from(json_progress(line))
+    }
+}
+
 // Only complete standalone progress blocks in one uninterrupted run may
 // move. Message bodies, separators, summaries and arbitrary notes stay exact.
 fn ordered_progress(rest: &str) -> String {
     let lines: Vec<_> = rest.split_inclusive('\n').collect();
-    let progress_at = |i: usize| {
-        lines.get(i).is_some_and(|line| {
-            line.strip_prefix("note: verifying module ")
-                .is_some_and(|module| !module.trim().is_empty())
-        }) && lines.get(i + 1).is_some_and(|line| is_blank(line))
-    };
     let mut out = String::new();
     let mut i = 0;
     while i < lines.len() {
-        if !progress_at(i) {
+        if progress_width(&lines, i) == 0 {
             out.push_str(lines[i]);
             i += 1;
             continue;
         }
         let mut blocks = Vec::new();
-        while progress_at(i) {
-            blocks.push(format!("{}{}", lines[i], lines[i + 1]));
-            i += 2;
+        loop {
+            let width = progress_width(&lines, i);
+            if width == 0 {
+                break;
+            }
+            blocks.push(lines[i..i + width].concat());
+            i += width;
         }
         blocks.sort_unstable();
         for block in blocks {
@@ -166,6 +233,12 @@ fn ordered_progress(rest: &str) -> String {
         }
     }
     out
+}
+
+// Compare an original message-free gap, never a synthetic placeholder stream.
+// The caller retains each complete diagnostic run separately and in place.
+pub(crate) fn progress_gap_matches(plain: &str, sail: &str) -> bool {
+    ordered_progress(plain) == ordered_progress(sail)
 }
 
 /// Whether standalone verification-progress blocks changed order within an
@@ -426,6 +499,95 @@ mod tests {
         // Other text moved between two messages.
         let d = compare_stderr(&cat(&[A, B, SUMMARY]), &cat(&[A, SUMMARY, B]));
         assert_eq!(d.len(), 1, "{d:?}");
+    }
+
+    fn json_note(module: &str) -> String {
+        serde_json::json!({
+            "$message_type": "diagnostic", "message": format!("verifying module {module}"),
+            "code": null, "level": "note", "spans": [], "children": [],
+            "rendered": format!("\u{1b}[1m\u{1b}[92mnote\u{1b}[0m\u{1b}[1m: verifying module {module}\u{1b}[0m\n\n")
+        }).to_string() + "\n"
+    }
+
+    #[test]
+    fn native_anvil_cargo_progress_uses_the_existing_exact_block_exception() {
+        let plain = include_str!("../tests/fixtures/json-progress-order/plain.stderr");
+        let sail = include_str!("../tests/fixtures/json-progress-order/sail.stderr");
+        assert_ne!(plain, sail);
+        assert_eq!(plain.lines().count(), 45);
+        assert_eq!(sail.lines().count(), 45);
+        assert_eq!(compare_stderr(plain, sail), Vec::<String>::new());
+        assert!(progress_order_differs(plain, sail));
+        let changed = sail.replacen("model::install", "model::changed", 1);
+        assert_ne!(changed, sail);
+        assert_ne!(compare_stderr(plain, &changed), Vec::<String>::new());
+    }
+
+    #[test]
+    fn cargo_json_progress_keeps_original_bytes_counts_and_run_boundaries() {
+        let a = json_note("vdeployment_controller::model::install");
+        let b = json_note("vdeployment_controller::exec::reconciler");
+        let before = format!("{a}{b}");
+        let after = format!("{b}{a}");
+        assert!(progress_order_differs(&before, &after));
+        assert_eq!(compare_stderr(&before, &after), Vec::<String>::new());
+        for changed in [
+            a.clone(),
+            format!("{a}{b}{b}"),
+            format!("{a}summary\n{b}"),
+            after.replace("model::install", "model::changed"),
+        ] {
+            assert_ne!(compare_stderr(&before, &changed), Vec::<String>::new());
+        }
+        assert_ne!(
+            compare_stderr(&format!("{a}summary\n{b}"), &format!("{b}summary\n{a}")),
+            Vec::<String>::new()
+        );
+        let reformatted = a.replace("\"level\":", "\"level\": ");
+        assert_ne!(a, reformatted);
+        assert_ne!(
+            compare_stderr(&before, &format!("{b}{reformatted}")),
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn json_progress_refuses_partial_ambiguous_or_nonstandalone_envelopes() {
+        let original = json_note("m");
+        for mutation in 0..10 {
+            let mut value: serde_json::Value =
+                serde_json::from_str(&original).unwrap_or_else(|error| unreachable!("{error}"));
+            match mutation {
+                0 => value["level"] = serde_json::json!("error"),
+                1 => value["spans"] = serde_json::json!([{}]),
+                2 => value["children"] = serde_json::json!([{"message": "another note"}]),
+                3 => value["rendered"] = serde_json::json!("note: verifying module m\n"),
+                4 => value["rendered"] = serde_json::json!("error: changed\n\n"),
+                5 => value["$message_type"] = serde_json::json!("unknown"),
+                6 => value["unexpected"] = serde_json::json!(true),
+                7 => {
+                    value
+                        .as_object_mut()
+                        .unwrap_or_else(|| unreachable!())
+                        .remove("code");
+                }
+                8 => value["code"] = serde_json::json!("E0000"),
+                _ => value["message"] = serde_json::json!("verifying module m\nsecond note"),
+            }
+            let changed = value.to_string() + "\n";
+            assert!(!json_progress(&changed), "mutation {mutation}");
+            assert!(
+                !compare_stderr(
+                    &format!("{original}{changed}"),
+                    &format!("{changed}{original}")
+                )
+                .is_empty(),
+                "mutation {mutation}"
+            );
+        }
+        assert!(!json_progress(original.trim_end()));
+        let duplicate = original.replacen("\"level\":", "\"level\":\"error\",\"level\":", 1);
+        assert!(!json_progress(&duplicate));
     }
 
     #[test]
