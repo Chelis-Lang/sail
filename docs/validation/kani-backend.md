@@ -25,3 +25,5 @@ repository; their acceptance archive and decoder results are pending.
 | Attempt | Date | Result and limit |
 |---|---|---|
 | First direct wrapper | 2026-11-13 | `cargo kani --locked` refuses an unsupported argument before execution, all three exit 2. Preserved; rerun fetches with Cargo's supported `--locked`, runs Kani offline and checks the unchanged lock before/after |
+
+| `e8d1d553`, 2026-11-13 | All three decoder unit tests pass natively; clippy then refuses the test empty-slice assertion style. No actual-export decoder run is claimed from this attempt; successor keeps the assertion and prints the slice on failure |
