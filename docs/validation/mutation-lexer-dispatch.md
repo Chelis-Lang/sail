@@ -58,7 +58,14 @@ The integration/benchmark archive and all material entries are independently
 rehashed by the lead; archive SHA-256
 `84835071bccb4b4f6ac70c979a62f0e753c805c8979c4d5ee1516832400a8c26`; index
 `f2330aa4c45765276a4c9e07f4a65c72736cf7df29f8f79bdb905b81d395e921`. Book source, render and
-link checks are required before pushing the final documentation amendment.
+link checks pass for the final documentation amendment.
+
+The corrected test-tier runner at `3b70dac9` passes the full native gate again
+(1,399 tests, 54 explicit skips), all 50 solver tests and the explicit 698-file
+source witness. CI invocation, missing inventory and empty inventory each fail
+for their intended reason. The witness and its assertions remain unchanged.
+The initial failed PR solver log and all corrected-run logs are retained in
+archive `9a6f8b3c383234860aac926bcf0999aa5c109147c7b3b3180682607dac185333`.
 
 ## Scope and attempts
 
@@ -73,8 +80,9 @@ bounds. Those failures remain retained separately from lexical acceptance.
 |---|---|
 | `2ab61712`, 2026-11-13 | Focused and 698-file lexical comparisons pass, then clippy refuses three unnested operator alternatives; release build not reached. Log `dbc5b0af52d78bd5d4bbf1f4ad0d47e1c4fe1aff370c72fd0c72b5155b581346` |
 | Review provenance check, 2026-11-13 | Historical producer paths are absent on the review host; the supplemental reopen attempt fails before another test. Copied corpus/archive identities and the completed lexical comparisons remain independently checked |
+| Initial PR CI, 2026-11-13 | Solver tier picks up the new ignored source-corpus witness without its required input and correctly fails. The fixture is unchanged; its exact name is assigned to the local-only source-witness runner, with separate real solver and positive/missing/empty/CI-refusal validation required |
 | Initial throughput launcher, 2026-11-13 | systemd rejects an unbraced variable in its command argument before the benchmark starts. A script wrapper runs the unchanged binary in the native compiler container; all six samples and exit zero are retained |
 | Initial review archive, 2026-11-13 | Tar warns that its containing directory changed. Original retained; explicit-entry replacement archive and all 751 entries verified |
 
-Documentation changed: this validation record and changelog. Workspace/PR
+Documentation changed: this validation record, testing guide and changelog. Workspace/PR
 integration results are recorded above; required PR checks remain separate.
