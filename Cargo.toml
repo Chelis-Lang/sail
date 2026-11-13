@@ -35,6 +35,7 @@ sail-portfolio = { path = "crates/sail-portfolio", version = "=0.2.0" }
 sail-daemon = { path = "crates/sail-daemon", version = "=0.2.0" }
 sail-api = { path = "crates/sail-api", version = "=0.2.0" }
 sail-runtime = { path = "crates/sail-runtime", version = "=0.2.0" }
+sail-kani = { path = "crates/sail-kani", version = "=0.2.0" }
 sail-mcp = { path = "crates/sail-mcp", version = "=0.2.0" }
 sail-cli = { package = "sail-solve", path = "crates/sail-cli", version = "=0.2.0" }
 sail-conformance = { path = "crates/sail-conformance", version = "=0.2.0" }

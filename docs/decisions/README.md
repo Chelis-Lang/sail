@@ -138,3 +138,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0113: Compare complete compiler invocations in Cargo conformance](0113-conformance-invocation-capture.md) (accepted; complete exact streams, invocation identity, probes and interleaving checks)
 
 - [0116: Recorded proof health without inferred stability](0116-recorded-proof-health.md) (accepted for implementation; bounded retained measurements and shared interfaces; qualification pending)
+
+- [0128: Separate bounded Kani observations from ordinary proofs](0128-kani-bounded-observations.md)

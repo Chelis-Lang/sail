@@ -260,3 +260,5 @@ or reuse a receipt. A fresh owned target is required before retrying.
 |---|---|---|
 | `SAIL3170` | Campaign bounds exceed the supported inventory, copies, repetitions or wall-time limits | Use 1–10000 mutants, 1–8 copies, 2–20 repetitions and 1–86400 seconds |
 | `SAIL3171` | An owned campaign source copy cannot be captured, created or patched coherently | Inspect the retained source/error; use a readable workspace without source symlinks and retry from a new plan |
+
+| `SAIL6301` | Experimental Kani export admission refuses incomplete, contradictory or unsupported native records | Preserve original output/export and exact tool versions; no bounded result or reusable proof is established |

@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add unpublished Kani bounded-observation decoder groundwork; no CLI backend or proof-cache availability is selected.
+
 - Fix compiler-capture conformance for complete JSON verification-progress
   notes under ADR 0064, retaining exact other bytes, counts and boundaries (#726).
 - Add `sail health`, optional schema-v2 per-check health measurements and MCP

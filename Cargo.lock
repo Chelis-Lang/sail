@@ -1356,6 +1356,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sail-kani"
+version = "0.2.0"
+dependencies = [
+ "sail-api",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "sail-key"
 version = "0.2.0"
 dependencies = [
