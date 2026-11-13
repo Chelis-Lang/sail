@@ -1,6 +1,6 @@
 //! Namespace-separated exact solver records using the existing disk cache.
 
-use crate::{Config, admission, hash};
+use crate::{Config, admission, backend, hash};
 use sail_api::runtime::{Answer, Check, Limits, Query, SolverIdentity};
 use sail_cache::{DiskCache, StoreContext};
 use sail_key::QueryKey;
@@ -34,14 +34,17 @@ pub(crate) fn file_hash(path: &Path) -> std::io::Result<String> {
     Ok(format!("{:x}", digest.finalize()))
 }
 
-fn key(query: &Query, solver: &SolverIdentity) -> Option<QueryKey> {
+pub(crate) fn key(query: &Query, solver: &SolverIdentity) -> Option<QueryKey> {
+    // The identity was produced by an implemented backend; its name selects
+    // the argv and seed policy bound here. Z3's two strings are unchanged.
+    let [first, second] = backend::named(&solver.backend)?.key_policy();
     let content = serde_json::to_vec(&(
         NAMESPACE,
         &query.script,
         solver,
         &query.limits,
-        "smt.random_seed=0",
-        "sat.random_seed=0",
+        first,
+        second,
         "sail-process-env-v1:clear:LC_ALL=C",
     ))
     .ok()?;

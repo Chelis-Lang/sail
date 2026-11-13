@@ -25,6 +25,20 @@ vstd = "0.0.0-2026-10-18-0147"
 # As pinned by verus@7d82994:source/cargo-verus-toolchains/src/external_deps.rs.
 version = "4.16.0"
 
+# Development (ADR 0134): cvc5 for the runtime's second backend. The archive
+# digest is the one GitHub publishes for the release asset; `bin_sha256` is
+# the extracted `bin/cvc5`. Only Linux was fetched and executed in the spike.
+[cvc5]
+version = "1.4.2"
+tag = "cvc5-1.4.2"
+commit = "282d5e0"
+
+[cvc5.assets.x86_64-unknown-linux-gnu]
+url = "https://github.com/cvc5/cvc5/releases/download/cvc5-1.4.2/cvc5-Linux-x86_64-static.zip"
+sha256 = "7eb18f8c814c36a46c5a7d003983e9cfbc4b0a9828d6dd596239291bd4cc61d8"
+bin = "cvc5-Linux-x86_64-static/bin/cvc5"
+bin_sha256 = "6aecddf466552b83bb5883756c7955e0c9d5ddcc6d7f45b48c2f6e06a741b102"
+
 [assets.aarch64-apple-darwin]
 url = "https://github.com/verus-lang/verus/releases/download/release/0.2026.10.18.7d82994/verus-0.2026.10.18.7d82994-arm64-macos.zip"
 sha256 = "3fc56c58277b5f0999368f7b3a2b07ba4eb9ec2965454ce7a9f2769c0464d32b"

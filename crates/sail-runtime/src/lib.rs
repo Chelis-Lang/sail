@@ -2,12 +2,14 @@
 #![forbid(unsafe_code)]
 
 mod admission;
+mod backend;
 mod process;
 mod store;
 pub mod temporal;
 #[cfg(test)]
 mod tests;
 
+use backend::Backend;
 use sail_api::runtime::{
     BackendCapability, Capabilities, Error, Input, Limits, MAX_INPUT_BYTES, MAX_OUTPUT_BYTES,
     MAX_QUERIES, MAX_WALL_TIME_MS, Outcome, Output, Query, QueryResult, Request, Response,
@@ -34,6 +36,9 @@ pub struct Config {
     pub temporal_unavailable: Option<Error>,
     /// Existing bundled Z3 executable, independently verified against the embedded pin.
     pub z3: Option<PathBuf>,
+    /// Development cvc5 executable, verified against the embedded pin.
+    /// `None` (the default) leaves cvc5 unadvertised and unavailable.
+    pub cvc5: Option<PathBuf>,
     /// Optional disk cache root; existing Verus cache namespaces are untouched.
     pub cache_directory: Option<PathBuf>,
     /// Maximum concurrent independent transcripts, from one through sixteen.
@@ -47,6 +52,7 @@ impl Default for Config {
             temporal_worker: None,
             temporal_unavailable: None,
             z3: None,
+            cvc5: None,
             cache_directory: None,
             workers: 2,
         }
@@ -72,7 +78,8 @@ impl Cancellation {
 /// An exact-input runtime; no Verus serving path is modified by its construction.
 pub struct Runtime {
     config: Config,
-    pin: Option<(String, String)>,
+    /// One entry per `backend::ALL`, in that order.
+    pins: Vec<Option<(String, String)>>,
 }
 
 pub(crate) fn invalid(kind: &str, message: impl Into<String>) -> Error {
@@ -95,32 +102,22 @@ pub(crate) fn hash(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
-fn pin() -> Result<Option<(String, String)>, Error> {
+fn pins() -> Result<Vec<Option<(String, String)>>, Error> {
     let pins: toml::Value = toml::from_str(include_str!("../resources/corpus/toolchain.toml"))
         .map_err(|e| invalid("invalid_config", e.to_string()))?;
     let host = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => "aarch64-apple-darwin",
         ("linux", "x86_64") => "x86_64-unknown-linux-gnu",
-        _ => return Ok(None),
+        _ => return Ok(vec![None; backend::ALL.len()]),
     };
-    let version = pins
-        .get("z3")
-        .and_then(|z3| z3.get("version"))
-        .and_then(toml::Value::as_str);
-    let digest = pins
-        .get("assets")
-        .and_then(|a| a.get(host))
-        .and_then(|a| a.get("z3_sha256"))
-        .and_then(toml::Value::as_str);
-    match (version, digest) {
-        (Some(version), Some(digest)) if digest.len() == 64 => {
-            Ok(Some((version.into(), digest.into())))
-        }
-        _ => Err(invalid(
-            "invalid_config",
-            "embedded solver pin is incomplete",
-        )),
-    }
+    backend::ALL
+        .iter()
+        .map(|backend| {
+            backend
+                .pin(&pins, host)
+                .map_err(|()| invalid("invalid_config", "embedded solver pin is incomplete"))
+        })
+        .collect()
 }
 
 fn admitted(query: &Query) -> Result<admission::Plan, Error> {
@@ -179,23 +176,50 @@ impl Runtime {
             .map(std::path::absolute)
             .transpose()
             .map_err(|e| invalid("invalid_config", e.to_string()))?;
+        config.cvc5 = config
+            .cvc5
+            .map(std::path::absolute)
+            .transpose()
+            .map_err(|e| invalid("invalid_config", e.to_string()))?;
         Ok(Self {
             config,
-            pin: pin()?,
+            pins: pins()?,
         })
     }
 
-    fn identity(&self, cancellation: &Cancellation) -> Result<SolverIdentity, Error> {
-        let path =
-            self.config.z3.as_ref().ok_or_else(|| {
-                execution("unavailable", "bundled Z3 is not installed or configured")
+    fn executable(&self, backend: &dyn Backend) -> Option<&PathBuf> {
+        match backend.name() {
+            "z3" => self.config.z3.as_ref(),
+            "cvc5" => self.config.cvc5.as_ref(),
+            _ => None,
+        }
+    }
+
+    fn identity(
+        &self,
+        backend: &'static dyn Backend,
+        cancellation: &Cancellation,
+    ) -> Result<SolverIdentity, Error> {
+        let label = backend.label();
+        let path = self.executable(backend).ok_or_else(|| {
+            execution(
+                "unavailable",
+                format!("{label} is not installed or configured"),
+            )
+        })?;
+        let (version, expected) = backend::ALL
+            .iter()
+            .position(|known| known.name() == backend.name())
+            .and_then(|index| self.pins.get(index))
+            .and_then(Option::as_ref)
+            .ok_or_else(|| {
+                execution(
+                    "unavailable",
+                    format!("no {label} pin exists for this host"),
+                )
             })?;
-        let (version, expected) = self
-            .pin
-            .as_ref()
-            .ok_or_else(|| execution("unavailable", "no bundled Z3 pin exists for this host"))?;
         let digest = store::file_hash(path)
-            .map_err(|e| execution("unavailable", format!("cannot read bundled Z3: {e}")))?;
+            .map_err(|e| execution("unavailable", format!("cannot read {label}: {e}")))?;
         if &digest != expected {
             return Err(execution(
                 "unavailable",
@@ -211,18 +235,15 @@ impl Runtime {
         let text = std::str::from_utf8(&captured.stdout).unwrap_or_default();
         if captured.outcome != Outcome::Completed
             || !captured.stderr.is_empty()
-            || text
-                .split_whitespace()
-                .take(3)
-                .ne(["Z3", "version", version.as_str()])
+            || !backend.version_matches(text, version)
         {
             return Err(execution(
                 "unavailable",
-                "bundled Z3 version could not be verified",
+                format!("{label} version could not be verified"),
             ));
         }
         Ok(SolverIdentity {
-            backend: "z3".into(),
+            backend: backend.name().into(),
             version: version.clone(),
             sha256: digest,
             platform: format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH),
@@ -232,7 +253,23 @@ impl Runtime {
     /// Inspect actual installation readiness; this does not establish any theorem.
     #[must_use]
     pub fn capabilities(&self) -> Capabilities {
-        let identity = self.identity(&Cancellation::default());
+        // cvc5 is a development backend: it is listed only when the embedding
+        // configuration names an executable, so the default capability
+        // record is unchanged.
+        let backends = backend::ALL
+            .into_iter()
+            .filter(|backend| backend.name() == "z3" || self.executable(*backend).is_some())
+            .map(|backend| {
+                let identity = self.identity(backend, &Cancellation::default());
+                BackendCapability {
+                    backend: backend.name().into(),
+                    implemented: true,
+                    installed: identity.is_ok(),
+                    solver: identity.as_ref().ok().cloned(),
+                    error: identity.err(),
+                }
+            })
+            .collect();
         Capabilities {
             temporal: Some(temporal::capability(
                 self.config.temporal_backend.as_deref(),
@@ -240,13 +277,7 @@ impl Runtime {
                 self.config.temporal_unavailable.as_ref(),
             )),
             version: VERSION,
-            backends: vec![BackendCapability {
-                backend: "z3".into(),
-                implemented: true,
-                installed: identity.is_ok(),
-                solver: identity.as_ref().ok().cloned(),
-                error: identity.err(),
-            }],
+            backends,
             incremental_transcripts: true,
             batches: true,
             max_queries: MAX_QUERIES,
@@ -363,14 +394,14 @@ impl Runtime {
             result.error = Some(execution("cancelled", "cancelled before dispatch"));
             return result;
         }
-        if query.backend != "z3" {
+        let Some(backend) = backend::named(&query.backend) else {
             result.error = Some(execution(
                 "unavailable",
                 "requested backend is not implemented",
             ));
             return result;
-        }
-        let identity = match self.identity(cancellation) {
+        };
+        let identity = match self.identity(backend, cancellation) {
             Ok(identity) => identity,
             Err(e) => {
                 if cancellation.is_cancelled() {
@@ -390,16 +421,10 @@ impl Runtime {
                 return result;
             }
         }
-        let Some(path) = &self.config.z3 else {
+        let Some(path) = self.executable(backend) else {
             return result;
         };
-        let args = vec![
-            "-smt2".into(),
-            "-in".into(),
-            "smt.random_seed=0".into(),
-            "sat.random_seed=0".into(),
-            format!("rlimit={}", query.limits.resource_limit),
-        ];
+        let args = backend.args(&query.limits);
         let captured = process::run(
             path,
             &args,

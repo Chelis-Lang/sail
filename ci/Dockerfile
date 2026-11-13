@@ -52,6 +52,12 @@ ENV SAIL_VERUS_HOME=/opt/verus \
     SAIL_TEST_Z3=/opt/verus/verus-x86-linux/z3 \
     PATH=/opt/verus/verus-x86-linux:/opt/cargo/bin:$PATH
 
+# The optional cvc5 backend stays unadvertised by default. Only solver tests
+# receive this pinned executable; preserve the archive's bundled notices.
+COPY ci/fetch-cvc5.py /tmp/
+RUN python3 /tmp/fetch-cvc5.py /tmp/pins/toolchain.toml /opt/cvc5
+ENV SAIL_TEST_CVC5=/opt/cvc5/bin/cvc5
+
 # Optional interactive engine: built and validated locally, never from source
 # in CI. Both the archive and its complete runtime/fork-commit/lock provenance bind
 # to committed inputs. The archive is a public release asset of the Verus fork
