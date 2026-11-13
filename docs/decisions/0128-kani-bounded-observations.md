@@ -1,6 +1,6 @@
 # 0128: Separate bounded Kani observations from ordinary proofs
 
-- **Status:** accepted design; decoder implementation, executor and qualification pending
+- **Status:** accepted; bounded Linux decoder qualified, executor and backend qualification pending
 - **Date:** 2026-11-13
 - **Extends:** [ADR 0109](0109-oyster-retired-v030-scope.md)
 
@@ -48,3 +48,13 @@ not an available CLI backend or completed pilot acceptance. Actual arrayvec
 positive/negative/unwind, process fault/cancellation, direct conformance, native
 Mac and the applicable integration gates remain required. No harness generation,
 function-contract frontend or backend fork is adopted.
+
+
+The initial decoder's independent review establishes contradictory native count,
+error and missing-metadata admission defects. Reconcile `property_details` with
+every status/count and reject duplicate JSON keys before map construction. This
+first slice accepts only assertion-only counterexamples and unwind-only bound
+failures with matching producer error classifications; unsupported or mixed
+failed categories refuse until separately qualified. Success carries no native
+error fields. These stricter admissions do not promote decoder input to actual
+execution, proof receipts or ordinary verified results.

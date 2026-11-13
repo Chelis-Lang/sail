@@ -36,8 +36,7 @@ pub(super) fn decode(
     {
         return Err(refuse("invalid harness or excessive capture"));
     }
-    let document: Value =
-        serde_json::from_slice(export).map_err(|error| refuse(error.to_string()))?;
+    let document = crate::strict_json::parse(export)?;
     if document["metadata"]["version"] != "1.0"
         || document["metadata"]["kani_version"] != KANI_VERSION
         || document["tools"]["kani"] != KANI_VERSION
@@ -54,8 +53,11 @@ pub(super) fn decode(
         || metadata["attributes"]["should_panic"] != false
         || metadata["is_automatically_generated"] != false
         || metadata["has_loop_contracts"] != false
-        || !metadata["contract"]["contracted_function_name"].is_null()
-        || !metadata["contract"]["recursion_tracker"].is_null()
+        || metadata["contract"].as_object().is_none_or(|contract| {
+            contract.len() != 2
+                || contract.get("contracted_function_name") != Some(&Value::Null)
+                || contract.get("recursion_tracker") != Some(&Value::Null)
+        })
     {
         return Err(refuse(
             "only ordinary hand-written proof harnesses are admitted",
@@ -92,9 +94,10 @@ pub(super) fn decode(
             "textual verdict and selected native result disagree",
         ));
     }
-    completion(&document, harness, expected)?;
     let (counts, failed) = inventory(result)?;
     let outcome = outcome(expected, &counts, &failed)?;
+    completion(&document, harness, outcome)?;
+    let properties = property_counts(&document, harness, &counts, checks_len(&counts)?)?;
     Ok(Observation {
         harness: harness.into(),
         outcome,
@@ -103,11 +106,12 @@ pub(super) fn decode(
         failed_checks: failed,
         harness_metadata: metadata.clone(),
         backend_configuration: cbmc["configuration"].clone(),
+        property_details: properties.clone(),
     })
 }
 
-fn completion(document: &Value, harness: &str, verdict: &str) -> Result<(), Error> {
-    let success = verdict == "SUCCESSFUL";
+fn completion(document: &Value, harness: &str, outcome: Outcome) -> Result<(), Error> {
+    let success = outcome == Outcome::BoundedSuccess;
     let summary = &document["verification_results"]["summary"];
     if summary["total_harnesses"] != 1
         || summary["executed"] != 1
@@ -120,17 +124,95 @@ fn completion(document: &Value, harness: &str, verdict: &str) -> Result<(), Erro
         ));
     }
     let errors = one(array(document, "error_details")?, "harness_id", harness)?;
-    if errors["has_errors"] != !success
-        || (!success && errors["exit_status"] != "properties_failed")
-        || (!success
-            && !matches!(
-                errors["error_type"].as_str(),
-                Some("assertion_failure" | "verification_failure")
-            ))
+    let fields = errors
+        .as_object()
+        .ok_or_else(|| refuse("missing native error object"))?;
+    if errors["has_errors"] != !success {
+        return Err(refuse(
+            "native error status contradicts the selected outcome",
+        ));
+    }
+    let expected_type = if outcome == Outcome::Counterexample {
+        "assertion_failure"
+    } else {
+        "verification_failure"
+    };
+    let expected_properties = if outcome == Outcome::Counterexample {
+        "PanicsOnly"
+    } else {
+        "Other"
+    };
+    if success {
+        if fields.len() != 2
+            || !fields.contains_key("has_errors")
+            || !fields.contains_key("harness_id")
+        {
+            return Err(refuse(
+                "successful result has contradictory native error fields",
+            ));
+        }
+    } else if fields.len() != 5
+        || errors["error_type"] != expected_type
+        || errors["failed_properties_type"] != expected_properties
+        || errors["exit_status"] != "properties_failed"
     {
-        return Err(refuse("missing or contradictory native error outcome"));
+        return Err(refuse(
+            "native error details contradict the failed property categories",
+        ));
     }
     Ok(())
+}
+
+fn checks_len(counts: &BTreeMap<String, usize>) -> Result<u64, Error> {
+    counts.values().try_fold(0_u64, |total, count| {
+        total
+            .checked_add(u64::try_from(*count).map_err(|error| refuse(error.to_string()))?)
+            .ok_or_else(|| refuse("native property inventory overflow"))
+    })
+}
+
+fn property_counts<'a>(
+    document: &'a Value,
+    harness: &str,
+    counts: &BTreeMap<String, usize>,
+    total: u64,
+) -> Result<&'a Value, Error> {
+    let record = one(array(document, "property_details")?, "harness_id", harness)?;
+    let values = &record["property_details"];
+    let fields = values
+        .as_object()
+        .ok_or_else(|| refuse("missing property count object"))?;
+    if fields.len() != 10 || values["total_properties"].as_u64() != Some(total) || total == 0 {
+        return Err(refuse(
+            "native property total differs from its complete check inventory",
+        ));
+    }
+    for (field, status) in [
+        ("passed", "Success"),
+        ("failed", "Failure"),
+        ("unreachable", "Unreachable"),
+        ("undetermined", "Undetermined"),
+    ] {
+        let count = u64::try_from(counts.get(status).copied().unwrap_or(0))
+            .map_err(|error| refuse(error.to_string()))?;
+        if values[field].as_u64() != Some(count) {
+            return Err(refuse(
+                "native property status counts contradict the check inventory",
+            ));
+        }
+    }
+    for field in [
+        "covered",
+        "uncovered",
+        "satisfied",
+        "unsatisfiable",
+        "solver_error",
+    ] {
+        if values[field].as_u64() != Some(0) {
+            return Err(refuse("unsupported or erroneous native property outcome"));
+        }
+    }
+    Ok(values)
 }
 
 fn inventory(result: &Value) -> Result<(BTreeMap<String, usize>, Vec<Value>), Error> {
@@ -160,7 +242,7 @@ fn inventory(result: &Value) -> Result<(BTreeMap<String, usize>, Vec<Value>), Er
             .ok_or_else(|| refuse("unsupported, missing or erroneous native check status"))?;
         *counts.entry(status.to_owned()).or_insert(0) += 1;
         if status == "Failure" {
-            if check["category"].as_str().is_none_or(str::is_empty)
+            if !matches!(check["category"].as_str(), Some("assertion" | "unwind"))
                 || check["description"].as_str().is_none()
             {
                 return Err(refuse("failed native check lacks its original diagnostic"));
@@ -194,8 +276,10 @@ fn outcome(
     if failed.iter().all(|check| check["category"] == "unwind") {
         return Ok(Outcome::BoundInsufficient);
     }
-    if undetermined != 0 {
-        return Err(refuse("property failure also has unresolved native checks"));
+    if undetermined != 0 || failed.iter().any(|check| check["category"] != "assertion") {
+        return Err(refuse(
+            "property failure has unresolved or unsupported mixed native categories",
+        ));
     }
     Ok(Outcome::Counterexample)
 }

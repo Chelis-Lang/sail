@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 mod decode;
+mod strict_json;
 
 use std::collections::BTreeMap;
 
@@ -41,6 +42,7 @@ pub struct Observation {
     failed_checks: Vec<serde_json::Value>,
     harness_metadata: serde_json::Value,
     backend_configuration: serde_json::Value,
+    property_details: serde_json::Value,
 }
 
 impl Observation {
