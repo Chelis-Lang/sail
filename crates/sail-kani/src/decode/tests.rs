@@ -37,7 +37,7 @@ fn bounded_success_is_distinct_from_verified_and_preserves_counts() -> Result<()
     );
     assert_eq!(result.check_counts().get("Success"), Some(&1));
     assert_eq!(result.check_counts().get("Unreachable"), Some(&1));
-    assert_eq!(result.failed_checks(), []);
+    assert_eq!(result.failed_checks(), &[] as &[Value]);
     let serialized =
         serde_json::to_string(&result).map_err(|error| crate::refuse(error.to_string()))?;
     assert!(!serialized.contains("verified"));
