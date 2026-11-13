@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Use exact longest-prefix punctuation dispatch in the mutation-source lexer,
+  preserving token kinds and source byte positions.
+
 - Add unpublished Kani bounded-observation decoder groundwork; no CLI backend or proof-cache availability is selected.
 
 - Fix compiler-capture conformance for complete JSON verification-progress

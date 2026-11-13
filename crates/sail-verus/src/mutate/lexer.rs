@@ -34,11 +34,39 @@ pub struct Tok {
 }
 
 /// Multi-character operators, longest first.
+#[cfg(test)]
 const PUNCTS: &[&str] = &[
     "<==>", "=~~=", "!~~=", "<<=", ">>=", "...", "..=", "==>", "<==", "&&&", "|||", "===", "=~=",
     "!~=", "::", "->", "=>", "==", "!=", "<=", ">=", "&&", "||", "+=", "-=", "*=", "/=", "%=",
     "^=", "&=", "|=", "<<", ">>", "..",
 ];
+
+// Exact longest-prefix dispatch for the catalogue's punctuation table.
+// The original ordered table remains the independent test oracle.
+fn punctuation_len(rest: &[u8]) -> Option<usize> {
+    match rest {
+        [b'<', b'=', b'=', b'>', ..] | [b'=' | b'!', b'~', b'~', b'=', ..] => Some(4),
+        [b'<', b'<' | b'=', b'=', ..]
+        | [b'>', b'>', b'=', ..]
+        | [b'.', b'.', b'.' | b'=', ..]
+        | [b'=', b'=', b'>' | b'=', ..]
+        | [b'&', b'&', b'&', ..]
+        | [b'|', b'|', b'|', ..]
+        | [b'=' | b'!', b'~', b'=', ..] => Some(3),
+        [b':', b':', ..]
+        | [b'-' | b'=' | b'>', b'>', ..]
+        | [
+            b'=' | b'!' | b'<' | b'>' | b'+' | b'-' | b'*' | b'/' | b'%' | b'^' | b'&' | b'|',
+            b'=',
+            ..,
+        ]
+        | [b'&', b'&', ..]
+        | [b'|', b'|', ..]
+        | [b'<', b'<', ..]
+        | [b'.', b'.', ..] => Some(2),
+        _ => None,
+    }
+}
 
 fn is_ident_start(c: u8) -> bool {
     c.is_ascii_alphabetic() || c == b'_' || c >= 0x80
@@ -48,14 +76,18 @@ fn is_ident_continue(c: u8) -> bool {
     c.is_ascii_alphanumeric() || c == b'_' || c >= 0x80
 }
 
-/// Tokenizes `src`.
+/// Tokenizes `src`, preserving exact source byte offsets.
 #[must_use]
+pub fn lex(src: &str) -> Vec<Tok> {
+    lex_with_punctuation(src, punctuation_len)
+}
+
 #[allow(
     clippy::too_many_lines,
     clippy::many_single_char_names,
     reason = "one lexer loop; b/c/i/j/k are the bytes, the current byte and cursors"
 )]
-pub fn lex(src: &str) -> Vec<Tok> {
+fn lex_with_punctuation(src: &str, punctuation: impl Fn(&[u8]) -> Option<usize>) -> Vec<Tok> {
     let b = src.as_bytes();
     let mut toks = Vec::new();
     let mut i = 0;
@@ -211,10 +243,7 @@ pub fn lex(src: &str) -> Vec<Tok> {
             continue;
         }
         let rest = b.get(i..).unwrap_or_default();
-        let len = PUNCTS
-            .iter()
-            .find(|p| rest.starts_with(p.as_bytes()))
-            .map_or_else(|| utf8_len(c), |p| p.len());
+        let len = punctuation(rest).unwrap_or_else(|| utf8_len(c));
         i += len;
         toks.push(Tok {
             kind: Kind::Punct,
@@ -393,5 +422,101 @@ mod tests {
         let m = match_brackets(src, &toks);
         assert_eq!(m.get(1).copied().flatten(), Some(toks.len() - 1));
         assert_eq!(m.get(3).copied().flatten(), Some(5));
+    }
+
+    fn original_punctuation(rest: &[u8]) -> Option<usize> {
+        PUNCTS
+            .iter()
+            .find(|punct| rest.starts_with(punct.as_bytes()))
+            .map(|punct| punct.len())
+    }
+
+    #[test]
+    fn punctuation_dispatch_matches_the_original_ordered_table() {
+        assert_eq!(punctuation_len(&[]), original_punctuation(&[]));
+        for first in 0..=u8::MAX {
+            for second in 0..=u8::MAX {
+                let bytes = [first, second];
+                assert_eq!(
+                    punctuation_len(&bytes),
+                    original_punctuation(&bytes),
+                    "{bytes:?}"
+                );
+            }
+        }
+        for punct in PUNCTS {
+            for prefix in 0..=punct.len() {
+                for byte in 0..=u8::MAX {
+                    let mut bytes = punct.as_bytes()[..prefix].to_vec();
+                    bytes.push(byte);
+                    assert_eq!(
+                        punctuation_len(&bytes),
+                        original_punctuation(&bytes),
+                        "{bytes:?}"
+                    );
+                }
+            }
+            for following in PUNCTS {
+                let bytes = format!("{punct}{following}");
+                assert_eq!(
+                    punctuation_len(bytes.as_bytes()),
+                    original_punctuation(bytes.as_bytes())
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn dispatch_preserves_full_lexing_around_literals_comments_and_unicode() {
+        let neighbors = [
+            "",
+            " ",
+            "\n",
+            "x",
+            "7",
+            "é",
+            "😀",
+            "// ignored\n",
+            "/* nested /* x */ */",
+            "r#\"<==>\"#",
+            "b'<'",
+            "'life",
+            "\"\\\"=~~=\"",
+            "r#raw",
+        ];
+        for punct in PUNCTS {
+            for before in neighbors {
+                for after in neighbors {
+                    let source = format!("{before}{punct}{after}");
+                    assert_eq!(
+                        lex(&source),
+                        lex_with_punctuation(&source, original_punctuation),
+                        "{source:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[ignore = "requires an explicit original-source Rust corpus inventory"]
+    fn original_corpus_has_identical_tokens_and_offsets() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let inventory = std::env::var_os("SAIL_MUTATION_LEXER_CORPUS")
+            .ok_or("missing SAIL_MUTATION_LEXER_CORPUS")?;
+        let paths = std::fs::read_to_string(inventory)?;
+        let mut count = 0;
+        for path in paths.lines() {
+            let source = std::fs::read_to_string(path)?;
+            assert_eq!(
+                lex(&source),
+                lex_with_punctuation(&source, original_punctuation),
+                "{path}"
+            );
+            count += 1;
+        }
+        assert!(count > 0);
+        eprintln!("exact original/new lexer agreement over {count} Rust files");
+        Ok(())
     }
 }

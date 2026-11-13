@@ -435,3 +435,13 @@ compiler identities, every probe, complete stream multiplicity, structured
 per-function stdout, exact per-invocation stderr, aggregate diagnostics and
 exit codes. Direct Verus units use their ordinary whole-run comparison.
 See [ADR 0113](decisions/0113-conformance-invocation-capture.md).
+
+## Captured mutation-source corpus
+
+The local-only `ci/run.sh source-witness mutation-lexer` entry runs the strict
+original/new source-token witness. Its owning acceptance runner supplies
+`SAIL_MUTATION_LEXER_CORPUS`, a newline-separated inventory of captured Rust
+source paths visible to the runner. Missing or empty inputs fail; they are not
+optional skips. This witness compares token kinds and byte offsets without a
+solver, and is kept separate from the pinned-Z3 solver tier. Compiler-image
+callers must mount those frozen files and the inventory explicitly.

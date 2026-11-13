@@ -10,6 +10,9 @@
 #   refinements          source-shared production bodies and refinement controls
 #   solver               the tests that need the pinned Z3 (real-solver,
 #                        cached-session and fault-injection suites)
+#   source-witness mutation-lexer
+#                        local-only exact source-corpus witness; requires
+#                        SAIL_MUTATION_LEXER_CORPUS from its owning runner
 #   boundary-witness admission|shapes
 #                        local-only external compiler witnesses; requires
 #                        frozen inputs and the owning bounded runner
@@ -112,7 +115,7 @@ local_only() {
   fi
 }
 
-step="${1:?usage: ci/run.sh gate|solver|boundary-witness|cargo-range|e2e-build|e2e|conformance|extension|extension-install|host|bench|release|build-verus-source|deep-rvt ...}"
+step="${1:?usage: ci/run.sh gate|solver|source-witness|boundary-witness|cargo-range|e2e-build|e2e|conformance|extension|extension-install|host|bench|release|build-verus-source|deep-rvt ...}"
 shift
 
 release_build() {
@@ -251,11 +254,11 @@ case "$step" in
 
   solver)
     : "${SAIL_TEST_Z3:?SAIL_TEST_Z3 must name the pinned z3 (set in the CI image)}"
-    # These two ignored entrypoints require separately captured compiler inputs,
-    # not just Z3. Keep their strict missing-input failures in the local witness
-    # invocation rather than treating them as solver fixtures.
+    # These entrypoints belong to local compiler, toolchain or source-corpus
+    # witnesses. Their owning runners provide the captured inputs; missing-input
+    # failures stay strict. They are not pinned-Z3 solver fixtures.
     cargo nextest run --workspace --locked --profile ci --run-ignored only \
-      -E 'not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes) or test(=managed::build_environment::tests::qualified_cargo_range_self_test))'
+      -E 'not (test(=managed::shipped::native::admission_actual_tests::actual_native_admission_child) or test(=managed::shipped::native::native_shape::tests::actual_retained_native_shapes) or test(=managed::build_environment::tests::qualified_cargo_range_self_test) or test(=mutate::lexer::tests::original_corpus_has_identical_tokens_and_offsets))'
     ;;
 
   cargo-range)
@@ -270,6 +273,17 @@ case "$step" in
     done
     cargo nextest run -p sail-verus --lib --locked --profile ci --run-ignored only --no-capture \
       -E 'test(=managed::build_environment::tests::qualified_cargo_range_self_test)'
+    ;;
+
+  source-witness)
+    local_only source-witness
+    if [ "$#" -ne 1 ] || [ "$1" != mutation-lexer ]; then
+      echo 'source-witness: expected mutation-lexer' >&2
+      exit 2
+    fi
+    : "${SAIL_MUTATION_LEXER_CORPUS:?requires an explicit captured Rust source inventory}"
+    cargo nextest run -p sail-verus --lib --locked --profile ci --run-ignored only --no-capture \
+      -E 'test(=mutate::lexer::tests::original_corpus_has_identical_tokens_and_offsets)'
     ;;
 
   boundary-witness)
