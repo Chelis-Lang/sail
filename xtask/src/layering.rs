@@ -78,6 +78,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
         ],
     ),
     ("sail-mcp", &["sail-api"]),
+    ("sail-kani", &["sail-api"]),
     (
         "sail-conformance",
         &[
