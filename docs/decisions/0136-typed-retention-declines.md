@@ -1,6 +1,6 @@
 # 0136: Return the actual optional-retention decline stage
 
-- **Status:** implemented candidate; native validation pending
+- **Status:** implemented; native Linux integration and focused review pass
 - **Date:** 2026-11-14
 - **Tracking:** #712 package C, #595
 

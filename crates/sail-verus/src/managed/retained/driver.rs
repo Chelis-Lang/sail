@@ -4,7 +4,7 @@
 //! independent of the verifier's final source snapshot and proof receipt.
 
 use super::super::{dependency_snapshot, files, input, receipts};
-use super::{archive, compiler, eligibility, skipped_note};
+use super::{archive, compiler, eligibility};
 use dependency_snapshot::{Content, Snapshot};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
