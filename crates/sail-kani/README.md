@@ -18,5 +18,10 @@ install or execute a backend. See `docs/validation/kani-rust-payload.md` for sco
 and native qualification; backend execution remains separate.
 
 A development Rust tool-payload authenticator is being integrated for the
-executor (ADR0152). It is uncompiled and unqualified; it executes no backend and
+executor (ADR0152). Its focused Linux original-payload checks and workspace gate pass; independent
+and Mac qualification remain open. It executes no backend and
 grants no proof or cache authority. Prefixes must be owned and immutable.
+
+An owned execution-layout candidate (ADR0153) stages the unchanged original
+bundle with an exact route to authenticated Rust. It is uncompiled and supplies
+no harness execution or CLI backend.

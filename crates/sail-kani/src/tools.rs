@@ -13,6 +13,9 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 
+mod stage;
+pub use stage::Stage;
+
 const MAX_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const MAX_ENTRIES: usize = 20_000;
 const RUST_FILES: usize = 7_017;
@@ -160,6 +163,14 @@ fn inventory(
     root: &Path,
     generated: &BTreeSet<String>,
 ) -> Result<(BTreeMap<String, Payload>, usize), Error> {
+    inventory_with_toolchain(root, generated, None)
+}
+
+fn inventory_with_toolchain(
+    root: &Path,
+    generated: &BTreeSet<String>,
+    toolchain: Option<&Path>,
+) -> Result<(BTreeMap<String, Payload>, usize), Error> {
     let mut pending = vec![(root.to_path_buf(), 0_usize)];
     let mut files = BTreeMap::new();
     let mut entries = 0_usize;
@@ -188,6 +199,16 @@ fn inventory(
                 return Err(refuse("unsupported tool path"));
             }
             let metadata = std::fs::symlink_metadata(&path).map_err(refuse)?;
+            if relative == "toolchain"
+                && depth == 0
+                && let Some(expected) = toolchain
+            {
+                if !metadata.is_symlink() || std::fs::read_link(&path).map_err(refuse)? != expected
+                {
+                    return Err(refuse("staged Rust toolchain route differs"));
+                }
+                continue;
+            }
             if metadata.is_dir() {
                 pending.push((path, depth + 1));
                 continue;
