@@ -5,6 +5,7 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Add development groundwork for uncached plain/traced prefix replay; native qualification and full profiler integration remain pending.
 - Prepare read-only diagnostic descriptions of complete solver-session check positions; ambiguous owners remain unavailable and no profile command is introduced.
 
 - Add bounded diagnostic quantifier trace counting groundwork; no profile command or verification behavior changes.

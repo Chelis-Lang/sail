@@ -11,6 +11,8 @@ use sail_smtlib::split::{CommandSplitter, Item, ItemKind};
 use crate::PortfolioError;
 use crate::transcript::{Class, classify_command};
 
+pub mod replay;
+
 /// Maximum original session size admitted for an in-memory diagnostic replay.
 pub const MAX_SESSION_BYTES: usize = 64 * 1024 * 1024;
 
