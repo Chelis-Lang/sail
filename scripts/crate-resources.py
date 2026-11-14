@@ -29,6 +29,7 @@ RESOURCES = {
     ),
     "sail-kani": (
         "engine/kani/bundle-linux.json",
+        "engine/kani/toolchain-linux.json",
     ),
     "sail-mcp": (
         "crates/sail-cli/tests/fixtures/attr/report.golden.json",

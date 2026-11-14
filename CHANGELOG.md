@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Pin the contributor-only original Linux Rust payload for Kani groundwork; executable backend qualification remains pending.
+
 - Retire active ordinary requirement attribution: `--requirement`, `sail assurance` and MCP grouping entry points. Historical ordinary job data remains readable; legacy calls refuse without launching replacement work (ADR0148).
 - Add native-qualified development groundwork for uncached plain/traced prefix replay; full profiler integration remains pending.
 - Prepare read-only diagnostic descriptions of complete solver-session check positions; ambiguous owners remain unavailable and no profile command is introduced.

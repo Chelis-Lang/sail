@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "purpose": "contributor-only original Rust payload fixture; no executable backend or proof authority",
+  "host": "x86_64-unknown-linux-gnu",
+  "toolchain": "nightly-2026-08-21-x86_64-unknown-linux-gnu",
+  "rustc_version": "rustc 1.100.0-nightly (8925ea358 2026-08-20)",
+  "manifest_url": "https://static.rust-lang.org/dist/2026-08-21/channel-rust-nightly.toml",
+  "manifest_sha256": "3c30cc655a7549d0b30015cd032f949e8723da5ad039f672d04520bbaea4e76d",
+  "components": [
+    {
+      "package": "cargo",
+      "component": "cargo",
+      "url": "https://static.rust-lang.org/dist/2026-08-21/cargo-nightly-x86_64-unknown-linux-gnu.tar.xz",
+      "archive_bytes": 10936072,
+      "archive_sha256": "51306dcd70ad7ea807727fb313b6a0cbc6406934ad230b6c18db79a97c539c57",
+      "version": "0.100.0-nightly (514c56dd7 2026-08-19)",
+      "payload_files": 44,
+      "payload_bytes": 36584454
+    },
+    {
+      "package": "rustc",
+      "component": "rustc",
+      "url": "https://static.rust-lang.org/dist/2026-08-21/rustc-nightly-x86_64-unknown-linux-gnu.tar.xz",
+      "archive_bytes": 83512832,
+      "archive_sha256": "e531815fa551362b5a485e0d286b6c96555312d49359c0b8fe9e8f34c45594b4",
+      "version": "1.100.0-nightly (8925ea358 2026-08-20)",
+      "payload_files": 42,
+      "payload_bytes": 416875895
+    },
+    {
+      "package": "rust-std",
+      "component": "rust-std-x86_64-unknown-linux-gnu",
+      "url": "https://static.rust-lang.org/dist/2026-08-21/rust-std-nightly-x86_64-unknown-linux-gnu.tar.xz",
+      "archive_bytes": 31592180,
+      "archive_sha256": "52cd12570c6f967c3d04173e061fdab1cd44ab9613f53df8e04f7ce3b52ea3a3",
+      "version": "1.100.0-nightly (8925ea358 2026-08-20)",
+      "payload_files": 63,
+      "payload_bytes": 167340958
+    },
+    {
+      "package": "rustc-dev",
+      "component": "rustc-dev",
+      "url": "https://static.rust-lang.org/dist/2026-08-21/rustc-dev-nightly-x86_64-unknown-linux-gnu.tar.xz",
+      "archive_bytes": 123976232,
+      "archive_sha256": "175a1fb7447dc3c4407d6ea568eeb5cbe15316c8e2e4ee06a93864a466f71bdb",
+      "version": "1.100.0-nightly (8925ea358 2026-08-20)",
+      "payload_files": 3158,
+      "payload_bytes": 676523391
+    },
+    {
+      "package": "llvm-tools-preview",
+      "component": "llvm-tools-preview",
+      "url": "https://static.rust-lang.org/dist/2026-08-21/llvm-tools-nightly-x86_64-unknown-linux-gnu.tar.xz",
+      "archive_bytes": 41024136,
+      "archive_sha256": "89d949aacf5c051e9dc92c044b0a1e17e14f9845a2f232fcedebce61522417f6",
+      "version": "1.100.0-nightly (8925ea358 2026-08-20)",
+      "payload_files": 16,
+      "payload_bytes": 215857636
+    },
+    {
+      "package": "rust-src",
+      "component": "rust-src",
+      "url": "https://static.rust-lang.org/dist/2026-08-21/rust-src-nightly.tar.xz",
+      "archive_bytes": 5870828,
+      "archive_sha256": "b72d49563c50bf06ef9aa0dcbf57941051547e874b8ce6788aad92f67942f8cd",
+      "version": "1.100.0-nightly (8925ea358 2026-08-20)",
+      "payload_files": 3694,
+      "payload_bytes": 72867833
+    }
+  ]
+}
