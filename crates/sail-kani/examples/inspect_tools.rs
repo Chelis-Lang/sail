@@ -28,13 +28,18 @@ fn inspect() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(not(unix))]
 fn inspect() -> Result<(), Box<dyn std::error::Error>> {
-    Err("error[SAIL6303]: unsupported native host".into())
+    Err("unsupported native host".into())
 }
 
 fn main() -> std::process::ExitCode {
     match inspect() {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
+            #[cfg(unix)]
+            if error.is::<sail_kani::tools::Error>() {
+                eprintln!("{error}");
+                return std::process::ExitCode::from(2);
+            }
             eprintln!("error[SAIL6303]: {error}");
             std::process::ExitCode::from(2)
         }

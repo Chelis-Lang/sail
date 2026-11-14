@@ -8,6 +8,9 @@
 mod decode;
 mod strict_json;
 
+#[cfg(target_os = "linux")]
+pub mod execution;
+
 #[cfg(unix)]
 pub mod tools;
 

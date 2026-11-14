@@ -1,6 +1,6 @@
 # 0152: Authenticate Kani's actual compiler and Rust payloads in Rust
 
-- **Status:** implemented development candidate; native qualification pending
+- **Status:** bounded native Linux qualification and independent review pass; unselected
 - **Date:** 2026-11-14
 - **Extends:** [ADR0137](0137-pinned-kani-release-bundle.md), [ADR0149](0149-original-kani-rust-payload.md)
 - **Tracking:** #712 G
@@ -41,9 +41,9 @@ layering edge, daemon/cache/shim dependency or backend fork changes.
 
 This is necessary tool-origin groundwork for the executor. It does not execute
 Kani, establish input/source/environment closure, prove bounded properties,
-create receipts, enable cache reuse or expose a CLI backend. Native original-
-payload and negative controls, source/lock binding review and the applicable
-gates remain pending. Mac pins and execution remain separate.
+create receipts, enable cache reuse or expose a CLI backend. Native original-payload/negative controls, source/lock binding review and
+component gates pass within the qualification record. Backend closure, selected
+execution and Mac remain separate.
 
 Independent exact lock-binding review at1662c2dd approves only the new
 Cargo.lock digest `e9182e0cfa37214ad952fc2ffc41f94bc2d611612825a4333e281559e55ced66`.
@@ -58,3 +58,6 @@ all934 indexed payloads are independently lead-rehashed and externally retained.
 The metadata-only finalizer's original uname inventory assertion failure remains
 visible; its correction changes no audit or acceptance result. No native proof,
 tool-authenticator or backend qualification follows from this source binding.
+
+See [original-driver qualification](../validation/kani-original-driver.md) for
+actual results and scope. This selects no backend or source-closure/cache authority.

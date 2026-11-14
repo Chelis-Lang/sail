@@ -1,6 +1,6 @@
 # 0153: Stage an original Kani release with one exact Rust toolchain route
 
-- **Status:** implemented development candidate; native qualification pending
+- **Status:** bounded native Linux qualification and independent review pass; unselected
 - **Date:** 2026-11-14
 - **Extends:** [ADR0152](0152-kani-runtime-tool-payload-identity.md)
 - **Tracking:** #712 G
@@ -53,3 +53,6 @@ Route equality compares exact native OsStr bytes. Path component equality is
 insufficient because it accepts redundant separators/current-directory segments;
 the original native counterexamples remain retained. Contributor inspection
 arguments and JSON path representation refuse unsupported text without panicking.
+
+See [original-driver qualification](../validation/kani-original-driver.md) for
+actual results and scope. This selects no backend or source-closure/cache authority.
