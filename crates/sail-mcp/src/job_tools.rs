@@ -12,8 +12,7 @@ mod tests;
 
 pub(super) fn definitions(run_schema: &Value) -> Vec<Value> {
     let id_schema = json!({"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":{"type":"string","description":"Durable job id returned by start_verification."}}});
-    let mut start_schema = run_schema.clone();
-    start_schema["properties"]["requirements"] = json!({"type":"array","minItems":1,"maxItems":sail_api::attribution::MAX_ATTRIBUTIONS,"description":"Optional submitter requirement attributions retained with the job: each names a requirement ID and the exact crate-qualified function the verifier reports. Read them with requirement_assurance and attributed true. Sail does not check that the function's specification states the requirement.","items":{"type":"object","additionalProperties":false,"required":["requirement_id","function"],"properties":{"requirement_id":{"type":"string","minLength":1},"function":{"type":"string","minLength":1}}}});
+    let start_schema = run_schema.clone();
     vec![
         json!({"name":"start_verification","title":"Start workspace verification","description":"Submit persistent incremental workspace verification and return immediately. Successful Cargo targets reuse complete proof receipts; results retain original establishing provenance. Use verification_status and verification_result while you continue working. Portfolio and fragility use their existing explicit tools.","inputSchema":start_schema,"annotations":{"readOnlyHint":false,"destructiveHint":false,"openWorldHint":false}}),
         json!({"name":"verification_status","title":"Verification job status","description":"Read durable job lifecycle without waiting for a verifier. Lifecycle is distinct from proof outcome.","inputSchema":id_schema,"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
@@ -55,37 +54,7 @@ pub(super) fn call(
         cancel,
     )
 }
-/// Submitter attributions as `--requirement ID=FUNCTION` flags.
-fn requirement_flags(value: Option<&Value>) -> Result<Vec<String>, String> {
-    let Some(value) = value else {
-        return Ok(Vec::new());
-    };
-    let items: Vec<sail_api::attribution::RequirementAttribution> =
-        serde_json::from_value(value.clone())
-            .map_err(|_| "requirements must be objects with requirement_id and function")?;
-    let items = sail_api::attribution::canonical(items)?;
-    if items.iter().any(|item| item.function.contains('=')) {
-        return Err("requirement functions cannot contain `=`".into());
-    }
-    Ok(items
-        .into_iter()
-        .flat_map(|item| {
-            [
-                "--requirement".to_owned(),
-                format!("{}={}", item.requirement_id, item.function),
-            ]
-        })
-        .collect())
-}
-
 fn start(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResult {
-    let requirements = match requirement_flags(args.get("requirements")) {
-        Ok(flags) => flags,
-        Err(error) => return ToolResult::invalid(&error),
-    };
-    let mut args = args.clone();
-    args.remove("requirements");
-    let args = &args;
     let request = match RunArgs::parse(args) {
         Ok(request) => request,
         Err(error) => return ToolResult::invalid(&error),
@@ -99,8 +68,7 @@ fn start(ctx: &Context, args: &Map<String, Value>, cancel: &Cancel) -> ToolResul
         Ok(project) => project,
         Err(error) => return error,
     };
-    let mut prefix = vec!["verify", "--background", "--output", "json"];
-    prefix.extend(requirements.iter().map(String::as_str));
+    let prefix = ["verify", "--background", "--output", "json"];
     let arguments = request.sail_args(&prefix);
     execute(ctx, &arguments, &project, cancel)
 }

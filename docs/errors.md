@@ -254,8 +254,8 @@ or reuse a receipt. A fresh owned target is required before retrying.
 |---|---|---|
 | `SAIL3150` | Standalone setup, input observation or job protocol is unsupported or unavailable | Read the named input or setup error; restart an older daemon when requested |
 | `SAIL3151` | Fresh standalone verification could not establish complete input coverage for a reusable Current proof | Read the verifier verdict and diagnostics; unsupported observations run fresh without receipt reuse |
-| `SAIL3160` | Requirement attribution for an ordinary job is invalid, unsupported or unavailable: an empty, duplicate or malformed `ID=FUNCTION` pair, an engine or repair job, a job submitted without attributions, or an older service | Pass `--requirement ID=FUNCTION` with `--background` on a stock or standalone `sail verify`; restart an older daemon. See [requirement assurance](requirement-assurance.md#ordinary-verus-jobs) |
-| `SAIL3161` | A retained job record or baseline was written by a neutral source job, which Sail 0.2 offered and 0.3.0 removed. It stays listed, but it is never read as verification evidence | Verify the source again as ordinary Verus input. Sail 0.2.0 can still read the record |
+| `SAIL3160` | A legacy requirement-attribution operation or stored attribution is invalid or unavailable | New attribution requests are retired with `SAIL3161`; submit ordinary jobs without requirement tags and keep intent tracking outside Sail. See [requirement attribution retirement](requirement-assurance.md) |
+| `SAIL3161` | The requested requirement-attribution entry point was retired in the v0.3.0 development candidate, or a retained job record or baseline was written by a neutral source job, which Sail 0.2 offered and 0.3.0 removed. It stays listed, but it is never read as verification evidence | Submit ordinary jobs without requirement tags; retain intent tracking outside Sail. Verify a neutral source again as ordinary Verus input. Sail 0.2.0 can still read the record |
 
 ## Verus mutation campaigns
 

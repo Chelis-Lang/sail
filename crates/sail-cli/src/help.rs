@@ -25,7 +25,7 @@ SAIL OPTIONS (before --):
 /// Commands that run but are not part of the supported command set:
 /// `sail --help` omits them and their own help starts with
 /// [`EXPERIMENTAL_NOTE`].
-pub(crate) const EXPERIMENTAL: &[&str] = &["assurance", "serve", "fragility", "cache shared"];
+pub(crate) const EXPERIMENTAL: &[&str] = &["serve", "fragility", "cache shared"];
 
 /// The first paragraph of every experimental command's help.
 pub(crate) const EXPERIMENTAL_NOTE: &str = "\
@@ -51,10 +51,6 @@ USAGE:
 
 /// Help for the commands whose usage is fixed text.
 const HELP: &[(&str, &str)] = &[
-    (
-        "assurance",
-        "Read submitter-attributed Verus evidence, grouped by requirement, for an ordinary job\nstarted with `--requirement ID=FUNCTION`.\n\nUSAGE:\n    sail assurance JOB [--attributed] [--output json]\n\nThe attribution is an unchecked submitter claim. The view preserves the actual\nevidence tier and provenance; requirement entailment and mutation remain separate.\n--attributed is accepted for compatibility and changes nothing.\n",
-    ),
     (
         "runtime",
         "Execute versioned raw SMT transcripts through Sail's bundled pinned Z3.

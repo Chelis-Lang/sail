@@ -210,6 +210,78 @@ fn bench_without_the_benchmark_binary_says_how_to_build_it() {
     );
 }
 
+/// Retired attribution refuses before any verifier mode touches a project.
+#[test]
+fn retired_attribution_refuses_before_mode_setup() {
+    let root =
+        std::env::temp_dir().join(format!("sail-retired-attribution-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    assert!(std::fs::create_dir_all(&root).is_ok());
+    assert!(std::fs::write(
+        root.join("Cargo.toml"),
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[package.metadata.verus]\nverify = true\n[workspace]\n",
+    ).is_ok());
+    assert!(std::fs::write(root.join("demo.rs"), "fn main() {}\n").is_ok());
+    for mode in [
+        vec![],
+        vec!["--background"],
+        vec!["--engine"],
+        vec!["--measure-fragility", "--fragility-seeds", "1"],
+        vec![
+            "--portfolio",
+            "accept-first-proof",
+            "--portfolio-seeds",
+            "1",
+        ],
+        vec!["demo.rs"],
+    ] {
+        for retired in [
+            vec!["--requirement", "R=demo::f"],
+            vec!["--requirement=R=demo::f"],
+        ] {
+            let output = Command::new(env!("CARGO_BIN_EXE_sail"))
+                .arg("verify")
+                .args(&mode)
+                .args(&retired)
+                .current_dir(&root)
+                .env("CARGO", root.join("missing-cargo"))
+                .env("SAIL_CARGO_VERUS", root.join("missing-cargo-verus"))
+                .env("SAIL_CACHE_DIR", root.join("cache"))
+                .output();
+            let Ok(output) = output else {
+                unreachable!("cannot run sail: {output:?}")
+            };
+            assert_eq!(output.status.code(), Some(2), "{mode:?} {retired:?}");
+            assert!(output.stdout.is_empty(), "{mode:?} {retired:?}");
+            assert!(
+                String::from_utf8_lossy(&output.stderr).starts_with("error[SAIL3161]:"),
+                "{mode:?} {retired:?}: {:?}",
+                output.stderr
+            );
+            let entries = std::fs::read_dir(&root)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .count();
+            assert_eq!(
+                entries, 2,
+                "retired request created project/cache artifacts: {mode:?} {retired:?}"
+            );
+        }
+    }
+    let output = sail(&["assurance", "--help"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.stdout, b"");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("SAIL0002"));
+    for args in [vec!["assurance"], vec!["assurance", "historical-job"]] {
+        let output = sail(&args);
+        assert_eq!(output.status.code(), Some(2));
+        assert_eq!(output.stdout, b"");
+        assert!(String::from_utf8_lossy(&output.stderr).contains("SAIL3161"));
+    }
+    assert!(std::fs::remove_dir_all(root).is_ok());
+}
+
 /// ADR 0043: Sail runs only its own Verus. Without it, `sail verify` fails
 /// with SAIL0101 and never runs a `cargo-verus` found on `PATH`; the explicit
 /// development override is used instead, announced by warning SAIL0108.
@@ -433,7 +505,6 @@ fn every_command_has_help() {
     // Experimental commands keep their help, which says they are experimental.
     for args in [
         &["serve", "--help"][..],
-        &["assurance", "--help"],
         &["fragility", "--help"],
         &["cache", "keygen", "--help"],
         &["cache", "trust", "list", "--help"],

@@ -81,7 +81,6 @@ const TOOL_NAMES: &[&str] = &[
     "verification_result",
     "cancel_verification",
     "proof_health",
-    "requirement_assurance",
     "verification_events",
     "explain_failure",
     "compare_verification",
@@ -120,7 +119,6 @@ fn check_tools(value: &Value) -> Result<(), String> {
     };
     let required = [
         ("proof_health", json!(["job_id"])),
-        ("requirement_assurance", json!(["job_id"])),
         (
             "explain_failure",
             json!(["job_id", "package_id", "target", "kind", "function"]),

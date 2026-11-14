@@ -369,6 +369,22 @@ pub fn verify(
         let _ = writeln!(err, "error[{}]: sail verify: {}", e.0, e.1);
         ExitCode::from(EXIT_SETUP)
     };
+    // Reject retired attribution before any mode can inspect or prepare a project.
+    // Tokens after `--` belong to the verifier and retain their original meaning.
+    if args
+        .iter()
+        .take_while(|arg| arg.as_str() != "--")
+        .any(|arg| arg == "--requirement" || arg.starts_with("--requirement="))
+    {
+        return fail(
+            err,
+            &SetupError(
+                "SAIL3161",
+                "requirement attribution was retired; read per-function jobs, health and mutation evidence"
+                    .to_owned(),
+            ),
+        );
+    }
     // `--incremental` named the managed runner when it was opt-in; it is
     // now the default, so the flag is accepted and changes nothing.
     let args = without_incremental(args);

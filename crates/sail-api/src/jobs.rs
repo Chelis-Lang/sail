@@ -198,14 +198,14 @@ pub enum Request {
     },
     /// Fail-closed negotiation before any non-stock submission.
     Capabilities,
-    /// Submit an ordinary job that retains submitter requirement attributions.
+    /// Legacy attributed submission; services since 0.3 refuse this operation.
     SubmitAttributed {
         /// Requested stock or standalone verification.
         submission: Submission,
         /// Canonical, non-empty submitter attributions.
         requirements: Vec<crate::attribution::RequirementAttribution>,
     },
-    /// Read attributed assurance for an ordinary job submitted with attributions.
+    /// Legacy assurance read; services since 0.3 refuse this operation.
     AttributedAssurance {
         /// Exact durable job identity.
         id: String,
@@ -550,8 +550,8 @@ pub struct Client {
 }
 #[cfg(unix)]
 impl Client {
-    /// Submit an ordinary stock or standalone job with submitter requirement
-    /// attributions, only after explicit capability negotiation.
+    /// Legacy attributed submission, retained for wire compatibility.
+    /// Services since 0.3 do not advertise this capability and refuse the call.
     ///
     /// # Errors
     /// Refuses older services, unsupported modes and invalid attributions
@@ -580,7 +580,8 @@ impl Client {
         }
     }
 
-    /// Read submitter-attributed ordinary Verus evidence after version negotiation.
+    /// Legacy assurance read, retained for wire compatibility.
+    /// Services since 0.3 do not advertise this capability and refuse the call.
     ///
     /// # Errors
     /// Refuses unsupported services, unknown or unattributed jobs and invalid evidence.

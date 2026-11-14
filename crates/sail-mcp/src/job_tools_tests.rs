@@ -944,29 +944,26 @@ fn blocking_verify_cli_fallback_reads_status_then_result_once() {
 }
 
 #[test]
-fn start_requirements_become_canonical_cli_attributions_or_are_refused() {
-    assert_eq!(requirement_flags(None), Ok(Vec::new()));
-    let given = json!([
-        {"requirement_id": "REQ-2", "function": "demo::b"},
-        {"requirement_id": "REQ-1", "function": "demo::a"}
-    ]);
-    assert_eq!(
-        requirement_flags(Some(&given)),
-        Ok(vec![
-            "--requirement".to_owned(),
-            "REQ-1=demo::a".to_owned(),
-            "--requirement".to_owned(),
-            "REQ-2=demo::b".to_owned(),
-        ])
-    );
-    for refused in [
+fn retired_requirement_input_is_refused_before_launching_a_child() {
+    let fixture = Fixture::new();
+    for requirements in [
         json!([]),
-        json!([{"requirement_id": "R"}]),
-        json!([{"requirement_id": "R", "function": "f", "extra": 1}]),
-        json!([{"requirement_id": "R", "function": "a=b"}]),
-        json!("R=f"),
+        json!([{"requirement_id":"R", "function":"demo::f"}]),
+        json!("R=demo::f"),
     ] {
-        assert!(requirement_flags(Some(&refused)).is_err(), "{refused}");
+        let args = json!({"requirements":requirements});
+        let args = args.as_object().unwrap_or_else(|| unreachable!("object"));
+        let result = call(
+            &fixture.context,
+            "start_verification",
+            args,
+            &Cancel::default(),
+        );
+        assert!(
+            result.is_error && result.text.contains("unknown argument `requirements`"),
+            "{}",
+            result.text
+        );
     }
 }
 

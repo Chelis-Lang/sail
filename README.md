@@ -184,8 +184,8 @@ A repair is accepted only when the whole target verifies. See the
   [CI reports](docs/ci-reports.md),
   [GitHub Action](docs/github-action.md),
   [background preparation](docs/background-preparation.md)
-- Experimental features: fragility measurement, seed portfolios, team caching
-  and requirement attribution. They aren't listed in `sail --help`; see the
+- Experimental features: fragility measurement, seed portfolios and team caching.
+  They aren't listed in `sail --help`; see the
   [documentation index](docs/README.md#experimental-features).
 - Working on Sail: [AGENTS.md](AGENTS.md), the [charter](docs/CHARTER.md) and
   the [decision records](docs/decisions/README.md).

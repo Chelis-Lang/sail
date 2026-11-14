@@ -2,7 +2,6 @@
 use sail_api::evidence::{Change, Comparison, Reference};
 use sail_api::jobs::{Request, Response};
 use sail_api::proof::Target;
-use std::fmt::Write as _;
 use std::io::Write;
 use std::process::ExitCode;
 
@@ -11,12 +10,7 @@ pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> 
         let (json, rest) = output(args)?;
         let request = request(&rest)?;
         let client = crate::jobs::connect_or_start()?;
-        let response = match &request {
-            Request::AttributedAssurance { id } => Response::AttributedAssurance(Box::new(
-                client.attributed_assurance(id).map_err(|e| e.to_string())?,
-            )),
-            _ => super::call(&client, &request)?,
-        };
+        let response = super::call(&client, &request)?;
         let text = if json {
             serde_json::to_string_pretty(&response).map_err(|error| error.to_string())?
         } else {
@@ -53,17 +47,7 @@ fn output(args: &[String]) -> Result<(bool, Vec<String>), String> {
 }
 fn request(args: &[String]) -> Result<Request, String> {
     match args.first().map(String::as_str) {
-        Some("assurance") => match args {
-            // `--attributed` selected this view beside the removed neutral one;
-            // it stays accepted and changes nothing.
-            [_, id] if !id.is_empty() && !id.starts_with('-') => {
-                Ok(Request::AttributedAssurance { id: id.clone() })
-            }
-            [_, id, flag] if flag == "--attributed" && !id.is_empty() && !id.starts_with('-') => {
-                Ok(Request::AttributedAssurance { id: id.clone() })
-            }
-            _ => Err("usage: assurance JOB [--attributed] [--output json]".into()),
-        },
+        Some("assurance") => Err("SAIL3161: requirement attribution was retired; use jobs result, health, and per-function mutation evidence".into()),
         Some("explain") => explain(&args[1..]),
         Some("baseline") => match args.get(1).map(String::as_str) {
             Some("list") if args.len() == 2 => Ok(Request::Baselines),
@@ -135,29 +119,6 @@ fn explain(args: &[String]) -> Result<Request, String> {
 }
 fn human(response: &Response) -> String {
     match response {
-        Response::AttributedAssurance(view) => {
-            let mut text = format!(
-                "Submitter-attributed Verus evidence for job {} (an unchecked submitter claim; inputs {:?})",
-                view.job_id, view.currentness
-            );
-            for requirement in &view.requirements {
-                for evidence in &requirement.evidence {
-                    let _ = write!(
-                        text,
-                        "\n{} {}: {:?}, tier {:?}; mutation {:?}",
-                        requirement.requirement_id,
-                        evidence.function,
-                        evidence.outcome,
-                        evidence.tier,
-                        evidence.mutation
-                    );
-                    for qualifier in &evidence.qualifiers {
-                        let _ = write!(text, "\n  {qualifier}");
-                    }
-                }
-            }
-            text
-        }
         Response::Explanation(explanation) => format!(
             "{} {} {:?}: {:?}; established by {} ({:?})\n{}",
             explanation.target.name,
@@ -250,23 +211,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn assurance_requires_one_explicit_job_identity() {
-        let arguments =
-            |values: &[&str]| values.iter().map(|v| (*v).to_owned()).collect::<Vec<_>>();
-        assert!(
-            matches!(request(&arguments(&["assurance", "job-123"])), Ok(Request::AttributedAssurance { id }) if id == "job-123")
-        );
-        assert!(
-            matches!(request(&arguments(&["assurance", "job-123", "--attributed"])), Ok(Request::AttributedAssurance { id }) if id == "job-123")
-        );
-        for values in [
+    fn retired_assurance_never_resolves_a_job() {
+        for args in [
             vec!["assurance"],
-            vec!["assurance", "job-123", "--inputs"],
-            vec!["assurance", "--job"],
-            vec!["assurance", "one", "two"],
-            vec!["assurance", "--attributed", "--attributed"],
+            vec!["assurance", "job-123"],
+            vec!["assurance", "job-123", "--attributed"],
         ] {
-            assert!(request(&arguments(&values)).is_err());
+            let args: Vec<String> = args.into_iter().map(str::to_owned).collect();
+            assert!(
+                request(&args)
+                    .err()
+                    .is_some_and(|error| error.starts_with("SAIL3161:"))
+            );
         }
     }
 

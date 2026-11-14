@@ -145,3 +145,13 @@ exceeded. Defaults do not evict automatically. Pruning removes targets and
 receipts together; later calls verify again. The [disk-use guide](https://github.com/Chelis-Lang/sail/blob/main/docs/workspace-hygiene.md)
 describes configuration and reporting. These budget commands are available in
 published `0.2.0` and registry prerelease `0.2.0-rc.1`, absent from 0.1.0.
+
+## Requirement tags in the v0.3.0 development candidate
+
+`--requirement`, `sail assurance`, MCP `requirement_assurance` and the
+`requirements` submission input are retired in this candidate. Submit ordinary
+jobs and read their original per-function results and proof health. Keep intent
+tracking in the project's existing system. Historical ordinary results remain
+readable; never replace refused attribution with an invented assurance claim.
+This does not change raw SMT-runtime requirement IDs. The candidate is not a
+published release; check the installed version before applying migration advice.

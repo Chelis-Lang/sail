@@ -68,3 +68,10 @@ entailment from a Verus specification remains the caller's responsibility.
 Older services fail explicitly. The view and request types are likely to grow;
 marking them `#[non_exhaustive]` is a release-scope decision left to the next
 minor release.
+
+## Active-surface retirement
+
+ADR0148 implements the planned v0.3.0 retirement after the real-project hand
+join does not establish its outside-user/CI-demand bar. Qualification is pending.
+Legacy wire/data types and original ordinary journal results remain; current
+services no longer advertise or execute the attribution operations.
