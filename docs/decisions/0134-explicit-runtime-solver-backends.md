@@ -1,6 +1,6 @@
 # 0134: Keep raw SMT backends explicit and their dialects separate
 
-- **Status:** implemented development candidate; native qualification pending
+- **Status:** implemented development candidate; Linux gates, corpus and installer review pass; Mac pending
 - **Date:** 2026-11-13
 - **Tracking:** #712 package G, cvc5 spike
 

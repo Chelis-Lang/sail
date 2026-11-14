@@ -4,7 +4,6 @@ import argparse
 import hashlib
 from pathlib import Path, PurePosixPath
 import re
-import shutil
 import stat
 import sys
 import tempfile
@@ -35,7 +34,12 @@ def install(pins, destination, archive=None, host=HOST):
                    for key in ["sha256", "bin_sha256"])
             or asset["bin"] != "cvc5-Linux-x86_64-static/bin/cvc5"):
         raise ValueError("invalid cvc5 version, host, URL or digest pin")
-    with tempfile.TemporaryDirectory(prefix="sail-cvc5-") as temporary:
+    destination = Path(destination)
+    if destination.exists() or destination.is_symlink():
+        raise ValueError("cvc5 destination must be absent")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    # Stage on the destination filesystem so publication is one rename.
+    with tempfile.TemporaryDirectory(prefix="sail-cvc5-", dir=destination.parent) as temporary:
         if archive is None:
             archive = Path(temporary) / "runtime.zip"
             with urllib.request.urlopen(asset["url"], timeout=60) as source, archive.open("xb") as output:
@@ -60,13 +64,15 @@ def install(pins, destination, archive=None, host=HOST):
                     or prefix + "AUTHORS" not in wanted
                     or not any(name.startswith(prefix + "licenses/") for name in wanted)):
                 raise ValueError("cvc5 executable or bundled notices are missing")
-            prepared = []
+            prepared = set()
             retained = 0
             for name in wanted:
-                relative = PurePosixPath(name.removeprefix(prefix))
+                raw_relative = name.removeprefix(prefix)
+                relative = PurePosixPath(raw_relative)
                 entry = source.getinfo(name)
                 mode = entry.external_attr >> 16
-                if (relative.is_absolute() or ".." in relative.parts or "\\" in name
+                if (relative.as_posix() != raw_relative or relative in prepared
+                        or relative.is_absolute() or ".." in relative.parts or "\\" in name
                         or entry.file_size > MAX_FILE_BYTES
                         or stat.S_IFMT(mode) not in [0, stat.S_IFREG]):
                     raise ValueError("invalid or excessive cvc5 member")
@@ -80,15 +86,15 @@ def install(pins, destination, archive=None, host=HOST):
                     raise ValueError("cvc5 executable digest mismatch")
                 staged = Path(temporary) / "files" / relative
                 staged.parent.mkdir(parents=True, exist_ok=True)
+                if staged.exists() or staged.is_symlink():
+                    raise ValueError("colliding cvc5 output paths")
                 staged.write_bytes(data)
-                prepared.append((relative, staged))
-            destination = Path(destination)
+                staged.chmod(0o755 if relative == PurePosixPath("bin/cvc5") else 0o644)
+                prepared.add(relative)
             if destination.exists() or destination.is_symlink():
                 raise ValueError("cvc5 destination must be absent")
             # Publish only after every curated file has passed validation.
-            shutil.move(str(Path(temporary) / "files"), destination)
-            for relative, _ in prepared:
-                (destination / relative).chmod(0o755 if relative == PurePosixPath("bin/cvc5") else 0o644)
+            (Path(temporary) / "files").rename(destination)
     return destination / "bin/cvc5"
 
 

@@ -6,6 +6,7 @@ from pathlib import Path
 import stat
 import tempfile
 import unittest
+from unittest.mock import patch
 import warnings
 import zipfile
 
@@ -79,6 +80,22 @@ class Fixture(unittest.TestCase):
                     fetch.install(self.pins, self.out, self.archive)
                 self.assertFalse(self.out.exists())
                 self.assertFalse((self.root / "escape").exists())
+
+    def test_mode_failure_leaves_no_destination_and_retry_succeeds(self):
+        self.prepare()
+        with patch.object(Path, "chmod", side_effect=OSError("injected mode failure")):
+            with self.assertRaisesRegex(OSError, "injected mode failure"):
+                fetch.install(self.pins, self.out, self.archive)
+        self.assertFalse(self.out.exists())
+        self.assertEqual(fetch.install(self.pins, self.out, self.archive).read_bytes(), self.body)
+
+    def test_normalized_output_aliases_refuse_before_publication(self):
+        prefix = "cvc5-Linux-x86_64-static/licenses/"
+        for alias in ["x", "./x", "/x"]:
+            self.prepare([(prefix + "x", b"first"), (prefix + alias, b"second")])
+            with self.assertRaises(ValueError):
+                fetch.install(self.pins, self.out, self.archive)
+            self.assertFalse(self.out.exists())
 
     def test_unknown_host_and_noncanonical_digest_refuse(self):
         self.prepare()
