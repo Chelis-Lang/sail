@@ -95,3 +95,29 @@ component scope; surrounding I/O, origin and service composition remain open.
 Original strict failures and the rejected implementation remain retained. The
 successor's acceptance does not promote the earlier attempts or the unimplemented
 backend stages.
+
+## Contributor export inspector argument correction
+
+Issue #756 records a native Unix non-UTF-8 argv panic in the contributor-only
+`inspect_export` example on main `ddab18b6`. The fix uses fallible `args_os`
+conversion and emits the stable SAIL6301 admission error with exit 2. Its
+decoder, positive JSON output and execution/proof boundaries are unchanged.
+The original native reproduction is retained in the rejected stage archive
+`a01da28121b19576f36e837ae1a242b33929e27d0faea930969062d9ce2fbec7`;
+all 206 original files and link metadata were independently lead-rehashed.
+The identical argument conversion passes actual invalid-byte argv refusal in the
+Kani staging candidate. Main-based source `62e69f7b` independently passes four
+native controls (invalid native argument, missing arguments, invalid numeric
+status and malformed export), requiring exactly one SAIL6301 and no panic.
+Its complete native workspace gate passes 1,443 tests / 59 declared skips,
+including fmt/Clippy/doctests/rustdoc/layering/deny/generated-page checks. Book
+source/build/link checks pass. This is diagnostic-tooling-only scope under
+ADR0087; no additional solver/long corpus or Mac suite is claimed. All 28 original
+payloads, exact executed helper/source bundles and initial invalid Docker Git
+setup are independently lead-rehashed and externally retained: archive
+`de9c684e0a771cd151d5441e9c6d1be794074668218ebcccc9894ca5c05b2692`,
+index `41f982a82a84a0d8aa20f02255c3859668fd9a7adeea02b680c3cddda157a61e`.
+The decoder's existing error prefix is preserved exactly once. Hosted PR gates
+remain required before merge.
+No selected verifier, solver, cache, model, dependency or consumer command
+changes; the consumer skill is unaffected.
