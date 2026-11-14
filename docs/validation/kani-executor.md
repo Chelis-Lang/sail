@@ -20,3 +20,8 @@ all78 controls,316 complete generated-driver/input-map pairs and39 focused
 refusals pass; all934 raw review payloads are lead-rehashed and retained.
 The contributor inspect_tools example performs original payload inspection and
 reinspection only. Runtime authentication remains uncompiled/unqualified.
+
+| Source / attempt | Actual result |
+|---|---|
+| 1662c2dd / native1 | CI image builds successfully; container setup refuses a target-volume mount under the read-only source because target/ was not created. No Rust compilation or authenticator execution occurs. Successor creates that mount point explicitly. |
+| 4b0c9ae7 / native2 | Native all-target compilation refuses the new FIFO control's nonexistent rustix::fs::mkfifo convenience function. Successor uses the pinned API mkfifoat(CWD, path, mode); no test or bound is weakened. No passing focused suite or runtime authentication is claimed. |

@@ -292,7 +292,8 @@ mod tests {
         std::os::unix::fs::symlink(root.join("tool"), root.join("alias"))?;
         assert!(inventory(&root, &BTreeSet::new()).is_err());
         std::fs::remove_file(root.join("alias"))?;
-        rustix::fs::mkfifo(
+        rustix::fs::mkfifoat(
+            rustix::fs::CWD,
             root.join("fifo"),
             rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
         )?;
