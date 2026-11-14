@@ -202,6 +202,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | `SAIL5101` | A portfolio file or directory cannot be read | Check the path |
 | `SAIL5102` | Invalid portfolio options | Fix the options, for example a non-zero number of configurations |
 | `SAIL5103` | A diagnostic Z3 trace is unsupported, malformed, incomplete or exceeds its bounds | Retain the original capture; use the pinned producer and complete bounded trace, without treating missing measurements as zero |
+| `SAIL5104` | Original diagnostic check/session descriptions are unavailable, inconsistent, ambiguous or over budget | Preserve original timing/AIR/session records; do not select a guessed replay input |
 
 ## Raw SMT runtime
 
