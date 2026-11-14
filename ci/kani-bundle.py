@@ -2,6 +2,8 @@
 """Install the exact Linux Kani release bundle, without selecting a backend."""
 from pathlib import Path, PurePosixPath
 import argparse
+import ctypes
+import errno
 import hashlib
 import json
 import os
@@ -91,6 +93,30 @@ def relative(name):
     return path
 
 
+def publish(stage, destination):
+    """Atomically refuse every existing Linux destination, including races.
+
+    The fixed libc signature takes two retained NUL-free path-byte buffers and
+    scalar constants only. No pointer arithmetic, callbacks or transferred
+    memory ownership is involved. Unsupported libc/kernel/filesystem cases
+    fail; a check-then-rename fallback would lose the no-replace guarantee.
+    """
+    source_bytes, destination_bytes = os.fsencode(stage), os.fsencode(destination)
+    if b"\0" in source_bytes or b"\0" in destination_bytes:
+        raise ValueError("NUL in publication path")
+    library = ctypes.CDLL(None, use_errno=True)
+    try:
+        rename = library.renameat2
+    except AttributeError as error:
+        raise OSError(errno.ENOSYS, "atomic no-replace rename is unavailable") from error
+    rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    rename.restype = ctypes.c_int
+    # Linux AT_FDCWD and RENAME_NOREPLACE. Failure never falls back to rename.
+    if rename(-100, source_bytes, -100, destination_bytes, 1) != 0:
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code), str(destination))
+
+
 def unpack(archive, pin, destination):
     """Publish a complete private same-filesystem tree in one rename."""
     if os.path.lexists(destination):
@@ -153,9 +179,10 @@ def unpack(archive, pin, destination):
             if directory.is_dir():
                 directory.chmod(0o755)
         stage.chmod(0o755)
-        stage.rename(destination)
+        publish(stage, destination)
+        stage = None
     finally:
-        if stage.exists():
+        if stage is not None and stage.exists():
             shutil.rmtree(stage)
 
 

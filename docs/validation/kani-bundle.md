@@ -1,6 +1,6 @@
 # Kani release-bundle fixture
 
-Status: implemented; eight local Python control groups pass. Native installation,
+Status: implemented; ten local Python control groups pass. Native installation,
 full local gate and fresh review remain pending. No Kani executor, CLI backend,
 nightly Rust authentication, currentness or reusable proof authority is added.
 
@@ -22,3 +22,13 @@ Documentation changed: ADR0137, this record, crate README and changelog.
 No released user command changes; consumer skill and installation recipes stay
 unchanged. There is no selected-runtime, model/refinement or dependency change,
 so no corpus, benchmark, formal or Mac result is claimed for this fixture.
+
+
+Independent review rejects initial `c6259d9d`: the last existence check and
+Path.rename can replace a concurrently created empty destination directory.
+The successor uses Linux renameat2 with RENAME_NOREPLACE, never a fallback.
+Unsupported libc/kernel/filesystem cases refuse without publication. A fixed,
+fully typed stdlib ctypes binding keeps both NUL-free byte buffers alive for
+the synchronous call. No Rust source or dependency is added. Two new controls
+retain a raced empty directory's original inode and refuse an unavailable
+primitive/NUL path. Current native qualification and successor review are pending.

@@ -20,7 +20,10 @@ size, digest and executable bit in engine/kani/bundle-linux.json. Copy the pin
 unchanged into the unpublished sail-kani package through crate-resources.
 The contributor-only installer verifies the archive, validates the complete
 canonical file inventory and prepares final file/directory modes in a private
-same-filesystem staging tree before one rename. Existing destinations refuse;
+same-filesystem staging tree before one atomic Linux renameat2(RENAME_NOREPLACE). An isolated stdlib
+ctypes binding declares the fixed scalar/path argument types and retains both
+NUL-free byte buffers for the call. Unsupported libc, kernel or filesystem
+cases fail without fallback. Existing destinations, including racing ones, refuse;
 links, special files, aliases, duplicates and extra or missing members refuse.
 Downloads, pin size, member count, expanded bytes and path depth remain bounded.
 All original files and notices are retained. No third-party dependency is added.

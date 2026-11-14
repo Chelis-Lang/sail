@@ -54,7 +54,7 @@ class BundleTests(unittest.TestCase):
     def test_original_files_and_modes_exist_before_single_publication(self):
         archive, pin = self.fixture()
         destination = self.root / "installed"
-        rename = Path.rename
+        rename = bundle.publish
         seen = []
         def observe(stage, target):
             self.assertEqual(target, destination)
@@ -69,7 +69,7 @@ class BundleTests(unittest.TestCase):
             return rename(stage, target)
         previous = os.umask(0o077)
         try:
-            with patch.object(Path, "rename", observe):
+            with patch.object(bundle, "publish", observe):
                 bundle.unpack(archive, pin, destination)
         finally:
             os.umask(previous)
@@ -118,11 +118,34 @@ class BundleTests(unittest.TestCase):
 
     def test_faulted_mode_or_rename_never_publishes_and_retry_succeeds(self):
         archive, pin = self.fixture()
-        for operation in ["chmod", "rename"]:
-            with patch.object(Path, operation, side_effect=OSError("injected failure")):
+        for owner, operation in [(Path, "chmod"), (bundle, "publish")]:
+            with patch.object(owner, operation, side_effect=OSError("injected failure")):
                 self.refused(archive, pin)
         bundle.unpack(archive, pin, self.root / "installed")
         self.assertEqual((self.root / "installed/license-notes.txt").read_bytes(), self.expected["license-notes.txt"])
+
+    def test_raced_empty_destination_is_never_replaced(self):
+        archive, pin = self.fixture()
+        destination = self.root / "installed"
+        publish = bundle.publish
+        identity = []
+        def raced(stage, target):
+            target.mkdir()
+            identity.append(target.stat().st_ino)
+            return publish(stage, target)
+        with patch.object(bundle, "publish", raced):
+            with self.assertRaises(FileExistsError):
+                bundle.unpack(archive, pin, destination)
+        self.assertEqual(destination.stat().st_ino, identity[0])
+        self.assertEqual(list(destination.iterdir()), [])
+        self.assertEqual(list(self.root.glob(".sail-kani-*")), [])
+
+    def test_unsupported_publication_and_nul_paths_refuse(self):
+        archive, pin = self.fixture()
+        with patch.object(bundle.ctypes, "CDLL", return_value=object()):
+            self.refused(archive, pin)
+        with self.assertRaises(ValueError):
+            bundle.publish("bad\0path", self.root / "out")
 
     def test_pin_is_strict_and_bounded(self):
         pin = bundle.load_pin(PIN)
