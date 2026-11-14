@@ -195,9 +195,22 @@ impl Plan {
     }
 
     /// Called only after ordinary whole-run Current and receipt commit.
-    pub(crate) fn publish(&self, runtime: &receipts::Runtime) -> Option<()> {
+    pub(crate) fn publish(&self, runtime: &receipts::Runtime) -> Vec<String> {
+        let mut summary = super::publication::Summary::default();
+        if let Err(reason) = self.publish_checked(runtime, &mut summary) {
+            summary.record(reason);
+        }
+        summary.notes()
+    }
+
+    fn publish_checked(
+        &self,
+        runtime: &receipts::Runtime,
+        summary: &mut super::publication::Summary,
+    ) -> Result<(), super::publication::Decline> {
+        use super::publication::Decline;
         if !self.caller_environment.for_run(&runtime.run_id) {
-            return None;
+            return Err(Decline::CallerEnvironment);
         }
         // The source snapshot runs while the candidates and their outputs are
         // read; nothing is retained before it is known.
@@ -213,12 +226,13 @@ impl Plan {
             };
             (snapshot, checked)
         });
-        let snapshot = snapshot?;
+        let snapshot = snapshot.ok_or(Decline::SourceSnapshot)?;
         let live = std::fs::read_dir(self.root.join("live-graphs"))
-            .ok()?
+            .map_err(|_| Decline::LiveGraphs)?
             .map(|entry| receipts::read::<String>(&entry.ok()?.path()))
-            .collect::<Option<BTreeSet<_>>>()?;
-        for (directory, receipt, candidate) in checked? {
+            .collect::<Option<BTreeSet<_>>>()
+            .ok_or(Decline::LiveGraphs)?;
+        for (directory, receipt, candidate) in checked.ok_or(Decline::Candidates)? {
             if candidate.basis.source_revision != snapshot.revision {
                 continue;
             }
@@ -229,8 +243,9 @@ impl Plan {
                 candidate.outputs,
                 candidate.stdout,
                 candidate.stderr,
-            )?;
-            let _ = archive::retain(
+            )
+            .ok_or(Decline::Entry)?;
+            if let Err(reason) = archive::retain(
                 &self.root,
                 &entry,
                 [
@@ -239,9 +254,11 @@ impl Plan {
                     &candidate.reads_path,
                 ],
                 &live,
-            );
+            ) {
+                summary.record(reason);
+            }
         }
-        Some(())
+        Ok(())
     }
 
     /// This run's requested-target candidates whose receipt, outputs and
