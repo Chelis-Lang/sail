@@ -95,3 +95,17 @@ component scope; surrounding I/O, origin and service composition remain open.
 Original strict failures and the rejected implementation remain retained. The
 successor's acceptance does not promote the earlier attempts or the unimplemented
 backend stages.
+
+## Contributor export inspector argument correction
+
+Issue #756 records a native Unix non-UTF-8 argv panic in the contributor-only
+`inspect_export` example on main `ddab18b6`. The fix uses fallible `args_os`
+conversion and emits the stable SAIL6301 admission error with exit 2. Its
+decoder, positive JSON output and execution/proof boundaries are unchanged.
+The original native reproduction is retained in the rejected stage archive
+`a01da28121b19576f36e837ae1a242b33929e27d0faea930969062d9ce2fbec7`;
+all 206 original files and link metadata were independently lead-rehashed.
+The identical fixed example passes actual invalid-byte argv refusal in the
+Kani staging candidate; separate main-based native and PR gates are pending.
+No selected verifier, solver, cache, model, dependency or consumer command
+changes; the consumer skill is unaffected.
