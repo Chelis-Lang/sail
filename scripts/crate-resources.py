@@ -27,6 +27,9 @@ RESOURCES = {
         "crates/sail-cli/tests/fixtures/attr/report.golden.json",
         "crates/sail-verus/tests/fixtures/requirement-attribution/positive-requested-target.json",
     ),
+    "sail-kani": (
+        "engine/kani/bundle-linux.json",
+    ),
     "sail-mcp": (
         "crates/sail-cli/tests/fixtures/attr/report.golden.json",
     ),

@@ -5,3 +5,8 @@ This first library slice decodes bounded observations from pinned Kani 0.68.0
 and CBMC 6.11.0. It neither invokes Kani nor creates proof receipts, currentness,
 cache authority or an ordinary verified result. Bounded native Linux decoder controls and independent review pass. CLI execution
 and complete direct-Kani pilot qualification are separate gates. See ADR 0128.
+
+The internal Linux release-bundle pin authenticates the official 0.68.0 archive
+and every original file. `ci/kani-bundle.py` installs that fixture only; it does
+not install or authenticate the external nightly Rust toolchain, execute a
+harness, enable cache reuse or make a CLI backend available.

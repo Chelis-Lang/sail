@@ -1,0 +1,616 @@
+{
+  "schema_version": 1,
+  "version": "0.68.0",
+  "cbmc_version": "6.11.0",
+  "host": "x86_64-unknown-linux-gnu",
+  "url": "https://github.com/model-checking/kani/releases/download/kani-0.68.0/kani-0.68.0-x86_64-unknown-linux-gnu.tar.gz",
+  "archive_bytes": 140315343,
+  "archive_sha256": "32e2b484d73ede0bbf64a2cf0879c4259422497d8aec4ee67d448de9ae7843d3",
+  "rust_toolchain": "nightly-2026-08-21-x86_64-unknown-linux-gnu",
+  "rustc_version": "rustc 1.100.0-nightly (8925ea358 2026-08-20)",
+  "files": {
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libversion_check-92a0a33946ccc8cb.rlib": {
+      "bytes": 1199888,
+      "sha256": "79075ec825d768946bc473a70302909e59c270a8f699a9e33c9021f11d8f5770",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libpanic_abort-cd2c6b6e8c3edccf.rlib": {
+      "bytes": 11364,
+      "sha256": "3ef70178cd95dde85ce39bd2e5fbeca4e47436d04b754cd4fbbb062ee9008486",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libstrum-b8798cef98c1d67e.rlib": {
+      "bytes": 17190,
+      "sha256": "096edd36b192a5933636905ba58d00fb00a05c47c5e0ee69f611944cd56cef4a",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libtest-12e0fff1151d011d.rlib": {
+      "bytes": 13048760,
+      "sha256": "f96e1ffe9b5f29cf32f8fc0be41e5f33653a4ee1de08da3180a0e59ebe025ec6",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_demangle-ba556f9e8986d5c1.rlib": {
+      "bytes": 1390108,
+      "sha256": "f4c95a030236a28696a80cd116534ba31d95d9a2869907637c177288966ed200",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcore-cdaf473363b8cc9b.rlib": {
+      "bytes": 70900348,
+      "sha256": "d822665d6a0e0166d6106b987bf54cd785f749b193e01e4a6154e3020799e95d",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libsyn-4609cc001801a1d3.rlib": {
+      "bytes": 18945652,
+      "sha256": "6bf45627309cb33e1337067904b558181c5f3c4b89f78ed3076447a2b303b388",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libstrum_macros-34d48476a32fab07.so": {
+      "bytes": 19545200,
+      "sha256": "5b23c3762b5f9e364d6525e8902b18d2883fc10b3b2c19c2eb3cda2d16d1a595",
+      "executable": true
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libstd-120433d162678dd0.rlib": {
+      "bytes": 33872310,
+      "sha256": "66caf0a3516656b23a4a6ac74b4c0101eba8b524e2ed187358107a9c3e32bf75",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libminiz_oxide-361d9b1b22c51e8a.rlib": {
+      "bytes": 787176,
+      "sha256": "4f6ebaa825452cc0104ac356a521f15b5f8f7d02dc3619e5aafaee4da52ce386",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libunicode_ident-9a6188327dfb93b8.rlib": {
+      "bytes": 30318,
+      "sha256": "30c9566b9e54632a4e164310b9b75a2696f9badf32c9c53d9e8840dc26d75275",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_std_workspace_alloc-d97f930f19c49a97.rlib": {
+      "bytes": 4592,
+      "sha256": "78fa5d5da6f61af173dc2156aaa3b9b4e3242aab402489e72d24db7cd225a8b3",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libgetopts-510015712d1144c2.rlib": {
+      "bytes": 1421904,
+      "sha256": "aed36b6d8c7bb0139fd0d8f9a9465cc0f5c2b643c59a77beb52e3e482e8a27bc",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libheck-b564d0486ea61403.rlib": {
+      "bytes": 648032,
+      "sha256": "39ca63951dd23537536c509821dc88771222ad4521ecfaec0efa1b4c1c6d2d4f",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/liblibc-068e9c3121dcbdb2.rlib": {
+      "bytes": 4468580,
+      "sha256": "7505cdc155dcf18a522faf75c6a5f2f4e99b51fbdaf2c8ee17ff92d8407a86ba",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/liballoc-608b5a56abfc8b70.rlib": {
+      "bytes": 8530944,
+      "sha256": "0d566684723d2f0407e5132404fcbb67ed06ca1bea6de4b0cb03fd17bbe92f7d",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libaddr2line-74ce2da122e9dfb0.rlib": {
+      "bytes": 555244,
+      "sha256": "29325ddbc03c41b6e51d0134dd5221bdf3a21bb511004db2508476d8a2142bf1",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libproc_macro2-751711f3e60db02e.rlib": {
+      "bytes": 2478714,
+      "sha256": "4c35c8095739c6b35a46e7f6661e14cc7db7a6e2cd5e3e73a8acfb980b264c47",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcfg_if-7f6bc2a9cd8cad9b.rlib": {
+      "bytes": 7850,
+      "sha256": "f9f52b7298d319434107842894a11d8eb355b10d3845b2d80ae140c64b96a7b2",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_literal_escaper-74c2f66ef67078cd.rlib": {
+      "bytes": 101816,
+      "sha256": "25698d1001c7a34f8d73c24b1e335083b659fc8bd46150da534e4ab3e57e5864",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_std_workspace_core-c3159e3204bbd37a.rlib": {
+      "bytes": 8486,
+      "sha256": "fa71de7e8ff9a1f86b852415dd281b83c44ac26eafe9358c9fad8905d501d380",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libproc_macro2_diagnostics-a1a2c583ce9b6c7f.rlib": {
+      "bytes": 723324,
+      "sha256": "f012f7d02f4cacb9a776b1af08cb2717402a08ddfcbaf0925fbf388b77ae9f01",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libstd_detect-11afb1b38b3493db.rlib": {
+      "bytes": 695492,
+      "sha256": "2f4da2fb91b83cd2f25b0b80c8648fd7adc43e34730a0bb10716467d2b745965",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libproc_macro-e437f8cb778fd09a.rlib": {
+      "bytes": 6998120,
+      "sha256": "864902a91a5e8e70b7afd35a41f1b3d95570c853cb32a7ea0fa8c6b450295d8f",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libmemchr-6a7838e03139a615.rlib": {
+      "bytes": 2499350,
+      "sha256": "3aa058d062ffa8d1e757f4ad3b751cd797512b1ab2401d96c77d70e9c5eee38c",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libobject-695d89397f82d296.rlib": {
+      "bytes": 10374372,
+      "sha256": "a83f4b129486a5afd4ac0ecabd0e76267a4f562eb4a21c9d6ec5732c0bcf398d",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libcompiler_builtins-c4de064a9f8355cb.rlib": {
+      "bytes": 6275320,
+      "sha256": "b286369a15d1316c28b4698f997f8bd7a35208306ee2c0726a6ae3d9b6a289a0",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_std_workspace_std-af73d69762682809.rlib": {
+      "bytes": 9508,
+      "sha256": "4874eff880cc8dcb089671fe71cd84d4b52a0cba3da82627cfbb2a1a7303d063",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libunwind-153cfdc3f1b6d718.rlib": {
+      "bytes": 22562,
+      "sha256": "fa44468240f2ec05f9fd0a8f0ebbbf51942d4c668775b6cca054c5f898250af4",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libquote-88f45a579b178927.rlib": {
+      "bytes": 608504,
+      "sha256": "ae5f78d0d202c06b0e13206d1e553f62eb02f24a4f823491b616a51ef8b54bbe",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libhashbrown-554ca2a729311476.rlib": {
+      "bytes": 1513458,
+      "sha256": "b35a7f747f704fcd715e7f81e30453df335fcd7057f3cbcfbac3c7b98be273cb",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libadler2-c027d64d594dd7d2.rlib": {
+      "bytes": 89676,
+      "sha256": "2dc0ccb28fb26cc65f29a0626b256d99fc95225dc6c2308c5b82bafc87f14fe8",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libpanic_unwind-6a0a55c356954cf3.rlib": {
+      "bytes": 112614,
+      "sha256": "69eaa9781d7b1ce7a35c3605d4d3d7e809f1c4e9bc819daf0d1a7f8f457586ad",
+      "executable": false
+    },
+    "playback/lib/rustlib/x86_64-unknown-linux-gnu/lib/libgimli-ddc4fcae3a51acdc.rlib": {
+      "bytes": 7505602,
+      "sha256": "79412ef57693a11d034be3a128fb20e307c7cbc785f9b9732ed250b396b1b491",
+      "executable": false
+    },
+    "playback/lib/libkani_macros.so": {
+      "bytes": 21156136,
+      "sha256": "5fa698d4c2dcf749e7ebf8cc124590e55b14461ed31a5c871d6b5685459cc67e",
+      "executable": true
+    },
+    "playback/lib/libkani_core-03a4ee668ce1f9e3.rlib": {
+      "bytes": 185024,
+      "sha256": "c4df85277330700312782475e0483a46134e3342cdfc96f4826d81f4c73ebb0d",
+      "executable": false
+    },
+    "playback/lib/libkani.rlib": {
+      "bytes": 954346,
+      "sha256": "e30f1500c40379de2d6007e329c42ff7a9cc9865b274061a2b25e9ee597e6e7b",
+      "executable": false
+    },
+    "playback/lib/libstd.rlib": {
+      "bytes": 9978,
+      "sha256": "72d387d266206c1130e2fa3032aca05167d215c2c3b49b0aed7d8bd6f4248c70",
+      "executable": false
+    },
+    "rust-toolchain-version": {
+      "bytes": 43,
+      "sha256": "a5bac1f291b25c5c48cbc99b2ee4720fb2ef8f2bbcba3b13d6ed652cf07f9ec8",
+      "executable": false
+    },
+    "rustc-version": {
+      "bytes": 45,
+      "sha256": "b700111259f7c03ab98b99a385e21da72557570d71349645a4b5ae445da8dc55",
+      "executable": false
+    },
+    "bin/kani-cov": {
+      "bytes": 2770936,
+      "sha256": "635bb17e2077d7eddf81c4e71643c8582e557a65d81a3f8b163bf8ae44ac6598",
+      "executable": true
+    },
+    "bin/kani-compiler": {
+      "bytes": 11415008,
+      "sha256": "d627c15f3e46f2ffd95a08a2e16e0c1d7dbbe1cb7ee9c05d69a8bd14a4336b71",
+      "executable": true
+    },
+    "bin/goto-cc": {
+      "bytes": 7271256,
+      "sha256": "8e58405a2a1c7ec56db52d955cdd0f54a5cca1be09dfdd4f754ea72d111b8215",
+      "executable": true
+    },
+    "bin/goto-analyzer": {
+      "bytes": 10427488,
+      "sha256": "1086e4a638070edff88a89222410353e4292d4c965e81af242b85f1939c42e1e",
+      "executable": true
+    },
+    "bin/goto-instrument": {
+      "bytes": 15559744,
+      "sha256": "3b4ac9c5d41f72db7c455d45f9f7de5dc7240d3b020a1c68a6b210ad435d4c0c",
+      "executable": true
+    },
+    "bin/kissat": {
+      "bytes": 529600,
+      "sha256": "53e430eed32027184b787e1450672e6ac40b3b806c13e1c3ea272232098fecab",
+      "executable": true
+    },
+    "bin/kani-driver": {
+      "bytes": 8485320,
+      "sha256": "a0f84272664e45a6b9f1ad7671c2e20aa4523676fb57f5310c18b0a359278a6d",
+      "executable": true
+    },
+    "bin/cbmc": {
+      "bytes": 18555912,
+      "sha256": "01ae2ae74a9dc5673631e42256f780393081650f4a22d6f4220566c0deb1643a",
+      "executable": true
+    },
+    "lib/libkani_core-47948813a3681a94.rlib": {
+      "bytes": 184124,
+      "sha256": "68c271bd1992d925936f5ec495e56ab0050fdea4d5692288268da79c315274ed",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libversion_check-92a0a33946ccc8cb.rlib": {
+      "bytes": 1199888,
+      "sha256": "79075ec825d768946bc473a70302909e59c270a8f699a9e33c9021f11d8f5770",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_std_workspace_alloc-249d0d9fb763b7e7.rlib": {
+      "bytes": 3612,
+      "sha256": "06190b61eb8d09f88d60d5acac528fd1620c8a198fa72dc298d8059a40f1137a",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libcfg_if-78012f0d32b8b438.rlib": {
+      "bytes": 6972,
+      "sha256": "6c28a163b7890dd454cc987b51881b339586018b118c7e6a8ecf5f6ae63e384d",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libhashbrown-15bfbeb329ac4218.rlib": {
+      "bytes": 1403476,
+      "sha256": "929c699ebebc03fc0fbf654c6e6c8d2c6a648c048d0a8378020087204453be32",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libstrum-b8798cef98c1d67e.rlib": {
+      "bytes": 17190,
+      "sha256": "096edd36b192a5933636905ba58d00fb00a05c47c5e0ee69f611944cd56cef4a",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libadler2-52a55e88f3f2da9f.rlib": {
+      "bytes": 35348,
+      "sha256": "ccea9ae383c9a1374eda22039f3fcd026a3091afbf4f074c3984efe256765f35",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libunwind-326b2c3b74173ded.rlib": {
+      "bytes": 21684,
+      "sha256": "ec85341015947badc86898b671a2aad84c69d493cee686d9fafa6d6ffd97ef2c",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libstd_detect-96dbaaaa423fc346.rlib": {
+      "bytes": 618404,
+      "sha256": "e12b02b160583e29970bae3190c81817a198fdb1b0bde912bb73db47660d1fe6",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libsyn-4609cc001801a1d3.rlib": {
+      "bytes": 18945652,
+      "sha256": "6bf45627309cb33e1337067904b558181c5f3c4b89f78ed3076447a2b303b388",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libgetopts-6862b7e04a65e6a0.rlib": {
+      "bytes": 198684,
+      "sha256": "fcff6a6f17b1bd5f216cfe9d9d5aa8f7d108b3ae2390488642efeb864b60b6e0",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libstrum_macros-34d48476a32fab07.so": {
+      "bytes": 19545200,
+      "sha256": "5b23c3762b5f9e364d6525e8902b18d2883fc10b3b2c19c2eb3cda2d16d1a595",
+      "executable": true
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libunicode_ident-9a6188327dfb93b8.rlib": {
+      "bytes": 30318,
+      "sha256": "30c9566b9e54632a4e164310b9b75a2696f9badf32c9c53d9e8840dc26d75275",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libheck-b564d0486ea61403.rlib": {
+      "bytes": 648032,
+      "sha256": "39ca63951dd23537536c509821dc88771222ad4521ecfaec0efa1b4c1c6d2d4f",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libcompiler_builtins-5182fb36d65c607a.rlib": {
+      "bytes": 2867044,
+      "sha256": "a03ae62476b5e6e5eee34042576b4e84613581893eb87201272444e9e122a847",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libstd-71372c34d5050188.rlib": {
+      "bytes": 8342036,
+      "sha256": "fa9a094e1bf9cbab275ed58b847842cefb55d36ef4de87a4e63cdab1067c323a",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libaddr2line-d0fd1f27f215e8f6.rlib": {
+      "bytes": 351540,
+      "sha256": "3892e9b0832df1c02a28b9bbd18f025c11c7701a364112859a5d260993f97afa",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_std_workspace_core-954d47fafe9dbfe7.rlib": {
+      "bytes": 7516,
+      "sha256": "7a99f766f524b8af64524250cc06d1a90cf45dd633bd14722e0516f85770bf77",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libproc_macro2-751711f3e60db02e.rlib": {
+      "bytes": 2478714,
+      "sha256": "4c35c8095739c6b35a46e7f6661e14cc7db7a6e2cd5e3e73a8acfb980b264c47",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libproc_macro2_diagnostics-a1a2c583ce9b6c7f.rlib": {
+      "bytes": 723324,
+      "sha256": "f012f7d02f4cacb9a776b1af08cb2717402a08ddfcbaf0925fbf388b77ae9f01",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_std_workspace_std-7406d10e58380fa2.rlib": {
+      "bytes": 8548,
+      "sha256": "4d0b7684a66d4c8ab02857251abde1bb8cfd85b5b796630f4ab6b22e5e70440a",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libmemchr-3fed2ffc932fa9f7.rlib": {
+      "bytes": 1352708,
+      "sha256": "743f4f41d6b72486480b5ade3a8dbc4c75f86a291c65c678e192d9e45c1850ad",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libpanic_abort-8fb4789a2abb2d82.rlib": {
+      "bytes": 4660,
+      "sha256": "4c4f8eea494e13788d5fe4fe5743ab4771e302596a9febcc71e0ddc7296d5eb4",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/liballoc-4c5e29bee490bff8.rlib": {
+      "bytes": 6551908,
+      "sha256": "145eaa5d9b2e392f030a6a37794c3334cc5df8979d97e8c79636d995f3fec7cb",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libminiz_oxide-dbbcfcfcdc525eac.rlib": {
+      "bytes": 281772,
+      "sha256": "0c561ee84e2ed032983a1087128a2fc9e1f984648e086c052744f118d9068a96",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libcore-8e75218055a4771a.rlib": {
+      "bytes": 64790348,
+      "sha256": "72b277eb3f3bf311762c060b9b55d78130e72ccd2da2994c2b4ed9f9a74cd281",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libquote-88f45a579b178927.rlib": {
+      "bytes": 608504,
+      "sha256": "ae5f78d0d202c06b0e13206d1e553f62eb02f24a4f823491b616a51ef8b54bbe",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/liblibc-31d96d129380b17b.rlib": {
+      "bytes": 4431516,
+      "sha256": "509df2e113f01e6b65a610db508926f7ba993f2d36f9d54d01a509afa880eafb",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libpanic_unwind-5e80a37984e578db.rlib": {
+      "bytes": 12252,
+      "sha256": "22e3a1d87be83f3b7ee77d7dd4f16c733acc7847250f358124452900f1b562b4",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_demangle-274f1282c368e804.rlib": {
+      "bytes": 310132,
+      "sha256": "b327f3047adbcc8beeb65d9692046013771116c94f8cd97c8f087c38f0d552d3",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libtest-aedeb6ba5bc75db5.rlib": {
+      "bytes": 1143916,
+      "sha256": "a68c49bb9735aadf839878a40135198559f3d6a14bc6eda1c5348c29b76ce5c0",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/librustc_literal_escaper-31f8795bbbedd510.rlib": {
+      "bytes": 91612,
+      "sha256": "8fc995a5cc00b0b57cebcd60b8c5a61f8d07ef0eca6087be1db1a379287d235c",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libproc_macro-49170857109ef347.rlib": {
+      "bytes": 1471844,
+      "sha256": "456eca8def70979f31baca3f2ed97c1cf7c4d4adf35a3ced0547fe53a435bf60",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libgimli-d5f7ae8b9dcc46c1.rlib": {
+      "bytes": 5425092,
+      "sha256": "f1553c2199885b6d946f81084a1398841fa56fa45d8b6e8af0047e377200821f",
+      "executable": false
+    },
+    "lib/rustlib/x86_64-unknown-linux-gnu/lib/libobject-aa7b658e04386409.rlib": {
+      "bytes": 7761740,
+      "sha256": "eea890b01a3e2d8f91ea7f4122c8ea891acff6402518f26766d40b1ccd89bb87",
+      "executable": false
+    },
+    "lib/libkani_macros.so": {
+      "bytes": 21156136,
+      "sha256": "5fa698d4c2dcf749e7ebf8cc124590e55b14461ed31a5c871d6b5685459cc67e",
+      "executable": true
+    },
+    "lib/libkani.rlib": {
+      "bytes": 605428,
+      "sha256": "297e81a3ccfb1ac289e53e911eda8fe7e6231062ff6c5662875b354dc42450ea",
+      "executable": false
+    },
+    "lib/libstd.rlib": {
+      "bytes": 32620,
+      "sha256": "70cbfde228b09561e23315ac254a463efb6bc7f206f51595bae622d896ccc211",
+      "executable": false
+    },
+    "no_core/lib/libkani_core.rlib": {
+      "bytes": 184520,
+      "sha256": "6ed43bad8940c995f76fd2ad8209d751d01978c62f5d5b8deeb865d218a1e5f6",
+      "executable": false
+    },
+    "no_core/lib/libkani_macros.so": {
+      "bytes": 21162264,
+      "sha256": "bbc29137dd555ed29571cfae1704e2e4017c78329d7cec561c48e0132ace27f1",
+      "executable": true
+    },
+    "license-notes.txt": {
+      "bytes": 1156,
+      "sha256": "cc498c984467d903297d661913abd73d799f89b1f982b1aecbb0f598db673198",
+      "executable": false
+    },
+    "library/kani/Cargo.toml": {
+      "bytes": 371,
+      "sha256": "0063f1fc6ce5c5ad0f6489ef5798f769e47d41c8b18a879478ecf3ed04da3f66",
+      "executable": false
+    },
+    "library/kani/build.rs": {
+      "bytes": 498,
+      "sha256": "18546973123e631383a338012ff171ac41b9d005d252355ba93383ca2e4fd8ab",
+      "executable": false
+    },
+    "library/kani/kani_lib.c": {
+      "bytes": 5982,
+      "sha256": "4a3c653c5cf540de061dc6044b85cad196b1321119f936621e692e13a88cd6b6",
+      "executable": false
+    },
+    "library/kani/src/concrete_playback.rs": {
+      "bytes": 3204,
+      "sha256": "26d6332001525cb728509a2d2804edba5841800a469dafe1b1fc7bccd088b9da",
+      "executable": false
+    },
+    "library/kani/src/iter.rs": {
+      "bytes": 637,
+      "sha256": "c49b3ce607824ca0886f5148eebca766c93d61dafaca1b1192f9d1f7ed2119d0",
+      "executable": false
+    },
+    "library/kani/src/tuple.rs": {
+      "bytes": 992,
+      "sha256": "9a3adf6d0b7ea79314c0e59d1b528842f5480440b95971666cc7a0736808d8fa",
+      "executable": false
+    },
+    "library/kani/src/futures.rs": {
+      "bytes": 10266,
+      "sha256": "d44107d0f6034da5923fcde1ccb0ed8e4ea30342b62b9bd3881462672fa6df78",
+      "executable": false
+    },
+    "library/kani/src/models/mod.rs": {
+      "bytes": 12231,
+      "sha256": "561c90b3d29211d6594c5862cac58e36bc54dd8d55dcc7d128e8ba8cdce0b862",
+      "executable": false
+    },
+    "library/kani/src/lib.rs": {
+      "bytes": 4223,
+      "sha256": "1ab8bd42401d675f254c123ce1caab68055cc8b1bf3147e8bd53d9423cfd5e57",
+      "executable": false
+    },
+    "library/kani/src/arbitrary.rs": {
+      "bytes": 9198,
+      "sha256": "ecd72d266befa076e73c9756f7cbcc2de8860acaea628b144a82fe726daa3f00",
+      "executable": false
+    },
+    "library/kani/src/shadow.rs": {
+      "bytes": 3032,
+      "sha256": "a3e9fe9fa8b844ae05ab51d03a391c178016e7fa3d33b8d4a458647eae97fe65",
+      "executable": false
+    },
+    "library/kani/src/bounded_arbitrary.rs": {
+      "bytes": 3631,
+      "sha256": "69115f8327782f9aea02abb20ad9f42adbe5c631eacef9b82d47d9bd596334c8",
+      "executable": false
+    },
+    "library/kani/src/vec.rs": {
+      "bytes": 952,
+      "sha256": "ecd0454090ea8f9861c821a7f216d827a269bac7215c4b555493774f4e6df467",
+      "executable": false
+    },
+    "library/kani/src/contracts.rs": {
+      "bytes": 12629,
+      "sha256": "05b329fa34923824ffe0f6e488a61bf06ff6bf99d2a0be990f951d50a1dc38ac",
+      "executable": false
+    },
+    "library/std/Cargo.toml": {
+      "bytes": 395,
+      "sha256": "5f6b75e863d33d258f9b28beb85fe0a51665a80ece20e566667a15cfeaf3abb6",
+      "executable": false
+    },
+    "library/std/src/lib.rs": {
+      "bytes": 11352,
+      "sha256": "3cd5256bf7e361323a06eed0dba19330376d514ff98b43ea236690d93b5b2c29",
+      "executable": false
+    },
+    "library/std/src/process.rs": {
+      "bytes": 393,
+      "sha256": "366282f235e1eaf12b144165e45cdbaabaa9d1cb7267643f740c8703fc102e1d",
+      "executable": false
+    },
+    "library/kani_macros/Cargo.toml": {
+      "bytes": 605,
+      "sha256": "788dba9e7dfe46f8d70b6b902978a8f2ae711aa9cc8fb3116775514cf5ada960",
+      "executable": false
+    },
+    "library/kani_macros/build.rs": {
+      "bytes": 205,
+      "sha256": "5ab93eafbf57b56c13767247a46a86b4ec33cdd2bdba33946e10830220141dcb",
+      "executable": false
+    },
+    "library/kani_macros/src/derive.rs": {
+      "bytes": 21923,
+      "sha256": "b03700170a1e5e828cfa7f62da8b5b76b7315eb2ffc702ae6a1aa9963c6611b2",
+      "executable": false
+    },
+    "library/kani_macros/src/derive_bounded.rs": {
+      "bytes": 6255,
+      "sha256": "e4d0f4d49686c1dadb6cff4541e62ec7c1b8d815ee44cc078835eb9a131f81ce",
+      "executable": false
+    },
+    "library/kani_macros/src/lib.rs": {
+      "bytes": 26912,
+      "sha256": "64bf7f7b727ce0dbfee5a44c3d5b9adb21550630b7df64ec4fffa9f92aee314c",
+      "executable": false
+    },
+    "library/kani_macros/src/sysroot/contracts/shared.rs": {
+      "bytes": 10380,
+      "sha256": "a8df9244d86742adaf1bdfd991d1b6882962a6797b764d6824306f02024360e7",
+      "executable": false
+    },
+    "library/kani_macros/src/sysroot/contracts/check.rs": {
+      "bytes": 8692,
+      "sha256": "cc1d0acf1c3dedee65115dc3e3782823ab166c0e0cd69ee6d7c323558c58774d",
+      "executable": false
+    },
+    "library/kani_macros/src/sysroot/contracts/mod.rs": {
+      "bytes": 31482,
+      "sha256": "9de47903182872b43dde84ea024e6c9520a45e273c38288e66d7d30ae4f7307f",
+      "executable": false
+    },
+    "library/kani_macros/src/sysroot/contracts/initialize.rs": {
+      "bytes": 3815,
+      "sha256": "779daea7ed44cc9f2bd2a1d626a34fd079cc50a6db5e9e880c8b2515b60bae3e",
+      "executable": false
+    },
+    "library/kani_macros/src/sysroot/contracts/replace.rs": {
+      "bytes": 7301,
+      "sha256": "b7edf855b4f98d92fa507d7f9602811b689e6183fe9cee63eec167168ab85da8",
+      "executable": false
+    },
+    "library/kani_macros/src/sysroot/contracts/assert.rs": {
+      "bytes": 3762,
+      "sha256": "ec6480d46c29038b58cdac5d96ef962bd004e2d4fd16be6b9b64ee143f9cd5b4",
+      "executable": false
+    },
+    "library/kani_macros/src/sysroot/contracts/bootstrap.rs": {
+      "bytes": 7870,
+      "sha256": "889e33d011fda102a6fa592c5036f55dd6cbe054ea452429617152280b1c2f36",
+      "executable": false
+    },
+    "library/kani_macros/src/sysroot/contracts/helpers.rs": {
+      "bytes": 10094,
+      "sha256": "710d7ef9ca4ca6e2fc277a56d3f1f1b1008ae7162eaf7d8f3fc0c1826810fd30",
+      "executable": false
+    },
+    "library/kani_macros/src/sysroot/loop_contracts/mod.rs": {
+      "bytes": 29293,
+      "sha256": "3de7e01ffe75da48b5aabb32ae537100162c57e72a66ef867594e06fd4018ce8",
+      "executable": false
+    }
+  },
+  "empty_directories": [
+    "scripts"
+  ]
+}
