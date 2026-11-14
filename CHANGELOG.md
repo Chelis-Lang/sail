@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Explain optional retained-proof plan declines with their actual typed failure stage; verification falls back to normal compilation.
+
 - Stage explicit raw-SMT backend policies and an unadvertised cvc5 development
   config. Z3 retains its argv, keys and dialect; cvc5 uses separate identity and
   limits. Linux qualification passes; Mac qualification remains pending.
