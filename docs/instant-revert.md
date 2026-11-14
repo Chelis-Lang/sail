@@ -124,3 +124,12 @@ differences. The optimization is qualified for the existing default profile;
 Mac performance and general CPU savings remain unclaimed.
 The paired validation record retains all ranges, cold/edit/revert costs,
 footprint, failed attempts and the Linux evidence export limitation.
+
+
+Plan-admission explanations use the actual failed check: invalid Cargo
+metadata, unsupported target kind, runtime admission, storage preparation,
+tool hashing or caller-environment capture. They explain an optional reuse
+decline; normal verification still runs. Existing SAIL3146 human notes are
+visible with `SAIL_EXPLAIN=1`, and JSON retains the explanation. A reason does
+not establish why a file became unreadable or repair a missing build-script
+export.

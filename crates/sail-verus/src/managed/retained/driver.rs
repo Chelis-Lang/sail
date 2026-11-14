@@ -4,7 +4,7 @@
 //! independent of the verifier's final source snapshot and proof receipt.
 
 use super::super::{dependency_snapshot, files, input, receipts};
-use super::{archive, compiler, eligibility, skipped_note};
+use super::{archive, compiler, eligibility};
 use dependency_snapshot::{Content, Snapshot};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -56,34 +56,73 @@ impl Plan {
         if !super::selection::requested(mode) {
             return None;
         }
+        match Self::prepare_for_mode(metadata, target, selected, launcher, z3, run, mode, digests) {
+            Ok(plan) => Some(plan),
+            Err(decline) => {
+                notes.push(decline.note());
+                None
+            }
+        }
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "Explicit captured policy and runtime identities accompany the original plan inputs."
+    )]
+    fn prepare_for_mode(
+        metadata: &Value,
+        target: &Path,
+        selected: &BTreeSet<(String, String, String)>,
+        launcher: &Path,
+        z3: &Path,
+        run: &str,
+        mode: super::super::research::Mode,
+        digests: &crate::source_build::RunDigests,
+    ) -> Result<Self, super::decline::Decline> {
+        use super::decline::Decline;
         if matches!(mode, super::super::research::Mode::Off)
             && !eligibility::Closure::automatic_profile_candidate(metadata)
         {
-            notes.push(skipped_note(&format!(
-                "the dependency profile is not qualified: {}",
+            return Err(Decline::Profile(
                 eligibility::Closure::profile_mismatch(metadata)
-                    .unwrap_or_else(|| "vstd's dependency graph is unreadable".to_owned())
-            )));
-            return None;
+                    .unwrap_or_else(|| "vstd's dependency graph is unreadable".to_owned()),
+            ));
         }
-        let packages = metadata["packages"].as_array()?;
+        let packages = metadata["packages"]
+            .as_array()
+            .ok_or(Decline::Metadata("packages"))?;
         let provider = |name: &str| {
             packages.iter().find(|p| p["name"] == name)?["manifest_path"]
                 .as_str()
                 .map(PathBuf::from)
         };
-        let vstd = provider("vstd")?;
-        let source = vstd.parent()?.parent()?.parent()?;
-        let registry_manifest = provider("proc-macro2")?;
-        let registry = registry_manifest.parent()?.parent()?;
+        let vstd = provider("vstd").ok_or(Decline::Metadata("vstd manifest"))?;
+        let source = vstd
+            .parent()
+            .and_then(Path::parent)
+            .and_then(Path::parent)
+            .ok_or(Decline::Metadata("vstd source root"))?;
+        let registry_manifest =
+            provider("proc-macro2").ok_or(Decline::Metadata("proc-macro2 manifest"))?;
+        let registry = registry_manifest
+            .parent()
+            .and_then(Path::parent)
+            .ok_or(Decline::Metadata("registry source root"))?;
         let mut roots = BTreeSet::new();
         let mut closure = None;
         for (id, _, kind) in selected {
             if kind != "lib" {
-                return None;
+                return Err(Decline::TargetKind(kind.clone()));
             }
-            let package = packages.iter().find(|p| p["id"] == *id)?;
-            let manifest = PathBuf::from(package["manifest_path"].as_str()?);
+            let package = packages
+                .iter()
+                .find(|p| p["id"] == *id)
+                .ok_or(Decline::Metadata("selected package"))?;
+            let manifest = PathBuf::from(
+                package["manifest_path"]
+                    .as_str()
+                    .ok_or(Decline::Metadata("selected manifest"))?,
+            );
             let Some(admitted) = eligibility::Closure::admit(metadata, &manifest, source, registry)
             else {
                 let reason = eligibility::Closure::profile_mismatch(metadata).unwrap_or_else(|| {
@@ -92,37 +131,41 @@ impl Plan {
                         package["name"].as_str().unwrap_or("the target")
                     )
                 });
-                notes.push(skipped_note(&format!(
-                    "the dependency profile is not qualified: {reason}"
-                )));
-                return None;
+                return Err(Decline::Profile(reason));
             };
             roots.insert(manifest);
             closure = Some(admitted);
         }
-        let launcher = launcher.canonicalize().ok()?;
-        if let Err(unqualified) = super::selection::admitted(mode, &launcher, z3, digests) {
-            notes.extend(
-                unqualified
-                    .as_deref()
-                    .map(super::selection::unqualified_note),
-            );
-            return None;
-        }
-        let root = target.parent()?.join("retained-content-v1");
-        std::fs::create_dir_all(root.join("graphs")).ok()?;
-        std::fs::create_dir_all(root.join("live-graphs")).ok()?;
+        let launcher = launcher
+            .canonicalize()
+            .map_err(|_| Decline::Storage("launcher"))?;
+        super::selection::admitted(mode, &launcher, z3, digests).map_err(Decline::Runtime)?;
+        let root = target
+            .parent()
+            .ok_or(Decline::Metadata("target parent"))?
+            .join("retained-content-v1");
+        std::fs::create_dir_all(root.join("graphs"))
+            .map_err(|_| Decline::Storage("archive graphs"))?;
+        std::fs::create_dir_all(root.join("live-graphs"))
+            .map_err(|_| Decline::Storage("live graphs"))?;
         let compiler = launcher.with_file_name("rust_verify");
-        Some(Self {
-            launcher_sha256: files::file_digest(&launcher).ok()?,
-            compiler_sha256: files::file_digest(&compiler).ok()?,
+        Ok(Self {
+            launcher_sha256: files::file_digest(&launcher)
+                .map_err(|_| Decline::Digest("launcher"))?,
+            compiler_sha256: files::file_digest(&compiler)
+                .map_err(|_| Decline::Digest("compiler"))?,
             launcher,
-            root: root.canonicalize().ok()?,
-            target: target.canonicalize().ok()?,
+            root: root
+                .canonicalize()
+                .map_err(|_| Decline::Storage("archive root"))?,
+            target: target
+                .canonicalize()
+                .map_err(|_| Decline::Storage("target directory"))?,
             metadata: metadata.clone(),
             roots,
-            closure: closure?,
-            caller_environment: archive::CallerEnvironment::capture(run)?,
+            closure: closure.ok_or(Decline::Metadata("selected target closure"))?,
+            caller_environment: archive::CallerEnvironment::capture(run)
+                .ok_or(Decline::CallerEnvironment)?,
         })
     }
 
@@ -1148,6 +1191,64 @@ fn output_paths(args: &[OsString], target: &Path) -> Option<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn malformed_plan_metadata_names_the_failure_before_storage_changes() {
+        use super::super::decline::Decline;
+        let root =
+            std::env::temp_dir().join(format!("sail-retention-decline-{}", std::process::id()));
+        assert!(!root.exists());
+        let packages = serde_json::json!({"packages": [
+            {"id": "vstd-id", "name": "vstd", "manifest_path": "/sources/vstd/vstd/Cargo.toml"},
+            {"id": "macro-id", "name": "proc-macro2", "manifest_path": "/registry/proc-macro2/Cargo.toml"}
+        ]});
+        let no_targets = BTreeSet::new();
+        let invalid_kind =
+            BTreeSet::from([("app-id".to_owned(), "app".to_owned(), "bin".to_owned())]);
+        let missing_package =
+            BTreeSet::from([("app-id".to_owned(), "app".to_owned(), "lib".to_owned())]);
+        let run = crate::source_build::RunDigests::default();
+        for (metadata, selected, expected) in [
+            (
+                Value::Null,
+                no_targets.clone(),
+                Decline::Metadata("packages"),
+            ),
+            (
+                serde_json::json!({"packages": []}),
+                no_targets.clone(),
+                Decline::Metadata("vstd manifest"),
+            ),
+            (
+                serde_json::json!({"packages": [{"name": "vstd", "manifest_path": 1}]}),
+                no_targets,
+                Decline::Metadata("vstd manifest"),
+            ),
+            (
+                packages.clone(),
+                invalid_kind,
+                Decline::TargetKind("bin".to_owned()),
+            ),
+            (
+                packages,
+                missing_package,
+                Decline::Metadata("selected package"),
+            ),
+        ] {
+            let result = Plan::prepare_for_mode(
+                &metadata,
+                &root.join("target"),
+                &selected,
+                &root.join("verus"),
+                &root.join("z3"),
+                "decline-test",
+                super::super::super::research::Mode::RetainedContent,
+                &run,
+            );
+            assert_eq!(result.err(), Some(expected));
+            assert!(!root.exists(), "a refused metadata plan changed storage");
+        }
+    }
 
     #[test]
     fn source_snapshot_reads_only_the_selected_closure() -> Result<(), Box<dyn std::error::Error>> {

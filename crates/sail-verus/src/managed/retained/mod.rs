@@ -8,6 +8,7 @@ mod archive;
 mod budget;
 mod compiler;
 pub(crate) mod cost;
+mod decline;
 mod driver;
 mod eligibility;
 mod namespace;
