@@ -1,5 +1,12 @@
 # sail-portfolio
 
+Development `profile::replay` composes unchanged prefix selection with separate
+plain/traced diagnostic solver executions and bounded trace counting. It is
+unselected; bounded native Linux qualification and review pass. Callers supply
+independently authenticated inputs
+and solver identity. Counts cover the complete prefix, never an exclusive
+function cost or proof verdict. See ADR0147 and its validation record.
+
 Observation and fragility measurement across captured solver sessions and selected configurations. This crate reports measurements; it does not change verification verdicts or default-mode cache keys. Solver racing is deferred.
 
 This component is part of [Sail](../../README.md). For the command-line tool,
