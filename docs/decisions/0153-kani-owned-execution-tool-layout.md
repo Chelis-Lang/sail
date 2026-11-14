@@ -48,3 +48,8 @@ availability is unchanged.
 Existing stages can be inspected only against the original authenticated
 prefixes, with the same private root/parent, complete file and exact route checks.
 This is tool-file inspection, not a retained verification or proof receipt.
+
+Route equality compares exact native OsStr bytes. Path component equality is
+insufficient because it accepts redundant separators/current-directory segments;
+the original native counterexamples remain retained. Contributor inspection
+arguments and JSON path representation refuse unsupported text without panicking.

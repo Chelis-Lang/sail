@@ -203,7 +203,9 @@ fn inventory_with_toolchain(
                 && depth == 0
                 && let Some(expected) = toolchain
             {
-                if !metadata.is_symlink() || std::fs::read_link(&path).map_err(refuse)? != expected
+                if !metadata.is_symlink()
+                    || std::fs::read_link(&path).map_err(refuse)?.as_os_str()
+                        != expected.as_os_str()
                 {
                     return Err(refuse("staged Rust toolchain route differs"));
                 }

@@ -147,7 +147,11 @@ impl Stage {
             return Err(refuse("staged original bundle payload differs"));
         }
         // A missing route is not represented by the ordinary file inventory.
-        if std::fs::read_link(self.root.join("toolchain")).map_err(refuse)? != self.rust {
+        if std::fs::read_link(self.root.join("toolchain"))
+            .map_err(refuse)?
+            .as_os_str()
+            != self.rust.as_os_str()
+        {
             return Err(refuse("staged Rust toolchain route unavailable"));
         }
         Ok(())
@@ -222,9 +226,15 @@ mod tests {
         assert!(super::super::inventory(&stage, &BTreeSet::new()).is_err());
         assert!(inventory_with_toolchain(&stage, &BTreeSet::new(), Some(&rust)).is_ok());
         std::fs::remove_file(stage.join("toolchain"))?;
-        std::os::unix::fs::symlink(root.join("foreign"), stage.join("toolchain"))?;
-        assert!(inventory_with_toolchain(&stage, &BTreeSet::new(), Some(&rust)).is_err());
-        std::fs::remove_file(stage.join("toolchain"))?;
+        for target in [
+            root.join("foreign"),
+            rust.join("."),
+            PathBuf::from(format!("{}//", rust.display())),
+        ] {
+            std::os::unix::fs::symlink(target, stage.join("toolchain"))?;
+            assert!(inventory_with_toolchain(&stage, &BTreeSet::new(), Some(&rust)).is_err());
+            std::fs::remove_file(stage.join("toolchain"))?;
+        }
         std::fs::write(stage.join("toolchain"), b"regular file")?;
         assert!(inventory_with_toolchain(&stage, &BTreeSet::new(), Some(&rust)).is_err());
         std::fs::remove_dir_all(root)?;

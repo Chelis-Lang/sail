@@ -1,7 +1,11 @@
 //! Contributor-only original-tool staging; no harness or backend execution.
 #[cfg(unix)]
 fn inspect() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let args = std::env::args_os()
+        .skip(1)
+        .map(std::ffi::OsString::into_string)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| "arguments must be valid UTF-8")?;
     let [bundle, rust, destination, trailing @ ..] = args.as_slice() else {
         return Err(
             "usage: inspect_stage KANI_BUNDLE RUST_PREFIX PRIVATE_STAGE [--check-existing]".into(),
@@ -21,7 +25,7 @@ fn inspect() -> Result<(), Box<dyn std::error::Error>> {
     stage.recheck()?;
     println!(
         "{}",
-        serde_json::json!({"kind":"sail-kani-tool-stage","version":1,"root":stage.root(),"driver":stage.driver(),"backend_executed":false,"proof_authority":false})
+        serde_json::json!({"kind":"sail-kani-tool-stage","version":1,"root":stage.root().to_str().ok_or("non-UTF-8 canonical stage path")?,"driver":stage.driver().to_str().ok_or("non-UTF-8 driver path")?,"backend_executed":false,"proof_authority":false})
     );
     Ok(())
 }
@@ -33,7 +37,7 @@ fn main() -> std::process::ExitCode {
     match inspect() {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("{error}");
+            eprintln!("error[SAIL6303]: {error}");
             std::process::ExitCode::from(2)
         }
     }

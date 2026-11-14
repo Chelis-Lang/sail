@@ -40,3 +40,7 @@ Copy/route controls and native original-layout qualification remain pending;
 there is still no harness executor or backend CLI.
 
 | ff57045e / stage-native1 | All-target Clippy refuses the contributor example's rust/rest similar names. Successor renames the trailing argument binding; no admission or control changes. Stage native tests/real layout are not yet passed. |
+
+| e04dcba4 / stage-native2 and probe1 | Affected Clippy, all8 libtests and release inspectors pass. Actual private stage creation/reopening,10 route/copy/privacy refusals, restored stage,3 original binary version probes and post-probe recheck pass. No harness runs. |
+| e04dcba4 / exact-spelling counterexamples | Valid native probes show Path equality accepts dot/doubled-separator spellings of the same physical Rust root, contrary to the exact canonical route contract. Successor compares raw OsStr values and preserves original authentication strictness. First heredoc launcher attached no container stdin and executed no Python; actual file-based probes are retained separately. |
+| e04dcba4 / invalid-argument counterexamples | Original and new contributor inspectors panic101 on non-UTF-8 argv before inspection. Successor uses fallible args_os conversion and checks path JSON representation before json!; errors return stable codes. No backend executes. |

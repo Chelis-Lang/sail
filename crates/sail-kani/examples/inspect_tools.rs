@@ -1,7 +1,11 @@
 //! Contributor-only actual tool-payload inspection; no backend execution.
 #[cfg(unix)]
 fn inspect() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let args = std::env::args_os()
+        .skip(1)
+        .map(std::ffi::OsString::into_string)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| "arguments must be valid UTF-8")?;
     let [bundle, rust] = args.as_slice() else {
         return Err("usage: inspect_tools KANI_BUNDLE RUST_PREFIX".into());
     };
@@ -14,7 +18,7 @@ fn inspect() -> Result<(), Box<dyn std::error::Error>> {
         "{}",
         serde_json::json!({
             "kind":"sail-kani-tool-payload-observation", "version":1,
-            "bundle":tools.bundle(), "rust":tools.rust(),
+            "bundle":tools.bundle().to_str().ok_or("non-UTF-8 canonical bundle path")?, "rust":tools.rust().to_str().ok_or("non-UTF-8 canonical Rust path")?,
             "rust_tree_sha256":tools.rust_tree_sha256(), "backend_executed":false,
             "proof_authority":false,
         })
@@ -31,7 +35,7 @@ fn main() -> std::process::ExitCode {
     match inspect() {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("{error}");
+            eprintln!("error[SAIL6303]: {error}");
             std::process::ExitCode::from(2)
         }
     }
