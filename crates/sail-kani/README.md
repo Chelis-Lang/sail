@@ -16,3 +16,7 @@ read-only `ci/kani-toolchain.py` compares original archives and optionally an
 immutable installed prefix; Rustup bookkeeping remains untrusted. It does not
 install or execute a backend. See `docs/validation/kani-rust-payload.md` for scope
 and native qualification; backend execution remains separate.
+
+A development Rust tool-payload authenticator is being integrated for the
+executor (ADR0152). It is uncompiled and unqualified; it executes no backend and
+grants no proof or cache authority. Prefixes must be owned and immutable.

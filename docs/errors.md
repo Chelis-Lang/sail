@@ -270,4 +270,5 @@ or reuse a receipt. A fresh owned target is required before retrying.
 | Code | Meaning | What to do |
 |---|---|---|
 | `SAIL6301` | Experimental Kani export admission refuses incomplete, contradictory or unsupported native records | Preserve original output/export and exact tool versions; no bounded result or reusable proof is established |
+| `SAIL6303` | Development runtime tool-payload authentication refuses modified, unsupported, unreadable or excessive trees | Preserve the original immutable tool inputs; no execution, bounded result or reusable proof is established |
 | `SAIL6302` | Original Kani Rust payload fixture admission refuses incomplete, modified or unsupported inputs | Preserve original archives and inventory; use the exact pinned immutable payload. This does not establish backend execution or proof authority |

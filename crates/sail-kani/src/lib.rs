@@ -8,6 +8,9 @@
 mod decode;
 mod strict_json;
 
+#[cfg(unix)]
+pub mod tools;
+
 use std::collections::BTreeMap;
 
 use sail_api::assurance::EvidenceTier;
