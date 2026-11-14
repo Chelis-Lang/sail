@@ -14,3 +14,9 @@ source/lock guard review and full local gate. No check or baseline is waived.
 The later executor still needs original process/bounds/output authentication,
 source/tool/environment closure, bounded outcome attribution, process cleanup,
 direct-arrayvec comparisons, conservative cache policy, CLI and Mac acceptance.
+
+Independent lock-binding review approves the exact new lock only (ADR0152):
+all78 controls,316 complete generated-driver/input-map pairs and39 focused
+refusals pass; all934 raw review payloads are lead-rehashed and retained.
+The contributor inspect_tools example performs original payload inspection and
+reinspection only. Runtime authentication remains uncompiled/unqualified.

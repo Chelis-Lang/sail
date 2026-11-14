@@ -44,3 +44,17 @@ Kani, establish input/source/environment closure, prove bounded properties,
 create receipts, enable cache reuse or expose a CLI backend. Native original-
 payload and negative controls, source/lock binding review and the applicable
 gates remain pending. Mac pins and execution remain separate.
+
+Independent exact lock-binding review at1662c2dd approves only the new
+Cargo.lock digest `e9182e0cfa37214ad952fc2ffc41f94bc2d611612825a4333e281559e55ced66`.
+All256 package identities/records remain exact except sail-kani's two new edges;
+all9 selected dependency closures remain exact. All78 Python controls and39
+focused refusal controls pass. Every316 generated driver and complete compiled-
+input map is byte-identical against the restored original lock. Advance only
+PARSER_NATIVE_SHA256's Cargo.lock value; preserve the original strict refusal.
+The independent report is externally retained as sha256
+`93bed717fd2e38486a681e7cfa6799293c38a3d0dd2b2bf2bfd44bf6c9868c0c`;
+all934 indexed payloads are independently lead-rehashed and externally retained.
+The metadata-only finalizer's original uname inventory assertion failure remains
+visible; its correction changes no audit or acceptance result. No native proof,
+tool-authenticator or backend qualification follows from this source binding.
