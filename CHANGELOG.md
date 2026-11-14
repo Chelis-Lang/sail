@@ -6,6 +6,7 @@ semantic versioning once the API is published.
 ## Unreleased
 
 - Explain optional retained-proof plan declines with their actual typed failure stage; verification falls back to normal compilation.
+- Pin the internal Linux Kani release-bundle fixture, including all original files and notices; executor and CLI availability remain pending.
 
 - Stage explicit raw-SMT backend policies and an unadvertised cvc5 development
   config. Z3 retains its argv, keys and dialect; cvc5 uses separate identity and
