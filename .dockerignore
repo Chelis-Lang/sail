@@ -4,6 +4,7 @@
 !rust-toolchain.toml
 !corpus/toolchain.toml
 !ci/fetch-verus.py
+!ci/fetch-cvc5.py
 !ci/engine-artifact.py
 !engine/verus/artifact-linux.json
 !engine/verus/fork.toml

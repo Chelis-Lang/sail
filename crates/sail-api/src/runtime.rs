@@ -53,7 +53,7 @@ pub struct Query {
     pub obligation_id: String,
     /// Strictly sorted, unique nonempty requirement identities.
     pub requirement_ids: Vec<String>,
-    /// Explicit solver family; this slice implements `z3`.
+    /// Requested solver family; capabilities report its current availability.
     pub backend: String,
     /// Exact unmodified UTF-8 SMT-LIB input.
     pub script: String,
@@ -66,7 +66,7 @@ pub struct Query {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Limits {
-    /// Z3 resource units; zero is deliberately not admitted.
+    /// Backend-specific resource units per check; zero is deliberately not admitted.
     pub resource_limit: u64,
     /// Whole-process safety deadline in milliseconds.
     pub wall_time_ms: u64,

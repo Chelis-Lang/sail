@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Stage explicit raw-SMT backend policies and an unadvertised cvc5 development
+  config. Z3 retains its argv, keys and dialect; cvc5 uses separate identity and
+  limits. Linux qualification passes; Mac qualification remains pending.
+
 - Use exact longest-prefix punctuation dispatch in the mutation-source lexer,
   preserving token kinds and source byte positions.
 
