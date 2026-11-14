@@ -2,7 +2,7 @@
 #[cfg(unix)]
 fn inspect() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let [bundle, rust, destination, rest @ ..] = args.as_slice() else {
+    let [bundle, rust, destination, trailing @ ..] = args.as_slice() else {
         return Err(
             "usage: inspect_stage KANI_BUNDLE RUST_PREFIX PRIVATE_STAGE [--check-existing]".into(),
         );
@@ -11,7 +11,7 @@ fn inspect() -> Result<(), Box<dyn std::error::Error>> {
         std::path::Path::new(bundle),
         std::path::Path::new(rust),
     )?;
-    let stage = match rest {
+    let stage = match trailing {
         [] => tools.stage(std::path::Path::new(destination))?,
         [flag] if flag == "--check-existing" => {
             tools.inspect_stage(std::path::Path::new(destination))?

@@ -38,3 +38,5 @@ ADR0153 adds a private original-bundle staging candidate with one exact link to
 the authenticated Rust prefix. Original-payload authentication stays strict.
 Copy/route controls and native original-layout qualification remain pending;
 there is still no harness executor or backend CLI.
+
+| ff57045e / stage-native1 | All-target Clippy refuses the contributor example's rust/rest similar names. Successor renames the trailing argument binding; no admission or control changes. Stage native tests/real layout are not yet passed. |
