@@ -1,0 +1,8 @@
+(set-option :auto-config false)
+(set-option :smt.ematching false)
+(set-option :smt.mbqi true)
+(set-option :rlimit 100000)
+(declare-fun p (Int) Bool)
+(assert (forall ((x Int)) (! (p x) :qid mbqi_p)))
+(assert (not (p 0)))
+(check-sat)

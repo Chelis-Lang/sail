@@ -1,0 +1,7 @@
+(set-option :auto-config false)
+(declare-sort SailU 0)
+(declare-datatype SailBox ((SailWrap (SailValue SailU))))
+(declare-const u SailU)
+(declare-fun p (SailBox) Bool)
+(assert (p (SailWrap u)))
+(check-sat)

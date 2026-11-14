@@ -25,6 +25,7 @@ pub mod error;
 pub mod fragility;
 pub mod parallel;
 pub mod profile;
+pub mod quantifiers;
 pub mod sessions;
 pub mod stats;
 pub mod transcript;
