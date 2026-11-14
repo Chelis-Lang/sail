@@ -10,3 +10,9 @@ The internal Linux release-bundle pin authenticates the official 0.68.0 archive
 and every original file. `ci/kani-bundle.py` installs that fixture only; it does
 not install or authenticate the external nightly Rust toolchain, execute a
 harness, enable cache reuse or make a CLI backend available.
+
+ADR0149 separately pins the original six Linux Rust component payloads. The
+read-only `ci/kani-toolchain.py` compares original archives and optionally an
+immutable installed prefix; Rustup bookkeeping remains untrusted. It does not
+install or execute a backend. See `docs/validation/kani-rust-payload.md` for scope
+and native qualification; backend execution remains separate.
