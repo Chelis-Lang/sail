@@ -5,7 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
-- Add development groundwork for uncached plain/traced prefix replay; native qualification and full profiler integration remain pending.
+- Retire active ordinary requirement attribution: `--requirement`, `sail assurance` and MCP grouping entry points. Historical ordinary job data remains readable; legacy calls refuse without launching replacement work (ADR0148).
+- Add native-qualified development groundwork for uncached plain/traced prefix replay; full profiler integration remains pending.
 - Prepare read-only diagnostic descriptions of complete solver-session check positions; ambiguous owners remain unavailable and no profile command is introduced.
 
 - Add bounded diagnostic quantifier trace counting groundwork; no profile command or verification behavior changes.

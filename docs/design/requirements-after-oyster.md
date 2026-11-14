@@ -1,6 +1,7 @@
 # Requirements after Oyster
 
-Status: design record, nothing here is implemented. It records what the Oyster
+Status: design record; active requirement-attribution retirement is an unqualified
+implementation candidate under ADR0148. Neither proposed grouping/form is built. It records what the Oyster
 experiments found, what Sail keeps from the work it did for Oyster, and two
 smaller forms a requirements feature could take. Neither form is scheduled.
 Each states the evidence that would justify building it.
@@ -57,7 +58,7 @@ an outcome.
 | Evidence tiers and the ledger (`sail-ledger`, `EvidenceTier`) | Separate fields for establishment, tier, currentness and mutation, and the rule that `unknown` is never proof. The mutation report needs the same discipline |
 | Function-level attribution (ADR 0014, `crates/sail-verus/src/attribution.rs`) | Ordinary Verus attribution. It was never Oyster work |
 | Decoded counterexample inputs (ADR 0106, `sail_api::counterexample::decode`) | Turns a raw model into source-named values for any failed Verus proof. The supported MCP `counterexample` tool reports it as `decoded_inputs` |
-| Requirement attribution on ordinary jobs (ADR 0104), experimental | Kept only until the decision described under form A. Today no row can reach a tier, because `--no-cheating` fails in `vstd` |
+| Historical requirement-attribution data and wire compatibility | Active ordinary-job entry points retire under ADR0148; historical tags/results remain, without new assurance views |
 
 Everything else built for Oyster is removed: the neutral lowering and shadow
 crate, neutral source jobs and their worker, neutral mutation, literal
@@ -183,3 +184,11 @@ its own ADR, only if a later pilot produces the evidence above.
 
 Form A depends on `sail mutate`. Form B is closed unless a later pilot reopens
 it. Neither blocked the removal, and neither ships a schema before its evidence exists.
+
+## Form A disposition
+
+The original five-function IronKV/Vest hand join is now recorded in
+[qualification](../validation/requirement-attribution-disposition.md). It
+demonstrates no outside-user specification improvement or CI demand. ADR0148
+applies the planned retirement to active entry points; native qualification and
+independent review remain pending. No new grouped view is introduced.

@@ -240,7 +240,6 @@ exit 1
             "verification_result",
             "cancel_verification",
             "proof_health",
-            "requirement_assurance",
             "verification_events",
             "explain_failure",
             "compare_verification",

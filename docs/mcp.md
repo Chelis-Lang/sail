@@ -15,8 +15,7 @@ Verification: `verify`, `counterexample`, `cached_result`, the job tools
 `runtime_capabilities` and `runtime_execute`.
 
 Experimental, and may change in any release: the `fragility` tool, `verify`'s
-and `start_verification`'s `portfolio` and `measure_fragility` options, and
-`requirement_assurance`. Their descriptions in `tools/list` start with
+and `start_verification`'s `portfolio` and `measure_fragility` options. Their descriptions in `tools/list` start with
 "Experimental:", so an agent can tell them apart.
 
 ## Registering it
@@ -87,15 +86,10 @@ implementation correctness. See [ADR 0068](decisions/0068-runtime-daemon.md).
 
 ## Reading completed evidence
 
-`requirement_assurance` (experimental integration tool) takes
-`{"job_id":"JOB"}` and reads an ordinary job submitted through
-`start_verification` with a `requirements` array of
-`{"requirement_id","function"}` objects. Its rows are submitter-attributed
-Verus evidence: conservative proof outcomes, original solver identities and
-explicit missing assurance. This read negotiates its own capability and fails
-for older services; it never synthesizes evidence or runs a verifier. The
-`"attributed"` argument is accepted and changes nothing. See
-[requirement assurance](requirement-assurance.md).
+The v0.3.0 development candidate removes `requirement_assurance` and the
+`requirements` input to `start_verification`. Use original per-function job
+results and `proof_health`; keep intent tracking outside Sail. Historical job
+results remain readable. See [retirement](requirement-assurance.md).
 
 Tool replies are agent-sized by default; see [reply size](#reply-size-and-detail).
 The server moves owned result graphs through the

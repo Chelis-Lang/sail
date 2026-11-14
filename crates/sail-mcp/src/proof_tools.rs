@@ -8,7 +8,6 @@ pub(super) fn definitions() -> Vec<Value> {
     let target = json!({"type":"object","additionalProperties":false,"required":["job_id","package_id","target","kind","function"],"properties":{"job_id":string(),"package_id":string(),"target":string(),"kind":{"type":"string","enum":["lib","bin"]},"function":string(),"obligation":string()}});
     vec![
         json!({"name":"proof_health","title":"Read observed proof health","description":"Read original per-check resource effort and missing coverage from a completed verification job without running a solver. Preserves verdicts, provisional establishment, provenance and currentness. Shows an optional earlier job or immutable baseline separately. A single run does not establish stability or unmeasured fragility.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"before_job":string(),"baseline":baseline_schema(),"limit":{"type":"integer","minimum":1,"maximum":1000}},"not":{"required":["before_job","baseline"]}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
-        json!({"name":"requirement_assurance","title":"Read requirement assurance","description":"Experimental: integration tool. Read versioned submitter-attributed Verus evidence grouped by requirement identity for an ordinary job started with requirements. The attribution is an unchecked submitter claim; currentness, actual tiers and mutation limitations remain explicit.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"attributed":{"type":"boolean","description":"Accepted for compatibility and ignored: this tool reads only submitter-attributed evidence."}}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"verification_events","title":"Read proof observations","description":"Read one bounded page from proof stream v1. Resume using next.stream_id/after. Gap is explicit; early observations remain provisional. Completed target reports independently seal final proof evidence.","inputSchema":{"type":"object","additionalProperties":false,"required":["job_id"],"properties":{"job_id":string(),"stream_id":string(),"after":{"type":"integer","minimum":0}}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"explain_failure","title":"Explain exact failure evidence","description":"Return a function/obligation report, raw models, diagnostics and establishing provenance for an exact package/target/kind identity. Unattributed diagnostics remain explicitly unattributed. No proof edits are generated.","inputSchema":target,"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
         json!({"name":"compare_verification","title":"Compare verification evidence","description":"Compare a completed job with an explicit earlier job or immutable named baseline. Scope/configuration mismatches are descriptive, never labelled proof regressions; partial scopes cannot prove removal.","inputSchema":{"type":"object","additionalProperties":false,"required":["after_job"],"properties":{"after_job":string(),"before_job":string(),"baseline":baseline_schema()}},"annotations":{"readOnlyHint":true,"openWorldHint":false}}),
@@ -39,7 +38,6 @@ pub(super) fn call(
             match serde_json::from_slice::<Value>(&outcome.stdout) {
                 Ok(document)
                     if valid(name, &document)
-                        && requested_assurance_matches(name, args, &document)
                         && requested_health_matches(name, args, &document)
                         && requested_baseline_matches(name, args, &document) => ToolResult::ok(
                     if name == "proof_health" {
@@ -107,16 +105,9 @@ fn requested_baseline_matches(name: &str, args: &Map<String, Value>, document: &
 }
 /// `assurance JOB`: submitter-attributed ordinary evidence. `attributed` is
 /// accepted for compatibility and changes nothing.
-fn assurance(args: &Map<String, Value>) -> Result<Vec<String>, String> {
-    match args.get("attributed") {
-        None | Some(Value::Bool(_)) => Ok(vec!["assurance".into(), value(args, "job_id")?]),
-        Some(_) => Err("attributed must be a boolean".into()),
-    }
-}
 fn allowed_arguments(name: &str) -> Result<&'static [&'static str], String> {
     Ok(match name {
         "proof_health" => &["job_id", "before_job", "baseline", "limit"],
-        "requirement_assurance" => &["job_id", "attributed"],
         "verification_events" => &["job_id", "stream_id", "after"],
         "explain_failure" => &[
             "job_id",
@@ -155,7 +146,6 @@ fn arguments(
     }
     let out = match name {
         "proof_health" => health_arguments(args)?,
-        "requirement_assurance" => assurance(args)?,
         "save_baseline" => vec![
             "baseline".into(),
             "save".into(),
@@ -393,11 +383,6 @@ fn valid(name: &str, document: &Value) -> bool {
     match name {
         "proof_health" => serde_json::from_value::<sail_api::health::View>(document.clone())
             .is_ok_and(|view| view.kind == "sail-proof-health" && view.version == 1),
-        "requirement_assurance" => {
-            matches!(serde_json::from_value::<sail_api::jobs::Response>(document.clone()),
-            Ok(sail_api::jobs::Response::AttributedAssurance(view))
-            if view.version == sail_api::attribution::VERSION && !view.job_id.is_empty())
-        }
         "verification_events" => serde_json::from_value::<sail_api::proof::Page>(document.clone())
             .is_ok_and(|page| page.version == 1),
         "start_repair_validation" => {
@@ -431,14 +416,6 @@ fn valid(name: &str, document: &Value) -> bool {
 }
 
 /// The response names the requested job and is the requested kind of view.
-fn requested_assurance_matches(name: &str, args: &Map<String, Value>, document: &Value) -> bool {
-    name != "requirement_assurance"
-        || (document.pointer("/value/job_id").and_then(Value::as_str)
-            == args.get("job_id").and_then(Value::as_str)
-            && document.pointer("/response").and_then(Value::as_str)
-                == Some("attributed_assurance"))
-}
-
 #[cfg(test)]
 #[path = "baseline_tools_tests.rs"]
 mod baseline_tests;
@@ -491,69 +468,19 @@ mod tests {
     }
 
     #[test]
-    fn assurance_tool_binds_the_requested_job_and_reads_only_attributed_evidence()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let args = json!({"job_id":"job-123"});
-        assert_eq!(
-            arguments("requirement_assurance", args.as_object().ok_or("args")?)?.0,
-            vec!["assurance", "job-123", "--output", "json"]
-        );
+    fn retired_assurance_is_not_an_advertised_or_executable_proof_tool() {
         assert!(
-            arguments(
-                "requirement_assurance",
-                json!({"job_id":"--help"}).as_object().ok_or("args")?
-            )
-            .is_err()
+            definitions()
+                .iter()
+                .all(|tool| tool["name"] != "requirement_assurance")
         );
-        // The compatibility flag is accepted and changes nothing.
-        assert_eq!(
-            arguments(
-                "requirement_assurance",
-                json!({"job_id":"job-123","attributed":true})
-                    .as_object()
-                    .ok_or("args")?
-            )?
-            .0,
-            vec!["assurance", "job-123", "--output", "json"]
-        );
-        assert!(
-            arguments(
-                "requirement_assurance",
-                json!({"job_id":"job-123","attributed":"yes"})
-                    .as_object()
-                    .ok_or("args")?
-            )
-            .is_err()
-        );
-        let attributed = serde_json::to_value(sail_api::jobs::Response::AttributedAssurance(
-            Box::new(sail_api::attribution::View {
-                version: sail_api::attribution::VERSION,
-                job_id: "job-123".into(),
-                arguments: Vec::new(),
-                currentness: sail_api::jobs::Currentness::Unknown,
-                requirements: Vec::new(),
-            }),
-        ))?;
-        assert!(valid("requirement_assurance", &attributed));
-        assert!(requested_assurance_matches(
-            "requirement_assurance",
-            args.as_object().ok_or("args")?,
-            &attributed
-        ));
-        assert!(!requested_assurance_matches(
-            "requirement_assurance",
-            json!({"job_id":"other"}).as_object().ok_or("args")?,
-            &attributed
-        ));
-        // A reply in the removed neutral shape is not a valid answer.
-        let retired = json!({"response":"assurance","value":{"version":2,"job_id":"job-123","currentness":"unknown","requirements":[]}});
-        assert!(!valid("requirement_assurance", &retired));
-        assert!(!requested_assurance_matches(
-            "requirement_assurance",
-            args.as_object().ok_or("args")?,
-            &retired
-        ));
-        Ok(())
+        for args in [
+            json!({"job_id":"job"}),
+            json!({"job_id":"job", "attributed":true}),
+        ] {
+            let args = args.as_object().unwrap_or_else(|| unreachable!("object"));
+            assert!(arguments("requirement_assurance", args).is_err());
+        }
     }
     fn parse(name: &str, value: &Value) -> Result<(Vec<String>, Option<String>), String> {
         arguments(name, value.as_object().ok_or("expected object")?)

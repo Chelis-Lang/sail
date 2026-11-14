@@ -99,7 +99,7 @@ held".
 | Evidence tiers and ledger, counterexample decoding, general function attribution | Kept; decoded inputs moved to the MCP `counterexample` tool | Shipped |
 | Neutral lowering and shadow crates, neutral source jobs, neutral mutation and literal witness, the `contracts` end-to-end phase, neutral specifications | Removed | Removed; retained 0.2 neutral job records read as `SAIL3161` |
 | `sail-contracts`, `sail-contracts-macros` and `sail-contracts-ir` | Removed with the neutral path; Kani function contracts are not adopted as a front end | Removed from the workspace; 0.2.0 stays on crates.io |
-| Requirement attribution and `sail assurance` (ADR 0104) | Kept experimental for now; keep-or-remove is decided when `sail mutate` exists | Experimental, present |
+| Requirement attribution and `sail assurance` (ADR 0104) | Retire active entry points after the five-function hand join fails its outside-user/CI-demand bar (ADR0148) | Corrected retirement qualifies on native Linux with independent review; final PR CI remains separate |
 
 ## Temporal: behind a default-off flag
 
@@ -181,3 +181,7 @@ M0–M6 are delivered. M7 was accepted 2026-10-26. M11 remains the continuous
 Verus performance lane; M10 records the broader runtime ambition with explicit
 holds. The next-release milestone is v0.3.0. Genuine 0.2.0 residual work moves
 to its current lane rather than remaining an apparent publication blocker.
+
+Active ordinary requirement attribution retirement qualifies on native Linux
+with independent approval; historical job/SDK compatibility remains intact
+(ADR0148). Final PR CI is separate from local qualification.

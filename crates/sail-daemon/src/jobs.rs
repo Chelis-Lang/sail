@@ -374,20 +374,11 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
             repair: true,
             standalone: true,
             standalone_repair: true,
-            attribution_version: Some(sail_api::attribution::VERSION),
+            attribution_version: None,
         }),
-        Request::AttributedAssurance { id } => get(state, &id).and_then(|job| {
-            store::refuse_retired(&job)?;
-            if job.requirements.is_empty() {
-                return Err(io::Error::other(
-                    "SAIL3160: job was not submitted with requirement attributions",
-                ));
-            }
-            let document = store::result(state, &job)?;
-            sail_api::attribution::from_project_result(&document, &job.requirements)
-                .map(|view| Response::AttributedAssurance(Box::new(view)))
-                .map_err(io::Error::other)
-        }),
+        Request::AttributedAssurance { .. } => Err(io::Error::other(
+            "SAIL3161: requirement attribution was retired; read original job results and per-function evidence",
+        )),
         Request::ProofEvents { id, cursor, limit } => get(state, &id)
             .and_then(|job| {
                 state.proofs.page(
@@ -418,21 +409,9 @@ fn dispatch(state: &Arc<State>, request: Request) -> Response {
         Request::Submit { submission } => {
             submit(state, submission, Vec::new()).map(Response::Status)
         }
-        Request::SubmitAttributed {
-            submission,
-            requirements,
-        } => sail_api::attribution::canonical(requirements)
-            .map_err(io::Error::other)
-            .and_then(|requirements| {
-                if sail_api::attribution::mode_supported(&submission.mode) {
-                    submit(state, submission, requirements)
-                } else {
-                    Err(io::Error::other(
-                        "SAIL3160: requirement attribution applies only to stock and standalone jobs",
-                    ))
-                }
-            })
-            .map(Response::Status),
+        Request::SubmitAttributed { .. } => Err(io::Error::other(
+            "SAIL3161: requirement attribution was retired; submit ordinary verification without requirement tags",
+        )),
         Request::List { project_dir } => list(state, project_dir.as_deref()).map(Response::List),
         Request::Status { id } => get(state, &id)
             .and_then(|job| store::status(state, &job))
