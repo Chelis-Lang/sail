@@ -446,11 +446,13 @@ pub(super) fn retain(
     entry: &Entry,
     streams: [&Path; 3],
     live_graphs: &BTreeSet<String>,
-) -> Option<()> {
+) -> Result<(), super::publication::Decline> {
+    use super::publication::Decline;
     if !entry.intact() || !entry.receipt.valid(&entry.basis.context) {
-        return None;
+        return Err(Decline::Identity);
     }
-    let reads = checked_bytes(streams[2], &entry.compiler_reads, ENTRY_LIMIT)?;
+    let reads = checked_bytes(streams[2], &entry.compiler_reads, ENTRY_LIMIT)
+        .ok_or(Decline::CompilerReads)?;
     if !super::compiler::stored_header(
         &reads,
         &entry.basis.identity.key(),
@@ -458,27 +460,33 @@ pub(super) fn retain(
     ) || entry.stdout.size > OUTPUT_LIMIT
         || entry.stderr.size > OUTPUT_LIMIT
     {
-        return None;
+        return Err(Decline::Header);
     }
-    let encoded = serde_json::to_vec(entry).ok()?;
+    let encoded = serde_json::to_vec(entry).map_err(|_| Decline::Encoding)?;
     if encoded.len() as u64 > ENTRY_LIMIT {
-        return None;
+        return Err(Decline::Encoding);
     }
     let incoming = entry
         .outputs
         .iter()
         .map(|output| &output.content)
         .chain([&entry.stdout, &entry.stderr, &entry.compiler_reads])
-        .try_fold(u64::try_from(encoded.len()).ok()?, |total, content| {
-            total.checked_add(content.size)
-        })?;
+        .try_fold(
+            u64::try_from(encoded.len()).map_err(|_| Decline::Capacity)?,
+            |total, content| total.checked_add(content.size),
+        )
+        .ok_or(Decline::Capacity)?;
     let _admission = super::budget::admit(
         root,
         incoming,
-        u64::try_from(entry.outputs.len()).ok()?.checked_add(10)?,
-    )?;
+        u64::try_from(entry.outputs.len())
+            .map_err(|_| Decline::Capacity)?
+            .checked_add(10)
+            .ok_or(Decline::Capacity)?,
+    )
+    .ok_or(Decline::Budget)?;
     let blobs = root.join("blobs");
-    std::fs::create_dir_all(&blobs).ok()?;
+    std::fs::create_dir_all(&blobs).map_err(|_| Decline::BlobDirectory)?;
     for (source, content) in entry
         .outputs
         .iter()
@@ -499,16 +507,22 @@ pub(super) fn retain(
             .and_then(|()| std::fs::rename(&temporary, &destination).ok());
         if outcome.is_none() {
             let _ = std::fs::remove_file(temporary);
-            return None;
+            return Err(Decline::BlobCopy);
         }
     }
-    let directory = target(root, &entry.basis.identity)?;
-    std::fs::create_dir_all(&directory).ok()?;
-    let key = digest(&serde_json::to_vec(&entry.basis).ok()?);
-    super::super::files::json(&directory.join(format!("{key}.json")), &entry).ok()?;
-    evict(&directory, &key, &lineage(&entry.basis)?)?;
+    let directory = target(root, &entry.basis.identity).ok_or(Decline::TargetDirectory)?;
+    std::fs::create_dir_all(&directory).map_err(|_| Decline::TargetDirectory)?;
+    let key = digest(&serde_json::to_vec(&entry.basis).map_err(|_| Decline::Encoding)?);
+    super::super::files::json(&directory.join(format!("{key}.json")), &entry)
+        .map_err(|_| Decline::EntryWrite)?;
+    evict(
+        &directory,
+        &key,
+        &lineage(&entry.basis).ok_or(Decline::Eviction)?,
+    )
+    .ok_or(Decline::Eviction)?;
     collect(root, live_graphs);
-    Some(())
+    Ok(())
 }
 
 /// The basis without its source revision: revisions of one lineage differ
@@ -931,7 +945,7 @@ mod tests {
                     ],
                     &BTreeSet::new(),
                 )
-                .ok_or("outer fixture publication")?;
+                .map_err(|reason| format!("outer fixture publication: {reason:?}"))?;
                 super::super::super::files::json(&root.0.join("basis.json"), &entry.basis)?;
                 std::fs::write(root.0.join("libunit-abcd.rmeta"), b"artifact B")?;
                 owned_environment_child("managed", Some(&snapshot))
@@ -1085,6 +1099,92 @@ mod tests {
         Ok(receipt)
     }
 
+    #[test]
+    fn publication_refusals_name_the_actual_guard_without_granting_an_archive()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use super::super::publication::{Decline, Summary};
+        let root = Root::new("publication-declines")?;
+        let entry = archive_fixture(&root, BTreeMap::new())?;
+        assert_eq!(std::fs::read_dir(root.0.join("blobs"))?.count(), 0);
+        let stdout = root.0.join("stdout");
+        let stderr = root.0.join("stderr");
+        let reads = root.0.join("inputs.json");
+        let original_reads = std::fs::read(&reads)?;
+        let mut summary = Summary::default();
+        let mut corrupt = entry.clone();
+        corrupt.checksum = "corrupt".to_owned();
+        let error = retain(
+            &root.0,
+            &corrupt,
+            [&stdout, &stderr, &reads],
+            &BTreeSet::new(),
+        )
+        .err()
+        .ok_or("corrupt entry admitted")?;
+        assert_eq!(error, Decline::Identity);
+        summary.record(error);
+        assert_eq!(std::fs::read_dir(root.0.join("blobs"))?.count(), 0);
+        std::fs::remove_file(&reads)?;
+        let error = retain(
+            &root.0,
+            &entry,
+            [&stdout, &stderr, &reads],
+            &BTreeSet::new(),
+        )
+        .err()
+        .ok_or("missing compiler reads admitted")?;
+        assert_eq!(error, Decline::CompilerReads);
+        summary.record(error);
+        assert_eq!(std::fs::read_dir(root.0.join("blobs"))?.count(), 0);
+        let mut document: serde_json::Value = serde_json::from_slice(&original_reads)?;
+        document["binding"] = "wrong-owner".into();
+        let wrong_reads = serde_json::to_vec(&document)?;
+        std::fs::write(&reads, &wrong_reads)?;
+        let mut wrong_header = entry.clone();
+        wrong_header.compiler_reads.sha256 = digest(&wrong_reads);
+        wrong_header.compiler_reads.size = u64::try_from(wrong_reads.len())?;
+        let wrong_header = wrong_header.seal().ok_or("seal wrong header")?;
+        let error = retain(
+            &root.0,
+            &wrong_header,
+            [&stdout, &stderr, &reads],
+            &BTreeSet::new(),
+        )
+        .err()
+        .ok_or("wrong compiler owner admitted")?;
+        assert_eq!(error, Decline::Header);
+        summary.record(error);
+        assert_eq!(std::fs::read_dir(root.0.join("blobs"))?.count(), 0);
+        std::fs::write(&reads, original_reads)?;
+        std::fs::remove_file(&stdout)?;
+        let error = retain(
+            &root.0,
+            &entry,
+            [&stdout, &stderr, &reads],
+            &BTreeSet::new(),
+        )
+        .err()
+        .ok_or("missing original output admitted")?;
+        assert_eq!(error, Decline::BlobCopy);
+        summary.record(error);
+        let directory = target(&root.0, &entry.basis.identity).ok_or("target")?;
+        assert!(
+            !directory
+                .join(format!("{}.json", key(&entry.basis).ok_or("key")?))
+                .exists()
+        );
+        assert_eq!(
+            std::fs::read(root.0.join("libunit-abcd.rmeta"))?,
+            b"artifact A"
+        );
+        let notes = summary.notes();
+        assert_eq!(notes.len(), 4);
+        assert!(notes.iter().all(|note| note.starts_with("SAIL3146: ")
+            && note.contains("1 operation(s)")
+            && note.ends_with("verification is unaffected")));
+        Ok(())
+    }
+
     fn aggregate_refusal(entry: &Entry) -> Result<(), Box<dyn std::error::Error>> {
         let mut oversized = entry.clone();
         oversized.outputs = (0..5)
@@ -1218,7 +1318,7 @@ mod tests {
             [&stdout, &stderr, &reads],
             &BTreeSet::new(),
         )
-        .ok_or("retain")?;
+        .map_err(|reason| format!("retain: {reason:?}"))?;
         std::fs::write(&artifact, b"artifact B")?;
         let names = BTreeSet::from([OsString::from("libunit-abcd.rmeta")]);
         let restored = restore(
@@ -1325,7 +1425,8 @@ mod tests {
                 entry.basis.source_revision = format!("R{index}");
             }
             let entry = entry.seal().ok_or("seal")?;
-            retain(&root.0, &entry, streams, &BTreeSet::new()).ok_or("retain")?;
+            retain(&root.0, &entry, streams, &BTreeSet::new())
+                .map_err(|reason| format!("retain: {reason:?}"))?;
             let path = directory.join(format!("{}.json", key(&entry.basis).ok_or("key")?));
             std::fs::File::options()
                 .append(true)

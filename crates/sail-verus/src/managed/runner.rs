@@ -4779,7 +4779,7 @@ fn run_recorded(
             "SAIL3123: the interactive engine faulted for {fallbacks} target(s); their exact stock Verus results are reported and publish no proof receipt"
         ));
     }
-    let result = ProjectResult {
+    let mut result = ProjectResult {
         kind: "sail-project-result".to_owned(),
         schema_version: SCHEMA_VERSION,
         run_id,
@@ -4898,7 +4898,16 @@ fn run_recorded(
         if result.exit_code == Some(0)
             && let Some(plan) = &runtime.retained
         {
-            let _ = plan.publish(&runtime);
+            let publication_notes = plan.publish(&runtime);
+            if crate::explain() {
+                let prefix = format!("{}: ", super::retained::SKIPPED);
+                for note in &publication_notes {
+                    if let Some(message) = note.strip_prefix(&prefix) {
+                        let _ = writeln!(err, "note[{}]: {message}", super::retained::SKIPPED);
+                    }
+                }
+            }
+            result.notes.extend(publication_notes);
         }
     }
     publish_compiler_generation(

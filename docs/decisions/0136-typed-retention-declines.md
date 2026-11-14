@@ -26,9 +26,9 @@ note. Human output continues to show SAIL3146 only with SAIL_EXPLAIN=1; JSON
 retains the explanation. This does not introduce a cost threshold or recovery
 policy, refresh a missing export or infer why an I/O operation failed.
 
-This first slice covers plan admission. Typed restore/publication declines and
-an actual missing build-script-export diagnosis remain package C work; the
-prototype's unbounded publication journal is not adopted.
+This first slice covers plan admission. Typed restore/publication work is
+separate package C work; the missing build-script-export explanation already
+landed in #708. The prototype's unbounded publication journal is not adopted.
 
 ## Consequences
 

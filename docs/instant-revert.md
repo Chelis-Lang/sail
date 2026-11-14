@@ -133,3 +133,10 @@ decline; normal verification still runs. Existing SAIL3146 human notes are
 visible with `SAIL_EXPLAIN=1`, and JSON retains the explanation. A reason does
 not establish why a file became unreadable or repair a missing build-script
 export.
+
+Development publication diagnostics also name the actual stage when optional
+retained content cannot be published, including compiler-read admission and
+archive storage stages. SAIL3146 aggregates repeated failures by stage and
+appears in human output only with SAIL_EXPLAIN=1; JSON retains the notes.
+Verification results and currentness are unaffected. Native Linux integration and bounded review pass; see the
+[qualification record](validation/retention-publication.md).
