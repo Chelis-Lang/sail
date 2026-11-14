@@ -22,6 +22,16 @@ oracle completion (#611), and compound-field lowering/retained-read correction
 (#323). Original failures and source-specific qualification stay unchanged.
 
 
+## Benchmark descendant cleanup assertion
+
+The full `sail-bench --lib` suite can fail its descendant-cleanup assertion on
+native Linux, reporting a live `sleep` after the leader exits
+([#749](https://github.com/Chelis-Lang/sail/issues/749)). A separate exact-main
+run reproduces this; the isolated test and400public-execution observations
+pass. The cause remains unknown. The strict assertion remains active, and no
+cleanup policy or test has been weakened. Original failures and bounded scope
+are retained with the [publication comparison record](validation/publication-notice-comparison.md).
+
 ## Builtin diagnostic source paths
 
 The selected Mac fork can print a different builtin definition source path than

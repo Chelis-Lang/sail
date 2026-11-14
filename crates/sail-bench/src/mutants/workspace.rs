@@ -327,11 +327,12 @@ const RETENTION_NOTICE: &str = "note[SAIL3146]: instant revert did not apply bec
 const DEPENDENT_NOTICE: &str = "note[SAIL3146]: instant revert will not apply to dependents of ";
 const DEPENDENT_SUFFIX: &str = ", rebuilt in this run because this compiler target's build-script observations were missing or no longer matched (for example, an earlier run of this target, such as a stopped background preparation, ended before republishing them); verification is unaffected";
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 enum Notice {
     Bundle,
     Retention,
     Dependent,
+    Publication(sail_verus::managed::publication::Decline),
 }
 
 fn notice(text: &str) -> Option<Notice> {
@@ -345,6 +346,9 @@ fn notice(text: &str) -> Option<Notice> {
     }
     if text.starts_with(RETENTION_NOTICE) && text.ends_with("; verification is unaffected") {
         return Some(Notice::Retention);
+    }
+    if let Some(stage) = sail_verus::managed::publication::Decline::from_note(text) {
+        return Some(Notice::Publication(stage));
     }
     let targets = text
         .strip_prefix(DEPENDENT_NOTICE)?
@@ -365,7 +369,9 @@ pub(super) fn separate_sail_notes(run: &mut RunRecord) -> Vec<String> {
     let mut diagnostics = String::new();
     let mut notices = Vec::new();
     for line in run.stderr.split_inclusive('\n') {
-        let text = line.trim_end_matches(['\r', '\n']);
+        let text = line
+            .strip_suffix('\n')
+            .map_or(line, |body| body.strip_suffix('\r').unwrap_or(body));
         if notice(text).is_some() {
             notices.push(text.to_owned());
         } else {
@@ -379,18 +385,14 @@ pub(super) fn separate_sail_notes(run: &mut RunRecord) -> Vec<String> {
 /// Each already recognized explanation may appear once in an invocation.
 /// Unknown entries remain a refusal even though the separator excludes them.
 pub(super) fn sail_notes_are_unique(notices: &[String]) -> bool {
-    let mut counts = [0_usize; 3];
+    let mut seen = std::collections::BTreeSet::new();
     for text in notices {
-        let index = match notice(text) {
-            Some(Notice::Bundle) => 0,
-            Some(Notice::Retention) => 1,
-            Some(Notice::Dependent) => 2,
-            None => return false,
+        let Some(category) = notice(text) else {
+            return false;
         };
-        if counts[index] != 0 {
+        if !seen.insert(category) {
             return false;
         }
-        counts[index] = 1;
     }
     true
 }
@@ -930,6 +932,75 @@ mod tests {
         ] {
             assert!(!sail_notes_are_unique(&notices));
         }
+    }
+
+    #[test]
+    fn publication_notices_preserve_diagnostics_and_stage_multiplicity() {
+        let snapshot = "note[SAIL3146]: optional retained-content publication declined at 1 operation(s) because the source snapshot was incomplete or no longer admitted; verification is unaffected".to_owned();
+        let copy = "note[SAIL3146]: optional retained-content publication declined at 2 operation(s) because an archive blob could not be copied and published; verification is unaffected".to_owned();
+        assert!(sail_notes_are_unique(&[snapshot.clone(), copy]));
+        assert!(!sail_notes_are_unique(&[
+            snapshot.clone(),
+            snapshot.replace("at 1 operation", "at 2 operation")
+        ]));
+        let diagnostic = "error: postcondition not satisfied\n --> src/lib.rs:1:1\n\n";
+        let mut run = RunRecord {
+            exit_code: Some(1),
+            outputs: vec![],
+            stdout_rest: String::new(),
+            wall_ms: 0.0,
+            user_s: None,
+            sys_s: None,
+            max_rss_bytes: None,
+            stderr: format!("{snapshot}\n{diagnostic}"),
+        };
+        assert_eq!(separate_sail_notes(&mut run), vec![snapshot.clone()]);
+        assert_eq!(run.stderr, diagnostic);
+        for bad in [
+            snapshot.replace("at 1 operation", "at 0 operation"),
+            snapshot.replace("at 1 operation", "at 01 operation"),
+            snapshot.replace(
+                "source snapshot was incomplete or no longer admitted",
+                "source snapshot was trusted",
+            ),
+            snapshot.replace("verification is unaffected", "verification is changed"),
+        ] {
+            run.stderr = format!("{bad}\n{diagnostic}");
+            let original = run.stderr.clone();
+            assert_eq!(separate_sail_notes(&mut run), Vec::<String>::new());
+            assert_eq!(run.stderr, original);
+            assert!(!sail_notes_are_unique(&[bad]));
+        }
+    }
+
+    #[test]
+    fn notice_line_endings_do_not_erase_extra_control_bytes() {
+        let note = "note[SAIL3146]: optional retained-content publication declined at 1 operation(s) because the source snapshot was incomplete or no longer admitted; verification is unaffected";
+        let run = |stderr| RunRecord {
+            exit_code: Some(1),
+            outputs: vec![],
+            stdout_rest: String::new(),
+            wall_ms: 0.0,
+            user_s: None,
+            sys_s: None,
+            max_rss_bytes: None,
+            stderr,
+        };
+        for ending in ["", "\n", "\r\n"] {
+            let mut record = run(format!("{note}{ending}"));
+            assert_eq!(separate_sail_notes(&mut record), vec![note.to_owned()]);
+            assert_eq!(record.stderr, "");
+        }
+        for ending in ["\r", "\r\r\n", "\r\r", "\t\n", "\0\n"] {
+            let original = format!("{note}{ending}");
+            let mut record = run(original.clone());
+            assert_eq!(separate_sail_notes(&mut record), Vec::<String>::new());
+            assert_eq!(record.stderr, original);
+        }
+        let original = format!("{note}\r\r\nerror: failed\n");
+        let mut record = run(original.clone());
+        assert_eq!(separate_sail_notes(&mut record), Vec::<String>::new());
+        assert_eq!(record.stderr, original);
     }
 
     #[test]

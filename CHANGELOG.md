@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Recognize exact optional publication explanations in mutation comparisons, preserving raw diagnostics and duplicate-stage refusals (#748).
+
 - Prepare exact solver-session prefixes for future diagnostic profiling; no profile command or verification behavior changes.
 - Explain optional retained-content publication failures by their actual stage, with bounded aggregate notes.
 
