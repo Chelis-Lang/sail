@@ -99,9 +99,14 @@ while focused selectors and `--no-verify` describe the effective package scope.
 Implicit logging flags are not added to this field. Compile-only success cannot
 establish proof authority; input `currentness` remains a separate observation.
 
-A crate has a `name` (from its functions' paths), `verus` (Verus's own
-`verified`, `errors`, `success` and `encountered_vir_error`), and `functions`,
-sorted by name.
+A crate has an optional display `name`, `verus` (Verus's own `verified`,
+`errors`, `success` and `encountered_vir_error`), and `functions`, sorted by
+name. When compiler function paths are present, every row must establish the
+same crate namespace; a foreign self-type's friendly name does not name the
+local crate. Without compiler paths, a shared friendly namespace remains a
+legacy display hint. Conflicting, incomplete or unqualified namespaces leave
+`name` null. The namespace also guides partial-report function-selector
+projection; it does not establish compiler-invocation or Cargo target identity.
 
 **Counting units.** `summary` and `functions` count functions. Verus's
 `verified` and `errors` count verification units: for example, each loop is

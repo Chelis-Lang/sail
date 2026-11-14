@@ -49,3 +49,34 @@ attribution for repeated friendly names, and does not yet read
 compare a repeated name as one group only when every function under it has
 the same result on each side and the counts match; otherwise the name is
 `incomparable` (vest has 95 such names, shared by 207 functions).
+
+## Same-module failing-target control, 2026-11-14
+
+The reproduction now includes `same-module-positive.rs` and
+`same-module-failing.rs`: one trait implemented for `Vec<u8>` and `Vec<u16>`
+in the same module, plus an unrelated proof whose assertion is the only changed
+byte sequence. Native stock Cargo-Verus returns 0/101. Sail's positive report
+has three verified functions; its failing report has one failed and two unknown.
+The existing VI-0003 safeguard intentionally declines success claims when the
+failing target's attribution is incomplete. This is additional evidence for the
+identity limitation, without changing its policy or promoting timing successes.
+
+Exact sources and observations are in
+`corpus/repros/verus-ambiguous-friendly-name/same-module-observed.json`.
+The original 21,874-file native evidence archive is independently rehashed;
+SHA-256 `58ce87ab45ed51490f8975080019611b3af7ba8ab343ccbecab90cc6f9c628be`.
+This reduced case establishes the ambiguity and conservative report behavior;
+it does not qualify a stronger identity join or complete the IronKV campaign.
+
+
+## Development identity join, 2026-11-14
+
+ADR0140 stages compiler `a3109bed` and a Sail consumer. The compiler writes
+an escaped VIR-path identity immediately before each AIR query, after legacy
+source comments; it does not write it to SMT logs or solver pipes. The consumer
+requires the exact producer commit from structured build information and an
+unambiguous matching timing row. Unique friendly names stay unchanged; colliding
+names use their distinct VIR paths. Missing or mismatched metadata, ambiguous
+timing identities and AIR/SMT op-count disagreements still refuse attribution.
+The global VI-0003 safeguard is unchanged. This is unselected development;
+unit fixtures do not qualify real-project behavior or a runtime upgrade.
