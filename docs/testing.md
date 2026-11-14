@@ -375,6 +375,12 @@ matching the checked-in catalogues. The runner refuses an oracle from another
 platform, stock release or preparation, or one with fewer than three runs.
 Regenerate the stock oracle for the selected setup before measuring it.
 
+With `SAIL_EXPLAIN=1`, the benchmark records the known optional publication
+explanations separately using the exact production vocabulary and a canonical
+positive u64 count (ADR0142). Each publication stage may occur once; repeated
+stages, unknown reasons and malformed wording remain failures. All original
+stderr is retained, and other verifier diagnostics remain exact.
+
 Root-only JSON/time logging leaves vstd's product path intact. Both arms ask
 Verus to suppress wall-time notices; the reader preserves all stderr. The
 oracle must match protocol `roots-json-strict-2`, not merely the generator

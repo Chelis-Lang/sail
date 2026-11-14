@@ -14,7 +14,7 @@ mod eligibility;
 mod namespace;
 mod native;
 mod producers;
-mod publication;
+use super::publication;
 mod selection;
 pub(crate) use driver::Plan;
 #[cfg(test)]

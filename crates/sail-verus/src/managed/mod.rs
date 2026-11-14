@@ -23,6 +23,7 @@ mod native_tools;
 pub mod noop;
 mod observations;
 pub mod projects;
+pub mod publication;
 mod read_check;
 mod receipts;
 pub(crate) mod research;
