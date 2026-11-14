@@ -5,7 +5,11 @@ fn main() -> std::process::ExitCode {
     match inspect() {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("error[SAIL6301]: {error}");
+            if error.is::<sail_kani::Error>() {
+                eprintln!("{error}");
+            } else {
+                eprintln!("error[SAIL6301]: {error}");
+            }
             std::process::ExitCode::from(2)
         }
     }
