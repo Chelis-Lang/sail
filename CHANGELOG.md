@@ -5,6 +5,9 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Preserve the defining crate namespace independently of function timing row order, including compiler-escaped names (#746).
+- Attribute repeated friendly function names only through adjacent, matching compiler-owned AIR identities from the named supporting producer; missing or ambiguous evidence remains partial.
+
 - Recognize exact optional publication explanations in mutation comparisons, preserving raw diagnostics and duplicate-stage refusals (#748).
 
 - Prepare exact solver-session prefixes for future diagnostic profiling; no profile command or verification behavior changes.

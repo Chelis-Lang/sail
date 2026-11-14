@@ -1,0 +1,27 @@
+{
+  "environment": "native x86_64 c7i.4xlarge/us-east-2",
+  "date": "2026-11-14",
+  "sail_source": "7c0aa003567bf48cf04bb4b4bf559657c73cc25c",
+  "archive_sha256": "58ce87ab45ed51490f8975080019611b3af7ba8ab343ccbecab90cc6f9c628be",
+  "cases": {
+    "same-module-positive": {
+      "source_sha256": "94f9046ca7f2c4fb53ec5052ae76efe790d0e3286aae86d1fc0bb794a4050b37",
+      "stock_cargo_exit": 0,
+      "sail_summary": {
+        "verified": 3,
+        "failed": 0,
+        "unknown": 0
+      }
+    },
+    "same-module-failing": {
+      "source_sha256": "9c5fa05edfed11d129f492e7b2f40c0720c6f13775429998af404d9bb7e5b508",
+      "stock_cargo_exit": 101,
+      "sail_summary": {
+        "verified": 0,
+        "failed": 1,
+        "unknown": 2
+      }
+    }
+  },
+  "scope": "Original native Cargo-Verus positive/negative controls and Sail requested-target reports. Duplicate friendly names prevent complete attribution. Failure uses the existing conservative VI-0003 unknown safeguard; no new verification or completeness rule."
+}

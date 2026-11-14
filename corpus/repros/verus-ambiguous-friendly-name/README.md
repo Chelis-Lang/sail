@@ -27,3 +27,12 @@ spans in `mapped/proof.rs` and `mapped/spec.rs`.
 The same displayed name is insufficient to identify one implementation. Sail
 must retain the original function records and logs, report partial attribution,
 and decline an ambiguous obligation join rather than inventing a stable ID.
+
+
+The same-module `Vec<u8>`/`Vec<u16>` controls are
+`same-module-positive.rs` and `same-module-failing.rs`; only the unrelated
+proof's assertion changes. `same-module-observed.json` records original
+stock and Sail outcomes. The unselected ADR0140 producer supplies an explicit
+AIR path that a consumer can corroborate with timing JSON; the ordinary
+selected runtime still uses the conservative legacy rule above. A fixture
+pass does not select or qualify that runtime.

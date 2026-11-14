@@ -24,6 +24,10 @@
 //! process to the shim's session record ([`SessionRecord`]), which says how
 //! many replies the cache served before a solver started.
 
+mod identity;
+
+pub use identity::AirIdentity;
+
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -362,6 +366,9 @@ pub struct AirQuery {
     pub function: String,
     /// The op's span comment, verbatim.
     pub span: Option<String>,
+    /// Optional explicit compiler metadata. Attribution uses it only when the
+    /// structured build information names the exact supporting producer.
+    pub identity: Option<AirIdentity>,
 }
 
 /// An AIR log's query ops, in order, and its spinoff reason if it is a
@@ -372,7 +379,12 @@ pub fn air_queries(text: &str) -> (Vec<AirQuery>, Option<String>) {
     let mut reason = None;
     let mut pending: Option<AirQuery> = None;
     let mut want_span = false;
+    let mut pending_identity = None;
     for line in text.lines() {
+        let query_identity = pending_identity.take();
+        if let Some(comment) = line.strip_prefix(";; ") {
+            pending_identity = identity::parse(comment);
+        }
         if let Some(comment) = line.strip_prefix(";; ") {
             if let Some(r) = comment.strip_prefix("query spun off because: ") {
                 reason = Some(r.trim().to_owned());
@@ -385,6 +397,7 @@ pub fn air_queries(text: &str) -> (Vec<AirQuery>, Option<String>) {
                     kind: word.to_owned(),
                     function: rest.to_owned(),
                     span: None,
+                    identity: None,
                 });
                 want_span = true;
             } else if want_span {
@@ -394,11 +407,14 @@ pub fn air_queries(text: &str) -> (Vec<AirQuery>, Option<String>) {
                 want_span = false;
             }
         } else if line.starts_with("(check-valid") {
-            out.push(pending.take().unwrap_or(AirQuery {
+            let mut query = pending.take().unwrap_or(AirQuery {
                 kind: String::new(),
                 function: String::new(),
                 span: None,
-            }));
+                identity: None,
+            });
+            query.identity = query_identity;
+            out.push(query);
             want_span = false;
         }
     }
@@ -615,16 +631,17 @@ pub struct Attribution {
     pub solver_version: Option<String>,
 }
 
-/// Verus's per-function entries in one `--output-json --time` document:
-/// `(module, function, mode, success, rlimit, time_micros)`.
-type VerusFunction = (
-    String,
-    String,
-    Option<String>,
-    Option<bool>,
-    Option<u64>,
-    Option<u64>,
-);
+/// One timing row, preserving both display and compiler identity.
+struct VerusFunction {
+    module: String,
+    function: String,
+    mode: Option<String>,
+    success: Option<bool>,
+    rlimit: Option<u64>,
+    micros: Option<u64>,
+    path: Option<String>,
+    path_present: bool,
+}
 
 fn verus_functions(doc: &Value) -> Vec<VerusFunction> {
     let mut out = Vec::new();
@@ -641,14 +658,19 @@ fn verus_functions(doc: &Value) -> Vec<VerusFunction> {
             let Some(function) = f.get("function").and_then(Value::as_str) else {
                 continue;
             };
-            out.push((
-                name.to_owned(),
-                function.to_owned(),
-                f.get("mode:").and_then(Value::as_str).map(str::to_owned),
-                f.get("success").and_then(Value::as_bool),
-                f.get("rlimit").and_then(Value::as_u64),
-                f.get("time-micros").and_then(Value::as_u64),
-            ));
+            out.push(VerusFunction {
+                module: name.to_owned(),
+                function: function.to_owned(),
+                mode: f.get("mode:").and_then(Value::as_str).map(str::to_owned),
+                success: f.get("success").and_then(Value::as_bool),
+                rlimit: f.get("rlimit").and_then(Value::as_u64),
+                micros: f.get("time-micros").and_then(Value::as_u64),
+                path: f
+                    .get("function-path")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned),
+                path_present: f.get("function-path").is_some(),
+            });
         }
     }
     out
@@ -658,9 +680,10 @@ fn verus_functions(doc: &Value) -> Vec<VerusFunction> {
 /// document's `--time` breakdown, in document order.
 #[must_use]
 pub fn verus_verdicts(docs: &[Value]) -> Vec<(String, Option<bool>)> {
+    let names = identity::Names::new(docs);
     docs.iter()
         .flat_map(verus_functions)
-        .map(|(_, f, _, ok, _, _)| (f, ok))
+        .map(|row| (names.row_name(&row), row.success))
         .collect()
 }
 
@@ -692,12 +715,88 @@ pub fn parse_model(text: &str) -> Model {
     }
 }
 
+// Verus's krate_ident_to_string prefixes digit-leading names with `$~`
+// and spells escaped Unicode scalars as `$~u$~HEX$~`. Validate that spelling
+// without decoding or rewriting the namespace returned in a report.
+fn valid_namespace(name: &str) -> bool {
+    let mut rest = name
+        .strip_prefix("$~")
+        .filter(|tail| tail.as_bytes().first().is_some_and(u8::is_ascii_digit))
+        .unwrap_or(name);
+    if rest.is_empty() {
+        return false;
+    }
+    while !rest.is_empty() {
+        if let Some(encoded) = rest.strip_prefix("$~u$~") {
+            let Some((digits, tail)) = encoded.split_once("$~") else {
+                return false;
+            };
+            if digits.is_empty()
+                || digits.len() > 6
+                || !digits
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+                || (digits.len() > 1 && digits.starts_with('0'))
+            {
+                return false;
+            }
+            let Some(value) = u32::from_str_radix(digits, 16)
+                .ok()
+                .and_then(char::from_u32)
+            else {
+                return false;
+            };
+            if value.is_ascii() || value.is_control() || value.is_whitespace() {
+                return false;
+            }
+            rest = tail;
+        } else {
+            let Some(c) = rest.chars().next() else {
+                return false;
+            };
+            if c != '_' && !c.is_alphanumeric() {
+                return false;
+            }
+            let Some(tail) = rest.get(c.len_utf8()..) else {
+                return false;
+            };
+            rest = tail;
+        }
+    }
+    true
+}
+
+fn path_namespace(path: &str, canonical: bool) -> Option<&str> {
+    let (name, _) = path.split_once("::")?;
+    if !valid_namespace(name) {
+        return None;
+    }
+    path.split("::")
+        .all(|segment| {
+            !segment.is_empty()
+                && !segment.contains(':')
+                && !segment.chars().any(char::is_control)
+                && (!canonical || !segment.chars().any(char::is_whitespace))
+        })
+        .then_some(name)
+}
+
 fn crate_name(functions: &[VerusFunction]) -> Option<String> {
-    functions
-        .first()
-        .and_then(|(_, f, ..)| f.split("::").next())
-        .filter(|s| !s.is_empty())
-        .map(str::to_owned)
+    // A method's friendly self-type namespace can belong to a dependency.
+    // Prefer compiler paths, and never choose a crate from row ordering.
+    let use_paths = functions.iter().any(|row| row.path_present);
+    let mut names = functions.iter().map(|row| {
+        let path = if use_paths {
+            row.path.as_deref()?
+        } else {
+            row.function.as_str()
+        };
+        path_namespace(path, use_paths)
+    });
+    let first = names.next()??;
+    names
+        .all(|name| name == Some(first))
+        .then(|| first.to_owned())
 }
 
 /// The obligations in `logs`, by function. Files whose AIR and solver op
@@ -705,6 +804,7 @@ fn crate_name(functions: &[VerusFunction]) -> Option<String> {
 fn obligations(
     logs: &[LogFile],
     provenance: &Provenance,
+    names: &identity::Names,
     notes: &mut Vec<String>,
     unmatched_sessions: &mut u64,
 ) -> BTreeMap<String, Vec<ObligationRecord>> {
@@ -737,6 +837,13 @@ fn obligations(
             ));
             continue;
         }
+        if log.air.iter().any(|air| names.query(air).is_none()) {
+            notes.push(format!(
+                "log {}: explicit AIR identity is missing or mismatches timing; not attributed",
+                log.stem
+            ));
+            continue;
+        }
         let served = match provenance {
             Provenance::NoCache => Some(0),
             Provenance::Records(r) => r
@@ -747,12 +854,13 @@ fn obligations(
         let spinoff = spinoff_index(&log.stem);
         let mut ordinals: BTreeMap<(&str, &str), u32> = BTreeMap::new();
         for (air, op) in log.air.iter().zip(&log.ops) {
-            let ordinal = ordinals
-                .entry((air.function.as_str(), air.kind.as_str()))
-                .or_insert(0);
+            let Some(air) = names.query(air) else {
+                continue;
+            };
+            let ordinal = ordinals.entry((air.function, air.kind)).or_insert(0);
             let id = ObligationId {
-                function: air.function.clone(),
-                kind: ObligationKind(air.kind.clone()),
+                function: air.function.to_owned(),
+                kind: ObligationKind(air.kind.to_owned()),
                 ordinal: if spinoff.is_some() { 0 } else { *ordinal },
                 spinoff,
             };
@@ -774,37 +882,34 @@ fn obligations(
                 })
                 .collect();
             by_fn
-                .entry(air.function.clone())
+                .entry(air.function.to_owned())
                 .or_default()
                 .push(ObligationRecord {
                     id,
-                    span: air.span.clone(),
+                    span: air.span.map(str::to_owned),
                     spinoff_reason: log.spinoff_reason.clone(),
                     checks,
                 });
         }
     }
     for list in by_fn.values_mut() {
-        list.sort_by(|a, b| {
-            (
-                a.id.spinoff.is_some(),
-                &a.id.kind,
-                a.id.ordinal,
-                a.id.spinoff,
-            )
-                .cmp(&(
-                    b.id.spinoff.is_some(),
-                    &b.id.kind,
-                    b.id.ordinal,
-                    b.id.spinoff,
-                ))
-        });
+        list.sort_by(|a, b| obligation_order(a).cmp(&obligation_order(b)));
     }
     by_fn
 }
 
+fn obligation_order(obligation: &ObligationRecord) -> (bool, &ObligationKind, u32, Option<u32>) {
+    (
+        obligation.id.spinoff.is_some(),
+        &obligation.id.kind,
+        obligation.id.ordinal,
+        obligation.id.spinoff,
+    )
+}
+
 fn remove_ambiguous_joins(
     docs: &[Value],
+    names: &identity::Names,
     by_fn: &mut BTreeMap<String, Vec<ObligationRecord>>,
     notes: &mut Vec<String>,
 ) {
@@ -814,8 +919,8 @@ fn remove_ambiguous_joins(
     // stable join: leave every such record unattributed rather than attaching
     // all operations to the first entry or inventing obligation identities.
     let mut occurrences = BTreeMap::new();
-    for (_, function, ..) in docs.iter().flat_map(verus_functions) {
-        *occurrences.entry(function).or_insert(0usize) += 1;
+    for row in docs.iter().flat_map(verus_functions) {
+        *occurrences.entry(names.row_name(&row)).or_insert(0usize) += 1;
     }
     for (function, count) in occurrences {
         if count > 1 && by_fn.remove(&function).is_some() {
@@ -837,12 +942,13 @@ pub fn attribute(
     provenance: &Provenance,
     unavailable: Option<&str>,
 ) -> Attribution {
-    let mut notes = Vec::new();
+    let names = identity::Names::new(docs);
+    let mut notes: Vec<_> = names.error.into_iter().map(str::to_owned).collect();
     let mut unmatched_sessions = 0;
     let mut by_fn = logs
-        .map(|l| obligations(l, provenance, &mut notes, &mut unmatched_sessions))
+        .map(|l| obligations(l, provenance, &names, &mut notes, &mut unmatched_sessions))
         .unwrap_or_default();
-    remove_ambiguous_joins(docs, &mut by_fn, &mut notes);
+    remove_ambiguous_joins(docs, &names, &mut by_fn, &mut notes);
     let mut missing = 0u64;
     let mut crates = Vec::new();
     for doc in docs {
@@ -850,7 +956,8 @@ pub fn attribute(
         let name = crate_name(&functions);
         let records = functions
             .into_iter()
-            .map(|(module, function, fn_mode, ok, rlimit, micros)| {
+            .map(|row| {
+                let function = names.row_name(&row);
                 let obligations = match logs {
                     None => None,
                     Some(_) => by_fn.remove(&function).filter(|o| !o.is_empty()),
@@ -860,11 +967,11 @@ pub fn attribute(
                 }
                 FunctionRecord {
                     function,
-                    module,
-                    fn_mode,
-                    verus_success: ok,
-                    smt_micros: micros,
-                    rlimit,
+                    module: row.module,
+                    fn_mode: row.mode,
+                    verus_success: row.success,
+                    smt_micros: row.micros,
+                    rlimit: row.rlimit,
                     obligations,
                     establishment: Establishment::Confirmed,
                     mode: Mode::Default,
@@ -981,6 +1088,108 @@ mod tests {
         );
         assert_eq!(rest, b"note\n{broken\n");
         assert_eq!(json_documents(b""), (vec![], vec![]));
+    }
+
+    #[test]
+    fn generated_crate_namespace_escapes_are_preserved_and_validated() {
+        for name in [
+            "demo",
+            "démø_名",
+            "d$~u$~e9$~m$~u$~f8$~_$~u$~540d$~",
+            "$~123review",
+        ] {
+            assert!(valid_namespace(name), "supported namespace {name}");
+            assert_eq!(path_namespace(&format!("{name}::good"), true), Some(name));
+        }
+        for name in [
+            "",
+            " demo",
+            "demo\nforged",
+            "demo$",
+            "$~",
+            "$~u$~",
+            "$~u$~e9",
+            "$~u$~0e9$~",
+            "$~u$~E9$~",
+            "$~u$~41$~",
+            "$~u$~d800$~",
+            "$~u$~110000$~",
+            "$~u$~a0$~",
+        ] {
+            assert!(!valid_namespace(name), "malformed namespace {name}");
+        }
+    }
+
+    #[test]
+    fn crate_display_name_uses_compiler_paths_and_is_independent_of_row_order() {
+        let entry = |friendly, path| {
+            serde_json::json!({
+                "function": friendly, "function-path": path, "success": true
+            })
+        };
+        for mut rows in [
+            vec![
+                entry("alloc::Vec::tag", Some("demo::impl&%0::tag")),
+                entry("demo::ordinary", Some("demo::ordinary")),
+            ],
+            vec![
+                entry("alloc::Vec::tag", Some("demo::impl&%0::tag")),
+                entry("alloc::Vec::tag", Some("demo::impl&%1::tag")),
+            ],
+        ] {
+            for _ in 0..2 {
+                let doc = serde_json::json!({"times-ms":{"smt":{"smt-run-module-times":[{
+                    "module":"demo", "function-breakdown":rows
+                }]}}});
+                let result = attribute(&[doc], None, &Provenance::NoCache, None);
+                assert_eq!(result.crates[0].name.as_deref(), Some("demo"));
+                rows.reverse();
+            }
+        }
+    }
+
+    #[test]
+    fn crate_display_name_declines_conflicting_or_incomplete_namespaces() {
+        let entry = |friendly, path| {
+            serde_json::json!({
+                "function": friendly, "function-path": path, "success": true
+            })
+        };
+        for mut rows in [
+            vec![
+                entry("left::a", Some("left::a")),
+                entry("right::b", Some("right::b")),
+            ],
+            vec![entry("demo::a", Some("demo::a")), entry("demo::b", None)],
+            vec![entry("left::a", None), entry("right::b", None)],
+            vec![entry("demo::a", None)],
+            vec![serde_json::json!({"function":"demo::a","function-path":17})],
+            vec![entry("demo::a", Some(""))],
+            vec![entry("demo::a", Some("unqualified"))],
+            vec![entry("demo::a", Some(" demo::f"))],
+            vec![entry("demo::a", Some("demo\nforged::f"))],
+            vec![entry("demo::a", Some("demo:::f"))],
+            vec![entry("demo::a", Some("demo:: f"))],
+            vec![entry("demo::a", Some("demo::f\nforged"))],
+            vec![entry("demo::a", Some("demo::"))],
+            vec![entry("demo::a", Some("demo$::f"))],
+            vec![entry("unqualified", None)],
+            Vec::new(),
+        ] {
+            for _ in 0..2 {
+                let doc = serde_json::json!({"times-ms":{"smt":{"smt-run-module-times":[{
+                    "module":"demo", "function-breakdown":rows
+                }]}}});
+                let result = attribute(&[doc], None, &Provenance::NoCache, None);
+                assert_eq!(result.crates[0].name, None);
+                rows.reverse();
+            }
+        }
+        let legacy = serde_json::json!({"times-ms":{"smt":{"smt-run-module-times":[{
+            "module":"demo", "function-breakdown":[{"function":"demo::a"},{"function":"demo::b"}]
+        }]}}});
+        let result = attribute(&[legacy], None, &Provenance::NoCache, None);
+        assert_eq!(result.crates[0].name.as_deref(), Some("demo"));
     }
 
     const TRANSCRIPT: &str = ";;;>>> QUERY
@@ -1128,6 +1337,7 @@ unsat
                 function: function.to_owned(),
                 kind: "Function-Def".to_owned(),
                 span: Some(format!("src/{stem}.rs:1:1: 1:9 (#0)")),
+                identity: None,
             }],
             ops: vec![SmtOp::default()],
             spinoff_reason: None,
@@ -1212,6 +1422,7 @@ unsat
                 function: function.to_owned(),
                 kind: "Function-Def".to_owned(),
                 span: Some("src/lib.rs:1:1: 1:9 (#0)".to_owned()),
+                identity: None,
             }],
             ops: vec![SmtOp {
                 checks: vec![SmtCheck {
