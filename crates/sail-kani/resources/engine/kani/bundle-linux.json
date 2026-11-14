@@ -609,5 +609,8 @@
       "sha256": "3de7e01ffe75da48b5aabb32ae537100162c57e72a66ef867594e06fd4018ce8",
       "executable": false
     }
-  }
+  },
+  "empty_directories": [
+    "scripts"
+  ]
 }

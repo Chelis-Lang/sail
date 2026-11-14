@@ -30,6 +30,10 @@ class BundleTests(unittest.TestCase):
         pin = bundle.load_pin(PIN)
         pin["files"] = {name: {"bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "executable": name.startswith("bin/")} for name, data in self.expected.items()}
         with tarfile.open(archive, "w:gz") as output:
+            member = tarfile.TarInfo("kani-0.68.0/scripts")
+            member.type = tarfile.DIRTYPE
+            member.mode = 0o755
+            output.addfile(member)
             for name, data in self.expected.items():
                 if name in omit:
                     continue
@@ -147,11 +151,25 @@ class BundleTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             bundle.publish("bad\0path", self.root / "out")
 
+    def test_explicit_original_empty_directory_is_preserved_and_required(self):
+        archive, pin = self.fixture()
+        destination = self.root / "installed"
+        bundle.unpack(archive, pin, destination)
+        self.assertEqual(list((destination / "scripts").iterdir()), [])
+        with tarfile.open(archive, "w:gz"):
+            pass
+        pin["archive_bytes"] = archive.stat().st_size
+        pin["archive_sha256"] = hashlib.sha256(archive.read_bytes()).hexdigest()
+        pin["files"] = {}
+        with self.assertRaises(ValueError):
+            bundle.unpack(archive, pin, self.root / "missing-empty")
+        self.assertFalse((self.root / "missing-empty").exists())
+
     def test_pin_is_strict_and_bounded(self):
         pin = bundle.load_pin(PIN)
         self.assertEqual(len(pin["files"]), 120)
         path = self.root / "pin.json"
-        for change in [{"schema_version": True}, {"archive_bytes": True}, {"version": "0.69.0"}, {"host": "aarch64-apple-darwin"}, {"unknown": 1}]:
+        for change in [{"schema_version": True}, {"archive_bytes": True}, {"version": "0.69.0"}, {"host": "aarch64-apple-darwin"}, {"empty_directories": [{}]}, {"empty_directories": ["bin/kani-driver/child"]}, {"empty_directories": ["scripts", "scripts/child"]}, {"unknown": 1}]:
             path.write_text(json.dumps(dict(pin, **change)))
             with self.assertRaises(ValueError):
                 bundle.load_pin(path)

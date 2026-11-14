@@ -54,7 +54,7 @@ def load_pin(path):
         or pin.get("url") != "https://github.com/model-checking/kani/releases/download/kani-0.68.0/kani-0.68.0-x86_64-unknown-linux-gnu.tar.gz"
     ):
         raise ValueError("unsupported Kani release bundle identity")
-    if set(pin) != {"schema_version", "version", "cbmc_version", "host", "url", "archive_bytes", "archive_sha256", "rust_toolchain", "rustc_version", "files"}:
+    if set(pin) != {"schema_version", "version", "cbmc_version", "host", "url", "archive_bytes", "archive_sha256", "rust_toolchain", "rustc_version", "files", "empty_directories"}:
         raise ValueError("unsupported bundle pin fields")
     files = pin.get("files")
     if not isinstance(files, dict) or not 0 < len(files) <= MAX_FILES:
@@ -68,6 +68,13 @@ def load_pin(path):
         if type(record.get("executable")) is not bool or set(record) != {"bytes", "sha256", "executable"}:
             raise ValueError("invalid runtime file metadata")
         check_hash(record.get("sha256"))
+    empty = pin.get("empty_directories")
+    if not isinstance(empty, list) or len(empty) > MAX_FILES or any(not isinstance(name, str) for name in empty) or len(empty) != len(set(empty)):
+        raise ValueError("invalid empty-directory inventory")
+    for directory in empty:
+        path = relative(directory)
+        if any(relative(name).is_relative_to(path) or path.is_relative_to(relative(name)) for name in files) or any(other != directory and relative(other).is_relative_to(path) for other in empty):
+            raise ValueError("declared empty directory contains a file")
     names = set(files)
     if any(str(parent) in names for name in files for parent in relative(name).parents):
         raise ValueError("file and directory paths collide")
@@ -130,6 +137,10 @@ def unpack(archive, pin, destination):
     parents = {PurePosixPath(".")}
     for name in expected:
         parents.update(relative(name).parents)
+    for name in pin["empty_directories"]:
+        path = relative(name)
+        parents.add(path)
+        parents.update(path.parents)
     destination.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix=".sail-kani-", dir=destination.parent))
     try:
@@ -146,8 +157,9 @@ def unpack(archive, pin, destination):
                 seen.add(spelling)
                 name = PurePosixPath(*path.parts[1:])
                 if member.isdir():
-                    if name not in parents:
-                        raise ValueError("unexpected archive directory")
+                    if name not in parents or member.mode & 0o777 != 0o755:
+                        raise ValueError("unexpected archive directory or mode")
+                    stage.joinpath(*name.parts).mkdir(parents=True, exist_ok=True)
                     continue
                 key = str(name)
                 if member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE) or key not in expected or key in retained:
@@ -173,6 +185,10 @@ def unpack(archive, pin, destination):
                 retained.add(key)
         if retained != set(expected):
             raise ValueError("incomplete archive inventory")
+        for name in pin["empty_directories"]:
+            directory = stage.joinpath(*relative(name).parts)
+            if not directory.is_dir() or any(directory.iterdir()):
+                raise ValueError("missing or nonempty original directory")
         if os.path.lexists(destination):
             raise ValueError("bundle destination appeared during staging")
         for directory in stage.rglob("*"):
