@@ -13,3 +13,9 @@ See the [installation guide](../../docs/install.md) for runtime and toolchain se
 
 [Verification guide](../../docs/workspace-verification.md) · [Rust API reference](https://docs.rs/sail-verus/0.2.0/)
 
+
+Diagnostic `attribution::profile_inputs::collect` describes complete-session
+check positions using existing timing/AIR identity rules. It authenticates no
+input, solver, source, currentness or proof. Bounded native Linux qualification and
+independent review pass; full profiler/worker integration remains pending.
+Verification does not call it.

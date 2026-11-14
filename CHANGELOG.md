@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Prepare read-only diagnostic descriptions of complete solver-session check positions; ambiguous owners remain unavailable and no profile command is introduced.
+
 - Add bounded diagnostic quantifier trace counting groundwork; no profile command or verification behavior changes.
 
 - Preserve the defining crate namespace independently of function timing row order, including compiler-escaped names (#746).

@@ -25,6 +25,7 @@
 //! many replies the cache served before a solver started.
 
 mod identity;
+pub mod profile_inputs;
 
 pub use identity::AirIdentity;
 
