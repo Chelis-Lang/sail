@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Prepare exact solver-session prefixes for future diagnostic profiling; no profile command or verification behavior changes.
+
 - Explain optional retained-proof plan declines with their actual typed failure stage; verification falls back to normal compilation.
 - Pin the internal Linux Kani release-bundle fixture, including all original files and notices; executor and CLI availability remain pending.
 

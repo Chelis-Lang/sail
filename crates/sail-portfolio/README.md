@@ -13,3 +13,9 @@ See the [installation guide](../../docs/install.md) for runtime and toolchain se
 
 [Documentation index](../../docs/README.md) · [Rust API reference](https://docs.rs/sail-portfolio/0.2.0/)
 
+
+The `profile` module prepares an exact borrowed session prefix through one
+selected check for future diagnostic replay. It preserves every earlier byte
+and check, refuses unclassified/incomplete or exited histories, and adds no
+execution or proof/cache authority. The profile CLI and trace worker remain
+planned; see ADR 0138 and `docs/validation/profile-session-prefix.md`.
