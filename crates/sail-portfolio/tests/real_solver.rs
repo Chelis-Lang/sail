@@ -116,3 +116,28 @@ fn assertion_shuffles_are_accepted_by_the_solver() {
         assert!(c.answers.iter().all(Option::is_some), "check {}", c.seq);
     }
 }
+
+/// Every selected check is replayed with all preceding checks and stack effects.
+#[test]
+#[ignore = "needs SAIL_TEST_Z3"]
+fn profile_prefix_replays_the_original_history() {
+    let original = b"; exact history\r\n(set-logic QF_UF)\n(declare-const p Bool)\n(assert p)\n(check-sat)\n(push 1)\n(assert (not p))\n(check-sat)\n(pop 1)\n(check-sat)\n(exit)";
+    for (check, expected) in [
+        (0, b"sat\n".as_slice()),
+        (1, b"sat\nunsat\n"),
+        (2, b"sat\nunsat\nsat\n"),
+    ] {
+        let selected = sail_portfolio::profile::prefix(original, check)
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        assert!(original.starts_with(selected.input));
+        assert!(!selected.input.ends_with(b"(exit)"));
+        let replay = sail_solver::run(&solver(), selected.input)
+            .unwrap_or_else(|error| unreachable!("{error}"));
+        assert_eq!(replay.stdout, expected);
+        assert_eq!(replay.stderr, Vec::<u8>::new());
+        assert_eq!(
+            replay.outcome,
+            sail_solver::Outcome::Exited { code: Some(0) }
+        );
+    }
+}
