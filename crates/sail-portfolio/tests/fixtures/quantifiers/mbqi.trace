@@ -1,0 +1,94 @@
+[tool-version] Z3 4.16.0
+[mk-app] #1 true
+[mk-app] #2 false
+[mk-app] #1 true
+[mk-app] #2 false
+[mk-app] #3 pi
+[mk-app] #4 euler
+[mk-var] datatype#0 0
+[mk-var] datatype#1 1
+[mk-app] datatype#2 insert datatype#0 datatype#1
+[mk-app] datatype#3 pattern datatype#2
+[mk-app] datatype#4 head datatype#2
+[mk-app] datatype#5 = datatype#0 datatype#4
+[mk-quant] datatype#6 constructor_accessor_axiom 2 datatype#3 datatype#5
+[attach-var-names] datatype#6 (;k!0) (;List)
+[mk-app] datatype#7 tail datatype#2
+[mk-app] datatype#8 = datatype#1 datatype#7
+[mk-quant] datatype#9 constructor_accessor_axiom 2 datatype#3 datatype#8
+[attach-var-names] datatype#9 (;k!0) (;List)
+[mk-app] #5 bv
+[attach-meaning] #5 bv #b0
+[mk-var] #6 0
+[mk-var] #7 1
+[mk-var] #8 2
+[mk-var] #9 3
+[mk-var] #10 4
+[mk-var] #11 5
+[mk-var] #12 6
+[mk-var] #13 7
+[mk-var] #14 8
+[mk-var] #15 9
+[mk-var] #16 10
+[mk-var] #17 11
+[mk-var] #18 12
+[mk-var] #19 13
+[mk-var] #20 14
+[mk-app] #21 + #14 #12
+[attach-enode] #1 0
+[attach-enode] #2 0
+[mk-var] #22 0
+[mk-app] #23 p #22
+[mk-quant] #24 mbqi_p 1 #23
+[attach-var-names] #24 (|x| ; |Int|)
+[mk-app] #25 Int
+[attach-meaning] #25 arith 0
+[mk-app] #26 p #25
+[mk-app] #27 not #26
+[attach-meaning] #5 bv #b0
+[attach-enode] #1 0
+[attach-enode] #2 0
+[begin-check] 0
+[mk-app] #28 Int
+[attach-meaning] #28 arith 1
+[attach-enode] #28 0
+[mk-app] #29 Real
+[attach-meaning] #29 arith 1
+[attach-enode] #29 0
+[attach-enode] #25 0
+[mk-app] #30 Real
+[attach-meaning] #30 arith 0
+[attach-enode] #30 0
+[assign] #24 justification -1: 
+[attach-enode] #26 0
+[assign] (not #26) justification -1: 
+[attach-meaning] #5 bv #b0
+[attach-enode] #1 0
+[attach-enode] #2 0
+[attach-enode] #28 0
+[attach-enode] #29 0
+[attach-enode] #25 0
+[attach-enode] #30 0
+[mk-app] #31 k!1
+[mk-app] #32 not #2
+[inst-discovered] theory-solving 0x0 basic# ; #32
+[mk-app] #33 = #32 #1
+[instance] 0x0 #33
+[attach-enode] #33 0
+[end-of-instance]
+[mk-app] #32 = #31 #25
+[mk-app] #33 or #32
+[inst-discovered] theory-solving 0x0 basic# ; #33
+[mk-app] #34 = #33 #32
+[instance] 0x0 #34
+[attach-enode] #34 0
+[end-of-instance]
+[attach-enode] #31 0
+[attach-enode] #32 0
+[assign] #32 justification -1: 
+[inst-discovered] MBQI 1629529239 #24 #25
+[mk-app] #31 not #24
+[mk-app] #32 or #31 #26
+[instance] 1629529239 ; 1
+[end-of-instance]
+[eof]

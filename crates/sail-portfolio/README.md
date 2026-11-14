@@ -19,3 +19,15 @@ selected check for future diagnostic replay. It preserves every earlier byte
 and check, refuses unclassified/incomplete or exited histories, and adds no
 execution or proof/cache authority. The profile CLI and trace worker remain
 planned; see ADR 0138 and `docs/validation/profile-session-prefix.md`.
+
+The `quantifiers` module decodes bounded complete pinned-Z3 traces. It counts
+E-matching/model-based discoveries and instances, preserving unknown or conflicting
+fingerprint ownership explicitly. Its results describe that traced history only;
+no solver/input authentication, source identity or proof/currentness follows.
+The complete profile worker and CLI remain planned (ADR0144).
+
+The diagnostic quantifier counter checks framing, supported identity fields and
+resource bounds. Opaque trace bodies and quantifier binding cardinality are not
+fully validated; complete attribution never authenticates a solver/session or
+establishes a proof. Full profiling and its separate session binding remain work
+in progress.

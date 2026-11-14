@@ -1,0 +1,78 @@
+[tool-version] Z3 4.16.0
+[mk-app] #1 true
+[mk-app] #2 false
+[mk-app] #1 true
+[mk-app] #2 false
+[mk-app] #3 pi
+[mk-app] #4 euler
+[mk-var] datatype#0 0
+[mk-var] datatype#1 1
+[mk-app] datatype#2 insert datatype#0 datatype#1
+[mk-app] datatype#3 pattern datatype#2
+[mk-app] datatype#4 head datatype#2
+[mk-app] datatype#5 = datatype#0 datatype#4
+[mk-quant] datatype#6 constructor_accessor_axiom 2 datatype#3 datatype#5
+[attach-var-names] datatype#6 (;k!0) (;List)
+[mk-app] datatype#7 tail datatype#2
+[mk-app] datatype#8 = datatype#1 datatype#7
+[mk-quant] datatype#9 constructor_accessor_axiom 2 datatype#3 datatype#8
+[attach-var-names] datatype#9 (;k!0) (;List)
+[mk-app] #5 bv
+[attach-meaning] #5 bv #b0
+[mk-var] #6 0
+[mk-var] #7 1
+[mk-var] #8 2
+[mk-var] #9 3
+[mk-var] #10 4
+[mk-var] #11 5
+[mk-var] #12 6
+[mk-var] #13 7
+[mk-var] #14 8
+[mk-var] #15 9
+[mk-var] #16 10
+[mk-var] #17 11
+[mk-var] #18 12
+[mk-var] #19 13
+[mk-var] #20 14
+[mk-app] #21 + #14 #12
+[attach-enode] #1 0
+[attach-enode] #2 0
+[mk-var] datatype#10 0
+[mk-app] datatype#11 SailWrap datatype#10
+[mk-app] datatype#12 pattern datatype#11
+[mk-app] datatype#13 SailValue datatype#11
+[mk-app] datatype#14 = datatype#10 datatype#13
+[mk-quant] datatype#15 constructor_accessor_axiom 1 datatype#12 datatype#14
+[attach-var-names] datatype#15 (;SailU)
+[mk-app] #22 u
+[mk-app] #23 SailWrap #22
+[mk-app] #24 p #23
+[attach-meaning] #5 bv #b0
+[attach-enode] #1 0
+[attach-enode] #2 0
+[begin-check] 0
+[mk-app] #25 Int
+[attach-meaning] #25 arith 1
+[attach-enode] #25 0
+[mk-app] #26 Real
+[attach-meaning] #26 arith 1
+[attach-enode] #26 0
+[mk-app] #27 Int
+[attach-meaning] #27 arith 0
+[attach-enode] #27 0
+[mk-app] #28 Real
+[attach-meaning] #28 arith 0
+[attach-enode] #28 0
+[attach-enode] #22 0
+[attach-enode] #23 0
+[mk-app] #29 SailValue #23
+[mk-app] #30 = #22 #29
+[new-match] 0 datatype#15 datatype#12 #22 ; #23
+[instance] 0 #30
+[attach-enode] #29 0
+[end-of-instance]
+[attach-enode] #24 0
+[assign] #24 justification -1: 
+[mk-app] #30 SailU!val!0
+[mk-app] #31 SailWrap #30
+[eof]

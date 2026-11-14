@@ -1,0 +1,2 @@
+# Diagnostic fixtures retain every byte emitted by the pinned solver.
+crates/sail-portfolio/tests/fixtures/quantifiers/*.trace -text
