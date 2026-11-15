@@ -32,6 +32,18 @@ pass. The cause remains unknown. The strict assertion remains active, and no
 cleanup policy or test has been weakened. Original failures and bounded scope
 are retained with the [publication comparison record](validation/publication-notice-comparison.md).
 
+## Exported compiler artifact repeatability
+
+The selected Linux Verus runtime serializes exported source-map entries in hash
+order ([VI-0043](verus-issues/VI-0043-export-metadata-map-order.md)). Repeated
+compilation can change VIR bytes without changing the exported entries. A fork
+producer correction is implemented and has focused native validation; it is not
+selected. Anvil's registry macro also varies native Rust metadata; explicit
+bundled-macro experiments remove that variation and pass a verifying/compile-only
+artifact comparison. Production routing and reuse are unimplemented, so the
+selected-runtime prerequisite (#232) stays failed. No artifact-equality check has
+been relaxed. See the [bounded record](validation/anvil-vstd-artifacts.md).
+
 ## Builtin diagnostic source paths
 
 The selected Mac fork can print a different builtin definition source path than

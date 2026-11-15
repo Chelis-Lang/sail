@@ -58,6 +58,7 @@ and to the `SAIL_CARGO_VERUS` development override.
 | [VI-0039](VI-0039-concurrent-cargo-json-framing.md) | Concurrent Cargo-Verus JSON output loses framing | Unresolved; strict parallel corpus profile refuses | No fork change selected | `corpus/repros/verus-parallel-json/` |
 | [VI-0040](VI-0040-macos-abstract-domain-verdict.md) | Mac abstract-domain stock/fork-arm verdict differs | Unresolved (#634); original gate stays failed | Cause unestablished; no fork change selected | `corpus/repros/abstract-domain-mac-verdict/` |
 | [VI-0042](VI-0042-structural-derive-in-module.md) | A structural-equality derive inside a module aborts Verus | open upstream; no current Sail surface affected (neutral path removed) | — | described (inline minimal input) |
+| [VI-0043](VI-0043-export-metadata-map-order.md) | Exported source maps serialize in hash order | reproduced on selected Linux runtime; correction unselected | `1a7e2f6c`, focused native checks pass; unselected | `corpus/repros/verus-export-metadata-order/` |
 
 Z3 behaviour is recorded the same way, as reproductions under
 `corpus/repros/` (for example `z3-nla-rlimit-nondeterminism`). The
