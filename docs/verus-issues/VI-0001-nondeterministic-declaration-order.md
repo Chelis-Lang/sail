@@ -127,3 +127,22 @@ measured standard-tier units, `vest` included with either macro source
 Since [ADR 0043](../decisions/0043-default-mode-runs-the-fork.md) Sail runs the fork for every verification, default mode included. Stock runs remain only as the conformance oracle and under the `SAIL_CARGO_VERUS` development override. Default mode therefore gets the fix
 and its warm cache hit rates. Stock runs keep the variation; no workaround is
 needed for correctness, and Sail does not reorder declarations.
+
+## Native Rust metadata reduction (2026-11-15)
+
+The translation-side correction above stabilizes verifier declarations; it does
+not change what a project's registry proc macro generates for the final native
+compiler pass. While investigating Anvil #232, a
+[small direct Rustc fixture](../../corpus/repros/verus-registry-native-metadata/README.md)
+using the actual registry libraries produced eight different Rust metadata
+files in eight runs. Changing only the macro-library argument to the fork's
+bundled library, with the same registry builtin/vstd and all other inputs,
+produced one metadata hash in eight runs. All compiler exits were zero. This
+reproduces the native-metadata class independently of Verus verification.
+
+The selected Linux runtime's fork is `a0e11cff`; the reduction's bundled macro
+comes from the separately built, unselected `1a7e2f6c` runtime. The complete
+library identities and original outputs are retained in the
+[Anvil artifact record](../validation/anvil-vstd-artifacts.md). No default macro
+routing correction is selected. The larger Anvil control and any eventual
+artifact-bridge acceptance remain separate from this reduction.
