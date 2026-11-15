@@ -102,8 +102,8 @@ binding, full qualification and selection remain open. See the
   qualified.
 
 - A shim session that falls back to the pinned Z3 after a failed or timed-out
-  daemon handshake records no session, so its checks have no `source` and a
-  neutral proof built on them reads `not-proved`
+  daemon handshake records no session, so its checks can lack a recorded
+  solver `source`
   ([#683](https://github.com/Chelis-Lang/sail/issues/683)). Such a target is
   no longer reused, so the state no longer persists; the next run verifies
   it again. What makes the handshake fail organically is not established: no
@@ -128,13 +128,15 @@ Current numbers are in [performance](performance.md).
   are qualified and consumed on main. The corrected proof-edit/failure/fix
   catalogue passes six rounds. The generated binaries' missing prelude is
   corrected (#631), but the valid parallel workspace exposes malformed
-  combined verifier JSON (#632,
-  [VI-0039](verus-issues/VI-0039-concurrent-cargo-json-framing.md)). The strict
-  comparison remains failed; a serial control also refuses two shapes because
-  independent crate document order changes. Complete compiler-invocation
-  identity is not established by matching aggregate counts.
-  Runtime/installed corrections and their both-platform gates are delivered;
-  complete parallel scaling acceptance remains open under #632/#629. The
+  combined verifier JSON (the original #632 reproduction,
+  [VI-0039](verus-issues/VI-0039-concurrent-cargo-json-framing.md)). Those original
+  aggregate comparisons remain failed. The current conformance harness captures
+  complete compiler invocations and compares their original streams, identities
+  and multiplicities; it also requires a complete aggregate interleaving witness
+  ([qualified capture](validation/conformance-compiler-capture.md), #724/#731).
+  This resolves the harness-capture gap tracked by closed #632 without changing
+  Cargo-Verus output. Complete broad/scaling performance acceptance remains open
+  under #629. The
   unselected optimization experiments establish no general speedup.
 
 - **A first unchanged call can still take the slower full path**
@@ -287,16 +289,19 @@ Current numbers are in [performance](performance.md).
   and that the result holds no error diagnostic. Observed on Linux with the pinned Verus at `b059ce3f`;
   other failures before compilation were not tried.
 
-## Integration APIs (experimental)
+## Mutation and historical integration records
 
 - A failed Verus function can retain an unknown primary obligation, so a
   rejected mutant is not by itself a conclusive solver refutation
   ([reproduction](../corpus/repros/neutral-contract-unknown/README.md), recorded
   on the neutral source path that Sail 0.3.0 removed;
   [record](validation/neutral-mutation.md)).
-- Requirement attribution cannot reach a tier: `--no-cheating` fails in `vstd`
-  for Cargo jobs and standalone jobs record no per-check provenance
-  ([requirement assurance](requirement-assurance.md)).
+- Ordinary requirement attribution and its assurance view are retired
+  ([retirement](requirement-assurance.md), ADR0148). The requested-package
+  `--no-cheating`/trust-check proposal in #684 belongs to that retired view; it
+  is not an active product limitation. Standalone per-check provenance was
+  separately fixed in #704. These dispositions do not add an assurance tier or
+  claim a trust-check implementation.
 
 ## Tests and environment
 

@@ -6,7 +6,7 @@
 | Design | [ADR 0113](../decisions/0113-conformance-invocation-capture.md) |
 | Runtime | Existing primary stock and fork pins; no runtime/solver changes |
 | Implementation | Per-invocation capture in plain, shim/cache and engine arms; explicit project and nonempty selection guards |
-| Status | Qualified at `1be7ba0a`; current-main rebase gate passed, protected PR checks remain |
+| Status | Qualified at `1be7ba0a`; current-main rebase and protected PR checks passed; merged #724 (`88601bf1`), closing #632/#716. Later progress-boundary correction merged #731. Broader scaling remains #629 |
 | Linux | Native c7i.4xlarge/us-east-2: workspace 1,351 pass/53 skip, solver 50 pass, full E2E including extra |
 | Conformance | All four arms: PR 33 Same/311 functions; full fast 147 Same/3,451 functions; standard pass-through/fill/engine 159 Same, warm 158 Same/one unstable Anvil; 13,166 functions, 32 drift units retained; no different/infra results |
 | Mutation controls | 18 HumanEval mutants plus cold/revert/forced-revert: 21 Same; generator outputs identical in four runs |
