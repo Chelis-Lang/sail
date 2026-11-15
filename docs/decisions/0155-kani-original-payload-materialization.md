@@ -1,6 +1,6 @@
 # 0155: Prepare original Kani and Rust payloads without installer execution
 
-- **Status:** implemented; source/data review and native component checks pass; evidence closure pending
+- **Status:** bounded native helper and full workspace gates pass; product selection remains separate
 - **Date:** 2026-11-15
 - **Extends:** [ADR 0149](0149-original-kani-rust-payload.md), [ADR 0153](0153-kani-owned-execution-tool-layout.md)
 
@@ -62,8 +62,9 @@ passes Rust tool authentication. Independent downloader review rejects the
 initial final-URL-only check; the exact successor checks every redirect before
 contact and passes 40 Python controls plus 30 independent urllib redirect cases.
 Original rejection and interrupted setup attempts remain recorded in
-[the validation record](../validation/kani-payload-installation.md). Complete
-capture closure and the full workspace gate remain pending.
+[the validation record](../validation/kani-payload-installation.md). Independent native review then checks all original packet bodies and outcomes;
+the exact committed full workspace gate passes 1,452 tests / 59 declared skips.
+All original source/captures and reviews are lead-verified and externally retained.
 
 These are component checks, not selected backend acceptance. CLI/direct-arrayvec
 comparison, Mac support, input closure and cache authority remain separate gates.

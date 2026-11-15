@@ -109,6 +109,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     (
         "sail-solve",
         &[
+            "sail-kani",
             "sail-shim",
             "sail-api",
             "sail-cache",

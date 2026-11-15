@@ -36,3 +36,7 @@ inherited process group; this is not a sandbox.
 
 See ADR 0128/0137/0149/0152/0153/0154/0155 and
 [original-driver qualification](../../docs/validation/kani-original-driver.md).
+
+The explicit fresh CLI/setup candidate is described in [the Kani guide](../../docs/kani.md).
+Frontend qualification and release selection are pending; prior component checks
+do not qualify that frontend.

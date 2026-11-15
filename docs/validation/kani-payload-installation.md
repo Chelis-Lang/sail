@@ -1,7 +1,7 @@
 # Original Kani/Rust payload preparation
 
-Status: corrected source/data review and native component checks pass; full workspace
-gate and complete original capture closure are pending. No selected CLI/backend, proof receipt, source
+Status: corrected source/data, native component and full native workspace gates pass;
+complete originals are independently checked and externally retained. No selected CLI/backend, proof receipt, source
 currentness, result cache, Mac or release acceptance follows.
 
 The contributor materializer copies exact original component payloads without
@@ -45,7 +45,12 @@ HTTPS chain bypassed its final-URL guard. Corrected review
 `16641298bd3345ea37be7d3481c83527b3847a62c50efafd1fb1199415e36f87`
 approves the exact successor after 40 Python tests and 30 actual urllib redirect
 cases. Every redirect is checked before following it. Native raw-packet review
-remains pending.
+`4f107e13a121b7ea5239b599beebf390d35136a64a92111a3ea0fe88a0f089d4`
+approves the bounded helper component after independently streaming every native
+packet file and checking the original outcomes. Full workspace at `df6b7ec1`
+passes 1,452 tests / 59 declared skips, fmt, Clippy, doctests, rustdoc, layering,
+dependency policy and generated benchmarks. This is separate from frontend
+acceptance.
 
 | Attempt, 2026-11-15 | Result and cause |
 |---|---|
@@ -58,3 +63,30 @@ remains pending.
 The consumer skill is unchanged because no consumer command or backend becomes
 available in this slice. ADR 0128 permits eventual fresh uncached bounded checks;
 input-closure authority remains mandatory before result caching.
+
+All original captures are independently lead-rehashed and externally retained:
+
+| Packet | Complete files | Archive SHA-256 |
+|---|---:|---|
+| Native materializer/download attempts 1–4 | 14,740 | deeb74278c85f69c63660aa38ab2d06b82cb20f7527bf1cc1245ee702a366dab |
+| Corrected native downloader 5 | 7,159 | 34ef5e76e1b2337a914a2642ce5090789581c971500bd6a77a887c5fe5df34da |
+| Exact source/full gate and initial gate setup failures | 2,961 | 261913977256827a47495be1373e43b576c6c633f39db3a3e3751bf72cb80e18 |
+
+Their indexes are respectively
+`01c30122151bd1e9e5210f93978c8a1a337aaebdc900935dd0cb0ebbac8221e8`,
+`7374c0c21e86fa69258d4e79870ebf6b2c97403d861b4a289ecf8f484793e32c`
+and `05c9a1cf9be68b19ab883ef32d1c22d49902f297891468a3e1c172c9d9b7d6bd`.
+The gate packet includes complete source/Git metadata and logs; regenerable Docker
+build intermediates are excluded. All 7,246 initial review files, including the
+7,137 independently reconstructed payload bodies, and all 185 native-addendum
+files are separately lead-verified and retained.
+
+The original project/harness/lock files remain exact. The prepared Cargo home's
+`.global-cache` database changes after use; its before/after hashes are preserved
+by independent review. No immutable whole-input or source-closure claim follows.
+The first gate image pull refuses unauthorized registry access. The second
+builds the image but correctly rejects new files absent from the copied Git
+index. The third uses the exact committed source and passes. An initial local
+archive check started before its transfer finished fails; complete transfer and
+full independent stream verification then pass. None of these attempts is
+silently relabelled.

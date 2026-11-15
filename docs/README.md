@@ -100,3 +100,7 @@ records what Sail kept and why); other experimental surfaces remain maintained.
   for upstream behaviour.
 
 - [Mutation and rlimit reproduction preservation](validation/mutation-evidence-repros.md): historical inputs and bounded retained-output runs.
+
+- [Experimental Kani candidate](kani.md): fresh bounded hand-written harness checks; native frontend qualification pending.
+
+- [Kani CLI candidate qualification](validation/kani-cli.md): actual frontend gates and remaining limits.

@@ -274,3 +274,5 @@ or reuse a receipt. A fresh owned target is required before retrying.
 | `SAIL6302` | Original Kani Rust payload fixture admission refuses incomplete, modified or unsupported inputs | Preserve original archives and inventory; use the exact pinned immutable payload. This does not establish backend execution or proof authority |
 | `SAIL6304` | Development original Kani driver attempt is invalid, cancelled, incomplete, excessive or unsupported | Preserve the partial raw captures; no bounded result, currentness or reusable proof follows |
 | `SAIL6305` | Development original Kani/Rust payload installation refuses an invalid, changed, incomplete or unsupported input or destination | Preserve original archives; use a new destination under a private immutable parent. No backend, currentness, proof or reuse authority is established |
+
+- `SAIL6306`: experimental Kani CLI/setup refusal; use explicit harness and unwind, a prepared Cargo home and the pinned native Linux x86-64 runtime.

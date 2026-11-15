@@ -211,3 +211,6 @@ The `fetch` step downloads Sail's pinned Verus runtime from the
 Sail is MIT licensed; see [LICENSE](LICENSE). Issues are welcome. Outside pull
 requests aren't accepted at the moment; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+
+The [experimental Kani candidate](docs/kani.md) is under v0.3.0 qualification;
+it is not included in published 0.2.0.
