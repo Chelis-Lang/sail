@@ -19,11 +19,20 @@ a toolchain; ordinary Tools authentication refuses links. Only Stage admits its
 fixed exact route. Prefix ownership/immutability and private parents remain
 caller preconditions.
 
+Contributor preparation can materialize both original payload trees with
+`ci/kani-install.py` from the pinned bundle and six Rust component archives.
+It copies authenticated payloads directly and publishes one private directory;
+it executes no installer or verifier. The read-only validators retain their
+existing contracts. This helper is not a selected consumer setup command or
+backend. Native component execution against its new prefix passes the three
+original harness cases; evidence closure remains pending. `ci/kani-fetch.py`
+adds exact bounded original downloads for the same private layout (ADR 0155).
+
 Execution clears the child environment, retains argv/environment/stdout/stderr/
 exit/export, and refuses interrupted or contradictory attempts. Each capture is
 limited to 16 MiB; the child budget is 1 ms–600 s. Filesystem authentication and
 all generated target disk usage are outside that budget. Cleanup covers the
 inherited process group; this is not a sandbox.
 
-See ADR 0128/0137/0149/0152/0153/0154 and
+See ADR 0128/0137/0149/0152/0153/0154/0155 and
 [original-driver qualification](../../docs/validation/kani-original-driver.md).
