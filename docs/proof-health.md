@@ -95,3 +95,16 @@ or `verification_result` for the original diagnostics and obligation details.
 Session retention, background stability measurements and quantifier profiling
 are separate development work. This view uses evidence already retained by
 verification jobs; it does not recover discarded solver sessions.
+
+Explicitly supported compiler-identity formats distinguish colliding display
+names by their original compiler paths. This can preserve precise attribution
+in a failing target without using timing success as proof. Unknown producers,
+missing or inconsistent identity metadata and incomplete original checks retain
+the conservative unavailable/unknown result. Recognizing a format does not
+install, select or qualify that runtime.
+
+The public attribution API and the `SAIL_CARGO_VERUS` development override can
+consume those newer formats. The override stays outside default mode
+(ADR 0043); precise structured
+attribution there does not qualify the compiler for ordinary verification or
+proof reuse. The selected runtime remains unchanged.

@@ -148,3 +148,83 @@ inventory has no canonical paths. Original sources remain unchanged; no mutant
 score is admitted. An explicit schema2 source-fact path join is development
 work, not a relaxation of the singleton owner check. This is separate from
 main #746's crate namespace correction.
+
+## Exact newer producer bindings, 2026-11-15
+
+Status: unselected producer capability passes the native workspace/focused/solver
+gates and hosted checks. Supporting runtime adoption remains unqualified.
+The main-based source adds only exact `5d034994` and `e58c3e51` recognition and
+tests the unchanged join against same/mixed/unknown producers and malformed
+paths. Its identity module is byte-identical to development `83ca8032`.
+No classifier, VI-0003 safeguard, runtime pin, qualified manifest constant,
+dependency or solver-byte code changes. Runtime selection remains separate.
+
+Independent source review of `83ca8032` passes 85 source/data assertions,
+report SHA256 `cb54fb746b484ad710431a8b0dc99bb847ae648c9c719e2324273ef4a9e39888`.
+All 18 review artifacts and 144 original input bindings are lead-verified and
+retained outside the checkout. Original native Vest stdout is 2,188,772 bytes,
+SHA256 `47ac1cd5e98785a3cc27d17ef0b64ef765969a944435ce3f9fe35cc9db28d57f`:
+its exact composed source reports 3,127 distinct paths, including 207 colliding
+friendly-name rows across 95 names. Byte equality of the four complete emitter
+files establishes format identity; this is not native consumer acceptance.
+
+### Main-based capability qualification, 2026-11-16
+
+Exact source `5903a6d31baa1c5ba1735cb67a9fe03b4ba9db42`, native
+c7i.4xlarge/us-east-2 in the complete CI image `6c19f5c8d397b61c`:
+
+| Gate | Actual result |
+|---|---|
+| Full workspace gate | 1,445 passed /59 declared skips; fmt, Clippy, doctests, rustdoc, layering, dependency and generated-page checks pass |
+| Focused attribution | All27 tests pass |
+| Pinned solver | All55 tests pass |
+| Hosted run43783278569 | All six required checks, all nine E2E phases and documentation pass on exact590 |
+| Native full E2E attempt210 | Failed; the caller globally exported `SAIL_MANAGED_ACCEPTANCE_OUT` into the clean compiler-environment witness. Plain and Sail bytes agree, but the fixture correctly refuses the changed environment |
+| Native full fast/standard590 | Unrun; no pass is inferred from the composed candidate |
+
+The evidence-only scope audit is independent of the implementing source review:
+report SHA256 `0ba49c28f42315230f3ba4bdd15c119204e05bd0452cc9765266bf0802871e3a`.
+It checks the exact source graph, relevant producer files, all374 captured
+bodies/1,071 original paths, native logs, all1,024 retained failed-E2E capture
+bodies and their explicit incomplete/count-limit marker, and original hosted
+job/step metadata. The complete selected runtime has13 artifact members plus
+its manifest. All20 retained selected compiler outputs identify `a0e11cff`.
+
+Focused raw archive SHA256
+`4cf57e0f20d7eaa233cd348758b9317aed0ed37a6be0020421e60ee081906831`;
+index `0db7d37e1eb992e62a088951b3c2ec5774707b059019dbf07a1773695a13a484`.
+All original bodies and review artifacts pass lead/external readback. This
+packet is not a complete build-target/CargoHome snapshot; absent ephemeral
+E2E inputs are not reconstructed or called complete. The admission requests
+record the executed CLI digest; its subsequently captured identical executable
+is retained separately, archive
+`3d675f7b34891eb3546450608d7de7319c4f8b28ce6e566c516d6a81f41973fe`.
+No reproducible whole-build or compiler-binary/source equivalence proof follows.
+
+### Affected behavior and remaining runtime gates
+
+ADR0087 classification is **capability for unselected producers**. Current
+selected fork `a0e11cff`, runtime manifests, source lock, compiler execution,
+solver input, cache keys and its existing attribution branch are unchanged.
+The actual590 CLI accepts the selected runtime, rejects the composed runtime
+with `SAIL3120`, and leaves selected status unchanged. The classification does
+not rely on that inspection alone: the independent audit also checks alternate
+routes and old/new producer handling against the original code and actual
+selected outputs.
+
+Public attribution APIs can consume the new documents, and
+`SAIL_CARGO_VERUS` can select a development executable outside default mode
+(ADR0043). Their structured function naming and verdict attribution **do change**
+for the two named producers. This is not a claim of no API or runtime behavior
+change. Focused native controls and the independent format/source review apply
+to that capability.
+
+Under ADR0087's selected-runtime scope, merging this unselected format support
+does not itself require another complete fast/standard corpus run. Selecting
+or adopting its supporting runtime still requires those gates, determinism,
+source-suite, platform and release qualification. Combined-source `83ca8032`
+qualification remains separate and is not called a full gate pass; its two
+strict Mac-descriptor failures remain failures. Historical incomplete campaigns
+and all earlier failed or unrun attempts stay unchanged. Documentation
+amendments preserve exact590 executable source; final hosted checks must pass
+on the amended current-main PR before merge.

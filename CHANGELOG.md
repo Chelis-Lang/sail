@@ -5,6 +5,10 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Recognize the exact newer development compilers’ AIR identity format while
+  preserving mixed/unknown-source and incomplete-evidence checks. This does not
+  select or publish those runtimes.
+
 - Refuse non-UTF-8 arguments to the contributor Kani export inspector with SAIL6301 instead of panicking (#756).
 
 - Pin the contributor-only original Linux Rust payload for Kani groundwork; executable backend qualification remains pending.
