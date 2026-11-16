@@ -10,6 +10,8 @@ use sail_ledger::ObligationKind;
 
 /// Compiler source commit whose AIR emitter implements this exact format.
 const PRODUCER: &str = "a3109bed5e02313050d5ba6a23f1bc3e1d549c9b";
+const CAMPAIGN_PRODUCER: &str = "5d0349944af5fae5931d2902c3ae954d07ffaa9b";
+const COMPOSED_PRODUCER: &str = "e58c3e51ff6f9e54133aa994401352788fb452c6";
 const PREFIX: &str = "sail-query-identity-v1 ";
 const MAX_METADATA: usize = 64 * 1024;
 const MAX_NAME: usize = 16 * 1024;
@@ -61,18 +63,24 @@ pub(super) struct Query<'a> {
     pub span: Option<&'a str>,
 }
 
+fn producer(doc: &Value) -> Option<&str> {
+    doc.pointer("/verus/commit").and_then(Value::as_str)
+}
+
 impl Names {
     pub fn new(docs: &[Value]) -> Self {
-        let supported =
-            |doc: &Value| doc.pointer("/verus/commit").and_then(Value::as_str) == Some(PRODUCER);
-        if !docs.iter().any(supported) {
+        let Some(selected) = docs
+            .iter()
+            .filter_map(producer)
+            .find(|commit| matches!(*commit, PRODUCER | CAMPAIGN_PRODUCER | COMPOSED_PRODUCER))
+        else {
             return Self::default();
-        }
+        };
         let mut names = Self {
             required: true,
             ..Self::default()
         };
-        if !docs.iter().all(supported) {
+        if !docs.iter().all(|doc| producer(doc) == Some(selected)) {
             names.error = Some("AIR identity producers are mixed; queries are not attributed");
             return names;
         }
@@ -194,6 +202,59 @@ mod tests {
             }],
             input_sha256: path.to_owned(),
             solver_version: None,
+        }
+    }
+
+    #[test]
+    fn named_producers_require_one_consistent_compiler_per_report() {
+        for producer in [PRODUCER, super::CAMPAIGN_PRODUCER, super::COMPOSED_PRODUCER] {
+            let mut updated = document();
+            updated["verus"]["commit"] = json!(producer);
+            let named = super::Names::new(&[updated.clone()]);
+            assert!(named.required && named.error.is_none());
+            for other in [
+                PRODUCER,
+                super::CAMPAIGN_PRODUCER,
+                super::COMPOSED_PRODUCER,
+                "unknown",
+            ] {
+                if producer == other {
+                    continue;
+                }
+                let mut foreign = document();
+                foreign["verus"]["commit"] = json!(other);
+                let mixed = super::Names::new(&[updated.clone(), foreign]);
+                assert_eq!(
+                    mixed.error,
+                    Some("AIR identity producers are mixed; queries are not attributed")
+                );
+                assert!(mixed.query(&logs()[0].air[0]).is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn composed_producer_preserves_exact_joins_and_unknown_producer_refusal() {
+        let expected = report(document(), &logs());
+        let mut current = document();
+        current["verus"]["commit"] = json!(super::COMPOSED_PRODUCER);
+        let actual = report(current.clone(), &logs());
+        assert_eq!(actual.crates, expected.crates);
+        assert_eq!(actual.attribution, expected.attribution);
+        current["times-ms"]["smt"]["smt-run-module-times"][0]["function-breakdown"][0]["function-path"] =
+            json!(17);
+        let invalid = super::Names::new(&[current]);
+        assert!(invalid.required && invalid.error.is_some());
+        assert!(invalid.query(&logs()[0].air[0]).is_none());
+        for unknown in [
+            "e58c3e51",
+            "e58c3e51ff6f9e54133aa994401352788fb452c6 ",
+            "unknown",
+        ] {
+            let mut foreign = document();
+            foreign["verus"]["commit"] = json!(unknown);
+            let legacy = super::Names::new(&[foreign]);
+            assert!(!legacy.required && legacy.by_path.is_empty());
         }
     }
 
