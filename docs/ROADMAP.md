@@ -58,7 +58,7 @@ supported platforms remain Linux x86-64 and macOS on Apple silicon.
 |---|---|---|
 | Changed-proof cost (#158, #244) | Static longest-first dispatch shipped; measured Vest gain, no Anvil gain. Hand-applied prover isolation cut the Anvil sibling edit from 88 s to 54 s with 0 conformance differences, but cost proof headroom; IronKV has no gap worth isolating ([spike](validation/tune-isolation.md)) | `sail tune` dropped for v0.3.0 and `--isolation auto` not built ([spike record](validation/tune-isolation.md)); the performance guide documents the manual technique |
 | Mac Anvil cold (#232) | Latest composed cohort: 98.94 s Sail / 96.87 s stock; retained 2.07 s regression. Linux artifact prerequisite fails: unselected source-map fix plus explicit bundled-macro setup passes a bounded artifact bridge; production routing/reuse open ([VI-0043](verus-issues/VI-0043-export-metadata-map-order.md)) | Resolve strict artifact controls, then native paired measurements; retain original rows |
-| Frontend feasibility (#162) | Persistent reuse unqualified; incomplete inputs and diagnostic mappings identified | Bounded go/no-go for complete inputs, current diagnostics and net whole-call benefit; never a release dependency |
+| Frontend feasibility (#162) | v0.3.0 no-go: complete inputs/effects and current diagnostic mapping remain missing ([ADR 0170](decisions/0170-v030-frontend-reuse-no-go.md)); no new performance result | Keep #162 open; revisit only after a complete boundary and fresh-output shadow comparison, then the unchanged 25% native net-gain gate. Never a release dependency |
 | First use and full-path overhead (#234, #558, #560) | Shipped vstd, replay and daemon preparation delivered; misses still cost more | Bounded improvements alongside the feature; no selection of experiments without general gains |
 | Compiler-output capture (#632, delivered) | Lossless invocation capture and strict original-stream/interleaving controls merged #724; progress-boundary comparison merged #731 ([qualification](validation/conformance-compiler-capture.md)); original aggregate-output failures remain retained | Broad/scaling performance qualification remains #629; no serial substitute or general performance claim |
 | Service-wide acceptance proof (#368) | Source-shared parser, classification, persistence and delivery components adopted | Concrete service composition and host/origin refinements; no complete-service theorem claimed |
@@ -157,7 +157,7 @@ work, not a prerequisite chain for mutation testing.
 | Prebuilt macro tools | #239; owner question 35 and actual measured gain |
 | Broader first-sight preparation and team prefetch | #241, #243; bounded worker already ships |
 | Cargo bypass / compiler-boundary fallback | #245, #222; separate authority and cost qualification |
-| CI image startup | #195; retain required checks and job budgets |
+| CI image startup | Observed target met: current-image pull command-window p95 40.2s against 120s; retrospective scope and unresolved historical tails retained ([ADR 0171](decisions/0171-observed-ci-startup-target.md), [record](validation/ci-image-startup.md)); required checks and job budgets unchanged |
 | Fragility / portfolio polish | Existing experimental modes; demand-led |
 | Broader verification runtime | #146; beyond Kani and cvc5 above |
 
@@ -169,7 +169,7 @@ work, not a prerequisite chain for mutation testing.
 | Warm solver pools / exact-prefix sessions | Small measured opportunity; no selected pool implementation |
 | Stack-only default keys | Model/effort differences; default binds exact process prefix (ADR 0008) |
 | Stock spinoff-all / parked Z3 snapshots | Regressions or nonidentical state; unselected |
-| Persistent frontend reuse | No complete reusable operation boundary; bounded feasibility only |
+| Persistent frontend reuse | v0.3.0 no-go before performance acceptance (ADR 0170); #162 remains open for a complete reusable boundary |
 | Run-scoped / per-file digest experiments | No general whole-call gain; unselected defaults unchanged |
 | General v1 native-artifact store | Disabled under ADR 0053 |
 
