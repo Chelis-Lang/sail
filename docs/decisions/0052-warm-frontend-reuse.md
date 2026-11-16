@@ -49,6 +49,11 @@ current diagnostics. This proposal does not authorize query normalization.
 
 ## Implementation status
 
+[ADR 0170](0170-v030-frontend-reuse-no-go.md) records the v0.3.0 no-go:
+complete inputs/effects and current diagnostic mapping are still missing.
+The 25% gate remains unchanged; no new key/restore performance result is
+claimed. #162 stays open for future bounded work.
+
 No persistent frontend cache or qualified key from this proposal is
 implemented or accepted. The first implementation candidate instead replaces discarded
 identity rewrites in reachability pruning with read-only traversal of the

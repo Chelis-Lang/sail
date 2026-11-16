@@ -2,10 +2,84 @@
 
 | Field | Value |
 |---|---|
-| Status | Packaging and correctness accepted after native parity and two complete actual CI runs; published core is 9.024% smaller. **No latency gain established.** #195 stays open. |
-| Tracking | [#195](https://github.com/Chelis-Lang/sail/issues/195), [ADR 0013 candidate](../decisions/0013-ci-image.md#candidate-2026-10-16-share-the-core-image-without-the-optional-mcp-client) |
+| Status | Packaging and correctness accepted. The retrospectively observed November 10–15 startup target is met: current-image pull command-window p95 40.2s, maximum 60.9s. No causal latency gain or future latency guarantee is established (ADR 0171). |
+| Tracking | [#195](https://github.com/Chelis-Lang/sail/issues/195), [ADR 0013 candidate](../decisions/0013-ci-image.md#candidate-2026-10-16-share-the-core-image-without-the-optional-mcp-client), [ADR 0171](../decisions/0171-observed-ci-startup-target.md) |
 | Scope | One Dockerfile, a shared `core` target and its complete `mcp` extension. Every existing toolchain, verifier, solver and runtime digest check remains. Only the existing pinned MCP client layer is excluded from jobs that do not invoke it. |
 | Current checks | Native Linux gate, solver, all seven e2e phases plus extra, and PR conformance pass. Mac host checks pass on the earlier prototype source, as scoped below. No startup performance claim follows from these checks. |
+
+## Observed operational target, 2026-11-16
+
+[ADR 0171](../decisions/0171-observed-ci-startup-target.md) accepts the
+#712/#195 pull p95 ≤120s target on the following bounded observations.
+This is a retrospective operational window: the UTC calendar interval was
+selected after a single-run observation, before collecting the complete
+population below.
+
+All 43 main/push CI runs created in
+`2026-11-10T00:00:00Z ≤ created_at < 2026-11-16T00:00:00Z` are included,
+with all attempts and all 937 job records. The runs comprise 42 successes
+and one failure. All 570 container initialization steps completed
+successfully; none is missing, failed, cancelled or incomplete.
+Skipped and non-container jobs remain in the source data.
+Two non-container documentation API records inconsistently report
+`in_progress` alongside a successful conclusion and completion timestamp;
+this does not affect the container population. The record does not assert
+that all 937 API job statuses are terminal.
+
+| Population | Samples | Nearest-rank p95 | Maximum |
+|---|---:|---:|---:|
+| All initialization intervals, both image variants | 570 | 50s | 79s |
+| Current-image initialization intervals | 195 | 50s | 72s |
+| Current core pull-command → next create-command window | 180 | 40.2s | 60.9s |
+| Current full MCP pull-command → next create-command window | 15 | 37.4s | 37.4s |
+| Combined current-image command window | 195 | **40.2s** | **60.9s** |
+
+Each command window starts at the logged Docker pull command and ends at
+the immediately next runner command, Docker create for the same image.
+The successful status and digest occur before that create command.
+Sequential runner execution bounds pull completion by this envelope,
+including logging, scheduling and command setup overhead. A successful
+status line alone is not a process-exit timestamp. Whole initialization
+metadata has integer-second resolution. These are observed bounds, not
+nanosecond-accurate process runtime measurements.
+
+All 195 current-image logs record `Downloaded newer image`. Their tag
+`6c19f5c8d397b61c` is independently reconstructed from immutable source
+inputs for all 15 corresponding source revisions. Actual manifests are:
+
+- Core: `sha256:76c4c60b8def407ef53e8299fb811949e00efb8a3cb75ee64189997253fa370b`.
+- Full MCP: `sha256:2f5ee2f54232c0f4d00b26fd9e21bd65843d156ca547216720d630cea02d560b`.
+
+The other 375 initialization samples use the earlier image variant
+`f57ed8a3e26baaff`, independently bound to its 28 source revisions.
+No inference about a completely empty Docker layer cache follows from a
+successful pull status, and no causal packaging-size latency gain is claimed.
+
+Three later successful workflows are reported separately:
+[PR #761 predecessor](https://github.com/Chelis-Lang/sail/actions/runs/43783278569),
+[its final head](https://github.com/Chelis-Lang/sail/actions/runs/43787629476),
+and [merged main](https://github.com/Chelis-Lang/sail/actions/runs/43788894765).
+Their 39 whole initialization intervals have p95 65s and maximum 66s.
+Each workflow completed all six required checks. These are API initialization
+observations, not additional raw pull measurements; they are not blended
+with the original 195 or 570 samples.
+
+The complete original raw packet contains 252 bodies; archive SHA-256:
+`52979b6e15b438feb936e34c085b8788441b6dd6d8177515c26163bcb824fbc0`.
+Independent original review:
+`62474e3f63c5c58ae88cbeebecbddb20855fe97702385e520db020d64d9c4205`.
+Independent conservative-bound and later-cohort follow-up:
+`1d376c814869189abbfa93211e71b8d05aa89bed2ade93263faa775d0a7b7432`.
+The lead verified every bound review artifact and actual input body and
+read back the external preservation copies. Independent corruption controls
+reject missing jobs, duplicate runs, failed initialization and wrong
+image identities.
+
+The historical five-minute pull, 247/255-second initialization tails and
+November 4 six-minute-fifteen-second startup below remain failures outside
+this window with unresolved causes. No future latency guarantee follows.
+No workflow, correctness check, gate, image contents or timeout changed for
+this acceptance. Mac behavior and release publication are outside its scope.
 
 ## Baseline
 
@@ -198,7 +272,23 @@ in 43s. Full source/job/step/raw-log summary SHA-256:
 Complete second-cohort comparison SHA-256:
 `e7a188c05ce88dc7db2c4fccf3368de7cacaa9350f2b9a2d74af121a8619d8f8`.
 
-The lead accepts the packaging and correctness result. No latency performance
-gain is claimed, and #195 remains unresolved. This final documentation update
+At the October acceptance, the lead accepted packaging and correctness only.
+No latency performance gain was claimed, and #195 remained unresolved.
+That historical documentation update
 does not change the qualified code, image inputs or measurements; normal
 required CI still applies to its final PR head.
+
+## Later historical startup failure, 2026-11-04
+
+[PR #663, source `68ae0e82`](https://github.com/Chelis-Lang/sail/actions/runs/41876597188/job/126738439566)
+recorded container initialization from 17:21:40 to 17:27:55 UTC (6m15s).
+Its gate step was cancelled near the unchanged ten-minute job limit; no
+assertion failure or registry/network/runner cause was established.
+Job/step metadata SHA-256:
+`8867204936417177c8d69f0846487e479449d250cebfbe4e254cc70fcfcfefb1`.
+The [identical-source retry](https://github.com/Chelis-Lang/sail/actions/runs/41876597188/job/126771249703)
+initialized in 50s and passed the required checks; it does not erase the
+failed attempt. Retry metadata SHA-256:
+`dfdd14955005242f623507b3cd1a61232d9a99a9a98ad9e08842f4396821bac6`.
+Both observations are retained in [#195](https://github.com/Chelis-Lang/sail/issues/195#issuecomment-6637554559)
+and remain outside the November 10–15 operational acceptance population.

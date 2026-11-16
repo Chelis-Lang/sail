@@ -5,6 +5,12 @@ no complete reusable operation, restoration implementation or performance
 acceptance. This is the bounded operation review required by
 [ADR 0052](../decisions/0052-warm-frontend-reuse.md), not a new cache policy.
 
+The four complete source files defining the audited lowering entry, context,
+span serialization and rustc span ownership remain byte-identical in composed
+fork `e58c3e51`. [ADR 0170](../decisions/0170-v030-frontend-reuse-no-go.md)
+therefore records a v0.3.0 no-go before performance acceptance. This comparison
+does not make the inventory exhaustive or qualify the earlier captures.
+
 ## The actual operation
 
 `source/rust_verify/src/verifier.rs::verify_bucket_outer` freshly prunes the

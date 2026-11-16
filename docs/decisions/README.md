@@ -140,3 +140,6 @@ Use [the template](0000-template.md) for a new decision.
 - [0116: Recorded proof health without inferred stability](0116-recorded-proof-health.md) (accepted for implementation; bounded retained measurements and shared interfaces; qualification pending)
 
 - [0128: Separate bounded Kani observations from ordinary proofs](0128-kani-bounded-observations.md)
+
+- [0170: No persistent frontend restoration in v0.3.0](0170-v030-frontend-reuse-no-go.md) (accepted; incomplete operation/effect/current-diagnostic boundary, no new performance result, unchanged 25% gate, #162 stays open)
+- [0171: Accept the observed CI image startup target](0171-observed-ci-startup-target.md) (accepted; retrospective pull command-window p95 40.2s against 120s; historical slow tails remain unresolved)
