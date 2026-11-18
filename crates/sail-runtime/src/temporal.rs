@@ -17,6 +17,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+pub mod image;
+
 /// Process outcome of one dispatched native job, separate from every model verdict.
 #[derive(Debug)]
 pub enum Dispatch {
@@ -125,6 +127,11 @@ impl Worker {
     }
 
     fn authenticate(&self) -> std::result::Result<(), sail_api::runtime::Error> {
+        // A verified copy recorded at the installed worker's current settled
+        // stamp is proof of these exact bytes ([`image`]).
+        if image::verified(&self.executable, &self.sha256) {
+            return Ok(());
+        }
         let mut bytes = Vec::new();
         std::fs::File::open(&self.executable)
             .and_then(|f| f.take(512 * 1024 * 1024 + 1).read_to_end(&mut bytes))

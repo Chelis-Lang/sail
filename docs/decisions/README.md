@@ -144,4 +144,5 @@ Use [the template](0000-template.md) for a new decision.
 - [0170: No persistent frontend restoration in v0.3.0](0170-v030-frontend-reuse-no-go.md) (accepted; incomplete operation/effect/current-diagnostic boundary, no new performance result, unchanged 25% gate, #162 stays open)
 - [0171: Accept the observed CI image startup target](0171-observed-ci-startup-target.md) (accepted; retrospective pull command-window p95 40.2s against 120s; historical slow tails remain unresolved)
 - [0172: Native temporal checking in the main workspace on D.I.V.E. 0.1.0](0172-native-temporal-in-main-workspace.md) (accepted; supersedes 0083 and 0101; `sail-dive` published, worker is a `sail-solve` binary, `DIVE_VERSION` replaces the revision pin)
+- [0173: Reuse the verified temporal worker copy under settled stamps](0173-verified-worker-image-reuse.md) (accepted; #765)
 - [0174: v0.3.0 ships native temporal checking; unfinished pillars move to v0.4.0](0174-v030-native-temporal-scope.md) (accepted by owner; amends 0100 and 0109; mutation, profiling, performance parity, installer/editor reach, Kani and cvc5 move to v0.4.0)
