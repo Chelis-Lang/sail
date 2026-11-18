@@ -4,7 +4,7 @@ members = ["crates/*", "xtask"]
 default-members = ["crates/*"]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.99"
 publish = false
@@ -12,7 +12,7 @@ repository = "https://github.com/Chelis-Lang/sail"
 license = "MIT"
 
 [workspace.dependencies]
-sail-acceptance = { path = "crates/sail-acceptance", version = "=0.2.0" }
+sail-acceptance = { path = "crates/sail-acceptance", version = "=0.3.0" }
 # Safe bounded Unix RPC connection setup, including listener backlog pressure.
 socket2 = "=0.6.5"
 # Contributor-only fatal-entry capture witness; safe raw stdin close (ADR 0113).
@@ -20,24 +20,24 @@ nix = { version = "=0.31.3", default-features = false }
 inotify = { version = "=0.11.5", default-features = false }
 # Safe kernel mount-event and bounded optional Unix socket readiness polling.
 rustix = { version = "=1.1.6", default-features = false, features = ["std", "event", "fs", "process"] }
-sail-smtlib = { path = "crates/sail-smtlib", version = "=0.2.0" }
-sail-session = { path = "crates/sail-session", version = "=0.2.0" }
-sail-key = { path = "crates/sail-key", version = "=0.2.0" }
-sail-cache = { path = "crates/sail-cache", version = "=0.2.0" }
-sail-solver = { path = "crates/sail-solver", version = "=0.2.0" }
-sail-shim = { path = "crates/sail-shim", version = "=0.2.0" }
-sail-verus = { path = "crates/sail-verus", version = "=0.2.0" }
-sail-ledger = { path = "crates/sail-ledger", version = "=0.2.0" }
-sail-portfolio = { path = "crates/sail-portfolio", version = "=0.2.0" }
-sail-daemon = { path = "crates/sail-daemon", version = "=0.2.0" }
-sail-api = { path = "crates/sail-api", version = "=0.2.0" }
-sail-runtime = { path = "crates/sail-runtime", version = "=0.2.0" }
-sail-dive = { path = "crates/sail-dive", version = "=0.2.0" }
-sail-kani = { path = "crates/sail-kani", version = "=0.2.0" }
-sail-mcp = { path = "crates/sail-mcp", version = "=0.2.0" }
-sail-cli = { package = "sail-solve", path = "crates/sail-cli", version = "=0.2.0" }
-sail-conformance = { path = "crates/sail-conformance", version = "=0.2.0" }
-sail-bench = { path = "crates/sail-bench", version = "=0.2.0" }
+sail-smtlib = { path = "crates/sail-smtlib", version = "=0.3.0" }
+sail-session = { path = "crates/sail-session", version = "=0.3.0" }
+sail-key = { path = "crates/sail-key", version = "=0.3.0" }
+sail-cache = { path = "crates/sail-cache", version = "=0.3.0" }
+sail-solver = { path = "crates/sail-solver", version = "=0.3.0" }
+sail-shim = { path = "crates/sail-shim", version = "=0.3.0" }
+sail-verus = { path = "crates/sail-verus", version = "=0.3.0" }
+sail-ledger = { path = "crates/sail-ledger", version = "=0.3.0" }
+sail-portfolio = { path = "crates/sail-portfolio", version = "=0.3.0" }
+sail-daemon = { path = "crates/sail-daemon", version = "=0.3.0" }
+sail-api = { path = "crates/sail-api", version = "=0.3.0" }
+sail-runtime = { path = "crates/sail-runtime", version = "=0.3.0" }
+sail-dive = { path = "crates/sail-dive", version = "=0.3.0" }
+sail-kani = { path = "crates/sail-kani", version = "=0.3.0" }
+sail-mcp = { path = "crates/sail-mcp", version = "=0.3.0" }
+sail-cli = { package = "sail-solve", path = "crates/sail-cli", version = "=0.3.0" }
+sail-conformance = { path = "crates/sail-conformance", version = "=0.3.0" }
+sail-bench = { path = "crates/sail-bench", version = "=0.3.0" }
 # Native temporal checking (ADR 0172). D.I.V.E. publishes its crates in
 # lockstep; sail_api::temporal::DIVE_VERSION states the same exact version,
 # and moving it requires native conformance.

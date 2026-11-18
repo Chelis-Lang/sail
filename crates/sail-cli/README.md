@@ -4,12 +4,12 @@ Sail makes Verus verification fast and usable from the command line and coding
 agents. Verify an existing Rust file or Cargo project, watch edits, retain
 successful proofs, and independently validate focused repairs.
 
-Install Sail 0.2.0 with Rust 1.99 or newer, a C toolchain,
+Install Sail 0.3.0 with Rust 1.99 or newer, a C toolchain,
 Rustup and Python 3:
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rust-src
-cargo +1.99.1 install sail-solve --version 0.2.0 --locked
+cargo +1.99.1 install sail-solve --version 0.3.0 --locked
 sail engine install
 ```
 

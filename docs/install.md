@@ -7,7 +7,7 @@ Sail currently supports Linux x86-64 with glibc 2.39 or newer (Ubuntu 24.04,
 for example), and Apple-silicon macOS. It ships its own Verus and pinned Z3.
 Your existing Verus installation is left alone. Sail is distributed as
 prebuilt archives on [GitHub releases](https://github.com/Chelis-Lang/sail/releases)
-under the MIT licence. Stable `sail-solve 0.2.0` is also published to crates.io;
+under the MIT licence. Stable `sail-solve 0.3.0` is also published to crates.io;
 its package and installation qualification is recorded in the
 [crate-publication gate](validation/crates-io.md). The native archives and
 attestations are bound in the [release record](validation/stable-candidate.md).
@@ -19,13 +19,17 @@ verifier's Rust pin, then the CLI and its pinned runtime:
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rust-src
-cargo +1.99.1 install sail-solve --version 0.2.0 --locked
+cargo +1.99.1 install sail-solve --version 0.3.0 --locked
 sail engine install
 sail engine status
 sail verify proof.rs
 ```
 
-Cargo installs `sail` and the adjacent `sail-solve-z3` shim. The explicit engine
+Cargo installs `sail` and the adjacent `sail-solve-z3` shim. It also installs
+`sail-runtime-worker`, the native temporal worker, but not the installation
+manifest that authenticates it, so `sail runtime capabilities` reports temporal
+checking as not installed; release archives ship the worker with its manifest
+([native temporal jobs](temporal-jobs.md)). The explicit engine
 installer downloads the committed runtime over HTTPS, checks its archive
 digest, provenance and every runtime file, and installs it under Sail's cache.
 It uses the same installer as source/CI runtime setup. It needs no repository
@@ -97,7 +101,7 @@ Download it with its `.sha256` file, check it, unpack it and put its `bin/`
 on `PATH`:
 
 ```sh
-VERSION=0.2.0                      # the release you are installing
+VERSION=0.3.0                      # the release you are installing
 TARGET=x86_64-unknown-linux-gnu    # or aarch64-apple-darwin
 base="https://github.com/Chelis-Lang/sail/releases/download/v$VERSION"
 curl -fLO "$base/sail-$VERSION-$TARGET.tar.gz"

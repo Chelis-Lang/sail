@@ -17,10 +17,9 @@ then restored the exact cache keys and verified in 0.9 s, reusing 2 targets
 from receipts with no verifier run. A broken lemma then failed the action
 step with exit code 101, the exit code of `sail verify`, and the SARIF file
 located the error. That test installs
-the current commit's Sail, not a published release, because `sail report`
-is not in a release yet. Sail 0.2.0 does not have `sail report`, and the
-action stops with an error when it finds a Sail without it. The first
-release the action works with is 0.3.0. Its default `sail-version` is the
+the current commit's Sail, not a published release. Sail 0.2.0 does not have
+`sail report`, and the action stops with an error when it finds a Sail
+without it. The first release the action works with is 0.3.0. Its default `sail-version` is the
 release it ships with, so `uses: Chelis-Lang/sail/action@v0.3.0` installs
 Sail 0.3.0.
 

@@ -86,7 +86,7 @@ implementation correctness. See [ADR 0068](decisions/0068-runtime-daemon.md).
 
 ## Reading completed evidence
 
-The v0.3.0 development candidate removes `requirement_assurance` and the
+Sail 0.3.0 removes `requirement_assurance` and the
 `requirements` input to `start_verification`. Use original per-function job
 results and `proof_health`; keep intent tracking outside Sail. Historical job
 results remain readable. See [retirement](requirement-assurance.md).

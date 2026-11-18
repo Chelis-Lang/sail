@@ -121,9 +121,9 @@ workspace and ship native temporal checking in v0.3.0
 
 | Gate | State |
 |---|---|
-| `sail-dive` in the main workspace; `sail` links the backend; worker is a `sail-solve` binary | Implemented on a draft branch against D.I.V.E. main through a temporary patch |
-| D.I.V.E. 0.1.0 on crates.io | Waits for D.I.V.E.'s publication; then drop the patch, relock and regenerate notices |
-| Genuine temporal properties with an exact store and state/depth limits | Hold, refute with validated counterexamples, or stop with no claim at a limit, against D.I.V.E. main |
+| `sail-dive` in the main workspace; `sail` links the backend; worker is a `sail-solve` binary | Implemented (ADR 0172) |
+| D.I.V.E. 0.1.0 from crates.io | `dive-api` and `dive-ir` resolve from crates.io at exactly 0.1.0; no Git source or `[patch]` |
+| Genuine temporal properties with an exact store and state/depth limits | Hold, refute with validated counterexamples, or stop with no claim at a limit |
 | Native conformance at the published version | Required before merge ([record](validation/native-temporal-dive-0.1.md)) |
 
 Preserve current behavior and regression coverage; do not introduce a TLC

@@ -3,22 +3,34 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning once the API is published.
 
-## Unreleased
+## 0.3.0 (unreleased)
 
+Sail 0.3.0 adds experimental native TLA+ model checking on D.I.V.E. 0.1.0,
+proof health, CI reports and a GitHub Action, and removes the neutral-contract
+surfaces that 0.2.0 published. Removing published API makes this a breaking release; default
+`sail verify` output, verdicts and diagnostics are unchanged.
+
+- Add experimental native TLA+ model checking on D.I.V.E. 0.1.0, resolved
+  from crates.io (ADR 0172). The `sail` binary links the D.I.V.E. backend, and the new
+  published crate `sail-dive` carries it. `sail-solve` builds the isolated
+  temporal worker as its third binary, `sail-runtime-worker`, so `cargo
+  install sail-solve` installs it beside `sail`. Release archives also ship
+  its installation manifest, so `sail runtime capabilities` reports temporal
+  checking installed; a Cargo installation reports it not installed until the
+  manifest is staged. Temporal jobs run through `sail runtime execute`, MCP
+  `runtime_execute` and the `sail-dive` client.
+- Genuine temporal (liveness) properties are checked with the same exact
+  state store and the job's state and depth limits as safety properties. A
+  property holds only with complete graph evidence, is refuted only with a
+  counterexample that D.I.V.E.'s independent trace validator accepts, and
+  returns `Stopped` with no claim when a state or depth limit ends graph
+  capture. Safety-only properties still use ordinary safety checking.
+- `sail_api::temporal::DIVE_REVISION` (a Git commit) is replaced by
+  `DIVE_VERSION` (`"0.1.0"`), which the wire field `backend_revision` now
+  carries. Conclusive native evidence is D.I.V.E. report schema 3.
+  `Origin::Bundled` modules (CommunityModules and TLAPS) are refused with
+  `SAIL4202`, like any unadmitted module.
 - Stop a worker and its process group through a direct kernel signal when its owning service dies, instead of running an external `kill` from the captured `PATH` (#760).
-- Ship native temporal checking via D.I.V.E. 0.1.0 from crates.io (ADR 0172).
-  The `sail` binary links the D.I.V.E. backend, `sail-solve` installs the
-  isolated `sail-runtime-worker` beside it, and release archives ship the
-  worker with its installation manifest, so `sail runtime capabilities`
-  reports temporal installed. The new published crate `sail-dive` carries the
-  backend; the separate temporal extension workspace and its private
-  dependency credential are gone. `sail_api::temporal::DIVE_REVISION` is
-  replaced by `DIVE_VERSION` (`"0.1.0"`), which `backend_revision` now
-  reports; native evidence is D.I.V.E. report schema 3. Genuine temporal
-  properties are checked with Sail's exact store and state/depth limits: they
-  hold with complete graph evidence, are refuted with an independently
-  validated counterexample, or return `Stopped` (no claim) when a limit ends
-  graph capture.
 
 - Recognize the exact newer development compilers’ AIR identity format while
   preserving mixed/unknown-source and incomplete-evidence checks. This does not
@@ -124,6 +136,17 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
   decoding itself is kept (see Changed).
 - The `contracts` end-to-end phase. The required `End to end` check keeps its
   name and now aggregates nine phases.
+- The separate temporal extension workspace (`extensions/temporal`), its
+  `sail-temporal` and `sail-runtime-worker` packages and lock, and the
+  `ci/run.sh extension` and `extension-install` steps. Native temporal
+  checking is part of the main workspace (see above).
+- The private-dependency credential for building Sail:
+  `scripts/with-private-dependencies.sh`, `docs/private-dependencies.md`, the
+  `SAIL_RELEASE_TEMPORAL` release switch and the `SAIL_DEPENDENCY_READ_TOKEN`
+  forwarding in `ci/run.sh` and `ci/local.sh`. Building, testing and
+  publishing Sail needs no credential. Managed verification of a user's own
+  private Git dependencies still treats `SAIL_DEPENDENCY_READ_TOKEN` and
+  `SAIL_PRIVATE_GIT_READY` as authentication only.
 
 ### Changed
 
@@ -175,8 +198,7 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
   leave the target without those records.
 - `SAIL3146` now also says when a run rebuilt the build-script packages
   (named) because the target's build-script records were missing.
-- Decided how `sail mutate`, planned for v0.3.0, will count mutants (ADR
-  0111). A Verus rejection counts as a detection when it is attributed to the
+- Decided how the planned `sail mutate` will count mutants (ADR 0111). A Verus rejection counts as a detection when it is attributed to the
   mutated function, is not only a resource limit, repeats on every run, and
   the unmutated function proves with headroom. Each detection shows whether
   the solver returned a counterexample or gave up, and solver answers stay
@@ -243,9 +265,6 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
   binder and positionally named struct fields decoded from the first failed or
   unknown check's model (ADR 0106), or `null` without a model. Decoded values
   are the solver's model, never a validated counterexample.
-- `sail assurance JOB` and the MCP tool `requirement_assurance` now read
-  submitter-attributed evidence for an ordinary job (ADR 0104). `--attributed`
-  and the `attributed` argument are accepted and change nothing.
 - A retained job record or baseline written by a 0.2 neutral source job stays
   listed and reads as the new `SAIL3161`; it is never read as an ordinary
   result.
@@ -269,12 +288,6 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
   before launch and used by every later subcommand, and `list` covers the
   default region plus each recorded lane's region and prints the availability
   zone.
-- `sail assurance JOB` and the MCP tool `requirement_assurance` now read
-  submitter-attributed evidence for an ordinary job (ADR 0104). `--attributed`
-  and the `attributed` argument are accepted and change nothing.
-- A retained job record or baseline written by a 0.2 neutral source job stays
-  listed and reads as the new `SAIL3161`; it is never read as an ordinary
-  result.
 - `sail runtime` and the MCP tools `runtime_capabilities` and
   `runtime_execute` are part of the supported command set (ADR 0108).
   `sail --help` lists `runtime`, its help no longer starts with the
@@ -283,22 +296,6 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
 - The book highlights Verus syntax in Rust examples and shell commands, flags
   and subcommands in shell examples, and lists every release under one
   "Release notes" part, now including 0.1.0.
-- Decode source-named counterexample inputs (ADR 0106): attributed assurance
-  rows that are not proved carry the parameters, return binder and named struct
-  fields from the failed check's solver model, without fuel and other internal
-  constants. The raw model is retained, and decoded values are never presented
-  as a validated counterexample.
-- Attribute ordinary Verus jobs to requirements (ADR 0104):
-  `sail verify --background --requirement ID=FUNCTION` retains submitter
-  attributions, and `sail assurance JOB` reports conservative, qualified
-  per-requirement evidence. A tier needs Verus `--no-cheating` and only
-  reviewed Verus arguments, so a function that proves through `assume(false)`
-  earns none. MCP `start_verification` takes `requirements`.
-- Keep D.I.V.E. behind a default-off build flag (ADR 0101): the required
-  layering check now refuses a root lock that names D.I.V.E. or an extension
-  crate, and a publishable extension crate. `ci/run.sh extension-install DIR`
-  installs the internal D.I.V.E.-enabled `sail` with its staged worker.
-  Default builds still report temporal `installed: false`.
 
 ## 0.2.0 (2026-11-04)
 
