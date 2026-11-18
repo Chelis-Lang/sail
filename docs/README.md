@@ -17,7 +17,7 @@ proof receipts, and replay.
 | Run SMT-LIB transcripts through the pinned Z3 (`sail runtime`) | [SMT runtime](runtime.md), [protocol](spec/runtime.md) |
 | Install the agent skill and follow verification/SMT workflows | [Sail skill](../skills/sail-verification/SKILL.md) |
 | Read the JSON report | [Output schema](output-schema.md) |
-| Read observed per-check effort and retained health comparisons | [Proof health](proof-health.md) (v0.3.0 development) |
+| Read observed per-check effort and retained health comparisons | [Proof health](proof-health.md) (0.3.0 and newer) |
 | Read job status and results from Rust | [Result client](result-client.md) |
 | Cache Sail in CI | [CI cache](ci-cache.md) |
 | Annotate pull requests and write a job summary or SARIF | [CI reports](ci-reports.md) |
@@ -30,10 +30,10 @@ proof receipts, and replay.
 | Trust model and differences from plain Verus | [Trust](trust.md), [divergences](divergences.md) |
 | Limitations and open problems | [Known issues](known-issues.md) |
 | Error codes | [Errors](errors.md) |
-| What changed in a release | [0.2.0 release notes](release-notes/0.2.0.md), [0.1.0 release notes](release-notes/0.1.0.md), [changelog](../CHANGELOG.md) |
+| What changed in a release | [0.3.0 release notes](release-notes/0.3.0.md), [0.2.0 release notes](release-notes/0.2.0.md), [0.1.0 release notes](release-notes/0.1.0.md), [changelog](../CHANGELOG.md) |
 
 Standalone-file development: [verify, watch and MCP](standalone-verification.md)
-(available in published 0.2.0; absent from 0.1.0).
+(available since 0.2.0; absent from 0.1.0).
 
 ## Experimental features
 
@@ -54,8 +54,9 @@ Current ordering: [roadmap](ROADMAP.md),
 [ADR 0100](decisions/0100-mutation-first-roadmap.md),
 [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) and
 [0.2.0 backlog reconciliation](reports/2026-11-04-roadmap-review.md).
-Oyster is abandoned and temporal packaging is held. The neutral-contract
-surfaces were removed for v0.3.0 ([requirements after Oyster](design/requirements-after-oyster.md)
+Oyster is abandoned. Native temporal checking ships in 0.3.0
+([ADR 0172](decisions/0172-native-temporal-in-main-workspace.md)). The neutral-contract
+surfaces were removed in 0.3.0 ([requirements after Oyster](design/requirements-after-oyster.md)
 records what Sail kept and why); other experimental surfaces remain maintained.
 
 - [AGENTS.md](../AGENTS.md): workflow, Rust conventions, gates and

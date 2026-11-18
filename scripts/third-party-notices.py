@@ -190,7 +190,7 @@ def main():
     work = args.work.absolute()
     work.mkdir(parents=True)
     # Sail execution selectors must not affect notice generation. The main
-    # workspace has no private dependency (ADR 0083), so no credential either.
+    # workspace has no private dependency (ADR 0172), so no credential either.
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(('CARGO_TARGET', 'SAIL_'))}
     # Run every `cargo metadata` with Sail's own toolchain. In the fork's

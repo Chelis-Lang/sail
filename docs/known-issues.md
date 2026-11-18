@@ -1,6 +1,6 @@
 # Known issues and limits
 
-Open Sail defects and current product limits in published 0.2.0 and on
+Open Sail defects and current product limits in published 0.3.0 and on
 main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
@@ -246,7 +246,7 @@ Current numbers are in [performance](performance.md).
   needs another Verus release cannot use Sail yet. `SAIL_CARGO_VERUS` runs
   another `cargo-verus` only as a labelled development override
   (`warning[SAIL0108]`).
-- **Published 0.2.0 supports Cargo and standalone files.** Standalone
+- **Sail supports Cargo and standalone files.** Standalone
   verification through CLI, watch and MCP is delivered on native Linux/macOS.
   Standalone watch requires source and discovered inputs beneath its working
   directory; CLI/MCP support external inputs.

@@ -110,7 +110,7 @@ For CI, persist solver replies and, in managed mode, project targets and receipt
 from trusted workflows. Read the [CI cache guide](https://github.com/Chelis-Lang/sail/blob/main/docs/ci-cache.md)
 for paths, tool/path requirements and the limits of restored caches.
 
-On builds with `sail report` (after 0.2.0; check `sail report --help`), render
+On Sail 0.3.0 and newer (check `sail report --help`), render
 the saved JSON document for CI without verifying again, and keep `sail verify`'s
 exit code as the job's result. A GitHub Actions `run:` step is `bash -e`: it
 stops at the first failing command, so capture the exit code with `||` on the
@@ -146,12 +146,12 @@ receipts together; later calls verify again. The [disk-use guide](https://github
 describes configuration and reporting. These budget commands are available in
 published `0.2.0` and registry prerelease `0.2.0-rc.1`, absent from 0.1.0.
 
-## Requirement tags in the v0.3.0 development candidate
+## Requirement tags in Sail 0.3.0
 
 `--requirement`, `sail assurance`, MCP `requirement_assurance` and the
-`requirements` submission input are retired in this candidate. Submit ordinary
+`requirements` submission input are retired in 0.3.0. Submit ordinary
 jobs and read their original per-function results and proof health. Keep intent
 tracking in the project's existing system. Historical ordinary results remain
 readable; never replace refused attribution with an invented assurance claim.
-This does not change raw SMT-runtime requirement IDs. The candidate is not a
-published release; check the installed version before applying migration advice.
+This does not change raw SMT-runtime requirement IDs. Check the installed
+version before applying migration advice.

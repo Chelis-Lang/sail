@@ -1,6 +1,6 @@
 # Proof health
 
-Available in v0.3.0 development builds; absent from the published 0.2.0 release.
+Available in Sail 0.3.0; absent from 0.2.0 and earlier.
 
 `sail health` reads observed solver effort from a completed verification job
 or a saved `sail verify --output json` document. It runs no verification and

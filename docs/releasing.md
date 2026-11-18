@@ -38,16 +38,24 @@ after a qualified GitHub release is published (ADR 0098).
 ## Crates.io publication
 
 The owner authorized `sail-solve` and its public dependency set. The current stable
-registry release is `0.2.0`, following initial prerelease `0.2.0-rc.1`.
-Publication does not close the wider performance goals. The CLI package retains
-the `sail` executable and
-installs `sail-solve-z3` beside it. Contributor tools and the private temporal
-extension remain unpublished.
+registry release is `0.3.0`, following `0.2.0` and initial prerelease
+`0.2.0-rc.1`. Publication does not close the wider performance goals. The CLI
+package retains the `sail` executable and installs `sail-solve-z3` and
+`sail-runtime-worker` beside it. Contributor tools remain unpublished.
+
+`sail-dive` depends on D.I.V.E.'s `dive-api` and `dive-ir` at an exact version
+from crates.io ([ADR 0172](decisions/0172-native-temporal-in-main-workspace.md)),
+and `sail-solve` depends on `sail-dive`. Cargo cannot package or verify either
+crate until that D.I.V.E. version is on crates.io, so a Sail release that moves
+the D.I.V.E. version waits for D.I.V.E.'s publication. The manifest never
+carries a `[patch]` or Git source at release: `cargo deny` allows no Git
+source and `scripts/check-acceptance-refinements.py` refuses workspace
+dependency overrides.
 
 Before each release, set the workspace version, the GitHub Action's
 `sail-version` default in `action/action.yml` (`scripts/test-github-action.py`
 requires the two to agree) and all exact internal dependency requirements
-together, update both workspace locks, and synchronize
+together, update the workspace lock, and synchronize
 package-local resources after changing their authoritative pins or policies:
 
 ```sh

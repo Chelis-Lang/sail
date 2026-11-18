@@ -74,17 +74,42 @@ Raw logs remain outside the repository:
 | e2e `managed` | `3012a3f80c8bbc34035ffef04cd82ec2ae0f39f78a9356e6c69f3063fb0c8987` |
 | e2e `extra` | `c8aa3cffa455ffb6dc304e135ae53ed7424614a58a9890b9136cf5cb6b1fab51` |
 | conformance fast pr | `2a9050fa97d428653f2419d006f72d39c93d66433291b3c884cd3435b8395383` |
+| gate steps, prepared 0.3.0 source (same four known failures; 1,452 of 1,452 tests) | `1c4c0a8b0ebf800f93215ecf8353f3109eda4a85577f13e66886eb302b676bec` |
+| `publish-crates.py --dry-run --version 0.3.0` | `7beb51b39730075cea6e92a9055b41f335de7c8d5851d888eff21e2ae5ad284b` |
 
 ## Remaining before merge
 
-1. Publish D.I.V.E. 0.1.0; drop the temporary patch commit, run
-   `cargo update -p dive-api -p dive-ir` and confirm the `pins` test sees the
-   crates.io source.
-2. Review the new `Cargo.lock` and update its digest in
-   `scripts/check-acceptance-refinements.py`; run `ci/local.sh refinements`.
-3. Regenerate `THIRD-PARTY-NOTICES`.
-4. Run the native Linux gate, solver, e2e with `extra` and `conformance fast
-   pr`, and `scripts/publish-crates.py --dry-run`, at the final source.
+The branch is prepared as the 0.3.0 release source (workspace, internal
+requirements, lock entries and Action default at 0.3.0; changelog and release
+notes written). Only the last commit, the temporary `[patch.crates-io]`, is
+unmergeable. `scripts/publish-crates.py --dry-run --version 0.3.0` at the
+prepared source packages ten of the sixteen selected crates and then stops at
+`sail-dive`: "no matching package named `dive-api` found; location searched:
+crates.io index". Release day:
+
+1. Confirm all seventeen `dive-*` crates are on crates.io at 0.1.0 from the
+   tested D.I.V.E. tree (`3d5923a1`), or rerun the native temporal tests.
+2. Drop the patch commit (`git reset --hard HEAD~1`). The lock then names no
+   D.I.V.E. crate, so `cargo update -p dive-api -p dive-ir` reports no match;
+   run `cargo metadata --format-version 1 >/dev/null` instead. The lock diff
+   must add only the `dive-*` crates and their new dependencies, all
+   `registry+` with checksums. Run `cargo deny --locked check` and the
+   `sail-dive` `pins` test.
+3. Review the lock and set its SHA-256 in `PARSER_NATIVE_SHA256["Cargo.lock"]`
+   in `scripts/check-acceptance-refinements.py`; run
+   `scripts/test-check-acceptance-refinements.py` and `ci/local.sh refinements`.
+4. Regenerate `THIRD-PARTY-NOTICES` (`scripts/third-party-notices.py --work
+   NEW_DIR`). A preview from the patched lock adds the seventeen MIT `dive-*`
+   crates (`dive-sema` MIT AND BSD-2-Clause) and their dependencies; it cannot
+   be committed earlier because it records the Git source.
+5. `scripts/publish-crates.py --dry-run --version 0.3.0` must verify all
+   sixteen crates.
+6. Run the native Linux gate, solver, e2e with `extra` and `conformance fast
+   pr`, and `ci/run.sh host` on macOS, at the final source; update this record.
+7. Set the release date in `CHANGELOG.md`, push, require green CI and merge.
+   Then follow [Releasing](../releasing.md#procedure) from clean `main`:
+   `scripts/release.sh 0.3.0`, archive smoke tests, attestation, owner
+   approval, publication; `publish-crates.yml` uploads the crates.
 
 ## Attempts
 

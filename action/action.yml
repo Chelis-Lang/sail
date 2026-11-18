@@ -19,7 +19,7 @@ inputs:
       with. The action needs a release that has `sail report` (0.3.0 or newer).
     required: false
     # Kept equal to the workspace version by scripts/test-github-action.py.
-    default: "0.2.0"
+    default: "0.3.0"
   archive:
     description: >-
       A local release archive to install instead of a published release, with
