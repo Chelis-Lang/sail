@@ -1,5 +1,5 @@
 //! Parent-owned isolated execution. Dropping a future is not cancellation.
-use crate::{DIVE_REVISION, MAX_DOCUMENT_BYTES, Request, Response, VERSION, sha256};
+use crate::{DIVE_VERSION, MAX_DOCUMENT_BYTES, Request, Response, VERSION, sha256};
 use std::io::{Read, Write as _};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
@@ -290,7 +290,7 @@ fn run_in(
         written?.map_err(|e| e.to_string())?;
         let bytes = output?.map_err(|e| e.to_string())?;
         let response = crate::decode_response(&bytes).map_err(|e| e.to_string())?;
-        if response.version != VERSION || response.backend_revision != DIVE_REVISION {
+        if response.version != VERSION || response.backend_revision != DIVE_VERSION {
             return Err("worker response version or backend identity differs".into());
         }
         if response.request_sha256 != crate::request_sha256(request).map_err(|e| e.to_string())? {

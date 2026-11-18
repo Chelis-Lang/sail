@@ -109,9 +109,11 @@ fn usage() -> String {
     text
 }
 
-/// Optional components linked into a `sail` built outside this workspace.
+/// Optional components linked into the command line.
 ///
-/// This workspace's own `sail` links none (ADR 0083).
+/// The `sail` binary links the native temporal backend (ADR 0172); an
+/// embedder that passes [`Extensions::default`] gets a command line whose
+/// temporal jobs report unavailable.
 #[derive(Clone, Debug, Default)]
 pub struct Extensions {
     /// Native temporal backend for the runtime endpoint and `sail runtime`;

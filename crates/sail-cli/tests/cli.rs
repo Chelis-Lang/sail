@@ -100,19 +100,12 @@ fn mcp_server_states_the_cli_version() {
     assert_eq!(format!("sail {served}\n"), version, "{text}");
 }
 
-/// The default `sail` links no temporal backend (ADR 0101): its capability
-/// says so, and it never reaches worker discovery, even with a worker
-/// manifest beside it.
-#[test]
-fn default_build_reports_no_temporal_backend() {
-    let dir = isolated_sail("no-temporal");
-    assert!(std::fs::write(dir.join("sail-runtime-worker.json"), "{}").is_ok());
+fn temporal_capability(dir: &std::path::Path) -> serde_json::Value {
     let output = Command::new(dir.join("sail"))
         .args(["runtime", "capabilities", "--cache"])
-        .arg(&dir)
-        .env("SAIL_CACHE_DIR", &dir)
+        .arg(dir)
+        .env("SAIL_CACHE_DIR", dir)
         .output();
-    let _ = std::fs::remove_dir_all(&dir);
     let output = match output {
         Ok(output) => output,
         Err(e) => unreachable!("cannot run sail: {e}"),
@@ -122,13 +115,43 @@ fn default_build_reports_no_temporal_backend() {
         Ok(value) => value,
         Err(e) => unreachable!("capabilities are not JSON: {e}"),
     };
-    let temporal = &capabilities["temporal"];
-    assert_eq!(temporal["installed"], false);
-    assert_eq!(temporal["worker_sha256"], serde_json::Value::Null);
-    assert_eq!(temporal["error"]["kind"], "unavailable");
+    capabilities["temporal"].clone()
+}
+
+/// The `sail` binary links the native temporal backend (ADR 0172), so its
+/// capability reaches worker discovery: with no worker beside it, it reports
+/// the missing installation, never that the backend is absent from the build;
+/// a malformed manifest beside it is refused, never trusted.
+#[test]
+fn sail_links_the_temporal_backend_and_discovers_its_worker() {
+    let dir = isolated_sail("temporal-linked");
+    let missing = temporal_capability(&dir);
+    assert!(std::fs::write(dir.join("sail-runtime-worker.json"), "{}").is_ok());
+    let malformed = temporal_capability(&dir);
+    let _ = std::fs::remove_dir_all(&dir);
+    for temporal in [&missing, &malformed] {
+        assert_eq!(temporal["implemented"], true, "{temporal}");
+        assert_eq!(temporal["installed"], false, "{temporal}");
+        assert_eq!(temporal["worker_sha256"], serde_json::Value::Null);
+        assert_eq!(
+            temporal["backend_revision"],
+            sail_api::temporal::DIVE_VERSION
+        );
+        assert_ne!(
+            temporal["error"]["message"],
+            sail_runtime::temporal::NOT_INCLUDED,
+            "{temporal}"
+        );
+    }
     assert_eq!(
-        temporal["error"]["message"],
-        sail_runtime::temporal::NOT_INCLUDED
+        missing["error"]["message"],
+        "native temporal worker is not installed"
+    );
+    assert!(
+        malformed["error"]["message"]
+            .as_str()
+            .is_some_and(|m| m.contains("invalid worker installation manifest")),
+        "{malformed}"
     );
 }
 

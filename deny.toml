@@ -44,6 +44,6 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 
-# No git sources: the private D.I.V.E. source is resolved only by the temporal
-# extension workspace (extensions/temporal, ADR 0083).
+# No git sources: every dependency, D.I.V.E. included (ADR 0172), comes from
+# crates.io.
 allow-git = []

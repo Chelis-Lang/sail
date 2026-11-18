@@ -4,8 +4,11 @@ description = "Pinned native temporal jobs, isolated worker client and the runti
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 license.workspace = true
+repository.workspace = true
+readme = "README.md"
+homepage = "https://github.com/Chelis-Lang/sail"
 
 [dependencies]
 sail-api.workspace = true
@@ -16,6 +19,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 rustix = { workspace = true }
+
+[dev-dependencies]
+toml = { workspace = true }
 
 [lints]
 workspace = true

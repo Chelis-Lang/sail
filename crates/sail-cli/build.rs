@@ -1,9 +1,10 @@
-//! Compile the native protocol fault fixture, never installed as a product binary.
+//! Compile the native worker protocol fault fixture for `tests/temporal_worker.rs`;
+//! it is never installed as a product binary.
 #![forbid(unsafe_code)]
 use std::path::PathBuf;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("cargo:rerun-if-changed=tests/fixtures/control.rs");
+    println!("cargo:rerun-if-changed=tests/fixtures/native-worker/control.rs");
     let output = PathBuf::from(std::env::var_os("OUT_DIR").ok_or("missing OUT_DIR")?)
         .join("sail-native-worker-control");
     let compiler = std::env::var_os("RUSTC").ok_or("missing RUSTC")?;
@@ -15,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--target",
         ])
         .arg(target)
-        .arg("tests/fixtures/control.rs")
+        .arg("tests/fixtures/native-worker/control.rs")
         .arg("-o")
         .arg(&output)
         .output()?;

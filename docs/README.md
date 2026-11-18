@@ -45,7 +45,7 @@ them.
 | Seed portfolios and fragility measurement | [Divergences](divergences.md) |
 | Team caching of signed solver replies over HTTP(S) | [HTTP shared cache](http-shared-cache.md) |
 | Requirement-attribution retirement and historical jobs | [Retirement and migration](requirement-assurance.md) |
-| Temporal jobs (not in release builds; needs a private dependency) | [Temporal jobs](temporal-jobs.md), [private dependencies](private-dependencies.md) |
+| Native temporal jobs on D.I.V.E. (experimental) | [Temporal jobs](temporal-jobs.md), [shared runtime](runtime.md#native-temporal-jobs) |
 
 ## Working on Sail
 

@@ -121,7 +121,8 @@ implied by raw SMT completion. See [ADR 0068](decisions/0068-runtime-daemon.md).
 
 ## Native temporal jobs
 
-Native temporal jobs are experimental and are not in public release builds.
+Native temporal jobs are experimental. The `sail` binary links the
+D.I.V.E. backend, and release archives ship its isolated worker.
 The same runtime endpoint accepts `input: {kind: "temporal", job: ...}`.
 `sail-api::temporal::Job` contains caller `obligation_id`, sorted unique
 `requirement_ids`, an immutable native `request` and positive `wall_time_ms`
@@ -130,34 +131,38 @@ root/configuration and check, finite simulation or trace validation operation.
 See [native temporal jobs](temporal-jobs.md) for the admitted semantic scope.
 
 `capabilities.temporal` reports implementation and authenticated worker
-installation separately. A `sail` built from the main workspace, including
-every public release archive, links no temporal backend: it reports
-`installed: false` with the `unavailable` reason "native temporal support is
-not included in this sail build", and temporal jobs return `Unavailable`
-([ADR 0083](decisions/0083-temporal-extension-workspace.md)). Older services
+installation separately. The `sail` binary links the native backend
+([ADR 0172](decisions/0172-native-temporal-in-main-workspace.md)); with no
+authenticated worker beside it, it reports `installed: false` with the
+`unavailable` reason "native temporal worker is not installed", and temporal
+jobs return `Unavailable`. An embedder that runs `sail_cli::run_with` without
+a backend instead reports "native temporal support is not included in this
+sail build" ([ADR 0083](decisions/0083-temporal-extension-workspace.md)). Older services
 omit this field; temporal clients
 must restart or upgrade instead of falling back. Existing SMT requests and
 version-one wire fields retain their meanings.
 
-The result preserves caller identity, exact request identity, D.I.V.E. source
-revision, worker digest and deadline. Execution failure has no native response.
+The result preserves caller identity, exact request identity, D.I.V.E.
+release version, worker digest and deadline. Execution failure has no native response.
 A completed execution includes the original typed native response, reports,
 traces and validation evidence. Native stopped/unsupported/error outcomes are
 explicit. Neither finite simulation nor trace validity is an exhaustive proof.
 This slice does not cache temporal evidence or establish assurance tiers.
 
-Internal installations build the temporal-enabled `sail` and the worker from
-the [temporal extension workspace](private-dependencies.md), which needs read
-access to the private D.I.V.E. source, then stage the worker beside that
-`sail`:
+Release archives ship `bin/sail-runtime-worker` and its installation
+manifest `bin/sail-runtime-worker.json` beside `sail`. A source build stages
+the worker beside its `sail` with the same helper:
 
 ```sh
-cargo build --locked --manifest-path extensions/temporal/Cargo.toml --target-dir target/temporal
-python3 scripts/stage-temporal-worker.py target/temporal/debug/sail-runtime-worker target/temporal/debug
+cargo build --locked -p sail-solve --bins
+python3 scripts/stage-temporal-worker.py target/debug/sail-runtime-worker target/debug
+target/debug/sail runtime capabilities
 ```
 
-The manifest records the exact linked source revision, payload protocol,
-platform and worker digest. Internal release staging
-(`SAIL_RELEASE_TEMPORAL=1`) uses the same helper after stripping final bytes
-and binds both files in its release inventory. No PATH search,
+`cargo install sail-solve` installs the worker binary beside `sail` but not
+its manifest, so temporal jobs report the worker not installed until the
+manifest is staged. The manifest records the exact linked D.I.V.E. release,
+payload protocol, platform and worker digest. Release staging uses the same
+helper after stripping final bytes and binds both files in its release
+inventory. No PATH search,
 caller-selected executable, Java or TLC process participates.

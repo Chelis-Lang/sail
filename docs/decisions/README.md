@@ -90,7 +90,7 @@ Use [the template](0000-template.md) for a new decision.
 - [0080: Optional native temporal runtime (superseded by 0083)](0080-optional-temporal-runtime.md)
 - [0081: The cache checks response framing with the SMT-LIB splitter (accepted)](0081-cache-response-framing.md)
 - [0082: Replay unchanged calls from a complete stat-stamp vector (accepted; amended for solver identity)](0082-unchanged-call-replay.md)
-- [0083: The temporal backend is an extension workspace (accepted)](0083-temporal-extension-workspace.md)
+- [0083: The temporal backend is an extension workspace (superseded by 0172)](0083-temporal-extension-workspace.md)
 - [0084: Build-script receipts for a qualified range of Cargo releases (proposed)](0084-qualified-cargo-range.md)
 - [0087: Scope long conformance gates to runtime behavior (accepted)](0087-scoped-merge-conformance.md)
 - [0088: Accept named compiler-visible integration settings (accepted)](0088-compiler-visible-integration-settings.md)
@@ -116,7 +116,7 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0100: Mutation-first roadmap and design-first Oyster hold (accepted; Oyster parts superseded and backend ordering amended by 0109; headline moved to v0.4.0 by 0174)](0100-mutation-first-roadmap.md)
 
-- [0101: D.I.V.E. behind a default-off build flag](0101-dive-behind-a-default-off-flag.md) (accepted; extension workspace is the flag, main-gate lock and publish guards, flip queued)
+- [0101: D.I.V.E. behind a default-off build flag](0101-dive-behind-a-default-off-flag.md) (superseded by 0172; extension workspace was the flag, main-gate lock and publish guards)
 
 - [0103: Scoped lifting of the neutral-widening hold](0103-scoped-neutral-widening.md) (accepted by owner; named items only, under explicit profile three) — superseded by 0109
 
@@ -143,4 +143,5 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0170: No persistent frontend restoration in v0.3.0](0170-v030-frontend-reuse-no-go.md) (accepted; incomplete operation/effect/current-diagnostic boundary, no new performance result, unchanged 25% gate, #162 stays open)
 - [0171: Accept the observed CI image startup target](0171-observed-ci-startup-target.md) (accepted; retrospective pull command-window p95 40.2s against 120s; historical slow tails remain unresolved)
+- [0172: Native temporal checking in the main workspace on D.I.V.E. 0.1.0](0172-native-temporal-in-main-workspace.md) (accepted; supersedes 0083 and 0101; `sail-dive` published, worker is a `sail-solve` binary, `DIVE_VERSION` replaces the revision pin)
 - [0174: v0.3.0 ships native temporal checking; unfinished pillars move to v0.4.0](0174-v030-native-temporal-scope.md) (accepted by owner; amends 0100 and 0109; mutation, profiling, performance parity, installer/editor reach, Kani and cvc5 move to v0.4.0)

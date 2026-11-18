@@ -454,7 +454,7 @@ Each was resolved in the charter's favour until the owner answered on
    20, historical):** publication waited for the owner's rollout. The owner
    subsequently approved eighteen packages at 0.2.0 (ADR 0098); root
    `publish = false` remains a default with explicit selected-crate opt-ins.
-   Private temporal extensions stay unpublished.
+   `sail-dive`, the native temporal backend, is published since ADR 0172.
 8. **Filing outside this repository.** The scope asks for interface needs to be
    raised as issues or proposals for Oyster and D.I.V.E. **Resolved (question
    21):** agents may open issues and PRs in this line of work's repositories

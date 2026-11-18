@@ -22,8 +22,10 @@ pub struct ItfTrace {
     pub length: Option<usize>,
 }
 
-/// Exact embedded source identity. Moving it requires native conformance.
-pub const DIVE_REVISION: &str = "1025cd6a0510183bc16abc1e6e3eea4f9305c5a9";
+/// The exact D.I.V.E. release (`dive-api` and `dive-ir` from crates.io, ADR
+/// 0172) that the native backend links, reported as `backend_revision`.
+/// Moving it requires native conformance.
+pub const DIVE_VERSION: &str = "0.1.0";
 /// Worker payload protocol version.
 pub const VERSION: u32 = 1;
 /// Maximum encoded request or response, before JSON decoding.
@@ -164,7 +166,7 @@ impl Response {
     pub fn new(outcome: Outcome, native_report: Value) -> Self {
         Self {
             version: VERSION,
-            backend_revision: DIVE_REVISION.into(),
+            backend_revision: DIVE_VERSION.into(),
             request_sha256: String::new(),
             outcome,
             completion: Completion::None,
@@ -255,7 +257,7 @@ pub struct Capability {
     pub implemented: bool,
     /// Trusted worker bytes were authenticated for this installation.
     pub installed: bool,
-    /// Exact embedded backend source revision.
+    /// Exact linked backend release ([`DIVE_VERSION`]).
     pub backend_revision: String,
     /// Actual authenticated worker identity, when installed.
     pub worker_sha256: Option<String>,
@@ -274,7 +276,7 @@ pub fn validate_response(
     response: &Response,
 ) -> std::result::Result<(), String> {
     if response.version != VERSION
-        || response.backend_revision != DIVE_REVISION
+        || response.backend_revision != DIVE_VERSION
         || response.request_sha256 != request_sha256(request).map_err(|e| e.to_string())?
     {
         return Err("SAIL4213: worker protocol, backend or request identity differs".into());
@@ -284,8 +286,8 @@ pub fn validate_response(
         response.outcome,
         Outcome::Holds | Outcome::Refuted | Outcome::Sampled | Outcome::Valid | Outcome::Invalid
     );
-    if conclusive && report["schema_version"] != 2 {
-        return Err("SAIL4213: conclusive outcome lacks native schema-2 evidence".into());
+    if conclusive && report["schema_version"] != 3 {
+        return Err("SAIL4213: conclusive outcome lacks native schema-3 evidence".into());
     }
     let compatible = match response.outcome {
         Outcome::Holds => {

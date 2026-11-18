@@ -6,6 +6,17 @@ semantic versioning once the API is published.
 ## Unreleased
 
 - Stop a worker and its process group through a direct kernel signal when its owning service dies, instead of running an external `kill` from the captured `PATH` (#760).
+- Ship native temporal checking via D.I.V.E. 0.1.0 from crates.io (ADR 0172).
+  The `sail` binary links the D.I.V.E. backend, `sail-solve` installs the
+  isolated `sail-runtime-worker` beside it, and release archives ship the
+  worker with its installation manifest, so `sail runtime capabilities`
+  reports temporal installed. The new published crate `sail-dive` carries the
+  backend; the separate temporal extension workspace and its private
+  dependency credential are gone. `sail_api::temporal::DIVE_REVISION` is
+  replaced by `DIVE_VERSION` (`"0.1.0"`), which `backend_revision` now
+  reports; native evidence is D.I.V.E. report schema 3. Genuine temporal
+  properties return `Unsupported` while D.I.V.E.'s engine refuses an exact
+  store with state or depth limits for them.
 
 - Recognize the exact newer development compilers’ AIR identity format while
   preserving mixed/unknown-source and incomplete-evidence checks. This does not

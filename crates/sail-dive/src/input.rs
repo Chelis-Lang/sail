@@ -154,6 +154,15 @@ impl Frozen {
                         ));
                     }
                 }
+                // Bundled CommunityModules and TLAPS sources are not
+                // qualified for native jobs; refuse them like any
+                // unqualified standard module.
+                Origin::Bundled => {
+                    return Err((
+                        Outcome::Unsupported,
+                        format!("SAIL4202: unqualified bundled module {}", file.display),
+                    ));
+                }
                 Origin::Text => return Err(rejected("unattributed module source")),
             }
         }
