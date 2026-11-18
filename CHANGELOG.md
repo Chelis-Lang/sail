@@ -29,6 +29,8 @@ surfaces that 0.2.0 published. Removing published API makes this a breaking rele
   the installed worker's settled complete stat stamp is unchanged, instead of
   hashing and copying the 76 MB worker on every job (#765, ADR 0173). Any
   change to the installed worker or the copy verifies the bytes again.
+  The runtime service also wakes for a new connection at once instead of
+  polling every 5 ms, which each socket and MCP call paid two or three times.
 - `sail_api::temporal::DIVE_REVISION` (a Git commit) is replaced by
   `DIVE_VERSION` (`"0.1.0"`), which the wire field `backend_revision` now
   carries. Conclusive native evidence is D.I.V.E. report schema 3.
