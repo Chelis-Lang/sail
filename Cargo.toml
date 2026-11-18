@@ -117,3 +117,10 @@ debug = "line-tables-only"
 inherits = "release"
 debug = true
 
+# TEMPORARY, never merged: D.I.V.E. 0.1.0 is not on crates.io yet. Until it
+# is, resolve dive-api and dive-ir (and, through them, every dive-* crate) from
+# D.I.V.E.'s main branch. Drop this section, the matching deny.toml allow-git
+# entry and the Cargo.lock change together once 0.1.0 is published.
+[patch.crates-io]
+dive-api = { git = "https://github.com/Chelis-Lang/dive", branch = "main" }
+dive-ir = { git = "https://github.com/Chelis-Lang/dive", branch = "main" }
