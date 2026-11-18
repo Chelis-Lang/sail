@@ -18,6 +18,12 @@ manifest. Callers select the worker
 using an expected SHA-256 from their trusted installation manifest. The parent
 reads and verifies the executable, then executes a private exact-byte copy.
 Missing or changed bytes are explicit failures, never a backend fallback.
+The verified copy is kept for later jobs in a per-user private directory
+(`sail-runtime-images-<uid>` under the temporary directory) and reused only
+while the installed worker and the copy both keep their recorded complete
+stat stamps; any write, replacement, `chmod` or `utimes` of either verifies
+the bytes again ([ADR 0173](decisions/0173-verified-worker-image-reuse.md)).
+Each job still gets its own private working and temporary directory.
 
 ```rust,ignore
 use sail_dive::{Model, Operation, Request, VERSION, client};

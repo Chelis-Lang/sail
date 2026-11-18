@@ -1762,6 +1762,7 @@ dependencies = [
 name = "sail-runtime"
 version = "0.3.0"
 dependencies = [
+ "rustix",
  "sail-api",
  "sail-cache",
  "sail-key",
