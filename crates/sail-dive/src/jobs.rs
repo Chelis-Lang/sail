@@ -69,6 +69,11 @@ fn add_trace(response: &mut Response, source: &SpecModel, native: &Value) -> Res
             Outcome::Error,
             "SAIL4205: backend witness failed independent semantic validation".into(),
         )),
+        // A validation kind this build does not know is never acceptance.
+        _ => Err((
+            Outcome::Error,
+            "SAIL4205: backend witness has an unrecognized validation result".into(),
+        )),
     }
 }
 
@@ -98,7 +103,8 @@ fn run(request: &Request) -> Result<Response, Failure> {
             let outcome = match &validation.validation {
                 Validation::Valid => Outcome::Valid,
                 Validation::Invalid(_) => Outcome::Invalid,
-                Validation::Unsupported(_) => Outcome::Unsupported,
+                // Unknown validation kinds are never reported as valid.
+                Validation::Unsupported(_) | _ => Outcome::Unsupported,
             };
             let report = dive_api::trace::report_json(&validation);
             let mut response = Response::new(outcome, report.clone());

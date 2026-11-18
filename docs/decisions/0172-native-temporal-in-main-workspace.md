@@ -79,16 +79,11 @@ is accepted by crates.io.
 - Every published Sail crate that reaches `sail-dive` (`sail-solve`) depends
   on D.I.V.E. from crates.io; Sail cannot publish until D.I.V.E. 0.1.0 is
   there.
-- At D.I.V.E.'s current main, Core refuses an exact store
-  ("exact or spilled native temporal storage under the core engine") and
-  state or depth limits ("--max-states or --max-depth with temporal
-  properties (core)") for genuine temporal properties. Sail does not weaken
-  its request to a fingerprint store or an unbounded search to get a
-  verdict: such jobs return `Unsupported`, and two native regressions that
-  require a temporal holds and a temporal counterexample fail until
-  D.I.V.E. lifts those refusals or the owner chooses a different policy.
-  Safety, action-only PROPERTYs, simulation and trace validation are
-  unaffected.
+- Sail keeps its exact store and state/depth limits for genuine temporal
+  properties rather than a fingerprint store or an unbounded search.
+  D.I.V.E.'s Core engine checks temporal properties with an exact store and
+  reports a state or depth limit reached during graph capture as a stop
+  with no claim, which Sail returns as `Stopped`, never Holds.
 - `cargo install sail-solve` installs the worker binary but not its
   installation manifest; such an installation reports the worker not
   installed until the manifest is staged. Release archives are complete.

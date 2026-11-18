@@ -60,12 +60,14 @@ Model checking uses mathematical integers, exact states, seed zero,
 fingerprint zero and one worker. Bound safety-only properties use ordinary
 native checking; genuine temporal properties use D.I.V.E.'s ordinary
 completed-level temporal checking, and every temporal counterexample is
-independently validated. D.I.V.E. 0.1.0's engine refuses an exact state store
-and state or depth limits for genuine temporal properties; until it supports
-them, such jobs return `Unsupported`, never a fingerprint-based or unbounded
-result. A holding verdict requires actual typed complete exploration evidence;
-the native report's `check_kind` alone is not completion evidence. A state or
-depth limit returns `Stopped`, not Holds. Temporal evaluator/product limits
+independently validated. Genuine temporal properties run on the same exact
+state store and state/depth limits as safety checks, never a fingerprint-based
+or unbounded search. A holding verdict requires actual typed complete
+exploration evidence (for temporal properties, a completed graph capture); the
+native report's `check_kind` alone is not completion evidence. A state or
+depth limit returns `Stopped`, not Holds; for temporal properties D.I.V.E.
+reports the stop in its `graph-capture` phase and makes no claim about the
+model. Temporal evaluator/product limits
 remain those reported by the linked backend. There is no hard RAM guarantee.
 
 `Operation::Simulate` requires positive trace/depth counts, up to 100,000

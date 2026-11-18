@@ -164,6 +164,13 @@ impl Frozen {
                     ));
                 }
                 Origin::Text => return Err(rejected("unattributed module source")),
+                // A module origin this build does not know is not admitted.
+                _ => {
+                    return Err((
+                        Outcome::Unsupported,
+                        format!("SAIL4202: unqualified module origin {}", file.display),
+                    ));
+                }
             }
         }
         if !analysis.accepted() {
