@@ -20,6 +20,8 @@ nix = { version = "=0.31.3", default-features = false }
 inotify = { version = "=0.11.5", default-features = false }
 # Safe kernel mount-event and bounded optional Unix socket readiness polling.
 rustix = { version = "=1.1.6", default-features = false, features = ["std", "event", "fs", "process"] }
+# The native temporal worker's allocator, as the D.I.V.E. CLI uses (#765).
+mimalloc = { version = "=0.1.52", default-features = false }
 sail-smtlib = { path = "crates/sail-smtlib", version = "=0.3.0" }
 sail-session = { path = "crates/sail-session", version = "=0.3.0" }
 sail-key = { path = "crates/sail-key", version = "=0.3.0" }

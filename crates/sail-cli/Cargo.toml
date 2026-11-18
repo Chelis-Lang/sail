@@ -42,6 +42,7 @@ sail-verus.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+mimalloc.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 rustix.workspace = true
