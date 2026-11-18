@@ -114,6 +114,9 @@ opt-level = 3
 
 [profile.release]
 debug = "line-tables-only"
+# Whole-program optimisation, as D.I.V.E. builds its CLI (dive ADR 0102).
+lto = "fat"
+codegen-units = 1
 
 [profile.profiling]
 inherits = "release"
