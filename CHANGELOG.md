@@ -14,8 +14,10 @@ semantic versioning once the API is published.
   dependency credential are gone. `sail_api::temporal::DIVE_REVISION` is
   replaced by `DIVE_VERSION` (`"0.1.0"`), which `backend_revision` now
   reports; native evidence is D.I.V.E. report schema 3. Genuine temporal
-  properties return `Unsupported` while D.I.V.E.'s engine refuses an exact
-  store with state or depth limits for them.
+  properties are checked with Sail's exact store and state/depth limits: they
+  hold with complete graph evidence, are refuted with an independently
+  validated counterexample, or return `Stopped` (no claim) when a limit ends
+  graph capture.
 
 - Recognize the exact newer development compilers’ AIR identity format while
   preserving mixed/unknown-source and incomplete-evidence checks. This does not

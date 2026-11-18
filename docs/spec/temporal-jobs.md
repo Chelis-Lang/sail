@@ -28,9 +28,9 @@ The fixed semantic profile is native D.I.V.E.: mathematical integers, exact
 states, seed zero, fingerprint zero and one worker. Checking uses D.I.V.E.'s
 ordinary dive-profile route: bound safety roles, configured action properties
 included, are safety checks, and genuine temporal properties use completed-level
-temporal checking with independently validated counterexamples. Release 0.1.0's
-engine refuses an exact store and state/depth limits for genuine temporal
-properties, so those jobs are currently unsupported. The request never changes
+temporal checking with independently validated counterexamples, on the same
+exact store and state/depth limits; a limit reached during graph capture is a
+resource stop with no claim. The request never changes
 on a diagnostic and is never retried. These choices are
 part of the backend identity, not claims of TLC-equivalent arithmetic or timing.
 Requested state/depth limits are explicit; reaching a limit establishes no
