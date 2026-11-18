@@ -111,16 +111,11 @@ fn run(request: &Request) -> Result<Response, Failure> {
 }
 
 fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response, Failure> {
-    // Configured PROPERTYs include initial, state and action safety roles. Only
-    // the binder's implied temporal roles require final graph analysis. The
-    // pinned final checker refuses safety-only PROPERTYs rather than routing
-    // them to its ordinary engine, so choose once before any search.
-    let bound = model(input)?;
-    let temporal = if bound.model().implied_temporals.is_empty() {
-        TemporalMode::Ordinary
-    } else {
-        TemporalMode::FinalShort
-    };
+    // D.I.V.E. 0.1.0 checks on its Core engine, which has no bounded final
+    // (`FinalShort`) route: ordinary dive-profile checking runs safety roles
+    // and deterministic completed-level temporal checks in one request, and
+    // every temporal success must still carry complete capture evidence.
+    let temporal = TemporalMode::Ordinary;
     let report = dive_api::check_file(&CheckRequest {
         file: input.root.clone(),
         config: Some(input.config.clone()),
@@ -151,7 +146,7 @@ fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response, Failure> {
                 response.completion = crate::Completion::Safety;
             } else if !report
                 .temporal_result()
-                .is_some_and(|r| matches!(r.outcome(), dive_api::temporal::Outcome::Holds(_)))
+                .is_some_and(|r| matches!(r.outcome(), dive_api::temporal::Outcome::NativeHolds(_)))
             {
                 return Err((
                     Outcome::Error,

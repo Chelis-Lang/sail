@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Stage the native worker and bind its exact installed bytes to its source pin.
+"""Stage the native worker and bind its exact installed bytes to its D.I.V.E. release.
 
-The worker is built by the temporal extension workspace (extensions/temporal,
-ADR 0083), whose Cargo.toml pins the D.I.V.E. revision.
+The worker is the `sail-runtime-worker` binary of the sail-solve package
+(ADR 0172). The root Cargo.toml requires dive-api at one exact version, which
+sail_api::temporal::DIVE_VERSION states too.
 """
 import hashlib
 import json
@@ -21,8 +22,11 @@ def stage(source, destination):
     if source.resolve() != worker.resolve():
         shutil.copyfile(source, worker)
     worker.chmod(0o755)
-    pins = tomllib.loads((Path(__file__).resolve().parent.parent / 'extensions/temporal/Cargo.toml').read_text())
-    revision = pins['workspace']['dependencies']['dive-api']['rev']
+    pins = tomllib.loads((Path(__file__).resolve().parent.parent / 'Cargo.toml').read_text())
+    requirement = pins['workspace']['dependencies']['dive-api']['version']
+    if not requirement.startswith('=') or not requirement[1:]:
+        raise SystemExit(f'dive-api must be required at one exact version, not {requirement!r}')
+    revision = requirement[1:]
     system = {'Darwin': 'macos', 'Linux': 'linux'}[platform.system()]
     architecture = {'arm64': 'aarch64', 'aarch64': 'aarch64', 'x86_64': 'x86_64'}[platform.machine()]
     with worker.open('rb') as stream:

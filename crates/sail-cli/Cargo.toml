@@ -22,12 +22,18 @@ path = "src/shim_main.rs"
 name = "sail"
 path = "src/main.rs"
 
+# The isolated native temporal worker, installed beside `sail` (ADR 0172).
+[[bin]]
+name = "sail-runtime-worker"
+path = "src/worker_main.rs"
+
 [dependencies]
 sail-shim.workspace = true
 notify.workspace = true
 ctrlc.workspace = true
 sail-api.workspace = true
 sail-runtime.workspace = true
+sail-dive.workspace = true
 sail-cache.workspace = true
 sail-daemon.workspace = true
 sail-mcp.workspace = true

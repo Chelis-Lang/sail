@@ -1,6 +1,6 @@
 # sail-runtime
 
-Bounded exact SMT execution for embedded and service clients, independently usable without a daemon. Execution requires an installed solver matching the embedded pin; constructing the runtime does not install tools. Temporal execution is unavailable in the default core build.
+Bounded exact SMT execution for embedded and service clients, independently usable without a daemon. Execution requires an installed solver matching the embedded pin; constructing the runtime does not install tools. Native temporal execution needs a linked `TemporalBackend` such as `sail-dive`'s, which the `sail` binary links.
 
 This component is part of [Sail](../../README.md). For the command-line tool,
 install the `sail-solve` package:

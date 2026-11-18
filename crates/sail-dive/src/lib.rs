@@ -10,7 +10,7 @@ mod wire;
 pub use codec::{itf_to_native, native_to_itf};
 pub use jobs::execute;
 pub use sail_api::temporal::{
-    Completion, DIVE_REVISION, ItfTrace, MAX_DOCUMENT_BYTES, Model, Operation, Outcome, Request,
+    Completion, DIVE_VERSION, ItfTrace, MAX_DOCUMENT_BYTES, Model, Operation, Outcome, Request,
     RequestedChecks, Response, VERSION, request_sha256, sha256,
 };
 pub use wire::{decode_request, decode_response};

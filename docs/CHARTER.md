@@ -366,3 +366,13 @@ Each entry names the charter text it qualifies and the ADR that records it.
     false verification claims, unmeasured performance acceptance, blanket
     conformance waivers or final release publication without the exact-candidate
     approval required by entry 15.
+
+19. *Native temporal in the main workspace* (owner decision, 2026-11-18).
+    D.I.V.E. is released publicly as 0.1.0 on crates.io. The temporal
+    extension folds into the main workspace and native temporal checking
+    ships in v0.3.0: `sail-dive` is published, the `sail` binary links the
+    D.I.V.E. backend and release archives ship its isolated worker. This
+    supersedes entry 17's "D.I.V.E. stays private; ADR 0101 and the temporal
+    extension are unchanged" and entry 14's "private temporal extensions stay
+    unpublished"; correctness obligations and the exact-candidate release
+    approval of entry 15 are unchanged. See ADR 0172.

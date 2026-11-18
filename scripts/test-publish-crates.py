@@ -42,6 +42,26 @@ class PublicationControls(unittest.TestCase):
         self.assertEqual([p["name"] for p in packages], ["sail-api", "sail-solve"])
         self.assertEqual(version, "0.2.0-rc.1")
 
+    def test_actual_workspace_selection_is_closed_under_dependencies(self):
+        """Every workspace member a published crate needs is published too (ADR 0172)."""
+        import subprocess
+        root = Path(__file__).resolve().parents[1]
+        data = json.loads(subprocess.run(
+            ["cargo", "metadata", "--format-version", "1", "--no-deps", "--offline"],
+            cwd=root, check=True, text=True, capture_output=True,
+        ).stdout)
+        packages, _ = PUBLISH.select_packages(data)
+        selected = {package["name"] for package in packages}
+        members = {package["name"] for package in data["packages"] if package["id"] in data["workspace_members"]}
+        self.assertIn("sail-dive", selected)
+        for package in packages:
+            for dependency in package["dependencies"]:
+                if dependency["kind"] != "dev" and dependency["name"] in members:
+                    self.assertIn(dependency["name"], selected, f"{package['name']} -> {dependency['name']}")
+        solve = next(package for package in packages if package["name"] == "sail-solve")
+        binaries = {target["name"] for target in solve["targets"] if "bin" in target["kind"]}
+        self.assertTrue({"sail", "sail-solve-z3", "sail-runtime-worker"} <= binaries, binaries)
+
     def test_selection_requires_root_uniform_version_and_explicit_allowlist(self):
         for field, value in [("name", "sail-other"), ("version", "0.3.0"), ("publish", None)]:
             with self.subTest(field=field):

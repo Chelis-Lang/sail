@@ -1,7 +1,8 @@
 # Temporal jobs, version 1
 
 Status: specification for implementation review. This interface uses the native
-D.I.V.E. library at revision `1025cd6a0510183bc16abc1e6e3eea4f9305c5a9`.
+D.I.V.E. library at release 0.1.0 (`dive-api` and `dive-ir` from crates.io,
+`sail_api::temporal::DIVE_VERSION`).
 It never executes a D.I.V.E. command, TLC, or Java and has no alternate backend.
 
 ## Inputs and execution
@@ -13,21 +14,24 @@ root module and configuration. Absolute paths, traversal, symbolic links,
 duplicate paths, missing imports, external search paths, host operators and
 ambient module resolution are not admitted. The worker materializes private
 files from this immutable closure and supplies only that closure to D.I.V.E.
-Built-in standard module identity is bound by the backend revision.
+Built-in standard module identity is bound by the backend release.
 The first slice admits only the pure embedded `Naturals`, `Integers`,
 `Sequences`, `FiniteSets` and `Bags` modules. Semantic analysis checks the
 actual loaded origins before binding; host-capable modules such as `TLC`,
-`Json` and `Randomization` are unsupported even on an untaken branch.
+`Json` and `Randomization`, and D.I.V.E.'s bundled CommunityModules and
+TLAPS sources, are unsupported even on an untaken branch.
 The guard also inspects actual lowered native overrides and effects. Native
 overrides match module names even for user-provided files, so a substituted
 `TLC.tla` cannot grant printing or other host capabilities.
 
 The fixed semantic profile is native D.I.V.E.: mathematical integers, exact
-states, seed zero, fingerprint zero and one worker. Checking selects the native
-safety route when the frozen model binds no temporal property and final analysis
-with independently validated short lassos otherwise. Configured action
-properties remain safety checks. This selection uses bound roles before search,
-never diagnostic text or retry. These choices are
+states, seed zero, fingerprint zero and one worker. Checking uses D.I.V.E.'s
+ordinary dive-profile route: bound safety roles, configured action properties
+included, are safety checks, and genuine temporal properties use completed-level
+temporal checking with independently validated counterexamples. Release 0.1.0's
+engine refuses an exact store and state/depth limits for genuine temporal
+properties, so those jobs are currently unsupported. The request never changes
+on a diagnostic and is never retried. These choices are
 part of the backend identity, not claims of TLC-equivalent arithmetic or timing.
 Requested state/depth limits are explicit; reaching a limit establishes no
 holding property. Simulation names positive finite trace count and depth and

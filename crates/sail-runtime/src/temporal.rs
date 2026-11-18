@@ -1,13 +1,13 @@
 //! Attributed native temporal execution through an isolated worker.
 //!
-//! This crate links no native temporal backend (ADR 0083). A `sail` built
-//! from the temporal extension workspace supplies one as a
-//! [`TemporalBackend`]; without it the capability reports unavailable and
+//! This crate links no native temporal backend (ADR 0083). The `sail` binary
+//! supplies `sail-dive`'s as a [`TemporalBackend`] (ADR 0172); an embedder
+//! that supplies none gets a capability that reports unavailable, and
 //! temporal jobs return `Unavailable`.
 use crate::{Cancellation, execution, invalid};
 use sail_api::{
     runtime::Outcome,
-    temporal::{Capability, DIVE_REVISION, Job, Request, Response, Result},
+    temporal::{Capability, DIVE_VERSION, Job, Request, Response, Result},
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -66,7 +66,7 @@ pub struct Manifest {
     pub version: u32,
     /// Native payload version.
     pub protocol: u32,
-    /// Exact linked native source revision.
+    /// Exact linked native backend release (`sail_api::temporal::DIVE_VERSION`).
     pub backend_revision: String,
     /// OS and architecture of the executable.
     pub platform: String,
@@ -109,7 +109,7 @@ impl Worker {
         })?;
         if manifest.version != 1
             || manifest.protocol != sail_api::temporal::VERSION
-            || manifest.backend_revision != DIVE_REVISION
+            || manifest.backend_revision != DIVE_VERSION
             || manifest.platform != platform()
             || !digest(&manifest.sha256)
         {
@@ -198,7 +198,7 @@ pub(crate) fn capability(
     Capability {
         implemented: true,
         installed: authenticated.is_ok(),
-        backend_revision: DIVE_REVISION.into(),
+        backend_revision: DIVE_VERSION.into(),
         worker_sha256: authenticated
             .as_ref()
             .ok()
@@ -245,7 +245,7 @@ pub(crate) fn execute(
         requirement_ids: job.requirement_ids.clone(),
         request_sha256: sail_api::temporal::request_sha256(&job.request)
             .map_err(|e| invalid("invalid_request", e.to_string()))?,
-        backend_revision: DIVE_REVISION.into(),
+        backend_revision: DIVE_VERSION.into(),
         worker_sha256: None,
         wall_time_ms: job.wall_time_ms,
         outcome: Outcome::Unavailable,
@@ -313,7 +313,7 @@ mod tests {
             serde_json::to_vec(&Manifest {
                 version: 1,
                 protocol: sail_api::temporal::VERSION,
-                backend_revision: DIVE_REVISION.into(),
+                backend_revision: DIVE_VERSION.into(),
                 platform: platform(),
                 sha256: "0".repeat(64),
             })?,
