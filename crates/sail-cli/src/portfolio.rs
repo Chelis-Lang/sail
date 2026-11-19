@@ -273,11 +273,24 @@ fn worker_args(args: &[String], seed: u32, target: &Path) -> Vec<String> {
     out
 }
 
+/// Sends `SIGKILL` to the process group led by `pid` through the kernel,
+/// independent of the caller's `PATH` (#760).
 #[cfg(unix)]
 fn kill_group(pid: u32) {
-    let _ = Command::new("kill")
-        .args(["-s", "KILL", "--", &format!("-{pid}")])
-        .status();
+    if let Ok(raw) = i32::try_from(pid)
+        && let Some(pid) = rustix::process::Pid::from_raw(raw)
+    {
+        let _ = rustix::process::kill_process_group(pid, rustix::process::Signal::KILL);
+    }
+}
+
+/// Kills this worker's own process group. If the kernel refuses the group
+/// signal, the worker still kills itself, so it never outlives its owner.
+#[cfg(unix)]
+fn kill_own_group() -> ! {
+    let _ = rustix::process::kill_current_process_group(rustix::process::Signal::KILL);
+    let _ = rustix::process::kill_process(rustix::process::getpid(), rustix::process::Signal::KILL);
+    std::process::abort();
 }
 
 /// A worker's stdin is a liveness pipe, not solver input. Parent death or
@@ -289,16 +302,10 @@ pub(crate) fn guard_parent() {
         let mut stdin = std::io::stdin().lock();
         loop {
             match stdin.read(&mut byte) {
-                Ok(0) => {
-                    kill_group(std::process::id());
-                    return;
-                }
+                Ok(0) => kill_own_group(),
                 Ok(_) => {}
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                Err(_) => {
-                    kill_group(std::process::id());
-                    return;
-                }
+                Err(_) => kill_own_group(),
             }
         }
     });
@@ -635,5 +642,92 @@ mod tests {
         r.crates[0].functions.clear();
         r.summary = sail_api::output::Summary::of(&r.crates);
         assert!(!complete(&r));
+    }
+
+    /// Child half of `guard_kills_group_without_kill_on_path`: guards its
+    /// stdin, starts a group member and then waits to be killed.
+    #[cfg(unix)]
+    #[test]
+    fn guard_child_entry() {
+        if std::env::var_os("SAIL_TEST_GUARD_CHILD").is_none() {
+            return;
+        }
+        guard_parent();
+        let Ok(member) = Command::new("/bin/sleep").arg("300").spawn() else {
+            return;
+        };
+        println!("member {}", member.id());
+        let _ = std::io::stdout().flush();
+        std::thread::sleep(Duration::from_secs(300));
+    }
+
+    /// The owner-death guard must stop the worker and its group even when the
+    /// captured `PATH` has no `kill` executable (#760).
+    #[cfg(unix)]
+    #[test]
+    fn guard_kills_group_without_kill_on_path() {
+        use std::io::BufRead as _;
+        use std::os::unix::process::CommandExt as _;
+        use std::os::unix::process::ExitStatusExt as _;
+
+        let Ok(exe) = std::env::current_exe() else {
+            unreachable!("test binary path")
+        };
+        let mut cmd = Command::new(exe);
+        cmd.args([
+            "portfolio::tests::guard_child_entry",
+            "--exact",
+            "--nocapture",
+        ])
+        .env("SAIL_TEST_GUARD_CHILD", "1")
+        .env("PATH", "")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .process_group(0);
+        let Ok(mut child) = cmd.spawn() else {
+            unreachable!("spawn guarded child")
+        };
+        let owner = child.stdin.take();
+        let mut member = None;
+        if let Some(stdout) = child.stdout.take() {
+            for line in std::io::BufReader::new(stdout).lines() {
+                let Ok(line) = line else { break };
+                if let Some(pid) = line.strip_prefix("member ") {
+                    member = pid.trim().parse::<i32>().ok();
+                    break;
+                }
+            }
+        }
+        let member = member.and_then(rustix::process::Pid::from_raw);
+        assert!(member.is_some(), "guarded child reported no group member");
+        drop(owner);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut status = None;
+        while Instant::now() < deadline {
+            if let Ok(Some(s)) = child.try_wait() {
+                status = Some(s);
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        if status.is_none() {
+            kill_group(child.id());
+            let _ = child.wait();
+        }
+        let member_alive = || member.is_some_and(|p| rustix::process::test_kill_process(p).is_ok());
+        while member_alive() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        let survived = member_alive();
+        if survived && let Some(p) = member {
+            let _ = rustix::process::kill_process(p, rustix::process::Signal::KILL);
+        }
+        assert_eq!(
+            status.and_then(|s| s.signal()),
+            Some(9),
+            "the guarded worker outlived its owner"
+        );
+        assert!(!survived, "the worker's group member outlived its owner");
     }
 }

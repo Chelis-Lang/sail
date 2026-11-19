@@ -1450,6 +1450,7 @@ version = "0.2.0"
 dependencies = [
  "ctrlc",
  "notify",
+ "rustix",
  "sail-api",
  "sail-cache",
  "sail-daemon",
