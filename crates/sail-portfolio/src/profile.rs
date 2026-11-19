@@ -1,5 +1,9 @@
 //! Exact session prefixes for diagnostic solver replay.
 //!
+//! Unstable groundwork for the planned `sail profile` (v0.4.0, ADR 0174),
+//! hidden from the documentation. No command uses it, and it may change
+//! without notice.
+//!
 //! A check must be replayed with every preceding command, including earlier
 //! checks, statistics requests and stack operations. Extracting only its live
 //! assertions discards solver history and can change resource-limited answers.

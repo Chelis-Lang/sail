@@ -2,8 +2,9 @@
 //!
 //! This module is internal to the Sail workspace: `cargo xtask gen-mutants`
 //! uses it to write the mutation catalogues in `corpus/mutants/`, and the
-//! planned `sail mutate` campaigns will use its exec-only planner. Its API
-//! carries no stability promise for other crates.
+//! planned `sail mutate` campaigns (v0.4.0) will use its exec-only planner.
+//! It is hidden from the documentation, and its API carries no stability
+//! promise for other crates.
 //!
 //! The generator only reads source text. [`generate`] finds every candidate
 //! site of the nine catalogue classes ([`CLASSES`]) in the files the crate
