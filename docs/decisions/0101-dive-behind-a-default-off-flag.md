@@ -1,6 +1,6 @@
 # 0101: D.I.V.E. behind a default-off build flag
 
-- **Status:** accepted
+- **Status:** superseded by [0172](0172-native-temporal-in-main-workspace.md)
 - **Date:** 2026-11-06
 - **Amends:** [0083](0083-temporal-extension-workspace.md) (adds guards and a
   named install step; the workspace split is unchanged) and the temporal hold

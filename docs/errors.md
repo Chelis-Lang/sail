@@ -34,7 +34,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | `SAIL4210` | Worker input, execution or output failure | Inspect the bounded worker diagnostic |
 | `SAIL4211` | Worker output exceeds its byte bound | Reduce requested evidence; truncated output is not a verdict |
 | `SAIL4212` | Worker identity, lifecycle or protocol failure | Use the pinned worker and inspect the reported failure |
-| `SAIL4213` | Private dependency command or Git configuration is invalid | Use the documented ephemeral credential wrapper |
+| `SAIL4213` | Worker response identity or native evidence does not match the request | Use the pinned worker; the response establishes no model result |
 | `SAIL4214` | Duplicate JSON object member | Submit a unique field at every object depth |
 | `SAIL4215` | Archive installation or prerequisite check failed | Check the selected platform/version, adjacent checksum, archive attestation, rustup and download access; existing installations are preserved |
 
@@ -255,7 +255,7 @@ or reuse a receipt. A fresh owned target is required before retrying.
 | `SAIL3150` | Standalone setup, input observation or job protocol is unsupported or unavailable | Read the named input or setup error; restart an older daemon when requested |
 | `SAIL3151` | Fresh standalone verification could not establish complete input coverage for a reusable Current proof | Read the verifier verdict and diagnostics; unsupported observations run fresh without receipt reuse |
 | `SAIL3160` | A legacy requirement-attribution operation or stored attribution is invalid or unavailable | New attribution requests are retired with `SAIL3161`; submit ordinary jobs without requirement tags and keep intent tracking outside Sail. See [requirement attribution retirement](requirement-assurance.md) |
-| `SAIL3161` | The requested requirement-attribution entry point was retired in the v0.3.0 development candidate, or a retained job record or baseline was written by a neutral source job, which Sail 0.2 offered and 0.3.0 removed. It stays listed, but it is never read as verification evidence | Submit ordinary jobs without requirement tags; retain intent tracking outside Sail. Verify a neutral source again as ordinary Verus input. Sail 0.2.0 can still read the record |
+| `SAIL3161` | The requested requirement-attribution entry point was retired in Sail 0.3.0, or a retained job record or baseline was written by a neutral source job, which Sail 0.2 offered and 0.3.0 removed. It stays listed, but it is never read as verification evidence | Submit ordinary jobs without requirement tags; retain intent tracking outside Sail. Verify a neutral source again as ordinary Verus input. Sail 0.2.0 can still read the record |
 
 ## Verus mutation campaigns
 

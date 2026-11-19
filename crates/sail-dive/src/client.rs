@@ -1,5 +1,6 @@
 //! Parent-owned isolated execution. Dropping a future is not cancellation.
-use crate::{DIVE_REVISION, MAX_DOCUMENT_BYTES, Request, Response, VERSION, sha256};
+use crate::{DIVE_VERSION, MAX_DOCUMENT_BYTES, Request, Response, VERSION};
+use sail_runtime::temporal::image::{self, Image};
 use std::io::{Read, Write as _};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
@@ -9,37 +10,19 @@ use std::time::{Duration, Instant};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
-struct WorkerImage {
-    directory: std::path::PathBuf,
-    executable: std::path::PathBuf,
-}
-impl Drop for WorkerImage {
+/// The job's own private working and temporary directory, removed on drop.
+/// The verified worker copy itself may be shared with later jobs
+/// ([`sail_runtime::temporal::image`]); its directory never is.
+struct Scratch(std::path::PathBuf);
+impl Drop for Scratch {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.directory);
+        let _ = std::fs::remove_dir_all(&self.0);
     }
 }
-impl WorkerImage {
-    fn freeze(path: &Path, expected: &str) -> Result<Self, String> {
-        if expected.len() != 64
-            || !expected
-                .bytes()
-                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
-        {
-            return Err("worker requires a pinned lowercase SHA-256".into());
-        }
-        let mut bytes = Vec::new();
-        std::fs::File::open(path)
-            .and_then(|file| file.take(512 * 1024 * 1024 + 1).read_to_end(&mut bytes))
-            .map_err(|e| e.to_string())?;
-        if bytes.len() > 512 * 1024 * 1024 {
-            return Err("worker executable exceeds its 512 MiB admission bound".into());
-        }
-        if sha256(&bytes) != expected {
-            return Err("worker executable differs from its pinned identity".into());
-        }
-
+impl Scratch {
+    fn new() -> Result<Self, String> {
         let directory = std::env::temp_dir().join(format!(
-            "sail-runtime-image-{}-{}",
+            "sail-runtime-job-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -50,22 +33,7 @@ impl WorkerImage {
             builder.mode(0o700);
         }
         builder.create(&directory).map_err(|e| e.to_string())?;
-        let image = Self {
-            executable: directory.join("sail-runtime-worker"),
-            directory,
-        };
-        let mut options = std::fs::OpenOptions::new();
-        options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt as _;
-            options.mode(0o500);
-        }
-        options
-            .open(&image.executable)
-            .and_then(|mut f| f.write_all(&bytes))
-            .map_err(|e| e.to_string())?;
-        Ok(image)
+        Ok(Self(directory))
     }
 }
 
@@ -143,6 +111,23 @@ pub fn run(
     }
 }
 
+fn spawn(image: &Image, scratch: &Scratch) -> std::io::Result<Child> {
+    let mut command = Command::new(image.executable());
+    command
+        .env_clear()
+        .env("TMPDIR", &scratch.0)
+        .current_dir(&scratch.0)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt as _;
+        command.process_group(0);
+    }
+    command.spawn()
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "One scope owns child lifetime, all transport workers and their complete drain."
@@ -169,7 +154,7 @@ fn run_in(
     if bytes.len() > MAX_DOCUMENT_BYTES {
         return Err("worker request exceeds byte bound".into());
     }
-    let image = WorkerImage::freeze(worker, worker_sha256)?;
+    let image = image::image(worker, worker_sha256)?;
     if cancel.load(Ordering::Acquire) {
         return Ok(RunResult::Cancelled {
             worker_started: false,
@@ -180,20 +165,21 @@ fn run_in(
             worker_started: false,
         });
     }
-    let mut command = Command::new(&image.executable);
-    command
-        .env_clear()
-        .env("TMPDIR", &image.directory)
-        .current_dir(&image.directory)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt as _;
-        command.process_group(0);
-    }
-    let child = command.spawn().map_err(|e| e.to_string())?;
+    let scratch = Scratch::new()?;
+    // Held, like `image`, until the worker is reaped.
+    let mut _retried = None;
+    let child = match spawn(&image, &scratch) {
+        Ok(child) => child,
+        // A reused copy retired by a concurrent reinstall between lookup and
+        // spawn: verify the installed bytes again for this job alone.
+        Err(_) if image.reused() => {
+            let fresh = image::fresh(worker, worker_sha256)?;
+            let child = spawn(&fresh, &scratch).map_err(|e| e.to_string())?;
+            _retried = Some(fresh);
+            child
+        }
+        Err(error) => return Err(error.to_string()),
+    };
     let mut child = OwnedChild(child);
     let mut stdin = child.0.stdin.take().ok_or("worker stdin unavailable")?;
     let stdout = child.0.stdout.take().ok_or("worker stdout unavailable")?;
@@ -290,7 +276,7 @@ fn run_in(
         written?.map_err(|e| e.to_string())?;
         let bytes = output?.map_err(|e| e.to_string())?;
         let response = crate::decode_response(&bytes).map_err(|e| e.to_string())?;
-        if response.version != VERSION || response.backend_revision != DIVE_REVISION {
+        if response.version != VERSION || response.backend_revision != DIVE_VERSION {
             return Err("worker response version or backend identity differs".into());
         }
         if response.request_sha256 != crate::request_sha256(request).map_err(|e| e.to_string())? {

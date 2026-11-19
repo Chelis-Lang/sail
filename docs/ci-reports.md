@@ -6,8 +6,8 @@ SARIF. It only reads the document. It runs no verification, contacts no
 daemon, and copies Verus's messages verbatim.
 
 **Status.** `sail report` is implemented and tested against result documents
-produced by the pinned Verus. It has not yet run in a GitHub-hosted workflow,
-and no published release contains it yet: build Sail from source to use it.
+produced by the pinned Verus. Sail 0.3.0 is the first release that contains
+it.
 
 ## Usage
 

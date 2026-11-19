@@ -55,8 +55,8 @@ The walkthrough runs through the [GitHub Action](github-action.md): the
 action installs Sail, restores and saves the caches and runs the cold and
 restored verifications, and the [acceptance driver](../ci/ci-cache-walkthrough.py)
 checks their documents and runs the invalidation probes. The action needs a
-release with `sail report`, so this form of the walkthrough first runs once
-0.3.0 is published. The hosted test of the action itself, in pull-request CI,
+release with `sail report`, so this form of the walkthrough needs Sail 0.3.0
+or newer. The hosted test of the action itself, in pull-request CI,
 covers the same restore on a fresh runner with this commit's Sail.
 
 Before it drove the action, the workflow passed on four

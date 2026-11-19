@@ -66,8 +66,9 @@ separate approval of the exact final release candidate. The charter's appendix r
   prerelease publication retains its scope; the initial `0.2.0-rc.1` crate
   publication is already authorized. The owner authorized crates.io distribution
   as `sail-solve` on 2026-11-02 (ADR 0098). Explicitly selected core packages
-  publish to crates.io; the workspace default, contributor tools and private
-  extensions remain unpublished. Future released tags publish their matching
+  publish to crates.io, including `sail-dive`, which depends on D.I.V.E.'s
+  published crates (ADR 0172); the workspace default and contributor tools
+  remain unpublished. Future released tags publish their matching
   crate versions through the release workflow.
 - **Fork a backend only for a proven gain.** Forking a backend or tool (as
   ADR 0039 forks Verus) needs a rigorously measured gain, proven before any
@@ -145,10 +146,9 @@ build intermediates freely. Cleanup is routine and is not recorded in git.
 ## Repository layout
 
 ```
-crates/sail-*        one crate per charter component (see docs/CHARTER.md)
-extensions/temporal/ separate Cargo workspace for the temporal-enabled `sail`
-                     and its worker, the only build of the private D.I.V.E.
-                     sources (ADR 0083, docs/private-dependencies.md)
+crates/sail-*        one crate per charter component (see docs/CHARTER.md);
+                     `sail-dive` is the native temporal backend on D.I.V.E.
+                     (ADR 0172)
 xtask/               cargo xtask: install-hooks, check-layering, protect-main,
                      fetch-verus, build-verus-source
 corpus/              pinned Verus/Z3 toolchain and corpus project pins
@@ -161,14 +161,11 @@ scripts/             small shell helpers used by hooks and CI
 ```
 
 **Layering.** `xtask/src/layering.rs` is the single table of permitted internal
-dependency edges, and `cargo xtask check-layering` enforces it in CI for both
-the main workspace and the temporal extension. Three structural rules are
+dependency edges, and `cargo xtask check-layering` enforces it in CI. Two structural rules are
 tested:
 - `sail-shim` must not reach the daemon, cache, solver pool, portfolio or Verus
   crates, so its fallback path stays small;
-- the protocol, session, key and cache layers must not depend on `sail-verus`;
-- no main-workspace crate may depend on an extension crate, so the main
-  workspace builds without the private D.I.V.E. sources.
+- the protocol, session, key and cache layers must not depend on `sail-verus`.
 
 ## Rust conventions
 
@@ -206,8 +203,6 @@ ci/local.sh proofs                # local-only: direct stock-Verus model proofs 
 ci/local.sh refinements           # local-only: actual production bodies and refinement controls
 ci/local.sh e2e [PHASE]           # `sail verify` vs `cargo verus verify`: identical output (all phases + extra)
 ci/local.sh conformance fast pr   # the PR conformance subset: pass-through, cache-on, engine vs plain
-ci/local.sh extension             # local-only: temporal extension workspace fmt, clippy, tests (needs D.I.V.E. access)
-ci/run.sh extension-install DIR   # local-only: the D.I.V.E.-enabled `sail` and worker in DIR/bin (ADR 0101)
 ci/run.sh host                    # on the host (macOS or Linux): clippy and non-solver tests
 ```
 
@@ -230,8 +225,7 @@ release-style checks belong in the local tiers below, never in CI.
 **Required on every PR** (branch protection): `No AI authorship markers`,
 `Workspace gate`, `Solver tests`, `End to end`, `Conformance`, `CI completion`.
 The completion guard runs even when another job fails and requires every
-gate, including image creation, to have succeeded. No CI job receives the private-dependency
-token. Branches must be current
+gate, including image creation, to have succeeded. Branches must be current
 with `main` before merging. The `End to end` check aggregates nine parallel
 phases and succeeds only when all complete successfully:
 - `legacy`: `sail new`, then `sail verify` vs `cargo verus verify` cold and
@@ -289,12 +283,6 @@ is local-only, and `ci/run.sh` refuses to run it in CI (ADR 0013):
   the PR; never label an unrun suite passed. See ADR 0087.
 - *macOS (local):* `ci/run.sh host` on a Mac: clippy and the non-solver tests.
   Run it before pushing changes that touch platform-specific code.
-- *Temporal extension (local):* `ci/local.sh extension` (or `ci/run.sh
-  extension`): the `extensions/temporal` workspace's fmt, clippy and tests,
-  with D.I.V.E. access (see `docs/private-dependencies.md`). Temporal jobs do
-  not ship in 0.1.0, so CI does not run it. Run it before pushing changes to
-  `extensions/` or the `TemporalBackend` interface, and put the result in
-  the PR.
 - *Deep (local):* `ci/local.sh conformance deep`, before releases. Also
   `ci/local.sh deep-rvt [cache] [ARGS...]`: Verus's own `rust_verify_test`
   suite, the pinned fork with and without `sail-z3`, with exact output checks,

@@ -2,6 +2,11 @@
 #![forbid(unsafe_code)]
 use std::io::{Read as _, Write as _};
 
+/// mimalloc, as in the D.I.V.E. CLI: state-space exploration allocates
+/// heavily, and the system allocator made checks 3–16% slower (#765).
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 fn main() -> std::process::ExitCode {
     match run() {
         Ok(()) => std::process::ExitCode::SUCCESS,

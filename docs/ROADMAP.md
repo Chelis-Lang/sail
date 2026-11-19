@@ -113,19 +113,18 @@ held".
 | `sail-contracts`, `sail-contracts-macros` and `sail-contracts-ir` | Removed with the neutral path; Kani function contracts are not adopted as a front end | Removed from the workspace; 0.2.0 stays on crates.io |
 | Requirement attribution and `sail assurance` (ADR 0104) | Retire active entry points after the five-function hand join fails its outside-user/CI-demand bar (ADR0148) | Corrected retirement qualifies on native Linux with independent review; final PR CI remains separate |
 
-## Temporal: behind a default-off flag
+## Temporal: native checking on D.I.V.E. 0.1.0
 
-Superseding the earlier hold: on 2026-11-06 the Oyster owner resumed Oyster
-for shelf completion, covering its SDK migration to the published 0.2.0
-crates and D.I.V.E. work in Sail behind a default-off flag
-([ADR 0101](decisions/0101-dive-behind-a-default-off-flag.md)).
+The owner decided on 2026-11-18 to fold the temporal extension into the main
+workspace and ship native temporal checking in v0.3.0
+([ADR 0172](decisions/0172-native-temporal-in-main-workspace.md)).
 
 | Gate | State |
 |---|---|
-| Default builds, crates.io and public archives link no temporal backend | Enforced by `cargo xtask check-layering` and the CLI tests |
-| Extension build and tests at the pinned D.I.V.E. revision | Local tier, `ci/local.sh extension` |
-| Internal D.I.V.E.-enabled `sail` | `ci/run.sh extension-install DIR` |
-| Public temporal packaging | Waits for D.I.V.E.'s public distribution; flip queued as a draft pull request |
+| `sail-dive` in the main workspace; `sail` links the backend; worker is a `sail-solve` binary | Implemented (ADR 0172) |
+| D.I.V.E. 0.1.0 from crates.io | `dive-api` and `dive-ir` resolve from crates.io at exactly 0.1.0; no Git source or `[patch]` |
+| Genuine temporal properties with an exact store and state/depth limits | Hold, refute with validated counterexamples, or stop with no claim at a limit |
+| Native conformance at the published version | Required before merge ([record](validation/native-temporal-dive-0.1.md)) |
 
 Preserve current behavior and regression coverage; do not introduce a TLC
 fallback.

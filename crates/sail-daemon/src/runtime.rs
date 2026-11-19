@@ -226,6 +226,20 @@ impl Drop for ClientGuard {
     }
 }
 
+fn wait_readable(listener: &UnixListener, limit: Duration) {
+    let mut descriptors = [rustix::event::PollFd::new(
+        listener,
+        rustix::event::PollFlags::IN,
+    )];
+    let timeout = rustix::event::Timespec {
+        tv_sec: 0,
+        tv_nsec: i64::from(limit.subsec_nanos()),
+    };
+    if rustix::event::poll(&mut descriptors, Some(&timeout)).is_err() {
+        thread::sleep(limit);
+    }
+}
+
 fn serve(listener: &UnixListener, state: &Arc<State>) {
     let mut workers: Vec<JoinHandle<()>> = Vec::new();
     while !state.stop.load(Ordering::SeqCst) {
@@ -266,7 +280,9 @@ fn serve(listener: &UnixListener, state: &Arc<State>) {
                 }
             }
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                thread::sleep(Duration::from_millis(5));
+                // Wake at once for a new connection, and at least every
+                // 5 ms to observe shutdown and reap finished connections.
+                wait_readable(listener, Duration::from_millis(5));
             }
             Err(_) => break,
         }

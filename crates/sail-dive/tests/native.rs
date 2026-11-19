@@ -62,6 +62,41 @@ fn real_safety_temporal_and_stopped_outcomes_are_distinct() {
 }
 
 #[test]
+fn temporal_state_and_depth_bounds_below_the_model_stop_without_a_claim() -> TestResult {
+    // Three reachable states, so one state or a zero depth bound cannot
+    // complete graph capture. A stop must never surface as holds or refuted.
+    let source = COUNTER.replace(
+        "Inv == x < 2",
+        "P == []<>(x = 0)\nSpec == Init /\\ [][Next]_x /\\ WF_x(Next)",
+    );
+    for (max_states, max_depth) in [(1, 100), (100, 0)] {
+        let mut req = request(&source, "SPECIFICATION Spec\nPROPERTY P\n");
+        req.operation = Operation::Check {
+            max_states,
+            max_depth,
+        };
+        let result = sail_dive::execute(&req);
+        assert_eq!(result.outcome, Outcome::Stopped, "{result:?}");
+        assert_eq!(result.native_report["verdict"], "stopped", "{result:?}");
+        assert!(result.native_traces.is_empty() && result.validations.is_empty());
+        assert_eq!(result.completion, sail_dive::Completion::None);
+        let stopped = &result.native_report["stopped"];
+        assert_eq!(stopped["phase"], "graph-capture", "{stopped}");
+        assert_eq!(
+            stopped["resource"],
+            if max_states == 1 { "states" } else { "depth" },
+            "{stopped}"
+        );
+        sail_dive::validate_response(&req, &result)?;
+    }
+    // Control: the same model under the ordinary bounds completes and holds.
+    let control = sail_dive::execute(&request(&source, "SPECIFICATION Spec\nPROPERTY P\n"));
+    assert_eq!(control.outcome, Outcome::Holds, "{control:?}");
+    assert_eq!(control.completion, sail_dive::Completion::Temporal);
+    Ok(())
+}
+
+#[test]
 fn concrete_violation_replays_and_forged_initial_state_is_invalid() -> TestResult {
     let mut req = request(COUNTER, "INIT Init\nNEXT Next\nINVARIANT Inv\n");
     let result = sail_dive::execute(&req);
@@ -101,6 +136,27 @@ fn simulation_is_sampled_and_every_trace_is_independently_validated() {
     assert_eq!(result.native_report["exhaustive"], false);
     assert_eq!(result.native_report["model_proved"], false);
     assert_eq!(result.itf_traces.len(), 2);
+    assert!(result.validations.iter().all(|v| v["result"] == "valid"));
+}
+
+#[test]
+fn simulation_deadlock_under_a_constraint_is_a_validated_refutation() {
+    // The constraint prunes every successor of x = 2, which D.I.V.E.'s
+    // simulation reports as a deadlock (#766). Sail must validate that word
+    // as a sampled deadlock, not as an exhaustive-checking deadlock.
+    let source = COUNTER.replace("Inv == x < 2", "Small == x <= 2");
+    let mut req = request(&source, "INIT Init\nNEXT Next\nCONSTRAINT Small\n");
+    req.operation = Operation::Simulate {
+        traces: 2,
+        depth: 10,
+    };
+    let source = source.replace("x' = IF x < 2 THEN x+1 ELSE 0", "x' = x + 1");
+    req.model.files.insert("M.tla".into(), source);
+    let result = sail_dive::execute(&req);
+    assert_eq!(result.outcome, Outcome::Refuted, "{result:?}");
+    assert_eq!(result.native_report["result"], "violation", "{result:?}");
+    assert!(result.message.is_none(), "{result:?}");
+    assert_eq!(result.validations.len(), result.native_traces.len());
     assert!(result.validations.iter().all(|v| v["result"] == "valid"));
 }
 

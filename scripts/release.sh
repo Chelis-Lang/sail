@@ -55,6 +55,14 @@ self_check() {
     *) die "sail mcp does not report version ${reported#sail }" ;;
   esac
   [ -x "$out/bin/sail-z3" ] || die "sail-z3 missing from $out"
+  # Native temporal checking ships in every archive (ADR 0172): the linked
+  # backend must authenticate the staged worker against its manifest.
+  scratch="$(mktemp -d)"
+  status="$(SAIL_CACHE_DIR="$scratch" "$out/bin/sail" runtime capabilities --cache "$scratch")" \
+    || { rm -rf "$scratch"; die "sail runtime capabilities failed in $out"; }
+  rm -rf "$scratch"
+  "$release_python" -c 'import json, sys; t = json.loads(sys.argv[1])["temporal"]; sys.exit(0 if t["installed"] and t["worker_sha256"] else "native temporal worker not installed: " + json.dumps(t))' "$status" \
+    || die "the native temporal worker in $out is not installed"
   scratch="$(mktemp -d)"
   status="$(env -u SAIL_VERUS_BUILD SAIL_CACHE_DIR="$scratch" "$out/bin/sail" engine status --output json)" \
     || { rm -rf "$scratch"; die "the bundled Verus runtime in $out failed validation"; }
@@ -66,29 +74,18 @@ self_check() {
   echo "$status"
 }
 
-# stage OUT ENGINE_BUILD: bin/{sail,sail-z3} and engine/<variant>/ holding
-# exactly the runtime files the manifest binds (sail-build.json and
-# verus/source/target-verus/release/*). The variant name is the build's own
-# (resolved) directory name, which sail requires to match its host and pins.
-#
-# With SAIL_RELEASE_TEMPORAL=1 it stages the internal temporal-enabled
-# variant instead (ADR 0083): bin/sail from the temporal extension workspace
-# (target/temporal/release, built by `ci/run.sh release` or
-# `cargo build --manifest-path extensions/temporal/Cargo.toml --target-dir
-# target/temporal --release -p sail-temporal -p sail-runtime-worker`) plus the
-# native worker and its installation manifest. That variant links the private
-# D.I.V.E. sources and is never a public archive.
+# stage OUT ENGINE_BUILD: bin/{sail,sail-z3}, the native temporal worker
+# bin/sail-runtime-worker with its installation manifest (ADR 0172), and
+# engine/<variant>/ holding exactly the runtime files the manifest binds
+# (sail-build.json and verus/source/target-verus/release/*). The variant name
+# is the build's own (resolved) directory name, which sail requires to match
+# its host and pins.
 stage() {
   local out="${1:?usage: scripts/release.sh stage OUT ENGINE_BUILD}"
   local build="${2:?stage needs ENGINE_BUILD: every archive ships the Sail Verus runtime, ADR 0043}"
   local runtime=verus/source/target-verus/release variant
-  local sail_bin=target/release/sail temporal=
-  if [ "${SAIL_RELEASE_TEMPORAL:-}" = 1 ]; then
-    temporal=target/temporal/release
-    sail_bin="$temporal/sail"
-    [ -x "$sail_bin" ] && [ -x "$temporal/sail-runtime-worker" ] \
-      || die "the temporal variant needs $temporal/sail and $temporal/sail-runtime-worker"
-  fi
+  [ -x target/release/sail-runtime-worker ] \
+    || die "target/release/sail-runtime-worker is missing: build the sail-solve package's binaries"
   rm -rf "$out"
   mkdir -p "$out/bin"
   # Sail's licence and the notices for everything else the archive
@@ -100,17 +97,14 @@ stage() {
     || die "THIRD-PARTY-NOTICES is stale: regenerate it with scripts/third-party-notices.py"
   rm -rf "$notices"
   cp LICENSE THIRD-PARTY-NOTICES "$out/"
-  cp "$sail_bin" target/release/sail-z3 "$out/bin/"
-  chmod 755 "$out/bin/sail" "$out/bin/sail-z3"
+  cp target/release/sail target/release/sail-z3 target/release/sail-runtime-worker "$out/bin/"
+  chmod 755 "$out/bin/sail" "$out/bin/sail-z3" "$out/bin/sail-runtime-worker"
   # Drop the release profile's line tables from the shipped binaries (symbols
   # stay, so backtraces still name functions). Only Sail's own binaries: the
   # engine runtime files are bound to their manifest digests.
-  strip -S "$out/bin/sail" "$out/bin/sail-z3"
-  if [ -n "$temporal" ]; then
-    cp "$temporal/sail-runtime-worker" "$out/bin/"
-    strip -S "$out/bin/sail-runtime-worker"
-    "$release_python" -B scripts/stage-temporal-worker.py "$out/bin/sail-runtime-worker" "$out/bin"
-  fi
+  strip -S "$out/bin/sail" "$out/bin/sail-z3" "$out/bin/sail-runtime-worker"
+  # The manifest binds the final stripped worker bytes.
+  "$release_python" -B scripts/stage-temporal-worker.py "$out/bin/sail-runtime-worker" "$out/bin"
   build="$(cd "$build" && pwd -P)"
   variant="$(basename "$build")"
   mkdir -p "$out/engine/$variant/$runtime"
@@ -173,8 +167,6 @@ release() {
   workspace="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
   case "$version" in "$workspace"|"$workspace"-*) ;; *) die "VERSION must start with the workspace version $workspace" ;; esac
   [ "$(uname -s)-$(uname -m)" = Darwin-arm64 ] || die "run on an Apple-silicon Mac (it builds aarch64-apple-darwin locally)"
-  # Public archives come from the main workspace only (ADR 0083).
-  [ -z "${SAIL_RELEASE_TEMPORAL:-}" ] || die "the temporal-enabled variant is internal: stage it, never draft a release of it"
   [ -z "$(git status --porcelain)" ] || die "the checkout is not clean"
   commit="$(git rev-parse HEAD)"
   git fetch -q origin

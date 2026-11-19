@@ -3,8 +3,9 @@
 
 A release archive (scripts/release.sh) holds:
 
-- `bin/sail` and `bin/sail-z3`, which statically link their crates.io
-  dependencies and the Rust standard library;
+- `bin/sail`, `bin/sail-z3` and `bin/sail-runtime-worker`, which statically
+  link their crates.io dependencies (D.I.V.E.'s included, ADR 0172) and the
+  Rust standard library;
 - `engine/<variant>/`, Sail's Verus: the fork's `verus`, `cargo-verus`,
   `rust_verify` (which also compiles in Verus's copies of rustc crates),
   `verus_builtin`, the two macro libraries and `vstd` with their crates.io
@@ -189,7 +190,7 @@ def main():
     work = args.work.absolute()
     work.mkdir(parents=True)
     # Sail execution selectors must not affect notice generation. The main
-    # workspace has no private dependency (ADR 0083), so no credential either.
+    # workspace has no private dependency (ADR 0172), so no credential either.
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(('CARGO_TARGET', 'SAIL_'))}
     # Run every `cargo metadata` with Sail's own toolchain. In the fork's
@@ -248,7 +249,7 @@ def main():
         ('Sail\'s Verus (engine/<variant>/ and the vstd proof in deps/<variant>/)', fork_rows),
         ('Crates compiled into Sail\'s Verus', notices(verus_registry, standard)),
         ('Crates compiled into the shipped vstd proof (deps/<variant>/)', notices(shipped_registry, standard)),
-        ('Crates compiled into bin/sail and bin/sail-z3', notices(sail_registry, standard)),
+        ('Crates compiled into bin/sail, bin/sail-z3 and bin/sail-runtime-worker', notices(sail_registry, standard)),
         ('The Rust standard library, compiled into every Rust binary above',
          [('Rust standard library (rust-lang/rust)', 'MIT OR Apache-2.0',
            [(name, (rustc / name).read_text()) for name in ('LICENSE-APACHE', 'LICENSE-MIT')],

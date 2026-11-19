@@ -1,6 +1,6 @@
 # Requirement attribution retirement
 
-The v0.3.0 development candidate retires ordinary requirement attribution,
+Sail 0.3.0 retires ordinary requirement attribution,
 `sail assurance` and the MCP `requirement_assurance` tool. Its stated evidence
 bar was not met: a real five-function IronKV/Vest hand join preserves the same
 per-function observations, without a demonstrated outside-user specification

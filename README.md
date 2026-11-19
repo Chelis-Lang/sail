@@ -23,18 +23,20 @@ instead of claiming success. Sail runs on Linux x86-64 and Apple-silicon macOS.
 Read the [Sail book](https://cproof.ai/docs/sail/) for the quickstart,
 workflows, and architecture. Its sources are maintained in this repository.
 
-v0.3.0 development builds add [proof health](docs/proof-health.md): recorded
-per-check effort and coverage from completed jobs, with matching CLI/JSON/MCP
-views. This command is absent from the published 0.2.0 release.
+Sail 0.3.0 adds [proof health](docs/proof-health.md): recorded per-check
+effort and coverage from completed jobs, with matching CLI/JSON/MCP views. It
+also renders verification results for CI with `sail report`, ships a
+[GitHub Action](docs/github-action.md), and adds experimental native TLA+
+model checking on [D.I.V.E.](docs/temporal-jobs.md) 0.1.0 through `sail runtime`.
 
 ## Install
 
-Sail 0.2.0 is published as native archives and as the crates.io package
+Sail 0.3.0 is published as native archives and as the crates.io package
 `sail-solve`. The executable remains `sail`.
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rust-src
-cargo +1.99.1 install sail-solve --version 0.2.0 --locked
+cargo +1.99.1 install sail-solve --version 0.3.0 --locked
 sail engine install
 ```
 
@@ -97,7 +99,7 @@ sail repair-check proof.rs --function proof::lemma --engine interactive
 
 The same file works through MCP with `source_file: "proof.rs"`. Complete
 successful proofs can be reused on unchanged calls and undo. This feature is
-available in published 0.2.0 and qualified on native Linux and macOS. Repair checks add an
+available since 0.2.0 and qualified on native Linux and macOS. Repair checks add an
 exact function focus followed by fresh full-file validation; see the
 [standalone workflow](docs/standalone-verification.md).
 
@@ -159,7 +161,7 @@ A repair is accepted only when the whole target verifies. See the
 - Sail runs only its own Verus, built from
   [Sail's Verus fork](https://github.com/Chelis-Lang/verus) at the release it
   pins. Projects that need another Verus release aren't supported yet.
-- Published 0.2.0 supports Cargo projects and standalone Verus files. Standalone
+- Sail supports Cargo projects and standalone Verus files. Standalone
   watch requires its source and discovered inputs beneath the working directory.
 - The first unchanged call after a verification, and unchanged calls that
   can't replay, are slower than plain Verus: about 0.3–0.6 s more on mid-sized

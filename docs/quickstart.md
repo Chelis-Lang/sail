@@ -1,11 +1,11 @@
 # Your first proof
 
 These examples use a POSIX shell on Linux x86-64 or Apple-silicon macOS. Install
-Sail 0.2.0 through Cargo:
+Sail 0.3.0 through Cargo:
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal --component rust-src
-cargo +1.99.1 install sail-solve --version 0.2.0 --locked
+cargo +1.99.1 install sail-solve --version 0.3.0 --locked
 sail engine install
 sail engine status
 ```

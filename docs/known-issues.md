@@ -1,6 +1,6 @@
 # Known issues and limits
 
-Open Sail defects and current product limits in published 0.2.0 and on
+Open Sail defects and current product limits in published 0.3.0 and on
 main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
@@ -21,6 +21,15 @@ Resolved defects are retained in the [changelog](../CHANGELOG.md) and
 oracle completion (#611), and compound-field lowering/retained-read correction
 (#323). Original failures and source-specific qualification stay unchanged.
 
+
+## Large temporal simulation reports
+
+A temporal simulation job that samples many long traces can fail with
+`SAIL4210`. A 1,000-trace job on bosco does after 160 s. The worker builds the
+whole D.I.V.E. simulation report as a JSON tree before replying. D.I.V.E. 0.1.1
+writes the report without building the tree, using about a tenth of the
+memory; Sail adopts it in 0.3.1 (#767). Until then, use fewer traces or a
+shorter depth.
 
 ## Benchmark descendant cleanup assertion
 
@@ -246,7 +255,7 @@ Current numbers are in [performance](performance.md).
   needs another Verus release cannot use Sail yet. `SAIL_CARGO_VERUS` runs
   another `cargo-verus` only as a labelled development override
   (`warning[SAIL0108]`).
-- **Published 0.2.0 supports Cargo and standalone files.** Standalone
+- **Sail supports Cargo and standalone files.** Standalone
   verification through CLI, watch and MCP is delivered on native Linux/macOS.
   Standalone watch requires source and discovered inputs beneath its working
   directory; CLI/MCP support external inputs.

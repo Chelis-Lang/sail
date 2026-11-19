@@ -218,16 +218,19 @@ fn actual_worker_is_cancelled_after_spawn_for_large_assumption_input() -> TestRe
         let monitor = scope.spawn(|| {
             // Hashing and freezing the real binary can exceed a fixed sleep on
             // a busy runner. Observe this test process's actual owned worker.
-            let prefix = format!("sail-runtime-image-{}-", std::process::id());
+            // The verified copy may be a reused one, so match the child of
+            // this process rather than a per-job path.
+            let parent = std::process::id().to_string();
             let started = std::time::Instant::now();
             let observed = loop {
                 let processes = std::process::Command::new("/bin/ps")
-                    .args(["-axo", "command="])
+                    .args(["-axo", "ppid=,command="])
                     .output();
                 if processes.is_ok_and(|p| {
                     p.status.success()
                         && String::from_utf8_lossy(&p.stdout).lines().any(|line| {
-                            line.contains(&prefix)
+                            let mut fields = line.split_whitespace();
+                            fields.next() == Some(parent.as_str())
                                 && line.trim_end().ends_with("/sail-runtime-worker")
                         })
                 }) {
