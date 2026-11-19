@@ -125,6 +125,11 @@ published 0.2.0 crates stay on crates.io and are not yanked. Default
 - Add the separately versioned `sail_api::campaign` evidence model and ADR 0111
   classifier as implementation groundwork; campaign execution/CLI/MCP are not
   available yet. Ordinary verification output and proof tiers are unchanged.
+- Unfinished groundwork in published crates is hidden from their
+  documentation and is not supported API: `sail_api::campaign`,
+  `sail_verus::mutate`, `sail_portfolio::profile` and
+  `sail_portfolio::quantifiers` serve the planned `sail mutate` and
+  `sail profile`, which move to v0.4.0 (ADR 0174).
 
 - Cargo conformance captures and pairs complete compiler invocations, including
   discovery probes, and refuses incomplete or unexplained output (#632).

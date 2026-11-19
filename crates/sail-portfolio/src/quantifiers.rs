@@ -1,5 +1,9 @@
 //! Bounded counters for the pinned Z3 4.16.0 diagnostic trace.
 //!
+//! Unstable groundwork for the planned `sail profile` (v0.4.0, ADR 0174),
+//! hidden from the documentation. No command uses it, and it may change
+//! without notice.
+//!
 //! Counts describe the traced execution only. This decoder authenticates no
 //! solver, input, function, verdict or currentness. Its caller must bind those
 //! separately and compare the actual traced and plain executions.
