@@ -1,16 +1,20 @@
 # Instant revert
 
-Automatic selection supports the exact qualified Linux x86-64 and macOS arm64
-runtime manifests and closed public dependency profiles below. Current release
-qualification is in the [validation record](validation/instant-revert.md).
-The intermittent Vest miss (#595) came from a killed background preparation and
-is fixed after 0.2.0; see [known issues](known-issues.md).
+`sail verify` can restore an already verified workspace revision after an
+A → B → A edit. No extra workflow command is needed.
+`SAIL_MANAGED_FORCE=1 sail verify` still requires fresh verification. Restored
+results keep the original establishing run, while the current invocation
+separately checks currentness. An unsupported context runs the genuine
+compiler instead.
 
-No extra workflow command is needed: `sail verify` can restore an
-already verified workspace revision after an A → B → A edit. `SAIL_MANAGED_FORCE=1 sail verify`
-continues to require fresh verification. Restored results keep the original
-establishing run, while the current invocation separately checks currentness.
-An unsupported context runs the genuine compiler instead.
+Automatic selection supports the exact qualified Linux x86-64 and macOS arm64
+runtime manifests and the closed public dependency profiles listed under
+[Eligibility](#eligibility). Current release qualification is in the
+[validation record](validation/instant-revert.md). The intermittent Vest miss
+(#595) came from a killed background preparation and is fixed after 0.2.0; see
+[known issues](known-issues.md).
+
+## What a restored result contains
 
 Compiler restoration preserves Verus's function verdicts, diagnostics and
 timing, and names the original establishing run. It does not restore the
@@ -21,43 +25,18 @@ keeps this reconstructed report. A fresh verification requested through JSON,
 a job or MCP records obligation detail again; plain human output does not
 request those logs.
 
-Automatic eligibility is restricted to the exact qualified runtime manifest
-for x86-64 Linux or arm64 macOS. Every invocation validates the runtime's fresh
-bytes before admitting a plan. Source, features, native compiler-read
-certificates and the complete private dependency graph must satisfy a closed
-policy. The routing prefilter recognizes the public registry profiles with
-vstd alloc/default/std or alloc/std (Vest); full admission remains mandatory.
-The path-provider profile remains explicit retained-content research.
+## Eligibility
+
+Every invocation validates the runtime's fresh bytes before admitting a plan.
+Source, features, native compiler-read certificates and the complete private
+dependency graph must satisfy a closed policy. The routing prefilter recognizes
+the public registry profiles with vstd alloc/default/std or alloc/std (Vest);
+full admission remains mandatory. The path-provider profile is never selected
+automatically; it remains an explicit retained-content research mode.
 
 Other dependency resolutions, runtimes, unsupported macro/generated inputs,
 foreign imports and unsupported source namespaces take fresh verification.
 Loader, engine and focused contexts keep their existing refusal rules.
-
-Retention also has to pay for itself. Its checks read the target's whole
-private dependency graph (vstd and the macro crates) before and after the
-compiler runs; on Vest that measures about 0.2–0.3 s. Each verifying compile
-records, beside the proof context's receipts (`retention-costs/`), how long
-the compiler and, when engaged, retention took. A run prepares no retention
-for its selected targets when every one of them last compiled in less than
-16 times its measured retention, so a one-function crate compiles normally
-on every edit and revert, while a Vest-class target keeps instant revert. A
-target without a record, or with an unreadable one, keeps retention; a
-skipped plan compiles normally and changes no verdict, receipt or check. The
-records authorize nothing.
-
-When automatic retention does not apply, a `SAIL3146` note says why. The note
-appears in `--output json` notes, and on stderr only with `SAIL_EXPLAIN=1`;
-default human output is unchanged. It names one of three reasons:
-
-- the dependency profile is not qualified, with the first mismatch. For
-  example, a project that ran `SAIL3138`'s `cargo update` commands but kept
-  vstd's `default-features = false` is told that the updated package belongs
-  to the default-feature profile, so vstd's default features must be enabled
-  too;
-- the target compiles in less than 16 times its measured retention, so
-  retention would cost more than it saves;
-- the earlier verified revision was evicted from the arena, so it was
-  compiled again.
 
 The source check reads the packages that the selected targets depend on (the
 same closure receipts use), every workspace member's manifest, the lockfile
@@ -73,15 +52,47 @@ an admitted plan through the existing managed runtime file; it does not add a
 public switch to the compiler child's environment. Archived declared-variable
 checks use the fresh outer caller snapshot, including variable absence.
 
-The pending release-integration candidate extends ordinary routing to the exact
-closed public default-feature profile and allows requested-target retention
-alongside an admitted adjacent vstd proof. It independently validates shared
-native observations and keeps a distinct release witness for served vstd;
-requested targets still require their own compiler-read evidence. This extension
-is not yet qualified or selected. Its bundled and unbundled A → B → A controls,
-late-authority mutation checks and existing complete Vest regression must pass
-on the final matching runtime. See the [candidate decision](decisions/0048-shipped-dependency-build.md#candidate-requested-target-coexistence)
-and [qualification record](validation/vstd-compile-boundary.md).
+## When retention is skipped
+
+Retention is skipped when it would cost more than it saves. Its checks read the target's whole
+private dependency graph (vstd and the macro crates) before and after the
+compiler runs; on Vest that measures about 0.2–0.3 s. Each verifying compile
+records, beside the proof context's receipts (`retention-costs/`), how long
+the compiler and, when engaged, retention took. A run prepares no retention
+for its selected targets when every one of them last compiled in less than
+16 times its measured retention, so a one-function crate compiles normally
+on every edit and revert, while a Vest-class target keeps instant revert. A
+target without a record, or with an unreadable one, keeps retention; a
+skipped plan compiles normally and changes no verdict, receipt or check. These cost
+records only decide whether to prepare retention; they never authorize reuse.
+
+When automatic retention does not apply, a `SAIL3146` note says why. The note
+appears in `--output json` notes, and on stderr only with `SAIL_EXPLAIN=1`;
+default human output is unchanged. It names one of three reasons:
+
+- the dependency profile is not qualified, with the first mismatch. For
+  example, a project that ran `SAIL3138`'s `cargo update` commands but kept
+  vstd's `default-features = false` is told that the updated package belongs
+  to the default-feature profile, so vstd's default features must be enabled
+  too;
+- the target compiles in less than 16 times its measured retention, so
+  retention would cost more than it saves;
+- the earlier verified revision was evicted from the arena, so it was
+  compiled again.
+
+Plan-admission explanations use the actual failed check: invalid Cargo
+metadata, unsupported target kind, runtime admission, storage preparation,
+tool hashing or caller-environment capture. They explain an optional reuse
+decline; normal verification still runs. A reason does not say why a file became
+unreadable or repair a missing build-script export.
+
+Development publication diagnostics also name the actual stage when optional
+retained content cannot be published, including compiler-read admission and
+archive storage stages. SAIL3146 aggregates repeated failures by stage. Verification results
+and currentness are unaffected. Native Linux integration and bounded review
+pass; see the [qualification record](validation/retention-publication.md).
+
+## Storage limits
 
 The durable retained arena admits at most 8 GiB and 65,536 entries. Each target
 keeps at most 16 archived revisions and 1 GiB of declared entry bytes; a Vest
@@ -98,20 +109,21 @@ takes the fresh compiler path and preserves unknown live graph references. These
 bounds on all managed-run sidecars, project targets or logs. Whole-project
 storage growth and scan costs are included in the native cycle measurements below.
 
+## Measurements
+
 Three rotated native rounds at the final source compare a complete four-call
 Vest cycle: cold A, changed B, returned A and unchanged A. Candidate ordinary
 Sail takes 113.08 s versus the earlier Sail build's 130.66 s (13.45% less) and
 stock's 148.10 s. Returning to A falls from 26.54 s to 2.51 s. Cold, changed-B
 and unchanged costs rise; final cache size grows from about 560 MB to 1,080 MB.
 The small control's cycle is essentially unchanged against earlier Sail and
-remains slower than stock. This does not meet the overall 25% M8 gate.
+remains slower than stock. It misses M8's overall 25% gate.
 
 All 72 fresh rows, their exact function/diagnostic comparisons and complete
 storage inventory pass. Timed Sail actors share an explicit matching runtime
 override; a separate genuinely bundled, ordinary CLI control passes without
-runtime or research overrides. The earlier 72-call cohort remains failed and
-is indexed in the validation record; its retrospective comparisons are not
-substituted for this fresh qualification.
+runtime or research overrides. An earlier 72-call cohort failed; it is indexed in the validation
+record and does not count toward this result.
 
 A separate unchanged-run optimization has passed a 36-call native screen: it
 omits optional archive preparation only when existing receipt headers cover all
@@ -121,22 +133,18 @@ verification and Current checks and adds no workflow switch. Mac host and native
 gate, solver, all end-to-end phases plus extra, PR conformance and full FAST
 and STANDARD checks pass in all four arms, with zero verdict or diagnostic
 differences. The optimization is qualified for the existing default profile;
-Mac performance and general CPU savings remain unclaimed.
+it is not yet shown to help on Mac or to save CPU in general.
 The paired validation record retains all ranges, cold/edit/revert costs,
 footprint, failed attempts and the Linux evidence export limitation.
 
+## Pending: default-feature profile
 
-Plan-admission explanations use the actual failed check: invalid Cargo
-metadata, unsupported target kind, runtime admission, storage preparation,
-tool hashing or caller-environment capture. They explain an optional reuse
-decline; normal verification still runs. Existing SAIL3146 human notes are
-visible with `SAIL_EXPLAIN=1`, and JSON retains the explanation. A reason does
-not establish why a file became unreadable or repair a missing build-script
-export.
-
-Development publication diagnostics also name the actual stage when optional
-retained content cannot be published, including compiler-read admission and
-archive storage stages. SAIL3146 aggregates repeated failures by stage and
-appears in human output only with SAIL_EXPLAIN=1; JSON retains the notes.
-Verification results and currentness are unaffected. Native Linux integration and bounded review pass; see the
-[qualification record](validation/retention-publication.md).
+The pending release-integration candidate extends ordinary routing to the exact
+closed public default-feature profile and allows requested-target retention
+alongside an admitted adjacent vstd proof. It independently validates shared
+native observations and keeps a distinct release witness for served vstd;
+requested targets still require their own compiler-read evidence. This extension
+is not yet qualified or selected. Its bundled and unbundled A → B → A controls,
+late-authority mutation checks and existing complete Vest regression must pass
+on the final matching runtime. See the [candidate decision](decisions/0048-shipped-dependency-build.md#candidate-requested-target-coexistence)
+and [qualification record](validation/vstd-compile-boundary.md).

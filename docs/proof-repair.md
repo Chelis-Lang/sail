@@ -10,7 +10,6 @@ Current. The validation record is [M7 validation](validation/m7.md); read
 
 For setup through a focus/full regression, resumable events, cancellation and
 CLI/MCP evidence, follow the [repair walkthrough](proof-repair-walkthrough.md).
-It distinguishes submission from an accepted proof.
 
 The optional `interactive` engine is part of Sail's Verus: the runtime built
 from Sail's Verus fork that every Sail verification runs
@@ -31,8 +30,8 @@ with `sail engine install --from PATH`. `sail repair-check` checks this before i
 engine leaves no failed job behind. A job whose worker stops on such an error
 records that error in its `SAIL0808` job error.
 An internal runtime failure retains its failed evidence and falls back to stock
-full verification; missing focused evidence cannot be fabricated or labelled a
-successful batch. A target whose engine driver crashed, produced malformed
+full verification. Sail never fabricates missing focused evidence or labels
+the batch successful. A target whose engine driver crashed, produced malformed
 output, or sealed without normal termination or inconsistently with its exit
 status and output reports the exact stock result with
 `engine.established_by: stock-fallback`, publishes no proof receipt and cannot
@@ -64,7 +63,7 @@ that result:
 - `sail repair-check` records `batch.engine_fault` with code `SAIL3124`, has
   no focused evidence and is never accepted.
 
-The answer is ordinary verification's own: Sail's Verus, like the stock
+The reported result is ordinary verification's: Sail's Verus, like the stock
 release, reports the same feature error as plain `cargo verus verify` (a
 Singular source build named by the `SAIL_CARGO_VERUS` development override
 proves the lemma). Verus emits the diagnostic only for functions it would
@@ -105,8 +104,8 @@ batch. It does not change what existing `verify --function` means. Additional
 scope filters are rejected because they would defeat full validation.
 
 For an existing standalone file, use `sail repair-check proof.rs --function
-proof::lemma --engine interactive --output json` (implementation under native
-qualification). This uses the same focused/full compiler hooks and normal
+proof::lemma --engine interactive --output json` (still being qualified on
+native hosts). This uses the same focused/full compiler hooks and normal
 terminal seal, with no generated Cargo project. Add `--background` for a job,
 or supply `source_file` to MCP's `start_repair_validation` instead of Cargo
 selectors. Verify-only full scope is required; compilation/output-writing flags
@@ -124,13 +123,13 @@ The version-one repair bundle retains separate `batch.focus` and `batch.full`
 project results, engine manifest identity and actual compiler-invocation count.
 `batched` describes actual engine support. `accepted` is recomputed from the full
 report: successful, complete requested targets, whole-target verification and
-Current input evidence after compiler completion. A passing focus phase remains
-provisional. A failing full phase, late compiler failure, edited inputs or
-incomplete input coverage cannot authorize a repair.
+Current input evidence after compiler completion. A passing focus phase stays
+provisional: a failing full phase, a late compiler failure, edited inputs or
+incomplete input coverage each block acceptance.
 Acceptance also checks each requested target's report invariants and actual
 function verdicts: every reported function must be confirmed verified, Verus
 must explicitly report zero errors, and partial-scope reuse cannot establish
-whole-target evidence. An inconsistent success summary never authorizes a repair.
+whole-target evidence.
 A repeated requested target identity or a focused Verus selector in the actual
 full report also prevents acceptance, even when its completion flag claims
 success. Retained jobs recompute acceptance through the same checked report
@@ -150,13 +149,10 @@ foreground `sail repair-check --output json`, and the repair worker's own
 output) carries it as `batch.full`. A job result (`sail jobs result`, MCP
 `verification_result`) carries it as the job's `result`, as for every other
 job, and its `repair.batch` omits `full`; `repair.accepted` is still recomputed
-from that `result`. Until the 2026-10-12 change, a job result repeated the full
-report in both places, doubling every reader's frame (4.9 MB instead of 2.5 MB
-for a HumanEval repair). The repair contract had not shipped, so version one
-changed in place.
+from that `result`.
 
-Optional ordinary-build recovery passes its local controls; real-project
-benchmark recovery remains unqualified. It independently guards script inputs
+Optional ordinary-build recovery passes its local controls but is not yet
+qualified on real-project benchmarks. It independently guards script inputs
 during initial
 regeneration and can retain only dependency contracts. The proof still needs
 its own complete Current full result; an Unknown run remains unaccepted.
@@ -168,11 +164,9 @@ not mistaken for an infrastructure failure; the public repair command exits
 nonzero when the repair is not accepted.
 
 The engine prepares no lowering for reuse: every bucket is lowered fresh in
-both phases, exactly as stock Verus lowers it. Earlier engines cached prepared
-lowering within and across invocations; measured reuse was near zero while
-every miss paid for encoding and admission under a global lock, so it was
-removed together with its same-input oracle (rescue L7a; ADR 0038). Reuse
-across edits is redesigned for M8 with content-addressed keys.
+both phases, exactly as stock Verus lowers it. An earlier prepared-lowering
+cache was removed because measured reuse was near zero (rescue L7a; ADR 0038;
+see [Sail's Verus](../engine/verus/README.md)).
 
 ## Engine conformance
 
@@ -211,8 +205,8 @@ sequence, package ID, target name and kind, run ID, configuration and input
 revision, phase, and optional exact function/obligation identifiers. The daemon
 binds producer headers to the originating worker's context and target inventory.
 Query progress carries bounded descriptions and completion flags with exact
-function/obligation identities. It supplies no solver answer, model or verdict;
-completion is not verification. Live function observations are provisional; final reports independently establish
+function/obligation identities. It carries no solver answer, model or verdict;
+a completion flag only means the query finished. Live function observations are provisional; final reports independently establish
 proofs. Solver outcomes in obligation observations do not confirm a whole
 function or target.
 
@@ -247,16 +241,16 @@ sail compare BEFORE_JOB AFTER_JOB --output json
 `explain` preserves the original obligation reports, counterexample models,
 provenance, and raw diagnostics. Add `--obligation EXACT_ID` for one attributed
 obligation. Producer-linked diagnostics use exact identities; other diagnostics
-remain explicitly unattributed. Source locations come from verifier evidence,
-not guessed line windows. Same-name library and binary targets remain distinct.
+remain explicitly unattributed. Source locations come only from verifier evidence. Same-name library and binary targets remain distinct.
 
 Named baselines are immutable snapshots retained independently of the 20-job
 history limit. Their establishing run and revision remain unchanged. They are
-historical reference evidence, not a new proof of today's inputs. Comparisons
+Historical reference evidence and never prove today's inputs. Comparisons
 show function and exact obligation-ID transitions. Different runtime contexts,
 modes or requested scopes are marked incomparable. Partial scopes cannot prove
-function removal; removal describes absence from a successful sealed whole-target
-verification inventory, not inferred deletion from source text.
+function removal. A function counts as removed only when it is absent from a
+successful, sealed whole-target verification inventory; Sail never infers
+removal from source text.
 Obligation IDs are matched exactly, with no inferred semantic correspondence
 between changed or reordered obligations. Repeated Verus friendly function names
 are also incomparable: Sail cannot identify one implementation from that name

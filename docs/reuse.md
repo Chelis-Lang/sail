@@ -41,7 +41,7 @@ be checked, it verifies normally.
 Returning to an earlier revision can also restore a retained proof. The [undo
 guide](instant-revert.md) describes Cargo eligibility and retention costs.
 [Standalone files](standalone-verification.md) have their own input checks and
-bounded revision history. Neither workflow treats an unobserved input as unchanged.
+bounded revision history. In both, an input Sail could not observe counts as changed.
 
 ## What still costs time
 

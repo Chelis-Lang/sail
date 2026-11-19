@@ -22,9 +22,9 @@ The interactive driver catches only the pinned Rust compiler's expected
 reach a compiler seal; ordinary default verification retains its existing
 catch-all behavior. A terminal `compiler-sealed` frame includes
 `payload.normal_termination: true` only on a normal driver path, including
-reported proof, VIR and late EXEC errors. This flag describes completion, not
-success: the full JSON, exit status, selected scope and coherent input checks
-still determine authority. Missing or malformed completion, internal panic,
+reported proof, VIR and late EXEC errors. The flag means the driver completed.
+Whether the result counts is still decided by the full JSON, exit status,
+selected scope and coherent input checks. Missing or malformed completion, internal panic,
 signal, or malformed full output requires the stock fallback.
 
 ## Source: Sail's Verus fork
@@ -32,9 +32,9 @@ signal, or malformed full output requires the stock fallback.
 The engine is built from one commit of Sail's public Verus fork,
 [Chelis-Lang/verus](https://github.com/Chelis-Lang/verus), pinned in
 [fork.toml](fork.toml) (repository, branch, full commit and upstream base).
-The owner decided on 2026-10-12 that Sail stays forked and fixes known Verus
-issues there; nothing is contributed upstream
-([Verus issues](../../docs/verus-issues/README.md)).
+Sail stays forked, fixes known Verus issues in the fork and contributes
+nothing upstream (owner decision, 2026-10-12;
+[Verus issues](../../docs/verus-issues/README.md)).
 
 The fork's branches:
 
@@ -151,7 +151,7 @@ tag.
 ## Validation
 
 `test-engine.py` and `test-cancel.py` are local-only differential checks that
-use an already built variant; CI never compiles Verus.
+use an already built variant.
 
 - `test-engine.py` runs each fixture three ways: stock, the fork runtime
   without the engine (every `SAIL_ENGINE*` variable removed) and the engine.
@@ -207,8 +207,8 @@ The Mac runtime builder uses ADR 0097's explicit consumption classification,
 retains the original statistics and stops before packing on any other
 determinism difference. The standalone check remains strict by default.
 The [compiler-read origin runtime record](../../docs/validation/compiler-read-origin-runtime.md)
-records the built Linux schema2 candidate and its remaining acceptance/platform gates;
-its local pack/install result does not select that runtime.
+records the built Linux schema2 candidate and the acceptance and platform gates
+it still has to pass. Packing and installing it locally does not select it.
 
 ## Corpus conformance arm
 
@@ -236,8 +236,7 @@ updates it deliberately, with ordinary-reuse qualification. A valid engine
 with another manifest verifies normally and notes `SAIL3136`. `ci/engine-artifact.py`
 checks those pins and every runtime file before installation. The Docker image
 does not build Verus from source; the optional runtime is exercised by the
-real repair CLI/MCP end-to-end phase alongside the stock checks. CI downloads
-these exact prebuilt bytes; it never compiles the engine.
+real repair CLI/MCP end-to-end phase alongside the stock checks.
 
 ### Where runtimes are published
 
@@ -290,8 +289,8 @@ with Sail on the new runtime against plain stock Verus
    `pinned/<sha>`. Never replace or delete the asset of a release a pin has
    named: older Sail commits still fetch it.
 
-A runtime prerelease is a prerequisite, not acceptance of the broader repair
-benchmark or three-project edit catalogue.
+Publishing the prerelease is only a prerequisite. The broader repair benchmark
+and the three-project edit catalogue are accepted separately.
 
 ## Release archives
 
@@ -312,6 +311,6 @@ every qualification step, the pack and the archive scan, and
 CI never builds, installs or runs the macOS runtime.
 
 The [combined binder/runtime candidate](../../docs/validation/spec-parameter-names.md)
-has both platform archives built and remains under qualification. Its native
+has archives built for both platforms and is still being qualified. Its native
 compiler observations run only when explicitly requested; the quarantined v1
 dependency store remains disabled.

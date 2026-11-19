@@ -7,23 +7,22 @@ original complete proof when retaining that target was worth its cost.
 
 ## 0.2.0
 
-The complete core composition uses source `039fb996`, pinned A0e Verus,
-six rotated stock/candidate blocks on native c7i.4xlarge / us-east-1 /
-Ubuntu 24.04 and mac-m4.metal / us-east-1c / macOS 26.7. It includes 23
-paired workflow rows and three complete mutation catalogues: 972 paired
-mutation/cold/return steps per platform. This measures the qualified core
-composition, separately from the final versioned archive builds.
-
 | Complete edit loop | Linux stock/Sail | Mac stock/Sail |
 |---|---:|---:|
 | Vest, 52 edits per round | 1.22x | 1.44x |
 | IronKV, 48 edits per round | 1.51x | 1.55x |
 | CapybaraKV, 53 edits per round | 2.19x | 2.38x |
 
+The complete core composition uses source `039fb996`, pinned A0e Verus,
+six rotated stock/candidate blocks on native c7i.4xlarge / us-east-1 /
+Ubuntu 24.04 and mac-m4.metal / us-east-1c / macOS 26.7. It includes 23
+paired workflow rows and three complete mutation catalogues: 972 paired
+mutation/cold/return steps per platform. The final versioned archives have their own
+record (the stable candidate record, below).
+
 All 1,944 retained paired steps recheck Same with zero false verified results.
-The corrected explanation-note counter yields separate reports with 26/26
-valid rows on each platform; original strict failures and every timing remain
-unchanged. Every individual mutant median is faster in these catalogues.
+After a fix to the explanation-note counter, its reports have 26/26 valid rows
+on each platform; the original strict failures and every timing are unchanged. Every individual mutant median is faster in these catalogues.
 The [feature record](validation/release-expansion.md#complete-frozen-composition-measurements)
 contains exact identities, full ranges, hashes and interpretation limits.
 
@@ -32,22 +31,22 @@ Linux tiny edits/reverts add 0.19/0.15 s; Mac adds 0.11/0.10 s, and Anvil cold
 is 98.94 s against stock's 96.87 s. Calls that miss replay still pay frontend
 and input-checking costs. Background preparation can help a later call but is
 additional work; the bounded Mac preparation-cost control completes with the
-intended toolchain ([record](validation/binary-compiler-inputs.md#completed-mac-preparation-cost-controls)). These results do not establish universal parity or a resource bound.
+intended toolchain ([record](validation/binary-compiler-inputs.md#completed-mac-preparation-cost-controls)). These runs give no bound on resource use.
 
 The [stable candidate record](validation/stable-candidate.md) separately binds
 the new versioned archives, fresh installation/replay controls and release
 gates. The exact rc.1 archives also preserve the original fifteen-edit and
 Anvil catalogue's 114 raw samples/platform and passing execution audits
 ([record](validation/release-expansion.md#recovered-incidental-edit-qualification)).
-The owner approved this candidate; [0.2.0 is published](https://github.com/Chelis-Lang/sail/releases/tag/v0.2.0).
+This candidate was approved and [published as 0.2.0](https://github.com/Chelis-Lang/sail/releases/tag/v0.2.0).
 
-The earlier [combined candidate record](validation/v020-performance.md) keeps
-its original source and observer scope. The [broader evaluation](performance-evaluation.md)
+The earlier [combined candidate record](validation/v020-performance.md) covers
+an earlier source and observer setup. The [broader evaluation](performance-evaluation.md)
 adds real-project structures, pinned repository candidates and dependency/file/
 target scaling controls. Its [algorithm review](design/general-performance.md)
 and [qualification status](validation/general-performance.md) distinguish
 implementation experiments from measured product gains. The rc.7 measurements
-below retain their original source, machine and observer scope.
+below use their own source, machines and observer.
 
 ## 0.1.0-rc.7
 
@@ -235,8 +234,8 @@ Candidate `7ceb6423` reduces unchanged Anvil calls with native Cargo 1.92.0
 from 0.815 to 0.312 s on c7i.8xlarge/us-east-1, against stock's 0.269 s;
 Mac mac-m4.metal/us-east-1b/macOS 27.0 falls from 0.879 to 0.407 s, against
 0.389 s. Each is 20 rotated stock/off/on triples, with the established
-focused scope, no compilation and Unknown/no-reuse results. This does not
-replace the six-round release matrix above. See the
+focused scope, no compilation and Unknown/no-reuse results. They supplement the
+six-round release matrix above. See the
 [qualification record](validation/unsupported-cargo-fallback.md) for source,
 runtime, output controls, hashes and remaining gates.
 
@@ -277,14 +276,15 @@ runtime, output controls, hashes and remaining gates.
   targets and receipts are reused on a new runner, because tools are
   identified by content (#428). See [caching Sail in CI](ci-cache.md).
 
-The disabled v1 compiled-dependency store is not part of these claims. Other
+These results do not use the disabled v1 compiled-dependency store. Other
 compiled dependencies are built separately for each project and worktree
 ([ADR 0053](decisions/0053-disable-unqualified-native-store.md)).
 
 The release benchmark uses seeded mutations over HumanEval, IronKV, Vest and
 CapybaraKV, with plain Verus as the oracle and one daemon across each complete
 edit sequence. It includes failed proofs and ordinary and forced returns to
-the original. A single scripted edit cannot establish an edit-loop claim.
+the original. Edit-loop claims rest on these complete sequences, never on a
+single scripted edit.
 
 Corpus projects use the release's pinned vstd versions; the matrix lists the
 changes from each project's own pins. Vest's default-limit corpus case still
@@ -302,9 +302,8 @@ The runner changes only a private Git worktree, not the operator's source files.
 
 Supply an unpacked stock release with the upstream commit from `sail engine status`.
 Stock and fork runtimes must use identical Z3 bytes.
-The runner selects the fork from Sail's validated engine.
-Use `--engine-build` to select an external engine build.
-Install its Rust toolchain before the run.
+The runner selects the fork from Sail's validated engine, or an external engine
+build with `--engine-build`; install that build's Rust toolchain before the run.
 The selected project must contain a committed `Cargo.lock`.
 
 ### Scenarios
@@ -360,16 +359,16 @@ It rejects traversal, symlinks, empty or ambiguous matches, and identical replac
 
 The generic [edit fixture](../bench/cargo-example/proof-edit.json) adds a bit-mask
 fact to `low_bits_roundtrip` without a contract change.
-Every verifier receives the same edit.
-Each round uses an independent baseline artifact context.
-An earlier edited receipt cannot replace fresh proof work in the next round.
+Every verifier receives the same edit, and each round uses an independent
+baseline artifact context, so an earlier edited receipt cannot replace fresh
+proof work in the next round.
 The metadata records both source hashes and the complete edit specification.
 
 Native proof counts can change when an edit adds an obligation.
 The report compares stock and fork counts for the same source state.
 It checks Sail's requested-root function count and identity against that pair's baseline.
 Native obligation counts and Sail function counts remain separate.
-These checks do not establish formal per-function conformance.
+For formal per-function conformance, use the conformance harness (`sail-conformance`).
 
 ### Controls and timing
 
@@ -411,7 +410,7 @@ Invalid scenarios retain evidence without timing aggregates.
 Any invalid scenario produces a nonzero exit code.
 
 Use an idle native host for comparative performance claims.
-A local smoke run checks the protocol, not release performance.
+A local smoke run only checks the protocol.
 Metadata and logs can contain project paths, source identities, and host details.
 Review them before publication.
 Keep raw results and private project configurations outside the repository.
@@ -495,5 +494,5 @@ Earlier component measurements remain in the
 [real-project report](reports/2026-10-15-real-project-performance.md),
 [instant-revert qualification](validation/instant-revert.md),
 [compiler-boundary qualification](validation/vstd-compile-boundary.md) and
-[generated solver benchmarks](benchmarks.md). They describe their stated
-sources and runtimes, and do not override the combined release results.
+[generated solver benchmarks](benchmarks.md). Each covers its own stated
+sources and runtimes; the combined release results above take precedence.

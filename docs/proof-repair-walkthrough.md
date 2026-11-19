@@ -4,9 +4,8 @@ This walkthrough takes one library through the repair workflow:
 install the engine, check a repair, follow its events, detect a regression the
 focused phase cannot see, and do the same through MCP. Ordinary verification
 (Sail's Verus without the focused phase) stays the default for `sail verify`.
-The repair workflow's qualification status (gates, measured runs, open items) is in
-[M7 validation](validation/m7.md); limitations are in
-[known issues](known-issues.md).
+[Known issues](known-issues.md) lists the workflow's limitations;
+[M7 validation](validation/m7.md) records its gates, measured runs and open items.
 
 A first managed run can still leave proof evidence Unknown while dependencies
 are regenerated. [Managed runs](managed-cold-start.md) explains when that
@@ -148,21 +147,21 @@ sail baseline get before-repair --output json
 
 Continue only after the checks succeed. Background submission returns a **Status**
 with `id`; its successful exit only acknowledges submission. `jobs result` returns
-an envelope whose repair bundle is `value.repair`. A successful fetch is not a
-successful proof. Without `--background`, `repair-check` returns the repair bundle
+an envelope whose repair bundle is `value.repair`. A successful fetch says nothing
+about the proof: read `value.repair.accepted`. Without `--background`, `repair-check` returns the repair bundle
 directly and exits 0 for acceptance, 1 for rejection or 2 for a command/service error.
 
 Focus evidence remains provisional. Acceptance requires independent complete
-Current full-target success, with no selection error. Cold dependency verification
-can add a `vstd` compiler invocation: `compiler_invocations` is an observation,
-not a promise of one driver. Unknown/Historical, incomplete coverage or a failed
-full proof cannot authorize a repair. Inspect the retained notes, including
+Current full-target success, with no selection error. `compiler_invocations`
+counts the drivers that actually ran; cold dependency verification can add a
+`vstd` invocation, so do not expect exactly one. An Unknown or Historical result,
+incomplete coverage or a failed full proof blocks acceptance. Inspect the retained notes, including
 `SAIL3114`, before deciding what needs fixing; do not retry blindly until accepted.
 A named baseline is immutable historical reference evidence; use a new name for
 another snapshot. `baseline list` returns the saved names. To compare two explicit
 completed jobs without a named baseline, use
 `sail compare BEFORE_JOB_ID AFTER_JOB_ID --output json`; the earlier job comes
-first. Neither form establishes current proof evidence for an edited workspace.
+first. Neither comparison verifies an edited workspace.
 
 ## Resume events and cancel deliberately
 
@@ -177,7 +176,8 @@ sail jobs events "$BEFORE" --stream "$STREAM" --after "$AFTER" --follow --output
 
 JSONL contains observation and cursor/control records. Preserve the cursor and
 inspect `gap`; a truncated or pruned journal cannot be treated as complete.
-A terminal stream is not proof acceptance: fetch the final result. Journal limits
+When the stream ends, fetch the final result to see whether the repair was
+accepted. Journal limits
 and exact identities are described in [the repair guide](proof-repair.md).
 
 Ctrl-C on an events follower only stops observation. To cancel an owned running
@@ -211,14 +211,14 @@ sail compare "$AFTER_JOB" --baseline before-repair --output json
 The selected tautology can pass while `other` fails for `false`; the full result
 must therefore reject this repair. Inspect `value.repair.accepted`,
 `batch.selection_error`, full diagnostics and exact attributed obligations.
-`explain` preserves counterexamples when the verifier supplies them; it does not
-invent models or edits. Obtain `package_id` from the report, not a guessed Cargo
+`explain` includes counterexamples when the verifier supplies them and never
+invents models or edits. Obtain `package_id` from the report, not a guessed Cargo
 identifier. For a binary, select `--bin NAME` and use its reported target/kind.
 
 Comparisons expose `value.compatible`, `after_currentness` and exact-ID transitions.
 Different modes, runtime contexts or requested scopes are incomparable. Restore
-`other`'s original `ensures x == x`, submit again and inspect the new full result;
-a historical baseline cannot establish today's proof.
+`other`'s original `ensures x == x`, submit again and inspect the new full result.
+Only that new result can accept the repair; the baseline stays Historical.
 
 ## Use the same workflow through MCP
 
@@ -265,7 +265,7 @@ inspect `structuredContent.value.repair.accepted` and the full Current report.
 Save only after the job completes. The snapshot in `structuredContent.value`
 retains the exact recorded reports, revision and context with `historical`
 currentness. Provisional verdicts and incomplete targets stay unchanged. The
-name is immutable and survives job pruning; it cannot establish today's proof.
+name is immutable and survives job pruning.
 Comparison takes exactly one `baseline` or `before_job`. Library submission omits
 `target`; a binary uses `kind: "bin"` plus `target: "NAME"`. See the
 [MCP schemas](mcp.md) for optional submission arguments and response details.
@@ -276,7 +276,7 @@ job. Cancelling an unrelated lookup or disconnecting MCP does not cancel it.
 
 An explicitly unavailable or invalid engine returns a setup error. A runtime
 internal failure uses the documented stock fallback and preserves failed engine
-evidence; it cannot fabricate focused evidence or claim a successful batch.
+evidence.
 Inspect `batch.batched`, `batch.focus`, `batch.selection_error` and the full result
 (`batch.full` in `repair-check` output, or `result` in a job result).
 For a setup error, inspect it and cancel any owned unfinished job before
@@ -290,6 +290,6 @@ cargo verus verify --package repair_demo --lib
 The first command selects ordinary managed verification with Sail's Verus
 because it has no engine flag; the second runs your own stock `cargo verus`,
 if you have one, without Sail.
-Neither promises an interactive focus/full bundle. Default solver service/cache
+Neither produces an interactive focus/full bundle. Default solver service/cache
 failure falls back to the pinned Z3. See [workspace verification](workspace-verification.md)
 and [ADR 0027](decisions/0027-interactive-proof-engine-and-repair-workflow.md) for the contracts.
