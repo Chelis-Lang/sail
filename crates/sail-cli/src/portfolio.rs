@@ -715,7 +715,20 @@ mod tests {
             kill_group(child.id());
             let _ = child.wait();
         }
-        let member_alive = || member.is_some_and(|p| rustix::process::test_kill_process(p).is_ok());
+        // An orphaned member that died stays a zombie where no init process
+        // reaps it (for example a CI container), so a zombie counts as dead.
+        let member_alive = || {
+            member.is_some_and(|p| {
+                rustix::process::test_kill_process(p).is_ok()
+                    && std::fs::read_to_string(format!("/proc/{}/stat", p.as_raw_nonzero()))
+                        .ok()
+                        .and_then(|stat| {
+                            stat.rsplit_once(')')
+                                .map(|(_, rest)| rest.trim_start().starts_with('Z'))
+                        })
+                        != Some(true)
+            })
+        };
         while member_alive() && Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(20));
         }
