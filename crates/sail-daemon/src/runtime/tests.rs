@@ -112,6 +112,7 @@ fn control_requests_remain_responsive_at_the_execution_cap_and_duplicates_are_re
     let duplicate = call(
         &socket,
         &Request::Execute {
+            temporal_replay: false,
             id: "held-id".into(),
             request: request("(check-sat)"),
         },
@@ -120,6 +121,7 @@ fn control_requests_remain_responsive_at_the_execution_cap_and_duplicates_are_re
     let busy = call(
         &socket,
         &Request::Execute {
+            temporal_replay: false,
             id: "other-id".into(),
             request: request("(check-sat)"),
         },
@@ -303,6 +305,7 @@ fn actual_client_cancellation_and_disconnect_leave_no_active_execution() -> Test
     transport::write_frame(
         &mut Deadline::new(&stream, IO_TIMEOUT),
         &Request::Execute {
+            temporal_replay: false,
             id: "disconnect-id".into(),
             request: hard_request()?,
         },
@@ -360,6 +363,7 @@ fn execution_registration_covers_blocked_response_delivery() -> TestResult {
     transport::write_frame(
         &mut Deadline::new(&client, IO_TIMEOUT),
         &Request::Execute {
+            temporal_replay: false,
             id: "blocked-response".into(),
             request: payload,
         },

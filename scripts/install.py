@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -185,6 +186,38 @@ def install(archive, prefix, host_target, setup_toolchain=False):
     return final
 
 
+def prepare_temporal(installed, first_job=None):
+    """Offer one detached check after the validated installation is in its final directory."""
+    if os.environ.get("SAIL_BACKGROUND_PREPARE", "1") != "1":
+        return None
+    binaries = installed / "bin"
+    if not (binaries / "sail-runtime-worker.json").is_file():
+        return None
+    command = [str(binaries / "sail"), "runtime", "prepare-temporal"]
+
+    def launch(source):
+        # The installer is single threaded. Lower only the child and its worker's
+        # priority. A fresh session and closed standard streams let install exit
+        # immediately even when its caller collects stdout and stderr in pipes.
+        return subprocess.Popen(command, stdin=source, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL, start_new_session=True,
+                                preexec_fn=lambda: os.nice(10))
+
+    try:
+        if first_job is None:
+            return launch(subprocess.DEVNULL)
+        # Bind the caller's actual file before returning. Reject pipes/devices
+        # without blocking the installer on an absent writer.
+        with os.fdopen(os.open(first_job, os.O_RDONLY | os.O_NONBLOCK), "rb") as source:
+            if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+                raise ValueError("the first temporal job must be a regular file")
+            command.extend(["--file", "-"])
+            return launch(source)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print("note: temporal preparation skipped: " + str(error), file=sys.stderr)
+        return None
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     choice = parser.add_mutually_exclusive_group(required=True)
@@ -195,6 +228,8 @@ def main():
                         help="install the verifier's Rust pin and rust-src using existing rustup")
     parser.add_argument("--require-attestation", action="store_true",
                         help="refuse to install unless `gh attestation verify` passes")
+    parser.add_argument("--prepare-temporal-job", type=Path, metavar="FILE",
+                        help="prepare this temporal check in the background after installation")
     args = parser.parse_args()
     try:
         host_target = target()
@@ -208,6 +243,7 @@ def main():
             attest(archive, args.require_attestation)
             installed = install(archive, args.prefix.expanduser().resolve(), host_target,
                                 args.install_toolchain)
+        prepare_temporal(installed, args.prepare_temporal_job)
         import shlex
         print("Installed " + str(installed))
         print("Add this to your shell profile:")

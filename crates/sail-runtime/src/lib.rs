@@ -41,6 +41,9 @@ pub struct Config {
     pub cvc5: Option<PathBuf>,
     /// Optional disk cache root; existing Verus cache namespaces are untouched.
     pub cache_directory: Option<PathBuf>,
+    /// Optional separate trusted directory for temporal receipts. Embedders that
+    /// omit it use `cache_directory` for both runtime result families.
+    pub temporal_cache_directory: Option<PathBuf>,
     /// Maximum concurrent independent transcripts, from one through sixteen.
     pub workers: usize,
 }
@@ -54,6 +57,7 @@ impl Default for Config {
             z3: None,
             cvc5: None,
             cache_directory: None,
+            temporal_cache_directory: None,
             workers: 2,
         }
     }
@@ -294,6 +298,19 @@ impl Runtime {
         request: &Request,
         cancellation: &Cancellation,
     ) -> Result<Response, Error> {
+        self.execute_negotiated(request, cancellation, true)
+    }
+
+    /// Execute a request from a transport peer, respecting its temporal replay capability.
+    ///
+    /// # Errors
+    /// Same admission and infrastructure failures as [`Self::execute`].
+    pub fn execute_negotiated(
+        &self,
+        request: &Request,
+        cancellation: &Cancellation,
+        temporal_replay: bool,
+    ) -> Result<Response, Error> {
         if request.version != VERSION {
             return Err(invalid("invalid_request", "unsupported runtime version"));
         }
@@ -307,6 +324,11 @@ impl Runtime {
                             self.config.temporal_backend.as_deref(),
                             self.config.temporal_worker.as_ref(),
                             self.config.temporal_unavailable.as_ref(),
+                            self.config
+                                .temporal_cache_directory
+                                .as_deref()
+                                .or(self.config.cache_directory.as_deref())
+                                .filter(|_| temporal_replay),
                             cancellation,
                         )?),
                     },

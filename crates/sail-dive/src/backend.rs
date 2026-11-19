@@ -1,5 +1,5 @@
 //! The runtime's native temporal backend: the isolated worker client.
-use sail_runtime::temporal::{Dispatch, TemporalBackend, Worker};
+use sail_runtime::temporal::{Dispatch, ReplayPolicy, TemporalBackend, Worker};
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
@@ -13,6 +13,13 @@ use std::time::Duration;
 pub struct Dive;
 
 impl TemporalBackend for Dive {
+    fn replay_policy(&self) -> Option<ReplayPolicy> {
+        Some(ReplayPolicy {
+            identity: "sail-dive:check-v1:exact:seed0:fp0:w1:ordinary-completed-levels",
+            validate: crate::validate_response,
+        })
+    }
+
     fn run(
         &self,
         worker: &Worker,

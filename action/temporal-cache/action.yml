@@ -1,0 +1,48 @@
+name: Sail temporal receipts
+description: Save or restore authenticated receipts around native temporal jobs.
+inputs:
+  mode:
+    description: Select restore before temporal jobs or save after them.
+    required: true
+  public-key:
+    description: Trusted OpenSSH Ed25519 public key for this repository.
+    required: true
+  signing-key:
+    description: Dedicated unencrypted OpenSSH Ed25519 private key, supplied only to trusted save jobs.
+    required: false
+runs:
+  using: composite
+  steps:
+    - id: setup
+      shell: bash
+      env:
+        SAIL_RECEIPT_PUBLIC_KEY: ${{ inputs.public-key }}
+        SAIL_RECEIPT_MODE: ${{ inputs.mode }}
+      run: python3 -I "$GITHUB_ACTION_PATH/receipts.py" setup
+    - name: Restore the bundle
+      if: inputs.mode == 'restore'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.setup.outputs.path }}
+        key: sail-temporal-v1-${{ steps.setup.outputs.scope }}-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
+        restore-keys: sail-temporal-v1-${{ steps.setup.outputs.scope }}-${{ runner.os }}-${{ runner.arch }}-
+    - name: Authenticate and import receipts
+      if: inputs.mode == 'restore'
+      shell: bash
+      env:
+        SAIL_RECEIPT_PUBLIC_KEY: ${{ inputs.public-key }}
+      run: python3 -I "$GITHUB_ACTION_PATH/receipts.py" import
+    - name: Sign local receipts
+      if: inputs.mode == 'save'
+      id: export
+      shell: bash
+      env:
+        SAIL_RECEIPT_PUBLIC_KEY: ${{ inputs.public-key }}
+        SAIL_RECEIPT_SECRET: ${{ inputs.signing-key }}
+      run: python3 -I "$GITHUB_ACTION_PATH/receipts.py" export
+    - name: Save the signed bundle
+      if: inputs.mode == 'save' && steps.export.outputs.present == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.setup.outputs.path }}
+        key: sail-temporal-v1-${{ steps.setup.outputs.scope }}-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}

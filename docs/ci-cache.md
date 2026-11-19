@@ -361,3 +361,46 @@ These team-cache commands are experimental.
   an edited Anvil still spends about 86 s compiling and running Verus on its
   one large crate. The cache removes solver time, not Rust or Verus frontend
   time ([performance](performance.md)).
+
+## Native temporal receipts
+
+Use the `action/temporal-cache` companion to carry shared-runtime results
+between CI runs. Restore before running the native temporal checks, then save
+after a trusted job. Both steps use the same `SAIL_CACHE_DIR` as the runtime.
+The runner needs Python 3 and OpenSSH with Ed25519 signing support.
+
+Generate a dedicated signing key outside CI with
+`ssh-keygen -t ed25519 -N '' -f sail-temporal-ci`. Store the public key in the
+repository variable `SAIL_TEMPORAL_PUBLIC_KEY` and the private key in the
+protected secret `SAIL_TEMPORAL_SIGNING_KEY`. Keep the public key and action
+revision under trusted workflow control. Pin both action references below to
+the revision you reviewed.
+
+```yaml
+- uses: Chelis-Lang/sail/action/temporal-cache@<revision>
+  with:
+    mode: restore
+    public-key: ${{ vars.SAIL_TEMPORAL_PUBLIC_KEY }}
+# Run the installed Sail shared runtime on your temporal job here.
+- uses: Chelis-Lang/sail/action/temporal-cache@<revision>
+  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  with:
+    mode: save
+    public-key: ${{ vars.SAIL_TEMPORAL_PUBLIC_KEY }}
+    signing-key: ${{ secrets.SAIL_TEMPORAL_SIGNING_KEY }}
+```
+
+The GitHub cache service and writers allowed to create the outer cache archive
+must be trusted by the runner. The Actions cache client extracts that archive
+before Sail verifies the receipt bundle. Keep workflows that can populate a
+protected branch's cache under the same review as code that executes there.
+Supply a signing key only on runners dedicated to trusted jobs.
+
+The save workflow vouches for its local results. Run it on a clean runner with
+trusted code and trusted inputs to the local cache. Restores need only the
+public key. Sail verifies the signature and repository identity before adding
+any entries to the local runtime cache. An absent, damaged, foreign or unsigned
+bundle is a miss. Each check still authenticates its worker and checks its full
+receipt key. A bundle is bounded to 64 MiB and 4,096 receipts. Cache eviction
+only affects the next run's performance. Rotating the configured public key
+starts a new CI cache namespace.

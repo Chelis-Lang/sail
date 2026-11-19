@@ -147,7 +147,25 @@ release version, worker digest and deadline. Execution failure has no native res
 A completed execution includes the original typed native response, reports,
 traces and validation evidence. Native stopped/unsupported/error outcomes are
 explicit. Neither finite simulation nor trace validity is an exhaustive proof.
-This slice does not cache temporal evidence or establish assurance tiers.
+The runtime can reuse a completed exact check when its source closure, policy,
+worker and limits match. On a hit the attributed result carries `cache_hit: true`
+and the matched `cache_key`. Elapsed times and paths in its native report
+describe the original execution. Changing the caller's obligation or requirement
+IDs attaches the original evidence to the new call. Reverting all inputs can
+recover the earlier result. [Temporal receipt contract](spec/temporal-jobs.md#exact-check-replay).
+
+The service, the embedded runtime and preparation share
+`$SAIL_CACHE_DIR/runtime/temporal-v1` by default. An explicit runtime cache
+outside Sail's solver `results/` directory keeps its own receipts. An alias
+of the default solver location uses the normal temporal store. An explicit
+subdirectory of `results/` gets a separate `runtime-scope-<digest>` directory
+beside it. This keeps temporal evidence out of unsigned solver-cache exports.
+
+Rust embedders using `Config::default()` inherit the runtime cache location.
+When updating an exhaustive `sail_runtime::Config` literal, add
+`temporal_cache_directory: None` for that behavior. Clients constructing
+temporal result or capability literals also supply the optional `cache_key`
+or `replay_context`. Older socket clients continue to receive fresh results.
 
 Release archives ship `bin/sail-runtime-worker` and its installation
 manifest `bin/sail-runtime-worker.json` beside `sail`. A source build stages

@@ -101,3 +101,19 @@ The [versioned specification](spec/temporal-jobs.md) and
 Tests compare the adapter with direct calls to the exact pinned library,
 including real violations, forged witnesses, unsupported inputs, resource
 stops and process failures. They add no TLC backend or fallback.
+
+## Rechecking and undo
+
+The shared runtime keeps completed exhaustive checks in its local cache. Run the
+same check again, including after undoing an edit, to reuse its evidence. A hit
+sets `cache_hit` to true and reports the matched digest in `cache_key`. The
+outer result carries this invocation's obligation and requirement IDs. Native
+statistics and the validated trace describe the check that established the
+result. Direct calls to the low-level worker client always execute the request.
+
+The identity covers every closed model and configuration file, worker and
+backend identity, checking policy and requested limits. A different limit or
+file starts a fresh check. Simulation, trace validation, incomplete exploration,
+errors, cancellation and timeout do not create proof receipts. Keep the local
+cache writable only by trusted code. For GitHub-hosted jobs, see
+[authenticated temporal receipts](ci-cache.md#native-temporal-receipts).

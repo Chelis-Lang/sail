@@ -58,6 +58,7 @@ const HELP: &[(&str, &str)] = &[
 USAGE:
     sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET]
     sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET]
+    sail runtime prepare-temporal [--file FILE|-] [--cache DIR]
 
 Input and output are JSON (docs/runtime.md). Complete sat/unsat transcripts
 exit 0; unknown or incomplete execution exits 1; admission or setup errors

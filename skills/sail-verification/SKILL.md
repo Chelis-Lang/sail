@@ -58,6 +58,17 @@ for inputs, baselines and caching. Elsewhere, run
 `sail report --format github-summary|github-annotations|sarif result.json`,
 keeping `sail verify`'s exit code for the job.
 
+## Repeat a native temporal check
+
+Use `sail runtime capabilities` to confirm that the installation includes its
+native worker. Submit the same complete model, configuration and limits with
+`sail runtime execute --file job.json`. A completed exhaustive check or
+validated refutation can replay across processes, including after undo.
+Inspect `cache_hit` and `cache_key`. The native statistics and trace belong
+to the run that established the verdict. Simulation and resource stops do
+not establish an invariant. To precompute a specific first job, use
+`sail runtime prepare-temporal --file job.json` on a supporting installation.
+
 ## Run SMT queries
 
 For repeated Z3 work outside Rust, check the installed solver once with
