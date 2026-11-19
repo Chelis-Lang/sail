@@ -22,6 +22,15 @@ oracle completion (#611), and compound-field lowering/retained-read correction
 (#323). Original failures and source-specific qualification stay unchanged.
 
 
+## Large temporal simulation reports
+
+A temporal simulation job that samples many long traces can fail with
+`SAIL4210`. A 1,000-trace job on bosco does after 160 s. The worker builds the
+whole D.I.V.E. simulation report as a JSON tree before replying. D.I.V.E. 0.1.1
+writes the report without building the tree, using about a tenth of the
+memory; Sail adopts it in 0.3.1 (#767). Until then, use fewer traces or a
+shorter depth.
+
 ## Benchmark descendant cleanup assertion
 
 The full `sail-bench --lib` suite can fail its descendant-cleanup assertion on
