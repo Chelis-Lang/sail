@@ -114,7 +114,7 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0099: Mutation explanation-note cardinality](0099-mutation-explanation-note-cardinality.md) (accepted; existing per-code uniqueness corrected, native Linux/Mac witness and negative controls qualified)
 
-- [0100: Mutation-first roadmap and design-first Oyster hold (accepted; Oyster parts superseded and backend ordering amended by 0109)](0100-mutation-first-roadmap.md)
+- [0100: Mutation-first roadmap and design-first Oyster hold (accepted; Oyster parts superseded and backend ordering amended by 0109; headline moved to v0.4.0 by 0174)](0100-mutation-first-roadmap.md)
 
 - [0101: D.I.V.E. behind a default-off build flag](0101-dive-behind-a-default-off-flag.md) (accepted; extension workspace is the flag, main-gate lock and publish guards, flip queued)
 
@@ -128,7 +128,7 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0107: Freeze neutral profile three before its first release](0107-freeze-neutral-profile-three.md) (accepted; retained version-four manifests replay byte for byte, later widening takes a new identity) — superseded by 0109
 - [0108: The SMT runtime is a supported command](0108-supported-smt-runtime.md) (accepted; `sail runtime` and the MCP runtime tools are listed as supported)
-- [0109: Oyster retired; v0.3.0 scope](0109-oyster-retired-v030-scope.md) (accepted by owner; Oyster abandoned, v0.3.0 pillars, experimental Kani then cvc5 inside the release, neutral-contract and contract-crate removal after stated preconditions, no second Verus pin)
+- [0109: Oyster retired; v0.3.0 scope](0109-oyster-retired-v030-scope.md) (accepted by owner; Oyster abandoned, v0.3.0 pillars, experimental Kani then cvc5 inside the release, neutral-contract and contract-crate removal after stated preconditions, no second Verus pin; release scope amended by 0174)
 - [0110: Interrupted first observations are discarded, not trusted](0110-interrupted-first-observation.md) (accepted, conservative rule only; per-predicate `SAIL3114` reasons, continuous absent-configuration drain, unsourced checks never reused)
 - [0111: A Verus rejection counts as a mutation detection](0111-mutation-evidence.md) (accepted by owner; attributed, stable rejections with a baseline twin that has headroom score as detected, with a `verifier-rejected`/`counterexample-confirmed` breakdown; campaign views only, solver answers verbatim)
 - [0112: Preserve stock builtin source paths in the runtime](0112-stock-builtin-source-paths.md) (owner-approved scoped exception; implementation and runtime qualification pending)
@@ -143,3 +143,4 @@ Use [the template](0000-template.md) for a new decision.
 
 - [0170: No persistent frontend restoration in v0.3.0](0170-v030-frontend-reuse-no-go.md) (accepted; incomplete operation/effect/current-diagnostic boundary, no new performance result, unchanged 25% gate, #162 stays open)
 - [0171: Accept the observed CI image startup target](0171-observed-ci-startup-target.md) (accepted; retrospective pull command-window p95 40.2s against 120s; historical slow tails remain unresolved)
+- [0174: v0.3.0 ships native temporal checking; unfinished pillars move to v0.4.0](0174-v030-native-temporal-scope.md) (accepted by owner; amends 0100 and 0109; mutation, profiling, performance parity, installer/editor reach, Kani and cvc5 move to v0.4.0)

@@ -4,7 +4,8 @@
   backend ordering amended by
   [ADR 0109](0109-oyster-retired-v030-scope.md) on 2026-11-09; evidence rule for
   `sail mutate` amended by [ADR 0111](0111-mutation-evidence.md) on
-  2026-11-10
+  2026-11-10; mutation headline moved from v0.3.0 to v0.4.0 by
+  [ADR 0174](0174-v030-native-temporal-scope.md) on 2026-11-19
 - **Date:** 2026-11-04
 - **Amends:** work ordering in ADR 0065 and charter appendix entry 8;
   existing implementations and correctness contracts remain in force

@@ -1,18 +1,20 @@
 # Roadmap
 
-Current ordering follows the owner's 2026-11-09 decision, recorded in
-[ADR 0109](decisions/0109-oyster-retired-v030-scope.md), which amends
+Current ordering follows the owner's 2026-11-19 decision, recorded in
+[ADR 0174](decisions/0174-v030-native-temporal-scope.md), which amends
+[ADR 0109](decisions/0109-oyster-retired-v030-scope.md) and
 [ADR 0100](decisions/0100-mutation-first-roadmap.md). The latest stable release
-is **0.2.0**. The next release is **v0.3.0**; it has no publication date, and
-final publication requires the owner's approval of its exact candidate.
+is **0.2.0**. The next release is **v0.3.0**. It ships soon after D.I.V.E.
+0.1.0 is on crates.io, and final publication requires the owner's approval of
+its exact candidate.
 
 The active execution tracker is
 [#712](https://github.com/Chelis-Lang/sail/issues/712), superseding the
-historical 0.2.0 handover #609. The owner confirmed on 2026-11-11 that the
-whole v0.3.0 program, including flagged defects and qualification gaps, is to
-be completed through candidate staging. The continuous #368 proof lane keeps
-its existing boundary: affected proofs gate changes, but the complete
-service-wide theorem is not a v0.3.0 release gate.
+historical 0.2.0 handover #609. The owner's 2026-11-11 confirmation that the
+whole earlier v0.3.0 program was to be completed is superseded: unfinished
+pillars move to [v0.4.0](#after-the-next-release-v040). The continuous #368
+proof lane keeps its existing boundary: affected proofs gate changes, but the
+complete service-wide theorem is not a release gate.
 
 ## Goal
 
@@ -25,32 +27,43 @@ remain engineering work, including cold runs. No baseline is relaxed.
 
 ## Next release: v0.3.0
 
-Each item starts with a short spike that has a pass/fail rule and a drop rule.
-Work that fails its spike is closed with a short record and not carried.
-v0.3.0 will remove API published in 0.2.0, so it is a breaking release.
+v0.3.0 is native temporal checking on D.I.V.E. 0.1.0, plus the work already
+delivered and qualified on `main`. It removes API published in 0.2.0, so it is
+a breaking release.
 
-| Pillar | Gate | Tracker | State |
+| Item | Gate | Tracker | State |
 |---|---|---|---|
-| Verus mutation testing (headline) | Bounded executable-code mutants in copies through CLI, JSON and MCP together; outcomes and score per [ADR 0111](decisions/0111-mutation-evidence.md), with solver answers verbatim; qualified on real projects on Linux and macOS with actual campaign costs | #140, #141, [#664](https://github.com/Chelis-Lang/sail/issues/664); [brief](design/verus-mutation-release.md), [evidence spike](validation/mutation-evidence.md), [neutral evidence](validation/neutral-mutation.md) | Evidence rule decided (ADR 0111); exec-only generator delivered in #705; development campaign engine and CLI/JSON/MCP built, with native component/corpus evidence; compiler-owned AIR identity support and stable crate namespaces pass native Linux integration and independent reviews (ADR0140/0141), with final hosted checks pending. Ordinary runtime integration, complete real-project acceptance, campaign cost/concurrency and Mac remain open |
-| Proof health and profiling | Rank functions by resource margin and stability, and name costly quantifiers, from recorded sessions; no change to verdicts or plain `sail verify` bytes | Experimental fragility engine exists; [health guide](proof-health.md) | Health CLI/JSON/MCP merged #733. Retention remains a qualified development candidate. Exact full-prefix selector passes native full gate, solver/E2E/PR and bounded independent review (ADR0138); stability worker, trace parser and profile CLI remain planned |
-| Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #244, #232, #558, #560 | Named rows still slower; see the lanes below. Typed publication diagnostics merged #745 after native integration, bounded review and all hosted checks (ADR0139); restoration/recovery remain open |
-| Reach | GitHub Action, simpler installation, editor bridge | [CI-cache recipe](ci-cache.md) shipped in 0.2.0; [GitHub Action](github-action.md) delivered in #702 | Installer distribution and editor bridge not built; installed Mac Action qualification remains |
-| Backends | Kani as an experimental backend for hand-written harnesses, with `arrayvec` 0.7.8 as the pilot fixture and direct-Kani comparison; then cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | [#135](https://github.com/Chelis-Lang/sail/issues/135), #137 | Kani pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)) and Kani is selected as experimental; Kani decoder #739 and original-bundle fixture #743 are merged; executor/CLI and broader backend qualification remain open. Explicit cvc5 development backend merged #741, unadvertised pending Mac |
-| Neutral-contract removal | Archive tag, #664 cases ported to plain Verus, #683 and #696 reproduced on ordinary jobs; then removal, including all three contract crates, with every 0.2.0 item listed in the changelog | [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) | Removed, including all three contract crates; the last implementation is tagged `archive/neutral-contracts-final` and the published 0.2.0 crates are not yanked. #664's retained case is plain Verus in [`corpus/repros/neutral-contract-unknown`](../corpus/repros/neutral-contract-unknown/README.md). #683 and #696 were reproduced on ordinary jobs (2026-11-09 spike comments on each issue); their fixes are tracked there |
+| Native temporal checking on D.I.V.E. 0.1.0 (headline, experimental) | D.I.V.E. 0.1.0 resolved from crates.io; holds only with complete evidence, refutations independently trace-validated, limits stop with no claim; native conformance at the published version | Draft PR #763, #764 | Built and measured against standard TLC on the release branch: identical verdicts and state counts, 27–39× faster per small check, about 13× over a 100-check MCP session. Waits for D.I.V.E. 0.1.0 on crates.io and the release-day steps; simulation defects #766 and #767 open |
+| Proof health | Rank checks by recorded effort; no change to verdicts or plain `sail verify` bytes | [Health guide](proof-health.md) | Delivered: `sail health` and MCP `proof_health` (#733), qualified on Linux and Mac ([record](validation/proof-health.md)) |
+| CI reports and GitHub Action | Render saved results for CI; one-step Action | [CI reports](ci-reports.md), [GitHub Action](github-action.md) | Delivered (#699, #702). The Action's first working release is 0.3.0 |
+| Neutral-contract removal and requirement-attribution retirement | Every removed 0.2.0 item listed in the changelog | [ADR 0109](decisions/0109-oyster-retired-v030-scope.md), [ADR 0148](decisions/0148-retire-active-requirement-attribution.md) | Delivered. The last neutral implementation is tagged `archive/neutral-contracts-final`; published 0.2.0 crates are not yanked |
+| Release bugs | Fixed, or recorded as known issues with the owner's agreement | [v0.3.0 milestone](https://github.com/Chelis-Lang/sail/milestone/14) | #710 and #760 open |
 | Publication | Owner approves the exact final candidate | [Releasing](releasing.md) | No candidate |
 
-The headline answers: **my program verifies, but would my specifications catch
-plausible bugs?** Survivors are actionable observations about specification
-strength, not proof of adequacy or vacuity. Existing benchmark mutation
-catalogues and neutral literal campaigns are groundwork, not the general
-product. Expected cache savings must be measured across complete campaigns,
-including setup and unsuccessful work. See the
-[next-release milestone](https://github.com/Chelis-Lang/sail/milestone/14).
+Unfinished groundwork on `main` (the mutation campaign model, profiling
+library modules, the Kani decoder and the cvc5 development backend) ships
+unadvertised. No command, MCP tool or JSON field exposes it; the cvc5 backend
+needs an undocumented development variable.
 
 Linux aarch64 is outside this program. The owner clarified on 2026-11-11
 that it was not requested; no support work is scheduled, and the source-built
 oracle proposal in [question 50](open-questions.md) is inactive. The
 supported platforms remain Linux x86-64 and macOS on Apple silicon.
+
+## After the next release: v0.4.0
+
+These pillars moved from v0.3.0 (ADR 0174). Each keeps its gate, drop rule and
+tracker; their order is not decided. See the
+[v0.4.0 milestone](https://github.com/Chelis-Lang/sail/milestone/15).
+
+| Pillar | Gate | Tracker | State |
+|---|---|---|---|
+| Verus mutation testing | Bounded executable-code mutants in copies through CLI, JSON and MCP together; outcomes and score per [ADR 0111](decisions/0111-mutation-evidence.md), with solver answers verbatim; qualified on real projects on Linux and macOS with actual campaign costs | #140, #141, [#664](https://github.com/Chelis-Lang/sail/issues/664); [brief](design/verus-mutation-release.md), [evidence spike](validation/mutation-evidence.md) | Evidence rule decided; exec-only generator and campaign evidence model on `main`. Engine, CLI, JSON and MCP built on development branches only. Ordinary runtime integration, real-project acceptance, campaign cost/concurrency and Mac remain open |
+| Profiling and stability | Name costly quantifiers and unstable proofs from recorded sessions; no change to verdicts or plain `sail verify` bytes | [Health guide](proof-health.md) | Exact session-prefix, prefix-replay and quantifier-count groundwork merged. History, retention, the stability worker and `sail profile` are not merged |
+| Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #232, #558, #560, #288 | Named rows still slower; see the lanes below |
+| Reach | Simpler installation and an editor bridge | Installer, Binstall and LSP work on development branches | Not merged |
+| Kani backend (experimental) | Hand-written harnesses, `arrayvec` 0.7.8 pilot fixture, direct-Kani comparison | [#135](https://github.com/Chelis-Lang/sail/issues/135) | Pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)). Decoder #739 and input fixtures #743/#755 merged; no executor or CLI on `main` |
+| cvc5 and the SMT-LIB service | cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | #137 | Development backend merged (#741), unadvertised; Mac qualification open |
 
 ## Performance and acceptance lanes
 
@@ -69,22 +82,21 @@ resource costs and regressions. A component gain or moving work after return doe
 not alone establish a campaign or product speedup. Every useful edit improvement
 also benefits mutation campaigns.
 
-## Backends: Kani, then cvc5
+## Backends: Kani, then cvc5 (v0.4.0)
 
-Kani ([#135](https://github.com/Chelis-Lang/sail/issues/135)) ships in v0.3.0
-as an experimental backend, by the owner's choice. It runs harnesses the user
-writes by hand; `arrayvec` 0.7.8, a pinned ordinary Rust crate, is the pilot
-fixture. Qualification compares direct Kani with the Sail path, exercises
-concrete failures and retains exact tool identities, bounds, unsupported cases
-and costs. Results are bounded evidence, never reported as verified. Kani
-function contracts are not adopted as a front end.
+Kani ([#135](https://github.com/Chelis-Lang/sail/issues/135)) ships as an
+experimental backend, by the owner's choice, now in v0.4.0 (ADR 0174). It runs
+harnesses the user writes by hand; `arrayvec` 0.7.8, a pinned ordinary Rust
+crate, is the pilot fixture. Qualification compares direct Kani with the Sail
+path, exercises concrete failures and retains exact tool identities, bounds,
+unsupported cases and costs. Results are bounded evidence, never reported as
+verified. Kani function contracts are not adopted as a front end.
 
-cvc5 follows Kani inside v0.3.0. It lands only in the supported
-SMT runtime ([ADR 0108](decisions/0108-supported-smt-runtime.md)), with solver
-identity in every key. Certificates get one measurement spike recorded on
-#138 and no product work. Creusot, Prusti, kernel provers, sampled-tier
-integration, cross-backend portfolios and Dafny remain future options under
-#146.
+cvc5 follows Kani. It lands only in the supported SMT runtime
+([ADR 0108](decisions/0108-supported-smt-runtime.md)), with solver identity in
+every key. Certificates get one measurement spike recorded on #138 and no
+product work. Creusot, Prusti, kernel provers, sampled-tier integration,
+cross-backend portfolios and Dafny remain future options under #146.
 
 ## Oyster: retired
 
@@ -179,8 +191,10 @@ work, not a prerequisite chain for mutation testing.
 
 M0–M6 are delivered. M7 was accepted 2026-10-26. M11 remains the continuous
 Verus performance lane; M10 records the broader runtime ambition with explicit
-holds. The next-release milestone is v0.3.0. Genuine 0.2.0 residual work moves
-to its current lane rather than remaining an apparent publication blocker.
+holds. The next-release milestone is v0.3.0 and holds only release blockers;
+the pillars moved out of it are in the v0.4.0 milestone (ADR 0174). Genuine
+0.2.0 residual work moves to its current lane rather than remaining an
+apparent publication blocker.
 
 Active ordinary requirement attribution retirement qualifies on native Linux
 with independent approval; historical job/SDK compatibility remains intact

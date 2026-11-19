@@ -366,3 +366,14 @@ Each entry names the charter text it qualifies and the ADR that records it.
     false verification claims, unmeasured performance acceptance, blanket
     conformance waivers or final release publication without the exact-candidate
     approval required by entry 15.
+
+19. *Entries 16 and 17, v0.3.0 scope* (owner decision, 2026-11-19). Sail
+    0.3.0 ships soon after D.I.V.E. 0.1.0 is on crates.io. Native temporal
+    checking with D.I.V.E. is its headline, with the work already delivered
+    and qualified: proof health, CI reports and the GitHub Action, and the
+    neutral-contract removal. Verus mutation testing, profiling, the
+    never-slower-than-stock lanes, installer and editor reach, the Kani
+    backend and cvc5 move to v0.4.0, keeping their gates; v0.4.0's order is
+    not decided. This supersedes entry 16's mutation headline and entry 17's
+    five v0.3.0 pillars; correctness obligations and entry 15's
+    exact-candidate approval are unchanged. See ADR 0174.

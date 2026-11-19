@@ -2,10 +2,12 @@
 
 - **Status:** delivered surfaces maintained. Owner decision, 2026-11-09
   ([ADR 0109](../decisions/0109-oyster-retired-v030-scope.md)): Oyster is
-  abandoned, mutation testing leads v0.3.0, and an experimental Kani backend
-  is followed by cvc5 in the SMT runtime inside that release.
-  Neutral-contract surfaces, including the three contract crates, were
-  removed for v0.3.0.
+  abandoned, and an experimental Kani backend is followed by cvc5 in the SMT
+  runtime. Neutral-contract surfaces, including the three contract crates,
+  were removed for v0.3.0. Owner decision, 2026-11-19
+  ([ADR 0174](../decisions/0174-v030-native-temporal-scope.md)): native
+  temporal checking leads v0.3.0; mutation testing, Kani and cvc5 move to
+  v0.4.0.
   Temporal packaging is held for distribution. The 2026-10-21 active
   integration ordering and the Oyster descriptions below are historical.
 - **Owner answers:** questions 16–29 in [open questions](../open-questions.md),
@@ -340,7 +342,8 @@ different audience from this mission.
 
 ## Dependency graph
 
-**Current order (owner, 2026-11-09, ADR 0109).**
+**Current order (owner, 2026-11-09, ADR 0109; release assignment amended
+2026-11-19, ADR 0174: items 1 to 3 are v0.4.0 work).**
 
 1. Verus-aware mutation (#140, #141), independent of neutral contracts.
 2. Alongside: proof health and profiling, changed-proof costs (#158, #244),
@@ -348,8 +351,7 @@ different audience from this mission.
    correctness-test gaps and acceptance proof (#368).
 3. Kani (#135) as an experimental backend for hand-written harnesses, with
    `arrayvec` 0.7.8 as the pilot fixture; Kani function contracts are not
-   adopted as a front end. cvc5 follows inside v0.3.0, in the supported SMT
-   runtime only. Certificates get one measurement spike and no product work.
+   adopted as a front end. cvc5 follows, in the supported SMT runtime only. Certificates get one measurement spike and no product work.
 4. Maintain the supported SMT runtime. Neutral contracts, the three contract
    crates and source jobs are removed.
    Requirement attribution stays experimental for now, with keep-or-remove
@@ -464,6 +466,7 @@ Each was resolved in the charter's favour until the owner answered on
    earlier owner direction scheduled them after 0.1.0 (question 27).
    ADR 0109 now prioritizes mutation, then experimental Kani followed by cvc5
    in the SMT runtime inside v0.3.0, with the temporal distribution hold kept.
+   ADR 0174 moves both backends and mutation testing to v0.4.0.
 10. **Rule 1 and trigger choice in the oracle.** Stock Verus, the
     conformance oracle for lowered crates, picks triggers differently run to
     run (VI-0015), which would make oracle comparisons flaky. **Resolved

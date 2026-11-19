@@ -1,6 +1,8 @@
 # 0109: Oyster retired; v0.3.0 scope
 
-- **Status:** accepted by owner, 2026-11-09
+- **Status:** accepted by owner, 2026-11-09; release scope amended by
+  [ADR 0174](0174-v030-native-temporal-scope.md) on 2026-11-19 (native
+  temporal checking is the v0.3.0 headline; unfinished pillars move to v0.4.0)
 - **Date:** 2026-11-09
 - **Supersedes:** the Oyster parts of
   [ADR 0065](0065-oyster-runtime.md) and
