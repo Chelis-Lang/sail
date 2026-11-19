@@ -1,7 +1,9 @@
 # Next release: specification feedback through Verus mutation
 
-Status: owner-selected feature scope, 2026-11-04; headline of v0.3.0 since
-2026-11-09; not implemented as a general CLI/MCP product.
+Status: owner-selected feature scope, 2026-11-04; headline of v0.3.0 from
+2026-11-09 until the owner moved it to v0.4.0 on 2026-11-19
+([ADR 0174](../decisions/0174-v030-native-temporal-scope.md)); not
+implemented as a general CLI/MCP product.
 [ADR 0100](../decisions/0100-mutation-first-roadmap.md) records the ordering,
 [ADR 0109](../decisions/0109-oyster-retired-v030-scope.md) the release
 scope and [ADR 0111](../decisions/0111-mutation-evidence.md) the evidence
@@ -121,5 +123,5 @@ feedback; it does not silently edit or weaken specifications.
 
 Changed-proof scheduling and cold-run improvements proceed in the performance
 lane. Frontend feasibility and the Kani backend are not dependencies of this
-feature. The release is v0.3.0; final composition and publication remain owner
+feature. The release is v0.4.0 (ADR 0174); final composition and publication remain owner
 decisions.
