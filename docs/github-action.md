@@ -250,3 +250,8 @@ the file is still written and its path is the `sarif` output.
 - **Several uses in one job** share one installation. Give each use its own
   `result-artifact` name or an empty one, since artifact names must be unique
   in a run.
+
+Native temporal workflows can use the
+[temporal cache action](ci-cache.md#native-temporal-receipts) around
+`sail runtime execute`. A trusted check can publish signed receipts. Any
+workflow with its public key can restore them.

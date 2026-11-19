@@ -282,9 +282,9 @@ Embedded through D.I.V.E.'s library API, for these job kinds:
 - validate an ITF trace against a spec;
 - replay spec-generated traces.
 
-Future temporal caching would bind spec content, configuration and engine
-identity, with separately qualified ledger tiers and bounds. Current internal
-execution does not cache temporal evidence or establish those assurance tiers.
+Exact temporal check replay binds the entire source closure, checking policy,
+worker identity and limits. It preserves the worker's original evidence under
+a content key. Further ledger tiers need separate qualification.
 A Sail-owned worker links the pinned D.I.V.E. Rust library. Sail controls cancellation and deadlines by terminating
 and reaping that worker, including during binding. No TLC backend, fallback
 or Java execution is part of this route. Backend conformance compares against

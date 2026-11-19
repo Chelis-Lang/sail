@@ -34,6 +34,9 @@ pub enum Request {
     Execute {
         /// Unique active transport identity, excluded from solver evidence.
         id: String,
+        /// Caller negotiated exact temporal replay and verifies its receipt key.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        temporal_replay: bool,
         /// Fully versioned runtime request.
         request: RuntimeRequest,
     },

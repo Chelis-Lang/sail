@@ -18,6 +18,9 @@ use std::{
 };
 
 pub mod image;
+#[cfg(test)]
+mod receipt_tests;
+mod receipts;
 
 /// Process outcome of one dispatched native job, separate from every model verdict.
 #[derive(Debug)]
@@ -40,6 +43,12 @@ pub enum Dispatch {
 /// before returning [`Dispatch::Completed`]; anything it cannot validate is
 /// [`Dispatch::Failed`], never a verdict.
 pub trait TemporalBackend: Send + Sync + std::fmt::Debug {
+    /// Opt in to exact check replay under a producer-specific policy and validator.
+    /// Change the policy identity whenever checking or evidence admission changes.
+    fn replay_policy(&self) -> Option<ReplayPolicy> {
+        None
+    }
+
     /// Run one admitted request in `worker`, killing and reaping it when
     /// `deadline` elapses or `cancel` is set.
     fn run(
@@ -49,6 +58,15 @@ pub trait TemporalBackend: Send + Sync + std::fmt::Debug {
         deadline: Duration,
         cancel: &AtomicBool,
     ) -> Dispatch;
+}
+
+/// Exact evidence policy of one trusted backend implementation.
+#[derive(Clone, Copy, Debug)]
+pub struct ReplayPolicy {
+    /// Versioned producer identity, binding fixed settings and evidence semantics.
+    pub identity: &'static str,
+    /// Independently validate this producer's evidence against the current request.
+    pub validate: fn(&Request, &Response) -> std::result::Result<(), String>,
 }
 
 /// Trusted installation choice; callers cannot supply it in a wire request.
@@ -210,6 +228,14 @@ pub(crate) fn capability(
             .as_ref()
             .ok()
             .and_then(|()| worker.map(|w| w.sha256.clone())),
+        replay_context: authenticated.as_ref().ok().and_then(|()| {
+            receipts::context(
+                &worker?.sha256,
+                DIVE_VERSION,
+                &platform(),
+                backend?.replay_policy()?.identity,
+            )
+        }),
         error: authenticated.err(),
     }
 }
@@ -219,6 +245,7 @@ pub(crate) fn execute(
     backend: Option<&dyn TemporalBackend>,
     worker: Option<&Worker>,
     problem: Option<&sail_api::runtime::Error>,
+    cache_directory: Option<&Path>,
     cancellation: &Cancellation,
 ) -> std::result::Result<Result, sail_api::runtime::Error> {
     let started = Instant::now();
@@ -259,6 +286,7 @@ pub(crate) fn execute(
         response: None,
         error: None,
         cache_hit: false,
+        cache_key: None,
     };
     let ready = capability(backend, worker, problem);
     if !ready.installed {
@@ -272,12 +300,25 @@ pub(crate) fn execute(
         ));
     };
     result.worker_sha256 = Some(worker.sha256.clone());
-    match backend.run(
+    let receipt = receipts::Receipt::for_check(
+        cache_directory,
+        job,
+        &result.request_sha256,
+        &result.backend_revision,
         worker,
+        backend.replay_policy(),
+    );
+    let (dispatch, cache_key) = receipts::dispatch(
         &job.request,
-        Duration::from_millis(job.wall_time_ms).saturating_sub(started.elapsed()),
-        &cancellation.0,
-    ) {
+        worker,
+        backend,
+        receipt.as_ref(),
+        cancellation,
+        started + Duration::from_millis(job.wall_time_ms),
+    );
+    result.cache_hit = cache_key.is_some();
+    result.cache_key = cache_key;
+    match dispatch {
         Dispatch::Completed(response) => {
             result.outcome = Outcome::Completed;
             result.response = Some(*response);
@@ -382,7 +423,14 @@ mod tests {
         };
         let cancellation = Cancellation::default();
         // No backend in this build: an authenticated worker is never run.
-        let missing = execute(&job("M.tla"), None, Some(&worker), None, &cancellation)?;
+        let missing = execute(
+            &job("M.tla"),
+            None,
+            Some(&worker),
+            None,
+            None,
+            &cancellation,
+        )?;
         assert_eq!(missing.outcome, Outcome::Unavailable);
         assert!(missing.worker_sha256.is_none());
         let reason = missing.error.ok_or("no reason")?;
@@ -403,6 +451,7 @@ mod tests {
                 Some(&Stub),
                 Some(&worker),
                 None,
+                None,
                 &cancellation,
             )?;
             assert_eq!(result.outcome, outcome);
@@ -417,6 +466,7 @@ mod tests {
             &job("M.tla"),
             Some(&Stub),
             Some(&worker),
+            None,
             None,
             &cancellation,
         )?;

@@ -218,6 +218,8 @@ case "$step" in
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
     cargo nextest run --workspace --locked --profile ci
+    python3 scripts/test-temporal-cache-paths.py --stage \
+      "${CARGO_TARGET_DIR:-target}/debug/sail" "${CARGO_TARGET_DIR:-target}/debug/sail-runtime-worker"
     # check_mcp drives the e2e legacy phase; its own unit tests stay here.
     cargo test --locked -p sail-solve --example check_mcp
     cargo test --workspace --doc --locked

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "input": {
+    "kind": "temporal",
+    "job": {
+      "obligation_id": "sail/install-preparation",
+      "requirement_ids": [],
+      "wall_time_ms": 2000,
+      "request": {
+        "version": 1,
+        "model": {
+          "root": "Warm.tla",
+          "config": "Warm.cfg",
+          "files": {
+            "Warm.tla": "---- MODULE Warm ----\nVARIABLE x\nInit == x = 0\nNext == x' = x\nInv == x = 0\n====\n",
+            "Warm.cfg": "INIT Init\nNEXT Next\nINVARIANT Inv\n"
+          }
+        },
+        "operation": {
+          "kind": "check",
+          "max_states": 2,
+          "max_depth": 2
+        }
+      }
+    }
+  }
+}

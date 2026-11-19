@@ -246,8 +246,11 @@ pub struct Result {
     pub response: Option<Response>,
     /// Explicit execution diagnostic.
     pub error: Option<crate::runtime::Error>,
-    /// This slice never caches temporal evidence.
+    /// Whether this invocation reused exact completed check evidence.
     pub cache_hit: bool,
+    /// Exact receipt key matched by a replay, absent for fresh execution.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_key: Option<String>,
 }
 
 /// Implemented temporal operations and authenticated installation readiness.
@@ -261,8 +264,29 @@ pub struct Capability {
     pub backend_revision: String,
     /// Actual authenticated worker identity, when installed.
     pub worker_sha256: Option<String>,
+    /// Digest of the trusted producer, worker, policy and platform for exact replay.
+    /// Older services omit this capability and always run checks afresh.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replay_context: Option<String>,
     /// Actionable unavailable diagnostic.
     pub error: Option<crate::runtime::Error>,
+}
+
+/// Content address of one exact check in a negotiated replay context.
+#[must_use]
+pub fn check_receipt_key(
+    context: &str,
+    request_sha256: &str,
+    wall_time_ms: u64,
+) -> sail_key::QueryKey {
+    // Fixed-width hashes are also length-framed so arbitrary caller values cannot alias.
+    let mut fields = b"sail-temporal-check-v1".to_vec();
+    for digest in [context, request_sha256] {
+        fields.extend_from_slice(&(digest.len() as u64).to_be_bytes());
+        fields.extend_from_slice(digest.as_bytes());
+    }
+    fields.extend_from_slice(&wall_time_ms.to_be_bytes());
+    sail_key::QueryKey(sail_key::sha256(&fields))
 }
 
 /// Checks a returned worker's request identity and conclusive evidence shape.

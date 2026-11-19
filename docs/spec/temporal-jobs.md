@@ -77,6 +77,29 @@ In particular, ITF's `#unserializable` marker is not a semantic model-value
 encoding. Native model values are unsupported in this transport until a
 lossless representation is specified; they are never converted to strings.
 
+## Exact check replay
+
+The runtime stores completed `check` results under `runtime/temporal-v1` in
+the configured Sail cache. It requires the typed completion and source-bound
+property inventory for Holds, or the original independently validated native
+and ITF counterexample for Refuted. A new call authenticates the installed
+worker before lookup. Its input SHA-256 covers every supplied relative file
+name and byte, root and configuration selection, operation and deterministic
+limits. The key also binds the wall deadline, Sail version, worker byte digest
+(including embedded standard modules), D.I.V.E. identity, platform and the
+producing adapter's versioned checking policy. A changed byte or limit runs
+a fresh check. Keys for previous exact inputs survive subsequent edits.
+
+On a hit, `cache_key` names the matched receipt and `cache_hit` is true.
+The outer job uses the current caller's identities. The native report and
+validated counterexample, including their original execution statistics, stay
+intact. Compatible socket peers negotiate `replay_context` and verify the
+matched key independently. Older peers get fresh execution. Missing, corrupt
+or ineligible evidence falls back to normal checking. Cancellation and the
+current deadline apply during lookup. Simulation, standalone trace validation,
+resource stops, refusals and execution failures always execute afresh.
+The local disk tier requires trusted user-owned storage. See [trust](../trust.md).
+
 ## Conformance and compatibility
 
 Tests compare embedded results with direct calls to the exact pinned native
