@@ -5,12 +5,24 @@ semantic versioning once the API is published.
 
 ## 0.3.0 (unreleased)
 
-Sail 0.3.0 adds experimental native TLA+ model checking on D.I.V.E. 0.1.0,
-proof health, CI reports and a GitHub Action, and removes the neutral-contract
-surfaces that 0.2.0 published. Removing published API makes this a breaking release; default
-`sail verify` output, verdicts and diagnostics are unchanged.
+Sail 0.3.0's headline is native temporal checking with D.I.V.E. 0.1.0:
+TLA+ safety and liveness checking, finite simulation and trace validation,
+with no Java or TLC. It also adds proof health, CI reports and a GitHub
+Action, and removes the neutral-contract surfaces that 0.2.0 published.
+Removing published API makes this a breaking release; default `sail verify`
+output, verdicts and diagnostics are unchanged. Verus mutation testing,
+profiling, the Kani and cvc5 backends and the remaining performance work move
+to 0.4.0 (ADR 0174).
 
-- Add experimental native TLA+ model checking on D.I.V.E. 0.1.0, resolved
+On one native Linux host, against one standard TLC process per check, every
+measured job gave the same result and distinct-state count as the pinned TLC
+golden. The smallest checks were 30 to 39 times faster through `sail runtime
+execute` and 23 to 27 times faster through a warm MCP session; 100 small
+checks in one MCP session took 6.7 s against 84.5 s for TLC, about 13 times
+faster. Large models approach parity (1.1 times for MCLamportMutex). See
+`docs/validation/sail-dive-vs-tlc.md`.
+
+- Add experimental native temporal checking on D.I.V.E. 0.1.0, resolved
   from crates.io (ADR 0172). The `sail` binary links the D.I.V.E. backend, and the new
   published crate `sail-dive` carries it. `sail-solve` builds the isolated
   temporal worker as its third binary, `sail-runtime-worker`, so `cargo
