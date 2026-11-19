@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Stop a worker and its process group through a direct kernel signal when its owning service dies, instead of running an external `kill` from the captured `PATH` (#760).
+
 - Recognize the exact newer development compilers’ AIR identity format while
   preserving mixed/unknown-source and incomplete-evidence checks. This does not
   select or publish those runtimes.
