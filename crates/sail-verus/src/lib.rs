@@ -16,6 +16,7 @@ mod engine_events;
 #[cfg(test)]
 mod isolated_test;
 pub mod managed;
+#[doc(hidden)]
 pub mod mutate;
 mod parallel;
 pub mod patch;

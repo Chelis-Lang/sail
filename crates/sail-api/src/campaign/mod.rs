@@ -1,9 +1,14 @@
 //! Verus mutation-campaign observations (ADR 0111), never proof verdicts.
 //!
+//! Unstable groundwork for the planned `sail mutate` (v0.4.0, ADR 0174),
+//! hidden from the documentation. No command, MCP tool or service request uses
+//! it, and it may change without notice.
+//!
 //! Every view uses this versioned model. The classifier accepts complete,
 //! producer-attributed evidence and refuses missing identities, unstable
 //! repetitions and resource-only failures. It never changes ordinary reports,
 //! solver answers, ledger verdicts or evidence tiers.
+#![doc(hidden)]
 
 mod classify;
 mod service;

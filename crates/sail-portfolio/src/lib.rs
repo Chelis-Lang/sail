@@ -24,7 +24,9 @@ pub mod config;
 pub mod error;
 pub mod fragility;
 pub mod parallel;
+#[doc(hidden)]
 pub mod profile;
+#[doc(hidden)]
 pub mod quantifiers;
 pub mod sessions;
 pub mod stats;
