@@ -1,12 +1,32 @@
 # Release-candidate validation
 
-**Current status:** [Sail 0.2.0 is published](https://github.com/Chelis-Lang/sail/releases/tag/v0.2.0)
-(tag `v0.2.0`, `3d7782bf`, 2026-11-04), with both attested native archives and
-eighteen matching crates.io packages. The owner approved the exact candidate
-before its tag, draft and rollout. Its native gates, measured performance
-scopes, archive identities, attestation and installed consumers are recorded in
-the [0.2.0 qualification record](stable-candidate.md). The earlier 0.1.0
-release and rc.7 gates below retain their original sources and scope.
+**Current status:** [Sail 0.3.0 is published](https://github.com/Chelis-Lang/sail/releases/tag/v0.3.0)
+(tag `v0.3.0`, `e85e3d2b`, 2026-11-19), with both attested native archives and
+sixteen matching crates.io packages. The owner approved release without a
+separate candidate stop. Earlier releases below retain their original sources
+and scope.
+
+## 0.3.0 release
+
+`scripts/release.sh 0.3.0` built both platforms from `e85e3d2b`: Linux on a
+native release host inside the CI image, macOS with a separate Rustup home
+holding the pinned Sail toolchain and the verifier's minimal `1.99.1` plus
+`rust-src`. A first attempt stopped before upload because the default Mac
+toolchain had extra components; the factory refused it as designed.
+
+| Archive | SHA-256 |
+|---|---|
+| `sail-0.3.0-x86_64-unknown-linux-gnu.tar.gz` | `257fc181b118950292e0c7fcc23e61d0531dce9c95191ab50f695e595e7d251a` |
+| `sail-0.3.0-aarch64-apple-darwin.tar.gz` | `cac2ba73defbb6ca46c68efbc09e84725a467ecf1993d8e8cbf7edb47aaaf51f` |
+
+- `scripts/release-smoke.sh` passes on both archives: Linux on a fresh
+  release-lane host with only rustup, `1.99.1` and `rust-src`; macOS in a fresh
+  directory with only that toolchain on `PATH` and no `cargo-verus`.
+- [Attestation run 44551940890](https://github.com/Chelis-Lang/sail/actions/runs/44551940890)
+  passes; `gh attestation verify` succeeds for both archives.
+- [Crate publication run 44552821347](https://github.com/Chelis-Lang/sail/actions/runs/44552821347)
+  passes from the tag; all sixteen packages are on crates.io at 0.3.0, with
+  `sail-dive` new.
 
 ## 0.2.0 release
 

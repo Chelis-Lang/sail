@@ -4,9 +4,8 @@ Current ordering follows the owner's 2026-11-19 decision, recorded in
 [ADR 0174](decisions/0174-v030-native-temporal-scope.md), which amends
 [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) and
 [ADR 0100](decisions/0100-mutation-first-roadmap.md). The latest stable release
-is **0.2.0**. The next release is **v0.3.0**. It ships soon after D.I.V.E.
-0.1.0 is on crates.io, and final publication requires the owner's approval of
-its exact candidate.
+is **0.3.0**, native temporal checking on D.I.V.E. 0.1.0. The next release is
+**v0.3.1**, then **v0.4.0**.
 
 The active execution tracker is
 [#712](https://github.com/Chelis-Lang/sail/issues/712), superseding the
