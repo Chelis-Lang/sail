@@ -56,9 +56,10 @@ store, seed and fingerprint zero, one worker, the job's limits):
   and, without it, the changed lock ("explicit source review required"). The
   lock is final only after D.I.V.E. publishes; review it then and rerun the
   refinement tier.
-- CI cannot fetch the private D.I.V.E. repository that the temporary patch
-  names ("failed to authenticate when downloading repository"), so every CI
-  job that resolves the workspace fails until D.I.V.E. 0.1.0 is on crates.io.
+- Before D.I.V.E. was public, CI could not fetch the repository that the
+  temporary patch named ("failed to authenticate when downloading
+  repository"). Once it was public, every CI job passed except the refinement
+  check above, and 0.3.0 resolves D.I.V.E. 0.1.0 from crates.io.
 
 These are macOS host results on the pre-publication source. They are
 not the native Linux qualification ADR 0038 requires.
