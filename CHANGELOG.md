@@ -3,7 +3,7 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning once the API is published.
 
-## 0.3.0 (unreleased)
+## 0.3.0 (2026-11-19)
 
 Sail 0.3.0's headline is native temporal checking with D.I.V.E. 0.1.0:
 TLA+ safety and liveness checking, finite simulation and trace validation,
