@@ -50,7 +50,7 @@ them.
 ## Working on Sail
 
 Current ordering: [roadmap](ROADMAP.md),
-[next-release mutation feature](design/verus-mutation-release.md),
+[planned 0.4.0 mutation feature](design/verus-mutation-release.md),
 [ADR 0100](decisions/0100-mutation-first-roadmap.md),
 [ADR 0109](decisions/0109-oyster-retired-v030-scope.md),
 [ADR 0174](decisions/0174-v030-native-temporal-scope.md) and
