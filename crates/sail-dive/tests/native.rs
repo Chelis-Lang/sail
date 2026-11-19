@@ -140,6 +140,27 @@ fn simulation_is_sampled_and_every_trace_is_independently_validated() {
 }
 
 #[test]
+fn simulation_deadlock_under_a_constraint_is_a_validated_refutation() {
+    // The constraint prunes every successor of x = 2, which D.I.V.E.'s
+    // simulation reports as a deadlock (#766). Sail must validate that word
+    // as a sampled deadlock, not as an exhaustive-checking deadlock.
+    let source = COUNTER.replace("Inv == x < 2", "Small == x <= 2");
+    let mut req = request(&source, "INIT Init\nNEXT Next\nCONSTRAINT Small\n");
+    req.operation = Operation::Simulate {
+        traces: 2,
+        depth: 10,
+    };
+    let source = source.replace("x' = IF x < 2 THEN x+1 ELSE 0", "x' = x + 1");
+    req.model.files.insert("M.tla".into(), source);
+    let result = sail_dive::execute(&req);
+    assert_eq!(result.outcome, Outcome::Refuted, "{result:?}");
+    assert_eq!(result.native_report["result"], "violation", "{result:?}");
+    assert!(result.message.is_none(), "{result:?}");
+    assert_eq!(result.validations.len(), result.native_traces.len());
+    assert!(result.validations.iter().all(|v| v["result"] == "valid"));
+}
+
+#[test]
 fn closure_and_host_admission_happen_before_evaluation() {
     let host = "---- MODULE M ----\nEXTENDS TLC\nVARIABLE x\nASSUME PrintT(\"host effect must not run\")\nInit == x = 0\nNext == x' = x\n====\n";
     let result = sail_dive::execute(&request(host, "INIT Init\nNEXT Next\n"));

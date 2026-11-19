@@ -80,6 +80,10 @@ remain those reported by the linked backend. There is no hard RAM guarantee.
 traces and 1,000,000 transitions per trace. It returns sampled evidence with
 `model_proved: false`, never an exhaustive proof. The parent deadline still
 bounds execution. Every returned trace passes independent semantic replay.
+Sampled behaviors and simulation deadlocks are replayed under D.I.V.E.'s
+sampling rules: a simulation deadlock means every successor of the last
+state lies outside the model's constraints, and its validated trace makes the
+job `Refuted`.
 
 `Operation::Validate` accepts `ItfTrace`: complete ITF variable states plus
 separate ending, temporal property names, native action labels and optional

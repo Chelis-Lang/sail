@@ -25,6 +25,11 @@ surfaces that 0.2.0 published. Removing published API makes this a breaking rele
   counterexample that D.I.V.E.'s independent trace validator accepts, and
   returns `Stopped` with no claim when a state or depth limit ends graph
   capture. Safety-only properties still use ordinary safety checking.
+- A finite simulation that ends in a simulation deadlock, where the model's
+  constraints prune every successor, returns `Refuted`: Sail validates sampled
+  behaviors and simulation deadlocks under D.I.V.E.'s sampling rules, as
+  D.I.V.E.'s own simulation does. Before, Sail replayed them as
+  exhaustive-checking words and reported `SAIL4205` (#766).
 - Native temporal jobs reuse the verified private copy of the worker while
   the installed worker's settled complete stat stamp is unchanged, instead of
   hashing and copying the 76 MB worker on every job (#765, ADR 0173). Any

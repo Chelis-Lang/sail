@@ -1,7 +1,7 @@
 //! Native execution, with explicit deciding evidence and independent replay.
 use crate::input::{Failure, Frozen};
 use crate::{Operation, Outcome, Request, Response, VERSION, itf_to_native, native_to_itf};
-use dive_api::trace::{SpecModel, TraceDoc, TraceOptions, Validation};
+use dive_api::trace::{Ending, SpecModel, TraceDoc, TraceOptions, Validation};
 use dive_api::{BudgetSetting, CheckRequest, Store, TemporalMode};
 use serde_json::Value;
 
@@ -52,12 +52,40 @@ fn model(input: &Frozen) -> Result<SpecModel, Failure> {
     .map_err(|e| api_error(&e))
 }
 
-fn add_trace(response: &mut Response, source: &SpecModel, native: &Value) -> Result<(), Failure> {
+/// How a witness is replayed: as an exhaustive-checking word, or as a finite
+/// simulation sample, where a deadlock means no successor satisfies the
+/// model's constraints (#766).
+#[derive(Clone, Copy)]
+enum Witness {
+    Check,
+    Sample,
+}
+
+fn add_trace(
+    response: &mut Response,
+    source: &SpecModel,
+    native: &Value,
+    witness: Witness,
+) -> Result<(), Failure> {
     response.native_traces.push(native.clone());
     let itf = native_to_itf(native).map_err(unsupported)?;
     let replay = itf_to_native(&itf).map_err(unsupported)?;
     let document = TraceDoc::from_json(&replay).map_err(unsupported)?;
-    let validation = source.validate(&document);
+    // A sampled behavior or simulation deadlock is replayed under sampling
+    // rules, as D.I.V.E.'s own simulation validates it; any other ending, and
+    // every exhaustive-checking witness, uses ordinary validation.
+    let sampled = matches!(witness, Witness::Sample)
+        && matches!(document.ending, Some(Ending::Behavior | Ending::Deadlock));
+    let validation = if sampled {
+        source.try_validate_sample(&document).map_err(|error| {
+            (
+                Outcome::Error,
+                format!("SAIL4205: independent sample validation did not complete: {error}"),
+            )
+        })?
+    } else {
+        source.validate(&document)
+    };
     response
         .validations
         .push(dive_api::trace::report_json(&validation));
@@ -180,7 +208,7 @@ fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response, Failure> {
             .cloned()
             .ok_or_else(|| unsupported("SAIL4205: violation has no native trace document"))?;
         let source = model(input)?;
-        if let Err((outcome, message)) = add_trace(&mut response, &source, &trace) {
+        if let Err((outcome, message)) = add_trace(&mut response, &source, &trace, Witness::Check) {
             response.outcome = outcome;
             response.message = Some(message);
         }
@@ -227,7 +255,9 @@ fn simulate(input: &Frozen, traces: u64, depth: usize) -> Result<Response, Failu
             .as_array()
             .ok_or_else(|| unsupported("SAIL4208: simulation traces absent"))?
         {
-            if let Err((outcome, message)) = add_trace(&mut response, &source, &trace["document"]) {
+            if let Err((outcome, message)) =
+                add_trace(&mut response, &source, &trace["document"], Witness::Sample)
+            {
                 response.outcome = outcome;
                 response.message = Some(message);
                 break;
