@@ -85,3 +85,25 @@ python3 scripts/perf-temporal-reuse.py "$FIX" --suite prepare --sail "$AFTER/bin
 ```
 
 The external evidence archive `2026-11-19-native-s7-e85e3d2b-c08a2489.tar.gz` (SHA-256 `35e05f4922af08e3f641428f15410d19141b9e3081d7f13e4151bb8123d0613b`) retains raw samples, process counts, host details, fixture hashes and exact binary identities.
+
+## Reuse the measurements
+
+The [native S7 data](data/2026-11-19-native-s7.json) contains every foreground time from the release-source comparison, the input hashes and expected results, all cache-hit positions, all five preparation rounds and the process and signed-restore controls. Under `scenarios` and `loop`, `order[i]` names the step and input digest. Look up that digest in `inputs` for the model, verdict and distinct count. For each engine, `elapsed_ms[engine][r][i]` is the time in milliseconds for the same step in zero-based trial `r`. Compute each trial's total before taking a median or a paired ratio.
+
+For example, from the repository root:
+
+```sh
+python3 - <<'PYDATA'
+import json
+from statistics import median
+from pathlib import Path
+loop = json.loads(Path("docs/validation/data/2026-11-19-native-s7.json").read_text())["loop"]
+totals = {engine: list(map(sum, trials)) for engine, trials in loop["elapsed_ms"].items()}
+print({engine: round(median(ms) / 1000, 3) for engine, ms in totals.items()})
+print(round(median(a / b for a, b in zip(totals["before"], totals["after"])), 2))
+PYDATA
+```
+
+The [pre-release S7 data](data/2026-11-19-pre-release-s7.json) preserves the earlier candidate comparison and two exploratory extension builds. Those builds used a different D.I.V.E. source. Use the native data for comparisons to v0.3.0. Each record identifies its binaries and host.
+
+To collect another three-trial comparison, store the driver's JSONL files together with `host.json` and `identities.json` recording the host, revisions, binary hashes and oracle pins, then run `python3 scripts/collect-temporal-reuse.py DIRECTORY`. The collector rejects incomplete or unpaired workload trials, unequal outcomes or counts, and replay evidence that differs from its original response.
