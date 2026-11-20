@@ -1,4 +1,6 @@
 //! Versioned raw-query runtime, separate from Cargo verification commands.
+mod edit_session;
+
 use sail_api::runtime::{Answer, Outcome, Output, Request};
 use sail_runtime::{Cancellation, Config, Runtime};
 use std::io::{Read, Write};
@@ -29,6 +31,9 @@ fn command(
     extensions: &crate::Extensions,
 ) -> Result<u8, String> {
     let options = options(args)?;
+    if options.action == "edit-session" {
+        return edit_session::run(options.file.as_deref().ok_or_else(usage)?, extensions, out);
+    }
     let request = options.file.as_deref().map(read_request).transpose()?;
     let cancellation = Cancellation::default();
     if request.is_some() || options.action == "prepare-temporal" {
@@ -287,7 +292,7 @@ fn result(out: &mut dyn Write, response: &sail_api::runtime::Response) -> Result
 }
 
 fn usage() -> String {
-    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR]".into()
+    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR] | sail runtime edit-session --file FILE|-".into()
 }
 
 struct Options<'a> {
@@ -299,7 +304,10 @@ struct Options<'a> {
 
 fn options(args: &[String]) -> Result<Options<'_>, String> {
     let action = args.first().map(String::as_str).ok_or_else(usage)?;
-    if !matches!(action, "capabilities" | "execute" | "prepare-temporal") {
+    if !matches!(
+        action,
+        "capabilities" | "execute" | "prepare-temporal" | "edit-session"
+    ) {
         return Err(usage());
     }
     let mut result = Options {
@@ -315,14 +323,19 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
             "--file" if action != "capabilities" && result.file.is_none() => {
                 result.file = Some(value.into());
             }
-            "--cache" if result.cache.is_none() => result.cache = Some(value.into()),
-            "--socket" if action != "prepare-temporal" && result.socket.is_none() => {
+            "--cache" if action != "edit-session" && result.cache.is_none() => {
+                result.cache = Some(value.into());
+            }
+            "--socket"
+                if !matches!(action, "edit-session" | "prepare-temporal")
+                    && result.socket.is_none() =>
+            {
                 result.socket = Some(value.into());
             }
             _ => return Err(usage()),
         }
     }
-    if (action == "execute" && result.file.is_none())
+    if (matches!(action, "execute" | "edit-session") && result.file.is_none())
         || (result.socket.is_some() && result.cache.is_some())
     {
         return Err(usage());
@@ -331,7 +344,11 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
 }
 
 fn read_request(path: &Path) -> Result<Request, String> {
-    let input: Box<dyn Read> = if path == Path::new("-") {
+    decode_request(open_input(path)?)
+}
+
+fn open_input(path: &Path) -> Result<Box<dyn Read>, String> {
+    Ok(if path == Path::new("-") {
         Box::new(std::io::stdin())
     } else {
         Box::new(std::fs::File::open(path).map_err(|e| {
@@ -340,8 +357,7 @@ fn read_request(path: &Path) -> Result<Request, String> {
                 path.display()
             )
         })?)
-    };
-    decode_request(input)
+    })
 }
 
 fn decode_request(input: impl Read) -> Result<Request, String> {
@@ -403,6 +419,9 @@ mod tests {
         for args in [
             vec![],
             vec!["execute"],
+            vec!["edit-session"],
+            vec!["edit-session", "--file", "x", "--cache", "dir"],
+            vec!["edit-session", "--file", "x", "--socket", "sock"],
             vec!["prepare-temporal", "--socket", "sock"],
             vec!["capabilities", "--file", "x"],
             vec!["execute", "--file", "x", "--file", "y"],

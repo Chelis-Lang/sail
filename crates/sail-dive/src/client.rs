@@ -1,4 +1,5 @@
 //! Parent-owned isolated execution. Dropping a future is not cancellation.
+use crate::edits::{Batch, BatchResult};
 use crate::{DIVE_VERSION, MAX_DOCUMENT_BYTES, Request, Response, VERSION};
 use sail_runtime::temporal::image::{self, Image};
 use std::io::{Read, Write as _};
@@ -39,17 +40,17 @@ impl Scratch {
 
 /// Process execution result, separate from every model verdict.
 #[derive(Debug)]
-pub enum RunResult {
+pub enum RunResult<T = Response> {
     /// Complete version-checked evidence from a successful worker.
-    Completed(Box<Response>),
-    /// Parent killed and reaped the worker at its deadline.
+    Completed(Box<T>),
+    /// The deadline expired. Any running child was killed and reaped.
     TimedOut {
-        /// Whether an actual child was killed and reaped.
+        /// Whether this request started a child before termination.
         worker_started: bool,
     },
-    /// Parent killed and reaped the worker after explicit cancellation.
+    /// Cancellation was requested. Any running child was killed and reaped.
     Cancelled {
-        /// Whether an actual child was killed and reaped.
+        /// Whether this request started a child before termination.
         worker_started: bool,
     },
     /// Startup, protocol or process failure, with no logical verdict.
@@ -111,9 +112,79 @@ pub fn run(
     }
 }
 
-fn spawn(image: &Image, scratch: &Scratch) -> std::io::Result<Child> {
+/// Dispatch an ordered group through one authenticated native worker.
+///
+/// The caller records `started` before reading the batch. The deadline and
+/// cancellation remain in force through input transport and result validation.
+#[must_use]
+pub fn run_edit_session(
+    worker: &Path,
+    worker_sha256: &str,
+    batch: &Batch,
+    started: Instant,
+    cancel: &AtomicBool,
+) -> RunResult<BatchResult> {
+    if let Err(error) = batch.admit() {
+        return RunResult::Failed(error);
+    }
+    run_in(
+        worker,
+        worker_sha256,
+        batch,
+        Duration::from_millis(batch.wall_time_ms),
+        cancel,
+        started,
+    )
+    .unwrap_or_else(|e| RunResult::Failed(format!("SAIL4212: {e}")))
+}
+
+trait WorkerRequest: serde::Serialize {
+    type Reply;
+    const ARG: Option<&'static str>;
+    fn checked_reply(&self, bytes: &[u8]) -> Result<Self::Reply, String>;
+}
+
+impl WorkerRequest for Request {
+    type Reply = Response;
+    const ARG: Option<&'static str> = None;
+
+    fn checked_reply(&self, bytes: &[u8]) -> Result<Self::Reply, String> {
+        let response = crate::decode_response(bytes).map_err(|e| e.to_string())?;
+        if response.version != VERSION || response.backend_revision != DIVE_VERSION {
+            return Err("worker response version or backend identity differs".into());
+        }
+        if response.request_sha256 != crate::request_sha256(self).map_err(|e| e.to_string())? {
+            return Err("worker response belongs to another request".into());
+        }
+        crate::validate_response(self, &response)?;
+        Ok(response)
+    }
+}
+
+impl WorkerRequest for Batch {
+    type Reply = BatchResult;
+    const ARG: Option<&'static str> = Some("--edit-session");
+
+    fn checked_reply(&self, bytes: &[u8]) -> Result<Self::Reply, String> {
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Reply {
+            backend_source: String,
+            result: BatchResult,
+        }
+        let reply: Reply = sail_api::temporal::decode(bytes).map_err(|e| e.to_string())?;
+        if reply.backend_source != crate::edits::BACKEND_SOURCE {
+            return Err("edit worker backend source differs".into());
+        }
+        reply.result.validate(self)?;
+        Ok(reply.result)
+    }
+}
+
+fn spawn(image: &Image, scratch: &Scratch, argument: Option<&str>) -> std::io::Result<Child> {
     let mut command = Command::new(image.executable());
     command
+        .args(argument)
         .env_clear()
         .env("TMPDIR", &scratch.0)
         .current_dir(&scratch.0)
@@ -132,49 +203,50 @@ fn spawn(image: &Image, scratch: &Scratch) -> std::io::Result<Child> {
     clippy::too_many_lines,
     reason = "One scope owns child lifetime, all transport workers and their complete drain."
 )]
-fn run_in(
+fn run_in<R: WorkerRequest>(
     worker: &Path,
     worker_sha256: &str,
-    request: &Request,
+    request: &R,
     deadline: Duration,
     cancel: &AtomicBool,
     started: Instant,
-) -> Result<RunResult, String> {
-    if cancel.load(Ordering::Acquire) {
-        return Ok(RunResult::Cancelled {
-            worker_started: false,
-        });
-    }
-    if started.elapsed() >= deadline {
-        return Ok(RunResult::TimedOut {
-            worker_started: false,
-        });
+) -> Result<RunResult<R::Reply>, String> {
+    let interruption = |worker_started| {
+        if cancel.load(Ordering::Acquire) {
+            Some(RunResult::Cancelled { worker_started })
+        } else if started.elapsed() >= deadline {
+            Some(RunResult::TimedOut { worker_started })
+        } else {
+            None
+        }
+    };
+    if let Some(reason) = interruption(false) {
+        return Ok(reason);
     }
     let bytes = serde_json::to_vec(request).map_err(|e| e.to_string())?;
     if bytes.len() > MAX_DOCUMENT_BYTES {
         return Err("worker request exceeds byte bound".into());
     }
-    let image = image::image(worker, worker_sha256)?;
-    if cancel.load(Ordering::Acquire) {
-        return Ok(RunResult::Cancelled {
-            worker_started: false,
-        });
+    if let Some(reason) = interruption(false) {
+        return Ok(reason);
     }
-    if started.elapsed() >= deadline {
-        return Ok(RunResult::TimedOut {
-            worker_started: false,
-        });
+    let image = image::image(worker, worker_sha256)?;
+    if let Some(reason) = interruption(false) {
+        return Ok(reason);
     }
     let scratch = Scratch::new()?;
     // Held, like `image`, until the worker is reaped.
     let mut _retried = None;
-    let child = match spawn(&image, &scratch) {
+    let child = match spawn(&image, &scratch, R::ARG) {
         Ok(child) => child,
         // A reused copy retired by a concurrent reinstall between lookup and
         // spawn: verify the installed bytes again for this job alone.
         Err(_) if image.reused() => {
             let fresh = image::fresh(worker, worker_sha256)?;
-            let child = spawn(&fresh, &scratch).map_err(|e| e.to_string())?;
+            if let Some(reason) = interruption(false) {
+                return Ok(reason);
+            }
+            let child = spawn(&fresh, &scratch, R::ARG).map_err(|e| e.to_string())?;
             _retried = Some(fresh);
             child
         }
@@ -210,17 +282,8 @@ fn run_in(
         let mut termination = None;
         let mut status = None;
         loop {
-            if cancel.load(Ordering::Acquire) {
-                termination = Some(RunResult::Cancelled {
-                    worker_started: true,
-                });
-                child.stop();
-                break;
-            }
-            if started.elapsed() >= deadline {
-                termination = Some(RunResult::TimedOut {
-                    worker_started: true,
-                });
+            if let Some(reason) = interruption(true) {
+                termination = Some(reason);
                 child.stop();
                 break;
             }
@@ -275,14 +338,10 @@ fn run_in(
         }
         written?.map_err(|e| e.to_string())?;
         let bytes = output?.map_err(|e| e.to_string())?;
-        let response = crate::decode_response(&bytes).map_err(|e| e.to_string())?;
-        if response.version != VERSION || response.backend_revision != DIVE_VERSION {
-            return Err("worker response version or backend identity differs".into());
+        let response = request.checked_reply(&bytes)?;
+        if let Some(reason) = interruption(true) {
+            return Ok(reason);
         }
-        if response.request_sha256 != crate::request_sha256(request).map_err(|e| e.to_string())? {
-            return Err("worker response belongs to another request".into());
-        }
-        crate::validate_response(request, &response)?;
         Ok(RunResult::Completed(Box::new(response)))
     })
 }
