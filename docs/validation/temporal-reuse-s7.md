@@ -177,6 +177,42 @@ no reference atom evaluation and no fallback. The previous search generated
 depth 10 and an empty queue. The ordinary edited check agrees on all five
 counters.
 
+On the native Linux S7 host, a separate process checked the property removal
+in **15.565 ms** versus **86.734 ms** fresh, a median paired speedup of
+**5.57×** across five trials. Establishing the original receipt cost
+145.238 ms. A two-input session including that initial check took
+156.053 ms versus 231.862 ms for two ordinary processes (**1.49×**).
+The original S7 comparison timed this same property edit at 103.3 ms on
+Sail 0.3.0 and 1,098 ms on TLC. Those are the earlier controls in the
+[three-engine comparison](#results).
+
+| Final native Linux workload | Fresh foreground, ms | Reused foreground, ms | Median paired speedup |
+|---|---:|---:|---:|
+| Internal memory, property removed in a new process | 86.734 | 15.565 | 5.57× |
+| Mutex, invariant removed in a new process | 9,576.457 | 20.347 | 470.66× |
+| Safety star, three-check session | 349.179 | 161.785 | 2.16× |
+| Safety star, two-check refuted-prefix session | 234.438 | 159.522 | 1.46× |
+| Temporal star, three-check session | 92.310 | 46.332 | 2.05× |
+| DieHard, three-check fail-then-fix session | 31.336 | 21.413 | 1.45× |
+| Mutex, two-check session | 19,682.230 | 10,190.446 | 1.93× |
+| Internal memory, two-check session | 231.862 | 156.053 | 1.49× |
+
+Each time column is the median of the five foreground observations. The
+speedup column is the median of the five within-trial ratios. The session
+rows include their first check. The separate-process rows start with an
+authenticated prior ordinary receipt. On a native EC2 Apple M1, the installed
+debug CLI exercised both InternalMemory routes with the same closed request
+digests and counts. [All native samples, binary identities, host settings and Mac functional control](data/2026-11-20-first-temporal-claim-native.json).
+
+The final installed build repeated all 333 entries in the original native
+suite. The input digests, verdicts, distinct counts and hit positions all
+matched. An unchanged mutex took 9.028 ms and undo took 9.104 ms. The
+100-check loop had 76 exact hits per trial and took 1.344 s at the median.
+The earlier control medians were 4.862 s on Sail 0.3.0 and 67.324 s on
+pinned TLC (3.62× and 50.10×, ratios of medians). This loop uses ordinary
+exact-receipt execution. Its substantive edits run fresh unless the caller
+selects one of the explicit recheck APIs. [All 333 final observations](data/2026-11-20-first-temporal-claim-s7.json).
+
 Two local three-trial runs exercised the full installed CLI during development.
 In the final run the edited check cost 13.101, 12.678 and 15.058 ms in
 separate processes, versus 70.057, 65.986 and 74.657 ms on fresh checking

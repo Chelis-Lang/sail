@@ -2035,6 +2035,11 @@
   "validated_source": "928230bf1fa0d3ac9a34cc685e5d4bc7403137a0",
   "sail_sha256": "b158aa299fab323202bc98b705db04b5c657c3d110e503abe693f09b23f26a57",
   "worker_sha256": "360c05057ce46728be5c60b2ee90d5a8959073065bac66c575db8e4394605e03",
-  "method": "Both Linux release executables from the final direct-dependency pin matched the timed binaries byte for byte. The merged tree equals the validated tree."
+  "method": "Both Linux release executables from the final direct-dependency pin matched the timed binaries byte for byte. The merged tree equals the validated tree.",
+  "separate_main_build": {
+   "worker_sha256": "c63ff99b30650c7afb35632f4b892e0f4eb668c927143c3f79e699af3101215b",
+   "sail_sha256": "b158aa299fab323202bc98b705db04b5c657c3d110e503abe693f09b23f26a57",
+   "scope": "A separate native checkout at the merge produced the same CLI and a different worker digest. The installed main check used its own staged and authenticated worker. Timed runs use the producer identity above."
+  }
  }
 }

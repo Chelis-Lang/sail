@@ -1500,6 +1500,305 @@
   "validated_source": "928230bf1fa0d3ac9a34cc685e5d4bc7403137a0",
   "sail_sha256": "b158aa299fab323202bc98b705db04b5c657c3d110e503abe693f09b23f26a57",
   "worker_sha256": "360c05057ce46728be5c60b2ee90d5a8959073065bac66c575db8e4394605e03",
-  "method": "Both Linux release executables from the final direct-dependency pin matched the timed binaries byte for byte. The merged tree equals the validated tree."
+  "method": "Both Linux release executables from the final direct-dependency pin matched the timed binaries byte for byte. The merged tree equals the validated tree.",
+  "separate_main_build": {
+   "worker_sha256": "c63ff99b30650c7afb35632f4b892e0f4eb668c927143c3f79e699af3101215b",
+   "sail_sha256": "b158aa299fab323202bc98b705db04b5c657c3d110e503abe693f09b23f26a57",
+   "scope": "A separate native checkout at the merge produced the same CLI and a different worker digest. The installed main check used its own staged and authenticated worker. Timed runs use the producer identity above."
+  }
+ },
+ "main_acceptance": {
+  "scope": "One native Linux correctness trial through the separately built merged CLI, width 40 plus original S7 fixtures. The point estimates here are separate from the five-trial timing comparisons.",
+  "results": {
+   "schema": "sail-temporal-edit-session-v1",
+   "sail_sha256": "b158aa299fab323202bc98b705db04b5c657c3d110e503abe693f09b23f26a57",
+   "width": 40,
+   "samples": 1,
+   "cases": {
+    "completed-safety": [
+     {
+      "session_process_us": 15253,
+      "backend_source": "3def2fe115f1c168cdeba0507ad734524e9fd4dd",
+      "worker_sha256": "c63ff99b30650c7afb35632f4b892e0f4eb668c927143c3f79e699af3101215b",
+      "rows": [
+       {
+        "route": "safety-rows-capture",
+        "outcome": "holds",
+        "request_sha256": "a31f4c223007e6df6e82e1d31062ff029918405aae932401182c8029b14d393a",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 82,
+         "distinct": 42,
+         "depth": 3,
+         "left_on_queue": 0
+        },
+        "worker_us": 2745,
+        "fresh_process_us": 9012
+       },
+       {
+        "route": "safety-rows-recheck",
+        "outcome": "holds",
+        "request_sha256": "7b0059e1487d56774d84e14ce1750e61c6c086b5f67524525a10c9a20156036d",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 82,
+         "distinct": 42,
+         "depth": 3,
+         "left_on_queue": 0
+        },
+        "worker_us": 1855,
+        "fresh_process_us": 6843
+       },
+       {
+        "route": "safety-rows-recheck",
+        "outcome": "refuted",
+        "request_sha256": "a273e6b8e87b5a281c7e3fd531ecfecca25583a5db1730f7c8326586b6a626f1",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 81,
+         "distinct": 42,
+         "depth": 3,
+         "left_on_queue": 0
+        },
+        "worker_us": 4460,
+        "fresh_process_us": 8736
+       }
+      ]
+     }
+    ],
+    "refuted-prefix": [
+     {
+      "session_process_us": 14585,
+      "backend_source": "3def2fe115f1c168cdeba0507ad734524e9fd4dd",
+      "worker_sha256": "c63ff99b30650c7afb35632f4b892e0f4eb668c927143c3f79e699af3101215b",
+      "rows": [
+       {
+        "route": "safety-rows-capture",
+        "outcome": "refuted",
+        "request_sha256": "a273e6b8e87b5a281c7e3fd531ecfecca25583a5db1730f7c8326586b6a626f1",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 81,
+         "distinct": 42,
+         "depth": 3,
+         "left_on_queue": 0
+        },
+        "worker_us": 5408,
+        "fresh_process_us": 8997
+       },
+       {
+        "route": "safety-rows-recheck",
+        "outcome": "refuted",
+        "request_sha256": "16bc1f7e102b0ecce5181d1eb2a969cba9ec496b954b0edff96ffbc1ccb19a7e",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 81,
+         "distinct": 42,
+         "depth": 3,
+         "left_on_queue": 0
+        },
+        "worker_us": 3875,
+        "fresh_process_us": 10882
+       }
+      ]
+     }
+    ],
+    "completed-temporal": [
+     {
+      "session_process_us": 12701,
+      "backend_source": "3def2fe115f1c168cdeba0507ad734524e9fd4dd",
+      "worker_sha256": "c63ff99b30650c7afb35632f4b892e0f4eb668c927143c3f79e699af3101215b",
+      "rows": [
+       {
+        "route": "temporal-graph-capture",
+        "outcome": "holds",
+        "request_sha256": "6e7868928db3ebaab89bb9aeffa0ef8ff284267bc9f0cdbf3c7786532fff1692",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 81,
+         "distinct": 41,
+         "depth": 2,
+         "left_on_queue": 0
+        },
+        "worker_us": 2437,
+        "fresh_process_us": 8928
+       },
+       {
+        "route": "temporal-graph-recheck",
+        "outcome": "holds",
+        "request_sha256": "e6af249169454ae2f1db20dd41e9626a315cf4e1114f3ecb6225e901733fa0d7",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 81,
+         "distinct": 41,
+         "depth": 2,
+         "left_on_queue": 0
+        },
+        "worker_us": 1679,
+        "fresh_process_us": 8823
+       },
+       {
+        "route": "temporal-graph-recheck",
+        "outcome": "refuted",
+        "request_sha256": "a0bd87c4f6a0e6acaa72945757944fa5ddc676859a44703b3c518259d96a85f0",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 81,
+         "distinct": 41,
+         "depth": 2,
+         "left_on_queue": 0
+        },
+        "worker_us": 4355,
+        "fresh_process_us": 13225
+       }
+      ]
+     }
+    ],
+    "s7-diehard": [
+     {
+      "session_process_us": 21445,
+      "backend_source": "3def2fe115f1c168cdeba0507ad734524e9fd4dd",
+      "worker_sha256": "c63ff99b30650c7afb35632f4b892e0f4eb668c927143c3f79e699af3101215b",
+      "rows": [
+       {
+        "route": "safety-rows-capture",
+        "outcome": "refuted",
+        "request_sha256": "199ca22a27efcc78946bfec0c6d7b73fb227f661f70212a8486a7a0ae9eb0561",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 73,
+         "distinct": 14,
+         "depth": 7,
+         "left_on_queue": 1
+        },
+        "worker_us": 8098,
+        "fresh_process_us": 11083
+       },
+       {
+        "route": "safety-rows-recheck",
+        "outcome": "refuted",
+        "request_sha256": "c347ee89d9b66edcd91101ad0890e96df5f414433b82a0065aa0e9bec5d2150f",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 73,
+         "distinct": 14,
+         "depth": 7,
+         "left_on_queue": 1
+        },
+        "worker_us": 5734,
+        "fresh_process_us": 11445
+       },
+       {
+        "route": "safety-rows-capture",
+        "outcome": "holds",
+        "request_sha256": "3a19b25a915d9bbf891bb93f2f2cd91c6978465b0338cbed24ed67cf7da4704d",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 97,
+         "distinct": 16,
+         "depth": 8,
+         "left_on_queue": 0
+        },
+        "worker_us": 2126,
+        "fresh_process_us": 9142
+       }
+      ]
+     }
+    ],
+    "s7-mutex": [
+     {
+      "session_process_us": 10579552,
+      "backend_source": "3def2fe115f1c168cdeba0507ad734524e9fd4dd",
+      "worker_sha256": "c63ff99b30650c7afb35632f4b892e0f4eb668c927143c3f79e699af3101215b",
+      "rows": [
+       {
+        "route": "established-invariants-capture",
+        "outcome": "holds",
+        "request_sha256": "f160456d6d668141f985afdc1d5df7caff733239160c902bea550b50ae4b602e",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 2729079,
+         "distinct": 724274,
+         "depth": 61,
+         "left_on_queue": 0
+        },
+        "worker_us": 10566749,
+        "fresh_process_us": 10461719
+       },
+       {
+        "route": "established-invariants-recheck",
+        "outcome": "holds",
+        "request_sha256": "763f5533700df98ed10526498c2f2cf53bae9f1d4c04961fec54aaf067999931",
+        "counts": {
+         "initial_generated": 1,
+         "generated": 2729079,
+         "distinct": 724274,
+         "depth": 61,
+         "left_on_queue": 0
+        },
+        "worker_us": 6665,
+        "fresh_process_us": 9712325
+       }
+      ]
+     }
+    ],
+    "s7-internal-memory": [
+     {
+      "session_process_us": 233497,
+      "backend_source": "3def2fe115f1c168cdeba0507ad734524e9fd4dd",
+      "worker_sha256": "c63ff99b30650c7afb35632f4b892e0f4eb668c927143c3f79e699af3101215b",
+      "rows": [
+       {
+        "route": "fresh",
+        "outcome": "holds",
+        "request_sha256": "e39339b56d301788764e42a1e6b2c01c2d467ccf813dc998fba03de6cb16e50d",
+        "counts": {
+         "initial_generated": 8,
+         "generated": 21400,
+         "distinct": 4408,
+         "depth": 10,
+         "left_on_queue": 0
+        },
+        "worker_us": 143388,
+        "fresh_process_us": 145600
+       },
+       {
+        "route": "fresh",
+        "outcome": "holds",
+        "request_sha256": "71f283a35bda2edaf270dab780701dc2574e26cedf71747a19a99804fc3fbb8c",
+        "counts": {
+         "initial_generated": 8,
+         "generated": 21400,
+         "distinct": 4408,
+         "depth": 10,
+         "left_on_queue": 0
+        },
+        "worker_us": 82940,
+        "fresh_process_us": 88855
+       }
+      ]
+     }
+    ]
+   },
+   "persisted_s7_mutex": {
+    "establishing_process_us": 10377783,
+    "original_sha256": "f160456d6d668141f985afdc1d5df7caff733239160c902bea550b50ae4b602e",
+    "stats": {
+     "depth": 61,
+     "distinct": 724274,
+     "generated": 2729079,
+     "initial_generated": 1,
+     "left_on_queue": 0,
+     "reported_by_tlc": true
+    },
+    "samples": [
+     {
+      "projected_process_us": 22139,
+      "fresh_process_us": 9744400,
+      "current_sha256": "359bffcc809c25ba81011f520116630388964145a6f7ff821214e3646c931b0d"
+     }
+    ]
+   }
+  }
  }
 }
