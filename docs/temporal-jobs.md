@@ -1,8 +1,10 @@
 # Native temporal jobs from Rust
 
-`sail-dive` runs native D.I.V.E. checking (the `dive-api` and `dive-ir`
-crates, exactly version 0.1.0 from crates.io) in the separate
-`sail-runtime-worker` process. It supports finite exhaustive model checking,
+`sail-dive` runs the native D.I.V.E. libraries in the separate
+`sail-runtime-worker` process. The published Sail 0.3.0 distribution links
+`dive-api` and `dive-ir` 0.1.0 from crates.io. The development checkout
+pins an upstream revision for edit sessions and reports it as `backend_source`
+on edit evidence. The worker supports finite exhaustive model checking,
 the admitted final temporal subset, finite one-worker simulation, and
 independent validation of complete traces. It does not execute a D.I.V.E.
 command, TLC or Java. The payload is also available through the shared runtime endpoint; see

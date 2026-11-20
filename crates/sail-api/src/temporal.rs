@@ -22,9 +22,10 @@ pub struct ItfTrace {
     pub length: Option<usize>,
 }
 
-/// The exact D.I.V.E. release (`dive-api` and `dive-ir` from crates.io, ADR
-/// 0172) that the native backend links, reported as `backend_revision`.
-/// Moving it requires native conformance.
+/// Package version of the linked D.I.V.E. crates, reported as `backend_revision`.
+/// Published packages use the registry release. In a development checkout the
+/// worker image digest identifies the build and edit evidence names its source
+/// revision (ADRs 0172 and 0176). Moving the dependency requires native conformance.
 pub const DIVE_VERSION: &str = "0.1.0";
 /// Worker payload protocol version.
 pub const VERSION: u32 = 1;
