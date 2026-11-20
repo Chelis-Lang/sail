@@ -151,6 +151,38 @@ fn projected<'a>(
         return None;
     }
     let (proof, previous_request_sha256, request_sha256, backend_source) =
+        relation(old, current, evidence, &worker, budget, start, cancel)?;
+    if previous_request_sha256 != basis.request_sha256
+        || cancel.is_cancelled()
+        || start.elapsed() >= budget
+    {
+        return None;
+    }
+    Some(Projected {
+        version: 1,
+        outcome: Outcome::Holds,
+        obligation_id: &current.obligation_id,
+        requirement_ids: &current.requirement_ids,
+        request_sha256,
+        previous_request_sha256,
+        previous_receipt_key,
+        worker_sha256: worker.sha256,
+        backend_source,
+        evidence: proof,
+    })
+}
+
+fn relation(
+    old: &Job,
+    current: &Job,
+    evidence: &sail_api::temporal::Response,
+    worker: &sail_runtime::temporal::Worker,
+    budget: Duration,
+    start: Instant,
+    cancel: &Cancellation,
+) -> Option<(ProjectionProof, String, String, String)> {
+    use sail_api::temporal::Completion;
+    Some(
         if sail_dive::edits::loaded::eligible(&old.request, &current.request) {
             let query = sail_dive::edits::loaded::Query {
                 previous: old.request.clone(),
@@ -241,25 +273,8 @@ fn projected<'a>(
                 }
                 _ => return None,
             }
-        };
-    if previous_request_sha256 != basis.request_sha256
-        || cancel.is_cancelled()
-        || start.elapsed() >= budget
-    {
-        return None;
-    }
-    Some(Projected {
-        version: 1,
-        outcome: Outcome::Holds,
-        obligation_id: &current.obligation_id,
-        requirement_ids: &current.requirement_ids,
-        request_sha256,
-        previous_request_sha256,
-        previous_receipt_key,
-        worker_sha256: worker.sha256,
-        backend_source,
-        evidence: proof,
-    })
+        },
+    )
 }
 
 // Validation is optional work. For example, adding a long previous trace
