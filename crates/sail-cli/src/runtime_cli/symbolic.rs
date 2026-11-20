@@ -116,8 +116,8 @@ struct Report<'a> {
     #[serde(default, borrow, deserialize_with = "present")]
     trace: Option<&'a RawValue>,
     ending: Option<Ending>,
-    #[serde(default = "missing_obligation")]
-    failed_obligation: serde_json::Value,
+    #[serde(default, borrow, deserialize_with = "present")]
+    failed_obligation: Option<&'a RawValue>,
     #[serde(default, borrow, deserialize_with = "present")]
     distinct: Option<&'a RawValue>,
     #[serde(default, borrow, deserialize_with = "present")]
@@ -154,11 +154,6 @@ struct TraceState {
 struct Ending {
     kind: String,
     name: Option<String>,
-}
-
-// A successful proof explicitly clears the obligation in the worker protocol.
-fn missing_obligation() -> serde_json::Value {
-    serde_json::Value::Bool(false)
 }
 
 enum Route {
@@ -203,12 +198,16 @@ impl Report<'_> {
                     && self.trace.is_none()
                     && self.ending.is_none()
                     && self.trace_validated.is_none()
-                    && self.failed_obligation.is_null() =>
+                    && self.failed_obligation.is_some_and(|o| o.get() == "null") =>
             {
                 Ok(Route::Proved)
             }
             (true, 2, Some("inconclusive"), None)
-                if bound && uncounted && self.failed_obligation.is_string() =>
+                if bound
+                    && uncounted
+                    && self
+                        .failed_obligation
+                        .is_some_and(|o| o.get().starts_with('"')) =>
             {
                 Ok(Route::Retry)
             }
@@ -219,12 +218,15 @@ impl Report<'_> {
                     && self.trace.is_none()
                     && self.ending.is_none()
                     && self.trace_validated.is_none()
-                    && self.failed_obligation == missing_obligation() =>
+                    && self.failed_obligation.is_none() =>
             {
                 Ok(Route::Searched)
             }
             (false, 1, None, Some("invariant-violation" | "deadlock"))
                 if bound
+                    && self.distinct.is_none()
+                    && self.generated.is_none()
+                    && self.failed_obligation.is_none()
                     && self.trace_validated == Some(true)
                     && self.valid_witness()
                     && self
