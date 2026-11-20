@@ -65,3 +65,28 @@ fn reported_version_is_the_linked_release() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn native_edit_source_matches_every_dive_package_in_the_lock() -> Result<(), String> {
+    let lock = table(include_str!("../../../Cargo.lock"), "Cargo.lock")?;
+    let packages = lock
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .ok_or("missing packages")?;
+    let sha = sail_dive::edits::BACKEND_SOURCE;
+    assert!(sha.len() == 40 && sha.bytes().all(|b| b.is_ascii_hexdigit()));
+    let source = format!("git+https://github.com/Chelis-Lang/dive?rev={sha}#{sha}");
+    for package in packages {
+        if package
+            .get("name")
+            .and_then(toml::Value::as_str)
+            .is_some_and(|n| n.starts_with("dive-"))
+        {
+            assert_eq!(
+                package.get("source").and_then(toml::Value::as_str),
+                Some(source.as_str())
+            );
+        }
+    }
+    Ok(())
+}

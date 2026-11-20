@@ -119,3 +119,6 @@ debug = "line-tables-only"
 inherits = "release"
 debug = true
 
+[patch.crates-io]
+dive-api = { git = "https://github.com/Chelis-Lang/dive", rev = "3def2fe115f1c168cdeba0507ad734524e9fd4dd" }
+dive-ir = { git = "https://github.com/Chelis-Lang/dive", rev = "3def2fe115f1c168cdeba0507ad734524e9fd4dd" }

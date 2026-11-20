@@ -44,6 +44,6 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 
-# No git sources: every dependency, D.I.V.E. included (ADR 0172), comes from
-# crates.io.
-allow-git = []
+# ADR 0176 pins the upstream edit API during point-release development.
+required-git-spec = "rev"
+allow-git = ["https://github.com/Chelis-Lang/dive"]
