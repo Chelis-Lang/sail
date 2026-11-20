@@ -237,5 +237,11 @@ control. Use a directory whose contents are managed by trusted local code.
 The command emits Dive's JSON report with its original integer precision.
 Exit 0 means a proof or completed safe search, 1 a validated counterexample,
 2 unsupported input or a Sail usage/protocol error, 3 a checker error, and
-4 a stop. Sail's ordinary temporal receipts, daemon, and signed receipt
+4 a stop. Cancelling or expiring a check allows up to 400 ms for Dive to
+reap its worker group before Sail sends a hard stop. A cgroup or equivalent
+job controller is needed for cleanup if Sail itself receives SIGKILL. Sail's ordinary temporal receipts, daemon, and signed receipt
 transport continue to use their own execution and evidence policy.
+
+For repeatable comparisons on three- and five-key KVS, individual timings
+and a cardinality change that invalidates the old predicate, see
+[portable symbolic predicate measurements](validation/temporal-reuse-s7.md#portable-symbolic-predicates).

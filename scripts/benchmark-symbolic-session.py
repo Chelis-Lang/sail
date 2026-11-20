@@ -27,6 +27,8 @@ def main():
     for name in ("sail", "dive", "module", "config", "edited-module", "edited-config", "false-config"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--trials", type=int, default=5)
+    parser.add_argument("--require-strengthening", action="store_true",
+                        help="also require fresh induction on the edited invariants alone to be inconclusive")
     parser.add_argument("--time-limit", type=int, default=600, help="seconds per process")
     args = parser.parse_args()
     if min(args.trials, args.time_limit) < 1:
@@ -67,7 +69,16 @@ def main():
                     or violation.get("ending") != independent.get("ending")
                     or violation.get("depth") != independent.get("depth") or digest(candidate) != established):
                 raise ValueError((violation, independent))
-            trials.append(dict(establish_ms=cold, proof_ms=warm_ms, fresh_ms=fresh_ms,
+            direct = {}
+            if args.require_strengthening:
+                direct_ms, attempt = sample([
+                    args.dive.resolve(), "check", args.edited_module.resolve(), "--config", args.edited_config.resolve(),
+                    "--strategy", "symbolic", "--prove-inductive", "--time-limit", f"{args.time_limit}s", "--output", "json",
+                ], 2)
+                if attempt.get("proof") != "inconclusive":
+                    raise ValueError(attempt)
+                direct = dict(fresh_induction_ms=direct_ms, failed_obligation=attempt["failed_obligation"])
+            trials.append(dict(**direct, establish_ms=cold, proof_ms=warm_ms, fresh_ms=fresh_ms,
                                refutation_ms=false_ms, candidate_bytes=candidate.stat().st_size,
                                fresh_distinct=search["distinct"], fresh_generated=search["generated"],
                                fresh_depth=search["depth"], violated=violation["ending"],

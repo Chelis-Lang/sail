@@ -1,0 +1,532 @@
+{
+  "format": "sail-symbolic-edit-evidence-v1",
+  "date": "2026-11-20",
+  "host": {
+    "instance": "c7i.4xlarge",
+    "region": "us-east-1",
+    "os": "Ubuntu 24.04.5 LTS",
+    "kernel": "7.0.0-1017-aws",
+    "cpu": "Intel Xeon Platinum 8488C",
+    "physical_cores": 8,
+    "threads_per_core": 2,
+    "timing": "one checker at a time, host defaults, foreground monotonic clock, alternating fresh and recheck order",
+    "executables": "Linux x86_64 debug development builds of Sail and Dive with bundled symbolic worker"
+  },
+  "inputs": {
+    "corpus": "https://github.com/tlaplus/Examples",
+    "revision": "6a7b26a31c1a6aeec789b455e9bbfa3b3ad2728f",
+    "directory": "specifications/KeyValueStore",
+    "key_value_store_sha256": "0306e7659212ef214fdb40012f1f24a78b25669292a80127c815da5eec466b07"
+  },
+  "artifacts_sha256": {
+    "bin/dive": "26f7652a1ea8e97b77cbcc4f809c2e1376cd16dea3570db491a3915f13f6c770",
+    "bin/sail": "aaa1947ddf1d5cff8056d7aaba613a4cd63d39c6ec22e7eaec35b89b0d6441b2",
+    "bin/libexec/dive-symbolic/check.py": "49c0d34feefd5b927d855a78c2a789c4a1beaac183960c2aa55430e5da338619",
+    "bin/libexec/dive-symbolic/engine.py": "706d01af094df48138d3098fcd4294046b270a6965e4854c12d6783e6909b910",
+    "bin/libexec/dive-symbolic/induction.py": "0c38dc5508bc85f09fdf066acfed9ee0e194851e09c197f3e5b43b189fa89b7e",
+    "bin/libexec/dive-symbolic/symbolic_input": "8dc522e312622ad7c0227b10e9087de5dddaa1cba05f8ae3629e2bb9bd03d07c"
+  },
+  "runs": [
+    {
+      "keys": 3,
+      "values": 3,
+      "transaction_ids": 2,
+      "invariant": "TxIsClean",
+      "format": "sail-symbolic-session-benchmark-v1",
+      "sha256": {
+        "sail": "aaa1947ddf1d5cff8056d7aaba613a4cd63d39c6ec22e7eaec35b89b0d6441b2",
+        "dive": "26f7652a1ea8e97b77cbcc4f809c2e1376cd16dea3570db491a3915f13f6c770",
+        "module": "4d66a40abeb29558b473770b736dc1bd16c841d9ac847b4644b36cd47d8c8962",
+        "config": "d3272277738dce3a0f0c16480e96870a1630c9ea1fb7e64fdca0f0763fc7a629",
+        "edited_module": "a0040aa6a4a0367fac8ab4747a08bc549f7354b1e6c024fe79ad584890bd3080",
+        "edited_config": "1f91276ecb574754c34f6e7f7e4e1f5af62ecc81f048a84b1965feb5bce43a0a",
+        "false_config": "c5c2092647131f011e9c3a29c9a97eb63587f1bcfd1f7402587376cb8e73238b"
+      },
+      "wall_seconds": 600,
+      "trials": [
+        {
+          "establish_ms": 953.904721,
+          "proof_ms": 249.38114,
+          "fresh_ms": 952.849813,
+          "refutation_ms": 599.270853,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "establish_ms": 952.341331,
+          "proof_ms": 299.796771,
+          "fresh_ms": 1003.549395,
+          "refutation_ms": 594.908908,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "establish_ms": 951.701271,
+          "proof_ms": 300.956928,
+          "fresh_ms": 1004.688401,
+          "refutation_ms": 599.039277,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "establish_ms": 953.11391,
+          "proof_ms": 249.60121,
+          "fresh_ms": 955.049329,
+          "refutation_ms": 597.882526,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "establish_ms": 950.931223,
+          "proof_ms": 300.090612,
+          "fresh_ms": 950.879171,
+          "refutation_ms": 595.534952,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        }
+      ]
+    },
+    {
+      "keys": 3,
+      "values": 3,
+      "transaction_ids": 2,
+      "invariant": "AtMostOneConflict",
+      "format": "sail-symbolic-session-benchmark-v1",
+      "sha256": {
+        "sail": "aaa1947ddf1d5cff8056d7aaba613a4cd63d39c6ec22e7eaec35b89b0d6441b2",
+        "dive": "26f7652a1ea8e97b77cbcc4f809c2e1376cd16dea3570db491a3915f13f6c770",
+        "module": "4d66a40abeb29558b473770b736dc1bd16c841d9ac847b4644b36cd47d8c8962",
+        "config": "d3272277738dce3a0f0c16480e96870a1630c9ea1fb7e64fdca0f0763fc7a629",
+        "edited_module": "dd9e3b13110f5f5f523d5a185d702559e9de291e7e9d29f47ce7bc6fd779a9f0",
+        "edited_config": "5af3d2f5ac409f9f92bcd415640574553ac2fa22f3539604adba4931ec56432a",
+        "false_config": "c5c2092647131f011e9c3a29c9a97eb63587f1bcfd1f7402587376cb8e73238b"
+      },
+      "wall_seconds": 600,
+      "trials": [
+        {
+          "fresh_induction_ms": 297.43425,
+          "failed_obligation": "Next closure",
+          "establish_ms": 952.961006,
+          "proof_ms": 302.173382,
+          "fresh_ms": 952.289688,
+          "refutation_ms": 596.437671,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "fresh_induction_ms": 246.064573,
+          "failed_obligation": "Next closure",
+          "establish_ms": 953.173164,
+          "proof_ms": 298.474026,
+          "fresh_ms": 901.983135,
+          "refutation_ms": 597.881769,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "fresh_induction_ms": 296.307027,
+          "failed_obligation": "Next closure",
+          "establish_ms": 1002.637944,
+          "proof_ms": 300.098368,
+          "fresh_ms": 951.704936,
+          "refutation_ms": 596.565353,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "fresh_induction_ms": 297.397362,
+          "failed_obligation": "Next closure",
+          "establish_ms": 954.402771,
+          "proof_ms": 299.382702,
+          "fresh_ms": 1001.90026,
+          "refutation_ms": 597.738925,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "fresh_induction_ms": 245.809271,
+          "failed_obligation": "Next closure",
+          "establish_ms": 900.978186,
+          "proof_ms": 301.086296,
+          "fresh_ms": 952.015682,
+          "refutation_ms": 595.904187,
+          "candidate_bytes": 3836,
+          "fresh_distinct": 17220672,
+          "fresh_generated": 365609473,
+          "fresh_depth": 22,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        }
+      ]
+    },
+    {
+      "keys": 5,
+      "values": 3,
+      "transaction_ids": 2,
+      "invariant": "TxIsClean",
+      "format": "sail-symbolic-session-benchmark-v1",
+      "sha256": {
+        "sail": "aaa1947ddf1d5cff8056d7aaba613a4cd63d39c6ec22e7eaec35b89b0d6441b2",
+        "dive": "26f7652a1ea8e97b77cbcc4f809c2e1376cd16dea3570db491a3915f13f6c770",
+        "module": "4d66a40abeb29558b473770b736dc1bd16c841d9ac847b4644b36cd47d8c8962",
+        "config": "37129132fe328856b437313612732b7d08bdcb418ae0deaa1e672cdfc0c835df",
+        "edited_module": "a0040aa6a4a0367fac8ab4747a08bc549f7354b1e6c024fe79ad584890bd3080",
+        "edited_config": "0ee2b2f185d7fb87e2f7e6d67749e22817ab0891693c05037e913fec27c6d68e",
+        "false_config": "280328b4660922db9104de710a09bfd580c32bb2aafb91e9b1f08984490863c8"
+      },
+      "wall_seconds": 600,
+      "trials": [
+        {
+          "establish_ms": 14449.925003,
+          "proof_ms": 299.298826,
+          "fresh_ms": 14347.712012,
+          "refutation_ms": 648.230261,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "establish_ms": 14446.982364,
+          "proof_ms": 300.712208,
+          "fresh_ms": 14249.690471,
+          "refutation_ms": 648.969866,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "establish_ms": 14297.927338,
+          "proof_ms": 300.002998,
+          "fresh_ms": 14548.540508,
+          "refutation_ms": 647.388257,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "establish_ms": 14501.305519,
+          "proof_ms": 299.039311,
+          "fresh_ms": 14398.219432,
+          "refutation_ms": 647.989874,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "establish_ms": 14500.079289,
+          "proof_ms": 300.883243,
+          "fresh_ms": 14098.418141,
+          "refutation_ms": 646.314464,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        }
+      ]
+    },
+    {
+      "keys": 5,
+      "values": 3,
+      "transaction_ids": 2,
+      "invariant": "AtMostOneConflict",
+      "format": "sail-symbolic-session-benchmark-v1",
+      "sha256": {
+        "sail": "aaa1947ddf1d5cff8056d7aaba613a4cd63d39c6ec22e7eaec35b89b0d6441b2",
+        "dive": "26f7652a1ea8e97b77cbcc4f809c2e1376cd16dea3570db491a3915f13f6c770",
+        "module": "4d66a40abeb29558b473770b736dc1bd16c841d9ac847b4644b36cd47d8c8962",
+        "config": "37129132fe328856b437313612732b7d08bdcb418ae0deaa1e672cdfc0c835df",
+        "edited_module": "dd9e3b13110f5f5f523d5a185d702559e9de291e7e9d29f47ce7bc6fd779a9f0",
+        "edited_config": "cf86f12731c35a7656f57fbb44e3b171cef8d4013ef088c7b55c5fe61ad18416",
+        "false_config": "280328b4660922db9104de710a09bfd580c32bb2aafb91e9b1f08984490863c8"
+      },
+      "wall_seconds": 600,
+      "trials": [
+        {
+          "fresh_induction_ms": 295.974072,
+          "failed_obligation": "Next closure",
+          "establish_ms": 14247.919171,
+          "proof_ms": 300.930857,
+          "fresh_ms": 14249.889282,
+          "refutation_ms": 649.636633,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "fresh_induction_ms": 295.873704,
+          "failed_obligation": "Next closure",
+          "establish_ms": 14748.458513,
+          "proof_ms": 298.966658,
+          "fresh_ms": 14500.213585,
+          "refutation_ms": 646.959931,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "fresh_induction_ms": 296.500802,
+          "failed_obligation": "Next closure",
+          "establish_ms": 14095.447743,
+          "proof_ms": 301.297566,
+          "fresh_ms": 14398.468956,
+          "refutation_ms": 647.495969,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "fresh_induction_ms": 296.701784,
+          "failed_obligation": "Next closure",
+          "establish_ms": 13845.084686,
+          "proof_ms": 300.332244,
+          "fresh_ms": 13897.777401,
+          "refutation_ms": 644.463435,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        },
+        {
+          "fresh_induction_ms": 296.146275,
+          "failed_obligation": "Next closure",
+          "establish_ms": 14249.662308,
+          "proof_ms": 300.524357,
+          "fresh_ms": 14650.554376,
+          "refutation_ms": 649.712162,
+          "candidate_bytes": 7063,
+          "fresh_distinct": 1183519405056,
+          "fresh_generated": 39234075936769,
+          "fresh_depth": 32,
+          "violated": {
+            "kind": "invariant",
+            "name": "NoWrites"
+          },
+          "refutation_depth": 3
+        }
+      ]
+    }
+  ],
+  "third_transaction_control": {
+    "keys": 3,
+    "values": 3,
+    "transaction_ids": 3,
+    "config_sha256": "971bcb64e136f8f3d5fa985a34ad9e866fcada3dfe66d9d8d1d7504cb420010e",
+    "sail": {
+      "verdict": "invariant-violation",
+      "depth": 8,
+      "ending": {
+        "kind": "invariant",
+        "name": "AtMostOneConflict"
+      },
+      "reused": false,
+      "trace_validated": true
+    },
+    "tlc": {
+      "version": "2026.10.06.014338",
+      "jar_sha256": "beec0f04818732a62fa193731711a99aa4f11279499b2360a7d156c519ea78d",
+      "workers": 1,
+      "seed": 0,
+      "fp": 0,
+      "violated": "AtMostOneConflict",
+      "depth": 8,
+      "generated": 19880,
+      "distinct": 4618
+    }
+  },
+  "CCF": {
+    "repository": "https://github.com/microsoft/CCF",
+    "consensus": [
+      {
+        "revision": "13899e5583489b58d97e54f6c1778d09aec58e60",
+        "module": "tla/consensus/MCccfraft.tla",
+        "config": "MCccfraft.cfg",
+        "config_sha256": "007a516cba06d233414054be94860cff0014c87001e952f84ab47a3a0f1c1b25",
+        "verdict": "unsupported",
+        "reason": "Dive frontend: Error: \"symbolic checking admits safety invariants and deadlock only\""
+      },
+      {
+        "revision": "8c4bd0ae3c5a58d9c4f6fec1f66f8a97a7e51f56",
+        "module": "tla/consensus/MCccfraft.tla",
+        "config": "MCccfraft.cfg",
+        "config_sha256": "007a516cba06d233414054be94860cff0014c87001e952f84ab47a3a0f1c1b25",
+        "verdict": "unsupported",
+        "reason": "Dive frontend: Error: \"symbolic checking admits safety invariants and deadlock only\""
+      },
+      {
+        "revision": "6a2dc420f0166c93f92b773aa49c5203b0767750",
+        "module": "tla/consensus/MCccfraft.tla",
+        "config": "MCccfraft.cfg",
+        "config_sha256": "007a516cba06d233414054be94860cff0014c87001e952f84ab47a3a0f1c1b25",
+        "verdict": "unsupported",
+        "reason": "Dive frontend: Error: \"symbolic checking admits safety invariants and deadlock only\""
+      }
+    ],
+    "consistency": {
+      "revision": "8c4bd0ae3c5a58d9c4f6fec1f66f8a97a7e51f56",
+      "path": "tla/consistency",
+      "symbolic": [
+        {
+          "module": "MCSingleNode.tla",
+          "config": "MCSingleNode.cfg",
+          "config_sha256": "8c697f2544cdd017d20b4d41b602b73ba9041a2e279af898344ceec08787a4ab",
+          "verdict": "unsupported",
+          "reason": "Dive frontend: Error: \"unsupported assumption, initial-role multiplicity or stateful operator\""
+        },
+        {
+          "module": "MCSingleNodeReads.tla",
+          "config": "MCSingleNodeReads.cfg",
+          "config_sha256": "10ca9f9e86d31736e3b7eb3ffac186165684885378eeac854b08a846327b1371",
+          "verdict": "unsupported",
+          "reason": "Dive frontend: Error: \"unsupported assumption, initial-role multiplicity or stateful operator\""
+        },
+        {
+          "module": "MCMultiNode.tla",
+          "config": "MCMultiNode.cfg",
+          "config_sha256": "9b18a94a8647d8bd2353ae20c92796279435df6f82dc3ad0b0e774b95617e2c0",
+          "verdict": "unsupported",
+          "reason": "Dive frontend: Error: \"unsupported assumption, initial-role multiplicity or stateful operator\""
+        },
+        {
+          "module": "MCMultiNodeReads.tla",
+          "config": "MCMultiNodeReads.cfg",
+          "config_sha256": "b8f156e8ed500228a698cfd5ac6036a696f5734b884fd95bee0399a4590286d3",
+          "verdict": "unsupported",
+          "reason": "Dive frontend: Error: \"unsupported assumption, initial-role multiplicity or stateful operator\""
+        }
+      ],
+      "ordinary": {
+        "module": "MCSingleNode.tla",
+        "config": "MCSingleNodeCommitReachability.cfg",
+        "verdict": "invariant-violation",
+        "violated": "SomeCommittedTxDebugInv",
+        "depth": 5,
+        "distinct": 17,
+        "generated": 20
+      }
+    }
+  },
+  "native_mac_control": {
+    "hardware": "EC2 mac2.metal, Apple M1",
+    "gate": "ci/run.sh host",
+    "passed": 1479,
+    "skipped": 59
+  }
+}
