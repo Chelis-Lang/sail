@@ -35,13 +35,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             Some("--project-invariants") => {
                 let query: sail_dive::edits::projection::Query =
                     sail_api::temporal::decode(&input)?;
-                let mut frame = Frame {
-                    bytes: Vec::new(),
-                    limit: sail_dive::MAX_DOCUMENT_BYTES,
-                };
-                serde_json::to_writer(&mut frame, &query.compare()?)?;
-                std::io::stdout().write_all(&frame.bytes)?;
-                Ok(())
+                write_relation(&query.compare()?)
+            }
+            Some("--project-first-temporal-claim") => {
+                let query: sail_dive::edits::first_claim::Query =
+                    sail_api::temporal::decode(&input)?;
+                write_relation(&query.compare()?)
             }
             _ => Err("unknown worker mode".into()),
         };
@@ -53,6 +52,16 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Err("worker evidence exceeds its byte bound".into());
     }
     std::io::stdout().write_all(&bytes)?;
+    Ok(())
+}
+
+fn write_relation(relation: &impl serde::Serialize) -> Result<(), Box<dyn std::error::Error>> {
+    let mut frame = Frame {
+        bytes: Vec::new(),
+        limit: sail_dive::MAX_DOCUMENT_BYTES,
+    };
+    serde_json::to_writer(&mut frame, relation)?;
+    std::io::stdout().write_all(&frame.bytes)?;
     Ok(())
 }
 

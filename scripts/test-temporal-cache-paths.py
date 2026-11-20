@@ -75,6 +75,102 @@ FalseInv == x[1] = 1
     assert reply["route"] == "current-check" and reply["response"]["output"]["result"]["cache_hit"]
 
 
+
+def check_first_temporal_claim(sail, base, template):
+    """A cross-process result can cite only an established ordinary native receipt."""
+    original = deepcopy(template)
+    request = original["input"]["job"]["request"]
+    request["operation"].update(max_states=64, max_depth=30)
+    files = request["model"]["files"]
+    files["Warm.tla"] = r"""---- MODULE Warm ----
+CONSTANTS A,B
+Values == [tag: {"a"}, v:A] \cup [tag: {"b"}, v:B]
+VARIABLE x
+Init == x \in Values
+Next == x'=x
+P == (x \in Values) ~> (x \in Values)
+Q == []<>(x \in Values)
+Bad == []<>(x.tag = "z")
+====
+"""
+    files["Warm.cfg"] = "INIT Init\nNEXT Next\nCONSTANTS A={0,1} B={1}\nPROPERTY P Q\n"
+    current = deepcopy(original)
+    job = current["input"]["job"]
+    job["obligation_id"] = "check-first-claim"
+    job["requirement_ids"] = ["keep-p"]
+    job["request"]["model"]["files"]["Warm.cfg"] = files["Warm.cfg"].replace("P Q", "P")
+    old_file = base / "original-temporal.json"
+    old_file.write_text(json.dumps(original))
+    store = base / "first-claim-store"
+
+    def invoke(action, value, *args):
+        run = subprocess.run([sail, "runtime", action, "--cache", store, "--file", "-", *args],
+                             input=json.dumps(value), text=True, capture_output=True, timeout=20,
+                             check=True)
+        return json.loads(run.stdout)
+
+    def recheck(value, previous=old_file):
+        return invoke("recheck", value, "--previous", previous)
+
+    previous = invoke("execute", original)["output"]["result"]
+    retained = invoke("execute", original)["output"]["result"]
+    assert not previous["cache_hit"] and retained["cache_hit"]
+    # The CLI parent can have an ambient Dive policy that the isolated worker clears.
+    parent_env = dict(os.environ, DIVE_CORE_OPT="none", DIVE_NATIVE_ATOM_AUDIT="1")
+    batch = {"version": 1, "wall_time_ms": 10000, "checks": [request, job["request"]]}
+    session = subprocess.run([sail, "runtime", "edit-session", "--file", "-"],
+                             input=json.dumps(batch), capture_output=True, text=True, check=True,
+                             timeout=20, env=parent_env)
+    entries = json.loads(session.stdout)["entries"]
+    assert entries[0]["evidence"]["route"] == "fresh"
+    assert entries[1]["evidence"]["route"] == "established-first-temporal-claim"
+    first = recheck(current)
+    assert first["route"] == "established-first-temporal-claim" and first["property"] == "P", first
+    assert first["outcome"] == "holds" and first["obligation_id"] == "check-first-claim"
+    assert first["requirement_ids"] == ["keep-p"]
+    assert first["basis_counts"]["distinct"] == 3 and first["previous_receipt_key"] == retained["cache_key"]
+    assert first["worker_sha256"] == previous["worker_sha256"]
+    assert first["previous_request_sha256"] == previous["request_sha256"]
+    # A successful projection is not a new native receipt and cannot establish the next edit.
+    current_file = base / "projected-temporal.json"
+    current_file.write_text(json.dumps(current))
+    third = deepcopy(current)
+    third["input"]["job"]["request"]["model"]["files"]["Warm.cfg"] += "\n"
+    ordinary = recheck(third, current_file)
+    assert ordinary["route"] == "current-check" and not ordinary["response"]["output"]["result"]["cache_hit"]
+    for change, expected in [("first-property", "holds"), ("added", "refuted"), ("reorder", "holds"),
+                             ("scope", "holds"), ("binding", "holds"), ("limits", "holds")]:
+        edited = deepcopy(current)
+        req = edited["input"]["job"]["request"]
+        model = req["model"]["files"]
+        if change == "scope":
+            model["Unused.tla"] = "---- MODULE Unused ----\n===="
+        elif change == "binding":
+            model["Warm.cfg"] = model["Warm.cfg"].replace("A={0,1}", "A={0}")
+        elif change == "limits":
+            req["operation"]["max_depth"] += 1
+        else:
+            name = {"first-property": "Q", "added": "P Bad", "reorder": "Q P"}[change]
+            model["Warm.cfg"] = model["Warm.cfg"].replace("PROPERTY P", f"PROPERTY {name}")
+        ordinary = recheck(edited)
+        assert ordinary["route"] == "current-check", change
+        evidence = ordinary["response"]["output"]["result"]["response"]
+        assert evidence["outcome"] == expected, (change, evidence)
+        if expected == "refuted":
+            assert evidence["validations"][0]["result"] == "valid"
+            # A genuine previous liveness refutation cannot certify a surviving true sibling.
+            refuted_file = base / "refuted-temporal.json"
+            refuted_file.write_text(json.dumps(edited))
+            surviving = deepcopy(current)
+            surviving["input"]["job"]["request"]["model"]["files"]["Warm.cfg"] += "\n\n"
+            checked = recheck(surviving, refuted_file)
+            assert checked["route"] == "current-check"
+            assert checked["response"]["output"]["result"]["response"]["outcome"] == "holds"
+    exact = invoke("execute", current)["output"]["result"]
+    assert not exact["cache_hit"] and first["request_sha256"] == exact["request_sha256"]
+    replay = recheck(current)
+    assert replay["route"] == "current-check" and replay["response"]["output"]["result"]["cache_hit"]
+
 def run(sail, base):
     cache = base / "cache"
     assert not cache.exists()
@@ -159,6 +255,7 @@ def run(sail, base):
     assert check("execute", "--cache", alternate)["cache_hit"]
     assert not list((cache / "results").rglob("temporal-v1"))
     check_projection(sail, base, doc)
+    check_first_temporal_claim(sail, base, doc)
 
 
 if __name__ == "__main__":

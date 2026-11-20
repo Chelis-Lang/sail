@@ -30,6 +30,9 @@ fn observed(request: &Request, session: &mut Session, expected: Option<(Structur
     sail_dive::validate_response(request, &fresh)?;
     let entry = session.check(request)?;
     match &entry.evidence {
+        Evidence::EstablishedFirstTemporalClaim(_) => {
+            return Err("unexpected temporal proof".into());
+        }
         Evidence::Fresh { response } => {
             assert_eq!(expected, None);
             assert_eq!(response.outcome, fresh.outcome);
@@ -155,4 +158,106 @@ fn direct_embedding_preserves_ordinary_checker_overrides() -> Test {
     let current = check(source, CFG, 20);
     assert_eq!(sail_dive::execute(&current).outcome, Outcome::Unsupported);
     observed(&current, &mut Session::default(), None)
+}
+
+const RECORDS: &str = r#"---- MODULE A ----
+CONSTANTS A1,B1
+Values == [tag: {"a"}, v:A1] \cup [tag: {"b"}, v:B1]
+VARIABLE x
+Init == x \in Values
+Next == x'=x
+P == (x \in Values) ~> (x \in Values)
+Q == []<>(x \in Values)
+====
+"#;
+const CLAIMS: &str = "INIT Init\nNEXT Next\nCONSTANTS A1={v1,v2} B1={v1}\nPROPERTY P Q\n";
+
+#[test]
+fn first_claim_requires_an_ordinary_complete_qualified_temporal_check() -> Test {
+    use sail_dive::edits::first_claim::Query;
+    let previous = check(RECORDS, CLAIMS, 64);
+    let cfg = CLAIMS.replace("P Q", "P");
+    let current = check(RECORDS, &cfg, 64);
+    let mut session = Session::default();
+    let before = session.check(&previous)?;
+    let Evidence::Fresh { response } = before.evidence else {
+        return Err("ordinary aggregate basis".into());
+    };
+    assert_eq!(response.outcome, Outcome::Holds);
+    let after = session.check(&current)?;
+    let Evidence::EstablishedFirstTemporalClaim(claim) = after.evidence else {
+        return Err("expected first temporal claim".into());
+    };
+    assert_eq!(claim.basis_sha256, before.request_sha256);
+    assert_eq!(claim.basis_counts.distinct, 3);
+    assert_eq!(claim.property, "P");
+    assert_eq!(sail_dive::execute(&current).outcome, Outcome::Holds);
+    let compare = |next, evidence| {
+        Query {
+            previous: previous.clone(),
+            current: next,
+            previous_response: evidence,
+        }
+        .compare()
+    };
+    for next in [
+        check(RECORDS, CLAIMS, 64),
+        check(RECORDS, &CLAIMS.replace("P Q", "Q P"), 64),
+        check(RECORDS, &CLAIMS.replace("P Q", "Q"), 64),
+        check(RECORDS, &CLAIMS.replace("P Q", "P Q P"), 64),
+        check(RECORDS, &cfg.replace("B1={v1}", "B1={v2}"), 64),
+        check(
+            &RECORDS.replace("Next == x'=x", "Next == x' \\in Values"),
+            &cfg,
+            64,
+        ),
+        check(RECORDS, &cfg, 63),
+    ] {
+        assert!(compare(next, (*response).clone())?.claim.is_none());
+    }
+    for pointer in [
+        "/execution/capture_completed",
+        "/options/budget/max_states",
+        "/statistics/left_on_queue",
+        "/periodic/final_check",
+        "/core/metrics/liveness/atoms/audit",
+        "/core/metrics/liveness/atoms/reference_evaluations/state",
+        "/core/metrics/liveness/atoms/fallback",
+    ] {
+        let mut malformed = (*response).clone();
+        *malformed
+            .native_report
+            .pointer_mut(pointer)
+            .ok_or(pointer)? = serde_json::Value::Null;
+        assert!(
+            compare(current.clone(), malformed)?.claim.is_none(),
+            "{pointer}"
+        );
+    }
+    let mut wrong = (*response).clone();
+    wrong.backend_revision.push_str("-other");
+    assert!(compare(current.clone(), wrong)?.claim.is_none());
+    let mut stopped = (*response).clone();
+    stopped.completion = sail_dive::Completion::None;
+    assert!(compare(current, stopped)?.claim.is_none());
+    Ok(())
+}
+
+#[test]
+fn dropping_a_sibling_can_expose_current_native_startup_failure() -> Test {
+    let src = "---- MODULE A ----\nVARIABLE x\nInit == x = <<0>>\nNext == x'=x\nP == (<>(x[1]=0)) => TRUE\nQ == (x[1]=0) ~> (x[1]=0)\n====";
+    let old = check(src, "INIT Init\nNEXT Next\nPROPERTY P Q", 64);
+    let current = check(src, "INIT Init\nNEXT Next\nPROPERTY P", 64);
+    let mut session = Session::default();
+    let original = session.check(&old)?;
+    assert!(
+        matches!(original.evidence, Evidence::Fresh { response } if response.outcome == Outcome::Holds)
+    );
+    let checked = session.check(&current)?;
+    let Evidence::Fresh { response } = checked.evidence else {
+        return Err("expected current startup refusal".into());
+    };
+    assert_eq!(response.outcome, Outcome::Unsupported);
+    assert_eq!(sail_dive::execute(&current).outcome, response.outcome);
+    Ok(())
 }

@@ -106,6 +106,12 @@ def compare(sail, root, name, checks, outcomes, sample):
             stats = result["native_report"]["statistics"]
             trace = result["itf_traces"]
             route = "fresh"
+        elif evidence["route"] == "established-first-temporal-claim":
+            assert expected == "holds" and native["requested_checks"]["properties"] == [evidence["property"]]
+            assert evidence["basis_sha256"] == fresh[0][0]["request_sha256"]
+            stats = evidence["basis_counts"]
+            trace = []
+            route = evidence["route"]
         else:
             decision = evidence["decision"]
             assert decision["outcome"] == expected
@@ -123,20 +129,25 @@ def compare(sail, root, name, checks, outcomes, sample):
                      "counts": counts, "worker_us": entry["elapsed_us"], "fresh_process_us": fresh_us})
     if name in ("completed-safety", "refuted-prefix", "completed-temporal"):
         assert all(row["route"].endswith("-recheck") for row in rows[1:]), rows
+    if name == "s7-internal-memory":
+        assert [r["route"] for r in rows] == ["fresh", "established-first-temporal-claim"], rows
     return {"session_process_us": wall, "backend_source": session["backend_source"],
             "worker_sha256": session["worker_sha256"], "rows": rows}
 
 
-def durable_projection(sail, root, original, edited, trials):
-    cache = root / "durable-mutex-cache"
+def durable_projection(sail, root, case, original, edited, trials):
+    safety = case == "s7-mutex"
+    route = "established-invariant-subset" if safety else "established-first-temporal-claim"
+    requirement = "mutual-exclusion" if safety else "first-liveness-property"
+    cache = root / f"durable-{case}-cache"
 
     def envelope(check, label):
         return {"version": 1, "input": {"kind": "temporal", "job": {
-            "obligation_id": label, "requirement_ids": ["mutual-exclusion"],
+            "obligation_id": label, "requirement_ids": [requirement],
             "wall_time_ms": 300000, "request": check}}}
 
     prev = envelope(original, "prior")
-    previous_file = root / "mutex-previous.json"
+    previous_file = root / f"{case}-previous.json"
     previous_file.write_text(json.dumps(prev))
     old, seed_us = call(sail, ["execute", "--cache", str(cache)], prev)
     basis = old["output"]["result"]
@@ -147,16 +158,21 @@ def durable_projection(sail, root, original, edited, trials):
         files = current["input"]["job"]["request"]["model"]["files"]
         files[edited["model"]["config"]] += f"\n\n\\* sampled edit {n}\n"
         result, us = call(sail, ["recheck", "--previous", str(previous_file), "--cache", str(cache)], current)
-        assert result["route"] == "established-invariant-subset" and result["outcome"] == "holds", result
-        assert result["obligation_id"] == f"edit-{n}" and result["requirement_ids"] == ["mutual-exclusion"]
+        assert result["route"] == route and result["outcome"] == "holds", result
+        assert result["obligation_id"] == f"edit-{n}" and result["requirement_ids"] == [requirement]
         assert result["previous_request_sha256"] == basis["request_sha256"]
         assert result["worker_sha256"] == basis["worker_sha256"] and result["previous_receipt_key"]
         ordinary, fresh_us = call(sail, ["execute", "--cache", str(cache)], current)
         fresh = ordinary["output"]["result"]
         assert not fresh["cache_hit"] and fresh["response"]["outcome"] == "holds"
         assert result["request_sha256"] == fresh["request_sha256"]
-        assert result["invariants"] == fresh["response"]["requested_checks"]["invariants"]
-        assert basis["response"]["native_report"]["statistics"]["distinct"] == fresh["response"]["native_report"]["statistics"]["distinct"] == 724274
+        inventory = fresh["response"]["requested_checks"]
+        if safety:
+            assert result["invariants"] == inventory["invariants"]
+        else:
+            assert [result["property"]] == inventory["properties"] == ["LivenessProperty"]
+            assert all(basis["response"]["native_report"]["statistics"][k] == v for k, v in result["basis_counts"].items())
+        assert basis["response"]["native_report"]["statistics"]["distinct"] == fresh["response"]["native_report"]["statistics"]["distinct"] == (724274 if safety else 4408)
         samples.append({"projected_process_us": us, "fresh_process_us": fresh_us,
                         "current_sha256": result["request_sha256"]})
     return {"establishing_process_us": seed_us, "original_sha256": basis["request_sha256"],
@@ -177,8 +193,8 @@ def main():
     with tempfile.TemporaryDirectory() as d:
         for name, checks, expected in cases(args.width, args.s7_fixtures):
             data["cases"][name] = [compare(sail, Path(d), name, checks, expected, i) for i in range(args.samples)]
-            if name == "s7-mutex":
-                data["persisted_s7_mutex"] = durable_projection(sail, Path(d), *checks, args.samples)
+            if name in ("s7-mutex", "s7-internal-memory"):
+                data["persisted_" + name.replace("-", "_")] = durable_projection(sail, Path(d), name, *checks, args.samples)
     print(json.dumps(data, indent=2))
 
 

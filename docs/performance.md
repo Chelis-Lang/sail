@@ -11,6 +11,8 @@ On the 724,274-state mutex model, an unchanged check took 9.29 ms with receipts 
 
 After removing an already proved invariant from S7 LamportMutex, a new Sail process checked the edited request in 22.46 ms versus 10.014 s fresh. The first complete proof checked 724,274 states. [Edit workloads and individual samples](validation/temporal-reuse-s7.md#native-checks-after-substantive-edits).
 
+After a trailing temporal property was removed from S7 InternalMemory, the installed check took 15.565 ms versus 86.734 ms fresh. Removing an invariant from LamportMutex in the same campaign took 20.347 ms versus 9,576.457 ms. [Native measurements for both edits](validation/temporal-reuse-s7.md#retaining-the-first-temporal-property).
+
 A synthetic 200,002-state invariant failure with a three-state witness took 10.04 ms to recheck after a trailing CFG comment edit, compared with 172.90 ms for a fresh check (17.22×). Each guarded call independently validated the old witness against the current input. [Method and small-model controls](validation/temporal-reuse-s7.md#guarded-invariant-recheck-after-a-cfg-edit).
 
 ## 0.2.0

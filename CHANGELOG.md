@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- After a complete native check of several temporal properties, `sail runtime recheck` and `edit-session` can certify the first property alone, including on aggregate-state models such as InternalMemory.
+
 - `sail runtime edit-session` checks successive versions with one authenticated native worker. Edited safety invariants can reuse ordered states. Edited temporal properties can reuse a complete labelled graph. `sail runtime recheck` can also prove that a persisted complete safety result covers the current invariant subset.
 
 - Recheck a named invariant counterexample after an equivalent CFG edit with `sail runtime recheck`. The report identifies the previous receipt and includes independent validation against the current job.
