@@ -2,6 +2,8 @@
 
 This experiment measures how much work Sail can reuse across native TLA+ checks. It compares the native 0.3.0 source, the same source with temporal receipts, and pinned TLC. All three ran on the same host with identical model and configuration bytes. [Reuse issue](https://github.com/Chelis-Lang/sail/issues/774) · [Sail v0.3.0 baseline](https://github.com/Chelis-Lang/sail/releases/tag/v0.3.0) · [Receipt implementation](https://github.com/Chelis-Lang/sail/pull/777).
 
+For substantive edits, see [installed edit sessions and invariant removal](#native-checks-after-substantive-edits) and [retaining the first temporal property](#retaining-the-first-temporal-property). The original receipt comparison below measures identical-input reuse.
+
 ## Results
 
 Each cell reports the median of three foreground times in milliseconds. The last column reports the median of the three paired speedups against Sail. All 333 verdicts and distinct-state counts per engine matched.
@@ -162,3 +164,28 @@ For exact receipts, repeat the `scenarios` and `loop` driver commands in the rep
 ```sh
 python3 scripts/collect-temporal-reuse.py "$RESULTS" --candidate s7 --compare docs/validation/data/2026-11-19-native-s7.json
 ```
+
+## Retaining the first temporal property
+
+MCLiveInternalMemory originally checks `LivenessProperty` followed by
+`Liveness`. Removing the trailing property leaves the transition system, fairness
+and first compiled property unchanged. Sail can use the previous native proof
+after checking both programs and authenticating the original worker. It
+requires a complete final search with no periodic prefix, no audit,
+no reference atom evaluation and no fallback. The previous search generated
+8 initial states and 21,400 total states, with 4,408 distinct states,
+depth 10 and an empty queue. The ordinary edited check agrees on all five
+counters.
+
+Two local three-trial runs exercised the full installed CLI during development.
+In the final run the edited check cost 13.101, 12.678 and 15.058 ms in
+separate processes, versus 70.057, 65.986 and 74.657 ms on fresh checking
+of the same respective inputs. These shared-workstation timings include
+lookup, process and worker startup, both bindings and the result. The data
+also retains all six edit sessions and the mutex controls for each trial.
+[Development measurements and binary hashes](data/2026-11-20-first-temporal-claim-preflight.json).
+
+The command in the preceding section reproduces both the installed edit
+session and the cross-process property removal. The script checks the current
+obligation and worker identities, counts and fresh verdict before writing
+each timing.
