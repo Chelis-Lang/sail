@@ -30,8 +30,11 @@ validation. A failed operation falls through to ordinary native checking or
 ends with an operational failure. The runtime never imports a partial batch
 as an exact receipt.
 
-The implementation uses the source-development dependency provision of
-[ADR 0172](0172-native-temporal-in-main-workspace.md). Pin the full upstream
-revision for both Dive dependencies and check the worker's reported source.
-Before a stable package publication, move the dependency to published Dive
-crates and repeat native conformance.
+During point-release development both direct workspace dependencies name
+the same reviewed Git repository and immutable revision. This changes the
+development mechanism in [ADR 0172](0172-native-temporal-in-main-workspace.md).
+Sail’s acceptance source capture rejects workspace-wide overrides because
+they can redirect proof dependencies. Direct pins leave the proof
+assembly and its override check intact. Tests match the worker’s reported
+source to both direct declarations and all resolved Dive packages. Before
+stable publication, use the published Dive crates and repeat native conformance.
