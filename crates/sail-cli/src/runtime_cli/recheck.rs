@@ -1,4 +1,4 @@
-//! A prior check can justify a named invariant failure after a CFG-only edit.
+//! Reuse authenticated complete safety proofs or validate a qualified prior failure.
 use sail_api::runtime::{Input, Output, Request, Response, VERSION};
 use sail_api::temporal::{ItfTrace, Job, Operation, Outcome};
 use sail_runtime::{Cancellation, Runtime};
@@ -60,29 +60,91 @@ pub(super) fn run(
                 },
             );
         }
-        if let Ok(Some(basis)) = runtime.lookup_temporal(old, cancellation)
-            && let Some(trace) = basis.response.as_ref().and_then(invariant_trace)
-            && sail_dive::equivalent_check_config(&old.request, &new.request)
-            && let Some(validated) = validate(runtime, new, &basis, trace, cancellation, start)
-        {
-            let digest =
-                sail_api::temporal::request_sha256(&new.request).map_err(|e| e.to_string())?;
-            super::write_json(
-                out,
-                &json!({
-                    "version":1, "route":"equivalent-cfg-rechecked-refutation", "outcome":"refuted",
-                    "obligation_id":new.obligation_id, "requirement_ids":new.requirement_ids,
-                    "request_sha256":digest, "previous_request_sha256":basis.request_sha256,
-                    "previous_receipt_key":basis.cache_key, "validation":validated
-                }),
-            )?;
-            return Ok(0);
+        if let Ok(Some(basis)) = runtime.lookup_temporal(old, cancellation) {
+            if let Some(relation) = projected(old, new, &basis, cancellation, start) {
+                super::write_json(
+                    out,
+                    &json!({
+                        "version":1,"route":"established-invariant-subset","outcome":"holds",
+                        "obligation_id":new.obligation_id,"requirement_ids":new.requirement_ids,
+                        "request_sha256":relation.current_sha256,"previous_request_sha256":relation.previous_sha256,
+                        "previous_receipt_key":basis.cache_key,"worker_sha256":basis.worker_sha256,
+                        "backend_source":relation.backend_source,"invariants":relation.invariants
+                    }),
+                )?;
+                return Ok(0);
+            }
+            if let Some(trace) = basis.response.as_ref().and_then(invariant_trace)
+                && sail_dive::equivalent_check_config(&old.request, &new.request)
+                && let Some(validated) = validate(runtime, new, &basis, trace, cancellation, start)
+            {
+                let digest =
+                    sail_api::temporal::request_sha256(&new.request).map_err(|e| e.to_string())?;
+                super::write_json(
+                    out,
+                    &json!({
+                        "version":1, "route":"equivalent-cfg-rechecked-refutation", "outcome":"refuted",
+                        "obligation_id":new.obligation_id, "requirement_ids":new.requirement_ids,
+                        "request_sha256":digest, "previous_request_sha256":basis.request_sha256,
+                        "previous_receipt_key":basis.cache_key, "validation":validated
+                    }),
+                )?;
+                return Ok(0);
+            }
         }
     }
     let full = runtime
         .execute(current, cancellation)
         .map_err(|e| e.to_string())?;
     write_current(out, &full)
+}
+
+fn projected(
+    old: &Job,
+    current: &Job,
+    basis: &sail_api::temporal::Result,
+    cancel: &Cancellation,
+    start: Instant,
+) -> Option<sail_dive::edits::projection::Relation> {
+    use sail_api::temporal::Completion;
+    use sail_runtime::temporal::Worker;
+    let evidence = basis.response.as_ref()?;
+    if evidence.outcome != Outcome::Holds
+        || evidence.completion != Completion::Safety
+        || !basis.cache_hit
+        || basis.cache_key.is_none()
+        || evidence.native_report["statistics"]["left_on_queue"] != 0
+        || old.request.operation != current.request.operation
+    {
+        return None;
+    }
+    let budget = Duration::from_millis(current.wall_time_ms);
+    if cancel.is_cancelled() || start.elapsed() >= budget {
+        return None;
+    }
+    let worker = Worker::discover(&std::env::current_exe().ok()?).ok()??;
+    if basis.worker_sha256.as_ref() != Some(&worker.sha256) {
+        return None;
+    }
+    let query = sail_dive::edits::projection::Query {
+        previous: old.request.clone(),
+        current: current.request.clone(),
+    };
+    let sail_dive::client::RunResult::Completed(relation) = sail_dive::client::project(
+        &worker.executable,
+        &worker.sha256,
+        &query,
+        budget,
+        start,
+        cancel,
+    ) else {
+        return None;
+    };
+    (relation.invariants.is_some()
+        && relation.previous_sha256 == basis.request_sha256
+        && !cancel.is_cancelled()
+        && start.elapsed() < budget)
+        .then_some(*relation)
 }
 
 // Validation is optional work. For example, adding a long previous trace

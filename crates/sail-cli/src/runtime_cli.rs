@@ -338,7 +338,7 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
                 result.previous = Some(value.into());
             }
             "--cache" if action != "edit-session" && result.cache.is_none() => {
-                result.cache = Some(value.into())
+                result.cache = Some(value.into());
             }
             "--socket"
                 if matches!(action, "capabilities" | "execute") && result.socket.is_none() =>
@@ -358,7 +358,11 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
 }
 
 fn read_request(path: &Path) -> Result<Request, String> {
-    let input: Box<dyn Read> = if path == Path::new("-") {
+    decode_request(open_input(path)?)
+}
+
+fn open_input(path: &Path) -> Result<Box<dyn Read>, String> {
+    Ok(if path == Path::new("-") {
         Box::new(std::io::stdin())
     } else {
         Box::new(std::fs::File::open(path).map_err(|e| {
@@ -367,8 +371,7 @@ fn read_request(path: &Path) -> Result<Request, String> {
                 path.display()
             )
         })?)
-    };
-    decode_request(input)
+    })
 }
 
 fn decode_request(input: impl Read) -> Result<Request, String> {

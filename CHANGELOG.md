@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail runtime edit-session` checks successive versions with one authenticated native worker. Edited safety invariants can reuse ordered states. Edited temporal properties can reuse a complete labelled graph. `sail runtime recheck` can also prove that a persisted complete safety result covers the current invariant subset.
+
 - Recheck a named invariant counterexample after an equivalent CFG edit with `sail runtime recheck`. The report identifies the previous receipt and includes independent validation against the current job.
 
 - Replay completed native temporal checks and validated refutations after identical reruns and undo. Results identify the matched key. Supporting installations can prepare the first check in the background and transport signed receipts between CI jobs (#774).

@@ -98,5 +98,38 @@
     }
   ],
   "schema": 1,
-  "timer": "CLI wall time in milliseconds, through JSON decode. Each pair runs guarded recheck then an uncached current check."
+  "timer": "CLI wall time in milliseconds, through JSON decode. Each pair runs guarded recheck then an uncached current check.",
+  "native_macos_debug_control": {
+    "platform": "EC2 mac2.metal, Apple M1 arm64",
+    "profile": "debug, native functional smoke only",
+    "source_pr": 781,
+    "focused_tests_passed": 12,
+    "width": 20,
+    "controls": {
+      "inventory": "refuted",
+      "sibling": "error",
+      "fixed": "holds",
+      "state_limit": "stopped"
+    },
+    "fresh_ms": [
+      27.99,
+      27.99,
+      28.04,
+      28.33,
+      28.05
+    ],
+    "guarded_recheck_ms": [
+      25.77,
+      23.64,
+      23.74,
+      24.68,
+      24.64
+    ],
+    "median_speedup": 1.14,
+    "states": 22,
+    "basis_request_sha256": "f63f4bc231d4bbf5c0a3f6d7843418c409564338ad65496a0b4ed8b5539f91b4",
+    "witness_sha256": "f9b7123e3e44559a96c39825baacece09e29fc90545f18bf42ae67c85f5db84a",
+    "sail_sha256": "35a89414ba23c9b1939bb14d6a543983a899a4bea14ccb544204f7e769624038",
+    "worker_sha256": "86b966cbc28384167cf7a22a28d8a72c00d8181348abb0917e438fd33abeca5b"
+  }
 }

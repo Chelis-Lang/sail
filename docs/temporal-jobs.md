@@ -131,4 +131,61 @@ The command also sees receipts populated by the local daemon or restored by the 
 
 If the current job already has an exact receipt, Sail returns it through the ordinary `current-check` route. Otherwise Sail looks up the exact previous job without executing it. The fast route requires the same worker, backend, state/depth and wall limits, module names and bytes, and two clean CFG parses with identical values, declaration order and retained source locations. A trailing CFG comment is one useful example. The previous result must name a single configured invariant violation. A separate worker validates that trace against the current request. The version-1 result names the route `equivalent-cfg-rechecked-refutation` and records the current caller and request digest, previous receipt key and digest, and the validator's actual response. It establishes a refutation. It publishes no new exact receipt and copies no old exploration counters into the current result.
 
-Other edits, missing receipts, simulation evidence and an inconclusive trace check fall back to normal execution of the current check. This route is `current-check` with the ordinary `response` envelope. An exactly repeated request uses normal exact replay. Each fallback retains the submitted job's full limits. The preceding optional lookup and validation have their own window bounded by the submitted wall time. Exit 0 indicates a conclusive check or validated refutation, 1 an incomplete current check and 2 malformed input or a command error. Broad property edits still need a Dive-owned graph or ordered discovery prefix.
+Other edits, missing receipts, simulation evidence and an inconclusive trace check fall back to normal execution of the current check. This route is `current-check` with the ordinary `response` envelope. An exactly repeated request uses normal exact replay. Each fallback retains the submitted job's full limits. The preceding optional lookup and validation have their own window bounded by the submitted wall time. Exit 0 indicates a conclusive check or validated refutation, 1 an incomplete current check and 2 malformed input or a command error. For changed properties, the edit session below uses Dive’s ordered states and complete temporal graphs.
+
+## Recheck changed invariants and temporal properties
+
+Use `sail runtime recheck --previous previous.json --file current.json` after
+removing an invariant from a previous successful job. Sail first looks up
+the exact current request. On a miss, it can use the authenticated completed
+safety receipt for `previous.json`. The same native worker binds both programs
+and checks that the current invariants appear in the same order among the
+ones that already held. The complete module bytes, transition semantics,
+constraints, constants, deadlock policy and limits must qualify. The result
+names the current obligations, both request digests, the worker and the
+original receipt. On LamportMutex, this covers keeping `TypeOK` and `Mutex`
+after checking `TypeOK BoundedNetwork Mutex`.
+
+For a new or changed predicate, pass the successive closed native check
+requests to one worker. Given two ordinary runtime envelopes, this command
+extracts their native requests and gives the entire batch a 30-second budget.
+
+```sh
+jq -s '{version:1, wall_time_ms:30000, checks:map(.input.job.request)}' \
+  previous.json current.json | sail runtime edit-session --file -
+```
+
+Each entry contains the current request digest, worker microseconds and
+evidence. `safety-rows` checks a new invariant against the states in their
+original discovery order. A failed original search can supply a prefix for
+another currently validated failure. A holding decision requires the complete
+reachable set. `temporal-graph` checks the current temporal formulas against
+the stored states and labelled edges. Dive checks actual stuttering, fairness,
+configured periodic boundaries and the complete set of property names on a
+counterexample. `established-invariants` keeps a completed proof and its bound
+invariant inventory without retaining the state rows. This route can project
+a proof onto previously checked invariants for models with aggregate state.
+Sail validates the ITF rendering of each reused counterexample against the
+current model.
+
+The row and graph APIs currently admit pure models with scalar integer or
+Boolean state fields. A different transition relation or an unsupported edit
+can require a new capture or a fresh ordinary check. The `reused` flag and
+basis digest distinguish these outcomes. `basis_counts` describe the run that
+established the artifact. `decision_counts` are the ordinary search position
+proved for the current answer. A graph scan generates zero successors.
+
+The isolated CLI takes 1–64 exhaustive requests and a positive whole-worker
+deadline of at most five minutes. Input and aggregate output each have a
+16 MiB limit. Send EOF when writing to stdin. The caller’s input time is
+charged when the batch arrives. Cancellation or expiry returns no partial
+evidence. Exit 0 means all checks were conclusive, 1 means a stop, incomplete
+check or worker failure, and 2 indicates invalid input or CLI setup. Each call
+owns its own artifact. Rust editors with a live process can instead keep
+`sail_dive::edits::Session` and call `check` as new edits arrive. That low-level
+API runs synchronously in the caller; the CLI enforces the process deadline.
+
+The [measurement record](validation/temporal-reuse-s7.md) gives capture costs,
+per-edit samples, native fresh comparisons and examples that used the ordinary
+fallback. The [protocol](spec/temporal-jobs.md) describes implementation and
+dependency identity.

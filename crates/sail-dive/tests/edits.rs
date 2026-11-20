@@ -135,3 +135,24 @@ fn real_graph_property_edits_and_deadline_bounds() -> Test {
     )?;
     observed(&check(&edited, cfg, 1), &mut s, None)
 }
+
+#[test]
+fn direct_embedding_preserves_ordinary_checker_overrides() -> Test {
+    const CHILD: &str = "SAIL_TEST_EDIT_CORE_OVERRIDE";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe()?)
+            .args([
+                "--exact",
+                "direct_embedding_preserves_ordinary_checker_overrides",
+            ])
+            .env(CHILD, "1")
+            .env("DIVE_CORE_OPT", "-symbolic-member")
+            .status()?;
+        assert!(status.success());
+        return Ok(());
+    }
+    let source = "---- MODULE A ----\nEXTENDS Naturals\nVARIABLE x\nInit == x=0\nNext == UNCHANGED x\nInv == x \\in 0..100000000\n====\n";
+    let current = check(source, CFG, 20);
+    assert_eq!(sail_dive::execute(&current).outcome, Outcome::Unsupported);
+    observed(&current, &mut Session::default(), None)
+}

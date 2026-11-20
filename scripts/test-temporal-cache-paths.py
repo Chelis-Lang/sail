@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check receipt sharing across the installed native CLI and its default daemon."""
 from contextlib import contextmanager
+from copy import deepcopy
 import json
 import os
 import shutil
@@ -9,6 +10,69 @@ import subprocess
 import sys
 import tempfile
 import time
+
+
+def check_projection(sail, base, doc):
+    """Prove a subset across CLI processes and verify the mandatory fallback cases."""
+    previous = deepcopy(doc)
+    old_job = previous["input"]["job"]
+    model = old_job["request"]["model"]
+    model["files"]["Warm.tla"] = """---- MODULE Warm ----
+VARIABLE x
+Init == x = <<0, 1>>
+Next == x' = x
+Inv == x[1] = 0
+Second == x[2] = 1
+FalseInv == x[1] = 1
+====
+"""
+    model["files"]["Unused.tla"] = "---- MODULE Unused ----\nV == 1\n====\n"
+    model["files"]["Warm.cfg"] = "INIT Init\nNEXT Next\nINVARIANT Inv Second\n"
+    old_file = base / "previous.json"
+    old_file.write_text(json.dumps(previous))
+    store = base / "projection-store"
+
+    def invoke(action, current, *args):
+        result = subprocess.run(
+            [sail, "runtime", action, "--file", "-", "--cache", store, *args],
+            input=json.dumps(current), text=True, capture_output=True, check=True, timeout=20,
+        )
+        return json.loads(result.stdout)
+
+    current = deepcopy(previous)
+    job = current["input"]["job"]
+    job["obligation_id"] = "edited-inventory"
+    job["request"]["model"]["files"]["Warm.cfg"] = "INIT Init\nNEXT Next\nINVARIANT Inv\n"
+
+    def recheck(envelope):
+        return invoke("recheck", envelope, "--previous", old_file)
+
+    basis = invoke("execute", previous)["output"]["result"]
+    assert basis["response"]["outcome"] == "holds" and not basis["cache_hit"]
+    retained = invoke("execute", previous)["output"]["result"]
+    assert retained["cache_hit"]
+    projected = recheck(current)
+    assert projected["route"] == "established-invariant-subset" and projected["outcome"] == "holds"
+    assert projected["obligation_id"] == "edited-inventory" and projected["invariants"] == ["Inv"]
+    assert projected["previous_receipt_key"] == retained["cache_key"] and projected["worker_sha256"] == basis["worker_sha256"]
+
+    for change, expected in [("unused-source", "holds"), ("limits", "holds"), ("added-obligation", "refuted")]:
+        other = deepcopy(current)
+        req = other["input"]["job"]["request"]
+        if change == "unused-source":
+            req["model"]["files"]["Unused.tla"] += "\n"
+        elif change == "limits":
+            req["operation"]["max_states"] += 1
+        else:
+            req["model"]["files"]["Warm.cfg"] += "INVARIANT FalseInv\n"
+        reply = recheck(other)
+        assert reply["route"] == "current-check", change
+        assert reply["response"]["output"]["result"]["response"]["outcome"] == expected, change
+
+    exact = invoke("execute", current)["output"]["result"]
+    assert not exact["cache_hit"] and exact["request_sha256"] == projected["request_sha256"]
+    reply = recheck(current)
+    assert reply["route"] == "current-check" and reply["response"]["output"]["result"]["cache_hit"]
 
 
 def run(sail, base):
@@ -94,6 +158,7 @@ def run(sail, base):
     assert not check("execute", "--cache", alternate)["cache_hit"]
     assert check("execute", "--cache", alternate)["cache_hit"]
     assert not list((cache / "results").rglob("temporal-v1"))
+    check_projection(sail, base, doc)
 
 
 if __name__ == "__main__":
@@ -113,4 +178,6 @@ if __name__ == "__main__":
         run(sail, base)
         subprocess.run([sys.executable, Path(__file__).with_name("benchmark-guarded-refutation.py"),
                         sail, "--smoke"], check=True)
-    print("native daemon, embedded runtime and preparation share exact receipts")
+        subprocess.run([sys.executable, Path(__file__).with_name("benchmark-temporal-edit-session.py"),
+                        sail, "--width", "20", "--samples", "1"], check=True, stdout=subprocess.DEVNULL)
+    print("native cache sharing, guarded rechecks and edit sessions passed")

@@ -1,7 +1,8 @@
 //! Check a sequence of closed TLA+ requests while retaining one typed Dive artifact.
+pub mod projection;
 use crate::input::Frozen;
 use crate::{ItfTrace, Operation, Outcome, Request, Response};
-use dive_api::{safety_reuse as safety, temporal, temporal_reuse};
+use dive_api::{safety_projection, safety_reuse as safety, temporal, temporal_reuse};
 use safety::Counts;
 use serde::{Deserialize, Serialize};
 
@@ -87,6 +88,8 @@ pub enum Checked {
 pub enum Structure {
     /// Ordered safety discovery rows, complete or ending in a qualified refutation.
     SafetyRows,
+    /// A complete safety check and its bound invariant inventory, with zero retained state rows.
+    EstablishedInvariants,
     /// Complete labelled graph, including the stuttering relation.
     TemporalGraph,
 }
@@ -137,7 +140,7 @@ pub struct Session {
     prior: Option<(String, Closure, Basis)>,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 struct Closure {
     root: String,
     config: String,
@@ -155,7 +158,16 @@ impl From<&crate::Model> for Closure {
 
 enum Basis {
     Safety(safety::Artifact),
+    Projection(Box<(Request, safety_projection::Complete)>),
     Temporal(Box<temporal_reuse::Artifact>),
+}
+
+// The hosted worker clears its environment. Direct library callers can enable a
+// different ordinary checker policy; only ordinary checking can decide it.
+fn default_policy() -> bool {
+    ["DIVE_CORE_OPT", "DIVE_NATIVE_ATOM_AUDIT"]
+        .iter()
+        .all(|key| std::env::var_os(key).is_none())
 }
 
 impl Session {
@@ -199,6 +211,9 @@ impl Session {
         states: u64,
         depth: u64,
     ) -> Option<Evidence> {
+        if !default_policy() {
+            return None;
+        }
         let input = Frozen::create(&request.model).ok()?;
         let analysis = dive_api::analyze_file(
             &input.root,
@@ -211,28 +226,30 @@ impl Session {
         let config = dive_api::parse_config_file(&input.config).ok()?;
         let closure = Closure::from(&request.model);
         if config.config()?.properties.is_empty() {
-            let program = safety::Program::from_reports(&analysis, &config).ok()?;
-            let limits = safety::Limits {
+            if let Some(evidence) =
+                self.rows(request, hash, &closure, &analysis, &config, states, depth)
+            {
+                return Some(evidence);
+            }
+            let program = safety_projection::Program::from_reports(&analysis, &config).ok()?;
+            let limits = safety_projection::Limits {
                 max_states: Some(states),
                 max_depth: Some(depth),
-                ..Default::default()
             };
-            if let Some((basis_hash, previous, Basis::Safety(prior))) = &self.prior
+            if let Some((basis_hash, previous, Basis::Projection(prior))) = &self.prior
                 && previous == &closure
-                && let Ok(decision) = prior.recheck(&program, limits)
+                && projection::same_scope(&prior.0, request)
+                && let Ok(counts) = prior.1.project(&program, limits)
             {
-                return safety_evidence(
-                    request,
-                    true,
-                    basis_hash,
-                    prior.original_counts(),
-                    &decision,
-                );
+                return Some(projection_hold(basis_hash, true, counts));
             }
-            let (artifact, decision) = program.capture(limits).ok()?;
-            let current =
-                safety_evidence(request, false, hash, artifact.original_counts(), &decision)?;
-            self.prior = Some((hash.to_owned(), closure, Basis::Safety(artifact)));
+            let complete = program.capture(limits).ok()?;
+            let current = projection_hold(hash, false, complete.original_counts());
+            self.prior = Some((
+                hash.to_owned(),
+                closure,
+                Basis::Projection(Box::new((request.clone(), complete))),
+            ));
             Some(current)
         } else {
             let program = temporal_reuse::Program::from_reports(&analysis, &config).ok()?;
@@ -256,6 +273,54 @@ impl Session {
             ));
             Some(current)
         }
+    }
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the row and projection paths share one admitted parse and binding input"
+    )]
+    fn rows(
+        &mut self,
+        request: &Request,
+        hash: &str,
+        closure: &Closure,
+        analysis: &dive_api::AnalyzeReport,
+        config: &dive_api::ConfigReport,
+        states: u64,
+        depth: u64,
+    ) -> Option<Evidence> {
+        let program = safety::Program::from_reports(analysis, config).ok()?;
+        let limits = safety::Limits {
+            max_states: Some(states),
+            max_depth: Some(depth),
+            ..Default::default()
+        };
+        if let Some((basis_hash, previous, Basis::Safety(prior))) = &self.prior
+            && previous == closure
+            && let Ok(decision) = prior.recheck(&program, limits)
+        {
+            return safety_evidence(
+                request,
+                true,
+                basis_hash,
+                prior.original_counts(),
+                &decision,
+            );
+        }
+        let (artifact, decision) = program.capture(limits).ok()?;
+        let current = safety_evidence(request, false, hash, artifact.original_counts(), &decision)?;
+        self.prior = Some((hash.to_owned(), closure.clone(), Basis::Safety(artifact)));
+        Some(current)
+    }
+}
+
+fn projection_hold(hash: &str, reused: bool, counts: Counts) -> Evidence {
+    Evidence::Checked {
+        structure: Structure::EstablishedInvariants,
+        reused,
+        basis_sha256: hash.to_owned(),
+        basis_counts: counts.into(),
+        decision_counts: counts.into(),
+        decision: Checked::Holds,
     }
 }
 
@@ -349,6 +414,7 @@ impl Entry {
                     .ok_or("missing current property inventory")?;
                 let kind = trace.ending.get("kind").and_then(serde_json::Value::as_str);
                 let named = match structure {
+                    Structure::EstablishedInvariants => false,
                     Structure::SafetyRows => {
                         kind == Some("invariant")
                             && trace.ending["name"]
@@ -447,6 +513,8 @@ impl BatchResult {
                     || basis.counts != basis_counts
                     || request.operation != basis.request.operation
                     || (holds && !basis.complete)
+                    || (*structure == Structure::EstablishedInvariants
+                        && projection::subset_inventory(basis.request, request).is_none())
                     || Closure::from(&request.model) != Closure::from(&basis.request.model)
                 {
                     return Err("worker cited an ineligible edit artifact".into());

@@ -27,10 +27,24 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut args = std::env::args_os().skip(1);
     if let Some(mode) = args.next() {
-        if mode != "--edit-session" || args.next().is_some() {
-            return Err("unknown worker mode".into());
+        if args.next().is_some() {
+            return Err("unknown worker arguments".into());
         }
-        return edit_session(&input);
+        return match mode.to_str() {
+            Some("--edit-session") => edit_session(&input),
+            Some("--project-invariants") => {
+                let query: sail_dive::edits::projection::Query =
+                    sail_api::temporal::decode(&input)?;
+                let mut frame = Frame {
+                    bytes: Vec::new(),
+                    limit: sail_dive::MAX_DOCUMENT_BYTES,
+                };
+                serde_json::to_writer(&mut frame, &query.compare()?)?;
+                std::io::stdout().write_all(&frame.bytes)?;
+                Ok(())
+            }
+            _ => Err("unknown worker mode".into()),
+        };
     }
     let request = sail_dive::decode_request(&input)?;
     let response = sail_dive::execute(&request);

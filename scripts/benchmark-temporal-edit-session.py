@@ -127,6 +127,41 @@ def compare(sail, root, name, checks, outcomes, sample):
             "worker_sha256": session["worker_sha256"], "rows": rows}
 
 
+def durable_projection(sail, root, original, edited, trials):
+    cache = root / "durable-mutex-cache"
+
+    def envelope(check, label):
+        return {"version": 1, "input": {"kind": "temporal", "job": {
+            "obligation_id": label, "requirement_ids": ["mutual-exclusion"],
+            "wall_time_ms": 300000, "request": check}}}
+
+    prev = envelope(original, "prior")
+    previous_file = root / "mutex-previous.json"
+    previous_file.write_text(json.dumps(prev))
+    old, seed_us = call(sail, ["execute", "--cache", str(cache)], prev)
+    basis = old["output"]["result"]
+    assert basis["response"]["outcome"] == "holds" and not basis["cache_hit"]
+    samples = []
+    for n in range(trials):
+        current = envelope(deepcopy(edited), f"edit-{n}")
+        files = current["input"]["job"]["request"]["model"]["files"]
+        files[edited["model"]["config"]] += f"\n\n\\* sampled edit {n}\n"
+        result, us = call(sail, ["recheck", "--previous", str(previous_file), "--cache", str(cache)], current)
+        assert result["route"] == "established-invariant-subset" and result["outcome"] == "holds", result
+        assert result["obligation_id"] == f"edit-{n}" and result["requirement_ids"] == ["mutual-exclusion"]
+        assert result["previous_request_sha256"] == basis["request_sha256"]
+        assert result["worker_sha256"] == basis["worker_sha256"] and result["previous_receipt_key"]
+        ordinary, fresh_us = call(sail, ["execute", "--cache", str(cache)], current)
+        fresh = ordinary["output"]["result"]
+        assert not fresh["cache_hit"] and fresh["response"]["outcome"] == "holds"
+        assert result["request_sha256"] == fresh["request_sha256"]
+        assert result["invariants"] == fresh["response"]["requested_checks"]["invariants"]
+        assert basis["response"]["native_report"]["statistics"]["distinct"] == fresh["response"]["native_report"]["statistics"]["distinct"] == 724274
+        samples.append({"projected_process_us": us, "fresh_process_us": fresh_us,
+                        "current_sha256": result["request_sha256"]})
+    return {"establishing_process_us": seed_us, "original_sha256": basis["request_sha256"],
+            "stats": basis["response"]["native_report"]["statistics"], "samples": samples}
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("sail", type=Path)
@@ -142,6 +177,8 @@ def main():
     with tempfile.TemporaryDirectory() as d:
         for name, checks, expected in cases(args.width, args.s7_fixtures):
             data["cases"][name] = [compare(sail, Path(d), name, checks, expected, i) for i in range(args.samples)]
+            if name == "s7-mutex":
+                data["persisted_s7_mutex"] = durable_projection(sail, Path(d), *checks, args.samples)
     print(json.dumps(data, indent=2))
 
 

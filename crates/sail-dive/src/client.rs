@@ -106,7 +106,14 @@ pub fn run(
     cancel: &AtomicBool,
 ) -> RunResult {
     let started = Instant::now();
-    match run_in(worker, worker_sha256, request, deadline, cancel, started) {
+    match run_in(
+        worker,
+        worker_sha256,
+        request,
+        deadline,
+        || cancel.load(Ordering::Acquire),
+        started,
+    ) {
         Ok(result) => result,
         Err(message) => RunResult::Failed(format!("SAIL4212: {message}")),
     }
@@ -132,7 +139,29 @@ pub fn run_edit_session(
         worker_sha256,
         batch,
         Duration::from_millis(batch.wall_time_ms),
-        cancel,
+        || cancel.load(Ordering::Acquire),
+        started,
+    )
+    .unwrap_or_else(|e| RunResult::Failed(format!("SAIL4212: {e}")))
+}
+
+/// Qualify two requests with the same authenticated child and parent-owned deadline as an ordinary check.
+/// A successful comparison supplies a conditional relation and carries no model verdict.
+#[must_use]
+pub fn project(
+    worker: &Path,
+    sha: &str,
+    query: &crate::edits::projection::Query,
+    deadline: Duration,
+    started: Instant,
+    cancel: &sail_runtime::Cancellation,
+) -> RunResult<crate::edits::projection::Relation> {
+    run_in(
+        worker,
+        sha,
+        query,
+        deadline,
+        || cancel.is_cancelled(),
         started,
     )
     .unwrap_or_else(|e| RunResult::Failed(format!("SAIL4212: {e}")))
@@ -158,6 +187,17 @@ impl WorkerRequest for Request {
         }
         crate::validate_response(self, &response)?;
         Ok(response)
+    }
+}
+
+impl WorkerRequest for crate::edits::projection::Query {
+    type Reply = crate::edits::projection::Relation;
+    const ARG: Option<&'static str> = Some("--project-invariants");
+
+    fn checked_reply(&self, bytes: &[u8]) -> Result<Self::Reply, String> {
+        let relation = sail_api::temporal::decode(bytes).map_err(|e| e.to_string())?;
+        self.validate(&relation)?;
+        Ok(relation)
     }
 }
 
@@ -208,11 +248,11 @@ fn run_in<R: WorkerRequest>(
     worker_sha256: &str,
     request: &R,
     deadline: Duration,
-    cancel: &AtomicBool,
+    cancelled: impl Fn() -> bool,
     started: Instant,
 ) -> Result<RunResult<R::Reply>, String> {
     let interruption = |worker_started| {
-        if cancel.load(Ordering::Acquire) {
+        if cancelled() {
             Some(RunResult::Cancelled { worker_started })
         } else if started.elapsed() >= deadline {
             Some(RunResult::TimedOut { worker_started })
