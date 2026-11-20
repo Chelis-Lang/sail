@@ -384,7 +384,7 @@ dependencies = [
 [[package]]
 name = "dive-api"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-config",
  "dive-core",
@@ -408,7 +408,7 @@ dependencies = [
 [[package]]
 name = "dive-config"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-syntax",
 ]
@@ -416,7 +416,7 @@ dependencies = [
 [[package]]
 name = "dive-core"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-ir",
  "dive-value",
@@ -428,7 +428,7 @@ dependencies = [
 [[package]]
 name = "dive-eval"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-ir",
  "dive-value",
@@ -437,7 +437,7 @@ dependencies = [
 [[package]]
 name = "dive-explore"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-core",
  "dive-store",
@@ -452,7 +452,7 @@ dependencies = [
 [[package]]
 name = "dive-ir"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-sema",
  "dive-syntax",
@@ -462,7 +462,7 @@ dependencies = [
 [[package]]
 name = "dive-liveness"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -476,7 +476,7 @@ dependencies = [
 [[package]]
 name = "dive-model"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -488,7 +488,7 @@ dependencies = [
 [[package]]
 name = "dive-pluscal"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-syntax",
  "serde",
@@ -497,7 +497,7 @@ dependencies = [
 [[package]]
 name = "dive-runtime"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -515,7 +515,7 @@ dependencies = [
 [[package]]
 name = "dive-sema"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-syntax",
 ]
@@ -523,7 +523,7 @@ dependencies = [
 [[package]]
 name = "dive-sim"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -535,7 +535,7 @@ dependencies = [
 [[package]]
 name = "dive-stdlib"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -547,7 +547,7 @@ dependencies = [
 [[package]]
 name = "dive-store"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-value",
 ]
@@ -555,7 +555,7 @@ dependencies = [
 [[package]]
 name = "dive-syntax"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "rowan",
 ]
@@ -563,7 +563,7 @@ dependencies = [
 [[package]]
 name = "dive-trace"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -575,7 +575,7 @@ dependencies = [
 [[package]]
 name = "dive-value"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=3def2fe115f1c168cdeba0507ad734524e9fd4dd#3def2fe115f1c168cdeba0507ad734524e9fd4dd"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "num-bigint 0.5.1",
  "num-integer",
