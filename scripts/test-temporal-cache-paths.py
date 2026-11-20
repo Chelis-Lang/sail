@@ -51,6 +51,17 @@ FalseInv == x[1] = 1
     assert basis["response"]["outcome"] == "holds" and not basis["cache_hit"]
     retained = invoke("execute", previous)["output"]["result"]
     assert retained["cache_hit"]
+    sibling = deepcopy(previous)
+    sibling["input"]["job"]["obligation_id"] = "changed-sibling"
+    sibling["input"]["job"]["request"]["model"]["files"]["Unused.tla"] += "\n"
+    same = recheck(sibling)
+    assert same["route"] == "unchanged-loaded-program" and same["outcome"] == "holds"
+    assert same["obligation_id"] == "changed-sibling" and same["previous_receipt_key"] == retained["cache_key"]
+    assert "Warm.tla" in same["loaded_modules"] and "Unused.tla" not in same["loaded_modules"]
+    assert "basis_counts" not in same and "response" not in same
+    after = invoke("execute", sibling)["output"]["result"]
+    assert not after["cache_hit"] and after["request_sha256"] == same["request_sha256"]
+
     projected = recheck(current)
     assert projected["route"] == "established-invariant-subset" and projected["outcome"] == "holds"
     assert projected["obligation_id"] == "edited-inventory" and projected["invariants"] == ["Inv"]

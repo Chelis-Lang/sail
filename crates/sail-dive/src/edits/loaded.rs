@@ -101,3 +101,106 @@ impl Query {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn requests() -> (Request, Request) {
+        let previous = Request {
+            version: crate::VERSION,
+            model: crate::Model {
+                root: "Root.tla".into(),
+                config: "Root.cfg".into(),
+                files: [
+                    ("Root.tla".into(), "---- MODULE Root ----\nEXTENDS Library\nVARIABLE x\nInit == x = 0\nNext == x'=x\nInv == x = Bound\n====\n".into()),
+                    ("lib/Library.tla".into(), "---- MODULE Library ----\nBound == 0\n====\n".into()),
+                    ("Root.cfg".into(), "INIT Init\nNEXT Next\nINVARIANT Inv\n".into()),
+                ].into(),
+            },
+            operation: Operation::Check { max_states: 10, max_depth: 10 },
+        };
+        let mut current = previous.clone();
+        current.model.files.insert(
+            "Sibling.tla".into(),
+            "---- MODULE Sibling ----\nUnused == TRUE\n====\n".into(),
+        );
+        (previous, current)
+    }
+
+    #[test]
+    fn unrelated_source_can_change_but_a_loaded_import_cannot() -> Result<(), String> {
+        let (previous, current) = requests();
+        let mut query = Query { previous, current };
+        let relation = query.compare()?;
+        let sources = relation
+            .loaded_modules
+            .as_ref()
+            .ok_or("missing equivalence")?;
+        assert!(sources.iter().any(|p| p == "lib/Library.tla"));
+        assert!(!sources.iter().any(|p| p == "Sibling.tla"));
+        query.validate(&relation)?;
+        query.current.model.files.insert(
+            "lib/Library.tla".into(),
+            "---- MODULE Library ----\nBound == 1\n====\n".into(),
+        );
+        assert!(query.compare()?.loaded_modules.is_none());
+        assert!(query.validate(&relation).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn extracted_monoliths_do_not_certify_a_project_edit() -> Result<(), String> {
+        let (mut previous, _) = requests();
+        previous.model.files.remove("lib/Library.tla");
+        let root = previous
+            .model
+            .files
+            .get_mut("Root.tla")
+            .ok_or("missing root")?;
+        root.push_str("\n---- MODULE Library ----\nBound == 0\n====\n");
+        let mut current = previous.clone();
+        current.model.files.insert(
+            "Sibling.tla".into(),
+            "---- MODULE Sibling ----\nN == 0\n====\n".into(),
+        );
+        assert!(
+            Query { previous, current }
+                .compare()?
+                .loaded_modules
+                .is_none()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn module_shadowing_and_changed_limits_or_configuration_rebind() -> Result<(), String> {
+        let (previous, mut current) = requests();
+        current.model.files.insert(
+            "other/Library.tla".into(),
+            "---- MODULE Library ----\nBound == 2\n====\n".into(),
+        );
+        assert!(
+            Query {
+                previous: previous.clone(),
+                current
+            }
+            .compare()?
+            .loaded_modules
+            .is_none()
+        );
+        let (_, mut current) = requests();
+        current.operation = Operation::Check {
+            max_states: 1,
+            max_depth: 1,
+        };
+        assert!(!eligible(&previous, &current));
+        let (_, mut current) = requests();
+        current
+            .model
+            .files
+            .insert("Root.cfg".into(), "INIT Init\nNEXT Next\n".into());
+        assert!(!eligible(&previous, &current));
+        Ok(())
+    }
+}
