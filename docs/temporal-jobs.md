@@ -87,6 +87,17 @@ sampling rules: a simulation deadlock means every successor of the last
 state lies outside the model's constraints, and its validated trace makes the
 job `Refuted`.
 
+The response, with every trace in its native, ITF and validated forms, must
+fit the 16 MiB worker bound. A job of more than 16 traces first samples 16.
+D.I.V.E.'s traces for a fixed seed do not depend on the trace count, so these
+are the job's own first traces. If their measured size, scaled to the
+requested count, exceeds the bound, the job is `Rejected` with `SAIL4216`
+before the full run, naming the largest trace count that fits at that depth.
+Because the scaled size is an estimate, the full run is also refused with
+`SAIL4216` as soon as its evidence exceeds the bound, before replaying further
+traces. A 1,000-trace, depth-100 job on bosco is refused in about 2 s. At that
+depth, bosco fits 102 traces.
+
 `Operation::Validate` accepts `ItfTrace`: complete ITF variable states plus
 separate ending, temporal property names, native action labels and optional
 length. Integers use canonical decimal `#bigint` values. Sets, sequences,

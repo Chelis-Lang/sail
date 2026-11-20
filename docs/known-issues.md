@@ -24,12 +24,13 @@ oracle completion (#611), and compound-field lowering/retained-read correction
 
 ## Large temporal simulation reports
 
-A temporal simulation job that samples many long traces can fail with
-`SAIL4210`. A 1,000-trace job on bosco does after 160 s. The worker builds the
-whole D.I.V.E. simulation report as a JSON tree before replying. D.I.V.E. 0.1.1
-writes the report without building the tree, using about a tenth of the
-memory; Sail adopts it in 0.3.1 (#767). Until then, use fewer traces or a
-shorter depth.
+A temporal simulation response must fit 16 MiB. Sail 0.3.0 refused a larger
+job only after doing all its work: a 1,000-trace job on bosco failed with
+`SAIL4210` after 160 s. A simulation job is now refused with `SAIL4216` from
+a 16-trace sample before the full run: the bosco job is refused in about 2 s.
+The message names the largest trace count that fits at that depth. Jobs that
+need more evidence than 16 MiB are not supported; use fewer traces or a
+shorter depth (#767).
 
 ## Benchmark descendant cleanup assertion
 

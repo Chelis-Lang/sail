@@ -348,3 +348,29 @@ fn oyster_step_within() -> Request {
         },
     }
 }
+
+#[test]
+fn oversized_simulation_is_refused_from_its_probe_and_a_normal_one_runs() {
+    // 100,000 traces at depth 100 would far exceed the 16 MiB response bound;
+    // the refusal comes from the first 16 traces, not after the full run (#767).
+    let mut req = request(COUNTER, "INIT Init\nNEXT Next\n");
+    req.operation = Operation::Simulate {
+        traces: 100_000,
+        depth: 100,
+    };
+    let result = sail_dive::execute(&req);
+    assert_eq!(result.outcome, Outcome::Rejected, "{result:?}");
+    let message = result.message.unwrap_or_default();
+    assert!(message.starts_with("SAIL4216: "), "{message}");
+    assert!(message.contains("the first 16 traces"), "{message}");
+    assert_eq!(result.native_traces.len(), 0);
+
+    req.operation = Operation::Simulate {
+        traces: 40,
+        depth: 4,
+    };
+    let result = sail_dive::execute(&req);
+    assert_eq!(result.outcome, Outcome::Sampled, "{result:?}");
+    assert_eq!(result.itf_traces.len(), 40);
+    assert!(result.validations.iter().all(|v| v["result"] == "valid"));
+}

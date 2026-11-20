@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- A temporal simulation job whose evidence would exceed the 16 MiB response bound is refused with `SAIL4216` before the full run, from its first 16 traces, and names the largest trace count that fits. A 1,000-trace bosco job is refused in about 2 s instead of failing with `SAIL4210` after 160 s (#767).
+
 - Recheck finite safety models across processes with `sail runtime symbolic-check` and a Dive installation supporting symbolic predicate transfer. Each receiving process proves the candidate against its current model.
 
 - After a complete native check of several temporal properties, `sail runtime recheck` and `edit-session` can certify the first property alone, including on aggregate-state models such as InternalMemory.

@@ -47,11 +47,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let request = sail_dive::decode_request(&input)?;
     let response = sail_dive::execute(&request);
-    let bytes = serde_json::to_vec(&response)?;
-    if bytes.len() > sail_dive::MAX_DOCUMENT_BYTES {
-        return Err("worker evidence exceeds its byte bound".into());
-    }
-    std::io::stdout().write_all(&bytes)?;
+    // Serializing into the bounded frame stops at the bound instead of first
+    // materializing an oversized response (#767).
+    let mut frame = Frame {
+        bytes: Vec::new(),
+        limit: sail_dive::MAX_DOCUMENT_BYTES,
+    };
+    serde_json::to_writer(&mut frame, &response)?;
+    std::io::stdout().write_all(&frame.bytes)?;
     Ok(())
 }
 
