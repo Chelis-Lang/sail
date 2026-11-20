@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Compare installed native CFG rechecking with fresh checks and test its miss paths."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -42,8 +43,8 @@ Aux == x >= 0
             raise RuntimeError(result.stderr.decode())
         return json.loads(result.stdout), (time.monotonic() - start) * 1000
 
-    def check(path):
-        report, ms = call([sail, "runtime", "execute", "--file", path, "--socket", socket])
+    def check(path, *options):
+        report, ms = call([sail, "runtime", "execute", "--file", path, *options])
         return report["output"]["result"], ms
 
     def recheck():
@@ -64,7 +65,7 @@ Aux == x >= 0
             job(current, cfg=config + "\\* cold basis\n")
             cold, _ = recheck()
             assert cold["route"] == "current-check"
-            basis, _ = check(original)
+            basis, _ = check(original, "--socket", socket)
             assert not basis["cache_hit"] and basis["response"]["outcome"] == "refuted"
             expected_itf = basis["response"]["itf_traces"]
             assert len(expected_itf[0]["states"]) == 3
@@ -85,9 +86,14 @@ Aux == x >= 0
                 assert not fresh["cache_hit"] and fresh["response"]["outcome"] == "refuted"
                 assert fresh["response"]["itf_traces"] == expected_itf
                 full.append(round(ms, 2))
-            print(json.dumps({"fresh_ms": full, "guarded_recheck_ms": fast,
-                              "median_speedup": round(statistics.median(full) / statistics.median(fast), 2),
-                              "states": basis["response"]["native_report"]["statistics"]["distinct"]}))
+
+            # The last edited request now has its own exact receipt. Rechecking
+            # with a different previous request must return the current evidence.
+            exact, _ = recheck()
+            assert exact["route"] == "current-check"
+            result = exact["response"]["output"]["result"]
+            assert result["cache_hit"] and result["response"] == fresh["response"]
+            assert result["request_sha256"] == report["request_sha256"]
 
             for mutation, intended in [
                 ({"cfg": config.replace("INVARIANT Aux\n", "")}, "refuted"),
@@ -99,7 +105,14 @@ Aux == x >= 0
                 result, _ = recheck()
                 assert result["route"] == "current-check"
                 assert result["response"]["output"]["result"]["response"]["outcome"] == intended
-            print("changed inventory, evaluation error before the old witness, fixed invariant and tightened state cap all ran fresh")
+            witness = json.dumps(expected_itf, sort_keys=True, separators=(",", ":")).encode()
+            print(json.dumps({"width": width, "fresh_ms": full, "guarded_recheck_ms": fast,
+                              "median_speedup": round(statistics.median(full) / statistics.median(fast), 2),
+                              "states": basis["response"]["native_report"]["statistics"]["distinct"],
+                              "basis_request_sha256": basis["request_sha256"],
+                              "witness_sha256": hashlib.sha256(witness).hexdigest(),
+                              "sail_sha256": hashlib.sha256(sail.read_bytes()).hexdigest(),
+                              "worker_sha256": basis["worker_sha256"]}))
         finally:
             daemon.terminate()
             daemon.wait(timeout=15)
