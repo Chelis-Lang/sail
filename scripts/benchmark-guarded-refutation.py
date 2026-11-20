@@ -95,18 +95,33 @@ Aux == x >= 0
             assert result["cache_hit"] and result["response"] == fresh["response"]
             assert result["request_sha256"] == report["request_sha256"]
 
-            for mutation, intended in [
-                ({"cfg": config.replace("INVARIANT Aux\n", "")}, "refuted"),
-                ({"module": source.replace(f"Inv == x /= {width+1}", f"Inv == IF x = 1 THEN 1 ELSE x /= {width+1}")}, "error"),
-                ({"module": source.replace(f"Inv == x /= {width+1}", f"Inv == x <= {width+1}")}, "holds"),
-                ({"max_states": 4}, "stopped"),
+            controls = {}
+            # At width 200000 the pinned backend observes the same early invariant
+            # error, then refuses its ordered diagnostic beyond 256 emissions.
+            sibling_outcome = "error" if width == 20 else "unsupported"
+            for name, mutation, intended in [
+                ("inventory", {"cfg": config.replace("INVARIANT Aux\n", "")}, "refuted"),
+                ("sibling", {"module": source.replace(f"Inv == x /= {width+1}", f"Inv == IF x = 1 THEN 1 ELSE x /= {width+1}")}, sibling_outcome),
+                ("fixed", {"module": source.replace(f"Inv == x /= {width+1}", f"Inv == x <= {width+1}")}, "holds"),
+                ("state_limit", {"max_states": 4}, "stopped"),
             ]:
                 job(current, **mutation)
                 result, _ = recheck()
                 assert result["route"] == "current-check"
-                assert result["response"]["output"]["result"]["response"]["outcome"] == intended
+                checked = result["response"]["output"]["result"]
+                direct, _ = check(current, "--cache", root / "control-only")
+                assert not checked["cache_hit"] and not direct["cache_hit"]
+                observed = checked["response"]
+                oracle = direct["response"]
+                assert observed["outcome"] == oracle["outcome"] == intended, (name, observed["outcome"], oracle["outcome"])
+                for field in ("verdict", "property", "statistics", "message"):
+                    assert observed["native_report"][field] == oracle["native_report"][field], (name, field)
+                assert observed["itf_traces"] == oracle["itf_traces"]
+                if name == "sibling" and intended == "unsupported":
+                    assert "ordered diagnostic exceeds 256 cumulative emissions" in oracle["native_report"]["message"]
+                controls[name] = intended
             witness = json.dumps(expected_itf, sort_keys=True, separators=(",", ":")).encode()
-            print(json.dumps({"width": width, "fresh_ms": full, "guarded_recheck_ms": fast,
+            print(json.dumps({"width": width, "controls": controls, "fresh_ms": full, "guarded_recheck_ms": fast,
                               "median_speedup": round(statistics.median(full) / statistics.median(fast), 2),
                               "states": basis["response"]["native_report"]["statistics"]["distinct"],
                               "basis_request_sha256": basis["request_sha256"],
