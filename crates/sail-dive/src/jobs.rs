@@ -216,13 +216,139 @@ fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response, Failure> {
     Ok(response)
 }
 
+/// Traces sampled first to estimate a larger job's evidence. D.I.V.E.'s
+/// default-profile traces are prefix-stable for a fixed seed: the probe's
+/// traces are exactly the first traces of the full run.
+const PROBE_TRACES: u64 = 16;
+
 fn simulate(input: &Frozen, traces: u64, depth: usize) -> Result<Response, Failure> {
+    simulate_within(input, traces, depth, crate::MAX_DOCUMENT_BYTES)
+}
+
+/// Simulates under a response byte bound (#767). A job larger than
+/// [`PROBE_TRACES`] first samples that many traces and refuses before the full
+/// run when their measured evidence, extrapolated to the requested count,
+/// exceeds `limit`. The full run is refused as soon as its evidence provably
+/// exceeds `limit`: right after sampling when the native traces alone exceed
+/// it, otherwise during replay, before the next trace is converted.
+fn simulate_within(
+    input: &Frozen,
+    traces: u64,
+    depth: usize,
+    limit: usize,
+) -> Result<Response, Failure> {
     if traces == 0 || depth == 0 || traces > 100_000 || depth > 1_000_000 {
         return Err((
             Outcome::Rejected,
             "SAIL4207: simulation requires finite admitted positive counts".into(),
         ));
     }
+    if traces > PROBE_TRACES {
+        let probe = sample(input, PROBE_TRACES, depth, limit)?;
+        if probe.outcome == Outcome::Sampled {
+            check_estimate(&probe, traces, limit)?;
+        }
+    }
+    sample(input, traces, depth, limit)
+}
+
+fn oversized(limit: usize, detail: &str) -> Failure {
+    (
+        Outcome::Rejected,
+        format!("SAIL4216: simulation evidence exceeds the {limit}-byte response bound: {detail}"),
+    )
+}
+
+/// Counts compact JSON bytes, stopping the serializer once `limit` is passed.
+struct Count {
+    bytes: usize,
+    limit: usize,
+}
+
+impl std::io::Write for Count {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.bytes = self.bytes.saturating_add(bytes.len());
+        if self.bytes > self.limit {
+            return Err(std::io::Error::other("byte bound passed"));
+        }
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Compact JSON length of `value`, or `None` once it exceeds `limit`.
+fn encoded_len(value: &impl serde::Serialize, limit: usize) -> Option<usize> {
+    let mut count = Count { bytes: 0, limit };
+    serde_json::to_writer(&mut count, value).ok()?;
+    Some(count.bytes)
+}
+
+/// Encoded bytes replay adds for trace `index`: its native document, ITF
+/// rendering and validation, each with a separator.
+fn replay_bytes(response: &Response, index: usize) -> usize {
+    let pieces = [
+        response
+            .native_traces
+            .get(index)
+            .and_then(|v| encoded_len(v, usize::MAX)),
+        response
+            .itf_traces
+            .get(index)
+            .and_then(|v| encoded_len(v, usize::MAX)),
+        response
+            .validations
+            .get(index)
+            .and_then(|v| encoded_len(v, usize::MAX)),
+    ];
+    pieces.iter().map(|n| n.unwrap_or(0) + 1).sum()
+}
+
+/// Encoded bytes the response spends on trace `index`, including its native
+/// report entry.
+fn trace_bytes(response: &Response, index: usize) -> usize {
+    let entry = response
+        .native_report
+        .pointer(&format!("/traces/{index}"))
+        .and_then(|v| encoded_len(v, usize::MAX))
+        .unwrap_or(0);
+    replay_bytes(response, index) + entry + 1
+}
+
+/// Refuses a job whose probe evidence, extrapolated per trace, exceeds `limit`.
+fn check_estimate(probe: &Response, traces: u64, limit: usize) -> Result<(), Failure> {
+    let total = encoded_len(probe, usize::MAX).unwrap_or(usize::MAX);
+    let sampled = probe.native_traces.len();
+    let per_trace: usize = (0..sampled).map(|i| trace_bytes(probe, i)).sum();
+    let fixed = total.saturating_sub(per_trace);
+    let (Ok(sampled), Ok(per_trace), Ok(fixed), Ok(limit_wide)) = (
+        u128::try_from(sampled),
+        u128::try_from(per_trace),
+        u128::try_from(fixed),
+        u128::try_from(limit),
+    ) else {
+        return Ok(());
+    };
+    if sampled == 0 || per_trace == 0 {
+        return Ok(());
+    }
+    let estimate = fixed + per_trace * u128::from(traces) / sampled;
+    if estimate <= limit_wide {
+        return Ok(());
+    }
+    let admitted = limit_wide.saturating_sub(fixed) * sampled / per_trace;
+    Err(oversized(
+        limit,
+        &format!(
+            "the first {sampled} traces encode to {total} bytes, so {traces} traces need about \
+             {estimate} bytes; request at most {admitted} traces at this depth, or a shorter depth"
+        ),
+    ))
+}
+
+fn sample(input: &Frozen, traces: u64, depth: usize, limit: usize) -> Result<Response, Failure> {
     let report = dive_api::simulate_file(&dive_api::SimulateRequest {
         file: input.root.clone(),
         config: Some(input.config.clone()),
@@ -234,6 +360,18 @@ fn simulate(input: &Frozen, traces: u64, depth: usize) -> Result<Response, Failu
         ..Default::default()
     })
     .map_err(|e| api_error(&e))?;
+    // The response holds the native report, so its retained trace text alone
+    // is a lower bound on the response: refuse before building any tree.
+    let retained = report.retained_trace_bytes();
+    if retained > limit {
+        return Err(oversized(
+            limit,
+            &format!("the native report's {traces} traces alone hold {retained} bytes"),
+        ));
+    }
+    // An admitted report is at most `limit` bytes of traces, and the response
+    // is decoded as one tree by the parent anyway, so building it here is
+    // bounded; `write_json` would only pay off with a streamed response.
     let native = report.to_json();
     let outcome = match native["result"].as_str() {
         Some("sampled") => Outcome::Sampled,
@@ -251,16 +389,30 @@ fn simulate(input: &Frozen, traces: u64, depth: usize) -> Result<Response, Failu
             ));
         }
         let source = model(input)?;
-        for trace in native["traces"]
+        let entries = native["traces"]
             .as_array()
-            .ok_or_else(|| unsupported("SAIL4208: simulation traces absent"))?
-        {
+            .ok_or_else(|| unsupported("SAIL4208: simulation traces absent"))?;
+        let mut used = encoded_len(&response, limit)
+            .ok_or_else(|| oversized(limit, "the native report alone exceeds it"))?;
+        for (index, trace) in entries.iter().enumerate() {
             if let Err((outcome, message)) =
                 add_trace(&mut response, &source, &trace["document"], Witness::Sample)
             {
                 response.outcome = outcome;
                 response.message = Some(message);
                 break;
+            }
+            // The native report entry is already counted.
+            used = used.saturating_add(replay_bytes(&response, index));
+            if used > limit {
+                return Err(oversized(
+                    limit,
+                    &format!(
+                        "replaying {} of {} traces already needs {used} bytes",
+                        index + 1,
+                        entries.len()
+                    ),
+                ));
             }
         }
         if response.native_traces.is_empty() {
@@ -269,4 +421,75 @@ fn simulate(input: &Frozen, traces: u64, depth: usize) -> Result<Response, Failu
         }
     }
     Ok(response)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const COUNTER: &str = "---- MODULE M ----\nEXTENDS Naturals\nVARIABLE x\nInit == x = 0\nNext == x' = IF x < 2 THEN x+1 ELSE 0\n====\n";
+
+    fn counter() -> Result<Frozen, Failure> {
+        Frozen::create(&crate::Model {
+            root: "M.tla".into(),
+            config: "M.cfg".into(),
+            files: [
+                ("M.tla".into(), COUNTER.into()),
+                ("M.cfg".into(), "INIT Init\nNEXT Next\n".into()),
+            ]
+            .into(),
+        })
+    }
+
+    fn refusal(result: Result<Response, Failure>) -> Result<String, String> {
+        match result {
+            Err((Outcome::Rejected, message)) if message.starts_with("SAIL4216: ") => Ok(message),
+            other => Err(format!("expected a SAIL4216 refusal, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn probe_extrapolation_refuses_before_the_full_run() -> Result<(), String> {
+        let input = counter().map_err(|e| e.1)?;
+        let probe = sample(&input, PROBE_TRACES, 4, usize::MAX).map_err(|e| e.1)?;
+        let probe_bytes = encoded_len(&probe, usize::MAX).ok_or("probe size")?;
+        // The probe fits; 100 traces would need about six times as much.
+        let message = refusal(simulate_within(&input, 100, 4, probe_bytes * 2))?;
+        assert!(
+            message.contains("the first 16 traces") && message.contains("request at most"),
+            "{message}"
+        );
+        // A slightly larger job within the bound still runs completely.
+        let response = simulate_within(&input, 20, 4, probe_bytes * 2).map_err(|e| e.1)?;
+        assert_eq!(response.outcome, Outcome::Sampled, "{response:?}");
+        assert_eq!(response.itf_traces.len(), 20);
+        assert!(encoded_len(&response, probe_bytes * 2).is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn native_traces_over_the_bound_refuse_before_replay() -> Result<(), String> {
+        let input = counter().map_err(|e| e.1)?;
+        let message = refusal(simulate_within(&input, 2, 4, 10))?;
+        assert!(message.contains("traces alone hold"), "{message}");
+        Ok(())
+    }
+
+    #[test]
+    fn replay_refuses_once_its_evidence_passes_the_bound() -> Result<(), String> {
+        let input = counter().map_err(|e| e.1)?;
+        let full = sample(&input, 2, 4, usize::MAX).map_err(|e| e.1)?;
+        let report = Response::new(full.outcome, full.native_report.clone());
+        let base = encoded_len(&report, usize::MAX).ok_or("report size")?;
+        let message = refusal(simulate_within(
+            &input,
+            2,
+            4,
+            base + replay_bytes(&full, 0) - 1,
+        ))?;
+        assert!(message.contains("replaying 1 of 2 traces"), "{message}");
+        let message = refusal(simulate_within(&input, 2, 4, base + replay_bytes(&full, 0)))?;
+        assert!(message.contains("replaying 2 of 2 traces"), "{message}");
+        Ok(())
+    }
 }

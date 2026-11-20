@@ -37,6 +37,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | `SAIL4213` | Worker response identity or native evidence does not match the request | Use the pinned worker; the response establishes no model result |
 | `SAIL4214` | Duplicate JSON object member | Submit a unique field at every object depth |
 | `SAIL4215` | Archive installation or prerequisite check failed | Check the selected platform/version, adjacent checksum, archive attestation, rustup and download access; existing installations are preserved |
+| `SAIL4216` | Simulation evidence would exceed the worker response bound | Request fewer traces or a shorter depth; a refusal before the run names the largest trace count that fits |
 
 ## Command line (`sail`)
 
