@@ -185,7 +185,7 @@ evidence. Exit 0 means all checks were conclusive, 1 means a stop, incomplete
 check or worker failure, and 2 indicates invalid input or CLI setup. Each call
 owns its own artifact. Rust editors with a live process can instead keep
 `sail_dive::edits::Session` and call `check` as new edits arrive. That low-level
-API runs synchronously in the caller; the CLI enforces the process deadline.
+API runs synchronously in the caller. The CLI enforces the process deadline.
 
 The [measurement record](validation/temporal-reuse-s7.md) gives capture costs,
 per-edit samples, native fresh comparisons and examples that used the ordinary
