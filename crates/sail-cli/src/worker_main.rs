@@ -37,6 +37,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     sail_api::temporal::decode(&input)?;
                 write_relation(&query.compare()?)
             }
+            Some("--compare-loaded-modules") => {
+                let query: sail_dive::edits::loaded::Query = sail_api::temporal::decode(&input)?;
+                write_relation(&query.compare()?)
+            }
             Some("--project-first-temporal-claim") => {
                 let query: sail_dive::edits::first_claim::Query =
                     sail_api::temporal::decode(&input)?;

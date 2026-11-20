@@ -188,6 +188,27 @@ pub fn project_first_claim(
     .unwrap_or_else(|e| RunResult::Failed(format!("SAIL4212: {e}")))
 }
 
+/// Resolve both complete module graphs in the authenticated worker under the shared deadline.
+#[must_use]
+pub fn compare_loaded(
+    worker: &Path,
+    sha: &str,
+    query: &crate::edits::loaded::Query,
+    deadline: Duration,
+    started: Instant,
+    cancel: &sail_runtime::Cancellation,
+) -> RunResult<crate::edits::loaded::Relation> {
+    run_in(
+        worker,
+        sha,
+        query,
+        deadline,
+        || cancel.is_cancelled(),
+        started,
+    )
+    .unwrap_or_else(|e| RunResult::Failed(format!("SAIL4212: {e}")))
+}
+
 trait WorkerRequest: serde::Serialize {
     type Reply;
     const ARG: Option<&'static str>;
@@ -225,6 +246,17 @@ impl WorkerRequest for crate::edits::projection::Query {
 impl WorkerRequest for crate::edits::first_claim::Query {
     type Reply = crate::edits::first_claim::Relation;
     const ARG: Option<&'static str> = Some("--project-first-temporal-claim");
+
+    fn checked_reply(&self, bytes: &[u8]) -> Result<Self::Reply, String> {
+        let relation = sail_api::temporal::decode(bytes).map_err(|e| e.to_string())?;
+        self.validate(&relation)?;
+        Ok(relation)
+    }
+}
+
+impl WorkerRequest for crate::edits::loaded::Query {
+    type Reply = crate::edits::loaded::Relation;
+    const ARG: Option<&'static str> = Some("--compare-loaded-modules");
 
     fn checked_reply(&self, bytes: &[u8]) -> Result<Self::Reply, String> {
         let relation = sail_api::temporal::decode(bytes).map_err(|e| e.to_string())?;

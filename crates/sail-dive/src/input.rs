@@ -112,8 +112,8 @@ impl Frozen {
         Ok(frozen)
     }
 
-    fn admit(&self, model: &Model) -> Result<(), Failure> {
-        let analysis = dive_sema::analyze_file(
+    fn analysis(&self) -> Result<dive_sema::Analysis, Failure> {
+        dive_sema::analyze_file(
             &self.root,
             &dive_sema::Options {
                 search: dive_sema::SearchPath {
@@ -123,7 +123,34 @@ impl Frozen {
                 ..Default::default()
             },
         )
-        .map_err(rejected)?;
+        .map_err(rejected)
+    }
+
+    pub(crate) fn loaded_sources(&self) -> Option<Vec<String>> {
+        let analysis = self.analysis().ok()?;
+        if !analysis.accepted() {
+            return None;
+        }
+        analysis
+            .files()
+            .iter()
+            .map(|file| match &file.origin {
+                Origin::File(path) => Some(
+                    path.strip_prefix(&self.directory)
+                        .ok()?
+                        .to_str()?
+                        .to_owned(),
+                ),
+                Origin::Standard => Some(file.display.clone()),
+                // An extracted monolith has a distinct logical source even when
+                // the origin points at the same outer file.
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn admit(&self, model: &Model) -> Result<(), Failure> {
+        let analysis = self.analysis()?;
         for file in analysis.files() {
             match &file.origin {
                 Origin::File(path) | Origin::Monolith(path) => {

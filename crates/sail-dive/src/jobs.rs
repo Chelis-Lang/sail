@@ -11,7 +11,11 @@ use serde_json::Value;
 /// detached thread as cancellation; use [`crate::client::run`] instead.
 #[must_use]
 pub fn execute(request: &Request) -> Response {
-    let mut response = match run(request) {
+    attribute(request, run(request))
+}
+
+pub(crate) fn attribute(request: &Request, result: Result<Response, Failure>) -> Response {
+    let mut response = match result {
         Ok(response) => response,
         Err((outcome, message)) => Response::failure(outcome, message),
     };
@@ -144,7 +148,7 @@ fn run(request: &Request) -> Result<Response, Failure> {
     }
 }
 
-fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response, Failure> {
+pub(crate) fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response, Failure> {
     // D.I.V.E. 0.1.0 checks on its Core engine, which has no bounded final
     // (`FinalShort`) route: ordinary dive-profile checking runs safety roles
     // and deterministic completed-level temporal checks in one request, and
