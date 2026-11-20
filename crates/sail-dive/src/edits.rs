@@ -1,4 +1,5 @@
 //! Check a sequence of closed TLA+ requests while retaining one typed Dive artifact.
+pub mod first_claim;
 pub mod projection;
 use crate::input::Frozen;
 use crate::{ItfTrace, Operation, Outcome, Request, Response};
@@ -98,6 +99,8 @@ pub enum Structure {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "route", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum Evidence {
+    /// The authenticated previous ordinary temporal check established its first property.
+    EstablishedFirstTemporalClaim(first_claim::Claim),
     /// The ordinary native checking path, e.g. after an unsupported capture.
     Fresh {
         /// Standard validated native response.
@@ -157,6 +160,7 @@ impl From<&crate::Model> for Closure {
 }
 
 enum Basis {
+    OrdinaryTemporal(Box<(Request, Response)>),
     Safety(safety::Artifact),
     Projection(Box<(Request, safety_projection::Complete)>),
     Temporal(Box<temporal_reuse::Artifact>),
@@ -200,6 +204,16 @@ impl Session {
             evidence,
         };
         entry.validate(request)?;
+        if let Evidence::Fresh { response } = &entry.evidence
+            && default_policy()
+            && first_claim::candidate(request, response)
+        {
+            self.prior = Some((
+                entry.request_sha256.clone(),
+                Closure::from(&request.model),
+                Basis::OrdinaryTemporal(Box::new((request.clone(), (**response).clone()))),
+            ));
+        }
         entry.elapsed_us = u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX);
         Ok(entry)
     }
@@ -252,6 +266,21 @@ impl Session {
             ));
             Some(current)
         } else {
+            if let Some((_, _, Basis::OrdinaryTemporal(basis))) = &self.prior
+                && let Some(claim) = first_claim::qualify(&basis.0, request, &basis.1, || {
+                    dive_api::temporal_projection::Program::from_reports(
+                        &analysis,
+                        &config,
+                        safety_projection::Limits {
+                            max_states: Some(states),
+                            max_depth: Some(depth),
+                        },
+                    )
+                    .ok()
+                })
+            {
+                return Some(Evidence::EstablishedFirstTemporalClaim(claim));
+            }
             let program = temporal_reuse::Program::from_reports(&analysis, &config).ok()?;
             let limits = temporal_reuse::Limits {
                 max_states: Some(states),
@@ -393,6 +422,9 @@ impl Entry {
             return Err("edit response belongs to a different input".into());
         }
         match &self.evidence {
+            // The in-process constructor has compared the actual programs. Transport
+            // validation below must also find the establishing ordinary response.
+            Evidence::EstablishedFirstTemporalClaim(_) => Ok(()),
             Evidence::Fresh { response } => crate::validate_response(request, response),
             Evidence::Checked {
                 decision: Checked::Holds,
@@ -474,8 +506,26 @@ impl BatchResult {
             return Err("worker returned a different number of edit results or version".into());
         }
         let mut prior: Option<Established> = None;
+        let mut temporal_basis = None;
         for (request, row) in batch.checks.iter().zip(&self.entries) {
             row.validate(request)?;
+            match &row.evidence {
+                Evidence::Fresh { response } if first_claim::candidate(request, response) => {
+                    temporal_basis = Some((request, response.as_ref()));
+                    prior = None;
+                }
+                Evidence::EstablishedFirstTemporalClaim(claim) => {
+                    if !temporal_basis
+                        .is_some_and(|(old, response)| claim.matches(old, request, response))
+                    {
+                        return Err(
+                            "first temporal claim has no matching ordinary completion".into()
+                        );
+                    }
+                }
+                Evidence::Checked { reused: false, .. } => temporal_basis = None,
+                _ => {}
+            }
             let Evidence::Checked {
                 structure,
                 reused,

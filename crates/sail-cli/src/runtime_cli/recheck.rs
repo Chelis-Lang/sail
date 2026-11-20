@@ -1,4 +1,4 @@
-//! Reuse authenticated complete safety proofs or validate a qualified prior failure.
+//! Reuse authenticated complete proofs or validate a qualified prior failure.
 use sail_api::runtime::{Input, Output, Request, Response, VERSION};
 use sail_api::temporal::{ItfTrace, Job, Operation, Outcome};
 use sail_runtime::{Cancellation, Runtime};
@@ -61,17 +61,8 @@ pub(super) fn run(
             );
         }
         if let Ok(Some(basis)) = runtime.lookup_temporal(old, cancellation) {
-            if let Some(relation) = projected(old, new, &basis, cancellation, start) {
-                super::write_json(
-                    out,
-                    &json!({
-                        "version":1,"route":"established-invariant-subset","outcome":"holds",
-                        "obligation_id":new.obligation_id,"requirement_ids":new.requirement_ids,
-                        "request_sha256":relation.current_sha256,"previous_request_sha256":relation.previous_sha256,
-                        "previous_receipt_key":basis.cache_key,"worker_sha256":basis.worker_sha256,
-                        "backend_source":relation.backend_source,"invariants":relation.invariants
-                    }),
-                )?;
+            if let Some(decision) = projected(old, new, &basis, cancellation, start) {
+                super::write_json(out, &decision)?;
                 return Ok(0);
             }
             if let Some(trace) = basis.response.as_ref().and_then(invariant_trace)
@@ -99,25 +90,54 @@ pub(super) fn run(
     write_current(out, &full)
 }
 
-fn projected(
+#[derive(serde::Serialize)]
+#[serde(tag = "route", rename_all = "kebab-case")]
+enum ProjectionProof {
+    #[serde(rename = "established-invariant-subset")]
+    Invariants { invariants: Vec<String> },
+    #[serde(rename = "established-first-temporal-claim")]
+    FirstTemporalClaim {
+        property: String,
+        basis_counts: sail_dive::edits::SearchCounts,
+    },
+}
+
+#[derive(serde::Serialize)]
+struct Projected<'a> {
+    version: u32,
+    outcome: Outcome,
+    obligation_id: &'a str,
+    requirement_ids: &'a [String],
+    request_sha256: String,
+    previous_request_sha256: String,
+    previous_receipt_key: &'a str,
+    worker_sha256: String,
+    backend_source: String,
+    #[serde(flatten)]
+    evidence: ProjectionProof,
+}
+
+fn projected<'a>(
     old: &Job,
-    current: &Job,
-    basis: &sail_api::temporal::Result,
+    current: &'a Job,
+    basis: &'a sail_api::temporal::Result,
     cancel: &Cancellation,
     start: Instant,
-) -> Option<sail_dive::edits::projection::Relation> {
+) -> Option<Projected<'a>> {
     use sail_api::temporal::Completion;
     use sail_runtime::temporal::Worker;
     let evidence = basis.response.as_ref()?;
     if evidence.outcome != Outcome::Holds
-        || evidence.completion != Completion::Safety
+        || evidence.request_sha256 != basis.request_sha256
+        || (evidence.completion == Completion::Temporal
+            && !sail_dive::edits::first_claim::eligible(&old.request, &current.request, evidence))
         || !basis.cache_hit
-        || basis.cache_key.is_none()
         || evidence.native_report["statistics"]["left_on_queue"] != 0
         || old.request.operation != current.request.operation
     {
         return None;
     }
+    let previous_receipt_key = basis.cache_key.as_deref()?;
     let budget = Duration::from_millis(current.wall_time_ms);
     if cancel.is_cancelled() || start.elapsed() >= budget {
         return None;
@@ -126,25 +146,81 @@ fn projected(
     if basis.worker_sha256.as_ref() != Some(&worker.sha256) {
         return None;
     }
-    let query = sail_dive::edits::projection::Query {
-        previous: old.request.clone(),
-        current: current.request.clone(),
+    let (proof, previous_request_sha256, request_sha256, backend_source) = match evidence.completion
+    {
+        Completion::Safety => {
+            let query = sail_dive::edits::projection::Query {
+                previous: old.request.clone(),
+                current: current.request.clone(),
+            };
+            let sail_dive::client::RunResult::Completed(relation) = sail_dive::client::project(
+                &worker.executable,
+                &worker.sha256,
+                &query,
+                budget,
+                start,
+                cancel,
+            ) else {
+                return None;
+            };
+            (
+                ProjectionProof::Invariants {
+                    invariants: relation.invariants?,
+                },
+                relation.previous_sha256,
+                relation.current_sha256,
+                relation.backend_source,
+            )
+        }
+        Completion::Temporal => {
+            let query = sail_dive::edits::first_claim::Query {
+                previous: old.request.clone(),
+                current: current.request.clone(),
+                previous_response: evidence.clone(),
+            };
+            let sail_dive::client::RunResult::Completed(relation) =
+                sail_dive::client::project_first_claim(
+                    &worker.executable,
+                    &worker.sha256,
+                    &query,
+                    budget,
+                    start,
+                    cancel,
+                )
+            else {
+                return None;
+            };
+            let claim = relation.claim?;
+            (
+                ProjectionProof::FirstTemporalClaim {
+                    property: claim.property,
+                    basis_counts: claim.basis_counts,
+                },
+                relation.previous_sha256,
+                relation.current_sha256,
+                relation.backend_source,
+            )
+        }
+        Completion::None => return None,
     };
-    let sail_dive::client::RunResult::Completed(relation) = sail_dive::client::project(
-        &worker.executable,
-        &worker.sha256,
-        &query,
-        budget,
-        start,
-        cancel,
-    ) else {
+    if previous_request_sha256 != basis.request_sha256
+        || cancel.is_cancelled()
+        || start.elapsed() >= budget
+    {
         return None;
-    };
-    (relation.invariants.is_some()
-        && relation.previous_sha256 == basis.request_sha256
-        && !cancel.is_cancelled()
-        && start.elapsed() < budget)
-        .then_some(*relation)
+    }
+    Some(Projected {
+        version: 1,
+        outcome: Outcome::Holds,
+        obligation_id: &current.obligation_id,
+        requirement_ids: &current.requirement_ids,
+        request_sha256,
+        previous_request_sha256,
+        previous_receipt_key,
+        worker_sha256: worker.sha256,
+        backend_source,
+        evidence: proof,
+    })
 }
 
 // Validation is optional work. For example, adding a long previous trace

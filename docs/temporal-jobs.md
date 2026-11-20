@@ -148,6 +148,16 @@ names the current obligations, both request digests, the worker and the
 original receipt. On LamportMutex, this covers keeping `TypeOK` and `Mutex`
 after checking `TypeOK BoundedNetwork Mutex`.
 
+For a completed check with multiple temporal properties, keeping only its
+first property can return `established-first-temporal-claim`. For example,
+the InternalMemory job checks `PROPERTY LivenessProperty` and
+`PROPERTY Liveness`. Removing the second declaration qualifies when both
+bound programs have the same transition system and first liveness check, the
+previous run completed entirely in native mode, and the state limit is below
+the first periodic liveness boundary. The report names the retained property.
+Its `basis_counts` belong to the ordinary check of both properties. An editor
+session can return the same route after its previous `fresh` entry.
+
 For a new or changed predicate, pass the successive closed native check
 requests to one worker. Given two ordinary runtime envelopes, this command
 extracts their native requests and gives the entire batch a 30-second budget.

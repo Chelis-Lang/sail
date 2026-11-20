@@ -78,6 +78,9 @@ result, including its exact receipt key on a hit. After dropping invariants
 from a completed ordinary safety check, the same command can return
 `established-invariant-subset`. Read the current obligation and invariant
 inventory together with the previous receipt key and worker identity.
+After a complete ordinary native liveness check, retaining its first temporal
+property alone can return `established-first-temporal-claim`. Report its
+`property` and describe `basis_counts` as the earlier check’s search counts.
 
 To check a sequence of related native models, use
 `sail runtime edit-session --file edits.json`. Supply one overall

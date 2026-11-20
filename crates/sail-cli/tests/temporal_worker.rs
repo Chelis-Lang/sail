@@ -435,3 +435,59 @@ fn edit_session_includes_admission_and_all_worker_io_in_one_budget() -> TestResu
     }
     Ok(())
 }
+
+#[test]
+fn isolated_first_claim_requires_complete_timely_authenticated_transport() -> TestResult {
+    use sail_dive::client::project_first_claim;
+    use sail_dive::edits::first_claim::Query;
+    use std::time::Instant;
+
+    let worker = Path::new(env!("SAIL_RUNTIME_TEST_WORKER"));
+    let hash = sail_dive::sha256(&std::fs::read(worker)?);
+    let previous = request();
+    let mut query = Query {
+        previous_response: sail_dive::execute(&previous),
+        current: previous.clone(),
+        previous,
+    };
+    let cancel = sail_runtime::Cancellation::default();
+    let cancelled = sail_runtime::Cancellation::default();
+    cancelled.cancel();
+    let run = |q: &Query, digest: &str, budget, cancel: &sail_runtime::Cancellation| {
+        project_first_claim(worker, digest, q, budget, Instant::now(), cancel)
+    };
+    assert!(matches!(
+        run(&query, &hash, Duration::ZERO, &cancel),
+        RunResult::TimedOut {
+            worker_started: false
+        }
+    ));
+    let budget = Duration::from_secs(5);
+    assert!(matches!(
+        run(&query, &hash, budget, &cancelled),
+        RunResult::Cancelled {
+            worker_started: false
+        }
+    ));
+    assert!(matches!(
+        run(&query, &"0".repeat(64), budget, &cancel),
+        RunResult::Failed(_)
+    ));
+    for marker in [
+        "SAIL_CONTROL_WRONG_SOURCE",
+        "SAIL_CONTROL_TRAILING",
+        "SAIL_CONTROL_STDERR",
+        "SAIL_CONTROL_OVERSIZE",
+    ] {
+        query
+            .current
+            .model
+            .files
+            .insert("M.cfg".into(), marker.into());
+        assert!(
+            matches!(run(&query, &hash, budget, &cancel), RunResult::Failed(_)),
+            "{marker}"
+        );
+    }
+    Ok(())
+}

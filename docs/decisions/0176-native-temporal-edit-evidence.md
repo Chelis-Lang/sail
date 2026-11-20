@@ -22,6 +22,13 @@ previous and current closed models and certifies their relation. The initiating
 CLI combines the two and attributes the result to the current job. Neither a
 relation by itself nor a previous refutation can supply this proof.
 
+A previous ordinary native temporal Holds can establish its first temporal
+claim alone when both bindings admit the same concrete transition program
+and leading liveness product. The worker verifies previous native-only
+execution and completed search below the periodic threshold. Scope, limits,
+producer identity and original counts travel with the basis. This conditional
+route works in either transport and never seeds a second proof.
+
 The separate edit-session transport uses the existing authenticated image and
 deadline supervisor, a bounded request and a bounded whole-group response.
 The parent verifies each basis and current digest. The batch carries artifact

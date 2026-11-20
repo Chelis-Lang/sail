@@ -146,6 +146,19 @@ effective limits and current caller attribution. A missing receipt, stopped
 check, changed transition system, new obligation or inconclusive comparison
 runs the current request through ordinary checking.
 
+The `established-first-temporal-claim` route accepts an ordinary, completed
+native temporal Holds result for at least two temporal properties. A session
+obtains that result from its own earlier ordinary check. Across processes the
+parent authenticates the ordinary receipt and selects the same installed worker.
+The parent checks prior execution facts, digest, property, scope, limits and
+original counts. Inside the worker Dive binds both closed inputs, checks their
+execution policies and startup plans, and matches the compiled first temporal
+property against the single current property. The previous result must show a
+complete native final check with zero periodic prefix checks or fallback atom
+evaluations. A successful comparison returns the current property and previous
+search counts. Derived evidence cannot create an ordinary receipt or establish
+a new basis. A comparison miss follows the existing current-check path.
+
 The development `Cargo.toml` and `Cargo.lock` pin the Dive repository by full
 revision under ADR 0172. The edit protocol’s `backend_source` identifies those
 bytes and the installation manifest authenticates the worker executable.

@@ -28,7 +28,10 @@ pub struct Relation {
     pub invariants: Option<Vec<String>>,
 }
 
-fn bind(request: &Request) -> Option<(Program, Limits)> {
+pub(super) fn bind<T>(
+    request: &Request,
+    make: impl FnOnce(&dive_api::AnalyzeReport, &dive_api::ConfigReport, Limits) -> Option<T>,
+) -> Option<T> {
     if request.version != crate::VERSION {
         return None;
     }
@@ -49,13 +52,14 @@ fn bind(request: &Request) -> Option<(Program, Limits)> {
     )
     .ok()?;
     let config = dive_api::parse_config_file(&frozen.config).ok()?;
-    Some((
-        Program::from_reports(&analysis, &config).ok()?,
+    make(
+        &analysis,
+        &config,
         Limits {
             max_states: Some(max_states),
             max_depth: Some(max_depth),
         },
-    ))
+    )
 }
 
 pub(super) fn same_scope(previous: &Request, current: &Request) -> bool {
@@ -90,8 +94,13 @@ impl Query {
         if !super::default_policy() || !same_scope(&self.previous, &self.current) {
             return None;
         }
-        let (old, old_limits) = bind(&self.previous)?;
-        let (new, new_limits) = bind(&self.current)?;
+        let program = |request: &Request| {
+            bind(request, |a, c, l| {
+                Some((Program::from_reports(a, c).ok()?, l))
+            })
+        };
+        let (old, old_limits) = program(&self.previous)?;
+        let (new, new_limits) = program(&self.current)?;
         Some(
             old.subset(&new, old_limits, new_limits)
                 .ok()?
