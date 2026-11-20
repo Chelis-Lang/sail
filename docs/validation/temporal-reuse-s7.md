@@ -121,6 +121,8 @@ Each row used a new Sail cache and five distinct comment edits. A daemon establi
 
 The controls exercised a missing previous receipt, an exact current receipt and fresh fallbacks for changed invariant inventory, an earlier sibling error, a repaired invariant and a tightened state limit. At width 20 the sibling returned Error. At width 200,000 the pinned backend observed the earlier error and returned Unsupported because its ordered diagnostic exceeded 256 cumulative emissions. The first large run stopped on a harness expectation of Error. The corrected run required the specific refusal and compared each fallback with a separate uncached execution, including the native verdict, property, statistics, message and ITF trace. The guarded trace route used in this experiment accepts equivalent parsed CFGs. For substantive edits, the edit session can capture ordered safety states or a labelled temporal graph.
 
+A native rerun on merged main measured 9.28 ms guarded versus 129.14 ms fresh (13.92×) at width 200,000. Native Apple M1 also passed the staged width-20 smoke and twelve focused tests. The JSON includes all rerun samples and identifies the Mac debug build separately from the timed Linux release builds.
+
 The source and release worker are identified in the sample file. Build and stage the release binaries as above, then run both commands on the same idle native host. The driver generates the models and checks the expected outcomes.
 
 ```sh
