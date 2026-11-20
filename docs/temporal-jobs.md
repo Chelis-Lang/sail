@@ -122,7 +122,9 @@ This is a Sail extension in the temporal trace wrapper. Generic ITF consumers
 need a decoder for this marker before interpreting the extended state's model
 values. Use `sail runtime execute` with a native `validate` request to check
 the witness against the current specification. Existing traces without atom
-tags retain their original encoding and request hashes.
+tags retain their original encoding and request hashes. A
+[pinned Disruptor control](validation/temporal-reuse-s7.md#model-valued-disruptor-witness)
+reproduces a real counterexample and tests a same-spelled string mutation.
 
 The [versioned specification](spec/temporal-jobs.md) and
 [ADR 0067](decisions/0067-dive-runtime-worker.md) define the boundary.
