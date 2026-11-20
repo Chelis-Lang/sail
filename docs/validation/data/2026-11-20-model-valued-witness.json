@@ -1,0 +1,62 @@
+{
+  "format": "sail-disruptor-witness-v1",
+  "sail_sha256": "eadc522c4278f58d8fd2308d5541b278884e6978fd6a5ae8e0f622ccfb01a4d5",
+  "worker_sha256": "9a9e1ce0051154de361a45a8b9a46bc1068c49739b4880e44b12bc52a3d3dd1e",
+  "manifest_sha256": "96d4f77cdb4fabc3e66ffa4fd4b67a36339f103edce8fc70497a993419f66bdc",
+  "system": [
+    "Linux",
+    "7.0.0-1018-aws",
+    "x86_64"
+  ],
+  "wall_ms": 10000,
+  "max_states": 5000,
+  "max_depth": 100,
+  "runs": {
+    "45c1cfd7ed40d9287b1c2ac51a05a7cb750e0521": {
+      "request_sha256": "aafd4b7f720c004005a3d1afc3a88cd43292cb937238b7b3c37cf292a9beeb45",
+      "outcome": "refuted",
+      "exit": 0,
+      "wall_us": 234911,
+      "verdict": "invariant-violation",
+      "property": "NoDataRaces",
+      "statistics": {
+        "depth": 3,
+        "distinct": 4,
+        "generated": 4,
+        "initial_generated": 1,
+        "left_on_queue": 1,
+        "reported_by_tlc": true
+      },
+      "trace_sha256": "162cbcd1c1c2e69e328c27d95192b328148f43fd2eff650680b94b7c0f2b21f4",
+      "states": 3,
+      "validate": {
+        "request_sha256": "647192e56bd8749bf259489333a2c48f4db4255f1465b26e91932f9357d0b6f0",
+        "outcome": "valid",
+        "exit": 0,
+        "wall_us": 222459
+      },
+      "exact_receipt": {
+        "request_sha256": "aafd4b7f720c004005a3d1afc3a88cd43292cb937238b7b3c37cf292a9beeb45",
+        "outcome": "refuted",
+        "exit": 0,
+        "wall_us": 91212
+      },
+      "same_spelling_string": {
+        "request_sha256": "5979717522007334e9eff5022dea4e32d876951c61c251f6605bdc14b5bf94d3",
+        "outcome": "invalid",
+        "exit": 0,
+        "wall_us": 222578
+      }
+    },
+    "c757b12b7a4de6fa39523db541133fece9ced416": {
+      "request_sha256": "81b01c6d7a5ccc180dcc1bedcad6c7c835c3466c8831c93dd9a48bfc95b923f8",
+      "outcome": "rejected",
+      "exit": 1,
+      "wall_us": 218670,
+      "verdict": "assumption-failure",
+      "property": "line 25, col 34 to line 25, col 81 of module Disruptor_SPMC",
+      "statistics": null,
+      "message": "Assumption line 25, col 34 to line 25, col 81 of module Disruptor_SPMC is false."
+    }
+  }
+}
