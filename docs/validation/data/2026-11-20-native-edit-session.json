@@ -1494,5 +1494,12 @@
   "MCLamportMutex": "13488c4fc296e91ae64316bc0e66c5959c072d4c6f93921e9704dc897861cd82",
   "MCLiveInternalMemory": "e71dda4d36c4a8fe244951f75a2a00323d26d5e7e002e818e450518ec4181aba",
   "MCRealTimeHourClock": "c8d8ab39581b45caaa9a5f5f59a3066428f74a020ff61b504614d8eaec6f722c"
+ },
+ "release_binary_identity": {
+  "merged_source": "e609cad17b45d6e8b3d1259d45561bd269a53041",
+  "validated_source": "928230bf1fa0d3ac9a34cc685e5d4bc7403137a0",
+  "sail_sha256": "b158aa299fab323202bc98b705db04b5c657c3d110e503abe693f09b23f26a57",
+  "worker_sha256": "360c05057ce46728be5c60b2ee90d5a8959073065bac66c575db8e4394605e03",
+  "method": "Both Linux release executables from the final direct-dependency pin matched the timed binaries byte for byte. The merged tree equals the validated tree."
  }
 }
