@@ -102,12 +102,27 @@ depth, bosco fits 102 traces.
 separate ending, temporal property names, native action labels and optional
 length. Integers use canonical decimal `#bigint` values. Sets, sequences,
 records and functions retain their distinct ITF forms. Missing states,
-unknown tags, native model values, `#unserializable` and representations that
+unknown tags, `#unserializable` and representations that
 do not round-trip exactly are unsupported. Native reports and native trace
 documents remain available alongside the ITF rendering. The independent
 validator checks Init, every transition and the actual ending claim; decoding
 or round-trip equality alone does not establish validity. A finite behavior
 trace establishes only that execution.
+
+A counterexample can contain a symbolic model value and an ordinary TLA+
+string with the same spelling. When a trace contains any model values, its
+`value_encoding` is `sail-model-values-v1`. For example, this variable state
+has a model-valued owner and an ordinary string label.
+
+```json
+{"owner":{"#sail-model":"w1"},"label":"w1"}
+```
+
+This is a Sail extension in the temporal trace wrapper. Generic ITF consumers
+need a decoder for this marker before interpreting the extended state's model
+values. Use `sail runtime execute` with a native `validate` request to check
+the witness against the current specification. Existing traces without atom
+tags retain their original encoding and request hashes.
 
 The [versioned specification](spec/temporal-jobs.md) and
 [ADR 0067](decisions/0067-dive-runtime-worker.md) define the boundary.

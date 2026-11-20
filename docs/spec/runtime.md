@@ -68,7 +68,7 @@ Cancelled, OutputLimit, Infrastructure}` is separate. Only a completed
 transcript has checks. Exact bounded stdout and stderr bytes, solver identity,
 script SHA-256, effective limits and cache provenance remain in every result.
 Unknown has no successful proof interpretation. Raw products are retained;
-there is no invented semantic decoding of unsupported model values.
+native temporal model values use the [versioned lossless trace encoding](temporal-jobs.md#results-and-evidence).
 
 ## Execution and caching
 

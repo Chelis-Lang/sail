@@ -73,9 +73,19 @@ is necessary but insufficient: the original specification independently
 validates the converted trace. A behavior trace establishes only its supplied
 execution, not an exhaustive model proof. Runtime random draws and other
 features the independent validator refuses remain unsupported.
-In particular, ITF's `#unserializable` marker is not a semantic model-value
-encoding. Native model values are unsupported in this transport until a
-lossless representation is specified; they are never converted to strings.
+A witness containing a native model value declares
+`"value_encoding":"sail-model-values-v1"` on its trace object. In its state
+values, the Sail extension `{"#sail-model":"r1"}` denotes the native atom
+`r1`. A JSON string `"r1"` still denotes the ordinary TLA+ string. The tag
+can occur wherever a state value can occur, including a map key. It has
+exactly one string-valued field. The discriminator must be present exactly
+when at least one state value uses this extension. Unknown, null, mixed or
+unnecessary discriminators and malformed tagged records are rejected. The
+native validator replays the decoded witness against the current model. ITF's
+`#unserializable` continues to mean there is no semantic value to validate.
+Legacy traces keep their six-field representation, including its field order
+and canonical request digest. Earlier clients reject extended traces because
+they do not recognize the additional field. [Wire decision](../decisions/0178-model-valued-temporal-witnesses.md).
 
 ## Exact check replay
 

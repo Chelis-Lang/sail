@@ -149,3 +149,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0175: Exact completed temporal check receipts](0175-exact-temporal-receipts.md) (accepted for implementation, #774)
 - [0176. Native evidence for edited temporal jobs](0176-native-temporal-edit-evidence.md)
 - [0177. Recheck portable predicates in a selected Dive installation](0177-portable-symbolic-predicates.md)
+- [0178. Preserve native model values in temporal witnesses](0178-model-valued-temporal-witnesses.md)
