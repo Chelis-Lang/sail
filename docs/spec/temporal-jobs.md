@@ -1,8 +1,8 @@
 # Temporal jobs, version 1
 
-Status: specification for implementation review. This interface uses the native
-D.I.V.E. library at release 0.1.0 (`dive-api` and `dive-ir` from crates.io,
-`sail_api::temporal::DIVE_VERSION`).
+Status: specification for implementation review. The stable 0.3.0 distribution links the native
+D.I.V.E. 0.1.0 library. The development checkout uses the immutable source
+pin described under Edit evidence below.
 It never executes a D.I.V.E. command, TLC, or Java and has no alternate backend.
 
 ## Inputs and execution
@@ -125,3 +125,29 @@ controls. Existing Verus conformance remains unchanged.
 The common request/verdict API owns requirement IDs, provenance, content keys
 and ledger semantics. This backend owns only the native job payload and
 evidence; it does not invent a second ledger or duplicate caller metadata.
+
+## Edit evidence
+
+`edit-session` is a separate version-1 protocol. The isolated native worker
+accepts one group of closed exhaustive requests and returns ordered results
+after the entire group finishes. The parent authenticates the executable,
+checks its linked Dive source and verifies report version, current request
+digests, basis lineage, role and limits. A zero queue on a failed safety
+prefix cannot establish completion. Each proof is identified by its structure,
+basis, current search position and complete current evidence. Ordinary
+fallbacks retain the native schema-3 response. The batch does not populate
+exact-replay receipts.
+
+The cross-process `established-invariant-subset` route requires an existing
+trusted complete ordinary safety Holds receipt. The worker’s relation report
+alone establishes only how the two bound programs relate. The parent checks
+the previous receipt, the installed worker digest, both input digests,
+effective limits and current caller attribution. A missing receipt, stopped
+check, changed transition system, new obligation or inconclusive comparison
+runs the current request through ordinary checking.
+
+The development `Cargo.toml` and `Cargo.lock` pin the Dive repository by full
+revision under ADR 0172. The edit protocol’s `backend_source` identifies those
+bytes and the installation manifest authenticates the worker executable.
+A stable Sail crate release must first depend on published Dive crates exposing
+these APIs and pass native conformance against that source.

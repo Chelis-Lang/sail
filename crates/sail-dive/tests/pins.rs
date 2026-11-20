@@ -1,15 +1,7 @@
-//! The D.I.V.E. release Sail reports is the one this workspace links.
-//!
-//! `sail_api::temporal::DIVE_VERSION` must equal the exact `=` requirement on
-//! `dive-api` and `dive-ir` in the root manifest and the version both resolve
-//! to in `Cargo.lock`, and the lock must take them from crates.io. The only
-//! exception is a `[patch.crates-io]` entry for the crate in the root
-//! manifest, used while developing against an unpublished D.I.V.E. release:
-//! then the patched source is accepted, but its version must still match.
-//! Publication cannot carry such a patch (`cargo package` drops `[patch]`
-//! and verifies against the registry), so the exception never ships.
+//! The worker's reported package version, Git source and immutable build agree
+//! with both direct workspace dependencies and the resolved lockfile (ADR 0176).
 
-const CRATES_IO: &str = "registry+https://github.com/rust-lang/crates.io-index";
+const UPSTREAM: &str = "https://github.com/Chelis-Lang/dive";
 
 fn table(text: &str, what: &str) -> Result<toml::Table, String> {
     text.parse().map_err(|e| format!("{what} is not TOML: {e}"))
@@ -24,23 +16,28 @@ fn reported_version_is_the_linked_release() -> Result<(), String> {
         .get("workspace")
         .and_then(|w| w.get("dependencies"))
         .ok_or("no workspace dependencies")?;
-    let patches = manifest
-        .get("patch")
-        .and_then(|p| p.get("crates-io"))
-        .and_then(toml::Value::as_table);
+    assert!(manifest.get("patch").is_none() && manifest.get("replace").is_none());
     let packages = lock
         .get("package")
         .and_then(toml::Value::as_array)
         .ok_or("Cargo.lock has no packages")?;
     for name in ["dive-api", "dive-ir"] {
-        let requirement = dependencies
+        let spec = dependencies
             .get(name)
-            .and_then(|d| d.get("version"))
-            .and_then(toml::Value::as_str);
+            .and_then(toml::Value::as_table)
+            .ok_or("missing direct Dive dependency")?;
+        assert_eq!(spec.len(), 3, "unexpected selectors on {name}");
         assert_eq!(
-            requirement,
-            Some(format!("={version}").as_str()),
-            "{name} is not required at exactly {version}"
+            spec.get("version").and_then(toml::Value::as_str),
+            Some(format!("={version}").as_str())
+        );
+        assert_eq!(
+            spec.get("git").and_then(toml::Value::as_str),
+            Some(UPSTREAM)
+        );
+        assert_eq!(
+            spec.get("rev").and_then(toml::Value::as_str),
+            Some(sail_dive::edits::BACKEND_SOURCE)
         );
         let locked: Vec<_> = packages
             .iter()
@@ -53,14 +50,30 @@ fn reported_version_is_the_linked_release() -> Result<(), String> {
             Some(version),
             "{name} is not locked at {version}"
         );
-        let source = entry
-            .get("source")
+    }
+    Ok(())
+}
+
+#[test]
+fn native_edit_source_matches_every_dive_package_in_the_lock() -> Result<(), String> {
+    let lock = table(include_str!("../../../Cargo.lock"), "Cargo.lock")?;
+    let packages = lock
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .ok_or("missing packages")?;
+    let sha = sail_dive::edits::BACKEND_SOURCE;
+    assert!(sha.len() == 40 && sha.bytes().all(|b| b.is_ascii_hexdigit()));
+    let source = format!("git+{UPSTREAM}?rev={sha}#{sha}");
+    for package in packages {
+        if package
+            .get("name")
             .and_then(toml::Value::as_str)
-            .unwrap_or_default();
-        if patches.is_some_and(|p| p.contains_key(name)) {
-            eprintln!("{name}: temporary [patch.crates-io] source {source}");
-        } else {
-            assert_eq!(source, CRATES_IO, "{name} must come from crates.io");
+            .is_some_and(|n| n.starts_with("dive-"))
+        {
+            assert_eq!(
+                package.get("source").and_then(toml::Value::as_str),
+                Some(source.as_str())
+            );
         }
     }
     Ok(())

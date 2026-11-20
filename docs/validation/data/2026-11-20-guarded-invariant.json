@@ -98,5 +98,102 @@
     }
   ],
   "schema": 1,
-  "timer": "CLI wall time in milliseconds, through JSON decode. Each pair runs guarded recheck then an uncached current check."
+  "timer": "CLI wall time in milliseconds, through JSON decode. Each pair runs guarded recheck then an uncached current check.",
+  "native_macos_debug_control": {
+    "platform": "EC2 mac2.metal, Apple M1 arm64",
+    "profile": "debug, native functional smoke only",
+    "source_pr": 781,
+    "focused_tests_passed": 12,
+    "width": 20,
+    "controls": {
+      "inventory": "refuted",
+      "sibling": "error",
+      "fixed": "holds",
+      "state_limit": "stopped"
+    },
+    "fresh_ms": [
+      27.99,
+      27.99,
+      28.04,
+      28.33,
+      28.05
+    ],
+    "guarded_recheck_ms": [
+      25.77,
+      23.64,
+      23.74,
+      24.68,
+      24.64
+    ],
+    "median_speedup": 1.14,
+    "states": 22,
+    "basis_request_sha256": "f63f4bc231d4bbf5c0a3f6d7843418c409564338ad65496a0b4ed8b5539f91b4",
+    "witness_sha256": "f9b7123e3e44559a96c39825baacece09e29fc90545f18bf42ae67c85f5db84a",
+    "sail_sha256": "35a89414ba23c9b1939bb14d6a543983a899a4bea14ccb544204f7e769624038",
+    "worker_sha256": "86b966cbc28384167cf7a22a28d8a72c00d8181348abb0917e438fd33abeca5b"
+  },
+  "merged_main_linux": {
+    "source": "4ed2c2e871c38694c96cec19605e58c9a48ff786",
+    "native_tests_passed": 12,
+    "samples": [
+      {
+        "width": 20,
+        "controls": {
+          "inventory": "refuted",
+          "sibling": "error",
+          "fixed": "holds",
+          "state_limit": "stopped"
+        },
+        "fresh_ms": [
+          36.5,
+          39.87,
+          40.08,
+          37.36,
+          37.39
+        ],
+        "guarded_recheck_ms": [
+          53.33,
+          52.07,
+          53.36,
+          52.98,
+          53.78
+        ],
+        "median_speedup": 0.7,
+        "states": 22,
+        "basis_request_sha256": "f63f4bc231d4bbf5c0a3f6d7843418c409564338ad65496a0b4ed8b5539f91b4",
+        "witness_sha256": "f9b7123e3e44559a96c39825baacece09e29fc90545f18bf42ae67c85f5db84a",
+        "sail_sha256": "f8f30cf1fca4f13884ee219e90cf6ff79fbb1e8f76b933a2bdaa105d22941dcf",
+        "worker_sha256": "46357b0b35f5c62a572df4adf830276cd453743b2020f9eeaedaeb97d15c3eea"
+      },
+      {
+        "width": 200000,
+        "controls": {
+          "inventory": "refuted",
+          "sibling": "unsupported",
+          "fixed": "holds",
+          "state_limit": "stopped"
+        },
+        "fresh_ms": [
+          135.82,
+          132.23,
+          127.3,
+          127.28,
+          129.14
+        ],
+        "guarded_recheck_ms": [
+          9.28,
+          9.17,
+          9.18,
+          9.43,
+          9.82
+        ],
+        "median_speedup": 13.92,
+        "states": 200002,
+        "basis_request_sha256": "292936239b56141d6e21630c722e8cbbfe3f82d7a6038a1cf2ec1edb6022abc2",
+        "witness_sha256": "7193ddb19290b63e4134d1682f74a0b84d6565915d5a756806c0d75f1cc5acbc",
+        "sail_sha256": "f8f30cf1fca4f13884ee219e90cf6ff79fbb1e8f76b933a2bdaa105d22941dcf",
+        "worker_sha256": "46357b0b35f5c62a572df4adf830276cd453743b2020f9eeaedaeb97d15c3eea"
+      }
+    ]
+  }
 }

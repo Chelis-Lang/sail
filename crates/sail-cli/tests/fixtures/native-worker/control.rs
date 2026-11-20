@@ -9,7 +9,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut request = String::new();
     std::io::stdin().read_to_string(&mut request)?;
-    if request.contains("SAIL_CONTROL_PIPES") {
+    if request.contains("SAIL_CONTROL_WAIT") {
+        std::thread::sleep(std::time::Duration::from_secs(30));
+    } else if request.contains("SAIL_CONTROL_WRONG_SOURCE") {
+        std::io::stdout()
+            .write_all(br#"{"backend_source":"other","result":{"version":1,"entries":[]}}"#)?;
+    } else if request.contains("SAIL_CONTROL_PIPES") {
         let child = std::process::Command::new(std::env::current_exe()?)
             .arg("--hold")
             .stdin(std::process::Stdio::null())

@@ -1,4 +1,5 @@
 //! Versioned raw-query runtime, separate from Cargo verification commands.
+mod edit_session;
 mod recheck;
 use sail_api::runtime::{Answer, Outcome, Output, Request};
 use sail_runtime::{Cancellation, Config, Runtime};
@@ -30,6 +31,9 @@ fn command(
     extensions: &crate::Extensions,
 ) -> Result<u8, String> {
     let options = options(args)?;
+    if options.action == "edit-session" {
+        return edit_session::run(options.file.as_deref().ok_or_else(usage)?, extensions, out);
+    }
     let request = options.file.as_deref().map(read_request).transpose()?;
     let cancellation = Cancellation::default();
     if request.is_some() || options.action == "prepare-temporal" {
@@ -297,7 +301,7 @@ fn result(out: &mut dyn Write, response: &sail_api::runtime::Response) -> Result
 }
 
 fn usage() -> String {
-    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR] | sail runtime recheck --previous FILE --file FILE|- [--cache DIR]".into()
+    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR] | sail runtime recheck --previous FILE --file FILE|- [--cache DIR] | sail runtime edit-session --file FILE|-".into()
 }
 
 struct Options<'a> {
@@ -312,7 +316,7 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
     let action = args.first().map(String::as_str).ok_or_else(usage)?;
     if !matches!(
         action,
-        "capabilities" | "execute" | "prepare-temporal" | "recheck"
+        "capabilities" | "execute" | "prepare-temporal" | "recheck" | "edit-session"
     ) {
         return Err(usage());
     }
@@ -333,7 +337,9 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
             "--previous" if action == "recheck" && result.previous.is_none() && value != "-" => {
                 result.previous = Some(value.into());
             }
-            "--cache" if result.cache.is_none() => result.cache = Some(value.into()),
+            "--cache" if action != "edit-session" && result.cache.is_none() => {
+                result.cache = Some(value.into());
+            }
             "--socket"
                 if matches!(action, "capabilities" | "execute") && result.socket.is_none() =>
             {
@@ -342,7 +348,7 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
             _ => return Err(usage()),
         }
     }
-    if (matches!(action, "execute" | "recheck") && result.file.is_none())
+    if (matches!(action, "execute" | "recheck" | "edit-session") && result.file.is_none())
         || (action == "recheck" && result.previous.is_none())
         || (result.socket.is_some() && result.cache.is_some())
     {
@@ -352,7 +358,11 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
 }
 
 fn read_request(path: &Path) -> Result<Request, String> {
-    let input: Box<dyn Read> = if path == Path::new("-") {
+    decode_request(open_input(path)?)
+}
+
+fn open_input(path: &Path) -> Result<Box<dyn Read>, String> {
+    Ok(if path == Path::new("-") {
         Box::new(std::io::stdin())
     } else {
         Box::new(std::fs::File::open(path).map_err(|e| {
@@ -361,8 +371,7 @@ fn read_request(path: &Path) -> Result<Request, String> {
                 path.display()
             )
         })?)
-    };
-    decode_request(input)
+    })
 }
 
 fn decode_request(input: impl Read) -> Result<Request, String> {

@@ -74,7 +74,18 @@ If the installed `sail runtime --help` lists `recheck`, use
 configuration comment edit following an invariant violation. The
 `equivalent-cfg-rechecked-refutation` route carries a counterexample validated
 against the edited job. The `current-check` route returns the ordinary current
-result, including its exact receipt key on a hit.
+result, including its exact receipt key on a hit. After dropping invariants
+from a completed ordinary safety check, the same command can return
+`established-invariant-subset`. Read the current obligation and invariant
+inventory together with the previous receipt key and worker identity.
+
+To check a sequence of related native models, use
+`sail runtime edit-session --file edits.json`. Supply one overall
+`wall_time_ms` and a `checks` array of 1–64 closed native check requests in
+edit order. A complete response reports each current digest and whether the
+worker captured evidence, reused it or ran a fresh check. Inspect each
+decision and its current trace validation when reporting a failure.
+[Request format and worked example](https://github.com/Chelis-Lang/sail/blob/main/docs/temporal-jobs.md).
 
 ## Run SMT queries
 

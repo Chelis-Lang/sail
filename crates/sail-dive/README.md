@@ -11,4 +11,9 @@ cargo +1.99.1 install sail-solve --version 0.3.0 --locked
 
 See the [installation guide](../../docs/install.md) for runtime and toolchain setup.
 
+In the development checkout, `sail_dive::edits::Session` checks successive
+closed models over retained safety states or a labelled temporal graph. The
+isolated CLI exposes the same operation with `sail runtime edit-session`.
+The guide documents eligible edits, fresh fallbacks and evidence fields.
+
 [Temporal jobs guide](../../docs/temporal-jobs.md) · [Rust API reference](https://docs.rs/sail-dive/0.3.0/)

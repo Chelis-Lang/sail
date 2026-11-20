@@ -119,11 +119,46 @@ A separate synthetic benchmark on native EC2 measured an explicit recheck of an 
 
 Each row used a new Sail cache and five distinct comment edits. A daemon established the previous receipt. Each timed pair used a new embedded CLI process first for the edited recheck and then for a fresh check of the same bytes. The timer includes JSON decoding. Both paths authenticated the same release worker. No other build or benchmark ran concurrently. OS file-cache state and CPU frequency were uncontrolled. An earlier width-20 smoke immediately after staging took 55.56 ms guarded and 41.11 ms fresh. The small-case gain varied with the run.
 
-The controls exercised a missing previous receipt, an exact current receipt and fresh fallbacks for changed invariant inventory, an earlier sibling error, a repaired invariant and a tightened state limit. At width 20 the sibling returned Error. At width 200,000 the pinned backend observed the earlier error and returned Unsupported because its ordered diagnostic exceeded 256 cumulative emissions. The first large run stopped on a harness expectation of Error. The corrected run required the specific refusal and compared each fallback with a separate uncached execution, including the native verdict, property, statistics, message and ITF trace. General invariant edits and temporal property edits still require ordinary checking.
+The controls exercised a missing previous receipt, an exact current receipt and fresh fallbacks for changed invariant inventory, an earlier sibling error, a repaired invariant and a tightened state limit. At width 20 the sibling returned Error. At width 200,000 the pinned backend observed the earlier error and returned Unsupported because its ordered diagnostic exceeded 256 cumulative emissions. The first large run stopped on a harness expectation of Error. The corrected run required the specific refusal and compared each fallback with a separate uncached execution, including the native verdict, property, statistics, message and ITF trace. The guarded trace route used in this experiment accepts equivalent parsed CFGs. For substantive edits, the edit session can capture ordered safety states or a labelled temporal graph.
+
+A native rerun on merged main measured 9.28 ms guarded versus 129.14 ms fresh (13.92×) at width 200,000. Native Apple M1 also passed the staged width-20 smoke and twelve focused tests. The JSON includes all rerun samples and identifies the Mac debug build separately from the timed Linux release builds.
 
 The source and release worker are identified in the sample file. Build and stage the release binaries as above, then run both commands on the same idle native host. The driver generates the models and checks the expected outcomes.
 
 ```sh
 python3 scripts/benchmark-guarded-refutation.py "$PREFIX/bin/sail" --smoke
 python3 scripts/benchmark-guarded-refutation.py "$PREFIX/bin/sail"
+```
+
+## Native checks after substantive edits
+
+The installed Linux release build checked each edited request twice, once in a session and once in a fresh process. The harness compared the current digest, outcome, five exploration counters and complete ITF witnesses. Every returned counterexample had to validate against the current model. Times below are median foreground milliseconds across five trials on one EC2 c7i.4xlarge. The speedup column is the median of the five paired ratios. Each session includes its initial capture and all edits. [Individual samples, scopes, source and installed-image hashes](data/2026-11-20-native-edit-session.json).
+
+| Workload | Checks per session | Separate fresh CLI checks, ms | One session, ms | Paired speedup |
+|---|---:|---:|---:|---:|
+| Safety star, new holding and failing predicates | 3 | 350.18 | 164.37 | 2.14× |
+| Safety star, changed failing predicate | 2 | 240.74 | 160.38 | 1.51× |
+| Temporal star, current holding and failing properties | 3 | 95.36 | 47.76 | 2.00× |
+| S7 DieHard, failure then fix | 3 | 31.63 | 21.75 | 1.46× |
+| S7 LamportMutex, dropped invariant | 2 | 20,786.16 | 10,705.58 | 1.96× |
+| S7 internal memory, dropped temporal property | 2 | 237.83 | 233.45 | 1.02× |
+
+The star width was 200,000 for safety and 20,000 for temporal checking. Internal memory’s aggregate temporal property edit used ordinary native checking in this campaign. Its measured cost includes that fallback. The dataset identifies each entry as a capture, a recheck or a fresh result and includes its worker time. These worker-side times exclude process startup and transport. [Earlier single-trial development measurements](data/2026-11-20-native-edit-preflight.json).
+
+### Reuse a previous proof across processes
+
+On the original S7 LamportMutex, the separate `runtime recheck` command needed **22.46 ms** to check the edited inventory, versus **10.014 s** for a fresh process (**447.4×**, median paired ratio). Establishing the original receipt cost 10.731 s. Both full checks held, with 724,274 distinct and 2,729,079 generated states at depth 61. Only the previously established invariants `TypeOK` and `Mutex` remained after the edit. Each sample used a new edited input, authenticated the prior complete receipt and the native worker, and compared with a fresh execution on the same bytes.
+
+The integrated worker also repeated all 333 checks in the earlier exact-replay S7 comparison. Each input, outcome, distinct count and hit position agreed with the published record. This run’s unchanged mutex took 9.43 ms and its 100-check loop took 1.462 s with 76 exact hits per trial. The TLC and v0.3.0 timing controls above were collected in the earlier campaign. [Integrated samples and evidence digests](data/2026-11-20-integrated-s7.json).
+
+Reproduce the substantive edits with the original S7 fixtures and an installed release worker. The command checks result equality before reporting timings.
+
+```sh
+python3 scripts/benchmark-temporal-edit-session.py "$PREFIX/bin/sail" --s7-fixtures "$FIX" --width 200000 --samples 5
+```
+
+For exact receipts, repeat the `scenarios` and `loop` driver commands in the reproduction section three times on the new build. Name their outputs `s7-scenarios-1.jsonl` through `s7-scenarios-3.jsonl` and likewise for `s7-loop`. Compare the new input order, results and replay evidence with the original S7 record using the collector.
+
+```sh
+python3 scripts/collect-temporal-reuse.py "$RESULTS" --candidate s7 --compare docs/validation/data/2026-11-19-native-s7.json
 ```

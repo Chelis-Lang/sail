@@ -4,6 +4,7 @@
 pub mod backend;
 pub mod client;
 mod codec;
+pub mod edits;
 mod input;
 mod jobs;
 mod wire;
