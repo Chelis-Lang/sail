@@ -172,7 +172,30 @@ mod tests {
     }
 
     #[test]
-    fn module_shadowing_and_changed_limits_or_configuration_rebind() -> Result<(), String> {
+    fn supplied_file_shadowing_a_standard_module_rebinds() -> Result<(), String> {
+        let (mut previous, _) = requests();
+        let root = previous
+            .model
+            .files
+            .get_mut("Root.tla")
+            .ok_or("missing root")?;
+        *root = root.replace("EXTENDS Library", "EXTENDS Library, Naturals");
+        let mut current = previous.clone();
+        current.model.files.insert(
+            "lib/Naturals.tla".into(),
+            "---- MODULE Naturals ----\nDummy == 7\n====\n".into(),
+        );
+        assert!(
+            Query { previous, current }
+                .compare()?
+                .loaded_modules
+                .is_none()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn duplicate_modules_and_changed_limits_or_configuration_rebind() -> Result<(), String> {
         let (previous, mut current) = requests();
         current.model.files.insert(
             "other/Library.tla".into(),
