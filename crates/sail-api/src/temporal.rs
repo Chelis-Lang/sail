@@ -4,9 +4,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
+mod trace_encoding;
+/// Reserved state-value tag for a lossless TLA+ model atom in a versioned Sail trace.
+pub const MODEL_VALUE_TAG: &str = "#sail-model";
+
 /// Complete ITF states with explicit native claim metadata, never lossy values.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ItfTrace {
     /// Complete ordered variable list.
     pub vars: Vec<String>,

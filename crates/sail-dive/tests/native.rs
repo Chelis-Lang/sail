@@ -374,3 +374,43 @@ fn oversized_simulation_is_refused_from_its_probe_and_a_normal_one_runs() {
     assert_eq!(result.itf_traces.len(), 40);
     assert!(result.validations.iter().all(|v| v["result"] == "valid"));
 }
+
+#[test]
+fn model_atoms_keep_their_identity_through_current_source_validation() -> TestResult {
+    let mut job = request(
+        "---- MODULE M ----\nCONSTANT Atom\nVARIABLE x,y\nInit == /\\ x = \"N\" /\\ y = Atom\nNext == /\\ x' = Atom /\\ y' = Atom\nInv == x /= Atom\n====\n",
+        "CONSTANT Atom = N\nINIT Init\nNEXT Next\nINVARIANT Inv\n",
+    );
+    let result = sail_dive::execute(&job);
+    assert_eq!(result.outcome, Outcome::Refuted, "{result:?}");
+    let mut trace = result.itf_traces.first().ok_or("missing trace")?.clone();
+    let wire = serde_json::to_value(&trace)?;
+    assert_eq!(wire["value_encoding"], "sail-model-values-v1");
+    assert_eq!(trace.states[0]["x"], "N");
+    assert_eq!(trace.states[0]["y"], json!({"#sail-model":"N"}));
+    assert_eq!(trace.states[1]["x"], json!({"#sail-model":"N"}));
+    job.operation = Operation::Validate {
+        trace: trace.clone(),
+    };
+    assert_eq!(sail_dive::execute(&job).outcome, Outcome::Valid);
+    trace.states[1].insert("x".into(), json!("N"));
+    // y still contains a tagged atom. The mutated trace is structurally valid.
+    job.operation = Operation::Validate { trace };
+    assert_eq!(sail_dive::execute(&job).outcome, Outcome::Invalid);
+    Ok(())
+}
+
+#[test]
+fn nested_atoms_round_trip_in_keys_values_records_and_sets() -> TestResult {
+    let native = json!({"format":"dive-trace","version":1,"variables":["x"],"states":[
+        {"action":null,"values":{"x":{"fcn":[[{"model":"N"},{"set":["N",{"model":"N"}]}],
+        ["N",{"record":{"model":"N","nested":{"seq":[{"model":"N"}]}}}]]}}}],"ending":{"kind":"behavior"}});
+    let trace = sail_dive::native_to_itf(&native)?;
+    assert_eq!(sail_dive::itf_to_native(&trace)?, native);
+    let itf = serde_json::to_value(trace)?;
+    let entries = &itf["states"][0]["x"]["#map"];
+    assert_eq!(entries[0][0], json!({"#sail-model":"N"}));
+    assert_eq!(entries[1][0], "N");
+    assert_eq!(entries[1][1]["model"], "N");
+    Ok(())
+}

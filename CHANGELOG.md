@@ -6,6 +6,7 @@ semantic versioning once the API is published.
 ## Unreleased
 
 - `sail runtime recheck` can retain a completed native proof across a project edit when both executions resolve the same module bytes and selected configuration. The result lists the loaded modules.
+- Native temporal witnesses can carry TLA+ model values through checks, simulations and independent trace validation using a versioned lossless state-value tag. Older encodings and request hashes remain readable.
 
 - A temporal simulation job whose evidence would exceed the 16 MiB response bound is refused with `SAIL4216` before the full run, from its first 16 traces, and names the largest trace count that fits. A 1,000-trace bosco job is refused in about 2 s instead of failing with `SAIL4210` after 160 s (#767).
 

@@ -141,11 +141,82 @@ def edit_session(sail, rows, worker, wall_ms):
     return samples, decisions, wall
 
 
+def two_writer_control(sail, suite, snapshots, worker, wall_ms):
+    """Replay a real source fix that discriminates model atoms from strings."""
+    revisions = ("45c1cfd7ed40d9287b1c2ac51a05a7cb750e0521", "c757b12b7a4de6fa39523db541133fece9ced416")
+    replacements = (("MaxPublished = 10", "MaxPublished = 2"), ("Writers = { w }", "Writers = { w1, w2 }"),
+                    ("Readers = { r1, r2, r3 }", "Readers = { r1 }"), ("Size = 4", "Size = 2"))
+    model = suite["models"]["SPMC"]
+
+    def execute(request, cache, expected, cached=False):
+        job = {"version": 1, "input": {"kind": "temporal", "job": {"obligation_id": "two-writer",
+               "requirement_ids": [], "wall_time_ms": wall_ms, "request": request}}}
+        answer, elapsed, status = invoke(sail, ["execute", "--cache", cache], job, wall_ms)
+        result = answer["output"]["result"]
+        digest = sha(encode(request))
+        response = result["response"]
+        require(result["worker_sha256"] == worker and result["request_sha256"] == digest and
+                response["request_sha256"] == digest and result["cache_hit"] == cached and
+                result["outcome"] == "completed" and response["outcome"] == expected and
+                status == int(expected == "rejected"), "unexpected worker, request, outcome, receipt or exit")
+        return response, {"request_sha256": digest, "outcome": expected, "exit": status, "wall_us": elapsed}
+
+    rows = {}
+    with tempfile.TemporaryDirectory() as cache:
+        for revision in revisions:
+            files = {name: snapshots[revision][name] for name in model["files"]}
+            cfg = files[model["config"]]
+            for before, after in replacements:
+                require(cfg.count(before) == 1, f"unexpected configuration for {revision}: {before}")
+                cfg = cfg.replace(before, after)
+            files[model["config"]] = cfg
+            request = {"version": 1, "model": {"root": model["root"], "config": model["config"], "files": files},
+                       "operation": {"kind": "check", "max_states": 5000, "max_depth": 100}}
+            before_fix = revision == revisions[0]
+            response, row = execute(request, cache, "refuted" if before_fix else "rejected")
+            rows[revision] = row
+            report = response["native_report"]
+            row.update(verdict=report["verdict"], property=report["property"], statistics=report.get("statistics"))
+            if not before_fix:
+                row["message"] = report["message"]
+                require(report["verdict"] == "assumption-failure" and "is false" in row["message"] and
+                        not response["itf_traces"], "source correction did not reject the two-writer constants")
+                continue
+            require(report["property"] == "NoDataRaces" and
+                    [report["statistics"][k] for k in ("distinct", "generated", "depth")] == [4, 4, 3],
+                    "wrong violated property, depth or counts")
+            trace, = response["itf_traces"]
+            require(trace.get("value_encoding") == "sail-model-values-v1" and len(trace["states"]) == 3,
+                    "missing three-state model-valued witness")
+            row["trace_sha256"] = sha(encode(trace))
+            row["states"] = len(trace["states"])
+            validation = {**request, "operation": {"kind": "validate", "trace": trace}}
+            _, row["validate"] = execute(validation, cache, "valid")
+            hit, row["exact_receipt"] = execute(request, cache, "refuted", cached=True)
+            require(hit["itf_traces"] == [trace], "receipt changed the witness")
+
+            def change_atom(value):
+                if isinstance(value, dict) and set(value) == {"#sail-model"}:
+                    return value["#sail-model"], True
+                if isinstance(value, (list, dict)):
+                    for key in (range(len(value)) if isinstance(value, list) else value):
+                        value[key], changed = change_atom(value[key])
+                        if changed:
+                            return value, True
+                return value, False
+
+            _, changed = change_atom(trace["states"][0])
+            require(changed, "missing initial model atom for the same-spelling mutation")
+            _, row["same_spelling_string"] = execute(validation, cache, "invalid")
+    return {"wall_ms": wall_ms, "max_states": 5000, "max_depth": 100, "runs": rows}
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sail", required=True, type=Path)
     p.add_argument("--input-cache", type=Path, required=True)
     p.add_argument("--manifest", type=Path, default=Path(__file__).with_name("temporal-history-inputs.json"))
+    p.add_argument("--two-writer-control", action="store_true", help="check the pinned Disruptor counterexample and the next source correction")
     p.add_argument("--trials", type=int, default=5)
     p.add_argument("--states", type=int, default=200000)
     p.add_argument("--depth", type=int, default=128)
@@ -162,6 +233,13 @@ def main():
             "installed worker failed its identity check")
     with sail.open("rb") as f:
         cli = hashlib.file_digest(f, "sha256").hexdigest()
+    if args.two_writer_control:
+        suite = manifest["disruptor"]
+        evidence = two_writer_control(sail, suite, fetch_sources(args.input_cache, suite), worker, args.wall_ms)
+        print(json.dumps({"format": "sail-disruptor-witness-v1", "sail_sha256": cli, "worker_sha256": worker,
+                          "manifest_sha256": sha(args.manifest.read_bytes()),
+                          "system": [platform.system(), platform.release(), platform.machine()], **evidence}, indent=2))
+        return
     output = {"format": "sail-public-history-v1", "sail_sha256": cli, "worker_sha256": worker,
               "manifest_sha256": sha(args.manifest.read_bytes()), "system": [platform.system(), platform.release(),
               platform.machine()], "limits": [args.states, args.depth, args.wall_ms], "suites": {}}

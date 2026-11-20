@@ -379,8 +379,10 @@ refusals. [CCF consistency source](https://github.com/microsoft/CCF/tree/8c4bd0a
 A separate two-writer SPMC control changes the constants to two model-valued
 writers, one reader, size two and two published items. Before the correction
 TLC refuted NoDataRaces at depth three. The measured Sail build reported
-`SAIL4203` because its trace codec did not support native model values. After
-the source fix, both rejected the false ExactlyOneWriter assumption. An
+`SAIL4203` because its trace codec did not support native model values. The
+[model-valued witness control](#model-valued-disruptor-witness) below reruns
+that job with the lossless codec. After the source fix, both checkers
+rejected the false ExactlyOneWriter assumption. An
 ordinary stop after one state cannot certify equivalence of edited sources.
 Moving a TLA+ bullet can change a predicate with identical nontrivia tokens,
 and a module extracted from a comment can change the running program. Edits
@@ -395,4 +397,36 @@ against an independently executed, uncached current request.
 ```sh
 python3 scripts/benchmark-public-temporal-history.py --sail "$SAIL" \
   --input-cache /tmp/sail-history-inputs --trials 5 > history.json
+```
+
+## Model-valued Disruptor witness
+
+The two-writer control above changes four constants in the published SPMC
+configuration and retains all original module bytes. At
+`45c1cfd7` the staged Sail worker reported the same invariant, generated
+and distinct counts, and depth as TLC. At `c757b12b` the source added
+`ExactlyOneWriter`; its assumption rejected the same configuration.
+[Upstream source correction](https://github.com/tlaplus/Examples/commit/c757b12b7a4de6fa39523db541133fece9ced416).
+
+| Selected source and operation | Observed result |
+|---|---|
+| Older source, ordinary check | `NoDataRaces` refuted, 4 generated, 4 distinct, depth 3 |
+| Same check and cache | Exact receipt returned the identical three-state witness |
+| Separate validation against original source | Valid |
+| Same-spelled ordinary string substituted for one initial model value | Invalid |
+| Corrected source, ordinary check | False assumption at line 25, no witness |
+
+The installed CLI and native worker, canonical requests, trace digest,
+individual timings and platform are recorded in the
+[measurement](data/2026-11-20-model-valued-witness.json).
+The pinned TLC oracle used JAR SHA-256
+`7beec0f04818732a62fa193731711a99aa4f11279499b2360a7d156c519ea78d`.
+It exited 12 on the invariant and 10 on the false assumption. Sail's
+runtime treats a completed check and a completed validation operation as
+successful commands. Read their typed outcomes to distinguish a refutation,
+a valid witness and an invalid witness. The assumption rejection exits 1.
+
+```sh
+python3 scripts/benchmark-public-temporal-history.py --sail "$SAIL" \
+  --input-cache /tmp/sail-history-inputs --two-writer-control --wall-ms 10000
 ```
