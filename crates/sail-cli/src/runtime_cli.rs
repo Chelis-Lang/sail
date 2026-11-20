@@ -1,4 +1,5 @@
 //! Versioned raw-query runtime, separate from Cargo verification commands.
+mod recheck;
 use sail_api::runtime::{Answer, Outcome, Output, Request};
 use sail_runtime::{Cancellation, Config, Runtime};
 use std::io::{Read, Write};
@@ -68,6 +69,15 @@ fn command(
     if options.action == "capabilities" {
         write_json(out, &runtime.capabilities())?;
         return Ok(0);
+    }
+    if let Some(basis) = options.previous {
+        return recheck::run(
+            &runtime,
+            &read_request(&basis)?,
+            request.as_ref().ok_or_else(usage)?,
+            &cancellation,
+            out,
+        );
     }
     let response = runtime
         .execute(request.as_ref().ok_or_else(usage)?, &cancellation)
@@ -287,11 +297,12 @@ fn result(out: &mut dyn Write, response: &sail_api::runtime::Response) -> Result
 }
 
 fn usage() -> String {
-    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR]".into()
+    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR] | sail runtime recheck --previous FILE --file FILE|- [--cache DIR]".into()
 }
 
 struct Options<'a> {
     action: &'a str,
+    previous: Option<PathBuf>,
     file: Option<PathBuf>,
     cache: Option<PathBuf>,
     socket: Option<PathBuf>,
@@ -299,11 +310,15 @@ struct Options<'a> {
 
 fn options(args: &[String]) -> Result<Options<'_>, String> {
     let action = args.first().map(String::as_str).ok_or_else(usage)?;
-    if !matches!(action, "capabilities" | "execute" | "prepare-temporal") {
+    if !matches!(
+        action,
+        "capabilities" | "execute" | "prepare-temporal" | "recheck"
+    ) {
         return Err(usage());
     }
     let mut result = Options {
         action,
+        previous: None,
         file: None,
         cache: None,
         socket: None,
@@ -315,14 +330,20 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
             "--file" if action != "capabilities" && result.file.is_none() => {
                 result.file = Some(value.into());
             }
+            "--previous" if action == "recheck" && result.previous.is_none() && value != "-" => {
+                result.previous = Some(value.into());
+            }
             "--cache" if result.cache.is_none() => result.cache = Some(value.into()),
-            "--socket" if action != "prepare-temporal" && result.socket.is_none() => {
+            "--socket"
+                if matches!(action, "capabilities" | "execute") && result.socket.is_none() =>
+            {
                 result.socket = Some(value.into());
             }
             _ => return Err(usage()),
         }
     }
-    if (action == "execute" && result.file.is_none())
+    if (matches!(action, "execute" | "recheck") && result.file.is_none())
+        || (action == "recheck" && result.previous.is_none())
         || (result.socket.is_some() && result.cache.is_some())
     {
         return Err(usage());
@@ -407,6 +428,10 @@ mod tests {
             vec!["capabilities", "--file", "x"],
             vec!["execute", "--file", "x", "--file", "y"],
             vec!["execute", "--file", "x", "--cache"],
+            vec!["recheck", "--file", "x"],
+            vec!["recheck", "--previous", "x"],
+            vec!["recheck", "--file", "a", "--previous", "-"],
+            vec!["recheck", "--file", "a", "--previous", "b", "--socket", "s"],
         ] {
             assert!(options(&args.into_iter().map(str::to_owned).collect::<Vec<_>>()).is_err());
         }

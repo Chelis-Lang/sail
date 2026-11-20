@@ -100,6 +100,19 @@ current deadline apply during lookup. Simulation, standalone trace validation,
 resource stops, refusals and execution failures always execute afresh.
 The local disk tier requires trusted user-owned storage. See [trust](../trust.md).
 
+## Explicit invariant witness recheck
+
+`runtime recheck` accepts two version-one check envelopes in the embedded CLI.
+A counterexample from a different receipt can establish a current refutation
+only when the modules, selected root/config, operative CFG including declaration
+order, check limits, and authenticated producer agree. The CLI requires one
+previous invariant violation named by the configured inventory and a fresh
+successful independent replay of its complete ITF ending against the current
+model. Its output records both request digests, the previous receipt key and
+the validation response. The exact current result takes precedence. A failed
+guard falls back to current checking. The [command guide](../temporal-jobs.md#recheck-a-previous-invariant-failure-after-a-configuration-comment-edit)
+defines output routes and deadlines.
+
 ## Conformance and compatibility
 
 Tests compare embedded results with direct calls to the exact pinned native

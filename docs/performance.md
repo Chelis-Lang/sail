@@ -9,6 +9,8 @@ original complete proof when retaining that target was worth its cost.
 
 On the 724,274-state mutex model, an unchanged check took 9.29 ms with receipts and 12.360 s on the v0.3.0 source. A 100-check maintenance loop had 76 exact hits and took 1.454 s with receipts, 4.862 s on v0.3.0 and 67.324 s on TLC. Property and invariant edits in this campaign ran fresh. [Conditions and reproduction](validation/temporal-reuse-s7.md) · [Individual measurements](validation/data/2026-11-19-native-s7.json).
 
+A synthetic 200,002-state invariant failure with a three-state witness took 10.04 ms to recheck after a trailing CFG comment edit, compared with 172.90 ms for a fresh check (17.22×). Each guarded call independently validated the old witness against the current input. [Method and small-model controls](validation/temporal-reuse-s7.md#guarded-invariant-recheck-after-a-cfg-edit).
+
 ## 0.2.0
 
 The complete core composition uses source `039fb996`, pinned A0e Verus,

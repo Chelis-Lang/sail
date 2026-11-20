@@ -240,15 +240,7 @@ pub(crate) fn capability(
     }
 }
 
-pub(crate) fn execute(
-    job: &Job,
-    backend: Option<&dyn TemporalBackend>,
-    worker: Option<&Worker>,
-    problem: Option<&sail_api::runtime::Error>,
-    cache_directory: Option<&Path>,
-    cancellation: &Cancellation,
-) -> std::result::Result<Result, sail_api::runtime::Error> {
-    let started = Instant::now();
+fn admitted_result(job: &Job) -> std::result::Result<Result, sail_api::runtime::Error> {
     if job.obligation_id.trim().is_empty()
         || job.obligation_id.len() > 1024
         || job.requirement_ids.len() > 1024
@@ -274,7 +266,7 @@ pub(crate) fn execute(
             "temporal payload exceeds 16 MiB",
         ));
     }
-    let mut result = Result {
+    Ok(Result {
         obligation_id: job.obligation_id.clone(),
         requirement_ids: job.requirement_ids.clone(),
         request_sha256: sail_api::temporal::request_sha256(&job.request)
@@ -287,7 +279,73 @@ pub(crate) fn execute(
         error: None,
         cache_hit: false,
         cache_key: None,
-    };
+    })
+}
+
+impl super::Runtime {
+    /// Read a completed exact native check from this runtime's trusted cache.
+    /// A miss, a cancelled lookup or an unavailable producer returns `None`.
+    /// The lookup authenticates the installed worker and validates its receipt.
+    /// It never launches a worker or publishes a receipt.
+    ///
+    /// # Errors
+    /// Returns the same request admission errors as [`Self::execute`].
+    pub fn lookup_temporal(
+        &self,
+        job: &Job,
+        cancellation: &Cancellation,
+    ) -> std::result::Result<Option<Result>, sail_api::runtime::Error> {
+        let start = Instant::now();
+        let mut result = admitted_result(job)?;
+        let config = &self.config;
+        let (Some(backend), Some(worker)) = (
+            config.temporal_backend.as_deref(),
+            config.temporal_worker.as_ref(),
+        ) else {
+            return Ok(None);
+        };
+        if cancellation.is_cancelled() || worker.authenticate().is_err() {
+            return Ok(None);
+        }
+        let Some(receipt) = receipts::Receipt::for_check(
+            config
+                .temporal_cache_directory
+                .as_deref()
+                .or(config.cache_directory.as_deref()),
+            job,
+            &result.request_sha256,
+            &result.backend_revision,
+            worker,
+            backend.replay_policy(),
+        ) else {
+            return Ok(None);
+        };
+        let Some(response) = receipt.read(&job.request) else {
+            return Ok(None);
+        };
+        if cancellation.is_cancelled() || start.elapsed() >= Duration::from_millis(job.wall_time_ms)
+        {
+            return Ok(None);
+        }
+        result.worker_sha256 = Some(worker.sha256.clone());
+        result.outcome = Outcome::Completed;
+        result.response = Some(*response);
+        result.cache_hit = true;
+        result.cache_key = Some(receipt.key());
+        Ok(Some(result))
+    }
+}
+
+pub(crate) fn execute(
+    job: &Job,
+    backend: Option<&dyn TemporalBackend>,
+    worker: Option<&Worker>,
+    problem: Option<&sail_api::runtime::Error>,
+    cache_directory: Option<&Path>,
+    cancellation: &Cancellation,
+) -> std::result::Result<Result, sail_api::runtime::Error> {
+    let started = Instant::now();
+    let mut result = admitted_result(job)?;
     let ready = capability(backend, worker, problem);
     if !ready.installed {
         result.error = ready.error;

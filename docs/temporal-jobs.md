@@ -117,3 +117,18 @@ file starts a fresh check. Simulation, trace validation, incomplete exploration,
 errors, cancellation and timeout do not create proof receipts. Keep the local
 cache writable only by trusted code. For GitHub-hosted jobs, see
 [authenticated temporal receipts](ci-cache.md#native-temporal-receipts).
+
+## Recheck a previous invariant failure after a configuration comment edit
+
+In development builds after v0.3.0, save the two temporal `check` request envelopes. Run the previous request normally, then ask Sail to recheck the edited request using the same local cache:
+
+```sh
+sail runtime execute --file previous.json
+sail runtime recheck --previous previous.json --file current.json
+```
+
+The command also sees receipts populated by the local daemon or restored by the signed action. Pass `--cache DIR` when the original job used a custom cache. The current input can come from stdin with `--file -`.
+
+If the current job already has an exact receipt, Sail returns it through the ordinary `current-check` route. Otherwise Sail looks up the exact previous job without executing it. The fast route requires the same worker, backend, state/depth and wall limits, module names and bytes, and two clean CFG parses with identical values, declaration order and retained source locations. A trailing CFG comment is one useful example. The previous result must name a single configured invariant violation. A separate worker validates that trace against the current request. The version-1 result names the route `equivalent-cfg-rechecked-refutation` and records the current caller and request digest, previous receipt key and digest, and the validator's actual response. It establishes a refutation. It publishes no new exact receipt and copies no old exploration counters into the current result.
+
+Other edits, missing receipts, simulation evidence and an inconclusive trace check fall back to normal execution of the current check. This route is `current-check` with the ordinary `response` envelope. An exactly repeated request uses normal exact replay. Each fallback retains the submitted job's full limits. The preceding optional lookup and validation have their own window bounded by the submitted wall time. Exit 0 indicates a conclusive check or validated refutation, 1 an incomplete current check and 2 malformed input or a command error. Broad property edits still need a Dive-owned graph or ordered discovery prefix.

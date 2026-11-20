@@ -107,3 +107,23 @@ PYDATA
 The [pre-release S7 data](data/2026-11-19-pre-release-s7.json) preserves the earlier candidate comparison and two exploratory extension builds. Those builds used a different D.I.V.E. source. Use the native data for comparisons to v0.3.0. Each record identifies its binaries and host.
 
 To collect another three-trial comparison, store the driver's JSONL files together with `host.json` and `identities.json` recording the host, revisions, binary hashes and oracle pins, then run `python3 scripts/collect-temporal-reuse.py DIRECTORY`. The collector rejects incomplete or unpaired workload trials, unequal outcomes or counts, and replay evidence that differs from its original response.
+
+## Guarded invariant recheck after a CFG edit
+
+A separate synthetic benchmark on native EC2 measured an explicit recheck of an invariant failure after appending a comment to its CFG. The initial state has one successor for each integer from 1 through the chosen width. Only the largest successor leads to the violating state. Every full check and independent replay returned the same three-state ITF witness. [Individual samples, binary hashes and host](data/2026-11-20-guarded-invariant.json).
+
+| Width | Distinct states in fresh check | Median fresh check | Median guarded recheck | Ratio of medians |
+|---:|---:|---:|---:|---:|
+| 20 | 22 | 11.95 ms | 9.83 ms | 1.22× |
+| 200,000 | 200,002 | 172.90 ms | 10.04 ms | 17.22× |
+
+Each row used a new Sail cache and five distinct comment edits. A daemon established the previous receipt. Each timed pair used a new embedded CLI process first for the edited recheck and then for a fresh check of the same bytes. The timer includes JSON decoding. Both paths authenticated the same release worker. No other build or benchmark ran concurrently. OS file-cache state and CPU frequency were uncontrolled. An earlier width-20 smoke immediately after staging took 55.56 ms guarded and 41.11 ms fresh. The small-case gain varied with the run.
+
+The controls exercised a missing previous receipt, an exact current receipt and fresh fallbacks for changed invariant inventory, an earlier sibling error, a repaired invariant and a tightened state limit. At width 20 the sibling returned Error. At width 200,000 the pinned backend observed the earlier error and returned Unsupported because its ordered diagnostic exceeded 256 cumulative emissions. The first large run stopped on a harness expectation of Error. The corrected run required the specific refusal and compared each fallback with a separate uncached execution, including the native verdict, property, statistics, message and ITF trace. General invariant edits and temporal property edits still require ordinary checking.
+
+The source and release worker are identified in the sample file. Build and stage the release binaries as above, then run both commands on the same idle native host. The driver generates the models and checks the expected outcomes.
+
+```sh
+python3 scripts/benchmark-guarded-refutation.py "$PREFIX/bin/sail" --smoke
+python3 scripts/benchmark-guarded-refutation.py "$PREFIX/bin/sail"
+```
