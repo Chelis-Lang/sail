@@ -28,7 +28,9 @@ fn terminate(child: &mut Child) {
         // stopped. The process group is still owned until we reap its leader.
         let _ = kill_process_group(pid, Signal::INT);
         let _ = kill_process_group(pid, Signal::CONT);
-        thread::sleep(Duration::from_millis(100));
+        // Python may wait 250 ms inside Popen.wait before propagating
+        // KeyboardInterrupt. Allow the supervisor to finish its group cleanup.
+        thread::sleep(Duration::from_millis(400));
         let _ = kill_process_group(pid, Signal::KILL);
     }
     let _ = child.kill();
