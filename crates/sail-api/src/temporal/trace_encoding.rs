@@ -6,13 +6,23 @@ use serde_json::{Map, Value};
 
 const MODEL_VALUES: &str = "sail-model-values-v1";
 
-#[derive(Default, Deserialize)]
+#[derive(Default)]
 enum Encoding {
     #[default]
-    #[serde(skip)]
     Legacy,
-    #[serde(rename = "sail-model-values-v1")]
     ModelValues,
+}
+
+impl<'de> Deserialize<'de> for Encoding {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        if String::deserialize(deserializer)? == MODEL_VALUES {
+            Ok(Self::ModelValues)
+        } else {
+            Err(serde::de::Error::custom(
+                "unknown Sail trace value encoding",
+            ))
+        }
+    }
 }
 
 fn has_model_values(states: &[Map<String, Value>]) -> Result<bool, &'static str> {
@@ -132,6 +142,9 @@ mod tests {
             assert!(serde_json::from_value::<ItfTrace>(wire.clone()).is_err());
         }
         wire["states"][0]["x"] = json!({"#map": [[{(MODEL_VALUE_TAG):"A"},"A"]]});
+        wire["value_encoding"] = json!({(MODEL_VALUES): null});
+        assert!(serde_json::from_value::<ItfTrace>(wire.clone()).is_err());
+        wire["value_encoding"] = json!(MODEL_VALUES);
         let trace: ItfTrace = serde_json::from_value(wire.clone())?;
         assert_eq!(serde_json::to_value(trace)?, wire);
         wire.as_object_mut()
