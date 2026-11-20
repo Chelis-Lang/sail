@@ -4,6 +4,8 @@ This experiment measures how much work Sail can reuse across native TLA+ checks.
 
 For substantive edits, see [installed edit sessions and invariant removal](#native-checks-after-substantive-edits) and [retaining the first temporal property](#retaining-the-first-temporal-property). The [portable symbolic predicate measurements](#portable-symbolic-predicates) cover cross-process proofs of new safety invariants on larger KVS programs. The original receipt comparison below measures identical-input reuse.
 
+The [installed public edit histories](#installed-public-edit-histories) follow chronological CCF and Disruptor changes through independent CLI processes.
+
 ## Results
 
 Each cell reports the median of three foreground times in milliseconds. The last column reports the median of the three paired speedups against Sail. All 333 verdicts and distinct-state counts per engine matched.
@@ -312,3 +314,85 @@ the single-node commit-reachability debug configuration found the expected
 invariant violation at depth 5 with 17 distinct and 20 generated states.
 The three revisions and individual results are in the
 [measurement data](data/2026-11-20-symbolic-predicates.json).
+
+## Installed public edit histories
+
+Sail checked three upstream revisions each of Microsoft's CCF consistency
+specification and the Disruptor ring-buffer protocol. The benchmark uses the
+published input bytes. It includes every initial check, refusal and fallback.
+For Disruptor each revision runs the SPMC safety/liveness configuration,
+MPMC safety and MPMC liveness. The first edit changes imports and named
+assumptions in the shared RingBuffer. The next strengthens the SPMC writer
+assumption. Both MPMC programs remain byte-identical at that last step.
+[Pinned source files and SHA-256 values](../../scripts/temporal-history-inputs.json) ·
+[Disruptor model and published counts](https://github.com/tlaplus/Examples/blob/6a7b26a31c1a6aeec789b455e9bbfa3b3ad2728f/specifications/Disruptor/manifest.json).
+
+Across all nine public Disruptor checks, whole-project recheck took **5.160 s**
+against **7.129 s** for fresh checking, a **1.38×** median paired speedup.
+On the final upstream edit MPMC safety took 16.27 ms instead of 970.35 ms
+(59.76× paired); MPMC liveness took 16.13 ms instead of 1,074.22 ms (66.85×).
+The SPMC edit required an ordinary check. Each value below is the median of
+five cumulative foreground measurements in milliseconds on one native EC2
+c7i.4xlarge. The runner rotated the order of four methods. The local cache
+began empty for each method and each trial.
+[Every paired sample, step route, input and executable identity](data/2026-11-20-installed-public-edit-histories.json).
+
+| Input histories | Build | Isolated fresh | Shared exact receipts | Edit session | Recheck with prior |
+|---|---|---:|---:|---:|---:|
+| Disruptor, selected files | Before | 7,165.22 | 5,123.80 | 7,171.64 | 5,123.22 |
+| Disruptor, selected files | After | 7,141.89 | 5,099.74 | 7,105.18 | 5,134.12 |
+| Disruptor, whole project | Before | 7,170.33 | 7,176.12 | 7,188.09 | 7,198.77 |
+| Disruptor, whole project | After | 7,128.88 | 7,115.68 | 7,085.77 | 5,160.46 |
+| CCF, three refusals | Before | 47.19 | 47.15 | 57.77 | 47.70 |
+| CCF, three refusals | After | 46.84 | 46.49 | 32.96 | 47.36 |
+
+Sail now shares the current frozen input between attempted edit-session reuse
+and ordinary fallback. The CCF session therefore performs prebinding once
+per refused input. Those measurements describe refusal latency.
+
+Each source revision is measured twice. In the **selected** case each request
+contains its actual imports and selected CFG. In the **project** case each
+contains all published source and configuration files selected for the three
+entry points. The worker resolves each root using normal prebinding and
+compares ordered module origins, exact loaded file bytes, the configuration
+and search limits. An exact cache is already sufficient for the unchanged
+MPMC requests in the selected case. The project case exercises the new
+`unchanged-loaded-program` proof after the sibling edit changes the request
+digest. This proof carries the current identity and the establishing receipt.
+The next ordinary check at the current identity still explores fresh.
+
+| Published Disruptor CFG | Distinct | Generated | Depth |
+|---|---:|---:|---:|
+| SPMC | 8,496 | 28,049 | 82 |
+| MPMC | 112,929 | 422,781 | 81 |
+| MPMC liveness | 14,365 | 44,581 | 61 |
+
+The positive runs use 200,000 states, depth 128 and at most 300 seconds per
+ordinary process. An edit-session has the same wall limit for its whole batch.
+Each method finished inside its allowance. An initial 5,000-state diagnostic
+instead stopped the two original SPMC and MPMC programs in each revision.
+A limit stop supplied no proof. The three original CCF single-node
+commit-reachability jobs refused during prebinding with `SAIL4202` on the
+unqualified standard TLC module. Reused sessions preserved all three
+refusals. [CCF consistency source](https://github.com/microsoft/CCF/tree/8c4bd0ae3c5a58d9c4f6fec1f66f8a97a7e51f56/tla/consistency).
+
+A separate two-writer SPMC control changes the constants to two model-valued
+writers, one reader, size two and two published items. Before the correction
+TLC refuted NoDataRaces at depth three. The measured Sail build reported
+`SAIL4203` because its trace codec did not support native model values. After
+the source fix, both rejected the false ExactlyOneWriter assumption. An
+ordinary stop after one state cannot certify equivalence of edited sources.
+Moving a TLA+ bullet can change a predicate with identical nontrivia tokens,
+and a module extracted from a comment can change the running program. Edits
+to selected sources therefore continue through normal checking in this
+experiment.
+
+Set `SAIL` to the installed executable alongside its manifest and native
+worker. The driver downloads only the listed public files, checks their
+SHA-256 values, recomputes canonical requests and verifies every result
+against an independently executed, uncached current request.
+
+```sh
+python3 scripts/benchmark-public-temporal-history.py --sail "$SAIL" \
+  --input-cache /tmp/sail-history-inputs --trials 5 > history.json
+```

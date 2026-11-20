@@ -113,6 +113,16 @@ the validation response. The exact current result takes precedence. A failed
 guard falls back to current checking. The [command guide](../temporal-jobs.md#recheck-a-previous-invariant-failure-after-a-configuration-comment-edit)
 defines output routes and deadlines.
 
+The `unchanged-loaded-program` relation extends native recheck to project
+envelopes that contain unselected siblings. The previous and current checks
+require the same root, selected configuration bytes, operation, limits and
+worker. Ordinary host admission and module resolution must succeed for both.
+The authenticated worker compares the ordered origins and exact bytes of
+the resolved modules. Extracted monoliths are ineligible. The caller accepts
+this conditional relation only with an authenticated complete ordinary Holds
+receipt. The result binds the current caller and request, its establishing
+receipt and the ordered loaded paths. It publishes no current receipt.
+
 ## Conformance and compatibility
 
 Tests compare embedded results with direct calls to the exact pinned native

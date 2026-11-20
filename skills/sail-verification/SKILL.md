@@ -138,3 +138,8 @@ For a missing runtime, check `sail engine status` and the installation guide.
 Use [compatibility](https://github.com/Chelis-Lang/sail/blob/main/docs/compatibility.md)
 to check the pinned release. Use `cargo verus verify` if a project must keep
 a different Verus release.
+
+For a multi-root TLA+ project, pass the previous exact request and current
+request to `sail runtime recheck` with the same cache. A
+`unchanged-loaded-program` proof lists the files the authenticated worker
+resolved in both versions. A changed loaded module requires a current check.

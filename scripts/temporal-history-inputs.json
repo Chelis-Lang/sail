@@ -1,0 +1,110 @@
+{
+  "disruptor": {
+    "repository": "tlaplus/Examples",
+    "directory": "specifications/Disruptor",
+    "revisions": {
+      "f3e248a6a7b318533658857709fc4718a85ef102": {
+        "Disruptor_MPMC.tla": "24c4ea4f7d3850d19336c425d428d6bc454d269488a43c1c7327efa732fcbaa6",
+        "Disruptor_SPMC.tla": "0d8e0d61eb8d5c7391f05e976a30ae94f7edfa0b582d6aa14074bc37f3d3c5fe",
+        "MCDisruptor_MPMC.cfg": "536a5a14deb08f933d9091a213991d634bd2f2cccf0f92e25f22fefe273b1b44",
+        "MCDisruptor_MPMC.tla": "def6ddaeb2a8bb3995421722e007e1d9b889502a8d8bd92a55f51289a1633e75",
+        "MCDisruptor_SPMC.cfg": "54a8668fa7ca5b6aacfb5f00f0d864d366daa8b0b51366d4ef74609d7a9e754e",
+        "MCDisruptor_SPMC.tla": "be3f2a2d60d4a6067b2d815822570a2f8c163b2b9b3a06b43d9a7c1f3eec4e39",
+        "RingBuffer.tla": "f60ddf3c9bcef2c38baaf02bbdb858c2596f6ebd2c4444c6071c0afb1f165dcc",
+        "MCDisruptor_MPMC_liveliness.cfg": "5bea496c83bd65d69485969c53697e601b46f8bb854256f806e2041047c67610"
+      },
+      "45c1cfd7ed40d9287b1c2ac51a05a7cb750e0521": {
+        "Disruptor_MPMC.tla": "24c4ea4f7d3850d19336c425d428d6bc454d269488a43c1c7327efa732fcbaa6",
+        "Disruptor_SPMC.tla": "0d8e0d61eb8d5c7391f05e976a30ae94f7edfa0b582d6aa14074bc37f3d3c5fe",
+        "MCDisruptor_MPMC.cfg": "536a5a14deb08f933d9091a213991d634bd2f2cccf0f92e25f22fefe273b1b44",
+        "MCDisruptor_MPMC.tla": "def6ddaeb2a8bb3995421722e007e1d9b889502a8d8bd92a55f51289a1633e75",
+        "MCDisruptor_SPMC.cfg": "54a8668fa7ca5b6aacfb5f00f0d864d366daa8b0b51366d4ef74609d7a9e754e",
+        "MCDisruptor_SPMC.tla": "be3f2a2d60d4a6067b2d815822570a2f8c163b2b9b3a06b43d9a7c1f3eec4e39",
+        "RingBuffer.tla": "7284bbd3653341a7762b4842f32e54c54ba5d892bf3f719e4918aa81c71b181a",
+        "MCDisruptor_MPMC_liveliness.cfg": "5bea496c83bd65d69485969c53697e601b46f8bb854256f806e2041047c67610"
+      },
+      "c757b12b7a4de6fa39523db541133fece9ced416": {
+        "Disruptor_MPMC.tla": "24c4ea4f7d3850d19336c425d428d6bc454d269488a43c1c7327efa732fcbaa6",
+        "Disruptor_SPMC.tla": "88a5f2bdfeed1f4954d5be6eedfdaac44d5b8a8c88589dffd6ae6694220eda0b",
+        "MCDisruptor_MPMC.cfg": "536a5a14deb08f933d9091a213991d634bd2f2cccf0f92e25f22fefe273b1b44",
+        "MCDisruptor_MPMC.tla": "def6ddaeb2a8bb3995421722e007e1d9b889502a8d8bd92a55f51289a1633e75",
+        "MCDisruptor_SPMC.cfg": "54a8668fa7ca5b6aacfb5f00f0d864d366daa8b0b51366d4ef74609d7a9e754e",
+        "MCDisruptor_SPMC.tla": "be3f2a2d60d4a6067b2d815822570a2f8c163b2b9b3a06b43d9a7c1f3eec4e39",
+        "RingBuffer.tla": "7284bbd3653341a7762b4842f32e54c54ba5d892bf3f719e4918aa81c71b181a",
+        "MCDisruptor_MPMC_liveliness.cfg": "5bea496c83bd65d69485969c53697e601b46f8bb854256f806e2041047c67610"
+      }
+    },
+    "models": {
+      "SPMC": {
+        "root": "MCDisruptor_SPMC.tla",
+        "config": "MCDisruptor_SPMC.cfg",
+        "files": [
+          "Disruptor_SPMC.tla",
+          "MCDisruptor_SPMC.cfg",
+          "MCDisruptor_SPMC.tla",
+          "RingBuffer.tla"
+        ]
+      },
+      "MPMC": {
+        "root": "MCDisruptor_MPMC.tla",
+        "config": "MCDisruptor_MPMC.cfg",
+        "files": [
+          "Disruptor_MPMC.tla",
+          "MCDisruptor_MPMC.cfg",
+          "MCDisruptor_MPMC.tla",
+          "RingBuffer.tla"
+        ]
+      },
+      "MPMC-liveness": {
+        "root": "MCDisruptor_MPMC.tla",
+        "config": "MCDisruptor_MPMC_liveliness.cfg",
+        "files": [
+          "Disruptor_MPMC.tla",
+          "MCDisruptor_MPMC.tla",
+          "MCDisruptor_MPMC_liveliness.cfg",
+          "RingBuffer.tla"
+        ]
+      }
+    }
+  },
+  "ccf": {
+    "repository": "microsoft/CCF",
+    "directory": "tla/consistency",
+    "revisions": {
+      "24690d103225353c3d8e02b707618d3682eb8c47": {
+        "ExternalHistory.tla": "423e3e0a4d256207c2272109878b49ccef4b4ee371b7e4342a35a3a302fd7d54",
+        "ExternalHistoryInvars.tla": "fcb1cd11ec3796874f3a2a4d24c791c5fd9167a74572caf8ec6935eda1b1f348",
+        "MCSingleNode.tla": "c7758d360b4f8751d184901aa25991723b07f6fc394396c6f09e6e660cd9579e",
+        "MCSingleNodeCommitReachability.cfg": "9949f997a6892808d1bb21002c4e700415b772d60104d13e832cb4814906374a",
+        "SingleNode.tla": "b5e47a0f78d561a8c87fd8635760ac9228cf6b9d166e4e2802c53786d4be4053"
+      },
+      "4eedf465d4292d7e6a53d92a7b03a2c8fa1bc616": {
+        "ExternalHistory.tla": "8ff72d4bc2b1d43e346a8fe0df0ff8430b72da8010228199a46b8b0c938e8334",
+        "ExternalHistoryInvars.tla": "304d63b0c411651a138048280944d0218fd664c3fc8cfb6df460f1d99742eaab",
+        "MCSingleNode.tla": "98ed10e9bfd079d09e5a5445edd5797f804c2441295ca35536500b05591e1942",
+        "MCSingleNodeCommitReachability.cfg": "ced02585339159b09bb94f44863641e5b81116b01071e74986705a754f8c041a",
+        "SingleNode.tla": "76d89beda180945967369a2e42d6e6aed5303dd6315afd881b8b1f2d598767c8"
+      },
+      "8c4bd0ae3c5a58d9c4f6fec1f66f8a97a7e51f56": {
+        "ExternalHistory.tla": "8ff72d4bc2b1d43e346a8fe0df0ff8430b72da8010228199a46b8b0c938e8334",
+        "ExternalHistoryInvars.tla": "ee74dcf71098a5b9b5cc22c9cdcf1e23d59dfb62d9b8e4bef175cfc89a8382e1",
+        "MCSingleNode.tla": "98ed10e9bfd079d09e5a5445edd5797f804c2441295ca35536500b05591e1942",
+        "MCSingleNodeCommitReachability.cfg": "ced02585339159b09bb94f44863641e5b81116b01071e74986705a754f8c041a",
+        "SingleNode.tla": "76d89beda180945967369a2e42d6e6aed5303dd6315afd881b8b1f2d598767c8"
+      }
+    },
+    "models": {
+      "single-node-commit": {
+        "root": "MCSingleNode.tla",
+        "config": "MCSingleNodeCommitReachability.cfg",
+        "files": [
+          "ExternalHistory.tla",
+          "ExternalHistoryInvars.tla",
+          "MCSingleNode.tla",
+          "MCSingleNodeCommitReachability.cfg",
+          "SingleNode.tla"
+        ]
+      }
+    }
+  }
+}

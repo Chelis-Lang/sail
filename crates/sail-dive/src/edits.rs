@@ -1,5 +1,6 @@
 //! Check a sequence of closed TLA+ requests while retaining one typed Dive artifact.
 pub mod first_claim;
+pub mod loaded;
 pub mod projection;
 use crate::input::Frozen;
 use crate::{ItfTrace, Operation, Outcome, Request, Response};
@@ -193,10 +194,17 @@ impl Session {
             return Err("unknown native check version".into());
         }
         let hash = crate::request_sha256(request).map_err(|e| e.to_string())?;
-        let evidence = self
-            .checked(request, &hash, max_states, max_depth)
-            .unwrap_or_else(|| Evidence::Fresh {
-                response: Box::new(crate::execute(request)),
+        let input = Frozen::create(&request.model);
+        let evidence = input
+            .as_ref()
+            .ok()
+            .and_then(|ready| self.checked(request, ready, &hash, max_states, max_depth))
+            .unwrap_or_else(|| {
+                let result =
+                    input.and_then(|ready| crate::jobs::check(&ready, max_states, max_depth));
+                Evidence::Fresh {
+                    response: Box::new(crate::jobs::attribute(request, result)),
+                }
             });
         let mut entry = Entry {
             elapsed_us: 0,
@@ -221,6 +229,7 @@ impl Session {
     fn checked(
         &mut self,
         request: &Request,
+        input: &Frozen,
         hash: &str,
         states: u64,
         depth: u64,
@@ -228,7 +237,6 @@ impl Session {
         if !default_policy() {
             return None;
         }
-        let input = Frozen::create(&request.model).ok()?;
         let analysis = dive_api::analyze_file(
             &input.root,
             &dive_api::AnalyzeOptions {

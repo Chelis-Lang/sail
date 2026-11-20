@@ -131,6 +131,28 @@ errors, cancellation and timeout do not create proof receipts. Keep the local
 cache writable only by trusted code. For GitHub-hosted jobs, see
 [authenticated temporal receipts](ci-cache.md#native-temporal-receipts).
 
+## Recheck an unchanged program after a project edit
+
+An editor can submit an entire closed project and choose a different module
+and CFG for each check. After checking the original request, use the same
+cache for a later project revision.
+
+```sh
+sail runtime execute --file previous.json --cache project-cache
+sail runtime recheck --previous previous.json --file current.json --cache project-cache
+```
+
+For `unchanged-loaded-program`, the same authenticated worker resolves both
+source graphs. Their module paths, standard origins and bytes must match in
+loader order. The root, selected CFG bytes and all limits must match, and the
+previous receipt must establish complete ordinary Holds. The output names
+the loaded modules, both request identities, the original receipt and the
+current caller. Only the establishing run has exploration counts. A later
+ordinary execution at the current identity still runs fresh. Changed imports,
+shadowed modules, extracted monoliths and changed assumptions fall back to
+ordinary checking. An exact receipt for the current request takes precedence.
+[Public edit histories and measurements](validation/temporal-reuse-s7.md#installed-public-edit-histories).
+
 ## Recheck a previous invariant failure after a configuration comment edit
 
 In development builds after v0.3.0, save the two temporal `check` request envelopes. Run the previous request normally, then ask Sail to recheck the edited request using the same local cache:

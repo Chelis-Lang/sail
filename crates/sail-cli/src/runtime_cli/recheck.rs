@@ -93,8 +93,13 @@ pub(super) fn run(
 #[derive(serde::Serialize)]
 #[serde(tag = "route", rename_all = "kebab-case")]
 enum ProjectionProof {
+    UnchangedLoadedProgram {
+        loaded_modules: Vec<String>,
+    },
     #[serde(rename = "established-invariant-subset")]
-    Invariants { invariants: Vec<String> },
+    Invariants {
+        invariants: Vec<String>,
+    },
     #[serde(rename = "established-first-temporal-claim")]
     FirstTemporalClaim {
         property: String,
@@ -127,10 +132,9 @@ fn projected<'a>(
     use sail_api::temporal::Completion;
     use sail_runtime::temporal::Worker;
     let evidence = basis.response.as_ref()?;
-    if evidence.outcome != Outcome::Holds
+    if evidence.completion == Completion::None
+        || evidence.outcome != Outcome::Holds
         || evidence.request_sha256 != basis.request_sha256
-        || (evidence.completion == Completion::Temporal
-            && !sail_dive::edits::first_claim::eligible(&old.request, &current.request, evidence))
         || !basis.cache_hit
         || evidence.native_report["statistics"]["left_on_queue"] != 0
         || old.request.operation != current.request.operation
@@ -146,63 +150,8 @@ fn projected<'a>(
     if basis.worker_sha256.as_ref() != Some(&worker.sha256) {
         return None;
     }
-    let (proof, previous_request_sha256, request_sha256, backend_source) = match evidence.completion
-    {
-        Completion::Safety => {
-            let query = sail_dive::edits::projection::Query {
-                previous: old.request.clone(),
-                current: current.request.clone(),
-            };
-            let sail_dive::client::RunResult::Completed(relation) = sail_dive::client::project(
-                &worker.executable,
-                &worker.sha256,
-                &query,
-                budget,
-                start,
-                cancel,
-            ) else {
-                return None;
-            };
-            (
-                ProjectionProof::Invariants {
-                    invariants: relation.invariants?,
-                },
-                relation.previous_sha256,
-                relation.current_sha256,
-                relation.backend_source,
-            )
-        }
-        Completion::Temporal => {
-            let query = sail_dive::edits::first_claim::Query {
-                previous: old.request.clone(),
-                current: current.request.clone(),
-                previous_response: evidence.clone(),
-            };
-            let sail_dive::client::RunResult::Completed(relation) =
-                sail_dive::client::project_first_claim(
-                    &worker.executable,
-                    &worker.sha256,
-                    &query,
-                    budget,
-                    start,
-                    cancel,
-                )
-            else {
-                return None;
-            };
-            let claim = relation.claim?;
-            (
-                ProjectionProof::FirstTemporalClaim {
-                    property: claim.property,
-                    basis_counts: claim.basis_counts,
-                },
-                relation.previous_sha256,
-                relation.current_sha256,
-                relation.backend_source,
-            )
-        }
-        Completion::None => return None,
-    };
+    let (proof, previous_request_sha256, request_sha256, backend_source) =
+        relation(old, current, evidence, &worker, budget, start, cancel)?;
     if previous_request_sha256 != basis.request_sha256
         || cancel.is_cancelled()
         || start.elapsed() >= budget
@@ -221,6 +170,111 @@ fn projected<'a>(
         backend_source,
         evidence: proof,
     })
+}
+
+fn relation(
+    old: &Job,
+    current: &Job,
+    evidence: &sail_api::temporal::Response,
+    worker: &sail_runtime::temporal::Worker,
+    budget: Duration,
+    start: Instant,
+    cancel: &Cancellation,
+) -> Option<(ProjectionProof, String, String, String)> {
+    use sail_api::temporal::Completion;
+    Some(
+        if sail_dive::edits::loaded::eligible(&old.request, &current.request) {
+            let query = sail_dive::edits::loaded::Query {
+                previous: old.request.clone(),
+                current: current.request.clone(),
+            };
+            let sail_dive::client::RunResult::Completed(relation) =
+                sail_dive::client::compare_loaded(
+                    &worker.executable,
+                    &worker.sha256,
+                    &query,
+                    budget,
+                    start,
+                    cancel,
+                )
+            else {
+                return None;
+            };
+            (
+                ProjectionProof::UnchangedLoadedProgram {
+                    loaded_modules: relation.loaded_modules?,
+                },
+                relation.previous_sha256,
+                relation.current_sha256,
+                relation.backend_source,
+            )
+        } else {
+            match evidence.completion {
+                Completion::Safety => {
+                    let query = sail_dive::edits::projection::Query {
+                        previous: old.request.clone(),
+                        current: current.request.clone(),
+                    };
+                    let sail_dive::client::RunResult::Completed(relation) =
+                        sail_dive::client::project(
+                            &worker.executable,
+                            &worker.sha256,
+                            &query,
+                            budget,
+                            start,
+                            cancel,
+                        )
+                    else {
+                        return None;
+                    };
+                    (
+                        ProjectionProof::Invariants {
+                            invariants: relation.invariants?,
+                        },
+                        relation.previous_sha256,
+                        relation.current_sha256,
+                        relation.backend_source,
+                    )
+                }
+                Completion::Temporal
+                    if sail_dive::edits::first_claim::eligible(
+                        &old.request,
+                        &current.request,
+                        evidence,
+                    ) =>
+                {
+                    let query = sail_dive::edits::first_claim::Query {
+                        previous: old.request.clone(),
+                        current: current.request.clone(),
+                        previous_response: evidence.clone(),
+                    };
+                    let sail_dive::client::RunResult::Completed(relation) =
+                        sail_dive::client::project_first_claim(
+                            &worker.executable,
+                            &worker.sha256,
+                            &query,
+                            budget,
+                            start,
+                            cancel,
+                        )
+                    else {
+                        return None;
+                    };
+                    let claim = relation.claim?;
+                    (
+                        ProjectionProof::FirstTemporalClaim {
+                            property: claim.property,
+                            basis_counts: claim.basis_counts,
+                        },
+                        relation.previous_sha256,
+                        relation.current_sha256,
+                        relation.backend_source,
+                    )
+                }
+                _ => return None,
+            }
+        },
+    )
 }
 
 // Validation is optional work. For example, adding a long previous trace
