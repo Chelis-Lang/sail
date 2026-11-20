@@ -164,3 +164,13 @@ revision under ADR 0172. The edit protocol’s `backend_source` identifies those
 bytes and the installation manifest authenticates the worker executable.
 A stable Sail crate release must first depend on published Dive crates exposing
 these APIs and pass native conformance against that source.
+
+## External symbolic predicate sessions
+
+The local `sail runtime symbolic-check` command owns a separate working
+directory and a named external Dive, selected by the caller. Proof rows have
+no exploration statistics. A complete search and a validated violation use
+the symbolic checker's versioned result format. Issuing a temporal job to
+the shared runtime still selects its authenticated native worker. See the
+[decision](../decisions/0177-portable-symbolic-predicates.md) and
+[command and exits](../temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate).

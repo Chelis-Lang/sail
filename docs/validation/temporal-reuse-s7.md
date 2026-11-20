@@ -2,7 +2,7 @@
 
 This experiment measures how much work Sail can reuse across native TLA+ checks. It compares the native 0.3.0 source, the same source with temporal receipts, and pinned TLC. All three ran on the same host with identical model and configuration bytes. [Reuse issue](https://github.com/Chelis-Lang/sail/issues/774) · [Sail v0.3.0 baseline](https://github.com/Chelis-Lang/sail/releases/tag/v0.3.0) · [Receipt implementation](https://github.com/Chelis-Lang/sail/pull/777).
 
-For substantive edits, see [installed edit sessions and invariant removal](#native-checks-after-substantive-edits) and [retaining the first temporal property](#retaining-the-first-temporal-property). The original receipt comparison below measures identical-input reuse.
+For substantive edits, see [installed edit sessions and invariant removal](#native-checks-after-substantive-edits) and [retaining the first temporal property](#retaining-the-first-temporal-property). The [portable symbolic predicate measurements](#portable-symbolic-predicates) cover cross-process proofs of new safety invariants on larger KVS programs. The original receipt comparison below measures identical-input reuse.
 
 ## Results
 
@@ -225,3 +225,90 @@ The command in the preceding section reproduces both the installed edit
 session and the cross-process property removal. The script checks the current
 obligation and worker identities, counts and fresh verdict before writing
 each timing.
+
+## Portable symbolic predicates
+
+A prior safety check can prove a new invariant that the checker cannot prove
+inductively from the new invariant and the original configuration alone.
+The five-key edit below took **301 ms** to prove with a predicate from the
+previous program, versus **14.40 s** for fresh exhaustive symbolic checking
+of the edited program. Both times include starting Sail and Dive, reading the
+current source and returning the result. [All twenty native trials, input and
+executable hashes, and controls](data/2026-11-20-symbolic-predicates.json).
+
+| Keys | Added invariant | Establish before edit (ms) | Fresh edited search (ms) | Recheck predicate (ms) | Median paired speedup | Refute NoWrites after reuse attempt (ms) |
+|---:|---|---:|---:|---:|---:|---:|
+| 3 | TxIsClean | 952.34 | 955.05 | 299.80 | 3.35× | 597.88 |
+| 3 | AtMostOneConflict | 953.17 | 952.02 | 300.10 | 3.16× | 596.57 |
+| 5 | TxIsClean | 14,449.93 | 14,347.71 | 300.00 | 47.94× | 647.99 |
+| 5 | AtMostOneConflict | 14,247.92 | 14,398.47 | 300.52 | 47.79× | 647.50 |
+
+Each row reports medians over five whole-process trials on native EC2
+c7i.4xlarge. Establishment and fresh search each use an empty directory.
+Rechecks bind the edited source in a new process. Trials alternate the order
+of the fresh search and recheck. The three-key model had 17,220,672 distinct
+transaction-symmetry classes, 365,609,473 generated and depth 22. Five keys
+gave 1,183,519,405,056 distinct, 39,234,075,936,769 generated and depth 32.
+The table uses shared finite-domain structure in a single open-source KVS
+family. A recheck supplies a safety proof without counts. Its standalone
+predicate was respectively 3,836 or 7,063 bytes.
+
+TxIsClean requires every inactive transaction to have an empty missed-write
+set. The direct induction strategy can prove this edit from the source.
+AtMostOneConflict says that at most one active transaction has an overlapping
+missed and written key. Direct induction failed the Next closure obligation in
+all ten compound-conflict trials. The exported reachable predicate supplies
+the missing information. The edit was absent when the predicate was built.
+Each timed trial also added the deliberately false NoWrites invariant.
+Both a new search and the reuse path returned an independently validated
+write at depth 3, and the previous predicate retained its original hash.
+
+The result depends on transaction cardinality. Expanding from two to three
+transactions at three keys and three values makes AtMostOneConflict false.
+A process offered the two-transaction predicate returned a validated depth-8
+counterexample. Pinned one-worker TLC independently reported the same property
+and depth with 19,880 generated and 4,618 distinct states before stopping.
+
+### Reproduce the edits and the comparison
+
+Use Sail and Dive development binaries with the symbolic CLI installed.
+The campaign used debug Rust binaries and the bundled Dive symbolic worker on
+Ubuntu 24.04 x86-64. It ran one checker at a time with host CPU defaults and
+a 600-second per-invocation limit. The benchmark records the wall clock and
+SHA-256 identities on the machine where it runs. Start from the pinned
+[upstream KeyValueStore source and configurations](https://github.com/tlaplus/Examples/tree/6a7b26a31c1a6aeec789b455e9bbfa3b3ad2728f/specifications/KeyValueStore).
+
+```sh
+git clone https://github.com/tlaplus/Examples.git examples
+git -C examples checkout --detach 6a7b26a31c1a6aeec789b455e9bbfa3b3ad2728f
+python3 scripts/prepare-symbolic-kvs-benchmark.py examples kvs-edits
+for edit in clean conflict; do
+    for keys in 3 5; do
+        dir=kvs-edits/$edit
+        set --
+        if [ "$edit" = conflict ]; then set -- --require-strengthening; fi
+        python3 scripts/benchmark-symbolic-session.py "$@" \
+          --sail "$SAIL" --dive "$DIVE" \
+          --module examples/specifications/KeyValueStore/MCKVS.tla \
+          --config "$dir/$keys-base.cfg" --edited-module "$dir/MCKVS.tla" \
+          --edited-config "$dir/$keys-edit.cfg" --false-config "$dir/$keys-false.cfg" \
+          > "$edit-$keys.json"
+    done
+done
+```
+
+For the negative cardinality control, establish a session with the original
+module and three-key base configuration. Check the edited conflict module with
+`kvs-edits/conflict/3-transactions.cfg` in the same session. The command must
+return exit 1 and name AtMostOneConflict.
+
+### Microsoft CCF coverage controls
+
+Unmodified MCccfraft configurations at three historical revisions include
+temporal properties. The symbolic CLI explicitly refused each one. Four
+consistency safety configurations at the middle revision also hit a named
+unsupported input. No row qualifies as CCF acceleration. Ordinary Core on
+the single-node commit-reachability debug configuration found the expected
+invariant violation at depth 5 with 17 distinct and 20 generated states.
+The three revisions and individual results are in the
+[measurement data](data/2026-11-20-symbolic-predicates.json).

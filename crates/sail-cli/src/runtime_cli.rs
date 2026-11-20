@@ -1,6 +1,7 @@
 //! Versioned raw-query runtime, separate from Cargo verification commands.
 mod edit_session;
 mod recheck;
+mod symbolic;
 use sail_api::runtime::{Answer, Outcome, Output, Request};
 use sail_runtime::{Cancellation, Config, Runtime};
 use std::io::{Read, Write};
@@ -30,6 +31,12 @@ fn command(
     out: &mut dyn Write,
     extensions: &crate::Extensions,
 ) -> Result<u8, String> {
+    if args
+        .first()
+        .is_some_and(|action| action == "symbolic-check")
+    {
+        return symbolic::run(&args[1..], out);
+    }
     let options = options(args)?;
     if options.action == "edit-session" {
         return edit_session::run(options.file.as_deref().ok_or_else(usage)?, extensions, out);
@@ -301,7 +308,7 @@ fn result(out: &mut dyn Write, response: &sail_api::runtime::Response) -> Result
 }
 
 fn usage() -> String {
-    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR] | sail runtime recheck --previous FILE --file FILE|- [--cache DIR] | sail runtime edit-session --file FILE|-".into()
+    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR] | sail runtime recheck --previous FILE --file FILE|- [--cache DIR] | sail runtime edit-session --file FILE|- | ".to_owned() + symbolic::USAGE
 }
 
 struct Options<'a> {

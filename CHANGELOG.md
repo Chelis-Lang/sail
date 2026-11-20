@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Recheck finite safety models across processes with `sail runtime symbolic-check` and a Dive installation supporting symbolic predicate transfer. Each receiving process proves the candidate against its current model.
+
 - After a complete native check of several temporal properties, `sail runtime recheck` and `edit-session` can certify the first property alone, including on aggregate-state models such as InternalMemory.
 
 - `sail runtime edit-session` checks successive versions with one authenticated native worker. Edited safety invariants can reuse ordered states. Edited temporal properties can reuse a complete labelled graph. `sail runtime recheck` can also prove that a persisted complete safety result covers the current invariant subset.
