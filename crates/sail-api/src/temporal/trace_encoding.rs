@@ -64,36 +64,79 @@ impl Serialize for ItfTrace {
     }
 }
 
-impl<'de> Deserialize<'de> for ItfTrace {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        #[serde(deny_unknown_fields)]
-        struct Wire {
-            vars: Vec<String>,
-            states: Vec<Map<String, Value>>,
-            ending: Value,
-            properties: Vec<String>,
-            actions: Vec<Value>,
-            length: Option<usize>,
-            #[serde(default)]
-            value_encoding: Encoding,
-        }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Wire {
+    vars: Vec<String>,
+    states: Vec<Map<String, Value>>,
+    ending: Value,
+    properties: Vec<String>,
+    actions: Vec<Value>,
+    length: Option<usize>,
+    #[serde(default)]
+    value_encoding: Encoding,
+}
 
-        let row = Wire::deserialize(deserializer)?;
-        let extended = has_model_values(&row.states).map_err(serde::de::Error::custom)?;
-        if extended != matches!(row.value_encoding, Encoding::ModelValues) {
-            return Err(serde::de::Error::custom(
+impl Wire {
+    fn checked<E: serde::de::Error>(self) -> Result<ItfTrace, E> {
+        let extended = has_model_values(&self.states).map_err(E::custom)?;
+        if extended != matches!(self.value_encoding, Encoding::ModelValues) {
+            return Err(E::custom(
                 "Sail model-value encoding and state tags disagree",
             ));
         }
-        Ok(Self {
-            vars: row.vars,
-            states: row.states,
-            ending: row.ending,
-            properties: row.properties,
-            actions: row.actions,
-            length: row.length,
+        Ok(ItfTrace {
+            vars: self.vars,
+            states: self.states,
+            ending: self.ending,
+            properties: self.properties,
+            actions: self.actions,
+            length: self.length,
         })
+    }
+}
+
+struct TraceVisitor;
+
+impl<'de> serde::de::Visitor<'de> for TraceVisitor {
+    type Value = ItfTrace;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("a temporal trace object or legacy positional trace")
+    }
+
+    fn visit_map<A: serde::de::MapAccess<'de>>(self, map: A) -> Result<ItfTrace, A::Error> {
+        Wire::deserialize(serde::de::value::MapAccessDeserializer::new(map))?.checked()
+    }
+
+    fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<ItfTrace, A::Error> {
+        let wire = Wire::deserialize(serde::de::value::SeqAccessDeserializer::new(&mut seq))?;
+        if matches!(wire.value_encoding, Encoding::ModelValues)
+            || seq.next_element::<serde::de::IgnoredAny>()?.is_some()
+        {
+            return Err(serde::de::Error::custom(
+                "the model-value encoding requires a named field on a trace object",
+            ));
+        }
+        wire.checked()
+    }
+}
+
+impl<'de> Deserialize<'de> for ItfTrace {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_struct(
+            "ItfTrace",
+            &[
+                "vars",
+                "states",
+                "ending",
+                "properties",
+                "actions",
+                "length",
+                "value_encoding",
+            ],
+            TraceVisitor,
+        )
     }
 }
 
@@ -142,6 +185,19 @@ mod tests {
             assert!(serde_json::from_value::<ItfTrace>(wire.clone()).is_err());
         }
         wire["states"][0]["x"] = json!({"#map": [[{(MODEL_VALUE_TAG):"A"},"A"]]});
+        let legacy_fields = [
+            json!(["x"]),
+            json!([{"x":"A"}]),
+            json!({"kind":"behavior"}),
+            json!([]),
+            json!([null]),
+            Value::Null,
+        ];
+        assert!(serde_json::from_value::<ItfTrace>(json!(legacy_fields)).is_ok());
+        let mut positional = legacy_fields.to_vec();
+        positional[1] = wire["states"].clone();
+        positional.push(json!(MODEL_VALUES));
+        assert!(serde_json::from_value::<ItfTrace>(json!(positional)).is_err());
         wire["value_encoding"] = json!({(MODEL_VALUES): null});
         assert!(serde_json::from_value::<ItfTrace>(wire.clone()).is_err());
         wire["value_encoding"] = json!(MODEL_VALUES);
