@@ -90,6 +90,12 @@ worker captured evidence, reused it or ran a fresh check. Inspect each
 decision and its current trace validation when reporting a failure.
 [Request format and worked example](https://github.com/Chelis-Lang/sail/blob/main/docs/temporal-jobs.md).
 
+For finite safety models in development builds, use `sail runtime symbolic-check
+--dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS`
+with a Dive installation supporting symbolic predicate transfer. A transported
+predicate must pass induction against the current source. Read `proof` for
+induction results and `verdict` for search results.
+
 ## Run SMT queries
 
 For repeated Z3 work outside Rust, check the installed solver once with

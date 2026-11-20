@@ -201,3 +201,41 @@ The [measurement record](validation/temporal-reuse-s7.md) gives capture costs,
 per-edit samples, native fresh comparisons and examples that used the ordinary
 fallback. The [protocol](spec/temporal-jobs.md) describes implementation and
 dependency identity.
+
+## Recheck finite safety properties with a portable predicate
+
+Development builds provide `sail runtime symbolic-check` for a trusted Dive
+installation that supports `dive check --strategy symbolic` and predicate
+transfer. Set `DIVE` to its executable. Give each model a dedicated writable
+session directory. Each invocation checks the module and configuration on disk.
+
+```sh
+sail runtime symbolic-check --dive "$DIVE" --session .sail/kvs \
+  --module MCKVS.tla --config MCKVSSafetyMedium.cfg --time-limit 120
+sail runtime symbolic-check --dive "$DIVE" --session .sail/kvs \
+  --module MCKVS.tla --config EditedSafety.cfg --time-limit 120
+```
+
+The first completed search saves `sail-symbolic-predicate-v1.json` in the
+session directory. A colleague can copy this one file into another session.
+The receiving Dive binds its own modules and CFG and checks initial inclusion,
+preservation by every current action, and implication of each configured
+safety obligation. A successful row reports `proof: inductive-safety`. This
+proof carries no state counts or diameter. It can still succeed after a
+transition edit. Use `--type-invariant NAME` to select the layout invariant
+when the source uses a different name.
+
+When a candidate fails an obligation or its format is unsupported, Sail uses
+the remaining wall budget for a fresh symbolic search. A completed search
+atomically replaces the candidate. A violation carries a trace independently
+validated by Dive. The previous candidate survives timeouts, interrupted
+searches, refusals and violations. Concurrent successful writers may replace
+each other's candidates. Every receiver checks whichever one it reads.
+Keep the session directory outside the source tree or ignore it in version
+control. Use a directory whose contents are managed by trusted local code.
+
+The command emits Dive's JSON report with its original integer precision.
+Exit 0 means a proof or completed safe search, 1 a validated counterexample,
+2 unsupported input or a Sail usage/protocol error, 3 a checker error, and
+4 a stop. Sail's ordinary temporal receipts, daemon, and signed receipt
+transport continue to use their own execution and evidence policy.
