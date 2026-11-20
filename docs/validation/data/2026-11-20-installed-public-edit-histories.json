@@ -1,0 +1,2318 @@
+{
+  "format": "sail-installed-public-history-v1",
+  "date": "2026-11-20",
+  "host": {
+    "instance": "c7i.4xlarge",
+    "region": "us-east-1",
+    "os": "Ubuntu 24.04.5 LTS",
+    "kernel": "7.0.0-1018-aws",
+    "cpu": "Intel Xeon Platinum 8488C",
+    "physical_cores": 8,
+    "threads_per_core": 2,
+    "rust": "1.99.0",
+    "build": "cargo build --release --locked -p sail-solve --bin sail --bin sail-runtime-worker; scripts/stage-temporal-worker.py",
+    "clock": "whole process monotonic microseconds (edit-session entries use worker microseconds); one checker at a time; host defaults; four-arm cyclic rotation per trial"
+  },
+  "inputs": "scripts/temporal-history-inputs.json",
+  "ordered_limits": [
+    200000,
+    128,
+    300000
+  ],
+  "manifest_sha256": "96d4f77cdb4fabc3e66ffa4fd4b67a36339f103edce8fc70497a993419f66bdc",
+  "executables": {
+    "base": {
+      "sail_sha256": "9e1f08d501257e51b9710d34b80f67b6cf87b2de76ae9a204d995a9ef39f8820",
+      "worker_sha256": "6d048d27be5e6542396da5bcad2d577fb56808e2446c5ef65414ffafb2aa86f3"
+    },
+    "final": {
+      "sail_sha256": "01b35e34817f3f936565a549b5078df8e4c9fa05906828deaabc3e14845b09b9",
+      "worker_sha256": "5a71b58b6936243d28e54dbccd4104004762aadf19c229f2f08be5898b94007d"
+    }
+  },
+  "two_writer_control": {
+    "derivation": "SPMC MaxPublished=2, Size=2, Writers={w1,w2}, Readers={r1}; all TLA+ files unchanged",
+    "tlc": {
+      "version": "2026.10.06.014338",
+      "sha256": "7beec0f04818732a62fa193731711a99aa4f11279499b2360a7d156c519ea78d",
+      "workers": 1,
+      "seed": 0,
+      "fp": 0,
+      "before": {
+        "exit": 12,
+        "ending": "NoDataRaces",
+        "depth": 3,
+        "generated": 4,
+        "distinct": 4
+      },
+      "after": {
+        "exit": 10,
+        "assumption": "ExactlyOneWriter",
+        "result": "false"
+      }
+    },
+    "sail": {
+      "before": {
+        "outcome": "unsupported",
+        "reason": "SAIL4203: unsupported value tag model"
+      },
+      "after": {
+        "outcome": "rejected",
+        "assumption": "ExactlyOneWriter",
+        "result": "false"
+      }
+    }
+  },
+  "suites": {
+    "disruptor-selected": {
+      "sequence": [
+        [
+          "SPMC",
+          "f3e248a6a7b318533658857709fc4718a85ef102",
+          "48cc68ef7c214d6a7e296cd32ddd45207267060dbd265202097855f101a84445"
+        ],
+        [
+          "MPMC",
+          "f3e248a6a7b318533658857709fc4718a85ef102",
+          "5dee924d2941d5e2a432bb6788cda9122074dd8472530b681e11112a48752aff"
+        ],
+        [
+          "MPMC-liveness",
+          "f3e248a6a7b318533658857709fc4718a85ef102",
+          "88413ec9a2a7531459776496dc45ade7394341ee70c0f2d3313b5da22112617b"
+        ],
+        [
+          "SPMC",
+          "45c1cfd7ed40d9287b1c2ac51a05a7cb750e0521",
+          "7be2bc273ac8731a887b96416ac970a4523635a3de1cd18bdf1adaab5c071766"
+        ],
+        [
+          "MPMC",
+          "45c1cfd7ed40d9287b1c2ac51a05a7cb750e0521",
+          "a9edc2a0a014e3491e2ee8bd2e29089f45e655e9e2315a8510642e155916d7a1"
+        ],
+        [
+          "MPMC-liveness",
+          "45c1cfd7ed40d9287b1c2ac51a05a7cb750e0521",
+          "0a3936239cdc2b51055150a5fb9b02c953471cf3d96ab44272eb555387e0aad4"
+        ],
+        [
+          "SPMC",
+          "c757b12b7a4de6fa39523db541133fece9ced416",
+          "a3cb2040f98f9d43333199cfe5ac8bf5c8729d47cd55fb9001d7df717439c387"
+        ],
+        [
+          "MPMC",
+          "c757b12b7a4de6fa39523db541133fece9ced416",
+          "a9edc2a0a014e3491e2ee8bd2e29089f45e655e9e2315a8510642e155916d7a1"
+        ],
+        [
+          "MPMC-liveness",
+          "c757b12b7a4de6fa39523db541133fece9ced416",
+          "0a3936239cdc2b51055150a5fb9b02c953471cf3d96ab44272eb555387e0aad4"
+        ]
+      ],
+      "decisions": [
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 28049,
+            "distinct": 8496,
+            "depth": 82,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "safety",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 422781,
+            "distinct": 112929,
+            "depth": 81,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 44581,
+            "distinct": 14365,
+            "depth": 61,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 28049,
+            "distinct": 8496,
+            "depth": 82,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "safety",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 422781,
+            "distinct": 112929,
+            "depth": 81,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 44581,
+            "distinct": 14365,
+            "depth": 61,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 28049,
+            "distinct": 8496,
+            "depth": 82,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "safety",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 422781,
+            "distinct": 112929,
+            "depth": 81,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 44581,
+            "distinct": 14365,
+            "depth": 61,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        }
+      ],
+      "observations": {
+        "base": {
+          "fresh": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7169691,
+              7161303,
+              7170330,
+              7165222,
+              7157506
+            ],
+            "step_us": [
+              [
+                336173,
+                983759,
+                1078370,
+                334696,
+                976810,
+                1072128,
+                334836,
+                973619,
+                1079300
+              ],
+              [
+                333729,
+                980349,
+                1075068,
+                335867,
+                979992,
+                1072641,
+                337694,
+                976184,
+                1069779
+              ],
+              [
+                336041,
+                980304,
+                1075424,
+                335848,
+                972934,
+                1078949,
+                336996,
+                973774,
+                1080060
+              ],
+              [
+                334382,
+                979721,
+                1075258,
+                337026,
+                976409,
+                1078893,
+                335827,
+                972230,
+                1075476
+              ],
+              [
+                336451,
+                982047,
+                1071575,
+                335742,
+                972338,
+                1076480,
+                336752,
+                972528,
+                1073593
+              ]
+            ]
+          },
+          "receipts": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "exact-receipt",
+              "exact-receipt"
+            ],
+            "total_us": [
+              5124334,
+              5134050,
+              5121016,
+              5123802,
+              5109344
+            ],
+            "step_us": [
+              [
+                335905,
+                985628,
+                1073869,
+                336642,
+                974361,
+                1077253,
+                335852,
+                2449,
+                2375
+              ],
+              [
+                334773,
+                983915,
+                1076315,
+                338045,
+                978502,
+                1079278,
+                338451,
+                2420,
+                2351
+              ],
+              [
+                335621,
+                983735,
+                1078162,
+                336907,
+                972889,
+                1071787,
+                335778,
+                2669,
+                3468
+              ],
+              [
+                333212,
+                982620,
+                1076775,
+                338328,
+                979765,
+                1073145,
+                335103,
+                2441,
+                2413
+              ],
+              [
+                337158,
+                979509,
+                1073388,
+                335763,
+                970270,
+                1072582,
+                335371,
+                2719,
+                2584
+              ]
+            ]
+          },
+          "session": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7178256,
+              7180379,
+              7171471,
+              7171638,
+              7168169
+            ],
+            "step_us": [
+              [
+                332411,
+                977316,
+                1070761,
+                333128,
+                984022,
+                1075610,
+                330152,
+                989201,
+                1076154
+              ],
+              [
+                334532,
+                975316,
+                1067610,
+                329860,
+                982597,
+                1076686,
+                332480,
+                991071,
+                1080148
+              ],
+              [
+                333017,
+                977125,
+                1071629,
+                330336,
+                979117,
+                1081331,
+                329851,
+                986458,
+                1071522
+              ],
+              [
+                329730,
+                976273,
+                1070510,
+                332750,
+                981692,
+                1077114,
+                327483,
+                991245,
+                1074484
+              ],
+              [
+                333226,
+                979720,
+                1063758,
+                329496,
+                976348,
+                1077746,
+                333381,
+                987361,
+                1076405
+              ]
+            ]
+          },
+          "recheck": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "exact-receipt",
+              "exact-receipt"
+            ],
+            "total_us": [
+              5131374,
+              5129166,
+              5123223,
+              5123126,
+              5118684
+            ],
+            "step_us": [
+              [
+                337238,
+                980216,
+                1075768,
+                337375,
+                981148,
+                1078991,
+                335371,
+                2729,
+                2538
+              ],
+              [
+                338091,
+                984348,
+                1073839,
+                336140,
+                978298,
+                1075718,
+                337771,
+                2622,
+                2339
+              ],
+              [
+                334128,
+                978899,
+                1072025,
+                336654,
+                979340,
+                1080134,
+                336758,
+                2723,
+                2562
+              ],
+              [
+                332698,
+                978803,
+                1073944,
+                334804,
+                980555,
+                1080274,
+                336738,
+                2882,
+                2428
+              ],
+              [
+                333738,
+                979662,
+                1073367,
+                337127,
+                981238,
+                1073034,
+                334930,
+                3001,
+                2587
+              ]
+            ]
+          }
+        },
+        "final": {
+          "fresh": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7775514,
+              7141892,
+              7167941,
+              7139591,
+              7133700
+            ],
+            "step_us": [
+              [
+                543555,
+                1186470,
+                1281554,
+                337416,
+                972076,
+                1080137,
+                336119,
+                969967,
+                1068220
+              ],
+              [
+                332013,
+                972501,
+                1070786,
+                334812,
+                974154,
+                1078378,
+                332642,
+                971970,
+                1074636
+              ],
+              [
+                334690,
+                979403,
+                1081198,
+                337168,
+                977088,
+                1075770,
+                335036,
+                969177,
+                1078411
+              ],
+              [
+                332715,
+                978933,
+                1073456,
+                332122,
+                967826,
+                1076034,
+                334824,
+                971839,
+                1071842
+              ],
+              [
+                333470,
+                977227,
+                1072257,
+                335833,
+                968903,
+                1070122,
+                330857,
+                968669,
+                1076362
+              ]
+            ]
+          },
+          "receipts": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "exact-receipt",
+              "exact-receipt"
+            ],
+            "total_us": [
+              5133711,
+              5090697,
+              5095836,
+              5099740,
+              5108893
+            ],
+            "step_us": [
+              [
+                333888,
+                994281,
+                1083164,
+                332776,
+                971395,
+                1076191,
+                336667,
+                2840,
+                2509
+              ],
+              [
+                330035,
+                966107,
+                1073561,
+                332875,
+                968965,
+                1078061,
+                335680,
+                2956,
+                2457
+              ],
+              [
+                332974,
+                973720,
+                1072116,
+                332194,
+                970487,
+                1073292,
+                336047,
+                2571,
+                2435
+              ],
+              [
+                330465,
+                970830,
+                1069050,
+                334775,
+                974621,
+                1079722,
+                334823,
+                2904,
+                2550
+              ],
+              [
+                336270,
+                975986,
+                1077142,
+                332551,
+                971717,
+                1076009,
+                333815,
+                2781,
+                2622
+              ]
+            ]
+          },
+          "session": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7095596,
+              7100791,
+              7115111,
+              7105175,
+              7115233
+            ],
+            "step_us": [
+              [
+                328710,
+                960440,
+                1064555,
+                324394,
+                970443,
+                1067841,
+                325216,
+                976857,
+                1066337
+              ],
+              [
+                326518,
+                961569,
+                1063618,
+                324431,
+                977706,
+                1067451,
+                327063,
+                979355,
+                1063287
+              ],
+              [
+                327684,
+                962945,
+                1067705,
+                329388,
+                973066,
+                1070630,
+                326856,
+                977401,
+                1068941
+              ],
+              [
+                328500,
+                963206,
+                1065663,
+                327861,
+                973676,
+                1072391,
+                325267,
+                976828,
+                1061974
+              ],
+              [
+                329292,
+                967715,
+                1063386,
+                325937,
+                975245,
+                1073854,
+                326674,
+                976773,
+                1065964
+              ]
+            ]
+          },
+          "recheck": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "exact-receipt",
+              "exact-receipt"
+            ],
+            "total_us": [
+              5124434,
+              5138168,
+              5134117,
+              5138362,
+              5119383
+            ],
+            "step_us": [
+              [
+                329143,
+                970700,
+                1072453,
+                344578,
+                979563,
+                1078988,
+                342783,
+                2724,
+                3502
+              ],
+              [
+                333919,
+                970313,
+                1072760,
+                346517,
+                978985,
+                1087491,
+                342737,
+                2861,
+                2585
+              ],
+              [
+                332243,
+                975356,
+                1071311,
+                343418,
+                974971,
+                1084486,
+                346482,
+                3188,
+                2662
+              ],
+              [
+                332815,
+                972694,
+                1073264,
+                342705,
+                981178,
+                1085745,
+                344556,
+                2922,
+                2483
+              ],
+              [
+                333060,
+                972565,
+                1071123,
+                342365,
+                974535,
+                1079630,
+                340205,
+                2751,
+                3149
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "disruptor-project": {
+      "sequence": [
+        [
+          "SPMC",
+          "f3e248a6a7b318533658857709fc4718a85ef102",
+          "8e3fbfbca32a7c4423d714006c9dd2d00e0cb2ab9d051696333817709b5c7910"
+        ],
+        [
+          "MPMC",
+          "f3e248a6a7b318533658857709fc4718a85ef102",
+          "f576557937212d8cfc5a5c24ba1892dd3dad7cb75102e4e21a875f447d7ec6c6"
+        ],
+        [
+          "MPMC-liveness",
+          "f3e248a6a7b318533658857709fc4718a85ef102",
+          "68764bf3cf8e4ab36770dc503b5378c5258161af66cf30c311b14dd482202817"
+        ],
+        [
+          "SPMC",
+          "45c1cfd7ed40d9287b1c2ac51a05a7cb750e0521",
+          "7bb2e68f2243e064261920e0384b2addad2f6982c0eef02978aca53b9dd40cdb"
+        ],
+        [
+          "MPMC",
+          "45c1cfd7ed40d9287b1c2ac51a05a7cb750e0521",
+          "a718af3e16604d6f867272663d4da5d67dd8c835260913aa575ac98c91f5b554"
+        ],
+        [
+          "MPMC-liveness",
+          "45c1cfd7ed40d9287b1c2ac51a05a7cb750e0521",
+          "5c22a034f4538d3774be3c0be01e4eff7d742846962bf9da79b0617e0a2f883b"
+        ],
+        [
+          "SPMC",
+          "c757b12b7a4de6fa39523db541133fece9ced416",
+          "f05d7539bb703f06a592b3b84495f6c90c76815f9a5cf05c0167800786acd63d"
+        ],
+        [
+          "MPMC",
+          "c757b12b7a4de6fa39523db541133fece9ced416",
+          "9500f5743dd7dc405b96405ef06f45ecbc62aa6bf6fabd2ff80e66bee1c45685"
+        ],
+        [
+          "MPMC-liveness",
+          "c757b12b7a4de6fa39523db541133fece9ced416",
+          "13163baede3ffcca0f8263c14c04c197e85700b85aaae569c929ad56c5baefde"
+        ]
+      ],
+      "decisions": [
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 28049,
+            "distinct": 8496,
+            "depth": 82,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "safety",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 422781,
+            "distinct": 112929,
+            "depth": 81,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 44581,
+            "distinct": 14365,
+            "depth": 61,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 28049,
+            "distinct": 8496,
+            "depth": 82,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "safety",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 422781,
+            "distinct": 112929,
+            "depth": 81,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 44581,
+            "distinct": 14365,
+            "depth": 61,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 28049,
+            "distinct": 8496,
+            "depth": 82,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "safety",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 422781,
+            "distinct": 112929,
+            "depth": 81,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "holds",
+          "completion": "temporal",
+          "inventory": {
+            "invariants": [
+              "TypeOk",
+              "NoDataRaces"
+            ],
+            "properties": [
+              "Liveliness"
+            ],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": null,
+          "verdict": "success",
+          "property": null,
+          "counts": {
+            "initial_generated": 1,
+            "generated": 44581,
+            "distinct": 14365,
+            "depth": 61,
+            "left_on_queue": 0
+          },
+          "trace_sha256": [],
+          "validations": []
+        }
+      ],
+      "observations": {
+        "base": {
+          "fresh": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7170331,
+              7300118,
+              7161744,
+              7158197,
+              7192743
+            ],
+            "step_us": [
+              [
+                333740,
+                977995,
+                1070214,
+                337844,
+                977199,
+                1079993,
+                338818,
+                979522,
+                1075006
+              ],
+              [
+                337115,
+                984077,
+                1144610,
+                339576,
+                998573,
+                1080905,
+                336980,
+                990574,
+                1087708
+              ],
+              [
+                336987,
+                970942,
+                1077276,
+                332607,
+                973488,
+                1076943,
+                337906,
+                976162,
+                1079433
+              ],
+              [
+                336335,
+                977749,
+                1077653,
+                335743,
+                976956,
+                1074900,
+                334634,
+                974117,
+                1070110
+              ],
+              [
+                335242,
+                979698,
+                1075523,
+                335191,
+                1013326,
+                1075509,
+                336272,
+                968938,
+                1073044
+              ]
+            ]
+          },
+          "receipts": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7213555,
+              7176118,
+              7197623,
+              7153682,
+              7144326
+            ],
+            "step_us": [
+              [
+                334534,
+                978513,
+                1073040,
+                333268,
+                975810,
+                1122059,
+                340379,
+                981680,
+                1074272
+              ],
+              [
+                334202,
+                980032,
+                1079766,
+                335824,
+                973151,
+                1076270,
+                338642,
+                977761,
+                1080470
+              ],
+              [
+                333646,
+                985839,
+                1077641,
+                337818,
+                982648,
+                1082776,
+                338876,
+                978866,
+                1079513
+              ],
+              [
+                336935,
+                974736,
+                1075946,
+                335980,
+                975814,
+                1074022,
+                336129,
+                973516,
+                1070604
+              ],
+              [
+                333271,
+                972168,
+                1073580,
+                338423,
+                971592,
+                1074708,
+                335677,
+                973061,
+                1071846
+              ]
+            ]
+          },
+          "session": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7188290,
+              7166953,
+              7267637,
+              7188093,
+              7159675
+            ],
+            "step_us": [
+              [
+                331917,
+                971467,
+                1074476,
+                330697,
+                987912,
+                1080999,
+                332097,
+                993071,
+                1074598
+              ],
+              [
+                333286,
+                979000,
+                1069489,
+                330301,
+                985740,
+                1073712,
+                333473,
+                977618,
+                1072471
+              ],
+              [
+                333471,
+                976572,
+                1067988,
+                332831,
+                1008716,
+                1086992,
+                333209,
+                999818,
+                1117630
+              ],
+              [
+                332759,
+                972411,
+                1067246,
+                338079,
+                993877,
+                1079969,
+                331427,
+                987128,
+                1074489
+              ],
+              [
+                331472,
+                970410,
+                1070030,
+                329170,
+                987584,
+                1067517,
+                330996,
+                990585,
+                1071809
+              ]
+            ]
+          },
+          "recheck": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7211822,
+              7237042,
+              7198775,
+              7171577,
+              7190866
+            ],
+            "step_us": [
+              [
+                336275,
+                989631,
+                1078479,
+                337873,
+                986699,
+                1080530,
+                338651,
+                988031,
+                1075653
+              ],
+              [
+                335075,
+                978162,
+                1072762,
+                339752,
+                987717,
+                1086704,
+                342872,
+                988267,
+                1105731
+              ],
+              [
+                341345,
+                988436,
+                1082894,
+                335546,
+                981524,
+                1076445,
+                337623,
+                978867,
+                1076095
+              ],
+              [
+                335706,
+                982856,
+                1075541,
+                336896,
+                979144,
+                1073799,
+                335131,
+                979405,
+                1073099
+              ],
+              [
+                333744,
+                982474,
+                1079879,
+                334761,
+                981554,
+                1078238,
+                336159,
+                984244,
+                1079813
+              ]
+            ]
+          }
+        },
+        "final": {
+          "fresh": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7109263,
+              7143518,
+              7127863,
+              7128876,
+              7135804
+            ],
+            "step_us": [
+              [
+                335263,
+                969922,
+                1071325,
+                332089,
+                963543,
+                1069605,
+                332043,
+                963903,
+                1071570
+              ],
+              [
+                332432,
+                969998,
+                1071780,
+                331414,
+                968652,
+                1071824,
+                335079,
+                974947,
+                1087392
+              ],
+              [
+                331384,
+                971754,
+                1068568,
+                334307,
+                972034,
+                1070329,
+                334917,
+                970346,
+                1074224
+              ],
+              [
+                329922,
+                967709,
+                1073129,
+                334416,
+                968198,
+                1077173,
+                332255,
+                962728,
+                1083346
+              ],
+              [
+                333583,
+                970992,
+                1075895,
+                331920,
+                969605,
+                1072746,
+                334531,
+                973311,
+                1073221
+              ]
+            ]
+          },
+          "receipts": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7116429,
+              7108659,
+              7118030,
+              7098268,
+              7115677
+            ],
+            "step_us": [
+              [
+                330107,
+                969826,
+                1076308,
+                333883,
+                969775,
+                1070604,
+                332677,
+                966162,
+                1067087
+              ],
+              [
+                335093,
+                968763,
+                1072390,
+                330638,
+                965960,
+                1068301,
+                334556,
+                966859,
+                1066099
+              ],
+              [
+                330582,
+                970154,
+                1073202,
+                329506,
+                965549,
+                1069949,
+                334364,
+                971447,
+                1073277
+              ],
+              [
+                333504,
+                965868,
+                1065330,
+                331223,
+                963883,
+                1070412,
+                335602,
+                965470,
+                1066976
+              ],
+              [
+                330754,
+                970497,
+                1069894,
+                335224,
+                967305,
+                1074663,
+                333552,
+                967257,
+                1066531
+              ]
+            ]
+          },
+          "session": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              7082677,
+              7085775,
+              7085918,
+              7106702,
+              7074371
+            ],
+            "step_us": [
+              [
+                329820,
+                956661,
+                1063290,
+                324066,
+                968163,
+                1063681,
+                326295,
+                977713,
+                1061081
+              ],
+              [
+                326212,
+                962645,
+                1061116,
+                324815,
+                970636,
+                1059626,
+                325620,
+                975843,
+                1069171
+              ],
+              [
+                326264,
+                955886,
+                1060816,
+                323337,
+                968736,
+                1066562,
+                326214,
+                975737,
+                1070327
+              ],
+              [
+                325967,
+                963574,
+                1060494,
+                324875,
+                971818,
+                1071638,
+                326127,
+                976560,
+                1074836
+              ],
+              [
+                330567,
+                962043,
+                1059476,
+                326370,
+                959094,
+                1064475,
+                324125,
+                972528,
+                1064177
+              ]
+            ]
+          },
+          "recheck": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "fresh",
+              "unchanged-loaded-program",
+              "unchanged-loaded-program"
+            ],
+            "total_us": [
+              5169587,
+              5160460,
+              5167863,
+              5147267,
+              5151758
+            ],
+            "step_us": [
+              [
+                332100,
+                972453,
+                1079706,
+                345268,
+                978860,
+                1083131,
+                345848,
+                16090,
+                16131
+              ],
+              [
+                332775,
+                968245,
+                1075833,
+                342373,
+                982593,
+                1082119,
+                344010,
+                16265,
+                16247
+              ],
+              [
+                332566,
+                973028,
+                1078241,
+                342172,
+                981681,
+                1084264,
+                343605,
+                16237,
+                16069
+              ],
+              [
+                331448,
+                969670,
+                1072673,
+                343076,
+                975045,
+                1081329,
+                343487,
+                16358,
+                14181
+              ],
+              [
+                330520,
+                967258,
+                1074030,
+                342783,
+                975138,
+                1084425,
+                344602,
+                16572,
+                16430
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "ccf-selected": {
+      "sequence": [
+        [
+          "single-node-commit",
+          "24690d103225353c3d8e02b707618d3682eb8c47",
+          "ce42b2671950a42e9127d3ed2a609ee993b524bce8a89633bb25a32a698edb52"
+        ],
+        [
+          "single-node-commit",
+          "4eedf465d4292d7e6a53d92a7b03a2c8fa1bc616",
+          "0d8843486d4c973a3865bdfab57a863658b1cf6d0d7751e8939c0b58ab3da185"
+        ],
+        [
+          "single-node-commit",
+          "8c4bd0ae3c5a58d9c4f6fec1f66f8a97a7e51f56",
+          "9ddaa088c38463fa755f6c63d5b32fe4b6e095eed6e213ebf1f1349121a3ddbf"
+        ]
+      ],
+      "decisions": [
+        {
+          "outcome": "unsupported",
+          "completion": "none",
+          "inventory": {
+            "invariants": [
+              "SomeCommittedTxDebugInv"
+            ],
+            "properties": [],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": "SAIL4202: host-capable or unqualified standard module <standard>/TLC.tla",
+          "verdict": null,
+          "property": null,
+          "counts": {},
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "unsupported",
+          "completion": "none",
+          "inventory": {
+            "invariants": [
+              "SomeCommittedTxDebugInv"
+            ],
+            "properties": [],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": "SAIL4202: host-capable or unqualified standard module <standard>/TLC.tla",
+          "verdict": null,
+          "property": null,
+          "counts": {},
+          "trace_sha256": [],
+          "validations": []
+        },
+        {
+          "outcome": "unsupported",
+          "completion": "none",
+          "inventory": {
+            "invariants": [
+              "SomeCommittedTxDebugInv"
+            ],
+            "properties": [],
+            "postconditions": [],
+            "possible": [],
+            "deadlock": false
+          },
+          "message": "SAIL4202: host-capable or unqualified standard module <standard>/TLC.tla",
+          "verdict": null,
+          "property": null,
+          "counts": {},
+          "trace_sha256": [],
+          "validations": []
+        }
+      ],
+      "observations": {
+        "base": {
+          "fresh": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              46386,
+              46526,
+              47829,
+              47189,
+              48192
+            ],
+            "step_us": [
+              [
+                15639,
+                15465,
+                15282
+              ],
+              [
+                15411,
+                15543,
+                15572
+              ],
+              [
+                15735,
+                15969,
+                16125
+              ],
+              [
+                15699,
+                15995,
+                15495
+              ],
+              [
+                15773,
+                16485,
+                15934
+              ]
+            ]
+          },
+          "receipts": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              46876,
+              47244,
+              47149,
+              46944,
+              47223
+            ],
+            "step_us": [
+              [
+                15810,
+                15706,
+                15360
+              ],
+              [
+                16055,
+                15671,
+                15518
+              ],
+              [
+                15318,
+                15769,
+                16062
+              ],
+              [
+                15615,
+                15510,
+                15819
+              ],
+              [
+                15969,
+                15564,
+                15690
+              ]
+            ]
+          },
+          "session": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              58159,
+              57775,
+              56611,
+              59339,
+              56104
+            ],
+            "step_us": [
+              [
+                18601,
+                16205,
+                16995
+              ],
+              [
+                18797,
+                16243,
+                16999
+              ],
+              [
+                17917,
+                15816,
+                16927
+              ],
+              [
+                18957,
+                16262,
+                16793
+              ],
+              [
+                17732,
+                16164,
+                16929
+              ]
+            ]
+          },
+          "recheck": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              48435,
+              47446,
+              47681,
+              47696,
+              48171
+            ],
+            "step_us": [
+              [
+                16239,
+                16177,
+                16019
+              ],
+              [
+                15649,
+                16090,
+                15707
+              ],
+              [
+                15790,
+                15913,
+                15978
+              ],
+              [
+                15640,
+                15951,
+                16105
+              ],
+              [
+                15984,
+                16071,
+                16116
+              ]
+            ]
+          }
+        },
+        "final": {
+          "fresh": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              46840,
+              45290,
+              47004,
+              46718,
+              47357
+            ],
+            "step_us": [
+              [
+                15484,
+                15606,
+                15750
+              ],
+              [
+                15130,
+                15176,
+                14984
+              ],
+              [
+                15846,
+                15791,
+                15367
+              ],
+              [
+                15710,
+                15600,
+                15408
+              ],
+              [
+                15806,
+                15778,
+                15773
+              ]
+            ]
+          },
+          "receipts": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              46776,
+              46491,
+              46439,
+              46318,
+              47107
+            ],
+            "step_us": [
+              [
+                15669,
+                15541,
+                15566
+              ],
+              [
+                15527,
+                15384,
+                15580
+              ],
+              [
+                15678,
+                15257,
+                15504
+              ],
+              [
+                15375,
+                15363,
+                15580
+              ],
+              [
+                15508,
+                15919,
+                15680
+              ]
+            ]
+          },
+          "session": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              34591,
+              32137,
+              31895,
+              32957,
+              33034
+            ],
+            "step_us": [
+              [
+                9735,
+                8871,
+                8739
+              ],
+              [
+                9168,
+                8503,
+                8366
+              ],
+              [
+                9284,
+                8318,
+                8195
+              ],
+              [
+                9692,
+                8511,
+                8460
+              ],
+              [
+                9735,
+                8760,
+                8352
+              ]
+            ]
+          },
+          "recheck": {
+            "routes": [
+              "fresh",
+              "fresh",
+              "fresh"
+            ],
+            "total_us": [
+              47359,
+              47684,
+              42454,
+              46747,
+              47663
+            ],
+            "step_us": [
+              [
+                15596,
+                15803,
+                15960
+              ],
+              [
+                15799,
+                16062,
+                15823
+              ],
+              [
+                13526,
+                13650,
+                15278
+              ],
+              [
+                15219,
+                15602,
+                15926
+              ],
+              [
+                15908,
+                15967,
+                15788
+              ]
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -327,6 +327,29 @@ assumption. Both MPMC programs remain byte-identical at that last step.
 [Pinned source files and SHA-256 values](../../scripts/temporal-history-inputs.json) ·
 [Disruptor model and published counts](https://github.com/tlaplus/Examples/blob/6a7b26a31c1a6aeec789b455e9bbfa3b3ad2728f/specifications/Disruptor/manifest.json).
 
+Across all nine public Disruptor checks, whole-project recheck took **5.160 s**
+against **7.129 s** for fresh checking, a **1.38×** median paired speedup.
+On the final upstream edit MPMC safety took 16.27 ms instead of 970.35 ms
+(59.76× paired); MPMC liveness took 16.13 ms instead of 1,074.22 ms (66.85×).
+The SPMC edit required an ordinary check. Each value below is the median of
+five cumulative foreground measurements in milliseconds on one native EC2
+c7i.4xlarge. The runner rotated the order of four methods. The local cache
+began empty for each method and each trial.
+[Every paired sample, step route, input and executable identity](data/2026-11-20-installed-public-edit-histories.json).
+
+| Input histories | Build | Isolated fresh | Shared exact receipts | Edit session | Recheck with prior |
+|---|---|---:|---:|---:|---:|
+| Disruptor, selected files | Before | 7,165.22 | 5,123.80 | 7,171.64 | 5,123.22 |
+| Disruptor, selected files | After | 7,141.89 | 5,099.74 | 7,105.18 | 5,134.12 |
+| Disruptor, whole project | Before | 7,170.33 | 7,176.12 | 7,188.09 | 7,198.77 |
+| Disruptor, whole project | After | 7,128.88 | 7,115.68 | 7,085.77 | 5,160.46 |
+| CCF, three refusals | Before | 47.19 | 47.15 | 57.77 | 47.70 |
+| CCF, three refusals | After | 46.84 | 46.49 | 32.96 | 47.36 |
+
+Sail now shares the current frozen input between attempted edit-session reuse
+and ordinary fallback. The CCF session therefore performs prebinding once
+per refused input. Those measurements describe refusal latency.
+
 Each source revision is measured twice. In the **selected** case each request
 contains its actual imports and selected CFG. In the **project** case each
 contains all published source and configuration files selected for the three
