@@ -5,6 +5,10 @@ verified targets and exact solver answers. Edits still pay Rust compilation
 and the Verus frontend for changed targets. Undoing an edit can restore an
 original complete proof when retaining that target was worth its cost.
 
+## Native TLA+ checks
+
+On the 724,274-state mutex model, an unchanged check took 9.29 ms with receipts and 12.360 s on the v0.3.0 source. A 100-check maintenance loop had 76 exact hits and took 1.454 s with receipts, 4.862 s on v0.3.0 and 67.324 s on TLC. Property and invariant edits in this campaign ran fresh. [Conditions and reproduction](validation/temporal-reuse-s7.md) · [Individual measurements](validation/data/2026-11-19-native-s7.json).
+
 ## 0.2.0
 
 The complete core composition uses source `039fb996`, pinned A0e Verus,
