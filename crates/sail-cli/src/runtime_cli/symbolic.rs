@@ -1,9 +1,16 @@
 //! A trusted external Dive rechecks a portable predicate in each process.
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
+use serde_json::value::RawValue;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+
+mod process;
 use std::time::{Duration, Instant};
 
 pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME]";
@@ -67,6 +74,7 @@ impl Job {
         option: &str,
         predicate: &Path,
         started: Instant,
+        cancel: &AtomicBool,
     ) -> Result<(u8, Vec<u8>), String> {
         let remaining = self.duration.saturating_sub(started.elapsed()).as_millis();
         if remaining == 0 {
@@ -85,34 +93,7 @@ impl Job {
         if let Some(name) = &self.type_invariant {
             command.arg("--type-invariant").arg(name);
         }
-        let mut child = command
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .spawn()
-            .map_err(failure)?;
-        let mut bytes = Vec::new();
-        let read = child
-            .stdout
-            .take()
-            .ok_or_else(|| failure("missing Dive output pipe"))?
-            .take(MAX_BYTES + 1)
-            .read_to_end(&mut bytes);
-        if read.is_err() || bytes.len() as u64 > MAX_BYTES {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(failure(
-                "unreadable Dive report or report larger than 16 MiB",
-            ));
-        }
-        let status = child.wait().map_err(failure)?;
-        let code = status
-            .code()
-            .and_then(|c| u8::try_from(c).ok())
-            .ok_or_else(|| failure(format!("Dive exited with {status}")))?;
-        if started.elapsed() >= self.duration {
-            return Ok(stopped());
-        }
-        Ok((code, bytes))
+        process::run(command, started, self.duration, cancel)
     }
 }
 
@@ -132,16 +113,44 @@ struct Report<'a> {
     proof: Option<&'a str>,
     verdict: Option<&'a str>,
     trace_validated: Option<bool>,
-    trace: Option<serde::de::IgnoredAny>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    trace: Option<&'a RawValue>,
     ending: Option<Ending>,
     #[serde(default = "missing_obligation")]
     failed_obligation: serde_json::Value,
-    distinct: Option<serde::de::IgnoredAny>,
-    generated: Option<serde::de::IgnoredAny>,
-    depth: Option<serde::de::IgnoredAny>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    distinct: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    generated: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    depth: Option<&'a RawValue>,
+}
+
+fn present<'de, D: Deserializer<'de>>(d: D) -> Result<Option<&'de RawValue>, D::Error> {
+    Deserialize::deserialize(d).map(Some)
+}
+
+fn natural(number: Option<&RawValue>) -> bool {
+    number.is_some_and(|n| n.get().bytes().all(|b| b.is_ascii_digit()))
 }
 
 #[derive(Deserialize)]
+struct Trace {
+    format: String,
+    version: u32,
+    variables: Vec<String>,
+    states: Vec<TraceState>,
+    ending: Ending,
+}
+
+#[derive(Deserialize)]
+struct TraceState {
+    // The wire format is an object; only its variable keys are needed here.
+    #[allow(clippy::zero_sized_map_values)]
+    values: std::collections::BTreeMap<String, serde::de::IgnoredAny>,
+}
+
+#[derive(Deserialize, PartialEq)]
 struct Ending {
     kind: String,
     name: Option<String>,
@@ -160,15 +169,39 @@ enum Route {
 }
 
 impl Report<'_> {
+    fn valid_witness(&self) -> bool {
+        let Some(trace) = self
+            .trace
+            .and_then(|t| serde_json::from_str::<Trace>(t.get()).ok())
+        else {
+            return false;
+        };
+        let length = self.depth.and_then(|n| n.get().parse::<usize>().ok());
+        trace.format == "dive-trace"
+            && trace.version == 1
+            && !trace.states.is_empty()
+            && Some(trace.states.len()) == length
+            && self.ending.as_ref() == Some(&trace.ending)
+            && trace.states.iter().all(|s| {
+                s.values.len() == trace.variables.len()
+                    && trace.variables.iter().all(|v| s.values.contains_key(v))
+            })
+    }
+
     fn admit(&self, code: u8, verifying: bool, job: &Job) -> Result<Route, String> {
         let bound = self.format == Some(FORMAT)
             && self.module.as_ref() == Some(&job.module)
             && self.config.as_ref() == Some(&job.config);
-        let counted = self.distinct.is_some() && self.generated.is_some() && self.depth.is_some();
+        let counted = natural(self.distinct) && natural(self.generated) && natural(self.depth);
         let uncounted = self.distinct.is_none() && self.generated.is_none() && self.depth.is_none();
         match (verifying, code, self.proof, self.verdict) {
             (true, 0, Some("inductive-safety"), None)
-                if bound && uncounted && self.failed_obligation.is_null() =>
+                if bound
+                    && uncounted
+                    && self.trace.is_none()
+                    && self.ending.is_none()
+                    && self.trace_validated.is_none()
+                    && self.failed_obligation.is_null() =>
             {
                 Ok(Route::Proved)
             }
@@ -182,7 +215,7 @@ impl Report<'_> {
             (false, 1, None, Some("invariant-violation" | "deadlock"))
                 if bound
                     && self.trace_validated == Some(true)
-                    && self.trace.is_some()
+                    && self.valid_witness()
                     && self
                         .ending
                         .as_ref()
@@ -242,6 +275,15 @@ impl Drop for Stage {
 pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     let started = Instant::now();
     let job = Job::parse(args)?;
+    let cancel = Arc::new(AtomicBool::new(false));
+    #[cfg(unix)]
+    for signal in [
+        signal_hook::consts::SIGINT,
+        signal_hook::consts::SIGTERM,
+        signal_hook::consts::SIGHUP,
+    ] {
+        signal_hook::flag::register(signal, Arc::clone(&cancel)).map_err(failure)?;
+    }
     fs::create_dir_all(&job.session).map_err(failure)?;
     let dir = fs::canonicalize(&job.session).map_err(failure)?;
     let candidate = dir.join("sail-symbolic-predicate-v1.json");
@@ -250,8 +292,13 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     }
     match fs::symlink_metadata(&candidate) {
         Ok(meta) if meta.is_file() && meta.len() <= MAX_BYTES => {
-            let (code, bytes) = job.check("--verify-predicate", &candidate, started)?;
-            if !matches!(report(&bytes)?.admit(code, true, &job)?, Route::Retry) {
+            let (code, bytes) = job.check("--verify-predicate", &candidate, started, &cancel)?;
+            let route = report(&bytes)?.admit(code, true, &job)?;
+            if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
+                let (code, row) = process::stop(&cancel);
+                return emit(out, code, &row);
+            }
+            if !matches!(route, Route::Retry) {
                 return emit(out, code, &bytes);
             }
         }
@@ -262,8 +309,13 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     }
     let stage = Stage::create(&dir)?;
     let pending = stage.0.join("predicate.json");
-    let (code, bytes) = job.check("--write-predicate", &pending, started)?;
-    if matches!(report(&bytes)?.admit(code, false, &job)?, Route::Searched) {
+    let (code, bytes) = job.check("--write-predicate", &pending, started, &cancel)?;
+    let route = report(&bytes)?.admit(code, false, &job)?;
+    if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
+        let (code, row) = process::stop(&cancel);
+        return emit(out, code, &row);
+    }
+    if matches!(route, Route::Searched) {
         let meta = fs::symlink_metadata(&pending).map_err(failure)?;
         if !meta.is_file() || meta.len() == 0 || meta.len() > MAX_BYTES {
             return Err(failure(

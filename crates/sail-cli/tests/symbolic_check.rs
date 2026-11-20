@@ -30,7 +30,7 @@ impl Session {
                 "--session",
                 "session",
                 "--time-limit",
-                "10",
+                if mode == "hung" { "1" } else { "10" },
             ])
             .output()
     }
@@ -63,6 +63,10 @@ fn only_a_complete_search_publishes_and_a_receiver_proves_again()
         ("unbound", 2),
         ("missing", 2),
         ("counts", 2),
+        ("null", 2),
+        ("invalid-count", 2),
+        ("invalid-trace", 2),
+        ("hung", 4),
         ("bad-json", 2),
         ("unchecked", 2),
         ("violation", 1),

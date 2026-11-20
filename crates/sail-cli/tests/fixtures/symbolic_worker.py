@@ -15,10 +15,15 @@ row = dict(format="dive-symbolic-report-v1", module=args[1], config=args[args.in
 code = 0
 if "--verify-predicate" in args:
     assert Path(args[args.index("--verify-predicate") + 1]).read_bytes() == b"cold"
-    if mode in ("prove", "counts", "missing", "unbound"):
+    if mode == "hung":
+        import time
+        time.sleep(30)
+    if mode in ("prove", "counts", "null", "missing", "unbound"):
         row.update(proof="inductive-safety", failed_obligation=None)
         if mode == "counts":
             row["distinct"] = 9
+        if mode == "null":
+            row["distinct"] = None
         if mode == "missing":
             del row["failed_obligation"]
         if mode == "unbound":
@@ -36,9 +41,15 @@ else:
     elif mode == "bad-json":
         print("usage error")
         sys.exit(2)
-    elif mode in ("violation", "unchecked"):
-        row.update(verdict="invariant-violation", trace_validated=mode == "violation", depth=2,
-                   ending={"kind": "invariant", "name": "Empty"}, trace={"states": ["s0", "s1"]})
+    elif mode == "invalid-count":
+        row.update(verdict="success", distinct=False, generated="unknown", depth={})
+    elif mode in ("violation", "unchecked", "invalid-trace"):
+        row.update(verdict="invariant-violation", trace_validated=mode != "unchecked", depth=2,
+                   ending={"kind": "invariant", "name": "Empty"}, trace={"format":"dive-trace", "version":1, "variables":["got"],
+                   "states":[{"values":{"got":0}}, {"values":{"got":1}}],
+                   "ending":{"kind":"invariant", "name":"Empty"}})
+        if mode == "invalid-trace":
+            row["trace"] = False
         code = 1
     else:
         raise ValueError(mode)
