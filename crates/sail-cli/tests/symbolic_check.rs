@@ -65,6 +65,8 @@ fn only_a_complete_search_publishes_and_a_receiver_proves_again()
         ("counts", 2),
         ("null", 2),
         ("invalid-count", 2),
+        ("contradictory", 2),
+        ("duplicate-var", 2),
         ("invalid-trace", 2),
         ("hung", 4),
         ("bad-json", 2),

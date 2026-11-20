@@ -33,8 +33,10 @@ if "--verify-predicate" in args:
         code = 2
 else:
     Path(args[args.index("--write-predicate") + 1]).write_text(mode)
-    if mode in ("cold", "refresh"):
+    if mode in ("cold", "refresh", "contradictory"):
         row.update(verdict="success", distinct=123456789123456789123456789, generated=123456789123456789123456790, depth=4)
+        if mode == "contradictory":
+            row.update(failed_obligation="Empty", trace_validated=True, ending={"kind": "deadlock"})
     elif mode == "stop":
         row = dict(verdict="stopped", reason="time limit")
         code = 4
@@ -43,11 +45,15 @@ else:
         sys.exit(2)
     elif mode == "invalid-count":
         row.update(verdict="success", distinct=False, generated="unknown", depth={})
-    elif mode in ("violation", "unchecked", "invalid-trace"):
+    elif mode in ("violation", "unchecked", "invalid-trace", "duplicate-var"):
         row.update(verdict="invariant-violation", trace_validated=mode != "unchecked", depth=2,
                    ending={"kind": "invariant", "name": "Empty"}, trace={"format":"dive-trace", "version":1, "variables":["got"],
                    "states":[{"values":{"got":0}}, {"values":{"got":1}}],
                    "ending":{"kind":"invariant", "name":"Empty"}})
+        if mode == "duplicate-var":
+            row["trace"]["variables"] = ["got", "got"]
+            for state in row["trace"]["states"]:
+                state["values"]["foreign"] = 0
         if mode == "invalid-trace":
             row["trace"] = False
         code = 1

@@ -177,7 +177,9 @@ impl Report<'_> {
             return false;
         };
         let length = self.depth.and_then(|n| n.get().parse::<usize>().ok());
-        trace.format == "dive-trace"
+        let names: std::collections::BTreeSet<_> = trace.variables.iter().collect();
+        names.len() == trace.variables.len()
+            && trace.format == "dive-trace"
             && trace.version == 1
             && !trace.states.is_empty()
             && Some(trace.states.len()) == length
@@ -211,7 +213,16 @@ impl Report<'_> {
                 Ok(Route::Retry)
             }
             (true, 2, None, Some("unsupported")) => Ok(Route::Retry),
-            (false, 0, None, Some("success")) if bound && counted => Ok(Route::Searched),
+            (false, 0, None, Some("success"))
+                if bound
+                    && counted
+                    && self.trace.is_none()
+                    && self.ending.is_none()
+                    && self.trace_validated.is_none()
+                    && self.failed_obligation == missing_obligation() =>
+            {
+                Ok(Route::Searched)
+            }
             (false, 1, None, Some("invariant-violation" | "deadlock"))
                 if bound
                     && self.trace_validated == Some(true)
