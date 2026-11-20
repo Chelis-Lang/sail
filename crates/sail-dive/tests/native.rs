@@ -26,6 +26,46 @@ const BOOLEAN: &str =
     "---- MODULE M ----\nVARIABLE x\nInit == x = FALSE\nNext == x' = ~x\nP == []<>x\n====\n";
 
 #[test]
+fn recheck_guard_preserves_config_order_locations_model_closure_and_limits() {
+    let cfg = "INIT Init\nNEXT Next\nINVARIANT Inv\nINVARIANT Aux\n";
+    let original = request(COUNTER, cfg);
+    let equivalent = |other: &Request| sail_dive::equivalent_check_config(&original, other);
+    assert!(equivalent(&request(
+        COUNTER,
+        &format!("{cfg}\\* comment\n")
+    )));
+    for edited in [
+        cfg.replace(
+            "INVARIANT Inv\nINVARIANT Aux",
+            "INVARIANT Aux\nINVARIANT Inv",
+        ),
+        format!("\n{cfg}"),
+        format!("{cfg}CHECK_DEADLOCK FALSE\n"),
+        format!("{cfg}CHECK_DEADLOCK invalid"),
+    ] {
+        assert!(!equivalent(&request(COUNTER, &edited)), "{edited}");
+    }
+    let mut new = original.clone();
+    new.model.files.insert("Other.tla".into(), COUNTER.into());
+    assert!(!equivalent(&new));
+    let mut new = original.clone();
+    new.model.root = "Other.tla".into();
+    assert!(!equivalent(&new));
+    let mut new = original.clone();
+    new.model.config = "Other.cfg".into();
+    assert!(!equivalent(&new));
+    let mut new = original;
+    new.operation = Operation::Check {
+        max_states: 100,
+        max_depth: 99,
+    };
+    assert!(!sail_dive::equivalent_check_config(
+        &request(COUNTER, cfg),
+        &new
+    ));
+}
+
+#[test]
 fn real_safety_temporal_and_stopped_outcomes_are_distinct() {
     let safe = sail_dive::execute(&request(COUNTER, "INIT Init\nNEXT Next\n"));
     assert_eq!(safe.outcome, Outcome::Holds, "{safe:?}");

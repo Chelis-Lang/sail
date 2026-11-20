@@ -120,7 +120,7 @@ cache writable only by trusted code. For GitHub-hosted jobs, see
 
 ## Recheck a previous invariant failure after a configuration comment edit
 
-Save the two temporal `check` request envelopes. Run the previous request normally, then ask Sail to recheck the edited request using the same local cache:
+In development builds after v0.3.0, save the two temporal `check` request envelopes. Run the previous request normally, then ask Sail to recheck the edited request using the same local cache:
 
 ```sh
 sail runtime execute --file previous.json
