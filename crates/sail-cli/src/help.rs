@@ -59,6 +59,7 @@ USAGE:
     sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET]
     sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET]
     sail runtime prepare-temporal [--file FILE|-] [--cache DIR]
+    sail runtime recheck --previous FILE --file FILE|- [--cache DIR]
     sail runtime edit-session --file FILE|-
 
 edit-session takes ordered native check requests with one deadline. It emits

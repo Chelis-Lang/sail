@@ -69,6 +69,13 @@ to the run that established the verdict. Simulation and resource stops do
 not establish an invariant. To precompute a specific first job, use
 `sail runtime prepare-temporal --file job.json` on a supporting installation.
 
+If the installed `sail runtime --help` lists `recheck`, use
+`sail runtime recheck --previous before.json --file after.json` for a
+configuration comment edit following an invariant violation. The
+`equivalent-cfg-rechecked-refutation` route carries a counterexample validated
+against the edited job. The `current-check` route returns the ordinary current
+result, including its exact receipt key on a hit.
+
 ## Run SMT queries
 
 For repeated Z3 work outside Rust, check the installed solver once with
