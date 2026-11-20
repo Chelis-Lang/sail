@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Recheck a named invariant counterexample after an equivalent CFG edit with `sail runtime recheck`. The report identifies the previous receipt and includes independent validation against the current job.
+
 - Replay completed native temporal checks and validated refutations after identical reruns and undo. Results identify the matched key. Supporting installations can prepare the first check in the background and transport signed receipts between CI jobs (#774).
 
 ## 0.3.0 (2026-11-19)

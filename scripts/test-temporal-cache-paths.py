@@ -111,4 +111,6 @@ if __name__ == "__main__":
         else:
             raise SystemExit("usage: test-temporal-cache-paths.py STAGED_SAIL | --stage SAIL WORKER")
         run(sail, base)
+        subprocess.run([sys.executable, Path(__file__).with_name("benchmark-guarded-refutation.py"),
+                        sail, "--smoke"], check=True)
     print("native daemon, embedded runtime and preparation share exact receipts")
