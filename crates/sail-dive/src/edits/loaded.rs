@@ -61,13 +61,11 @@ impl Query {
         if !eligible(&self.previous, &self.current) {
             return None;
         }
-        let old = Frozen::create(&self.previous.model)
-            .ok()?
-            .loaded_sources()?;
+        let old = Frozen::loaded_sources(&self.previous.model)?;
         if !self.same_bytes(&old) {
             return None;
         }
-        let new = Frozen::create(&self.current.model).ok()?.loaded_sources()?;
+        let new = Frozen::loaded_sources(&self.current.model)?;
         (old == new).then_some(new)
     }
 

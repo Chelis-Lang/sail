@@ -39,6 +39,10 @@ fn relative(path: &str) -> bool {
 
 impl Frozen {
     pub(crate) fn create(model: &Model) -> Result<Self, Failure> {
+        Self::prepare(model).map(|(frozen, _)| frozen)
+    }
+
+    fn prepare(model: &Model) -> Result<(Self, dive_sema::Analysis), Failure> {
         if model.files.is_empty() || model.files.len() > 1024 {
             return Err(rejected("model closure requires 1..1024 files"));
         }
@@ -108,8 +112,8 @@ impl Frozen {
             }
         }
         frozen.libraries = parents.into_iter().collect();
-        frozen.admit(model)?;
-        Ok(frozen)
+        let analysis = frozen.admit(model)?;
+        Ok((frozen, analysis))
     }
 
     fn analysis(&self) -> Result<dive_sema::Analysis, Failure> {
@@ -126,17 +130,14 @@ impl Frozen {
         .map_err(rejected)
     }
 
-    pub(crate) fn loaded_sources(&self) -> Option<Vec<String>> {
-        let analysis = self.analysis().ok()?;
-        if !analysis.accepted() {
-            return None;
-        }
+    pub(crate) fn loaded_sources(model: &Model) -> Option<Vec<String>> {
+        let (frozen, analysis) = Self::prepare(model).ok()?;
         analysis
             .files()
             .iter()
             .map(|file| match &file.origin {
                 Origin::File(path) => Some(
-                    path.strip_prefix(&self.directory)
+                    path.strip_prefix(&frozen.directory)
                         .ok()?
                         .to_str()?
                         .to_owned(),
@@ -149,7 +150,7 @@ impl Frozen {
             .collect()
     }
 
-    fn admit(&self, model: &Model) -> Result<(), Failure> {
+    fn admit(&self, model: &Model) -> Result<dive_sema::Analysis, Failure> {
         let analysis = self.analysis()?;
         for file in analysis.files() {
             match &file.origin {
@@ -225,6 +226,6 @@ impl Frozen {
                 "SAIL4202: native host capabilities are not admitted".into(),
             ));
         }
-        Ok(())
+        Ok(analysis)
     }
 }
