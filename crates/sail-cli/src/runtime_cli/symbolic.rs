@@ -28,6 +28,8 @@ const SYMBOLIC: Strategy = Strategy {
     candidate: "sail-symbolic-predicate-v1.json",
 };
 
+const SUPPORT_FORMAT: &str = "dive-occupancy-support-v1";
+
 const OCCUPANCY: Strategy = Strategy {
     option: "occupancy",
     report: "dive-occupancy-report-v1",
@@ -159,6 +161,15 @@ struct Report<'a> {
     trace_validated: Option<bool>,
     #[serde(default, borrow, deserialize_with = "present")]
     trace: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    trace_file: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    occupancies: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    distinct_decimal: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    generated_decimal: Option<&'a RawValue>,
+    predicate_format: Option<&'a str>,
     ending: Option<Ending>,
     #[serde(default, borrow, deserialize_with = "present")]
     failed_obligation: Option<&'a RawValue>,
@@ -176,6 +187,16 @@ fn present<'de, D: Deserializer<'de>>(d: D) -> Result<Option<&'de RawValue>, D::
 
 fn natural(number: Option<&RawValue>) -> bool {
     number.is_some_and(|n| n.get().bytes().all(|b| b.is_ascii_digit()))
+}
+
+fn same_decimal(integer: Option<&RawValue>, string: Option<&RawValue>) -> bool {
+    integer.zip(string).is_some_and(|(integer, string)| {
+        string
+            .get()
+            .strip_prefix('"')
+            .and_then(|v| v.strip_suffix('"'))
+            == Some(integer.get())
+    })
 }
 
 #[derive(Deserialize)]
@@ -233,11 +254,32 @@ impl Report<'_> {
         let bound = self.format == Some(job.strategy.report)
             && self.module.as_ref() == Some(&job.module)
             && self.config.as_ref() == Some(&job.config);
-        let counted = natural(self.distinct) && natural(self.generated) && natural(self.depth);
-        let uncounted = self.distinct.is_none() && self.generated.is_none() && self.depth.is_none();
+        let population = job.strategy.option == OCCUPANCY.option;
+        if population && self.trace_file.is_some() {
+            return Err(failure(
+                "unexpected external trace path on occupancy report",
+            ));
+        }
+        let predicate_format = !population || self.predicate_format == Some(SUPPORT_FORMAT);
+        let no_population_counts = !population
+            || (self.occupancies.is_none()
+                && self.distinct_decimal.is_none()
+                && self.generated_decimal.is_none());
+        let counted = natural(self.distinct)
+            && natural(self.generated)
+            && natural(self.depth)
+            && (!population
+                || (natural(self.occupancies)
+                    && same_decimal(self.distinct, self.distinct_decimal)
+                    && same_decimal(self.generated, self.generated_decimal)));
+        let uncounted = self.distinct.is_none()
+            && self.generated.is_none()
+            && self.depth.is_none()
+            && no_population_counts;
         match (verifying, code, self.proof, self.verdict) {
             (true, 0, Some("inductive-safety"), None)
                 if bound
+                    && predicate_format
                     && uncounted
                     && self.trace.is_none()
                     && self.ending.is_none()
@@ -248,7 +290,11 @@ impl Report<'_> {
             }
             (true, 2, Some("inconclusive"), None)
                 if bound
+                    && predicate_format
                     && uncounted
+                    && self.trace.is_none()
+                    && self.ending.is_none()
+                    && self.trace_validated.is_none()
                     && self
                         .failed_obligation
                         .is_some_and(|o| o.get().starts_with('"')) =>
@@ -258,6 +304,7 @@ impl Report<'_> {
             (true, 2, None, Some("unsupported")) => Ok(Route::Retry),
             (false, 0, None, Some("success"))
                 if bound
+                    && predicate_format
                     && counted
                     && self.trace.is_none()
                     && self.ending.is_none()
@@ -268,6 +315,8 @@ impl Report<'_> {
             }
             (false, 1, None, Some("invariant-violation" | "deadlock"))
                 if bound
+                    && no_population_counts
+                    && (!population || self.predicate_format.is_none())
                     && self.distinct.is_none()
                     && self.generated.is_none()
                     && self.failed_obligation.is_none()

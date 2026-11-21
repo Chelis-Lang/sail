@@ -70,6 +70,23 @@ fn only_a_complete_search_publishes_and_a_receiver_proves_again()
     assert!(session.invoke_with("cold", &occupancy)?.status.success());
     assert_eq!(fs::read(&separate)?, b"cold");
     assert!(session.invoke_with("prove", &occupancy)?.status.success());
+    for field in [
+        "distinct_decimal",
+        "generated_decimal",
+        "occupancies",
+        "trace_file",
+        "predicate_format",
+    ] {
+        assert_eq!(
+            session
+                .invoke_with(&format!("extra-{field}"), &occupancy)?
+                .status
+                .code(),
+            Some(2),
+            "{field}"
+        );
+        assert_eq!(fs::read(&separate)?, b"cold");
+    }
     assert_eq!(
         session
             .invoke_with("cross-format", &occupancy)?
