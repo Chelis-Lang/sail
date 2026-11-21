@@ -417,7 +417,7 @@ fn nested_atoms_round_trip_in_keys_values_records_and_sets() -> TestResult {
 
 #[test]
 fn deterministic_tlc_import_runs_actual_check_simulation_and_replay() {
-    let source = r#"---- MODULE M ----
+    let source = r"---- MODULE M ----
 EXTENDS TLC, FiniteSetsExt
 CONSTANT Ids
 VARIABLE x
@@ -428,7 +428,7 @@ Next == x' = Table[x]
 Inv == x <= Max(DOMAIN Table)
 Bad == x = 1
 ====
-"#;
+";
     let cfg = "CONSTANT Ids={p,q}\nINIT Init\nNEXT Next\nSYMMETRY Sym\nINVARIANT Inv";
     let original = request(source, cfg);
     let rows = sail_dive::execute(&original);
