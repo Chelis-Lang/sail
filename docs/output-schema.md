@@ -1,8 +1,7 @@
 # Verification reports: schema version 2
 
-A schema-v2 report describes every function one Verus run verified. This page
-is the reference for that document; the decisions behind it are in ADR 0014,
-amended for version 2 by ADR 0044. `sail verify --output json` (managed
+A schema-v2 report describes every function one Verus run verified. ADR 0014
+defines it, and ADR 0044 amends it for version 2. `sail verify --output json` (managed
 verification, the default; ADR 0046) prints a `sail-project-result`
 envelope holding one schema-v2 report per Cargo target, including targets
 whose reports were reused; see
@@ -12,7 +11,7 @@ opt-in portfolio print one schema-v2 report directly.
 
 Each managed target's `target` is Cargo's exact target name, including hyphens.
 Distinct binaries `foo-bar` and `foo_bar` have separate target reports and proof
-receipts. Compiler crate-name normalization does not establish target identity.
+receipts. Sail never identifies a target by its normalized compiler crate name.
 An ambiguous observation produces `SAIL3107` rather than a reusable report.
 
 - JSON Schema: `crates/sail-api/schema/verify-output-v2.json` (draft 2020-12).
@@ -106,13 +105,13 @@ same crate namespace; a foreign self-type's friendly name does not name the
 local crate. Without compiler paths, a shared friendly namespace remains a
 legacy display hint. Conflicting, incomplete or unqualified namespaces leave
 `name` null. The namespace also guides partial-report function-selector
-projection; it does not establish compiler-invocation or Cargo target identity.
+projection; it never identifies a compiler invocation or Cargo target.
 
 **Counting units.** `summary` and `functions` count functions. Verus's
 `verified` and `errors` count verification units: for example, each loop is
 verified and counted separately from its function's body. So a crate of five
 functions, two with a loop, can report `6 verified, 1 errors` for one failed
-function. The two counts are expected to differ.
+function.
 
 ### Functions
 
@@ -169,7 +168,7 @@ one format:
 | `(_ BitVec n)`, n ≤ 128 | `#xff`, `#b101` | `{"#bigint": "255"}`, `{"#bigint": "5"}` (unsigned) |
 | anything else | `FuelId!val!55`, `(I 3)`, `1.0` | `{"#unserializable": "FuelId!val!55"}` |
 
-`itf` is a rendering, never a replacement (charter rule 3). `model` keeps the
+`itf` only renders the values and replaces nothing (charter rule 3). `model` keeps the
 solver's `get-model` reply byte for byte and `value` keeps each value
 verbatim. The cache stores and replays the solver's exact bytes.
 
@@ -371,9 +370,8 @@ Durable jobs wrap this report in a project result, envelope version 2
 read by `sail jobs events` and MCP `verification_events` has its own
 version-one schemas, which use this document's function, obligation and
 diagnostic definitions: `crates/sail-api/schema/proof-event-v1.json` for one
-event and `crates/sail-api/schema/proof-page-v1.json` for a page. Events never
-replace the completed report; a provisional observation is never a verified
-claim.
+event and `crates/sail-api/schema/proof-page-v1.json` for a page. The
+completed report stays authoritative over events.
 
 ## Compatibility
 
@@ -398,21 +396,18 @@ cover every primary obligation. `proved` counts configurations proving every
 primary obligation together; `score = 1 - proved/runs`. It differs from the
 census's per-check effort-pressure/disagreement metric. Missing mappings,
 ambiguous sessions and incomplete replays leave the field null with notes.
-Verdicts remain those of the baseline run. A replay score is not a complete-run
-seeded proof; only the portfolio mode can select such a proof.
+Verdicts remain those of the baseline run. Only portfolio mode can select a
+complete-run seeded proof; a replay score never does.
 
 The MCP verify tool accepts `measure_fragility: true`. The existing fragility
 tool also includes an optional `verification` report with the same function
 scores. Normal verification performs no replay measurement.
 
-When a crate fails and attribution is incomplete, successful timing entries
-are reported `unknown` with a note (VI-0003). Their raw `verus_success` fields
-are retained. Verus can leave that field true for failed bit-vector queries,
-so it cannot establish a confirmed function proof in this case.
+Fragility reports apply the same VI-0003 rule (see **Agreement with Verus**).
 
 MCP persisted lookups include the establishing run's solver identity, mode and
-winning seed in `freshness`. Source freshness does not assert that today's
-toolchain matches that recorded identity.
+winning seed in `freshness`. Source freshness covers sources only; it does not
+check today's toolchain against that recorded identity.
 
 ## Changes from version 1
 

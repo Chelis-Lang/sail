@@ -19,9 +19,9 @@ scheduling memo capped at 1 MiB. It avoids cleaning scripts a successful
 Current Cargo build did not schedule under exactly the same inputs. Deleting
 it is safe: the next run uses conservative script cleaning and can establish
 it again. It contains no proof receipt. Source edits and unknown selection
-closures retain conservative cleaning. Only scripts in the existing selected
-dependency closure contribute facts; an empty fact set writes no memo and an
-empty memo supplies no exemption. See the
+closures keep conservative cleaning. Only scripts in the existing selected
+dependency closure are recorded; when there are none, Sail writes no memo, and
+an empty memo exempts nothing. See the
 [validation record](validation/unscheduled-script-cleaning.md) for scope.
 
 These directories grow with every workspace, copy and configuration you
@@ -84,13 +84,12 @@ pruning. Active workspaces and the most recently used workspace are protected.
 A protected workspace can itself exceed the cap: the budget is soft, and JSON
 reports `over_budget` instead of removing active or newest data. Byte accounting
 uses the existing workspace sizes, counting hard links once within each workspace;
-it is not a filesystem allocation quota. There is no automatic eviction by default.
+it is not a filesystem allocation quota.
 
 `prune --to-bytes` applies the same oldest-first/protect-newest policy immediately.
 It cannot combine with `--all`, `--missing` or `--older-than`. Its JSON preserves
 removed, busy and failed entries. Dry runs leave project data unchanged. Existing
-`prune --all` remains the explicit way to remove every idle workspace. Removing
-workspaces always removes their targets and receipts together.
+`prune --all` remains the explicit way to remove every idle workspace.
 
 ## Dependency store
 
@@ -104,8 +103,8 @@ Existing entries stay intact and can be deleted safely. Fresh projects and
 pruned targets compile and verify normally, then keep their own proof receipts.
 Exact solver caching remains available. The
 [assessment](validation/dependency-store-fail-closed.md) records the safety
-reproduction, measured first-run cost and remaining performance work. A sound,
-fast replacement is still required.
+reproduction, measured first-run cost and remaining performance work. There is
+no sound, fast replacement yet.
 
 ## Snapshot hints
 

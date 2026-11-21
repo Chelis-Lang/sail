@@ -37,20 +37,19 @@ The hint grants no proof reuse or replay: JSON remains Unknown with its
 `SAIL3112` no-reuse reason. For diagnosis, compare with
 `SAIL_MANAGED_UNQUALIFIED_CARGO_MEMO=0 sail verify`.
 
-These labels describe your inputs, not the solver's verdict. A Current result
-can contain a failed proof. Only a Current, successful result can be reused as a
+These labels describe your inputs. A Current result can still contain a failed
+proof. Only a Current, successful result can be reused as a
 proof receipt or accept a repair. CLI and MCP clients receive the same label.
 
-Any doubt makes a result Historical or Unknown, never Current. The cost of a
-wrong "not current" is one re-run; a wrong "Current" is never acceptable.
+Any doubt makes a result Historical or Unknown, never Current: a wrong "not
+current" costs one re-run, and a wrong "Current" is never acceptable.
 
 Newly decoded compiler dep-info filename inventories preserve the literal
 spelling of spaces, backslashes and path components. An empty name, NUL,
-carriage return or newline refuses that whole inventory. This conservatively
-withholds input coverage and reports Unknown, without changing a freshly
-executed verifier's verdict. Previously recorded literal paths retain their
-existing identity and currentness checks; the new token proof does not
-retroactively certify them.
+carriage return or newline refuses that whole inventory, and the result is
+Unknown; the fresh verifier's verdict is unchanged. Paths recorded before this
+decoding keep their existing identity and currentness checks and are not
+re-certified.
 
 ## Reading a result later
 
@@ -260,8 +259,8 @@ remain compiler-family inputs; ordinary and interactive engine requests stay
 separate. Proof contexts still bind every original argument and focus selector.
 A requested target cannot use a sibling context's proof receipt. Dependency
 reuse still checks the complete source revision, declared environment and exact
-artifact bytes against an established receipt. The candidate's
-[qualification record](validation/managed-selection-family.md) identifies the
+artifact bytes against an established receipt. The
+[qualification record](validation/managed-selection-family.md) lists the
 remaining gates and the original failed diagnostic.
 
 Concurrent dependency publishers reserve a private staging directory before
@@ -485,8 +484,8 @@ cached invocation records. A run whose stderr holds one of Cargo's transient
 status lines is never recorded, and removes any older record of its key: a
 `Blocking` lock wait, `Updating`, `Locking`, `Downloading`, `Downloaded`, or a
 `spurious network error` retry warning. Those depend on concurrent activity
-or on the package cache, so a later plain run would not print them. Version 6
-replaces version 5; older records take the full path.
+or on the package cache, so a later plain run would not print them. The current
+record format is version 7; older records take the full path.
 
 The first unchanged call after a verification takes the full path and
 records; a file changed less than 2 s before a run is not recorded, so the
@@ -511,7 +510,7 @@ their inode metadata ends replay for every recorded call, even when the bytes
 are unchanged. Hard-linking an installed `sail`, `sail-z3` or tool binary (for
 example to stage a benchmark copy) updates its ctime; so do
 `chmod`, `chown` and `touch`. The next call of each project then takes the
-full path and records again. This is the intended fail-safe outcome. When
+full path and records again, by design. When
 benchmarking, stage copies before the first measured call, or copy rather
 than link the installed binaries.
 
@@ -565,7 +564,7 @@ The [exact-scope report reuse](decisions/0069-exact-scope-report-reuse.md)
 keeps partial results explicitly incomplete. A report may be reused only for
 its exact ordered arguments and unchanged source, runtime and artifact bytes.
 Whole-target, shared dependency and instant-revert proof consumers refuse it.
-Native bounded controls pass; final release qualification is pending.
+It passes native bounded controls and is not yet release-qualified.
 
 With the pinned Cargo, a requested proof failure keeps independently verified
 dependencies when the current input checks pass. Platform-disabled packages
@@ -591,17 +590,20 @@ dependency-store or retained proofs:
 | `SAIL_ENGINE`, `SAIL_ENGINE_EVENTS`, `SAIL_ENGINE_CONTEXT`, `SAIL_ENGINE_FOCUS_REPORT`, `SAIL_ENGINE_FUNCTION` | Engine child controls |
 | `SAIL_RUSTC_DEV_SOURCE_BASE`, `SAIL_VIR_SPAN_REMAP` | Explicit source/span mapping controls |
 
-COMMON, provenance and the two compiler-input request settings motivate the input-binding fix; the other seven receive conservative treatment under the same bounded policy. Routine
+The driver-options channel (` __VERUS_DRIVER_ARGS__`), `SAIL_PROVENANCE_DIR`
+and the two compiler-input request settings are why this binding exists; the
+other seven controls get the same conservative treatment. Routine
 units retain reuse, including Verus's ordinary Z3/Singular declarations and
 inherited user variables checked against the parent environment. Only classified
-driver-only COMMON bookkeeping may be restored to Cargo's base in dep-info.
+driver-only bookkeeping in that channel may be restored to Cargo's base in
+dep-info.
 
 Before a real verified compiler starts, Sail writes a non-authorizing marker
 outside the shared compiler family's Cargo target. An interrupted, missing,
 legacy or malformed observation leaves that marker, so the next reuse-enabled
 run recompiles the package before Cargo can declare old artifacts fresh.
 Receipt retirement and ordinary package cleaning do not remove the marker.
-A genuinely complete successful schema2 observation from a reuse-enabled run
+A complete successful schema2 observation from a reuse-enabled run
 with no source-sensitive read clears its own marker. This records compiler
 inputs only: a complete focused or no-verify dependency observation can clear
 that state without granting whole-target proof authority. Exact-scope receipts
@@ -637,8 +639,9 @@ proof receipts actually admitted for its result. This includes sibling and
 previously adopted dependency receipts and zero-compiler retained restores.
 A ghost-only name can be absent from Cargo's dep-info while remaining a
 requirement of an admitted proof; replay must still compare its exact caller
-value. Unknown required coverage prevents recording. Older version3 replay
-records are retired by version4; ordinary verification rebuilds the record.
+value. Unknown required coverage prevents recording. Version 4 of the record
+added this binding; older records take the full path, and ordinary verification
+rebuilds them.
 Unchanged inherited values retain useful replay, and a changed value returns to
 the ordinary receipt/currentness checks. See
 [#552](https://github.com/Chelis-Lang/sail/issues/552) and the
@@ -665,7 +668,7 @@ missing or changed marker, unknown metadata or aliases keep the complete walk.
 First creation of the directory may still require a full call. See the
 [ADR 0082 amendment](decisions/0082-unchanged-call-replay.md#amendment-marked-package-local-cargo-outputs-2026-10-29-576).
 
-## Settled source observation prototype
+## Source and target digest memos
 
 The default still reads source contents afresh. The opt-in
 `SAIL_MANAGED_SOURCE_DIGEST_MEMO=1` candidate implements the owner-approved
@@ -685,24 +688,25 @@ requires a freshly matched complete owned target, exact receipt bytes and
 complete source/metadata/context bindings. It retains dirty cleanup and
 refuses aliases or any changed entry. Pure receipt projections also bind their
 exact original selection and target keys; each batch still checks the fresh
-source observation. Native component gates pass; corrected Linux warm Anvil pairs save about 0.43 s.
+source observation. It passes the native component gates, and on Linux it saves
+about 0.43 s on warm Anvil pairs.
 The Mac target candidate refuses because build-script directory stamps change
-during unchanged calls. Source observations remain opt-in on both platforms. Target selection on
-Linux does not establish release parity. See the separate scopes in the
-[qualification record](validation/settled-digest-observations.md).
+during unchanged calls. Source observations remain opt-in on both platforms. Linux selects the target
+observation by default, but release parity is qualified separately; see the
+separate scopes in the [qualification record](validation/settled-digest-observations.md).
 
 The separate `SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO=1` prototype implements
 owner-approved [ADR 0092](decisions/0092-per-file-owned-target-digests.md).
-It remains off on every platform: native seven-project Linux evaluation shows
-no warm median gain, and Mac correctness gates (#633, #634) prevent timing
-selection. See the [current record](validation/general-performance.md).
-It is off by default on every platform; exactly `1` opts in on Unix. It
+It is off by default on every platform; exactly `1` opts in on Unix. It stays
+off because a native seven-project Linux evaluation showed no warm median gain,
+and Mac correctness gates (#633, #634) block timing selection
+([current record](validation/general-performance.md)). It
 retains complete fresh current target namespace/barrier checks, original full
 file stamps and ancestor identities, original Current run/start and settlement,
 and complete source/context/selection/receipt binding. Unrelated directory
 entries or times can change across calls; changed/unsettled files read afresh.
-Inherited entries never acquire a later provenance or age into trust.
-Dirty cleanup and all proof checks remain. This ledger supplies no proof
-revisions, and first-after-cold artifacts still require fresh reads. Native
+Inherited entries keep their original provenance and never age into trust.
+Dirty cleanup and all proof checks still run; the ledger supplies no proof
+revisions, and the first artifacts after a cold run are still read afresh. Native
 qualification and platform selection are open; see the
 [general qualification record](validation/general-performance.md).

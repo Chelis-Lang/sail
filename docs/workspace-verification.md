@@ -1,9 +1,9 @@
 # Live workspace verification
 
-Every `sail verify` is managed verification
-([ADR 0046](decisions/0046-managed-verification-by-default.md)). Install
-Sail; it runs its own Verus and starts its local daemon when needed. No team
-server, credentials or container is required.
+Run `sail verify` in a Cargo workspace. Every call is managed verification
+([ADR 0046](decisions/0046-managed-verification-by-default.md)): Sail runs its
+own Verus and starts its local daemon when needed. No team server, credentials
+or container is required.
 
 ## Complete incremental reports
 
@@ -44,8 +44,8 @@ verified root, so it cannot suppress another proof's diagnostics.
 Verification arguments, features, toolchain and executable identity participate
 in the context. Declared workspace and path-dependency inputs are checked for
 changes, including resolved registry/git dependencies and compiler-declared
-external includes. Newly discovered inputs prevent that establishing run from
-claiming currentness until they can be observed. Failed, interrupted or partial
+external includes. A run that discovers new inputs is not Current until those
+inputs can be observed. Failed, interrupted or partial
 target proofs cannot become reusable whole-target receipts. Publication waits
 for a coherent input check and an atomic run commit, so an interrupted publisher
 cannot leave usable unvalidated receipts. Function/module selection runs fresh;
@@ -203,8 +203,8 @@ it.
 `currentness` is `current`, `historical` or `unknown`. A changed revision makes
 results historical. Currentness is evaluated under the job's original submitted
 configuration; changing features or environment requires another request with
-its own context. Incomplete input observation never claims that historical
-proof evidence establishes a current workspace. Exit code and proof outcome
+its own context. When Sail cannot observe every input, it never presents
+historical proof evidence as proof of the current workspace. Exit code and proof outcome
 remain distinct from whether a job's execution finished.
 
 Job text and MCP summaries call a target verified only when its whole-target
@@ -221,8 +221,8 @@ unchanged (REASONS); re-run for a current result`, where REASONS names each
 check that failed ([freshness](freshness.md#why-a-result-is-unknown)).
 Job reads preserve the original proof notes. A
 separate current-input-validation warning appears when a previously Current
-report becomes Unknown during projection. See
-[the diagnostic boundary](validation/m7.md).
+report becomes Unknown during projection. [M7 validation](validation/m7.md)
+records the diagnostic boundary.
 
 ## Jobs that survive the client session
 
@@ -270,8 +270,8 @@ incremental reports.
 
 ## Evidence from completed jobs
 
-`sail jobs`, `sail explain`, `sail baseline` and `sail compare` are
-supported.
+`sail jobs`, `sail explain`, `sail baseline` and `sail compare` read recorded
+evidence. None of them verifies current inputs or generates proof edits.
 
 ```sh
 sail jobs events JOB [--stream ID] [--after N] [--follow] [--output jsonl|json]
@@ -283,9 +283,6 @@ sail compare BEFORE_JOB AFTER_JOB [--output json]
 sail compare AFTER_JOB --baseline NAME [--output json]
 ```
 
-These commands read recorded evidence. None of them verifies current inputs or
-generates proof edits.
-
 - **Proof events.** `sail jobs events` reads one bounded page of the job's
   version-one proof-event journal, with a resumable cursor (`next.stream_id`
   and `next.after`). A gap is reported explicitly, and `terminal` is set once
@@ -293,8 +290,8 @@ generates proof edits.
   target reports carry final evidence. `--follow` streams JSONL pages until
   the job is terminal. **Stock verification writes no proof events today.** A
   finished stock job returns an empty terminal page whose `gap` is
-  `SAIL0903: this job produced no interactive proof stream`. The producer
-  arrives with the optional interactive engine (ADR 0027).
+  `SAIL0903: this job produced no interactive proof stream`. Only the optional
+  interactive engine produces proof events (ADR 0027).
 - **Explanations.** `sail explain` selects one function by exact package ID,
   target name, target kind and crate-qualified function name. It returns that
   function's complete report (obligations, models and provenance), the run's
@@ -316,8 +313,8 @@ generates proof edits.
   `not_observed`, `incomparable` or `changed`. Transitions are labelled as
   regressions only when the verification context and the requested scopes
   agree. Runs marked `no_reuse` and results without a bound context are
-  `incomparable`, including when saved as baselines: matching empty context
-  fields do not establish that two setups agree.
+  `incomparable`, including when saved as baselines: two setups never match
+  just because both have empty context fields.
   A partial scope reports `not_observed`, never `removed`. A function
   that passed by Verus's totals (reported `unknown`, not attributed one by
   one) is classified as verified, with its reported verdict kept and flagged.
@@ -348,16 +345,16 @@ unchanged inputs do not trigger another verification. A notification restarts a
 run only if the inputs differ from the snapshot recorded when that run was
 submitted, so late or repeated notifications for an edit the run already
 includes do not cancel it. Unrelated sibling removals or renames delivered by
-ancestor subscriptions do not restart verification. Native events are the fast
-path, not the guarantee: every two seconds watch also compares a metadata stamp
+ancestor subscriptions do not restart verification. Native events are only the fast
+path: every two seconds watch also compares a metadata stamp
 of its inputs (no file contents are read) with the last state it saw. On macOS
 and Linux an input edit restarts verification within about two seconds even
 when its notification is dropped, as macOS can do under heavy load. See
 [freshness](freshness.md#watch-startup). A settled watcher does not poll
 completed jobs or rehash the verifier runtime.
 Its JSON-lines stream carries job lifecycle and target completion/reuse events.
-It verifies the requested Cargo scope; it does not guess semantic function
-independence. A completed run without proof reuse
+It verifies the requested Cargo scope and never guesses which functions an
+edit leaves unaffected. A completed run without proof reuse
 ([`SAIL3112`](#setups-verified-without-proof-reuse)) adds one event
 `{"kind": "sail-watch-event", "schema_version": 1, "event": "no-reuse",
 "job_id": …, "no_reuse": …, "currentness": "unknown", "exit_code": …}`; in the
@@ -401,9 +398,9 @@ keeps verification fresh. See the [guide](instant-revert.md) and
 `SAIL_RETAINED_CONTENT_RESEARCH=1` explicitly enables the other separately
 closed provider profiles. It still requires actual source-observer documents
 and never treats missing or unsupported evidence as reusable. Failed placement
-rollback refuses with `SAIL3134`. Scoped native qualifications, the 13.45% Vest
-cycle gain and increased cold/edit/unchanged and storage costs are in the
-[validation record](validation/instant-revert.md).
+rollback refuses with `SAIL3134`. The [validation record](validation/instant-revert.md)
+has the scoped native qualifications, the 13.45% Vest cycle gain, and the higher
+cold, edit, unchanged and storage costs.
 
 The experimental retained arena refuses new admission at 8 GiB of file data or
 65,536 entries, including failed writes and lifetime markers. It preserves
@@ -416,14 +413,14 @@ complete native cycle includes the scan and storage costs for its stated scope.
 The two compiler-reuse research switches are mutually exclusive. Setting both
 `SAIL_VSTD_BOUNDARY_RESEARCH=1` and `SAIL_RETAINED_CONTENT_RESEARCH=1`
 returns `SAIL3135` before compiler setup; unset either switch. Their
-[source integration](validation/proof-reuse-integration.md) passes final-source
-default gates and preserves each experiment's separate source authority and
-remaining release limits.
+[source integration](validation/proof-reuse-integration.md) passes the
+final-source default gates; each experiment keeps its own source authority and
+release limits.
 
 Experimental portable vstd bundles also bind the configured solver-adapter bytes
 and the exact Cargo-Verus package environment identity. Moving identical
 installed binaries is distinct from selecting a different adapter; changed,
 unknown or ambiguous observations safely run the compiler. Old bundle schemas
-are refused. Same-host changed-root portable functionality passes; distributed
-release/default fresh-machine first use remains pending. See the
+are refused. Moving a bundle to another root on the same host works; first use
+on a fresh machine from a distributed release is not yet qualified. See the
 [vstd boundary limits](validation/vstd-compile-boundary.md).

@@ -1,22 +1,20 @@
 # Compatibility matrix
 
-The Verus releases sail is tested against (`corpus/toolchain.toml`), and how
-the corpus fares under each one. The primary pin is the release the corpus
+Sail is tested against the Verus releases in `corpus/toolchain.toml`. The primary pin is the release the corpus
 is validated against. Secondary pins are compatibility targets (ADR 0010),
 run locally with `SAIL_VERUS_RELEASE=<release>` (ADR 0013).
 
-**Sail's Verus.** Sail runs its own Verus, built from its fork
-(`engine/verus/fork.toml`, commit `36d65c3f`, rebased onto the primary pin
-`7d829946`; its Linux and macOS runtimes include the spec-formal correction and the
-erasure shadow-check index; consumer qualification is tracked in
+**Sail's Verus.** Sail runs its own Verus for every verification
+([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). It is built from
+its fork (`engine/verus/fork.toml`, commit `36d65c3f`), rebased onto the primary
+pin `7d829946`. Its Linux and macOS runtimes include the spec-formal correction
+and the erasure shadow-check index; consumer qualification is tracked in
 [the runtime record](validation/shadow-index.md). See [engine](../engine/verus/README.md) and
-[macOS engine](validation/macos-engine.md)), for every verification
-([ADR 0043](decisions/0043-default-mode-runs-the-fork.md)). Stock releases
+[macOS engine](validation/macos-engine.md). Stock releases
 are the conformance oracle: `sail-conformance run` compares Sail on its fork
 with plain stock Verus at the primary pin. Under a secondary pin the fork has
-no build, so the Sail side runs that stock release with `sail-z3`, as before;
-the secondary rows below check the shim, not a supported product
-configuration.
+no build, so the Sail side runs that stock release with `sail-z3`. The secondary
+rows therefore test the shim. They are not supported product configurations.
 
 | Release | Role | Z3 | Rust | sail conformance (fast tier) | Notes |
 |---|---|---|---|---|---|
@@ -110,9 +108,9 @@ every unit either way (147 of 147 the same).
   release: vstd itself, human-eval-verus (it depends on the newer vstd), and
   14 further examples, including `guide/*`, `iterators/*` and `mergesort.rs`.
 
-The secondary pin is meant for external projects written against that
-release, such as vest's recent history (`sail-bench history-replay`). It is
-not meant for the in-tree tier.
+Use the secondary pin for external projects written against that release, such
+as vest's recent history (`sail-bench history-replay`). The in-tree tier
+targets the primary.
 
 ## Optional Singular validation
 
@@ -122,11 +120,11 @@ examples and memory allocator in pass-through, fill and warm modes. The separate
 image pins the Singular package and uses separate build/cache volumes. No CI
 workflow runs this step. Source selection is explicit through
 `SAIL_VERUS_SOURCE_BUILD`; artifact identity failures are infrastructure errors.
-Post-diagnostic-fix local validation on 2026-10-09 completed all three modes:
+A local run on 2026-10-09, after the diagnostic fix, completed all three modes:
 3 units, 606 functions, all the same, zero differences, zero infrastructure
 errors and zero skips in each mode. Verus reports 9 and 27 verified for the
 integer-ring examples and 736 for the allocator, all with zero errors. The
 final cache held 8,080 entries. One unit had resource-count drift without
 verdict or diagnostic drift. The source build ran natively on macOS arm64;
 its Singular subprocess used the pinned local Linux image under amd64
-emulation. These are correctness results, not Linux benchmark numbers.
+emulation, so these results show correctness and give no Linux benchmark numbers.

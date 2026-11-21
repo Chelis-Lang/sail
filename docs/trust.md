@@ -1,15 +1,15 @@
 # Trust model
 
-How far each source of a verification result is trusted, and what is checked
-before it is used. Charter rules 2, 3, 7, 9 and 10 apply.
+Sail trusts each source of a verification result only so far, and checks it
+before use (charter rules 2, 3, 7, 9 and 10).
 
 These obligations apply to the actual effective inputs Sail verifies. Code that
 observes Sail's named compiler-visible integration settings can compile different
 inputs from plain Cargo-Verus under the
 [accepted equivalence exception](divergences.md#compiler-visible-integration-settings).
-That exception does not relax exact query/key and solver binding, input freshness,
-complete requested scope or truthful reporting; it does not authorize reuse for
-different effective inputs. See [ADR 0088](decisions/0088-compiler-visible-integration-settings.md).
+Exact query/key and solver binding, input freshness, complete requested scope
+and truthful reporting still hold under that exception, and it never allows
+reuse across different effective inputs. See [ADR 0088](decisions/0088-compiler-visible-integration-settings.md).
 
 Status: two local tiers exist, the in-memory tier and the disk tier, both
 inside the daemon (ADR 0011, ADR 0015). Behind them sit the bundled tier,
@@ -26,12 +26,12 @@ tier of signed entries (ADR 0017).
 
 ## Solver identity
 
-A daemon handshake recomputes the executable hash and version. The former
-path/length/mtime memo could retain an old hash after changed bytes and restored
-mtime; its replacement and remaining qualification are recorded in the
-[identity validation record](validation/solver-identity.md).
+A daemon handshake recomputes the executable hash and version. This replaced a
+path/length/mtime memo that could keep an old hash after the bytes changed and
+the mtime was restored. The [identity validation record](validation/solver-identity.md)
+covers the replacement and its remaining qualification.
 
-A result is only as reusable as the identity it was produced under.
+A cached result is reused only under the identity it was produced under.
 Identity binds:
 - the solver name and the version string it reports;
 - the SHA-256 of the solver binary;
@@ -39,7 +39,7 @@ Identity binds:
 
 Rlimit counts have been observed to differ across machines for the same
 binary (ADR 0004 update), so the shared tier may need to bind a machine class
-finer than the platform. That is decided by measurement.
+finer than the platform, depending on measurements.
 
 **Owner decision (ADR 0010).** Shared-tier entries are scoped by solver
 binary hash plus platform class. Hits across platform classes are allowed
@@ -67,13 +67,13 @@ directory is owned by the user.
 - Otherwise, entries must be re-validated against the pinned solver before
   use.
 
-The shared tier meets these with signatures (next section).
+The shared tier meets them with signatures.
 
 ## Shared tier: what its checks do and do not prove
 
 Anyone may be able to write to a shared store: it is a directory on NFS, a
-synced folder, a CI artefact. So the store is never trusted. Only a
-signature is.
+synced folder, a CI artefact. So Sail never trusts the store, only the
+signature on each entry.
 
 **What a verified entry proves.** The holder of a trusted secret key signed
 this exact reply as the answer to this exact v2 key, for this command,
@@ -91,7 +91,7 @@ the v2 key binds the whole process prefix and the solver identity
   for another solver or platform: refused (key, solver or platform
   mismatch).
 
-They cannot make a reader serve a wrong answer.
+None of these makes a reader serve a wrong answer.
 
 Concurrent lookups of the same shared entry receive the helper's verified
 result directly. The initiating caller does not need to resume before other
@@ -110,8 +110,7 @@ lookup has published its fallback skips that obsolete network request. Status
 reads borrow cached metrics while the cache retains transport ownership, so
 retirement cannot make a status reader join the last transport runtime.
 
-**What a trusted key can do.** Anything: a trusted signer is trusted
-completely. Whoever holds the secret key can publish wrong answers that
+**What a trusted key can do.** Whoever holds the secret key can publish wrong answers that
 every trusting reader serves. Hence:
 - keep secret keys where releases are made, such as a CI secret or a
   designated machine, and never in the store;
@@ -199,8 +198,8 @@ modification time as when the slot was filled. So:
   miss at once, from any process;
 - an entry corrupted, replaced or forged on disk is a miss, or is served
   exactly as the disk tier would serve it. A forgery that passes the
-  disk-tier checks is served from disk too: the forged-entry limitation
-  below is unchanged, not widened.
+  disk-tier checks is served from disk too, so the disk tier's forged-entry
+  limitation applies unchanged.
 
 A slot of the second kind is *pending*: its write-behind write has not
 finished (ADR 0015). It is trusted exactly as the disk entry it will
@@ -237,10 +236,10 @@ A missing, failed or repeated handshake closes the connection; a client must
 connect again to retry or choose another solver/mode. `INFO` and `STATS` remain
 available without a handshake, so status never requires a solver.
 
-This is an admission boundary, not an independent proof of an answer. An
-identified local writer can still supply a plausible wrong `unsat` under a
-key; the local-writer and shared-signer trust assumptions above still apply.
-Checksums, identity negotiation and signatures do not establish SMT truth.
+The handshake controls admission only. An identified local writer can still
+supply a plausible wrong `unsat` under a key, so the local-writer and
+shared-signer trust assumptions above still apply: no checksum, handshake or
+signature shows that an SMT answer is correct.
 
 ## Solver diagnostics and publication
 
@@ -262,10 +261,13 @@ The interactive engine is an explicitly selected pinned Verus source variant.
 Its manifest binds the source commit, Rust toolchain, patch and lockfile digests,
 solver and every runtime artifact. Installation and use reject incompatible or
 changed runtime bytes. A prebuilt CI archive additionally binds its archive
-digest to a committed pin; access credentials authorize download, not proof.
+digest to a committed pin. Access credentials only permit the download and
+play no part in proof.
 Source builds and artifact validation happen locally before publishing that pin.
 
-A source terminal event is insufficient to finish a verification. The adapter
+A source terminal event is insufficient to finish a verification, because its
+success flag alone cannot distinguish a compiler crash from an ordinary
+failure. The adapter
 requires exactly one complete bounded structured Verus document, normal process
 exit 0 or 1, and an explicit typed `payload.normal_termination: true` marker.
 The optional source distinguishes expected compiler-error termination from an
@@ -278,15 +280,14 @@ stock verifier with the same compiler arguments and effective options. Older
 producers could catch internal panics into an ordinary-shaped compiler-error
 document, so a legacy terminal seal without the new marker cannot authorize any
 engine result. Fallback records its actual child invocation and discards focused
-evidence from the interrupted engine. A terminal event's success flag alone
-cannot distinguish a compiler crash from an ordinary failure.
+evidence from the interrupted engine.
 The engine keeps no prepared-lowering cache, so it adds no cache to this trust
 boundary. Focus and progress evidence remain provisional until a complete
 successful full result is Current.
 
 ## Currentness of retained results
 
-A Current label is a statement about inputs, not about the verdict, and no
+Current describes the inputs and says nothing about the verdict. No
 proof is ever reused or accepted unless its result is Current
 ([ADR 0041](decisions/0041-content-and-stat-currentness.md)). A run is Current
 only when its input content revision and the file stamps of those inputs are
@@ -315,7 +316,7 @@ mapping, a bind mount added and removed during a run (root only), and an
 in-place toolchain rewrite on a filesystem whose change time does not
 advance, or after the clock was set back.
 
-Encoded job-result frames are an allocation optimization, not freshness
+Encoded job-result frames only save allocations and are never freshness
 evidence. Every read verifies the retained stdout bytes against the result's
 seal and checks currentness before selecting a frame. Cached frames are bounded
 by bytes and count, carry no time-based validity, and are discarded on a seal
