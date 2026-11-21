@@ -3,6 +3,7 @@ use serde::{Deserialize, Deserializer};
 use serde_json::value::RawValue;
 use std::fs;
 use std::io::Write;
+use std::num::NonZeroU64;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{
@@ -13,9 +14,25 @@ use std::sync::{
 mod process;
 use std::time::{Duration, Instant};
 
-pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME]";
+pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME] [--strategy symbolic|occupancy] [--max-orbits N]";
 const MAX_BYTES: u64 = 16 << 20;
-const FORMAT: &str = "dive-symbolic-report-v1";
+struct Strategy {
+    option: &'static str,
+    report: &'static str,
+    candidate: &'static str,
+}
+
+const SYMBOLIC: Strategy = Strategy {
+    option: "symbolic",
+    report: "dive-symbolic-report-v1",
+    candidate: "sail-symbolic-predicate-v1.json",
+};
+
+const OCCUPANCY: Strategy = Strategy {
+    option: "occupancy",
+    report: "dive-occupancy-report-v1",
+    candidate: "sail-occupancy-predicate-v1.json",
+};
 
 struct Job {
     dive: PathBuf,
@@ -24,6 +41,8 @@ struct Job {
     session: PathBuf,
     duration: Duration,
     type_invariant: Option<String>,
+    strategy: Strategy,
+    max_orbits: Option<NonZeroU64>,
 }
 
 fn failure(message: impl std::fmt::Display) -> String {
@@ -44,6 +63,8 @@ impl Job {
                     | "--config"
                     | "--time-limit"
                     | "--type-invariant"
+                    | "--strategy"
+                    | "--max-orbits"
             ) || flags
                 .insert(flag.as_str(), args.next().ok_or_else(usage)?)
                 .is_some()
@@ -59,7 +80,21 @@ impl Job {
         if seconds == 0 {
             return Err(usage());
         }
+        let strategy = match flags.get("--strategy").map(|s| s.as_str()) {
+            None | Some("symbolic") => SYMBOLIC,
+            Some("occupancy") => OCCUPANCY,
+            _ => return Err(usage()),
+        };
+        let max_orbits = flags
+            .get("--max-orbits")
+            .map(|s| s.parse::<NonZeroU64>().map_err(|_| usage()))
+            .transpose()?;
+        if max_orbits.is_some() && strategy.option != OCCUPANCY.option {
+            return Err(usage());
+        }
         Ok(Self {
+            strategy,
+            max_orbits,
             dive: file("--dive")?,
             module: file("--module")?,
             config: file("--config")?,
@@ -86,12 +121,21 @@ impl Job {
             .arg(&self.module)
             .arg("--config")
             .arg(&self.config)
-            .args(["--strategy", "symbolic", "--output", "json", "--time-limit"])
+            .args([
+                "--strategy",
+                self.strategy.option,
+                "--output",
+                "json",
+                "--time-limit",
+            ])
             .arg(format!("{remaining}ms"))
             .arg(option)
             .arg(predicate);
         if let Some(name) = &self.type_invariant {
             command.arg("--type-invariant").arg(name);
+        }
+        if let Some(limit) = self.max_orbits {
+            command.arg("--max-orbits").arg(limit.to_string());
         }
         process::run(command, started, self.duration, cancel)
     }
@@ -186,7 +230,7 @@ impl Report<'_> {
     }
 
     fn admit(&self, code: u8, verifying: bool, job: &Job) -> Result<Route, String> {
-        let bound = self.format == Some(FORMAT)
+        let bound = self.format == Some(job.strategy.report)
             && self.module.as_ref() == Some(&job.module)
             && self.config.as_ref() == Some(&job.config);
         let counted = natural(self.distinct) && natural(self.generated) && natural(self.depth);
@@ -299,7 +343,7 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     }
     fs::create_dir_all(&job.session).map_err(failure)?;
     let dir = fs::canonicalize(&job.session).map_err(failure)?;
-    let candidate = dir.join("sail-symbolic-predicate-v1.json");
+    let candidate = dir.join(job.strategy.candidate);
     if candidate == job.module || candidate == job.config || candidate == job.dive {
         return Err(failure("session candidate aliases an input file"));
     }

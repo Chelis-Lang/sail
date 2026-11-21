@@ -8,18 +8,23 @@ import sys
 mode = os.environ["FIXTURE_MODE"]
 args = sys.argv[1:]
 assert args[0] == "check"
-assert args[args.index("--strategy") + 1] == "symbolic"
+strategy = args[args.index("--strategy") + 1]
+assert strategy == os.environ["FIXTURE_STRATEGY"]
+if strategy == "occupancy":
+    assert args[args.index("--max-orbits") + 1] == "34500000"
 assert args[args.index("--output") + 1] == "json"
 assert 0 < int(args[args.index("--time-limit") + 1].removesuffix("ms")) <= 10000
-row = dict(format="dive-symbolic-report-v1", module=args[1], config=args[args.index("--config") + 1])
+row = dict(format=f"dive-{strategy}-report-v1", module=args[1], config=args[args.index("--config") + 1])
 code = 0
 if "--verify-predicate" in args:
     assert Path(args[args.index("--verify-predicate") + 1]).read_bytes() == b"cold"
     if mode == "hung":
         import time
         time.sleep(30)
-    if mode in ("prove", "counts", "null", "missing", "unbound"):
+    if mode in ("prove", "counts", "null", "missing", "unbound", "cross-format"):
         row.update(proof="inductive-safety", failed_obligation=None)
+        if mode == "cross-format":
+            row["format"] = "dive-symbolic-report-v1"
         if mode == "counts":
             row["distinct"] = 9
         if mode == "null":

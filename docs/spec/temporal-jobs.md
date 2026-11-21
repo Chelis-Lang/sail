@@ -191,6 +191,6 @@ The local `sail runtime symbolic-check` command owns a separate working
 directory and a named external Dive, selected by the caller. Proof rows have
 no exploration statistics. A complete search and a validated violation use
 the symbolic checker's versioned result format. Issuing a temporal job to
-the shared runtime still selects its authenticated native worker. See the
+the shared runtime still selects its authenticated native worker. The external `--strategy occupancy` route checks the distinct `dive-occupancy-report-v1` schema and publishes to a separate candidate filename. `--max-orbits` applies only to that strategy. See the
 [decision](../decisions/0177-portable-symbolic-predicates.md) and
 [command and exits](../temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate).

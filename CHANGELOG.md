@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- `sail runtime symbolic-check --strategy occupancy` can recheck [portable population predicates](docs/temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate) across source edits and preserve exact counts on a fresh search.
+
 - `sail runtime recheck` can retain a completed native proof across a project edit when both executions resolve the same module bytes and selected configuration. The result lists the loaded modules.
 - Native temporal witnesses can carry TLA+ model values through checks, simulations and independent trace validation using a versioned lossless state-value tag. Older encodings and request hashes remain readable.
 
