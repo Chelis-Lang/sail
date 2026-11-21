@@ -232,6 +232,17 @@ fn stopped_sampled_unsupported_and_timeout_never_become_exhaustive_success() -> 
         "M.tla".into(),
         "---- MODULE M ----\nEXTENDS TLC\nVARIABLE x\nInit == x = 0\nNext == x' = x\n====\n".into(),
     );
+    let imported = service
+        .execute(request.clone())?
+        .response
+        .ok_or("pure TLC")?;
+    assert_eq!(imported.outcome, temporal::Outcome::Sampled);
+    let source = request
+        .model
+        .files
+        .get_mut("M.tla")
+        .ok_or("missing M.tla")?;
+    *source = source.replace("====", "Unused == ToString(0)\n====");
     let unsupported = service.execute(request)?.response.ok_or("unsupported")?;
     assert_eq!(unsupported.outcome, temporal::Outcome::Unsupported);
     let timeout = service.job(Job {
