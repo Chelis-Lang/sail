@@ -66,6 +66,7 @@ fn only_a_complete_search_publishes_and_a_receiver_proves_again()
     let predicate = session.0.join("session/sail-symbolic-predicate-v1.json");
     assert_eq!(fs::read(&predicate)?, b"cold");
     let separate = session.0.join("session/sail-occupancy-predicate-v1.json");
+    check_named(&session)?;
     let occupancy = ["--strategy", "occupancy", "--max-orbits", "34500000"];
     assert!(session.invoke_with("cold", &occupancy)?.status.success());
     assert_eq!(fs::read(&separate)?, b"cold");
@@ -137,5 +138,33 @@ fn only_a_complete_search_publishes_and_a_receiver_proves_again()
     let refresh = session.invoke("refresh")?;
     assert!(refresh.status.success(), "{refresh:?}");
     assert_eq!(fs::read(&predicate)?, b"refresh");
+    Ok(())
+}
+
+fn check_named(session: &Session) -> Result<(), Box<dyn std::error::Error>> {
+    let named = ["--property-proof", "Mutex"];
+    let scoped = session
+        .0
+        .join("session/sail-named-property-predicate-v1.json");
+    assert!(session.invoke_with("cold", &named)?.status.success());
+    assert!(session.invoke_with("prove", &named)?.status.success());
+    for mode in [
+        "unbound",
+        "counts",
+        "extra-trace_file",
+        "extra-left_on_queue",
+        "extra-statistics",
+        "null-obligations",
+        "forged-time",
+        "extra-predicate_format",
+        "violation",
+    ] {
+        assert_eq!(
+            session.invoke_with(mode, &named)?.status.code(),
+            Some(2),
+            "{mode}"
+        );
+        assert_eq!(fs::read(&scoped)?, b"cold");
+    }
     Ok(())
 }

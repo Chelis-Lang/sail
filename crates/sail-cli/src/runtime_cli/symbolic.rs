@@ -14,7 +14,7 @@ use std::sync::{
 mod process;
 use std::time::{Duration, Instant};
 
-pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME] [--strategy symbolic|occupancy] [--max-orbits N]";
+pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME] [--property-proof NAME] [--strategy symbolic|occupancy] [--max-orbits N]";
 const MAX_BYTES: u64 = 16 << 20;
 struct Strategy {
     option: &'static str,
@@ -45,6 +45,7 @@ struct Job {
     type_invariant: Option<String>,
     strategy: Strategy,
     max_orbits: Option<NonZeroU64>,
+    property: Option<String>,
 }
 
 fn failure(message: impl std::fmt::Display) -> String {
@@ -65,6 +66,7 @@ impl Job {
                     | "--config"
                     | "--time-limit"
                     | "--type-invariant"
+                    | "--property-proof"
                     | "--strategy"
                     | "--max-orbits"
             ) || flags
@@ -87,6 +89,12 @@ impl Job {
             Some("occupancy") => OCCUPANCY,
             _ => return Err(usage()),
         };
+        let property = flags.get("--property-proof").map(|s| (*s).clone());
+        if property.as_ref().is_some_and(String::is_empty)
+            || (property.is_some() && strategy.option != SYMBOLIC.option)
+        {
+            return Err(usage());
+        }
         let max_orbits = flags
             .get("--max-orbits")
             .map(|s| s.parse::<NonZeroU64>().map_err(|_| usage()))
@@ -96,6 +104,7 @@ impl Job {
         }
         Ok(Self {
             strategy,
+            property,
             max_orbits,
             dive: file("--dive")?,
             module: file("--module")?,
@@ -136,6 +145,9 @@ impl Job {
         if let Some(name) = &self.type_invariant {
             command.arg("--type-invariant").arg(name);
         }
+        if let Some(name) = &self.property {
+            command.arg("--property-proof").arg(name);
+        }
         if let Some(limit) = self.max_orbits {
             command.arg("--max-orbits").arg(limit.to_string());
         }
@@ -157,6 +169,7 @@ struct Report<'a> {
     module: Option<PathBuf>,
     config: Option<PathBuf>,
     proof: Option<&'a str>,
+    property: Option<&'a str>,
     verdict: Option<&'a str>,
     trace_validated: Option<bool>,
     #[serde(default, borrow, deserialize_with = "present")]
@@ -250,18 +263,27 @@ impl Report<'_> {
             })
     }
 
-    fn admit(&self, code: u8, verifying: bool, job: &Job) -> Result<Route, String> {
-        let bound = self.format == Some(job.strategy.report)
+    fn bound_to(&self, job: &Job) -> bool {
+        let format = if job.property.is_some() {
+            "dive-property-proof-v1"
+        } else {
+            job.strategy.report
+        };
+        self.format == Some(format)
+            && self.property == job.property.as_deref()
             && self.module.as_ref() == Some(&job.module)
-            && self.config.as_ref() == Some(&job.config);
+            && self.config.as_ref() == Some(&job.config)
+    }
+
+    fn admit(&self, code: u8, verifying: bool, job: &Job) -> Result<Route, String> {
+        let named = job.property.is_some();
+        let bound = self.bound_to(job);
         let population = job.strategy.option == OCCUPANCY.option;
-        if population && self.trace_file.is_some() {
-            return Err(failure(
-                "unexpected external trace path on occupancy report",
-            ));
+        if (population || named) && self.trace_file.is_some() {
+            return Err(failure("unexpected external trace path on scoped report"));
         }
         let predicate_format = !population || self.predicate_format == Some(SUPPORT_FORMAT);
-        let no_population_counts = !population
+        let no_population_counts = !(population || named)
             || (self.occupancies.is_none()
                 && self.distinct_decimal.is_none()
                 && self.generated_decimal.is_none());
@@ -277,8 +299,9 @@ impl Report<'_> {
             && self.depth.is_none()
             && no_population_counts;
         match (verifying, code, self.proof, self.verdict) {
-            (true, 0, Some("inductive-safety"), None)
-                if bound
+            (_, 0, Some("inductive-safety"), None)
+                if (verifying || named)
+                    && bound
                     && predicate_format
                     && uncounted
                     && self.trace.is_none()
@@ -286,7 +309,11 @@ impl Report<'_> {
                     && self.trace_validated.is_none()
                     && self.failed_obligation.is_some_and(|o| o.get() == "null") =>
             {
-                Ok(Route::Proved)
+                Ok(if verifying {
+                    Route::Proved
+                } else {
+                    Route::Searched
+                })
             }
             (true, 2, Some("inconclusive"), None)
                 if bound
@@ -303,7 +330,8 @@ impl Report<'_> {
             }
             (true, 2, None, Some("unsupported")) => Ok(Route::Retry),
             (false, 0, None, Some("success"))
-                if bound
+                if !named
+                    && bound
                     && predicate_format
                     && counted
                     && self.trace.is_none()
@@ -322,6 +350,10 @@ impl Report<'_> {
                     && self.failed_obligation.is_none()
                     && self.trace_validated == Some(true)
                     && self.valid_witness()
+                    && (!named
+                        || (self.verdict == Some("invariant-violation")
+                            && self.ending.as_ref().and_then(|e| e.name.as_deref())
+                                == job.property.as_deref()))
                     && self
                         .ending
                         .as_ref()
@@ -343,8 +375,109 @@ impl Report<'_> {
     }
 }
 
-fn report(bytes: &[u8]) -> Result<Report<'_>, String> {
-    serde_json::from_slice(bytes).map_err(|e| failure(format!("invalid Dive report: {e}")))
+#[derive(Deserialize)]
+struct NamedWork {
+    seconds: f64,
+    support_bits: u64,
+    support_variables: Vec<String>,
+    projected_integers: Vec<String>,
+    closure_sweeps: u64,
+}
+
+#[derive(Deserialize)]
+struct ProofWork<'a> {
+    #[serde(borrow)]
+    transition_obligations: &'a RawValue,
+    reused_obligations: u64,
+}
+
+fn validate_named_work(bytes: &[u8], parsed: &Report<'_>) -> Result<(), String> {
+    let work: NamedWork = serde_json::from_slice(bytes).map_err(failure)?;
+    if !work.seconds.is_finite()
+        || work.seconds < 0.0
+        || u64::try_from(work.support_variables.len()).map_err(failure)? > work.support_bits
+        || work
+            .projected_integers
+            .iter()
+            .any(|n| work.support_variables.contains(n))
+    {
+        return Err(failure("invalid named-property work statistics"));
+    }
+    if let Some(proof) = parsed.proof {
+        let counts: ProofWork<'_> = serde_json::from_slice(bytes).map_err(failure)?;
+        let total: Option<u64> =
+            serde_json::from_str(counts.transition_obligations.get()).map_err(failure)?;
+        let valid = match proof {
+            "inductive-safety" => total.is_some_and(|n| counts.reused_obligations <= n),
+            "inconclusive" => {
+                total.is_none() && counts.reused_obligations == 0 && work.closure_sweeps == 0
+            }
+            _ => false,
+        };
+        if !valid {
+            return Err(failure("inconsistent named-property induction obligations"));
+        }
+    }
+    Ok(())
+}
+
+fn report(bytes: &[u8], named: bool) -> Result<Report<'_>, String> {
+    let parsed: Report<'_> =
+        serde_json::from_slice(bytes).map_err(|e| failure(format!("invalid Dive report: {e}")))?;
+    if named {
+        // A scoped proof is a closed wire format. Forwarding unknown fields could
+        // attach graph-exhaustion statistics or another property's witness.
+        let fields: std::collections::BTreeMap<String, &RawValue> =
+            serde_json::from_slice(bytes).map_err(failure)?;
+        let diagnostic = matches!(parsed.verdict, Some("unsupported" | "error" | "stopped"));
+        if diagnostic {
+            #[derive(Deserialize)]
+            struct Diagnostic {
+                reason: String,
+            }
+            let d: Diagnostic = serde_json::from_slice(bytes).map_err(failure)?;
+            if d.reason.is_empty() {
+                return Err(failure("empty named-property diagnostic"));
+            }
+        } else {
+            validate_named_work(bytes, &parsed)?;
+        }
+        for field in fields.keys().map(String::as_str) {
+            let allowed = if diagnostic {
+                matches!(field, "verdict" | "reason")
+            } else {
+                matches!(
+                    field,
+                    "format"
+                        | "module"
+                        | "config"
+                        | "property"
+                        | "projected_integers"
+                        | "support_bits"
+                        | "support_variables"
+                        | "closure_sweeps"
+                        | "seconds"
+                ) || if parsed.proof.is_some() {
+                    matches!(
+                        field,
+                        "proof"
+                            | "transition_obligations"
+                            | "reused_obligations"
+                            | "failed_obligation"
+                    )
+                } else {
+                    matches!(
+                        field,
+                        "verdict" | "depth" | "ending" | "trace_validated" | "trace"
+                    )
+                }
+            };
+            if !allowed {
+                return Err(failure(format!("unexpected named-property field: {field}")));
+            }
+        }
+    }
+    Ok(parsed)
 }
 
 fn emit(out: &mut dyn Write, code: u8, bytes: &[u8]) -> Result<u8, String> {
@@ -392,14 +525,18 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     }
     fs::create_dir_all(&job.session).map_err(failure)?;
     let dir = fs::canonicalize(&job.session).map_err(failure)?;
-    let candidate = dir.join(job.strategy.candidate);
+    let candidate = dir.join(if job.property.is_some() {
+        "sail-named-property-predicate-v1.json"
+    } else {
+        job.strategy.candidate
+    });
     if candidate == job.module || candidate == job.config || candidate == job.dive {
         return Err(failure("session candidate aliases an input file"));
     }
     match fs::symlink_metadata(&candidate) {
         Ok(meta) if meta.is_file() && meta.len() <= MAX_BYTES => {
             let (code, bytes) = job.check("--verify-predicate", &candidate, started, &cancel)?;
-            let route = report(&bytes)?.admit(code, true, &job)?;
+            let route = report(&bytes, job.property.is_some())?.admit(code, true, &job)?;
             if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
                 let (code, row) = process::stop(&cancel);
                 return emit(out, code, &row);
@@ -416,7 +553,7 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     let stage = Stage::create(&dir)?;
     let pending = stage.0.join("predicate.json");
     let (code, bytes) = job.check("--write-predicate", &pending, started, &cancel)?;
-    let route = report(&bytes)?.admit(code, false, &job)?;
+    let route = report(&bytes, job.property.is_some())?.admit(code, false, &job)?;
     if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
         let (code, row) = process::stop(&cancel);
         return emit(out, code, &row);

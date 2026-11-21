@@ -15,6 +15,10 @@ if strategy == "occupancy":
 assert args[args.index("--output") + 1] == "json"
 assert 0 < int(args[args.index("--time-limit") + 1].removesuffix("ms")) <= 10000
 row = dict(format=f"dive-{strategy}-report-v1", module=args[1], config=args[args.index("--config") + 1])
+named = "--property-proof" in args
+if named:
+    row["property"] = args[args.index("--property-proof") + 1]
+    row["format"] = "dive-property-proof-v1"
 code = 0
 if "--verify-predicate" in args:
     if strategy == "occupancy":
@@ -28,7 +32,7 @@ if "--verify-predicate" in args:
         if mode.startswith("extra-"):
             key = mode.removeprefix("extra-")
             row[key] = {"distinct_decimal": "37", "generated_decimal": None, "occupancies": 37,
-                        "trace_file": None, "predicate_format": "out-of-scope"}[key]
+                        "trace_file": None, "predicate_format": "out-of-scope", "left_on_queue": 123, "statistics": {"depth": 9}}[key]
         if mode == "cross-format":
             row["format"] = "dive-symbolic-report-v1"
         if mode == "counts":
@@ -73,5 +77,22 @@ else:
         code = 1
     else:
         raise ValueError(mode)
+if named and mode == "cold":
+    for key in ("verdict", "distinct", "generated", "depth"):
+        del row[key]
+    row.update(proof="inductive-safety", failed_obligation=None)
+if named:
+    row.update(support_bits=2, support_variables=["got"], projected_integers=[], closure_sweeps=0, seconds=0.01)
+    if row.get("proof"):
+        row.update(transition_obligations=2 if row["proof"] == "inductive-safety" else None, reused_obligations=0)
+    if mode == "null-obligations":
+        row.update(proof="inductive-safety", failed_obligation=None, transition_obligations=None)
+        code = 0
+    if mode == "forged-time":
+        row.update(proof="inductive-safety", failed_obligation=None, seconds={"statistics": {"distinct": 3}})
+        code = 0
+if named and mode == "unbound":
+    row["config"] = args[args.index("--config") + 1]
+    row["property"] = "DifferentProperty"
 print(json.dumps(row))
 sys.exit(code)
