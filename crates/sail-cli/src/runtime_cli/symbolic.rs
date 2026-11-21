@@ -3,6 +3,7 @@ use serde::{Deserialize, Deserializer};
 use serde_json::value::RawValue;
 use std::fs;
 use std::io::Write;
+use std::num::NonZeroU64;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{
@@ -13,9 +14,27 @@ use std::sync::{
 mod process;
 use std::time::{Duration, Instant};
 
-pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME]";
+pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME] [--strategy symbolic|occupancy] [--max-orbits N]";
 const MAX_BYTES: u64 = 16 << 20;
-const FORMAT: &str = "dive-symbolic-report-v1";
+struct Strategy {
+    option: &'static str,
+    report: &'static str,
+    candidate: &'static str,
+}
+
+const SYMBOLIC: Strategy = Strategy {
+    option: "symbolic",
+    report: "dive-symbolic-report-v1",
+    candidate: "sail-symbolic-predicate-v1.json",
+};
+
+const SUPPORT_FORMAT: &str = "dive-occupancy-support-v1";
+
+const OCCUPANCY: Strategy = Strategy {
+    option: "occupancy",
+    report: "dive-occupancy-report-v1",
+    candidate: "sail-occupancy-predicate-v1.json",
+};
 
 struct Job {
     dive: PathBuf,
@@ -24,6 +43,8 @@ struct Job {
     session: PathBuf,
     duration: Duration,
     type_invariant: Option<String>,
+    strategy: Strategy,
+    max_orbits: Option<NonZeroU64>,
 }
 
 fn failure(message: impl std::fmt::Display) -> String {
@@ -44,6 +65,8 @@ impl Job {
                     | "--config"
                     | "--time-limit"
                     | "--type-invariant"
+                    | "--strategy"
+                    | "--max-orbits"
             ) || flags
                 .insert(flag.as_str(), args.next().ok_or_else(usage)?)
                 .is_some()
@@ -59,7 +82,21 @@ impl Job {
         if seconds == 0 {
             return Err(usage());
         }
+        let strategy = match flags.get("--strategy").map(|s| s.as_str()) {
+            None | Some("symbolic") => SYMBOLIC,
+            Some("occupancy") => OCCUPANCY,
+            _ => return Err(usage()),
+        };
+        let max_orbits = flags
+            .get("--max-orbits")
+            .map(|s| s.parse::<NonZeroU64>().map_err(|_| usage()))
+            .transpose()?;
+        if max_orbits.is_some() && strategy.option != OCCUPANCY.option {
+            return Err(usage());
+        }
         Ok(Self {
+            strategy,
+            max_orbits,
             dive: file("--dive")?,
             module: file("--module")?,
             config: file("--config")?,
@@ -86,12 +123,21 @@ impl Job {
             .arg(&self.module)
             .arg("--config")
             .arg(&self.config)
-            .args(["--strategy", "symbolic", "--output", "json", "--time-limit"])
+            .args([
+                "--strategy",
+                self.strategy.option,
+                "--output",
+                "json",
+                "--time-limit",
+            ])
             .arg(format!("{remaining}ms"))
             .arg(option)
             .arg(predicate);
         if let Some(name) = &self.type_invariant {
             command.arg("--type-invariant").arg(name);
+        }
+        if let Some(limit) = self.max_orbits {
+            command.arg("--max-orbits").arg(limit.to_string());
         }
         process::run(command, started, self.duration, cancel)
     }
@@ -115,6 +161,15 @@ struct Report<'a> {
     trace_validated: Option<bool>,
     #[serde(default, borrow, deserialize_with = "present")]
     trace: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    trace_file: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    occupancies: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    distinct_decimal: Option<&'a RawValue>,
+    #[serde(default, borrow, deserialize_with = "present")]
+    generated_decimal: Option<&'a RawValue>,
+    predicate_format: Option<&'a str>,
     ending: Option<Ending>,
     #[serde(default, borrow, deserialize_with = "present")]
     failed_obligation: Option<&'a RawValue>,
@@ -132,6 +187,16 @@ fn present<'de, D: Deserializer<'de>>(d: D) -> Result<Option<&'de RawValue>, D::
 
 fn natural(number: Option<&RawValue>) -> bool {
     number.is_some_and(|n| n.get().bytes().all(|b| b.is_ascii_digit()))
+}
+
+fn same_decimal(integer: Option<&RawValue>, string: Option<&RawValue>) -> bool {
+    integer.zip(string).is_some_and(|(integer, string)| {
+        string
+            .get()
+            .strip_prefix('"')
+            .and_then(|v| v.strip_suffix('"'))
+            == Some(integer.get())
+    })
 }
 
 #[derive(Deserialize)]
@@ -186,14 +251,35 @@ impl Report<'_> {
     }
 
     fn admit(&self, code: u8, verifying: bool, job: &Job) -> Result<Route, String> {
-        let bound = self.format == Some(FORMAT)
+        let bound = self.format == Some(job.strategy.report)
             && self.module.as_ref() == Some(&job.module)
             && self.config.as_ref() == Some(&job.config);
-        let counted = natural(self.distinct) && natural(self.generated) && natural(self.depth);
-        let uncounted = self.distinct.is_none() && self.generated.is_none() && self.depth.is_none();
+        let population = job.strategy.option == OCCUPANCY.option;
+        if population && self.trace_file.is_some() {
+            return Err(failure(
+                "unexpected external trace path on occupancy report",
+            ));
+        }
+        let predicate_format = !population || self.predicate_format == Some(SUPPORT_FORMAT);
+        let no_population_counts = !population
+            || (self.occupancies.is_none()
+                && self.distinct_decimal.is_none()
+                && self.generated_decimal.is_none());
+        let counted = natural(self.distinct)
+            && natural(self.generated)
+            && natural(self.depth)
+            && (!population
+                || (natural(self.occupancies)
+                    && same_decimal(self.distinct, self.distinct_decimal)
+                    && same_decimal(self.generated, self.generated_decimal)));
+        let uncounted = self.distinct.is_none()
+            && self.generated.is_none()
+            && self.depth.is_none()
+            && no_population_counts;
         match (verifying, code, self.proof, self.verdict) {
             (true, 0, Some("inductive-safety"), None)
                 if bound
+                    && predicate_format
                     && uncounted
                     && self.trace.is_none()
                     && self.ending.is_none()
@@ -204,7 +290,11 @@ impl Report<'_> {
             }
             (true, 2, Some("inconclusive"), None)
                 if bound
+                    && predicate_format
                     && uncounted
+                    && self.trace.is_none()
+                    && self.ending.is_none()
+                    && self.trace_validated.is_none()
                     && self
                         .failed_obligation
                         .is_some_and(|o| o.get().starts_with('"')) =>
@@ -214,6 +304,7 @@ impl Report<'_> {
             (true, 2, None, Some("unsupported")) => Ok(Route::Retry),
             (false, 0, None, Some("success"))
                 if bound
+                    && predicate_format
                     && counted
                     && self.trace.is_none()
                     && self.ending.is_none()
@@ -224,6 +315,8 @@ impl Report<'_> {
             }
             (false, 1, None, Some("invariant-violation" | "deadlock"))
                 if bound
+                    && no_population_counts
+                    && (!population || self.predicate_format.is_none())
                     && self.distinct.is_none()
                     && self.generated.is_none()
                     && self.failed_obligation.is_none()
@@ -299,7 +392,7 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     }
     fs::create_dir_all(&job.session).map_err(failure)?;
     let dir = fs::canonicalize(&job.session).map_err(failure)?;
-    let candidate = dir.join("sail-symbolic-predicate-v1.json");
+    let candidate = dir.join(job.strategy.candidate);
     if candidate == job.module || candidate == job.config || candidate == job.dive {
         return Err(failure("session candidate aliases an input file"));
     }

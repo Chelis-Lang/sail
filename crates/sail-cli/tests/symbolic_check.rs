@@ -15,9 +15,21 @@ impl Drop for Session {
 
 impl Session {
     fn invoke(&self, mode: &str) -> std::io::Result<Output> {
+        self.invoke_with(mode, &[])
+    }
+
+    fn invoke_with(&self, mode: &str, options: &[&str]) -> std::io::Result<Output> {
         Command::new(env!("CARGO_BIN_EXE_sail"))
             .current_dir(&self.0)
             .env("FIXTURE_MODE", mode)
+            .env(
+                "FIXTURE_STRATEGY",
+                if options.contains(&"occupancy") {
+                    "occupancy"
+                } else {
+                    "symbolic"
+                },
+            )
             .args([
                 "runtime",
                 "symbolic-check",
@@ -32,6 +44,7 @@ impl Session {
                 "--time-limit",
                 if mode == "hung" { "1" } else { "10" },
             ])
+            .args(options)
             .output()
     }
 }
@@ -51,6 +64,50 @@ fn only_a_complete_search_publishes_and_a_receiver_proves_again()
     assert!(cold.status.success(), "{:?}", cold.stderr);
     assert!(String::from_utf8(cold.stdout)?.contains("123456789123456789123456789"));
     let predicate = session.0.join("session/sail-symbolic-predicate-v1.json");
+    assert_eq!(fs::read(&predicate)?, b"cold");
+    let separate = session.0.join("session/sail-occupancy-predicate-v1.json");
+    let occupancy = ["--strategy", "occupancy", "--max-orbits", "34500000"];
+    assert!(session.invoke_with("cold", &occupancy)?.status.success());
+    assert_eq!(fs::read(&separate)?, b"cold");
+    assert!(session.invoke_with("prove", &occupancy)?.status.success());
+    for field in [
+        "distinct_decimal",
+        "generated_decimal",
+        "occupancies",
+        "trace_file",
+        "predicate_format",
+    ] {
+        assert_eq!(
+            session
+                .invoke_with(&format!("extra-{field}"), &occupancy)?
+                .status
+                .code(),
+            Some(2),
+            "{field}"
+        );
+        assert_eq!(fs::read(&separate)?, b"cold");
+    }
+    assert_eq!(
+        session
+            .invoke_with("cross-format", &occupancy)?
+            .status
+            .code(),
+        Some(2)
+    );
+    assert_eq!(
+        session
+            .invoke_with("cold", &["--max-orbits", "3"])?
+            .status
+            .code(),
+        Some(2)
+    );
+    assert_eq!(
+        session
+            .invoke_with("cold", &["--strategy", "occupancy", "--max-orbits", "0"])?
+            .status
+            .code(),
+        Some(2)
+    );
     assert_eq!(fs::read(&predicate)?, b"cold");
     let proof = session.invoke("prove")?;
     assert!(proof.status.success());

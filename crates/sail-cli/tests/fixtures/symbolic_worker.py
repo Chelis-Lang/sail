@@ -8,18 +8,29 @@ import sys
 mode = os.environ["FIXTURE_MODE"]
 args = sys.argv[1:]
 assert args[0] == "check"
-assert args[args.index("--strategy") + 1] == "symbolic"
+strategy = args[args.index("--strategy") + 1]
+assert strategy == os.environ["FIXTURE_STRATEGY"]
+if strategy == "occupancy":
+    assert args[args.index("--max-orbits") + 1] == "34500000"
 assert args[args.index("--output") + 1] == "json"
 assert 0 < int(args[args.index("--time-limit") + 1].removesuffix("ms")) <= 10000
-row = dict(format="dive-symbolic-report-v1", module=args[1], config=args[args.index("--config") + 1])
+row = dict(format=f"dive-{strategy}-report-v1", module=args[1], config=args[args.index("--config") + 1])
 code = 0
 if "--verify-predicate" in args:
+    if strategy == "occupancy":
+        row["predicate_format"] = "dive-occupancy-support-v1"
     assert Path(args[args.index("--verify-predicate") + 1]).read_bytes() == b"cold"
     if mode == "hung":
         import time
         time.sleep(30)
-    if mode in ("prove", "counts", "null", "missing", "unbound"):
+    if mode in ("prove", "counts", "null", "missing", "unbound", "cross-format") or mode.startswith("extra-"):
         row.update(proof="inductive-safety", failed_obligation=None)
+        if mode.startswith("extra-"):
+            key = mode.removeprefix("extra-")
+            row[key] = {"distinct_decimal": "37", "generated_decimal": None, "occupancies": 37,
+                        "trace_file": None, "predicate_format": "out-of-scope"}[key]
+        if mode == "cross-format":
+            row["format"] = "dive-symbolic-report-v1"
         if mode == "counts":
             row["distinct"] = 9
         if mode == "null":
@@ -35,6 +46,9 @@ else:
     Path(args[args.index("--write-predicate") + 1]).write_text(mode)
     if mode in ("cold", "refresh", "contradictory"):
         row.update(verdict="success", distinct=123456789123456789123456789, generated=123456789123456789123456790, depth=4)
+        if strategy == "occupancy":
+            row.update(predicate_format="dive-occupancy-support-v1", occupancies=3,
+                       distinct_decimal=str(row["distinct"]), generated_decimal=str(row["generated"]))
         if mode == "contradictory":
             row.update(failed_obligation="Empty", trace_validated=True, ending={"kind": "deadlock"})
     elif mode == "stop":

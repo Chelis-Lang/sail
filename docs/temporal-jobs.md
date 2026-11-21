@@ -284,6 +284,17 @@ each other's candidates. Every receiver checks whichever one it reads.
 Keep the session directory outside the source tree or ignore it in version
 control. Use a directory whose contents are managed by trusted local code.
 
+Select `--strategy occupancy` for an installed Dive that admits anonymous status tables. Supply an orbit budget when a fresh exact search could exceed the default. The strategies keep separate candidate files in the same session. Existing invocations select the BDD strategy.
+
+```sh
+sail runtime symbolic-check --dive "$DIVE" --session .sail/commit --strategy occupancy \
+  --module Edits.tla --config original.cfg --type-invariant TCTypeOK --max-orbits 34500000 --time-limit 415
+sail runtime symbolic-check --dive "$DIVE" --session .sail/commit --strategy occupancy \
+  --module Edits.tla --config stronger.cfg --type-invariant TCTypeOK --max-orbits 34500000 --time-limit 415
+```
+
+A complete search writes `sail-occupancy-predicate-v1.json`. Dive rebinds each revised source and verifies initial inclusion, preservation for every feasible population represented by the predicate, and every current safety obligation. A proof includes no counts or depth. When verification is inconclusive Sail can use its remaining deadline for a fresh labeled search. A concrete refutation requires native independent replay. The previous file survives unsuccessful searches. The new option uses the existing trusted local process and staging protocol.
+
 The command emits Dive's JSON report with its original integer precision.
 Exit 0 means a proof or completed safe search, 1 a validated counterexample,
 2 unsupported input or a Sail usage/protocol error, 3 a checker error, and

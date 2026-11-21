@@ -228,6 +228,12 @@ session and the cross-process property removal. The script checks the current
 obligation and worker identities, counts and fresh verdict before writing
 each timing.
 
+## Portable population predicates
+
+At 8,192 managers, an installed `sail runtime symbolic-check --strategy occupancy` cold search of Lamport's TCommit took 220.30 s and stored a 125-byte candidate. The same file produced at three managers verified a stronger property on the 8,192-manager source in 0.15 s. A fresh exact check took 216.63 s. Direct support induction in Dive took 0.14 s. Both proofs carried no exploration counts. Deleting abort transitions still admitted the retained predicate. The fresh graph changed to 16,385 populations and two different labeled counts.
+
+When a new transition made the original consistency property false, the candidate failed next-step closure. Sail reran from Init and returned a validated depth-three violation in 23.07 s. A fresh search returned the same word in 22.92 s. The candidate survived both the transition violation and a second false property. The default BDD strategy retained a separate file in the same directory. [Source inputs, exact counts, control results and reproduction](https://github.com/Chelis-Lang/dive/blob/main/conformance/reports/perf/2026-11-21-occupancy-edits.json).
+
 ## Portable symbolic predicates
 
 A prior safety check can prove a new invariant that the checker cannot prove
