@@ -173,7 +173,7 @@ current caller. Only the establishing run has exploration counts. A later
 ordinary execution at the current identity still runs fresh. Changed imports,
 shadowed modules, extracted monoliths and changed assumptions fall back to
 ordinary checking. An exact receipt for the current request takes precedence.
-[Public edit histories and measurements](validation/temporal-reuse-s7.md#installed-public-edit-histories).
+[Public edit histories](validation/temporal-reuse-s7.md#installed-public-edit-histories) · [SlateDB WAL counts and receipt measurements](validation/temporal-reuse-s7.md#slatedb-wal-maintenance-checks).
 
 ## Recheck a previous invariant failure after a configuration comment edit
 

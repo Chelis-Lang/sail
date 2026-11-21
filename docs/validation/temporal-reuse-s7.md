@@ -4,7 +4,7 @@ This experiment measures how much work Sail can reuse across native TLA+ checks.
 
 For substantive edits, see [installed edit sessions and invariant removal](#native-checks-after-substantive-edits) and [retaining the first temporal property](#retaining-the-first-temporal-property). The [portable symbolic predicate measurements](#portable-symbolic-predicates) cover cross-process proofs of new safety invariants on larger KVS programs. The original receipt comparison below measures identical-input reuse.
 
-The [installed public edit histories](#installed-public-edit-histories) follow chronological CCF and Disruptor changes through independent CLI processes.
+The [installed public edit histories](#installed-public-edit-histories) follow chronological CCF and Disruptor changes through independent CLI processes. The [SlateDB WAL campaign](#slatedb-wal-maintenance-checks) measures cold, edit, repeat, undo and fresh controls on a published storage protocol.
 
 ## Results
 
@@ -435,4 +435,30 @@ a valid witness and an invalid witness. The assumption rejection exits 1.
 ```sh
 python3 scripts/benchmark-public-temporal-history.py --sail "$SAIL" \
   --input-cache /tmp/sail-history-inputs --two-writer-control --wall-ms 10000
+```
+
+## SlateDB WAL maintenance checks
+
+Sail checks the released SlateDB WAL module with all six configured invariants, the author's permutation symmetry and deadlock checking disabled. The original three-writer, one-restart CFG reached a deliberate 100-state limit under both the bundled library and the pinned project-provided community sources (258 generated, depth 8, 38 pending). Its earlier worker refused the imports with `SAIL4202`. The published full ordinary Core and TLC completions for the author's CFG are separate measurements. [Upstream module and CFG](https://github.com/Vanlightly/s3-wal-collection/tree/35fdc537af4d226f43b4574cded1764375f264ac/slatedb) · [Full Core/TLC comparison](https://github.com/Chelis-Lang/dive/blob/main/conformance/reports/perf/2026-11-21-slatedb-full-comparison.json).
+
+The two completed Sail controls retain the two data values, garbage collector and original TLA+ bytes. Each uses two writers. The edit changes the operative CFG assignment `EnableFix = TRUE` to `FALSE`. Both switch positions exhaust these smaller domains with six invariants holding and an empty queue. The upstream model notes require more writers to exhibit the known regression.
+
+| Restarts | EnableFix | Distinct symmetry representatives | Generated | Depth |
+|---:|---|---:|---:|---:|
+| 0 | TRUE | 74,637 | 198,123 | 69 |
+| 0 | FALSE | 52,260 | 138,979 | 63 |
+| 1 | TRUE | 3,761,377 | 12,508,420 | 93 |
+| 1 | FALSE | 1,601,824 | 5,211,591 | 84 |
+
+The installed `sail runtime execute --cache` launches a fresh worker for the first version and the substantive switch. Repeat and undo retrieve the matching complete ordinary response from the existing cache. Fresh controls for both versions use separate empty caches and match the counts, depth, configured checks and verdicts. The script checks the complete response digest on each receipt hit. A separate `sail runtime edit-session` batch measured the four versions through its ordinary fallback because the pinned graph-capture APIs decline this model.
+
+Without restarts, the foreground cold/edit runs took 1.039/0.749 s and repeat/undo took 5.20/4.83 ms. With one restart they took 65.13/27.42 s and 5.20/6.83 ms. The separate one-restart fresh checks took 64.83/27.74 s. Ordinary peak RSS was 1,548,388 KiB for the fixed one-restart search and 594,892 KiB for its edit. The four-check ordinary-fallback sessions took 3.59 and 182.69 s. These single samples came from a development c7i.4xlarge with overlapping build and validation work. The JSON includes the earlier observations as well.
+
+Use the public CLI and staged worker from the same build, the linked upstream `slatedb` directory, and the `modules` directory at the pinned CommunityModules revision. The script creates fresh temporary caches per invocation. It validates both source-byte identities and complete ordinary results, and prints a compact JSON record. [Pinned community sources](https://github.com/tlaplus/CommunityModules/tree/78b98ae9939d2fe7a6615e9a4b21dd6c23ef8ff3/modules) · [All input and result hashes, worker identity, times and RSS](data/2026-11-21-slatedb-edits.json).
+
+```sh
+for name in Medium TwoRetry; do
+  python3 scripts/benchmark-slatedb-edits.py --sail "$PREFIX/bin/sail" \
+    --source "$WAL/slatedb" --modules "$COMMUNITY/modules" --case "$name"
+done
 ```
