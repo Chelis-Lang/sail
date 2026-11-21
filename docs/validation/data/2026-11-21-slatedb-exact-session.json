@@ -1,0 +1,1417 @@
+{
+  "schema": "sail-slatedb-batch-replay-v1",
+  "date": "2026-11-21",
+  "source_inputs": "2026-11-21-slatedb-edits.json",
+  "measurement": {
+    "host": "EC2 c7i.2xlarge, Xeon Platinum 8488C, us-east-1c, Linux 7.0.0-1018-aws, Ubuntu 24.04, 8 vCPUs/15 GiB available with no swap",
+    "method": "All foreground runs were serial on logical CPU 2. The host built no code or other jobs. Each invocation used a new application cache. All workers used exact storage, one checking worker, the six original invariants and the original configured symmetry. OS page cache and CPU frequency uncontrolled.",
+    "sequence": "Within each case cold-fixed, first edit, repeat edit, undo, two independent fresh controls, then one batch [fixed, edited, edited, fixed]. The configuration changes only the two-writer domain and restart bound. Round order baseline/candidate, candidate/baseline, baseline/candidate.",
+    "basis": "Zero-based index of the conclusive earlier native response. Fresh entries supply the entire result, including generated/distinct/depth and validations. Conclusive equality, count/queue identity and complete receipt replay digests were checked before summarizing."
+  },
+  "artifacts": {
+    "before": "4cae09af256fc9315120117bafa6fbcf5e99ce4d1a449d77d53bf228c15a8df0",
+    "after": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063"
+  },
+  "cases": {
+    "Medium": {
+      "cfg_sha256": [
+        "0b59ff90ac10ae3cfe3177b2e1d343502805545ac5291970e11ee8dba27d4b10",
+        "383df324c1cc9b357d5fe60588b25a513f0e7982745f35f80ff333cff6959d7b"
+      ],
+      "native_request_sha256": [
+        "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b",
+        "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743"
+      ],
+      "counts": [
+        {
+          "initial_generated": 1,
+          "generated": 198123,
+          "distinct": 74637,
+          "depth": 69,
+          "left_on_queue": 0
+        },
+        {
+          "initial_generated": 1,
+          "generated": 138979,
+          "distinct": 52260,
+          "depth": 63,
+          "left_on_queue": 0
+        }
+      ]
+    },
+    "TwoRetry": {
+      "cfg_sha256": [
+        "91f6681396fc569e13cf614c2cfca4007761b69911a8e0782502cfaad856986f",
+        "7cb8c73eb6e62d88f3fceab41e972fea41806a13c79228d0839e2c8cbc9b4ea2"
+      ],
+      "native_request_sha256": [
+        "4cd7543a06ecdf1ac462d81030e1f2d01a74ab15d641c3cbb5f68c109bf4f28a",
+        "df1cbb9c134c654a617f972ec6373ff8c0368f803503070830811d4d77b64e3e"
+      ],
+      "counts": [
+        {
+          "initial_generated": 1,
+          "generated": 12508420,
+          "distinct": 3761377,
+          "depth": 93,
+          "left_on_queue": 0
+        },
+        {
+          "initial_generated": 1,
+          "generated": 5211591,
+          "distinct": 1601824,
+          "depth": 84,
+          "left_on_queue": 0
+        }
+      ]
+    }
+  },
+  "samples": [
+    {
+      "round": 1,
+      "case": "Medium",
+      "version": "before",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 1246146207,
+          "peak_rss_kib": 94380,
+          "cache_hit": false,
+          "response_sha256": "e1f4596d076e789a8fe686da828294aa1379f7de73f9b0394ccbe8d3a057df42"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 782283357,
+          "peak_rss_kib": 63708,
+          "cache_hit": false,
+          "response_sha256": "482bcab53a76743727f85f50e0c14368fb7f5c944c4f54a4066029ac75d5cb0c"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 4845532,
+          "peak_rss_kib": 13316,
+          "cache_hit": true,
+          "response_sha256": "482bcab53a76743727f85f50e0c14368fb7f5c944c4f54a4066029ac75d5cb0c"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4672038,
+          "peak_rss_kib": 13108,
+          "cache_hit": true,
+          "response_sha256": "e1f4596d076e789a8fe686da828294aa1379f7de73f9b0394ccbe8d3a057df42"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 1033932411,
+          "peak_rss_kib": 69492,
+          "cache_hit": false,
+          "response_sha256": "39c8665743759fa65eac148135e453e2648edc7859d6d060c65dcef984fd5121"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 742992693,
+          "peak_rss_kib": 63900,
+          "cache_hit": false,
+          "response_sha256": "cee1eda7fc2c5a10342ad3ec07b22544917af7f9f49f27fbdc8b2f4f002febe6"
+        }
+      ],
+      "session": {
+        "wall_ns": 3557641144,
+        "peak_rss_kib": 73952,
+        "entries": [
+          {
+            "elapsed_us": 1029909,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 741094,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 742529,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 1030548,
+            "route": "fresh",
+            "basis_entry": null
+          }
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "case": "Medium",
+      "version": "before",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 1030546191,
+          "peak_rss_kib": 69716,
+          "cache_hit": false,
+          "response_sha256": "586ac8d09325e1e599f81b88582e5bb84349715effc5a77cb173b0e64d2a0e5e"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 743029929,
+          "peak_rss_kib": 63720,
+          "cache_hit": false,
+          "response_sha256": "a57bc1434a3e35aba6b03439da4fd0fc585fdf448c91bd23ed28c8adeb25c6da"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 5025808,
+          "peak_rss_kib": 13472,
+          "cache_hit": true,
+          "response_sha256": "a57bc1434a3e35aba6b03439da4fd0fc585fdf448c91bd23ed28c8adeb25c6da"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4719581,
+          "peak_rss_kib": 13308,
+          "cache_hit": true,
+          "response_sha256": "586ac8d09325e1e599f81b88582e5bb84349715effc5a77cb173b0e64d2a0e5e"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 1028913661,
+          "peak_rss_kib": 69884,
+          "cache_hit": false,
+          "response_sha256": "df3648a1cf9e2053ca010375d5eda0fd636f80cb67750a16ab2df44987327622"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 741499275,
+          "peak_rss_kib": 63432,
+          "cache_hit": false,
+          "response_sha256": "694fd8badc3d59efc7dcd8f8ce496593edf5c2d8da8ce8a5bf7c0f000951b9c5"
+        }
+      ],
+      "session": {
+        "wall_ns": 3562718719,
+        "peak_rss_kib": 73956,
+        "entries": [
+          {
+            "elapsed_us": 1028229,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 742347,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 742961,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 1034080,
+            "route": "fresh",
+            "basis_entry": null
+          }
+        ]
+      }
+    },
+    {
+      "round": 3,
+      "case": "Medium",
+      "version": "before",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 1030975250,
+          "peak_rss_kib": 69468,
+          "cache_hit": false,
+          "response_sha256": "4a7459410bdabc9aeccba23d4d3f9dbbdb4a843133e72eb9132a5e0e61e7cffa"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 743425990,
+          "peak_rss_kib": 63672,
+          "cache_hit": false,
+          "response_sha256": "342479f7a0ba5fe86c21f2df8f1526ac66addbfe423991e3103916e64ebe80f9"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 4996095,
+          "peak_rss_kib": 13716,
+          "cache_hit": true,
+          "response_sha256": "342479f7a0ba5fe86c21f2df8f1526ac66addbfe423991e3103916e64ebe80f9"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4662362,
+          "peak_rss_kib": 13192,
+          "cache_hit": true,
+          "response_sha256": "4a7459410bdabc9aeccba23d4d3f9dbbdb4a843133e72eb9132a5e0e61e7cffa"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 1074035744,
+          "peak_rss_kib": 67540,
+          "cache_hit": false,
+          "response_sha256": "ec9c20e1d2bb50a537749e3d654ea1823e4bd2d4068d09aa1eb2d45e660bdfe1"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 790758157,
+          "peak_rss_kib": 63424,
+          "cache_hit": false,
+          "response_sha256": "9bd17e21437f56d77623de479b4ac4e68dffc148cc1bda40f7b25b2325803567"
+        }
+      ],
+      "session": {
+        "wall_ns": 3568508077,
+        "peak_rss_kib": 73852,
+        "entries": [
+          {
+            "elapsed_us": 1032889,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 743286,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 745330,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 1033186,
+            "route": "fresh",
+            "basis_entry": null
+          }
+        ]
+      }
+    },
+    {
+      "round": 1,
+      "case": "Medium",
+      "version": "after",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 1247433332,
+          "peak_rss_kib": 94500,
+          "cache_hit": false,
+          "response_sha256": "35021a8a15dfc527cb9d5f7304271d376f36d69d04d5aae8b94a66f70601bf56"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 743411519,
+          "peak_rss_kib": 63648,
+          "cache_hit": false,
+          "response_sha256": "c67810576d8feb86705800898c1685afb72d3ca6680375bd9d1eff1ebe3e4b6b"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 5002963,
+          "peak_rss_kib": 13044,
+          "cache_hit": true,
+          "response_sha256": "c67810576d8feb86705800898c1685afb72d3ca6680375bd9d1eff1ebe3e4b6b"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4714044,
+          "peak_rss_kib": 12924,
+          "cache_hit": true,
+          "response_sha256": "35021a8a15dfc527cb9d5f7304271d376f36d69d04d5aae8b94a66f70601bf56"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 1034905445,
+          "peak_rss_kib": 69328,
+          "cache_hit": false,
+          "response_sha256": "c34174030304e7aec49d4e5f6ec665dd76d38451c51e8699507a2aaca9ff6658"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 749380424,
+          "peak_rss_kib": 63456,
+          "cache_hit": false,
+          "response_sha256": "26d9b8e9659e57b2b5635ae4a5399689ef9183439a5647e18a62676fa3b8ed1b"
+        }
+      ],
+      "session": {
+        "wall_ns": 1788486314,
+        "peak_rss_kib": 73848,
+        "entries": [
+          {
+            "elapsed_us": 1037536,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 739679,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 7,
+            "route": "exact-request",
+            "basis_entry": 1
+          },
+          {
+            "elapsed_us": 10,
+            "route": "exact-request",
+            "basis_entry": 0
+          }
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "case": "Medium",
+      "version": "after",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 1031243542,
+          "peak_rss_kib": 69476,
+          "cache_hit": false,
+          "response_sha256": "f2d603aab64a3e22b52ea8076142c786c81e8110694d60b23f91dabfadb285c4"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 743553491,
+          "peak_rss_kib": 63668,
+          "cache_hit": false,
+          "response_sha256": "57a5ad34248956d2a989ceb3a6a6989156798a0e73030b23c3eea3a1b10bf636"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 4913841,
+          "peak_rss_kib": 13176,
+          "cache_hit": true,
+          "response_sha256": "57a5ad34248956d2a989ceb3a6a6989156798a0e73030b23c3eea3a1b10bf636"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4638402,
+          "peak_rss_kib": 12816,
+          "cache_hit": true,
+          "response_sha256": "f2d603aab64a3e22b52ea8076142c786c81e8110694d60b23f91dabfadb285c4"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 1028370279,
+          "peak_rss_kib": 69596,
+          "cache_hit": false,
+          "response_sha256": "d872055a29836b6936be8eb41fece2946a4a627e827e6528a9f7db70acdc5517"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 743255968,
+          "peak_rss_kib": 63520,
+          "cache_hit": false,
+          "response_sha256": "14f6b5ef7c99f0129c4f54af5dcb3a47e00d59714410d075856571d47c06c541"
+        }
+      ],
+      "session": {
+        "wall_ns": 1883344666,
+        "peak_rss_kib": 73512,
+        "entries": [
+          {
+            "elapsed_us": 1089879,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 783080,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 8,
+            "route": "exact-request",
+            "basis_entry": 1
+          },
+          {
+            "elapsed_us": 10,
+            "route": "exact-request",
+            "basis_entry": 0
+          }
+        ]
+      }
+    },
+    {
+      "round": 3,
+      "case": "Medium",
+      "version": "after",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 1031109562,
+          "peak_rss_kib": 69652,
+          "cache_hit": false,
+          "response_sha256": "6d01385283865849d63f41708f0d913f13164c9c086e350d1ace5d5a76d77b4c"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 742278502,
+          "peak_rss_kib": 63772,
+          "cache_hit": false,
+          "response_sha256": "6cac64be32b6661d84b4935fc161b034c433773efe3cb3260bf0c6bceb91d136"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 4961561,
+          "peak_rss_kib": 12484,
+          "cache_hit": true,
+          "response_sha256": "6cac64be32b6661d84b4935fc161b034c433773efe3cb3260bf0c6bceb91d136"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4751353,
+          "peak_rss_kib": 12788,
+          "cache_hit": true,
+          "response_sha256": "6d01385283865849d63f41708f0d913f13164c9c086e350d1ace5d5a76d77b4c"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 1028383486,
+          "peak_rss_kib": 69536,
+          "cache_hit": false,
+          "response_sha256": "0769461c79bebed7c27a3f2b5f2d9b561bd8f5a80540a0a3503edf5b269d329d"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 743562019,
+          "peak_rss_kib": 63584,
+          "cache_hit": false,
+          "response_sha256": "65434e5c7b736c80f461d929b7a77e81337a4f2f39a8d91231c66c9496617312"
+        }
+      ],
+      "session": {
+        "wall_ns": 1774167373,
+        "peak_rss_kib": 73996,
+        "entries": [
+          {
+            "elapsed_us": 1026576,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 737424,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 7,
+            "route": "exact-request",
+            "basis_entry": 1
+          },
+          {
+            "elapsed_us": 10,
+            "route": "exact-request",
+            "basis_entry": 0
+          }
+        ]
+      }
+    },
+    {
+      "round": 1,
+      "case": "TwoRetry",
+      "version": "before",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 58787681006,
+          "peak_rss_kib": 1548468,
+          "cache_hit": false,
+          "response_sha256": "edbf6f587634f39c7ed198bfb9165bc50118d708ed03d2b4283c902f3d52e884"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 25630220500,
+          "peak_rss_kib": 595260,
+          "cache_hit": false,
+          "response_sha256": "39b196ee6ebf9c39bfea04e2debc4d5fb6cfe11e30e60790cd262ec846a57508"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 5027236,
+          "peak_rss_kib": 13024,
+          "cache_hit": true,
+          "response_sha256": "39b196ee6ebf9c39bfea04e2debc4d5fb6cfe11e30e60790cd262ec846a57508"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4704789,
+          "peak_rss_kib": 13296,
+          "cache_hit": true,
+          "response_sha256": "edbf6f587634f39c7ed198bfb9165bc50118d708ed03d2b4283c902f3d52e884"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 59595590243,
+          "peak_rss_kib": 1548416,
+          "cache_hit": false,
+          "response_sha256": "d31e55255805a1c7a872ee8c4730959a9eaccc6d3ed8812746eaee644261d8f1"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 25791362870,
+          "peak_rss_kib": 594956,
+          "cache_hit": false,
+          "response_sha256": "e5a9ef0f76e24bbb7e511a02b47059674639f31e78c6c9aa089258b6c605bcfa"
+        }
+      ],
+      "session": {
+        "wall_ns": 177280050958,
+        "peak_rss_kib": 1558880,
+        "entries": [
+          {
+            "elapsed_us": 60439942,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 26884285,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 26844804,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 63089559,
+            "route": "fresh",
+            "basis_entry": null
+          }
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "case": "TwoRetry",
+      "version": "before",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 61338113616,
+          "peak_rss_kib": 1548624,
+          "cache_hit": false,
+          "response_sha256": "3d34d0b098a410b0a839050067e6c2d7ec6cc70dd86598ccb1d43509ba826cd8"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 26369856071,
+          "peak_rss_kib": 595380,
+          "cache_hit": false,
+          "response_sha256": "31130e065efa4d25651ca6755fe225330f86090180ab6dff25af731b8fd93184"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 5127761,
+          "peak_rss_kib": 13084,
+          "cache_hit": true,
+          "response_sha256": "31130e065efa4d25651ca6755fe225330f86090180ab6dff25af731b8fd93184"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4676159,
+          "peak_rss_kib": 13396,
+          "cache_hit": true,
+          "response_sha256": "3d34d0b098a410b0a839050067e6c2d7ec6cc70dd86598ccb1d43509ba826cd8"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 58767857509,
+          "peak_rss_kib": 1548320,
+          "cache_hit": false,
+          "response_sha256": "dea756d07786f03aefb9fe309d3ae6bf5ee9bb9e372f6d4b9d3dc7d20259f4d0"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 26518506183,
+          "peak_rss_kib": 595196,
+          "cache_hit": false,
+          "response_sha256": "0697c0fd796aaa9f9fa871141f0980b8f9c2f91ee182900ddec2755d2c5ce1de"
+        }
+      ],
+      "session": {
+        "wall_ns": 174676518301,
+        "peak_rss_kib": 1558772,
+        "entries": [
+          {
+            "elapsed_us": 58628412,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 26409345,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 26797435,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 62820271,
+            "route": "fresh",
+            "basis_entry": null
+          }
+        ]
+      }
+    },
+    {
+      "round": 3,
+      "case": "TwoRetry",
+      "version": "before",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 58768690373,
+          "peak_rss_kib": 1548228,
+          "cache_hit": false,
+          "response_sha256": "6511927ae039de7757d89cd9d7d017570c295f056279a424998232f74b18510f"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 25641477716,
+          "peak_rss_kib": 595264,
+          "cache_hit": false,
+          "response_sha256": "771ed112009e315a880644a3795014815cca46382e9a91ba816b6ad289443112"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 5000103,
+          "peak_rss_kib": 12996,
+          "cache_hit": true,
+          "response_sha256": "771ed112009e315a880644a3795014815cca46382e9a91ba816b6ad289443112"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4752232,
+          "peak_rss_kib": 13004,
+          "cache_hit": true,
+          "response_sha256": "6511927ae039de7757d89cd9d7d017570c295f056279a424998232f74b18510f"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 61325466970,
+          "peak_rss_kib": 1549772,
+          "cache_hit": false,
+          "response_sha256": "97adc170f32b9f3f7aff5cc130358dc293f34f7e5c95e20d04385dd502ff3b80"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 25010410053,
+          "peak_rss_kib": 595300,
+          "cache_hit": false,
+          "response_sha256": "ae2ea0fbc286e5c3f0c067d608ac0e796fd6e6c35adc444e312c353793547f26"
+        }
+      ],
+      "session": {
+        "wall_ns": 177800751633,
+        "peak_rss_kib": 1558764,
+        "entries": [
+          {
+            "elapsed_us": 61109373,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 26860496,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 26835627,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 62974909,
+            "route": "fresh",
+            "basis_entry": null
+          }
+        ]
+      }
+    },
+    {
+      "round": 1,
+      "case": "TwoRetry",
+      "version": "after",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 59325498714,
+          "peak_rss_kib": 1548368,
+          "cache_hit": false,
+          "response_sha256": "4fb8eae4792781e9c6b3f2a5c2bcae19e2b86cabd83440d590f21c18f186d64d"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 25507376958,
+          "peak_rss_kib": 594948,
+          "cache_hit": false,
+          "response_sha256": "25267e6c24b080f6dcf8460f5215e23c1835dd6f801819655b60cfcf4eb3ae9a"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 5048597,
+          "peak_rss_kib": 12996,
+          "cache_hit": true,
+          "response_sha256": "25267e6c24b080f6dcf8460f5215e23c1835dd6f801819655b60cfcf4eb3ae9a"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4711557,
+          "peak_rss_kib": 12996,
+          "cache_hit": true,
+          "response_sha256": "4fb8eae4792781e9c6b3f2a5c2bcae19e2b86cabd83440d590f21c18f186d64d"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 60794554493,
+          "peak_rss_kib": 1548528,
+          "cache_hit": false,
+          "response_sha256": "301f791dc016f664264c87584bbcc346180a94a6ab1e4b84a0ceb1f87481f8fa"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 25058720150,
+          "peak_rss_kib": 594892,
+          "cache_hit": false,
+          "response_sha256": "50d0e515853e97600cf95ba25e9f0a1406a9da4474275690b97ddf3b6840e21f"
+        }
+      ],
+      "session": {
+        "wall_ns": 87583257431,
+        "peak_rss_kib": 1550688,
+        "entries": [
+          {
+            "elapsed_us": 60717625,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 26849649,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 7,
+            "route": "exact-request",
+            "basis_entry": 1
+          },
+          {
+            "elapsed_us": 10,
+            "route": "exact-request",
+            "basis_entry": 0
+          }
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "case": "TwoRetry",
+      "version": "after",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 59805409790,
+          "peak_rss_kib": 1548248,
+          "cache_hit": false,
+          "response_sha256": "374ba3c46e6365c0e5d3517252c6efefc2693e12984fbed18fb37d0ba0dbb94d"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 24998598847,
+          "peak_rss_kib": 595160,
+          "cache_hit": false,
+          "response_sha256": "f899139a7a6404e82fe2ed20a44902fa99cd62deb30b97f6aa6ef8a813215417"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 5047858,
+          "peak_rss_kib": 12972,
+          "cache_hit": true,
+          "response_sha256": "f899139a7a6404e82fe2ed20a44902fa99cd62deb30b97f6aa6ef8a813215417"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4787696,
+          "peak_rss_kib": 12568,
+          "cache_hit": true,
+          "response_sha256": "374ba3c46e6365c0e5d3517252c6efefc2693e12984fbed18fb37d0ba0dbb94d"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 59459452036,
+          "peak_rss_kib": 1548620,
+          "cache_hit": false,
+          "response_sha256": "53d99d7a9a5ef685d4766dad08dfe05641705bc5e282482f61bc8f21cb9cf718"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 25338087222,
+          "peak_rss_kib": 595212,
+          "cache_hit": false,
+          "response_sha256": "35f499b43503f729cb2d4da941325502ce0ed38d951e7ab00e49afe3eaa905ef"
+        }
+      ],
+      "session": {
+        "wall_ns": 85083565348,
+        "peak_rss_kib": 1550704,
+        "entries": [
+          {
+            "elapsed_us": 59520554,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 25549167,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 8,
+            "route": "exact-request",
+            "basis_entry": 1
+          },
+          {
+            "elapsed_us": 12,
+            "route": "exact-request",
+            "basis_entry": 0
+          }
+        ]
+      }
+    },
+    {
+      "round": 3,
+      "case": "TwoRetry",
+      "version": "after",
+      "ordinary": [
+        {
+          "tag": "cold",
+          "wall_ns": 62926544842,
+          "peak_rss_kib": 1548140,
+          "cache_hit": false,
+          "response_sha256": "2a82cc8ead01ead779bc52230e70791fbbcf9ef5319be75744ec2a040fcd6285"
+        },
+        {
+          "tag": "edit",
+          "wall_ns": 25110662705,
+          "peak_rss_kib": 595224,
+          "cache_hit": false,
+          "response_sha256": "ecba2075035a256a0d3e9f9e637d1badb6071193aa9f5f52feb68a4ec2cffa67"
+        },
+        {
+          "tag": "repeat",
+          "wall_ns": 5109777,
+          "peak_rss_kib": 13512,
+          "cache_hit": true,
+          "response_sha256": "ecba2075035a256a0d3e9f9e637d1badb6071193aa9f5f52feb68a4ec2cffa67"
+        },
+        {
+          "tag": "undo",
+          "wall_ns": 4719115,
+          "peak_rss_kib": 13052,
+          "cache_hit": true,
+          "response_sha256": "2a82cc8ead01ead779bc52230e70791fbbcf9ef5319be75744ec2a040fcd6285"
+        },
+        {
+          "tag": "fresh-fixed",
+          "wall_ns": 61971444153,
+          "peak_rss_kib": 1548320,
+          "cache_hit": false,
+          "response_sha256": "39f7806e1b7e8fc34cdf07ff3b14d9c1eeab31661837ea805e40b648b38eb85e"
+        },
+        {
+          "tag": "fresh-edited",
+          "wall_ns": 25065715962,
+          "peak_rss_kib": 595176,
+          "cache_hit": false,
+          "response_sha256": "964283819f4ffa2200f2862a9783774ca96748c70f5daabb019cd006535b1432"
+        }
+      ],
+      "session": {
+        "wall_ns": 85344856234,
+        "peak_rss_kib": 1550100,
+        "entries": [
+          {
+            "elapsed_us": 59358496,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 25971778,
+            "route": "fresh",
+            "basis_entry": null
+          },
+          {
+            "elapsed_us": 7,
+            "route": "exact-request",
+            "basis_entry": 1
+          },
+          {
+            "elapsed_us": 11,
+            "route": "exact-request",
+            "basis_entry": 0
+          }
+        ]
+      }
+    }
+  ],
+  "separate_controls": {
+    "wal_seventh_invariant": {
+      "description": "Append only INVARIANT Init to the existing Medium CFG, preserving all six authored safety invariants and the entire original root module. A real successor violates Init. Independent public validate call and duplicate batch on each installed worker.",
+      "admission_main": {
+        "case": "Medium",
+        "worker_sha256": "33d8f11a23350b76d5b61713a6e974affdd20b9591ae73055ae2d218e1e4abb7",
+        "request_sha256": "5f9f072da0f2d3f09a201f8b7e5e945bb67ad15a4168620cb35d7b11e12361ae",
+        "invariant": "Init",
+        "verdict": "refuted",
+        "independent_validation": "valid",
+        "word_sha256": "e904869d6bc522f7003ef9e3732fdc38700a9a85ef9973db218c259476398745",
+        "length": 2,
+        "counts": {
+          "depth": 2,
+          "distinct": 2,
+          "generated": 2,
+          "initial_generated": 1,
+          "left_on_queue": 0,
+          "reported_by_tlc": true
+        },
+        "session": {
+          "wall_ns": 133768721,
+          "peak_rss_kib": 45764,
+          "routes": [
+            "fresh",
+            "fresh"
+          ],
+          "entry_us": [
+            62366,
+            60640
+          ]
+        }
+      },
+      "exact_candidate": {
+        "case": "Medium",
+        "worker_sha256": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063",
+        "request_sha256": "5f9f072da0f2d3f09a201f8b7e5e945bb67ad15a4168620cb35d7b11e12361ae",
+        "invariant": "Init",
+        "verdict": "refuted",
+        "independent_validation": "valid",
+        "word_sha256": "e904869d6bc522f7003ef9e3732fdc38700a9a85ef9973db218c259476398745",
+        "length": 2,
+        "counts": {
+          "depth": 2,
+          "distinct": 2,
+          "generated": 2,
+          "initial_generated": 1,
+          "left_on_queue": 0,
+          "reported_by_tlc": true
+        },
+        "session": {
+          "wall_ns": 76370419,
+          "peak_rss_kib": 37304,
+          "routes": [
+            "fresh",
+            "exact-request"
+          ],
+          "entry_us": [
+            63638,
+            5
+          ]
+        }
+      }
+    },
+    "development_one_sample": {
+      "platform": "c7i.4xlarge development host, single worker; embedded and hosted receipts also measured in the earlier record. Kept separate from the isolated serial timing trials.",
+      "exact_candidate_medium": {
+        "case": "Medium",
+        "module_sha256": "37f80bb106ca1e5c9981d0a91f51de4fdf04bfcbb9b6fcadfb8e7b16b463821c",
+        "author_cfg_sha256": "03d666d0af4def6b6e9b7ded231f7dc8d5f114ddb03ec46f45254dce70233169",
+        "cfg_sha256": [
+          "0b59ff90ac10ae3cfe3177b2e1d343502805545ac5291970e11ee8dba27d4b10",
+          "383df324c1cc9b357d5fe60588b25a513f0e7982745f35f80ff333cff6959d7b"
+        ],
+        "library_sha256": {
+          "FiniteSetsExt.tla": "dc5d6944395dd18e2f8acf696296808a9460cbbf1b9888f88c5ac4c83a5237f9",
+          "Folds.tla": "aa59063fd600bb640b2ae24dc85ef770277ef5bf7955092b76b8b471790086da",
+          "Functions.tla": "b54ff63b7c76c327525c17c188d5f9f5e53d92f3fd701f5e2ba54f0f54391063"
+        },
+        "wall_limit_ms": 300000,
+        "max_states": 5000000,
+        "max_depth": 1000,
+        "invariants": [
+          "TypeOK",
+          "UniqueEpochs",
+          "ValidGarbageCollectors",
+          "ValidWriters",
+          "ConsistentMachineData",
+          "ManifestRepresentsCommittedLog"
+        ],
+        "backend_source": "61c654f608093abbe8df388d2d2aa3b112bfb853",
+        "worker_sha256": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063",
+        "ordinary": [
+          {
+            "wall_ns": 1286638224,
+            "peak_rss_kib": 92108,
+            "tag": "cold",
+            "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b",
+            "response_sha256": "979abea7113de7a0aa99a67457cc74384e1e637777dda2778d57b0fa152a6423",
+            "cache_hit": false,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 198123,
+              "distinct": 74637,
+              "depth": 69,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063"
+          },
+          {
+            "wall_ns": 764571503,
+            "peak_rss_kib": 63520,
+            "tag": "edit",
+            "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743",
+            "response_sha256": "0a894dc930874a2410a896f350943fa34a8fcd3afd78a18f2e0603166a77eef1",
+            "cache_hit": false,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 138979,
+              "distinct": 52260,
+              "depth": 63,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063"
+          },
+          {
+            "wall_ns": 5153807,
+            "peak_rss_kib": 11036,
+            "tag": "repeat",
+            "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743",
+            "response_sha256": "0a894dc930874a2410a896f350943fa34a8fcd3afd78a18f2e0603166a77eef1",
+            "cache_hit": true,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 138979,
+              "distinct": 52260,
+              "depth": 63,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063"
+          },
+          {
+            "wall_ns": 4833298,
+            "peak_rss_kib": 10900,
+            "tag": "undo",
+            "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b",
+            "response_sha256": "979abea7113de7a0aa99a67457cc74384e1e637777dda2778d57b0fa152a6423",
+            "cache_hit": true,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 198123,
+              "distinct": 74637,
+              "depth": 69,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063"
+          },
+          {
+            "wall_ns": 1064121953,
+            "peak_rss_kib": 67604,
+            "tag": "fresh-fixed",
+            "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b",
+            "response_sha256": "7a0ba7b73474e0dd4d8be84461654be7746eadea91e74ff6b357a8f7ef538b56",
+            "cache_hit": false,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 198123,
+              "distinct": 74637,
+              "depth": 69,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063"
+          },
+          {
+            "wall_ns": 766395062,
+            "peak_rss_kib": 63716,
+            "tag": "fresh-edited",
+            "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743",
+            "response_sha256": "81497a059a098fdb4e0078d69085834da8083d9856885ac33d7cfeef89c6f843",
+            "cache_hit": false,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 138979,
+              "distinct": 52260,
+              "depth": 63,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063"
+          }
+        ],
+        "session": {
+          "wall_ns": 1942582082,
+          "peak_rss_kib": 73304,
+          "entries": [
+            {
+              "route": "fresh",
+              "basis_entry": null,
+              "elapsed_us": 1111882,
+              "counts": {
+                "initial_generated": 1,
+                "generated": 198123,
+                "distinct": 74637,
+                "depth": 69,
+                "left_on_queue": 0
+              },
+              "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b"
+            },
+            {
+              "route": "fresh",
+              "basis_entry": null,
+              "elapsed_us": 818367,
+              "counts": {
+                "initial_generated": 1,
+                "generated": 138979,
+                "distinct": 52260,
+                "depth": 63,
+                "left_on_queue": 0
+              },
+              "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743"
+            },
+            {
+              "route": "exact-request",
+              "basis_entry": 1,
+              "elapsed_us": 7,
+              "counts": {
+                "initial_generated": 1,
+                "generated": 138979,
+                "distinct": 52260,
+                "depth": 63,
+                "left_on_queue": 0
+              },
+              "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743"
+            },
+            {
+              "route": "exact-request",
+              "basis_entry": 0,
+              "elapsed_us": 11,
+              "counts": {
+                "initial_generated": 1,
+                "generated": 198123,
+                "distinct": 74637,
+                "depth": 69,
+                "left_on_queue": 0
+              },
+              "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b"
+            }
+          ]
+        }
+      },
+      "admission_protected_main_medium": {
+        "case": "Medium",
+        "module_sha256": "37f80bb106ca1e5c9981d0a91f51de4fdf04bfcbb9b6fcadfb8e7b16b463821c",
+        "author_cfg_sha256": "03d666d0af4def6b6e9b7ded231f7dc8d5f114ddb03ec46f45254dce70233169",
+        "cfg_sha256": [
+          "0b59ff90ac10ae3cfe3177b2e1d343502805545ac5291970e11ee8dba27d4b10",
+          "383df324c1cc9b357d5fe60588b25a513f0e7982745f35f80ff333cff6959d7b"
+        ],
+        "library_sha256": {
+          "FiniteSetsExt.tla": "dc5d6944395dd18e2f8acf696296808a9460cbbf1b9888f88c5ac4c83a5237f9",
+          "Folds.tla": "aa59063fd600bb640b2ae24dc85ef770277ef5bf7955092b76b8b471790086da",
+          "Functions.tla": "b54ff63b7c76c327525c17c188d5f9f5e53d92f3fd701f5e2ba54f0f54391063"
+        },
+        "wall_limit_ms": 300000,
+        "max_states": 5000000,
+        "max_depth": 1000,
+        "invariants": [
+          "TypeOK",
+          "UniqueEpochs",
+          "ValidGarbageCollectors",
+          "ValidWriters",
+          "ConsistentMachineData",
+          "ManifestRepresentsCommittedLog"
+        ],
+        "backend_source": "61c654f608093abbe8df388d2d2aa3b112bfb853",
+        "worker_sha256": "33d8f11a23350b76d5b61713a6e974affdd20b9591ae73055ae2d218e1e4abb7",
+        "ordinary": [
+          {
+            "wall_ns": 1255093401,
+            "peak_rss_kib": 91968,
+            "tag": "cold",
+            "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b",
+            "response_sha256": "b38ecff1ea2f045fe3d6ea3b15a89b69b4df7571892d0fd1613122cbf941ef4a",
+            "cache_hit": false,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 198123,
+              "distinct": 74637,
+              "depth": 69,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "33d8f11a23350b76d5b61713a6e974affdd20b9591ae73055ae2d218e1e4abb7"
+          },
+          {
+            "wall_ns": 967158539,
+            "peak_rss_kib": 92092,
+            "tag": "edit",
+            "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743",
+            "response_sha256": "7f170b0cdb17230c83f2529f4de13b9c2613c3ba8caa39a77125d6f31074a509",
+            "cache_hit": false,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 138979,
+              "distinct": 52260,
+              "depth": 63,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "33d8f11a23350b76d5b61713a6e974affdd20b9591ae73055ae2d218e1e4abb7"
+          },
+          {
+            "wall_ns": 102592128,
+            "peak_rss_kib": 91352,
+            "tag": "repeat",
+            "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743",
+            "response_sha256": "7f170b0cdb17230c83f2529f4de13b9c2613c3ba8caa39a77125d6f31074a509",
+            "cache_hit": true,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 138979,
+              "distinct": 52260,
+              "depth": 63,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "33d8f11a23350b76d5b61713a6e974affdd20b9591ae73055ae2d218e1e4abb7"
+          },
+          {
+            "wall_ns": 100660624,
+            "peak_rss_kib": 91452,
+            "tag": "undo",
+            "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b",
+            "response_sha256": "b38ecff1ea2f045fe3d6ea3b15a89b69b4df7571892d0fd1613122cbf941ef4a",
+            "cache_hit": true,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 198123,
+              "distinct": 74637,
+              "depth": 69,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "33d8f11a23350b76d5b61713a6e974affdd20b9591ae73055ae2d218e1e4abb7"
+          },
+          {
+            "wall_ns": 1254805150,
+            "peak_rss_kib": 91792,
+            "tag": "fresh-fixed",
+            "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b",
+            "response_sha256": "64c8219f0cc0595dc402973029e03317ed9a6f772302621d9cb405b6c5df9d02",
+            "cache_hit": false,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 198123,
+              "distinct": 74637,
+              "depth": 69,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "33d8f11a23350b76d5b61713a6e974affdd20b9591ae73055ae2d218e1e4abb7"
+          },
+          {
+            "wall_ns": 742156422,
+            "peak_rss_kib": 63412,
+            "tag": "fresh-edited",
+            "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743",
+            "response_sha256": "569b75b373ad6a358cefe90a757eb34732d772154c9f91dc4fad23abce5acf29",
+            "cache_hit": false,
+            "counts": {
+              "initial_generated": 1,
+              "generated": 138979,
+              "distinct": 52260,
+              "depth": 63,
+              "left_on_queue": 0
+            },
+            "worker_sha256": "33d8f11a23350b76d5b61713a6e974affdd20b9591ae73055ae2d218e1e4abb7"
+          }
+        ],
+        "session": {
+          "wall_ns": 3603230925,
+          "peak_rss_kib": 73484,
+          "entries": [
+            {
+              "route": "fresh",
+              "elapsed_us": 1045675,
+              "counts": {
+                "initial_generated": 1,
+                "generated": 198123,
+                "distinct": 74637,
+                "depth": 69,
+                "left_on_queue": 0
+              },
+              "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b"
+            },
+            {
+              "route": "fresh",
+              "elapsed_us": 760747,
+              "counts": {
+                "initial_generated": 1,
+                "generated": 138979,
+                "distinct": 52260,
+                "depth": 63,
+                "left_on_queue": 0
+              },
+              "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743"
+            },
+            {
+              "route": "fresh",
+              "elapsed_us": 744708,
+              "counts": {
+                "initial_generated": 1,
+                "generated": 138979,
+                "distinct": 52260,
+                "depth": 63,
+                "left_on_queue": 0
+              },
+              "request_sha256": "1cb0a63610f67bf91901838fe5b203d1539f46d2eee113edd7fd828ee3fe1743"
+            },
+            {
+              "route": "fresh",
+              "elapsed_us": 1037767,
+              "counts": {
+                "initial_generated": 1,
+                "generated": 198123,
+                "distinct": 74637,
+                "depth": 69,
+                "left_on_queue": 0
+              },
+              "request_sha256": "33d76d26856c400c4c1541a02b73e4fee33ec8c6d8ed16feb47121620f536f0b"
+            }
+          ]
+        }
+      }
+    },
+    "independent_installed_audit": {
+      "batch_rows": 20,
+      "private_fresh_controls": 20,
+      "exact_indices_and_basis": {
+        "2": 0,
+        "3": 1,
+        "4": 1,
+        "18": 0,
+        "19": 1
+      },
+      "worker_processes": 1,
+      "temporal_lasso": "EventuallyTwo refuted; independent installed validation accepted the original and rejected an altered initial state.",
+      "negative_controls": "Changed selected root, CFG selection, source bytes, CFG bytes, unused sibling, state and depth limits were ineligible for exact reuse. Stopped, rejected and unsupported repeats ran fresh. Self, forward, out-of-range, chained and incomplete bases rejected by parent transport unit controls. 1 ms returned no partial result.",
+      "worker_sha256": "56d30e804bf21fac21f71e3b52424482701f72f951fa44aad301f9790c841063",
+      "sail_sha256": "f1eb1e80ec5a5c75ed2a54f02017053c062eef0e744bef87fd73ff2a11e25ba4"
+    }
+  }
+}
