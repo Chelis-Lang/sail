@@ -66,6 +66,7 @@ enum Witness {
 }
 
 fn add_trace(
+    input: &Frozen,
     response: &mut Response,
     source: &SpecModel,
     native: &Value,
@@ -75,6 +76,7 @@ fn add_trace(
     let itf = native_to_itf(native).map_err(unsupported)?;
     let replay = itf_to_native(&itf).map_err(unsupported)?;
     let document = TraceDoc::from_json(&replay).map_err(unsupported)?;
+    input.admit_labels(&document)?;
     // A sampled behavior or simulation deadlock is replayed under sampling
     // rules, as D.I.V.E.'s own simulation validates it; any other ending, and
     // every exhaustive-checking witness, uses ordinary validation.
@@ -129,9 +131,9 @@ fn run(request: &Request) -> Result<Response, Failure> {
             if native_to_itf(&native).map_err(unsupported)? != *trace {
                 return Err(unsupported("SAIL4203: ITF does not round-trip exactly"));
             }
-            let source = model(&input)?;
             let document = TraceDoc::from_json(&native).map_err(unsupported)?;
-            let validation = source.validate(&document);
+            input.admit_labels(&document)?;
+            let validation = model(&input)?.validate(&document);
             let outcome = match &validation.validation {
                 Validation::Valid => Outcome::Valid,
                 Validation::Invalid(_) => Outcome::Invalid,
@@ -212,7 +214,9 @@ pub(crate) fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response,
             .cloned()
             .ok_or_else(|| unsupported("SAIL4205: violation has no native trace document"))?;
         let source = model(input)?;
-        if let Err((outcome, message)) = add_trace(&mut response, &source, &trace, Witness::Check) {
+        if let Err((outcome, message)) =
+            add_trace(input, &mut response, &source, &trace, Witness::Check)
+        {
             response.outcome = outcome;
             response.message = Some(message);
         }
@@ -399,9 +403,13 @@ fn sample(input: &Frozen, traces: u64, depth: usize, limit: usize) -> Result<Res
         let mut used = encoded_len(&response, limit)
             .ok_or_else(|| oversized(limit, "the native report alone exceeds it"))?;
         for (index, trace) in entries.iter().enumerate() {
-            if let Err((outcome, message)) =
-                add_trace(&mut response, &source, &trace["document"], Witness::Sample)
-            {
+            if let Err((outcome, message)) = add_trace(
+                input,
+                &mut response,
+                &source,
+                &trace["document"],
+                Witness::Sample,
+            ) {
                 response.outcome = outcome;
                 response.message = Some(message);
                 break;

@@ -1,4 +1,6 @@
 //! Private immutable module closure and pre-binding host-capability admission.
+mod pure_tlc;
+
 use crate::{Model, Outcome};
 use dive_api::dive_sema::{self, Origin};
 use std::collections::BTreeSet;
@@ -11,6 +13,7 @@ pub(crate) type Failure = (Outcome, String);
 
 pub(crate) struct Frozen {
     directory: PathBuf,
+    forbidden_labels: BTreeSet<String>,
     pub(crate) root: PathBuf,
     pub(crate) config: PathBuf,
     pub(crate) libraries: Vec<PathBuf>,
@@ -92,6 +95,7 @@ impl Frozen {
             root: directory.join(&model.root),
             config: directory.join(&model.config),
             libraries: Vec::new(),
+            forbidden_labels: BTreeSet::new(),
             directory,
         };
         let mut parents = BTreeSet::new();
@@ -150,8 +154,24 @@ impl Frozen {
             .collect()
     }
 
-    fn admit(&self, model: &Model) -> Result<dive_sema::Analysis, Failure> {
+    pub(crate) fn admit_labels(&self, trace: &dive_api::trace::TraceDoc) -> Result<(), Failure> {
+        if trace
+            .labels
+            .iter()
+            .flatten()
+            .any(|label| self.forbidden_labels.contains(&label.name))
+        {
+            return Err((
+                Outcome::Unsupported,
+                "SAIL4202: unqualified native trace label".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn admit(&mut self, model: &Model) -> Result<dive_sema::Analysis, Failure> {
         let analysis = self.analysis()?;
+        let mut qualified_imports = false;
         for file in analysis.files() {
             match &file.origin {
                 Origin::File(path) | Origin::Monolith(path) => {
@@ -164,6 +184,9 @@ impl Frozen {
                     {
                         return Err(rejected("loaded module is outside the exact closure"));
                     }
+                }
+                Origin::Standard if file.display == "<standard>/TLC.tla" => {
+                    qualified_imports = true;
                 }
                 Origin::Standard => {
                     let stem = Path::new(&file.display)
@@ -182,9 +205,9 @@ impl Frozen {
                         ));
                     }
                 }
-                // Bundled CommunityModules and TLAPS sources are not
-                // qualified for native jobs; refuse them like any
-                // unqualified standard module.
+                Origin::Bundled if pure_tlc::qualified_bundle(&file.display) => {
+                    qualified_imports = true;
+                }
                 Origin::Bundled => {
                     return Err((
                         Outcome::Unsupported,
@@ -211,7 +234,10 @@ impl Frozen {
         // defines PrintT. Inspect the actual lowered overrides before binding.
         let ir = dive_ir::lower(&analysis)
             .map_err(|e| (Outcome::Unsupported, format!("SAIL4202: {e}")))?;
-        if ir.defs().iter().filter_map(|d| d.std).any(|op| {
+        if qualified_imports {
+            let config = dive_api::parse_config_file(&self.config).map_err(rejected)?;
+            self.forbidden_labels = pure_tlc::admit(&ir, &config)?;
+        } else if ir.defs().iter().filter_map(|d| d.std).any(|op| {
             op.impure()
                 || matches!(
                     op.support(),
