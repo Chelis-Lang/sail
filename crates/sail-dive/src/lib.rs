@@ -4,6 +4,7 @@
 pub mod backend;
 pub mod client;
 mod codec;
+pub mod edits;
 mod input;
 mod jobs;
 mod wire;
@@ -42,4 +43,42 @@ pub fn validate_response(request: &Request, response: &Response) -> Result<(), S
         return Err("SAIL4213: worker requested-property inventory differs".into());
     }
     Ok(())
+}
+
+/// Whether two admitted check requests have identical model files and parsed CFGs.
+/// Names, order and source locations in the parsed CFG participate in equality.
+/// This admits trailing configuration comments. A change to any module, option,
+/// file set, path or operative configuration fails this test.
+///
+/// Callers still need a trusted completed check at the same limits, producer
+/// identity and independent validation against the edited request.
+#[must_use]
+pub fn equivalent_check_config(old: &Request, new: &Request) -> bool {
+    if old.version != VERSION
+        || new.version != VERSION
+        || !matches!(old.operation, Operation::Check { .. })
+        || old.operation != new.operation
+    {
+        return false;
+    }
+    let (a, b) = (&old.model, &new.model);
+    if a.root != b.root
+        || a.config != b.config
+        || a.files.len() != b.files.len()
+        || a.files
+            .iter()
+            .any(|(name, source)| name != &a.config && b.files.get(name) != Some(source))
+    {
+        return false;
+    }
+    let (Some(left), Some(right)) = (a.files.get(&a.config), b.files.get(&b.config)) else {
+        return false;
+    };
+    let left = dive_api::parse_config_source(&a.config, left);
+    let right = dive_api::parse_config_source(&b.config, right);
+    left.accepted()
+        && right.accepted()
+        && left.parse().diagnostics().is_empty()
+        && right.parse().diagnostics().is_empty()
+        && left.config() == right.config()
 }

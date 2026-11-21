@@ -3,6 +3,25 @@
 All notable user-visible changes are recorded here. The project follows
 semantic versioning once the API is published.
 
+## Unreleased
+
+- `sail runtime symbolic-check --strategy occupancy` can recheck [portable population predicates](docs/temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate) across source edits and preserve exact counts on a fresh search.
+
+- `sail runtime recheck` can retain a completed native proof across a project edit when both executions resolve the same module bytes and selected configuration. The result lists the loaded modules.
+- Native temporal witnesses can carry TLA+ model values through checks, simulations and independent trace validation using a versioned lossless state-value tag. Older encodings and request hashes remain readable.
+
+- A temporal simulation job whose evidence would exceed the 16 MiB response bound is refused with `SAIL4216` before the full run, from its first 16 traces, and names the largest trace count that fits. A 1,000-trace bosco job is refused in about 2 s instead of failing with `SAIL4210` after 160 s (#767).
+
+- Recheck finite safety models across processes with `sail runtime symbolic-check` and a Dive installation supporting symbolic predicate transfer. Each receiving process proves the candidate against its current model.
+
+- After a complete native check of several temporal properties, `sail runtime recheck` and `edit-session` can certify the first property alone, including on aggregate-state models such as InternalMemory.
+
+- `sail runtime edit-session` checks successive versions with one authenticated native worker. Edited safety invariants can reuse ordered states. Edited temporal properties can reuse a complete labelled graph. `sail runtime recheck` can also prove that a persisted complete safety result covers the current invariant subset.
+
+- Recheck a named invariant counterexample after an equivalent CFG edit with `sail runtime recheck`. The report identifies the previous receipt and includes independent validation against the current job.
+
+- Replay completed native temporal checks and validated refutations after identical reruns and undo. Results identify the matched key. Supporting installations can prepare the first check in the background and transport signed receipts between CI jobs (#774).
+
 ## 0.3.0 (2026-11-19)
 
 Sail 0.3.0's headline is native temporal checking with D.I.V.E. 0.1.0:

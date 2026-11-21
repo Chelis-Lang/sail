@@ -385,7 +385,11 @@ fn dispatch(
             });
             (Response::Cancelled { id, found }, None)
         }
-        Request::Execute { id, request } => {
+        Request::Execute {
+            id,
+            request,
+            temporal_replay,
+        } => {
             let token = Cancellation::default();
             let registration = match Registration::new(state, &id, token.clone()) {
                 Ok(registration) => registration,
@@ -431,7 +435,9 @@ fn dispatch(
                     Ok(monitor) => monitor,
                     Err(e) => return failure("infrastructure", e.to_string()),
                 };
-                let result = state.runtime.execute(&request, &token);
+                let result = state
+                    .runtime
+                    .execute_negotiated(&request, &token, temporal_replay);
                 done.store(true, Ordering::SeqCst);
                 if monitor.join().is_err() {
                     return failure("infrastructure", "disconnect monitor failed");

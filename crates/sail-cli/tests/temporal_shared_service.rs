@@ -27,6 +27,7 @@ impl Service {
         std::fs::create_dir(&root)?;
         let worker = Path::new(env!("CARGO_BIN_EXE_sail-runtime-worker"));
         let config = sail_runtime::Config {
+            cache_directory: Some(root.join("runtime")),
             temporal_backend: Some(std::sync::Arc::new(sail_dive::backend::Dive)),
             temporal_worker: Some(sail_runtime::temporal::Worker {
                 executable: worker.into(),
@@ -114,6 +115,21 @@ fn actual_shared_endpoint_preserves_native_proof_refutation_and_trace_validation
     assert_eq!(failed.outcome, temporal::Outcome::Refuted);
     assert_ne!(failed.native_traces, [] as [serde_json::Value; 0]);
     assert!(failed.validations.iter().all(|v| v["result"] == "valid"));
+    let failed_again = service.execute(changed.clone())?;
+    assert!(failed_again.cache_hit && failed_again.cache_key.is_some());
+    assert_eq!(failed_again.response.as_ref(), Some(&failed));
+    let reverted = service.job(Job {
+        obligation_id: "new-caller".into(),
+        requirement_ids: vec!["REQ-2".into()],
+        request: req,
+        wall_time_ms: 10_000,
+    })?;
+    assert!(reverted.cache_hit);
+    assert_eq!(reverted.cache_key.as_ref().map(String::len), Some(64));
+    assert_ne!(failed_again.cache_key, reverted.cache_key);
+    assert_eq!(reverted.response.as_ref(), Some(&response));
+    assert_eq!(reverted.obligation_id, "new-caller");
+    assert_eq!(reverted.requirement_ids, ["REQ-2"]);
     let trace = failed.itf_traces.first().ok_or("missing ITF")?.clone();
     changed.operation = Operation::Validate {
         trace: trace.clone(),

@@ -58,6 +58,44 @@ for inputs, baselines and caching. Elsewhere, run
 `sail report --format github-summary|github-annotations|sarif result.json`,
 keeping `sail verify`'s exit code for the job.
 
+## Repeat a native temporal check
+
+Use `sail runtime capabilities` to confirm that the installation includes its
+native worker. Submit the same complete model, configuration and limits with
+`sail runtime execute --file job.json`. A completed exhaustive check or
+validated refutation can replay across processes, including after undo.
+Inspect `cache_hit` and `cache_key`. The native statistics and trace belong
+to the run that established the verdict. Simulation and resource stops do
+not establish an invariant. To precompute a specific first job, use
+`sail runtime prepare-temporal --file job.json` on a supporting installation.
+
+If the installed `sail runtime --help` lists `recheck`, use
+`sail runtime recheck --previous before.json --file after.json` for a
+configuration comment edit following an invariant violation. The
+`equivalent-cfg-rechecked-refutation` route carries a counterexample validated
+against the edited job. The `current-check` route returns the ordinary current
+result, including its exact receipt key on a hit. After dropping invariants
+from a completed ordinary safety check, the same command can return
+`established-invariant-subset`. Read the current obligation and invariant
+inventory together with the previous receipt key and worker identity.
+After a complete ordinary native liveness check, retaining its first temporal
+property alone can return `established-first-temporal-claim`. Report its
+`property` and describe `basis_counts` as the earlier check’s search counts.
+
+To check a sequence of related native models, use
+`sail runtime edit-session --file edits.json`. Supply one overall
+`wall_time_ms` and a `checks` array of 1–64 closed native check requests in
+edit order. A complete response reports each current digest and whether the
+worker captured evidence, reused it or ran a fresh check. Inspect each
+decision and its current trace validation when reporting a failure.
+[Request format and worked example](https://github.com/Chelis-Lang/sail/blob/main/docs/temporal-jobs.md).
+
+For finite safety models in development builds, use `sail runtime symbolic-check
+--dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS`
+with a Dive installation supporting symbolic predicate transfer. A transported
+predicate must pass induction against the current source. Read `proof` for
+induction results and `verdict` for search results.
+
 ## Run SMT queries
 
 For repeated Z3 work outside Rust, check the installed solver once with
@@ -100,3 +138,8 @@ For a missing runtime, check `sail engine status` and the installation guide.
 Use [compatibility](https://github.com/Chelis-Lang/sail/blob/main/docs/compatibility.md)
 to check the pinned release. Use `cargo verus verify` if a project must keep
 a different Verus release.
+
+For a multi-root TLA+ project, pass the previous exact request and current
+request to `sail runtime recheck` with the same cache. A
+`unchanged-loaded-program` proof lists the files the authenticated worker
+resolved in both versions. A changed loaded module requires a current check.

@@ -1,0 +1,199 @@
+{
+  "backend": "dive-api 0.1.0; Rust 1.99.0, Cargo release, strip -S",
+  "driver_sha256": "7070751823f97b96b0ae3f427c4b1c1c75365e1b4ce8254211dea698943e667c",
+  "file_sha256": {
+    "smoke.json": "2ba72dc3f722edd0cb575ca6938a3130bb3caf6d87516676b48663e912598089",
+    "width200000.json": "7f27db5dcbd7b8f7b3cf9a03ba003b36761e5f17d5b37b54be9cc10d7a6be441"
+  },
+  "host": {
+    "ami": "ami-0109d2b556bd3d7e1",
+    "cpuOptions": {
+      "CoreCount": 8,
+      "ThreadsPerCore": 2
+    },
+    "cpu_model": "Intel Xeon Platinum 8488C",
+    "kernel": "7.0.0-1017-aws",
+    "os": "Ubuntu 24.04.5 LTS",
+    "type": "c7i.4xlarge",
+    "zone": "us-east-1f"
+  },
+  "initial_staging_smoke": {
+    "driver_source": "6cddebaa3f44221faad31835022a1208ad2f6672",
+    "fresh_ms": [
+      39.13,
+      41.43,
+      40.53,
+      41.11,
+      41.45
+    ],
+    "guarded_recheck_ms": [
+      55.85,
+      55.56,
+      53.23,
+      55.45,
+      57.16
+    ],
+    "median_speedup": 0.74,
+    "width": 20
+  },
+  "product_source": "6cddebaa3f44221faad31835022a1208ad2f6672",
+  "samples": [
+    {
+      "basis_request_sha256": "f63f4bc231d4bbf5c0a3f6d7843418c409564338ad65496a0b4ed8b5539f91b4",
+      "controls": {
+        "fixed": "holds",
+        "inventory": "refuted",
+        "sibling": "error",
+        "state_limit": "stopped"
+      },
+      "fresh_ms": [
+        12.4,
+        11.66,
+        12.78,
+        11.72,
+        11.95
+      ],
+      "guarded_recheck_ms": [
+        9.96,
+        9.91,
+        9.5,
+        9.66,
+        9.83
+      ],
+      "median_speedup": 1.22,
+      "sail_sha256": "f8f30cf1fca4f13884ee219e90cf6ff79fbb1e8f76b933a2bdaa105d22941dcf",
+      "states": 22,
+      "width": 20,
+      "witness_sha256": "f9b7123e3e44559a96c39825baacece09e29fc90545f18bf42ae67c85f5db84a",
+      "worker_sha256": "46357b0b35f5c62a572df4adf830276cd453743b2020f9eeaedaeb97d15c3eea"
+    },
+    {
+      "basis_request_sha256": "292936239b56141d6e21630c722e8cbbfe3f82d7a6038a1cf2ec1edb6022abc2",
+      "controls": {
+        "fixed": "holds",
+        "inventory": "refuted",
+        "sibling": "unsupported",
+        "state_limit": "stopped"
+      },
+      "fresh_ms": [
+        174.44,
+        172.44,
+        172.9,
+        174.73,
+        172.75
+      ],
+      "guarded_recheck_ms": [
+        9.82,
+        9.73,
+        10.22,
+        10.04,
+        10.2
+      ],
+      "median_speedup": 17.22,
+      "sail_sha256": "f8f30cf1fca4f13884ee219e90cf6ff79fbb1e8f76b933a2bdaa105d22941dcf",
+      "states": 200002,
+      "width": 200000,
+      "witness_sha256": "7193ddb19290b63e4134d1682f74a0b84d6565915d5a756806c0d75f1cc5acbc",
+      "worker_sha256": "46357b0b35f5c62a572df4adf830276cd453743b2020f9eeaedaeb97d15c3eea"
+    }
+  ],
+  "schema": 1,
+  "timer": "CLI wall time in milliseconds, through JSON decode. Each pair runs guarded recheck then an uncached current check.",
+  "native_macos_debug_control": {
+    "platform": "EC2 mac2.metal, Apple M1 arm64",
+    "profile": "debug, native functional smoke only",
+    "source_pr": 781,
+    "focused_tests_passed": 12,
+    "width": 20,
+    "controls": {
+      "inventory": "refuted",
+      "sibling": "error",
+      "fixed": "holds",
+      "state_limit": "stopped"
+    },
+    "fresh_ms": [
+      27.99,
+      27.99,
+      28.04,
+      28.33,
+      28.05
+    ],
+    "guarded_recheck_ms": [
+      25.77,
+      23.64,
+      23.74,
+      24.68,
+      24.64
+    ],
+    "median_speedup": 1.14,
+    "states": 22,
+    "basis_request_sha256": "f63f4bc231d4bbf5c0a3f6d7843418c409564338ad65496a0b4ed8b5539f91b4",
+    "witness_sha256": "f9b7123e3e44559a96c39825baacece09e29fc90545f18bf42ae67c85f5db84a",
+    "sail_sha256": "35a89414ba23c9b1939bb14d6a543983a899a4bea14ccb544204f7e769624038",
+    "worker_sha256": "86b966cbc28384167cf7a22a28d8a72c00d8181348abb0917e438fd33abeca5b"
+  },
+  "merged_main_linux": {
+    "source": "4ed2c2e871c38694c96cec19605e58c9a48ff786",
+    "native_tests_passed": 12,
+    "samples": [
+      {
+        "width": 20,
+        "controls": {
+          "inventory": "refuted",
+          "sibling": "error",
+          "fixed": "holds",
+          "state_limit": "stopped"
+        },
+        "fresh_ms": [
+          36.5,
+          39.87,
+          40.08,
+          37.36,
+          37.39
+        ],
+        "guarded_recheck_ms": [
+          53.33,
+          52.07,
+          53.36,
+          52.98,
+          53.78
+        ],
+        "median_speedup": 0.7,
+        "states": 22,
+        "basis_request_sha256": "f63f4bc231d4bbf5c0a3f6d7843418c409564338ad65496a0b4ed8b5539f91b4",
+        "witness_sha256": "f9b7123e3e44559a96c39825baacece09e29fc90545f18bf42ae67c85f5db84a",
+        "sail_sha256": "f8f30cf1fca4f13884ee219e90cf6ff79fbb1e8f76b933a2bdaa105d22941dcf",
+        "worker_sha256": "46357b0b35f5c62a572df4adf830276cd453743b2020f9eeaedaeb97d15c3eea"
+      },
+      {
+        "width": 200000,
+        "controls": {
+          "inventory": "refuted",
+          "sibling": "unsupported",
+          "fixed": "holds",
+          "state_limit": "stopped"
+        },
+        "fresh_ms": [
+          135.82,
+          132.23,
+          127.3,
+          127.28,
+          129.14
+        ],
+        "guarded_recheck_ms": [
+          9.28,
+          9.17,
+          9.18,
+          9.43,
+          9.82
+        ],
+        "median_speedup": 13.92,
+        "states": 200002,
+        "basis_request_sha256": "292936239b56141d6e21630c722e8cbbfe3f82d7a6038a1cf2ec1edb6022abc2",
+        "witness_sha256": "7193ddb19290b63e4134d1682f74a0b84d6565915d5a756806c0d75f1cc5acbc",
+        "sail_sha256": "f8f30cf1fca4f13884ee219e90cf6ff79fbb1e8f76b933a2bdaa105d22941dcf",
+        "worker_sha256": "46357b0b35f5c62a572df4adf830276cd453743b2020f9eeaedaeb97d15c3eea"
+      }
+    ]
+  }
+}

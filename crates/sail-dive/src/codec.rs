@@ -36,6 +36,17 @@ fn convert(value: &Value, native: bool, depth: usize) -> Result<Value, String> {
                 return Err("SAIL4203: value tag must have exactly one field".into());
             }
             let (tag, body) = object.iter().next().ok_or("SAIL4203: missing value tag")?;
+            let model = sail_api::temporal::MODEL_VALUE_TAG;
+            if tag == if native { "model" } else { model } {
+                let atom = body
+                    .as_str()
+                    .ok_or("SAIL4203: a model value requires a string name")?;
+                return Ok(if native {
+                    json!({(model): atom})
+                } else {
+                    json!({"model": atom})
+                });
+            }
             let integer = if native { "int" } else { "#bigint" };
             if tag == integer {
                 let digits = body

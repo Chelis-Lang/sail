@@ -185,6 +185,7 @@ fn capability_extension_keeps_old_smt_clients_and_old_services_compatible() -> i
         installed: false,
         backend_revision: crate::temporal::DIVE_VERSION.into(),
         worker_sha256: None,
+        replay_context: None,
         error: None,
     });
     let legacy: OldCapabilities = serde_json::from_value(serde_json::to_value(new)?)?;

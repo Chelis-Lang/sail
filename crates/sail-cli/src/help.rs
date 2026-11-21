@@ -58,6 +58,19 @@ const HELP: &[(&str, &str)] = &[
 USAGE:
     sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET]
     sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET]
+    sail runtime prepare-temporal [--file FILE|-] [--cache DIR]
+    sail runtime recheck --previous FILE --file FILE|- [--cache DIR]
+    sail runtime edit-session --file FILE|-
+    sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG
+                                --time-limit SECONDS [--type-invariant NAME]
+                                [--strategy symbolic|occupancy] [--max-orbits N]
+
+symbolic-check asks the selected Dive to prove the current finite safety model
+with a saved predicate or search it. See docs/temporal-jobs.md for exit codes.
+
+edit-session takes ordered native check requests with one deadline. It emits
+ordered evidence from one isolated worker. Holds and refuted checks exit 0,
+incomplete execution exits 1, and invalid input or CLI setup exits 2.
 
 Input and output are JSON (docs/runtime.md). Complete sat/unsat transcripts
 exit 0; unknown or incomplete execution exits 1; admission or setup errors

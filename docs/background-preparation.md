@@ -90,3 +90,39 @@ digest optimizations or change focused verification scope.
 An opt-in budget maintenance pass that already started may finish. Its cap is
 soft, and pruning rechecks workspace locks before removal; an already-started
 removal can finish before a new call acquires that workspace.
+
+
+## Native temporal jobs after archive installation
+
+With a development archive that includes `sail runtime prepare-temporal`, the
+guided installer starts a low-priority, single-state TLA+ check after publishing
+the installation. This loads the authenticated native worker and exercises an
+invariant with a two-second job deadline. The installer returns immediately.
+On a newly installed worker the detached probe first allows up to two seconds
+for its file metadata to settle. It can then retain an authenticated worker
+image for the first foreground call. The probe leaves no model receipt and
+keeps no worker running. A caller-supplied first job starts immediately.
+
+To prepare the actual first check, supply its usual runtime JSON envelope:
+
+```sh
+python3 scripts/install.py --archive ./sail-VERSION-TARGET.tar.gz \
+  --prepare-temporal-job first-check.json
+sail runtime execute --file first-check.json
+```
+
+The installer opens the regular input file before returning. The background
+process uses the ordinary runtime cache, the complete supplied request and its
+original deadline (up to five minutes). A later foreground check may replay a
+completed eligible receipt. Starting immediately can run two independent
+checks. At most one preparation checks a model per runtime cache at a time.
+Edits, incomplete results and unavailable preparation follow the normal
+foreground rules. `SAIL_BACKGROUND_PREPARE=0` disables the installer handoff,
+including an explicitly supplied first job.
+
+For a manual installation, `sail runtime prepare-temporal --file first-check.json`
+runs the preparation synchronously and prints the usual runtime result. Omit
+`--file` to run the single-state probe, or pass `--cache DIR` to select the
+foreground command's runtime cache. A busy preparation exits 2 immediately.
+Older archives still install and run their existing commands. Check
+`sail runtime --help` for availability.

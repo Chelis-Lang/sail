@@ -146,3 +146,7 @@ Use [the template](0000-template.md) for a new decision.
 - [0172: Native temporal checking in the main workspace on D.I.V.E. 0.1.0](0172-native-temporal-in-main-workspace.md) (accepted; supersedes 0083 and 0101; `sail-dive` published, worker is a `sail-solve` binary, `DIVE_VERSION` replaces the revision pin)
 - [0173: Reuse the verified temporal worker copy under settled stamps](0173-verified-worker-image-reuse.md) (accepted; #765)
 - [0174: v0.3.0 ships native temporal checking; unfinished pillars move to v0.4.0](0174-v030-native-temporal-scope.md) (accepted by owner; amends 0100 and 0109; mutation, profiling, performance parity, installer/editor reach, Kani and cvc5 move to v0.4.0)
+- [0175: Exact completed temporal check receipts](0175-exact-temporal-receipts.md) (accepted for implementation, #774)
+- [0176. Native evidence for edited temporal jobs](0176-native-temporal-edit-evidence.md)
+- [0177. Recheck portable predicates in a selected Dive installation](0177-portable-symbolic-predicates.md)
+- [0178. Preserve native model values in temporal witnesses](0178-model-valued-temporal-witnesses.md)

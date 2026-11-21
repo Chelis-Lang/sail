@@ -348,6 +348,17 @@ fn serve_config(
             _ => return Err(format!("unknown argument `{arg}`")),
         }
     }
+    if runtime_cli::temporal_cache_override(&cache, &root.join("runtime")).is_some() {
+        // The default socket and solver store can both create their parent
+        // before a temporal job arrives. Create it privately from the outset.
+        // DirBuilder leaves an existing cache owner's permissions untouched.
+        use std::os::unix::fs::DirBuilderExt as _;
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(&cache)
+            .map_err(|e| format!("cannot create cache directory {}: {e}", cache.display()))?;
+    }
     config.log = Some(root.join("daemon.log"));
     config.bundled = sail_daemon::BundledConfig::discover();
     config.shared = shared_store.map(|store| sail_daemon::SharedConfig {

@@ -39,6 +39,10 @@ fn relative(path: &str) -> bool {
 
 impl Frozen {
     pub(crate) fn create(model: &Model) -> Result<Self, Failure> {
+        Self::prepare(model).map(|(frozen, _)| frozen)
+    }
+
+    fn prepare(model: &Model) -> Result<(Self, dive_sema::Analysis), Failure> {
         if model.files.is_empty() || model.files.len() > 1024 {
             return Err(rejected("model closure requires 1..1024 files"));
         }
@@ -108,12 +112,12 @@ impl Frozen {
             }
         }
         frozen.libraries = parents.into_iter().collect();
-        frozen.admit(model)?;
-        Ok(frozen)
+        let analysis = frozen.admit(model)?;
+        Ok((frozen, analysis))
     }
 
-    fn admit(&self, model: &Model) -> Result<(), Failure> {
-        let analysis = dive_sema::analyze_file(
+    fn analysis(&self) -> Result<dive_sema::Analysis, Failure> {
+        dive_sema::analyze_file(
             &self.root,
             &dive_sema::Options {
                 search: dive_sema::SearchPath {
@@ -123,7 +127,31 @@ impl Frozen {
                 ..Default::default()
             },
         )
-        .map_err(rejected)?;
+        .map_err(rejected)
+    }
+
+    pub(crate) fn loaded_sources(model: &Model) -> Option<Vec<String>> {
+        let (frozen, analysis) = Self::prepare(model).ok()?;
+        analysis
+            .files()
+            .iter()
+            .map(|file| match &file.origin {
+                Origin::File(path) => Some(
+                    path.strip_prefix(&frozen.directory)
+                        .ok()?
+                        .to_str()?
+                        .to_owned(),
+                ),
+                Origin::Standard => Some(file.display.clone()),
+                // An extracted monolith has a distinct logical source even when
+                // the origin points at the same outer file.
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn admit(&self, model: &Model) -> Result<dive_sema::Analysis, Failure> {
+        let analysis = self.analysis()?;
         for file in analysis.files() {
             match &file.origin {
                 Origin::File(path) | Origin::Monolith(path) => {
@@ -198,6 +226,6 @@ impl Frozen {
                 "SAIL4202: native host capabilities are not admitted".into(),
             ));
         }
-        Ok(())
+        Ok(analysis)
     }
 }

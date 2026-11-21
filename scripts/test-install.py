@@ -64,6 +64,43 @@ class InstallTests(unittest.TestCase):
                 installer.install(self.archive, self.root / "prefix", TARGET)
             self.assertEqual((result / "bin/sail").read_bytes(), b"fixture")
 
+    def test_post_install_preparation_runs_from_final_bin_with_the_open_first_job(self):
+        binaries = self.root / "bin"
+        binaries.mkdir()
+        (binaries / "sail-runtime-worker.json").write_text("{}")
+        program = binaries / "sail"
+        observation = self.root / "observed"
+        program.write_text("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$SAIL_TEST_OBSERVATION\"\n"
+                           "cat >> \"$SAIL_TEST_OBSERVATION\"\n")
+        program.chmod(0o755)
+        job = self.root / "job.json"
+        job.write_bytes(b"actual first job")
+        with patch.dict(os.environ, {"SAIL_BACKGROUND_PREPARE": "1",
+                                     "SAIL_TEST_OBSERVATION": str(observation)}):
+            child = installer.prepare_temporal(self.root, job)
+            job.unlink()
+            self.assertEqual(child.wait(timeout=5), 0)
+            self.assertEqual(observation.read_text(), "runtime\nprepare-temporal\n--file\n-\nactual first job")
+            self.assertEqual(installer.prepare_temporal(self.root).wait(timeout=5), 0)
+            self.assertEqual(observation.read_text(), "runtime\nprepare-temporal\n")
+
+    def test_preparation_skips_old_disabled_and_unreadable_inputs(self):
+        binaries = self.root / "bin"
+        binaries.mkdir()
+        with patch.object(installer.subprocess, "Popen") as spawn:
+            self.assertIsNone(installer.prepare_temporal(self.root))
+            (binaries / "sail-runtime-worker.json").write_text("{}")
+            with patch.dict(os.environ, {"SAIL_BACKGROUND_PREPARE": "0"}):
+                self.assertIsNone(installer.prepare_temporal(self.root))
+            pipe = self.root / "pipe"
+            os.mkfifo(pipe)
+            with patch.dict(os.environ, {"SAIL_BACKGROUND_PREPARE": "1"}), \
+                    contextlib.redirect_stderr(io.StringIO()) as note:
+                self.assertIsNone(installer.prepare_temporal(self.root, pipe))
+                self.assertIsNone(installer.prepare_temporal(self.root, self.root / "missing"))
+                self.assertIn("regular file", note.getvalue())
+            spawn.assert_not_called()
+
     def test_corruption_and_other_platform_do_not_install(self):
         self.archive_with()
         with self.archive.open("ab") as archive:

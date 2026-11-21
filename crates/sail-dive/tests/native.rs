@@ -26,6 +26,46 @@ const BOOLEAN: &str =
     "---- MODULE M ----\nVARIABLE x\nInit == x = FALSE\nNext == x' = ~x\nP == []<>x\n====\n";
 
 #[test]
+fn recheck_guard_preserves_config_order_locations_model_closure_and_limits() {
+    let cfg = "INIT Init\nNEXT Next\nINVARIANT Inv\nINVARIANT Aux\n";
+    let original = request(COUNTER, cfg);
+    let equivalent = |other: &Request| sail_dive::equivalent_check_config(&original, other);
+    assert!(equivalent(&request(
+        COUNTER,
+        &format!("{cfg}\\* comment\n")
+    )));
+    for edited in [
+        cfg.replace(
+            "INVARIANT Inv\nINVARIANT Aux",
+            "INVARIANT Aux\nINVARIANT Inv",
+        ),
+        format!("\n{cfg}"),
+        format!("{cfg}CHECK_DEADLOCK FALSE\n"),
+        format!("{cfg}CHECK_DEADLOCK invalid"),
+    ] {
+        assert!(!equivalent(&request(COUNTER, &edited)), "{edited}");
+    }
+    let mut new = original.clone();
+    new.model.files.insert("Other.tla".into(), COUNTER.into());
+    assert!(!equivalent(&new));
+    let mut new = original.clone();
+    new.model.root = "Other.tla".into();
+    assert!(!equivalent(&new));
+    let mut new = original.clone();
+    new.model.config = "Other.cfg".into();
+    assert!(!equivalent(&new));
+    let mut new = original;
+    new.operation = Operation::Check {
+        max_states: 100,
+        max_depth: 99,
+    };
+    assert!(!sail_dive::equivalent_check_config(
+        &request(COUNTER, cfg),
+        &new
+    ));
+}
+
+#[test]
 fn real_safety_temporal_and_stopped_outcomes_are_distinct() {
     let safe = sail_dive::execute(&request(COUNTER, "INIT Init\nNEXT Next\n"));
     assert_eq!(safe.outcome, Outcome::Holds, "{safe:?}");
@@ -307,4 +347,70 @@ fn oyster_step_within() -> Request {
             max_depth: 100,
         },
     }
+}
+
+#[test]
+fn oversized_simulation_is_refused_from_its_probe_and_a_normal_one_runs() {
+    // 100,000 traces at depth 100 would far exceed the 16 MiB response bound;
+    // the refusal comes from the first 16 traces, not after the full run (#767).
+    let mut req = request(COUNTER, "INIT Init\nNEXT Next\n");
+    req.operation = Operation::Simulate {
+        traces: 100_000,
+        depth: 100,
+    };
+    let result = sail_dive::execute(&req);
+    assert_eq!(result.outcome, Outcome::Rejected, "{result:?}");
+    let message = result.message.unwrap_or_default();
+    assert!(message.starts_with("SAIL4216: "), "{message}");
+    assert!(message.contains("the first 16 traces"), "{message}");
+    assert_eq!(result.native_traces.len(), 0);
+
+    req.operation = Operation::Simulate {
+        traces: 40,
+        depth: 4,
+    };
+    let result = sail_dive::execute(&req);
+    assert_eq!(result.outcome, Outcome::Sampled, "{result:?}");
+    assert_eq!(result.itf_traces.len(), 40);
+    assert!(result.validations.iter().all(|v| v["result"] == "valid"));
+}
+
+#[test]
+fn model_atoms_keep_their_identity_through_current_source_validation() -> TestResult {
+    let mut job = request(
+        "---- MODULE M ----\nCONSTANT Atom\nVARIABLE x,y\nInit == /\\ x = \"N\" /\\ y = Atom\nNext == /\\ x' = Atom /\\ y' = Atom\nInv == x /= Atom\n====\n",
+        "CONSTANT Atom = N\nINIT Init\nNEXT Next\nINVARIANT Inv\n",
+    );
+    let result = sail_dive::execute(&job);
+    assert_eq!(result.outcome, Outcome::Refuted, "{result:?}");
+    let mut trace = result.itf_traces.first().ok_or("missing trace")?.clone();
+    let wire = serde_json::to_value(&trace)?;
+    assert_eq!(wire["value_encoding"], "sail-model-values-v1");
+    assert_eq!(trace.states[0]["x"], "N");
+    assert_eq!(trace.states[0]["y"], json!({"#sail-model":"N"}));
+    assert_eq!(trace.states[1]["x"], json!({"#sail-model":"N"}));
+    job.operation = Operation::Validate {
+        trace: trace.clone(),
+    };
+    assert_eq!(sail_dive::execute(&job).outcome, Outcome::Valid);
+    trace.states[1].insert("x".into(), json!("N"));
+    // y still contains a tagged atom. The mutated trace is structurally valid.
+    job.operation = Operation::Validate { trace };
+    assert_eq!(sail_dive::execute(&job).outcome, Outcome::Invalid);
+    Ok(())
+}
+
+#[test]
+fn nested_atoms_round_trip_in_keys_values_records_and_sets() -> TestResult {
+    let native = json!({"format":"dive-trace","version":1,"variables":["x"],"states":[
+        {"action":null,"values":{"x":{"fcn":[[{"model":"N"},{"set":["N",{"model":"N"}]}],
+        ["N",{"record":{"model":"N","nested":{"seq":[{"model":"N"}]}}}]]}}}],"ending":{"kind":"behavior"}});
+    let trace = sail_dive::native_to_itf(&native)?;
+    assert_eq!(sail_dive::itf_to_native(&trace)?, native);
+    let itf = serde_json::to_value(trace)?;
+    let entries = &itf["states"][0]["x"]["#map"];
+    assert_eq!(entries[0][0], json!({"#sail-model":"N"}));
+    assert_eq!(entries[1][0], "N");
+    assert_eq!(entries[1][1]["model"], "N");
+    Ok(())
 }

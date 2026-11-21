@@ -82,6 +82,11 @@ The default toolchain, shell profiles and existing installations are unchanged.
 Add the printed `PATH` line to your shell profile. The archive remains together
 under the prefix; do not move just its executables.
 
+With a development archive that provides native temporal preparation, the installer
+warms the worker after installation. Pass `--prepare-temporal-job FILE` to
+prepare your first temporal check, or set `SAIL_BACKGROUND_PREPARE=0` to disable
+this work. See [background preparation](background-preparation.md#native-temporal-jobs-after-archive-installation).
+
 To install without Python, see [manual installation](#manual-installation).
 
 ## Manual installation

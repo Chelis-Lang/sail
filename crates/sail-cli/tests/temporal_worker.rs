@@ -208,44 +208,61 @@ fn action_only_requirement_model_checks_and_violations_replay_in_owned_worker() 
     Ok(())
 }
 
+// The first authentication of a fresh binary takes variable time. Wait for
+// the owned child instead of guessing how long startup needs on a busy runner.
+fn cancel_on_child(cancel: &AtomicBool, suffix: &str, guard: Duration) -> bool {
+    let parent = std::process::id().to_string();
+    let start = std::time::Instant::now();
+    let observed = loop {
+        let ps = std::process::Command::new("/bin/ps")
+            .args(["-axo", "ppid=,command="])
+            .output();
+        if ps.is_ok_and(|p| {
+            p.status.success()
+                && String::from_utf8_lossy(&p.stdout).lines().any(|line| {
+                    line.split_whitespace().next() == Some(parent.as_str())
+                        && line.trim_end().ends_with(suffix)
+                })
+        }) {
+            break true;
+        }
+        if start.elapsed() >= guard {
+            break false;
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    };
+    cancel.store(true, Ordering::Release);
+    observed
+}
+
 #[test]
 fn actual_worker_is_cancelled_after_spawn_for_large_assumption_input() -> TestResult {
+    // Other tests in this integration binary launch identical verified copies.
+    // Observe an isolated harness process so its child can only be this job.
+    const OBSERVER: &str = "SAIL_TEST_ISOLATED_CANCEL_OBSERVER";
+    if std::env::var_os(OBSERVER).is_none() {
+        let output = std::process::Command::new(std::env::current_exe()?)
+            .args([
+                "--exact",
+                "actual_worker_is_cancelled_after_spawn_for_large_assumption_input",
+                "--nocapture",
+            ])
+            .env(OBSERVER, "1")
+            .output()?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return Ok(());
+    }
     let (worker, hash) = worker();
     let mut request = request();
     request.model.files.insert("M.tla".into(),"---- MODULE M ----\nEXTENDS Naturals\nVARIABLE x\nASSUME \\A n \\in 1..1000000000: n >= 0\nInit == x = 0\nNext == x' = x\n====\n".into());
     let cancel = AtomicBool::new(false);
     let (result, observed) = std::thread::scope(|scope| {
-        let monitor = scope.spawn(|| {
-            // Hashing and freezing the real binary can exceed a fixed sleep on
-            // a busy runner. Observe this test process's actual owned worker.
-            // The verified copy may be a reused one, so match the child of
-            // this process rather than a per-job path.
-            let parent = std::process::id().to_string();
-            let started = std::time::Instant::now();
-            let observed = loop {
-                let processes = std::process::Command::new("/bin/ps")
-                    .args(["-axo", "ppid=,command="])
-                    .output();
-                if processes.is_ok_and(|p| {
-                    p.status.success()
-                        && String::from_utf8_lossy(&p.stdout).lines().any(|line| {
-                            let mut fields = line.split_whitespace();
-                            fields.next() == Some(parent.as_str())
-                                && line.trim_end().ends_with("/sail-runtime-worker")
-                        })
-                }) {
-                    break true;
-                }
-                // A hang guard only: on a loaded runner the first launch of a
-                // freshly written binary can take several seconds.
-                if started.elapsed() >= Duration::from_secs(60) {
-                    break false;
-                }
-                std::thread::sleep(Duration::from_millis(5));
-            };
-            cancel.store(true, Ordering::Release);
-            observed
-        });
+        let monitor = scope
+            .spawn(|| cancel_on_child(&cancel, "/sail-runtime-worker", Duration::from_secs(60)));
         // Longer than the observer's guard, so a slow start is still
         // cancelled rather than reaching the deadline.
         let result = run(worker, &hash, &request, Duration::from_secs(120), &cancel);
@@ -320,5 +337,157 @@ fn wrong_request_identity_and_missing_native_proof_are_refused() -> TestResult {
     response.request_sha256 = sail_dive::request_sha256(&req)?;
     response.native_report = serde_json::Value::Null;
     assert!(sail_dive::validate_response(&req, &response).is_err());
+    Ok(())
+}
+
+#[test]
+fn edit_session_includes_admission_and_all_worker_io_in_one_budget() -> TestResult {
+    use sail_dive::client::run_edit_session;
+    use sail_dive::edits::Batch;
+    use std::time::Instant;
+
+    let path = Path::new(env!("SAIL_RUNTIME_TEST_WORKER"));
+    let hash = sail_dive::sha256(&std::fs::read(path)?);
+    let make_batch = |marker: &str, wall_time_ms| {
+        let mut check = request();
+        check.model.files.insert("M.cfg".into(), marker.into());
+        Batch {
+            version: 1,
+            checks: vec![request(), check],
+            wall_time_ms,
+        }
+    };
+    let cancel = AtomicBool::new(false);
+    let batch = make_batch("SAIL_CONTROL_PIPES", 2000);
+    assert!(matches!(
+        run_edit_session(
+            path,
+            &hash,
+            &batch,
+            Instant::now()
+                .checked_sub(Duration::from_secs(3))
+                .ok_or("test clock origin")?,
+            &cancel
+        ),
+        RunResult::TimedOut {
+            worker_started: false
+        }
+    ));
+    assert!(matches!(
+        run_edit_session(path, &hash, &batch, Instant::now(), &AtomicBool::new(true)),
+        RunResult::Cancelled {
+            worker_started: false
+        }
+    ));
+    assert!(matches!(
+        run_edit_session(path, &hash, &batch, Instant::now(), &cancel),
+        RunResult::TimedOut {
+            worker_started: true
+        }
+    ));
+    let waiting = make_batch("SAIL_CONTROL_WAIT", 30000);
+    let (exit, observed) = std::thread::scope(|scope| {
+        let monitor = scope.spawn(|| {
+            cancel_on_child(
+                &cancel,
+                "/sail-runtime-worker --edit-session",
+                Duration::from_secs(20),
+            )
+        });
+        let exit = run_edit_session(path, &hash, &waiting, Instant::now(), &cancel);
+        (exit, monitor.join())
+    });
+    assert!(observed.map_err(|_| "worker observer panicked")?);
+    assert!(
+        matches!(
+            exit,
+            RunResult::Cancelled {
+                worker_started: true
+            }
+        ),
+        "{exit:?}"
+    );
+    cancel.store(false, Ordering::Release);
+    let wrong_source = run_edit_session(
+        path,
+        &hash,
+        &make_batch("SAIL_CONTROL_WRONG_SOURCE", 10000),
+        Instant::now(),
+        &cancel,
+    );
+    assert!(
+        matches!(wrong_source, RunResult::Failed(ref m) if m.contains("backend source differs")),
+        "{wrong_source:?}"
+    );
+    for marker in [
+        "SAIL_CONTROL_TRAILING",
+        "SAIL_CONTROL_OVERSIZE",
+        "SAIL_CONTROL_STDERR",
+    ] {
+        let exit = run_edit_session(
+            path,
+            &hash,
+            &make_batch(marker, 10000),
+            Instant::now(),
+            &cancel,
+        );
+        assert!(matches!(exit, RunResult::Failed(_)), "{marker}: {exit:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn isolated_first_claim_requires_complete_timely_authenticated_transport() -> TestResult {
+    use sail_dive::client::project_first_claim;
+    use sail_dive::edits::first_claim::Query;
+    use std::time::Instant;
+
+    let worker = Path::new(env!("SAIL_RUNTIME_TEST_WORKER"));
+    let hash = sail_dive::sha256(&std::fs::read(worker)?);
+    let previous = request();
+    let mut query = Query {
+        previous_response: sail_dive::execute(&previous),
+        current: previous.clone(),
+        previous,
+    };
+    let cancel = sail_runtime::Cancellation::default();
+    let cancelled = sail_runtime::Cancellation::default();
+    cancelled.cancel();
+    let run = |q: &Query, digest: &str, budget, cancel: &sail_runtime::Cancellation| {
+        project_first_claim(worker, digest, q, budget, Instant::now(), cancel)
+    };
+    assert!(matches!(
+        run(&query, &hash, Duration::ZERO, &cancel),
+        RunResult::TimedOut {
+            worker_started: false
+        }
+    ));
+    let budget = Duration::from_secs(5);
+    assert!(matches!(
+        run(&query, &hash, budget, &cancelled),
+        RunResult::Cancelled {
+            worker_started: false
+        }
+    ));
+    assert!(matches!(
+        run(&query, &"0".repeat(64), budget, &cancel),
+        RunResult::Failed(_)
+    ));
+    for marker in [
+        "SAIL_CONTROL_WRONG_SOURCE",
+        "SAIL_CONTROL_TRAILING",
+        "SAIL_CONTROL_STDERR",
+        "SAIL_CONTROL_OVERSIZE",
+    ] {
+        query
+            .current
+            .model
+            .files
+            .insert("M.cfg".into(), marker.into());
+        assert!(
+            matches!(run(&query, &hash, budget, &cancel), RunResult::Failed(_)),
+            "{marker}"
+        );
+    }
     Ok(())
 }

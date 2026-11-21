@@ -126,6 +126,11 @@ impl Client {
             &mut Deadline::new(&stream, IO_TIMEOUT),
             &Request::Execute {
                 id: id.clone(),
+                temporal_replay: matches!(request.input, Input::Temporal { .. })
+                    && capabilities
+                        .temporal
+                        .as_ref()
+                        .is_some_and(|c| c.replay_context.is_some()),
                 request: request.clone(),
             },
             MAX_REQUEST_BYTES,
@@ -292,7 +297,7 @@ fn validate_temporal(
             != crate::temporal::request_sha256(&job.request).map_err(unavailable)?
         || result.backend_revision != capability.backend_revision
         || result.wall_time_ms != job.wall_time_ms
-        || result.cache_hit
+        || result.cache_hit != result.cache_key.is_some()
     {
         return Err(unavailable(
             "temporal result attribution, content or limits differ",
@@ -312,8 +317,32 @@ fn validate_temporal(
                 "temporal result lacks negotiated worker identity",
             ));
         }
+        if let Some(key) = &result.cache_key {
+            let context = capability
+                .replay_context
+                .as_deref()
+                .ok_or_else(|| unavailable("temporal replay was not negotiated"))?;
+            if !matches!(
+                job.request.operation,
+                crate::temporal::Operation::Check { .. }
+            ) || !matches!(
+                response.outcome,
+                crate::temporal::Outcome::Holds | crate::temporal::Outcome::Refuted
+            ) || key
+                != &crate::temporal::check_receipt_key(
+                    context,
+                    &result.request_sha256,
+                    job.wall_time_ms,
+                )
+                .to_string()
+            {
+                return Err(unavailable(
+                    "temporal replay evidence or receipt key differs",
+                ));
+            }
+        }
         crate::temporal::validate_response(&job.request, response).map_err(unavailable)?;
-    } else if result.response.is_some() || result.error.is_none() {
+    } else if result.cache_hit || result.response.is_some() || result.error.is_none() {
         return Err(unavailable(
             "failed temporal execution supplied logical evidence",
         ));

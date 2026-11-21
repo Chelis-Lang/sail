@@ -210,6 +210,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-deque"
+version = "0.8.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "622f3fc73690be383c7214310406f28a90e6edeadc3cea882f9d71e495b9711a"
+dependencies = [
+ "crossbeam-epoch",
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-epoch"
+version = "0.9.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc74980687109a3b14c72fd458107bf0baa1da1a1a805e178d15501ba9b86d9d"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-utils"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a31eee39dddec8330830986fcd7625edb5a24ec90ea038215273bbc3adb08ac6"
+
+[[package]]
 name = "crypto-common"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -359,8 +384,7 @@ dependencies = [
 [[package]]
 name = "dive-api"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee40bb398cde3cc6eeb78742d0323d0369dd6cf279a2fd0d1108a085a69bdef1"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-config",
  "dive-core",
@@ -384,8 +408,7 @@ dependencies = [
 [[package]]
 name = "dive-config"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a34bd5e5a657a3c0cd85eb238058996979a3e209ddfe4c990798952652ab5b3b"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-syntax",
 ]
@@ -393,8 +416,7 @@ dependencies = [
 [[package]]
 name = "dive-core"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1477937c9b199c36fe15e3549f29d8e522b7b44a19f300e20f6a0a9fadaaf7e5"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-ir",
  "dive-value",
@@ -406,8 +428,7 @@ dependencies = [
 [[package]]
 name = "dive-eval"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea4afb56478a9df6ac2cf2eabc88ce250677fb2b1d4448232196c810fde29615"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-ir",
  "dive-value",
@@ -416,13 +437,13 @@ dependencies = [
 [[package]]
 name = "dive-explore"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9736d1171c505fcc8c104112a3a8009f8846a798894435e8668857a8a9cf790"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-core",
  "dive-store",
  "getrandom 0.4.3",
  "hmac",
+ "rayon-core",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -431,8 +452,7 @@ dependencies = [
 [[package]]
 name = "dive-ir"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c0168d08feaf7700aa802e9a72d131493f9a847fc5315db6f9133392d269d7b"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-sema",
  "dive-syntax",
@@ -442,8 +462,7 @@ dependencies = [
 [[package]]
 name = "dive-liveness"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f18776caed8ffcad051570507b640dee69a0edf24f68600359771ae17d5cde1e"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -457,8 +476,7 @@ dependencies = [
 [[package]]
 name = "dive-model"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f223db2e6e495b91dbfd5dc6ecc7271328499dc403c9e8a3246114a2665ea584"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -470,8 +488,7 @@ dependencies = [
 [[package]]
 name = "dive-pluscal"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9a562c298a1643f47ff9f0699db7cb1d35dc3792c2fda7292d13213bac8e613"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-syntax",
  "serde",
@@ -480,8 +497,7 @@ dependencies = [
 [[package]]
 name = "dive-runtime"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a79883d42c2f4d3ba2325f7c3f3749d256707b6468e5d7d56c939fdc119dfa63"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -499,8 +515,7 @@ dependencies = [
 [[package]]
 name = "dive-sema"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dc5a6cceefeaf8fd9e6451d7a75a2bbeb02ab18af6e9f4831e61e659984e371"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-syntax",
 ]
@@ -508,8 +523,7 @@ dependencies = [
 [[package]]
 name = "dive-sim"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40aebc25d1644b5c0849ea84c15e4d5aa4aa3b1f65961cbcfc4df333bb5e7dba"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -521,8 +535,7 @@ dependencies = [
 [[package]]
 name = "dive-stdlib"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e99fdb2b2dc7f1627e3739ecd7ac0ed332f1798f0f09534d3174787d67649a49"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -534,8 +547,7 @@ dependencies = [
 [[package]]
 name = "dive-store"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "068d6c115f4c33432946e8e1efc9ad7388035e19523fff8f67f9bdbe0a5a5c3b"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-value",
 ]
@@ -543,8 +555,7 @@ dependencies = [
 [[package]]
 name = "dive-syntax"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5699a4d58c0bab82f3fac919abde705c803cfcf044e6e12ba66485607521f42a"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "rowan",
 ]
@@ -552,8 +563,7 @@ dependencies = [
 [[package]]
 name = "dive-trace"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "247bec833e4cb5306277302e2219a13c62252784ef91fbf2bdb79ecd5825ce1b"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -565,8 +575,7 @@ dependencies = [
 [[package]]
 name = "dive-value"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0851bf1625424de40a0d11f78c88446a77289cdb3c671a0354417cbced57e4f"
+source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
 dependencies = [
  "num-bigint 0.5.1",
  "num-integer",
@@ -1453,6 +1462,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "513962919efc330f829edb2535844d1b912b0fbe2ca165d613e4e8788bb05a5a"
 dependencies = [
  "rand_core 0.9.5",
+]
+
+[[package]]
+name = "rayon-core"
+version = "1.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
+dependencies = [
+ "crossbeam-deque",
+ "crossbeam-utils",
 ]
 
 [[package]]

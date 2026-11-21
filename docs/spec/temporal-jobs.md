@@ -1,8 +1,8 @@
 # Temporal jobs, version 1
 
-Status: specification for implementation review. This interface uses the native
-D.I.V.E. library at release 0.1.0 (`dive-api` and `dive-ir` from crates.io,
-`sail_api::temporal::DIVE_VERSION`).
+Status: specification for implementation review. The stable 0.3.0 distribution links the native
+D.I.V.E. 0.1.0 library. The development checkout uses the immutable source
+pin described under Edit evidence below.
 It never executes a D.I.V.E. command, TLC, or Java and has no alternate backend.
 
 ## Inputs and execution
@@ -73,9 +73,65 @@ is necessary but insufficient: the original specification independently
 validates the converted trace. A behavior trace establishes only its supplied
 execution, not an exhaustive model proof. Runtime random draws and other
 features the independent validator refuses remain unsupported.
-In particular, ITF's `#unserializable` marker is not a semantic model-value
-encoding. Native model values are unsupported in this transport until a
-lossless representation is specified; they are never converted to strings.
+A witness containing a native model value declares
+`"value_encoding":"sail-model-values-v1"` on its trace object. In its state
+values, the Sail extension `{"#sail-model":"r1"}` denotes the native atom
+`r1`. A JSON string `"r1"` still denotes the ordinary TLA+ string. The tag
+can occur wherever a state value can occur, including a map key. It has
+exactly one string-valued field. The discriminator must be present exactly
+when at least one state value uses this extension. Unknown, null, mixed or
+unnecessary discriminators and malformed tagged records are rejected. The
+native validator replays the decoded witness against the current model. ITF's
+`#unserializable` continues to mean there is no semantic value to validate.
+Legacy traces keep their six-field representation, including its field order
+and canonical request digest. Earlier clients reject extended traces because
+they do not recognize the additional field. [Wire decision](../decisions/0178-model-valued-temporal-witnesses.md).
+
+## Exact check replay
+
+The runtime stores completed `check` results under `runtime/temporal-v1` in
+the configured Sail cache. It requires the typed completion and source-bound
+property inventory for Holds, or the original independently validated native
+and ITF counterexample for Refuted. A new call authenticates the installed
+worker before lookup. Its input SHA-256 covers every supplied relative file
+name and byte, root and configuration selection, operation and deterministic
+limits. The key also binds the wall deadline, Sail version, worker byte digest
+(including embedded standard modules), D.I.V.E. identity, platform and the
+producing adapter's versioned checking policy. A changed byte or limit runs
+a fresh check. Keys for previous exact inputs survive subsequent edits.
+
+On a hit, `cache_key` names the matched receipt and `cache_hit` is true.
+The outer job uses the current caller's identities. The native report and
+validated counterexample, including their original execution statistics, stay
+intact. Compatible socket peers negotiate `replay_context` and verify the
+matched key independently. Older peers get fresh execution. Missing, corrupt
+or ineligible evidence falls back to normal checking. Cancellation and the
+current deadline apply during lookup. Simulation, standalone trace validation,
+resource stops, refusals and execution failures always execute afresh.
+The local disk tier requires trusted user-owned storage. See [trust](../trust.md).
+
+## Explicit invariant witness recheck
+
+`runtime recheck` accepts two version-one check envelopes in the embedded CLI.
+A counterexample from a different receipt can establish a current refutation
+only when the modules, selected root/config, operative CFG including declaration
+order, check limits, and authenticated producer agree. The CLI requires one
+previous invariant violation named by the configured inventory and a fresh
+successful independent replay of its complete ITF ending against the current
+model. Its output records both request digests, the previous receipt key and
+the validation response. The exact current result takes precedence. A failed
+guard falls back to current checking. The [command guide](../temporal-jobs.md#recheck-a-previous-invariant-failure-after-a-configuration-comment-edit)
+defines output routes and deadlines.
+
+The `unchanged-loaded-program` relation extends native recheck to project
+envelopes that contain unselected siblings. The previous and current checks
+require the same root, selected configuration bytes, operation, limits and
+worker. Ordinary host admission and module resolution must succeed for both.
+The authenticated worker compares the ordered origins and exact bytes of
+the resolved modules. Extracted monoliths are ineligible. The caller accepts
+this conditional relation only with an authenticated complete ordinary Holds
+receipt. The result binds the current caller and request, its establishing
+receipt and the ordered loaded paths. It publishes no current receipt.
 
 ## Conformance and compatibility
 
@@ -89,3 +145,52 @@ controls. Existing Verus conformance remains unchanged.
 The common request/verdict API owns requirement IDs, provenance, content keys
 and ledger semantics. This backend owns only the native job payload and
 evidence; it does not invent a second ledger or duplicate caller metadata.
+
+## Edit evidence
+
+`edit-session` is a separate version-1 protocol. The isolated native worker
+accepts one group of closed exhaustive requests and returns ordered results
+after the entire group finishes. The parent authenticates the executable,
+checks its linked Dive source and verifies report version, current request
+digests, basis lineage, role and limits. A zero queue on a failed safety
+prefix cannot establish completion. Each proof is identified by its structure,
+basis, current search position and complete current evidence. Ordinary
+fallbacks retain the native schema-3 response. The batch does not populate
+exact-replay receipts.
+
+The cross-process `established-invariant-subset` route requires an existing
+trusted complete ordinary safety Holds receipt. The worker’s relation report
+alone establishes only how the two bound programs relate. The parent checks
+the previous receipt, the installed worker digest, both input digests,
+effective limits and current caller attribution. A missing receipt, stopped
+check, changed transition system, new obligation or inconclusive comparison
+runs the current request through ordinary checking.
+
+The `established-first-temporal-claim` route accepts an ordinary, completed
+native temporal Holds result for at least two temporal properties. A session
+obtains that result from its own earlier ordinary check. Across processes the
+parent authenticates the ordinary receipt and selects the same installed worker.
+The parent checks prior execution facts, digest, property, scope, limits and
+original counts. Inside the worker Dive binds both closed inputs, checks their
+execution policies and startup plans, and matches the compiled first temporal
+property against the single current property. The previous result must show a
+complete native final check with zero periodic prefix checks or fallback atom
+evaluations. A successful comparison returns the current property and previous
+search counts. Derived evidence cannot create an ordinary receipt or establish
+a new basis. A comparison miss follows the existing current-check path.
+
+The development `Cargo.toml` and `Cargo.lock` pin the Dive repository by full
+revision under ADR 0172. The edit protocol’s `backend_source` identifies those
+bytes and the installation manifest authenticates the worker executable.
+A stable Sail crate release must first depend on published Dive crates exposing
+these APIs and pass native conformance against that source.
+
+## External symbolic predicate sessions
+
+The local `sail runtime symbolic-check` command owns a separate working
+directory and a named external Dive, selected by the caller. Proof rows have
+no exploration statistics. A complete search and a validated violation use
+the symbolic checker's versioned result format. Issuing a temporal job to
+the shared runtime still selects its authenticated native worker. The external `--strategy occupancy` route checks the distinct `dive-occupancy-report-v1` schema and publishes to a separate candidate filename. `--max-orbits` applies only to that strategy. See the
+[decision](../decisions/0177-portable-symbolic-predicates.md) and
+[command and exits](../temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate).

@@ -1,4 +1,7 @@
 //! Versioned raw-query runtime, separate from Cargo verification commands.
+mod edit_session;
+mod recheck;
+mod symbolic;
 use sail_api::runtime::{Answer, Outcome, Output, Request};
 use sail_runtime::{Cancellation, Config, Runtime};
 use std::io::{Read, Write};
@@ -28,10 +31,19 @@ fn command(
     out: &mut dyn Write,
     extensions: &crate::Extensions,
 ) -> Result<u8, String> {
+    if args
+        .first()
+        .is_some_and(|action| action == "symbolic-check")
+    {
+        return symbolic::run(&args[1..], out);
+    }
     let options = options(args)?;
+    if options.action == "edit-session" {
+        return edit_session::run(options.file.as_deref().ok_or_else(usage)?, extensions, out);
+    }
     let request = options.file.as_deref().map(read_request).transpose()?;
     let cancellation = Cancellation::default();
-    if request.is_some() {
+    if request.is_some() || options.action == "prepare-temporal" {
         let signal = cancellation.clone();
         ctrlc::set_handler(move || signal.cancel())
             .map_err(|e| format!("error[SAIL6102]: cannot install cancellation handler: {e}"))?;
@@ -61,15 +73,153 @@ fn command(
             .map_err(|e| e.to_string())?
             .join("runtime"),
     );
+    if options.action == "prepare-temporal" {
+        return prepare_temporal(&cache, request.as_ref(), extensions, &cancellation, out);
+    }
     let runtime = Runtime::new(configuration(cache, extensions)?).map_err(|e| e.to_string())?;
     if options.action == "capabilities" {
         write_json(out, &runtime.capabilities())?;
         return Ok(0);
     }
+    if let Some(basis) = options.previous {
+        return recheck::run(
+            &runtime,
+            &read_request(&basis)?,
+            request.as_ref().ok_or_else(usage)?,
+            &cancellation,
+            out,
+        );
+    }
     let response = runtime
         .execute(request.as_ref().ok_or_else(usage)?, &cancellation)
         .map_err(|e| e.to_string())?;
     result(out, &response)
+}
+
+// The installer has one background check per runtime cache. Foreground execution
+// never takes this lock and always follows its usual admission and receipt checks.
+fn prepare_temporal(
+    cache: &Path,
+    first_job: Option<&Request>,
+    extensions: &crate::Extensions,
+    cancellation: &Cancellation,
+    out: &mut dyn Write,
+) -> Result<u8, String> {
+    let probe;
+    let request = if let Some(request) = first_job {
+        if !matches!(&request.input, sail_api::runtime::Input::Temporal { job }
+            if matches!(job.request.operation, sail_api::temporal::Operation::Check { .. }))
+        {
+            return Err(
+                "error[SAIL6101]: temporal preparation requires a temporal check job".into(),
+            );
+        }
+        request
+    } else {
+        probe = decode_request(include_bytes!("temporal_warmup.json").as_slice())?;
+        &probe
+    };
+    let mut config = configuration(cache.to_owned(), extensions)?;
+    if first_job.is_none() {
+        // Always exercise the worker. A synthetic installation probe has no
+        // caller evidence to publish and should leave no receipt.
+        config.cache_directory = None;
+        config.temporal_cache_directory = None;
+    }
+    let mut directories = std::fs::DirBuilder::new();
+    directories.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt as _;
+        directories.mode(0o700);
+    }
+    directories
+        .create(cache)
+        .map_err(|e| format!("error[SAIL6102]: cannot open preparation cache: {e}"))?;
+    let ownership = std::fs::File::open(cache)
+        .map_err(|e| format!("error[SAIL6102]: cannot open preparation cache: {e}"))?;
+    ownership.try_lock().map_err(|e| {
+        format!("error[SAIL6102]: temporal preparation busy or cache cannot be locked: {e}")
+    })?;
+    // A just-promoted worker is too new for the authenticated image cache.
+    // Only the synthetic probe waits. A supplied check starts immediately.
+    #[cfg(unix)]
+    if first_job.is_none()
+        && let Some(worker) = &config.temporal_worker
+        && let Ok(metadata) = std::fs::metadata(&worker.executable)
+    {
+        use sail_api::stamp::{SETTLED, Stamp};
+        use std::time::{Duration, Instant, SystemTime};
+        let stamp = Stamp::of(&metadata);
+        let start = Instant::now();
+        while !stamp.settled(SystemTime::now())
+            && start.elapsed() < SETTLED
+            && !cancellation.is_cancelled()
+        {
+            std::thread::sleep(Duration::from_millis(25));
+        }
+    }
+    let response = Runtime::new(config)
+        .and_then(|runtime| runtime.execute(request, cancellation))
+        .map_err(|e| e.to_string())?;
+    result(out, &response)
+}
+
+// Resolve existing components before normalizing "..". An uncreated suffix
+// can contain a parent component followed by an existing symlink. Remember
+// whether any resolved component traversed the unsigned solver result tree.
+fn resolve_cache_path(path: &Path, boundary: Option<&Path>) -> std::io::Result<(PathBuf, bool)> {
+    use std::path::Component;
+    let mut resolved = PathBuf::new();
+    let mut crossed = false;
+    for component in std::path::absolute(path)?.components() {
+        match component {
+            Component::ParentDir => {
+                resolved.pop();
+            }
+            Component::Normal(name) => {
+                resolved.push(name);
+                crossed |= boundary.is_some_and(|root| resolved.starts_with(root));
+                match std::fs::symlink_metadata(&resolved) {
+                    Ok(metadata) if metadata.is_symlink() => resolved = resolved.canonicalize()?,
+                    Ok(_) => {}
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(e) => return Err(e),
+                }
+            }
+            other => resolved.push(other.as_os_str()),
+        }
+        crossed |= boundary.is_some_and(|root| resolved.starts_with(root));
+    }
+    Ok((resolved, crossed))
+}
+
+// Parent permissions and descriptor-relative ownership checks still apply to
+// the chosen store. This mapping keeps explicitly selected solver cache roots
+// isolated and prevents unsigned solver exports from transporting native proofs.
+pub(crate) fn temporal_cache_override(global: &Path, selected: &Path) -> Option<PathBuf> {
+    let runtime = global.join("runtime");
+    let resolved = resolve_cache_path(&global.join("results"), None).and_then(|(results, _)| {
+        resolve_cache_path(selected, Some(&results)).map(|(path, crossed)| (results, path, crossed))
+    });
+    let scope = match resolved {
+        Ok((_, path, false)) => {
+            return (std::path::absolute(selected).ok().as_ref() != Some(&path)).then_some(path);
+        }
+        Ok((results, path, true)) => {
+            if path == results || path == results.join("runtime") {
+                return Some(runtime);
+            }
+            path
+        }
+        // A dangling alias or permission failure cannot justify trusting the
+        // selected tree. Derive an isolated location from the caller's scope.
+        Err(_) => std::path::absolute(selected).unwrap_or_else(|_| selected.to_owned()),
+    };
+    // A direct child of the configured root keeps the final directory under
+    // the receipt store's O_NOFOLLOW check even if a sibling runtime is a symlink.
+    let digest = sail_api::temporal::sha256(scope.as_os_str().as_encoded_bytes());
+    Some(global.join(format!("runtime-scope-{digest}")))
 }
 
 /// Resolve only the existing bundle path; the executor authenticates solver bytes.
@@ -84,7 +234,7 @@ pub(crate) fn configuration(
     let z3 = sail_verus::source_build::checkout_dir(&build).join("source/target-verus/release/z3");
     // A missing, unreadable or malformed worker installation only makes
     // temporal jobs unavailable; it never stops the service or `sail verify`.
-    // Without a linked backend no worker installation is read (ADR 0083).
+    // An embedder can omit its temporal backend.
     let (temporal_worker, temporal_unavailable) = match std::env::current_exe() {
         _ if extensions.temporal.is_none() => (None, None),
         Ok(sail) => sail_runtime::temporal::locate(&sail),
@@ -104,6 +254,7 @@ pub(crate) fn configuration(
         z3: Some(z3),
         // Development opt-in; default capabilities stay unchanged until qualification.
         cvc5: std::env::var_os("SAIL_RUNTIME_CVC5").map(std::path::PathBuf::from),
+        temporal_cache_directory: temporal_cache_override(&root, &cache),
         cache_directory: Some(cache),
         workers: 2,
     })
@@ -157,11 +308,12 @@ fn result(out: &mut dyn Write, response: &sail_api::runtime::Response) -> Result
 }
 
 fn usage() -> String {
-    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET]".into()
+    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR] | sail runtime recheck --previous FILE --file FILE|- [--cache DIR] | sail runtime edit-session --file FILE|- | ".to_owned() + symbolic::USAGE
 }
 
 struct Options<'a> {
     action: &'a str,
+    previous: Option<PathBuf>,
     file: Option<PathBuf>,
     cache: Option<PathBuf>,
     socket: Option<PathBuf>,
@@ -169,11 +321,15 @@ struct Options<'a> {
 
 fn options(args: &[String]) -> Result<Options<'_>, String> {
     let action = args.first().map(String::as_str).ok_or_else(usage)?;
-    if !matches!(action, "capabilities" | "execute") {
+    if !matches!(
+        action,
+        "capabilities" | "execute" | "prepare-temporal" | "recheck" | "edit-session"
+    ) {
         return Err(usage());
     }
     let mut result = Options {
         action,
+        previous: None,
         file: None,
         cache: None,
         socket: None,
@@ -182,15 +338,25 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
     while let Some(option) = options.next() {
         let value = options.next().ok_or_else(usage)?;
         match option.as_str() {
-            "--file" if action == "execute" && result.file.is_none() => {
+            "--file" if action != "capabilities" && result.file.is_none() => {
                 result.file = Some(value.into());
             }
-            "--cache" if result.cache.is_none() => result.cache = Some(value.into()),
-            "--socket" if result.socket.is_none() => result.socket = Some(value.into()),
+            "--previous" if action == "recheck" && result.previous.is_none() && value != "-" => {
+                result.previous = Some(value.into());
+            }
+            "--cache" if action != "edit-session" && result.cache.is_none() => {
+                result.cache = Some(value.into());
+            }
+            "--socket"
+                if matches!(action, "capabilities" | "execute") && result.socket.is_none() =>
+            {
+                result.socket = Some(value.into());
+            }
             _ => return Err(usage()),
         }
     }
-    if (action == "execute" && result.file.is_none())
+    if (matches!(action, "execute" | "recheck" | "edit-session") && result.file.is_none())
+        || (action == "recheck" && result.previous.is_none())
         || (result.socket.is_some() && result.cache.is_some())
     {
         return Err(usage());
@@ -199,7 +365,11 @@ fn options(args: &[String]) -> Result<Options<'_>, String> {
 }
 
 fn read_request(path: &Path) -> Result<Request, String> {
-    let input: Box<dyn Read> = if path == Path::new("-") {
+    decode_request(open_input(path)?)
+}
+
+fn open_input(path: &Path) -> Result<Box<dyn Read>, String> {
+    Ok(if path == Path::new("-") {
         Box::new(std::io::stdin())
     } else {
         Box::new(std::fs::File::open(path).map_err(|e| {
@@ -208,8 +378,7 @@ fn read_request(path: &Path) -> Result<Request, String> {
                 path.display()
             )
         })?)
-    };
-    decode_request(input)
+    })
 }
 
 fn decode_request(input: impl Read) -> Result<Request, String> {
@@ -236,13 +405,49 @@ mod tests {
     use super::*;
 
     #[test]
+    fn preparation_requires_a_check_and_respects_cache_ownership() -> Result<(), String> {
+        let cache = std::env::temp_dir().join(format!("sail-temporal-prep-{}", std::process::id()));
+        let prepare = |first: Option<&Request>| {
+            prepare_temporal(
+                &cache,
+                first,
+                &crate::Extensions::default(),
+                &Cancellation::default(),
+                &mut Vec::new(),
+            )
+        };
+        let mut request = decode_request(include_bytes!("temporal_warmup.json").as_slice())?;
+        let sail_api::runtime::Input::Temporal { job } = &mut request.input else {
+            return Err("expected a temporal worker warmup".into());
+        };
+        job.request.operation = sail_api::temporal::Operation::Simulate {
+            traces: 1,
+            depth: 1,
+        };
+        assert!(prepare(Some(&request)).is_err_and(|e| e.contains("requires a temporal check")));
+        // An embedder without a temporal backend reports Unavailable.
+        assert_eq!(prepare(None)?, 1);
+        let lock = std::fs::File::open(&cache).map_err(|e| e.to_string())?;
+        lock.try_lock().map_err(|e| e.to_string())?;
+        assert!(prepare(None).is_err_and(|e| e.contains("busy")));
+        drop(lock);
+        std::fs::remove_dir(cache).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[test]
     fn admission_rejects_unknown_options_and_malformed_documents() {
         for args in [
             vec![],
             vec!["execute"],
+            vec!["prepare-temporal", "--socket", "sock"],
             vec!["capabilities", "--file", "x"],
             vec!["execute", "--file", "x", "--file", "y"],
             vec!["execute", "--file", "x", "--cache"],
+            vec!["recheck", "--file", "x"],
+            vec!["recheck", "--previous", "x"],
+            vec!["recheck", "--file", "a", "--previous", "-"],
+            vec!["recheck", "--file", "a", "--previous", "b", "--socket", "s"],
         ] {
             assert!(options(&args.into_iter().map(str::to_owned).collect::<Vec<_>>()).is_err());
         }

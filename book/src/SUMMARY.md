@@ -23,6 +23,7 @@
 
 - [MCP and agents](mcp.md)
 - [SMT queries](runtime.md)
+- [Native temporal jobs](temporal-jobs.md)
 - [JSON reports](output-schema.md)
 - [Result client](result-client.md)
 - [Repair reference](proof-repair.md)
