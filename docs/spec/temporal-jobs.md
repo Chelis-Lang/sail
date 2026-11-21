@@ -170,8 +170,9 @@ exact-replay receipts. An `exact-request` entry carries only the zero-based
 parent compare the full native requests. The parent validates the actual earlier
 response and the current digest in the authenticated frame, rejecting forward
 or chained references, changed payloads, nonconclusive bases and incomplete
-evidence. Replaying a refutation returns the original independently validated
-word for the identical program. No repeated trace or second verdict is stored.
+evidence. The authenticated worker semantically validates a fresh refutation.
+The parent checks the received evidence shape and identity. An exact replay
+refers to that same original word and validation for the identical program. No repeated trace or second verdict is stored.
 
 The cross-process `established-invariant-subset` route requires an existing
 trusted complete ordinary safety Holds receipt. The worker’s relation report
