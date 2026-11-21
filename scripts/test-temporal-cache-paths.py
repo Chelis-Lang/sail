@@ -128,13 +128,21 @@ Bad == []<>(x.tag = "z")
     assert not previous["cache_hit"] and retained["cache_hit"]
     # The CLI parent can have an ambient Dive policy that the isolated worker clears.
     parent_env = dict(os.environ, DIVE_CORE_OPT="none", DIVE_NATIVE_ATOM_AUDIT="1")
-    batch = {"version": 1, "wall_time_ms": 10000, "checks": [request, job["request"]]}
+    bad = deepcopy(request)
+    bad["model"]["files"]["Warm.cfg"] = files["Warm.cfg"].replace("P Q", "Bad Q")
+    batch = {"version": 1, "wall_time_ms": 10000, "checks": [request, job["request"], bad, bad, request]}
     session = subprocess.run([sail, "runtime", "edit-session", "--file", "-"],
                              input=json.dumps(batch), capture_output=True, text=True, check=True,
                              timeout=20, env=parent_env)
     entries = json.loads(session.stdout)["entries"]
     assert entries[0]["evidence"]["route"] == "fresh"
     assert entries[1]["evidence"]["route"] == "established-first-temporal-claim"
+    assert entries[2]["evidence"]["route"] == "fresh"
+    failure = entries[2]["evidence"]["response"]
+    assert failure["outcome"] == "refuted" and failure["validations"][0]["result"] == "valid"
+    for index, basis in ((3, 2), (4, 0)):
+        assert entries[index]["evidence"] == {"route": "exact-request", "basis_entry": basis}
+        assert entries[index]["request_sha256"] == entries[basis]["request_sha256"]
     first = recheck(current)
     assert first["route"] == "established-first-temporal-claim" and first["property"] == "P", first
     assert first["outcome"] == "holds" and first["obligation_id"] == "check-first-claim"
