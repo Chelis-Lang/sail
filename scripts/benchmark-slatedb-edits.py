@@ -95,9 +95,16 @@ def run(args, work):
     session = []
     for index, (version, entry) in enumerate(zip(VERSIONS, output["entries"])):
         evidence = entry["evidence"]
-        assert evidence["route"] == "fresh" and entry["request_sha256"] == rows[index]["request_sha256"]
+        route = evidence["route"]
+        assert entry["request_sha256"] == rows[index]["request_sha256"]
+        assert route == ("exact-request" if args.exact_session and index >= 2 else "fresh")
+        basis = evidence.get("basis_entry")
+        if basis is not None:
+            assert basis == version and requests[VERSIONS[basis]] == requests[version]
+            evidence = output["entries"][basis]["evidence"]
+        assert evidence["route"] == "fresh"
         counts = response_counts(evidence["response"], COUNTS[args.case][version])
-        session.append(dict(route=evidence["route"], elapsed_us=entry["elapsed_us"], counts=counts,
+        session.append(dict(route=route, basis_entry=basis, elapsed_us=entry["elapsed_us"], counts=counts,
                             request_sha256=entry["request_sha256"]))
     return dict(case=args.case, module_sha256=SOURCE, author_cfg_sha256=CONFIG,
                 cfg_sha256=[digest(c.encode()) for c in configs], library_sha256=LIBRARIES,
@@ -112,6 +119,7 @@ def main():
     parser.add_argument("--source", type=Path, required=True, help="upstream slatedb directory")
     parser.add_argument("--modules", type=Path, required=True, help="pinned CommunityModules modules directory")
     parser.add_argument("--case", choices=COUNTS, required=True)
+    parser.add_argument("--exact-session", action="store_true", help="require in-batch repeat and undo references")
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="wal-edits-") as work:
         print(json.dumps(run(args, Path(work)), indent=2))
