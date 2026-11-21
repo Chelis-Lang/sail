@@ -58,6 +58,39 @@ def response_counts(response, expected):
     return {k: stats[k] for k in ("initial_generated", "generated", "distinct", "depth", "left_on_queue")}
 
 
+def witness(args, work, request):
+    # The source Init predicate is true initially and ceases to hold after a real transition.
+    request["model"]["files"]["Case.cfg"] += "\nINVARIANT Init\n"
+    def execute(current, name):
+        job = {"obligation_id": "wal-witness", "requirement_ids": [], "wall_time_ms": LIMIT_MS, "request": current}
+        payload = {"version": 1, "input": {"kind": "temporal", "job": job}}
+        output, _ = invoke(args.sail, work, ["execute", "--cache", str(work / name)], payload)
+        return output["output"]["result"]["response"]
+
+    fresh = execute(request, "fresh")
+    assert fresh["requested_checks"]["invariants"] == [*INVARIANTS, "Init"]
+    assert fresh["outcome"] == "refuted" and fresh["validations"][0]["result"] == "valid"
+    word = fresh["itf_traces"][0]
+    assert word["ending"] == {"kind": "invariant", "name": "Init"} and word["length"] >= 2
+    checked = execute({**request, "operation": {"kind": "validate", "trace": word}}, "validate")
+    assert checked["outcome"] == "valid" and checked["itf_traces"] == [word]
+    batch = {"version": 1, "wall_time_ms": LIMIT_MS, "checks": [request, request]}
+    output, timing = invoke(args.sail, work, ["edit-session"], batch)
+    first, second = output["entries"]
+    assert first["evidence"]["route"] == "fresh" and first["evidence"]["response"]["itf_traces"] == [word]
+    assert first["request_sha256"] == second["request_sha256"] == fresh["request_sha256"]
+    if args.exact_session:
+        assert second["evidence"] == {"route": "exact-request", "basis_entry": 0}
+    else:
+        assert second["evidence"]["route"] == "fresh" and second["evidence"]["response"]["itf_traces"] == [word]
+    return dict(case=args.case, worker_sha256=output["worker_sha256"], request_sha256=fresh["request_sha256"],
+                invariant="Init", verdict=fresh["outcome"], independent_validation=checked["outcome"],
+                word_sha256=digest(json.dumps(word, sort_keys=True, separators=(",", ":")).encode()),
+                length=word["length"], counts=fresh["native_report"]["statistics"],
+                session=dict(timing, routes=[first["evidence"]["route"],second["evidence"]["route"]],
+                             entry_us=[first["elapsed_us"], second["elapsed_us"]]))
+
+
 def run(args, work):
     cfg = pinned(args.source / "SlateDBWAL.cfg", CONFIG).replace("Writers = {w1, w2, w3}", "Writers = {w1, w2}")
     if args.case == "Medium":
@@ -70,6 +103,8 @@ def run(args, work):
     requests = [{"version": 1, "model": {"root": "SlateDBWAL.tla", "config": "Case.cfg",
                  "files": {**files, "Case.cfg": c}},
                  "operation": {"kind": "check", "max_states": 5000000, "max_depth": 1000}} for c in configs]
+    if args.witness_only:
+        return witness(args, work, requests[0])
     rows = []
     receipts = []
     for tag, version in zip(("cold", "edit", "repeat", "undo", "fresh-fixed", "fresh-edited"), VERSIONS + [0, 1]):
@@ -120,6 +155,7 @@ def main():
     parser.add_argument("--modules", type=Path, required=True, help="pinned CommunityModules modules directory")
     parser.add_argument("--case", choices=COUNTS, required=True)
     parser.add_argument("--exact-session", action="store_true", help="require in-batch repeat and undo references")
+    parser.add_argument("--witness-only", action="store_true", help="add Init to the six invariants and replay its failure")
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="wal-edits-") as work:
         print(json.dumps(run(args, Path(work)), indent=2))
