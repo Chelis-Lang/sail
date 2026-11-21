@@ -186,7 +186,7 @@ impl Frozen {
                     }
                 }
                 Origin::Standard if file.display == "<standard>/TLC.tla" => {
-                    qualified_imports = true
+                    qualified_imports = true;
                 }
                 Origin::Standard => {
                     let stem = Path::new(&file.display)
@@ -206,7 +206,7 @@ impl Frozen {
                     }
                 }
                 Origin::Bundled if pure_tlc::qualified_bundle(&file.display) => {
-                    qualified_imports = true
+                    qualified_imports = true;
                 }
                 Origin::Bundled => {
                     return Err((
