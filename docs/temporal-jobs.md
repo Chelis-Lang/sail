@@ -235,6 +235,13 @@ a proof onto previously checked invariants for models with aggregate state.
 Sail validates the ITF rendering of each reused counterexample against the
 current model.
 
+For an unchanged request or an undo, `exact-request` points to the zero-based
+`basis_entry` of an earlier `fresh` Holds or Refuted in this batch. Read that
+entry’s full native response for the verdict, counts, property names and validated
+word. Comparing every file’s name and bytes, the selected root and CFG, protocol
+and limits makes this applicable even when graph or invariant capture declines.
+Stopped checks, refusals and changed requests require another decision.
+
 The row and graph APIs currently admit pure models with scalar integer or
 Boolean state fields. A different transition relation or an unsupported edit
 can require a new capture or a fresh ordinary check. The `reused` flag and

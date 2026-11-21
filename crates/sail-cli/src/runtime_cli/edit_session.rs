@@ -32,7 +32,7 @@ impl Status<'_> {
     fn emit(&self, out: &mut dyn Write, worker: Option<&Worker>) -> Result<u8, String> {
         let complete = matches!(self, Self::Completed { entries } if entries.iter().all(|r| {
             match &r.evidence {
-                Evidence::Checked { .. } | Evidence::EstablishedFirstTemporalClaim(_) => true,
+                Evidence::Checked { .. } | Evidence::EstablishedFirstTemporalClaim(_) | Evidence::ExactRequest { .. } => true,
                 Evidence::Fresh { response } => matches!(response.outcome, sail_dive::Outcome::Holds | sail_dive::Outcome::Refuted),
             }
         }));

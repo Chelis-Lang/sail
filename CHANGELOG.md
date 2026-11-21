@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Reuse earlier complete ordinary results for identical checks and undo in an installed temporal edit session.
+
 - Native [temporal jobs](docs/temporal-jobs.md) can check pure TLC function updates, finite permutations and pinned finite-set utilities used by SlateDB.
 
 - `sail runtime symbolic-check --strategy occupancy` can recheck [portable population predicates](docs/temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate) across source edits and preserve exact counts on a fresh search.
