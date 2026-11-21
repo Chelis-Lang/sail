@@ -58,11 +58,16 @@ documents are protocol failures. The encoded request and response bounds are
 16 MiB each; the source closure is at most 8 MiB and 1,024 files.
 
 Inputs are immutable UTF-8 files with relative portable paths, explicit root
-and configuration, and unique module file names. Imports resolve only inside
-the private closure or the admitted embedded `Naturals`, `Integers`,
-`Sequences`, `FiniteSets` and `Bags` modules. Other standard modules, including
-host-capable `TLC`, `Json` and `Randomization`, refuse before binding.
-There are no external search paths or host grants.
+and configuration, and unique module file names. Imports resolve inside the
+private closure or to pinned modules. Alongside `Naturals`, `Integers`,
+`Sequences`, `FiniteSets` and `Bags`, the worker admits the embedded TLC
+operators `:>`, `@@` and `Permutations`, and the bundled CommunityModules
+`FiniteSetsExt`, `Folds` and `Functions`. A model can use `Max` and configured
+symmetry with these imports. The CFG must assign literal values to declared
+scalar constants and select source-defined roles. The worker checks source
+uses even in an unused operator, and checks action labels before trace replay.
+Other TLC operators, CFG redirections in this profile, unqualified imports
+and host access return `SAIL4202`.
 
 Model checking uses mathematical integers, exact states, seed zero,
 fingerprint zero and one worker. Bound safety-only properties use ordinary

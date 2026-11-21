@@ -15,14 +15,23 @@ duplicate paths, missing imports, external search paths, host operators and
 ambient module resolution are not admitted. The worker materializes private
 files from this immutable closure and supplies only that closure to D.I.V.E.
 Built-in standard module identity is bound by the backend release.
-The first slice admits only the pure embedded `Naturals`, `Integers`,
-`Sequences`, `FiniteSets` and `Bags` modules. Semantic analysis checks the
-actual loaded origins before binding; host-capable modules such as `TLC`,
-`Json` and `Randomization`, and D.I.V.E.'s bundled CommunityModules and
-TLAPS sources, are unsupported even on an untaken branch.
-The guard also inspects actual lowered native overrides and effects. Native
-overrides match module names even for user-provided files, so a substituted
-`TLC.tla` cannot grant printing or other host capabilities.
+The worker admits the pure embedded `Naturals`, `Integers`, `Sequences`,
+`FiniteSets` and `Bags` modules. It also qualifies the embedded TLC operators
+`:>`, `@@` and `Permutations` and the pinned bundled `FiniteSetsExt`, `Folds`
+and `Functions` files. When one of these additional embedded modules loads,
+the pre-binding guard checks native identities on every lowered definition,
+standalone reference, callee, higher-order argument and substitution, and
+checks the effects of every expression. Only original native declarations in
+the embedded TLC file may remain dormant. The pinned binder skips those
+native declarations when precomputing constant definitions. Source-defined
+startup expressions and assumptions receive the same check as selected roles.
+The CFG must use direct literal assignments to root scalar constants and
+select source-defined role operators; the check covers symmetry, constraints,
+properties and hooks. External search paths, unqualified bundles, native host
+operations and CFG redirects in this profile refuse. A trace action label may
+not select an excluded operator. Request and trace validation use the same
+admitted immutable source. A source-supplied import is still checked under
+its actual origin.
 
 The fixed semantic profile is native D.I.V.E.: mathematical integers, exact
 states, seed zero, fingerprint zero and one worker. Checking uses D.I.V.E.'s

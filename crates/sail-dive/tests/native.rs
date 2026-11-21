@@ -414,3 +414,89 @@ fn nested_atoms_round_trip_in_keys_values_records_and_sets() -> TestResult {
     assert_eq!(entries[1][1]["model"], "N");
     Ok(())
 }
+
+#[test]
+fn deterministic_tlc_import_runs_actual_check_simulation_and_replay() {
+    let source = r#"---- MODULE M ----
+EXTENDS TLC, FiniteSetsExt
+CONSTANT Ids
+VARIABLE x
+Sym == Permutations(Ids)
+Table == (1 :> 2) @@ (2 :> 1)
+Init == x = 1
+Next == x' = Table[x]
+Inv == x <= Max(DOMAIN Table)
+Bad == x = 1
+====
+"#;
+    let cfg = "CONSTANT Ids={p,q}\nINIT Init\nNEXT Next\nSYMMETRY Sym\nINVARIANT Inv";
+    let original = request(source, cfg);
+    let rows = sail_dive::execute(&original);
+    assert_eq!(rows.outcome, Outcome::Holds, "{rows:?}");
+    assert_eq!(rows.native_report["statistics"]["distinct"], 2);
+    assert_eq!(rows.native_report["statistics"]["generated"], 3);
+    let mut bad = request(source, &format!("{cfg}\nINVARIANT Bad"));
+    let checked = sail_dive::execute(&bad);
+    assert_eq!(checked.outcome, Outcome::Refuted, "{checked:?}");
+    assert_eq!(checked.validations[0]["result"], "valid");
+    let mut word = checked.itf_traces[0].clone();
+    bad.operation = Operation::Validate {
+        trace: word.clone(),
+    };
+    assert_eq!(sail_dive::execute(&bad).outcome, Outcome::Valid);
+    // A non-admitted, deterministic TLC name is still outside the label contract.
+    word.actions[1] = json!({"name":"Any","location":null});
+    bad.operation = Operation::Validate { trace: word };
+    let refused = sail_dive::execute(&bad);
+    assert_eq!(refused.outcome, Outcome::Unsupported, "{refused:?}");
+    assert!(
+        refused
+            .message
+            .as_deref()
+            .is_some_and(|message| message.contains("trace label"))
+    );
+
+    // Core simulation does not support configured symmetry.
+    let mut sample = request(source, &cfg.replace("SYMMETRY Sym\n", ""));
+    sample.operation = Operation::Simulate {
+        traces: 1,
+        depth: 3,
+    };
+    let sampled = sail_dive::execute(&sample);
+    assert_eq!(sampled.outcome, Outcome::Sampled, "{sampled:?}");
+    assert_eq!(sampled.validations[0]["result"], "valid");
+}
+
+#[test]
+fn unqualified_deterministic_operations_and_cfg_redirects_refuse_before_binding() {
+    let source = COUNTER.replace(
+        "EXTENDS Naturals",
+        "EXTENDS Naturals, TLC\nCONSTANT Limit\nThree == 3",
+    );
+    let cfg = "CONSTANT Limit=3\nINIT Init\nNEXT Next";
+    for (module, config) in [
+        (
+            source.replace("====", "Unused == ToString(1)\n===="),
+            cfg.into(),
+        ),
+        (
+            source.replace(
+                "====",
+                "Use(F(_), a) == F(a)\nUnused == Use(ToString, 1)\n====",
+            ),
+            cfg.into(),
+        ),
+        (source.clone(), cfg.replace("Limit=3", "Limit <- Three")),
+        (source.clone(), format!("{cfg}\nVIEW Any")),
+    ] {
+        let rejected = sail_dive::execute(&request(&module, &config));
+        assert_eq!(rejected.outcome, Outcome::Unsupported, "{rejected:?}");
+        assert!(rejected.native_report.is_null());
+        assert!(
+            rejected
+                .message
+                .as_deref()
+                .is_some_and(|m| m.starts_with("SAIL4202"))
+        );
+    }
+}
