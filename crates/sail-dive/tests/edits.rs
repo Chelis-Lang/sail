@@ -30,6 +30,7 @@ fn observed(request: &Request, session: &mut Session, expected: Option<(Structur
     sail_dive::validate_response(request, &fresh)?;
     let entry = session.check(request)?;
     match &entry.evidence {
+        Evidence::ExactRequest { .. } => return Err("unexpected batch-only evidence".into()),
         Evidence::EstablishedFirstTemporalClaim(_) => {
             return Err("unexpected temporal proof".into());
         }

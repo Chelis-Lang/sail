@@ -1,4 +1,6 @@
 //! Check a sequence of closed TLA+ requests while retaining one typed Dive artifact.
+#[cfg(test)]
+mod exact_tests;
 pub mod first_claim;
 pub mod loaded;
 pub mod projection;
@@ -107,6 +109,11 @@ pub enum Evidence {
         /// Standard validated native response.
         response: Box<Response>,
     },
+    /// The identical request already has a conclusive ordinary response in this batch.
+    ExactRequest {
+        /// Zero-based index of the earlier fresh entry carrying all native evidence.
+        basis_entry: usize,
+    },
     /// A new exact capture or a qualified recheck of an earlier capture.
     Checked {
         /// Type of artifact used by this decision.
@@ -122,6 +129,15 @@ pub enum Evidence {
         /// Current conclusive outcome.
         decision: Checked,
     },
+}
+
+impl Evidence {
+    /// Whether this validated entry supplies a completed ordinary check for exact replay.
+    #[must_use]
+    pub fn completed_ordinary(&self) -> bool {
+        matches!(self, Self::Fresh { response } if response.requested_checks.is_some()
+            && matches!(response.outcome, Outcome::Holds | Outcome::Refuted))
+    }
 }
 
 /// One result in caller order, bound to its exact input.
@@ -432,7 +448,7 @@ impl Entry {
         match &self.evidence {
             // The in-process constructor has compared the actual programs. Transport
             // validation below must also find the establishing ordinary response.
-            Evidence::EstablishedFirstTemporalClaim(_) => Ok(()),
+            Evidence::EstablishedFirstTemporalClaim(_) | Evidence::ExactRequest { .. } => Ok(()),
             Evidence::Fresh { response } => crate::validate_response(request, response),
             Evidence::Checked {
                 decision: Checked::Holds,
@@ -515,9 +531,17 @@ impl BatchResult {
         }
         let mut prior: Option<Established> = None;
         let mut temporal_basis = None;
-        for (request, row) in batch.checks.iter().zip(&self.entries) {
+        for (index, (request, row)) in batch.checks.iter().zip(&self.entries).enumerate() {
             row.validate(request)?;
             match &row.evidence {
+                Evidence::ExactRequest { basis_entry } => {
+                    if *basis_entry >= index
+                        || &batch.checks[*basis_entry] != request
+                        || !self.entries[*basis_entry].evidence.completed_ordinary()
+                    {
+                        return Err("exact replay requires an earlier conclusive ordinary result for the identical input".into());
+                    }
+                }
                 Evidence::Fresh { response } if first_claim::candidate(request, response) => {
                     temporal_basis = Some((request, response.as_ref()));
                     prior = None;

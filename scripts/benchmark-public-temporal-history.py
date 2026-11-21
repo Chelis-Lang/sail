@@ -134,7 +134,12 @@ def edit_session(sail, rows, worker, wall_ms):
         require(entry["request_sha256"] == digest, "wrong session input")
         evidence = entry["evidence"]
         route = evidence["route"]
-        require(route == "fresh", f"unimplemented independent evidence comparison for {route}")
+        if route == "exact-request":
+            basis = evidence["basis_entry"]
+            require(0 <= basis < len(decisions) and rows[basis][2] == batch["checks"][len(decisions)],
+                    "replay selected a different or later request")
+            evidence = out["entries"][basis]["evidence"]
+        require(evidence["route"] == "fresh", f"missing ordinary evidence for {route}")
         decisions.append(decision(evidence["response"], digest))
         samples.append([entry["elapsed_us"], route])
     require(status == int(any(d["outcome"] not in ("holds", "refuted") for d in decisions)), "wrong session exit")

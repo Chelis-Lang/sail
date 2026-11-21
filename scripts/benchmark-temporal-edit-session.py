@@ -100,12 +100,17 @@ def compare(sail, root, name, checks, outcomes, sample):
     for entry, (native, fresh_us), expected in zip(session["entries"], fresh, outcomes, strict=True):
         assert entry["request_sha256"] == native["request_sha256"]
         evidence = entry["evidence"]
-        if evidence["route"] == "fresh":
+        if evidence["route"] in ("fresh", "exact-request"):
+            route = evidence["route"]
+            if route == "exact-request":
+                basis = evidence["basis_entry"]
+                assert 0 <= basis < len(rows) and checks[basis] == checks[len(rows)]
+                evidence = session["entries"][basis]["evidence"]
+                assert evidence["route"] == "fresh"
             result = evidence["response"]
             assert result["outcome"] == expected
             stats = result["native_report"]["statistics"]
             trace = result["itf_traces"]
-            route = "fresh"
         elif evidence["route"] == "established-first-temporal-claim":
             assert expected == "holds" and native["requested_checks"]["properties"] == [evidence["property"]]
             assert evidence["basis_sha256"] == fresh[0][0]["request_sha256"]

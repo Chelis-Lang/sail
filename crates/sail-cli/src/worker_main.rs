@@ -96,7 +96,7 @@ impl std::io::Write for Frame {
 }
 
 fn edit_session(input: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
-    use sail_dive::edits::{BACKEND_SOURCE, Batch, Session};
+    use sail_dive::edits::{BACKEND_SOURCE, Batch, Entry, Evidence, Session};
     let batch: Batch = sail_api::temporal::decode(input)?;
     batch.admit()?;
     let mut session = Session::default();
@@ -107,11 +107,33 @@ fn edit_session(input: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
     frame.write_all(br#"{"backend_source":"#)?;
     serde_json::to_writer(&mut frame, BACKEND_SOURCE)?;
     frame.write_all(br#","result":{"version":1,"entries":["#)?;
+    // The batch owns the original payloads and the bounded frame owns the original
+    // evidence. Indexes and digests suffice even when a trace is large.
+    let mut completed: Vec<(usize, String)> = Vec::new();
     for (index, request) in batch.checks.iter().enumerate() {
         if index != 0 {
             frame.write_all(b",")?;
         }
-        serde_json::to_writer(&mut frame, &session.check(request)?)?;
+        let started = std::time::Instant::now();
+        let entry = if let Some((basis, digest)) = completed
+            .iter()
+            .find(|(prior, _)| &batch.checks[*prior] == request)
+        {
+            Entry {
+                request_sha256: digest.clone(),
+                elapsed_us: u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX),
+                evidence: Evidence::ExactRequest {
+                    basis_entry: *basis,
+                },
+            }
+        } else {
+            let entry = session.check(request)?;
+            if entry.evidence.completed_ordinary() {
+                completed.push((index, entry.request_sha256.clone()));
+            }
+            entry
+        };
+        serde_json::to_writer(&mut frame, &entry)?;
     }
     frame.write_all(b"]}}")?;
     std::io::stdout().write_all(&frame.bytes)?;

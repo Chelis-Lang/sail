@@ -462,3 +462,22 @@ for name in Medium TwoRetry; do
     --source "$WAL/slatedb" --modules "$COMMUNITY/modules" --case "$name"
 done
 ```
+
+### Exact results within the edit session
+
+When graph capture declines, the isolated worker can still avoid repeating a concluded search within the same batch. Each `exact-request` points directly to the earlier complete ordinary response for the identical input. Both fixed and edited SlateDB searches run in full. Repeat of the edit cites entry 1 and undo cites entry 0. This applies to genuine refutations as well as successful exhaustive checks.
+
+The comparison used an EC2 c7i.2xlarge reserved for the benchmark, one pinned logical CPU, identical model and configuration bytes and newly empty caches. Each round measured independent ordinary checks, persistent receipt hits, direct fresh controls and a four-entry batch. Across three rounds each worker checked both two-writer domains. The script compared all six invariants, verdicts, generated and distinct counts, final queue and depth. The source explains why the substantive switch still needs a new proof. `PostReplayState` chooses `VALIDATE_AFTER_REPLAY` when fixed and `READY` when unfixed. Reaching the same replay step can therefore produce a different successor. Reusing the earlier invariant result across this edit would require a checked relation between the two reachable graphs or a separately established inductive proof. The original three-writer CFG and the upstream failing domains have separate measurements.
+
+| Restarts | Four-check session before (s) | Four-check session after (s) | Paired median speedup | Worker repeat / undo after (µs) |
+|---:|---:|---:|---:|---:|
+| 0 | 3.563 | 1.788 | 1.99× | 7 / 10 |
+| 1 | 177.280 | 85.345 | 2.05× | 7 / 11 |
+
+The table reports medians of three rounds. With one restart, the new worker’s ordinary CLI runs took 59.81 s cold and 25.11 s for the edit. Persistent receipt repeat/undo took 5.05/4.72 ms including process launch. The empty-cache fixed/edited controls took 60.79/25.07 s. In-batch repeat/undo costs above are worker time within a single CLI call. [Each step, exact request and response identities, proof scopes, counts, RSS and timings](data/2026-11-21-slatedb-exact-session.json).
+
+The independent executable control compared 20 batch entries with 20 fresh private-cache calls. Five exact repeats/undos pointed to the original native evidence. In the false case `EventuallyTwo`, the independent trace validator accepted the returned lasso and rejected a changed initial state. A selected module byte, CFG byte, root, CFG selection, unused project file or limit changed the request identity. Stopped, rejected and unsupported repeats made a fresh attempt. A 1 ms timeout returned no partial entries. One worker process handled the entire batch. Parent transport tests rejected a chained, forward, self, out-of-range, incomplete or different-input basis.
+
+A second negative control leaves the original WAL module and six checks intact and appends its existing `Init` as a seventh invariant. A real successor violates this deliberately stronger condition. Both workers returned the same two-state native word, also accepted by a separate installed `validate` request. Its repeat cited the original refutation. Use `--witness-only` to reproduce this exercise.
+
+Run the earlier reproduction command with `--exact-session` on the newer installed pair. The old pair uses the same script without this option. Each invocation validates the expected routes and produces a complete JSON record.
