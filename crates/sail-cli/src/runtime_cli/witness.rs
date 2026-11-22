@@ -1,6 +1,8 @@
 //! Recheck a saved liveness counterexample with a trusted external Dive installation.
 
+mod report;
 use super::external_dive;
+use report::{ordinary, periodic};
 use serde_json::{Value, json};
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
@@ -12,19 +14,6 @@ fn failure(message: impl std::fmt::Display) -> String {
 
 fn validated(doc: &Value) -> bool {
     let word = &doc["repair"]["trace"];
-    let Some(rows) = word["states"].as_array().filter(|rows| !rows.is_empty()) else {
-        return false;
-    };
-    let len = u64::try_from(rows.len()).ok();
-    let ending = &word["ending"];
-    let closes = match ending["kind"].as_str() {
-        Some("stuttering") => true,
-        Some("lasso") => ending["back_to"]
-            .as_u64()
-            .zip(len)
-            .is_some_and(|(back, n)| back < n),
-        _ => false,
-    };
     doc["command"] == "validate-trace"
         && doc["schema_version"] == 4
         && doc["result"] == "valid"
@@ -32,51 +21,8 @@ fn validated(doc: &Value) -> bool {
             doc["repair"]["status"].as_str(),
             Some("unchanged" | "repaired")
         )
-        && closes
-        && word["length"].as_u64() == len
-        && doc["length"].as_u64() == len
-        && word["properties"].as_array().is_some_and(|v| {
-            !v.is_empty() && v.iter().all(|p| p.as_str().is_some_and(|n| !n.is_empty()))
-        })
-        && sail_dive::native_to_itf(word).is_ok()
-}
-
-/// Dive's default TLC exit convention is independent of the semantics profile.
-fn ordinary(report: &Value, code: u8) -> bool {
-    if report["command"] != "check"
-        || !matches!(report["schema_version"].as_u64(), Some(3 | 4))
-        || report["exit_code"].as_u64() != Some(u64::from(code))
-        || !matches!(report["check_kind"].as_str(), Some("temporal" | "safety"))
-    {
-        return false;
-    }
-    match report["verdict"].as_str() {
-        Some("success") => {
-            code == 0
-                && report["tlc"]["code"] == 2193
-                && report["statistics"]["distinct"].is_u64()
-                && report["counterexample"].is_null()
-        }
-        Some("invariant-violation") => code == 12,
-        Some("liveness-violation" | "property-violation" | "action-property-violation") => {
-            code == 13
-        }
-        Some("deadlock") => code == 11,
-        Some("assumption-failure" | "postcondition-failure") => code == 10,
-        Some("unsupported" | "resource-limit") => code == 3,
-        Some("internal-error") => code == 4,
-        Some("stopped") => code == 5,
-        Some("rejected") => matches!(code, 150 | 151),
-        Some(
-            "model-error" | "assertion-failure" | "evaluation-error" | "overflow"
-            | "incomplete-state",
-        ) => {
-            code != 0
-                && (report["tlc"]["exit_status"].as_u64() == Some(u64::from(code))
-                    || (code == 4 && report["tlc"].is_null()))
-        }
-        _ => false,
-    }
+        && doc["length"] == word["length"]
+        && periodic(word)
 }
 
 pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
@@ -169,7 +115,10 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
         return emit_stop(out);
     }
     let report: Value = serde_json::from_slice(&bytes).map_err(failure)?;
-    if !ordinary(&report, code) {
+    if report["file"].as_str() != module.to_str()
+        || report["config"].as_str() != config.to_str()
+        || !ordinary(&report, code)
+    {
         return Err(failure("ordinary check returned an inconsistent report"));
     }
     writeln!(out, "{}", json!({"route":"current-check","report":report})).map_err(failure)?;
@@ -214,7 +163,8 @@ mod tests {
     #[test]
     fn ordinary_check_requires_a_known_verdict_with_its_own_status() {
         let mut report = json!({"command":"check","schema_version":4,"check_kind":"safety",
-            "exit_code":0,"verdict":"success","tlc":{"code":2193},"statistics":{"distinct":1},
+            "exit_code":0,"verdict":"success","options":{"exit_codes":"tlc","semantic_profile":"dive"},
+            "tlc":{"code":2193,"name":"TLC_SUCCESS","exit_status":0,"verified":true},"statistics":{"distinct":1},
             "counterexample":null});
         assert!(ordinary(&report, 0));
         assert!(!ordinary(&report, 12));
@@ -228,6 +178,18 @@ mod tests {
             wrong[key] = value;
             assert!(!ordinary(&wrong, 0), "{key}");
         }
+        report["tlc"]["exit_status"] = json!(13);
+        assert!(!ordinary(&report, 0));
+        report["verdict"] = json!("liveness-violation");
+        report["exit_code"] = json!(13);
+        assert!(!ordinary(&report, 13));
+        report["verdict"] = json!("stopped");
+        report["exit_code"] = json!(5);
+        assert!(!ordinary(&report, 5));
+        report["tlc"] = Value::Null;
+        report["stopped"] = json!({"resource":"time"});
+        assert!(ordinary(&report, 5));
+        report["diagnostics"] = json!([{"message":"invalid cfg"}]);
         report["verdict"] = json!("rejected");
         report["exit_code"] = json!(151);
         assert!(ordinary(&report, 151));
