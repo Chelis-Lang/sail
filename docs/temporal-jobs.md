@@ -402,9 +402,15 @@ The witness establishes the violation directly and has no BFS state counts.
 An unreadable or oversized donor, declined repair, disproved claim, unrecognized
 repair response or older worker triggers an ordinary single-worker current
 check with the remaining time. Its route is `current-check`, and `report`
-contains Dive's native check report. Time expiry or cancellation returns
-`stopped` with exit 4. Both calls use the same original deadline, Dive's
+contains Dive's native check report. Sail binds the report to the submitted
+paths, semantic profile and requested TLC exit convention. A contradictory
+report returns error `SAIL6102`. For an ordinary temporal violation, the human
+property names, complete native word and displayed states must agree. For an
+ordinary finite violation, Dive’s typed decoder and TLC printer check the
+displayed state values. A stopped ordinary Dive check carries exit 5.
+A supervisor time limit or cancellation returns `stopped` with exit 4. Both calls use the same original deadline, Dive's
 default semantics, seed 0 and fingerprint 0. The existing native temporal
 receipt database and pinned worker are independent of this external command.
 To carry a witness across a parameter renaming, supply the explicitly mapped
 anchors as the trace. A mapping carries no validation authority.
+[MultiCarElevator and real-time clock measurements](validation/temporal-reuse-s7.md#repairing-named-temporal-counterexamples).
