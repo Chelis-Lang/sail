@@ -482,3 +482,13 @@ The second Runtime JSON fixture update is independently reviewed at
 Only the two test-fixture keys differ from main; production bytes, assertions,
 authority scope and checker controls remain identical. All 78 checker controls
 and seven native Rust tests pass under that exact bounded binding review.
+
+## Runtime URL dependency update, 2026-11-22
+
+The workspace lock still has 299 packages. RUSTSEC-2026-0592 requires
+`url` 2.5.9, which requires `form_urlencoded` 1.2.3. These two registry
+packages change version and checksum. The package records for the parser's
+complete 25-package dependency closure and the acceptance crate's one-package
+closure compare equal on both sides of the update. All other locked records,
+parser sources, manifests and acceptance operations are unchanged. The
+acceptance checker retains its exact root lock digest check.
