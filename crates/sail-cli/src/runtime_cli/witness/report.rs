@@ -51,12 +51,6 @@ fn temporal_violation(doc: &Value) -> bool {
         [a, b] => format!("{a} and {b}"),
         [prefix @ .., last] => format!("{}, and {last}", prefix.join(", ")),
     };
-    let Some(rows) = example["states"].as_array() else {
-        return false;
-    };
-    let Some(native) = word["states"].as_array() else {
-        return false;
-    };
     let back = if word["ending"]["kind"] == "stuttering" {
         word["length"].as_u64()
     } else {
@@ -67,14 +61,25 @@ fn temporal_violation(doc: &Value) -> bool {
     doc["property"] == display
         && example["ending"] == "lasso"
         && example["back_to"].as_u64() == back
+        && matching_rows(example, |typed, display| typed == display)
+}
+
+fn matching_rows(example: &Value, values_match: impl Fn(&Value, &Value) -> bool) -> bool {
+    let (Some(rows), Some(native)) = (
+        example["states"].as_array(),
+        example["trace"]["states"].as_array(),
+    ) else {
+        return false;
+    };
+    !rows.is_empty()
         && rows.len() == native.len()
         && rows
             .iter()
             .zip(native)
             .enumerate()
-            .all(|(i, (row, state))| {
-                row["index"].as_u64() == u64::try_from(i + 1).ok()
-                    && row["values"] == state["values"]
+            .all(|(i, (view, typed))| {
+                view["index"].as_u64() == u64::try_from(i + 1).ok()
+                    && values_match(&typed["values"], &view["values"])
             })
 }
 
@@ -84,9 +89,7 @@ fn finite(doc: &Value, ending: &str) -> bool {
     example["ending"] == "finite"
         && word["ending"]["kind"] == ending
         && example["length"] == word["length"]
-        && example["states"].as_array().is_some_and(|states| {
-            !states.is_empty() && u64::try_from(states.len()).ok() == word["length"].as_u64()
-        })
+        && matching_rows(example, sail_dive::finite_row_matches)
         && sail_dive::native_to_itf(word).is_ok()
 }
 
@@ -94,9 +97,9 @@ fn class(doc: &Value, code: u64, name: &str) -> bool {
     doc["tlc"]["code"] == code && doc["tlc"]["name"] == name
 }
 
-pub(super) fn ordinary(doc: &Value, status: u8) -> bool {
+fn invalid_envelope(doc: &Value, status: u8) -> bool {
     let tlc = &doc["tlc"];
-    if doc["command"] != "check"
+    doc["command"] != "check"
         || !matches!(doc["schema_version"].as_u64(), Some(3 | 4))
         || doc["options"]["exit_codes"] != "tlc"
         || doc["options"]["semantic_profile"] != "dive"
@@ -108,9 +111,13 @@ pub(super) fn ordinary(doc: &Value, status: u8) -> bool {
                 || !tlc["code"].is_u64()
                 || !text(&tlc["name"])
                 || !tlc["verified"].is_boolean()))
-    {
+}
+
+pub(super) fn ordinary(doc: &Value, status: u8) -> bool {
+    if invalid_envelope(doc, status) {
         return false;
     }
+    let tlc = &doc["tlc"];
     let named = text(&doc["property"]);
     let no_claim =
         doc["property"].is_null() && doc["properties"].is_null() && doc["counterexample"].is_null();
@@ -197,5 +204,22 @@ pub(super) fn ordinary(doc: &Value, status: u8) -> bool {
                         }))
         }
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn finite_views_use_the_tlc_value_renderer() {
+        let mut example = json!({"states":[{"index":1,"values":{"x":["p", {"ok":true}]}}],
+            "trace":{"states":[{"values":{"x":{"seq":[{"model":"p"},{"record":{"ok":true}}]}}}]}});
+        assert!(matching_rows(&example, sail_dive::finite_row_matches));
+        example["states"][0]["values"]["x"] = json!(true);
+        assert!(!matching_rows(&example, sail_dive::finite_row_matches));
+        example["states"][0] = Value::Null;
+        assert!(!matching_rows(&example, sail_dive::finite_row_matches));
     }
 }

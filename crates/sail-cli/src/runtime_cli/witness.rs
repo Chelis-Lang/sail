@@ -13,14 +13,58 @@ fn failure(message: impl std::fmt::Display) -> String {
 }
 
 fn validated(doc: &Value) -> bool {
-    let word = &doc["repair"]["trace"];
-    doc["command"] == "validate-trace"
+    let repair = &doc["repair"];
+    let word = &repair["trace"];
+    let success_fields = |value: &Value, keys: &[&str]| {
+        value.as_object().is_some_and(|fields| {
+            fields.len() == keys.len() && keys.iter().all(|key| fields.contains_key(*key))
+        })
+    };
+    // A schema-4 successful report has no validation exception, rejection or failure.
+    success_fields(
+        doc,
+        &[
+            "command",
+            "schema_version",
+            "result",
+            "length",
+            "notes",
+            "repair",
+        ],
+    ) && success_fields(
+        repair,
+        &[
+            "status",
+            "candidate_validation",
+            "reason",
+            "gaps",
+            "generated",
+            "search_ms",
+            "validation_ms",
+            "trace",
+        ],
+    ) && doc["command"] == "validate-trace"
         && doc["schema_version"] == 4
         && doc["result"] == "valid"
-        && matches!(
-            doc["repair"]["status"].as_str(),
-            Some("unchanged" | "repaired")
-        )
+        && doc["notes"]
+            .as_array()
+            .is_some_and(|notes| notes.iter().all(Value::is_string))
+        && repair["reason"].is_null()
+        && repair["candidate_validation"].is_null()
+        && repair["validation_ms"].as_f64().is_some_and(|ms| ms >= 0.)
+        && repair["search_ms"].as_f64().is_some_and(|ms| ms >= 0.)
+        && match (
+            repair["status"].as_str(),
+            repair["gaps"].as_u64(),
+            repair["generated"].as_u64(),
+        ) {
+            (Some("unchanged"), Some(0), Some(0)) => repair["search_ms"].as_f64() == Some(0.),
+            (Some("repaired"), Some(gaps @ 1..=128), Some(generated @ 1..=32768)) => {
+                gaps <= generated
+            }
+            _ => false,
+        }
+        && matches!(word["length"].as_u64(), Some(1..=4096))
         && doc["length"] == word["length"]
         && periodic(word)
 }
@@ -121,6 +165,9 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     {
         return Err(failure("ordinary check returned an inconsistent report"));
     }
+    if stopped() {
+        return emit_stop(out);
+    }
     writeln!(out, "{}", json!({"route":"current-check","report":report})).map_err(failure)?;
     Ok(code)
 }
@@ -131,15 +178,36 @@ mod tests {
 
     #[test]
     fn accepts_only_a_complete_returned_named_periodic_word() {
-        let mut report = json!({"command":"validate-trace","schema_version":4,"result":"valid","length":1,
-            "repair":{"status":"unchanged","trace":{"format":"dive-trace","version":1,
+        let mut report = json!({"command":"validate-trace","schema_version":4,"result":"valid","length":1,"notes":[],
+            "repair":{"status":"unchanged","gaps":0,"generated":0,"search_ms":0.0,
+            "validation_ms":1.2,"reason":null,"candidate_validation":null,"trace":{"format":"dive-trace","version":1,
             "length":1,"variables":["x"],"properties":["L"],"ending":{"kind":"lasso","back_to":0},
             "states":[{"values":{"x":0},"action":null}]}}});
         assert!(validated(&report));
         report["repair"]["status"] = json!("repaired");
+        assert!(!validated(&report));
+        report["repair"]["gaps"] = json!(1);
+        report["repair"]["generated"] = json!(2);
         assert!(validated(&report));
+        for (key, value) in [
+            ("validation_completed", json!(false)),
+            ("error", json!({"kind":"resource"})),
+            ("failure", json!({"check":"next"})),
+            ("unsupported", json!("unbound property")),
+        ] {
+            let mut wrong = report.clone();
+            wrong[key] = value;
+            assert!(!validated(&wrong), "{key}");
+        }
         for (path, bad) in [
             ("/repair/status", json!("unrepaired")),
+            ("/repair/candidate_validation", json!({"result":"invalid"})),
+            (
+                "/repair/reason",
+                json!("replacement failed independent validation"),
+            ),
+            ("/repair/gaps", json!(0)),
+            ("/repair/generated", json!(0)),
             ("/repair/trace/properties", json!([])),
             ("/repair/trace/states", json!([null])),
             ("/repair/trace/states/0/values", json!({"y":0})),
