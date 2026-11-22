@@ -318,3 +318,32 @@ transport continue to use their own execution and evidence policy.
 For repeatable comparisons on three- and five-key KVS, individual timings
 and a cardinality change that invalidates the old predicate, see
 [portable symbolic predicate measurements](validation/temporal-reuse-s7.md#portable-symbolic-predicates).
+
+### Recheck one named state invariant across edits
+
+Use a Dive binary with named-property support. Select the invariant from the
+original configuration and supply the name of the finite layout in the module.
+
+```sh
+sail runtime symbolic-check --dive "$DIVE" --session .sail/lock \
+  --module lockserv.tla --config lockserv.cfg --type-invariant TypeOK \
+  --property-proof Mutex --time-limit 120
+```
+
+Run the same command after editing the module. The first successful proof
+stores a candidate predicate. Each later invocation binds the current source,
+checks initial inclusion, the named property and every current transition.
+If the candidate fails an obligation, Sail asks Dive to discover a fresh
+predicate within the remaining deadline. A faulty edit can return a concrete
+trace independently validated on that revision. A successful row names the
+proved property and reports the number of closure sweeps and transition
+obligations. Deadlock and temporal checks require their own runs.
+
+On the Recomp-Verify TwoPhaseCounter protocol grown to 64 resource managers,
+adding an `init` guard to `SndPrepare` took 1.005 s with a saved candidate.
+A fresh proof of that same edit took 1.157 s. Transfer avoided three closure
+sweeps and checked all 323 transition obligations in the new process. Both
+paths used about 109 MiB peak RSS. On the original 20-client lock server,
+a request-guard edit took 0.354 s both ways. These are medians of three
+end-to-end runs on a dedicated Linux c7i.4xlarge.
+[Inputs, commands and individual results](https://github.com/Chelis-Lang/dive/blob/main/conformance/reports/perf/2026-11-21-named-property-proofs.json).

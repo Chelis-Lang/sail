@@ -210,3 +210,14 @@ the symbolic checker's versioned result format. Issuing a temporal job to
 the shared runtime still selects its authenticated native worker. The external `--strategy occupancy` route checks the distinct `dive-occupancy-report-v1` schema and publishes to a separate candidate filename. `--max-orbits` applies only to that strategy. See the
 [decision](../decisions/0177-portable-symbolic-predicates.md) and
 [command and exits](../temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate).
+
+With `--property-proof NAME`, the symbolic strategy has a separate candidate
+file and admits the closed `dive-property-proof-v1` format. Both fresh and
+transferred proofs must bind the requested module, configuration and invariant
+name. The checker must return an inductive proof with a null failed obligation
+and an integer transition-obligation count. A failed candidate can trigger a
+fresh check. Fresh success publishes its staged predicate atomically. A
+violation must identify that same invariant in the ending and independently
+validated trace. Successful proof rows carry work statistics for this property.
+A session directory can be reused for a different property because every
+candidate is independently discharged against the receiver's source and claim.
