@@ -106,7 +106,14 @@ def measure_kvs(args, root, key):
         for trial in range(1 if index == 0 else args.trials):
             modes = [True] if index == 0 else ([True, False] if trial % 2 else [False, True])
             for signed in modes:
-                sample = check(args, module, cfg, root / "session", layout, prop, expected, key if signed else None)
+                session = root / "session"
+                if not signed:
+                    # A receiver may publish a replacement in its own session.
+                    # Keep the unsigned control from overwriting the keyed history.
+                    portable = root / "portable"
+                    shutil.copytree(session, portable, dirs_exist_ok=True)
+                    session = portable
+                sample = check(args, module, cfg, session, layout, prop, expected, key if signed else None)
                 if index != 0 and sample["sweeps"] != 0:
                     raise ValueError("edited candidate required a fresh search")
                 print(json.dumps(dict(model=label, transactions=args.kvs_transactions, trial=trial,
