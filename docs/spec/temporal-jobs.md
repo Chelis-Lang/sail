@@ -211,6 +211,14 @@ the shared runtime still selects its authenticated native worker. The external `
 [decision](../decisions/0177-portable-symbolic-predicates.md) and
 [command and exits](../temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate).
 
+The trusted external installation can advertise
+`libexec/dive-symbolic/capabilities/named-predicate-repair-v1` beside its
+executable. When a named candidate exists, Sail then passes it as
+`--verify-predicate` and supplies a separate staged `--write-predicate`
+destination to one worker. The worker must write a certified replacement on
+success. Session files cannot advertise this capability. All admission,
+cancellation, deadline and atomic-publication rules apply to the combined call.
+
 With `--property-proof NAME`, the symbolic strategy has a separate candidate
 file and admits the closed `dive-property-proof-v1` format. Both fresh and
 transferred proofs must bind the requested module, configuration and invariant

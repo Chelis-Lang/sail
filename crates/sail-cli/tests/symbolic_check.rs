@@ -166,5 +166,11 @@ fn check_named(session: &Session) -> Result<(), Box<dyn std::error::Error>> {
         );
         assert_eq!(fs::read(&scoped)?, b"cold");
     }
+    let capabilities = session.0.join("libexec/dive-symbolic/capabilities");
+    fs::create_dir_all(&capabilities)?;
+    fs::write(capabilities.join("named-predicate-repair-v1"), "")?;
+    let repaired = session.invoke_with("repair", &named)?;
+    assert!(repaired.status.success(), "{:?}", repaired.stderr);
+    assert_eq!(fs::read(scoped)?, b"repaired");
     Ok(())
 }
