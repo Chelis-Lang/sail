@@ -321,6 +321,21 @@ and a cardinality change that invalidates the old predicate, see
 
 ### Recheck one named state invariant across edits
 
+A compatible Dive installation can try the existing predicate, search for a
+replacement if induction fails, and certify the result in the same process.
+The module and configuration are bound once within the original wall budget.
+Sail publishes a staged predicate only after admitting a successful named
+proof. A malformed hypothesis, changed layout or changed transition can all
+take this path. A verified violation preserves the previous session candidate.
+Earlier installations use the separate verification and search calls.
+
+Across eight edits on two public protocols, median unsigned end-to-end time
+fell from 3.191 to 2.439 s for KVS and from 3.046 to 2.040 s for TCommit.
+Publishing an accepted predicate can add work on a successful recheck.
+On five-transaction KVS, the session also retained the newly certified
+transition images after a guard edit. [All trial data](validation/data/2026-11-22-named-predicate-repair.json).
+
+
 Use a Dive binary with named-property support. Select the invariant from the
 original configuration and supply the name of the finite layout in the module.
 

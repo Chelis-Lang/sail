@@ -7,6 +7,8 @@ semantic versioning once the API is published.
 
 - Recheck [one named TLA+ invariant](docs/temporal-jobs.md#recheck-one-named-state-invariant-across-edits) across edits with a portable Dive predicate. Each proof names its scope and records transition obligations.
 
+- Named temporal checks can repair a rejected candidate in the same worker process as the induction attempt.
+
 - Reuse earlier complete ordinary results for identical checks and undo in an installed temporal edit session.
 
 - Native [temporal jobs](docs/temporal-jobs.md) can check pure TLC function updates, finite permutations and pinned finite-set utilities used by SlateDB.

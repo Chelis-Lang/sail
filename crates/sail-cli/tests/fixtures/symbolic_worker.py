@@ -20,7 +20,12 @@ if named:
     row["property"] = args[args.index("--property-proof") + 1]
     row["format"] = "dive-property-proof-v1"
 code = 0
-if "--verify-predicate" in args:
+if mode == "repair":
+    assert named and "--verify-predicate" in args and "--write-predicate" in args
+    assert Path(args[args.index("--verify-predicate") + 1]).read_bytes() == b"cold"
+    Path(args[args.index("--write-predicate") + 1]).write_text("repaired")
+    row.update(proof="inductive-safety", failed_obligation=None)
+elif "--verify-predicate" in args:
     if strategy == "occupancy":
         row["predicate_format"] = "dive-occupancy-support-v1"
     assert Path(args[args.index("--verify-predicate") + 1]).read_bytes() == b"cold"

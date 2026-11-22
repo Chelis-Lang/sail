@@ -119,6 +119,7 @@ impl Job {
         &self,
         option: &str,
         predicate: &Path,
+        hypothesis: Option<&Path>,
         started: Instant,
         cancel: &AtomicBool,
     ) -> Result<(u8, Vec<u8>), String> {
@@ -142,6 +143,9 @@ impl Job {
             .arg(format!("{remaining}ms"))
             .arg(option)
             .arg(predicate);
+        if let Some(input) = hypothesis {
+            command.arg("--verify-predicate").arg(input);
+        }
         if let Some(name) = &self.type_invariant {
             command.arg("--type-invariant").arg(name);
         }
@@ -533,9 +537,22 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     if candidate == job.module || candidate == job.config || candidate == job.dive {
         return Err(failure("session candidate aliases an input file"));
     }
+    // The marker belongs to the trusted worker installation. Old installations
+    // retain their two-invocation protocol. The shared candidate never selects
+    // a capability or establishes a verdict.
+    let repair = job.property.is_some()
+        && job.dive.parent().is_some_and(|bin| {
+            bin.join("libexec/dive-symbolic/capabilities/named-predicate-repair-v1")
+                .is_file()
+        });
+    let mut hypothesis = None;
     match fs::symlink_metadata(&candidate) {
+        Ok(meta) if meta.is_file() && meta.len() <= MAX_BYTES && repair => {
+            hypothesis = Some(candidate.as_path());
+        }
         Ok(meta) if meta.is_file() && meta.len() <= MAX_BYTES => {
-            let (code, bytes) = job.check("--verify-predicate", &candidate, started, &cancel)?;
+            let (code, bytes) =
+                job.check("--verify-predicate", &candidate, None, started, &cancel)?;
             let route = report(&bytes, job.property.is_some())?.admit(code, true, &job)?;
             if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
                 let (code, row) = process::stop(&cancel);
@@ -552,7 +569,7 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     }
     let stage = Stage::create(&dir)?;
     let pending = stage.0.join("predicate.json");
-    let (code, bytes) = job.check("--write-predicate", &pending, started, &cancel)?;
+    let (code, bytes) = job.check("--write-predicate", &pending, hypothesis, started, &cancel)?;
     let route = report(&bytes, job.property.is_some())?.admit(code, false, &job)?;
     if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
         let (code, row) = process::stop(&cancel);
