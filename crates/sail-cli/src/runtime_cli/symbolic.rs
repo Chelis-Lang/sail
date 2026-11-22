@@ -14,7 +14,7 @@ use std::sync::{
 mod process;
 use std::time::{Duration, Instant};
 
-pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME] [--property-proof NAME] [--strategy symbolic|occupancy] [--max-orbits N]";
+pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME] [--property-proof NAME] [--strategy symbolic|occupancy|finite-induction] [--max-orbits N]";
 const MAX_BYTES: u64 = 16 << 20;
 struct Strategy {
     option: &'static str,
@@ -26,6 +26,12 @@ const SYMBOLIC: Strategy = Strategy {
     option: "symbolic",
     report: "dive-symbolic-report-v1",
     candidate: "sail-symbolic-predicate-v1.json",
+};
+
+const INDUCTION: Strategy = Strategy {
+    option: "finite-induction",
+    report: "dive-finite-induction-report-v1",
+    candidate: "sail-finite-induction-certificate-v1.json",
 };
 
 const SUPPORT_FORMAT: &str = "dive-occupancy-support-v1";
@@ -87,6 +93,7 @@ impl Job {
         let strategy = match flags.get("--strategy").map(|s| s.as_str()) {
             None | Some("symbolic") => SYMBOLIC,
             Some("occupancy") => OCCUPANCY,
+            Some("finite-induction") => INDUCTION,
             _ => return Err(usage()),
         };
         let property = flags.get("--property-proof").map(|s| (*s).clone());
@@ -304,7 +311,7 @@ impl Report<'_> {
             && no_population_counts;
         match (verifying, code, self.proof, self.verdict) {
             (_, 0, Some("inductive-safety"), None)
-                if (verifying || named)
+                if (verifying || named || job.strategy.option == INDUCTION.option)
                     && bound
                     && predicate_format
                     && uncounted
@@ -335,6 +342,7 @@ impl Report<'_> {
             (true, 2, None, Some("unsupported")) => Ok(Route::Retry),
             (false, 0, None, Some("success"))
                 if !named
+                    && job.strategy.option != INDUCTION.option
                     && bound
                     && predicate_format
                     && counted

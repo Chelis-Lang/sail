@@ -82,7 +82,7 @@ else:
         code = 1
     else:
         raise ValueError(mode)
-if named and mode == "cold":
+if (named and mode == "cold") or (strategy == "finite-induction" and mode in ("cold", "refresh")):
     for key in ("verdict", "distinct", "generated", "depth"):
         del row[key]
     row.update(proof="inductive-safety", failed_obligation=None)

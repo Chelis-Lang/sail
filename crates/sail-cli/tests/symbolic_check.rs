@@ -24,11 +24,10 @@ impl Session {
             .env("FIXTURE_MODE", mode)
             .env(
                 "FIXTURE_STRATEGY",
-                if options.contains(&"occupancy") {
-                    "occupancy"
-                } else {
-                    "symbolic"
-                },
+                ["occupancy", "finite-induction"]
+                    .into_iter()
+                    .find(|strategy| options.contains(strategy))
+                    .unwrap_or("symbolic"),
             )
             .args([
                 "runtime",
@@ -110,6 +109,17 @@ fn only_a_complete_search_publishes_and_a_receiver_proves_again()
         Some(2)
     );
     assert_eq!(fs::read(&predicate)?, b"cold");
+    let finite = ["--strategy", "finite-induction"];
+    let induction = session
+        .0
+        .join("session/sail-finite-induction-certificate-v1.json");
+    assert!(session.invoke_with("cold", &finite)?.status.success());
+    assert_eq!(fs::read(&induction)?, b"cold");
+    assert!(session.invoke_with("prove", &finite)?.status.success());
+    for mode in ["counts", "cross-format"] {
+        assert_eq!(session.invoke_with(mode, &finite)?.status.code(), Some(2));
+        assert_eq!(fs::read(&induction)?, b"cold");
+    }
     let proof = session.invoke("prove")?;
     assert!(proof.status.success());
     let proof: serde_json::Value = serde_json::from_slice(&proof.stdout)?;
