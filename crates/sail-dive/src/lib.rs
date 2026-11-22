@@ -8,7 +8,7 @@ pub mod edits;
 mod input;
 mod jobs;
 mod wire;
-pub use codec::{itf_to_native, native_to_itf};
+pub use codec::{finite_row_matches, itf_to_native, native_to_itf};
 pub use jobs::execute;
 pub use sail_api::temporal::{
     Completion, DIVE_VERSION, ItfTrace, MAX_DOCUMENT_BYTES, Model, Operation, Outcome, Request,

@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- [Recheck a saved temporal counterexample](docs/temporal-jobs.md#recheck-a-saved-temporal-counterexample) against the edited source with an external Dive worker and ordinary checking as fallback.
+
 - Recheck [one named TLA+ invariant](docs/temporal-jobs.md#recheck-one-named-state-invariant-across-edits) across edits with a portable Dive predicate. Each proof names its scope and records transition obligations.
 
 - Named temporal checks can repair a rejected candidate in the same worker process as the induction attempt.

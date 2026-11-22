@@ -150,3 +150,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0176. Native evidence for edited temporal jobs](0176-native-temporal-edit-evidence.md)
 - [0177. Recheck portable predicates in a selected Dive installation](0177-portable-symbolic-predicates.md)
 - [0178. Preserve native model values in temporal witnesses](0178-model-valued-temporal-witnesses.md)
+- [0179. Read finite check reports with Dive’s native value renderer](0179-temporal-report-value-projections.md)

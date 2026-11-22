@@ -515,3 +515,70 @@ was rejected, starting a second process for a fresh search also showed up in
 the wall totals. The recorded timings separate these cases.
 
 [All individual observations, implementation identities and commands](data/2026-11-22-named-obligations.json) · [Public model inputs and edit driver](../../scripts/benchmark-named-obligations.py) · [Dive obligation authentication](https://github.com/Chelis-Lang/dive/pull/1287).
+
+## Repairing named temporal counterexamples
+
+A saved Elevator counterexample still refutes the property after an eighth floor
+is added, even though the original 249-state word fails the edited Next relation.
+An explicit floor-coordinate mapping preserves the anchors. Dive's source-bound
+repair fills 13 gaps, generates 189 successors and independently validates all
+262 states and the loop. In the second public model, a transition edit forces
+the real-time clock to advance one unit at a time. One gap and six generated
+successors give a four-state counterexample.
+
+A dedicated EC2 c7i.4xlarge in us-east-2 ran five sequential CLI processes per
+case with a debug Sail build and release Dive. Numbers below are all individual
+wall times in milliseconds and maximum peak RSS in KiB from GNU time. Sail starts
+a trusted checker process for each accepted donor. Each returned word also passed
+a separate standalone replay outside the timed interval. The host ran Ubuntu
+24.04.5, Linux 7.0.0-1018-aws, x86-64. No cold eight-floor search was repeated.
+
+| Case | Result | Five wall times (ms) | Median (ms) | Maximum RSS (KiB) |
+|---|---|---|---:|---:|
+| same-clock | unchanged, exit 13 | 13.483, 13.476, 13.130, 13.023, 12.444 | 13.130 | 19,812 |
+| repair-clock | repaired, exit 13 | 15.322, 17.705, 14.943, 17.733, 16.069 | 16.069 | 20,388 |
+| fixed-clock | success, exit 0 | 21.674, 21.909, 21.993, 21.665, 23.006 | 21.909 | 20,228 |
+| stale-clock | liveness-violation, exit 13 | 22.126, 22.769, 22.468, 21.829, 20.788 | 22.126 | 24,544 |
+| fair-clock | liveness-violation, exit 13 | 26.606, 28.529, 28.988, 30.384, 29.063 | 28.988 | 26,664 |
+| malformed-donor | success, exit 0 | 13.466, 13.428, 13.484, 13.467, 13.997 | 13.467 | 19,588 |
+| missing-donor | success, exit 0 | 10.956, 10.960, 10.728, 10.872, 11.407 | 10.956 | 19,752 |
+| same-elevator | unchanged, exit 13 | 187.818, 187.796, 182.584, 183.539, 183.064 | 183.539 | 50,936 |
+| repair-elevator | repaired, exit 13 | 232.504, 241.149, 230.952, 232.415, 227.260 | 232.415 | 52,552 |
+| cold-deadline | stopped, exit 4 | 1404.861, 1406.980, 1406.896, 1405.626, 1404.817 | 1405.626 | 191,852 |
+
+The fixed property, absent donor and malformed donor all caused an ordinary
+216-state check that succeeded. Changed fairness and a changed property name
+rejected the saved word. Each ordinary search found a different current
+violation in the 216-state graph. The one-second deadline stopped a real cold
+seven-floor search. Its wall time includes the process-group termination grace.
+
+The original seven-floor counterexample took 246.10 s and 1,555,192 KiB to
+discover on a separate isolated host. Earlier cold eight-floor search stopped
+after 360 s at 7,109,953 distinct states. Saved-word validation establishes a
+refutation and reports no exploration count. The original clock witness took
+under 10 ms to discover, so replay has no measured latency advantage for
+that small example. [Dive's independent measurements, input digests and cold
+controls](https://github.com/Chelis-Lang/dive/blob/e1b70325c7a852cd26e13ac1ef17460de2425bd4/conformance/reports/perf/2026-11-22-temporal-repair.json)
+
+Reproduce with Examples `6a7b26a31c1a6aeec789b455e9bbfa3b3ad2728f` and
+Dive `e1b70325c7a852cd26e13ac1ef17460de2425bd4`. The first command discovers
+the seven-floor donor if it has not been retained. Pass `--seven-word FILE` to
+use an existing original. Run from the Sail checkout and supply the local paths.
+
+```sh
+python3 "$DIVE_SOURCE/scripts/perf/scale/temporal-repair-panel.py" \
+    "$DIVE" "$EXAMPLES/specifications" "$PANEL"
+python3 "$DIVE_SOURCE/scripts/perf/scale/elevator-lift-word.py" \
+    --anchors-only "$PANEL/seven.json" 1,3,4,5,6,7,8 "$PANEL/anchors.json"
+python3 scripts/collect-witness-recheck.py "$SAIL" "$DIVE" \
+    "$EXAMPLES/specifications" "$PANEL" "$PANEL/anchors.json"
+```
+
+Measured executable SHA-256 digests were `4761058590f02ed412aebc822abc3aaaed33cee4daae9382703d54f1f55bbe2a` (Sail) and
+`7cfece0bda47bc911c6df5ecc603a387db10c39704a7159145399a6b35f37978` (Dive). Raw observation digests in run order follow.
+
+- `bfc893cbd5d7ce31169914489e7e3a23ef8558a976446c99e025f558a48ece05`
+- `8dfbb62d9af0805c46ee90e2a5688ca3663fd174350f51a14b7dd266d0f4cc7f`
+- `b4096c054b76bf8eca1803628491ad559104dc94f05492a943215f2af3aaa7ba`
+- `859c20eb6cad873c012ec1158ac5650d1ded2da44fa61d99115dd60bd506c597`
+- `7cb110f350d6a7e21253812c4e8eaa0b3e09cc9f6fd95f636b9e7f6fdce7fba1`

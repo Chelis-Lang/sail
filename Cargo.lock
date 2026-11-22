@@ -1761,6 +1761,8 @@ version = "0.3.0"
 dependencies = [
  "dive-api",
  "dive-ir",
+ "dive-trace",
+ "dive-value",
  "rustix",
  "sail-api",
  "sail-runtime",

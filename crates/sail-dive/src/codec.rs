@@ -106,6 +106,29 @@ fn convert(value: &Value, native: bool, depth: usize) -> Result<Value, String> {
     }
 }
 
+/// Checks the finite report's TLC display projection against its typed native row.
+/// Uses the default Dive profile's decoder, function-key printer and value order.
+#[must_use]
+pub fn finite_row_matches(native: &Value, display: &Value) -> bool {
+    let (Some(native), Some(display)) = (native.as_object(), display.as_object()) else {
+        return false;
+    };
+    let names = dive_value::Interner::new();
+    let ctx = dive_value::Ctx::dive();
+    native.len() == display.len()
+        && native.iter().all(|(key, tagged)| {
+            let Ok(value) = dive_trace::value_json::from_json(tagged, &names, ctx) else {
+                return false;
+            };
+            // The check writer emits null when TLC rendering or JSON parsing fails.
+            let rendered = dive_value::json::to_tlc_json(&value, ctx)
+                .ok()
+                .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+                .unwrap_or(Value::Null);
+            display.get(key) == Some(&rendered)
+        })
+}
+
 fn complete(trace: &ItfTrace) -> Result<(), String> {
     let vars = trace.vars.iter().collect::<BTreeSet<_>>();
     if vars.len() != trace.vars.len()
