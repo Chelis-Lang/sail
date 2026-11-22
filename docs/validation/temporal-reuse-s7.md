@@ -481,3 +481,37 @@ The independent executable control compared 20 batch entries with 20 fresh priva
 A second negative control leaves the original WAL module and six checks intact and appends its existing `Init` as a seventh invariant. A real successor violates this deliberately stronger condition. Both workers returned the same two-state native word, also accepted by a separate installed `validate` request. Its repeat cited the original refutation. Use `--witness-only` to reproduce this exercise.
 
 Run the earlier reproduction command with `--exact-session` on the newer installed pair. The old pair uses the same script without this option. Each invocation validates the expected routes and produces a complete JSON record.
+
+### Cross-process action closure in multi-module models
+
+Sail and Dive ran original imported KVS and TCommit protocol definitions through
+the installed `sail runtime symbolic-check --property-proof` path, starting a
+new process for each edit. Each small model had three trials covering an
+unchanged revision, a restricted guard, an expanded guard, a constant that
+changed the finite layout, a different requested property, a protocol fault and
+undo. Cold certification, transferred predicates and authenticated transfer
+agreed on all 48 comparisons. All three paths independently validated the
+four-state KVS rollback bug and the eleven-state TCommit abort bug.
+
+For the larger KVS panel, five concurrent transactions used two keys and two
+values. Cold establishment of `TxLifecycle` took 87.765 s. Each subsequent
+sample started a fresh Sail/Dive pair. The table gives medians over five trials
+in alternating order on one core of a dedicated Linux c7i.4xlarge.
+
+| Revision | Portable predicate, ms | Authenticated predicate, ms | Closure images reused |
+| --- | ---: | ---: | ---: |
+| Unchanged | 555.861 | 354.933 | 45 / 45 |
+| Restrict opening a transaction | 505.004 | 354.728 | 40 / 45 |
+| Expand a write guard | 555.073 | 454.053 | 25 / 65 |
+| Undo | 555.277 | 355.052 | 45 / 45 |
+
+The unsigned predicate already avoids a new fixed-point search. Authentication
+reduces the remaining cost when individual transition images are expensive.
+The direct Dive crossover panel broke even at four transactions. At 100
+TCommit managers the unsigned checker spent 0.681–0.688 s inside its worker
+and the authenticated checker spent 0.719–0.725 s, despite reusing all 300
+images. The small cases favor leaving authentication disabled. When a candidate
+was rejected, starting a second process for a fresh search also showed up in
+the wall totals. The recorded timings separate these cases.
+
+[All individual observations, implementation identities and commands](data/2026-11-22-named-obligations.json) · [Public model inputs and edit driver](../../scripts/benchmark-named-obligations.py) · [Dive obligation authentication](https://github.com/Chelis-Lang/dive/pull/1287).

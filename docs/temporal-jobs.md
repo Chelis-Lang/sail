@@ -347,3 +347,12 @@ paths used about 109 MiB peak RSS. On the original 20-client lock server,
 a request-guard edit took 0.354 s both ways. These are medians of three
 end-to-end runs on a dedicated Linux c7i.4xlarge.
 [Inputs, commands and individual results](https://github.com/Chelis-Lang/dive/blob/main/conformance/reports/perf/2026-11-21-named-property-proofs.json).
+
+For expensive named-property transition checks, a compatible Dive installation
+can reuse individually authenticated closure obligations in a new Sail process.
+Set `DIVE_SYMBOLIC_PROOF_KEY` to a private key file managed separately from the
+session. Dive rebinds the edited modules, discharges Init and the property, and
+compares the lowered transition functions against the certified predicate.
+The ordinary unkeyed mode rechecks each image. Five-transaction KVS saved
+150 ms per restriction edit in a fresh process. TCommit's cheap images favored
+unkeyed verification. [Setup and trust boundary](https://github.com/Chelis-Lang/dive/blob/main/docs/user/symbolic.md#reuse-certified-action-obligations-in-another-process) · [Measured edit histories](validation/temporal-reuse-s7.md#cross-process-action-closure-in-multi-module-models).
