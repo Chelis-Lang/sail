@@ -371,3 +371,13 @@ compares the lowered transition functions against the certified predicate.
 The ordinary unkeyed mode rechecks each image. Five-transaction KVS saved
 150 ms per restriction edit in a fresh process. TCommit's cheap images favored
 unkeyed verification. [Setup and trust boundary](https://github.com/Chelis-Lang/dive/blob/main/docs/user/symbolic.md#reuse-certified-action-obligations-in-another-process) · [Measured edit histories](validation/temporal-reuse-s7.md#cross-process-action-closure-in-multi-module-models).
+
+Use `--strategy finite-induction` to save or recheck a complete finite
+certificate from an installed Dive that supports this strategy. Sail keeps
+the certificate in `sail-finite-induction-certificate-v1.json`. A successful
+proof reports checked obligations and leaves exploration counts absent.
+Dive checks the current source and finite configuration, including edited
+invariants and any generated successors outside the state constraint.
+With a matching local key, Dive can reuse bound Init and action obligations.
+An inconclusive certificate falls back to a fresh check within the same
+session deadline.
