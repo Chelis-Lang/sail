@@ -1,7 +1,9 @@
 //! Versioned raw-query runtime, separate from Cargo verification commands.
 mod edit_session;
+mod external_dive;
 mod recheck;
 mod symbolic;
+mod witness;
 use sail_api::runtime::{Answer, Outcome, Output, Request};
 use sail_runtime::{Cancellation, Config, Runtime};
 use std::io::{Read, Write};
@@ -36,6 +38,12 @@ fn command(
         .is_some_and(|action| action == "symbolic-check")
     {
         return symbolic::run(&args[1..], out);
+    }
+    if args
+        .first()
+        .is_some_and(|action| action == "witness-recheck")
+    {
+        return witness::run(&args[1..], out);
     }
     let options = options(args)?;
     if options.action == "edit-session" {

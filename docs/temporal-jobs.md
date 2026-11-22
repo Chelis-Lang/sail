@@ -381,3 +381,30 @@ invariants and any generated successors outside the state constraint.
 With a matching local key, Dive can reuse bound Init and action obligations.
 An inconclusive certificate falls back to a fresh check within the same
 session deadline.
+
+
+## Recheck a saved temporal counterexample
+
+```sh
+sail runtime witness-recheck --dive /path/to/dive --module Clock.tla \
+  --config Clock.cfg --trace saved.json --time-limit 30
+```
+
+Pass the trusted Dive executable and a native word naming all false temporal
+properties. The worker binds the current TLA+ source and CFG. It validates the
+saved word, can bridge broken steps by generating bounded paths through the
+current Next relation, and replays the complete replacement independently.
+For either successful route Sail returns `route: validated-witness` and exit
+13. The exact word the worker validated is in `validation.repair.trace`.
+The unchanged and repaired cases are distinguished by `validation.repair.status`.
+The witness establishes the violation directly and has no BFS state counts.
+
+An unreadable or oversized donor, declined repair, disproved claim, unrecognized
+repair response or older worker triggers an ordinary single-worker current
+check with the remaining time. Its route is `current-check`, and `report`
+contains Dive's native check report. Time expiry or cancellation returns
+`stopped` with exit 4. Both calls use the same original deadline, Dive's
+default semantics, seed 0 and fingerprint 0. The existing native temporal
+receipt database and pinned worker are independent of this external command.
+To carry a witness across a parameter renaming, supply the explicitly mapped
+anchors as the trace. A mapping carries no validation authority.

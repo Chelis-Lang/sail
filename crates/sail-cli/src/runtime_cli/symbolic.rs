@@ -6,16 +6,13 @@ use std::io::Write;
 use std::num::NonZeroU64;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
-mod process;
+use super::external_dive as process;
 use std::time::{Duration, Instant};
 
 pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME] [--property-proof NAME] [--strategy symbolic|occupancy|finite-induction] [--max-orbits N]";
-const MAX_BYTES: u64 = 16 << 20;
+use process::MAX_BYTES;
 struct Strategy {
     option: &'static str,
     report: &'static str,
@@ -162,7 +159,7 @@ impl Job {
         if let Some(limit) = self.max_orbits {
             command.arg("--max-orbits").arg(limit.to_string());
         }
-        process::run(command, started, self.duration, cancel)
+        process::run(command, started, self.duration, cancel, "symbolic")
     }
 }
 
@@ -526,15 +523,8 @@ impl Drop for Stage {
 pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     let started = Instant::now();
     let job = Job::parse(args)?;
-    let cancel = Arc::new(AtomicBool::new(false));
-    #[cfg(unix)]
-    for signal in [
-        signal_hook::consts::SIGINT,
-        signal_hook::consts::SIGTERM,
-        signal_hook::consts::SIGHUP,
-    ] {
-        signal_hook::flag::register(signal, Arc::clone(&cancel)).map_err(failure)?;
-    }
+    let cancel = process::cancellation()?;
+
     fs::create_dir_all(&job.session).map_err(failure)?;
     let dir = fs::canonicalize(&job.session).map_err(failure)?;
     let candidate = dir.join(if job.property.is_some() {
@@ -563,7 +553,7 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
                 job.check("--verify-predicate", &candidate, None, started, &cancel)?;
             let route = report(&bytes, job.property.is_some())?.admit(code, true, &job)?;
             if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
-                let (code, row) = process::stop(&cancel);
+                let (code, row) = process::stop(&cancel, "symbolic");
                 return emit(out, code, &row);
             }
             if !matches!(route, Route::Retry) {
@@ -580,7 +570,7 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     let (code, bytes) = job.check("--write-predicate", &pending, hypothesis, started, &cancel)?;
     let route = report(&bytes, job.property.is_some())?.admit(code, false, &job)?;
     if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
-        let (code, row) = process::stop(&cancel);
+        let (code, row) = process::stop(&cancel, "symbolic");
         return emit(out, code, &row);
     }
     if matches!(route, Route::Searched) {

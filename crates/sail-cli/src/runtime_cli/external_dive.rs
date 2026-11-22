@@ -1,20 +1,35 @@
 //! Bound the external check independently of the checker's own deadline.
-use super::{MAX_BYTES, failure, stopped};
+pub(super) const MAX_BYTES: u64 = 16 << 20;
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-pub(super) fn stop(cancel: &AtomicBool) -> (u8, Vec<u8>) {
-    if cancel.load(Ordering::Relaxed) {
-        (
-            4,
-            br#"{"verdict":"stopped","reason":"symbolic session cancelled"}"#.to_vec(),
-        )
-    } else {
-        stopped()
+pub(super) fn cancellation() -> Result<std::sync::Arc<AtomicBool>, String> {
+    let cancel = std::sync::Arc::new(AtomicBool::new(false));
+    #[cfg(unix)]
+    for signal in [
+        signal_hook::consts::SIGINT,
+        signal_hook::consts::SIGTERM,
+        signal_hook::consts::SIGHUP,
+    ] {
+        signal_hook::flag::register(signal, std::sync::Arc::clone(&cancel))
+            .map_err(|e| format!("error[SAIL6102]: cannot install cancellation handler: {e}"))?;
     }
+    Ok(cancel)
+}
+
+pub(super) fn stop(cancel: &AtomicBool, session: &str) -> (u8, Vec<u8>) {
+    let reason = if cancel.load(Ordering::Relaxed) {
+        "cancelled"
+    } else {
+        "time limit"
+    };
+    (
+        4,
+        format!(r#"{{"verdict":"stopped","reason":"{session} session {reason}"}}"#).into_bytes(),
+    )
 }
 
 fn terminate(child: &mut Child) {
@@ -42,9 +57,11 @@ pub(super) fn run(
     started: Instant,
     budget: Duration,
     cancel: &AtomicBool,
+    session: &'static str,
 ) -> Result<(u8, Vec<u8>), String> {
+    let failure = |message: String| format!("error[SAIL6102]: {session} check: {message}");
     if cancel.load(Ordering::Relaxed) || started.elapsed() >= budget {
-        return Ok(stop(cancel));
+        return Ok(stop(cancel, session));
     }
     #[cfg(unix)]
     {
@@ -55,13 +72,13 @@ pub(super) fn run(
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .spawn()
-        .map_err(failure)?;
+        .map_err(|e| format!("error[SAIL6102]: {session} check: {e}"))?;
     let pipe = child
         .stdout
         .take()
-        .ok_or_else(|| failure("missing Dive output pipe"))?;
+        .ok_or_else(|| failure("missing Dive output pipe".into()))?;
     let read = match thread::Builder::new()
-        .name("sail-symbolic-report".into())
+        .name(format!("sail-{session}-report"))
         .spawn(move || {
             let mut bytes = Vec::new();
             pipe.take(MAX_BYTES + 1).read_to_end(&mut bytes)?;
@@ -70,7 +87,7 @@ pub(super) fn run(
         Ok(reader) => reader,
         Err(error) => {
             terminate(&mut child);
-            return Err(failure(error));
+            return Err(failure(error.to_string()));
         }
     };
     let mut reader = Some(read);
@@ -78,7 +95,7 @@ pub(super) fn run(
     loop {
         if cancel.load(Ordering::Relaxed) || started.elapsed() >= budget {
             terminate(&mut child);
-            return Ok(stop(cancel));
+            return Ok(stop(cancel, session));
         }
         if reader.as_ref().is_some_and(thread::JoinHandle::is_finished)
             && let Some(done) = reader.take()
@@ -88,7 +105,7 @@ pub(super) fn run(
                 _ => {
                     terminate(&mut child);
                     return Err(failure(
-                        "unreadable Dive report or report larger than 16 MiB",
+                        "unreadable Dive report or report larger than 16 MiB".into(),
                     ));
                 }
             }
@@ -105,7 +122,7 @@ pub(super) fn run(
                 Ok(None) => (),
                 Err(error) => {
                     terminate(&mut child);
-                    return Err(failure(error));
+                    return Err(failure(error.to_string()));
                 }
             }
         }
