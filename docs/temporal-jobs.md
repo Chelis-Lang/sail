@@ -458,3 +458,35 @@ replays, attempted mappings and timings under `selection`. On a miss,
 the remaining time. The [reproduction panel](../scripts/collect-witness-selection.py)
 uses an unmodified seven-floor Elevator donor and a typed actor example.
 [Native measurements and controls](validation/temporal-reuse-s7.md#donor-selection-and-typed-embeddings).
+
+## Recheck source induction across edits
+
+`runtime symbolic-check --strategy source-obligations` runs a trusted source
+proof worker in a fresh process. The worker selects its named invariant and
+strengthening. Sail checks that its report agrees with the current module
+and CFG bytes, preserves the module's import directory and supervises one
+process family under the requested wall-time limit.
+
+```sh
+sail runtime symbolic-check --strategy source-obligations \
+  --dive "$PROOF_WORKER" --session .sail/source-proof \
+  --module "$MODEL" --config "$CFG" --time-limit 180
+```
+
+The command invokes the worker with `MODULE CFG` and an optional
+`--obligation-cache FILE`. The worker checks every current obligation or
+accepts an authenticated receipt for the same mathematical obligation.
+`--fresh` omits the cache argument. Each CFG has its own receipt file within
+the session, so a job can return to a prior bound without rebuilding its
+receipt. The worker publishes a proof of its named invariant after checking
+current source binding and the assumptions. The result concerns the selected
+invariant while the ordinary checker handles the other configured questions.
+
+Dive's checkout provides `scripts/symbolic/source_obligations.py`. Set
+`--backend bdd --layout NAME --candidate NAME --property NAME` for a named
+finite induction proof. Set `--backend z3` for the documented finite
+AsyncRaft log proof. A launcher fixes those flags, its Python interpreter and
+the `--exporter` path, then forwards Sail's arguments. Set
+`DIVE_SYMBOLIC_PROOF_KEY` in the worker's environment to a local 32-byte key
+file with mode `0600` or `0400`. With no usable key, the worker discharges
+its obligations from scratch.

@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use super::external_dive as process;
 use std::time::{Duration, Instant};
 
-pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME] [--property-proof NAME] [--strategy symbolic|occupancy|finite-induction] [--max-orbits N]";
+pub(super) const USAGE: &str = "sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS [--type-invariant NAME] [--property-proof NAME] [--strategy symbolic|occupancy|finite-induction|source-obligations] [--max-orbits N] [--fresh]";
 use process::MAX_BYTES;
 struct Strategy {
     option: &'static str,
@@ -29,6 +29,12 @@ const INDUCTION: Strategy = Strategy {
     option: "finite-induction",
     report: "dive-finite-induction-report-v1",
     candidate: "sail-finite-induction-certificate-v1.json",
+};
+
+const SOURCE_OBLIGATIONS: Strategy = Strategy {
+    option: "source-obligations",
+    report: "dive-source-obligations-v1",
+    candidate: "sail-source-obligations-v1.json",
 };
 
 const SUPPORT_FORMAT: &str = "dive-occupancy-support-v1";
@@ -49,6 +55,7 @@ struct Job {
     strategy: Strategy,
     max_orbits: Option<NonZeroU64>,
     property: Option<String>,
+    fresh: bool,
 }
 
 fn failure(message: impl std::fmt::Display) -> String {
@@ -60,7 +67,12 @@ impl Job {
         let usage = || format!("error[SAIL6101]: usage: {USAGE}");
         let mut flags = std::collections::BTreeMap::new();
         let mut args = args.iter();
+        let mut fresh = false;
         while let Some(flag) = args.next() {
+            if flag == "--fresh" && !fresh {
+                fresh = true;
+                continue;
+            }
             if !matches!(
                 flag.as_str(),
                 "--dive"
@@ -91,6 +103,7 @@ impl Job {
             None | Some("symbolic") => SYMBOLIC,
             Some("occupancy") => OCCUPANCY,
             Some("finite-induction") => INDUCTION,
+            Some("source-obligations") => SOURCE_OBLIGATIONS,
             _ => return Err(usage()),
         };
         let property = flags.get("--property-proof").map(|s| (*s).clone());
@@ -106,16 +119,33 @@ impl Job {
         if max_orbits.is_some() && strategy.option != OCCUPANCY.option {
             return Err(usage());
         }
+        let type_invariant = flags.get("--type-invariant").map(|s| (*s).clone());
+        if (fresh && strategy.option != SOURCE_OBLIGATIONS.option)
+            || (type_invariant.is_some() && strategy.option == SOURCE_OBLIGATIONS.option)
+        {
+            return Err(usage());
+        }
+        // Import paths for a source proof are interpreted from the supplied
+        // module location, including when its file is a symlink.
+        let preserve_import_scope = strategy.option == SOURCE_OBLIGATIONS.option;
+        let source_file = |flag| {
+            if preserve_import_scope {
+                std::path::absolute(required(flag)?).map_err(failure)
+            } else {
+                file(flag)
+            }
+        };
         Ok(Self {
             strategy,
+            fresh,
             property,
             max_orbits,
             dive: file("--dive")?,
-            module: file("--module")?,
-            config: file("--config")?,
+            module: source_file("--module")?,
+            config: source_file("--config")?,
             session: required("--session")?.into(),
             duration: Duration::from_secs(seconds),
-            type_invariant: flags.get("--type-invariant").map(|s| (*s).clone()),
+            type_invariant,
         })
     }
 
@@ -520,6 +550,115 @@ impl Drop for Stage {
     }
 }
 
+#[derive(Deserialize)]
+struct SourceProof<'a> {
+    format: &'a str,
+    result: &'a str,
+    module_sha256: &'a str,
+    config_sha256: &'a str,
+    #[serde(borrow)]
+    proof: Option<&'a RawValue>,
+    retained: Option<u64>,
+}
+
+fn checked_digest(path: &Path) -> Result<String, String> {
+    use std::io::Read as _;
+    let regular = |meta: fs::Metadata| {
+        if meta.is_file() {
+            Ok(())
+        } else {
+            Err(failure("source proof input must be a regular file"))
+        }
+    };
+    regular(fs::metadata(path).map_err(failure)?)?;
+    #[cfg(unix)]
+    let input = {
+        use rustix::fs::{Mode, OFlags, open};
+        let fd = open(
+            path,
+            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC,
+            Mode::empty(),
+        )
+        .map_err(failure)?;
+        fs::File::from(fd)
+    };
+    #[cfg(not(unix))]
+    let input = fs::File::open(path).map_err(failure)?;
+    regular(input.metadata().map_err(failure)?)?;
+    let mut bytes = Vec::new();
+    input
+        .take(MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(failure)?;
+    if bytes.len() as u64 > MAX_BYTES {
+        return Err(failure("source proof input exceeds the report limit"));
+    }
+    Ok(sail_api::temporal::sha256(&bytes))
+}
+
+fn source_obligations(
+    job: &Job,
+    candidate: &Path,
+    started: Instant,
+    cancel: &AtomicBool,
+    out: &mut dyn Write,
+) -> Result<u8, String> {
+    let module = checked_digest(&job.module)?;
+    let config = checked_digest(&job.config)?;
+    let candidate = candidate.with_file_name(format!("sail-source-obligations-v1-{config}.json"));
+    if !job.fresh {
+        // Compare the locations the filesystem will use while preserving the
+        // lexical module directory passed to the worker for source imports.
+        for input in [&job.module, &job.config, &job.dive] {
+            if fs::canonicalize(input).map_err(failure)? == candidate {
+                return Err(failure("source obligation receipt aliases an input"));
+            }
+        }
+        match fs::symlink_metadata(&candidate) {
+            Ok(meta) if meta.is_file() => (),
+            Ok(_) => return Err(failure("source obligation receipt must be a regular file")),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Err(error) => return Err(failure(error)),
+        }
+    }
+    let mut command = Command::new(&job.dive);
+    command.arg(&job.module).arg(&job.config);
+    if !job.fresh {
+        command.arg("--obligation-cache").arg(&candidate);
+    }
+    let (code, bytes) = process::run(command, started, job.duration, cancel, "source-induction")?;
+    if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
+        let (code, row) = process::stop(cancel, "source-induction");
+        return emit(out, code, &row);
+    }
+    let proof: SourceProof<'_> = serde_json::from_slice(&bytes).map_err(failure)?;
+    if proof.format != SOURCE_OBLIGATIONS.report
+        || proof.module_sha256 != module
+        || proof.config_sha256 != config
+        || checked_digest(&job.module)? != module
+        || checked_digest(&job.config)? != config
+        || !matches!(
+            (code, proof.result),
+            (0, "proved") | (2, "inconclusive") | (4, "stopped")
+        )
+        || (code == 0
+            && !proof
+                .proof
+                .is_some_and(|result| result.get().starts_with('{')))
+        || (code != 0 && proof.proof.is_some())
+        || (job.fresh && proof.retained != Some(0))
+    {
+        return Err(failure(
+            "source induction worker report disagrees with the current query",
+        ));
+    }
+    if cancel.load(Ordering::Relaxed) || started.elapsed() >= job.duration {
+        let (code, row) = process::stop(cancel, "source-induction");
+        return emit(out, code, &row);
+    }
+    emit(out, code, &bytes)
+}
+
 pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     let started = Instant::now();
     let job = Job::parse(args)?;
@@ -534,6 +673,9 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     });
     if candidate == job.module || candidate == job.config || candidate == job.dive {
         return Err(failure("session candidate aliases an input file"));
+    }
+    if job.strategy.option == SOURCE_OBLIGATIONS.option {
+        return source_obligations(&job, &candidate, started, &cancel, out);
     }
     // The marker belongs to the trusted worker installation. Old installations
     // retain their two-invocation protocol. The shared candidate never selects
