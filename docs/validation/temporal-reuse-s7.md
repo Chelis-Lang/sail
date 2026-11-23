@@ -582,3 +582,28 @@ Measured executable SHA-256 digests were `4761058590f02ed412aebc822abc3aaaed33ce
 - `b4096c054b76bf8eca1803628491ad559104dc94f05492a943215f2af3aaa7ba`
 - `859c20eb6cad873c012ec1158ac5650d1ded2da44fa61d99115dd60bd506c597`
 - `7cb110f350d6a7e21253812c4e8eaa0b3e09cc9f6fd95f636b9e7f6fdce7fba1`
+
+### Donor selection and typed embeddings
+
+Reproduce with `python3 scripts/collect-witness-selection.py SAIL DIVE Elevator.tla n7.cfg n8.cfg SEVEN.word`.
+Use the unmodified 218-state donor from the original
+[seven-floor cold search](https://github.com/Chelis-Lang/dive/blob/main/conformance/reports/perf/2026-11-22-cold-fair-elevator.json).
+The panel uses source SHA-256 `c44366dbf4f4bdef30edade0c8a2faf75fd37b2b7aeb1c04b24e80eb40ed2203`
+and donor SHA-256 `f1cec496a0b8a3bee51d631324cdd754565ee0e4fa3a382ad37d5e253c7816d4`.
+
+On a dedicated c7i.4xlarge Linux host the fresh indexed eight-floor job took
+285.38 ms and 42,644 KiB peak RSS. Sail declined the first donor's prior CFG,
+accepted the second after prior replay, and chose `[1,3,4,5,6,7,8]`. Initial
+lookup took 41.51 ms, the two original replay attempts took 23.76 and 61.05 ms,
+and mapping took 1.87 ms. Dive generated 157 successors across 11 gaps in
+12.39 ms and validated the complete 229-state replacement in 65.04 ms.
+Separate replay accepted it in 68.38 ms. The published donor-free eight-floor
+baseline took 325.10 s on the same instance type.
+
+The typed actor control mapped one model atom and one integer coordinate,
+preserving the unrelated integer field. Sail took 30.08 ms and 19,508 KiB.
+Separate replay took 7.68 ms. Changed fairness and a fixed property returned
+ordinary success, with ordinary checking taking 6.64 and 4.53 ms respectively.
+Ambiguous fields and damaged, corrupt, or missing donors took ordinary
+fallback. The one-second deadline stopped search, with a further 0.40 s for
+process cleanup. SIGINT also stopped and reaped the worker.

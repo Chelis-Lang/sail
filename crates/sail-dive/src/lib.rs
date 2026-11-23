@@ -82,3 +82,12 @@ pub fn equivalent_check_config(old: &Request, new: &Request) -> bool {
         && right.parse().diagnostics().is_empty()
         && left.config() == right.config()
 }
+
+/// Parses the configuration for candidate discovery by the external witness
+/// route. The caller still needs the external checker's current-source replay.
+#[must_use]
+pub fn witness_configuration(source: &str) -> Option<serde_json::Value> {
+    let report = dive_api::parse_config_source("Witness.cfg", source);
+    (report.accepted() && report.parse().diagnostics().is_empty())
+        .then(|| report.to_json()["model"].take())
+}
