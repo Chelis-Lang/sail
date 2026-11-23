@@ -232,5 +232,21 @@ fn source_obligations_bind_the_worker_report_and_leave_a_fresh_route()
         row["proof"]["module_parent"],
         session.0.canonicalize()?.to_string_lossy().as_ref()
     );
+    let digest = sail_api::temporal::sha256(b"config");
+    let cache_name = format!("sail-source-obligations-v1-{digest}.json");
+    let cached = session.0.join("session").join(cache_name);
+    fs::write(&cached, "source used as a cache")?;
+    let model = session.0.join("M.tla");
+    fs::remove_file(&model)?;
+    std::os::unix::fs::symlink(&cached, &model)?;
+    let alias = session.invoke_with("proved", &strategy)?;
+    assert_eq!(alias.status.code(), Some(2), "{alias:?}");
+    assert!(String::from_utf8_lossy(&alias.stderr).contains("receipt aliases an input"));
+    assert_eq!(fs::read(&cached)?, b"source used as a cache");
+    fs::remove_file(&model)?;
+    assert!(Command::new("mkfifo").arg(&model).status()?.success());
+    let fifo = session.invoke_with("proved", &fresh)?;
+    assert_eq!(fifo.status.code(), Some(2), "{fifo:?}");
+    assert!(String::from_utf8_lossy(&fifo.stderr).contains("input must be a regular file"));
     Ok(())
 }

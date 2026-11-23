@@ -563,9 +563,30 @@ struct SourceProof<'a> {
 
 fn checked_digest(path: &Path) -> Result<String, String> {
     use std::io::Read as _;
+    let regular = |meta: fs::Metadata| {
+        if meta.is_file() {
+            Ok(())
+        } else {
+            Err(failure("source proof input must be a regular file"))
+        }
+    };
+    regular(fs::metadata(path).map_err(failure)?)?;
+    #[cfg(unix)]
+    let input = {
+        use rustix::fs::{Mode, OFlags, open};
+        let fd = open(
+            path,
+            OFlags::RDONLY | OFlags::NONBLOCK | OFlags::CLOEXEC,
+            Mode::empty(),
+        )
+        .map_err(failure)?;
+        fs::File::from(fd)
+    };
+    #[cfg(not(unix))]
+    let input = fs::File::open(path).map_err(failure)?;
+    regular(input.metadata().map_err(failure)?)?;
     let mut bytes = Vec::new();
-    fs::File::open(path)
-        .map_err(failure)?
+    input
         .take(MAX_BYTES + 1)
         .read_to_end(&mut bytes)
         .map_err(failure)?;
@@ -585,10 +606,14 @@ fn source_obligations(
     let module = checked_digest(&job.module)?;
     let config = checked_digest(&job.config)?;
     let candidate = candidate.with_file_name(format!("sail-source-obligations-v1-{config}.json"));
-    if candidate == job.module || candidate == job.config || candidate == job.dive {
-        return Err(failure("source obligation receipt aliases an input"));
-    }
     if !job.fresh {
+        // Compare the locations the filesystem will use while preserving the
+        // lexical module directory passed to the worker for source imports.
+        for input in [&job.module, &job.config, &job.dive] {
+            if fs::canonicalize(input).map_err(failure)? == candidate {
+                return Err(failure("source obligation receipt aliases an input"));
+            }
+        }
         match fs::symlink_metadata(&candidate) {
             Ok(meta) if meta.is_file() => (),
             Ok(_) => return Err(failure("source obligation receipt must be a regular file")),
