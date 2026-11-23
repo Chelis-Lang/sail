@@ -1,12 +1,19 @@
 //! Recheck a saved liveness counterexample with a trusted external Dive installation.
 
+mod donors;
 mod report;
 use super::external_dive;
 use report::{ordinary, periodic};
 use serde_json::{Value, json};
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
-use std::{collections::BTreeMap, fs, io::Write, path::Path, process::Command};
+use std::{
+    collections::BTreeMap,
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 fn failure(message: impl std::fmt::Display) -> String {
     format!("error[SAIL6102]: witness recheck: {message}")
@@ -69,17 +76,35 @@ fn validated(doc: &Value) -> bool {
         && periodic(word)
 }
 
-pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
-    let started = Instant::now();
+enum Input<'a> {
+    Word(&'a Path),
+    Index(&'a Path, &'a str),
+}
+
+struct Job<'a> {
+    dive: PathBuf,
+    module: PathBuf,
+    config: PathBuf,
+    input: Input<'a>,
+    budget: Duration,
+}
+
+fn parse(args: &[String]) -> Result<Job<'_>, String> {
     let usage = || {
-        "error[SAIL6101]: usage: sail runtime witness-recheck --dive FILE --module MODULE --config CFG --trace WORD --time-limit SECONDS".to_owned()
+        "error[SAIL6101]: usage: sail runtime witness-recheck --dive FILE --module MODULE --config CFG (--trace WORD | --donor-index INDEX --property PROPERTY) --time-limit SECONDS".to_owned()
     };
     let mut flags = BTreeMap::new();
     let mut it = args.iter();
     while let Some(name) = it.next() {
         if !matches!(
             name.as_str(),
-            "--dive" | "--module" | "--config" | "--trace" | "--time-limit"
+            "--dive"
+                | "--module"
+                | "--config"
+                | "--trace"
+                | "--time-limit"
+                | "--donor-index"
+                | "--property"
         ) || flags
             .insert(name.as_str(), it.next().ok_or_else(usage)?)
             .is_some()
@@ -92,29 +117,59 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     let dive = file("--dive")?;
     let module = file("--module")?;
     let config = file("--config")?;
-    let trace = Path::new(required("--trace")?);
+    let input = match (
+        flags.get("--trace").copied(),
+        flags.get("--donor-index").copied(),
+        flags.get("--property").copied(),
+    ) {
+        (Some(trace), None, None) => Input::Word(Path::new(trace)),
+        (None, Some(index), Some(property)) if !property.is_empty() => {
+            Input::Index(Path::new(index), property)
+        }
+        _ => return Err(usage()),
+    };
     let seconds = required("--time-limit")?
         .parse::<std::num::NonZeroU64>()
         .map_err(|_| usage())?;
     let budget = Duration::from_secs(seconds.get());
+    Ok(Job {
+        dive,
+        module,
+        config,
+        input,
+        budget,
+    })
+}
+
+fn command(executable: &Path, subcommand: &str, module: &Path, config: &Path) -> Command {
+    let mut cmd = Command::new(executable);
+    cmd.arg(subcommand)
+        .arg(module)
+        .arg("--config")
+        .arg(config)
+        .args([
+            "--compat=dive",
+            "--seed",
+            "0",
+            "--fp",
+            "0",
+            "--output",
+            "json",
+        ]);
+    cmd
+}
+
+pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
+    let started = Instant::now();
+    let Job {
+        dive,
+        module,
+        config,
+        input,
+        budget,
+    } = parse(args)?;
     let cancel = external_dive::cancellation()?;
-    let command = |sub: &str| {
-        let mut cmd = Command::new(&dive);
-        cmd.arg(sub)
-            .arg(&module)
-            .arg("--config")
-            .arg(&config)
-            .args([
-                "--compat=dive",
-                "--seed",
-                "0",
-                "--fp",
-                "0",
-                "--output",
-                "json",
-            ]);
-        cmd
-    };
+    let command = |sub: &str| command(&dive, sub, &module, &config);
     let stopped = || cancel.load(Ordering::Relaxed) || started.elapsed() >= budget;
     let emit_stop = |out: &mut dyn Write| {
         let (code, bytes) = external_dive::stop(&cancel, "witness");
@@ -122,7 +177,31 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
         writeln!(out).map_err(failure)?;
         Ok(code)
     };
-    if fs::metadata(trace).is_ok_and(|f| f.is_file() && f.len() <= 8 << 20) {
+    let mut selection = None;
+    if let Input::Index(index, property) = input {
+        let found = donors::select(
+            index,
+            &module,
+            &config,
+            donors::session(&dive, property, started, budget, &cancel),
+        );
+        if stopped() {
+            return emit_stop(out);
+        }
+        if let Some(report) = found.report {
+            writeln!(
+                out,
+                "{}",
+                json!({"route":"validated-witness","validation":report,"selection":found.detail})
+            )
+            .map_err(failure)?;
+            return Ok(13);
+        }
+        selection = Some(found.detail);
+    }
+    if let Input::Word(trace) = input
+        && fs::metadata(trace).is_ok_and(|f| f.is_file() && f.len() <= 8 << 20)
+    {
         let mut cmd = command("validate-trace");
         cmd.arg("--trace").arg(trace).arg("--repair");
         // The worker returns the exact word it checked on both successful routes.
@@ -154,6 +233,7 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     let mut cmd = command("check");
     cmd.args(["--workers", "1", "--exit-codes", "tlc", "--time-limit"])
         .arg(format!("{remaining}ms"));
+    let ordinary_started = Instant::now();
     let (code, bytes) = external_dive::run(cmd, started, budget, &cancel, "witness")?;
     if stopped() {
         return emit_stop(out);
@@ -168,7 +248,12 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
     if stopped() {
         return emit_stop(out);
     }
-    writeln!(out, "{}", json!({"route":"current-check","report":report})).map_err(failure)?;
+    let mut response = json!({"route":"current-check","report":report});
+    if let Some(mut selection) = selection {
+        selection["ordinary_ms"] = json!(ordinary_started.elapsed().as_secs_f64() * 1000.);
+        response["selection"] = selection;
+    }
+    writeln!(out, "{response}").map_err(failure)?;
     Ok(code)
 }
 

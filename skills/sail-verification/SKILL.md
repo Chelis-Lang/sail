@@ -143,3 +143,10 @@ For a multi-root TLA+ project, pass the previous exact request and current
 request to `sail runtime recheck` with the same cache. A
 `unchanged-loaded-program` proof lists the files the authenticated worker
 resolved in both versions. A changed loaded module requires a current check.
+
+For an edited TLA+ job with saved temporal counterexamples, run
+`sail runtime witness-recheck --donor-index INDEX --property PROPERTY` with
+the current module and CFG. The index lists prior words and the models that
+produced them. Optional field selectors identify the typed coordinates to map.
+Use the returned word only after current-source replay succeeds.
+[Command and index format](https://github.com/Chelis-Lang/sail/blob/main/docs/temporal-jobs.md#discover-donors-from-an-edited-job).

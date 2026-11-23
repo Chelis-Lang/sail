@@ -61,7 +61,7 @@ USAGE:
     sail runtime prepare-temporal [--file FILE|-] [--cache DIR]
     sail runtime recheck --previous FILE --file FILE|- [--cache DIR]
     sail runtime edit-session --file FILE|-
-    sail runtime witness-recheck --dive FILE --module MODULE --config CFG --trace WORD --time-limit SECONDS
+    sail runtime witness-recheck --dive FILE --module MODULE --config CFG (--trace WORD | --donor-index INDEX --property PROPERTY) --time-limit SECONDS
     sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG
                                 --time-limit SECONDS [--type-invariant NAME]
                                 [--strategy symbolic|occupancy|finite-induction] [--max-orbits N]

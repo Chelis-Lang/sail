@@ -414,3 +414,47 @@ receipt database and pinned worker are independent of this external command.
 To carry a witness across a parameter renaming, supply the explicitly mapped
 anchors as the trace. A mapping carries no validation authority.
 [MultiCarElevator and real-time clock measurements](validation/temporal-reuse-s7.md#repairing-named-temporal-counterexamples).
+
+### Discover donors from an edited job
+
+```sh
+sail runtime witness-recheck --dive /path/to/dive --module Actors.tla \
+  --config current.cfg --donor-index saved-witnesses.json --property Live --time-limit 10
+```
+
+The version-1 index points to existing native words and their original inputs.
+Relative paths are resolved beside the index.
+
+```json
+{
+  "version": 1,
+  "donors": [{"module":"old/Actors.tla","config":"old/Actors.cfg","word":"old/word.json"}],
+  "layout": {
+    "integer_carrier": "N",
+    "renames": {"old_actor":"new_actor"},
+    "fields": [
+      {"path":["x","seq","0","record","actor"],"kind":"model"},
+      {"path":["x","seq","0","record","coordinate"],"kind":"integer"}
+    ]
+  }
+}
+```
+
+Sail matches the module filename and configured property. It independently
+validates each candidate on its own source before trying the unmodified word
+on the current source. If needed, it tries ordered embeddings of `1..N`, where
+both CFGs bind `N` to an integer literal, and applies explicit model-value
+renamings. Field paths follow the native state document's typed values. `*`
+selects every item in an array. `integer_or_model` preserves a model-valued
+alternative and maps an integer alternative. Selectors cannot overlap, and
+renaming cannot merge distinct observed atoms in the selected fields. Any
+changed word still needs complete replay on the current source.
+
+The index holds up to eight donors. Current-source attempts are capped at 16
+and use up to half the request deadline, with a five-second ceiling for the
+whole donor phase. Sail records the selected donor digests, embedding, prior
+replays, attempted mappings and timings under `selection`. On a miss,
+`fallback_reason` identifies what stopped selection and an ordinary check uses
+the remaining time. The [reproduction panel](../scripts/collect-witness-selection.py)
+uses an unmodified seven-floor Elevator donor and a typed actor example.
+[Native measurements and controls](validation/temporal-reuse-s7.md#donor-selection-and-typed-embeddings).

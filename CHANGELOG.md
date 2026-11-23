@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Discover saved temporal witnesses for an edited job and try typed finite-carrier mappings before ordinary checking.
+
 - [Recheck a saved temporal counterexample](docs/temporal-jobs.md#recheck-a-saved-temporal-counterexample) against the edited source with an external Dive worker and ordinary checking as fallback.
 
 - Recheck [one named TLA+ invariant](docs/temporal-jobs.md#recheck-one-named-state-invariant-across-edits) across edits with a portable Dive predicate. Each proof names its scope and records transition obligations.
