@@ -184,3 +184,53 @@ fn check_named(session: &Session) -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(fs::read(scoped)?, b"repaired");
     Ok(())
 }
+
+#[test]
+fn source_obligations_bind_the_worker_report_and_leave_a_fresh_route()
+-> Result<(), Box<dyn std::error::Error>> {
+    let session = Session(
+        std::env::temp_dir().join(format!("sail-source-proof-test-{}", std::process::id())),
+    );
+    fs::create_dir(&session.0)?;
+    let worker = session.0.join("dive");
+    fs::write(
+        &worker,
+        include_str!("fixtures/source_obligation_worker.py"),
+    )?;
+    fs::set_permissions(&worker, fs::Permissions::from_mode(0o700))?;
+    fs::write(session.0.join("M.tla"), "module")?;
+    fs::write(session.0.join("M.cfg"), "config")?;
+    let strategy = ["--strategy", "source-obligations"];
+    let fresh = ["--strategy", "source-obligations", "--fresh"];
+    let run = |mode, options: &[&str], expected, hits| -> Result<(), Box<dyn std::error::Error>> {
+        let out = session.invoke_with(mode, options)?;
+        assert_eq!(out.status.code(), Some(expected), "{:?}", out.stderr);
+        if expected == 0 {
+            let row: serde_json::Value = serde_json::from_slice(&out.stdout)?;
+            assert_eq!(row["retained"], hits);
+        }
+        Ok(())
+    };
+    run("proved", &strategy, 0, 0)?;
+    run("proved", &strategy, 0, 1)?;
+    run("proved", &fresh, 0, 0)?;
+    run("failed", &strategy, 2, 0)?;
+    run("false-success", &strategy, 2, 0)?;
+    run("fresh-retained", &fresh, 2, 0)?;
+    run("stale", &strategy, 2, 0)?;
+    run("mutated-during-check", &strategy, 2, 0)?;
+    // Source-only paths carry their lexical import directory through the CLI.
+    let outside = session.0.join("delegates");
+    fs::create_dir(&outside)?;
+    let destination = outside.join("Original.tla");
+    fs::rename(session.0.join("M.tla"), &destination)?;
+    std::os::unix::fs::symlink(destination, session.0.join("M.tla"))?;
+    let accepted = session.invoke_with("proved", &fresh)?;
+    assert!(accepted.status.success(), "{:?}", accepted.stderr);
+    let row: serde_json::Value = serde_json::from_slice(&accepted.stdout)?;
+    assert_eq!(
+        row["proof"]["module_parent"],
+        session.0.canonicalize()?.to_string_lossy().as_ref()
+    );
+    Ok(())
+}

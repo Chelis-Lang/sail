@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Recheck [source induction across edits](docs/temporal-jobs.md#recheck-source-induction-across-edits) with a fresh Dive proof worker and optional authenticated obligation reuse.
+
 - Discover saved temporal witnesses for an edited job and try typed finite-carrier mappings before ordinary checking.
 
 - [Recheck a saved temporal counterexample](docs/temporal-jobs.md#recheck-a-saved-temporal-counterexample) against the edited source with an external Dive worker and ordinary checking as fallback.
