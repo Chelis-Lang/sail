@@ -256,13 +256,26 @@ fn setup() -> Result<Setup, SetupError> {
 }
 
 /// Both distribution channels install the same small shim beside the CLI.
+///
+/// On macOS `current_exe` reports the path `sail` was started through, so a
+/// symlinked `sail` would look for the shim beside the link. When neither shim
+/// is there, look beside the resolved executable, as the bundled engine
+/// lookup already does.
 pub(crate) fn shim_for(executable: &Path) -> PathBuf {
-    let cargo = executable.with_file_name("sail-solve-z3");
-    if cargo.is_file() {
-        cargo
-    } else {
-        executable.with_file_name("sail-z3")
-    }
+    let beside = |executable: &Path| {
+        ["sail-solve-z3", "sail-z3"]
+            .into_iter()
+            .map(|name| executable.with_file_name(name))
+            .find(|shim| shim.is_file())
+    };
+    beside(executable)
+        .or_else(|| {
+            executable
+                .canonicalize()
+                .ok()
+                .and_then(|resolved| beside(&resolved))
+        })
+        .unwrap_or_else(|| executable.with_file_name("sail-z3"))
 }
 
 /// `cargo verus verify <args>` with sail's environment; the daemon is
@@ -1020,6 +1033,33 @@ fn plain_report(
 #[cfg(test)]
 mod tests {
     use super::{has_verus_flag, managed_only, split_args, without_incremental};
+
+    /// A `sail` reached through a symlink finds the shim installed beside the
+    /// real executable, and a shim beside the link still wins.
+    #[cfg(unix)]
+    #[test]
+    fn shim_is_found_beside_a_symlinked_sail() -> std::io::Result<()> {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_nanos());
+        let root =
+            std::env::temp_dir().join(format!("sail-shim-link-{}-{nanos}", std::process::id()));
+        let installed = root.join("installed");
+        let links = root.join("links");
+        std::fs::create_dir_all(&installed)?;
+        std::fs::create_dir_all(&links)?;
+        std::fs::write(installed.join("sail"), b"")?;
+        std::fs::write(installed.join("sail-z3"), b"")?;
+        std::os::unix::fs::symlink(installed.join("sail"), links.join("sail"))?;
+        let resolved = super::shim_for(&links.join("sail"));
+        let expected = installed.canonicalize()?.join("sail-z3");
+        std::fs::write(links.join("sail-solve-z3"), b"")?;
+        let beside_link = super::shim_for(&links.join("sail"));
+        std::fs::remove_dir_all(&root)?;
+        assert_eq!(resolved, expected);
+        assert_eq!(beside_link, links.join("sail-solve-z3"));
+        Ok(())
+    }
 
     /// `--incremental` is the deprecated name of the default: removed
     /// before `--`, and kept after it, where it belongs to Verus.
