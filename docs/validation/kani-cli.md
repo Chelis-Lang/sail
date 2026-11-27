@@ -38,6 +38,28 @@ Lock-only review report:
 `f44778d8a584c920607d91b26f505f2fec74a8a9a05d1952e49cef9e6533a8df`.
 These reviews do not substitute for native frontend or package acceptance.
 
+## Repetition on current main (2026-11-27)
+
+The nine commits are replayed on `main` at `89820bc9`. Workstation: AMD Ryzen AI Max+ 395,
+32 threads, Fedora 43 kernel `7.1.5-100.fc43.x86_64`, native x86-64, Rust
+1.99.0. This is a developer host, not the EC2 lane, and its timings are not
+performance evidence.
+
+| Actual gate | Result and boundary |
+|---|---|
+| Host gate | `cargo fmt --check`, workspace all-target Clippy, layering (19 crates), book test and `crate-resources.py check` (35 copies) pass; 1,525 tests pass / 59 declared skips |
+| Tool authentication | A link-free copy of an existing original Kani 0.68.0 bundle and the rustup `nightly-2026-08-21` tree authenticate and stage; the upstream install layout itself refuses on its `toolchain` symlink, as designed |
+| Nine arrayvec pairs | Release `sail verify --backend kani` against the same staged driver, argv and environment replayed directly into another fresh target: six bounded successes, two counterexamples, one insufficient bound; CLI exits 0/1/1 and driver exits equal in every pair; sources and lock unchanged |
+| Pair differences | Export: `metadata.timestamp`, two `duration_ms` fields and six `cbmc_stats.runtime_*` fields only. Streams: equal line counts; 134 differing lines, all Cargo or CBMC timing lines |
+
+The comparator here is a local script, weaker than the reviewed external
+runner above: it does not check repeated JSON fields or observation-to-check
+bindings. The strict runner on the native Linux lane and default Verus
+conformance (`ci/local.sh conformance fast pr`) on this source remain owed.
+Setup by network download (`sail engine install --backend kani`) was not
+repeated. Raw pair log sha256:
+`3cf3a34a9b40569fd908f8545e2a9c7e4265d15d6fcc15e4c39ae64086eaf8e3`.
+
 ## Paired original-driver scope
 
 Nine ordinary non-contract harnesses cover all six positive, two property-failure
