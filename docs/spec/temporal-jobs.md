@@ -1,7 +1,7 @@
 # Temporal jobs, version 1
 
-Status: specification for implementation review. The stable 0.3.0 distribution links the native
-D.I.V.E. 0.1.0 library. The development checkout uses the immutable source
+Status: specification for implementation review. Sail 0.3.1 links the native
+D.I.V.E. 0.2.0 library. The development checkout uses the immutable source
 pin described under Edit evidence below.
 It never executes a D.I.V.E. command, TLC, or Java and has no alternate backend.
 
@@ -198,10 +198,17 @@ a new basis. A comparison miss follows the existing current-check path.
 The development `Cargo.toml` and `Cargo.lock` pin the Dive repository by full
 revision under ADR 0172. The edit protocol’s `backend_source` identifies those
 bytes and the installation manifest authenticates the worker executable.
-A stable Sail crate release must first depend on published Dive crates exposing
-these APIs and pass native conformance against that source.
+A stable Sail crate release depends instead on the published D.I.V.E. 0.2.0
+crates, which expose these APIs, and must pass native conformance against that
+source.
 
 ## External symbolic predicate sessions
+
+> **Unreleased, planned for D.I.V.E. 0.3.** This section is not part of Sail
+> 0.3.1. It needs a Dive installation that carries the symbolic proof worker,
+> which D.I.V.E. 0.2.0 does not ship; see
+> [symbolic rechecks](../design/symbolic-check.md) and
+> [#805](https://github.com/Chelis-Lang/sail/issues/805).
 
 The local `sail runtime symbolic-check` command owns a separate working
 directory and a named external Dive, selected by the caller. Proof rows have

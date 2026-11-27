@@ -1,10 +1,10 @@
 # Native temporal jobs from Rust
 
 `sail-dive` runs the native D.I.V.E. libraries in the separate
-`sail-runtime-worker` process. The published Sail 0.3.0 distribution links
-`dive-api` and `dive-ir` 0.1.0 from crates.io. The development checkout
-pins an upstream revision for edit sessions and reports it as `backend_source`
-on edit evidence. The worker supports finite exhaustive model checking,
+`sail-runtime-worker` process. Sail 0.3.1 links `dive-api`, `dive-ir`,
+`dive-value` and `dive-trace` 0.2.0 from crates.io. A development checkout
+can pin an upstream revision instead; edit evidence reports it as
+`backend_source`. The worker supports finite exhaustive model checking,
 the admitted final temporal subset, finite one-worker simulation, and
 independent validation of complete traces. It does not execute a D.I.V.E.
 command, TLC or Java. The payload is also available through the shared runtime endpoint; see
@@ -179,7 +179,7 @@ ordinary checking. An exact receipt for the current request takes precedence.
 
 ## Recheck a previous invariant failure after a configuration comment edit
 
-In development builds after v0.3.0, save the two temporal `check` request envelopes. Run the previous request normally, then ask Sail to recheck the edited request using the same local cache:
+In Sail 0.3.1 and newer, save the two temporal `check` request envelopes. Run the previous request normally, then ask Sail to recheck the edited request using the same local cache:
 
 ```sh
 sail runtime execute --file previous.json

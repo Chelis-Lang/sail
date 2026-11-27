@@ -13,33 +13,22 @@ semantic versioning once the API is published.
 
 - Add hidden `sail_api::bounded` groundwork: one bounded-evidence record for Kani and D.I.V.E. symbolic results (ADR 0185). It is not supported API and no command, MCP tool or report uses it.
 
-- Native temporal jobs link D.I.V.E. at `a1fd9e00` and accept its report schema 4 (#786).
+- Native temporal jobs link D.I.V.E. 0.2.0 and accept its report schema 4 (#786).
 - `sail runtime witness-recheck` checks `dive --version` first and refuses a Dive release other than the one Sail links with `SAIL6103` and an install command.
 - `sail runtime symbolic-check`, including `--strategy source-obligations`, is no longer listed in `sail help runtime` or the user guide: D.I.V.E. 0.2.0 does not ship the symbolic worker. It follows with D.I.V.E. 0.3 (#805).
-
-- Recheck [source induction across edits](docs/design/symbolic-check.md#recheck-source-induction-across-edits) with a fresh Dive proof worker and optional authenticated obligation reuse.
 
 - Discover saved temporal witnesses for an edited job and try typed finite-carrier mappings before ordinary checking.
 
 - [Recheck a saved temporal counterexample](docs/temporal-jobs.md#recheck-a-saved-temporal-counterexample) against the edited source with an external Dive worker and ordinary checking as fallback.
 
-- Recheck [one named TLA+ invariant](docs/design/symbolic-check.md#recheck-one-named-state-invariant-across-edits) across edits with a portable Dive predicate. Each proof names its scope and records transition obligations.
-
-- Named temporal checks can repair a rejected candidate in the same worker process as the induction attempt.
-
 - Reuse earlier complete ordinary results for identical checks and undo in an installed temporal edit session.
 
 - Native [temporal jobs](docs/temporal-jobs.md) can check pure TLC function updates, finite permutations and pinned finite-set utilities used by SlateDB.
-
-- `sail runtime symbolic-check --strategy occupancy` can recheck [portable population predicates](docs/design/symbolic-check.md#recheck-finite-safety-properties-with-a-portable-predicate) across source edits and preserve exact counts on a fresh search.
 
 - `sail runtime recheck` can retain a completed native proof across a project edit when both executions resolve the same module bytes and selected configuration. The result lists the loaded modules.
 - Native temporal witnesses can carry TLA+ model values through checks, simulations and independent trace validation using a versioned lossless state-value tag. Older encodings and request hashes remain readable.
 
 - A temporal simulation job whose evidence exceeds the 16 MiB response bound now runs: D.I.V.E. samples every trace, and the response keeps and independently replays the lowest-numbered traces that fit, counted in `statistics.traces_kept`. A 1,000-trace, depth-100 bosco job samples all 1,000 traces and returns 80 replayed ones in a 15 MB response, where Sail 0.3.0 failed with `SAIL4210`. `SAIL4216` now means not one trace fits (#767).
-
-- `sail runtime symbolic-check --strategy finite-induction` can carry a complete bounded safety certificate into a fresh session.
-- Recheck finite safety models across processes with `sail runtime symbolic-check` and a Dive installation supporting symbolic predicate transfer. Each receiving process proves the candidate against its current model.
 
 - After a complete native check of several temporal properties, `sail runtime recheck` and `edit-session` can certify the first property alone, including on aggregate-state models such as InternalMemory.
 
@@ -48,6 +37,19 @@ semantic versioning once the API is published.
 - Recheck a named invariant counterexample after an equivalent CFG edit with `sail runtime recheck`. The report identifies the previous receipt and includes independent validation against the current job.
 
 - Replay completed native temporal checks and validated refutations after identical reruns and undo. Results identify the matched key. Supporting installations can prepare the first check in the background and transport signed receipts between CI jobs (#774).
+
+### Planned with D.I.V.E. 0.3 (#805)
+
+These symbolic-check features need D.I.V.E.'s symbolic worker, which D.I.V.E.
+0.2.0 does not ship. They are not part of the next release and stay here until
+they ship with D.I.V.E. 0.3.
+
+- Recheck [source induction across edits](docs/design/symbolic-check.md#recheck-source-induction-across-edits) with a fresh Dive proof worker and optional authenticated obligation reuse.
+- Recheck [one named TLA+ invariant](docs/design/symbolic-check.md#recheck-one-named-state-invariant-across-edits) across edits with a portable Dive predicate. Each proof names its scope and records transition obligations.
+- Named temporal checks can repair a rejected candidate in the same worker process as the induction attempt.
+- `sail runtime symbolic-check --strategy occupancy` can recheck [portable population predicates](docs/design/symbolic-check.md#recheck-finite-safety-properties-with-a-portable-predicate) across source edits and preserve exact counts on a fresh search.
+- `sail runtime symbolic-check --strategy finite-induction` can carry a complete bounded safety certificate into a fresh session.
+- Recheck finite safety models across processes with `sail runtime symbolic-check` and a Dive installation supporting symbolic predicate transfer. Each receiving process proves the candidate against its current model.
 
 ## 0.3.0 (2026-11-19)
 

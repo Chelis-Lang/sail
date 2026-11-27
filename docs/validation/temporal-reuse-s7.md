@@ -230,12 +230,15 @@ each timing.
 
 ## Portable population predicates
 
-At 8,192 managers, an installed `sail runtime symbolic-check --strategy occupancy` cold search of Lamport's TCommit took 220.30 s and stored a 125-byte candidate. The same file produced at three managers verified a stronger property on the 8,192-manager source in 0.15 s. A fresh exact check took 216.63 s. Direct support induction in Dive took 0.14 s. Both proofs carried no exploration counts. Deleting abort transitions still admitted the retained predicate. The fresh graph changed to 16,385 populations and two different labeled counts.
+These are development-build measurements: `symbolic-check` is not part of Sail 0.3.1 and ships with D.I.V.E. 0.3 ([#805](https://github.com/Chelis-Lang/sail/issues/805)). At 8,192 managers, a development-build `sail runtime symbolic-check --strategy occupancy` cold search of Lamport's TCommit took 220.30 s and stored a 125-byte candidate. The same file produced at three managers verified a stronger property on the 8,192-manager source in 0.15 s. A fresh exact check took 216.63 s. Direct support induction in Dive took 0.14 s. Both proofs carried no exploration counts. Deleting abort transitions still admitted the retained predicate. The fresh graph changed to 16,385 populations and two different labeled counts.
 
 When a new transition made the original consistency property false, the candidate failed next-step closure. Sail reran from Init and returned a validated depth-three violation in 23.07 s. A fresh search returned the same word in 22.92 s. The candidate survived both the transition violation and a second false property. The default BDD strategy retained a separate file in the same directory. [Source inputs, exact counts, control results and reproduction](https://github.com/Chelis-Lang/dive/blob/main/conformance/reports/perf/2026-11-21-occupancy-edits.json).
 
 ## Portable symbolic predicates
 
+These are development-build measurements of `symbolic-check`, which is not part
+of Sail 0.3.1 and ships with D.I.V.E. 0.3
+([#805](https://github.com/Chelis-Lang/sail/issues/805)).
 A prior safety check can prove a new invariant that the checker cannot prove
 inductively from the new invariant and the original configuration alone.
 The five-key edit below took **301 ms** to prove with a predicate from the
@@ -485,7 +488,8 @@ Run the earlier reproduction command with `--exact-session` on the newer install
 ### Cross-process action closure in multi-module models
 
 Sail and Dive ran original imported KVS and TCommit protocol definitions through
-the installed `sail runtime symbolic-check --property-proof` path, starting a
+the development-build `sail runtime symbolic-check --property-proof` path
+(not part of Sail 0.3.1), starting a
 new process for each edit. Each small model had three trials covering an
 unchanged revision, a restricted guard, an expanded guard, a constant that
 changed the finite layout, a different requested property, a protocol fault and
