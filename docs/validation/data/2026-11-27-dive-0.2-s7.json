@@ -1,0 +1,1610 @@
+{
+ "schema": "s7-sail-vs-tlc/1",
+ "measurement": "S7: Sail+dive against standard TLC (dive docs/developer/release-performance-plan.md#s7-saildive-against-standard-tlc)",
+ "date": "2026-11-27",
+ "label_notes": {
+  "rc": "every Sail check job carries its own wall_time_ms (S7_FRESH=1), so no timed job replays a receipt: every path runs the check",
+  "rcreplay": "the jobs exactly as S7 builds them; Sail 0.3.1 replays a completed check from its receipt store when the identical job has already completed in the same cache"
+ },
+ "sources": {
+  "dive": "5bb880635f46c7266e015a0d812f18e4411cdc6a",
+  "sail": "b00b6de97ac246d7e027ab4ae81b7b70f9e276f7",
+  "sail_branch": "feat/dive-0.2-pin (Chelis-Lang/sail#807)",
+  "sail_links_dive": "Cargo.lock and cargo tree: dive-api v0.2.0 git rev 5bb880635f46c7266e015a0d812f18e4411cdc6a; the worker binary embeds only checkouts of dive at 5bb8806; sail runtime capabilities reports backend_revision 0.2.0"
+ },
+ "sha256": {
+  "sail": "60ffe487736dfc86e2712936d4d590a79c725fa1e9989b00df4f1ae28acdc3d6",
+  "sail_runtime_worker": "fb99a6f496023e79eaac9dfee6aed4575d0624f543c3ccdddc215fafa5bd7bad",
+  "temporal_bench": "0ae0f0f585b85ef812d04f5316ab32d8280adb244e31c1f3f9d9fa7daa899929",
+  "dive_cli": "f18c0f9a0411750a8aaeced079e625ada6c05c86581fb01871e3057ae6aa007a",
+  "tla2tools_jar": "7beec0f04818732a62fa193731711a99aa4f11279499b2360a7d156c519ea78d",
+  "java": "f5aed21d3a0b0f4b05d3a3f9fe71263916d5bc0d47b53aa52a3340b90f0b4805"
+ },
+ "harness_sha256": {
+  "s7.py": "c023ef4af304153477c650eb33b10aa7e0d0c69ff8a3c67835b139d2dd172590",
+  "sail_temporal.py": "0093aee8dbe7e29e2429acea7b1ae088dcf72ffb27b9520f76fd0daf8f65f1bb",
+  "temporal_bench.rs": "3e83d04f868ff9a044b2a61ef3d4af02da4ec62e9db7438bfa05757381977713",
+  "s7-chain-0.2.sh": "eb5abbfdc6049957e189d07a79a76f3d1da8ce77edecefd7fad6317862a6c8c2"
+ },
+ "oracle": "tlc-2026.10.06.014338, OpenJDK 17.0.20.1 (pinned JRE), java -XX:+UseParallelGC -jar tla2tools.jar -workers 1 -config <cfg> <module>, default heap, fresh process per check",
+ "corpus": "tlaplus/Examples 6a7b26a31c1a6aeec789b455e9bbfa3b3ad2728f, goldens tlc-2026.10.06.014338",
+ "host": "fresh on-demand c7i.8xlarge, us-east-1: Intel Xeon Platinum 8488C, 32 vCPUs (SMT on, frequency not controlled), 61 GiB, gp3; Ubuntu 24.04.5 LTS, kernel 7.0.0-1014-aws, THP madvise; no CPU binding; one measured process at a time, nothing else running, page cache warmed",
+ "method": "5 repetitions per cell, path order rotated each repetition and reversed on odd ones; multiples are TLC time over path time within each repetition, then the median",
+ "busy_spot_check": "8 concurrent clients on one warm daemon: 2 completed, 6 refused with SAIL6201",
+ "raw": {
+  "archive": "dive evidence archive, release-perf/2026-11-27-rc02/s7/s7-raw.tar.gz",
+  "sha256": "92c4b073fb42a556d6324a10a4c1f012aac7dd6e65f95de0b86fcbf8da131562"
+ },
+ "labels": [
+  "rc",
+  "rcreplay"
+ ],
+ "latency": {
+  "rc": {
+   "DieHard": {
+    "tlc": {
+     "wall_ms": {
+      "median": 453.04,
+      "min": 430.89,
+      "max": 456.36,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 164508,
+      "min": 163140,
+      "max": 170920,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 5.5,
+      "min": 4.89,
+      "max": 5.54,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 18148,
+      "min": 18064,
+      "max": 18352,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 10.9,
+      "min": 10.81,
+      "max": 10.92,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 12.33,
+      "min": 12.05,
+      "max": 12.37,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 25996,
+      "min": 25840,
+      "max": 26100,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 17.14,
+      "min": 16.83,
+      "max": 18.84,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0,
+     "daemon_hwm_kb": {
+      "median": 12352,
+      "min": 12256,
+      "max": 12584,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 18.2,
+      "min": 17.95,
+      "max": 18.29,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0
+    },
+    "outcome": "refuted",
+    "completion": "none",
+    "distinct": 14
+   },
+   "EWD840": {
+    "tlc": {
+     "wall_ms": {
+      "median": 633.62,
+      "min": 632.28,
+      "max": 661.0,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 218404,
+      "min": 216168,
+      "max": 233276,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 31.39,
+      "min": 31.37,
+      "max": 31.9,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 69800,
+      "min": 67540,
+      "max": 69940,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 36.07,
+      "min": 36.06,
+      "max": 36.43,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 39.85,
+      "min": 35.48,
+      "max": 40.12,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 77208,
+      "min": 77040,
+      "max": 77372,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 42.4,
+      "min": 42.09,
+      "max": 42.64,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0,
+     "daemon_hwm_kb": {
+      "median": 12276,
+      "min": 12228,
+      "max": 12512,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 43.67,
+      "min": 43.38,
+      "max": 44.35,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0
+    },
+    "outcome": "holds",
+    "completion": "temporal",
+    "distinct": 302
+   },
+   "MCRealTimeHourClock": {
+    "tlc": {
+     "wall_ms": {
+      "median": 480.78,
+      "min": 469.83,
+      "max": 512.55,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 175140,
+      "min": 174192,
+      "max": 178004,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 9.33,
+      "min": 8.98,
+      "max": 9.49,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 25040,
+      "min": 24840,
+      "max": 25168,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 15.06,
+      "min": 14.96,
+      "max": 15.21,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 16.53,
+      "min": 16.03,
+      "max": 16.77,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 28860,
+      "min": 28732,
+      "max": 29012,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 20.93,
+      "min": 20.6,
+      "max": 23.6,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0,
+     "daemon_hwm_kb": {
+      "median": 12236,
+      "min": 12148,
+      "max": 12344,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 22.44,
+      "min": 22.24,
+      "max": 24.65,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0
+    },
+    "outcome": "refuted",
+    "completion": "none",
+    "distinct": 216
+   },
+   "MCLiveInternalMemory": {
+    "tlc": {
+     "wall_ms": {
+      "median": 1296.45,
+      "min": 1167.35,
+      "max": 1300.79,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 491416,
+      "min": 471548,
+      "max": 496736,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 98.37,
+      "min": 98.03,
+      "max": 98.48,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 28784,
+      "min": 28692,
+      "max": 28828,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 109.4,
+      "min": 107.54,
+      "max": 109.69,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 112.59,
+      "min": 110.82,
+      "max": 113.18,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 40116,
+      "min": 39916,
+      "max": 40188,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 115.86,
+      "min": 115.27,
+      "max": 118.29,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0,
+     "daemon_hwm_kb": {
+      "median": 12288,
+      "min": 12216,
+      "max": 12328,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 116.48,
+      "min": 114.82,
+      "max": 116.82,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0
+    },
+    "outcome": "holds",
+    "completion": "temporal",
+    "distinct": 4408
+   },
+   "MCDisruptor_MPMC_liveliness": {
+    "tlc": {
+     "wall_ms": {
+      "median": 2386.36,
+      "min": 2346.76,
+      "max": 2397.05,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 1305700,
+      "min": 1281544,
+      "max": 1319908,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 410.08,
+      "min": 409.3,
+      "max": 410.66,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 37356,
+      "min": 37100,
+      "max": 37440,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 432.73,
+      "min": 432.43,
+      "max": 432.98,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 436.02,
+      "min": 435.83,
+      "max": 436.6,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 58872,
+      "min": 58836,
+      "max": 58968,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 439.55,
+      "min": 438.92,
+      "max": 442.52,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0,
+     "daemon_hwm_kb": {
+      "median": 12352,
+      "min": 12304,
+      "max": 12452,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 440.76,
+      "min": 439.67,
+      "max": 441.41,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0
+    },
+    "outcome": "holds",
+    "completion": "temporal",
+    "distinct": 14365
+   },
+   "MCLamportMutex": {
+    "tlc": {
+     "wall_ms": {
+      "median": 12515.26,
+      "min": 12457.07,
+      "max": 12570.51,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 3664840,
+      "min": 3644156,
+      "max": 3675824,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 9183.69,
+      "min": 9110.49,
+      "max": 9346.89,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 132936,
+      "min": 132672,
+      "max": 133340,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 9623.74,
+      "min": 9521.06,
+      "max": 9697.64,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 9587.3,
+      "min": 9577.1,
+      "max": 9706.88,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 144608,
+      "min": 142684,
+      "max": 145032,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 9670.02,
+      "min": 9587.81,
+      "max": 9699.47,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0,
+     "daemon_hwm_kb": {
+      "median": 12292,
+      "min": 12220,
+      "max": 12540,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 9649.34,
+      "min": 9548.86,
+      "max": 9688.71,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 0
+    },
+    "outcome": "holds",
+    "completion": "safety",
+    "distinct": 724274
+   }
+  },
+  "rcreplay": {
+   "DieHard": {
+    "tlc": {
+     "wall_ms": {
+      "median": 447.2,
+      "min": 439.45,
+      "max": 468.7,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 166784,
+      "min": 163224,
+      "max": 169712,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 5.29,
+      "min": 5.15,
+      "max": 5.68,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 18292,
+      "min": 18160,
+      "max": 18484,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 10.88,
+      "min": 9.1,
+      "max": 138.13,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 14.31,
+      "min": 11.8,
+      "max": 14.57,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 25616,
+      "min": 25556,
+      "max": 25760,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 8.62,
+      "min": 8.3,
+      "max": 8.81,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5,
+     "daemon_hwm_kb": {
+      "median": 12340,
+      "min": 12248,
+      "max": 12556,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 9.97,
+      "min": 9.7,
+      "max": 10.04,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5
+    },
+    "outcome": "refuted",
+    "completion": "none",
+    "distinct": 14
+   },
+   "EWD840": {
+    "tlc": {
+     "wall_ms": {
+      "median": 630.36,
+      "min": 618.66,
+      "max": 653.58,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 220164,
+      "min": 218336,
+      "max": 224200,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 31.82,
+      "min": 31.3,
+      "max": 32.11,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 69760,
+      "min": 69728,
+      "max": 70116,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 36.13,
+      "min": 34.32,
+      "max": 36.15,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 39.65,
+      "min": 35.32,
+      "max": 39.79,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 77264,
+      "min": 77036,
+      "max": 77504,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 8.63,
+      "min": 8.42,
+      "max": 8.88,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5,
+     "daemon_hwm_kb": {
+      "median": 12296,
+      "min": 12224,
+      "max": 12444,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 10.01,
+      "min": 9.91,
+      "max": 10.15,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5
+    },
+    "outcome": "holds",
+    "completion": "temporal",
+    "distinct": 302
+   },
+   "MCRealTimeHourClock": {
+    "tlc": {
+     "wall_ms": {
+      "median": 492.84,
+      "min": 483.48,
+      "max": 517.94,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 177484,
+      "min": 174008,
+      "max": 177872,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 9.09,
+      "min": 8.38,
+      "max": 9.57,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 25108,
+      "min": 25020,
+      "max": 25224,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 15.01,
+      "min": 13.07,
+      "max": 15.12,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 18.55,
+      "min": 16.93,
+      "max": 18.81,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 28804,
+      "min": 28644,
+      "max": 29004,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 8.46,
+      "min": 8.28,
+      "max": 8.64,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5,
+     "daemon_hwm_kb": {
+      "median": 12220,
+      "min": 11144,
+      "max": 12436,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 9.63,
+      "min": 7.92,
+      "max": 9.85,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5
+    },
+    "outcome": "refuted",
+    "completion": "none",
+    "distinct": 216
+   },
+   "MCLiveInternalMemory": {
+    "tlc": {
+     "wall_ms": {
+      "median": 1305.5,
+      "min": 1170.64,
+      "max": 1313.79,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 492804,
+      "min": 479324,
+      "max": 505796,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 98.6,
+      "min": 97.75,
+      "max": 98.66,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 28960,
+      "min": 28816,
+      "max": 29328,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 109.1,
+      "min": 107.94,
+      "max": 109.51,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 112.7,
+      "min": 111.23,
+      "max": 113.39,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 40156,
+      "min": 39624,
+      "max": 40336,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 8.71,
+      "min": 8.44,
+      "max": 8.9,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5,
+     "daemon_hwm_kb": {
+      "median": 12264,
+      "min": 12164,
+      "max": 12316,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 9.9,
+      "min": 8.14,
+      "max": 10.05,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5
+    },
+    "outcome": "holds",
+    "completion": "temporal",
+    "distinct": 4408
+   },
+   "MCDisruptor_MPMC_liveliness": {
+    "tlc": {
+     "wall_ms": {
+      "median": 2380.2,
+      "min": 2367.25,
+      "max": 2407.63,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 1292240,
+      "min": 1263616,
+      "max": 1294396,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 410.63,
+      "min": 409.77,
+      "max": 411.49,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 37276,
+      "min": 36976,
+      "max": 37552,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 433.32,
+      "min": 432.36,
+      "max": 435.14,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 437.71,
+      "min": 433.89,
+      "max": 438.09,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 58836,
+      "min": 58604,
+      "max": 58936,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 8.76,
+      "min": 8.35,
+      "max": 8.96,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5,
+     "daemon_hwm_kb": {
+      "median": 12292,
+      "min": 12244,
+      "max": 12488,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 10.1,
+      "min": 9.96,
+      "max": 10.29,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5
+    },
+    "outcome": "holds",
+    "completion": "temporal",
+    "distinct": 14365
+   },
+   "MCLamportMutex": {
+    "tlc": {
+     "wall_ms": {
+      "median": 12555.2,
+      "min": 12434.04,
+      "max": 12836.9,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 3608356,
+      "min": 3570964,
+      "max": 3686656,
+      "n": 5
+     }
+    },
+    "dive": {
+     "wall_ms": {
+      "median": 9225.02,
+      "min": 9165.09,
+      "max": 9299.71,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 132900,
+      "min": 132776,
+      "max": 132964,
+      "n": 5
+     }
+    },
+    "embedded": {
+     "wall_ms": {
+      "median": 9608.37,
+      "min": 9536.92,
+      "max": 9821.88,
+      "n": 5
+     },
+     "agrees": true
+    },
+    "execute": {
+     "wall_ms": {
+      "median": 9673.87,
+      "min": 9570.55,
+      "max": 9773.09,
+      "n": 5
+     },
+     "agrees": true,
+     "peak_rss_kb": {
+      "median": 142720,
+      "min": 142512,
+      "max": 144832,
+      "n": 5
+     },
+     "cache_hits": 0
+    },
+    "serve": {
+     "wall_ms": {
+      "median": 8.88,
+      "min": 6.53,
+      "max": 9.02,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5,
+     "daemon_hwm_kb": {
+      "median": 12332,
+      "min": 11140,
+      "max": 12464,
+      "n": 5
+     }
+    },
+    "mcp": {
+     "wall_ms": {
+      "median": 9.94,
+      "min": 8.18,
+      "max": 10.25,
+      "n": 5
+     },
+     "agrees": true,
+     "cache_hits": 5
+    },
+    "outcome": "holds",
+    "completion": "safety",
+    "distinct": 724274
+   }
+  }
+ },
+ "loop": {
+  "rc": {
+   "n": 100,
+   "mix": [
+    "DieHard",
+    "EWD840",
+    "MCRealTimeHourClock",
+    "MCLiveInternalMemory"
+   ],
+   "reps": 5,
+   "tlc": {
+    "total_ms": {
+     "median": 70807.6,
+     "min": 70572.1,
+     "max": 71264.7,
+     "n": 5
+    },
+    "per_job_median_ms": 561.11,
+    "per_job_p90_ms": 1295.45,
+    "disagreements": 0
+   },
+   "dive": {
+    "total_ms": {
+     "median": 3632.4,
+     "min": 3621.1,
+     "max": 3639.3,
+     "n": 5
+    },
+    "per_job_median_ms": 18.75,
+    "per_job_p90_ms": 97.04,
+    "disagreements": 0
+   },
+   "execute": {
+    "total_ms": {
+     "median": 4567.9,
+     "min": 4551.2,
+     "max": 4577.5,
+     "n": 5
+    },
+    "per_job_median_ms": 26.93,
+    "per_job_p90_ms": 110.34,
+    "disagreements": 0
+   },
+   "serve": {
+    "total_ms": {
+     "median": 5271.5,
+     "min": 5237.5,
+     "max": 5285.9,
+     "n": 5
+    },
+    "per_job_median_ms": 31.71,
+    "per_job_p90_ms": 115.26,
+    "disagreements": 0,
+    "daemon_start_ms": 5.39,
+    "daemon_hwm_kb": 12404
+   },
+   "mcp": {
+    "total_ms": {
+     "median": 5142.8,
+     "min": 5087.9,
+     "max": 5173.3,
+     "n": 5
+    },
+    "per_job_median_ms": 42.3,
+    "per_job_p90_ms": 116.68,
+    "disagreements": 0,
+    "mcp_init_ms": 1.29
+   }
+  },
+  "rcreplay": {
+   "n": 100,
+   "mix": [
+    "DieHard",
+    "EWD840",
+    "MCRealTimeHourClock",
+    "MCLiveInternalMemory"
+   ],
+   "reps": 5,
+   "tlc": {
+    "total_ms": {
+     "median": 67560.4,
+     "min": 67204.7,
+     "max": 68792.7,
+     "n": 5
+    },
+    "per_job_median_ms": 527.98,
+    "per_job_p90_ms": 1257.13,
+    "disagreements": 0
+   },
+   "dive": {
+    "total_ms": {
+     "median": 3644.0,
+     "min": 3630.5,
+     "max": 3673.5,
+     "n": 5
+    },
+    "per_job_median_ms": 18.96,
+    "per_job_p90_ms": 97.8,
+    "disagreements": 0
+   },
+   "execute": {
+    "total_ms": {
+     "median": 557.5,
+     "min": 553.0,
+     "max": 563.8,
+     "n": 5
+    },
+    "per_job_median_ms": 2.69,
+    "per_job_p90_ms": 2.96,
+    "disagreements": 0
+   },
+   "serve": {
+    "total_ms": {
+     "median": 1335.8,
+     "min": 1319.8,
+     "max": 1339.9,
+     "n": 5
+    },
+    "per_job_median_ms": 8.3,
+    "per_job_p90_ms": 8.66,
+    "disagreements": 0,
+    "daemon_start_ms": 5.51,
+    "daemon_hwm_kb": 12416
+   },
+   "mcp": {
+    "total_ms": {
+     "median": 1191.3,
+     "min": 1187.5,
+     "max": 1197.9,
+     "n": 5
+    },
+    "per_job_median_ms": 9.81,
+    "per_job_p90_ms": 10.04,
+    "disagreements": 0,
+    "mcp_init_ms": 1.33
+   }
+  }
+ },
+ "through": {
+  "rc": {
+   "n": 100,
+   "reps": 5,
+   "tlc-c2": {
+    "jobs_per_s": {
+     "median": 2.69,
+     "min": 2.69,
+     "max": 2.71,
+     "n": 5
+    },
+    "total_ms": 37123.3,
+    "disagreements": 0
+   },
+   "serve-c2": {
+    "jobs_per_s": {
+     "median": 39.78,
+     "min": 39.53,
+     "max": 39.81,
+     "n": 5
+    },
+    "total_ms": 2513.6,
+    "disagreements": 0,
+    "daemon_hwm_kb": 13380
+   },
+   "serve-c8": {
+    "not_completed": 471,
+    "jobs": 500,
+    "note": "jobs beyond the two active executions were refused with SAIL6201 busy (spot-checked); every completed job agreed"
+   }
+  },
+  "rcreplay": {
+   "n": 100,
+   "reps": 5,
+   "tlc-c2": {
+    "jobs_per_s": {
+     "median": 2.99,
+     "min": 2.98,
+     "max": 3.01,
+     "n": 5
+    },
+    "total_ms": 33408.8,
+    "disagreements": 0
+   },
+   "serve-c2": {
+    "jobs_per_s": {
+     "median": 180.98,
+     "min": 179.01,
+     "max": 182.58,
+     "n": 5
+    },
+    "total_ms": 552.6,
+    "disagreements": 0,
+    "daemon_hwm_kb": 12772
+   },
+   "serve-c8": {
+    "not_completed": 464,
+    "jobs": 500,
+    "note": "jobs beyond the two active executions were refused with SAIL6201 busy (spot-checked); every completed job agreed"
+   }
+  }
+ },
+ "first_job": {
+  "label": "rc",
+  "fixture": "DieHard",
+  "first_ms": {
+   "median": 237.71,
+   "min": 235.94,
+   "max": 238.99,
+   "n": 5
+  },
+  "second_ms": {
+   "median": 12.24,
+   "min": 11.99,
+   "max": 12.37,
+   "n": 5
+  },
+  "all_completed": true
+ },
+ "only": {
+  "label": "rc",
+  "bounded": {
+   "wall_ms": {
+    "median": 5921.45,
+    "min": 5887.7,
+    "max": 5932.43,
+    "n": 5
+   },
+   "outcomes": [
+    "completed/stopped/none"
+   ],
+   "distinct": [
+    1000000
+   ],
+   "peak_rss_kb": {
+    "median": 130432,
+    "min": 130140,
+    "max": 130756,
+    "n": 5
+   }
+  },
+  "DieHard-validate": {
+   "wall_ms": {
+    "median": 12.42,
+    "min": 11.95,
+    "max": 12.73,
+    "n": 5
+   },
+   "outcomes": [
+    "completed/valid/none"
+   ],
+   "distinct": [],
+   "peak_rss_kb": {
+    "median": 21444,
+    "min": 21248,
+    "max": 21508,
+    "n": 5
+   }
+  },
+  "SlidingPuzzles-validate": {
+   "wall_ms": {
+    "median": 92.55,
+    "min": 91.47,
+    "max": 93.58,
+    "n": 5
+   },
+   "outcomes": [
+    "completed/valid/none"
+   ],
+   "distinct": [],
+   "peak_rss_kb": {
+    "median": 52136,
+    "min": 51860,
+    "max": 52448,
+    "n": 5
+   }
+  },
+  "MCRealTimeHourClock-validate": {
+   "wall_ms": {
+    "median": 11.98,
+    "min": 11.83,
+    "max": 12.37,
+    "n": 5
+   },
+   "outcomes": [
+    "completed/valid/none"
+   ],
+   "distinct": [],
+   "peak_rss_kb": {
+    "median": 21352,
+    "min": 21196,
+    "max": 21684,
+    "n": 5
+   }
+  }
+ },
+ "ratio": {
+  "rc": {
+   "SlushSmall": {
+    "worker_body_ms": {
+     "median": 3242.36,
+     "min": 3235.38,
+     "max": 3246.73,
+     "n": 5
+    },
+    "embedded_ms": {
+     "median": 3062.96,
+     "min": 3062.08,
+     "max": 3064.82,
+     "n": 5
+    },
+    "dive_cli_ms": {
+     "median": 2862.35,
+     "min": 2839.47,
+     "max": 2870.0,
+     "n": 5
+    },
+    "worker_body_over_cli": 1.133,
+    "agrees": true
+   },
+   "MCDisruptor_MPMC": {
+    "worker_body_ms": {
+     "median": 905.76,
+     "min": 903.87,
+     "max": 913.25,
+     "n": 5
+    },
+    "embedded_ms": {
+     "median": 897.47,
+     "min": 894.8,
+     "max": 899.45,
+     "n": 5
+    },
+    "dive_cli_ms": {
+     "median": 833.75,
+     "min": 832.72,
+     "max": 835.93,
+     "n": 5
+    },
+    "worker_body_over_cli": 1.086,
+    "agrees": true
+   },
+   "CoffeeCan1000Beans": {
+    "worker_body_ms": {
+     "median": 7580.02,
+     "min": 7538.63,
+     "max": 7617.19,
+     "n": 5
+    },
+    "embedded_ms": {
+     "median": 7287.95,
+     "min": 7264.67,
+     "max": 7300.82,
+     "n": 5
+    },
+    "dive_cli_ms": {
+     "median": 6592.6,
+     "min": 6588.02,
+     "max": 6622.08,
+     "n": 5
+    },
+    "worker_body_over_cli": 1.15,
+    "agrees": true
+   },
+   "ElevatorLivenessMedium": {
+    "worker_body_ms": {
+     "median": 144.8,
+     "min": 144.21,
+     "max": 145.06,
+     "n": 5
+    },
+    "embedded_ms": {
+     "median": 138.46,
+     "min": 138.41,
+     "max": 140.4,
+     "n": 5
+    },
+    "dive_cli_ms": {
+     "median": 124.07,
+     "min": 123.5,
+     "max": 124.22,
+     "n": 5
+    },
+    "worker_body_over_cli": 1.168,
+    "agrees": true
+   },
+   "MCLamportMutex": {
+    "worker_body_ms": {
+     "median": 10474.59,
+     "min": 10405.66,
+     "max": 10594.38,
+     "n": 5
+    },
+    "embedded_ms": {
+     "median": 9558.59,
+     "min": 9498.4,
+     "max": 9684.98,
+     "n": 5
+    },
+    "dive_cli_ms": {
+     "median": 9143.45,
+     "min": 9099.36,
+     "max": 9260.34,
+     "n": 5
+    },
+    "worker_body_over_cli": 1.144,
+    "agrees": true
+   }
+  }
+ },
+ "tlc_over_path_paired_median": {
+  "rc": {
+   "DieHard": {
+    "dive": 81.8,
+    "embedded": 41.6,
+    "execute": 36.8,
+    "serve": 26.4,
+    "mcp": 24.9
+   },
+   "EWD840": {
+    "dive": 20.2,
+    "embedded": 17.6,
+    "execute": 15.9,
+    "serve": 15.0,
+    "mcp": 14.6
+   },
+   "MCRealTimeHourClock": {
+    "dive": 52.3,
+    "embedded": 32.1,
+    "execute": 28.9,
+    "serve": 23.0,
+    "mcp": 21.6
+   },
+   "MCLiveInternalMemory": {
+    "dive": 13.2,
+    "embedded": 11.9,
+    "execute": 11.5,
+    "serve": 11.0,
+    "mcp": 11.1
+   },
+   "MCDisruptor_MPMC_liveliness": {
+    "dive": 5.8,
+    "embedded": 5.5,
+    "execute": 5.5,
+    "serve": 5.4,
+    "mcp": 5.4
+   },
+   "MCLamportMutex": {
+    "dive": 1.4,
+    "embedded": 1.3,
+    "execute": 1.3,
+    "serve": 1.3,
+    "mcp": 1.3
+   },
+   "loop": {
+    "dive": 19.5,
+    "execute": 15.5,
+    "serve": 13.4,
+    "mcp": 13.8
+   },
+   "through_c2": 14.7
+  },
+  "rcreplay": {
+   "DieHard": {
+    "dive": 85.7,
+    "embedded": 41.0,
+    "execute": 31.7,
+    "serve": 51.9,
+    "mcp": 44.9
+   },
+   "EWD840": {
+    "dive": 19.8,
+    "embedded": 17.5,
+    "execute": 16.2,
+    "serve": 72.1,
+    "mcp": 63.6
+   },
+   "MCRealTimeHourClock": {
+    "dive": 57.0,
+    "embedded": 32.7,
+    "execute": 26.5,
+    "serve": 58.7,
+    "mcp": 52.9
+   },
+   "MCLiveInternalMemory": {
+    "dive": 13.2,
+    "embedded": 12.0,
+    "execute": 11.6,
+    "serve": 146.9,
+    "mcp": 130.7
+   },
+   "MCDisruptor_MPMC_liveliness": {
+    "dive": 5.8,
+    "embedded": 5.5,
+    "execute": 5.4,
+    "serve": 271.7,
+    "mcp": 234.8
+   },
+   "MCLamportMutex": {
+    "dive": 1.4,
+    "embedded": 1.3,
+    "execute": 1.3,
+    "serve": 1442.3,
+    "mcp": 1274.0
+   },
+   "loop": {
+    "dive": 18.5,
+    "execute": 121.5,
+    "serve": 50.7,
+    "mcp": 56.7
+   },
+   "through_c2": 60.1
+  }
+ },
+ "disagreements_total": 0,
+ "composed_large_models": {
+  "status": "pending: D1 (R2 procedure) for 5bb88063 was not recorded when S7 ran",
+  "method": "composed figure = D1 Core/TLC ratio x Sail factor; Sail factor = paired median of the whole isolated worker (temporal_bench embedded_ms, exact store) over the dive CLI with Sail's settings, from the ratio part",
+  "sail_factor": {
+   "SlushSmall": 1.07,
+   "MCDisruptor_MPMC": 1.076,
+   "CoffeeCan1000Beans": 1.106,
+   "ElevatorLivenessMedium": 1.121,
+   "MCLamportMutex": 1.05
+  }
+ },
+ "gate": {
+  "verdict": "pass",
+  "disagreements": 0,
+  "slowest_path_tlc_over_sail": "MCLamportMutex 1.3x (every Sail path)",
+  "regressions": "first job after install 207 -> 238 ms; MCLamportMutex execute/CLI 1.02 -> 1.044 (Chelis-Lang/sail#814)"
+ }
+}
