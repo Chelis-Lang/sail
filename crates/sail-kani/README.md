@@ -13,6 +13,14 @@ closure is unauthenticated, and they create no currentness, reusable receipt,
 proof/cache authority or ordinary verified verdict. Selected CLI/backend, full
 arrayvec/direct comparison and Mac qualification remain open.
 
+`Observation::bounded_evidence()` builds the shared bounded-evidence record of
+ADR 0185. Nothing consumes it yet.
+
+The internal Linux release-bundle pin authenticates the official 0.68.0 archive
+and every original file. `ci/kani-bundle.py` installs that fixture only; it does
+not install or authenticate the external nightly Rust toolchain, execute a
+harness, enable cache reuse or make a CLI backend available.
+
 The original release pins and ci/kani-bundle.py / ci/kani-toolchain.py retain
 their strict original-file boundaries. Rustup bookkeeping does not authenticate
 a toolchain; ordinary Tools authentication refuses links. Only Stage admits its

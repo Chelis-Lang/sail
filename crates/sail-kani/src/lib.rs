@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 mod decode;
+mod evidence;
 mod strict_json;
 
 #[cfg(target_os = "linux")]
