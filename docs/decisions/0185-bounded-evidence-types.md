@@ -59,7 +59,7 @@ and `inconclusive` completed without one. `timeout`, `out_of_memory`,
    is `strength: inductive` in the bounded tier, because it holds for the
    finite configured model only.
 2. **"Verified" never appears**, as an outcome, tier, strength or field name.
-3. A record is checked as a whole on construction and on decode (`SAIL6303`):
+3. A record is checked as a whole on construction and on decode (`SAIL6307`):
    tier and strength follow the outcome; `inductive` needs `success` with
    `sufficient`; `insufficient` goes with `bound_insufficient` and nothing
    else; only a counterexample has a witness; a tiered outcome needs at least

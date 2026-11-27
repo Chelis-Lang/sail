@@ -19,6 +19,12 @@ RESOURCES = {
         "crates/sail-verus/tests/fixtures/requirement-attribution/positive-requested-target.json",
     ),
     "sail-cli": (
+        "ci/kani-fetch.py",
+        "ci/kani-install.py",
+        "ci/kani-bundle.py",
+        "ci/kani-toolchain.py",
+        "engine/kani/bundle-linux.json",
+        "engine/kani/toolchain-linux.json",
         "ci/engine-artifact.py",
         "engine/verus/artifact-linux.json",
         "engine/verus/artifact-macos.json",

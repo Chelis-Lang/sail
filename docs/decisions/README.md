@@ -140,6 +140,11 @@ Use [the template](0000-template.md) for a new decision.
 - [0116: Recorded proof health without inferred stability](0116-recorded-proof-health.md) (accepted for implementation; bounded retained measurements and shared interfaces; qualification pending)
 
 - [0128: Separate bounded Kani observations from ordinary proofs](0128-kani-bounded-observations.md)
+- [0152: Authenticate Kani's actual compiler and Rust payloads in Rust](0152-kani-runtime-tool-payload-identity.md)
+- [0153: Stage an original Kani release with one exact Rust toolchain route](0153-kani-owned-execution-tool-layout.md)
+- [0154: Bound uncached attempts through the original Kani driver](0154-kani-original-driver-attempts.md)
+- [0155: Prepare original Kani and Rust payloads without installer execution](0155-kani-original-payload-materialization.md) (bounded native contributor helper qualified; frontend selection separate)
+- [0156: Fresh experimental Kani checks through the CLI](0156-fresh-uncached-kani-cli.md)
 
 - [0170: No persistent frontend restoration in v0.3.0](0170-v030-frontend-reuse-no-go.md) (accepted; incomplete operation/effect/current-diagnostic boundary, no new performance result, unchanged 25% gate, #162 stays open)
 - [0171: Accept the observed CI image startup target](0171-observed-ci-startup-target.md) (accepted; retrospective pull command-window p95 40.2s against 120s; historical slow tails remain unresolved)

@@ -17,6 +17,10 @@ SAIL OPTIONS (before --):
     --output json                 print one sail-project-result document on stdout
                                   (complete per-target reports, reused targets included)
     --background                  submit a job and print its id (`sail jobs`)
+    --backend kani                experimental fresh hand-written Kani harness check\n\
+                                  requires --harness CRATE::PATH --unwind N\n\
+                                  [--project DIR] [--cargo-home DIR]\n\
+                                  [--timeout-ms 1..600000] [--output json]\n\
     --engine stock|interactive    engine (interactive needs `sail engine status`)
     --incremental                 deprecated, does nothing: managed verification is
                                   the default
@@ -109,7 +113,12 @@ used by repair-check.
 
 USAGE:
     sail engine status [--output json]
+    sail engine install|status --backend kani [--output json]
     sail engine install [--from PATH] [--output json]
+
+Experimental Kani setup supports native Linux x86-64 and requires Python 3.11+.
+It authenticates the original tool payloads without executing their installers.
+Prepare dependencies with `cargo fetch --locked` before fresh offline checks.
 
 `install` downloads the exact pinned runtime over HTTPS using Python 3,
 checks its archive digest, provenance and every runtime file, and installs

@@ -1776,9 +1776,11 @@ dependencies = [
 name = "sail-kani"
 version = "0.3.0"
 dependencies = [
+ "rustix",
  "sail-api",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
 ]
 
 [[package]]
@@ -1874,6 +1876,7 @@ dependencies = [
  "sail-cache",
  "sail-daemon",
  "sail-dive",
+ "sail-kani",
  "sail-key",
  "sail-mcp",
  "sail-portfolio",

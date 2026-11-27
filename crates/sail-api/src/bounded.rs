@@ -317,7 +317,7 @@ impl Evidence {
     /// Checks the fields against each other.
     ///
     /// # Errors
-    /// `SAIL6303` when the tier, strength, sufficiency, witness, integrity or
+    /// `SAIL6307` when the tier, strength, sufficiency, witness, integrity or
     /// provenance contradict the outcome.
     pub fn new(parts: Parts) -> Result<Self, String> {
         let outcome = parts.outcome;
@@ -340,7 +340,7 @@ impl Evidence {
             Ok(Self(parts))
         } else {
             Err(format!(
-                "SAIL6303: inconsistent bounded evidence record for outcome {outcome:?}"
+                "SAIL6307: inconsistent bounded evidence record for outcome {outcome:?}"
             ))
         }
     }
