@@ -450,12 +450,59 @@ qualifying the macOS runtime against it).
    `scripts/notices/z3-VERSION-LICENSE.txt` first. Staging runs the same
    script with `--check` and fails the release on stale notices, then copies
    them and `LICENSE` into each archive.
-2. Check that `engine/verus/artifact-macos.json` names the fork commit in
+2. **Docs surfaces.** Every release updates every docs surface, in three
+   parts. When the release moves the D.I.V.E. version, D.I.V.E.'s
+   `scripts/check-release-docs.py` with `--sail` pointed at this checkout
+   checks the Sail surfaces for the paired release; run it before the tag and
+   again after publication.
+
+   *Before the tag*, in the step 1 PR or one landed before it:
+   - `CHANGELOG.md`: the version section, with only what ships.
+   - `docs/release-notes/X.Y.Z.md`, its book page `book/src/release-X.Y.Z.md`
+     (which includes the notes file), the
+     `book/src/SUMMARY.md` entry and the `docs/README.md` row. The notes file
+     becomes the GitHub Release body, so write it for that page too.
+   - `README.md`, `docs/install.md`, `docs/temporal-jobs.md`,
+     `docs/ROADMAP.md` and `docs/known-issues.md`: the current version, the
+     linked D.I.V.E. version and anything the release adds or drops.
+   - Every crate README (`crates/*/README.md`, the crates.io pages): the
+     `--version` install line and the `docs.rs/<crate>/X.Y.Z/` link.
+   - The action's `sail-version` default in `action/action.yml`,
+     `docs/github-action.md` and `docs/ci-cache.md` (`action@vX.Y.Z`).
+   - The consumer skill, `skills/sail-verification/`: release availability
+     and the `action@vX.Y.Z` example.
+
+   *At release*: step 4's `scripts/release.sh` writes the draft's body with
+   `scripts/release-notes.py VERSION COMMIT`, which is the notes file with its
+   links pointed at the tagged source, then the asset description. It refuses
+   to draft without the notes file. Review the rendered draft before step 7.
+
+   *After publication* (step 7):
+   - Bump the Sail book pins together, per the website's ADR 0014: `sail` in
+     mesite's `src/data/docs.json` (jeffreykent.dev/docs/sail/) and
+     website's `apps/cproof-site/src/data/sail-book.json`
+     (cproof.ai/docs/sail/). Both take the tagged commit as `revision` and
+     the archive digest as `archiveSha256`:
+
+     ```sh
+     rev="$(git rev-parse vVERSION^{commit})"
+     curl -fsSL "https://codeload.github.com/Chelis-Lang/sail/tar.gz/$rev" | sha256sum
+     ```
+
+     The owner approves each site deploy.
+   - Check that the repository homepage
+     (`gh repo view Chelis-Lang/sail --json homepageUrl`) and the README's
+     book link serve the new release's book.
+   - Re-export the skill's registry bundles from the tagged source and
+     record their source commit, per
+     [agent skill distribution](agent-skill-distribution.md).
+   - Tell internal consumers that pin Sail about the new version.
+3. Check that `engine/verus/artifact-macos.json` names the fork commit in
    `engine/verus/fork.toml` and that the
    [macOS engine record](validation/macos-engine.md) qualifies that runtime.
    If the fork commit changed, build, qualify, publish and re-pin it first
    (below).
-3. On a clean checkout of that commit of `main`:
+4. On a clean checkout of that commit of `main`:
 
    ```sh
    scripts/release.sh VERSION
@@ -485,14 +532,15 @@ qualifying the macOS runtime against it).
      engine;
    - packages each tree as `dist/sail-VERSION-TARGET.tar.gz` (entries owned by
      root) with its `.sha256` file, creates the **draft** release `vVERSION`
-     targeting the commit, uploads the four assets and prints the release URL
+     targeting the commit with the curated release notes as its body (step 2),
+     uploads the four assets and prints the release URL
      and asset list;
    - starts the [`attest-release`](#attestations) workflow for `vVERSION`
      and prints the `gh attestation verify` command for each archive.
 
    Every archive carries the runtime; there is no engine-less archive, since
    Sail runs no other Verus.
-4. Smoke-test each archive on a machine with only the user prerequisites
+5. Smoke-test each archive on a machine with only the user prerequisites
    (Linux: a fresh `scripts/perf-host.sh` host; macOS: a fresh directory),
    with no `cargo-verus` on `PATH`:
 
@@ -505,7 +553,7 @@ qualifying the macOS runtime against it).
    runtime, `sail verify` to pass on a new project made as the README's First
    verification says, and one `sail repair-check` through the engine to be
    accepted, with no engine fault.
-5. Wait for the `attest-release` run against the draft to succeed (start it
+6. Wait for the `attest-release` run against the draft to succeed (start it
    with `gh workflow run attest-release.yml --repo Chelis-Lang/sail -f
    tag=vVERSION` if the script did not), then verify both archives:
 
@@ -518,7 +566,7 @@ qualifying the macOS runtime against it).
 
    Record the run id and both results in the
    [release record](validation/release-candidate.md).
-6. Present the owner with the exact version/source commit, archive checksums,
+7. Present the owner with the exact version/source commit, archive checksums,
    qualification results, user-visible changes and unresolved limitations.
    Stop before final publication. Both successful qualification and explicit
    owner approval of that candidate are required. After approval, publish the
@@ -526,7 +574,7 @@ qualifying the macOS runtime against it).
    A failed or missing attestation blocks publication; fix it on the draft.
    The published release triggers its matching crate upload. General permission
    to prepare candidates or maintain crate publishing does not replace this
-   final approval.
+   final approval. Then finish step 2's after-publication docs surfaces.
 
 When the installed stages have already passed the native matrix, full mutation
 cohorts and walkthroughs, package those same bytes on an Apple-silicon Mac:
@@ -541,7 +589,9 @@ names. It does not rebuild, record new proofs, upload, create a tag or publish.
 Keep the stages' native `sail --version` results and CLI hashes with their
 qualification results; `VERSION` must match the version they report. Review
 and create the draft from these assets only after the release gates pass,
-then attest and verify them on the draft as steps 5 and 6 say before
+with the curated body from
+`scripts/release-notes.py VERSION COMMIT >dist/release-notes.md` passed as
+`gh release create --notes-file dist/release-notes.md`, then attest and verify them on the draft as steps 6 and 7 say before
 publishing.
 The one-command build-and-draft route above remains available for a new build;
 its output needs qualification before publication.
