@@ -24,7 +24,7 @@ proof receipts, and replay.
 | Verify in GitHub Actions with one step | [GitHub Action](github-action.md) |
 | Prepare the next verification in the background | [Background preparation](background-preparation.md) |
 | Manage disk use | [Disk use and cleanup](workspace-hygiene.md) |
-| Where Sail is faster and where it isn't | [Performance](performance.md), [generated benchmarks](benchmarks.md), [memory instrumentation](validation/benchmark-memory.md), [v0.2.0 candidate qualification](validation/v020-performance.md), [native temporal checks against TLC](validation/sail-dive-vs-tlc.md) |
+| Where Sail is faster and where it isn't | [Performance](performance.md), [generated benchmarks](benchmarks.md), [memory instrumentation](validation/benchmark-memory.md), [v0.2.0 candidate qualification](validation/v020-performance.md), [native temporal checks against TLC](validation/sail-dive-vs-tlc.md) (0.3.0; [0.3.1 with D.I.V.E. 0.2.0](validation/sail-dive-0.2-vs-tlc.md)) |
 | Evaluate broader projects, dependency scaling and native work counts | [Performance evaluation](performance-evaluation.md), [algorithm review](design/general-performance.md), [compiler boundary audit](design/frontend-lowering-boundary.md) |
 | Supported Verus and project setups | [Compatibility](compatibility.md) |
 | Trust model and differences from plain Verus | [Trust](trust.md), [divergences](divergences.md) |
