@@ -22,16 +22,6 @@ oracle completion (#611), and compound-field lowering/retained-read correction
 (#323). Original failures and source-specific qualification stay unchanged.
 
 
-## Large temporal simulation reports
-
-A temporal simulation response must fit 16 MiB. Sail 0.3.0 refused a larger
-job only after doing all its work: a 1,000-trace job on bosco failed with
-`SAIL4210` after 160 s. A simulation job is now refused with `SAIL4216` from
-a 16-trace sample before the full run: the bosco job is refused in about 2 s.
-The message names the largest trace count that fits at that depth. Jobs that
-need more evidence than 16 MiB are not supported; use fewer traces or a
-shorter depth (#767).
-
 ## Benchmark descendant cleanup assertion
 
 The full `sail-bench --lib` suite can fail its descendant-cleanup assertion on

@@ -177,6 +177,13 @@ pub(super) fn run(args: &[String], out: &mut dyn Write) -> Result<u8, String> {
         writeln!(out).map_err(failure)?;
         Ok(code)
     };
+    let mut version = Command::new(&dive);
+    version.arg("--version");
+    let (code, bytes) = external_dive::run(version, started, budget, &cancel, "witness")?;
+    if stopped() {
+        return emit_stop(out);
+    }
+    external_dive::require_release(&dive, code, &bytes)?;
     let mut selection = None;
     if let Input::Index(index, property) = input {
         let found = donors::select(

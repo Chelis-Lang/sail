@@ -384,7 +384,7 @@ dependencies = [
 [[package]]
 name = "dive-api"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-config",
  "dive-core",
@@ -408,7 +408,7 @@ dependencies = [
 [[package]]
 name = "dive-config"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-syntax",
 ]
@@ -416,7 +416,7 @@ dependencies = [
 [[package]]
 name = "dive-core"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-ir",
  "dive-value",
@@ -428,7 +428,7 @@ dependencies = [
 [[package]]
 name = "dive-eval"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-ir",
  "dive-value",
@@ -437,12 +437,13 @@ dependencies = [
 [[package]]
 name = "dive-explore"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-core",
  "dive-store",
  "getrandom 0.4.3",
  "hmac",
+ "lz4_flex",
  "rayon-core",
  "serde",
  "serde_json",
@@ -452,7 +453,7 @@ dependencies = [
 [[package]]
 name = "dive-ir"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-sema",
  "dive-syntax",
@@ -462,7 +463,7 @@ dependencies = [
 [[package]]
 name = "dive-liveness"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -476,7 +477,7 @@ dependencies = [
 [[package]]
 name = "dive-model"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -488,7 +489,7 @@ dependencies = [
 [[package]]
 name = "dive-pluscal"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-syntax",
  "serde",
@@ -497,7 +498,7 @@ dependencies = [
 [[package]]
 name = "dive-runtime"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -515,7 +516,7 @@ dependencies = [
 [[package]]
 name = "dive-sema"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-syntax",
 ]
@@ -523,7 +524,7 @@ dependencies = [
 [[package]]
 name = "dive-sim"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -535,7 +536,7 @@ dependencies = [
 [[package]]
 name = "dive-stdlib"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -547,7 +548,7 @@ dependencies = [
 [[package]]
 name = "dive-store"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-value",
 ]
@@ -555,7 +556,7 @@ dependencies = [
 [[package]]
 name = "dive-syntax"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "rowan",
 ]
@@ -563,19 +564,20 @@ dependencies = [
 [[package]]
 name = "dive-trace"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "dive-eval",
  "dive-ir",
  "dive-model",
  "dive-value",
  "serde_json",
+ "sha2 0.11.1",
 ]
 
 [[package]]
 name = "dive-value"
 version = "0.1.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=61c654f608093abbe8df388d2d2aa3b112bfb853#61c654f608093abbe8df388d2d2aa3b112bfb853"
+source = "git+https://github.com/Chelis-Lang/dive?rev=a1fd9e003618e45d66dd6131e9518611ce60ba0e#a1fd9e003618e45d66dd6131e9518611ce60ba0e"
 dependencies = [
  "num-bigint 0.5.1",
  "num-integer",
@@ -1143,6 +1145,12 @@ name = "log"
 version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
+
+[[package]]
+name = "lz4_flex"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f56455fff36934a9500d69062aec1c77037179b6f0669e4d5d6b72b84722d6a3"
 
 [[package]]
 name = "memchr"

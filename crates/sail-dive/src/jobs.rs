@@ -224,7 +224,7 @@ pub(crate) fn check(input: &Frozen, states: u64, depth: u64) -> Result<Response,
     Ok(response)
 }
 
-/// Traces sampled first to estimate a larger job's evidence. D.I.V.E.'s
+/// Traces sampled first to size a larger job's kept evidence. D.I.V.E.'s
 /// default-profile traces are prefix-stable for a fixed seed: the probe's
 /// traces are exactly the first traces of the full run.
 const PROBE_TRACES: u64 = 16;
@@ -233,12 +233,15 @@ fn simulate(input: &Frozen, traces: u64, depth: usize) -> Result<Response, Failu
     simulate_within(input, traces, depth, crate::MAX_DOCUMENT_BYTES)
 }
 
-/// Simulates under a response byte bound (#767). A job larger than
-/// [`PROBE_TRACES`] first samples that many traces and refuses before the full
-/// run when their measured evidence, extrapolated to the requested count,
-/// exceeds `limit`. The full run is refused as soon as its evidence provably
-/// exceeds `limit`: right after sampling when the native traces alone exceed
-/// it, otherwise during replay, before the next trace is converted.
+/// Simulates under a response byte bound (#767). D.I.V.E. samples and checks
+/// every requested trace. The response keeps the lowest-id traces whose
+/// native, ITF and validated forms fit `limit`, plus any deciding trace, and
+/// replays each independently; the native report's `statistics.traces_kept`
+/// and `traces_dropped` count them. A job larger than [`PROBE_TRACES`] first
+/// samples that many traces to size how many to keep. When the kept traces
+/// still exceed the bound, the job runs once more keeping only the traces that
+/// fitted, or only the deciding trace. A job is refused with `SAIL4216` only
+/// when not one trace, or the deciding trace alone, fits.
 fn simulate_within(
     input: &Frozen,
     traces: u64,
@@ -251,13 +254,41 @@ fn simulate_within(
             "SAIL4207: simulation requires finite admitted positive counts".into(),
         ));
     }
-    if traces > PROBE_TRACES {
-        let probe = sample(input, PROBE_TRACES, depth, limit)?;
-        if probe.outcome == Outcome::Sampled {
-            check_estimate(&probe, traces, limit)?;
+    let keep = if traces > PROBE_TRACES {
+        match sample(input, PROBE_TRACES, depth, PROBE_TRACES, limit)? {
+            Sample::Fits(probe) if probe.outcome == Outcome::Sampled => {
+                keep_estimate(&probe, traces, limit)?
+            }
+            Sample::Fits(_) => traces,
+            Sample::Exceeds { fitted, deciding } => {
+                if deciding {
+                    0
+                } else {
+                    fitted
+                }
+            }
         }
+    } else {
+        traces
+    };
+    let (fitted, deciding) = match sample(input, traces, depth, keep, limit)? {
+        Sample::Fits(response) => return Ok(*response),
+        Sample::Exceeds { fitted, deciding } => (fitted, deciding),
+    };
+    let retry = if deciding { 0 } else { fitted };
+    if retry == 0 && !deciding {
+        return Err(oversized(limit, "not even the first trace fits"));
     }
-    sample(input, traces, depth, limit)
+    match sample(input, traces, depth, retry, limit)? {
+        Sample::Fits(response) => Ok(*response),
+        Sample::Exceeds { .. } if deciding => {
+            Err(oversized(limit, "the deciding trace alone does not fit"))
+        }
+        Sample::Exceeds { fitted, .. } => Err(oversized(
+            limit,
+            &format!("{retry} traces fitted once but only {fitted} fit when rerun"),
+        )),
+    }
 }
 
 fn oversized(limit: usize, detail: &str) -> Failure {
@@ -325,8 +356,10 @@ fn trace_bytes(response: &Response, index: usize) -> usize {
     replay_bytes(response, index) + entry + 1
 }
 
-/// Refuses a job whose probe evidence, extrapolated per trace, exceeds `limit`.
-fn check_estimate(probe: &Response, traces: u64, limit: usize) -> Result<(), Failure> {
+/// Traces to keep in a job of `traces`, from the probe's measured evidence per
+/// trace, with a tenth held back for traces longer than the probe's. Refuses
+/// a job in which not one trace fits `limit`.
+fn keep_estimate(probe: &Response, traces: u64, limit: usize) -> Result<u64, Failure> {
     let total = encoded_len(probe, usize::MAX).unwrap_or(usize::MAX);
     let sampled = probe.native_traces.len();
     let per_trace: usize = (0..sampled).map(|i| trace_bytes(probe, i)).sum();
@@ -337,50 +370,90 @@ fn check_estimate(probe: &Response, traces: u64, limit: usize) -> Result<(), Fai
         u128::try_from(fixed),
         u128::try_from(limit),
     ) else {
-        return Ok(());
+        return Ok(traces);
     };
     if sampled == 0 || per_trace == 0 {
-        return Ok(());
-    }
-    let estimate = fixed + per_trace * u128::from(traces) / sampled;
-    if estimate <= limit_wide {
-        return Ok(());
+        return Ok(traces);
     }
     let admitted = limit_wide.saturating_sub(fixed) * sampled / per_trace;
-    Err(oversized(
-        limit,
-        &format!(
-            "the first {sampled} traces encode to {total} bytes, so {traces} traces need about \
-             {estimate} bytes; request at most {admitted} traces at this depth, or a shorter depth"
-        ),
-    ))
-}
-
-fn sample(input: &Frozen, traces: u64, depth: usize, limit: usize) -> Result<Response, Failure> {
-    let report = dive_api::simulate_file(&dive_api::SimulateRequest {
-        file: input.root.clone(),
-        config: Some(input.config.clone()),
-        library_paths: input.libraries.clone(),
-        seed: Some(0),
-        workers: Some(1),
-        traces,
-        depth: Some(depth),
-        ..Default::default()
-    })
-    .map_err(|e| api_error(&e))?;
-    // The response holds the native report, so its retained trace text alone
-    // is a lower bound on the response: refuse before building any tree.
-    let retained = report.retained_trace_bytes();
-    if retained > limit {
+    if admitted == 0 {
         return Err(oversized(
             limit,
-            &format!("the native report's {traces} traces alone hold {retained} bytes"),
+            &format!(
+                "the first {sampled} traces encode to {total} bytes, so not one trace fits; \
+                 request a shorter depth"
+            ),
         ));
     }
-    // An admitted report is at most `limit` bytes of traces, and the response
-    // is decoded as one tree by the parent anyway, so building it here is
-    // bounded; `write_json` would only pay off with a streamed response.
-    let native = report.to_json();
+    let margin = (admitted - admitted / 10).max(1);
+    Ok(u64::try_from(margin).unwrap_or(u64::MAX).min(traces))
+}
+
+/// A simulation run's evidence: the whole response when it fits the bound, or
+/// how many leading sample traces fitted and whether a deciding trace exists.
+enum Sample {
+    Fits(Box<Response>),
+    Exceeds { fitted: u64, deciding: bool },
+}
+
+/// Collects at most `limit` bytes and fails once more are written.
+struct Bounded {
+    bytes: Vec<u8>,
+    limit: usize,
+}
+
+impl std::io::Write for Bounded {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if bytes.len() > self.limit.saturating_sub(self.bytes.len()) {
+            return Err(std::io::Error::other("byte bound passed"));
+        }
+        self.bytes.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Samples `traces` traces, keeping `keep` of them besides any deciding trace,
+/// and replays the kept traces while the response stays within `limit`.
+fn sample(
+    input: &Frozen,
+    traces: u64,
+    depth: usize,
+    keep: u64,
+    limit: usize,
+) -> Result<Sample, Failure> {
+    let mut request = dive_api::SimulateRequest::default();
+    request.file.clone_from(&input.root);
+    request.config = Some(input.config.clone());
+    request.library_paths.clone_from(&input.libraries);
+    request.seed = Some(0);
+    request.workers = Some(1);
+    request.traces = traces;
+    request.depth = Some(depth);
+    request.keep_traces = Some(keep);
+    // The native report is part of the response, so it alone must fit.
+    request.max_report_bytes = Some(limit);
+    let report = dive_api::simulate_file(&request).map_err(|e| api_error(&e))?;
+    // Write the report text without building every trace as a JSON tree
+    // (dive #1040); the bounded writer guards the backend's own bound.
+    let mut text = Bounded {
+        bytes: Vec::new(),
+        limit,
+    };
+    if report.write_json(&mut text, None).is_err() {
+        return Err(oversized(limit, "the native report alone exceeds it"));
+    }
+    drop(report);
+    let native: Value = serde_json::from_slice(&text.bytes).map_err(|e| {
+        (
+            Outcome::Error,
+            format!("SAIL4208: unreadable native simulation report: {e}"),
+        )
+    })?;
+    drop(text);
     let outcome = match native["result"].as_str() {
         Some("sampled") => Outcome::Sampled,
         Some("violation") if native["violation_validated"] == true => Outcome::Refuted,
@@ -388,51 +461,56 @@ fn sample(input: &Frozen, traces: u64, depth: usize, limit: usize) -> Result<Res
         Some("resource-limit") => Outcome::Stopped,
         _ => Outcome::Error,
     };
-    let mut response = Response::new(outcome, native.clone());
-    if matches!(outcome, Outcome::Sampled | Outcome::Refuted) {
-        if native["exhaustive"] != false || native["model_proved"] != false {
-            return Err((
-                Outcome::Error,
-                "SAIL4208: simulation cannot establish an exhaustive proof".into(),
-            ));
+    let deciding = native["observed_violation"]["trace"].is_u64();
+    let mut response = Response::new(outcome, native);
+    if !matches!(outcome, Outcome::Sampled | Outcome::Refuted) {
+        return Ok(Sample::Fits(Box::new(response)));
+    }
+    if response.native_report["exhaustive"] != false
+        || response.native_report["model_proved"] != false
+    {
+        return Err((
+            Outcome::Error,
+            "SAIL4208: simulation cannot establish an exhaustive proof".into(),
+        ));
+    }
+    let source = model(input)?;
+    let entries = response.native_report["traces"]
+        .as_array()
+        .cloned()
+        .ok_or_else(|| unsupported("SAIL4208: simulation traces absent"))?;
+    let Some(mut used) = encoded_len(&response, limit) else {
+        return Err(oversized(limit, "the native report alone exceeds it"));
+    };
+    for (index, trace) in entries.iter().enumerate() {
+        let fitted = u64::try_from(index).unwrap_or(u64::MAX);
+        // D.I.V.E. replaces a deciding trace that does not fit its report
+        // bound by a summary without the trace.
+        if trace.get("summary").is_some() {
+            return Ok(Sample::Exceeds { fitted, deciding });
         }
-        let source = model(input)?;
-        let entries = native["traces"]
-            .as_array()
-            .ok_or_else(|| unsupported("SAIL4208: simulation traces absent"))?;
-        let mut used = encoded_len(&response, limit)
-            .ok_or_else(|| oversized(limit, "the native report alone exceeds it"))?;
-        for (index, trace) in entries.iter().enumerate() {
-            if let Err((outcome, message)) = add_trace(
-                input,
-                &mut response,
-                &source,
-                &trace["document"],
-                Witness::Sample,
-            ) {
-                response.outcome = outcome;
-                response.message = Some(message);
-                break;
-            }
-            // The native report entry is already counted.
-            used = used.saturating_add(replay_bytes(&response, index));
-            if used > limit {
-                return Err(oversized(
-                    limit,
-                    &format!(
-                        "replaying {} of {} traces already needs {used} bytes",
-                        index + 1,
-                        entries.len()
-                    ),
-                ));
-            }
+        if let Err((outcome, message)) = add_trace(
+            input,
+            &mut response,
+            &source,
+            &trace["document"],
+            Witness::Sample,
+        ) {
+            response.outcome = outcome;
+            response.message = Some(message);
+            break;
         }
-        if response.native_traces.is_empty() {
-            response.outcome = Outcome::Error;
-            response.message = Some("SAIL4208: no concrete sampled evidence".into());
+        // The native report entry is already counted.
+        used = used.saturating_add(replay_bytes(&response, index));
+        if used > limit {
+            return Ok(Sample::Exceeds { fitted, deciding });
         }
     }
-    Ok(response)
+    if response.native_traces.is_empty() {
+        response.outcome = Outcome::Error;
+        response.message = Some("SAIL4208: no concrete sampled evidence".into());
+    }
+    Ok(Sample::Fits(Box::new(response)))
 }
 
 #[cfg(test)]
@@ -460,48 +538,71 @@ mod tests {
         }
     }
 
+    fn fitted(result: Result<Sample, Failure>) -> Result<Response, String> {
+        match result {
+            Ok(Sample::Fits(response)) => Ok(*response),
+            Ok(Sample::Exceeds { fitted, .. }) => Err(format!("only {fitted} traces fit")),
+            Err(e) => Err(e.1),
+        }
+    }
+
+    fn counts(response: &Response) -> (u64, u64) {
+        let statistics = &response.native_report["statistics"];
+        (
+            statistics["traces_started"].as_u64().unwrap_or(0),
+            statistics["traces_kept"].as_u64().unwrap_or(0),
+        )
+    }
+
     #[test]
-    fn probe_extrapolation_refuses_before_the_full_run() -> Result<(), String> {
+    fn a_large_job_keeps_the_traces_its_probe_sizes_instead_of_refusing() -> Result<(), String> {
         let input = counter().map_err(|e| e.1)?;
-        let probe = sample(&input, PROBE_TRACES, 4, usize::MAX).map_err(|e| e.1)?;
-        let probe_bytes = encoded_len(&probe, usize::MAX).ok_or("probe size")?;
-        // The probe fits; 100 traces would need about six times as much.
-        let message = refusal(simulate_within(&input, 100, 4, probe_bytes * 2))?;
-        assert!(
-            message.contains("the first 16 traces") && message.contains("request at most"),
-            "{message}"
-        );
-        // A slightly larger job within the bound still runs completely.
-        let response = simulate_within(&input, 20, 4, probe_bytes * 2).map_err(|e| e.1)?;
+        let probe = fitted(sample(&input, PROBE_TRACES, 4, PROBE_TRACES, usize::MAX))?;
+        let limit = encoded_len(&probe, usize::MAX).ok_or("probe size")? * 2;
+        // 100 traces would need about six times the probe's evidence.
+        let response = simulate_within(&input, 100, 4, limit).map_err(|e| e.1)?;
         assert_eq!(response.outcome, Outcome::Sampled, "{response:?}");
+        let (started, kept) = counts(&response);
+        assert_eq!(started, 100);
+        assert!(kept > PROBE_TRACES && kept < 100, "{kept}");
+        assert_eq!(response.itf_traces.len() as u64, kept);
+        assert!(response.validations.iter().all(|v| v["result"] == "valid"));
+        assert!(encoded_len(&response, limit).is_some());
+        // A slightly larger job within the bound keeps every trace.
+        let response = simulate_within(&input, 20, 4, limit).map_err(|e| e.1)?;
+        assert_eq!(response.outcome, Outcome::Sampled, "{response:?}");
+        assert_eq!(counts(&response), (20, 20));
         assert_eq!(response.itf_traces.len(), 20);
-        assert!(encoded_len(&response, probe_bytes * 2).is_some());
         Ok(())
     }
 
     #[test]
-    fn native_traces_over_the_bound_refuse_before_replay() -> Result<(), String> {
+    fn a_report_over_the_bound_is_refused() -> Result<(), String> {
         let input = counter().map_err(|e| e.1)?;
         let message = refusal(simulate_within(&input, 2, 4, 10))?;
-        assert!(message.contains("traces alone hold"), "{message}");
+        assert!(message.contains("native report alone exceeds"), "{message}");
         Ok(())
     }
 
     #[test]
-    fn replay_refuses_once_its_evidence_passes_the_bound() -> Result<(), String> {
+    fn replay_past_the_bound_reruns_keeping_the_traces_that_fitted() -> Result<(), String> {
         let input = counter().map_err(|e| e.1)?;
-        let full = sample(&input, 2, 4, usize::MAX).map_err(|e| e.1)?;
+        let full = fitted(sample(&input, 2, 4, 2, usize::MAX))?;
         let report = Response::new(full.outcome, full.native_report.clone());
         let base = encoded_len(&report, usize::MAX).ok_or("report size")?;
-        let message = refusal(simulate_within(
-            &input,
-            2,
-            4,
-            base + replay_bytes(&full, 0) - 1,
-        ))?;
-        assert!(message.contains("replaying 1 of 2 traces"), "{message}");
-        let message = refusal(simulate_within(&input, 2, 4, base + replay_bytes(&full, 0)))?;
-        assert!(message.contains("replaying 2 of 2 traces"), "{message}");
+        let limit = base + replay_bytes(&full, 0);
+        assert!(matches!(
+            sample(&input, 2, 4, 2, limit),
+            Ok(Sample::Exceeds {
+                fitted: 1,
+                deciding: false
+            })
+        ));
+        let response = simulate_within(&input, 2, 4, limit).map_err(|e| e.1)?;
+        assert_eq!(response.outcome, Outcome::Sampled, "{response:?}");
+        assert_eq!(counts(&response), (2, 1));
+        assert_eq!(response.itf_traces.len(), 1);
+        assert!(encoded_len(&response, limit).is_some());
         Ok(())
     }
 }

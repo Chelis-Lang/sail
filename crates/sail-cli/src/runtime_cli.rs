@@ -33,6 +33,8 @@ fn command(
     out: &mut dyn Write,
     extensions: &crate::Extensions,
 ) -> Result<u8, String> {
+    // Unlisted until D.I.V.E. ships its symbolic worker (Sail #805); the
+    // command still runs against a Dive installation that provides one.
     if args
         .first()
         .is_some_and(|action| action == "symbolic-check")
@@ -316,7 +318,7 @@ fn result(out: &mut dyn Write, response: &sail_api::runtime::Response) -> Result
 }
 
 fn usage() -> String {
-    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR] | sail runtime recheck --previous FILE --file FILE|- [--cache DIR] | sail runtime edit-session --file FILE|- | ".to_owned() + symbolic::USAGE
+    "error[SAIL6101]: usage: sail runtime capabilities [--cache DIR | --socket CACHE_SOCKET] | sail runtime execute --file FILE|- [--cache DIR | --socket CACHE_SOCKET] | sail runtime prepare-temporal [--file FILE|-] [--cache DIR] | sail runtime recheck --previous FILE --file FILE|- [--cache DIR] | sail runtime edit-session --file FILE|- | sail runtime witness-recheck --dive FILE --module MODULE --config CFG (--trace WORD | --donor-index INDEX --property PROPERTY) --time-limit SECONDS".to_owned()
 }
 
 struct Options<'a> {

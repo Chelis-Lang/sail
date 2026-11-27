@@ -16,6 +16,13 @@ pub use sail_api::temporal::{
 };
 pub use wire::{decode_request, decode_response};
 
+// `sail_api::temporal::validate_response` admits only the schema the linked
+// D.I.V.E. emits (#786); a pin move that changes it must update the constant.
+const _: () = assert!(
+    sail_api::temporal::DIVE_REPORT_SCHEMA_VERSION == dive_api::REPORT_SCHEMA_VERSION,
+    "sail_api::temporal::DIVE_REPORT_SCHEMA_VERSION differs from the linked dive_api"
+);
+
 fn requested_checks(model: &Model) -> Option<RequestedChecks> {
     let source = model.files.get(&model.config)?;
     let report = dive_api::parse_config_source(&model.config, source);

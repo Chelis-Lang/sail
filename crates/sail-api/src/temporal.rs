@@ -30,6 +30,9 @@ pub struct ItfTrace {
 /// worker image digest identifies the build and edit evidence names its source
 /// revision (ADRs 0172 and 0176). Moving the dependency requires native conformance.
 pub const DIVE_VERSION: &str = "0.1.0";
+/// JSON report schema the linked D.I.V.E. crates emit (`dive_api::REPORT_SCHEMA_VERSION`).
+/// `sail-dive` fails to compile when the two differ, so moving the pin moves this too.
+pub const DIVE_REPORT_SCHEMA_VERSION: u32 = 4;
 /// Worker payload protocol version.
 pub const VERSION: u32 = 1;
 /// Maximum encoded request or response, before JSON decoding.
@@ -314,8 +317,10 @@ pub fn validate_response(
         response.outcome,
         Outcome::Holds | Outcome::Refuted | Outcome::Sampled | Outcome::Valid | Outcome::Invalid
     );
-    if conclusive && report["schema_version"] != 3 {
-        return Err("SAIL4213: conclusive outcome lacks native schema-3 evidence".into());
+    if conclusive && report["schema_version"] != DIVE_REPORT_SCHEMA_VERSION {
+        return Err(format!(
+            "SAIL4213: conclusive outcome lacks native schema-{DIVE_REPORT_SCHEMA_VERSION} evidence"
+        ));
     }
     let compatible = match response.outcome {
         Outcome::Holds => {
