@@ -29,7 +29,7 @@ pub struct ItfTrace {
 /// Published packages use the registry release. In a development checkout the
 /// worker image digest identifies the build and edit evidence names its source
 /// revision (ADRs 0172 and 0176). Moving the dependency requires native conformance.
-pub const DIVE_VERSION: &str = "0.1.0";
+pub const DIVE_VERSION: &str = "0.2.0";
 /// JSON report schema the linked D.I.V.E. crates emit (`dive_api::REPORT_SCHEMA_VERSION`).
 /// `sail-dive` fails to compile when the two differ, so moving the pin moves this too.
 pub const DIVE_REPORT_SCHEMA_VERSION: u32 = 4;

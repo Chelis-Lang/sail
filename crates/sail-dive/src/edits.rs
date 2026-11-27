@@ -11,7 +11,7 @@ use safety::Counts;
 use serde::{Deserialize, Serialize};
 
 /// Dive source revision providing the typed edit API, checked against Cargo.lock.
-pub const BACKEND_SOURCE: &str = "a1fd9e003618e45d66dd6131e9518611ce60ba0e";
+pub const BACKEND_SOURCE: &str = "5bb880635f46c7266e015a0d812f18e4411cdc6a";
 
 /// A group of native checks with one wall deadline for the whole process.
 #[derive(Debug, Serialize, Deserialize)]
