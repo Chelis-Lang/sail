@@ -157,14 +157,3 @@ the current module and CFG. The index lists prior words and the models that
 produced them. Optional field selectors identify the typed coordinates to map.
 Use the returned word only after current-source replay succeeds.
 [Command and index format](https://github.com/Chelis-Lang/sail/blob/main/docs/temporal-jobs.md#discover-donors-from-an-edited-job).
-
-## Experimental Kani candidate
-
-The v0.4.0 candidate adds `sail engine install --backend kani` and fresh
-`sail verify --backend kani --harness CRATE::PATH --unwind N --output json`
-on native Linux x86-64. This frontend is under qualification, unselected
-and absent from every published release. Check installed help before use. Prepare project
-dependencies with `cargo fetch --locked`; checks run offline. Read the explicit
-`bounded_success`, `counterexample` or `bound_insufficient` outcome and bound.
-Never report ordinary verified or an unbounded proof. No source-currentness,
-proof receipt, result-cache or Kani MCP authority follows.
