@@ -41,8 +41,9 @@ semantic versioning once the API is published.
 ### Planned with D.I.V.E. 0.3 (#805)
 
 These symbolic-check features need D.I.V.E.'s symbolic worker, which D.I.V.E.
-0.2.0 does not ship. They are not part of the next release and stay here until
-they ship with D.I.V.E. 0.3.
+0.2.0 does not ship. They are not part of the next release: when a release
+renames this section, this subsection stays under a fresh Unreleased heading
+until it ships with D.I.V.E. 0.3.
 
 - Recheck [source induction across edits](docs/design/symbolic-check.md#recheck-source-induction-across-edits) with a fresh Dive proof worker and optional authenticated obligation reuse.
 - Recheck [one named TLA+ invariant](docs/design/symbolic-check.md#recheck-one-named-state-invariant-across-edits) across edits with a portable Dive predicate. Each proof names its scope and records transition obligations.
