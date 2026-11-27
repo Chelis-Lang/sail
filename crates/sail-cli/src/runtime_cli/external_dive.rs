@@ -1,10 +1,37 @@
 //! Bound the external check independently of the checker's own deadline.
 pub(super) const MAX_BYTES: u64 = 16 << 20;
 use std::io::Read;
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
+
+/// Refuses an external Dive whose `--version` names a different release than
+/// the D.I.V.E. Sail links: its reports are read under that release's schema.
+pub(super) fn require_release(dive: &Path, code: u8, output: &[u8]) -> Result<(), String> {
+    let expected = sail_dive::DIVE_VERSION;
+    let text = String::from_utf8_lossy(output);
+    let found = text
+        .lines()
+        .next()
+        .and_then(|line| line.strip_prefix("dive "))
+        .and_then(|rest| rest.split_whitespace().next())
+        .filter(|_| code == 0);
+    if found == Some(expected) {
+        return Ok(());
+    }
+    let found = found.map_or_else(
+        || "an unrecognized version".to_owned(),
+        |v| format!("dive {v}"),
+    );
+    Err(format!(
+        "error[SAIL6103]: {} reports {found}, but this sail reads dive {expected} reports; \
+         install the matching release with `cargo install dive-cli --locked --version {expected}` \
+         or from https://github.com/Chelis-Lang/dive/releases/tag/v{expected}",
+        dive.display()
+    ))
+}
 
 pub(super) fn cancellation() -> Result<std::sync::Arc<AtomicBool>, String> {
     let cancel = std::sync::Arc::new(AtomicBool::new(false));
@@ -127,5 +154,40 @@ pub(super) fn run(
             }
         }
         thread::sleep(Duration::from_millis(2));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::require_release;
+    use std::path::Path;
+
+    #[test]
+    fn only_the_linked_dive_release_is_admitted() {
+        let dive = Path::new("/opt/dive");
+        let linked = format!("dive {} (v0.1.0-12-gabc)\n", sail_dive::DIVE_VERSION);
+        assert!(require_release(dive, 0, linked.as_bytes()).is_ok());
+        for (code, output) in [
+            (0, &b"dive 9.9.9 (v9.9.9)\n"[..]),
+            (0, b"TLC2 Version 2.19\n"),
+            (0, b""),
+            (2, linked.as_bytes()),
+        ] {
+            let error = require_release(dive, code, output)
+                .err()
+                .unwrap_or_default();
+            assert!(
+                error.starts_with("error[SAIL6103]: /opt/dive reports "),
+                "{error}"
+            );
+            assert!(
+                error.contains("cargo install dive-cli --locked --version"),
+                "{error}"
+            );
+        }
+        let error = require_release(dive, 0, b"dive 9.9.9 (v9.9.9)\n")
+            .err()
+            .unwrap_or_default();
+        assert!(error.contains("reports dive 9.9.9, but"), "{error}");
     }
 }

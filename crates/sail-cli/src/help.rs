@@ -66,15 +66,9 @@ USAGE:
     sail runtime recheck --previous FILE --file FILE|- [--cache DIR]
     sail runtime edit-session --file FILE|-
     sail runtime witness-recheck --dive FILE --module MODULE --config CFG (--trace WORD | --donor-index INDEX --property PROPERTY) --time-limit SECONDS
-    sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG
-                                --time-limit SECONDS [--type-invariant NAME]
-                                [--strategy symbolic|occupancy|finite-induction] [--max-orbits N]
 
 witness-recheck replays or repairs a saved temporal counterexample and falls back
 to ordinary checking on the current specification within the same deadline.
-
-symbolic-check asks the selected Dive to prove the current finite safety model
-with a saved predicate or search it. See docs/temporal-jobs.md for exit codes.
 
 edit-session takes ordered native check requests with one deadline. It emits
 ordered evidence from one isolated worker. Holds and refuted checks exit 0,

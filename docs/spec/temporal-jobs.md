@@ -164,7 +164,7 @@ checks its linked Dive source and verifies report version, current request
 digests, basis lineage, role and limits. A zero queue on a failed safety
 prefix cannot establish completion. Each proof is identified by its structure,
 basis, current search position and complete current evidence. Ordinary
-fallbacks retain the native schema-3 response. The batch does not populate
+fallbacks retain the native response in the linked Dive's report schema. The batch does not populate
 exact-replay receipts. An `exact-request` entry carries only the zero-based
 `basis_entry` of a prior `fresh` conclusive ordinary response. Both child and
 parent compare the full native requests. The parent validates the actual earlier
@@ -209,7 +209,7 @@ no exploration statistics. A complete search and a validated violation use
 the symbolic checker's versioned result format. Issuing a temporal job to
 the shared runtime still selects its authenticated native worker. The external `--strategy occupancy` route checks the distinct `dive-occupancy-report-v1` schema and publishes to a separate candidate filename. `--max-orbits` applies only to that strategy. See the
 [decision](../decisions/0177-portable-symbolic-predicates.md) and
-[command and exits](../temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate).
+[command and exits](../design/symbolic-check.md#recheck-finite-safety-properties-with-a-portable-predicate).
 
 The trusted external installation can advertise
 `libexec/dive-symbolic/capabilities/named-predicate-repair-v1` beside its

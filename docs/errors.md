@@ -37,7 +37,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | `SAIL4213` | Worker response identity or native evidence does not match the request | Use the pinned worker; the response establishes no model result |
 | `SAIL4214` | Duplicate JSON object member | Submit a unique field at every object depth |
 | `SAIL4215` | Archive installation or prerequisite check failed | Check the selected platform/version, adjacent checksum, archive attestation, rustup and download access; existing installations are preserved |
-| `SAIL4216` | Simulation evidence would exceed the worker response bound | Request fewer traces or a shorter depth; a refusal before the run names the largest trace count that fits |
+| `SAIL4216` | Not one sampled trace, or the deciding trace alone, fits the worker response bound | Request a shorter depth; larger jobs keep the traces that fit instead of being refused |
 
 ## Command line (`sail`)
 
@@ -211,6 +211,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 |---|---|---|
 | `SAIL6101` | Invalid runtime configuration, request, limits or unsupported SMT command/option | Read the specific `kind` and message; submit a supported version-one request with positive bounded limits |
 | `SAIL6102` | Backend unavailable, incomplete execution or response integrity failure | Inspect the structured result; install the existing pinned Sail runtime if unavailable, or address the recorded cancellation, timeout, output or process failure |
+| `SAIL6103` | The `--dive` executable reports a different D.I.V.E. release than the one Sail links | Install the named release (`cargo install dive-cli --locked --version VERSION` or the D.I.V.E. release archive) and pass that executable |
 | `SAIL6201` | Runtime transport framing, ownership, overload, cancellation or service failure | Check the structured category and endpoint permissions; restart the existing Sail daemon when it lacks the runtime endpoint; no direct solver fallback occurs |
 
 ## Benchmarks (`sail-bench`)
