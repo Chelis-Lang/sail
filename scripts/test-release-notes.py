@@ -51,11 +51,24 @@ class ReleaseNotes(unittest.TestCase):
             with self.assertRaises(ValueError):
                 notes.body('v9.8.7', root=root)
 
+    def test_unfinished_notes_are_refused_for_a_final_release(self):
+        for text in ('# Sail 9.8.7\n\n> **Draft.** Figures are placeholders.\n',
+                     '# Sail 9.8.7\n\nSpeed: **[S7 placeholder: ratio]**.\n',
+                     '# Sail 9.8.7\n\n> **draft.** Not yet measured.\n'):
+            with self.subTest(text=text), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.write(root, '9.8.7.md', text)
+                with self.assertRaisesRegex(ValueError, r'9\.8\.7\.md:3 is unfinished'):
+                    notes.body('9.8.7', root=root)
+                self.assertIn(text.rstrip('\n'), notes.body('9.8.7-rc.1', root=root))
+
     def test_published_notes_render(self):
+        # The rc suffix lets notes still being written for the next release
+        # render; the final-release refusal is tested above.
         root = Path(__file__).resolve().parent.parent
         for file in sorted((root / 'docs/release-notes').glob('*.md')):
             with self.subTest(file.name):
-                text = notes.body(file.stem, root=root)
+                text = notes.body(f'{file.stem}-rc.1', root=root)
                 self.assertNotIn('](../', text)
 
 

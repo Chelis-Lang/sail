@@ -442,7 +442,9 @@ access to `Chelis-Lang/sail`, AWS credentials for `scripts/perf-host.sh`,
 qualifying the macOS runtime against it).
 
 1. Land a PR that sets `[workspace.package] version` in `Cargo.toml` and
-   moves `CHANGELOG.md`'s Unreleased entries under that version. In the same
+   moves `CHANGELOG.md`'s Unreleased entries under that version. A
+   "Planned with ..." subsection under Unreleased does not ship: keep it under
+   a fresh `## Unreleased` heading above the new version section. In the same
    PR, regenerate `THIRD-PARTY-NOTICES` if the locks, the pinned fork or the
    pinned Z3 changed: `scripts/third-party-notices.py --work NEW_DIR`
    (`--verus-repo FORK_CLONE` uses a local clone instead of fetching the
@@ -451,17 +453,36 @@ qualifying the macOS runtime against it).
    script with `--check` and fails the release on stale notices, then copies
    them and `LICENSE` into each archive.
 2. **Docs surfaces.** Every release updates every docs surface, in three
-   parts. When the release moves the D.I.V.E. version, D.I.V.E.'s
-   `scripts/check-release-docs.py` with `--sail` pointed at this checkout
-   checks the Sail surfaces for the paired release; run it before the tag and
-   again after publication.
+   parts. When the release moves the D.I.V.E. version, run D.I.V.E.'s
+   checker from a D.I.V.E. checkout before the tag, and again after
+   publication with the bracketed publication arguments:
+
+   ```sh
+   python3 scripts/check-release-docs.py --version DIVE_X.Y.Z \
+     --previous DIVE_A.B.C --sail SAIL_CHECKOUT --sail-version X.Y.Z \
+     [--tag-commit DIVE_SHA --sail-tag-commit SHA \
+      --website WEBSITE_CHECKOUT --mesite MESITE_CHECKOUT]
+   ```
+
+   It checks Sail's `README.md`, `docs/install.md`, the crate READMEs, the
+   `action/action.yml` default, the D.I.V.E. version in the temporal-jobs
+   pages, the version's `CHANGELOG.md` section and unshipped features in
+   user-facing pages. Check the rest of the list below by hand:
+   `docs/github-action.md`, `docs/ci-cache.md`, the skill's
+   `action@vX.Y.Z`, `docs/known-issues.md`, `docs/ROADMAP.md`, and that the
+   notes file, its book page and the `SUMMARY.md` entry exist.
 
    *Before the tag*, in the step 1 PR or one landed before it:
-   - `CHANGELOG.md`: the version section, with only what ships.
+   - `CHANGELOG.md`: the version section, with only what ships. Any
+     "Planned with ..." subsection stays under a fresh `## Unreleased`
+     heading above it.
    - `docs/release-notes/X.Y.Z.md`, its book page `book/src/release-X.Y.Z.md`
      (which includes the notes file), the
      `book/src/SUMMARY.md` entry and the `docs/README.md` row. The notes file
      becomes the GitHub Release body, so write it for that page too.
+     Replace every placeholder, such as the S7 measurement placeholders, and
+     drop the `> **Draft.**` banner and the "(draft)" labels in
+     `book/src/SUMMARY.md` and `docs/README.md`.
    - `README.md`, `docs/install.md`, `docs/temporal-jobs.md`,
      `docs/ROADMAP.md` and `docs/known-issues.md`: the current version, the
      linked D.I.V.E. version and anything the release adds or drops.
@@ -475,7 +496,9 @@ qualifying the macOS runtime against it).
    *At release*: step 4's `scripts/release.sh` writes the draft's body with
    `scripts/release-notes.py VERSION COMMIT`, which is the notes file with its
    links pointed at the tagged source, then the asset description. It refuses
-   to draft without the notes file. Review the rendered draft before step 7.
+   to draft without the notes file, and refuses a final release whose notes
+   still say "placeholder" or carry the Draft banner. Review the rendered
+   draft before step 7.
 
    *After publication* (step 7):
    - Bump the Sail book pins together, per the website's ADR 0014: `sail` in
