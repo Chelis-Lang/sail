@@ -4,6 +4,9 @@ use std::path::Path;
 use std::process::ExitCode;
 
 pub(crate) fn run(args: &[String], out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
+    if crate::kani_cli::requested(args) {
+        return crate::kani_setup::run(args, out, err);
+    }
     match command(args) {
         Ok(status) => match serde_json::to_writer(&mut *out, &status)
             .and_then(|()| writeln!(out).map_err(serde_json::Error::io))

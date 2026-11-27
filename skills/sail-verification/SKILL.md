@@ -90,18 +90,8 @@ worker captured evidence, reused it or ran a fresh check. Inspect each
 decision and its current trace validation when reporting a failure.
 [Request format and worked example](https://github.com/Chelis-Lang/sail/blob/main/docs/temporal-jobs.md).
 
-For finite safety models in development builds, use `sail runtime symbolic-check
---dive FILE --session DIR --module MODULE --config CFG --time-limit SECONDS`
-with a Dive installation supporting symbolic predicate transfer. A transported
-predicate must pass induction against the current source. Read `proof` for
-induction results and `verdict` for search results.
-
-To recheck a named source induction proof across edits, add
-`--strategy source-obligations` and pass a trusted Dive source worker as
-`--dive FILE`. Keep the same session to retain authenticated results for
-unchanged obligations. Add `--fresh` to discharge every current
-obligation. A successful report binds the named proof to the current
-inputs. [Worker setup](https://github.com/Chelis-Lang/sail/blob/main/docs/temporal-jobs.md#recheck-source-induction-across-edits).
+`sail runtime symbolic-check` is not part of this release: it needs a
+symbolic Dive worker that ships with D.I.V.E. 0.3. Do not offer it to users.
 
 ## Run SMT queries
 

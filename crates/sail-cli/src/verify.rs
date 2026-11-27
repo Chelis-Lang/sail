@@ -398,6 +398,9 @@ pub fn verify(
             ),
         );
     }
+    if crate::kani_cli::requested(args) {
+        return crate::kani_cli::verify(args, out, err);
+    }
     // `--incremental` named the managed runner when it was opt-in; it is
     // now the default, so the flag is accepted and changes nothing.
     let args = without_incremental(args);

@@ -27,7 +27,7 @@ impl TemporalBackend for Counting {
         let mut response = Response::new(
             self.verdict,
             serde_json::json!({
-                "schema_version":3, "command":"check", "verdict":"success",
+                "schema_version":sail_api::temporal::DIVE_REPORT_SCHEMA_VERSION, "command":"check", "verdict":"success",
                 "options":{"profile":"dive","store":"exact"}, "statistics":{"left_on_queue":0}
             }),
         );

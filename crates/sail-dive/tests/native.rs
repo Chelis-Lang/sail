@@ -350,20 +350,24 @@ fn oyster_step_within() -> Request {
 }
 
 #[test]
-fn oversized_simulation_is_refused_from_its_probe_and_a_normal_one_runs() {
-    // 100,000 traces at depth 100 would far exceed the 16 MiB response bound;
-    // the refusal comes from the first 16 traces, not after the full run (#767).
+fn large_simulation_keeps_the_traces_that_fit_and_a_normal_one_keeps_all() -> TestResult {
+    // 2,000 traces at depth 100 exceed the 16 MiB response bound. Every trace
+    // is sampled; the response keeps and replays the lowest ids that fit (#767).
     let mut req = request(COUNTER, "INIT Init\nNEXT Next\n");
     req.operation = Operation::Simulate {
-        traces: 100_000,
+        traces: 2_000,
         depth: 100,
     };
     let result = sail_dive::execute(&req);
-    assert_eq!(result.outcome, Outcome::Rejected, "{result:?}");
-    let message = result.message.unwrap_or_default();
-    assert!(message.starts_with("SAIL4216: "), "{message}");
-    assert!(message.contains("the first 16 traces"), "{message}");
-    assert_eq!(result.native_traces.len(), 0);
+    assert_eq!(result.outcome, Outcome::Sampled, "{:?}", result.message);
+    let statistics = &result.native_report["statistics"];
+    assert_eq!(statistics["traces_started"], 2_000);
+    let kept = statistics["traces_kept"].as_u64().unwrap_or(0);
+    assert!(kept > 16 && kept < 2_000, "{kept}");
+    assert_eq!(result.itf_traces.len() as u64, kept);
+    assert!(result.validations.iter().all(|v| v["result"] == "valid"));
+    assert!(serde_json::to_vec(&result).is_ok_and(|b| b.len() <= sail_dive::MAX_DOCUMENT_BYTES));
+    sail_dive::validate_response(&req, &result)?;
 
     req.operation = Operation::Simulate {
         traces: 40,
@@ -373,6 +377,7 @@ fn oversized_simulation_is_refused_from_its_probe_and_a_normal_one_runs() {
     assert_eq!(result.outcome, Outcome::Sampled, "{result:?}");
     assert_eq!(result.itf_traces.len(), 40);
     assert!(result.validations.iter().all(|v| v["result"] == "valid"));
+    Ok(())
 }
 
 #[test]

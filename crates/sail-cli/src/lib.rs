@@ -14,6 +14,8 @@ mod fragility_join;
 mod health;
 mod help;
 mod jobs;
+mod kani_cli;
+mod kani_setup;
 mod managed_cli;
 mod measurement;
 mod new;

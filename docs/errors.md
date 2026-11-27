@@ -37,7 +37,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 | `SAIL4213` | Worker response identity or native evidence does not match the request | Use the pinned worker; the response establishes no model result |
 | `SAIL4214` | Duplicate JSON object member | Submit a unique field at every object depth |
 | `SAIL4215` | Archive installation or prerequisite check failed | Check the selected platform/version, adjacent checksum, archive attestation, rustup and download access; existing installations are preserved |
-| `SAIL4216` | Simulation evidence would exceed the worker response bound | Request fewer traces or a shorter depth; a refusal before the run names the largest trace count that fits |
+| `SAIL4216` | Not one sampled trace, or the deciding trace alone, fits the worker response bound | Request a shorter depth; larger jobs keep the traces that fit instead of being refused |
 
 ## Command line (`sail`)
 
@@ -211,6 +211,7 @@ results carry them in `notes`, and they stay on the stderr of JSON runs, jobs,
 |---|---|---|
 | `SAIL6101` | Invalid runtime configuration, request, limits or unsupported SMT command/option | Read the specific `kind` and message; submit a supported version-one request with positive bounded limits |
 | `SAIL6102` | Backend unavailable, incomplete execution or response integrity failure | Inspect the structured result; install the existing pinned Sail runtime if unavailable, or address the recorded cancellation, timeout, output or process failure |
+| `SAIL6103` | The `--dive` executable reports a different D.I.V.E. release than the one Sail links | Install the named release (`cargo install dive-cli --locked --version VERSION` or the D.I.V.E. release archive) and pass that executable |
 | `SAIL6201` | Runtime transport framing, ownership, overload, cancellation or service failure | Check the structured category and endpoint permissions; restart the existing Sail daemon when it lacks the runtime endpoint; no direct solver fallback occurs |
 
 ## Benchmarks (`sail-bench`)
@@ -270,4 +271,10 @@ or reuse a receipt. A fresh owned target is required before retrying.
 | Code | Meaning | What to do |
 |---|---|---|
 | `SAIL6301` | Experimental Kani export admission refuses incomplete, contradictory or unsupported native records | Preserve original output/export and exact tool versions; no bounded result or reusable proof is established |
+| `SAIL6303` | Development runtime tool-payload authentication refuses modified, unsupported, unreadable or excessive trees | Preserve the original immutable tool inputs; no execution, bounded result or reusable proof is established |
 | `SAIL6302` | Original Kani Rust payload fixture admission refuses incomplete, modified or unsupported inputs | Preserve original archives and inventory; use the exact pinned immutable payload. This does not establish backend execution or proof authority |
+| `SAIL6304` | Development original Kani driver attempt is invalid, cancelled, incomplete, excessive or unsupported | Preserve the partial raw captures; no bounded result, currentness or reusable proof follows |
+| `SAIL6305` | Development original Kani/Rust payload installation refuses an invalid, changed, incomplete or unsupported input or destination | Preserve original archives; use a new destination under a private immutable parent. No backend, currentness, proof or reuse authority is established |
+| `SAIL6307` | A bounded-evidence record's tier, strength, sufficiency, witness, integrity or provenance contradicts its outcome (internal groundwork, ADR 0185) | Report it as a Sail bug with the record; no bounded result is established |
+
+- `SAIL6306`: experimental Kani CLI/setup refusal; use explicit harness and unwind, a prepared Cargo home and the pinned native Linux x86-64 runtime.

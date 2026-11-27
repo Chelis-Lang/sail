@@ -5,7 +5,10 @@ Current ordering follows the owner's 2026-11-19 decision, recorded in
 [ADR 0109](decisions/0109-oyster-retired-v030-scope.md) and
 [ADR 0100](decisions/0100-mutation-first-roadmap.md). The latest stable release
 is **0.3.0**, native temporal checking on D.I.V.E. 0.1.0. The next release is
-**v0.3.1**, then **v0.4.0**.
+**v0.3.1**, the same native temporal checking on D.I.V.E. 0.2.0, then
+**v0.4.0**. Symbolic rechecks (`sail runtime symbolic-check`) are not in
+v0.3.1; they are planned with D.I.V.E. 0.3
+([#805](https://github.com/Chelis-Lang/sail/issues/805)).
 
 The active execution tracker is
 [#712](https://github.com/Chelis-Lang/sail/issues/712), superseding the
@@ -24,20 +27,19 @@ slower than stock Verus. Preserve default-mode correctness, explicit scope,
 provenance and conservative handling of uncertainty. Existing losses to stock
 remain engineering work, including cold runs. No baseline is relaxed.
 
-## Next release: v0.3.0
+## Next release: v0.3.1
 
-v0.3.0 is native temporal checking on D.I.V.E. 0.1.0, plus the work already
-delivered and qualified on `main`. It removes API published in 0.2.0, so it is
-a breaking release.
+v0.3.1 moves native temporal checking to D.I.V.E. 0.2.0, keeps large
+simulations within the response bound, and adds the temporal edit-session,
+recheck and replay work on `main`. It changes no Verus verification behavior.
 
 | Item | Gate | Tracker | State |
 |---|---|---|---|
-| Native temporal checking on D.I.V.E. 0.1.0 (headline, experimental) | D.I.V.E. 0.1.0 resolved from crates.io; holds only with complete evidence, refutations independently trace-validated, limits stop with no claim; native conformance at the published version | Draft PR #763, #764 | Built and measured against standard TLC on the release branch: identical verdicts and state counts, 27–39× faster per small check, about 13× over a 100-check MCP session. Waits for D.I.V.E. 0.1.0 on crates.io and the release-day steps; simulation defects #766 and #767 open |
-| Proof health | Rank checks by recorded effort; no change to verdicts or plain `sail verify` bytes | [Health guide](proof-health.md) | Delivered: `sail health` and MCP `proof_health` (#733), qualified on Linux and Mac ([record](validation/proof-health.md)) |
-| CI reports and GitHub Action | Render saved results for CI; one-step Action | [CI reports](ci-reports.md), [GitHub Action](github-action.md) | Delivered (#699, #702). The Action's first working release is 0.3.0 |
-| Neutral-contract removal and requirement-attribution retirement | Every removed 0.2.0 item listed in the changelog | [ADR 0109](decisions/0109-oyster-retired-v030-scope.md), [ADR 0148](decisions/0148-retire-active-requirement-attribution.md) | Delivered. The last neutral implementation is tagged `archive/neutral-contracts-final`; published 0.2.0 crates are not yanked |
-| Release bugs | Fixed, or recorded as known issues with the owner's agreement | [v0.3.0 milestone](https://github.com/Chelis-Lang/sail/milestone/14) | #710 and #760 open |
-| Publication | Owner approves the exact final candidate | [Releasing](releasing.md) | No candidate |
+| Native temporal checking on D.I.V.E. 0.2.0 | `dive-api`, `dive-ir`, `dive-value` and `dive-trace` resolve from crates.io at exactly 0.2.0; no Git source or `[patch]`; native conformance at the published version | [#807](https://github.com/Chelis-Lang/sail/pull/807) | Pinned to the D.I.V.E. 0.2.0 release candidate `5bb88063` by Git revision; S7 against standard TLC is running. Waits for D.I.V.E. 0.2.0 on crates.io |
+| Large simulations within the response bound | A job whose evidence exceeds 16 MiB keeps and replays the traces that fit; `SAIL4216` only when none fits | [#767](https://github.com/Chelis-Lang/sail/issues/767) | Implemented on the release branch |
+| `witness-recheck` against an installed Dive | Refuses any Dive release other than the linked one with `SAIL6103` | [Errors](errors.md) | Implemented on the release branch |
+| Symbolic rechecks | Not in v0.3.1; need D.I.V.E. 0.3's symbolic worker | [#805](https://github.com/Chelis-Lang/sail/issues/805) | Unlisted in `sail help runtime`; planned with D.I.V.E. 0.3 |
+| Publication | Owner approves the exact final candidate | [Releasing](releasing.md), [v0.3.1 milestone](https://github.com/Chelis-Lang/sail/milestone/16) | No candidate |
 
 Unfinished groundwork on `main` (the mutation campaign model, profiling
 library modules, the Kani decoder and the cvc5 development backend) ships
@@ -61,7 +63,7 @@ tracker; their order is not decided. See the
 | Profiling and stability | Name costly quantifiers and unstable proofs from recorded sessions; no change to verdicts or plain `sail verify` bytes | [Health guide](proof-health.md) | Exact session-prefix, prefix-replay and quantifier-count groundwork merged. History, retention, the stability worker and `sail profile` are not merged |
 | Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #232, #558, #560, #288 | Named rows still slower; see the lanes below |
 | Reach | Simpler installation and an editor bridge | Installer, Binstall and LSP work on development branches | Not merged |
-| Kani backend (headline candidate) | Spike wave with numeric pass and drop rules, then one owner checkpoint; every claim measured against one `cargo kani -j N` with a warm target; results bounded, never verified | [#135](https://github.com/Chelis-Lang/sail/issues/135); [design](design/kani-phase.md), [ADR 0180](decisions/0180-kani-phase-scope.md) | Pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)). Decoder #739 and input fixtures #743/#755 merged; a qualified single-harness executor and CLI exist on a development branch only. No cache, batch run, corpus or spike record yet |
+| Kani backend (headline candidate) | Spike wave with numeric pass and drop rules, then one owner checkpoint; every claim measured against one `cargo kani -j N` with a warm target; results bounded, never verified | [#135](https://github.com/Chelis-Lang/sail/issues/135); [design](design/kani-phase.md), [ADR 0180](decisions/0180-kani-phase-scope.md) | Pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)). Decoder #739 and input fixtures #743/#755 merged; a qualified single-harness executor and CLI exist on a development branch only. No cache, batch run, corpus or spike record yet Executor and CLI landed unadvertised ([record](validation/kani-cli.md)): single harness, fresh target per run, no cache |
 | cvc5 and the SMT-LIB service | cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | #137 | Development backend merged (#741), unadvertised; Mac qualification open |
 
 ## Performance and acceptance lanes
@@ -125,16 +127,17 @@ held".
 | `sail-contracts`, `sail-contracts-macros` and `sail-contracts-ir` | Removed with the neutral path; Kani function contracts are not adopted as a front end | Removed from the workspace; 0.2.0 stays on crates.io |
 | Requirement attribution and `sail assurance` (ADR 0104) | Retire active entry points after the five-function hand join fails its outside-user/CI-demand bar (ADR0148) | Corrected retirement qualifies on native Linux with independent review; final PR CI remains separate |
 
-## Temporal: native checking on D.I.V.E. 0.1.0
+## Temporal: native checking on D.I.V.E.
 
 The owner decided on 2026-11-18 to fold the temporal extension into the main
 workspace and ship native temporal checking in v0.3.0
-([ADR 0172](decisions/0172-native-temporal-in-main-workspace.md)).
+([ADR 0172](decisions/0172-native-temporal-in-main-workspace.md)). v0.3.0
+links D.I.V.E. 0.1.0; v0.3.1 links D.I.V.E. 0.2.0.
 
 | Gate | State |
 |---|---|
 | `sail-dive` in the main workspace; `sail` links the backend; worker is a `sail-solve` binary | Implemented (ADR 0172) |
-| D.I.V.E. 0.1.0 from crates.io | `dive-api` and `dive-ir` resolve from crates.io at exactly 0.1.0; no Git source or `[patch]` |
+| D.I.V.E. 0.2.0 from crates.io | `dive-api`, `dive-ir`, `dive-value` and `dive-trace` must resolve from crates.io at exactly 0.2.0 with no Git source or `[patch]`; the release branch pins the 0.2.0 candidate by Git revision until it is published |
 | Genuine temporal properties with an exact store and state/depth limits | Hold, refute with validated counterexamples, or stop with no claim at a limit |
 | Native conformance at the published version | Required before merge ([record](validation/native-temporal-dive-0.1.md)) |
 
@@ -147,6 +150,7 @@ fallback.
 |---|---|---|
 | 0.1.0, 2026-10-29 | Cargo verification, managed receipts, exact solver caches, shipped vstd/replies, instant revert, replay, watch/jobs/MCP, repair and evidence commands; native archives | [Notes](release-notes/0.1.0.md), [qualification](validation/release-candidate.md) |
 | 0.2.0, 2026-11-04 | Standalone verification/repair/watch/jobs/MCP, daemon preparation, project byte budgets, hosted CI-cache recipe, consumer skill, corrected compiler-input runtime, core improvements and eighteen crates.io packages | [Notes](release-notes/0.2.0.md), [stable qualification](validation/stable-candidate.md), [feature qualification](validation/release-expansion.md) |
+| 0.3.0, 2026-11-19 | Native temporal checking on D.I.V.E. 0.1.0 (experimental), proof health, CI reports and the GitHub Action; neutral-contract surfaces removed | [Notes](release-notes/0.3.0.md), [native conformance](validation/native-temporal-dive-0.1.md), [against TLC](validation/sail-dive-vs-tlc.md) |
 
 The final 0.2.0 composition has complete native workflow/mutation captures and
 all 1,944 retained paired mutation steps compare Same after the separately

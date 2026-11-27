@@ -193,6 +193,8 @@ case "$step" in
     python3 ci/test-fetch-cvc5.py
     python3 ci/test-kani-bundle.py
     python3 ci/test-kani-toolchain.py
+    python3 ci/test-kani-install.py
+    python3 ci/test-kani-fetch.py
     python3 engine/verus/test-engine-oracle.py
     python3 ci/test-output-evidence.py
     python3 ci/test-local-target.py
@@ -213,6 +215,7 @@ case "$step" in
     python3 scripts/test-check-acceptance-refinements.py
     python3 scripts/test-install.py
     python3 scripts/test-github-action.py
+    python3 scripts/test-release-notes.py
     python3 scripts/test-stage-temporal-worker.py
     python3 scripts/test-bench-cargo-compare.py
     cargo fmt --all --check

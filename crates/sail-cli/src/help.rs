@@ -17,6 +17,10 @@ SAIL OPTIONS (before --):
     --output json                 print one sail-project-result document on stdout
                                   (complete per-target reports, reused targets included)
     --background                  submit a job and print its id (`sail jobs`)
+    --backend kani                experimental fresh hand-written Kani harness check\n\
+                                  requires --harness CRATE::PATH --unwind N\n\
+                                  [--project DIR] [--cargo-home DIR]\n\
+                                  [--timeout-ms 1..600000] [--output json]\n\
     --engine stock|interactive    engine (interactive needs `sail engine status`)
     --incremental                 deprecated, does nothing: managed verification is
                                   the default
@@ -62,15 +66,9 @@ USAGE:
     sail runtime recheck --previous FILE --file FILE|- [--cache DIR]
     sail runtime edit-session --file FILE|-
     sail runtime witness-recheck --dive FILE --module MODULE --config CFG (--trace WORD | --donor-index INDEX --property PROPERTY) --time-limit SECONDS
-    sail runtime symbolic-check --dive FILE --session DIR --module MODULE --config CFG
-                                --time-limit SECONDS [--type-invariant NAME]
-                                [--strategy symbolic|occupancy|finite-induction] [--max-orbits N]
 
 witness-recheck replays or repairs a saved temporal counterexample and falls back
 to ordinary checking on the current specification within the same deadline.
-
-symbolic-check asks the selected Dive to prove the current finite safety model
-with a saved predicate or search it. See docs/temporal-jobs.md for exit codes.
 
 edit-session takes ordered native check requests with one deadline. It emits
 ordered evidence from one isolated worker. Holds and refuted checks exit 0,
@@ -109,7 +107,12 @@ used by repair-check.
 
 USAGE:
     sail engine status [--output json]
+    sail engine install|status --backend kani [--output json]
     sail engine install [--from PATH] [--output json]
+
+Experimental Kani setup supports native Linux x86-64 and requires Python 3.11+.
+It authenticates the original tool payloads without executing their installers.
+Prepare dependencies with `cargo fetch --locked` before fresh offline checks.
 
 `install` downloads the exact pinned runtime over HTTPS using Python 3,
 checks its archive digest, provenance and every runtime file, and installs

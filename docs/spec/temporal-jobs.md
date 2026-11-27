@@ -1,7 +1,7 @@
 # Temporal jobs, version 1
 
-Status: specification for implementation review. The stable 0.3.0 distribution links the native
-D.I.V.E. 0.1.0 library. The development checkout uses the immutable source
+Status: specification for implementation review. Sail 0.3.1 links the native
+D.I.V.E. 0.2.0 library. The development checkout uses the immutable source
 pin described under Edit evidence below.
 It never executes a D.I.V.E. command, TLC, or Java and has no alternate backend.
 
@@ -164,7 +164,7 @@ checks its linked Dive source and verifies report version, current request
 digests, basis lineage, role and limits. A zero queue on a failed safety
 prefix cannot establish completion. Each proof is identified by its structure,
 basis, current search position and complete current evidence. Ordinary
-fallbacks retain the native schema-3 response. The batch does not populate
+fallbacks retain the native response in the linked Dive's report schema. The batch does not populate
 exact-replay receipts. An `exact-request` entry carries only the zero-based
 `basis_entry` of a prior `fresh` conclusive ordinary response. Both child and
 parent compare the full native requests. The parent validates the actual earlier
@@ -198,10 +198,17 @@ a new basis. A comparison miss follows the existing current-check path.
 The development `Cargo.toml` and `Cargo.lock` pin the Dive repository by full
 revision under ADR 0172. The edit protocol’s `backend_source` identifies those
 bytes and the installation manifest authenticates the worker executable.
-A stable Sail crate release must first depend on published Dive crates exposing
-these APIs and pass native conformance against that source.
+A stable Sail crate release depends instead on the published D.I.V.E. 0.2.0
+crates, which expose these APIs, and must pass native conformance against that
+source.
 
 ## External symbolic predicate sessions
+
+> **Unreleased, planned for D.I.V.E. 0.3.** This section is not part of Sail
+> 0.3.1. It needs a Dive installation that carries the symbolic proof worker,
+> which D.I.V.E. 0.2.0 does not ship; see
+> [symbolic rechecks](../design/symbolic-check.md) and
+> [#805](https://github.com/Chelis-Lang/sail/issues/805).
 
 The local `sail runtime symbolic-check` command owns a separate working
 directory and a named external Dive, selected by the caller. Proof rows have
@@ -209,7 +216,7 @@ no exploration statistics. A complete search and a validated violation use
 the symbolic checker's versioned result format. Issuing a temporal job to
 the shared runtime still selects its authenticated native worker. The external `--strategy occupancy` route checks the distinct `dive-occupancy-report-v1` schema and publishes to a separate candidate filename. `--max-orbits` applies only to that strategy. See the
 [decision](../decisions/0177-portable-symbolic-predicates.md) and
-[command and exits](../temporal-jobs.md#recheck-finite-safety-properties-with-a-portable-predicate).
+[command and exits](../design/symbolic-check.md#recheck-finite-safety-properties-with-a-portable-predicate).
 
 The trusted external installation can advertise
 `libexec/dive-symbolic/capabilities/named-predicate-repair-v1` beside its

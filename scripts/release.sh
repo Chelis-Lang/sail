@@ -24,6 +24,9 @@
 # public fork's releases). Every archive ships the runtime: Sail runs no other
 # Verus (ADR 0043).
 #
+# The draft's body is scripts/release-notes.py VERSION: the curated
+# docs/release-notes/X.Y.Z.md with links to the tagged source, then the assets.
+#
 # Never publishes: the release stays a draft until the owner publishes it.
 set -euo pipefail
 umask 022
@@ -176,6 +179,9 @@ release() {
     die "release v$version already exists"
   fi
   rm -rf dist && mkdir -p dist
+  # The release body is the curated docs/release-notes file; refuse before
+  # building when it is missing.
+  "$release_python" scripts/release-notes.py "$version" "$commit" >dist/release-notes.md
   # The binaries report the exact release version (`sail --version`), and
   # self_check requires it.
   export SAIL_VERSION="$version"
@@ -209,9 +215,7 @@ release() {
 
   gh release create "v$version" --repo "$repo" --draft --target "$commit" \
     --title "Sail $version" \
-    --notes "Draft release built by scripts/release.sh from $commit.
-
-Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/sail-z3, a source/native-byte-bound vstd proof bundle and Sail's Verus (built from Sail's Verus fork; also the repair engine) under engine/. Users need only a Rust toolchain besides. See docs/releasing.md." \
+    --notes-file dist/release-notes.md \
     dist/*.tar.gz dist/*.tar.gz.sha256
   gh release view "v$version" --repo "$repo" --json url,isDraft,assets \
     --jq '"\(.url) draft=\(.isDraft)", (.assets[] | "  \(.name) \(.size)")'
@@ -227,6 +231,6 @@ Assets: one tarball per platform with a .sha256 file. Each holds bin/sail, bin/s
 case "${1:-}" in
   stage) shift; stage "$@" ;;
   package) shift; package_stages "$@" ;;
-  ""|-h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  ""|-h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
   *) release "$1" ;;
 esac
