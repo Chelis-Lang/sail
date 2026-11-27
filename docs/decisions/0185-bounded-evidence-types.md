@@ -15,7 +15,7 @@ strategies report `success`, `bounded-safe`, `executions-too-short`,
 Neither goes through the evidence-tier field of ADR 0044, whose `bounded` value
 has no producer yet.
 
-The Kani phase (ADR 0180) and the D.I.V.E. symbolic pickup both need to say the
+The Kani phase ([ADR 0180](0180-kani-phase-scope.md)) and the D.I.V.E. symbolic pickup both need to say the
 same things about such a result: what was checked, under which bounds and
 assumptions, how much Sail observed, and whether it was replayed. Without one
 shape each backend would grow its own, and an inductive proof over a finite

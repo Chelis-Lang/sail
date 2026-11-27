@@ -61,7 +61,7 @@ tracker; their order is not decided. See the
 | Profiling and stability | Name costly quantifiers and unstable proofs from recorded sessions; no change to verdicts or plain `sail verify` bytes | [Health guide](proof-health.md) | Exact session-prefix, prefix-replay and quantifier-count groundwork merged. History, retention, the stability worker and `sail profile` are not merged |
 | Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #232, #558, #560, #288 | Named rows still slower; see the lanes below |
 | Reach | Simpler installation and an editor bridge | Installer, Binstall and LSP work on development branches | Not merged |
-| Kani backend (experimental) | Hand-written harnesses, `arrayvec` 0.7.8 pilot fixture, direct-Kani comparison | [#135](https://github.com/Chelis-Lang/sail/issues/135) | Pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)). Decoder #739 and input fixtures #743/#755 merged; no executor or CLI on `main` |
+| Kani backend (headline candidate) | Spike wave with numeric pass and drop rules, then one owner checkpoint; every claim measured against one `cargo kani -j N` with a warm target; results bounded, never verified | [#135](https://github.com/Chelis-Lang/sail/issues/135); [design](design/kani-phase.md), [ADR 0180](decisions/0180-kani-phase-scope.md) | Pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)). Decoder #739 and input fixtures #743/#755 merged; a qualified single-harness executor and CLI exist on a development branch only. No cache, batch run, corpus or spike record yet |
 | cvc5 and the SMT-LIB service | cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | #137 | Development backend merged (#741), unadvertised; Mac qualification open |
 
 ## Performance and acceptance lanes
@@ -81,21 +81,34 @@ resource costs and regressions. A component gain or moving work after return doe
 not alone establish a campaign or product speedup. Every useful edit improvement
 also benefits mutation campaigns.
 
-## Backends: Kani, then cvc5 (v0.4.0)
+## Backends: Kani, then solvers, Loom and Creusot
 
-Kani ([#135](https://github.com/Chelis-Lang/sail/issues/135)) ships as an
-experimental backend, by the owner's choice, now in v0.4.0 (ADR 0174). It runs
-harnesses the user writes by hand; `arrayvec` 0.7.8, a pinned ordinary Rust
-crate, is the pilot fixture. Qualification compares direct Kani with the Sail
-path, exercises concrete failures and retains exact tool identities, bounds,
-unsupported cases and costs. Results are bounded evidence, never reported as
-verified. Kani function contracts are not adopted as a front end.
+Kani ([#135](https://github.com/Chelis-Lang/sail/issues/135)) is the headline
+candidate for v0.4.0 ([ADR 0180](decisions/0180-kani-phase-scope.md), amending
+ADR 0174). The [design](design/kani-phase.md) gives the argument, the reuse
+layers and their expected gains, the correctness contract, the spike wave and
+the workstreams. Nothing beyond the decoder and tool pins is on `main`.
 
-cvc5 follows Kani. It lands only in the supported SMT runtime
-([ADR 0108](decisions/0108-supported-smt-runtime.md)), with solver identity in
-every key. Certificates get one measurement spike recorded on #138 and no
-product work. Creusot, Prusti, kernel provers, sampled-tier integration,
-cross-backend portfolios and Dafny remain future options under #146.
+| Step | Gate | State |
+|---|---|---|
+| Spike wave (baseline, cost split, GOTO determinism, history hit rate, admission, integrity, solver choice, std sample, Mac, reach) | One record each with its pass or drop result | Not started |
+| Owner checkpoint | Headline claim, fork, Mac and co-shipping pillars decided from the records | Pending the wave |
+| Executor and CLI on `main`, batch run, conformance and corpus | Direct-Kani pairs Same; default Verus unchanged | Development branch only |
+| Reuse: closure receipts, CBMC-boundary shim, signed CI tier | Each layer's ADR and conformance; measured against `cargo kani -j N` | Not started |
+
+Results are bounded evidence, never reported as verified. Existing contract,
+stubbing and loop-contract harnesses are run with named qualifiers; Sail
+generates no harnesses or contracts. A Kani fork for deterministic output is
+permitted when its spike shows the gain.
+
+After Kani, in order: SAT solver identity in the Kani key; Bitwuzla and cvc5
+through CBMC's SMT path, alongside cvc5 in the supported SMT runtime
+([ADR 0108](decisions/0108-supported-smt-runtime.md), #137);
+[Loom](design/loom-after-kani.md) as a spike-gated client of the Kani executor;
+[Creusot](design/creusot-after-kani.md) (#133) once cvc5 is a qualified second
+solver. Certificates keep one measurement spike recorded on #138 and no product
+work. Prusti, kernel provers, sampled-tier integration, cross-backend
+portfolios and Dafny remain future options under #146.
 
 ## Oyster: retired
 
