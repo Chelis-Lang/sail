@@ -1,7 +1,7 @@
 # Experimental bounded Kani checks
 
-This candidate is under qualification for v0.3.0. It is absent from published
-0.2.0 and is not yet selected on main. Check the installed help before use.
+This candidate is under qualification for v0.4.0. It is absent from every
+published release and is not yet selected. Check the installed help before use.
 The pinned original Kani backend currently supports native Linux x86-64.
 
 Prepare the original tools with Python 3.11 or newer available:

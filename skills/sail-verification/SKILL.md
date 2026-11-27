@@ -160,10 +160,10 @@ Use the returned word only after current-source replay succeeds.
 
 ## Experimental Kani candidate
 
-The v0.3.0 candidate adds `sail engine install --backend kani` and fresh
+The v0.4.0 candidate adds `sail engine install --backend kani` and fresh
 `sail verify --backend kani --harness CRATE::PATH --unwind N --output json`
-on native Linux x86-64. This frontend is under qualification, unselected on main
-and absent from published 0.2.0. Check installed help before use. Prepare project
+on native Linux x86-64. This frontend is under qualification, unselected
+and absent from every published release. Check installed help before use. Prepare project
 dependencies with `cargo fetch --locked`; checks run offline. Read the explicit
 `bounded_success`, `counterexample` or `bound_insufficient` outcome and bound.
 Never report ordinary verified or an unbounded proof. No source-currentness,

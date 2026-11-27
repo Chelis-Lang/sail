@@ -1780,7 +1780,7 @@ dependencies = [
  "sail-api",
  "serde",
  "serde_json",
- "sha2",
+ "sha2 0.10.9",
 ]
 
 [[package]]
@@ -1876,6 +1876,7 @@ dependencies = [
  "sail-cache",
  "sail-daemon",
  "sail-dive",
+ "sail-kani",
  "sail-key",
  "sail-mcp",
  "sail-portfolio",
