@@ -152,3 +152,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0178. Preserve native model values in temporal witnesses](0178-model-valued-temporal-witnesses.md)
 - [0179. Read finite check reports with Dive’s native value renderer](0179-temporal-report-value-projections.md)
 - [0180: Kani phase scope, measured before built](0180-kani-phase-scope.md) (accepted by owner; spike wave then one checkpoint; amends 0128 and 0174; a Kani fork for deterministic output is permitted under 0039's rules)
+- [0185: One bounded-evidence record for Kani and D.I.V.E. symbolic results](0185-bounded-evidence-types.md) (proposed; hidden `sail_api::bounded` groundwork, tier never above bounded, mapping tables and open points)

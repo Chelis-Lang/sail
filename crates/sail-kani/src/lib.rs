@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 mod decode;
+mod evidence;
 mod strict_json;
 
 use std::collections::BTreeMap;
