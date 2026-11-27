@@ -271,3 +271,4 @@ or reuse a receipt. A fresh owned target is required before retrying.
 |---|---|---|
 | `SAIL6301` | Experimental Kani export admission refuses incomplete, contradictory or unsupported native records | Preserve original output/export and exact tool versions; no bounded result or reusable proof is established |
 | `SAIL6302` | Original Kani Rust payload fixture admission refuses incomplete, modified or unsupported inputs | Preserve original archives and inventory; use the exact pinned immutable payload. This does not establish backend execution or proof authority |
+| `SAIL6303` | A bounded-evidence record's tier, strength, sufficiency, witness, integrity or provenance contradicts its outcome (internal groundwork, ADR 0185) | Report it as a Sail bug with the record; no bounded result is established |

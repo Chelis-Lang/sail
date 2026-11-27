@@ -43,6 +43,65 @@ fn bounded_success_is_distinct_from_verified_and_preserves_counts() -> Result<()
         serde_json::to_string(&result).map_err(|error| crate::refuse(error.to_string()))?;
     assert!(!serialized.contains("verified"));
     assert!(!serialized.contains("smt-verified"));
+    let fields: std::collections::BTreeMap<String, Value> =
+        serde_json::from_str(&serialized).map_err(|error| crate::refuse(error.to_string()))?;
+    assert_eq!(
+        fields.keys().map(String::as_str).collect::<Vec<_>>(),
+        [
+            "backend_configuration",
+            "check_counts",
+            "evidence_tier",
+            "failed_checks",
+            "harness",
+            "harness_metadata",
+            "outcome",
+            "property_details"
+        ]
+    );
+    assert_eq!(fields["outcome"], "bounded_success");
+    assert_eq!(fields["evidence_tier"], "bounded");
+    Ok(())
+}
+
+fn shared(result: &crate::Observation) -> Result<Value, crate::Error> {
+    let evidence = result.bounded_evidence()?;
+    assert_eq!(
+        evidence.tier.map(sail_api::assurance::EvidenceTier::from),
+        result.evidence_tier()
+    );
+    let text = serde_json::to_string(&evidence).map_err(|e| crate::refuse(e.to_string()))?;
+    assert!(!text.contains("verified"));
+    let back: sail_api::bounded::Evidence =
+        serde_json::from_str(&text).map_err(|e| crate::refuse(e.to_string()))?;
+    assert_eq!(back, evidence);
+    serde_json::from_str(&text).map_err(|e| crate::refuse(e.to_string()))
+}
+
+#[test]
+fn bounded_success_converts_to_the_shared_record() -> Result<(), crate::Error> {
+    let result = parsed(&export(), 0, b"VERIFICATION:- SUCCESSFUL\n")?;
+    assert_eq!(
+        shared(&result)?,
+        json!({
+            "subject": {"backend": "kani", "kind": "harness", "id": HARNESS},
+            "outcome": "success",
+            "tier": "bounded",
+            "strength": "bounded",
+            "bounds": [{"kind": "object_bits", "scope": "subject", "value": 16, "source": "reported"}],
+            "sufficiency": "not_established",
+            "assumptions": [],
+            "checks": {"Success": 1, "Unreachable": 1},
+            "witness": null,
+            "tools": [
+                {"name": "kani", "version": "0.68.0", "sha256": null},
+                {"name": "cbmc", "version": "6.11.0", "sha256": null},
+                {"name": "cadical", "version": null, "sha256": null}
+            ],
+            "integrity": "reconciled",
+            "provenance": "fresh",
+            "cost": {"wall_ms": null, "peak_memory_bytes": null}
+        })
+    );
     Ok(())
 }
 
@@ -58,6 +117,12 @@ fn native_refutation_and_insufficient_bound_are_separate() -> Result<(), crate::
     value["property_details"][0]["property_details"]["failed"] = json!(1);
     let result = parsed(&value, 1, b"VERIFICATION:- FAILED\n")?;
     assert_eq!(result.outcome(), Outcome::Counterexample);
+    let record = shared(&result)?;
+    assert_eq!(record["outcome"], "counterexample");
+    assert_eq!(record["tier"], "bounded");
+    assert_eq!(record["strength"], "bounded");
+    assert_eq!(record["sufficiency"], "not_established");
+    assert_eq!(record["checks"], json!({"Failure": 1, "Unreachable": 1}));
     assert_eq!(result.failed_checks().len(), 1);
     assert_eq!(result.failed_checks()[0]["description"], "owned check");
     value["verification_results"]["results"][0]["checks"][0]["category"] = json!("unwind");
@@ -69,6 +134,11 @@ fn native_refutation_and_insufficient_bound_are_separate() -> Result<(), crate::
     let result = parsed(&value, 1, b"VERIFICATION:- FAILED\n")?;
     assert_eq!(result.outcome(), Outcome::BoundInsufficient);
     assert_eq!(result.evidence_tier(), None);
+    let record = shared(&result)?;
+    assert_eq!(record["outcome"], "bound_insufficient");
+    assert_eq!(record["tier"], Value::Null);
+    assert_eq!(record["strength"], Value::Null);
+    assert_eq!(record["sufficiency"], "insufficient");
     Ok(())
 }
 
