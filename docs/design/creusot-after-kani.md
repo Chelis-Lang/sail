@@ -1,0 +1,15 @@
+# Creusot after Kani
+
+Status: placement record, 2026-11-27. No Creusot work is scheduled. Part of [the Kani phase](kani-phase.md); facts were checked against the Creusot repository on that date.
+
+Creusot is the unbounded-proof frontend for ordinary Rust: the slot between Kani (ordinary Rust, bounded) and Verus (unbounded, its own dialect). It belongs **after Kani and after cvc5 is a qualified multi-solver backend**, as the first deductive frontend added, tracked on [#133](https://github.com/Chelis-Lang/sail/issues/133).
+
+- **How it works:** `cargo creusot prove` emits Coma files and drives `why3find`, which starts one prover process per goal across five pinned provers (Alt-Ergo, Z3, cvc5, cvc4, Colibri2). Current release 0.15.0 (2026-11-20), nightly-pinned, releasing every one to two months.
+- **Why it waits:** `why3find` already has an exact local cache keyed by proof-task hash, committed `proof.json` replay certificates and parallel runs. Creusot's own warm CI proof job is about four minutes. A plain cache adds little.
+- **Where Sail's margin is:** prover limits are wall-clock, scaled by a per-machine calibration, and Creusot's CI fakes that calibration because timings are unstable. Sail can add a cross-machine signed cache, keys that bind prover binary and limit identity, measured flakiness in place of fudged calibration, and evidence tiers over `proof.json`. Timeouts are never cached.
+- **Integration shape:** drive `why3find` as a sub-orchestrator first (the owner's answer to open question 16), then an exact-bytes shim at the prover-process boundary only where measurement justifies it. One goal per process means no session-prefix problem.
+- **What it reuses:** multi-solver identity in keys and per-solver conformance (from cvc5), per-backend nightly payload pinning, the direct-tool conformance harness, corpus and bench lanes and the fleet (from Kani).
+- **What is new:** a portfolio verdict (any of five provers counts), tactic trees, an OCaml bundle, and an Alt-Ergo licence policy (verify-rust-std conditioned its approval on dropping Alt-Ergo).
+- **Link to Form B** ([requirements after Oyster](requirements-after-oyster.md))**:** Creusot's `#[requires]`/`#[ensures]` sit in the same positions on the same ordinary Rust as Kani's contracts, so Creusot is a more natural "prove" leg for a shared attribute than Verus, which needs its dialect. The expression languages still differ (mathematical `Int`, prophecies), so it is an expansion per backend.
+- **Triggers:** Kani and cvc5 shipped; and either Creusot approved in verify-rust-std, a named user with measured CI cost above a few minutes per change, or Form B reopened by spike S10 of the Kani phase.
+- **Deciding spike (two days, when triggered):** `cargo creusot prove` cold, warm and replay on creusot-std plus one crate, three rounds on two machine types, with a logging wrapper on prover command lines. Go if verdicts flip near the limit or the cache fails to carry across machines often enough to matter; otherwise it stays deferred with the record.
