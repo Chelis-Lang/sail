@@ -5,6 +5,14 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- Prepare explicit experimental Kani setup and fresh bounded CLI checks on native Linux x86-64 ([guide](docs/kani.md)). Unadvertised and uncached; Mac and release qualification remain pending.
+
+- Prepare an uncached bounded original-Kani-driver runner for native Linux development; source closure and reusable backend receipts remain pending.
+
+- Prepare a development Kani tool-payload authenticator.
+
+- Add hidden `sail_api::bounded` groundwork: one bounded-evidence record for Kani and D.I.V.E. symbolic results (ADR 0185). It is not supported API and no command, MCP tool or report uses it.
+
 - Recheck [source induction across edits](docs/temporal-jobs.md#recheck-source-induction-across-edits) with a fresh Dive proof worker and optional authenticated obligation reuse.
 
 - Discover saved temporal witnesses for an edited job and try typed finite-carrier mappings before ordinary checking.

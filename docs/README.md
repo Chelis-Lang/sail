@@ -51,6 +51,8 @@ them.
 
 Current ordering: [roadmap](ROADMAP.md),
 [planned 0.4.0 mutation feature](design/verus-mutation-release.md),
+[the Kani phase](design/kani-phase.md) with
+[ADR 0180](decisions/0180-kani-phase-scope.md),
 [ADR 0100](decisions/0100-mutation-first-roadmap.md),
 [ADR 0109](decisions/0109-oyster-retired-v030-scope.md),
 [ADR 0174](decisions/0174-v030-native-temporal-scope.md) and
@@ -89,6 +91,8 @@ records what Sail kept and why); other experimental surfaces remain maintained.
 - Validation records for each gate are in [validation/](validation/). Design
   notes are in [design/](design/), milestone reports in [reports/](reports/),
   and research in [survey/](survey/README.md).
+- [Original Kani driver qualification](validation/kani-original-driver.md):
+  bounded Linux development components and remaining backend gates.
 - Sail commit identities in these records name commits on `main` wherever an
   equivalent exists. Some records also cite commits from unmerged research,
   evidence and release-candidate branches. Those commits are not part of the
@@ -98,3 +102,7 @@ records what Sail kept and why); other experimental surfaces remain maintained.
   for upstream behaviour.
 
 - [Mutation and rlimit reproduction preservation](validation/mutation-evidence-repros.md): historical inputs and bounded retained-output runs.
+
+- [Experimental Kani candidate](kani.md): fresh bounded hand-written harness checks; native frontend qualification pending.
+
+- [Kani CLI candidate qualification](validation/kani-cli.md): actual frontend gates and remaining limits.

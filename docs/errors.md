@@ -270,4 +270,10 @@ or reuse a receipt. A fresh owned target is required before retrying.
 | Code | Meaning | What to do |
 |---|---|---|
 | `SAIL6301` | Experimental Kani export admission refuses incomplete, contradictory or unsupported native records | Preserve original output/export and exact tool versions; no bounded result or reusable proof is established |
+| `SAIL6303` | Development runtime tool-payload authentication refuses modified, unsupported, unreadable or excessive trees | Preserve the original immutable tool inputs; no execution, bounded result or reusable proof is established |
 | `SAIL6302` | Original Kani Rust payload fixture admission refuses incomplete, modified or unsupported inputs | Preserve original archives and inventory; use the exact pinned immutable payload. This does not establish backend execution or proof authority |
+| `SAIL6304` | Development original Kani driver attempt is invalid, cancelled, incomplete, excessive or unsupported | Preserve the partial raw captures; no bounded result, currentness or reusable proof follows |
+| `SAIL6305` | Development original Kani/Rust payload installation refuses an invalid, changed, incomplete or unsupported input or destination | Preserve original archives; use a new destination under a private immutable parent. No backend, currentness, proof or reuse authority is established |
+| `SAIL6307` | A bounded-evidence record's tier, strength, sufficiency, witness, integrity or provenance contradicts its outcome (internal groundwork, ADR 0185) | Report it as a Sail bug with the record; no bounded result is established |
+
+- `SAIL6306`: experimental Kani CLI/setup refusal; use explicit harness and unwind, a prepared Cargo home and the pinned native Linux x86-64 runtime.
