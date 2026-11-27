@@ -260,13 +260,11 @@ fn simulate_within(
                 keep_estimate(&probe, traces, limit)?
             }
             Sample::Fits(_) => traces,
-            Sample::Exceeds { fitted, deciding } => {
-                if deciding {
-                    0
-                } else {
-                    fitted
-                }
+            Sample::Exceeds { deciding: true, .. } => 0,
+            Sample::Exceeds { fitted: 0, .. } => {
+                return Err(oversized(limit, "not even the first trace fits"));
             }
+            Sample::Exceeds { fitted, .. } => fitted,
         }
     } else {
         traces
@@ -482,6 +480,17 @@ fn sample(
     let Some(mut used) = encoded_len(&response, limit) else {
         return Err(oversized(limit, "the native report alone exceeds it"));
     };
+    // D.I.V.E. drops kept sample traces until its report fits the bound; when
+    // it dropped them all, not one trace fits.
+    let dropped = response.native_report["statistics"]["traces_dropped"]
+        .as_u64()
+        .unwrap_or(0);
+    if entries.is_empty() && dropped > 0 {
+        return Ok(Sample::Exceeds {
+            fitted: 0,
+            deciding,
+        });
+    }
     for (index, trace) in entries.iter().enumerate() {
         let fitted = u64::try_from(index).unwrap_or(u64::MAX);
         // D.I.V.E. replaces a deciding trace that does not fit its report
@@ -581,6 +590,32 @@ mod tests {
         let input = counter().map_err(|e| e.1)?;
         let message = refusal(simulate_within(&input, 2, 4, 10))?;
         assert!(message.contains("native report alone exceeds"), "{message}");
+        Ok(())
+    }
+
+    #[test]
+    fn a_bound_below_one_trace_is_refused_rather_than_sampling_nothing() -> Result<(), String> {
+        let input = counter().map_err(|e| e.1)?;
+        let empty = fitted(sample(&input, 2, 4, 0, usize::MAX))?;
+        let report = Response::new(Outcome::Sampled, empty.native_report.clone());
+        let limit = encoded_len(&report, usize::MAX).ok_or("report size")? + 64;
+        let one = fitted(sample(&input, 2, 4, 1, usize::MAX))?;
+        let one = Response::new(Outcome::Sampled, one.native_report.clone());
+        assert!(encoded_len(&one, limit).is_none(), "one trace fits {limit}");
+        assert!(matches!(
+            sample(&input, 2, 4, 2, limit),
+            Ok(Sample::Exceeds {
+                fitted: 0,
+                deciding: false
+            })
+        ));
+        for traces in [2, 100] {
+            let message = refusal(simulate_within(&input, traces, 4, limit))?;
+            assert!(
+                message.contains("not even the first trace fits"),
+                "{message}"
+            );
+        }
         Ok(())
     }
 

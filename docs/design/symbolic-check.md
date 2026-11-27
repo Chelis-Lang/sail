@@ -1,6 +1,6 @@
 # Symbolic rechecks (unreleased)
 
-These commands are not part of the installed Sail 0.3.1 product and are not
+These commands are not part of the installed Sail 0.4.0 product and are not
 listed in `sail help runtime`. They need a Dive installation that carries the
 symbolic proof worker, which D.I.V.E. 0.2.0 does not ship. They become
 supported with D.I.V.E. 0.3 (Chelis-Lang/dive#1417, Sail
