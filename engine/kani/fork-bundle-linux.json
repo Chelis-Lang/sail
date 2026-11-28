@@ -3,9 +3,12 @@
   "version": "0.68.0",
   "cbmc_version": "6.11.0",
   "host": "x86_64-unknown-linux-gnu",
-  "url": "https://github.com/model-checking/kani/releases/download/kani-0.68.0/kani-0.68.0-x86_64-unknown-linux-gnu.tar.gz",
-  "archive_bytes": 140315343,
-  "archive_sha256": "32e2b484d73ede0bbf64a2cf0879c4259422497d8aec4ee67d448de9ae7843d3",
+  "fork_repo": "Chelis-Lang/kani",
+  "fork_commit": "ecf42b9876eae2e8978d3520b565c7e3d842fd67",
+  "release_tag": "sail-kani-0.68.0-1",
+  "url": "https://github.com/Chelis-Lang/kani/releases/download/sail-kani-0.68.0-1/kani-0.68.0-x86_64-unknown-linux-gnu.tar.gz",
+  "archive_bytes": 140334843,
+  "archive_sha256": "b0b2561a4dfa6deaba292bd1775f5c217371dbaed6cc1be942efd6f50c0b97cb",
   "rust_toolchain": "nightly-2026-08-21-x86_64-unknown-linux-gnu",
   "rustc_version": "rustc 1.100.0-nightly (8925ea358 2026-08-20)",
   "files": {
@@ -215,8 +218,8 @@
       "executable": true
     },
     "bin/kani-compiler": {
-      "bytes": 11415008,
-      "sha256": "d627c15f3e46f2ffd95a08a2e16e0c1d7dbbe1cb7ee9c05d69a8bd14a4336b71",
+      "bytes": 11447496,
+      "sha256": "61ea50c42ab350d67f8fc713d786aeb3e5a8d0aaf60779c6697049b8ad702a4c",
       "executable": true
     },
     "bin/goto-cc": {
@@ -236,12 +239,12 @@
     },
     "bin/kissat": {
       "bytes": 529600,
-      "sha256": "53e430eed32027184b787e1450672e6ac40b3b806c13e1c3ea272232098fecab",
+      "sha256": "363373e57b84f2d7147dfa38fd6815f538700fbfab870ad12ac9769273bc70cb",
       "executable": true
     },
     "bin/kani-driver": {
-      "bytes": 8485320,
-      "sha256": "a0f84272664e45a6b9f1ad7671c2e20aa4523676fb57f5310c18b0a359278a6d",
+      "bytes": 8484328,
+      "sha256": "b08ff1ae262479fd96520fdbc72396888396de3481907d26411e137a63ce12d3",
       "executable": true
     },
     "bin/cbmc": {

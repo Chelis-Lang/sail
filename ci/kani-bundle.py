@@ -36,8 +36,26 @@ def object_pairs(pairs):
     return result
 
 
+STOCK_URL = "https://github.com/model-checking/kani/releases/download/kani-0.68.0/kani-0.68.0-x86_64-unknown-linux-gnu.tar.gz"
+FORK_REPO = "Chelis-Lang/kani"
+FIELDS = {"schema_version", "version", "cbmc_version", "host", "url", "archive_bytes", "archive_sha256", "rust_toolchain", "rustc_version", "files", "empty_directories"}
+FORK_FIELDS = {"fork_repo", "fork_commit", "release_tag"}
+
+
+def fork_identity(pin):
+    """A fork pin names its release on Sail's fork; its URL follows from that name."""
+    tag, commit = pin.get("release_tag"), pin.get("fork_commit")
+    serial = tag[len("sail-kani-0.68.0-"):] if isinstance(tag, str) and tag.startswith("sail-kani-0.68.0-") else ""
+    return (
+        pin.get("fork_repo") == FORK_REPO
+        and serial.isascii() and serial.isdigit() and not serial.startswith("0")
+        and isinstance(commit, str) and len(commit) == 40 and all(c in "0123456789abcdef" for c in commit)
+        and pin.get("url") == f"https://github.com/{FORK_REPO}/releases/download/{tag}/kani-0.68.0-x86_64-unknown-linux-gnu.tar.gz"
+    )
+
+
 def load_pin(path):
-    """Read the contributor pin and reject unsupported producer metadata."""
+    """Read the stock (oracle) or fork (runtime) pin; reject other producer metadata."""
     if path.stat().st_size > 128 * 1024:
         raise ValueError("excessive Kani bundle pin")
     pin = json.loads(path.read_bytes(), object_pairs_hook=object_pairs)
@@ -51,10 +69,15 @@ def load_pin(path):
         or pin.get("host") != "x86_64-unknown-linux-gnu"
         or pin.get("rust_toolchain") != "nightly-2026-08-21-x86_64-unknown-linux-gnu"
         or pin.get("rustc_version") != "rustc 1.100.0-nightly (8925ea358 2026-08-20)"
-        or pin.get("url") != "https://github.com/model-checking/kani/releases/download/kani-0.68.0/kani-0.68.0-x86_64-unknown-linux-gnu.tar.gz"
     ):
         raise ValueError("unsupported Kani release bundle identity")
-    if set(pin) != {"schema_version", "version", "cbmc_version", "host", "url", "archive_bytes", "archive_sha256", "rust_toolchain", "rustc_version", "files", "empty_directories"}:
+    if set(pin) == FIELDS:
+        if pin.get("url") != STOCK_URL:
+            raise ValueError("unsupported Kani release bundle identity")
+    elif set(pin) == FIELDS | FORK_FIELDS:
+        if not fork_identity(pin):
+            raise ValueError("unsupported Kani fork bundle identity")
+    else:
         raise ValueError("unsupported bundle pin fields")
     files = pin.get("files")
     if not isinstance(files, dict) or not 0 < len(files) <= MAX_FILES:
@@ -205,7 +228,7 @@ def unpack(archive, pin, destination):
 def main():
     """Contributor-only fixture installer; Rust setup/execution stay separate."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pin", type=Path, default=Path(__file__).resolve().parent.parent / "engine/kani/bundle-linux.json")
+    parser.add_argument("--pin", type=Path, default=Path(__file__).resolve().parent.parent / "engine/kani/fork-bundle-linux.json")
     parser.add_argument("--archive", type=Path)
     parser.add_argument("--destination", type=Path, required=True)
     args = parser.parse_args()

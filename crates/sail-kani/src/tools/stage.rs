@@ -18,13 +18,13 @@ pub struct Stage {
 
 fn expected() -> Result<BTreeMap<String, Payload>, Error> {
     let pin: serde_json::Value = serde_json::from_str(include_str!(
-        "../../resources/engine/kani/bundle-linux.json"
+        "../../resources/engine/kani/fork-bundle-linux.json"
     ))
     .map_err(refuse)?;
     serde_json::from_value(
         pin.get("files")
             .cloned()
-            .ok_or_else(|| refuse("missing embedded original bundle inventory"))?,
+            .ok_or_else(|| refuse("missing embedded fork bundle inventory"))?,
     )
     .map_err(refuse)
 }
@@ -71,7 +71,7 @@ impl Tools {
                 .map_err(refuse)?;
             copy(&self.bundle.join(&name), &output, &record)?;
         }
-        // This is the original release's declared empty directory.
+        // This is the pinned bundle's declared empty directory.
         std::fs::create_dir_all(root.join("scripts")).map_err(refuse)?;
         std::os::unix::fs::symlink(&self.rust, root.join("toolchain")).map_err(refuse)?;
         self.inspect_stage(&root)

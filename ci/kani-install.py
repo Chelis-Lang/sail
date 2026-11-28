@@ -113,7 +113,9 @@ def main():
     """Prepare supplied pinned archives; downloading and product setup stay separate."""
     parser = argparse.ArgumentParser(description=__doc__)
     base = Path(__file__).resolve().parents[1] / "engine/kani"
-    parser.add_argument("--bundle-pin", type=Path, default=base / "bundle-linux.json")
+    # The fork bundle is Sail's runtime; bundle-linux.json is stock Kani, the
+    # conformance oracle (ADR 0187).
+    parser.add_argument("--bundle-pin", type=Path, default=base / "fork-bundle-linux.json")
     parser.add_argument("--rust-pin", type=Path, default=base / "toolchain-linux.json")
     parser.add_argument("--bundle-archive", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)

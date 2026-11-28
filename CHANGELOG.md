@@ -5,6 +5,8 @@ semantic versioning once the API is published.
 
 ## Unreleased
 
+- The experimental Kani runtime is now the pinned bundle of Sail's Kani fork (`Chelis-Lang/kani` release `sail-kani-0.68.0-1`), whose CBMC input is byte-identical across rebuilds; stock Kani 0.68.0 is the conformance oracle ([ADR 0187](docs/decisions/0187-kani-deterministic-output-fork.md)). Run `sail engine install --backend kani` again to install it.
+
 - Prepare explicit experimental Kani setup and fresh bounded CLI checks on native Linux x86-64 ([guide](docs/kani.md)). Unadvertised and uncached; Mac and release qualification remain pending.
 
 - Prepare an uncached bounded original-Kani-driver runner for native Linux development; source closure and reusable backend receipts remain pending.
