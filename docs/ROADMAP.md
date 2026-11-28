@@ -35,11 +35,11 @@ recheck and replay work on `main`. It changes no Verus verification behavior.
 
 | Item | Gate | Tracker | State |
 |---|---|---|---|
-| Native temporal checking on D.I.V.E. 0.2.0 | `dive-api`, `dive-ir`, `dive-value` and `dive-trace` resolve from crates.io at exactly 0.2.0; no Git source or `[patch]`; native conformance at the published version | [#807](https://github.com/Chelis-Lang/sail/pull/807) | Pinned to the D.I.V.E. 0.2.0 release candidate `5bb88063` by Git revision; S7 against standard TLC is running. Waits for D.I.V.E. 0.2.0 on crates.io |
-| Large simulations within the response bound | A job whose evidence exceeds 16 MiB keeps and replays the traces that fit; `SAIL4216` only when none fits | [#767](https://github.com/Chelis-Lang/sail/issues/767) | Implemented on the release branch |
-| `witness-recheck` against an installed Dive | Refuses any Dive release other than the linked one with `SAIL6103` | [Errors](errors.md) | Implemented on the release branch |
+| Native temporal checking on D.I.V.E. 0.2.0 | `dive-api`, `dive-ir`, `dive-value` and `dive-trace` resolve from crates.io at exactly 0.2.0; no Git source or `[patch]`; native conformance at the published version | [#807](https://github.com/Chelis-Lang/sail/pull/807), [#822](https://github.com/Chelis-Lang/sail/pull/822) | Implemented: resolved from crates.io at exactly 0.2.0 (#822); S7 against standard TLC passes on the candidate ([record](validation/sail-dive-0.2-vs-tlc.md)) |
+| Large simulations within the response bound | A job whose evidence exceeds 16 MiB keeps and replays the traces that fit; `SAIL4216` only when none fits | [#767](https://github.com/Chelis-Lang/sail/issues/767) | Implemented |
+| `witness-recheck` against an installed Dive | Refuses any Dive release other than the linked one with `SAIL6103` | [Errors](errors.md) | Implemented |
 | Symbolic rechecks | Not in v0.3.1; need D.I.V.E. 0.3's symbolic worker | [#805](https://github.com/Chelis-Lang/sail/issues/805) | Unlisted in `sail help runtime`; planned with D.I.V.E. 0.3 |
-| Publication | Owner approves the exact final candidate | [Releasing](releasing.md), [v0.3.1 milestone](https://github.com/Chelis-Lang/sail/milestone/16) | No candidate |
+| Publication | Owner approves the exact final candidate | [Releasing](releasing.md), [v0.3.1 milestone](https://github.com/Chelis-Lang/sail/milestone/16) | Version set to 0.3.1; candidate not yet built |
 
 Unfinished groundwork on `main` (the mutation campaign model, profiling
 library modules, the Kani decoder and the cvc5 development backend) ships
@@ -137,7 +137,7 @@ links D.I.V.E. 0.1.0; v0.3.1 links D.I.V.E. 0.2.0.
 | Gate | State |
 |---|---|
 | `sail-dive` in the main workspace; `sail` links the backend; worker is a `sail-solve` binary | Implemented (ADR 0172) |
-| D.I.V.E. 0.2.0 from crates.io | `dive-api`, `dive-ir`, `dive-value` and `dive-trace` must resolve from crates.io at exactly 0.2.0 with no Git source or `[patch]`; the release branch pins the 0.2.0 candidate by Git revision until it is published |
+| D.I.V.E. 0.2.0 from crates.io | Implemented: `dive-api`, `dive-ir`, `dive-value` and `dive-trace` resolve from crates.io at exactly 0.2.0 with no Git source or `[patch]` (#822) |
 | Genuine temporal properties with an exact store and state/depth limits | Hold, refute with validated counterexamples, or stop with no claim at a limit |
 | Native conformance at the published version | Required before merge ([record](validation/native-temporal-dive-0.1.md)) |
 

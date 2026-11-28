@@ -20,8 +20,8 @@ located the error. That test installs
 the current commit's Sail, not a published release. Sail 0.2.0 does not have
 `sail report`, and the action stops with an error when it finds a Sail
 without it. The first release the action works with is 0.3.0. Its default `sail-version` is the
-release it ships with, so `uses: Chelis-Lang/sail/action@v0.3.0` installs
-Sail 0.3.0.
+release it ships with, so `uses: Chelis-Lang/sail/action@v0.3.1` installs
+Sail 0.3.1.
 
 ## Usage
 
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0   # per-file commit times; see restore-mtime
-      - uses: Chelis-Lang/sail/action@v0.3.0
+      - uses: Chelis-Lang/sail/action@v0.3.1
         with:
           args: --lib
 ```
@@ -208,7 +208,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: Chelis-Lang/sail/action@v0.3.0
+      - uses: Chelis-Lang/sail/action@v0.3.1
         with:
           baseline-branch: main
 ```
@@ -229,7 +229,7 @@ permissions:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: Chelis-Lang/sail/action@v0.3.0
+      - uses: Chelis-Lang/sail/action@v0.3.1
         with:
           upload-sarif: true
 ```

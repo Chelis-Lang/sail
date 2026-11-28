@@ -80,7 +80,7 @@ releases that include `sail report` (0.3.0 and later):
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: Chelis-Lang/sail/action@v0.3.0
+      - uses: Chelis-Lang/sail/action@v0.3.1
 ```
 
 Without the action, for example with Sail 0.2.0, this workflow persists the solver replies for every project, and the Cargo

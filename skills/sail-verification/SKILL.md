@@ -43,7 +43,7 @@ In GitHub Actions, use the Sail action after a checkout with
 `fetch-depth: 0`:
 
 ```yaml
-- uses: Chelis-Lang/sail/action@v0.3.0
+- uses: Chelis-Lang/sail/action@v0.3.1
   with:
     args: --lib
 ```
@@ -60,7 +60,8 @@ keeping `sail verify`'s exit code for the job.
 
 ## Repeat a native temporal check
 
-Use `sail runtime capabilities` to confirm that the installation includes its
+Replay, `recheck` and `edit-session` are available in Sail 0.3.1 and newer,
+which links D.I.V.E. 0.2.0. Use `sail runtime capabilities` to confirm that the installation includes its
 native worker. Submit the same complete model, configuration and limits with
 `sail runtime execute --file job.json`. A completed exhaustive check or
 validated refutation can replay across processes, including after undo.

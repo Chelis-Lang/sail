@@ -13,31 +13,7 @@ semantic versioning once the API is published.
 
 - Add hidden `sail_api::bounded` groundwork: one bounded-evidence record for Kani and D.I.V.E. symbolic results (ADR 0185). It is not supported API and no command, MCP tool or report uses it.
 
-- Native temporal jobs link D.I.V.E. 0.2.0 from crates.io and accept its report schema 4 (#786).
-- A temporal simulation with `CHECK_DEADLOCK FALSE` whose traces stop before the depth now returns them as independently validated samples with D.I.V.E.'s `terminal` ending instead of failing with `SAIL4203`. Saved witnesses with `bad-prefix` or `invariant-error` endings also round-trip through ITF with their exact trace version.
-- `sail runtime witness-recheck` checks `dive --version` first and refuses a Dive release other than the one Sail links with `SAIL6103` and an install command.
 - `sail runtime symbolic-check`, including `--strategy source-obligations`, is no longer listed in `sail help runtime` or the user guide: D.I.V.E. 0.2.0 does not ship the symbolic worker. It follows with D.I.V.E. 0.3 (#805).
-
-- Discover saved temporal witnesses for an edited job and try typed finite-carrier mappings before ordinary checking.
-
-- [Recheck a saved temporal counterexample](docs/temporal-jobs.md#recheck-a-saved-temporal-counterexample) against the edited source with an external Dive worker and ordinary checking as fallback.
-
-- Reuse earlier complete ordinary results for identical checks and undo in an installed temporal edit session.
-
-- Native [temporal jobs](docs/temporal-jobs.md) can check pure TLC function updates, finite permutations and pinned finite-set utilities used by SlateDB.
-
-- `sail runtime recheck` can retain a completed native proof across a project edit when both executions resolve the same module bytes and selected configuration. The result lists the loaded modules.
-- Native temporal witnesses can carry TLA+ model values through checks, simulations and independent trace validation using a versioned lossless state-value tag. Older encodings and request hashes remain readable.
-
-- A temporal simulation job whose evidence exceeds the 16 MiB response bound now runs: D.I.V.E. samples every trace, and the response keeps and independently replays the lowest-numbered traces that fit, counted in `statistics.traces_kept`. A 1,000-trace, depth-100 bosco job samples all 1,000 traces and returns 80 replayed ones in a 15 MB response, where Sail 0.3.0 failed with `SAIL4210`. `SAIL4216` now means not one trace fits (#767).
-
-- After a complete native check of several temporal properties, `sail runtime recheck` and `edit-session` can certify the first property alone, including on aggregate-state models such as InternalMemory.
-
-- `sail runtime edit-session` checks successive versions with one authenticated native worker. Edited safety invariants can reuse ordered states. Edited temporal properties can reuse a complete labelled graph. `sail runtime recheck` can also prove that a persisted complete safety result covers the current invariant subset.
-
-- Recheck a named invariant counterexample after an equivalent CFG edit with `sail runtime recheck`. The report identifies the previous receipt and includes independent validation against the current job.
-
-- Replay completed native temporal checks and validated refutations after identical reruns and undo. Results identify the matched key. Supporting installations can prepare the first check in the background and transport signed receipts between CI jobs (#774).
 
 ### Planned with D.I.V.E. 0.3 (#805)
 
@@ -52,6 +28,30 @@ until it ships with D.I.V.E. 0.3.
 - `sail runtime symbolic-check --strategy occupancy` can recheck [portable population predicates](docs/design/symbolic-check.md#recheck-finite-safety-properties-with-a-portable-predicate) across source edits and preserve exact counts on a fresh search.
 - `sail runtime symbolic-check --strategy finite-induction` can carry a complete bounded safety certificate into a fresh session.
 - Recheck finite safety models across processes with `sail runtime symbolic-check` and a Dive installation supporting symbolic predicate transfer. Each receiving process proves the candidate against its current model.
+
+## 0.3.1
+
+Sail 0.3.1 moves native temporal checking to D.I.V.E. 0.2.0 from crates.io
+and adds reuse across edits for temporal jobs: replay of completed checks,
+rechecks, edit sessions and rechecks of saved counterexamples. Large
+simulations return the traces that fit the response bound instead of failing.
+Default `sail verify` output, verdicts and diagnostics are unchanged. See the
+[release notes](docs/release-notes/0.3.1.md).
+
+- Native temporal jobs link D.I.V.E. 0.2.0 from crates.io and accept its report schema 4 (#786).
+- A temporal simulation with `CHECK_DEADLOCK FALSE` whose traces stop before the depth now returns them as independently validated samples with D.I.V.E.'s `terminal` ending instead of failing with `SAIL4203`. Saved witnesses with `bad-prefix` or `invariant-error` endings also round-trip through ITF with their exact trace version.
+- Native temporal witnesses can carry TLA+ model values through checks, simulations and independent trace validation using a versioned lossless state-value tag. Older encodings and request hashes remain readable.
+- Native [temporal jobs](docs/temporal-jobs.md) can check pure TLC function updates, finite permutations and pinned finite-set utilities used by SlateDB.
+- A temporal simulation job whose evidence exceeds the 16 MiB response bound now runs: D.I.V.E. samples every trace, and the response keeps and independently replays the lowest-numbered traces that fit, counted in `statistics.traces_kept`. A 1,000-trace, depth-100 bosco job samples all 1,000 traces and returns 80 replayed ones in a 15 MB response, where Sail 0.3.0 failed with `SAIL4210`. `SAIL4216` now means not one trace fits (#767).
+- Replay completed native temporal checks and validated refutations after identical reruns and undo. Results identify the matched key. Supporting installations can prepare the first check in the background and transport signed receipts between CI jobs (#774).
+- `sail runtime recheck` can retain a completed native proof across a project edit when both executions resolve the same module bytes and selected configuration. The result lists the loaded modules.
+- Recheck a named invariant counterexample after an equivalent CFG edit with `sail runtime recheck`. The report identifies the previous receipt and includes independent validation against the current job.
+- After a complete native check of several temporal properties, `sail runtime recheck` and `edit-session` can certify the first property alone, including on aggregate-state models such as InternalMemory.
+- `sail runtime edit-session` checks successive versions with one authenticated native worker. Edited safety invariants can reuse ordered states. Edited temporal properties can reuse a complete labelled graph. `sail runtime recheck` can also prove that a persisted complete safety result covers the current invariant subset.
+- Reuse earlier complete ordinary results for identical checks and undo in an installed temporal edit session.
+- [Recheck a saved temporal counterexample](docs/temporal-jobs.md#recheck-a-saved-temporal-counterexample) against the edited source with an external Dive worker and ordinary checking as fallback.
+- Discover saved temporal witnesses for an edited job and try typed finite-carrier mappings before ordinary checking.
+- `sail runtime witness-recheck` checks `dive --version` first and refuses a Dive release other than the one Sail links with `SAIL6103` and an install command.
 
 ## 0.3.0 (2026-11-19)
 

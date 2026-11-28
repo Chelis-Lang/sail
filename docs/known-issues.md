@@ -1,6 +1,6 @@
 # Known issues and limits
 
-Open Sail defects and current product limits in published 0.3.0 and on
+Open Sail defects and current product limits in Sail 0.3.1 and on
 main. Fixed defects are
 removed from this page; their issues and the [changelog](../CHANGELOG.md)
 keep the history. The [roadmap](ROADMAP.md) tracks release work.
@@ -208,6 +208,11 @@ Current numbers are in [performance](performance.md).
   The cause of the byte difference is not investigated.
 - **Default and engine runs each verify vstd once in their own target.**
   Whether they can share a target is not measured.
+- **The first temporal job after installing a worker is slower than in
+  0.3.0.** It verifies and copies the worker in 238 ms against 0.3.0's
+  207 ms; later jobs take about 12 ms. On MCLamportMutex the worker takes
+  1.05 times the D.I.V.E. CLI's time, against 1.02 in 0.3.0
+  ([#814](https://github.com/Chelis-Lang/sail/issues/814)).
 
 ## Product limits
 
