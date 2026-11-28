@@ -6,10 +6,10 @@ This component is part of [Sail](../../README.md). For the command-line tool,
 install the `sail-solve` package:
 
 ```sh
-cargo +1.99.1 install sail-solve --version 0.3.0 --locked
+cargo +1.99.1 install sail-solve --version 0.3.1 --locked
 ```
 
 See the [installation guide](../../docs/install.md) for runtime and toolchain setup.
 
-[Shared cache guide](../../docs/http-shared-cache.md) · [Rust API reference](https://docs.rs/sail-cache/0.3.0/)
+[Shared cache guide](../../docs/http-shared-cache.md) · [Rust API reference](https://docs.rs/sail-cache/0.3.1/)
 

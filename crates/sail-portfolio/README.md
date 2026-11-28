@@ -13,12 +13,12 @@ This component is part of [Sail](../../README.md). For the command-line tool,
 install the `sail-solve` package:
 
 ```sh
-cargo +1.99.1 install sail-solve --version 0.3.0 --locked
+cargo +1.99.1 install sail-solve --version 0.3.1 --locked
 ```
 
 See the [installation guide](../../docs/install.md) for runtime and toolchain setup.
 
-[Documentation index](../../docs/README.md) · [Rust API reference](https://docs.rs/sail-portfolio/0.3.0/)
+[Documentation index](../../docs/README.md) · [Rust API reference](https://docs.rs/sail-portfolio/0.3.1/)
 
 
 The `profile` module prepares an exact borrowed session prefix through one

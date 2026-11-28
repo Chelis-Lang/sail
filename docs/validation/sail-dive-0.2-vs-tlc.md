@@ -23,8 +23,7 @@ The 0.3.0 measurement is [sail-dive-vs-tlc.md](sail-dive-vs-tlc.md).
 - **Typical case: 11.5x on a small liveness model, 5.5x at 14,365 states and
   1.3x at 724,274 states.** These are the `sail runtime execute` figures for
   MCLiveInternalMemory, MCDisruptor_MPMC_liveliness and MCLamportMutex. For
-  large models, see the composed figure under [large models](#large-models),
-  which is pending D1.
+  large models, see the composed figure under [large models](#large-models).
 - **Repeated identical checks replay.** Sail 0.3.1 replays a completed check
   from its receipt store when the identical job has already completed in the
   same cache (#777). A warm MCP call that repeats a check returns in 9.6 to
@@ -169,9 +168,19 @@ exact store) over the dive CLI with Sail's settings, on this host:
 | ElevatorLivenessMedium | 124 ms | 138 ms | 1.12 |
 | MCLamportMutex | 9,143 ms | 9,559 ms | 1.05 |
 
-**D1's ratios for `5bb88063` were not yet recorded when S7 ran, so the
-composed figure is pending.** It is D1's ratio for each model multiplied by
-the factor above. On this host, the direct MCLamportMutex comparison is
+The composed Sail/TLC time ratio is D1's Core/TLC ratio for each model,
+from D.I.V.E.'s `docs/developer/release-performance-results.md`, multiplied
+by the factor above:
+
+| Model | D1 Core/TLC | Sail/TLC |
+|---|---:|---:|
+| SlushSmall | 0.403 | 0.431 |
+| MCDisruptor_MPMC | 0.226 | 0.244 |
+| CoffeeCan1000Beans | 0.278 | 0.307 |
+| ElevatorLivenessMedium | 0.015 | 0.016 |
+| MCLamportMutex | 0.615 | 0.645 |
+
+On this host, the direct MCLamportMutex comparison is
 1.3x faster than TLC through every Sail path. In 0.3.0 the worker was within
 2% of the CLI on MCLamportMutex; it is now 4% to 5% slower (#814).
 

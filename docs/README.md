@@ -30,7 +30,7 @@ proof receipts, and replay.
 | Trust model and differences from plain Verus | [Trust](trust.md), [divergences](divergences.md) |
 | Limitations and open problems | [Known issues](known-issues.md) |
 | Error codes | [Errors](errors.md) |
-| What changed in a release | [0.3.1 release notes (draft)](release-notes/0.3.1.md), [0.3.0 release notes](release-notes/0.3.0.md), [0.2.0 release notes](release-notes/0.2.0.md), [0.1.0 release notes](release-notes/0.1.0.md), [changelog](../CHANGELOG.md) |
+| What changed in a release | [0.3.1 release notes](release-notes/0.3.1.md), [0.3.0 release notes](release-notes/0.3.0.md), [0.2.0 release notes](release-notes/0.2.0.md), [0.1.0 release notes](release-notes/0.1.0.md), [changelog](../CHANGELOG.md) |
 
 Standalone-file development: [verify, watch and MCP](standalone-verification.md)
 (available since 0.2.0; absent from 0.1.0).

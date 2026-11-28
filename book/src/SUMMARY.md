@@ -44,7 +44,7 @@
 
 # Release notes
 
-- [Sail 0.3.1 (draft)](release-0.3.1.md)
+- [Sail 0.3.1](release-0.3.1.md)
 - [Sail 0.3.0](release-0.3.0.md)
 - [Sail 0.2.0](release-0.2.0.md)
 - [Sail 0.1.0](release-0.1.0.md)
