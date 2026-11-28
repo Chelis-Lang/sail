@@ -5,6 +5,7 @@
 #   ci/local.sh solver
 #   ci/local.sh e2e
 #   ci/local.sh conformance fast pr
+#   ci/local.sh conformance kani fast
 #
 # The image is linux/amd64 (the reference platform; Verus publishes no Linux
 # arm64 build), so on Apple silicon it runs under emulation: correct, but
@@ -30,7 +31,7 @@ if ! docker image inspect "$image" >/dev/null 2>&1; then
     --target "$sail_image_target" -t "$image" --load .
 fi
 sail_runtime_env=()
-for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_RELEASE_OUT SAIL_VERSION SAIL_BUILD_JOBS SAIL_BENCH_LABEL SAIL_E2E_OUTPUT_OUT SAIL_CARGO_RANGE_TOOLCHAINS SAIL_CARGO_RANGE_DIVERGENT SAIL_CARGO_RANGE_CANDIDATES SAIL_CARGO_RANGE_E2E SAIL_CARGO_RANGE_E2E_UNQUALIFIED SAIL_MANAGED_SOURCE_DIGEST_MEMO SAIL_MANAGED_TARGET_DIGEST_MEMO SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO; do
+for sail_env_name in CI SAIL_UNIT_TIMEOUT SAIL_VERUS_RELEASE SAIL_CONFORMANCE_OUT SAIL_KANI_ROUNDS SAIL_KANI_JOBS SAIL_RELEASE_OUT SAIL_VERSION SAIL_BUILD_JOBS SAIL_BENCH_LABEL SAIL_E2E_OUTPUT_OUT SAIL_CARGO_RANGE_TOOLCHAINS SAIL_CARGO_RANGE_DIVERGENT SAIL_CARGO_RANGE_CANDIDATES SAIL_CARGO_RANGE_E2E SAIL_CARGO_RANGE_E2E_UNQUALIFIED SAIL_MANAGED_SOURCE_DIGEST_MEMO SAIL_MANAGED_TARGET_DIGEST_MEMO SAIL_MANAGED_FILE_TARGET_DIGEST_MEMO; do
   if sail_env_value="$(printenv "$sail_env_name")"; then
     sail_runtime_env+=(-e "$sail_env_name=$sail_env_value")
   fi

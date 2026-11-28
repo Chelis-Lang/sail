@@ -33,6 +33,7 @@ use std::collections::BTreeMap;
 pub mod diagnostics;
 pub mod engine;
 pub mod invocations;
+pub mod kani;
 pub mod rvt;
 
 use sail_verus::run::RunRecord;

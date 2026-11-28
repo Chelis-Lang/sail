@@ -44,6 +44,11 @@
 #                        scripts (`scripts`; one project with `managed` when
 #                        all phases run); repair CLI/MCP against a
 #                        validated prebuilt engine
+#   conformance kani TIER [ARGS...]
+#                        local-only: Sail's Kani backend against the original
+#                        Kani driver run twice per harness on
+#                        corpus/kani-corpus.toml, SAIL_KANI_ROUNDS rounds
+#                        (default 3), then the fault arm (ADR 0183)
 #   conformance TIER [pr | SELECTION...]
 #                        plain stock Verus vs Sail's Verus (the fork) run as
 #                        `sail verify` runs it (sail-z3 and the managed
@@ -520,6 +525,23 @@ RS
   conformance)
     tier="${1:-fast}"
     shift || true
+    if [ "$tier" = kani ]; then
+      # Kani conformance (ADR 0183), local-only: Sail's Kani backend against
+      # the original driver run twice per harness, SAIL_KANI_ROUNDS rounds
+      # (default 3), then the fault arm. Native Linux x86-64.
+      local_only conformance kani "$@"
+      kani_tier="${1:-fast}"
+      shift || true
+      release_build -p sail-conformance --bins
+      ./target/release/sail engine status --backend kani >/dev/null 2>&1 ||
+        ./target/release/sail engine install --backend kani
+      out="${SAIL_CONFORMANCE_OUT:-conformance-out}/kani-$kani_tier"
+      ./target/release/sail-conformance kani run --tier "$kani_tier" \
+        --rounds "${SAIL_KANI_ROUNDS:-3}" --jobs "${SAIL_KANI_JOBS:-8}" \
+        --sail ./target/release/sail --out "$out/run" "$@"
+      ./target/release/sail-conformance kani fault --sail ./target/release/sail --out "$out/fault"
+      exit 0
+    fi
     [ "$tier" = fast ] && [ "${1:-}" = pr ] || local_only conformance "$tier" "$@"
     release_build -p sail-conformance --bins
     select=(--tier "$tier" "$@")

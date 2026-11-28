@@ -10,6 +10,7 @@
 //! sail-bench mutants oracle|run|report ...   (seeded mutation suite; ADR 0063)
 //! sail-bench report [--out docs/benchmarks.md] FILE...
 //! sail-bench profile <trace-dir>... [--json out.json]
+//! sail-bench kani cold|warm|edit|history-replay|ci-rerun --project NAME ...
 //! ```
 //!
 //! `warm` and `edit` start `sail serve` (found next to this binary, like
@@ -49,7 +50,8 @@ const USAGE: &str =
   sail-bench report [--out PATH] FILE...
   sail-bench hits   --base TRACE_DIR --then TRACE_DIR [--json PATH]
   sail-bench mutants oracle|run|report ...   (the seeded mutation suite; ADR 0063)
-  sail-bench profile <trace-dir>... [--json PATH]";
+  sail-bench profile <trace-dir>... [--json PATH]
+  sail-bench kani cold|warm|edit|history-replay|ci-rerun --project NAME ...   (Linux; ADR 0183)";
 
 /// Which corpus units to run.
 struct Selection<'a> {
@@ -1028,6 +1030,8 @@ fn main() -> ExitCode {
         Some("repair") => repair_cmd(args.get(1..).unwrap_or_default()),
         Some("hits") => hits_cmd(args.get(1..).unwrap_or_default()),
         Some("mutants") => sail_bench::mutants::main(args.get(1..).unwrap_or_default()),
+        #[cfg(target_os = "linux")]
+        Some("kani") => sail_bench::kani::main(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.to_owned()),
     };
     match result {

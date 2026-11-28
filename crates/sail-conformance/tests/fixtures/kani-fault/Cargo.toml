@@ -1,0 +1,11 @@
+# Fixture for the Kani fault arm (ADR 0183); its own workspace.
+[package]
+name = "kani-fault"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(kani)'] }

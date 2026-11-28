@@ -276,5 +276,8 @@ or reuse a receipt. A fresh owned target is required before retrying.
 | `SAIL6304` | Development original Kani driver attempt is invalid, cancelled, incomplete, excessive or unsupported | Preserve the partial raw captures; no bounded result, currentness or reusable proof follows |
 | `SAIL6305` | Development original Kani/Rust payload installation refuses an invalid, changed, incomplete or unsupported input or destination | Preserve original archives; use a new destination under a private immutable parent. No backend, currentness, proof or reuse authority is established |
 | `SAIL6307` | A bounded-evidence record's tier, strength, sufficiency, witness, integrity or provenance contradicts its outcome (internal groundwork, ADR 0185) | Report it as a Sail bug with the record; no bounded result is established |
+| `SAIL6320` | Kani conformance corpus file is unreadable or malformed, or a selected project is unknown or in another tier (contributor tool, ADR 0183) | Fix `corpus/kani-corpus.toml` or the selection; no conformance result was produced |
+| `SAIL6321` | Kani conformance could not prepare a project: checkout, lock file, dependency fetch or harness discovery failed | Read the message; a project the shared argv cannot build is reported as blocked, not compared |
+| `SAIL6322` | Kani conformance could not run an arm: a directory, process or capture was missing | Infrastructure error, never a conformance result; rerun after fixing the host |
 
 - `SAIL6306`: experimental Kani CLI/setup refusal; use explicit harness and unwind, a prepared Cargo home and the pinned native Linux x86-64 runtime.
