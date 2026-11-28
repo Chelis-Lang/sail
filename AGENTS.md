@@ -128,6 +128,8 @@ on native x86-64 EC2 hosts (ADR 0038). Use `scripts/perf-host.sh up LANE`,
 contend. `ci/local.sh` builds the CI image natively there. Hosts are tagged
 `Project=sail`, terminate themselves after `SAIL_PERF_TTL_MIN` minutes, and
 are torn down after use; `scripts/perf-host.sh list` must be empty at the end of a session.
+`scripts/perf-fleet.py` runs fleets of such lanes with detached, resumable
+jobs (ADR 0191); `perf-fleet.py down FLEET` tears a fleet down.
 The local emulated container is for quick correctness checks only; never
 measure performance under emulation. Clean macOS numbers come from an EC2 Mac
 host (`scripts/perf-host-mac.sh`), which needs the owner's approval: Apple's

@@ -18,6 +18,11 @@
 # Project=sail and Lane=LANE. State lives in ~/.sail-perf/LANE.*
 # (SAIL_PERF_STATE_DIR overrides that directory). Failed teardown retains it.
 #
+# SAIL_PERF_MARKET=spot makes `up` request a one-time spot instance (recorded
+# as market=spot); a refused spot request is an ordinary failed `up`.
+# SAIL_PERF_SSH_CONFIG names the ssh config file for every connection (for
+# example /dev/null to ignore an unreadable system config).
+#
 # `up` launches in AWS_REGION (default us-east-1) and records that region
 # before it creates anything. Every other subcommand uses the lane's recorded
 # region, whatever AWS_REGION says later. An `up` that fails before an instance
@@ -30,9 +35,10 @@ default_region="${AWS_REGION:-us-east-1}"
 region="$default_region"
 state_dir="${SAIL_PERF_STATE_DIR:-${HOME}/.sail-perf}"
 ttl="${SAIL_PERF_TTL_MIN:-480}"
+market="${SAIL_PERF_MARKET:-on-demand}"
 aws_ec2() { aws ec2 --region "$region" "$@"; }
 
-usage() { sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
 require_lane() {
   [ -n "${1:-}" ] || usage
@@ -55,6 +61,7 @@ reachable_host_of() {
 }
 
 ssh_opts() {
+  [ -z "${SAIL_PERF_SSH_CONFIG:-}" ] || printf -- '-F %s ' "$SAIL_PERF_SSH_CONFIG"
   echo -i "$state_dir/$1.pem" -o StrictHostKeyChecking=accept-new \
     -o UserKnownHostsFile="$state_dir/$1.known_hosts" -o ServerAliveInterval=30 \
     -o ConnectTimeout=10
@@ -80,6 +87,7 @@ up_exit() {
 cmd_up() {
   require_lane "${1:-}"
   local lane="$1" type="${2:-c7i.4xlarge}" name="sail-$1"
+  case "$market" in on-demand | spot) ;; *) echo "SAIL_PERF_MARKET must be on-demand or spot" >&2; exit 2 ;; esac
   mkdir -p "$state_dir" && chmod 700 "$state_dir"
   if [ -f "$state_dir/$lane.env" ]; then echo "lane $lane already up" >&2; exit 1; fi
 
@@ -105,7 +113,7 @@ cmd_up() {
   # exists there. Each resource is appended only once this run has created
   # it, so cleanup can never delete a key pair or group it does not own.
   local env="$state_dir/$lane.env"
-  if ! (set -o noclobber; printf 'region=%s\ntype=%s\narch=%s\n' "$region" "$type" "$arch" >"$env") 2>/dev/null; then
+  if ! (set -o noclobber; printf 'region=%s\ntype=%s\narch=%s\nmarket=%s\n' "$region" "$type" "$arch" "$market" >"$env") 2>/dev/null; then
     echo "lane $lane already up" >&2; exit 1
   fi
   # The lane is expanded now: the function's locals are gone when the trap runs.
@@ -129,12 +137,16 @@ cmd_up() {
 shutdown -h +$ttl
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
-apt-get install -yq docker.io docker-buildx git rsync jq build-essential pkg-config libssl-dev python3 curl unzip
+apt-get install -yq docker.io docker-buildx git rsync jq build-essential pkg-config libssl-dev python3 curl unzip time numactl
 usermod -aG docker ubuntu
 touch /var/lib/sail-perf-ready
 EOF
 )
+  local market_opts=()
+  [ "$market" = on-demand ] || market_opts=(--instance-market-options
+    'MarketType=spot,SpotOptions={SpotInstanceType=one-time,InstanceInterruptionBehavior=terminate}')
   id=$(aws_ec2 run-instances --image-id "$ami" --instance-type "$type" --key-name "$name" \
+    ${market_opts[@]+"${market_opts[@]}"} \
     --security-group-ids "$sg" --instance-initiated-shutdown-behavior terminate \
     --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=200,VolumeType=gp3,Iops=6000,Throughput=500,DeleteOnTermination=true}' \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$name},{Key=Project,Value=sail},{Key=Lane,Value=$lane}]" \
@@ -295,7 +307,7 @@ cmd_down() {
   elif ! ec2_absent "$result" InvalidKeyPair.NotFound DeleteKeyPair; then
     down_failed "cannot delete key pair $key" "$result"; return 1
   fi
-  if ! rm -f "${state_dir:?}/${lane:?}".{env,pem,known_hosts}; then
+  if ! rm -rf "${state_dir:?}/${lane:?}".{env,pem,known_hosts,bin}; then
     down_failed "resources are gone but local state cleanup failed for $lane"; return 1
   fi
   echo "$lane down (${id:-no instance})"

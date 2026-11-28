@@ -134,8 +134,8 @@ class Launch(unittest.TestCase):
         images = call_for(calls, "describe-images")["args"]
         self.assertIn("Name=name,Values=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*", images)
         self.assertEqual(self.host.env(), {
-            "region": "us-west-2", "type": "t3.small", "arch": "amd64", "key": "sail-fixture",
-            "sg": "sg-new", "id": "i-new", "addr": "203.0.113.7"})
+            "region": "us-west-2", "type": "t3.small", "arch": "amd64", "market": "on-demand",
+            "key": "sail-fixture", "sg": "sg-new", "id": "i-new", "addr": "203.0.113.7"})
         self.assertEqual((self.host.state / "fixture.pem").read_text(), "PRIVATE KEY\n")
         self.assertEqual((self.host.state / "fixture.pem").stat().st_mode & 0o777, 0o600)
 
@@ -166,6 +166,44 @@ class Launch(unittest.TestCase):
             self.assertIn(line, before_launch.splitlines())
         self.assertNotIn("id=", before_launch)
 
+    def with_env(self, name, value, responses):
+        os.environ[name] = value
+        try:
+            return self.host.run(responses, "up", "fixture", "t3.small")
+        finally:
+            del os.environ[name]
+
+    def test_on_demand_by_default_and_spot_when_requested(self):
+        _, calls = self.host.run(launch(), "up", "fixture", "t3.small")
+        self.assertNotIn("--instance-market-options", call_for(calls, "run-instances")["args"])
+        (self.host.state / "fixture.env").unlink()
+        result, calls = self.with_env("SAIL_PERF_MARKET", "spot", launch())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = call_for(calls, "run-instances")["args"]
+        options = arguments[arguments.index("--instance-market-options") + 1]
+        self.assertIn("MarketType=spot", options)
+        self.assertIn("InstanceInterruptionBehavior=terminate", options)
+        self.assertEqual(self.host.env()["market"], "spot")
+
+    def test_refused_spot_request_leaves_nothing(self):
+        responses = launch(**{"run-instances": [failure("InsufficientInstanceCapacity", "RunInstances")],
+                              "delete-security-group": [row()], "delete-key-pair": [row()]})
+        result, _ = self.with_env("SAIL_PERF_MARKET", "spot", responses)
+        self.assert_nothing_left(result)
+        self.assertIn("InsufficientInstanceCapacity", result.stderr)
+
+    def test_unknown_market_is_refused_before_aws(self):
+        result, calls = self.with_env("SAIL_PERF_MARKET", "reserved", launch())
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(calls, [])
+
+    def test_ssh_config_override_reaches_every_connection(self):
+        log = self.host.root / "ssh.log"
+        self.host.tool("ssh", f'#!/bin/sh\necho "$@" >>{log}\nexit 0\n')
+        result, _ = self.with_env("SAIL_PERF_SSH_CONFIG", "/dev/null", launch())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(log.read_text().startswith("-F /dev/null -i "), log.read_text())
+
     def test_user_data_installs_unzip(self):
         _, calls = self.host.run(launch(), "up", "fixture", "t3.small")
         arguments = call_for(calls, "run-instances")["args"]
@@ -173,6 +211,9 @@ class Launch(unittest.TestCase):
         install = [line for line in user_data.splitlines() if line.startswith("apt-get install")]
         self.assertEqual(len(install), 1, user_data)
         self.assertIn("unzip", install[0].split())
+        # Detached fleet jobs need /usr/bin/time and numactl (ADR 0191).
+        self.assertIn("time", install[0].split())
+        self.assertIn("numactl", install[0].split())
 
     def test_refused_launch_deletes_group_key_and_local_files(self):
         responses = launch(**{"run-instances": [failure("VcpuLimitExceeded", "RunInstances")],
@@ -217,7 +258,7 @@ class Launch(unittest.TestCase):
         self.assertNotIn("delete-key-pair", operations(calls))
         self.assertEqual(self.host.files(), {"fixture.env": True, "fixture.pem": True, "fixture.known_hosts": False})
         self.assertEqual(self.host.env(), {"region": "us-west-2", "type": "t3.small", "arch": "amd64",
-                                           "key": "sail-fixture", "sg": "sg-new"})
+                                           "market": "on-demand", "key": "sail-fixture", "sg": "sg-new"})
 
         result, calls = self.host.run({}, "up", "fixture", "t3.small")
         self.assertNotEqual(result.returncode, 0)

@@ -211,6 +211,7 @@ case "$step" in
     python3 scripts/test-perf-host-sync.py
     python3 scripts/test-perf-host-up.py
     python3 scripts/test-perf-host-down.py
+    python3 scripts/test-perf-fleet.py
     python3 scripts/test-check-acceptance-proofs.py
     python3 scripts/test-check-acceptance-refinements.py
     python3 scripts/test-install.py

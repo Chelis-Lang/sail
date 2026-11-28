@@ -154,11 +154,73 @@ run created and leaves nothing behind. If that cleanup fails, or the instance
 was launched but never became ready, the lane's state is retained and
 `scripts/perf-host.sh down LANE` removes the rest.
 
+`SAIL_PERF_MARKET=spot` makes `up` request a one-time spot instance that
+terminates on interruption; the lane records `market=spot`. A refused spot
+request is an ordinary failed `up` and leaves nothing behind.
+`SAIL_PERF_SSH_CONFIG=/dev/null` passes `-F /dev/null` to every ssh connection,
+for shells whose system ssh config is unreadable.
+
 `python3 scripts/test-perf-host-sync.py` exercises real Git and rsync with local
 SSH transport. `python3 scripts/test-perf-host-up.py` and
 `python3 scripts/test-perf-host-down.py` drive launch, regions and teardown
 against a fake AWS CLI. All three are included in the workspace gate. See the
 [source-sync record](validation/host-source-sync.md) for qualification scope.
+
+### Perf fleets
+
+`scripts/perf-fleet.py` (ADR 0191) runs many `perf-host.sh` lanes as one fleet,
+named `FLEET-1` to `FLEET-N`. Set `AWS_REGION` explicitly; prefer a region other
+than `us-east-1`.
+
+```sh
+scripts/perf-fleet.py up kani-fleet 3 --type c7i.2xlarge   # spot, on-demand fallback
+scripts/perf-fleet.py ship kani-fleet path/to/build         # same bytes everywhere
+scripts/perf-fleet.py run kani-fleet jobs.jsonl --results out/ --setup 'CMD' --timeout 900
+scripts/perf-fleet.py down kani-fleet                       # fails unless none is listed
+```
+
+- `up` checks the standard-family vCPU quota first. The `sail-automation` user
+  cannot read service quotas, so the check reports the quota as unknown and
+  proceeds unless `--vcpu-limit N` or `SAIL_FLEET_VCPU_LIMIT` gives one.
+  `--market spot` and `--market on-demand` disable the fallback.
+- `submit LANE NAME [--mem 12G] [--timeout S] [--grace S] -- CMD...` starts a
+  detached job that survives disconnects. Each command runs in its own
+  transient unit with `MemoryMax`, no swap, `timeout --kill-after` and
+  `/usr/bin/time -v`. It always writes `rc`, `result` and `DONE` under
+  `~/fleet/jobs/NAME`, even after an out-of-memory kill or a timeout. `status
+  LANE` reports `ok` only for exit 0 with a successful unit. Otherwise it
+  reports `oom`, `timeout`, `killed`, `failed`, `refused`, `running` or `died`
+  (no marker and no running unit). `fetch LANE NAME DEST` copies the directory.
+- `run` reads JSONL items `{"id": ..., "cmd": ...}`. Each result key is the id
+  plus a digest of the command. Items are sharded longest prior time first
+  (`--times FILE`, or earlier results in the results directory). Each lane's
+  `--setup` runs once, and finished items are copied off at every poll. If a
+  node is lost (terminated, spot-interrupted or unreachable past
+  `--dead-after`), only its unfinished items move to idle lanes. Restarting
+  the same `run` command resumes: collected items are skipped and items still
+  running on live lanes are left alone. A second result for a key counts as a
+  duplicate and fails the run. The results directory holds `events.jsonl`,
+  `summary.json`, `times.json` and one directory per item.
+- While `run` polls, it keeps every live lane alive `--heartbeat` minutes
+  (default 120) past the latest poll. `extend FLEET MINUTES` does the same by
+  hand.
+- `helpers LANE` writes lane-private `ssh`, `scp` and `host` files under
+  `~/.sail-perf/LANE.bin` (with `-F /dev/null`). Use those, never a wrapper
+  shared between lanes; `down` removes them.
+- `quiet LANE` configures a bare-metal lane such as `c7i.metal-24xl` for timed
+  rows. It turns SMT and turbo off, fixes the frequency (`--freq-khz`, default
+  2400000) and stops background timers, then verifies the result.
+  `--quiet-pool` jobs then run one at a time on `--cpus` (default `0-15`) and
+  NUMA node 0. Each one refuses to start if CPU time was stolen or other
+  tasks are runnable. `quiet --dry-run LANE` prints the script. Benchmark
+  harnesses alternate arm order themselves.
+- The IAM user cannot create AWS Budgets or CloudWatch alarms, so there is no
+  budget alarm; TTL self-termination, the heartbeat and `down` bound cost.
+
+`python3 scripts/test-perf-fleet.py` runs the real job and runner scripts
+against fake hosts, including a lost host and a restarted coordinator. It is
+part of the workspace gate. The [fleet record](validation/perf-fleet.md) holds
+the EC2 gate.
 
 The e2e shell scripts need no GNU tools on macOS: fixture edits use portable
 `sed`, and bounded steps use coreutils' `timeout` where it is installed or
