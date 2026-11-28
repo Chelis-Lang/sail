@@ -484,6 +484,11 @@ Mac day through `scripts/perf-host-mac.sh`. Keep builds and other work off the
 machine during timings. Describe the actual hardware, region and load; never
 measure under emulation. Tear down owned hosts when finished.
 
+Throughput runs over many items (history replays, corpus sweeps) use a fleet
+of such lanes through `scripts/perf-fleet.py`; timed rows for a release claim
+use its quiet bare-metal profile. See
+[perf fleets](testing.md#perf-fleets).
+
 For narrower investigations, `scripts/perf-loops.sh demo|vest ROUNDS` measures
 the ordinary CLI loop, `scripts/perf-agents.sh vest AGENTS ROUNDS` measures
 concurrency, and `scripts/perf-real.sh` exercises individual real projects.

@@ -14,11 +14,14 @@ class Teardown(unittest.TestCase):
             root = Path(tmp)
             state = root / "state"
             state.mkdir()
-            names = ["fixture.env", "fixture.pem", "fixture.known_hosts"]
+            # fixture.bin holds lane-private ssh helpers (scripts/perf-fleet.py helpers).
+            names = ["fixture.env", "fixture.pem", "fixture.known_hosts", "fixture.bin"]
             if recorded:
                 (state / names[0]).write_text("id=i-owned\nsg=sg-owned\nkey=sail-owned\naddr=127.0.0.1\nregion=us-west-2\n")
-                for name in names[1:]:
+                for name in names[1:3]:
                     (state / name).write_text("owned fixture\n")
+                (state / names[3]).mkdir()
+                (state / names[3] / "ssh").write_text("#!/bin/sh\n")
             fixture = root / "responses.json"
             fixture.write_text(json.dumps(responses))
             calls = root / "calls.jsonl"
