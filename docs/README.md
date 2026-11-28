@@ -106,3 +106,4 @@ records what Sail kept and why); other experimental surfaces remain maintained.
 - [Experimental Kani candidate](kani.md): fresh bounded hand-written harness checks; native frontend qualification pending.
 
 - [Kani CLI candidate qualification](validation/kani-cli.md): actual frontend gates and remaining limits.
+- [Kani conformance](validation/kani-conformance.md): Sail's Kani backend against direct Kani on the fast corpus, and the fault arm.

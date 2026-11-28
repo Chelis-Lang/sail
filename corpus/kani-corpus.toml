@@ -1,0 +1,103 @@
+# The pinned Kani conformance corpus (ADR 0183). Every project is pinned by
+# full commit; `package` is the directory whose harnesses are checked.
+# `ci_args` are the project's own arguments after `cargo kani`. The current
+# Sail CLI takes none of them, so neither arm passes them; the report says so.
+# `default_unwind` is the bound both arms pass for harnesses without
+# `#[kani::unwind]`, because the current CLI requires `--unwind` (ADR 0156).
+# `expected` records direct Kani's outcomes at pin time as metadata only.
+schema_version = 1
+kani_version = "0.68.0"
+cbmc_version = "6.11.0"
+rust_toolchain = "nightly-2026-08-21"
+
+[[secondary]]
+kani_version = "0.67.0"
+projects = ["firecracker"]
+status = "Firecracker's own CI pin; every arm runs 0.68.0 today, which builds and verifies it (S2)"
+
+# Fast tier: minutes on one host.
+
+[[project]]
+name = "arrayvec-pilot"
+url = "https://github.com/Chelis-Lang/sail"
+commit = "b22a60f7f52cef7746888e0b6ee7d5e1be1340ee"
+package = "spikes/kani-pilot/pilot"
+tier = "fast"
+license = "MIT OR Apache-2.0"
+default_unwind = 6
+expected = "9 harnesses: 6 successful, 2 counterexamples, 1 insufficient bound"
+
+[[project]]
+name = "x86_64"
+url = "https://github.com/rust-osdev/x86_64"
+commit = "9fc1379868165fcdcc34ea8c4ae61ffce6fe6b09"
+package = "."
+tier = "fast"
+license = "MIT OR Apache-2.0"
+ci_args = ["--all-features"]
+default_unwind = 8
+lock = "corpus/kani/x86_64.Cargo.lock"
+lock_sha256 = "7fe72df7b522e24f73c6094e0c527ff2de98767181295e3b70c3ad70421ac490"
+expected = "34 harnesses with --all-features (8 should_panic), all successful"
+
+[[project]]
+name = "lading_throttle"
+url = "https://github.com/DataDog/lading"
+commit = "7b3d3f78ec60ccab474565fc3fd8aa027d50d5c0"
+package = "lading_throttle"
+tier = "fast"
+license = "MIT"
+ci_args = ["--solver", "cadical"]
+default_unwind = 12
+expected = "17 harnesses, all successful"
+
+# Standard tier: hours, memory-bound (up to 25 GiB per harness).
+
+[[project]]
+name = "s2n-codec"
+url = "https://github.com/aws/s2n-quic"
+commit = "e11382fda8a52979a2f952a789efc616db4ff4e4"
+package = "common/s2n-codec"
+tier = "standard"
+license = "Apache-2.0"
+default_unwind = 8
+lock = "corpus/kani/s2n-quic.Cargo.lock"
+lock_sha256 = "5b7738d19bcb1f51fdb87b8b9a2363a250f21e820df903560fe742e07b6cd2b3"
+expected = "66 harnesses, all successful (8 pin CaDiCaL)"
+
+[[project]]
+name = "s2n-quic-core"
+url = "https://github.com/aws/s2n-quic"
+commit = "e11382fda8a52979a2f952a789efc616db4ff4e4"
+package = "quic/s2n-quic-core"
+tier = "standard"
+license = "Apache-2.0"
+default_unwind = 8
+lock = "corpus/kani/s2n-quic.Cargo.lock"
+lock_sha256 = "5b7738d19bcb1f51fdb87b8b9a2363a250f21e820df903560fe742e07b6cd2b3"
+expected = "40 harnesses, all successful (30 pin Kissat, 1 MiniSat)"
+
+[[project]]
+name = "s2n-quic-platform"
+url = "https://github.com/aws/s2n-quic"
+commit = "e11382fda8a52979a2f952a789efc616db4ff4e4"
+package = "quic/s2n-quic-platform"
+tier = "standard"
+license = "Apache-2.0"
+default_unwind = 8
+lock = "corpus/kani/s2n-quic.Cargo.lock"
+lock_sha256 = "5b7738d19bcb1f51fdb87b8b9a2363a250f21e820df903560fe742e07b6cd2b3"
+expected = "6 harnesses, all successful (1 uses stubbing)"
+
+[[project]]
+name = "firecracker"
+url = "https://github.com/firecracker-microvm/firecracker"
+commit = "e9783a0434caff3137159bc7206c76c8b06057d9"
+package = "."
+tier = "standard"
+license = "Apache-2.0"
+ci_args = ["-Z", "unstable-options", "-Z", "stubbing", "-Z", "function-contracts", "-Z", "restrict-vtable", "--harness-timeout", "40m", "--workspace"]
+default_unwind = 8
+host_requires = ["libseccomp 2.6.0 (Ubuntu 24.04 ships 2.5.5; seccompiler needs seccomp_export_bpf_mem)", "-j4 or less on 61 GiB: one harness peaks at 25 GiB"]
+own_kani_pin = "0.67.0"
+expected = "41 harnesses, all successful at -j4 (9 stubbing, 1 should_panic, 1 proof_for_contract)"

@@ -1749,10 +1749,12 @@ name = "sail-conformance"
 version = "0.3.0"
 dependencies = [
  "nix",
+ "sail-kani",
  "sail-verus",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "toml",
 ]
 
 [[package]]

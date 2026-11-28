@@ -85,6 +85,7 @@ pub const ALLOWED: &[(&str, &[&str])] = &[
     (
         "sail-conformance",
         &[
+            "sail-kani",
             "sail-smtlib",
             "sail-session",
             "sail-ledger",

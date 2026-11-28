@@ -7,7 +7,9 @@
 //! - [`report`]: the generated `docs/benchmarks.md`;
 //! - [`repair`]: the M7 repair acceptance workload, recorded then judged;
 //! - [`mutants`]: the seeded mutation suite, a soundness probe and the
-//!   edit-loop benchmark (ADR 0063).
+//!   edit-loop benchmark (ADR 0063);
+//! - `kani` (Linux): the Kani cold, warm, edit, history-replay and CI-rerun
+//!   arms (ADR 0183).
 //!
 //! Trace analysis over the shim's captured sessions (`SAIL_TRACE_DIR`),
 //! driven by the `sail-bench` binary ([`cli`]):
@@ -27,6 +29,8 @@ pub mod edit;
 pub mod error;
 pub mod fragility;
 pub mod hits;
+#[cfg(target_os = "linux")]
+pub mod kani;
 pub mod mutants;
 pub mod profile;
 pub mod repair;

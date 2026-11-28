@@ -8,6 +8,7 @@
 //! sail-conformance engine [--tier T] [--project P]... [--filter S] [--jobs N]
 //!                        [--out DIR] [--engine-build PATH] [--no-focus]
 //! sail-conformance rust-verify-test [--filter S]... [--every N] [--jobs N] ...
+//! sail-conformance kani run|fault ...   (Kani conformance; ADR 0183)
 //! ```
 //!
 //! `run` compares Sail as users run it against plain stock Verus with the
@@ -25,6 +26,7 @@
 //! instability rules on verdicts and diagnostics, plus a completion-seal check.
 #![forbid(unsafe_code)]
 
+mod kani_main;
 mod rust_verify_test;
 
 use std::collections::{BTreeMap, VecDeque};
@@ -54,6 +56,7 @@ const USAGE: &str = "usage (fetch/run/engine accept --corpus PATH; default corpu
                          [--engine-build PATH] [--no-focus]
 
   sail-conformance rust-verify-test ...   (see `rust-verify-test --help`)
+  sail-conformance kani run|fault ...     (see `kani --help`)
 
   --engine-build PATH  the validated build of Sail's Verus: the fork runtime,
                     which contains the interactive engine (default
@@ -954,6 +957,12 @@ fn main() -> ExitCode {
             rust_verify_test::main(rest)
         };
         return result.unwrap_or_else(|message| {
+            eprintln!("{message}");
+            ExitCode::from(2)
+        });
+    }
+    if args.first().map(String::as_str) == Some("kani") {
+        return kani_main::main(args.get(1..).unwrap_or_default()).unwrap_or_else(|message| {
             eprintln!("{message}");
             ExitCode::from(2)
         });

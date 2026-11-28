@@ -271,6 +271,20 @@ does not locate the blocked command or establish a product failure. The original
 containment cancellation and the revised layout's completed native scope are in
 the [containment record](validation/dependency-store-fail-closed.md).
 
+## Kani conformance
+
+`ci/local.sh conformance kani fast` (local-only, native Linux x86-64) compares
+the experimental Kani backend with the original Kani driver run twice per
+harness without Sail, on the pinned projects in `corpus/kani-corpus.toml`,
+for `SAIL_KANI_ROUNDS` rounds (default 3) with `SAIL_KANI_JOBS` slots
+(default 8), then runs the fault arm. `sail-conformance kani run` and
+`sail-conformance kani fault` run the two parts alone; `--help` lists their
+options. Parity and the named variance set are in
+[ADR 0181](decisions/0181-kani-parity-and-outcomes.md), the harness, fault arm
+and tiers in [ADR 0183](decisions/0183-kani-conformance-harness.md), and the
+results in the [validation record](validation/kani-conformance.md).
+`sail-bench kani ARM --project NAME` runs the Kani benchmark arms.
+
 ## Mutation suite
 
 Both stock and managed commands explicitly use the pinned runtime's Rust

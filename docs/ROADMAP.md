@@ -95,7 +95,7 @@ the workstreams. Nothing beyond the decoder and tool pins is on `main`.
 |---|---|---|
 | Spike wave (baseline, cost split, GOTO determinism, history hit rate, admission, integrity, solver choice, std sample, Mac, reach) | One record each with its pass or drop result | Not started |
 | Owner checkpoint | Headline claim, fork, Mac and co-shipping pillars decided from the records | Pending the wave |
-| Executor and CLI on `main`, batch run, conformance and corpus | Direct-Kani pairs Same; default Verus unchanged | Development branch only |
+| Executor and CLI on `main`, batch run, conformance and corpus | Direct-Kani pairs Same; default Verus unchanged | Conformance harness and corpus: fast tier `same` over three rounds, fault arm passes ([record](validation/kani-conformance.md)); x86_64 blocked on Cargo features; standard tier and batch run not yet |
 | Reuse: closure receipts, CBMC-boundary shim, signed CI tier | Each layer's ADR and conformance; measured against `cargo kani -j N` | Not started |
 
 Results are bounded evidence, never reported as verified. Existing contract,
