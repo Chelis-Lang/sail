@@ -5,6 +5,8 @@ installation, eleven Python control groups, the full local gate and fresh
 independent review pass. No Kani executor, CLI backend, nightly Rust
 authentication, currentness or reusable proof authority is added.
 
+This pin, `engine/kani/bundle-linux.json`, is now the stock conformance oracle;
+Sail's runtime is the fork bundle pinned beside it ([record](kani-fork.md)).
 The authoritative Linux pin names Kani 0.68.0 / CBMC 6.11.0, the official
 140,315,343-byte archive SHA-256
 `32e2b484d73ede0bbf64a2cf0879c4259422497d8aec4ee67d448de9ae7843d3`,

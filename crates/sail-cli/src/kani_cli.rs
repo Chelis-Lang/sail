@@ -118,11 +118,17 @@ fn execute(options: &Options, out: &mut dyn Write) -> Result<u8, String> {
     // Project and prepared dependencies are ordinary local inputs, not an
     // authenticated source closure. No receipt/currentness/cache path is called.
     let root = crate::kani_setup::root()?;
-    let runtime = root.join("original-0.68.0-linux-x86_64");
+    let runtime = root.join(format!(
+        "{}-linux-x86_64",
+        sail_kani::tools::RUNTIME_RELEASE
+    ));
     let tools =
         sail_kani::tools::Tools::authenticate(&runtime.join("bundle"), &runtime.join("rust"))
             .map_err(|error| format!("{error}; run `sail engine install --backend kani`"))?;
-    let stage_path = root.join("stage-0.68.0-linux-x86_64");
+    let stage_path = root.join(format!(
+        "stage-{}-linux-x86_64",
+        sail_kani::tools::RUNTIME_RELEASE
+    ));
     let stage = if std::fs::symlink_metadata(&stage_path).is_ok() {
         tools.inspect_stage(&stage_path)
     } else {

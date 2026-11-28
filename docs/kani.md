@@ -11,8 +11,13 @@ sail engine install --backend kani
 sail engine status --backend kani
 ```
 
-Setup downloads the exact original Kani 0.68.0 bundle and six original Rust
-component archives. It checks their identities and all payload files without
+Setup downloads the pinned Kani 0.68.0 bundle from Sail's fork,
+`Chelis-Lang/kani` release `sail-kani-0.68.0-1`, and six original Rust
+component archives. The fork writes the same checks as stock Kani 0.68.0 with
+byte-identical CBMC input across rebuilds; the one text difference is the
+description of Kani's internal "Correct CBMC vtable size" sanity check
+([ADR 0187](decisions/0187-kani-deterministic-output-fork.md)). Stock Kani is
+the conformance oracle. It checks their identities and all payload files without
 executing downloaded installers. A conflicting or corrupt installation refuses;
 setup never overwrites it. Allow approximately 2.1 GB for the original payloads,
 plus the private tool stage and each check's build/capture output.
@@ -59,6 +64,7 @@ Verus workflow. There is no Kani MCP endpoint in this candidate. Function-contra
 and generated-harness modes are unsupported. Native Linux CLI/direct-pilot,
 package and extension gates pass; Mac build validation and
 release adoption remain pending.
-See [the original-driver record](validation/kani-original-driver.md) and
+See [the fork record](validation/kani-fork.md),
+[the original-driver record](validation/kani-original-driver.md) and
 [payload preparation](validation/kani-payload-installation.md) for component
 results and their limits.

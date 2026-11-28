@@ -23,7 +23,7 @@ RESOURCES = {
         "ci/kani-install.py",
         "ci/kani-bundle.py",
         "ci/kani-toolchain.py",
-        "engine/kani/bundle-linux.json",
+        "engine/kani/fork-bundle-linux.json",
         "engine/kani/toolchain-linux.json",
         "ci/engine-artifact.py",
         "engine/verus/artifact-linux.json",
@@ -34,7 +34,7 @@ RESOURCES = {
         "crates/sail-verus/tests/fixtures/requirement-attribution/positive-requested-target.json",
     ),
     "sail-kani": (
-        "engine/kani/bundle-linux.json",
+        "engine/kani/fork-bundle-linux.json",
         "engine/kani/toolchain-linux.json",
     ),
     "sail-mcp": (

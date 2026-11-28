@@ -1,5 +1,8 @@
 //! Authenticate original Kani and Rust tool bytes without executing them.
 //!
+//! The Kani bundle is the pinned release of Sail's fork (ADR 0187); "original"
+//! means the published bytes, unmodified. Stock Kani is the conformance oracle.
+//!
 //! Prefixes must be caller-owned and immutable while inspected and used. This
 //! is a bounded observation of original payloads, never a filesystem snapshot,
 //! execution, source closure, proof receipt or permission to reuse a result.
@@ -21,6 +24,10 @@ const MAX_ENTRIES: usize = 20_000;
 const RUST_FILES: usize = 7_017;
 const RUST_BYTES: u64 = 1_586_050_167;
 const RUST_TREE: &str = "f2fdf9b82a0521dd8c88fc10cef8e217cf42d855252786492564d82fa7cc4dbe";
+
+/// Release of Sail's Kani fork whose bundle is the runtime (ADR 0187). Stock
+/// Kani 0.68.0 is the conformance oracle and is never staged by this crate.
+pub const RUNTIME_RELEASE: &str = "sail-kani-0.68.0-1";
 
 /// A tool-payload refusal; no backend outcome follows.
 #[derive(Debug)]
@@ -75,9 +82,10 @@ impl Tools {
         }
         let bundle = bundle.canonicalize().map_err(refuse)?;
         let rust = rust.canonicalize().map_err(refuse)?;
-        let pin: serde_json::Value =
-            serde_json::from_str(include_str!("../resources/engine/kani/bundle-linux.json"))
-                .map_err(refuse)?;
+        let pin: serde_json::Value = serde_json::from_str(include_str!(
+            "../resources/engine/kani/fork-bundle-linux.json"
+        ))
+        .map_err(refuse)?;
         let expected: BTreeMap<String, Payload> = serde_json::from_value(
             pin.get("files")
                 .cloned()
@@ -86,7 +94,7 @@ impl Tools {
         .map_err(refuse)?;
         let (actual, _) = inventory(&bundle, &BTreeSet::new())?;
         if actual != expected {
-            return Err(refuse("original Kani bundle inventory differs"));
+            return Err(refuse("pinned Kani fork bundle inventory differs"));
         }
         let generated = generated_metadata();
         let (actual, _) = inventory(&rust, &generated)?;
@@ -283,6 +291,16 @@ fn hash_file(path: &Path, length: u64) -> Result<String, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn runtime_release_names_the_embedded_fork_pin() -> Result<(), Box<dyn std::error::Error>> {
+        let pin: serde_json::Value = serde_json::from_str(include_str!(
+            "../resources/engine/kani/fork-bundle-linux.json"
+        ))?;
+        assert_eq!(pin["release_tag"], RUNTIME_RELEASE);
+        assert_eq!(pin["fork_repo"], "Chelis-Lang/kani");
+        Ok(())
+    }
 
     #[test]
     fn canonical_record_encoding_matches_original_archive_inventory_contract()

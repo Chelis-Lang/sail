@@ -65,7 +65,10 @@ fn command(args: &[String]) -> Result<serde_json::Value, String> {
         return Err("usage: sail engine install|status --backend kani [--output json]".into());
     }
     let root = root()?;
-    let destination = root.join("original-0.68.0-linux-x86_64");
+    let destination = root.join(format!(
+        "{}-linux-x86_64",
+        sail_kani::tools::RUNTIME_RELEASE
+    ));
     if action == "install" && std::fs::symlink_metadata(&destination).is_err() {
         install(&root, &destination)?;
     }
@@ -75,7 +78,7 @@ fn command(args: &[String]) -> Result<serde_json::Value, String> {
     )
     .map_err(|error| error.to_string())?;
     Ok(
-        serde_json::json!({"kind":"sail-kani-runtime-status","version":1,"backend":"kani","experimental":true,"bundle":tools.bundle(),"rust":tools.rust(),"runtime_authenticated":true,"backend_executed":false,"proof_authority":false}),
+        serde_json::json!({"kind":"sail-kani-runtime-status","version":1,"backend":"kani","experimental":true,"runtime_release":sail_kani::tools::RUNTIME_RELEASE,"bundle":tools.bundle(),"rust":tools.rust(),"runtime_authenticated":true,"backend_executed":false,"proof_authority":false}),
     )
 }
 
@@ -101,8 +104,8 @@ fn install(root: &Path, destination: &Path) -> Result<(), String> {
                 include_bytes!("../resources/ci/kani-toolchain.py"),
             ),
             (
-                "engine/kani/bundle-linux.json",
-                include_bytes!("../resources/engine/kani/bundle-linux.json"),
+                "engine/kani/fork-bundle-linux.json",
+                include_bytes!("../resources/engine/kani/fork-bundle-linux.json"),
             ),
             (
                 "engine/kani/toolchain-linux.json",

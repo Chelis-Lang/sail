@@ -60,6 +60,17 @@ The mutation suite found it on Vest (`vest-logic-003`,
 [record](validation/mutation-suite.md)). Any other status flip is still a
 difference.
 
+### Kani fork vtable sanity-check description
+
+The experimental Kani backend runs Sail's Kani fork; stock Kani 0.68.0 is its
+oracle ([ADR 0187](decisions/0187-kani-deterministic-output-fork.md)). The
+description of Kani's internal "Correct CBMC vtable size" sanity check prints
+the MIR type with `Display`; stock prints `Debug` of its kind, with rustc
+table indices that change from run to run. Stock-versus-fork comparison masks
+only descriptions that start "Correct CBMC vtable size"; their status,
+location and every other check stay exact
+([record](validation/kani-fork.md)).
+
 ## Accepted default-mode progress ordering
 
 Owner decision, 2026-10-21: complete standalone `note: verifying module ...`

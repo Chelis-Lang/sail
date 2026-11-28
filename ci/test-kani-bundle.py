@@ -16,6 +16,7 @@ spec = importlib.util.spec_from_file_location("sail_kani_bundle", Path(__file__)
 bundle = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bundle)
 PIN = Path(__file__).resolve().parent.parent / "engine/kani/bundle-linux.json"
+FORK_PIN = PIN.with_name("fork-bundle-linux.json")
 
 
 class BundleTests(unittest.TestCase):
@@ -179,6 +180,30 @@ class BundleTests(unittest.TestCase):
         for name in [".", "a/../b", "a//b", "a/./b", "a\\b", "/a", "/".join(["a"] * 65)]:
             with self.assertRaises(ValueError):
                 bundle.relative(name)
+
+    def test_fork_pin_names_its_release_and_differs_from_stock_only_in_rebuilt_tools(self):
+        stock, fork = bundle.load_pin(PIN), bundle.load_pin(FORK_PIN)
+        self.assertEqual(fork["url"], f"https://github.com/Chelis-Lang/kani/releases/download/{fork['release_tag']}/kani-0.68.0-x86_64-unknown-linux-gnu.tar.gz")
+        self.assertEqual(set(fork["files"]), set(stock["files"]))
+        self.assertEqual(fork["empty_directories"], stock["empty_directories"])
+        differing = {name for name in stock["files"] if stock["files"][name] != fork["files"][name]}
+        self.assertEqual(differing, {"bin/kani-compiler", "bin/kani-driver", "bin/kissat"})
+        path = self.root / "pin.json"
+        for change in [{"fork_repo": "model-checking/kani"}, {"release_tag": "kani-0.68.0"}, {"release_tag": "sail-kani-0.68.0-01"},
+                       {"release_tag": "sail-kani-0.68.0-2"}, {"fork_commit": "E" * 40}, {"fork_commit": "e" * 39},
+                       {"url": bundle.STOCK_URL}, {"fork_commit": None}]:
+            path.write_text(json.dumps(dict(fork, **change)))
+            with self.assertRaises(ValueError):
+                bundle.load_pin(path)
+        path.write_text(json.dumps({key: value for key, value in fork.items() if key != "fork_commit"}))
+        with self.assertRaises(ValueError):
+            bundle.load_pin(path)
+        path.write_text(json.dumps(dict(stock, release_tag=fork["release_tag"])))
+        with self.assertRaises(ValueError):
+            bundle.load_pin(path)
+        tag = "sail-kani-0.68.0-2"
+        path.write_text(json.dumps(dict(fork, release_tag=tag, url=fork["url"].replace(fork["release_tag"], tag))))
+        self.assertEqual(bundle.load_pin(path)["release_tag"], tag)
 
     def test_download_stream_uses_same_authentication(self):
         archive, pin = self.fixture()

@@ -158,3 +158,4 @@ Use [the template](0000-template.md) for a new decision.
 - [0179. Read finite check reports with Dive’s native value renderer](0179-temporal-report-value-projections.md)
 - [0180: Kani phase scope, measured before built](0180-kani-phase-scope.md) (accepted by owner; spike wave then one checkpoint; amends 0128 and 0174; a Kani fork for deterministic output is permitted under 0039's rules)
 - [0185: One bounded-evidence record for Kani and D.I.V.E. symbolic results](0185-bounded-evidence-types.md) (proposed; hidden `sail_api::bounded` groundwork, tier never above bounded, mapping tables and open points)
+- [0187: Sail runs a Kani fork with deterministic GOTO output](0187-kani-deterministic-output-fork.md) (accepted; ADR 0039 rules; fork bundle is the runtime, stock Kani 0.68.0 the oracle; one masked sanity-check description)
