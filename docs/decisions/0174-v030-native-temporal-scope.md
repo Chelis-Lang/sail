@@ -82,3 +82,11 @@ open v0.3.0 issues move to a new v0.4.0 milestone.
 - Charter appendix entry 19 records the correction.
 - Publication still needs D.I.V.E. 0.1.0 on crates.io, #763's release-day
   steps and the owner's approval of the exact candidate.
+
+## Amendment (2026-11-28): v0.4.0 pillar order
+
+The owner decided v0.4.0's order at the Kani checkpoint
+([ADR 0180](0180-kani-phase-scope.md)). Kani is the headline. Profiling and
+stability, the never-slower rows, reach, and cvc5 with the SMT-LIB service
+co-ship only if already qualified when Kani is. Verus mutation testing (#140,
+#141, #664) moves to v0.5.0.

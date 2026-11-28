@@ -1,6 +1,6 @@
 # The Kani phase
 
-Status: proposed design for the phase after v0.3.1 and the D.I.V.E. symbolic pickup (milestone #17). The owner approved the plan on 2026-11-27, including forking Kani for deterministic output if measurement supports it. [ADR 0180](../decisions/0180-kani-phase-scope.md) records the decision. Nothing here is implemented beyond what [the roadmap](../ROADMAP.md) lists; every expected gain below is a prediction until its spike record exists.
+Status: checkpoint passed on 2026-11-28; building. Every gating spike passed: [S1](../validation/kani-spike-baseline.md), [S2 and S5](../validation/kani-spike-cost-split.md), [S3](../validation/kani-spike-goto-determinism.md), [S4](../validation/kani-spike-history-replay.md), [S6](../validation/kani-spike-integrity.md) and [S7](../validation/kani-spike-sat-solvers.md). The owner approved the CBMC-boundary reuse layer and a Kani fork in the public `Chelis-Lang/kani` repository; [ADR 0180](../decisions/0180-kani-phase-scope.md) records the outcome. Kani is the v0.4.0 headline, after v0.3.1. Only the executor, CLI and bounded-evidence types are on `main` (see [the roadmap](../ROADMAP.md)); every gain below is a spike projection until product code reproduces it.
 
 This document covers first-class Kani support, where it sits against other backends and solvers, and when neutral spec frontends come back. Kani on Sail is a large performance opportunity with a narrower shape than "cache Kani as Sail caches Verus": it says where the gain is, where it is not, and what is measured before building.
 

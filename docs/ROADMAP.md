@@ -6,9 +6,12 @@ Current ordering follows the owner's 2026-11-19 decision, recorded in
 [ADR 0100](decisions/0100-mutation-first-roadmap.md). The latest stable release
 is **0.3.0**, native temporal checking on D.I.V.E. 0.1.0. The next release is
 **v0.3.1**, the same native temporal checking on D.I.V.E. 0.2.0, then
-**v0.4.0**. Symbolic rechecks (`sail runtime symbolic-check`) are not in
-v0.3.1; they are planned with D.I.V.E. 0.3
-([#805](https://github.com/Chelis-Lang/sail/issues/805)).
+**v0.4.0**, headlined by Kani (owner checkpoint, 2026-11-28,
+[ADR 0180](decisions/0180-kani-phase-scope.md)). Symbolic rechecks
+(`sail runtime symbolic-check`, [#805](https://github.com/Chelis-Lang/sail/issues/805))
+ship as a point release when D.I.V.E. 0.3 lands, or inside v0.4.0 if it lands
+first ([milestone 17](https://github.com/Chelis-Lang/sail/milestone/17)).
+Verus mutation testing moves to v0.5.0.
 
 The active execution tracker is
 [#712](https://github.com/Chelis-Lang/sail/issues/712), superseding the
@@ -53,18 +56,20 @@ supported platforms remain Linux x86-64 and macOS on Apple silicon.
 
 ## After the next release: v0.4.0
 
-These pillars moved from v0.3.0 (ADR 0174). Each keeps its gate, drop rule and
-tracker; their order is not decided. See the
+Kani is the headline (ADR 0174 as amended 2026-11-28). The other pillars
+moved from v0.3.0 keep their gates, drop rules and trackers, and co-ship only
+if already qualified when Kani is. See the
 [v0.4.0 milestone](https://github.com/Chelis-Lang/sail/milestone/15).
 
 | Pillar | Gate | Tracker | State |
 |---|---|---|---|
-| Verus mutation testing | Bounded executable-code mutants in copies through CLI, JSON and MCP together; outcomes and score per [ADR 0111](decisions/0111-mutation-evidence.md), with solver answers verbatim; qualified on real projects on Linux and macOS with actual campaign costs | #140, #141, [#664](https://github.com/Chelis-Lang/sail/issues/664); [brief](design/verus-mutation-release.md), [evidence spike](validation/mutation-evidence.md) | Evidence rule decided; exec-only generator and campaign evidence model on `main`. Engine, CLI, JSON and MCP built on development branches only. Ordinary runtime integration, real-project acceptance, campaign cost/concurrency and Mac remain open |
+| Kani backend (headline) | Re-checks only the harnesses whose program changed; same results as `cargo kani`; out-of-memory and timeouts never reported as success. Measured against one `cargo kani -j N` with a warm target; results bounded, never verified | [#135](https://github.com/Chelis-Lang/sail/issues/135); [design](design/kani-phase.md), [ADR 0180](decisions/0180-kani-phase-scope.md) | Checkpoint passed 2026-11-28; building. Single-harness executor and CLI on `main`, unadvertised ([record](validation/kani-cli.md)); no cache or batch run yet |
 | Profiling and stability | Name costly quantifiers and unstable proofs from recorded sessions; no change to verdicts or plain `sail verify` bytes | [Health guide](proof-health.md) | Exact session-prefix, prefix-replay and quantifier-count groundwork merged. History, retention, the stability worker and `sail profile` are not merged |
 | Never slower than stock; cheaper changed proofs | Every measured row at or under stock on both platforms, or listed as a failed gate; lower cost for an edit in a large module | #158, #232, #558, #560, #288 | Named rows still slower; see the lanes below |
 | Reach | Simpler installation and an editor bridge | Installer, Binstall and LSP work on development branches | Not merged |
-| Kani backend (headline candidate) | Spike wave with numeric pass and drop rules, then one owner checkpoint; every claim measured against one `cargo kani -j N` with a warm target; results bounded, never verified | [#135](https://github.com/Chelis-Lang/sail/issues/135); [design](design/kani-phase.md), [ADR 0180](decisions/0180-kani-phase-scope.md) | Pilot passed ([record](https://github.com/Chelis-Lang/sail/issues/135#issuecomment-6755845619)). Decoder #739 and input fixtures #743/#755 merged; a qualified single-harness executor and CLI exist on a development branch only. No cache, batch run, corpus or spike record yet Executor and CLI landed unadvertised ([record](validation/kani-cli.md)): single harness, fresh target per run, no cache |
 | cvc5 and the SMT-LIB service | cvc5 in the supported SMT runtime with per-solver conformance and unchanged Z3 bytes | #137 | Development backend merged (#741), unadvertised; Mac qualification open |
+
+Later, v0.5.0 ([milestone 18](https://github.com/Chelis-Lang/sail/milestone/18)): Verus mutation testing (#140, #141, [#664](https://github.com/Chelis-Lang/sail/issues/664); [brief](design/verus-mutation-release.md)).
 
 ## Performance and acceptance lanes
 
@@ -85,23 +90,26 @@ also benefits mutation campaigns.
 
 ## Backends: Kani, then solvers, Loom and Creusot
 
-Kani ([#135](https://github.com/Chelis-Lang/sail/issues/135)) is the headline
-candidate for v0.4.0 ([ADR 0180](decisions/0180-kani-phase-scope.md), amending
-ADR 0174). The [design](design/kani-phase.md) gives the argument, the reuse
-layers and their expected gains, the correctness contract, the spike wave and
-the workstreams. Nothing beyond the decoder and tool pins is on `main`.
+Kani ([#135](https://github.com/Chelis-Lang/sail/issues/135)) is the v0.4.0
+headline ([ADR 0180](decisions/0180-kani-phase-scope.md), amending ADR 0174).
+The [design](design/kani-phase.md) gives the argument, the reuse layers, the
+correctness contract, the spike wave and the workstreams. The unadvertised
+single-harness executor, CLI and bounded-evidence types are on `main`.
 
 | Step | Gate | State |
 |---|---|---|
-| Spike wave (baseline, cost split, GOTO determinism, history hit rate, admission, integrity, solver choice, std sample, Mac, reach) | One record each with its pass or drop result | Not started |
-| Owner checkpoint | Headline claim, fork, Mac and co-shipping pillars decided from the records | Pending the wave |
-| Executor and CLI on `main`, batch run, conformance and corpus | Direct-Kani pairs Same; default Verus unchanged | Development branch only |
-| Reuse: closure receipts, CBMC-boundary shim, signed CI tier | Each layer's ADR and conformance; measured against `cargo kani -j N` | Not started |
+| Spike wave S1–S7 | One record each with its pass or drop result | Passed ([ADR 0180](decisions/0180-kani-phase-scope.md#checkpoint-outcome-2026-11-28)); S8 and S10 informational, S9 in qualification |
+| Owner checkpoint | Headline, fork and co-shipping pillars decided | Passed 2026-11-28 |
+| A: fork in `Chelis-Lang/kani`, batch executor, corpus and conformance, fleet tooling | Stock-versus-fork per-check equality; batch within 5% of `cargo kani -j8` warm; fast tier Same over three rounds | Building |
+| B: run modes, integrity supervision | Every s2n-quic-core and Firecracker harness admitted and conformant; injected OOM, timeout and truncation never yield success | Not started |
+| C: CBMC-boundary shim and store, closure receipts | S4's projection reproduced by product code with zero conformance differences; warm unchanged run ≤1 s | Not started |
+| D: signed CI tier, solver identity, surfaces | Unchanged-PR rerun ≥20× on a fresh runner; tampered entry refused; per-check equality with the default solver | Not started |
+| E: qualification | Performance matrix against `cargo kani -j N` warm, standard corpus, macOS (S9) | Not started |
 
 Results are bounded evidence, never reported as verified. Existing contract,
 stubbing and loop-contract harnesses are run with named qualifiers; Sail
-generates no harnesses or contracts. A Kani fork for deterministic output is
-permitted when its spike shows the gain.
+generates no harnesses or contracts. The Kani fork for deterministic output goes
+in the public `Chelis-Lang/kani` repository; stock Kani remains the conformance oracle.
 
 After Kani, in order: SAT solver identity in the Kani key; Bitwuzla and cvc5
 through CBMC's SMT path, alongside cvc5 in the supported SMT runtime
