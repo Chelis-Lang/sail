@@ -384,7 +384,8 @@ dependencies = [
 [[package]]
 name = "dive-api"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "452f87a7560cdcf361c564ff9b73740b147da37e441f343b9441759a29d86664"
 dependencies = [
  "dive-config",
  "dive-core",
@@ -408,7 +409,8 @@ dependencies = [
 [[package]]
 name = "dive-config"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56655a20e3bf7aedd7e34242736d78bdd6cd9b873f94051c44d8dfb54808d96c"
 dependencies = [
  "dive-syntax",
 ]
@@ -416,7 +418,8 @@ dependencies = [
 [[package]]
 name = "dive-core"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a19b60e72aa02e83b8f4c3e5dc65ab52c83e7b2bb52db3dbe854ebd31e830c9"
 dependencies = [
  "dive-ir",
  "dive-value",
@@ -428,7 +431,8 @@ dependencies = [
 [[package]]
 name = "dive-eval"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2f81346c215d2bcc669d8d46ba87c5cfd160d9e372fed759dc91a057f319f9d"
 dependencies = [
  "dive-ir",
  "dive-value",
@@ -437,7 +441,8 @@ dependencies = [
 [[package]]
 name = "dive-explore"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3dfa90a53f75d7c0a4ce06d3ac69766d1d8e623cc759e3009b0197649286329a"
 dependencies = [
  "dive-core",
  "dive-store",
@@ -453,7 +458,8 @@ dependencies = [
 [[package]]
 name = "dive-ir"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d72bb79fb9e4a0cb50e635319f74ab6e3b149b62d6bd518fbd67d8431effcfce"
 dependencies = [
  "dive-sema",
  "dive-syntax",
@@ -463,7 +469,8 @@ dependencies = [
 [[package]]
 name = "dive-liveness"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53047bc436579b0385233cce376d6c0954c89a2b77a1706b9f7fedb582882af4"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -477,7 +484,8 @@ dependencies = [
 [[package]]
 name = "dive-model"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c83f58964a1ed495260a1ea9d388b9d49b87bf1bb4399bd8168ecffcd11150eb"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -489,7 +497,8 @@ dependencies = [
 [[package]]
 name = "dive-pluscal"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42f254818519aebd4cddeab8deb2aefdf8ecebf1dfe734b38047f115444ddffd"
 dependencies = [
  "dive-syntax",
  "serde",
@@ -498,7 +507,8 @@ dependencies = [
 [[package]]
 name = "dive-runtime"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ec7625f83015db703270c163f84d64fb050641cd92af180b9f0c4cc705ee832"
 dependencies = [
  "dive-config",
  "dive-eval",
@@ -516,7 +526,8 @@ dependencies = [
 [[package]]
 name = "dive-sema"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fce319d262e5e97b451ef3f44a4469f4d586c2b25cbf0ef642823483fbbbd458"
 dependencies = [
  "dive-syntax",
 ]
@@ -524,7 +535,8 @@ dependencies = [
 [[package]]
 name = "dive-sim"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89d2d2b44be826a6c7db3266ae7ba9ba00b39621678a7d16cf6a5b3d84505fbf"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -536,7 +548,8 @@ dependencies = [
 [[package]]
 name = "dive-stdlib"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95313458a453bbe09dbb45de1797ca2f118a3a20d5e276f8f47ce2c5533c1e53"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -548,7 +561,8 @@ dependencies = [
 [[package]]
 name = "dive-store"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2f22335d99fd82e46f631da288abb487c86f1608edbd00c91263e1f6a9e66c2"
 dependencies = [
  "dive-value",
 ]
@@ -556,7 +570,8 @@ dependencies = [
 [[package]]
 name = "dive-syntax"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3603c237115776ab3ffe16bf41d7f198c737001cb82fcc6b030b6adbd857c03"
 dependencies = [
  "rowan",
 ]
@@ -564,7 +579,8 @@ dependencies = [
 [[package]]
 name = "dive-trace"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "471d84e1f35dd417b887629ce642d78baab0a7d184391d56799970d5f46d5583"
 dependencies = [
  "dive-eval",
  "dive-ir",
@@ -577,7 +593,8 @@ dependencies = [
 [[package]]
 name = "dive-value"
 version = "0.2.0"
-source = "git+https://github.com/Chelis-Lang/dive?rev=5bb880635f46c7266e015a0d812f18e4411cdc6a#5bb880635f46c7266e015a0d812f18e4411cdc6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19b17de5ffcadfb922e337026b6dc5d6daac7e1e1b4d24a72eaa0be5376c5b7f"
 dependencies = [
  "num-bigint 0.5.1",
  "num-integer",
