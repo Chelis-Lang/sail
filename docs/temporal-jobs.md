@@ -90,7 +90,9 @@ bounds execution. Every returned trace passes independent semantic replay.
 Sampled behaviors and simulation deadlocks are replayed under D.I.V.E.'s
 sampling rules: a simulation deadlock means every successor of the last
 state lies outside the model's constraints, and its validated trace makes the
-job `Refuted`.
+job `Refuted`. With deadlock checking off, a trace that stops before the
+depth at a state with no admitted successor has the `terminal` ending; it is
+replayed under the same rules and stays a `Sampled` behavior.
 
 The response, with each returned trace in its native, ITF and validated
 forms, must fit the 16 MiB worker bound. D.I.V.E. samples and checks every

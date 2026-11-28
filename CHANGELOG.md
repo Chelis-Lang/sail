@@ -13,7 +13,8 @@ semantic versioning once the API is published.
 
 - Add hidden `sail_api::bounded` groundwork: one bounded-evidence record for Kani and D.I.V.E. symbolic results (ADR 0185). It is not supported API and no command, MCP tool or report uses it.
 
-- Native temporal jobs link D.I.V.E. 0.2.0 and accept its report schema 4 (#786).
+- Native temporal jobs link D.I.V.E. 0.2.0 from crates.io and accept its report schema 4 (#786).
+- A temporal simulation with `CHECK_DEADLOCK FALSE` whose traces stop before the depth now returns them as independently validated samples with D.I.V.E.'s `terminal` ending instead of failing with `SAIL4203`. Saved witnesses with `bad-prefix` or `invariant-error` endings also round-trip through ITF with their exact trace version.
 - `sail runtime witness-recheck` checks `dive --version` first and refuses a Dive release other than the one Sail links with `SAIL6103` and an install command.
 - `sail runtime symbolic-check`, including `--strategy source-obligations`, is no longer listed in `sail help runtime` or the user guide: D.I.V.E. 0.2.0 does not ship the symbolic worker. It follows with D.I.V.E. 0.3 (#805).
 

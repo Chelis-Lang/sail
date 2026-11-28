@@ -77,11 +77,15 @@ fn add_trace(
     let replay = itf_to_native(&itf).map_err(unsupported)?;
     let document = TraceDoc::from_json(&replay).map_err(unsupported)?;
     input.admit_labels(&document)?;
-    // A sampled behavior or simulation deadlock is replayed under sampling
+    // A sampled behavior, simulation deadlock or terminal word (a sample that
+    // stopped early with deadlock checking off) is replayed under sampling
     // rules, as D.I.V.E.'s own simulation validates it; any other ending, and
     // every exhaustive-checking witness, uses ordinary validation.
     let sampled = matches!(witness, Witness::Sample)
-        && matches!(document.ending, Some(Ending::Behavior | Ending::Deadlock));
+        && matches!(
+            document.ending,
+            Some(Ending::Behavior | Ending::Deadlock | Ending::Terminal)
+        );
     let validation = if sampled {
         source.try_validate_sample(&document).map_err(|error| {
             (

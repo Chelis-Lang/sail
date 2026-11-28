@@ -207,7 +207,14 @@ pub fn itf_to_native(trace: &ItfTrace) -> Result<Value, String> {
             Ok(json!({"action": action, "values": values}))
         })
         .collect::<Result<Vec<_>, String>>()?;
-    let mut native = json!({"format":"dive-trace", "version":1,
+    // dive-trace's format version is the lowest one that can express the
+    // ending; take it from dive's own canonical writer, never a fixed number.
+    let ending = Ending::from_json(&trace.ending)?;
+    let version = TraceDoc::behavior(Vec::new())?
+        .with_ending(ending)
+        .to_json()["version"]
+        .clone();
+    let mut native = json!({"format":"dive-trace", "version":version,
         "variables":trace.vars,"states":states,"ending":trace.ending});
     if !trace.properties.is_empty() {
         native["properties"] = json!(trace.properties);
