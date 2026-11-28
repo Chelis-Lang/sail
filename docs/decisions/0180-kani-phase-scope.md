@@ -1,6 +1,6 @@
 # 0180: Kani phase scope, measured before built
 
-- **Status:** accepted by owner (plan approved 2026-11-27); spike wave and checkpoint pending
+- **Status:** accepted by owner (plan approved 2026-11-27); checkpoint passed 2026-11-28
 - **Date:** 2026-11-27
 - **Amends:** [ADR 0128](0128-kani-bounded-observations.md), [ADR 0174](0174-v030-native-temporal-scope.md)
 
@@ -68,3 +68,32 @@ document. Kani performance work needs a multi-node measurement method built on
 `scripts/perf-host.sh`. The decoder's CaDiCaL-only and proof-only admissions
 must widen before any real-project claim. No command, MCP tool or JSON field
 is advertised until its gate passes (ADR 0174).
+
+## Checkpoint outcome (2026-11-28)
+
+Every gating spike passed:
+
+| Spike | Result | Record |
+|---|---|---|
+| S1 baseline | One batched `kani-driver` run is within 5% of `cargo kani -j8` warm (1.8% faster on `arrayvec`, 0.6% on `s2n-quic-core`); today's executor costs a fixed 7.4 s per call | [baseline](../validation/kani-spike-baseline.md) |
+| S2 cost split | 77% to 98% of warm wall is after the build on all three real projects | [cost split](../validation/kani-spike-cost-split.md) |
+| S3 GOTO determinism | Stock: 0 of 49 inputs reproduce; a 146-line patch: 49 of 49 at a fixed checkout path, verdicts equal to stock | [determinism](../validation/kani-spike-goto-determinism.md) |
+| S4 history replay | Median commit invalidates 0% of CBMC time; projected 42.0× median and 3.10× mean on s2n-quic, 15.4× and 5.24× on Firecracker | [history replay](../validation/kani-spike-history-replay.md) |
+| S5 admission | 100% of s2n-quic-core and Firecracker harnesses admitted once run modes widen; all run to success | [cost split](../validation/kani-spike-cost-split.md) |
+| S6 integrity | Direct Kani flips at `-j16` and `-j32`; supervision gave 51 of 51 same outcomes in 5 of 5 runs, faster | [integrity](../validation/kani-spike-integrity.md) |
+| S7 SAT solvers | 636 runs, no status disagreement; per-harness virtual best 1.43× | [SAT solvers](../validation/kani-spike-sat-solvers.md) |
+
+The owner decided:
+
+- **Go** on the CBMC-boundary reuse layer and the Kani fork. The fork goes in
+  the public `Chelis-Lang/kani` repository under ADR 0039's rules; offering the
+  patch upstream remains the owner's decision.
+- **Headline:** "Re-checks only the harnesses whose program changed; same
+  results as `cargo kani`; out-of-memory and timeouts are never reported as
+  success."
+- **Mutation testing moves to v0.5.0.**
+- The work proceeds now; release mechanics are settled later.
+
+S8 (verify-rust-std sample), S9 (macOS arm64) and S10 (autoharness reach) do
+not gate the phase. S9 runs during qualification; if it fails, the release is
+Linux-only and labelled.
