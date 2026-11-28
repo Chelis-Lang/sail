@@ -10,8 +10,9 @@ use dive_api::{safety_projection, safety_reuse as safety, temporal, temporal_reu
 use safety::Counts;
 use serde::{Deserialize, Serialize};
 
-/// Dive source revision providing the typed edit API, checked against Cargo.lock.
-pub const BACKEND_SOURCE: &str = "5bb880635f46c7266e015a0d812f18e4411cdc6a";
+/// Dive source revision providing the typed edit API: the commit the linked
+/// crates.io release was published from (its `.cargo_vcs_info.json`).
+pub const BACKEND_SOURCE: &str = "3122643ae78e7a75b0bd96add02fa22efd7fb0ab";
 
 /// A group of native checks with one wall deadline for the whole process.
 #[derive(Debug, Serialize, Deserialize)]

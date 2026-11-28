@@ -43,10 +43,10 @@ sail-bench = { path = "crates/sail-bench", version = "=0.3.0" }
 # Native temporal checking (ADR 0172). D.I.V.E. publishes its crates in
 # lockstep; sail_api::temporal::DIVE_VERSION states the same exact version,
 # and moving it requires native conformance.
-dive-api = { version = "=0.2.0", git = "https://github.com/Chelis-Lang/dive", rev = "5bb880635f46c7266e015a0d812f18e4411cdc6a" }
-dive-ir = { version = "=0.2.0", git = "https://github.com/Chelis-Lang/dive", rev = "5bb880635f46c7266e015a0d812f18e4411cdc6a" }
-dive-value = { version = "=0.2.0", git = "https://github.com/Chelis-Lang/dive", rev = "5bb880635f46c7266e015a0d812f18e4411cdc6a" }
-dive-trace = { version = "=0.2.0", git = "https://github.com/Chelis-Lang/dive", rev = "5bb880635f46c7266e015a0d812f18e4411cdc6a" }
+dive-api = "=0.2.0"
+dive-ir = "=0.2.0"
+dive-value = "=0.2.0"
+dive-trace = "=0.2.0"
 
 # Live workspace events and optional HTTP shared-cache service (ADRs 0024/0025).
 notify = "8.2"

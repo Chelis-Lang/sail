@@ -201,6 +201,30 @@ fn simulation_deadlock_under_a_constraint_is_a_validated_refutation() {
 }
 
 #[test]
+fn simulation_stopping_early_without_deadlock_checking_is_a_validated_terminal_sample() {
+    // Every trace stops at x = 3, before the depth. With deadlock checking
+    // off, D.I.V.E. marks the word terminal (dive-trace version 8), and Sail
+    // must replay it under sampling rules rather than refuse it.
+    let source = COUNTER.replace("x' = IF x < 2 THEN x+1 ELSE 0", "x < 3 /\\ x' = x + 1");
+    let mut req = request(&source, "INIT Init\nNEXT Next\nCHECK_DEADLOCK FALSE\n");
+    req.operation = Operation::Simulate {
+        traces: 2,
+        depth: 10,
+    };
+    let result = sail_dive::execute(&req);
+    assert_eq!(result.outcome, Outcome::Sampled, "{result:?}");
+    assert!(result.message.is_none(), "{result:?}");
+    assert_eq!(result.itf_traces.len(), 2);
+    assert_eq!(result.validations.len(), result.native_traces.len());
+    assert!(result.validations.iter().all(|v| v["result"] == "valid"));
+    for (itf, native) in result.itf_traces.iter().zip(&result.native_traces) {
+        assert_eq!(itf.ending, json!({"kind": "terminal"}));
+        assert_eq!(itf.states.len(), 4);
+        assert_eq!(native["version"], 8);
+    }
+}
+
+#[test]
 fn closure_and_host_admission_happen_before_evaluation() {
     let host = "---- MODULE M ----\nEXTENDS TLC\nVARIABLE x\nASSUME PrintT(\"host effect must not run\")\nInit == x = 0\nNext == x' = x\n====\n";
     let result = sail_dive::execute(&request(host, "INIT Init\nNEXT Next\n"));
@@ -247,6 +271,29 @@ fn itf_bigints_roundtrip_without_integer_narrowing_and_refuse_unknown_tags() -> 
     bad = trace;
     bad.states[0].remove("x");
     assert!(sail_dive::itf_to_native(&bad).is_err());
+    Ok(())
+}
+
+#[test]
+fn itf_round_trips_the_trace_version_each_ending_requires() -> TestResult {
+    // dive-trace's version is the lowest that can express the ending.
+    for (version, ending) in [
+        (8, json!({"kind":"terminal"})),
+        (7, json!({"kind":"bad-prefix","name":"P"})),
+        (
+            2,
+            json!({"kind":"invariant-error","name":"Inv","ec":"TLC_MODULE_VALUE_JAVA_METHOD_OVERRIDE"}),
+        ),
+    ] {
+        let mut native = json!({"format":"dive-trace","version":version,"variables":["x"],
+            "states":[{"action":null,"values":{"x":0}}],"ending":ending});
+        if version == 7 {
+            native["properties"] = json!(["P"]);
+        }
+        let trace = sail_dive::native_to_itf(&native)?;
+        assert_eq!(trace.ending, native["ending"]);
+        assert_eq!(sail_dive::itf_to_native(&trace)?, native, "{native}");
+    }
     Ok(())
 }
 

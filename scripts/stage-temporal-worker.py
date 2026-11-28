@@ -15,6 +15,18 @@ import sys
 import tomllib
 
 
+def dive_version(manifest):
+    """The exact dive-api version a root Cargo.toml text requires.
+
+    Accepts a bare requirement (`dive-api = "=X"`) or a table with `version`.
+    """
+    dependency = tomllib.loads(manifest)['workspace']['dependencies']['dive-api']
+    requirement = dependency if isinstance(dependency, str) else dependency.get('version', '')
+    if not isinstance(requirement, str) or not requirement.startswith('=') or not requirement[1:]:
+        raise SystemExit(f'dive-api must be required at one exact version, not {requirement!r}')
+    return requirement[1:]
+
+
 def stage(source, destination):
     source, destination = Path(source), Path(destination)
     destination.mkdir(parents=True, exist_ok=True)
@@ -22,11 +34,7 @@ def stage(source, destination):
     if source.resolve() != worker.resolve():
         shutil.copyfile(source, worker)
     worker.chmod(0o755)
-    pins = tomllib.loads((Path(__file__).resolve().parent.parent / 'Cargo.toml').read_text())
-    requirement = pins['workspace']['dependencies']['dive-api']['version']
-    if not requirement.startswith('=') or not requirement[1:]:
-        raise SystemExit(f'dive-api must be required at one exact version, not {requirement!r}')
-    revision = requirement[1:]
+    revision = dive_version((Path(__file__).resolve().parent.parent / 'Cargo.toml').read_text())
     system = {'Darwin': 'macos', 'Linux': 'linux'}[platform.system()]
     architecture = {'arm64': 'aarch64', 'aarch64': 'aarch64', 'x86_64': 'x86_64'}[platform.machine()]
     with worker.open('rb') as stream:
